@@ -1,0 +1,56 @@
+application: netskrafl
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+- url: /favicon.ico
+  static_files: static/favicon.ico
+  upload: static/favicon.ico
+- url: /static/ajax-loader.gif
+  static_files: static/ajax-loader.gif
+  upload: static/ajax-loader.gif
+- url: /apple-touch-icon.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+- url: /touch-icon-ipad.png
+  static_files: static/touch-icon-ipad.png
+  upload: static/touch-icon-ipad.png
+- url: /touch-icon-ipad-retina.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+- url: /touch-icon-iphone-retina.png
+  static_files: static/touch-icon-iphone-retina.png
+  upload: static/touch-icon-iphone-retina.png
+- url: /static/glyphicons_387_log_out.png
+  static_files: static/glyphicons_387_log_out.png
+  upload: static/glyphicons_387_log_out.png
+- url: /static/glyphicons_173_play.png
+  static_files: static/glyphicons_173_play.png
+  upload: static/glyphicons_173_play.png
+- url: /static/skrafl.css
+  static_files: static/skrafl.css
+  upload: static/skrafl.css
+- url: /static/netskrafl.js
+  static_files: static/netskrafl.js
+  upload: static/netskrafl.js
+- url: /static/jquery.ui.touch-punch.min.js
+  static_files: static/jquery.ui.touch-punch.min.js
+  upload: static/jquery.ui.touch-punch.min.js
+- url: /static/glyphicons-halflings-regular.ttf
+  static_files: static/glyphicons-halflings-regular.ttf
+  upload: static/glyphicons-halflings-regular.ttf
+- url: /static/glyphicons-halflings-regular.woff
+  static_files: static/glyphicons-halflings-regular.woff
+  upload: static/glyphicons-halflings-regular.woff
+- url: .*
+  script: netskrafl.app
+
+skip_files:
+- ^(.*/)?.*\.txt$
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
+- ^(.*/)?\..*$

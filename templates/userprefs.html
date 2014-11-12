@@ -1,0 +1,30 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="loginform">
+   <div><p>Upplýsingar um notanda:</p></div>
+   <div>
+   <form name="frm1" id="frm1" action="{{ url_for('userprefs') }}" method="post">
+      <div><input type="text" name="nickname" id="nickname" maxlength=15
+         autofocus required class="username" value="{{ user.nickname() }}"></input></div>
+      <div><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Uppfæra</button></div>
+
+   </form>
+   </div>
+   <div>
+	   <a href='{{ user.logout_url() }}'>
+			<button type="submit" id="logout" class="logout">
+	   		<span class="glyphicon glyphicon-log-out"></span>&nbsp;&nbsp;Skrá mig út
+	   	</button>
+	   </a>
+   </div>
+</div>
+
+{% endblock %}
+

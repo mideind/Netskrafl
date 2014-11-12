@@ -1,0 +1,718 @@
+/* Skrafl.css */
+
+@font-face {
+  font-family: 'Glyphicons Halflings';
+  src: url('glyphicons-halflings-regular.eot');
+  src: url('glyphicons-halflings-regular.eot?#iefix') format('embedded-opentype'),
+  url('glyphicons-halflings-regular.woff') format('woff'),
+  url('glyphicons-halflings-regular.ttf') format('truetype'),
+  url('glyphicons-halflings-regular.svg#glyphicons_halflingsregular') format('svg');
+}
+
+.glyphicon {
+  position: relative;
+  top: 2px;
+  display: inline-block;
+  font-family: 'Glyphicons Halflings';
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glyphicon-play:before {
+   content: "\e072";
+}
+.glyphicon-exclamation-sign:before {
+  content: "\e101";
+}
+.glyphicon-log-in:before {
+  content: "\e161";
+}
+.glyphicon-log-out:before {
+  content: "\e163";
+}
+.glyphicon-screenshot:before {
+  content: "\e087";
+}
+.glyphicon-refresh:before {
+  content: "\e031";
+}
+.glyphicon-forward:before {
+  content: "\e075";
+}
+.glyphicon-fire:before {
+  content: "\e104";
+}
+.glyphicon-ok:before {
+  content: "\e013";
+}
+.glyphicon-remove:before {
+  content: "\e014";
+}
+.glyphicon-info-sign:before {
+  content: "\e086";
+}
+
+body {
+   font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+table.board {
+   margin: 0;
+   padding: 0;
+   border-spacing: 0;
+   border-collapse: separate;
+   table-layout: fixed;
+}
+
+.board td {
+   height: 32px;
+   width: 32px;
+   overflow: hidden;
+   text-align: center;
+   font-size: 24px;
+   background-color: #afb8bf; /* Pantone 7543 U */
+   border-style: solid;
+   border-color: #f2f2f2;
+   border-width: 1px;
+   margin: 0;
+   padding: 0;
+}
+
+.rack table.board {
+   border-spacing: 4px;
+}
+
+td.over {
+   outline: yellow solid 3px;
+}
+
+td.highlight {
+   outline: yellow solid 2px;
+}
+
+.colid td {
+   height: 24px;
+   width: 32px;
+   overflow: hidden;
+   background-color: transparent;
+   text-align: center;
+   font-size: 14px;
+   line-height: 14px;
+   font-weight: 400;
+   border-width: 1px;
+   border-color: transparent;
+   margin: 0;
+   padding-top: 0; /* 2px; */
+   padding-bottom: 0; /* 4px; */
+   padding-left: 0;
+   padding-right: 0;
+}
+
+td.rowid {
+   width: 16px;
+   height: 32px;
+   min-width: 16px;
+   max-width: 16px;
+   overflow: hidden;
+   background-color: transparent;
+   text-align: center;
+   font-size: 14px;
+   line-height: 14px;
+   font-weight: 400;
+   border-width: 1px;
+   border-color: transparent;
+}
+
+/* Board layout */
+#H8, #B2, #C3, #D4, #E5, #B14, #C13, #D12, #E11,
+#K5, #L4, #M3, #N2, #K11, #L12, #M13, #N14 {
+   /* Double word score */
+   background-color: #f7d2d8; /* Pantone 698 U */
+}
+
+#A1, #A8, #A15, #H1, #H15, #O1, #O8, #O15 {
+   /* Triple word score */
+   background-color: #ee4f68; /* Pantone 192 U */
+}
+
+#A4, #A12, #C7, #C9, #D1, #D8, #D15,
+#G3, #G7, #G9, #G13,
+#H4, #H12,
+#I3, #I7, #I9, #I13,
+#O4, #O12, #M7, #M9, #L1, #L8, #L15 {
+   /* Double letter score */
+   background-color: #78aee6; /* Pantone 284 U */
+}
+
+#B6, #B10, #F2, #F6, #F10, #F14,
+#N6, #N10, #J2, #J6, #J10, #J14 {
+   /* Triple letter score */
+   background-color: #006db8; /* Pantone 300 U */
+}
+
+div.tile {
+   background-color: #e4ad87; /* Pantone 721 U */
+   font-size: 25px;
+   line-height: 25px;
+   font-weight: 700;
+   text-align: center;
+   text-transform: uppercase;
+   height: 30px;
+   width: 30px; /* 100%; 30px; */
+   overflow: hidden;
+   margin: 0px;
+   padding-top: 2px;
+   padding-bottom: 0px;
+   padding-left: 0px;
+   padding-right: 2px;
+   cursor: default;
+}
+
+div.racktile {
+   cursor: pointer;
+   background-color: #fcce43; /* Pantone 7404 U */
+}
+
+div.xchg {
+   cursor: pointer;
+}
+
+div.xchgsel {
+   color: white;
+   background-color: #ee4f68; /* Pantone 192 U */
+}
+
+div.blanktile {
+   color: #666666;
+}
+
+div.freshtile {
+   background-color: #7ad3b7; /* Pantone 337 U */
+}
+
+div.highlight0 {
+   /* Human (local) player */
+   background-color: #fcce43; /* Pantone 7404 U */
+}
+
+div.highlight1 {
+   /* Computer (remote) player */
+   background-color: #7ad3b7; /* Pantone 337 U */
+}
+
+div.letterscore {
+   position: relative;
+   top: -8px;
+   left: 22px;
+   height: 9px;
+   width: 9px;
+   font-size: 9px;
+   line-height: 9px;
+   text-align: right;
+   font-weight: 400;
+   padding: 0;
+   background-color: transparent;
+}
+
+div.heading {
+   position: relative;
+   width: 100%;
+   height: 78px;
+   background-color: #afb8bf; /* Pantone 7543 U */
+   top: 0; left: 0;
+   padding-left: 0px;
+   padding-right: 0px;
+}
+
+h3.playerleft {
+   display: inline-block;
+   position: absolute;
+   top: 0; left: 0;
+   width: 50%;
+   font-size: 16px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: left;
+   color: #222222;
+   overflow: hidden;
+   margin-top: 0px;
+   padding-top: 8px;
+   padding-bottom: 8px;
+   padding-left: 4px;
+}
+
+h3.playerright {
+   display: inline-block;
+   position: absolute;
+   top: 0; right: 0;
+   width: 50%;
+   font-size: 16px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: right;
+   color: #222222;
+   overflow: hidden;
+   margin-top: 0px;
+   padding-top: 8px;
+   padding-bottom: 8px;
+   padding-right: 4px;
+}
+
+h3.scoreleft {
+   display: inline-block;
+   position: absolute;
+   top: 42px;
+   left: 0;
+   width: 50%;
+   font-size: 24px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: left;
+   color: white;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-left: 4px;
+}
+
+h3.scoreright {
+   display: inline-block;
+   position: absolute;
+   top: 42px;
+   right: 0;
+   width: 50%;
+   font-size: 24px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: right;
+   color: white;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-right: 4px;
+}
+
+div.movelist {
+   position: absolute;
+   top: 82px;
+   left: 0px;
+   height: 424px;
+   width: 100%;
+   background-color: #d6d1c4; /* Pantone 7534 U */
+   overflow: auto;
+   font-size: 15px;
+   line-height: 15px;
+   font-weight: 400;
+   color: black;
+   cursor: default;
+}
+
+div.leftmove {
+   text-align: left;
+   padding: 2px;
+}
+
+div.rightmove {
+   text-align: right;
+   padding: 2px;
+}
+
+div.gameover {
+   text-align: center;
+   padding: 2px;
+   background-color: #ffa03b; /* Pantone 137 U */
+   color: white;
+   font-weight: 700;
+}
+
+.humancolor {
+   background-color: #fcce43; /* Pantone 7404 U */
+}
+
+.autoplayercolor {
+   background-color: #7ad3b7; /* Pantone 337 U */
+}
+
+span.score {
+   font-weight: 700;
+   padding-left: 2px;
+   margin-left: 2px;
+   padding-right: 2px;
+   margin-right: 2px;
+}
+
+span.highlight {
+   background-color: #ee4f68; /* Pantone 192 U */
+   color: white;
+}
+
+span.wordmove {
+   text-transform: uppercase;
+}
+
+span.othermove {
+   text-transform: none;
+}
+
+body {
+   padding: 0;
+   margin: 0;
+}
+
+div.container {
+   position: relative;
+   top: 0;
+   left: 0;
+   width: 1024px;
+   height: 720px;
+   background-color: #FFF1DC; /* Pantone 7506 U */
+   padding: 0;
+   margin: 0;
+}
+
+div.logo {
+   position: absolute;
+   top: 28px;
+   left: 12px;
+   width: 46px;
+   height: 400px;
+}
+
+div.info {
+   position: absolute;
+   top: 460px;
+   left: 12px;
+   width: 46px;
+   height: 46px;
+   text-align: center;
+   font-size: 32px;
+}
+
+div.board {
+   position: absolute;
+   top: 8px;
+   left: 96px;
+}
+
+div.rightcol {
+   position: absolute;
+   width: 302px;
+   right: 12px;
+   top: 14px;
+   margin-top: 24px;
+}
+
+div.rack {
+   position: absolute;
+   text-align: center;
+   bottom: 89px;
+   left: 254px;
+   background-color: #afb8bf; /* Pantone 7543 U */
+   padding: 6px;
+   border-width: 0;
+   border-radius: 4px;
+   margin: 0;
+}
+
+div.bag {
+   position: absolute;
+   bottom: 4px;
+   right: 14px;
+   width: 302px;
+   height: 160px;
+   font-size: 11px;
+   font-weight: 700;
+   text-transform: uppercase;
+   text-align: center;
+   margin: 0;
+   padding: 0;
+   opacity: 0.75;
+}
+
+table #bag {
+}
+
+#bag td {
+   min-width: 12px;
+   min-height: 17px;
+   background-color: #e4ad87; /* Pantone 721 U */
+   overflow: hidden;
+   cursor: default;
+}
+
+div.error {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 40px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: #ee4f68; /* Pantone 192 U */
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+div.error p {
+   display: inline;
+   position: relative;
+   top: 0;
+   left: 0;
+   width: auto;
+   height: auto;
+   margin: 0;
+   padding: 0;
+}
+
+div.resign {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 40px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: #ee4f68; /* Pantone 192 U */
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+span.yesnobutton {
+   height: 20px;
+   text-align: center;
+   background-color: white;
+   font-size: 16px;
+   font-weight: 700;
+   color: #ee4f68; /* Pantone 192 U */
+   margin-top: 0;
+   margin-bottom: 0;
+   margin-left: 4px;
+   margin-right: 4px;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   padding-left: 12px;
+   padding-right: 12px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+span.xchgbtn {
+   color: #7ad3b7; /* Pantone 337 U */
+}
+
+div.exchange {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 40px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: #7ad3b7; /* Pantone 337 U */
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+div.submitmove {
+   position: absolute;
+   width: 100px;
+   height: 28px;
+   text-align: center;
+   bottom: 100px;
+   left: 542px;
+   background-color: #7ad3b7; /* Pantone 337 U */
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+div.submitpass {
+   position: absolute;
+   width: 36px;
+   height: 28px;
+   text-align: center;
+   bottom: 100px;
+   left: 170px;
+   background-color: #ffa03b; /* Pantone 137 U */
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+div.submitresign {
+   position: absolute;
+   width: 36px;
+   height: 28px;
+   text-align: center;
+   bottom: 100px;
+   left: 128px;
+   background-color: #ee4f68; /* Pantone 192 U */
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+div.submitexchange {
+   position: absolute;
+   width: 36px;
+   height: 28px;
+   text-align: center;
+   bottom: 100px;
+   left: 212px;
+   background-color: #7ad3b7; /* Pantone 337 U */
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+div.help {
+   position: absolute;
+   left: 110px;
+   top: 4px;
+   width: 880px;
+   height: 680px;
+   overflow: hidden;
+   font-size: 15px;
+}
+
+div.smallprint {
+   font-size: 12px;
+   padding-top: 6px;
+}
+
+div.loginform {
+   position: absolute;
+   left: 300px;
+   top: 100px;
+   text-align: center;
+}
+
+input.username {
+   font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
+   font-size: 20px;
+   font-weight: 700;
+   height: 32px;
+   width: 300px;
+   border-style: solid;
+   border-color: #55cc66;
+   border-width: 2px;
+   border-radius: 6px;
+   margin: 0;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   padding-left: 8px;
+   padding-right: 8px;
+}
+
+input.username:focus {
+   background-color: #ffffc8;
+   border-style: solid;
+   border-color: #55cc66;
+   border-width: 2px;
+   border-radius: 6px;
+   outline: none;
+}
+
+button[type="submit"] {
+   font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
+   font-size: 20px;
+   font-weight: 400;
+   height: 40px;
+   color: white;
+   text-align: center;
+   width: 322px;
+   border-width: 0;
+   border-radius: 6px;
+   background-color: #55cc66;
+   margin-top: 20px;
+   margin-left: 0;
+   margin-right: 0;
+   margin-bottom: 0;
+   padding-top: 4px;
+   padding-bottom: 4px;
+   padding-left: 8px;
+   padding-right: 8px;
+   cursor: pointer;
+}
+
+button[type="submit"]:focus, button[type="submit"]:hover {
+   outline: yellow solid 3px;
+}
+
+button.login {
+}
+
+button.logout {
+   margin-top: 80px;
+   background-color: #ee4f68;
+}
+
+div.over {
+   outline: yellow solid 3px;
+}
+
+div.disabled {
+   background-color: #d6d1c4; /* Pantone 7534 U */
+}
+
+a.nodecorate:link {
+   text-decoration: none;
+   color: black;
+}
+
+a.nodecorate:visited {
+   text-decoration: none;
+   color: black;
+}
+
+a.nodecorate:hover {
+   text-decoration: none;
+   color: #006db8; /* Pantone 300 U */
+}
+
+a.iconlink:link {
+   text-decoration: none;
+   color: #78aee6;
+}
+
+a.iconlink:visited {
+   text-decoration: none;
+   color: #78aee6;
+}
+
+a.iconlink:hover {
+   text-decoration: none;
+   color: #006db8; /* Pantone 300 U */
+}
+

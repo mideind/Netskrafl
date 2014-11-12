@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Spilaðu skrafl á netinu!">
+
+<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+
+<!-- Apple iPhone and iPad touch icons -->
+<link rel="apple-touch-icon" sizes="76x76" href="/touch-icon-ipad.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/touch-icon-iphone-retina.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/touch-icon-ipad-retina.png">
+
+<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+ <!--[if lt IE 9]>
+   <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+   <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+ <![endif]-->
+
+<title>Netskrafl</title>
+
+<link href="{{ url_for('static', filename='skrafl.css') }}" rel="stylesheet" type="text/css">
+
+<!-- jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+<script src="{{ url_for('static', filename='jquery.ui.touch-punch.min.js') }}"></script>
+
+<!-- Mousetrap global keyboard handler -->
+<script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
+
+<!-- Netskrafl client script -->
+<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+
+{% block scripts %}
+{% endblock %}
+
+</head>
+<body>
+
+   <div class="container">
+   
+      <div class="logo">
+      	<a class="nodecorate" href="{{ url_for('main') }}">
+      		<img src="{{ url_for('static', filename='Netskrafl.png') }}" border=0 width=46px height=400px></img>
+      	</a>
+      </div>
+
+      <div class="info">
+      	<a class="iconlink" href="{{ url_for('help') }}">
+      		<span class="glyphicon glyphicon-info-sign"></span>
+      	</a>
+      </div>
+
+{% block content %}
+{% endblock %}
+
+   </div>
+
+</body>
+</html>
