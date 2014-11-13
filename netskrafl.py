@@ -23,6 +23,8 @@
 
 import logging
 import time
+import collections
+
 from random import randint
 
 from flask import Flask
@@ -112,6 +114,37 @@ class User:
         return u.nickname()
 
 
+class LRUCache:
+
+    """ A simple LRU cache structure to store games in memory """
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = collections.OrderedDict()
+
+    def get(self, key):
+        try:
+            value = self.cache.pop(key)
+            self.cache[key] = value
+            return value
+        except KeyError:
+            return None
+
+    def set(self, key, value):
+        try:
+            self.cache.pop(key)
+        except KeyError:
+            if len(self.cache) >= self.capacity:
+                self.cache.popitem(last = False)
+        self.cache[key] = value
+
+    def delete(self, key):
+        try:
+            self.cache.pop(key)
+        except KeyError:
+            pass
+
+
 class Game:
 
     """ A wrapper class for a particular game that is in process
@@ -139,8 +172,7 @@ class Game:
         self.moves = []
 
     # The current game state held in memory for different users
-    # !!! TODO: limit the size of the cache and make it LRU
-    _cache = dict()
+    _cache = LRUCache(capacity = 200)
 
     def _make_new(self, username):
         """ Initialize a new, fresh game """
@@ -157,8 +189,10 @@ class Game:
         if not user_id:
             # No game state found
             return None
-        if user_id in Game._cache:
-            return Game._cache[user_id]
+        # First check the cache to see if we have the game already in memory
+        game = Game._cache.get(user_id)
+        if not game is None:
+            return game
         # No game in cache: attempt to find one in the database
         uuid = GameModel.find_live_game(user_id)
         if uuid is None:
@@ -175,7 +209,7 @@ class Game:
         # Cache the game so it can be looked up by user id
         user = User.current()
         if user is not None:
-            Game._cache[user.id()] = game
+            Game._cache.set(user.id(), game)
         # If AutoPlayer is first to move, generate the first move
         if game.player_index == 1:
             game.autoplayer_move()
@@ -269,7 +303,7 @@ class Game:
         # Cache the game so it can be looked up by user id
         user = User.current()
         if user is not None:
-            Game._cache[user.id()] = game
+            Game._cache.set(user.id(), game)
         return game
 
     def store(self):
