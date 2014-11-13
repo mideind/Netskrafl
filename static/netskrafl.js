@@ -480,6 +480,7 @@ function resetRack(ev) {
          }
       }
    });
+   updateButtonState();
 }
 
 function rescrambleRack(ev) {

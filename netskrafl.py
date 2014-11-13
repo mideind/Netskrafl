@@ -562,6 +562,12 @@ def help():
     return render_template("nshelp.html")
 
 
+@app.route("/twoletter")
+def twoletter():
+    """ Show list of two letter words """
+    return render_template("twoletter.html")
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
