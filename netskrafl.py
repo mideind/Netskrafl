@@ -431,13 +431,12 @@ def _process_move(movecount, movelist):
     game = Game.current()
 
     if game is None:
-        # !!! TODO: more informative error message about relogging in
-        return jsonify(result=Error.NULL_MOVE)
+        return jsonify(result = Error.LOGIN_REQUIRED)
 
     # Make sure the client is in sync with the server:
     # check the move count
     if movecount != game.num_moves():
-        return jsonify(result=Error.OUT_OF_SYNC)
+        return jsonify(result = Error.OUT_OF_SYNC)
 
     # Parse the move from the movestring we got back
     m = Move(u'', 0, 0)
@@ -473,12 +472,16 @@ def _process_move(movecount, movelist):
         m = None
 
     # Process the move string here
+    # Unpack the error code and message
     err = game.state.check_legality(m)
+    msg = ""
+    if isinstance(err, tuple):
+        err, msg = err
 
     if err != Error.LEGAL:
         # Something was wrong with the move:
         # show the user a corresponding error message
-        return jsonify(result=err)
+        return jsonify(result = err, msg = msg)
 
     # Move is OK: register it and update the state
     game.human_move(m)

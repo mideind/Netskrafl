@@ -52,8 +52,11 @@ def test_move(state, movestring):
         row += xd
         col += yd
     legal = state.check_legality(move)
+    msg = ""
+    if isinstance(legal, tuple):
+        legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0}".format(Error.errortext(legal)))
+        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
     print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
@@ -66,8 +69,11 @@ def test_exchange(state, numtiles):
     exch = state.player_rack().contents()[0:numtiles]
     move = ExchangeMove(exch)
     legal = state.check_legality(move)
+    msg = ""
+    if isinstance(legal, tuple):
+        legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0}".format(Error.errortext(legal)))
+        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
     print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)

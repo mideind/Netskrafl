@@ -575,7 +575,8 @@ class Error:
     EXCHANGE_NOT_ALLOWED = 11
     TOO_MANY_TILES_EXCHANGED = 12
     OUT_OF_SYNC = 13
-    GAME_OVER = 14
+    LOGIN_REQUIRED = 14
+    GAME_OVER = 15
 
     @staticmethod
     def errortext(errcode):
@@ -593,6 +594,7 @@ class Error:
             u"EXCHANGE_NOT_ALLOWED",
             u"TOO_MANY_TILES_EXCHANGED",
             u"OUT_OF_SYNC",
+            u"LOGIN_REQUIRED",
             u"GAME_OVER"][errcode]
 
 
@@ -844,7 +846,7 @@ class Move:
         # Check whether the word is in the dictionary
         if self._word not in Manager.word_db():
             # print(u"Word '{0}' not found in dictionary".format(self._word))
-            return Error.WORD_NOT_IN_DICTIONARY
+            return (Error.WORD_NOT_IN_DICTIONARY, self._word)
         # Check that the play is adjacent to some previously placed tile
         # (unless this is the first move, i.e. the board is empty)
         if board.is_empty():
@@ -868,7 +870,7 @@ class Move:
                     cross = board.letters_left(c.row, c.col) + c.letter + board.letters_right(c.row, c.col)
                 if len(cross) > 1 and cross not in Manager.word_db():
                     # print(u"Cross check fails for {0}".format(cross)) # !!! DEBUG
-                    return Error.CROSS_WORD_NOT_IN_DICTIONARY
+                    return (Error.CROSS_WORD_NOT_IN_DICTIONARY, cross)
         # All checks pass: the play is legal
         return Error.LEGAL
 

@@ -729,3 +729,7 @@ span.twoword {
    font-weight: bold;
    padding-right: 3px;
 }
+
+span.errword {
+   text-transform: uppercase;
+}

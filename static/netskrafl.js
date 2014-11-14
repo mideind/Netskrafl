@@ -14,7 +14,7 @@ var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 
-var GAME_OVER = 14; /* Error code corresponding to the Error class in skraflmechanics.py */
+var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmechanics.py */
 
 /* Global variables */
 
@@ -612,7 +612,11 @@ function updateState(json) {
    else {
       /* Genuine error: display in error bar */
       $("div.error").css("visibility", "visible").find("p").css("display", "none");
-      $("div.error").find("#err_" + json.result.toString()).css("display", "inline");
+      var error_p = $("div.error").find("#err_" + json.result.toString());
+      error_p.css("display", "inline");
+      if (json.msg !== undefined)
+         // Fill in word if provided in error message
+         error_p.find("span.errword").text(json.msg);
    }
 }
 
