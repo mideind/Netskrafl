@@ -3,6 +3,9 @@
 
 {% block scripts %}
 
+<!-- Netskrafl client script -->
+<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+
 <script>
    function placeTiles() {
 {% for coord, tile, letter, score in game.enum_tiles() %}
@@ -25,7 +28,7 @@
       updateBag("{{ game.display_bag() }}");
 {% if not game.state.is_exchange_allowed() %}
       exchangeAllowed = false;
-{% endif %}      
+{%- endif -%}      
    }
 
    function humanPlayer() {
@@ -70,6 +73,8 @@
       <h3 class="playerleft">
 {% if game.player_index == 0 %}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
+{%- else -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.state.player_name(0) }}
 {%- if game.player_index == 0 -%}
@@ -79,6 +84,8 @@
       <h3 class="playerright">
 {% if game.player_index == 1 %}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
+{%- else -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.state.player_name(1) }}
 {%- if game.player_index == 1 -%}

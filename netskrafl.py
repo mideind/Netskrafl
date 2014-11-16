@@ -152,7 +152,13 @@ class Game:
     """
 
     # The human-readable name of the computer player
-    AUTOPLAYER_NAME = u"Netskrafl"
+    AUTOPLAYER_LEVEL_3 = u"Fullsterkur"
+    AUTOPLAYER_STRENGTH_3 = 0 # Always picks best move
+    AUTOPLAYER_LEVEL_2 = u"Miðlungur"
+    AUTOPLAYER_STRENGTH_2 = 6 # Picks one of the six best moves
+    AUTOPLAYER_LEVEL_1 = u"Amlóði"
+    AUTOPLAYER_STRENGTH_1 = 12 # Picks one of the twelve best moves
+
     UNDEFINED_NAME = u"[Ónefndur]"
 
     def __init__(self, uuid = None):
@@ -164,6 +170,8 @@ class Game:
         self.state = None
         # Is the human player 0 or 1, where player 0 begins the game?
         self.player_index = 0
+        # The ability level of the autoplayer (0 = strongest)
+        self.robot_level = 0
         # The last move made by the autoplayer
         self.last_move = None
         # Was the game finished by resigning?
@@ -174,10 +182,11 @@ class Game:
     # The current game state held in memory for different users
     _cache = LRUCache(capacity = 200)
 
-    def _make_new(self, username):
+    def _make_new(self, username, robot_level):
         """ Initialize a new, fresh game """
         self.username = username
         self.state = State(drawtiles = True)
+        self.robot_level = robot_level
         self.player_index = randint(0, 1)
         self.set_human_name(username)
 
@@ -196,16 +205,16 @@ class Game:
         # No game in cache: attempt to find one in the database
         uuid = GameModel.find_live_game(user_id)
         if uuid is None:
-            # Not found in persistent storage: create a new game
-            return cls.new(user.nickname())
+            # Not found in persistent storage
+            return None
         # Load from persistent storage
         return cls.load(uuid, user.nickname())
 
     @classmethod
-    def new(cls, username):
+    def new(cls, username, robot_level):
         """ Start and initialize a new game """
         game = cls(Unique.id()) # Assign a new unique id to the game
-        game._make_new(username)
+        game._make_new(username, robot_level)
         # Cache the game so it can be looked up by user id
         user = User.current()
         if user is not None:
@@ -240,6 +249,7 @@ class Game:
             assert gm.player1 is None
             game.player_index = 0 # Human (local) player is 0
 
+        game.robot_level = gm.robot_level # Must come before set_human_name()
         game.set_human_name(username)
 
         # Load the current racks
@@ -265,8 +275,9 @@ class Game:
                     horiz = False
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
-                m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
-                m.make_covers(game.state.board(), mm.tiles)
+                if mm.tiles is not None:
+                    m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
+                    m.make_covers(game.state.board(), mm.tiles)
 
             elif mm.tiles[0:4] == u"EXCH":
 
@@ -322,6 +333,7 @@ class Game:
         gm.score0 = self.state.scores()[0]
         gm.score1 = self.state.scores()[1]
         gm.to_move = len(self.moves) % 2
+        gm.robot_level = self.robot_level
         gm.over = self.state.is_game_over()
         movelist = []
         for player, m in self.moves:
@@ -341,7 +353,12 @@ class Game:
             nickname = Game.UNDEFINED_NAME
         self.state.set_player_name(self.player_index, nickname)
         # Set the autoplayer's name as well
-        self.state.set_player_name(1 - self.player_index, Game.AUTOPLAYER_NAME)
+        ap_name = Game.AUTOPLAYER_LEVEL_3 # Strongest player by default
+        if self.robot_level >= Game.AUTOPLAYER_STRENGTH_1:
+            ap_name = Game.AUTOPLAYER_LEVEL_1 # Weakest player
+        elif self.robot_level >= Game.AUTOPLAYER_STRENGTH_2:
+            ap_name = Game.AUTOPLAYER_LEVEL_2 # Middle player
+        self.state.set_player_name(1 - self.player_index, ap_name)
 
     def resign(self):
         """ The human player is resigning the game """
@@ -355,7 +372,7 @@ class Game:
         #     print(u"Generating ExchangeMove")
         #     move = ExchangeMove(self.state.player_rack().contents()[0:randint(1,7)])
         # else:
-        apl = AutoPlayer(self.state)
+        apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
         self.state.apply_move(move)
         self.moves.append((1 - self.player_index, move))
@@ -563,6 +580,39 @@ def login():
     return render_template("login.html", err = login_error)
 
 
+@app.route("/newgame", methods=['GET', 'POST'])
+def newgame():
+    """ Show page to initiate a new game """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(users.create_login_url("/"))
+
+    game = Game.current()
+    if game is not None and not game.state.is_game_over():
+        # The previous game is not over: can't create a new one
+        return redirect(url_for("main"))
+
+    if request.method == 'POST':
+        # Initiate a new game against the selected opponent
+        robot_level = 0
+        if request.form['radio'] == "level3":
+            # Full strength player
+            robot_level = Game.AUTOPLAYER_STRENGTH_3
+        elif request.form['radio'] == "level2":
+            # Medium strength player (picks one out of best 5 moves at random)
+            robot_level = Game.AUTOPLAYER_STRENGTH_2
+        elif request.form['radio'] == "level1":
+            # Low strength player (picks one out of 10 best moves at random)
+            robot_level = Game.AUTOPLAYER_STRENGTH_1
+        logging.info(u"Newgame form: radio is {0}, robot_level {1}".format(request.form['radio'], robot_level).encode("latin-1"))
+        game = Game.new(user.nickname(), robot_level)
+        return redirect(url_for("main"))
+
+    return render_template("newgame.html", user = user)
+
+
 @app.route("/logout")
 def logout():
     """ Handler for the user logout page """
@@ -575,8 +625,6 @@ def main():
     """ Handler for the main (index) page """
 
     user = User.current()
-    # if 'username' not in session:
-    #    return redirect(url_for("login"))
     if user is None:
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url("/"))
@@ -587,8 +635,8 @@ def main():
         game = None
 
     if game is None:
-        # Create a fresh game for this user
-        game = Game.new(user.nickname())
+        # Initiate a new game
+        return redirect(url_for("newgame"))
 
     return render_template("board.html", game = game, user = user)
 

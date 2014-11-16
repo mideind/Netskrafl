@@ -54,6 +54,9 @@
 .glyphicon-info-sign:before {
   content: "\e086";
 }
+.glyphicon-cog:before {
+  content: "\e019";
+}
 
 body {
    font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
@@ -408,8 +411,8 @@ div.rightcol {
 div.rack {
    position: absolute;
    text-align: center;
-   bottom: 89px;
-   left: 254px;
+   bottom: 93px;
+   left: 244px;
    background-color: #afb8bf; /* Pantone 7543 U */
    padding: 6px;
    border-width: 0;
@@ -533,14 +536,15 @@ div.submitmove {
    width: 100px;
    height: 28px;
    text-align: center;
-   bottom: 100px;
-   left: 542px;
+   bottom: 98px;
+   left: 562px;
    background-color: #7ad3b7; /* Pantone 337 U */
    font-size: 18px;
    font-weight: 700;
    color: white;
    margin: 0;
-   padding-top: 4px;
+   padding: 6px;
+   padding-top: 8px;
    border-radius: 4px;
    cursor: pointer;
 }
@@ -550,8 +554,8 @@ div.submitpass {
    width: 36px;
    height: 28px;
    text-align: center;
-   bottom: 96px;
-   left: 126px;
+   bottom: 98px;
+   left: 92px;
    background-color: #ffa03b; /* Pantone 137 U */
    font-size: 18px;
    font-weight: 700;
@@ -568,8 +572,8 @@ div.submitresign {
    width: 36px;
    height: 28px;
    text-align: center;
-   bottom: 96px;
-   left: 60px;
+   bottom: 98px;
+   left: 26px;
    background-color: #ee4f68; /* Pantone 192 U */
    font-size: 18px;
    font-weight: 700;
@@ -586,8 +590,8 @@ div.submitexchange {
    width: 36px;
    height: 28px;
    text-align: center;
-   bottom: 96px;
-   left: 190px;
+   bottom: 98px;
+   left: 156px;
    background-color: #7ad3b7; /* Pantone 337 U */
    font-size: 18px;
    font-weight: 700;
@@ -679,6 +683,11 @@ button.login {
 button.logout {
    margin-top: 80px;
    background-color: #ee4f68;
+}
+
+div #radioset {
+   padding-top: 6px;
+   padding-bottom: 24px;
 }
 
 div.over {

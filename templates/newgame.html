@@ -1,0 +1,41 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+{% endblock %}
+
+{% block content %}
+
+<div class="loginform">
+   <div><p>Veldu andstæðing:</p></div>
+   <div>
+   <form name="frm1" id="frm1" action="{{ url_for('newgame') }}" method="post">
+      <div id="radioset">
+       <input type="radio" id="radio1" name="radio" value="level1"><label for="radio1">Amlóði</label>
+       <input type="radio" id="radio2" name="radio" value="level2"><label for="radio2">Miðlungur</label>
+       <input type="radio" id="radio3" name="radio" value="level3" checked="checked"><label for="radio3">Fullsterkur</label>
+     </div>
+      <div><button type="submit" id="submit" class="login">Hefja leik&nbsp;&nbsp;<span class="glyphicon glyphicon-play"></button></div>
+   </form>
+   </div>
+   <div>
+	   <a href='{{ user.logout_url() }}'>
+			<button type="submit" id="logout" class="logout">
+	   		<span class="glyphicon glyphicon-log-out"></span>&nbsp;&nbsp;Skrá mig út
+	   	</button>
+	   </a>
+   </div>
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+   $("#radioset").buttonset();
+</script>
+
+{% endblock %}

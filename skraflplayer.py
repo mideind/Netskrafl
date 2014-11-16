@@ -64,6 +64,9 @@
 
 """
 
+import logging
+from random import randint
+
 from dawgdictionary import DawgDictionary, Navigation
 from skraflmechanics import Manager, State, Board, Cover, Move, ExchangeMove, PassMove
 from languages import Alphabet
@@ -562,7 +565,7 @@ class AutoPlayer:
         use more sophisticated heuristics to choose a move.
     """
 
-    def __init__(self, state):
+    def __init__(self, state, robot_level = 0):
 
         # List of valid, candidate moves
         self._candidates = []
@@ -570,6 +573,7 @@ class AutoPlayer:
         self._board = state.board()
         # The rack that the autoplayer has to work with
         self._rack = state.player_rack().contents()
+        self._robot_level = robot_level
 
         # Calculate a bit pattern representation of the rack
         if u'?' in self._rack:
@@ -703,7 +707,15 @@ class AutoPlayer:
         # Show top 20 candidates
         # for m, sc in scored_candidates[0:20]:
         #    print(u"Move {0} score {1}".format(m, sc))
-        return scored_candidates[0][0]
+
+        # Pick one of N best moves, depending on the robot level
+        picklist = self._robot_level
+        if picklist < 1:
+            picklist = 1
+        elif picklist > len(scored_candidates):
+            picklist = len(scored_candidates)
+        logging.info(u"Selecting one of {0} best moves".format(picklist).encode("latin-1"))
+        return scored_candidates[randint(0, picklist - 1)][0]
 
 
 class AutoPlayer_MiniMax(AutoPlayer):

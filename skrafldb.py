@@ -34,8 +34,9 @@
 
 """
 
-
+import logging
 import uuid
+
 from google.appengine.ext import ndb
 
 
@@ -105,6 +106,10 @@ class GameModel(ndb.Model):
     # Whose turn is it next, 0 or 1?
     to_move = ndb.IntegerProperty()
 
+    # How difficult should the robot player be (if the opponent is a robot)?
+    # None or 0 = most difficult
+    robot_level = ndb.IntegerProperty(required = False, indexed = False, default = 0)
+
     # Is this game over?
     over = ndb.BooleanProperty()
 
@@ -136,4 +141,5 @@ class GameModel(ndb.Model):
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False)
         reskey = q.get(keys_only = True)
+        logging.info(u"Loaded game {0} for user {1}".format(u"[not found]" if reskey is None else reskey.id(), user_id).encode("latin-1"))
         return None if reskey is None else reskey.id()

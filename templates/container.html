@@ -32,9 +32,6 @@
 <!-- Mousetrap global keyboard handler -->
 <script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
 
-<!-- Netskrafl client script -->
-<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
-
 {% block scripts %}
 {% endblock %}
 
@@ -59,6 +56,9 @@
 {% endblock %}
 
    </div>
+
+{% block endscripts %}
+{% endblock %}
 
 </body>
 </html>
