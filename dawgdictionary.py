@@ -53,6 +53,7 @@
 
 import os
 import codecs
+import threading
 
 from languages import Alphabet
 
@@ -71,6 +72,8 @@ class DawgDictionary:
         self._nodes = None
         # Running counter of nodes read
         self._index = 1
+        # Lock to ensure that only one thread loads the dictionary
+        self._lock = threading.Lock()
 
     def _parse_and_add(self, line):
         """ Parse a single line of a DAWG text file and add to the graph structure """
@@ -114,18 +117,20 @@ class DawgDictionary:
     def load(self, fname):
         """ Load a DAWG from a text file """
         # Reset the graph contents
-        self._nodes = dict()
-        self._index = 1
-        with codecs.open(fname, mode='r', encoding='utf-8') as fin:
-            for line in fin:
-                if line.endswith(u'\r\n'):
-                    # Cut off trailing CRLF (Windows-style)
-                    line = line[0:-2]
-                elif line.endswith(u'\n'):
-                    # Cut off trailing LF (Unix-style)
-                    line = line[0:-1]
-                if line:
-                    self._parse_and_add(line)
+        with self._lock:
+            # Ensure that we don't have multiple threads trying to load simultaneously
+            self._nodes = dict()
+            self._index = 1
+            with codecs.open(fname, mode='r', encoding='utf-8') as fin:
+                for line in fin:
+                    if line.endswith(u'\r\n'):
+                        # Cut off trailing CRLF (Windows-style)
+                        line = line[0:-2]
+                    elif line.endswith(u'\n'):
+                        # Cut off trailing LF (Unix-style)
+                        line = line[0:-1]
+                    if line:
+                        self._parse_and_add(line)
 
     def num_nodes(self):
         """ Return a count of unique nodes in the DAWG """

@@ -31,6 +31,7 @@ import itertools
 import codecs
 import logging
 import time
+import threading
 
 import dawgdictionary
 
@@ -62,19 +63,22 @@ class WordDatabase:
         # We maintain the list of permitted words in a DAWG dictionary
         # The DAWG is lazily loaded into memory upon first use
         self._dawg = None
+        self._lock = threading.Lock()
 
     def _load(self):
         """ Load word lists into memory from static preprocessed text files """
-        if self._dawg is not None:
-            # Already loaded, nothing to do
-            return
-        fname = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
-        logging.info(u"Loading graph from file {0}".format(fname))
-        t0 = time.time()
-        self._dawg = dawgdictionary.DawgDictionary()
-        self._dawg.load(fname)
-        t1 = time.time()
-        logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(self._dawg.num_nodes(), t1 - t0))
+        # Make sure we only have one thread doing this simultaneously
+        with self._lock:
+            if self._dawg is not None:
+                # Already loaded, nothing to do
+                return
+            fname = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
+            logging.info(u"Loading graph from file {0}".format(fname))
+            t0 = time.time()
+            self._dawg = dawgdictionary.DawgDictionary()
+            self._dawg.load(fname)
+            t1 = time.time()
+            logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(self._dawg.num_nodes(), t1 - t0))
 
     def initialize(self):
         """ Force preloading of word lists into memory """
