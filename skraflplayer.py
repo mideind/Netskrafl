@@ -723,6 +723,8 @@ class AutoPlayer:
                 top_equal += 1
         logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top".format(picklist,
             top_equal, num_candidates).encode("latin-1"))
+        #for m, sc in scored_candidates[top_equal : top_equal + picklist]:
+        #    logging.info(u"Move {0} score {1}".format(m, sc).encode("latin-1"))
         return scored_candidates[top_equal + randint(0, picklist - 1)][0]
 
 

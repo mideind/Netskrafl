@@ -339,6 +339,14 @@ div.gameover {
    background-color: #7ad3b7; /* Pantone 337 U */
 }
 
+.humangrad {
+   background: linear-gradient(to right, #fcce43, #d6d1c4); /* Pantone 7404 U to 7534 U*/
+}
+
+.autoplayergrad {
+   background: linear-gradient(to left, #7ad3b7, #d6d1c4);  /* Pantone 337 U to 7534 U */
+}
+
 span.score {
    font-weight: 700;
    padding-left: 2px;
@@ -574,7 +582,7 @@ div.submitpass {
    height: 28px;
    text-align: center;
    bottom: 98px;
-   left: 92px;
+   left: 91px;
    background-color: #ffa03b; /* Pantone 137 U */
    font-size: 18px;
    font-weight: 700;
@@ -630,6 +638,19 @@ div.help {
    height: 680px;
    overflow: hidden;
    font-size: 15px;
+}
+
+div.score {
+   position: absolute;
+   width: 48px;
+   height: 32px;
+   text-align: center;
+   bottom: 174px;
+   left: 654px;
+   background-color: none;
+   font-size: 26px;
+   font-weight: 700;
+   color: black;
 }
 
 div.smallprint {

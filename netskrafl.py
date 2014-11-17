@@ -155,9 +155,9 @@ class Game:
     AUTOPLAYER_LEVEL_3 = u"Fullsterkur"
     AUTOPLAYER_STRENGTH_3 = 0 # Always picks best move
     AUTOPLAYER_LEVEL_2 = u"Miðlungur"
-    AUTOPLAYER_STRENGTH_2 = 6 # Picks one of the six best moves
+    AUTOPLAYER_STRENGTH_2 = 8 # Picks one of the eight best moves
     AUTOPLAYER_LEVEL_1 = u"Amlóði"
-    AUTOPLAYER_STRENGTH_1 = 12 # Picks one of the twelve best moves
+    AUTOPLAYER_STRENGTH_1 = 15 # Picks one of the fifteen best moves
 
     UNDEFINED_NAME = u"[Ónefndur]"
 
@@ -180,7 +180,9 @@ class Game:
         self.moves = []
 
     # The current game state held in memory for different users
-    _cache = LRUCache(capacity = 200)
+    # A capacity of 200 seemed to cause occasional out-of-memory errors in
+    # Google App Engine; trying 120
+    _cache = LRUCache(capacity = 120)
 
     def _make_new(self, username, robot_level):
         """ Initialize a new, fresh game """

@@ -15,6 +15,39 @@ var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
+var WORDSCORE = Array(
+   "311111131111113",
+   "121111111111121",
+   "112111111111211",
+   "111211111112111",
+   "111121111121111",
+   "111111111111111",
+   "111111111111111",
+   "311111121111113",
+   "111111111111111",
+   "111111111111111",
+   "111121111121111",
+   "111211111112111",
+   "112111111111211",
+   "121111111111121",
+   "311111131111113");
+var LETTERSCORE = Array(
+   "111211111112111",
+   "111113111311111",
+   "111111212111111",
+   "211111121111112",
+   "111111111111111",
+   "131113111311131",
+   "112111212111211",
+   "111211111112111",
+   "112111212111211",
+   "131113111311131",
+   "111111111111111",
+   "211111121111112",
+   "111111212111111",
+   "111113111311111",
+   "111211111112111");
+
 var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmechanics.py */
 
 /* Global variables */
@@ -145,9 +178,9 @@ function appendMove(player, coord, tiles, score) {
       var m = $("div.movelist").children().last();
       var playerid = "0";
       if (player == humanPlayer())
-         m.addClass("humancolor"); /* Local player */
+         m.addClass("humangrad"); /* Local player */
       else {
-         m.addClass("autoplayercolor"); /* Remote player */
+         m.addClass("autoplayergrad"); /* Remote player */
          playerid = "1";
       }
       if (wrdclass == "wordmove") {
@@ -403,6 +436,9 @@ function updateButtonState() {
       showingDialog);
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
+   /* Calculate tentative score */
+   var score = calcScore();
+   $("div.score").text(score.toString())
 }
 
 function buttonOver(elem) {
@@ -430,6 +466,45 @@ function findCovers() {
       }
    });
    return moves;      
+}
+
+function wordScore(row, col) {
+   return parseInt(WORDSCORE[row].charAt(col));
+}
+
+function letterScore(row, col) {
+   return parseInt(LETTERSCORE[row].charAt(col));
+}
+
+function calcScore() {
+   /* Return a list of the newly laid tiles on the board */
+   var score = 0;
+   var wsc = 1;
+   var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
+   var maxrow = 0, maxcol = 0;
+   var numtiles = 0;
+   $("div.tile").each(function() {
+      var sq = $(this).parent().attr("id");
+      var t = $(this).data("tile");
+      if (t !== null && t !== undefined && sq.charAt(0) != "R") {
+         /* Tile on the board */
+         var row = ROWIDS.indexOf(sq.charAt(0));
+         var col = parseInt(sq.slice(1)) - 1;
+         var sc = parseInt($(this).data("score")) * letterScore(row, col);
+         numtiles++;
+         wsc *= wordScore(row, col);
+         if (row < minrow)
+            minrow = row;
+         if (col < mincol)
+            mincol = col;
+         if (row > maxrow)
+            maxrow = row;
+         if (col > maxcol)
+            maxcol = col;
+         score += sc;
+      }
+   });
+   return score * wsc + (numtiles == RACK_SIZE ? 50 : 0);
 }
 
 function resetRack(ev) {
