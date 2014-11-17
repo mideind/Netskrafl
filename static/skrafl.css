@@ -531,6 +531,25 @@ div.exchange {
    visibility: hidden;
 }
 
+div.submitnewgame {
+   display: none;
+   position: absolute;
+   width: 100px;
+   height: 28px;
+   text-align: center;
+   bottom: 98px;
+   left: 562px;
+   background-color: #7ad3b7; /* Pantone 337 U */
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding: 6px;
+   padding-top: 8px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
 div.submitmove {
    position: absolute;
    width: 100px;
@@ -661,7 +680,7 @@ button[type="submit"] {
    width: 322px;
    border-width: 0;
    border-radius: 6px;
-   background-color: #55cc66;
+   background-color: #7ad3b7; /* Pantone 337 U */
    margin-top: 20px;
    margin-left: 0;
    margin-right: 0;
@@ -682,7 +701,7 @@ button.login {
 
 button.logout {
    margin-top: 80px;
-   background-color: #ee4f68;
+   background-color: #ee4f68; /* Pantone 192 U */
 }
 
 div #radioset {

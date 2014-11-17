@@ -13,6 +13,7 @@ var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
+var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
 var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmechanics.py */
 
@@ -21,6 +22,7 @@ var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmech
 var numMoves = 0;
 
 function placeTile(sq, tile, letter, score) {
+   /* Place a given tile in a particular square, either on the board or in the rack */
    if (tile.length == 0) {
       /* Erasing tile */
       $("#"+sq).html("");
@@ -188,7 +190,7 @@ function promptForBlank() {
          continue;
       }
       letter = letter.toLowerCase();
-      if ("aábdðeéfghiíjklmnoóprstuúvxyýþæö".indexOf(letter) == -1) {
+      if (LEGAL_LETTERS.indexOf(letter) == -1) {
          /* Not an allowed letter: add an error message and prompt again */
          q = defq + err;
          continue;
@@ -403,40 +405,15 @@ function updateButtonState() {
    $("div.error").css("visibility", "hidden");
 }
 
-function submitOver() {
-   if (!$("div.submitmove").hasClass("disabled"))
-      $("div.submitmove").toggleClass("over", true);
+function buttonOver(elem) {
+   /* Show a hover effect on a button */
+   if (!$(elem).hasClass("disabled"))
+      $(elem).toggleClass("over", true);
 }
 
-function submitOut() {
-   $("div.submitmove").toggleClass("over", false);
-}
-
-function passOver() {
-   if (!$("div.submitpass").hasClass("disabled"))
-      $("div.submitpass").toggleClass("over", true);
-}
-
-function passOut() {
-   $("div.submitpass").toggleClass("over", false);
-}
-
-function exchangeOver() {
-   if (!$("div.submitexchange").hasClass("disabled"))
-      $("div.submitexchange").toggleClass("over", true);
-}
-
-function exchangeOut() {
-   $("div.submitexchange").toggleClass("over", false);
-}
-
-function resignOver() {
-   if (!$("div.submitresign").hasClass("disabled"))
-      $("div.submitresign").toggleClass("over", true);
-}
-
-function resignOut() {
-   $("div.submitresign").toggleClass("over", false);
+function buttonOut(elem) {
+   /* Hide a hover effect on a button */
+   $(elem).toggleClass("over", false);
 }
 
 function findCovers() {
@@ -607,6 +584,9 @@ function updateState(json) {
          $("div.submitpass").toggleClass("disabled", true);
          $("div.submitresign").toggleClass("disabled", true);
          $("div.submitexchange").toggleClass("disabled", true);
+         /* Hide Move button and display New Game button */
+         $("div.submitmove").css("display", "none");
+         $("div.submitnewgame").css("display", "inline");
       }
    }
    else {
@@ -621,6 +601,7 @@ function updateState(json) {
 }
 
 function submitPass() {
+   /* The Pass button has been pressed: submit a Pass move */
    if (!$("div.submitpass").hasClass("disabled"))
       submitMove('pass');
 }
@@ -697,9 +678,10 @@ function submitResign() {
 var submitTemp = "";
 
 function submitMove(movetype) {
+   /* Send a move to the back-end server using Ajax */
    if (submitTemp.length > 0)
       /* Avoid re-entrancy: if submitTemp contains text, we are already
-         processing a previous Ajax call. */
+         processing a previous Ajax call */
       return;
    var moves = [];
    if (movetype === null || movetype == 'move') {
@@ -735,11 +717,9 @@ function submitMove(movetype) {
    $("div.error").css("visibility", "hidden");
    /* Freshly laid tiles are no longer fresh */
    $("div.freshtile").removeClass("freshtile");
-   /* Remove highlight from button */
-   submitOut();
    /* Show a temporary animated GIF while the Ajax call is being processed */
    submitTemp = $("div.submitmove").html();
-   $("div.submitmove").removeClass("disabled");
+   $("div.submitmove").removeClass("disabled").removeClass("over");
    $("div.submitmove").html("<img src='/static/ajax-loader.gif' border=0/>");
    /* Talk to the game server using jQuery/Ajax */
    $.ajax({

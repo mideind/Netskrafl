@@ -671,7 +671,9 @@ class AutoPlayer:
             # No moves: must exchange or pass instead
             return None
 
-        if len(self._candidates) == 1:
+        num_candidates = len(self._candidates)
+
+        if num_candidates == 1:
             # Only one legal move: play it
             return self._candidates[0]
 
@@ -712,10 +714,16 @@ class AutoPlayer:
         picklist = self._robot_level
         if picklist < 1:
             picklist = 1
-        elif picklist > len(scored_candidates):
-            picklist = len(scored_candidates)
-        logging.info(u"Selecting one of {0} best moves".format(picklist).encode("latin-1"))
-        return scored_candidates[randint(0, picklist - 1)][0]
+        elif picklist > num_candidates:
+            picklist = num_candidates
+        top_equal = 0
+        # Move the selection window down the list as long as the top moves have the same score
+        if picklist > 1:
+            while picklist + top_equal < num_candidates and scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]:
+                top_equal += 1
+        logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top".format(picklist,
+            top_equal, num_candidates).encode("latin-1"))
+        return scored_candidates[top_equal + randint(0, picklist - 1)][0]
 
 
 class AutoPlayer_MiniMax(AutoPlayer):

@@ -37,10 +37,6 @@
    }
 </script>
 
-<script>
-   $(document).ready(initSkrafl);
-</script>
-
 {% endblock %}
 
 {% block content %}
@@ -121,20 +117,24 @@
 </div>
 
 <!-- Move submit button -->
-<div class="submitmove disabled" onmouseover="submitOver()"
-   onmouseout="submitOut()" onclick="submitMove('move')">Leika <span class="glyphicon glyphicon-play"></span></div>
+<div class="submitmove disabled" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="submitMove('move')">Leika <span class="glyphicon glyphicon-play"></span></div>
+
+<!-- New game button -->
+<div class="submitnewgame" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="window.location.href='{{ url_for('newgame') }}'">Nýr <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Pass button -->
-<div class="submitpass" title="Pass" onmouseover="passOver()"
-   onmouseout="passOut()" onclick="submitPass()"><span class="glyphicon glyphicon-forward"></span></div>
+<div class="submitpass" title="Pass" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="submitPass()"><span class="glyphicon glyphicon-forward"></span></div>
 
 <!-- Exchange button -->
-<div class="submitexchange" title="Skipta stöfum" onmouseover="exchangeOver()"
-   onmouseout="exchangeOut()" onclick="submitExchange()"><span class="glyphicon glyphicon-refresh"></span></div>
+<div class="submitexchange" title="Skipta stöfum" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="submitExchange()"><span class="glyphicon glyphicon-refresh"></span></div>
 
 <!-- Resign button -->
-<div class="submitresign" title="Gefa leik" onmouseover="resignOver()"
-   onmouseout="resignOut()" onclick="submitResign()"><span class="glyphicon glyphicon-fire"></span></div>
+<div class="submitresign" title="Gefa leik" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="submitResign()"><span class="glyphicon glyphicon-fire"></span></div>
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>
@@ -171,3 +171,10 @@
 
 {% endblock %}
 
+{% block endscripts %}
+
+<script>
+   $(document).ready(initSkrafl);
+</script>
+
+{% endblock %}
