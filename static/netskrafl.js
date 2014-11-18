@@ -489,16 +489,21 @@ function letterScore(row, col) {
 function tileAt(row, col) {
    /* Returns the tile element within a square, or null if none */
    var el = document.getElementById(coord(row, col));
-   return el ? el.firstChild : null;
+   if (!el || !el.firstChild)
+      return null;
+   /* Avoid a false positive here if the child DIV is the clone being dragged */
+   if ($(el.firstChild).hasClass("ui-draggable-dragging"))
+      return null;
+   return el.firstChild;
 }
 
 function calcScore() {
    /* Return a list of the newly laid tiles on the board */
-   var score = 0;
+   var score = 0, crossScore = 0;
    var wsc = 1;
    var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
    var maxrow = 0, maxcol = 0;
-   var numtiles = 0;
+   var numtiles = 0, numcrosses = 0;
    console.log("calcScore()");
    $("div.tile").each(function() {
       var sq = $(this).parent().attr("id");
@@ -509,7 +514,7 @@ function calcScore() {
          var col = parseInt(sq.slice(1)) - 1;
          var sc = parseInt($(this).find("div.letterscore").text()) * letterScore(row, col);
          numtiles++;
-         console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
+         // console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
          wsc *= wordScore(row, col);
          if (row < minrow)
             minrow = row;
@@ -522,7 +527,7 @@ function calcScore() {
          score += sc;
       }
    });
-   console.log("calcScore() at "+score.toString()+" for "+numtiles.toString()+" tiles ");
+   // console.log("calcScore() at "+score.toString()+" for "+numtiles.toString()+" tiles ");
    if (minrow != maxrow && mincol != maxcol)
       /* Not a pure horizontal or vertical move */
       return undefined;
@@ -538,23 +543,64 @@ function calcScore() {
       y -= dy;
    }
    var t = null;
-   console.log("calcScore() word starts at col "+x.toString()+", row "+y.toString());
+   // console.log("calcScore() word starts at col "+x.toString()+", row "+y.toString());
    /* Find the end of the word */
    while (x < BOARD_SIZE && y < BOARD_SIZE && (t = tileAt(y, x)) !== null) {
-      if (!$(t).hasClass("racktile"))
+      if ($(t).hasClass("racktile")) {
+         // Add score for cross words
+         var csc = calcCrossScore(y, x, 1 - dy, 1 - dx);
+         if (csc >= 0) {
+            /* There was a cross word there (it can score 0 if blank) */
+            crossScore += csc;
+            numcrosses++;
+         }
+      }
+      else {
          /* This is a tile that was previously on the board */
          score += parseInt($(t).find("div.letterscore").text());
+         numcrosses++;
+      }
       x += dx;
       y += dy;
    }
-   console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
+   // console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
+   if (!numcrosses)
+      // Not linked with any word on the board
+      return undefined;
    /* Check whether word is consecutive
       (which it is not if there is an empty square before the last tile) */
    if (dx && (x <= maxcol))
       return undefined;
    if (dy && (y <= maxrow))
       return undefined;
-   return score * wsc + (numtiles == RACK_SIZE ? 50 : 0);
+   return score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0);
+}
+
+function calcCrossScore(oy, ox, dy, dx) {
+   /* Calculate the score contribution of a cross word */
+   var score = 0;
+   var hascross = false;
+   var x = ox, y = oy;
+   /* Find the beginning of the word */
+   while ((x - dx) >= 0 && (y - dy) >= 0 && tileAt(y - dy, x - dx) !== null) {
+      x -= dx;
+      y -= dy;
+   }
+   var t = null;
+   /* Find the end of the word */
+   while (x < BOARD_SIZE && y < BOARD_SIZE && (t = tileAt(y, x)) !== null) {
+      var sc = parseInt($(t).find("div.letterscore").text());
+      if (x == ox && y == oy)
+         sc *= letterScore(y, x);
+      else
+         hascross = true;
+      score += sc;
+      x += dx;
+      y += dy;
+   }
+   if (!hascross)
+      return -1;
+   return score * wordScore(oy, ox);
 }
 
 function resetRack(ev) {
