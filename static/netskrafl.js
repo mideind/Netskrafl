@@ -54,6 +54,11 @@ var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmech
 
 var numMoves = 0;
 
+function coord(row, col) {
+   /* Return the co-ordinate string for the given 0-based row and col */
+   return ROWIDS.charAt(row) + (col + 1).toString();
+}
+
 function placeTile(sq, tile, letter, score) {
    /* Place a given tile in a particular square, either on the board or in the rack */
    if (tile.length == 0) {
@@ -87,26 +92,26 @@ function placeTile(sq, tile, letter, score) {
 
 function highlightMove(ev) {
    /* Highlight a move's tiles when hovering over it in the move list */
-   var coord = ev.data.coord;
+   var co = ev.data.coord;
    var tiles = ev.data.tiles;
    var score = ev.data.score;
    var player = ev.data.player;
    var dx = 0, dy = 0;
    var col = 0;
-   var row = ROWIDS.indexOf(coord.charAt(0));
+   var row = ROWIDS.indexOf(co.charAt(0));
    if (row >= 0) {
       /* Horizontal move */
-      col = parseInt(coord.slice(1)) - 1;
+      col = parseInt(co.slice(1)) - 1;
       dx = 1;
    }
    else {
       /* Vertical move */
-      row = ROWIDS.indexOf(coord.charAt(coord.length - 1));
-      col = parseInt(coord) - 1;
+      row = ROWIDS.indexOf(co.charAt(co.length - 1));
+      col = parseInt(co) - 1;
       dy = 1;
    }
    for (var i = 0; i < tiles.length; i++) {
-      var sq = ROWIDS.charAt(row) + (col + 1).toString();
+      var sq = coord(row, col);
       var tileDiv = $("#"+sq).children().eq(0);
       if (!(tileDiv == null))
          if (ev.data.show) {
@@ -307,17 +312,15 @@ function initDropTarget(elem) {
 
 function initDropTargets() {
    /* All board squares are drop targets */
-   var x, y, coord, sq;
-   for (x = 1; x <= BOARD_SIZE; x++)
-      for (y = 1; y <= BOARD_SIZE; y++) {
-         coord = ROWIDS.charAt(y - 1) + x.toString();
-         sq = $("#"+coord);
+   var x, y, sq;
+   for (x = 0; x < BOARD_SIZE; x++)
+      for (y = 0; y < BOARD_SIZE; y++) {
+         sq = $("#" + coord(y, x));
          initDropTarget(sq);
       }
    /* Make the rack a drop target as well */
    for (x = 1; x <= RACK_SIZE; x++) {
-      coord = "R" + x.toString();
-      sq = $("#"+coord);
+      sq = $("#R" + x.toString());
       initDropTarget(sq);
    }
 }
@@ -437,8 +440,15 @@ function updateButtonState() {
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
-   var score = calcScore();
-   $("div.score").text(score.toString())
+   if (tilesPlaced === 0)
+      $("div.score").text("");
+   else {
+      var score = calcScore();
+      if (score === undefined)
+         $("div.score").text("?");
+      else
+         $("div.score").text(score.toString());
+   }
 }
 
 function buttonOver(elem) {
@@ -476,6 +486,12 @@ function letterScore(row, col) {
    return parseInt(LETTERSCORE[row].charAt(col));
 }
 
+function tileAt(row, col) {
+   /* Returns the tile element within a square, or null if none */
+   var el = document.getElementById(coord(row, col));
+   return el ? el.firstChild : null;
+}
+
 function calcScore() {
    /* Return a list of the newly laid tiles on the board */
    var score = 0;
@@ -483,6 +499,7 @@ function calcScore() {
    var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
    var maxrow = 0, maxcol = 0;
    var numtiles = 0;
+   console.log("calcScore()");
    $("div.tile").each(function() {
       var sq = $(this).parent().attr("id");
       var t = $(this).data("tile");
@@ -490,8 +507,9 @@ function calcScore() {
          /* Tile on the board */
          var row = ROWIDS.indexOf(sq.charAt(0));
          var col = parseInt(sq.slice(1)) - 1;
-         var sc = parseInt($(this).data("score")) * letterScore(row, col);
+         var sc = parseInt($(this).find("div.letterscore").text()) * letterScore(row, col);
          numtiles++;
+         console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
          wsc *= wordScore(row, col);
          if (row < minrow)
             minrow = row;
@@ -504,6 +522,38 @@ function calcScore() {
          score += sc;
       }
    });
+   console.log("calcScore() at "+score.toString()+" for "+numtiles.toString()+" tiles ");
+   if (minrow != maxrow && mincol != maxcol)
+      /* Not a pure horizontal or vertical move */
+      return undefined;
+   var x = mincol, y = minrow;
+   var dx = 0, dy = 0;
+   if (minrow != maxrow)
+      dy = 1; /* Vertical */
+   else
+      dx = 1; /* Horizontal */
+   /* Find the beginning of the word */
+   while ((x - dx) >= 0 && (y - dy) >= 0 && tileAt(y - dy, x - dx) !== null) {
+      x -= dx;
+      y -= dy;
+   }
+   var t = null;
+   console.log("calcScore() word starts at col "+x.toString()+", row "+y.toString());
+   /* Find the end of the word */
+   while (x < BOARD_SIZE && y < BOARD_SIZE && (t = tileAt(y, x)) !== null) {
+      if (!$(t).hasClass("racktile"))
+         /* This is a tile that was previously on the board */
+         score += parseInt($(t).find("div.letterscore").text());
+      x += dx;
+      y += dy;
+   }
+   console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
+   /* Check whether word is consecutive
+      (which it is not if there is an empty square before the last tile) */
+   if (dx && (x <= maxcol))
+      return undefined;
+   if (dy && (y <= maxrow))
+      return undefined;
    return score * wsc + (numtiles == RACK_SIZE ? 50 : 0);
 }
 
