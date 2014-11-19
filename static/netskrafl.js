@@ -127,11 +127,11 @@ function highlightMove(ev) {
    }
 }
 
-function appendMove(player, coord, tiles, score) {
+function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
-   var rawCoord = coord;
-   if (coord == "") {
+   var rawCoord = co;
+   if (co == "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
       if (tiles == "PASS")
@@ -159,7 +159,7 @@ function appendMove(player, coord, tiles, score) {
          wrdclass = "wordmove";
    }
    else {
-      coord = "(" + coord + ")";
+      co = "(" + co + ")";
       tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
    }
    var str;
@@ -170,11 +170,11 @@ function appendMove(player, coord, tiles, score) {
    if (player == 0) {
       /* Left side player */
       str = '<div class="leftmove"><span class="score">' + score + '</span>' +
-         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' + coord + '</span></div>';
+         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' + co + '</span></div>';
    }
    else {
       /* Right side player */
-      str = '<div class="rightmove"><span class="' + wrdclass + '">' + coord + ' <i>' + tiles + '</i></span>' +
+      str = '<div class="rightmove"><span class="' + wrdclass + '">' + co + ' <i>' + tiles + '</i></span>' +
          '<span class="score">' + score + '</span></div>';
    }
    var movelist = $("div.movelist");
@@ -488,6 +488,8 @@ function letterScore(row, col) {
 
 function tileAt(row, col) {
    /* Returns the tile element within a square, or null if none */
+   if (row < 0 || col < 0 || row >= BOARD_SIZE || col >= BOARD_SIZE)
+      return null;
    var el = document.getElementById(coord(row, col));
    if (!el || !el.firstChild)
       return null;
@@ -504,7 +506,7 @@ function calcScore() {
    var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
    var maxrow = 0, maxcol = 0;
    var numtiles = 0, numcrosses = 0;
-   console.log("calcScore()");
+   // console.log("calcScore()");
    $("div.tile").each(function() {
       var sq = $(this).parent().attr("id");
       var t = $(this).data("tile");
@@ -536,16 +538,20 @@ function calcScore() {
    if (minrow != maxrow)
       dy = 1; /* Vertical */
    else
+   if (mincol == maxcol && (tileAt(minrow - 1, mincol) !== null || tileAt(minrow + 1, mincol) !== null))
+      /* Single tile: if it has tiles above or below, consider this a vertical move */
+      dy = 1;
+   else
       dx = 1; /* Horizontal */
    /* Find the beginning of the word */
-   while ((x - dx) >= 0 && (y - dy) >= 0 && tileAt(y - dy, x - dx) !== null) {
+   while (tileAt(y - dy, x - dx) !== null) {
       x -= dx;
       y -= dy;
    }
    var t = null;
    // console.log("calcScore() word starts at col "+x.toString()+", row "+y.toString());
    /* Find the end of the word */
-   while (x < BOARD_SIZE && y < BOARD_SIZE && (t = tileAt(y, x)) !== null) {
+   while ((t = tileAt(y, x)) !== null) {
       if ($(t).hasClass("racktile")) {
          // Add score for cross words
          var csc = calcCrossScore(y, x, 1 - dy, 1 - dx);
@@ -722,7 +728,7 @@ function updateState(json) {
       /* Add the new tiles laid down in response */
       if (json.lastmove !== undefined)
          for (i = 0; i < json.lastmove.length; i++) {
-            sq = json.lastmove[i][0];
+            var sq = json.lastmove[i][0];
             placeTile(sq, /* Coordinate */
                json.lastmove[i][1], /* Tile */
                json.lastmove[i][2], /* Letter */
@@ -735,11 +741,11 @@ function updateState(json) {
       /* Update the move list */
       if (json.newmoves !== undefined) {
          for (i = 0; i < json.newmoves.length; i++) {
-            player = json.newmoves[i][0];
-            coord = json.newmoves[i][1][0];
-            tiles = json.newmoves[i][1][1];
-            score = json.newmoves[i][1][2];
-            appendMove(player, coord, tiles, score);
+            var player = json.newmoves[i][0];
+            var co = json.newmoves[i][1][0];
+            var tiles = json.newmoves[i][1][1];
+            var score = json.newmoves[i][1][2];
+            appendMove(player, co, tiles, score);
          }
       }
       /* Update the bag */
@@ -785,8 +791,8 @@ function confirmExchange(yes) {
    /* Take the rack out of exchange mode */
    var exch = "";
    for (var i = 1; i <= RACK_SIZE; i++) {
-      rackTileId = "#R" + i.toString();
-      rackTile = $(rackTileId).children().eq(0)
+      var rackTileId = "#R" + i.toString();
+      var rackTile = $(rackTileId).children().eq(0)
       if (rackTile) {
          /* There is a tile in this rack slot */
          if (rackTile.hasClass("xchgsel")) {
@@ -813,8 +819,8 @@ function submitExchange() {
       /* Disable all other actions while panel is shown */
       /* Put the rack in exchange mode */
       for (var i = 1; i <= RACK_SIZE; i++) {
-         rackTileId = "#R" + i.toString();
-         rackTile = $(rackTileId).children().eq(0)
+         var rackTileId = "#R" + i.toString();
+         var rackTile = $(rackTileId).children().eq(0)
          if (rackTile)
             /* There is a tile in this rack slot: mark it as
                exchangeable and attack a click handler to it */
