@@ -514,7 +514,7 @@ function calcScore() {
          /* Tile on the board */
          var row = ROWIDS.indexOf(sq.charAt(0));
          var col = parseInt(sq.slice(1)) - 1;
-         var sc = parseInt($(this).find("div.letterscore").text()) * letterScore(row, col);
+         var sc = $(this).data("score") /* parseInt($(this).find("div.letterscore").text()) */ * letterScore(row, col);
          numtiles++;
          // console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
          wsc *= wordScore(row, col);
@@ -563,7 +563,7 @@ function calcScore() {
       }
       else {
          /* This is a tile that was previously on the board */
-         score += parseInt($(t).find("div.letterscore").text());
+         score += $(t).data("score"); // parseInt($(t).find("div.letterscore").text());
          numcrosses++;
       }
       x += dx;
@@ -588,14 +588,14 @@ function calcCrossScore(oy, ox, dy, dx) {
    var hascross = false;
    var x = ox, y = oy;
    /* Find the beginning of the word */
-   while ((x - dx) >= 0 && (y - dy) >= 0 && tileAt(y - dy, x - dx) !== null) {
+   while (tileAt(y - dy, x - dx) !== null) {
       x -= dx;
       y -= dy;
    }
    var t = null;
    /* Find the end of the word */
-   while (x < BOARD_SIZE && y < BOARD_SIZE && (t = tileAt(y, x)) !== null) {
-      var sc = parseInt($(t).find("div.letterscore").text());
+   while ((t = tileAt(y, x)) !== null) {
+      var sc = $(t).data("score"); // parseInt($(t).find("div.letterscore").text());
       if (x == ox && y == oy)
          sc *= letterScore(y, x);
       else

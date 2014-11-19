@@ -9,11 +9,11 @@
 <script>
    function placeTiles() {
 {% for coord, tile, letter, score in game.enum_tiles() %}
-      placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", "{{ score }}");
+      placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
 {%- endfor -%}
 
 {% for tile, score in game.state.player_rack().details() %}
-      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", "{{ score }}");
+      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
    }
 
