@@ -183,9 +183,9 @@ function appendMove(player, co, tiles, score) {
       var m = $("div.movelist").children().last();
       var playerid = "0";
       if (player == humanPlayer())
-         m.addClass("humangrad"); /* Local player */
+         m.addClass("humangrad" + (player == 0 ? "_left" : "_right")); /* Local player */
       else {
-         m.addClass("autoplayergrad"); /* Remote player */
+         m.addClass("autoplayergrad" + (player == 0 ? "_left" : "_right")); /* Remote player */
          playerid = "1";
       }
       if (wrdclass == "wordmove") {
@@ -570,8 +570,14 @@ function calcScore() {
       y += dy;
    }
    // console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
+   if (numMoves == 0) {
+      // First move must go through center square
+      if (null === tileAt(7, 7))
+         return undefined;
+   }
+   else
    if (!numcrosses)
-      // Not linked with any word on the board
+      // Not first move, and not linked with any word on the board
       return undefined;
    /* Check whether word is consecutive
       (which it is not if there is an empty square before the last tile) */

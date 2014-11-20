@@ -339,12 +339,20 @@ div.gameover {
    background-color: #7ad3b7; /* Pantone 337 U */
 }
 
-.humangrad {
-   background: linear-gradient(to right, #fcce43, #d6d1c4); /* Pantone 7404 U to 7534 U*/
+.humangrad_left {
+   background: linear-gradient(to right, #fcce43, #d6d1c4, #d6d1c4); /* Pantone 7404 U to 7534 U */
 }
 
-.autoplayergrad {
-   background: linear-gradient(to left, #7ad3b7, #d6d1c4);  /* Pantone 337 U to 7534 U */
+.autoplayergrad_right {
+   background: linear-gradient(to right, #d6d1c4, #d6d1c4, #7ad3b7); /* Pantone 337 U to 7534 U */
+}
+
+.humangrad_right {
+   background: linear-gradient(to right, #d6d1c4, #d6d1c4, #fcce43); /* Pantone 7404 U to 7534 U */
+}
+
+.autoplayergrad_left {
+   background: linear-gradient(to right, #7ad3b7, #d6d1c4, #d6d1c4); /* Pantone 337 U to 7534 U */
 }
 
 span.score {
