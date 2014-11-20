@@ -608,7 +608,6 @@ def newgame():
         elif request.form['radio'] == "level1":
             # Low strength player (picks one out of 10 best moves at random)
             robot_level = Game.AUTOPLAYER_STRENGTH_1
-        logging.info(u"Newgame form: radio is {0}, robot_level {1}".format(request.form['radio'], robot_level).encode("latin-1"))
         game = Game.new(user.nickname(), robot_level)
         return redirect(url_for("main"))
 
