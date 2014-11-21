@@ -1,61 +1,82 @@
-/* Skrafl.css */
+/*
+
+   Skrafl.less
+
+   Author: Vilhjalmur Thorsteinsson
+
+*/
+
+@board-background: #afb8bf; /* Pantone 7543 U */
+@double-word: #f7d2d8; /* Pantone 698 U */
+@triple-word: #ee4f68; /* Pantone 192 U */
+@double-letter: #78aee6; /* Pantone 284 U */
+@triple-letter: #006db8; /* Pantone 300 U */
+@alert: #ee4f68; /* Pantone 192 U */
+@tile: #e4ad87; /* Pantone 721 U */
+@racktile: #fcce43; /* Pantone 7404 U */
+@freshtile: #7ad3b7; /* Pantone 337 U */
+@neutral: #222222;
+@background: #d6d1c4; /* Pantone 7534 U */
+@pass-btn: #ffa03b; /* Pantone 137 U */
+@container: #fff1dc; /* Pantone 7506 U */
+
 
 @font-face {
-  font-family: 'Glyphicons Halflings';
-  src: url('glyphicons-halflings-regular.eot');
-  src: url('glyphicons-halflings-regular.eot?#iefix') format('embedded-opentype'),
-  url('glyphicons-halflings-regular.woff') format('woff'),
-  url('glyphicons-halflings-regular.ttf') format('truetype'),
-  url('glyphicons-halflings-regular.svg#glyphicons_halflingsregular') format('svg');
+   font-family: 'Glyphicons Halflings';
+   src: url('glyphicons-halflings-regular.eot');
+   src: url('glyphicons-halflings-regular.eot?#iefix') format('embedded-opentype'),
+   url('glyphicons-halflings-regular.woff') format('woff'),
+   url('glyphicons-halflings-regular.ttf') format('truetype'),
+   url('glyphicons-halflings-regular.svg#glyphicons_halflingsregular') format('svg');
 }
 
 .glyphicon {
-  position: relative;
-  top: 2px;
-  display: inline-block;
-  font-family: 'Glyphicons Halflings';
-  font-style: normal;
-  font-weight: normal;
-  line-height: 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+   position: relative;
+   top: 2px;
+   display: inline-block;
+   font-family: 'Glyphicons Halflings';
+   font-style: normal;
+   font-weight: normal;
+   line-height: 1;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
 }
 
 .glyphicon-play:before {
    content: "\e072";
 }
 .glyphicon-exclamation-sign:before {
-  content: "\e101";
+   content: "\e101";
 }
 .glyphicon-log-in:before {
-  content: "\e161";
+   content: "\e161";
 }
 .glyphicon-log-out:before {
-  content: "\e163";
+   content: "\e163";
 }
 .glyphicon-screenshot:before {
-  content: "\e087";
+   content: "\e087";
 }
 .glyphicon-refresh:before {
-  content: "\e031";
+   content: "\e031";
 }
 .glyphicon-forward:before {
-  content: "\e075";
+   content: "\e075";
 }
 .glyphicon-fire:before {
-  content: "\e104";
+   content: "\e104";
 }
 .glyphicon-ok:before {
-  content: "\e013";
+   content: "\e013";
 }
 .glyphicon-remove:before {
-  content: "\e014";
+   content: "\e014";
 }
 .glyphicon-info-sign:before {
-  content: "\e086";
+   content: "\e086";
 }
 .glyphicon-cog:before {
-  content: "\e019";
+   content: "\e019";
 }
 
 body {
@@ -76,7 +97,7 @@ table.board {
    overflow: hidden;
    text-align: center;
    font-size: 24px;
-   background-color: #afb8bf; /* Pantone 7543 U */
+   background-color: @board-background;
    border-style: solid;
    border-color: #f2f2f2;
    border-width: 1px;
@@ -133,12 +154,12 @@ td.rowid {
 #H8, #B2, #C3, #D4, #E5, #B14, #C13, #D12, #E11,
 #K5, #L4, #M3, #N2, #K11, #L12, #M13, #N14 {
    /* Double word score */
-   background-color: #f7d2d8; /* Pantone 698 U */
+   background-color: @double-word;
 }
 
 #A1, #A8, #A15, #H1, #H15, #O1, #O8, #O15 {
    /* Triple word score */
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @triple-word;
 }
 
 #A4, #A12, #C7, #C9, #D1, #D8, #D15,
@@ -147,17 +168,17 @@ td.rowid {
 #I3, #I7, #I9, #I13,
 #O4, #O12, #M7, #M9, #L1, #L8, #L15 {
    /* Double letter score */
-   background-color: #78aee6; /* Pantone 284 U */
+   background-color: @double-letter;
 }
 
 #B6, #B10, #F2, #F6, #F10, #F14,
 #N6, #N10, #J2, #J6, #J10, #J14 {
    /* Triple letter score */
-   background-color: #006db8; /* Pantone 300 U */
+   background-color: @triple-letter;
 }
 
 div.tile {
-   background-color: #e4ad87; /* Pantone 721 U */
+   background-color: @tile;
    font-size: 25px;
    line-height: 25px;
    font-weight: 700;
@@ -176,7 +197,7 @@ div.tile {
 
 div.racktile {
    cursor: pointer;
-   background-color: #fcce43; /* Pantone 7404 U */
+   background-color: @racktile;
 }
 
 div.xchg {
@@ -185,7 +206,7 @@ div.xchg {
 
 div.xchgsel {
    color: white;
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
 }
 
 div.blanktile {
@@ -193,17 +214,17 @@ div.blanktile {
 }
 
 div.freshtile {
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
 }
 
 div.highlight0 {
    /* Human (local) player */
-   background-color: #fcce43; /* Pantone 7404 U */
+   background-color: @racktile;
 }
 
 div.highlight1 {
    /* Computer (remote) player */
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
 }
 
 div.letterscore {
@@ -224,7 +245,7 @@ div.heading {
    position: relative;
    width: 100%;
    height: 78px;
-   background-color: #afb8bf; /* Pantone 7543 U */
+   background-color: @board-background;
    top: 0; left: 0;
    padding-left: 0px;
    padding-right: 0px;
@@ -239,7 +260,7 @@ h3.playerleft {
    line-height: 24px;
    font-weight: 700;
    text-align: left;
-   color: #222222;
+   color: @neutral;
    overflow: hidden;
    margin-top: 0px;
    padding-top: 8px;
@@ -256,7 +277,7 @@ h3.playerright {
    line-height: 24px;
    font-weight: 700;
    text-align: right;
-   color: #222222;
+   color: @neutral;
    overflow: hidden;
    margin-top: 0px;
    padding-top: 8px;
@@ -304,7 +325,7 @@ div.movelist {
    left: 0px;
    height: 424px;
    width: 100%;
-   background-color: #d6d1c4; /* Pantone 7534 U */
+   background-color: @background;
    overflow: auto;
    font-size: 15px;
    line-height: 15px;
@@ -326,33 +347,33 @@ div.rightmove {
 div.gameover {
    text-align: center;
    padding: 2px;
-   background-color: #ffa03b; /* Pantone 137 U */
+   background-color: @pass-btn;
    color: white;
    font-weight: 700;
 }
 
 .humancolor {
-   background-color: #fcce43; /* Pantone 7404 U */
+   background-color: @racktile;
 }
 
 .autoplayercolor {
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, #fcce43, #d6d1c4, #d6d1c4); /* Pantone 7404 U to 7534 U */
+   background: linear-gradient(to right, @racktile, @background, @background);
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, #d6d1c4, #d6d1c4, #7ad3b7); /* Pantone 337 U to 7534 U */
+   background: linear-gradient(to right, @background, @background, @freshtile);
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, #d6d1c4, #d6d1c4, #fcce43); /* Pantone 7404 U to 7534 U */
+   background: linear-gradient(to right, @background, @background, @racktile);
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, #7ad3b7, #d6d1c4, #d6d1c4); /* Pantone 337 U to 7534 U */
+   background: linear-gradient(to right, @freshtile, @background, @background);
 }
 
 span.score {
@@ -361,7 +382,7 @@ span.score {
    margin-left: 3px;
    padding-right: 3px;
    margin-right: 3px;
-   background-color: #afb8bf;
+   background-color: @board-background;
    color: white;
 }
 
@@ -383,7 +404,7 @@ span.total {
 }
 
 span.highlight {
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
    color: white;
 }
 
@@ -406,7 +427,7 @@ div.container {
    left: 0;
    width: 1024px;
    height: 720px;
-   background-color: #FFF1DC; /* Pantone 7506 U */
+   background-color: @container;
    padding: 0;
    margin: 0;
 }
@@ -448,7 +469,7 @@ div.rack {
    text-align: center;
    bottom: 93px;
    left: 244px;
-   background-color: #afb8bf; /* Pantone 7543 U */
+   background-color: @board-background;
    padding: 6px;
    border-width: 0;
    border-radius: 4px;
@@ -476,7 +497,7 @@ table #bag {
 #bag td {
    min-width: 12px;
    min-height: 17px;
-   background-color: #e4ad87; /* Pantone 721 U */
+   background-color: @tile;
    overflow: hidden;
    cursor: default;
 }
@@ -489,7 +510,7 @@ div.error {
    left: 130px;
    width: 512px;
    height: 28px;
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
    font-size: 16px;
    font-weight: 700;
    color: white;
@@ -517,7 +538,7 @@ div.resign {
    left: 130px;
    width: 512px;
    height: 28px;
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
    font-size: 16px;
    font-weight: 700;
    color: white;
@@ -532,7 +553,7 @@ span.yesnobutton {
    background-color: white;
    font-size: 16px;
    font-weight: 700;
-   color: #ee4f68; /* Pantone 192 U */
+   color: @alert;
    margin-top: 0;
    margin-bottom: 0;
    margin-left: 4px;
@@ -546,7 +567,7 @@ span.yesnobutton {
 }
 
 span.xchgbtn {
-   color: #7ad3b7; /* Pantone 337 U */
+   color: @freshtile;
 }
 
 div.exchange {
@@ -557,7 +578,7 @@ div.exchange {
    left: 130px;
    width: 512px;
    height: 28px;
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
    font-size: 16px;
    font-weight: 700;
    color: white;
@@ -574,7 +595,7 @@ div.submitnewgame {
    text-align: center;
    bottom: 98px;
    left: 562px;
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -592,7 +613,7 @@ div.submitmove {
    text-align: center;
    bottom: 98px;
    left: 562px;
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -610,7 +631,7 @@ div.submitpass {
    text-align: center;
    bottom: 98px;
    left: 91px;
-   background-color: #ffa03b; /* Pantone 137 U */
+   background-color: @pass-btn;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -628,7 +649,7 @@ div.submitresign {
    text-align: center;
    bottom: 98px;
    left: 26px;
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -646,7 +667,7 @@ div.submitexchange {
    text-align: center;
    bottom: 98px;
    left: 156px;
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -728,7 +749,7 @@ button[type="submit"] {
    width: 322px;
    border-width: 0;
    border-radius: 6px;
-   background-color: #7ad3b7; /* Pantone 337 U */
+   background-color: @freshtile;
    margin-top: 20px;
    margin-left: 0;
    margin-right: 0;
@@ -749,7 +770,7 @@ button.login {
 
 button.logout {
    margin-top: 80px;
-   background-color: #ee4f68; /* Pantone 192 U */
+   background-color: @alert;
 }
 
 div #radioset {
@@ -762,7 +783,7 @@ div.over {
 }
 
 div.disabled {
-   background-color: #d6d1c4; /* Pantone 7534 U */
+   background-color: @background;
 }
 
 a.nodecorate:link {
@@ -777,22 +798,22 @@ a.nodecorate:visited {
 
 a.nodecorate:hover {
    text-decoration: none;
-   color: #006db8; /* Pantone 300 U */
+   color: @triple-letter;
 }
 
 a.iconlink:link {
    text-decoration: none;
-   color: #78aee6;
+   color: @double-letter;
 }
 
 a.iconlink:visited {
    text-decoration: none;
-   color: #78aee6;
+   color: @double-letter;
 }
 
 a.iconlink:hover {
    text-decoration: none;
-   color: #006db8; /* Pantone 300 U */
+   color: @triple-letter;
 }
 
 div.twolist {

@@ -20,7 +20,7 @@
    function initMoveList() {
 {% for player, m in game.moves %}
 {%- set coord, tiles, score = m.summary(game.state.board()) -%}
-      appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", "{{ score }}");
+      appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {%- endfor -%}
    }
 

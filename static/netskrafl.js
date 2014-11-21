@@ -53,6 +53,7 @@ var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmech
 /* Global variables */
 
 var numMoves = 0;
+var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 
 function coord(row, col) {
    /* Return the co-ordinate string for the given 0-based row and col */
@@ -159,7 +160,7 @@ function appendMove(player, co, tiles, score) {
          wrdclass = "wordmove";
    }
    else {
-      co = "(" + co + ")";
+      // co = "(" + co + ")";
       tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
    }
    var str;
@@ -169,13 +170,21 @@ function appendMove(player, co, tiles, score) {
    else
    if (player == 0) {
       /* Left side player */
-      str = '<div class="leftmove"><span class="score">' + score + '</span>' +
-         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' + co + '</span></div>';
+      str = '<div class="leftmove">' +
+         '<span class="total">' + (leftTotal + score) + '</span>' +
+         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
+         '<span class="score">' + score + '</span>' +
+          co + '</span>' +
+         '</div>';
    }
    else {
       /* Right side player */
-      str = '<div class="rightmove"><span class="' + wrdclass + '">' + co + ' <i>' + tiles + '</i></span>' +
-         '<span class="score">' + score + '</span></div>';
+      str = '<div class="rightmove">' +
+         '<span class="' + wrdclass + '">' + co + 
+         '<span class="score">' + score + '</span>' + 
+         ' <i>' + tiles + '</i></span>' +
+         '<span class="total">' + (rightTotal + score) + '</span>' +
+         '</div>';
    }
    var movelist = $("div.movelist");
    movelist.append(str);
@@ -211,6 +220,11 @@ function appendMove(player, co, tiles, score) {
       movelist.scrollTop(topoffset - height)
    /* Count the moves */
    numMoves += 1;
+   /* Update the scores */
+   if (player == 0)
+      leftTotal += score;
+   else
+      rightTotal += score;
 }
 
 function promptForBlank() {
@@ -514,7 +528,7 @@ function calcScore() {
          /* Tile on the board */
          var row = ROWIDS.indexOf(sq.charAt(0));
          var col = parseInt(sq.slice(1)) - 1;
-         var sc = $(this).data("score") /* parseInt($(this).find("div.letterscore").text()) */ * letterScore(row, col);
+         var sc = $(this).data("score") * letterScore(row, col);
          numtiles++;
          // console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
          wsc *= wordScore(row, col);
@@ -563,7 +577,7 @@ function calcScore() {
       }
       else {
          /* This is a tile that was previously on the board */
-         score += $(t).data("score"); // parseInt($(t).find("div.letterscore").text());
+         score += $(t).data("score");
          numcrosses++;
       }
       x += dx;
@@ -601,7 +615,7 @@ function calcCrossScore(oy, ox, dy, dx) {
    var t = null;
    /* Find the end of the word */
    while ((t = tileAt(y, x)) !== null) {
-      var sc = $(t).data("score"); // parseInt($(t).find("div.letterscore").text());
+      var sc = $(t).data("score");
       if (x == ox && y == oy)
          sc *= letterScore(y, x);
       else
