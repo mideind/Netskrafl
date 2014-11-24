@@ -42,16 +42,16 @@ module.exports = function (grunt) {
       less: {
          development: {
             files: {
-                'static/skrafl-curry.css': 'static/skrafl-curry.less',
-                'static/skrafl-desat.css': 'static/skrafl-desat.less'
+                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
+                'static/skrafl-desat.css': ['static/skrafl-desat.less']
             },
             options: {
             }
          },
          production: {
             files: {
-                'static/skrafl-curry.css': 'static/skrafl-curry.less',
-                'static/skrafl-desat.css': 'static/skrafl-desat.less'
+                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
+                'static/skrafl-desat.css': ['static/skrafl-desat.less']
             },
             options: {
                 cleancss: true
@@ -70,7 +70,7 @@ module.exports = function (grunt) {
             tasks: 'uglify'
          },
          less: {
-            files: 'static/skrafl-*.less',
+            files: 'static/*.less',
             tasks: 'less:development'
          },
          configFiles: {

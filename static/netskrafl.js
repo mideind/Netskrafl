@@ -160,7 +160,7 @@ function appendMove(player, co, tiles, score) {
          wrdclass = "wordmove";
    }
    else {
-      // co = "(" + co + ")";
+      co = "(" + co + ")";
       tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
    }
    var str;
@@ -172,17 +172,17 @@ function appendMove(player, co, tiles, score) {
       /* Left side player */
       str = '<div class="leftmove">' +
          '<span class="total">' + (leftTotal + score) + '</span>' +
-         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
          '<span class="score">' + score + '</span>' +
-          co + '</span>' +
+         '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
+         co + '</span>' +
          '</div>';
    }
    else {
       /* Right side player */
       str = '<div class="rightmove">' +
-         '<span class="' + wrdclass + '">' + co + 
-         '<span class="score">' + score + '</span>' + 
+         '<span class="' + wrdclass + '">' + co +
          ' <i>' + tiles + '</i></span>' +
+         '<span class="score">' + score + '</span>' + 
          '<span class="total">' + (rightTotal + score) + '</span>' +
          '</div>';
    }

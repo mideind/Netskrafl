@@ -362,6 +362,7 @@ div.gameover {
 }
 
 span.score {
+   display: inline-block;
    font-weight: 700;
    padding-left: 3px;
    margin-left: 3px;
@@ -369,6 +370,8 @@ span.score {
    margin-right: 3px;
    background-color: @board-background;
    color: white;
+   width: 28px;
+   text-align: right;
 }
 
 span.total {
@@ -395,6 +398,14 @@ span.highlight {
 
 span.wordmove {
    text-transform: uppercase;
+   padding-left: 3px;
+   padding-right: 3px;
+}
+
+.wordmove i {
+   font-weight: bold;
+   padding-left: 3px;
+   padding-right: 3px;
 }
 
 span.othermove {
@@ -670,7 +681,8 @@ div.help {
    width: 880px;
    height: 680px;
    overflow: hidden;
-   font-size: 15px;
+   font-size: 14px;
+   line-height: 22px;
 }
 
 div.score {
