@@ -4,7 +4,7 @@
    Client-side script for the Netskrafl server in netskrafl.py
 
    Author: Vilhjalmur Thorsteinsson, 2014
-   
+
 */
 
 /* Constants */
@@ -15,7 +15,7 @@ var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
-var WORDSCORE = Array(
+var WORDSCORE = new Array(
    "311111131111113",
    "121111111111121",
    "112111111111211",
@@ -31,7 +31,8 @@ var WORDSCORE = Array(
    "112111111111211",
    "121111111111121",
    "311111131111113");
-var LETTERSCORE = Array(
+
+var LETTERSCORE = new Array(
    "111211111112111",
    "111113111311111",
    "111111212111111",
@@ -62,7 +63,7 @@ function coord(row, col) {
 
 function placeTile(sq, tile, letter, score) {
    /* Place a given tile in a particular square, either on the board or in the rack */
-   if (tile.length == 0) {
+   if (tile.length === 0) {
       /* Erasing tile */
       $("#"+sq).html("");
       return;
@@ -95,7 +96,6 @@ function highlightMove(ev) {
    /* Highlight a move's tiles when hovering over it in the move list */
    var co = ev.data.coord;
    var tiles = ev.data.tiles;
-   var score = ev.data.score;
    var player = ev.data.player;
    var dx = 0, dy = 0;
    var col = 0;
@@ -114,7 +114,7 @@ function highlightMove(ev) {
    for (var i = 0; i < tiles.length; i++) {
       var sq = coord(row, col);
       var tileDiv = $("#"+sq).children().eq(0);
-      if (!(tileDiv == null))
+      if (tileDiv !== null)
          if (ev.data.show) {
             tileDiv.addClass("highlight" + player);
             $(this).find("span.score").addClass("highlight");
@@ -132,16 +132,16 @@ function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
    var rawCoord = co;
-   if (co == "") {
+   if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
       if (tiles == "PASS")
          /* Pass move */
          tiles = "Pass";
       else
-      if (tiles.indexOf("EXCH") == 0) {
+      if (tiles.indexOf("EXCH") === 0) {
          /* Exchange move - we don't show the actual tiles exchanged, only their count */
-         numtiles = tiles.slice(5).length;
+         var numtiles = tiles.slice(5).length;
          tiles = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
       }
       else
@@ -168,7 +168,7 @@ function appendMove(player, co, tiles, score) {
       str = '<div class="gameover">' + tiles + '</div>';
    }
    else
-   if (player == 0) {
+   if (player === 0) {
       /* Left side player */
       str = '<div class="leftmove">' +
          '<span class="total">' + (leftTotal + score) + '</span>' +
@@ -191,10 +191,10 @@ function appendMove(player, co, tiles, score) {
    if (wrdclass != "gameover") {
       var m = $("div.movelist").children().last();
       var playerid = "0";
-      if (player == humanPlayer())
-         m.addClass("humangrad" + (player == 0 ? "_left" : "_right")); /* Local player */
+      if (player === humanPlayer())
+         m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
       else {
-         m.addClass("autoplayergrad" + (player == 0 ? "_left" : "_right")); /* Remote player */
+         m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
          playerid = "1";
       }
       if (wrdclass == "wordmove") {
@@ -217,11 +217,11 @@ function appendMove(player, co, tiles, score) {
       lastchild.height();
    var height = movelist.height();
    if (topoffset >= height)
-      movelist.scrollTop(topoffset - height)
+      movelist.scrollTop(topoffset - height);
    /* Count the moves */
    numMoves += 1;
    /* Update the scores */
-   if (player == 0)
+   if (player === 0)
       leftTotal += score;
    else
       rightTotal += score;
@@ -230,11 +230,11 @@ function appendMove(player, co, tiles, score) {
 function promptForBlank() {
    /* When dropping a blank tile, ask for its meaning */
    var defq = "Hvaða staf táknar auða flísin?";
-   var err = "\nSláðu inn einn staf í íslenska stafrófinu."
+   var err = "\nSláðu inn einn staf í íslenska stafrófinu.";
    var q = defq;
    while(true) {
-      letter = prompt(q);
-      if (letter == null)
+      var letter = prompt(q);
+      if (letter === null)
          /* Pressed Esc or terminated */
          return null;
       if (letter.length != 1) {
@@ -258,17 +258,17 @@ var exchangeAllowed = true; /* Is an exchange move allowed? */
 function handleDragstart(e, ui) {
    /* The dragstart target is the DIV inside a TD */
    elementDragged = e.target;
-   elementDragged.style.opacity = "0.5"
+   elementDragged.style.opacity = "0.5";
 }
 
 function handleDragend(e, ui) {
-   if (elementDragged != null)
+   if (elementDragged !== null)
       elementDragged.style.opacity = "1.0";
    elementDragged = null;
 }
 
 function handleDropover(e, ui) {
-   if (e.target.id.charAt(0) == 'R' || e.target.firstChild == null)
+   if (e.target.id.charAt(0) == 'R' || e.target.firstChild === null)
      /* Rack square or empty square: can drop. Add yellow outline highlight to square */
      this.classList.add("over");
 }
@@ -314,7 +314,7 @@ function initRackDraggable(state) {
 
 function initDropTarget(elem) {
    /* Prepare a board square or a rack slot to accept drops */
-   if (elem != null)
+   if (elem !== null)
       elem.droppable(
          {
             drop : handleDrop,
@@ -344,11 +344,11 @@ function handleDrop(e, ui) {
    e.target.classList.remove("over");
    /* Save the elementDragged value as it will be set to null in handleDragend() */
    var eld = elementDragged;
-   if (eld == null)
+   if (eld === null)
       return;
    eld.style.opacity = "1.0";
    var dropToRack = false;
-   if (e.target.id.charAt(0) == 'R' && e.target.firstChild != null) {
+   if (e.target.id.charAt(0) == 'R' && e.target.firstChild !== null) {
       /* Dropping into an already occupied rack slot: shuffle the rack tiles to make room */
       var ix = parseInt(e.target.id.slice(1));
       var rslot = null;
@@ -361,7 +361,7 @@ function handleDrop(e, ui) {
             break;
          rslot = null;
       }
-      if (rslot == null) {
+      if (rslot === null) {
          /* Not found: Try an empty slot to the left */
          for (i = ix - 1; i >= 1; i--) {
             rslot = document.getElementById("R" + i.toString());
@@ -371,15 +371,16 @@ function handleDrop(e, ui) {
             rslot = null;
          }
       }
-      if (rslot == null) {
+      if (rslot === null) {
          /* No empty slot: must be internal shuffle in the rack */
          rslot = eld.parentNode;
          i = parseInt(rslot.id.slice(1));
       }
-      if (rslot != null) {
+      if (rslot !== null) {
+         var j, src, tile;
          if (i > ix)
             /* Found empty slot: shift rack tiles to the right to make room */
-            for (var j = i; j > ix; j--) {
+            for (j = i; j > ix; j--) {
                src = document.getElementById("R" + (j - 1).toString());
                tile = src.firstChild;
                src.removeChild(tile);
@@ -389,7 +390,7 @@ function handleDrop(e, ui) {
          else
          if (i < ix)
             /* Found empty slot: shift rack tiles to the left to make room */
-            for (var j = i; j < ix; j++) {
+            for (j = i; j < ix; j++) {
                src = document.getElementById("R" + (j + 1).toString());
                tile = src.firstChild;
                src.removeChild(tile);
@@ -399,10 +400,10 @@ function handleDrop(e, ui) {
          dropToRack = true;
       }
    }
-   if (e.target.firstChild == null) {
+   if (e.target.firstChild === null) {
       /* Looks like a legitimate drop */
       var ok = true;
-      parentid = eld.parentNode.id;
+      var parentid = eld.parentNode.id;
       if (parentid.charAt(0) == 'R') {
          /* Dropping from the rack */
          var t = $(eld).data("tile");
@@ -410,10 +411,10 @@ function handleDrop(e, ui) {
             /* Dropping a blank tile: we need to ask for its meaning */
             e.target.classList.add("over");
             eld.style.opacity = "0.8";
-            letter = promptForBlank();
+            var letter = promptForBlank();
             eld.style.opacity = "1.0";
             e.target.classList.remove("over");
-            if (letter == null)
+            if (letter === null)
                ok = false;
             else {
                $(eld).data("letter", letter);
@@ -444,11 +445,11 @@ function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
    var tilesPlaced = findCovers().length;
    $("div.submitmove").toggleClass("disabled",
-      (tilesPlaced == 0 || showingDialog));
+      (tilesPlaced === 0 || showingDialog));
    $("div.submitexchange").toggleClass("disabled",
-      (tilesPlaced != 0 || showingDialog || !exchangeAllowed));
+      (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
    $("div.submitpass").toggleClass("disabled",
-      (tilesPlaced != 0 || showingDialog));
+      (tilesPlaced !== 0 || showingDialog));
    $("div.submitresign").toggleClass("disabled",
       showingDialog);
    /* Erase previous error message, if any */
@@ -584,7 +585,7 @@ function calcScore() {
       y += dy;
    }
    // console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
-   if (numMoves == 0) {
+   if (numMoves === 0) {
       // First move must go through center square
       if (null === tileAt(7, 7))
          return undefined;
@@ -642,8 +643,8 @@ function resetRack(ev) {
          placeTile(sq, "", "", 0);
          /* Find an empty slot in the rack for the tile */
          for (; rslot <= RACK_SIZE; rslot++) {
-            rackTileId = "R" + rslot.toString();
-            rackTile = document.getElementById(rackTileId);
+            var rackTileId = "R" + rslot.toString();
+            var rackTile = document.getElementById(rackTileId);
             if (rackTile && rackTile.firstChild === null) {
                /* Found empty rack slot: put this there */
                placeTile(rackTileId, t, t, score);
@@ -664,9 +665,9 @@ function rescrambleRack(ev) {
 
    resetRack(ev);
    var array = [];
-   var i;
+   var i, rackTileId;
    for (i = 1; i <= RACK_SIZE; i++) {
-      var rackTileId = "R" + i.toString();
+      rackTileId = "R" + i.toString();
       array.push(document.getElementById(rackTileId).firstChild);
    }
    var currentIndex = array.length, temporaryValue, randomIndex;
@@ -679,7 +680,7 @@ function rescrambleRack(ev) {
       array[randomIndex] = temporaryValue;
    }
    for (i = 1; i <= RACK_SIZE; i++) {
-      var rackTileId = "R" + i.toString();
+      rackTileId = "R" + i.toString();
       var elem = document.getElementById(rackTileId);
       if (elem.firstChild !== null)
          elem.removeChild(elem.firstChild);
@@ -699,7 +700,7 @@ function updateBag(bag) {
       var str = "<tr>";
       /* Columns: max BAG_TILES_PER_LINE tiles per row */
       for (var i = 0; i < BAG_TILES_PER_LINE && lenbag > 0; i++) {
-         var tile = bag[ix++]
+         var tile = bag[ix++];
          if (tile == "?")
             /* Show wildcard tiles '?' as blanks */
             tile = "&nbsp;";
@@ -714,11 +715,11 @@ function updateBag(bag) {
 function updateState(json) {
    /* Work through the returned JSON object to update the
       board, the rack, the scores and the move history */
-   if (json.result == 0 || json.result == GAME_OVER) {
+   if (json.result === 0 || json.result == GAME_OVER) {
       /* Successful move */
       /* Reinitialize the rack */
       var i = 0;
-      if (json.result == 0)
+      if (json.result === 0)
          for (i = 0; i < json.rack.length; i++)
             placeTile("R" + (i + 1).toString(), /* Coordinate */
                json.rack[i][0], /* Tile */
@@ -727,7 +728,7 @@ function updateState(json) {
       /* Clear the rest of the rack */
       for (; i < RACK_SIZE; i++)
          placeTile("R" + (i + 1).toString(), "", "", 0);
-      if (json.result == 0)
+      if (json.result === 0)
          initRackDraggable(true);
       /* Glue the laid-down tiles to the board */
       $("div.tile").each(function() {
@@ -789,11 +790,11 @@ function updateState(json) {
    else {
       /* Genuine error: display in error bar */
       $("div.error").css("visibility", "visible").find("p").css("display", "none");
-      var error_p = $("div.error").find("#err_" + json.result.toString());
-      error_p.css("display", "inline");
+      var errorP = $("div.error").find("#err_" + json.result.toString());
+      errorP.css("display", "inline");
       if (json.msg !== undefined)
          // Fill in word if provided in error message
-         error_p.find("span.errword").text(json.msg);
+         errorP.find("span.errword").text(json.msg);
    }
 }
 
@@ -812,7 +813,7 @@ function confirmExchange(yes) {
    var exch = "";
    for (var i = 1; i <= RACK_SIZE; i++) {
       var rackTileId = "#R" + i.toString();
-      var rackTile = $(rackTileId).children().eq(0)
+      var rackTile = $(rackTileId).children().eq(0);
       if (rackTile) {
          /* There is a tile in this rack slot */
          if (rackTile.hasClass("xchgsel")) {
@@ -829,6 +830,11 @@ function confirmExchange(yes) {
    }
 }
 
+function toggleExchange(e) {
+   /* Toggles the exchange state of a tile */
+   $(this).toggleClass("xchgsel");
+}
+
 function submitExchange() {
    /* The user has clicked the exchange button: show exchange banner */
    if (!$("div.submitexchange").hasClass("disabled")) {
@@ -840,13 +846,11 @@ function submitExchange() {
       /* Put the rack in exchange mode */
       for (var i = 1; i <= RACK_SIZE; i++) {
          var rackTileId = "#R" + i.toString();
-         var rackTile = $(rackTileId).children().eq(0)
+         var rackTile = $(rackTileId).children().eq(0);
          if (rackTile)
             /* There is a tile in this rack slot: mark it as
                exchangeable and attack a click handler to it */
-            rackTile.addClass("xchg").on("click.xchg", function (e) {
-               $(this).toggleClass("xchgsel");
-            });
+            rackTile.addClass("xchg").on("click.xchg", toggleExchange);
       }
    }
 }
@@ -899,7 +903,7 @@ function submitMove(movetype) {
       moves.push("pass");
    }
    else
-   if (movetype.indexOf('exch=') == 0) {
+   if (movetype.indexOf('exch=') === 0) {
       /* Exchange move */
       moves.push(movetype);
    }
@@ -908,7 +912,7 @@ function submitMove(movetype) {
       /* Resigning from game */
       moves.push("rsgn");
    }
-   if (moves.length == 0)
+   if (moves.length === 0)
       return;
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
@@ -966,7 +970,7 @@ function initSkrafl(jQuery) {
    initDropTargets();
    initMoveList();
    initBag();
-   if (humanPlayer() == 0) {
+   if (humanPlayer() === 0) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }

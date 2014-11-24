@@ -13,6 +13,13 @@ resources/smaord.txt
 resources/TWL06.txt
 resources/testwords.txt
 
+# CSS files generated from Less
+static/skrafl-curry.css
+static/skrafl-desat.css
+
+# Minified JavaScript
+static/netskrafl.min.js
+
 # Scratch work files
 templates/main-scratch.html
 profile.bin
@@ -38,6 +45,7 @@ var/
 log/
 console/
 venv/
+node_modules/
 
 # Installer logs
 pip-log.txt
