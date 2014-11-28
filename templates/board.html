@@ -119,6 +119,36 @@
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
+<!-- Game statistics -->
+<div class="gamestats" onclick="hideStats()">
+<div style="width:50%;display:block;float:left">
+<h2>{{ game.state.player_name(0) }}</h2>
+<p>Fjöldi leikja: <span id="moves0"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
+<p>Stafir lagðir niður: <span id="tiles0"></span></p>
+<p>Auðar flísar lagðar niður: <span id="blanks0"></span></p>
+<p>Hrein stig stafa: <span id="letterscore0"></span></p>
+<p>Meðalstig stafa (ekki auðra): <span id="average0"></span></p>
+<p>Margföldunarþáttur stiga: <span id="multiple0"></span></p>
+<p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
+<p>Stafaleif í lok: <span id="remaining0"></span></p>
+<p>Lokastig: <span id="total0"></span></p>
+</div>
+<div style="width:50%;display:block;float:left">
+<h2>{{ game.state.player_name(1) }}</h2>
+<p>Fjöldi leikja: <span id="moves1"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes1"></span></p>
+<p>Stafir lagðir niður: <span id="tiles1"></span></p>
+<p>Auðar flísar lagðar niður: <span id="blanks1"></span></p>
+<p>Hrein stig stafa: <span id="letterscore1"></span></p>
+<p>Meðalstig stafa (ekki auðra): <span id="average1"></span></p>
+<p>Margföldunarþáttur stiga: <span id="multiple1"></span></p>
+<p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
+<p>Stafaleif í lok: <span id="remaining1"></span></p>
+<p>Lokastig: <span id="total1"></span></p>
+</div>
+</div>
+
 <!-- Move submit button -->
 <div class="submitmove disabled" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="submitMove('move')">Leika <span class="glyphicon glyphicon-play"></span></div>

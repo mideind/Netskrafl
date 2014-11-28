@@ -331,9 +331,51 @@ div.rightmove {
 
 div.gameover {
    text-align: center;
-   padding: 2px;
+   padding: 9px;
    background-color: @pass-btn;
    color: white;
+   font-weight: 700;
+}
+
+span.gameovermsg {
+   margin-right: 6px;
+}
+
+span.statsbutton {
+   height: 20px;
+   text-align: center;
+   background-color: white;
+   font-size: 16px;
+   font-weight: 700;
+   color: @pass-btn;
+   margin-top: 0;
+   margin-bottom: 0;
+   margin-left: 4px;
+   margin-right: 4px;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   padding-left: 12px;
+   padding-right: 12px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+div.gamestats {
+   visibility: hidden;
+   color: black;
+   background-color: @statsbackground;
+   z-index: 20;
+   position: absolute;
+   width: 800px;
+   height: 512px;
+   left: 112px;
+   top: 84px;
+   cursor: pointer;
+   padding: 12px;
+   border-radius: 4px;
+}
+
+div.gamestats p span {
    font-weight: 700;
 }
 
@@ -363,26 +405,26 @@ div.gameover {
 
 span.score {
    display: inline-block;
-   font-weight: 700;
-   padding-left: 3px;
-   margin-left: 3px;
-   padding-right: 3px;
-   margin-right: 3px;
-   background-color: @board-background;
-   color: white;
    width: 28px;
+   padding-left: 2px;
+   margin-left: 2px;
+   padding-right: 2px;
+   margin-right: 2px;
+   font-weight: 700;
    text-align: right;
 }
 
 span.total {
    display: inline-block;
    width: 28px;
-   font-weight: 700;
-   padding-left: 3px;
+   padding-left: 2px;
    margin-left: 2px;
-   padding-right: 3px;
+   padding-right: 2px;
    margin-right: 2px;
+   font-weight: 700;
    text-align: right;
+   background-color: @board-background;
+   color: white;
 }
 
 .rightmove .total {

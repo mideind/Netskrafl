@@ -165,7 +165,8 @@ function appendMove(player, co, tiles, score) {
    }
    var str;
    if (wrdclass == "gameover") {
-      str = '<div class="gameover">' + tiles + '</div>';
+      str = '<div class="gameover"><span class="gameovermsg">' + tiles + '</span>' +
+         '<span class="statsbutton" onclick="showStats()">Skoða yfirlit</span></div>';
    }
    else
    if (player === 0) {
@@ -874,6 +875,36 @@ function submitResign() {
       /* Disable all other actions while panel is shown */
       updateButtonState();
    }
+}
+
+function showStats() {
+   $("div.gamestats").css("visibility", "visible");
+   /* Statistics for player 0 (left player) */
+   $("#moves0").text("moves0");
+   $("#bingoes0").text("");
+   $("#tiles0").text("");
+   $("#blanks0").text("");
+   $("#letterscore0").text("");
+   $("#average0").text("");
+   $("#multiple0").text("");
+   $("#cleantotal0").text("");
+   $("#remaining0").text("");
+   $("#total0").text($(".scoreleft").text());
+   /* Statistics for player 1 (right player) */
+   $("#moves1").text("moves1");
+   $("#bingoes1").text("");
+   $("#tiles1").text("");
+   $("#blanks1").text("");
+   $("#letterscore1").text("");
+   $("#average1").text("");
+   $("#multiple1").text("");
+   $("#cleantotal1").text("");
+   $("#remaining1").text("");
+   $("#total1").text($(".scoreright").text());
+}
+
+function hideStats() {
+   $("div.gamestats").css("visibility", "hidden");
 }
 
 var submitTemp = "";
