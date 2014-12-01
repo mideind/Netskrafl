@@ -319,7 +319,14 @@ class Game:
                 game.moves.append((player, m, mm.rack))
                 player = 1 - player
 
+        # Account for the final tiles in the rack
+        if game.state.is_game_over():
+            game.state.finalize_score()
         # If the moves were correctly applied, the scores should match
+        if game.state._scores[0] != gm.score0:
+            logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(game.state._scores[0], gm.score0).encode("latin-1"))
+        if game.state._scores[1] != gm.score1:
+            logging.info(u"Game state score1 is {0} while gm.score1 is {1}'".format(game.state._scores[1], gm.score1).encode("latin-1"))
         assert game.state._scores[0] == gm.score0
         assert game.state._scores[1] == gm.score1
 
@@ -341,6 +348,7 @@ class Game:
             assert False
             return
         gm = GameModel(id = self.uuid)
+        gm.timestamp = self.timestamp
         gm.set_player(self.player_index, user.id())
         gm.set_player(1 - self.player_index, None)
         gm.irack0 = self.initial_racks[0]
@@ -440,7 +448,6 @@ class Game:
             else:
                 # Load the initial rack
                 s.set_rack(ix, self.initial_racks[ix])
-            logging.info(u"Setting rack {0} to '{1}'".format(ix, s.rack(ix)).encode("latin-1"))
         # Apply the moves
         for player, m, rack in self.moves[0 : move_number]:
             s.apply_move(m, True)

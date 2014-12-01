@@ -216,7 +216,7 @@ function appendMove(player, co, tiles, score) {
    var movelist = $("div.movelist");
    movelist.append(str);
    if (wrdclass != "gameover") {
-      var m = $("div.movelist").children().last();
+      var m = movelist.children().last();
       var playerid = "0";
       if (player === humanPlayer())
          m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
@@ -238,7 +238,7 @@ function appendMove(player, co, tiles, score) {
    }
    /* Manage the scrolling of the move list */
    var lastchild = $("div.movelist:last-child"); /* .children().last() causes problems */
-   var firstchild = $("div.movelist").children().eq(0);
+   var firstchild = movelist.children().eq(0);
    var topoffset = lastchild.position().top -
       firstchild.position().top +
       lastchild.height();
@@ -252,6 +252,49 @@ function appendMove(player, co, tiles, score) {
       leftTotal += score;
    else
       rightTotal += score;
+}
+
+function appendBestMove(player, co, tiles, score) {
+   /* Add a move to the best move list */
+   var rawCoord = co;
+   co = "(" + co + ")";
+   tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
+   var str;
+   if (player === 0) {
+      /* Left side player */
+      str = '<div class="leftmove">' +
+         '<span class="score">' + score + '</span>' +
+         '<span class="wordmove"><i>' + tiles + '</i> ' +
+         co + '</span>' +
+         '</div>';
+   }
+   else {
+      /* Right side player */
+      str = '<div class="rightmove">' +
+         '<span class="wordmove">' + co +
+         ' <i>' + tiles + '</i></span>' +
+         '<span class="score">' + score + '</span>' + 
+         '</div>';
+   }
+   var movelist = $("div.movelist");
+   movelist.append(str);
+   var m = movelist.children().last();
+   var playerid = "0";
+   if (player === humanPlayer())
+      m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
+   else {
+      m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
+      playerid = "1";
+   }
+   /* Register a hover event handler to highlight this move */
+   m.on("mouseover",
+      { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: true },
+      highlightMove
+   );
+   m.on("mouseout",
+      { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: false },
+      highlightMove
+   );
 }
 
 function promptForBlank() {
@@ -773,7 +816,9 @@ function updateState(json) {
          }
       });
       /* Add the new tiles laid down in response */
-      if (json.lastmove !== undefined)
+      if (json.lastmove !== undefined) {
+         /* Remove highlight from previous move, if any */
+         $("div.highlight1").removeClass("highlight1");
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
             placeTile(sq, /* Coordinate */
@@ -782,6 +827,7 @@ function updateState(json) {
                json.lastmove[i][3]); /* Score */
             $("#"+sq).children().eq(0).addClass("freshtile");
          }
+      }
       /* Update the scores */
       $(".scoreleft").text(json.scores[0]);
       $(".scoreright").text(json.scores[1]);

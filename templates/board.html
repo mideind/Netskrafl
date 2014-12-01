@@ -12,6 +12,12 @@
       placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
 {%- endfor -%}
 
+{% for player, m, r in game.moves[-1:] %}
+{%- set coord, tiles, score = m.summary(game.state.board()) -%}
+      /* Show the most recent move in the player's color */
+      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+{%- endfor -%}
+
 {% for tile, score in game.state.player_rack().details() %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
@@ -38,7 +44,7 @@
 
    function navToReview() {
       /* Show the game review page */
-      window.location.href='{{ url_for('review', game = game.id(), move = 0) }}';
+      window.location.href='{{ url_for('review', game = game.id(), move = 0) | safe }}';
    }
 
 </script>

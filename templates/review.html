@@ -22,7 +22,7 @@
 {% if best_moves != None %}
 {% for m, sc in best_moves %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
-      appendMove({{ state.player_to_move() }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+      appendBestMove({{ state.player_to_move() }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
    /* Show the most recent move in the player's color */
