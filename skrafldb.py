@@ -19,11 +19,14 @@
         coord : string
         tiles : string
         score : integer
+        rack : string # Contents of rack after move
 
     GameModel:
         player0 : key into UserModel
         player1 : key into UserModel
-        rack0 : string
+        irack0 : string # Initial rack
+        irack1 : string
+        rack0 : string # Current rack
         rack1 : string
         score0 : integer
         score1 : integer
@@ -86,6 +89,7 @@ class MoveModel(ndb.Model):
     coord = ndb.StringProperty()
     tiles = ndb.StringProperty()
     score = ndb.IntegerProperty(default = 0)
+    rack = ndb.StringProperty(required = False, default = None)
 
 
 class GameModel(ndb.Model):
@@ -118,6 +122,10 @@ class GameModel(ndb.Model):
 
     # The moves so far
     moves = ndb.LocalStructuredProperty(MoveModel, repeated = True)
+
+    # The initial racks
+    irack0 = ndb.StringProperty(required = False, indexed = False, default = None)
+    irack1 = ndb.StringProperty(required = False, indexed = False, default = None)
 
     def set_player(self, ix, user_id):
         """ Set a player key property to point to a given user, or None """

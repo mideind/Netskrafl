@@ -345,7 +345,7 @@ class Rack:
 
     def set_tiles(self, tiles):
         """ Set the contents of the rack """
-        self._tiles = tiles
+        self._tiles = u"" if tiles is None else tiles
 
     def contains(self, tiles):
         """ Check whether the rack contains all tiles in the tiles string """
@@ -492,6 +492,14 @@ class State:
         """ Cause the game to end by resigning from it """
         self._game_resigned = True
 
+    def rack(self, index):
+        """ Return the contents of the rack (indexed by 0 or 1) """
+        return self._racks[index].contents()
+
+    def set_rack(self, index, tiles):
+        """ Set the contents of the rack (indexed by 0 or 1) """
+        self._racks[index].set_tiles(u"" if tiles is None else tiles)
+
     def board(self):
         """ Return the Board object of this state """
         return self._board
@@ -504,12 +512,12 @@ class State:
         """ Recalculate the bag by subtracting from it the tiles on the board and in the racks """
         assert self._bag.is_full()
         self._bag.subtract_board(self._board)
-        self._bag.subtract_rack(self._racks[0].contents())
-        self._bag.subtract_rack(self._racks[1].contents())
+        self._bag.subtract_rack(self.rack(0))
+        self._bag.subtract_rack(self.rack(1))
 
     def display_bag(self, player):
         """ Returns the current bag plus the rack of the opponent """
-        return self._bag.contents() + self._racks[player].contents()
+        return self._bag.contents() + self.rack(player)
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players have passed 3 times in a row """
@@ -522,9 +530,9 @@ class State:
             return
         for ix in range(2):
             # Add the score of the opponent's tiles
-            self._scores[ix] += Alphabet.score(self._racks[1 - ix].contents())
+            self._scores[ix] += Alphabet.score(self.rack(1 - ix))
             # Subtract the score of the player's own tiles
-            self._scores[ix] -= Alphabet.score(self._racks[ix].contents())
+            self._scores[ix] -= Alphabet.score(self.rack(ix))
             if self._scores[ix] < 0:
                 self._scores[ix] = 0
 
@@ -544,7 +552,7 @@ class State:
         return self._board.__str__() + \
             u"\n{0} {1} vs {2} {3}".format(self._player_names[0], self._scores[0],
                 self._player_names[1], self._scores[1]) + \
-            u"\n'{0}' vs '{1}'".format(self._racks[0].contents(), self._racks[1].contents())
+            u"\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
 
 
 class Cover:

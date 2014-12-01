@@ -9,20 +9,29 @@
 <script>
 
    function placeTiles() {
-{% for coord, tile, letter, score in game.enum_tiles_until_move(move_number) %}
+{% for coord, tile, letter, score in game.enum_tiles(state) %}
       placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
 {%- endfor -%}
 
-{% for tile, score in game.state.player_rack().details() %}
+{% for tile, score in state.player_rack().details() %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
    }
 
    function initMoveList() {
-{% for player, m in game.moves[0:move_number] %}
-{%- set coord, tiles, score = m.summary(game.state.board()) -%}
-      appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
-{%- endfor -%}
+{% if best_moves != None %}
+{% for m, sc in best_moves %}
+{%- set coord, tiles, score = m.summary(state.board()) -%}
+      appendMove({{ state.player_to_move() }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% endfor %}
+{% endif %}
+   /* Show the most recent move in the player's color */
+{% if move_number > 0 %}
+{% for player, m, r in game.moves[move_number-1:move_number] %}
+{%- set coord, tiles, score = m.summary(state.board()) -%}
+      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+{% endfor %}
+{% endif %}
    }
 
    function initBag(bag) {
@@ -67,8 +76,8 @@
 </a>
 {% endif %}
       </h3>
-      <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
-      <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
+      <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
+      <h3 class="scoreright">{{ state.scores()[1] }}</h3>
    </div>
    <div class="movelist">
    </div>
@@ -170,6 +179,7 @@ function initReview(jQuery) {
    placeTiles();
    initMoveList();
    initBag();
+   $("div.racktile").css("cursor", "default");
    if (humanPlayer() === 0) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
@@ -178,6 +188,10 @@ function initReview(jQuery) {
       $("h3.playerright").addClass("humancolor");
       $("h3.playerleft").addClass("autoplayercolor");
    }
+{% if state.player_to_move() == 1 - game.player_index %}
+   /* Show the racks in the players' colors */
+   $("div.racktile").addClass("freshtile").removeClass("racktile");
+{% endif %}
 {% if move_number == 0 %}
    $("#navprev").addClass("disabled");
    $("#navnext").addClass("disabled");

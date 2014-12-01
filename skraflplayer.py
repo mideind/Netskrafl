@@ -615,9 +615,23 @@ class AutoPlayer:
         """ Finds and returns a Move object to be played """
         return self._generate_move(depth = 1)
 
-    def _generate_move(self, depth):
-        """ Finds and returrns a Move object to be played, weighted by countermoves """
+    def generate_best_moves(self, max_number = 0):
+        """ Returns a list in descending order of the n best moves, or all moves if n <= 0 """
+        self._generate_candidates()
+        if len(self._candidates) == 0:
+            # No candidates: no best move
+            return []
+        sorted_candidates = self._score_candidates()
+        if max_number <= 0:
+            # Return entire list if max_number <= 0
+            return sorted_candidates
+        # Return the top candidates
+        return sorted_candidates[0 : max_number]
 
+    def _generate_candidates(self):
+        """ Generate a fresh candidate list """
+
+        self.candidates = []
         # Start by generating all possible permutations of the
         # rack that form left parts of words, ordering them by length
         if len(self._rack) > 1:
@@ -652,7 +666,14 @@ class AutoPlayer:
                 axis.generate_moves(lpn)
         # Delete the reference to LeftPermutationNavigator to save memory
         lpn = None
-        # We now have a list of valid candidate moves; pick the best one
+
+    def _generate_move(self, depth):
+        """ Finds and returns a Move object to be played, eventually weighted by countermoves """
+
+        # Generate a fresh list of candidate moves
+        self._generate_candidates()
+
+        # Pick the best move from the candidate list
         move = self._find_best_move(depth)
         if move is not None:
             return move
@@ -662,21 +683,7 @@ class AutoPlayer:
         # If we can't exchange tiles, we have to pass
         return PassMove()
 
-    def _find_best_move(self, depth):
-        """ Analyze the list of candidate moves and pick the highest-scoring one """
-
-        assert depth >= 0
-
-        if not self._candidates:
-            # No moves: must exchange or pass instead
-            return None
-
-        num_candidates = len(self._candidates)
-
-        if num_candidates == 1:
-            # Only one legal move: play it
-            return self._candidates[0]
-
+    def _score_candidates(self):
         # Calculate the score of each candidate
         scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
 
@@ -703,6 +710,24 @@ class AutoPlayer:
         else:
             # Subsequent moves
             scored_candidates.sort(key=keyfunc)
+        return scored_candidates
+
+    def _find_best_move(self, depth):
+        """ Analyze the list of candidate moves and pick the highest-scoring one """
+
+        assert depth >= 0
+
+        if not self._candidates:
+            # No moves: must exchange or pass instead
+            return None
+
+        num_candidates = len(self._candidates)
+
+        if num_candidates == 1:
+            # Only one legal move: play it without further complication
+            return self._candidates[0]
+
+        scored_candidates = self._score_candidates()
 
         # Simply return the top scoring move
         # print(u"Autoplayer: Rack '{0}' generated {1} candidate moves:".format(self._rack, len(scored_candidates)))

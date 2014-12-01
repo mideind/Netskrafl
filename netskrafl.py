@@ -179,18 +179,22 @@ class Game:
         self.last_move = None
         # Was the game finished by resigning?
         self.resigned = False
-        # History of moves in this game so far
+        # History of moves in this game so far, in tuples: (player, move, rack)
         self.moves = []
+        # Initial rack contents
+        self.initial_racks = [None, None]
 
     # The current game state held in memory for different users
     # A capacity of 200 seemed to cause occasional out-of-memory errors in
-    # Google App Engine; trying 120
-    _cache = LRUCache(capacity = 120)
+    # Google App Engine; trying 100
+    _cache = LRUCache(capacity = 100)
 
     def _make_new(self, username, robot_level):
         """ Initialize a new, fresh game """
         self.username = username
         self.state = State(drawtiles = True)
+        self.initial_racks[0] = self.state.rack(0)
+        self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.player_index = randint(0, 1)
         self.timestamp = datetime.utcnow()
@@ -259,9 +263,13 @@ class Game:
         game.robot_level = gm.robot_level # Must come before set_human_name()
         game.set_human_name(username)
 
+        # Load the initial racks
+        game.initial_racks[0] = gm.irack0
+        game.initial_racks[1] = gm.irack1
+
         # Load the current racks
-        game.state._racks[0].set_tiles(gm.rack0)
-        game.state._racks[1].set_tiles(gm.rack1)
+        game.state.set_rack(0, gm.rack0)
+        game.state.set_rack(1, gm.rack1)
 
         # Process the moves
         player = 0
@@ -308,7 +316,7 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, True)
                 # Append to the move history
-                game.moves.append((player, m))
+                game.moves.append((player, m, mm.rack))
                 player = 1 - player
 
         # If the moves were correctly applied, the scores should match
@@ -335,20 +343,23 @@ class Game:
         gm = GameModel(id = self.uuid)
         gm.set_player(self.player_index, user.id())
         gm.set_player(1 - self.player_index, None)
-        gm.rack0 = self.state._racks[0].contents()
-        gm.rack1 = self.state._racks[1].contents()
+        gm.irack0 = self.initial_racks[0]
+        gm.irack1 = self.initial_racks[1]
+        gm.rack0 = self.state.rack(0)
+        gm.rack1 = self.state.rack(1)
         gm.score0 = self.state.scores()[0]
         gm.score1 = self.state.scores()[1]
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
         gm.over = self.state.is_game_over()
         movelist = []
-        for player, m in self.moves:
+        for player, m, rack in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.summary(self.state.board())
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
+            mm.rack = rack
             movelist.append(mm)
         gm.moves = movelist
         gm.put()
@@ -379,6 +390,17 @@ class Game:
         """ Return True if the game is over """
         return self.state.is_game_over()
 
+    def allows_best_moves(self):
+        """ Returns True if this game supports full review (has stored racks, etc.) """
+        if self.initial_racks[0] is None or self.initial_racks[1] is None:
+            # This is an old game stored without rack information: can't display best moves
+            return False
+        # !!! TBD: add the following check
+        #if not self.is_over():
+        #    # Never show best moves for games that are still being played
+        #    return False
+        return True
+
     def autoplayer_move(self):
         """ Let the AutoPlayer make its move """
         # !!! DEBUG for testing various move types
@@ -390,27 +412,42 @@ class Game:
         apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
         self.state.apply_move(move)
-        self.moves.append((1 - self.player_index, move))
+        self.moves.append((1 - self.player_index, move, self.state.rack(1 - self.player_index)))
         self.last_move = move
 
     def human_move(self, move):
         """ Register the human move, update the score and move list """
         self.state.apply_move(move)
-        self.moves.append((self.player_index, move))
+        self.moves.append((self.player_index, move, self.state.rack(self.player_index)))
         self.last_move = None # No autoplayer move yet
 
-    def enum_tiles(self):
+    def enum_tiles(self, state = None):
         """ Enumerate all tiles on the board in a convenient form """
-        for x, y, tile, letter in self.state.board().enum_tiles():
+        if state is None:
+            state = self.state
+        for x, y, tile, letter in state.board().enum_tiles():
             yield (Board.ROWIDS[x] + str(y + 1), tile, letter,
                 0 if tile == u'?' else Alphabet.scores[tile])
 
-    def enum_tiles_until_move(self, move_number):
-        """ Enumerate all tiles laid down until and including a particular move """
-        # !!! TBD: Replace with a generic function for the game state at a particular move
-        for player, m in self.moves[0 : move_number]:
-            for coord, tile, letter, score in m.details():
-                yield (coord, tile, letter, score)
+    def state_after_move(self, move_number):
+        """ Return a game state after the indicated move, 0=beginning state """
+        s = State(drawtiles = False)
+        for ix in range(2):
+            s.set_player_name(ix, self.state.player_name(ix))
+            if self.initial_racks[ix] is None:
+                # Load the current rack rather than nothing
+                s.set_rack(ix, self.state.rack(ix))
+            else:
+                # Load the initial rack
+                s.set_rack(ix, self.initial_racks[ix])
+            logging.info(u"Setting rack {0} to '{1}'".format(ix, s.rack(ix)).encode("latin-1"))
+        # Apply the moves
+        for player, m, rack in self.moves[0 : move_number]:
+            s.apply_move(m, True)
+            if rack is not None:
+                s.set_rack(player, rack)
+        s.recalc_bag()
+        return s
 
     BAG_SORT_ORDER = Alphabet.order + u'?'
 
@@ -434,13 +471,13 @@ class Game:
                 # Show the autoplayer move if it was the last move in the game
                 reply["lastmove"] = self.last_move.details()
                 num_moves = 2 # One new move to be added to move list
-            newmoves = [(player, m.summary(self.state.board())) for player, m in self.moves[-num_moves:]]
+            newmoves = [(player, m.summary(self.state.board())) for player, m, rack in self.moves[-num_moves:]]
             # Lastplayer is the player who finished the game
             lastplayer = self.moves[-1][0]
             if not self.resigned:
                 # If the game did not end by resignation,
                 # account for the losing rack
-                rack = self.state._racks[1 - lastplayer].contents()
+                rack = self.state.rack(1 - lastplayer)
                 # Subtract the score of the losing rack from the losing player
                 newmoves.append((1 - lastplayer, (u"", rack, -1 * Alphabet.score(rack))))
                 # Add the score of the losing rack to the winning player
@@ -455,7 +492,7 @@ class Game:
             reply["result"] = 0 # Indicate no error
             reply["rack"] = self.state.player_rack().details()
             reply["lastmove"] = self.last_move.details()
-            reply["newmoves"] = [(player, m.summary(self.state.board())) for player, m in self.moves[-2:]]
+            reply["newmoves"] = [(player, m.summary(self.state.board())) for player, m, rack in self.moves[-2:]]
             reply["bag"] = self.display_bag()
             reply["xchg"] = self.state.is_exchange_allowed()
         reply["scores"] = self.state.scores()
@@ -474,7 +511,7 @@ class Game:
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
-        ncovers = [(p, m.num_covers()) for p, m in self.moves]
+        ncovers = [(p, m.num_covers()) for p, m, r in self.moves]
         bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
         # Number of bingoes
         reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
@@ -486,7 +523,7 @@ class Game:
         letterscore = [0, 0]
         cleanscore = [0, 0]
         # Loop through the moves, collecting stats
-        for p, m in self.moves:
+        for p, m, r in self.moves:
             coord, wrd, msc = m.summary(self.state.board())
             if wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score
@@ -684,8 +721,15 @@ def review():
        return redirect(url_for("main"))
 
     move_number = int(request.args.get("move", "0"))
+    state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
+    best_moves = None
+    if game.allows_best_moves():
+        apl = AutoPlayer(state)
+        best_moves = apl.generate_best_moves(20)
 
-    return render_template("review.html", game = game, user = user, move_number = move_number)
+    return render_template("review.html",
+        user = user, game = game, state = state, move_number = move_number,
+        best_moves = best_moves)
 
 
 @app.route("/userprefs", methods=['GET', 'POST'])

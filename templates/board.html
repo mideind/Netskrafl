@@ -18,7 +18,7 @@
    }
 
    function initMoveList() {
-{% for player, m in game.moves %}
+{% for player, m, r in game.moves %}
 {%- set coord, tiles, score = m.summary(game.state.board()) -%}
       appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {%- endfor -%}
@@ -105,47 +105,6 @@
 
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
-
-<!-- Game statistics -->
-<div class="gamestats" onclick="hideStats()">
-<div style="width:100%">
-<h3 class="playerleft">
-{%- if game.player_index == 1 -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-{{ game.state.player_name(0) }}</h3>
-<h3 class="playerright">
-{%- if game.player_index == 0 -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-{{ game.state.player_name(1) }}</h3>
-</div>
-<div id="gamestarted">
-<p>Hófst <span id="gamestart"></span></p>
-</div>
-<div style="width:50%;display:block;float:left">
-<p>Fjöldi leikja: <span id="moves0"></span></p>
-<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
-<p>Stafir lagðir niður: <span id="tiles0"></span> (þar af <span id="blanks0"></span> auðir)</p>
-<p>Samanlögð stafastig: <span id="letterscore0"></span></p>
-<p>Meðalstig stafa (án auðra): <span id="average0"></span></p>
-<p>Margföldun stafastiga: <span id="multiple0"></span></p>
-<p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
-<p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
-<p>Lokastig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
-</div>
-<div style="width:50%;display:block;float:left">
-<p>Fjöldi leikja: <span id="moves1"></span></p>
-<p>Fjöldi bingóa: <span id="bingoes1"></span></p>
-<p>Stafir lagðir niður: <span id="tiles1"></span> (þar af <span id="blanks1"></span> auðir)</p>
-<p>Samanlögð stafastig: <span id="letterscore1"></span></p>
-<p>Meðalstig stafa (án auðra): <span id="average1"></span></p>
-<p>Margföldun stafastiga: <span id="multiple1"></span></p>
-<p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
-<p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
-<p>Lokastig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
-</div>
-</div>
 
 <!-- Move submit button -->
 <div class="submitmove disabled" onmouseover="buttonOver(this)"

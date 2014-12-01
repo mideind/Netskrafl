@@ -92,6 +92,32 @@ function placeTile(sq, tile, letter, score) {
    }
 }
 
+function showMove(player, co, tiles) {
+   /* Show a move on the board in the player's color */
+   var dx = 0, dy = 0;
+   var col = 0;
+   var row = ROWIDS.indexOf(co.charAt(0));
+   if (row >= 0) {
+      /* Horizontal move */
+      col = parseInt(co.slice(1)) - 1;
+      dx = 1;
+   }
+   else {
+      /* Vertical move */
+      row = ROWIDS.indexOf(co.charAt(co.length - 1));
+      col = parseInt(co) - 1;
+      dy = 1;
+   }
+   for (var i = 0; i < tiles.length; i++) {
+      var sq = coord(row, col);
+      var tileDiv = $("#"+sq).children().eq(0);
+      if (tileDiv !== null)
+         tileDiv.addClass("highlight" + player);
+      col += dx;
+      row += dy;
+   }
+}
+
 function highlightMove(ev) {
    /* Highlight a move's tiles when hovering over it in the move list */
    var co = ev.data.coord;
