@@ -1,0 +1,194 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+<!-- Netskrafl client script -->
+<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+
+<script>
+
+   function placeTiles() {
+{% for coord, tile, letter, score in game.enum_tiles_until_move(move_number) %}
+      placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
+{%- endfor -%}
+
+{% for tile, score in game.state.player_rack().details() %}
+      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
+{%- endfor -%}
+   }
+
+   function initMoveList() {
+{% for player, m in game.moves[0:move_number] %}
+{%- set coord, tiles, score = m.summary(game.state.board()) -%}
+      appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{%- endfor -%}
+   }
+
+   function initBag(bag) {
+      updateBag("{{ game.display_bag() }}");
+   }
+
+   function humanPlayer() {
+      /* Identify whether the human player is 0 or 1 */
+      return {{ game.player_index }};
+   }
+</script>
+
+{% endblock %}
+
+{% block content %}
+
+<!-- The board -->
+{% include 'boardlayout.html' %}
+
+<!-- Player names, scores and move history -->
+<div class="rightcol">
+   <div class="heading">
+      <h3 class="playerleft">
+{% if game.player_index == 0 %}
+<a class="nodecorate" href="{{ url_for('userprefs') }}">
+{%- else -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+      {{ game.state.player_name(0) }}
+{%- if game.player_index == 0 -%}
+</a>
+{% endif %}
+      </h3>
+      <h3 class="playerright">
+{% if game.player_index == 1 %}
+<a class="nodecorate" href="{{ url_for('userprefs') }}">
+{%- else -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+      {{ game.state.player_name(1) }}
+{%- if game.player_index == 1 -%}
+</a>
+{% endif %}
+      </h3>
+      <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
+      <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
+   </div>
+   <div class="movelist">
+   </div>
+</div>
+
+<!-- The rack -->
+<div class="rack">
+   <table class="board">
+      <tr>
+      <td id="R1"></td>
+      <td id="R2"></td>
+      <td id="R3"></td>
+      <td id="R4"></td>
+      <td id="R5"></td>
+      <td id="R6"></td>
+      <td id="R7"></td>
+      </tr>
+   </table>
+</div>
+
+<!-- The bag -->
+<div class="bag" title="Flísar sem eftir eru í pokanum">
+<table id="bag">
+</table>
+</div>
+
+<!-- Game statistics -->
+<div class="gamestats" onclick="navFirst()">
+<div style="position:relative;width:100%">
+<h3 class="playerleft">
+{%- if game.player_index == 1 -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+{{ game.state.player_name(0) }}</h3>
+<h3 class="playerright">
+{%- if game.player_index == 0 -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+{{ game.state.player_name(1) }}</h3>
+</div>
+<div id="gamestarted">
+<p>Viðureign hófst <span id="gamestart"></span></p>
+</div>
+<div class="statscol" style="clear:left">
+<p>Fjöldi leikja: <span id="moves0"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
+<p>Stafir lagðir niður: <span id="tiles0"></span> (þar af <span id="blanks0"></span> auðir)</p>
+<p>Samanlögð stafastig: <span id="letterscore0"></span></p>
+<p>Meðalstig stafa (án auðra): <span id="average0"></span></p>
+<p>Margföldun stafastiga: <span id="multiple0"></span></p>
+<p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
+<p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
+<p>Stig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
+</div>
+<div class="statscol">
+<p>Fjöldi leikja: <span id="moves1"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes1"></span></p>
+<p>Stafir lagðir niður: <span id="tiles1"></span> (þar af <span id="blanks1"></span> auðir)</p>
+<p>Samanlögð stafastig: <span id="letterscore1"></span></p>
+<p>Meðalstig stafa (án auðra): <span id="average1"></span></p>
+<p>Margföldun stafastiga: <span id="multiple1"></span></p>
+<p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
+<p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
+<p>Stig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
+</div>
+</div>
+
+<!-- Previous move button -->
+<div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="navPrev()"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</div>
+
+<!-- Next move button -->
+<div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="navNext()">Næsti <span class="glyphicon glyphicon-chevron-right"></span></div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+function navPrev() {
+   /* Display the previous move */
+   window.location.href='{{ url_for('review', game = game.id(), move = move_number - 1) | safe }}';
+}
+
+function navNext() {
+   /* Display the next move */
+   window.location.href='{{ url_for('review', game = game.id(), move = move_number + 1) | safe }}';
+}
+
+function navFirst() {
+   /* Display the first move */
+   window.location.href='{{ url_for('review', game = game.id(), move = 1) | safe }}';
+}
+
+function initReview(jQuery) {
+   /* Called when the page is displayed or refreshed */
+   placeTiles();
+   initMoveList();
+   initBag();
+   if (humanPlayer() === 0) {
+      $("h3.playerleft").addClass("humancolor");
+      $("h3.playerright").addClass("autoplayercolor");
+   }
+   else {
+      $("h3.playerright").addClass("humancolor");
+      $("h3.playerleft").addClass("autoplayercolor");
+   }
+{% if move_number == 0 %}
+   $("#navprev").addClass("disabled");
+   $("#navnext").addClass("disabled");
+   showStats("{{ game.id() }}");
+{% endif %}
+}
+
+</script>
+
+<script>
+   $(document).ready(initReview);
+</script>
+
+{% endblock %}

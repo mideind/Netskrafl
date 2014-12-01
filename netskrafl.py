@@ -26,6 +26,7 @@ import time
 import collections
 
 from random import randint
+from datetime import datetime
 
 from flask import Flask
 from flask import render_template, redirect, jsonify
@@ -33,7 +34,7 @@ from flask import request, session, url_for
 
 from google.appengine.api import users
 
-from skraflmechanics import Manager, State, Board, Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import Manager, State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from languages import Alphabet
 from skrafldb import Unique, UserModel, GameModel, MoveModel
@@ -164,6 +165,8 @@ class Game:
     def __init__(self, uuid = None):
         # Unique id of the game
         self.uuid = uuid
+        # The start time of the game
+        self.timestamp = None
         # The nickname of the human (local) player
         self.username = None
         # The current game state
@@ -190,6 +193,7 @@ class Game:
         self.state = State(drawtiles = True)
         self.robot_level = robot_level
         self.player_index = randint(0, 1)
+        self.timestamp = datetime.utcnow()
         self.set_human_name(username)
 
     @classmethod
@@ -242,6 +246,7 @@ class Game:
         game = cls(uuid)
 
         game.username = username
+        game.timestamp = gm.timestamp
         game.state = State(drawtiles = False)
 
         if gm.player0 is None:
@@ -348,6 +353,10 @@ class Game:
         gm.moves = movelist
         gm.put()
 
+    def id(self):
+        """ Returns the unique id of this game """
+        return self.uuid
+
     def set_human_name(self, nickname):
         """ Set the nickname of the human player """
         if nickname[0:8] == u"https://":
@@ -365,6 +374,10 @@ class Game:
     def resign(self):
         """ The human player is resigning the game """
         self.resigned = True
+
+    def is_over(self):
+        """ Return True if the game is over """
+        return self.state.is_game_over()
 
     def autoplayer_move(self):
         """ Let the AutoPlayer make its move """
@@ -391,6 +404,13 @@ class Game:
         for x, y, tile, letter in self.state.board().enum_tiles():
             yield (Board.ROWIDS[x] + str(y + 1), tile, letter,
                 0 if tile == u'?' else Alphabet.scores[tile])
+
+    def enum_tiles_until_move(self, move_number):
+        """ Enumerate all tiles laid down until and including a particular move """
+        # !!! TBD: Replace with a generic function for the game state at a particular move
+        for player, m in self.moves[0 : move_number]:
+            for coord, tile, letter, score in m.details():
+                yield (coord, tile, letter, score)
 
     BAG_SORT_ORDER = Alphabet.order + u'?'
 
@@ -439,6 +459,67 @@ class Game:
             reply["bag"] = self.display_bag()
             reply["xchg"] = self.state.is_exchange_allowed()
         reply["scores"] = self.state.scores()
+        return reply
+
+
+    def statistics(self):
+        """ Return a set of statistics on the game to be displayed by the client """
+        reply = dict()
+        if self.state.is_game_over():
+            reply["result"] = Error.GAME_OVER # Indicate that the game is over (not really an error)
+        else:
+            reply["result"] = 0 # Game still in progress
+        reply["gamestart"] = self.timestamp.isoformat(' ')[0:19] if self.timestamp is not None else u""
+        reply["scores"] = sc = self.state.scores()
+        # Number of moves made
+        reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
+        reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
+        ncovers = [(p, m.num_covers()) for p, m in self.moves]
+        bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
+        # Number of bingoes
+        reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
+        reply["bingoes1"] = sum([1 if p == 1 and bingo else 0 for p, bingo in bingoes])
+        # Number of tiles laid down
+        reply["tiles0"] = t0 = sum([nc if p == 0 else 0 for p, nc in ncovers])
+        reply["tiles1"] = t1 = sum([nc if p == 1 else 0 for p, nc in ncovers])
+        blanks = [0, 0]
+        letterscore = [0, 0]
+        cleanscore = [0, 0]
+        # Loop through the moves, collecting stats
+        for p, m in self.moves:
+            coord, wrd, msc = m.summary(self.state.board())
+            if wrd != u'RSGN':
+                # Don't include a resignation penalty in the clean score
+                cleanscore[p] += msc
+            if m.num_covers() == 0:
+                # Exchange, pass or resign move
+                continue
+            for coord, tile, letter, score in m.details():
+                if tile == u'?':
+                    blanks[p] += 1
+                letterscore[p] += score
+        # Number of blanks laid down
+        reply["blanks0"] = b0 = blanks[0]
+        reply["blanks1"] = b1 = blanks[1]
+        # Sum of straight letter scores
+        reply["letterscore0"] = lsc0 = letterscore[0]
+        reply["letterscore1"] = lsc1 = letterscore[1]
+        # Calculate average straight score of tiles laid down (excluding blanks)
+        reply["average0"] = (float(lsc0) / (t0 - b0)) if (t0 > b0) else 0.0
+        reply["average1"] = (float(lsc1) / (t1 - b1)) if (t1 > b1) else 0.0
+        # Calculate point multiple of tiles laid down (score / nominal points)
+        reply["multiple0"] = (float(cleanscore[0]) / lsc0) if (lsc0 > 0) else 0.0
+        reply["multiple1"] = (float(cleanscore[1]) / lsc1) if (lsc1 > 0) else 0.0
+        # Plain sum of move scores
+        reply["cleantotal0"] = cleanscore[0]
+        reply["cleantotal1"] = cleanscore[1]
+        # Contribution of remaining tiles at the end of the game
+        reply["remaining0"] = sc[0] - cleanscore[0]
+        reply["remaining1"] = sc[1] - cleanscore[1]
+        # Score ratios (percentages)
+        totalsc = sc[0] + sc[1]
+        reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
+        reply["ratio1"] = (float(sc[1]) / totalsc * 100.0) if totalsc > 0 else 0.0
         return reply
 
 
@@ -537,6 +618,76 @@ def submitmove():
     return _process_move(movecount, movelist)
 
 
+@app.route("/gamestats", methods=['POST'])
+def gamestats():
+    """ Calculate and return statistics on the current game """
+
+    user = User.current()
+    user_id = None if user is None else user.id()
+    if not user_id:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uuid = request.form.get('game', None)
+    if uuid is None:
+        game = Game.current()
+    else:
+        game = Game.load(uuid, user.nickname())
+
+    if game is None:
+        # !!! Debug
+        # No live game found: attempt to find one in the database
+        uuid = GameModel.find_finished_game(user_id)
+        if uuid is not None:
+            game = Game.load(uuid, user.nickname())
+
+    if game is None:
+       return jsonify(result = Error.LOGIN_REQUIRED)
+
+    return jsonify(game.statistics())
+
+
+@app.route("/review")
+def review():
+    """ Show game review page """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(users.create_login_url(url_for("review")))
+
+    game = None
+    uuid = request.args.get("game", None)
+
+    if uuid is not None:
+        # Attempt to load the game whose id is in the URL query string
+        game = Game.load(uuid, user.nickname())
+
+    if game is None:
+        game = Game.current()
+
+    if game is None:
+        # !!! Debug: load a finished game to display
+        user_id = user.id()
+        if not user_id:
+            # No game state found
+            return redirect(url_for("main"))
+        # No game in cache: attempt to find one in the database
+        uuid = GameModel.find_finished_game(user_id)
+        if uuid is None:
+            # Not found in persistent storage
+            return redirect(url_for("main"))
+        # Load from persistent storage
+        game = Game.load(uuid, user.nickname())
+
+    if game is None:
+       return redirect(url_for("main"))
+
+    move_number = int(request.args.get("move", "0"))
+
+    return render_template("review.html", game = game, user = user, move_number = move_number)
+
+
 @app.route("/userprefs", methods=['GET', 'POST'])
 def userprefs():
     """ Handler for the user preferences page """
@@ -544,7 +695,7 @@ def userprefs():
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url("/userprefs"))
+        return redirect(users.create_login_url(url_for("userprefs")))
 
     if request.method == 'POST':
         try:

@@ -143,3 +143,16 @@ class GameModel(ndb.Model):
         reskey = q.get(keys_only = True)
         logging.info(u"Loaded game {0} for user {1}".format(u"[not found]" if reskey is None else reskey.id(), user_id).encode("latin-1"))
         return None if reskey is None else reskey.id()
+
+    @classmethod
+    def find_finished_game(cls, user_id):
+        """ Query to find any finished game for the given user, if it exists """
+        # Used mostly for debugging purposes
+        assert user_id is not None
+        if user_id is None:
+            return None
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == True)
+        reskey = q.get(keys_only = True)
+        logging.info(u"Loaded game {0} for user {1}".format(u"[not found]" if reskey is None else reskey.id(), user_id).encode("latin-1"))
+        return None if reskey is None else reskey.id()

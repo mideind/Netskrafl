@@ -976,6 +976,10 @@ class ExchangeMove:
         # An exchange move does not affect the score
         return 0
 
+    def num_covers(self):
+        """ Return the number of tiles played in this move """
+        return 0
+
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         if not shallow:
@@ -1012,6 +1016,10 @@ class PassMove:
         # A pass move does not affect the score
         return 0
 
+    def num_covers(self):
+        """ Return the number of tiles played in this move """
+        return 0
+
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
@@ -1046,6 +1054,10 @@ class ResignMove:
         """ Calculate the score of this move, which is assumed to be legal """
         # A resignation loses all points
         return - self._forfeited_points
+
+    def num_covers(self):
+        """ Return the number of tiles played in this move """
+        return 0
 
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """

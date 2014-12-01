@@ -63,6 +63,12 @@
 .glyphicon-cog:before {
    content: "\e019";
 }
+.glyphicon-chevron-left:before {
+   content: "\e079";
+}
+.glyphicon-chevron-right:before {
+   content: "\e080";
+}
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -366,17 +372,35 @@ div.gamestats {
    background-color: @statsbackground;
    z-index: 20;
    position: absolute;
-   width: 800px;
-   height: 512px;
-   left: 112px;
-   top: 84px;
+   width: 724px;
+   height: 468px;
+   left: 150px;
+   top: 140px;
    cursor: pointer;
    padding: 12px;
    border-radius: 4px;
 }
 
+div.statscol {
+   display: block;
+   float: left;
+   width: 50%;
+   padding-top: 24px;
+}
+
 div.gamestats p span {
    font-weight: 700;
+}
+
+div #gamestarted {
+   width: 100%;
+   text-align: center;
+   position:relative;
+   top: 42px;
+}
+
+#gamestarted p {
+   font-style: italic;
 }
 
 .humancolor {
@@ -714,6 +738,31 @@ div.submitexchange {
    padding-top: 8px;
    border-radius: 4px;
    cursor: pointer;
+}
+
+div.navbtn {
+   position: absolute;
+   width: 100px;
+   height: 28px;
+   text-align: center;
+   bottom: 98px;
+   background-color: @navbtn;
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding: 6px;
+   padding-top: 8px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+#navnext {
+   left: 562px;
+}
+
+#navprev {
+   left: 92px;
 }
 
 div.help {

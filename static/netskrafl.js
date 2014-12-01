@@ -166,7 +166,7 @@ function appendMove(player, co, tiles, score) {
    var str;
    if (wrdclass == "gameover") {
       str = '<div class="gameover"><span class="gameovermsg">' + tiles + '</span>' +
-         '<span class="statsbutton" onclick="showStats()">Skoða yfirlit</span></div>';
+         '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
    }
    else
    if (player === 0) {
@@ -348,8 +348,8 @@ function handleDrop(e, ui) {
    if (eld === null)
       return;
    eld.style.opacity = "1.0";
-   var dropToRack = false;
-   if (e.target.id.charAt(0) == 'R' && e.target.firstChild !== null) {
+   var dropToRack = (e.target.id.charAt(0) == 'R');
+   if (dropToRack && e.target.firstChild !== null) {
       /* Dropping into an already occupied rack slot: shuffle the rack tiles to make room */
       var ix = parseInt(e.target.id.slice(1));
       var rslot = null;
@@ -398,7 +398,6 @@ function handleDrop(e, ui) {
                rslot.appendChild(tile);
                rslot = src;
             }
-         dropToRack = true;
       }
    }
    if (e.target.firstChild === null) {
@@ -409,7 +408,7 @@ function handleDrop(e, ui) {
          /* Dropping from the rack */
          var t = $(eld).data("tile");
          if (!dropToRack && t == '?') {
-            /* Dropping a blank tile: we need to ask for its meaning */
+            /* Dropping a blank tile on to the board: we need to ask for its meaning */
             e.target.classList.add("over");
             eld.style.opacity = "0.8";
             var letter = promptForBlank();
@@ -877,30 +876,79 @@ function submitResign() {
    }
 }
 
-function showStats() {
-   $("div.gamestats").css("visibility", "visible");
+function updateStats(json) {
+   /* Display statistics from a server query result encoded in JSON */
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0 && json.result != GAME_OVER)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   $("#gamestart").text(json.gamestart);
    /* Statistics for player 0 (left player) */
-   $("#moves0").text("moves0");
-   $("#bingoes0").text("");
-   $("#tiles0").text("");
-   $("#blanks0").text("");
-   $("#letterscore0").text("");
-   $("#average0").text("");
-   $("#multiple0").text("");
-   $("#cleantotal0").text("");
-   $("#remaining0").text("");
-   $("#total0").text($(".scoreleft").text());
+   $("#moves0").text(json.moves0);
+   $("#bingoes0").text(json.bingoes0);
+   $("#tiles0").text(json.tiles0);
+   $("#blanks0").text(json.blanks0);
+   $("#letterscore0").text(json.letterscore0);
+   $("#average0").text(json.average0.toFixed(2));
+   $("#multiple0").text(json.multiple0.toFixed(2));
+   $("#cleantotal0").text(json.cleantotal0);
+   $("#remaining0").text(json.remaining0);
+   $("#total0").text(json.scores[0]);
+   $("#ratio0").text(json.ratio0.toFixed(1));
    /* Statistics for player 1 (right player) */
-   $("#moves1").text("moves1");
-   $("#bingoes1").text("");
-   $("#tiles1").text("");
-   $("#blanks1").text("");
-   $("#letterscore1").text("");
-   $("#average1").text("");
-   $("#multiple1").text("");
-   $("#cleantotal1").text("");
-   $("#remaining1").text("");
-   $("#total1").text($(".scoreright").text());
+   $("#moves1").text(json.moves1);
+   $("#bingoes1").text(json.bingoes1);
+   $("#tiles1").text(json.tiles1);
+   $("#blanks1").text(json.blanks1);
+   $("#letterscore1").text(json.letterscore1);
+   $("#average1").text(json.average1.toFixed(2));
+   $("#multiple1").text(json.multiple1.toFixed(2));
+   $("#cleantotal1").text(json.cleantotal1);
+   $("#remaining1").text(json.remaining1);
+   $("#total1").text(json.scores[1]);
+   $("#ratio1").text(json.ratio1.toFixed(1));
+}
+
+function showStats(gameId) {
+   $("div.gamestats").css("visibility", "visible");
+   /* Get the statistics from the server */
+   $.ajax({
+      // the URL for the request
+      url: "/gamestats",
+
+      // the data to send
+      data: {
+         // Identify the game in question
+         game: gameId
+      },
+
+      // whether this is a POST or GET request
+      type: "POST",
+
+      // the type of data we expect back
+      dataType : "json",
+
+      cache: false,
+
+      // code to run if the request succeeds;
+      // the response is passed to the function
+      success: updateStats,
+
+      // code to run if the request fails; the raw request and
+      // status codes are passed to the function
+      error: function(xhr, status, errorThrown) {
+         alert("Villa í netsamskiptum");
+         console.log("Error: " + errorThrown);
+         console.log("Status: " + status);
+         console.dir(xhr);
+      },
+
+      // code to run regardless of success or failure
+      complete: function(xhr, status) {
+      }
+   });
 }
 
 function hideStats() {

@@ -35,6 +35,12 @@
       /* Identify whether the human player is 0 or 1 */
       return {{ game.player_index }};
    }
+
+   function navToReview() {
+      /* Show the game review page */
+      window.location.href='{{ url_for('review', game = game.id(), move = 0) }}';
+   }
+
 </script>
 
 {% endblock %}
@@ -42,26 +48,7 @@
 {% block content %}
 
 <!-- The board -->
-<div class="board">
-   <table class="board">
-      <tr class="colid"><td></td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td><td>13</td><td>14</td><td>15</td></tr>
-      <tr><td class="rowid">A</td><td id="A1"></td><td id="A2"></td><td id="A3"></td><td id="A4"></td><td id="A5"></td><td id="A6"></td><td id="A7"></td><td id="A8"></td><td id="A9"></td><td id="A10"></td><td id="A11"></td><td id="A12"></td><td id="A13"></td><td id="A14"></td><td id="A15"></td></tr>
-      <tr><td class="rowid">B</td><td id="B1"></td><td id="B2"></td><td id="B3"></td><td id="B4"></td><td id="B5"></td><td id="B6"></td><td id="B7"></td><td id="B8"></td><td id="B9"></td><td id="B10"></td><td id="B11"></td><td id="B12"></td><td id="B13"></td><td id="B14"></td><td id="B15"></td></tr>
-      <tr><td class="rowid">C</td><td id="C1"></td><td id="C2"></td><td id="C3"></td><td id="C4"></td><td id="C5"></td><td id="C6"></td><td id="C7"></td><td id="C8"></td><td id="C9"></td><td id="C10"></td><td id="C11"></td><td id="C12"></td><td id="C13"></td><td id="C14"></td><td id="C15"></td></tr>
-      <tr><td class="rowid">D</td><td id="D1"></td><td id="D2"></td><td id="D3"></td><td id="D4"></td><td id="D5"></td><td id="D6"></td><td id="D7"></td><td id="D8"></td><td id="D9"></td><td id="D10"></td><td id="D11"></td><td id="D12"></td><td id="D13"></td><td id="D14"></td><td id="D15"></td></tr>
-      <tr><td class="rowid">E</td><td id="E1"></td><td id="E2"></td><td id="E3"></td><td id="E4"></td><td id="E5"></td><td id="E6"></td><td id="E7"></td><td id="E8"></td><td id="E9"></td><td id="E10"></td><td id="E11"></td><td id="E12"></td><td id="E13"></td><td id="E14"></td><td id="E15"></td></tr>
-      <tr><td class="rowid">F</td><td id="F1"></td><td id="F2"></td><td id="F3"></td><td id="F4"></td><td id="F5"></td><td id="F6"></td><td id="F7"></td><td id="F8"></td><td id="F9"></td><td id="F10"></td><td id="F11"></td><td id="F12"></td><td id="F13"></td><td id="F14"></td><td id="F15"></td></tr>
-      <tr><td class="rowid">G</td><td id="G1"></td><td id="G2"></td><td id="G3"></td><td id="G4"></td><td id="G5"></td><td id="G6"></td><td id="G7"></td><td id="G8"></td><td id="G9"></td><td id="G10"></td><td id="G11"></td><td id="G12"></td><td id="G13"></td><td id="G14"></td><td id="G15"></td></tr>
-      <tr><td class="rowid">H</td><td id="H1"></td><td id="H2"></td><td id="H3"></td><td id="H4"></td><td id="H5"></td><td id="H6"></td><td id="H7"></td><td id="H8"></td><td id="H9"></td><td id="H10"></td><td id="H11"></td><td id="H12"></td><td id="H13"></td><td id="H14"></td><td id="H15"></td></tr>
-      <tr><td class="rowid">I</td><td id="I1"></td><td id="I2"></td><td id="I3"></td><td id="I4"></td><td id="I5"></td><td id="I6"></td><td id="I7"></td><td id="I8"></td><td id="I9"></td><td id="I10"></td><td id="I11"></td><td id="I12"></td><td id="I13"></td><td id="I14"></td><td id="I15"></td></tr>
-      <tr><td class="rowid">J</td><td id="J1"></td><td id="J2"></td><td id="J3"></td><td id="J4"></td><td id="J5"></td><td id="J6"></td><td id="J7"></td><td id="J8"></td><td id="J9"></td><td id="J10"></td><td id="J11"></td><td id="J12"></td><td id="J13"></td><td id="J14"></td><td id="J15"></td></tr>
-      <tr><td class="rowid">K</td><td id="K1"></td><td id="K2"></td><td id="K3"></td><td id="K4"></td><td id="K5"></td><td id="K6"></td><td id="K7"></td><td id="K8"></td><td id="K9"></td><td id="K10"></td><td id="K11"></td><td id="K12"></td><td id="K13"></td><td id="K14"></td><td id="K15"></td></tr>
-      <tr><td class="rowid">L</td><td id="L1"></td><td id="L2"></td><td id="L3"></td><td id="L4"></td><td id="L5"></td><td id="L6"></td><td id="L7"></td><td id="L8"></td><td id="L9"></td><td id="L10"></td><td id="L11"></td><td id="L12"></td><td id="L13"></td><td id="L14"></td><td id="L15"></td></tr>
-      <tr><td class="rowid">M</td><td id="M1"></td><td id="M2"></td><td id="M3"></td><td id="M4"></td><td id="M5"></td><td id="M6"></td><td id="M7"></td><td id="M8"></td><td id="M9"></td><td id="M10"></td><td id="M11"></td><td id="M12"></td><td id="M13"></td><td id="M14"></td><td id="M15"></td></tr>
-      <tr><td class="rowid">N</td><td id="N1"></td><td id="N2"></td><td id="N3"></td><td id="N4"></td><td id="N5"></td><td id="N6"></td><td id="N7"></td><td id="N8"></td><td id="N9"></td><td id="N10"></td><td id="N11"></td><td id="N12"></td><td id="N13"></td><td id="N14"></td><td id="N15"></td></tr>
-      <tr><td class="rowid">O</td><td id="O1"></td><td id="O2"></td><td id="O3"></td><td id="O4"></td><td id="O5"></td><td id="O6"></td><td id="O7"></td><td id="O8"></td><td id="O9"></td><td id="O10"></td><td id="O11"></td><td id="O12"></td><td id="O13"></td><td id="O14"></td><td id="O15"></td></tr>
-   </table>
-</div>
+{% include 'boardlayout.html' %}
 
 <!-- Player names, scores and move history -->
 <div class="rightcol">
@@ -121,31 +108,42 @@
 
 <!-- Game statistics -->
 <div class="gamestats" onclick="hideStats()">
-<div style="width:50%;display:block;float:left">
-<h2>{{ game.state.player_name(0) }}</h2>
-<p>Fjöldi leikja: <span id="moves0"></span></p>
-<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
-<p>Stafir lagðir niður: <span id="tiles0"></span></p>
-<p>Auðar flísar lagðar niður: <span id="blanks0"></span></p>
-<p>Hrein stig stafa: <span id="letterscore0"></span></p>
-<p>Meðalstig stafa (ekki auðra): <span id="average0"></span></p>
-<p>Margföldunarþáttur stiga: <span id="multiple0"></span></p>
-<p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
-<p>Stafaleif í lok: <span id="remaining0"></span></p>
-<p>Lokastig: <span id="total0"></span></p>
+<div style="width:100%">
+<h3 class="playerleft">
+{%- if game.player_index == 1 -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+{{ game.state.player_name(0) }}</h3>
+<h3 class="playerright">
+{%- if game.player_index == 0 -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+{{ game.state.player_name(1) }}</h3>
+</div>
+<div id="gamestarted">
+<p>Hófst <span id="gamestart"></span></p>
 </div>
 <div style="width:50%;display:block;float:left">
-<h2>{{ game.state.player_name(1) }}</h2>
+<p>Fjöldi leikja: <span id="moves0"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
+<p>Stafir lagðir niður: <span id="tiles0"></span> (þar af <span id="blanks0"></span> auðir)</p>
+<p>Samanlögð stafastig: <span id="letterscore0"></span></p>
+<p>Meðalstig stafa (án auðra): <span id="average0"></span></p>
+<p>Margföldun stafastiga: <span id="multiple0"></span></p>
+<p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
+<p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
+<p>Lokastig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
+</div>
+<div style="width:50%;display:block;float:left">
 <p>Fjöldi leikja: <span id="moves1"></span></p>
 <p>Fjöldi bingóa: <span id="bingoes1"></span></p>
-<p>Stafir lagðir niður: <span id="tiles1"></span></p>
-<p>Auðar flísar lagðar niður: <span id="blanks1"></span></p>
-<p>Hrein stig stafa: <span id="letterscore1"></span></p>
-<p>Meðalstig stafa (ekki auðra): <span id="average1"></span></p>
-<p>Margföldunarþáttur stiga: <span id="multiple1"></span></p>
+<p>Stafir lagðir niður: <span id="tiles1"></span> (þar af <span id="blanks1"></span> auðir)</p>
+<p>Samanlögð stafastig: <span id="letterscore1"></span></p>
+<p>Meðalstig stafa (án auðra): <span id="average1"></span></p>
+<p>Margföldun stafastiga: <span id="multiple1"></span></p>
 <p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
-<p>Stafaleif í lok: <span id="remaining1"></span></p>
-<p>Lokastig: <span id="total1"></span></p>
+<p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
+<p>Lokastig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
 </div>
 </div>
 
