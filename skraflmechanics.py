@@ -249,6 +249,9 @@ class Bag:
 
     """ Represents a bag of tiles """
 
+    # The sort order for displaying the bag, with blank tiles last
+    SORT_ORDER = Alphabet.order + u'?'
+
     def __init__(self, copy = None):
 
         if copy is None:
@@ -517,7 +520,8 @@ class State:
 
     def display_bag(self, player):
         """ Returns the current bag plus the rack of the opponent """
-        return self._bag.contents() + self.rack(player)
+        displaybag = self._bag.contents() + self.rack(1 - player)
+        return u''.join(sorted(displaybag, key=lambda ch: Bag.SORT_ORDER.index(ch)))
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players have passed 3 times in a row """

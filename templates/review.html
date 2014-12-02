@@ -13,29 +13,39 @@
       placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
 {%- endfor -%}
 
+{% if move_number > 0 %}
+{% for player, m, r in game.moves[move_number-1:move_number] %}
+{%- set coord, tiles, score = m.summary(state.board()) -%}
+      placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+      $("div.score").text("{{ score }}");
+{% endfor %}
+{% endif %}
+
 {% for tile, score in state.player_rack().details() %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
    }
 
    function initMoveList() {
+      /* Show the most recent move in the player's color */
+{% if move_number > 0 %}
+{% for player, m, r in game.moves[move_number-1:move_number] %}
+{%- set coord, tiles, score = m.summary(state.board()) -%}
+      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+      appendBestHeader({{ move_number }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% endfor %}
+{% endif %}
+      /* Show the list of best moves */
 {% if best_moves != None %}
 {% for m, sc in best_moves %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
       appendBestMove({{ state.player_to_move() }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
-   /* Show the most recent move in the player's color */
-{% if move_number > 0 %}
-{% for player, m, r in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.summary(state.board()) -%}
-      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
-{% endfor %}
-{% endif %}
    }
 
    function initBag(bag) {
-      updateBag("{{ game.display_bag() }}");
+      updateBag("{{ state.display_bag(state.player_to_move()) }}");
    }
 
    function humanPlayer() {
@@ -103,6 +113,9 @@
 <table id="bag">
 </table>
 </div>
+
+<!-- The score of the word currently laid down -->
+<div class="score"></div>
 
 <!-- Game statistics -->
 <div class="gamestats" onclick="navFirst()">

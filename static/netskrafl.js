@@ -15,6 +15,13 @@ var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
+var TILESCORE = {
+   'a': 1, 'á': 4, 'b': 6, 'd': 4, 'ð': 2, 'e': 1, 'é': 6, 'f': 3, 'g': 2,
+   'h': 3, 'i': 1, 'í': 4, 'j': 5, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 3,
+   'ó': 6, 'p': 8, 'r': 1, 's': 1, 't': 1, 'u': 1, 'ú': 8, 'v': 3, 'x': 10,
+   'y': 7, 'ý': 9, 'þ': 4, 'æ': 5, 'ö': 7, '?': 0
+};
+
 var WORDSCORE = new Array(
    "311111131111113",
    "121111111111121",
@@ -61,6 +68,38 @@ function coord(row, col) {
    return ROWIDS.charAt(row) + (col + 1).toString();
 }
 
+function toVector(co) {
+   /* Convert a co-ordinate string to a 0-based row, col and direction vector */
+   var dx = 0, dy = 0;
+   var col = 0;
+   var row = ROWIDS.indexOf(co.charAt(0));
+   if (row >= 0) {
+      /* Horizontal move */
+      col = parseInt(co.slice(1)) - 1;
+      dx = 1;
+   }
+   else {
+      /* Vertical move */
+      row = ROWIDS.indexOf(co.charAt(co.length - 1));
+      col = parseInt(co) - 1;
+      dy = 1;
+   }
+   return { col: col, row: row, dx: dx, dy: dy };
+}
+
+function tileAt(row, col) {
+   /* Returns the tile element within a square, or null if none */
+   if (row < 0 || col < 0 || row >= BOARD_SIZE || col >= BOARD_SIZE)
+      return null;
+   var el = document.getElementById(coord(row, col));
+   if (!el || !el.firstChild)
+      return null;
+   /* Avoid a false positive here if the child DIV is the clone being dragged */
+   if ($(el.firstChild).hasClass("ui-draggable-dragging"))
+      return null;
+   return el.firstChild;
+}
+
 function placeTile(sq, tile, letter, score) {
    /* Place a given tile in a particular square, either on the board or in the rack */
    if (tile.length === 0) {
@@ -92,29 +131,101 @@ function placeTile(sq, tile, letter, score) {
    }
 }
 
+function placeMove(player, co, tiles) {
+   /* Place an entire move on the board */
+   var vec = toVector(co);
+   var col = vec.col;
+   var row = vec.row;
+   var nextBlank = false;
+   for (var i = 0; i < tiles.length; i++) {
+      var tile = tiles.charAt(i);
+      if (tile == '?') {
+         nextBlank = true;
+         continue;
+      }
+      var sq = coord(row, col);
+      var letter = tile;
+      if (nextBlank)
+         tile = '?';
+      placeTile(sq, tile, letter, TILESCORE[tile]);
+      col += vec.dx;
+      row += vec.dy;
+      nextBlank = false;
+   }
+}
+
 function showMove(player, co, tiles) {
    /* Show a move on the board in the player's color */
-   var dx = 0, dy = 0;
-   var col = 0;
-   var row = ROWIDS.indexOf(co.charAt(0));
-   if (row >= 0) {
-      /* Horizontal move */
-      col = parseInt(co.slice(1)) - 1;
-      dx = 1;
-   }
-   else {
-      /* Vertical move */
-      row = ROWIDS.indexOf(co.charAt(co.length - 1));
-      col = parseInt(co) - 1;
-      dy = 1;
-   }
+   var vec = toVector(co);
+   var col = vec.col;
+   var row = vec.row;
    for (var i = 0; i < tiles.length; i++) {
+      var tile = tiles.charAt(i);
+      if (tile == '?')
+         continue;
       var sq = coord(row, col);
       var tileDiv = $("#"+sq).children().eq(0);
       if (tileDiv !== null)
          tileDiv.addClass("highlight" + player);
-      col += dx;
-      row += dy;
+      col += vec.dx;
+      row += vec.dy;
+   }
+}
+
+var tempTiles = null;
+
+function showBestMove(ev) {
+   /* Show a move from the best move list on the board */
+   var co = ev.data.coord;
+   var tiles = ev.data.tiles;
+   var player = ev.data.player;
+   var vec = toVector(co);
+   var col = vec.col;
+   var row = vec.row;
+   var nextBlank = false;
+   if (ev.data.show)
+      /* Clear the list of temporary tiles added */
+      tempTiles = { };
+   for (var i = 0; i < tiles.length; i++) {
+      var tile = tiles.charAt(i);
+      if (tile == '?') {
+         nextBlank = true;
+         continue;
+      }
+      var sq = coord(row, col);
+      var letter = tile;
+      if (nextBlank)
+         tile = '?';
+      var tileDiv = tileAt(row, col);
+      if (!tileDiv && ev.data.show) {
+         /* No tile in the square: add it temporarily */
+         placeTile(sq, tile, letter, TILESCORE[tile]);
+         tempTiles[sq] = true;
+         tileDiv = tileAt(row, col);
+      }
+      if (tileDiv !== null)
+         if (ev.data.show) {
+            /* Add a highlight to the tile */
+            $(tileDiv).addClass("highlight" + player);
+         }
+         else {
+            /* Remove highlight from tile */
+            $(tileDiv).removeClass("highlight" + player);
+            if (tempTiles[sq])
+               /* This tile was added temporarily: remove it */
+               placeTile(sq, "", "", 0);
+         }
+      col += vec.dx;
+      row += vec.dy;
+      nextBlank = false;
+   }
+   if (ev.data.show)
+      /* Add a highlight to the score */
+      $(this).find("span.score").addClass("highlight");
+   else {
+      /* Remove highlight from score */
+      $(this).find("span.score").removeClass("highlight");
+      tempTiles = null;
    }
 }
 
@@ -123,35 +234,28 @@ function highlightMove(ev) {
    var co = ev.data.coord;
    var tiles = ev.data.tiles;
    var player = ev.data.player;
-   var dx = 0, dy = 0;
-   var col = 0;
-   var row = ROWIDS.indexOf(co.charAt(0));
-   if (row >= 0) {
-      /* Horizontal move */
-      col = parseInt(co.slice(1)) - 1;
-      dx = 1;
-   }
-   else {
-      /* Vertical move */
-      row = ROWIDS.indexOf(co.charAt(co.length - 1));
-      col = parseInt(co) - 1;
-      dy = 1;
-   }
+   var vec = toVector(co);
+   var col = vec.col;
+   var row = vec.row;
    for (var i = 0; i < tiles.length; i++) {
+      var tile = tiles.charAt(i);
+      if (tile == '?')
+         continue;
       var sq = coord(row, col);
       var tileDiv = $("#"+sq).children().eq(0);
-      if (tileDiv !== null)
-         if (ev.data.show) {
-            tileDiv.addClass("highlight" + player);
-            $(this).find("span.score").addClass("highlight");
-         }
-         else {
-            tileDiv.removeClass("highlight" + player);
-            $(this).find("span.score").removeClass("highlight");
-         }
-      col += dx;
-      row += dy;
+      if (ev.data.show)
+         tileDiv.addClass("highlight" + player);
+      else
+         tileDiv.removeClass("highlight" + player);
+      col += vec.dx;
+      row += vec.dy;
    }
+   if (ev.data.show)
+      /* Add a highlight to the score */
+      $(this).find("span.score").addClass("highlight");
+   else
+      /* Remove highlight from score */
+      $(this).find("span.score").removeClass("highlight");
 }
 
 function appendMove(player, co, tiles, score) {
@@ -289,12 +393,26 @@ function appendBestMove(player, co, tiles, score) {
    /* Register a hover event handler to highlight this move */
    m.on("mouseover",
       { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: true },
-      highlightMove
+      showBestMove
    );
    m.on("mouseout",
       { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: false },
-      highlightMove
+      showBestMove
    );
+}
+
+function appendBestHeader(moveNumber, co, tiles, score) {
+   /* Add a header on the best move list */
+   var rawCoord = co;
+   co = "(" + co + ")";
+   tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
+   var str = '<div class="reviewhdr">' +
+      '<span class="movenumber">#' + moveNumber.toString() + '</span>' +
+      '<span class="wordmove"><i>' + tiles + '</i> ' +
+      co + '</span>' +
+      // '<span class="score">' + score + '</span>' +
+      '</div>';
+   $("div.movelist").append(str);
 }
 
 function promptForBlank() {
@@ -568,19 +686,6 @@ function wordScore(row, col) {
 
 function letterScore(row, col) {
    return parseInt(LETTERSCORE[row].charAt(col));
-}
-
-function tileAt(row, col) {
-   /* Returns the tile element within a square, or null if none */
-   if (row < 0 || col < 0 || row >= BOARD_SIZE || col >= BOARD_SIZE)
-      return null;
-   var el = document.getElementById(coord(row, col));
-   if (!el || !el.firstChild)
-      return null;
-   /* Avoid a false positive here if the child DIV is the clone being dragged */
-   if ($(el.firstChild).hasClass("ui-draggable-dragging"))
-      return null;
-   return el.firstChild;
 }
 
 function calcScore() {

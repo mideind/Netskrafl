@@ -456,12 +456,10 @@ class Game:
         s.recalc_bag()
         return s
 
-    BAG_SORT_ORDER = Alphabet.order + u'?'
-
     def display_bag(self):
-        """ Returns the bag as it should be displayed, i.e. including the autoplayer's rack """
-        displaybag = self.state.display_bag(1 - self.player_index)
-        return u''.join(sorted(displaybag, key=lambda ch: Game.BAG_SORT_ORDER.index(ch)))
+        """ Returns the bag as it should be displayed to the current player,
+            including the opponent's rack and sorted """
+        return self.state.display_bag(self.player_index)
 
     def num_moves(self):
         """ Returns the number of moves in the game so far """
