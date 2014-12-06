@@ -16,7 +16,8 @@
 {% if move_number > 0 %}
 {% for player, m, r in game.moves[move_number-1:move_number] %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
-      placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+      newestMove = placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+      highlightNewestMove({{ player }});
       $("div.score").text("{{ score }}");
 {% endfor %}
 {% endif %}
@@ -31,7 +32,6 @@
 {% if move_number > 0 %}
 {% for player, m, r in game.moves[move_number-1:move_number] %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
-      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
       appendBestHeader({{ move_number }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
@@ -136,23 +136,25 @@
 </div>
 <div class="statscol" style="clear:left">
 <p>Fjöldi leikja: <span id="moves0"></span></p>
-<p>Fjöldi bingóa: <span id="bingoes0"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes0"></span> (bónus <span id="bingopoints0"></span> stig)</p>
 <p>Stafir lagðir niður: <span id="tiles0"></span> (þar af <span id="blanks0"></span> auðir)</p>
-<p>Samanlögð stafastig: <span id="letterscore0"></span></p>
 <p>Meðalstig stafa (án auðra): <span id="average0"></span></p>
+<p>Samanlögð stafastig: <span id="letterscore0"></span></p>
 <p>Margföldun stafastiga: <span id="multiple0"></span></p>
 <p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
+<p>Meðalstig hvers leiks: <span id="avgmove0"></span></p>
 <p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
 <p>Stig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
 </div>
 <div class="statscol">
 <p>Fjöldi leikja: <span id="moves1"></span></p>
-<p>Fjöldi bingóa: <span id="bingoes1"></span></p>
+<p>Fjöldi bingóa: <span id="bingoes1"></span> (bónus <span id="bingopoints1"></span> stig)</p>
 <p>Stafir lagðir niður: <span id="tiles1"></span> (þar af <span id="blanks1"></span> auðir)</p>
-<p>Samanlögð stafastig: <span id="letterscore1"></span></p>
 <p>Meðalstig stafa (án auðra): <span id="average1"></span></p>
+<p>Samanlögð stafastig: <span id="letterscore1"></span></p>
 <p>Margföldun stafastiga: <span id="multiple1"></span></p>
 <p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
+<p>Meðalstig hvers leiks: <span id="avgmove1"></span></p>
 <p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
 <p>Stig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
 </div>
@@ -160,11 +162,11 @@
 
 <!-- Previous move button -->
 <div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navPrev()"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</div>
+   onmouseout="buttonOut(this)" onclick="navPrev(this)"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</div>
 
 <!-- Next move button -->
 <div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navNext()">Næsti <span class="glyphicon glyphicon-chevron-right"></span></div>
+   onmouseout="buttonOut(this)" onclick="navNext(this)">Næsti <span class="glyphicon glyphicon-chevron-right"></span></div>
 
 {% endblock %}
 
@@ -172,13 +174,17 @@
 
 <script>
 
-function navPrev() {
+function navPrev(btn) {
    /* Display the previous move */
+   if ($(btn).hasClass("disabled"))
+      return;
    window.location.href='{{ url_for('review', game = game.id(), move = move_number - 1) | safe }}';
 }
 
-function navNext() {
+function navNext(btn) {
    /* Display the next move */
+   if ($(btn).hasClass("disabled"))
+      return;
    window.location.href='{{ url_for('review', game = game.id(), move = move_number + 1) | safe }}';
 }
 
@@ -209,6 +215,9 @@ function initReview(jQuery) {
    $("#navprev").addClass("disabled");
    $("#navnext").addClass("disabled");
    showStats("{{ game.id() }}");
+{% endif %}
+{% if move_number == game.num_moves() %}
+   $("#navnext").addClass("disabled");
 {% endif %}
 }
 

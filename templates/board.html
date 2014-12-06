@@ -8,16 +8,17 @@
 
 <script>
    function placeTiles() {
-{% for coord, tile, letter, score in game.enum_tiles() %}
-      placeTile("{{ coord }}", "{{ tile }}", "{{ letter }}", {{ score }});
-{%- endfor -%}
+{% for player, m, r in game.moves %}
+{%- set coord, tiles, score = m.summary(game.state.board()) %}
+      newestMove = placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+{% endfor %}
 
-{% for player, m, r in game.moves[-1:] %}
-{%- set coord, tiles, score = m.summary(game.state.board()) -%}
       /* Show the most recent move in the player's color */
-      showMove({{ player }}, "{{ coord }}", "{{ tiles }}");
-{%- endfor -%}
+{% for player, m, r in game.moves[-1:] %}
+      highlightNewestMove({{ player }});
+{% endfor %}
 
+      /* Place the rack tiles */
 {% for tile, score in game.state.player_rack().details() %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
@@ -25,9 +26,9 @@
 
    function initMoveList() {
 {% for player, m, r in game.moves %}
-{%- set coord, tiles, score = m.summary(game.state.board()) -%}
+{%- set coord, tiles, score = m.summary(game.state.board()) %}
       appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
-{%- endfor -%}
+{% endfor %}
    }
 
    function initBag(bag) {
@@ -114,7 +115,7 @@
 
 <!-- Move submit button -->
 <div class="submitmove disabled" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitMove('move')">Leika <span class="glyphicon glyphicon-play"></span></div>
+   onmouseout="buttonOut(this)" onclick="submitMove(this)">Leika <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- New game button -->
 <div class="submitnewgame" onmouseover="buttonOver(this)"
@@ -122,15 +123,15 @@
 
 <!-- Pass button -->
 <div class="submitpass" title="Pass" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitPass()"><span class="glyphicon glyphicon-forward"></span></div>
+   onmouseout="buttonOut(this)" onclick="submitPass(this)"><span class="glyphicon glyphicon-forward"></span></div>
 
 <!-- Exchange button -->
 <div class="submitexchange" title="Skipta stöfum" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitExchange()"><span class="glyphicon glyphicon-refresh"></span></div>
+   onmouseout="buttonOut(this)" onclick="submitExchange(this)"><span class="glyphicon glyphicon-refresh"></span></div>
 
 <!-- Resign button -->
 <div class="submitresign" title="Gefa leik" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitResign()"><span class="glyphicon glyphicon-fire"></span></div>
+   onmouseout="buttonOut(this)" onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>

@@ -62,6 +62,7 @@ var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmech
 
 var numMoves = 0;
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
+var newestMove = null; // The tiles placed in the newest move (used in move review)
 
 function coord(row, col) {
    /* Return the co-ordinate string for the given 0-based row and col */
@@ -132,11 +133,12 @@ function placeTile(sq, tile, letter, score) {
 }
 
 function placeMove(player, co, tiles) {
-   /* Place an entire move on the board */
+   /* Place an entire move on the board, returning a dictionary of the tiles actually added */
    var vec = toVector(co);
    var col = vec.col;
    var row = vec.row;
    var nextBlank = false;
+   var placed = { };
    for (var i = 0; i < tiles.length; i++) {
       var tile = tiles.charAt(i);
       if (tile == '?') {
@@ -144,32 +146,33 @@ function placeMove(player, co, tiles) {
          continue;
       }
       var sq = coord(row, col);
-      var letter = tile;
-      if (nextBlank)
-         tile = '?';
-      placeTile(sq, tile, letter, TILESCORE[tile]);
+      if (tileAt(row, col) === null) {
+         /* No tile already in the square: place the new one */
+         var letter = tile;
+         if (nextBlank)
+            tile = '?';
+         var score = TILESCORE[tile];
+         placeTile(sq, tile, letter, score);
+         placed[sq] = { tile: tile, letter: letter, score:score };
+      }
       col += vec.dx;
       row += vec.dy;
       nextBlank = false;
    }
+   return placed;
 }
 
-function showMove(player, co, tiles) {
-   /* Show a move on the board in the player's color */
-   var vec = toVector(co);
-   var col = vec.col;
-   var row = vec.row;
-   for (var i = 0; i < tiles.length; i++) {
-      var tile = tiles.charAt(i);
-      if (tile == '?')
-         continue;
-      var sq = coord(row, col);
-      var tileDiv = $("#"+sq).children().eq(0);
-      if (tileDiv !== null)
-         tileDiv.addClass("highlight" + player);
-      col += vec.dx;
-      row += vec.dy;
-   }
+function highlightNewestMove(player) {
+   /* Show the newest move on the board in the player's color */
+   if (!newestMove)
+      // newestMove must be set when the board was initialized
+      return;
+   for (var nsq in newestMove)
+      if (newestMove.hasOwnProperty(nsq)) {
+         var tileDiv = $("#"+nsq).children().eq(0);
+         if (tileDiv !== null)
+            tileDiv.addClass("highlight" + player);
+      }
 }
 
 var tempTiles = null;
@@ -183,9 +186,18 @@ function showBestMove(ev) {
    var col = vec.col;
    var row = vec.row;
    var nextBlank = false;
-   if (ev.data.show)
+   var tileDiv = null;
+   var nsq = null;
+   if (ev.data.show) {
       /* Clear the list of temporary tiles added */
       tempTiles = { };
+      /* Hide the most recent move */
+      for (nsq in newestMove)
+         if (newestMove.hasOwnProperty(nsq))
+            placeTile(nsq, "", "", 0);
+      /* Hide the score */
+      $("div.score").css("visibility", "hidden");
+   }
    for (var i = 0; i < tiles.length; i++) {
       var tile = tiles.charAt(i);
       if (tile == '?') {
@@ -196,25 +208,18 @@ function showBestMove(ev) {
       var letter = tile;
       if (nextBlank)
          tile = '?';
-      var tileDiv = tileAt(row, col);
-      if (!tileDiv && ev.data.show) {
-         /* No tile in the square: add it temporarily */
+      tileDiv = tileAt(row, col);
+      if (tileDiv === null && ev.data.show) {
+         /* No tile in the square: add it temporarily & highlight it */
          placeTile(sq, tile, letter, TILESCORE[tile]);
          tempTiles[sq] = true;
          tileDiv = tileAt(row, col);
+         $(tileDiv).addClass("highlight" + player);
       }
-      if (tileDiv !== null)
-         if (ev.data.show) {
-            /* Add a highlight to the tile */
-            $(tileDiv).addClass("highlight" + player);
-         }
-         else {
-            /* Remove highlight from tile */
-            $(tileDiv).removeClass("highlight" + player);
-            if (tempTiles[sq])
-               /* This tile was added temporarily: remove it */
-               placeTile(sq, "", "", 0);
-         }
+      else
+      if (tileDiv !== null && !ev.data.show && tempTiles[sq])
+         /* This tile was added temporarily: remove it */
+         placeTile(sq, "", "", 0);
       col += vec.dx;
       row += vec.dy;
       nextBlank = false;
@@ -226,6 +231,13 @@ function showBestMove(ev) {
       /* Remove highlight from score */
       $(this).find("span.score").removeClass("highlight");
       tempTiles = null;
+      /* Show and highlight the most recent move again */
+      for (nsq in newestMove)
+         if (newestMove.hasOwnProperty(nsq))
+            placeTile(nsq, newestMove[nsq].tile, newestMove[nsq].letter, newestMove[nsq].score);
+      highlightNewestMove(player);
+      /* Show the score */
+      $("div.score").css("visibility", "visible");
    }
 }
 
@@ -361,9 +373,10 @@ function appendMove(player, co, tiles, score) {
 function appendBestMove(player, co, tiles, score) {
    /* Add a move to the best move list */
    var rawCoord = co;
+   var rawTiles = tiles;
+   var str;
    co = "(" + co + ")";
    tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
-   var str;
    if (player === 0) {
       /* Left side player */
       str = '<div class="leftmove">' +
@@ -392,24 +405,56 @@ function appendBestMove(player, co, tiles, score) {
    }
    /* Register a hover event handler to highlight this move */
    m.on("mouseover",
-      { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: true },
+      { coord: rawCoord, tiles: rawTiles, score: score, player: playerid, show: true },
       showBestMove
    );
    m.on("mouseout",
-      { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: false },
+      { coord: rawCoord, tiles: rawTiles, score: score, player: playerid, show: false },
       showBestMove
    );
 }
 
 function appendBestHeader(moveNumber, co, tiles, score) {
    /* Add a header on the best move list */
-   var rawCoord = co;
-   co = "(" + co + ")";
-   tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
+   var wrdclass = "wordmove";
+   var dispText;
+   if (co.length > 0) {
+      // Regular move
+      co = " (" + co + ")";
+      dispText = "<i>" + tiles.replace("?", "") + "</i>"; /* !!! TODO: Display wildcard characters differently? */
+   }
+   else {
+      /* Not a regular tile move */
+      wrdclass = "othermove";
+      if (tiles == "PASS")
+         /* Pass move */
+         dispText = "Pass";
+      else
+      if (tiles.indexOf("EXCH") === 0) {
+         /* Exchange move - we don't show the actual tiles exchanged, only their count */
+         var numtiles = tiles.slice(5).length;
+         dispText = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+      }
+      else
+      if (tiles == "RSGN")
+         /* Resigned from game */
+         dispText = "Gaf leikinn";
+      else
+      if (tiles == "OVER") {
+         /* Game over */
+         dispText = "Leik lokið";
+         wrdclass = "gameover";
+      }
+      else {
+         /* The rack leave at the end of the game (which is always in lowercase
+            and thus cannot be confused with the above abbreviations) */
+         wrdclass = "wordmove";
+         dispText = tiles;
+      }
+   }
    var str = '<div class="reviewhdr">' +
       '<span class="movenumber">#' + moveNumber.toString() + '</span>' +
-      '<span class="wordmove"><i>' + tiles + '</i> ' +
-      co + '</span>' +
+      '<span class="' + wrdclass + '">' + dispText + co + '</span>' +
       // '<span class="score">' + score + '</span>' +
       '</div>';
    $("div.movelist").append(str);
@@ -975,10 +1020,16 @@ function updateState(json) {
    }
 }
 
-function submitPass() {
+function submitMove(btn) {
+   /* The Move button has been clicked: send a regular move to the backend */
+   if (!$(btn).hasClass("disabled"))
+      sendMove('move');
+}
+
+function submitPass(btn) {
    /* The Pass button has been pressed: submit a Pass move */
-   if (!$("div.submitpass").hasClass("disabled"))
-      submitMove('pass');
+   if (!$(btn).hasClass("disabled"))
+      sendMove('pass');
 }
 
 function confirmExchange(yes) {
@@ -1003,7 +1054,7 @@ function confirmExchange(yes) {
    }
    initRackDraggable(true);
    if (yes) {
-      submitMove('exch=' + exch);
+      sendMove('exch=' + exch);
    }
 }
 
@@ -1012,9 +1063,9 @@ function toggleExchange(e) {
    $(this).toggleClass("xchgsel");
 }
 
-function submitExchange() {
+function submitExchange(btn) {
    /* The user has clicked the exchange button: show exchange banner */
-   if (!$("div.submitexchange").hasClass("disabled")) {
+   if (!$(btn).hasClass("disabled")) {
       $("div.exchange").css("visibility", "visible");
       showingDialog = true;
       updateButtonState();
@@ -1039,12 +1090,12 @@ function confirmResign(yes) {
    initRackDraggable(true);
    updateButtonState();
    if (yes)
-      submitMove('rsgn');
+      sendMove('rsgn');
 }
 
-function submitResign() {
+function submitResign(btn) {
    /* The user has clicked the resign button: show resignation banner */
-   if (!$("div.submitresign").hasClass("disabled")) {
+   if (!$(btn).hasClass("disabled")) {
       $("div.resign").css("visibility", "visible");
       showingDialog = true;
       initRackDraggable(false);
@@ -1072,6 +1123,8 @@ function updateStats(json) {
    $("#multiple0").text(json.multiple0.toFixed(2));
    $("#cleantotal0").text(json.cleantotal0);
    $("#remaining0").text(json.remaining0);
+   $("#bingopoints0").text(json.bingoes0 * 50);
+   $("#avgmove0").text(json.avgmove0.toFixed(2));
    $("#total0").text(json.scores[0]);
    $("#ratio0").text(json.ratio0.toFixed(1));
    /* Statistics for player 1 (right player) */
@@ -1084,6 +1137,8 @@ function updateStats(json) {
    $("#multiple1").text(json.multiple1.toFixed(2));
    $("#cleantotal1").text(json.cleantotal1);
    $("#remaining1").text(json.remaining1);
+   $("#bingopoints1").text(json.bingoes1 * 50);
+   $("#avgmove1").text(json.avgmove1.toFixed(2));
    $("#total1").text(json.scores[1]);
    $("#ratio1").text(json.ratio1.toFixed(1));
 }
@@ -1134,7 +1189,7 @@ function hideStats() {
 
 var submitTemp = "";
 
-function submitMove(movetype) {
+function sendMove(movetype) {
    /* Send a move to the back-end server using Ajax */
    if (submitTemp.length > 0)
       /* Avoid re-entrancy: if submitTemp contains text, we are already
@@ -1142,8 +1197,6 @@ function submitMove(movetype) {
       return;
    var moves = [];
    if (movetype === null || movetype == 'move') {
-      if ($("div.submitmove").hasClass("disabled"))
-         return;
       moves = findCovers();
    }
    else

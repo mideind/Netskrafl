@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 """ Web server for netskrafl.appspot.com
 
@@ -552,6 +552,9 @@ class Game:
         # Calculate point multiple of tiles laid down (score / nominal points)
         reply["multiple0"] = (float(cleanscore[0]) / lsc0) if (lsc0 > 0) else 0.0
         reply["multiple1"] = (float(cleanscore[1]) / lsc1) if (lsc1 > 0) else 0.0
+        # Calculate average score of each move
+        reply["avgmove0"] = (float(cleanscore[0]) / m0) if (m0 > 0) else 0.0
+        reply["avgmove1"] = (float(cleanscore[1]) / m1) if (m1 > 0) else 0.0
         # Plain sum of move scores
         reply["cleantotal0"] = cleanscore[0]
         reply["cleantotal1"] = cleanscore[1]
@@ -726,9 +729,12 @@ def review():
        return redirect(url_for("main"))
 
     move_number = int(request.args.get("move", "0"))
+    if move_number > game.num_moves():
+        move_number = game.num_moves()
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
     best_moves = None
     if game.allows_best_moves():
+        # Show best moves if available and it is proper to do so (i.e. the game is finished)
         apl = AutoPlayer(state)
         best_moves = apl.generate_best_moves(20)
 
