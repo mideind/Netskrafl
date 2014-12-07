@@ -10,6 +10,7 @@
 {% block content %}
 
 <div class="loginform">
+   <div><p style="font-size: 24px"><b>Ný viðureign</b></p></div>
    <div><p>Veldu andstæðing:</p></div>
    <div>
    <form name="frm1" id="frm1" action="{{ url_for('newgame') }}" method="post">
@@ -19,7 +20,7 @@
        <input type="radio" id="radio3" name="radio" value="level3" checked="checked"><label for="radio3">Fullsterkur</label>
      </div>
       <div style="padding-top: 16px;">
-      <button type="submit" id="submit" class="login">Hefja leik&nbsp;&nbsp;<span class="glyphicon glyphicon-play"></button>
+      <button type="submit" id="submit" class="login">Hefja viðureign&nbsp;&nbsp;<span class="glyphicon glyphicon-play"></button>
       </div>
    </form>
    </div>

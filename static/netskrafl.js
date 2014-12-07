@@ -1104,6 +1104,17 @@ function submitResign(btn) {
    }
 }
 
+function setStat(name, json, digits, value) {
+   var txt = value;
+   if (txt === undefined)
+      txt = json[name];
+   if (txt === undefined)
+      return;
+   if (digits !== undefined && digits > 0)
+      txt = txt.toFixed(digits).replace(".", ","); // Convert decimal point to comma
+   $("#" + name).text(txt);
+}
+
 function updateStats(json) {
    /* Display statistics from a server query result encoded in JSON */
    if (!json || json.result === undefined)
@@ -1112,35 +1123,35 @@ function updateStats(json) {
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   $("#gamestart").text(json.gamestart);
+   setStat("gamestart", json);
    /* Statistics for player 0 (left player) */
-   $("#moves0").text(json.moves0);
-   $("#bingoes0").text(json.bingoes0);
-   $("#tiles0").text(json.tiles0);
-   $("#blanks0").text(json.blanks0);
-   $("#letterscore0").text(json.letterscore0);
-   $("#average0").text(json.average0.toFixed(2));
-   $("#multiple0").text(json.multiple0.toFixed(2));
-   $("#cleantotal0").text(json.cleantotal0);
-   $("#remaining0").text(json.remaining0);
-   $("#bingopoints0").text(json.bingoes0 * 50);
-   $("#avgmove0").text(json.avgmove0.toFixed(2));
-   $("#total0").text(json.scores[0]);
-   $("#ratio0").text(json.ratio0.toFixed(1));
+   setStat("moves0", json);
+   setStat("bingoes0", json);
+   setStat("tiles0", json);
+   setStat("blanks0", json);
+   setStat("letterscore0", json);
+   setStat("average0", json, 2);
+   setStat("multiple0", json, 2);
+   setStat("cleantotal0", json);
+   setStat("remaining0", json);
+   setStat("bingopoints0", json, 0, json.bingoes0 * 50);
+   setStat("avgmove0", json, 2);
+   setStat("total0", json, 0, json.scores[0]);
+   setStat("ratio0", json, 1);
    /* Statistics for player 1 (right player) */
-   $("#moves1").text(json.moves1);
-   $("#bingoes1").text(json.bingoes1);
-   $("#tiles1").text(json.tiles1);
-   $("#blanks1").text(json.blanks1);
-   $("#letterscore1").text(json.letterscore1);
-   $("#average1").text(json.average1.toFixed(2));
-   $("#multiple1").text(json.multiple1.toFixed(2));
-   $("#cleantotal1").text(json.cleantotal1);
-   $("#remaining1").text(json.remaining1);
-   $("#bingopoints1").text(json.bingoes1 * 50);
-   $("#avgmove1").text(json.avgmove1.toFixed(2));
-   $("#total1").text(json.scores[1]);
-   $("#ratio1").text(json.ratio1.toFixed(1));
+   setStat("moves1", json);
+   setStat("bingoes1", json);
+   setStat("tiles1", json);
+   setStat("blanks1", json);
+   setStat("letterscore1", json);
+   setStat("average1", json, 2);
+   setStat("multiple1", json, 2);
+   setStat("cleantotal1", json);
+   setStat("remaining1", json);
+   setStat("bingopoints1", json, 0, json.bingoes1 * 50);
+   setStat("avgmove1", json, 2);
+   setStat("total1", json, 0, json.scores[1]);
+   setStat("ratio1", json, 1);
 }
 
 function showStats(gameId) {

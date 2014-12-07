@@ -273,7 +273,11 @@ class Game:
 
         # Process the moves
         player = 0
+        mx = 0
         for mm in gm.moves:
+
+            mx += 1
+            # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1], mm.tiles).encode("latin-1"))
 
             m = None
             if mm.coord:
@@ -320,6 +324,7 @@ class Game:
                 player = 1 - player
 
         # Account for the final tiles in the rack
+        # logging.info(u"Game move load completed after move {0}, score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1]).encode("latin-1"))
         if game.state.is_game_over():
             game.state.finalize_score()
         # If the moves were correctly applied, the scores should match
@@ -376,6 +381,16 @@ class Game:
         """ Returns the unique id of this game """
         return self.uuid
 
+    @classmethod
+    def autoplayer_name(cls, level):
+        """ Return the autoplayer name for a given level """
+        ap_name = Game.AUTOPLAYER_LEVEL_3 # Strongest player by default
+        if level >= Game.AUTOPLAYER_STRENGTH_1:
+            ap_name = Game.AUTOPLAYER_LEVEL_1 # Weakest player
+        elif level >= Game.AUTOPLAYER_STRENGTH_2:
+            ap_name = Game.AUTOPLAYER_LEVEL_2 # Middle player
+        return ap_name
+
     def set_human_name(self, nickname):
         """ Set the nickname of the human player """
         if nickname[0:8] == u"https://":
@@ -383,12 +398,7 @@ class Game:
             nickname = Game.UNDEFINED_NAME
         self.state.set_player_name(self.player_index, nickname)
         # Set the autoplayer's name as well
-        ap_name = Game.AUTOPLAYER_LEVEL_3 # Strongest player by default
-        if self.robot_level >= Game.AUTOPLAYER_STRENGTH_1:
-            ap_name = Game.AUTOPLAYER_LEVEL_1 # Weakest player
-        elif self.robot_level >= Game.AUTOPLAYER_STRENGTH_2:
-            ap_name = Game.AUTOPLAYER_LEVEL_2 # Middle player
-        self.state.set_player_name(1 - self.player_index, ap_name)
+        self.state.set_player_name(1 - self.player_index, Game.autoplayer_name(self.robot_level))
 
     def resign(self):
         """ The human player is resigning the game """
@@ -465,6 +475,10 @@ class Game:
         """ Returns the number of moves in the game so far """
         return len(self.moves)
 
+    def start_time(self):
+        """ Returns the timestamp of the game in a readable ISO-based format """
+        return u"" if self.timestamp is None else (u"" + self.timestamp.isoformat(' ')[0:19])
+
     def client_state(self):
         """ Create a package of information for the client about the current state """
         reply = dict()
@@ -503,7 +517,6 @@ class Game:
         reply["scores"] = self.state.scores()
         return reply
 
-
     def statistics(self):
         """ Return a set of statistics on the game to be displayed by the client """
         reply = dict()
@@ -511,7 +524,7 @@ class Game:
             reply["result"] = Error.GAME_OVER # Indicate that the game is over (not really an error)
         else:
             reply["result"] = 0 # Game still in progress
-        reply["gamestart"] = self.timestamp.isoformat(' ')[0:19] if self.timestamp is not None else u""
+        reply["gamestart"] = self.start_time()
         reply["scores"] = sc = self.state.scores()
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
@@ -847,11 +860,25 @@ def main():
 
     return render_template("board.html", game = game, user = user)
 
-
 @app.route("/help")
 def help():
     """ Show help page """
-    return render_template("nshelp.html")
+    user = User.current()
+    recent_games = None
+        
+    def game_info_map():
+        """ Map raw game data from a game list query to a nicely displayable form """
+        for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id()):
+            if u0 is None:
+                u0 = Game.autoplayer_name(rl)
+            if u1 is None:
+                u1 = Game.autoplayer_name(rl)
+            yield (uuid, ts.isoformat(' ')[0:19], u0, u1, s0, s1)
+
+    if user is not None:
+        recent_games = iter(game_info_map())
+
+    return render_template("nshelp.html", recent_games = recent_games)
 
 
 @app.route("/twoletter")

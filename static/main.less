@@ -399,9 +399,9 @@ div.gamestats {
    z-index: 20;
    position: absolute;
    width: 724px;
-   height: 468px;
+   height: 520px;
    left: 150px;
-   top: 140px;
+   top: 114px;
    cursor: pointer;
    padding: 12px;
    border-radius: 4px;
@@ -675,6 +675,26 @@ div.exchange {
    visibility: hidden;
 }
 
+span.closebtn {
+   color: @pass-btn;
+}
+
+div.gameinfo {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 24px;
+   left: 130px;
+   width: 512px;
+   height: 34px;
+   background-color: @background;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 10px;
+}
+
 div.submitnewgame {
    display: none;
    position: absolute;
@@ -791,6 +811,28 @@ div.navbtn {
    left: 92px;
 }
 
+div.closebtn {
+   position: absolute;
+   width: 100px;
+   height: 28px;
+   text-align: center;
+   bottom: 12px;
+   background-color: @close-btn;
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding: 6px;
+   padding-top: 8px;
+   border-radius: 4px;
+   cursor: pointer;
+}
+
+#close
+{
+   left: 312px;
+}
+
 div.help {
    position: absolute;
    left: 110px;
@@ -798,8 +840,18 @@ div.help {
    width: 880px;
    height: 680px;
    overflow: hidden;
-   font-size: 14px;
-   line-height: 22px;
+   font-size: 13px;
+   line-height: 23px;
+}
+
+.help a:link, .help a:visited {
+   text-decoration: none;
+   color: @help-link;
+}
+
+.help a:hover {
+   text-decoration: none;
+   color: @pass-btn;
 }
 
 div.score {

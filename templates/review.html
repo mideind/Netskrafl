@@ -157,6 +157,10 @@
 <p>Meðalstig hvers leiks: <span id="avgmove1"></span></p>
 <p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
 <p>Stig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
+
+<div id="close" class="closebtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span> Loka</div>
+
 </div>
 </div>
 
@@ -167,6 +171,14 @@
 <!-- Next move button -->
 <div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="navNext(this)">Næsti <span class="glyphicon glyphicon-chevron-right"></span></div>
+
+{% if move_number > 0 %}
+<!-- Game info bar -->
+<div class="gameinfo">
+   Viðureign hófst {{ game.start_time() }}&nbsp;&nbsp;&nbsp;<span class="yesnobutton closebtn"
+   title="Loka yfirliti" onclick="closeReview()"><span class="glyphicon glyphicon-remove"></span> Loka yfirliti</span>
+</div>
+{% endif %}
 
 {% endblock %}
 
@@ -191,6 +203,11 @@ function navNext(btn) {
 function navFirst() {
    /* Display the first move */
    window.location.href='{{ url_for('review', game = game.id(), move = 1) | safe }}';
+}
+
+function closeReview() {
+   /* Go back to the main screen */
+   window.location.href='{{ url_for('main') | safe }}';
 }
 
 function initReview(jQuery) {

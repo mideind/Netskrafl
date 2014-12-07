@@ -441,7 +441,7 @@ class State:
         """ Apply the given move, assumed to be legal, to this state """
         # A shallow apply is one that does not modify the racks or the bag.
         # It is used when loading game state from persistent storage.
-        if self.is_game_over():
+        if not shallow and self.is_game_over():
             # Game is over, moves are not accepted any more
             return False
         # Update the player's score

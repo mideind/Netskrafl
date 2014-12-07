@@ -10,19 +10,23 @@
 {% block content %}
 
 <div class="help">
-   <h2>Velkomin(n) í Netskrafl! <span style="font-weight: normal; color:red">[Alfa-prófunarútgáfa]</span></h2>
+
+   <h2>Velkomin(n) í Netskrafl!</h2>
+
    <div id="tabs">
    <ul>
       <li><a href="#tabs-1">Hjálp</a></li>
       <li><a href="#tabs-2">Tveggja stafa orð</a></li>
-      <li><a href="#tabs-3">Um Netskrafl</a></li>
+      <li><a href="#tabs-3">Nýlegar viðureignir</a></li>
+      <li><a href="#tabs-4">Um Netskrafl</a></li>
    </ul>
+
    <div id="tabs-1">
    <p>Í Netskrafli getur þú spilað skrafl við tölvu. Leikreglurnar eru eins og í
    hefðbundnu borðskrafli, en aðeins eru leyfð orð sem fyrirfinnast í
-   <i><a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu íslensks
-   nútímamáls</a></i> - og <a href="{{ url_for('twoletter') }}">tveggja stafa orð
-   samkvæmt lista Skraflfélags Íslands</a>. Ekki er því unnt að véfengja orð sem tölvan
+   <a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu íslensks
+   nútímamáls</a> - og tveggja stafa orð
+   samkvæmt lista Skraflfélags Íslands. Ekki er því unnt að véfengja orð sem tölvan
    leggur niður, né er hægt að leggja niður önnur orð en þau sem eru í orðalistunum.</p>
    <p>Í upphafi leiks hefur þú sjö stafaflísar sem sýndar eru í rekkanum fyrir neðan
    borðið. Þú leggur þær niður með því að draga þær með músinni (smella á flís,
@@ -51,7 +55,8 @@
    einnig gefið leikinn með því að smella á rauða hnappinn
    <img src="{{ url_for('static', filename='Resign.png') }}" width=20 height=20 border=0>.</p>
    </div>
-   <div id="tabs-3">
+
+   <div id="tabs-4">
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur. Þú getur
    <a href="{{ url_for('userprefs') }}">breytt notandanafninu þínu</a>
@@ -66,6 +71,7 @@
    Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á
    GitHub</a>.</p>
    </div>
+
    <div id="tabs-2">
    <p>Netskrafl leyfir tveggja stafa orð sem eru á lista Skraflfélags Íslands
    eins og hann var á Íslandsmóti í Skrafli 2014. Þau eru eftirfarandi:</p>
@@ -161,6 +167,16 @@
    <span class="twoword">öl</span> <span class="twoword">ör</span> <span class="twoword">ös</span> <span class="twoword">öt</span> <span class="twoword">öx</span>
    </div>
    </div>
+   </div>
+
+   <div id="tabs-3">
+   <p>Nýlegar viðureignir þínar:</p>
+{% for uuid, ts, p0, p1, s0, s1 in recent_games %}
+<p><a href="{{ url_for('review', game = uuid) | safe }}">{{ts}}, {{p0}}, {{p1}}, {{s0}}, {{s1}}</a></p>
+{% endfor %}
+   </div>
+
+   </div>
 
 </div>
 
@@ -170,7 +186,7 @@
 
 <script>
 
-$( "#tabs" ).tabs();
+$("#tabs").tabs();
 
 </script>
 
