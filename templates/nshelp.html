@@ -171,8 +171,14 @@
 
    <div id="tabs-3">
    <p>Nýlegar viðureignir þínar:</p>
-{% for uuid, ts, p0, p1, s0, s1 in recent_games %}
-<p><a href="{{ url_for('review', game = uuid) | safe }}">{{ts}}, {{p0}}, {{p1}}, {{s0}}, {{s1}}</a></p>
+{% for uuid, ts, opp, s0, s1 in recent_games %}
+<div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}">
+<a href="{{ url_for('review', game = uuid) | safe }}">
+<span class="list-ts">{{ts}}</span>
+<span class="list-opp">{{opp}}</span>
+<span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span>
+</a>
+</div>
 {% endfor %}
    </div>
 

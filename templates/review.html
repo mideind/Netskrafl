@@ -17,7 +17,7 @@
 {% for player, m, r in game.moves[move_number-1:move_number] %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
       newestMove = placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
-      highlightNewestMove({{ player }});
+      highlightNewestMove(colorOf({{ player }}));
       $("div.score").text("{{ score }}");
 {% endfor %}
 {% endif %}

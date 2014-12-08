@@ -15,7 +15,7 @@
 
       /* Show the most recent move in the player's color */
 {% for player, m, r in game.moves[-1:] %}
-      highlightNewestMove({{ player }});
+      highlightNewestMove(colorOf({{ player }}));
 {% endfor %}
 
       /* Place the rack tiles */

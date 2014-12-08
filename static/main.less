@@ -72,6 +72,89 @@
 
 body {
    font-family: @font1, @font2, @font3, @font4;
+   padding: 0;
+   margin: 0;
+}
+
+div.container {
+   position: relative;
+   top: 0;
+   left: 0;
+   width: 1024px;
+   height: 720px;
+   background-color: @container;
+   padding: 0;
+   margin: 0;
+}
+
+div.logo {
+   position: absolute;
+   top: 28px;
+   left: 12px;
+   width: 46px;
+   height: 400px;
+}
+
+div.info {
+   position: absolute;
+   top: 460px;
+   left: 12px;
+   width: 46px;
+   height: 46px;
+   text-align: center;
+   font-size: 32px;
+}
+
+div.board {
+   position: absolute;
+   top: 8px;
+   left: 96px;
+}
+
+div.rightcol {
+   position: absolute;
+   width: 302px;
+   right: 12px;
+   top: 14px;
+   margin-top: 24px;
+}
+
+div.rack {
+   position: absolute;
+   text-align: center;
+   bottom: 93px;
+   left: 244px;
+   background-color: @board-background;
+   padding: 6px;
+   border-width: 0;
+   border-radius: 4px;
+   margin: 0;
+}
+
+div.bag {
+   position: absolute;
+   bottom: 4px;
+   right: 14px;
+   width: 302px;
+   height: 160px;
+   font-size: 11px;
+   font-weight: 700;
+   text-transform: uppercase;
+   text-align: center;
+   margin: 0;
+   padding: 0;
+   opacity: 0.75;
+}
+
+table #bag {
+}
+
+#bag td {
+   min-width: 12px;
+   min-height: 17px;
+   background-color: @tile;
+   overflow: hidden;
+   cursor: default;
 }
 
 table.board {
@@ -504,92 +587,6 @@ span.othermove {
    text-transform: none;
 }
 
-body {
-   padding: 0;
-   margin: 0;
-}
-
-div.container {
-   position: relative;
-   top: 0;
-   left: 0;
-   width: 1024px;
-   height: 720px;
-   background-color: @container;
-   padding: 0;
-   margin: 0;
-}
-
-div.logo {
-   position: absolute;
-   top: 28px;
-   left: 12px;
-   width: 46px;
-   height: 400px;
-}
-
-div.info {
-   position: absolute;
-   top: 460px;
-   left: 12px;
-   width: 46px;
-   height: 46px;
-   text-align: center;
-   font-size: 32px;
-}
-
-div.board {
-   position: absolute;
-   top: 8px;
-   left: 96px;
-}
-
-div.rightcol {
-   position: absolute;
-   width: 302px;
-   right: 12px;
-   top: 14px;
-   margin-top: 24px;
-}
-
-div.rack {
-   position: absolute;
-   text-align: center;
-   bottom: 93px;
-   left: 244px;
-   background-color: @board-background;
-   padding: 6px;
-   border-width: 0;
-   border-radius: 4px;
-   margin: 0;
-}
-
-div.bag {
-   position: absolute;
-   bottom: 4px;
-   right: 14px;
-   width: 302px;
-   height: 160px;
-   font-size: 11px;
-   font-weight: 700;
-   text-transform: uppercase;
-   text-align: center;
-   margin: 0;
-   padding: 0;
-   opacity: 0.75;
-}
-
-table #bag {
-}
-
-#bag td {
-   min-width: 12px;
-   min-height: 17px;
-   background-color: @tile;
-   overflow: hidden;
-   cursor: default;
-}
-
 div.error {
    position: absolute;
    text-align: center;
@@ -786,6 +783,19 @@ div.submitexchange {
    cursor: pointer;
 }
 
+div.score {
+   position: absolute;
+   width: 48px;
+   height: 32px;
+   text-align: center;
+   bottom: 174px;
+   left: 652px;
+   background-color: none;
+   font-size: 26px;
+   font-weight: 700;
+   color: black;
+}
+
 div.navbtn {
    position: absolute;
    width: 100px;
@@ -854,22 +864,53 @@ div.help {
    color: @pass-btn;
 }
 
-div.score {
-   position: absolute;
-   width: 48px;
-   height: 32px;
-   text-align: center;
-   bottom: 174px;
-   left: 652px;
-   background-color: none;
-   font-size: 26px;
-   font-weight: 700;
-   color: black;
-}
-
 div.smallprint {
    font-size: 12px;
    padding-top: 6px;
+}
+
+div.listitem {
+   /* width: 100%; */
+   padding: 4px;
+}
+
+.listitem a:link, .listitem a:visited {
+   color: black;
+}
+
+.listitem a:hover {
+   color: @pass-btn;
+}
+
+div.oddlist {
+   background-color: @theme1;
+}
+
+div.evenlist {
+   background-color: @theme2;
+}
+
+span.list-ts {
+   display: inline-block;
+   width: 180px;
+}
+
+span.list-opp {
+   display: inline-block;
+   width: 200px;
+   font-weight: 700;
+}
+
+span.list-s0 {
+   display: inline-block;
+   width: 40px;
+   text-align: right;
+}
+
+span.list-s1 {
+   display: inline-block;
+   width: 40px;
+   text-align: left;
 }
 
 div.loginform {

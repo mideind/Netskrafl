@@ -206,16 +206,18 @@ class Game:
         user = User.current()
         user_id = None if user is None else user.id()
         if not user_id:
-            # No game state found
+            # No user, therefore no game state found
             return None
-        # First check the cache to see if we have the game already in memory
+        # First check the cache to see if we have a live game already in memory
         game = Game._cache.get(user_id)
-        if not game is None:
+        if game is not None and not game.state.is_game_over():
+            logging.info(u"Found live game in cache".encode("latin-1"))
             return game
         # No game in cache: attempt to find one in the database
         uuid = GameModel.find_live_game(user_id)
         if uuid is None:
             # Not found in persistent storage
+            logging.info(u"Did not find live game for user".encode("latin-1"))
             return None
         # Load from persistent storage
         return cls.load(uuid, user.nickname())
@@ -851,6 +853,7 @@ def main():
 
     game = Game.current()
     if game is not None and game.state.is_game_over():
+        logging.info(u"Previous game is over, triggering new".encode("latin-1"))
         # Trigger creation of a new game if the previous one was finished
         game = None
 
@@ -870,10 +873,15 @@ def help():
         """ Map raw game data from a game list query to a nicely displayable form """
         for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id()):
             if u0 is None:
-                u0 = Game.autoplayer_name(rl)
-            if u1 is None:
-                u1 = Game.autoplayer_name(rl)
-            yield (uuid, ts.isoformat(' ')[0:19], u0, u1, s0, s1)
+                opp = Game.autoplayer_name(rl)
+                # The autoplayer was player 0, so switch the scores
+                s0, s1 = s1, s0
+            elif u1 is None:
+                opp = Game.autoplayer_name(rl)
+            else:
+                # !!! TBD: a game between two human players: figure out the opponent name
+                pass
+            yield (uuid, ts.isoformat(' ')[0:19], opp, s0, s1)
 
     if user is not None:
         recent_games = iter(game_info_map())

@@ -162,7 +162,12 @@ function placeMove(player, co, tiles) {
    return placed;
 }
 
-function highlightNewestMove(player) {
+function colorOf(player) {
+   /* Return the highlight color of tiles for the given player index */
+   return player == humanPlayer() ? "0" : "1";
+}
+
+function highlightNewestMove(playerColor) {
    /* Show the newest move on the board in the player's color */
    if (!newestMove)
       // newestMove must be set when the board was initialized
@@ -171,7 +176,7 @@ function highlightNewestMove(player) {
       if (newestMove.hasOwnProperty(nsq)) {
          var tileDiv = $("#"+nsq).children().eq(0);
          if (tileDiv !== null)
-            tileDiv.addClass("highlight" + player);
+            tileDiv.addClass("highlight" + playerColor);
       }
 }
 
@@ -181,7 +186,7 @@ function showBestMove(ev) {
    /* Show a move from the best move list on the board */
    var co = ev.data.coord;
    var tiles = ev.data.tiles;
-   var player = ev.data.player;
+   var playerColor = ev.data.player;
    var vec = toVector(co);
    var col = vec.col;
    var row = vec.row;
@@ -214,7 +219,7 @@ function showBestMove(ev) {
          placeTile(sq, tile, letter, TILESCORE[tile]);
          tempTiles[sq] = true;
          tileDiv = tileAt(row, col);
-         $(tileDiv).addClass("highlight" + player);
+         $(tileDiv).addClass("highlight" + playerColor);
       }
       else
       if (tileDiv !== null && !ev.data.show && tempTiles[sq])
@@ -235,7 +240,7 @@ function showBestMove(ev) {
       for (nsq in newestMove)
          if (newestMove.hasOwnProperty(nsq))
             placeTile(nsq, newestMove[nsq].tile, newestMove[nsq].letter, newestMove[nsq].score);
-      highlightNewestMove(player);
+      highlightNewestMove(playerColor);
       /* Show the score */
       $("div.score").css("visibility", "visible");
    }
@@ -245,7 +250,7 @@ function highlightMove(ev) {
    /* Highlight a move's tiles when hovering over it in the move list */
    var co = ev.data.coord;
    var tiles = ev.data.tiles;
-   var player = ev.data.player;
+   var playerColor = ev.data.player;
    var vec = toVector(co);
    var col = vec.col;
    var row = vec.row;
@@ -256,9 +261,9 @@ function highlightMove(ev) {
       var sq = coord(row, col);
       var tileDiv = $("#"+sq).children().eq(0);
       if (ev.data.show)
-         tileDiv.addClass("highlight" + player);
+         tileDiv.addClass("highlight" + playerColor);
       else
-         tileDiv.removeClass("highlight" + player);
+         tileDiv.removeClass("highlight" + playerColor);
       col += vec.dx;
       row += vec.dy;
    }
@@ -333,21 +338,21 @@ function appendMove(player, co, tiles, score) {
    movelist.append(str);
    if (wrdclass != "gameover") {
       var m = movelist.children().last();
-      var playerid = "0";
+      var playerColor = "0";
       if (player === humanPlayer())
          m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
       else {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
-         playerid = "1";
+         playerColor = "1";
       }
       if (wrdclass == "wordmove") {
          /* Register a hover event handler to highlight this move */
          m.on("mouseover",
-            { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: true },
+            { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: true },
             highlightMove
          );
          m.on("mouseout",
-            { coord: rawCoord, tiles: tiles, score: score, player: playerid, show: false },
+            { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: false },
             highlightMove
          );
       }
@@ -396,20 +401,20 @@ function appendBestMove(player, co, tiles, score) {
    var movelist = $("div.movelist");
    movelist.append(str);
    var m = movelist.children().last();
-   var playerid = "0";
+   var playerColor = "0";
    if (player === humanPlayer())
       m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
    else {
       m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
-      playerid = "1";
+      playerColor = "1";
    }
    /* Register a hover event handler to highlight this move */
    m.on("mouseover",
-      { coord: rawCoord, tiles: rawTiles, score: score, player: playerid, show: true },
+      { coord: rawCoord, tiles: rawTiles, score: score, player: playerColor, show: true },
       showBestMove
    );
    m.on("mouseout",
-      { coord: rawCoord, tiles: rawTiles, score: score, player: playerid, show: false },
+      { coord: rawCoord, tiles: rawTiles, score: score, player: playerColor, show: false },
       showBestMove
    );
 }
