@@ -872,16 +872,19 @@ def help():
     def game_info_map():
         """ Map raw game data from a game list query to a nicely displayable form """
         for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id()):
+            opp_is_robot = False
             if u0 is None:
                 opp = Game.autoplayer_name(rl)
                 # The autoplayer was player 0, so switch the scores
                 s0, s1 = s1, s0
+                opp_is_robot = True
             elif u1 is None:
                 opp = Game.autoplayer_name(rl)
+                opp_is_robot = True
             else:
                 # !!! TBD: a game between two human players: figure out the opponent name
                 pass
-            yield (uuid, ts.isoformat(' ')[0:19], opp, s0, s1)
+            yield (uuid, ts.isoformat(' ')[0:19], opp, opp_is_robot, s0, s1)
 
     if user is not None:
         recent_games = iter(game_info_map())

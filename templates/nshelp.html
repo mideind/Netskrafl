@@ -57,6 +57,7 @@
    </div>
 
    <div id="tabs-4">
+   <p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur. Þú getur
    <a href="{{ url_for('userprefs') }}">breytt notandanafninu þínu</a>
@@ -64,12 +65,11 @@
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
    <p>Taktu þátt í þróun Netskrafls með því að
    <a href="https://www.facebook.com/groups/828426797220211/" target="_blank">ganga í fésbókarhópinn</a>!</p>
-   <p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>. Höfundarréttur að
-   Beygingarlýsingu íslensks nútímamáls er á hendi Stofnunar
+   <p>Frumforrit Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á GitHub</a>.</p>
+   <p>Höfundarréttur að
+   <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi Stofnunar
    Árna Magnússonar í íslenskum fræðum. BÍN er notuð í Netskrafli skv.
-   <a href="http://bin.arnastofnun.is/gogn/skilmalar/" target="_blank">skilmálum SÁM</a>. Frumforrit
-   Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á
-   GitHub</a>.</p>
+   <a href="http://bin.arnastofnun.is/gogn/skilmalar/" target="_blank">skilmálum SÁM</a>.</p>
    </div>
 
    <div id="tabs-2">
@@ -170,12 +170,16 @@
    </div>
 
    <div id="tabs-3">
-   <p>Nýlegar viðureignir þínar:</p>
-{% for uuid, ts, opp, s0, s1 in recent_games %}
+   <p>Nýlegar viðureignir þínar - smelltu til að skoða og rifja upp:</p>
+{% for uuid, ts, opp, opp_is_robot, s0, s1 in recent_games %}
 <div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}">
 <a href="{{ url_for('review', game = uuid) | safe }}">
 <span class="list-ts">{{ts}}</span>
-<span class="list-opp">{{opp}}</span>
+<span class="list-opp">
+{%- if opp_is_robot -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+{{ opp }}</span>
 <span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span>
 </a>
 </div>
