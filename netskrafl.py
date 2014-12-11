@@ -24,6 +24,7 @@
 import logging
 import time
 import collections
+import threading
 
 from random import randint
 from datetime import datetime
@@ -32,7 +33,7 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
-from google.appengine.api import users
+from google.appengine.api import users, memcache
 
 from skraflmechanics import Manager, State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
@@ -55,6 +56,8 @@ class User:
 
     """ Information about a human user including nickname and preferences """
 
+    _lock = threading.Lock()
+
     def __init__(self):
         u = users.get_current_user()
         if u is None:
@@ -64,9 +67,6 @@ class User:
         self._nickname = u.nickname() # Default
         self._inactive = False
         self._preferences = { }
-
-    # The users that have been authenticated in this session
-    _cache = dict()
 
     def fetch(self):
         u = UserModel.fetch(self._user_id)
@@ -80,6 +80,7 @@ class User:
 
     def update(self):
         UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
+        memcache.set(self._user_id, self, namespace='user')
 
     def id(self):
         return self._user_id
@@ -96,15 +97,17 @@ class User:
     @classmethod
     def current(cls):
         """ Return the currently logged in user """
-        user = users.get_current_user()
-        if user is None:
-            return None
-        if user.user_id() in User._cache:
-            return User._cache[user.user_id()]
-        u = cls()
-        u.fetch()
-        User._cache[u.id()] = u
-        return u
+        with User._lock:
+            user = users.get_current_user()
+            if user is None:
+                return None
+            u = memcache.get(user.user_id(), namespace='user')
+            if u is not None:
+                return u
+            u = cls()
+            u.fetch()
+            memcache.add(u.id(), u, namespace='user')
+            return u
 
     @classmethod
     def current_nickname(cls):
@@ -113,37 +116,6 @@ class User:
         if u is None:
             return None
         return u.nickname()
-
-
-class LRUCache:
-
-    """ A simple LRU cache structure to store games in memory """
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.cache = collections.OrderedDict()
-
-    def get(self, key):
-        try:
-            value = self.cache.pop(key)
-            self.cache[key] = value
-            return value
-        except KeyError:
-            return None
-
-    def set(self, key, value):
-        try:
-            self.cache.pop(key)
-        except KeyError:
-            if len(self.cache) >= self.capacity:
-                self.cache.popitem(last = False)
-        self.cache[key] = value
-
-    def delete(self, key):
-        try:
-            self.cache.pop(key)
-        except KeyError:
-            pass
 
 
 class Game:
@@ -161,6 +133,8 @@ class Game:
     AUTOPLAYER_STRENGTH_1 = 15 # Picks one of the fifteen best moves
 
     UNDEFINED_NAME = u"[Ónefndur]"
+
+    _lock = threading.Lock()
 
     def __init__(self, uuid = None):
         # Unique id of the game
@@ -184,11 +158,6 @@ class Game:
         # Initial rack contents
         self.initial_racks = [None, None]
 
-    # The current game state held in memory for different users
-    # A capacity of 200 seemed to cause occasional out-of-memory errors in
-    # Google App Engine; trying 100
-    _cache = LRUCache(capacity = 100)
-
     def _make_new(self, username, robot_level):
         """ Initialize a new, fresh game """
         self.username = username
@@ -203,38 +172,35 @@ class Game:
     @classmethod
     def current(cls):
         """ Obtain the current game state """
-        user = User.current()
-        user_id = None if user is None else user.id()
-        if not user_id:
-            # No user, therefore no game state found
-            return None
-        # First check the cache to see if we have a live game already in memory
-        game = Game._cache.get(user_id)
-        if game is not None and not game.state.is_game_over():
-            logging.info(u"Found live game in cache".encode("latin-1"))
-            return game
-        # No game in cache: attempt to find one in the database
-        uuid = GameModel.find_live_game(user_id)
-        if uuid is None:
-            # Not found in persistent storage
-            logging.info(u"Did not find live game for user".encode("latin-1"))
-            return None
-        # Load from persistent storage
-        return cls.load(uuid, user.nickname())
+        with Game._lock:
+            user = User.current()
+            user_id = None if user is None else user.id()
+            if not user_id:
+                # No user, therefore no game state found
+                return None
+            # First check the cache to see if we have a live game already in memory
+            game = memcache.get(user_id, namespace='game')
+            if game is not None and not game.state.is_game_over():
+                logging.info(u"Found live game in cache".encode("latin-1"))
+                return game
+            # No game in cache: attempt to find one in the database
+            uuid = GameModel.find_live_game(user_id)
+            if uuid is None:
+                # Not found in persistent storage
+                logging.info(u"Did not find live game for user".encode("latin-1"))
+                return None
+            # Load from persistent storage and update memcache
+            return cls.load(uuid, user.nickname())
 
     @classmethod
     def new(cls, username, robot_level):
         """ Start and initialize a new game """
         game = cls(Unique.id()) # Assign a new unique id to the game
         game._make_new(username, robot_level)
-        # Cache the game so it can be looked up by user id
-        user = User.current()
-        if user is not None:
-            Game._cache.set(user.id(), game)
         # If AutoPlayer is first to move, generate the first move
         if game.player_index == 1:
             game.autoplayer_move()
-        # Store the new game in persistent storage
+        # Store the new game in persistent storage and add to the memcache
         game.store()
         return game
 
@@ -343,7 +309,7 @@ class Game:
         # Cache the game so it can be looked up by user id
         user = User.current()
         if user is not None:
-            Game._cache.set(user.id(), game)
+            memcache.set(user.id(), game, namespace='game')
         return game
 
     def store(self):
@@ -378,6 +344,8 @@ class Game:
             movelist.append(mm)
         gm.moves = movelist
         gm.put()
+        # Update the memcache as well as the persistent store
+        memcache.set(user.id(), self, namespace='game')
 
     def id(self):
         """ Returns the unique id of this game """
@@ -401,6 +369,10 @@ class Game:
         self.state.set_player_name(self.player_index, nickname)
         # Set the autoplayer's name as well
         self.state.set_player_name(1 - self.player_index, Game.autoplayer_name(self.robot_level))
+        # Make sure that the cache reflects these changes
+        user = User.current()
+        if user is not None:
+            memcache.set(user.id(), self, namespace='game')
 
     def resign(self):
         """ The human player is resigning the game """
@@ -870,7 +842,7 @@ def help():
         
     def game_info_map():
         """ Map raw game data from a game list query to a nicely displayable form """
-        for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id()):
+        for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id(), max_len = 12):
             opp_is_robot = False
             if u0 is None:
                 opp = Game.autoplayer_name(rl)

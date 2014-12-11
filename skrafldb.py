@@ -35,6 +35,16 @@
         timestamp : timestamp
         moves : array of MoveModel
 
+    FavoriteModel:
+        srcuser: key into UserModel
+        destuser: key into UserModel
+
+    ChallengeModel:
+        srcuser : key into UserModel
+        destuser : key into UserModel
+        timestamp : timestamp
+        prefs : dict
+
 """
 
 import logging
@@ -186,3 +196,110 @@ class GameModel(ndb.Model):
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
+
+
+class FavoriteModel(ndb.Model):
+    """ Models the fact that a user has marked another user as a favorite """
+
+    # The originating user
+    srcuser = ndb.KeyProperty(kind = UserModel)
+    destuser = ndb.KeyProperty(kind = UserModel)
+
+    def set_src(self, user_id):
+        """ Set a source user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.srcuser = k
+
+    def set_dest(self, user_id):
+        """ Set a destination user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.destuser = k
+
+    @classmethod
+    def list_favorites(cls, user_id, max_len = 10):
+        """ Query for a list of favorite users for the given user """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(FavoriteModel.srcuser == k)
+
+        def fav_callback(fm):
+            # Map a favorite relation into a list of users
+            uuid = fm.key.id()
+            u0 = None if fm.destuser is None else fm.destuser.get()
+            id0 = None if u0 is None else u0.id()
+            n0 = None if u0 is None else u0.nickname
+            return (uuid, id0, n0)
+
+        for fm in q.fetch(max_len):
+            yield fav_callback(fm)
+
+
+class ChallengeModel(ndb.Model):
+    """ Models a challenge issued by a user to another user """
+
+    # The originating user
+    srcuser = ndb.KeyProperty(kind = UserModel)
+
+    # The challenged user
+    destuser = ndb.KeyProperty(kind = UserModel)
+
+    # The parameters of the challenge (time, bag type, etc.)
+    prefs = ndb.JsonProperty()
+
+    # The time of issuance
+    timestamp = ndb.DateTimeProperty(auto_now_add = True)
+
+    def set_src(self, user_id):
+        """ Set a source user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.srcuser = k
+
+    def set_dest(self, user_id):
+        """ Set a destination user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.destuser = k
+
+    @classmethod
+    def list_sent(cls, user_id, max_len = 10):
+        """ Query for a list of challenges issued by a particular user """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(ChallengeModel.srcuser == k).order(-ChallengeModel.timestamp)
+
+        def ch_callback(cm):
+            # Map a favorite relation into a list of users
+            uuid = cm.key.id()
+            u0 = None if cm.destuser is None else cm.destuser.get()
+            id0 = None if u0 is None else u0.id()
+            n0 = None if u0 is None else u0.nickname
+            return (uuid, id0, n0, cm.prefs, cm.timestamp)
+
+        for cm in q.fetch(max_len):
+            yield ch_callback(cm)
+
+    @classmethod
+    def list_received(cls, user_id, max_len = 10):
+        """ Query for a list of challenges issued to a particular user """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(ChallengeModel.destuser == k).order(-ChallengeModel.timestamp)
+
+        def ch_callback(cm):
+            # Map a favorite relation into a list of users
+            uuid = cm.key.id()
+            u0 = None if cm.srcuser is None else cm.srcuser.get()
+            id0 = None if u0 is None else u0.id()
+            n0 = None if u0 is None else u0.nickname
+            return (uuid, id0, n0, cm.prefs, cm.timestamp)
+
+        for cm in q.fetch(max_len):
+            yield ch_callback(cm)
+
+
+
