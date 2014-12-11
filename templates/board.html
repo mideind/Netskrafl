@@ -113,12 +113,18 @@
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
+<!-- A button to recall all tiles back into the rack -->
+<div class="recallbtn" title="Færa stafi aftur í rekka"
+   onmouseover="this.classList.add('hover')"
+   onmouseout="this.classList.remove('hover')"
+   onclick="resetRack()"><span class="glyphicon glyphicon-circle-arrow-down"></span></div>
+
 <!-- Move submit button -->
-<div class="submitmove disabled" onmouseover="buttonOver(this)"
+<div class="submitmove disabled" title="Leika" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="submitMove(this)">Leika <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- New game button -->
-<div class="submitnewgame" onmouseover="buttonOver(this)"
+<div class="submitnewgame" title="Nýr leikur" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="window.location.href='{{ url_for('newgame') }}'">Nýr <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Pass button -->

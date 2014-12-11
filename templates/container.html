@@ -32,24 +32,27 @@
 <!-- Mousetrap global keyboard handler -->
 <script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
 
+<!-- JGestures library -->
+<!-- <script src="{{ url_for('static', filename='jgestures.js') }}"></script> -->
+
 {% block scripts %}
 {% endblock %}
 
 </head>
-<body>
+<body id="bodytag">
 
    <div class="container">
    
       <div class="logo">
-      	<a class="nodecorate" href="{{ url_for('main') }}">
-      		<img src="{{ url_for('static', filename='Netskrafl.png') }}" border=0 width=46px height=400px></img>
-      	</a>
+         <a class="nodecorate" href="{{ url_for('main') }}">
+            <img src="{{ url_for('static', filename='Netskrafl.png') }}" border=0 width=46px height=400px></img>
+         </a>
       </div>
 
-      <div class="info" title="Hjálp">
-      	<a class="iconlink" href="{{ url_for('help') }}">
-      		<span class="glyphicon glyphicon-info-sign"></span>
-      	</a>
+      <div class="info" title="Upplýsingar og hjálp">
+         <a class="iconlink" href="{{ url_for('help') }}">
+            <span class="glyphicon glyphicon-info-sign"></span>
+         </a>
       </div>
 
 {% block content %}

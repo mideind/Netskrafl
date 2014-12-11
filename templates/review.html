@@ -117,6 +117,9 @@
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
+<!-- The score difference between the shown move and the actual move -->
+<div class="scorediff"></div>
+
 <!-- Game statistics -->
 <div class="gamestats" onclick="navFirst()">
 <div style="position:relative;width:100%">
@@ -235,6 +238,10 @@ function initReview(jQuery) {
 {% endif %}
 {% if move_number == game.num_moves() %}
    $("#navnext").addClass("disabled");
+{% endif %}
+{% if not game.allows_best_moves() %}
+   /* Racks are not meaningful, so we don't display them */
+   $("div.rack").css("visibility", "hidden");
 {% endif %}
 }
 

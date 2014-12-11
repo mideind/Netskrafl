@@ -200,8 +200,16 @@ function showBestMove(ev) {
       for (nsq in newestMove)
          if (newestMove.hasOwnProperty(nsq))
             placeTile(nsq, "", "", 0);
-      /* Hide the score */
-      $("div.score").css("visibility", "hidden");
+      /* Show the score difference */
+      var scoreBest = parseInt($(this).find("span.score").eq(0).text());
+      var scoreMove = parseInt($("div.score").eq(0).text());
+      var scoreDiff = (scoreMove - scoreBest).toString();
+      if (scoreMove > scoreBest) {
+         scoreDiff = "+" + scoreDiff;
+      }
+      $("div.scorediff").text(scoreDiff);
+      $("div.scorediff").toggleClass("posdiff", scoreMove >= scoreBest);
+      $("div.scorediff").css("visibility", "visible");
    }
    for (var i = 0; i < tiles.length; i++) {
       var tile = tiles.charAt(i);
@@ -241,8 +249,8 @@ function showBestMove(ev) {
          if (newestMove.hasOwnProperty(nsq))
             placeTile(nsq, newestMove[nsq].tile, newestMove[nsq].letter, newestMove[nsq].score);
       highlightNewestMove(playerColor);
-      /* Show the score */
-      $("div.score").css("visibility", "visible");
+      /* Hide the score difference */
+      $("div.scorediff").css("visibility", "hidden");
    }
 }
 
@@ -692,14 +700,17 @@ function updateButtonState() {
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
-   if (tilesPlaced === 0)
+   if (tilesPlaced === 0) {
       $("div.score").text("");
+      $("div.recallbtn").css("visibility", "hidden");
+   }
    else {
       var score = calcScore();
       if (score === undefined)
          $("div.score").text("?");
       else
          $("div.score").text(score.toString());
+      $("div.recallbtn").css("visibility", "visible");
    }
 }
 
@@ -1308,6 +1319,8 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('esc', resetRack);
    /* Bind Backspace key to a function to rescramble the rack */
    Mousetrap.bind('backspace', rescrambleRack);
+   /* Bind pinch gesture to a function to reset the rack */
+   /* $('body').bind('pinchclose', resetRack); */
 }
 
 

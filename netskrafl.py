@@ -415,10 +415,9 @@ class Game:
         if self.initial_racks[0] is None or self.initial_racks[1] is None:
             # This is an old game stored without rack information: can't display best moves
             return False
-        # !!! TBD: add the following check
-        #if not self.is_over():
-        #    # Never show best moves for games that are still being played
-        #    return False
+        if not self.is_over():
+            # Never show best moves for games that are still being played
+            return False
         return True
 
     def autoplayer_move(self):

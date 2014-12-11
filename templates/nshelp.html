@@ -171,17 +171,13 @@
 
    <div id="tabs-3">
    <p>Nýlegar viðureignir þínar - smelltu til að skoða og rifja upp:</p>
+<div class="listitem listheader"><span class="list-ts">Viðureign hófst</span><span class="list-opp">Andstæðingur</span><span class="list-scorehdr">Úrslit</span></div>
 {% for uuid, ts, opp, opp_is_robot, s0, s1 in recent_games %}
-<div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}">
-<a href="{{ url_for('review', game = uuid) | safe }}">
-<span class="list-ts">{{ts}}</span>
-<span class="list-opp">
+<div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}"><a href="{{ url_for('review', game = uuid) | safe }}"><span class="list-ts">{{ts}}</span><span class="list-opp">
 {%- if opp_is_robot -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-{{ opp }}</span>
-<span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span>
-</a>
+{{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
 </div>
 {% endfor %}
    </div>

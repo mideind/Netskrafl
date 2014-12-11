@@ -69,6 +69,9 @@
 .glyphicon-chevron-right:before {
    content: "\e080";
 }
+.glyphicon-circle-arrow-down:before {
+   content: "\e134";
+}
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -98,11 +101,11 @@ div.logo {
 div.info {
    position: absolute;
    top: 460px;
-   left: 12px;
-   width: 46px;
-   height: 46px;
+   left: 10px;
+   width: 50px;
+   height: 50px;
    text-align: center;
-   font-size: 32px;
+   font-size: 40px;
 }
 
 div.board {
@@ -686,7 +689,7 @@ div.gameinfo {
    height: 34px;
    background-color: @background;
    font-size: 16px;
-   font-weight: 700;
+   font-weight: normal;
    color: white;
    margin: 0;
    padding-top: 10px;
@@ -796,6 +799,46 @@ div.score {
    color: black;
 }
 
+div.recallbtn {
+   position: absolute;
+   width: 48px;
+   height: 48px;
+   text-align: center;
+   vertical-align: middle;
+   top: 460px;
+   left: 652px;
+   font-size: 40px;
+   font-weight: normal;
+   color: fade(@racktile, 75%);
+   visibility: hidden;
+   cursor: pointer;
+}
+
+div.recallbtn.hover {
+   color: fade(@racktile, 100%);
+}
+
+div.scorediff {
+   position: absolute;
+   width: 48px;
+   height: 28px;
+   text-align: center;
+   vertical-align: middle;
+   bottom: 216px;
+   left: 652px;
+   background-color: @alert;
+   font-size: 18px;
+   font-weight: normal;
+   color: white;
+   visibility: hidden;
+   padding-top: 3px;
+   padding-bottom: 2px;
+}
+
+div.posdiff {
+   background-color: @freshtile;
+}
+
 div.navbtn {
    position: absolute;
    width: 100px;
@@ -870,8 +913,12 @@ div.smallprint {
 }
 
 div.listitem {
-   /* width: 100%; */
-   padding: 4px;
+   padding-left: 4px;
+   padding-right: 4px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   overflow: hidden;
+   vertical-align: middle;
 }
 
 .listitem a:link, .listitem a:visited {
@@ -890,6 +937,11 @@ div.evenlist {
    background-color: @theme2;
 }
 
+div.listheader {
+   background-color: @theme3;
+   font-weight: 700;
+}
+
 span.list-ts {
    display: inline-block;
    width: 180px;
@@ -897,7 +949,6 @@ span.list-ts {
 
 span.list-opp {
    display: inline-block;
-   overflow: hidden;
    width: 300px;
    font-weight: 700;
 }
@@ -912,6 +963,12 @@ span.list-s1 {
    display: inline-block;
    width: 40px;
    text-align: left;
+}
+
+span.list-scorehdr {
+   display: inline-block;
+   width: 80px;
+   text-align: center;
 }
 
 div.loginform {
