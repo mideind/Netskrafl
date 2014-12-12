@@ -25,6 +25,7 @@ templates/main-scratch.html
 profile.bin
 *.sublime-project
 *.sublime-workspace
+static/NetskraflFacebookCover.jpg
 
 # Distribution / packaging
 .Python
