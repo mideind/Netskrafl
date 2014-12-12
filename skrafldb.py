@@ -52,6 +52,8 @@ import uuid
 
 from google.appengine.ext import ndb
 
+from languages import Alphabet
+
 
 class Unique:
     """ Wrapper for generation of unique id strings for keys """
@@ -91,6 +93,29 @@ class UserModel(ndb.Model):
     @classmethod
     def fetch(cls, user_id):
         return cls.get_by_id(user_id)
+
+    @classmethod
+    def list(cls, nick_from, nick_to, max_len = 50):
+        """ Query for a list of users within a nickname range """
+
+        q = cls.query().order(UserModel.nickname)
+
+        nick_from = u"" if nick_from is None else Alphabet.tolower(nick_from)
+        nick_to = u"" if nick_to is None else Alphabet.tolower(nick_to)
+        counter = 0
+        o_from = 0 if not nick_from else Alphabet.full_order.index(nick_from[0])
+        o_to = 255 if not nick_to else Alphabet.full_order.index(nick_to[0])
+
+        for um in q.fetch():
+            if not um.inactive:
+                nick = Alphabet.tolower(um.nickname)
+                if len(nick) > 0 and nick[0] in Alphabet.full_order:
+                    o_nick = Alphabet.full_order.index(nick[0])
+                    if o_nick >= o_from and o_nick <= o_to:
+                        yield um.key.id()
+                        counter += 1
+                        if max_len > 0 and counter >= max_len:
+                            break
 
 
 class MoveModel(ndb.Model):

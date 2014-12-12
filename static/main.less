@@ -72,6 +72,12 @@
 .glyphicon-circle-arrow-down:before {
    content: "\e134";
 }
+.glyphicon-star:before {
+   content: "\e006";
+}
+.glyphicon-star-empty:before {
+   content: "\e007";
+}
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -969,6 +975,52 @@ span.list-scorehdr {
    display: inline-block;
    width: 80px;
    text-align: center;
+}
+
+span.list-fav {
+   display: inline-block;
+   font-size: 20px;
+   width: 32px;
+   margin-left: 2px;
+   cursor: pointer;
+}
+
+span.list-nick {
+   display: inline-block;
+   width: 300px;
+   font-weight: 700;
+}
+
+span.list-fullname {
+   display: inline-block;
+   width: 400px;
+}
+
+#initials span {
+   font-size: 16px;
+   cursor: pointer;
+   padding-left: 4px;
+   padding-right: 4px;
+   margin: 1px;
+}
+
+#initials span:hover {
+   color: white;
+   background-color: @double-letter;
+   border-radius: 4px;
+}
+
+div #userlist {
+   height: 500px;
+   overflow: auto;
+}
+
+#userlist span.glyphicon.glyphicon-star-empty {
+   color: fade(black, 20%);
+}
+
+#userlist span.glyphicon.glyphicon-star {
+   color: @freshtile;
 }
 
 div.loginform {

@@ -64,6 +64,22 @@ var numMoves = 0;
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
 
+var entityMap = {
+   "&": "&amp;",
+   "<": "&lt;",
+   ">": "&gt;",
+   '"': '&quot;',
+   "'": '&#39;',
+   "/": '&#x2F;'
+};
+
+function escapeHtml(string) {
+   /* Utility function to properly encode a string into HTML */
+   return String(string).replace(/[&<>"'\/]/g, function (s) {
+      return entityMap[s];
+   });
+}
+
 function coord(row, col) {
    /* Return the co-ordinate string for the given 0-based row and col */
    return ROWIDS.charAt(row) + (col + 1).toString();

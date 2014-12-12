@@ -94,12 +94,17 @@ class Alphabet:
         (u"ö", 1),
         (u"?", 2)] # Blank tiles
 
-    # Sort ordering of Icelandic letters
+    # Sort ordering of Icelandic letters allowed in Scrabble
     order = u'aábdðeéfghiíjklmnoóprstuúvxyýþæö'
     # Upper case version of the order string
     upper = u'AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ'
     # All tiles including wildcard '?'
     all_tiles = order + u'?'
+
+    # Sort ordering of all valid letters
+    full_order = u'aábcdðeéfghiíjklmnoópqrstuúvwxyýzþæö'
+    # Upper case version of the full order string
+    full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
 
     # Letter bit pattern
     bit = [1 << n for n in range(len(order))]
@@ -117,7 +122,7 @@ class Alphabet:
     @staticmethod
     def bit_of(c):
         """ Returns the bit corresponding to a character in the alphabet """
-        return 1 << Alphabet.order.index(c)
+        return Alphabet.bit[Alphabet.order.index(c)]
 
     @staticmethod
     def all_bits_set():
@@ -127,14 +132,19 @@ class Alphabet:
     @staticmethod
     def lowercase(ch):
         """ Convert an uppercase character to lowercase """
-        return Alphabet.order[Alphabet.upper.index(ch)]
+        return Alphabet.full_order[Alphabet.full_upper.index(ch)]
+
+    @staticmethod
+    def tolower(s):
+        """ Return the argument string converted to lowercase """
+        return u''.join([Alphabet.lowercase(c) if c in Alphabet.full_upper else c for c in s])
 
     @staticmethod
     def sortkey(word):
         """ Return a sort key with the proper lexicographic ordering
             for the given word. """
         # This assumes that Alphabet.order is correctly ordered in ascending order.
-        return [Alphabet.order.index(ch) for ch in word]
+        return [Alphabet.full_order.index(ch) for ch in word]
 
     @staticmethod
     def sort(l):

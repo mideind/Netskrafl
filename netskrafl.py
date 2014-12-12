@@ -38,7 +38,7 @@ from google.appengine.api import users, memcache
 from skraflmechanics import Manager, State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from languages import Alphabet
-from skrafldb import Unique, UserModel, GameModel, MoveModel
+from skrafldb import Unique, UserModel, GameModel, MoveModel, FavoriteModel, ChallengeModel
 
 
 # Standard Flask initialization
@@ -683,19 +683,35 @@ def _process_move(movecount, movelist):
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state())
 
+
 def _userlist(range_from, range_to):
     """ Return a list of users matching the filter criteria """
     result = []
-    if range_from is None and range_to is None:
+    if not range_from and not range_to:
         # Return favorites of the current user
+        logging.info(u"_userlist: iterating favorites".encode("latin-1"))
         uid = User.current().id()
         i = iter(FavoriteModel.list_favorites(uid, max_len = 50))
         for fav_uuid, srcuser_id, destuser_id in i:
             u = User.load(destuser_id)
-            result.append((u.nickname(), u.full_name(), fav_uuid))
+            result.append({
+                "userid": destuser_id,
+                "nick": u.nickname(),
+                "fullname": u.full_name(),
+                "fav": fav_uuid
+            })
     else:
         # Return users within a particular nickname range
-        pass
+        logging.info(u"_userlist: iterating from {0} to {1}".format(range_from, range_to).encode("latin-1"))
+        i = iter(UserModel.list(range_from, range_to, max_len = 50))
+        for uid in i:
+            u = User.load(uid)
+            result.append({
+                "userid": uid,
+                "nick": u.nickname(),
+                "fullname": u.full_name(),
+                "fav": None
+            })
     return result
 
 
@@ -757,7 +773,9 @@ def userlist():
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
 
-    return jsonify(_userlist(range_from, range_to))
+    logging.info(u"Userlist: range_from is {0}, range_to is {1}".format(range_from, range_to).encode("latin-1"))
+
+    return jsonify(result = 0, userlist = _userlist(range_from, range_to))
 
 
 @app.route("/review")
