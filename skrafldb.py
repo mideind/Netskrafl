@@ -229,8 +229,7 @@ class FavoriteModel(ndb.Model):
             uuid = fm.key.id()
             u0 = None if fm.destuser is None else fm.destuser.get()
             id0 = None if u0 is None else u0.id()
-            n0 = None if u0 is None else u0.nickname
-            return (uuid, id0, n0)
+            return (uuid, user_id, id0)
 
         for fm in q.fetch(max_len):
             yield fav_callback(fm)

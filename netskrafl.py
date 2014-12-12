@@ -58,17 +58,23 @@ class User:
 
     _lock = threading.Lock()
 
-    def __init__(self):
-        u = users.get_current_user()
-        if u is None:
-            self._user_id = None
+    def __init__(self, uid = None):
+        self._nickname = u""
+        if uid is None:
+            # Obtain information from the currently logged in user
+            u = users.get_current_user()
+            if u is None:
+                self._user_id = None
+            else:
+                self._user_id = u.user_id()
+                self._nickname = u.nickname() # Default
         else:
-            self._user_id = u.user_id()
-        self._nickname = u.nickname() # Default
+            self._user_id = uid
         self._inactive = False
         self._preferences = { }
 
     def fetch(self):
+        """ Fetch the user's record from the database """
         u = UserModel.fetch(self._user_id)
         if u is None:
             UserModel.create(self._user_id, self.nickname())
@@ -79,20 +85,65 @@ class User:
         self._preferences = u.prefs
 
     def update(self):
+        """ Update the user's record in the database and in the memcache """
         UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
         memcache.set(self._user_id, self, namespace='user')
 
     def id(self):
+        """ Returns the id (database key) of the user """
         return self._user_id
 
     def nickname(self):
+        """ Returns the human-readable nickname of a user, or userid if a nick is not available """
         return self._nickname or self._user_id
 
     def set_nickname(self, nickname):
+        """ Sets the human-readable nickname of a user """
         self._nickname = nickname
+
+    def get_pref(self, pref):
+        """ Retrieve a preference, or None if not found """
+        if self._preferences is None:
+            return None
+        return self._preferences.get(pref)
+
+    def set_pref(self, pref, value):
+        """ Set a preference to a value """
+        if self._preferences is None:
+            self._preferences = { }
+        self._preferences[pref] = value
+
+    def full_name(self):
+        """ Returns the full name of a user """
+        fn = self.get_pref(u"full_name")
+        return u"" if fn is None else fn
+
+    def set_full_name(self, full_name):
+        """ Sets the full name of a user """
+        self.set_pref(u"full_name", full_name)
+
+    def email(self):
+        """ Returns the e-mail address of a user """
+        em = self.get_pref(u"email")
+        return u"" if em is None else em
+
+    def set_email(self, email):
+        """ Sets the e-mail address of a user """
+        self.set_pref(u"email", email)
 
     def logout_url(self):
         return users.create_logout_url("/")
+
+    @classmethod
+    def load(cls, uid):
+        """ Load a user from persistent storage given his/her user id """
+        with User._lock:
+            u = memcache.get(uid, namespace='user')
+            if u is None:
+                u = User(uid)
+                u.fetch()
+                memcache.add(uid, u, namespace='user')
+            return u
 
     @classmethod
     def current(cls):
@@ -632,6 +683,21 @@ def _process_move(movecount, movelist):
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state())
 
+def _userlist(range_from, range_to):
+    """ Return a list of users matching the filter criteria """
+    result = []
+    if range_from is None and range_to is None:
+        # Return favorites of the current user
+        uid = User.current().id()
+        i = iter(FavoriteModel.list_favorites(uid, max_len = 50))
+        for fav_uuid, srcuser_id, destuser_id in i:
+            u = User.load(destuser_id)
+            result.append((u.nickname(), u.full_name(), fav_uuid))
+    else:
+        # Return users within a particular nickname range
+        pass
+    return result
+
 
 @app.route("/submitmove", methods=['POST'])
 def submitmove():
@@ -676,6 +742,22 @@ def gamestats():
        return jsonify(result = Error.LOGIN_REQUIRED)
 
     return jsonify(game.statistics())
+
+
+@app.route("/userlist", methods=['POST'])
+def userlist():
+    """ Return user lists with particular criteria """
+
+    user = User.current()
+    user_id = None if user is None else user.id()
+    if not user_id:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    range_from = request.form.get('from', None)
+    range_to = request.form.get('to', None)
+
+    return jsonify(_userlist(range_from, range_to))
 
 
 @app.route("/review")
@@ -745,8 +827,18 @@ def userprefs():
             nickname = u'' + request.form['nickname'].strip()
         except:
             nickname = u''
+        try:
+            full_name = u'' + request.form['full_name'].strip()
+        except:
+            full_name = u''
+        try:
+            email = u'' + request.form['email'].strip()
+        except:
+            email = u''
         if nickname:
             user.set_nickname(nickname)
+            user.set_full_name(full_name)
+            user.set_email(email)
             user.update()
             game = Game.current()
             if game is not None:

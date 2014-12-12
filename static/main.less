@@ -973,35 +973,69 @@ span.list-scorehdr {
 
 div.loginform {
    position: absolute;
-   left: 300px;
-   top: 100px;
-   text-align: center;
+   left: 180px;
+   top: 80px;
 }
 
-input.username {
+div.loginhdr {
+   font-size: 20px;
+   font-weight: 700;
+   padding-bottom: 20px;
+}
+
+span.caption {
+   display: inline-block;
+   position: relative;
+   top: 4px;
+   width: 140px;
+   margin-top: 20px;
+   margin-right: 12px;
+   overflow: hidden;
+   text-align: right;
+}
+
+div.explain {
+   margin-left: 158px;
+   margin-bottom: 6px;
+   font-size: 14px;
+   text-align: left;
+}
+
+input.text {
    font-family: @font1, @font2, @font3, @font4;
    font-size: 20px;
    font-weight: 700;
    height: 32px;
-   width: 300px;
    border-style: solid;
    border-color: #55cc66;
    border-width: 2px;
    border-radius: 6px;
-   margin: 0;
+   margin-bottom: 6px;
    padding-top: 2px;
    padding-bottom: 2px;
    padding-left: 8px;
    padding-right: 8px;
 }
 
-input.username:focus {
+input.text:focus {
    background-color: #ffffc8;
    border-style: solid;
    border-color: #55cc66;
    border-width: 2px;
    border-radius: 6px;
    outline: none;
+}
+
+input.username {
+   width: 300px;
+}
+
+input.fullname {
+   width: 450px;
+}
+
+input.email {
+   width: 400px;
 }
 
 button[type="submit"] {
@@ -1031,6 +1065,7 @@ button[type="submit"]:focus, button[type="submit"]:hover {
 }
 
 button.login {
+   margin-top: 24px;
 }
 
 button.logout {

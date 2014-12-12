@@ -18,7 +18,8 @@
       <li><a href="#tabs-1">Hjálp</a></li>
       <li><a href="#tabs-2">Tveggja stafa orð</a></li>
       <li><a href="#tabs-3">Nýlegar viðureignir</a></li>
-      <li><a href="#tabs-4">Um Netskrafl</a></li>
+      <li><a href="#tabs-4">Notendur</a></li>
+      <li><a href="#tabs-5">Um Netskrafl</a></li>
    </ul>
 
    <div id="tabs-1">
@@ -56,7 +57,7 @@
    <img src="{{ url_for('static', filename='Resign.png') }}" width=20 height=20 border=0>.</p>
    </div>
 
-   <div id="tabs-4">
+   <div id="tabs-5">
    <p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur. Þú getur
@@ -180,6 +181,40 @@
 {{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
 </div>
 {% endfor %}
+   </div>
+
+   <div id="tabs-4">
+   <p><a>Uppáhalds</a> <a>a-á</a> <a>b-c</a>
+   <a>d-ð</a>
+   <a>e-é</a>
+   <a>f</a>
+   <a>g</a>
+   <a>h</a>
+   <a>i-í</a>
+   <a>j</a>
+   <a>k</a>
+   <a>l</a>
+   <a>m</a>
+   <a>n</a>
+   <a>o-ó</a>
+   <a>p-q</a>
+   <a>r</a>
+   <a>s</a>
+   <a>t</a>
+   <a>u-ú</a>
+   <a>v-w</a>
+   <a>x-z</a>
+   <a>þ</a>
+   <a>æ</a>
+   <a>ö</a>
+   </p>
+   <div class="listitem listheader">
+   <span class="list-uid">Einkenni</span>
+   <span class="list-uname">Nafn</span>
+   <span class="list-fav"></span>
+   </div>
+   <!-- User list will be inserted here -->
+   <div id="userlist"></div>
    </div>
 
    </div>

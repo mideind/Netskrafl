@@ -8,16 +8,29 @@
 {% block content %}
 
 <div class="loginform">
-   <div><p>Upplýsingar um notanda:</p></div>
+   <div class="loginhdr"><span class="caption"></span>Upplýsingar um notanda</div>
    <div>
    <form name="frm1" id="frm1" action="{{ url_for('userprefs') }}" method="post">
-      <div><input type="text" name="nickname" id="nickname" maxlength=15
-         autofocus required class="username" value="{{ user.nickname() }}"></input></div>
-      <div><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Uppfæra</button></div>
+
+      <div><span class="caption">Einkenni:</span><input type="text" name="nickname" id="nickname" maxlength=15
+         autofocus required
+         class="text username" value="{{ user.nickname() }}"></input>
+      &nbsp;<span style="color:red">*</span></div>
+      <div class="explain">Verður að vera útfyllt</div>
+
+      <div><span class="caption">Fullt nafn:</span><input type="text" name="full_name" id="full_name" maxlength=32
+         class="text fullname" value="{{ user.full_name() }}"></input></div>
+      <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
+
+      <div><span class="caption">Tölvupóstfang:</span><input type="text" name="email" id="email" maxlength=32
+         class="text email" value="{{ user.email() }}"></input></div>
+      <div class="explain">Ef póstfang er gefið upp sendir Netskrafl tölvupóst þegar þú átt leik</div>
+
+      <div><span class="caption"></span><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Uppfæra</button></div>
 
    </form>
    </div>
-   <div>
+   <div><span class="caption"></span>
 	   <a href='{{ user.logout_url() }}'>
 			<button type="submit" id="logout" class="logout">
 	   		<span class="glyphicon glyphicon-log-out"></span>&nbsp;&nbsp;Skrá mig út
