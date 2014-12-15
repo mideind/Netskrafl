@@ -768,6 +768,61 @@ def _userlist(range_from, range_to):
     return result
 
 
+def _gamelist():
+    """ Return a list of active games for the current user """
+    result = []
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+    logging.info(u"_gamelist: iterating games".encode("latin-1"))
+    if cuid is not None:
+        i = iter(GameModel.list_live_games(cuid, max_len = 50))
+        for g in i:
+            if g["opp"] is None:
+                # Autoplayer opponent
+                nick = Game.autoplayer_name(g["robot_level"])
+            else:
+                # Human opponent
+                u = User.load(g["opp"])
+                nick = u.nickname()
+            result.append({
+                "url": url_for('board', game = g["uuid"]),
+                "opp": nick,
+                "opp_is_robot": g["opp"] is None,
+                "sc0": g["sc0"],
+                "sc1": g["sc1"],
+                "ts": g["ts"].isoformat(' ')[0:19],
+                "my_turn": g["my_turn"]
+            })
+    return result
+
+
+def _recentlist():
+    """ Return a list of recent games for the current user """
+    result = []
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+    logging.info(u"_recentlist: iterating games".encode("latin-1"))
+    if cuid is not None:
+        i = iter(GameModel.list_finished_games(cuid, max_len = 12))
+        for g in i:
+            if g["opp"] is None:
+                # Autoplayer opponent
+                nick = Game.autoplayer_name(g["robot_level"])
+            else:
+                # Human opponent
+                u = User.load(g["opp"])
+                nick = u.nickname()
+            result.append({
+                "url": url_for('review', game = g["uuid"]),
+                "opp": nick,
+                "opp_is_robot": g["opp"] is None,
+                "sc0": g["sc0"],
+                "sc1": g["sc1"],
+                "ts": g["ts"].isoformat(' ')[0:19]
+            })
+    return result
+
+
 @app.route("/submitmove", methods=['POST'])
 def submitmove():
     """ Handle a move that is being submitted from the client """
@@ -825,6 +880,20 @@ def userlist():
     return jsonify(result = 0, userlist = _userlist(range_from, range_to))
 
 
+@app.route("/gamelist", methods=['POST'])
+def gamelist():
+    """ Return a list of active games for the current user """
+
+    return jsonify(result = 0, gamelist = _gamelist())
+
+
+@app.route("/recentlist", methods=['POST'])
+def recentlist():
+    """ Return a list of recently completed games for the current user """
+
+    return jsonify(result = 0, recentlist = _recentlist())
+
+
 @app.route("/favorite", methods=['POST'])
 def favorite():
     """ Create or delete an A-favors-B relation """
@@ -844,6 +913,35 @@ def favorite():
             user.add_favorite(destuser)
         elif action == u"delete":
             user.del_favorite(destuser)
+
+    return jsonify(result = 0)
+
+
+@app.route("/challenge", methods=['POST'])
+def challenge():
+    """ Create or delete an A-favors-B relation """
+
+    user = User.current()
+    if user is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    destuser = request.form.get('destuser', None)
+    action = request.form.get('action', u"issue")
+
+    logging.info(u"challenge(): destuser is {0}, action is {1}".format(destuser, action).encode("latin-1"))
+
+    if destuser is not None:
+        if action == u"issue":
+            user.issue_challenge(destuser, { }) # !!! No preference parameters yet
+        elif action == u"retract":
+            user.retract_challenge(destuser)
+        elif action == u"decline":
+            # Decline challenge previously made by the destuser (really srcuser)
+            user.decline_challenge(destuser)
+        elif action == u"accept":
+            # Accept a challenge previously made by the destuser (really srcuser)
+            user.accept_challenge(destuser)
 
     return jsonify(result = 0)
 
@@ -918,7 +1016,7 @@ def userprefs():
     return render_template("userprefs.html", user = user)
 
 
-@app.route("/newgame", methods=['GET', 'POST'])
+@app.route("/newgame")
 def newgame():
     """ Show page to initiate a new game """
 
@@ -927,27 +1025,20 @@ def newgame():
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url("/"))
 
-    game = Game.current()
-    if game is not None and not game.is_over():
-        # The previous game is not over: can't create a new one
+    # Get the opponent id
+    opp = request.args.get("opp", None)
+    if opp is None:
         return redirect(url_for("main"))
 
-    if request.method == 'POST':
-        # Initiate a new game against the selected opponent
-        robot_level = 0
-        if request.form['radio'] == "level3":
-            # Full strength player
-            robot_level = Game.AUTOPLAYER_STRENGTH_3
-        elif request.form['radio'] == "level2":
-            # Medium strength player (picks one out of best 5 moves at random)
-            robot_level = Game.AUTOPLAYER_STRENGTH_2
-        elif request.form['radio'] == "level1":
-            # Low strength player (picks one out of 10 best moves at random)
-            robot_level = Game.AUTOPLAYER_STRENGTH_1
+    if opp[0:6] == u"robot-":
+        # Starting a new game against an autoplayer (robot)
+        robot_level = int(opp[6:])
+        logging.info(u"Starting a new game with robot level {0}".format(robot_level).encode("latin-1"))
         game = Game.new(user.nickname(), robot_level)
-        return redirect(url_for("main"))
+        return redirect(url_for("board", game = game.id()))
 
-    return render_template("newgame.html", user = user)
+    # !!! TBD: Handling the start of a game against a human
+    return redirect(url_for("main"))
 
 
 @app.route("/board")
@@ -985,28 +1076,6 @@ def main():
     if user is None:
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url("/"))
-
-    recent_games = None
-        
-    def game_info_map():
-        """ Map raw game data from a game list query to a nicely displayable form """
-        for uuid, ts, u0, u1, s0, s1, rl in GameModel.list_finished_games(user.id(), max_len = 12):
-            opp_is_robot = False
-            if u0 is None:
-                opp = Game.autoplayer_name(rl)
-                # The autoplayer was player 0, so switch the scores
-                s0, s1 = s1, s0
-                opp_is_robot = True
-            elif u1 is None:
-                opp = Game.autoplayer_name(rl)
-                opp_is_robot = True
-            else:
-                # !!! TBD: a game between two human players: figure out the opponent name
-                pass
-            yield (uuid, ts.isoformat(' ')[0:19], opp, opp_is_robot, s0, s1)
-
-    if user is not None:
-        recent_games = iter(game_info_map())
 
     return render_template("main.html", user = user)
 

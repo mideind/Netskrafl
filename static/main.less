@@ -75,6 +75,12 @@
 .glyphicon-star:before {
    content: "\e006";
 }
+.glyphicon-flag:before {
+   content: "\e034";
+}
+.glyphicon-bookmark:before {
+   content: "\e044";
+}
 .glyphicon-star-empty:before {
    content: "\e007";
 }
@@ -953,7 +959,7 @@ div.listheader {
    background-color: @theme3;
    font-weight: 700;
    border-bottom-width: 2px;
-   border-bottom-color: @neutral;
+   border-bottom-color: @double-letter;
    border-bottom-style: solid;
 }
 
@@ -986,15 +992,10 @@ span.list-scorehdr {
    text-align: center;
 }
 
-span.list-ch {
-   display: inline-block;
-   font-size: 20px;
-   width: 32px;
-   margin-left: 2px;
-   cursor: pointer;
-}
-
-span.list-fav {
+span.list-ch,
+span.list-fav,
+span.list-myturn,
+span.list-win {
    display: inline-block;
    font-size: 20px;
    width: 32px;
@@ -1032,19 +1033,38 @@ div #userlist {
    overflow: auto;
 }
 
+div #gamelist {
+   height: 500px;
+   overflow: auto;
+}
+
+div #recentlist {
+   height: 500px;
+   overflow: auto;
+}
+
 #userlist span.glyphicon.glyphicon-star {
    color: @triple-letter;
 }
 
-#userlist span.glyphicon.glyphicon-hand-right {
+#userlist span.glyphicon.glyphicon-hand-right,
+#gamelist span.glyphicon.glyphicon-flag {
    color: @triple-word;
+}
+
+#recentlist span.glyphicon.glyphicon-bookmark {
+   color: @freshtile;
 }
 
 .listheader span.glyphicon.glyphicon-star-empty,
 .listheader span.glyphicon.glyphicon-hand-right.grayed,
+.listheader span.glyphicon.glyphicon-flag.grayed,
+.listheader span.glyphicon.glyphicon-bookmark.grayed,
+#recentlist span.glyphicon.glyphicon-bookmark.grayed,
+#gamelist span.glyphicon.glyphicon-flag.grayed,
 #userlist span.glyphicon.glyphicon-star-empty,
 #userlist span.glyphicon.glyphicon-hand-right.grayed {
-   color: fade(black, 20%);
+   color: fade(black, 15%);
 }
 
 div.loginform {

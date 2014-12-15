@@ -25,15 +25,15 @@
 
       <p>Virkar viðureignir - smelltu til að skoða stöðuna og leika ef þú átt leik:</p>
 
-      <div class="listitem listheader"><span class="list-ts">Viðureign hófst</span><span class="list-opp">Andstæðingur</span><span class="list-scorehdr">Staða</span></div>
-{% for uuid, ts, opp, opp_is_robot, s0, s1 in current_games %}
-      <div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}"><a href="{{ url_for('board', game = uuid) }}"><span class="list-ts">{{ts}}</span><span class="list-opp">
-{%- if opp_is_robot -%}
-      <span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
-      </div>
-{% endfor %}
+      <div class="listitem listheader"><span
+      class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><span
+      class="list-ts">Viðureign hófst</span><span
+      class="list-opp">Andstæðingur</span><span
+      class="list-scorehdr">Staða</span></div>
+
+      <!-- Game list will be populated by populateGameList() below -->
+      <div id="gamelist"></div>
+
    </div>
 
    <div id="tabs-2">
@@ -41,40 +41,25 @@
       <p>Skorað á þig:</p>
 
       <div class="listitem listheader"><span class="list-ts">Hvenær</span><span class="list-opp">Áskorandi</span><span class="list-chall">Hvernig</span></div>
-{% for uuid, ts, opp, opp_is_robot, s0, s1 in current_games %}
-      <div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}"><a href="{{ url_for('board', game = uuid) }}"><span class="list-ts">{{ts}}</span><span class="list-opp">
-{%- if opp_is_robot -%}
-      <span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
-      </div>
-{% endfor %}
+
+      <!-- Challenge lists will be populated by populateChallengeList() below -->
+      <div id="chall-received"></div>
 
       <p>Þú skorar á aðra:</p>
 
-      <div class="listitem listheader"><span class="list-ts">Hvenær</span><span class="list-opp">Áskorandi</span><span class="list-chall">Hvernig</span></div>
-{% for uuid, ts, opp, opp_is_robot, s0, s1 in current_games %}
-      <div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}"><a href="{{ url_for('board', game = uuid) }}"><span class="list-ts">{{ts}}</span><span class="list-opp">
-{%- if opp_is_robot -%}
-      <span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
-      </div>
-{% endfor %}
+      <div class="listitem listheader"><span class="list-ts">Hvenær</span><span class="list-opp">Andstæðingur</span><span class="list-chall">Hvernig</span></div>
+      <div id="chall-sent"></div>
 
    </div>
 
    <div id="tabs-4">
       <p>Nýlegar viðureignir þínar - smelltu til að skoða og rifja upp:</p>
-      <div class="listitem listheader"><span class="list-ts">Viðureign hófst</span><span class="list-opp">Andstæðingur</span><span class="list-scorehdr">Úrslit</span></div>
-{% for uuid, ts, opp, opp_is_robot, s0, s1 in recent_games %}
-      <div class="listitem {{ loop.cycle('oddlist', 'evenlist') }}"><a href="{{ url_for('review', game = uuid) }}"><span class="list-ts">{{ts}}</span><span class="list-opp">
-{%- if opp_is_robot -%}
-      <span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{ opp }}</span><span class="list-s0">{{s0}}</span>:<span class="list-s1">{{s1}}</span></a>
-      </div>
-{% endfor %}
+      <div class="listitem listheader"><span
+      class="list-win"><span title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span class="list-ts">Viðureign hófst</span><span class="list-opp">Andstæðingur</span><span class="list-scorehdr">Úrslit</span></div>
+
+      <!-- Recent game lists will be populated by populateRecentList() below -->
+      <div id="recentlist"></div>
+
    </div>
 
    <div id="tabs-3">
@@ -97,8 +82,10 @@
          class="list-nick">Einkenni</span><span
          class="list-fullname">Nafn</span>
       </div>
-      <!-- User list will be inserted here -->
+
+      <!-- User list will be populated by populateUserList() below -->
       <div id="userlist"></div>
+
    </div>
 
    </div> <!-- id="tabs" -->
@@ -125,6 +112,94 @@ function escapeHtml(string) {
    return String(string).replace(/[&<>"'\/]/g, function (s) {
       return entityMap[s];
    });
+}
+
+function nullFunc(json) {
+   /* Null placeholder function to use for Ajax queries that don't need a success func */
+}
+
+function errFunc(xhr, status, errorThrown) {
+   /* Error handling function for Ajax communications */
+   alert("Villa í netsamskiptum");
+   console.log("Error: " + errorThrown);
+   console.log("Status: " + status);
+   console.dir(xhr);
+}
+
+function serverQuery(requestUrl, jsonData, successFunc) {
+   /* Wraps a simple, standard Ajax request to the server */
+   $.ajax({
+      // The URL for the request
+      url: requestUrl,
+
+      // The data to send
+      data: jsonData,
+
+      // Whether this is a POST or GET request
+      type: "POST",
+
+      // The type of data we expect back
+      dataType : "json",
+
+      cache: false,
+
+      // Code to run if the request succeeds;
+      // the response is passed to the function
+      success: (!successFunc) ? nullFunc : successFunc,
+
+      // Code to run if the request fails; the raw request and
+      // status codes are passed to the function
+      error: errFunc,
+
+      // code to run regardless of success or failure
+      complete: function(xhr, status) {
+      }
+   });
+}
+
+function markFavorite(elem, uid) {
+   /* Toggle a favorite mark for the indicated user */
+   var action;
+   if ($(elem).hasClass("glyphicon-star-empty")) {
+      $(elem).removeClass("glyphicon-star-empty");
+      $(elem).addClass("glyphicon-star");
+      action = "add";
+   }
+   else {
+      $(elem).removeClass("glyphicon-star");
+      $(elem).addClass("glyphicon-star-empty");
+      action = "delete";
+   }
+   serverQuery("/favorite",
+      {
+         // Identify the relation in question
+         destuser: uid,
+         action: action
+      }, null); // No success func needed - it's a one-way notification
+}
+
+function markChallenge(elem, uid) {
+   /* Toggle a challenge for the indicated user */
+   var action;
+   if ($(elem).hasClass("grayed")) {
+      $(elem).removeClass("grayed");
+      action = "issue";
+   }
+   else {
+      $(elem).addClass("grayed");
+      action = "retract";
+   }
+   if (action == "issue" && uid.indexOf("robot-") === 0) {
+      /* Challenging a robot: Create a new game and display it right away */
+      window.location.href = "{{ url_for('newgame') | safe }}" + "?opp=" + uid;
+      return;
+   }
+   serverQuery("/challenge",
+      {
+         // Identify the relation in question
+         destuser: uid,
+         action: action
+      }, null); // No success func needed - it's a one-way notification
 }
 
 function populateUserList(json) {
@@ -163,106 +238,6 @@ function populateUserList(json) {
    }
 }
 
-function markFavorite(elem, uid) {
-   /* Toggle a favorite mark for the indicated user */
-   var action;
-   if ($(elem).hasClass("glyphicon-star-empty")) {
-      $(elem).removeClass("glyphicon-star-empty");
-      $(elem).addClass("glyphicon-star");
-      action = "add";
-   }
-   else {
-      $(elem).removeClass("glyphicon-star");
-      $(elem).addClass("glyphicon-star-empty");
-      action = "delete";
-   }
-   $.ajax({
-      // the URL for the request
-      url: "/favorite",
-
-      // the data to send
-      data: {
-         // Identify the relation in question
-         destuser: uid,
-         action: action
-      },
-
-      // whether this is a POST or GET request
-      type: "POST",
-
-      // the type of data we expect back
-      dataType : "json",
-
-      cache: false,
-
-      // code to run if the request succeeds;
-      // the response is passed to the function
-      success: function(json) { },
-
-      // code to run if the request fails; the raw request and
-      // status codes are passed to the function
-      error: function(xhr, status, errorThrown) {
-         alert("Villa í netsamskiptum");
-         console.log("Error: " + errorThrown);
-         console.log("Status: " + status);
-         console.dir(xhr);
-      },
-
-      // code to run regardless of success or failure
-      complete: function(xhr, status) {
-      }
-   });
-}
-
-function markChallenge(elem, uid) {
-   /* Toggle a challenge for the indicated user */
-   var action;
-   if ($(elem).hasClass("grayed")) {
-      $(elem).removeClass("grayed");
-      action = "add";
-   }
-   else {
-      $(elem).addClass("grayed");
-      action = "delete";
-   }
-   $.ajax({
-      // the URL for the request
-      url: "/challenge",
-
-      // the data to send
-      data: {
-         // Identify the relation in question
-         destuser: uid,
-         action: action
-      },
-
-      // whether this is a POST or GET request
-      type: "POST",
-
-      // the type of data we expect back
-      dataType : "json",
-
-      cache: false,
-
-      // code to run if the request succeeds;
-      // the response is passed to the function
-      success: function(json) { },
-
-      // code to run if the request fails; the raw request and
-      // status codes are passed to the function
-      error: function(xhr, status, errorThrown) {
-         alert("Villa í netsamskiptum");
-         console.log("Error: " + errorThrown);
-         console.log("Status: " + status);
-         console.dir(xhr);
-      },
-
-      // code to run regardless of success or failure
-      complete: function(xhr, status) {
-      }
-   });
-}
-
 function refreshUserList(ev) {
    /* Erase existing user list, if any */
    $("#userlist").html("");
@@ -281,45 +256,109 @@ function refreshUserList(ev) {
          /* Range has x-y format */
          to_range = range.charAt(2);
    }
-   $.ajax({
-      // the URL for the request
-      url: "/userlist",
-
-      // the data to send
-      data: {
+   serverQuery("/userlist",
+      {
          // Identify the game in question
          from: from_range,
          to: to_range
       },
+      populateUserList);
+}
 
-      // whether this is a POST or GET request
-      type: "POST",
+function populateGameList(json) {
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   for (var i = 0; i < json.gamelist.length; i++) {
+      var item = json.gamelist[i];
+      var opp = escapeHtml(item.opp);
+      if (item.opp_is_robot)
+         // Mark robots with a cog icon
+         opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
+      var myTurn = "<span class='glyphicon glyphicon-flag" +
+         (item.my_turn ? "" : " grayed") + "'></span>";
+      var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
+         "<a href='" + item.url + "'>" +
+         "<span class='list-myturn'>" + myTurn + "</span>" +
+         "<span class='list-ts'>" + item.ts + "</span>" +
+         "<span class='list-opp'>" + opp + "</span>" +
+         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s1'>" + item.sc1 + "</span>" +
+         "</a></div>";
+      $("#gamelist").append(str);
+   }
+}
 
-      // the type of data we expect back
-      dataType : "json",
-
-      cache: false,
-
-      // code to run if the request succeeds;
-      // the response is passed to the function
-      success: populateUserList,
-
-      // code to run if the request fails; the raw request and
-      // status codes are passed to the function
-      error: function(xhr, status, errorThrown) {
-         alert("Villa í netsamskiptum");
-         console.log("Error: " + errorThrown);
-         console.log("Status: " + status);
-         console.dir(xhr);
+function refreshGameList() {
+   /* Update list of active games for the current user */
+   $("#gamelist").html("");
+   serverQuery("/gamelist",
+      {
+         // No data to send with query - current user is implicit
       },
+      populateGameList);
+}
 
-      // code to run regardless of success or failure
-      complete: function(xhr, status) {
-      }
-   });
+function populateRecentList(json) {
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   for (var i = 0; i < json.recentlist.length; i++) {
+      var item = json.recentlist[i];
+      var opp = escapeHtml(item.opp);
+      if (item.opp_is_robot)
+         // Mark robots with a cog icon
+         opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
+      var myWin = "<span class='glyphicon glyphicon-bookmark" +
+         (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
+      var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
+         "<a href='" + item.url + "'>" +
+         "<span class='list-win'>" + myWin + "</span>" +
+         "<span class='list-ts'>" + item.ts + "</span>" +
+         "<span class='list-opp'>" + opp + "</span>" +
+         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s1'>" + item.sc1 + "</span>" +
+         "</a></div>";
+      $("#recentlist").append(str);
+   }
+}
+
+function refreshRecentList() {
+   /* Update list of recent games for the current user */
+   $("#recentlist").html("");
+   serverQuery("/recentlist",
+      {
+         // No data to send with query - current user is implicit
+      },
+      populateRecentList);
+}
+
+function refreshChallengeList() {
+   /* Update list of challenges sent by this user */
+   $("#chall-sent").html("");
+   /* Update list of challenges received by this user */
+   $("#chall-received").html("");
 }
 
 $("#tabs").tabs();
+
+/* Initialize game list */
+refreshGameList();
+
+/* Initialize list of recent games */
+refreshRecentList();
+
+/* Initialize challenge list */
+refreshChallengeList();
+
+/* Initialize user list to show favorites */
+refreshUserList({ data: "fav" });
 
 /* Initialize alphabet categories in user list header */
 $("#initials").find("span").each(function() {

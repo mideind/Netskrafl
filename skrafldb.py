@@ -212,11 +212,62 @@ class GameModel(ndb.Model):
         def game_callback(gm):
             # Map a game entity to a result tuple with useful info about the game
             uuid = gm.key.id()
-            u0 = None if gm.player0 is None else gm.player0.get()
-            u1 = None if gm.player1 is None else gm.player1.get()
-            n0 = None if u0 is None else u0.nickname
-            n1 = None if u1 is None else u1.nickname
-            return (uuid, gm.timestamp, n0, n1, gm.score0, gm.score1, gm.robot_level)
+            u0 = None if gm.player0 is None else gm.player0.id()
+            u1 = None if gm.player1 is None else gm.player1.id()
+            if u0 == user_id:
+                # Player 0 is the source player, 1 is the opponent
+                opp = u1
+                sc0, sc1 = gm.score0, gm.score1
+            else:
+                # Player 1 is the source player, 0 is the opponent
+                assert u1 == user_id
+                opp = u0
+                sc1, sc0 = gm.score0, gm.score1
+            return dict(
+                uuid = uuid,
+                ts = gm.timestamp,
+                opp = opp,
+                sc0 = sc0,
+                sc1 = sc1,
+                robot_level = gm.robot_level)
+
+        for gm in q.fetch(max_len):
+            yield game_callback(gm)
+
+
+    @classmethod
+    def list_live_games(cls, user_id, max_len = 10):
+        """ Query for a list of active games for the given user """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False).order(-GameModel.timestamp)
+
+        def game_callback(gm):
+            # Map a game entity to a result tuple with useful info about the game
+            uuid = gm.key.id()
+            u0 = None if gm.player0 is None else gm.player0.id()
+            u1 = None if gm.player1 is None else gm.player1.id()
+            if u0 == user_id:
+                # Player 0 is the source player, 1 is the opponent
+                opp = u1
+                sc0, sc1 = gm.score0, gm.score1
+                my_turn = (gm.to_move == 0)
+            else:
+                # Player 1 is the source player, 0 is the opponent
+                assert u1 == user_id
+                opp = u0
+                sc1, sc0 = gm.score0, gm.score1
+                my_turn = (gm.to_move == 1)
+            return dict(
+                uuid = uuid,
+                ts = gm.timestamp,
+                opp = opp,
+                my_turn = my_turn,
+                sc0 = sc0,
+                sc1 = sc1,
+                robot_level = gm.robot_level)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
