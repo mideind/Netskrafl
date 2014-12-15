@@ -332,7 +332,8 @@ function appendMove(player, co, tiles, score) {
    }
    else {
       co = "(" + co + ")";
-      tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
+      // Note: String.replace() will not work here since there may be two question marks in the string
+      tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
    }
    var str;
    if (wrdclass == "gameover") {
@@ -405,7 +406,8 @@ function appendBestMove(player, co, tiles, score) {
    var rawTiles = tiles;
    var str;
    co = "(" + co + ")";
-   tiles = tiles.replace("?", ""); /* !!! TODO: Display wildcard characters differently? */
+   // Note: String.replace will not work here since string may contain multiple '?' instances
+   tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
    if (player === 0) {
       /* Left side player */
       str = '<div class="leftmove">' +
@@ -450,7 +452,7 @@ function appendBestHeader(moveNumber, co, tiles, score) {
    if (co.length > 0) {
       // Regular move
       co = " (" + co + ")";
-      dispText = "<i>" + tiles.replace("?", "") + "</i>"; /* !!! TODO: Display wildcard characters differently? */
+      dispText = "<i>" + tiles.split("?").join("") + "</i>"; /* !!! TODO: Display wildcard characters differently? */
    }
    else {
       /* Not a regular tile move */

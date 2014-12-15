@@ -36,11 +36,11 @@
         moves : array of MoveModel
 
     FavoriteModel:
-        srcuser: key into UserModel
+        parent = key into UserModel
         destuser: key into UserModel
 
     ChallengeModel:
-        srcuser : key into UserModel
+        parent = key into UserModel
         destuser : key into UserModel
         timestamp : timestamp
         prefs : dict
@@ -212,12 +212,11 @@ class GameModel(ndb.Model):
         def game_callback(gm):
             # Map a game entity to a result tuple with useful info about the game
             uuid = gm.key.id()
-            ts = gm.timestamp
             u0 = None if gm.player0 is None else gm.player0.get()
             u1 = None if gm.player1 is None else gm.player1.get()
             n0 = None if u0 is None else u0.nickname
             n1 = None if u1 is None else u1.nickname
-            return (uuid, ts, n0, n1, gm.score0, gm.score1, gm.robot_level)
+            return (uuid, gm.timestamp, n0, n1, gm.score0, gm.score1, gm.robot_level)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
@@ -226,14 +225,8 @@ class GameModel(ndb.Model):
 class FavoriteModel(ndb.Model):
     """ Models the fact that a user has marked another user as a favorite """
 
-    # The originating user
-    srcuser = ndb.KeyProperty(kind = UserModel)
+    # The originating user is the parent/ancestor of the relation
     destuser = ndb.KeyProperty(kind = UserModel)
-
-    def set_src(self, user_id):
-        """ Set a source user key property """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
-        self.srcuser = k
 
     def set_dest(self, user_id):
         """ Set a destination user key property """
@@ -247,24 +240,43 @@ class FavoriteModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(FavoriteModel.srcuser == k)
-
-        def fav_callback(fm):
-            # Map a favorite relation into a list of users
-            uuid = fm.key.id()
-            u0 = None if fm.destuser is None else fm.destuser.get()
-            id0 = None if u0 is None else u0.id()
-            return (uuid, user_id, id0)
-
+        q = cls.query(ancestor = k)
         for fm in q.fetch(max_len):
-            yield fav_callback(fm)
+            yield None if fm.destuser is None else fm.destuser.id()
+
+    @classmethod
+    def has_relation(cls, srcuser_id, destuser_id):
+        """ Returns True if destuser is a favorite of user """
+        if srcuser_id is None or destuser_id is None:
+            return False
+        ks = ndb.Key(UserModel, srcuser_id)
+        kd = ndb.Key(UserModel, destuser_id)
+        q = cls.query(ancestor = ks).filter(FavoriteModel.destuser == kd)
+        return q.get(keys_only = True) != None
+
+    @classmethod
+    def add_relation(cls, src_id, dest_id):
+        """ Add a favorite relation between the two users """
+        fm = FavoriteModel(parent = ndb.Key(UserModel, src_id))
+        fm.set_dest(dest_id)
+        fm.put()
+
+    @classmethod
+    def del_relation(cls, src_id, dest_id):
+        ks = ndb.Key(UserModel, src_id)
+        kd = ndb.Key(UserModel, dest_id)
+        while True:
+            # There might conceivably be more than one relation,
+            # so repeat the query/delete cycle until we don't find any more
+            q = cls.query(ancestor = ks).filter(FavoriteModel.destuser == kd)
+            fmk = q.get(keys_only = True)
+            if fmk is None:
+                return
+            fmk.delete()
 
 
 class ChallengeModel(ndb.Model):
     """ Models a challenge issued by a user to another user """
-
-    # The originating user
-    srcuser = ndb.KeyProperty(kind = UserModel)
 
     # The challenged user
     destuser = ndb.KeyProperty(kind = UserModel)
@@ -275,38 +287,61 @@ class ChallengeModel(ndb.Model):
     # The time of issuance
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
 
-    def set_src(self, user_id):
-        """ Set a source user key property """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
-        self.srcuser = k
-
     def set_dest(self, user_id):
         """ Set a destination user key property """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
-    def list_sent(cls, user_id, max_len = 10):
+    def has_relation(cls, srcuser_id, destuser_id):
+        """ Returns True if srcuser has issued a challenge to destuser """
+        if srcuser_id is None or destuser_id is None:
+            return False
+        ks = ndb.Key(UserModel, srcuser_id)
+        kd = ndb.Key(UserModel, destuser_id)
+        q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
+        return q.get(keys_only = True) != None
+
+    @classmethod
+    def add_relation(cls, src_id, dest_id, prefs):
+        """ Add a challenge relation between the two users """
+        cm = ChallengeModel(parent = ndb.Key(UserModel, src_id))
+        cm.set_dest(dest_id)
+        cm.prefs = { } if prefs is None else prefs
+        cm.put()
+
+    @classmethod
+    def del_relation(cls, src_id, dest_id):
+        ks = ndb.Key(UserModel, src_id)
+        kd = ndb.Key(UserModel, dest_id)
+        while True:
+            # There might conceivably be more than one relation,
+            # so repeat the query/delete cycle until we don't find any more
+            q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
+            fmk = q.get(keys_only = True)
+            if fmk is None:
+                return
+            fmk.delete()
+
+    @classmethod
+    def list_issued(cls, user_id, max_len = 20):
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ChallengeModel.srcuser == k).order(-ChallengeModel.timestamp)
+        q = cls.query(ancestor = k).order(-ChallengeModel.timestamp)
 
         def ch_callback(cm):
             # Map a favorite relation into a list of users
-            uuid = cm.key.id()
-            u0 = None if cm.destuser is None else cm.destuser.get()
-            id0 = None if u0 is None else u0.id()
-            n0 = None if u0 is None else u0.nickname
-            return (uuid, id0, n0, cm.prefs, cm.timestamp)
+            id0 = None if cm.destuser is None else cm.destuser.id()
+            return (id0, cm.prefs, cm.timestamp)
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
 
     @classmethod
-    def list_received(cls, user_id, max_len = 10):
+    def list_received(cls, user_id, max_len = 20):
         """ Query for a list of challenges issued to a particular user """
         assert user_id is not None
         if user_id is None:
@@ -316,11 +351,9 @@ class ChallengeModel(ndb.Model):
 
         def ch_callback(cm):
             # Map a favorite relation into a list of users
-            uuid = cm.key.id()
-            u0 = None if cm.srcuser is None else cm.srcuser.get()
-            id0 = None if u0 is None else u0.id()
-            n0 = None if u0 is None else u0.nickname
-            return (uuid, id0, n0, cm.prefs, cm.timestamp)
+            p0 = cm.parent()
+            id0 = None if p0 is None else p0.id()
+            return (id0, cm.prefs, cm.timestamp)
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)

@@ -78,6 +78,12 @@
 .glyphicon-star-empty:before {
    content: "\e007";
 }
+.glyphicon-hand-right:before {
+   content: "\e127";
+}
+.glyphicon-hand-left:before {
+   content: "\e128";
+}
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -946,6 +952,9 @@ div.evenlist {
 div.listheader {
    background-color: @theme3;
    font-weight: 700;
+   border-bottom-width: 2px;
+   border-bottom-color: @neutral;
+   border-bottom-style: solid;
 }
 
 span.list-ts {
@@ -977,6 +986,14 @@ span.list-scorehdr {
    text-align: center;
 }
 
+span.list-ch {
+   display: inline-block;
+   font-size: 20px;
+   width: 32px;
+   margin-left: 2px;
+   cursor: pointer;
+}
+
 span.list-fav {
    display: inline-block;
    font-size: 20px;
@@ -987,13 +1004,13 @@ span.list-fav {
 
 span.list-nick {
    display: inline-block;
-   width: 300px;
+   width: 200px;
    font-weight: 700;
 }
 
 span.list-fullname {
    display: inline-block;
-   width: 400px;
+   width: 500px;
 }
 
 #initials span {
@@ -1015,12 +1032,19 @@ div #userlist {
    overflow: auto;
 }
 
-#userlist span.glyphicon.glyphicon-star-empty {
-   color: fade(black, 20%);
+#userlist span.glyphicon.glyphicon-star {
+   color: @triple-letter;
 }
 
-#userlist span.glyphicon.glyphicon-star {
-   color: @freshtile;
+#userlist span.glyphicon.glyphicon-hand-right {
+   color: @triple-word;
+}
+
+.listheader span.glyphicon.glyphicon-star-empty,
+.listheader span.glyphicon.glyphicon-hand-right.grayed,
+#userlist span.glyphicon.glyphicon-star-empty,
+#userlist span.glyphicon.glyphicon-hand-right.grayed {
+   color: fade(black, 20%);
 }
 
 div.loginform {

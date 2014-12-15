@@ -2,15 +2,12 @@ application: netskrafl
 version: 1
 runtime: python27
 api_version: 1
-threadsafe: yes
+threadsafe: true
 
 handlers:
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico
-- url: /static/ajax-loader.gif
-  static_files: static/ajax-loader.gif
-  upload: static/ajax-loader.gif
 - url: /apple-touch-icon.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
@@ -23,12 +20,9 @@ handlers:
 - url: /touch-icon-iphone-retina.png
   static_files: static/touch-icon-iphone-retina.png
   upload: static/touch-icon-iphone-retina.png
-- url: /static/glyphicons_387_log_out.png
-  static_files: static/glyphicons_387_log_out.png
-  upload: static/glyphicons_387_log_out.png
-- url: /static/glyphicons_173_play.png
-  static_files: static/glyphicons_173_play.png
-  upload: static/glyphicons_173_play.png
+- url: /static/(.*\.(gif|png|jpg))$
+  static_files: static/\1
+  upload: static/.*\.(gif|png|jpg)$  
 - url: /static/skrafl.css
   static_files: static/skrafl.css
   upload: static/skrafl.css
@@ -49,8 +43,12 @@ handlers:
 
 skip_files:
 - ^(.*/)?.*\.txt$
+- ^(.*/)?.*\.psd$
+- ^(.*/)?.*\.log$
 - ^(.*/)?#.*#$
 - ^(.*/)?.*~$
 - ^(.*/)?.*\.py[co]$
 - ^(.*/)?.*/RCS/.*$
+- ^\.git/.*$
+- ^node_modules/.*$
 - ^(.*/)?\..*$

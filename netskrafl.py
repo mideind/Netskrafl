@@ -131,6 +131,41 @@ class User:
         """ Sets the e-mail address of a user """
         self.set_pref(u"email", email)
 
+    def add_favorite(self, destuser_id):
+        """ Add an A-favors-B relation between this user and the destuser """
+        FavoriteModel.add_relation(self.id(), destuser_id)
+
+    def del_favorite(self, destuser_id):
+        """ Delete an A-favors-B relation between this user and the destuser """
+        FavoriteModel.del_relation(self.id(), destuser_id)
+
+    def has_favorite(self, destuser_id):
+        """ Returns True if there is an A-favors-B relation between this user and the destuser """
+        return FavoriteModel.has_relation(self.id(), destuser_id)
+
+    def has_challenge(self, destuser_id):
+        """ Returns True if this user has been challenged by destuser or vice versa """
+        return (ChallengeModel.has_relation(self.id(), destuser_id) or
+            ChallengeModel.has_relation(destuser_id, self.id()))
+
+    def issue_challenge(self, destuser_id, prefs):
+        """ Issue a challenge to the destuser """
+        ChallengeModel.add_relation(self.id(), destuser_id, prefs)
+
+    def retract_challenge(self, destuser_id):
+        """ Retract a challenge previously issued to the destuser """
+        ChallengeModel.del_relation(self.id(), destuser_id)
+
+    def decline_challenge(self, srcuser_id):
+        """ Decline a challenge previously issued by the srcuser """
+        ChallengeModel.del_relation(srcuser_id, self.id())
+
+    def accept_challenge(self, srcuser_id):
+        """ Decline a challenge previously issued by the srcuser """
+        # !!! TBD: Create a new Game between the users
+        # Delete the accepted challenge
+        ChallengeModel.del_relation(srcuser_id, self.id())
+
     def logout_url(self):
         return users.create_logout_url("/")
 
@@ -175,12 +210,15 @@ class Game:
         or completed. Contains inter alia a State instance.
     """
 
-    # The human-readable name of the computer player
+    # The human-readable names of the autoplayers (robots)
     AUTOPLAYER_LEVEL_3 = u"Fullsterkur"
+    AUTOPLAYER_NAME_3 = u"Velur stigahæsta leik í hverri stöðu"
     AUTOPLAYER_STRENGTH_3 = 0 # Always picks best move
     AUTOPLAYER_LEVEL_2 = u"Miðlungur"
+    AUTOPLAYER_NAME_2 = u"Velur af handahófi einn af átta stigahæstu leikjum í hverri stöðu"
     AUTOPLAYER_STRENGTH_2 = 8 # Picks one of the eight best moves
     AUTOPLAYER_LEVEL_1 = u"Amlóði"
+    AUTOPLAYER_NAME_1 = u"Velur af handahófi einn af fimmtán stigahæstu leikjum í hverri stöðu"
     AUTOPLAYER_STRENGTH_1 = 15 # Picks one of the fifteen best moves
 
     UNDEFINED_NAME = u"[Ónefndur]"
@@ -192,15 +230,15 @@ class Game:
         self.uuid = uuid
         # The start time of the game
         self.timestamp = None
-        # The nickname of the human (local) player
+        # The nickname of the local player
         self.username = None
         # The current game state
         self.state = None
-        # Is the human player 0 or 1, where player 0 begins the game?
+        # Is the local player 0 or 1, where player 0 begins the game?
         self.player_index = 0
         # The ability level of the autoplayer (0 = strongest)
         self.robot_level = 0
-        # The last move made by the autoplayer
+        # The last move made by the remote player
         self.last_move = None
         # Was the game finished by resigning?
         self.resigned = False
@@ -231,7 +269,7 @@ class Game:
                 return None
             # First check the cache to see if we have a live game already in memory
             game = memcache.get(user_id, namespace='game')
-            if game is not None and not game.state.is_game_over():
+            if game is not None and not game.is_over():
                 logging.info(u"Found live game in cache".encode("latin-1"))
                 return game
             # No game in cache: attempt to find one in the database
@@ -344,7 +382,7 @@ class Game:
 
         # Account for the final tiles in the rack
         # logging.info(u"Game move load completed after move {0}, score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1]).encode("latin-1"))
-        if game.state.is_game_over():
+        if game.is_over():
             game.state.finalize_score()
         # If the moves were correctly applied, the scores should match
         if game.state._scores[0] != gm.score0:
@@ -383,7 +421,7 @@ class Game:
         gm.score1 = self.state.scores()[1]
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
-        gm.over = self.state.is_game_over()
+        gm.over = self.is_over()
         movelist = []
         for player, m, rack in self.moves:
             mm = MoveModel()
@@ -413,7 +451,7 @@ class Game:
         return ap_name
 
     def set_human_name(self, nickname):
-        """ Set the nickname of the human player """
+        """ Set the nickname of the local player """
         if nickname[0:8] == u"https://":
             # Raw name (path) from Google Accounts: use a more readable version
             nickname = Game.UNDEFINED_NAME
@@ -426,7 +464,7 @@ class Game:
             memcache.set(user.id(), self, namespace='game')
 
     def resign(self):
-        """ The human player is resigning the game """
+        """ The local player is resigning the game """
         self.resigned = True
 
     def is_over(self):
@@ -445,20 +483,14 @@ class Game:
 
     def autoplayer_move(self):
         """ Let the AutoPlayer make its move """
-        # !!! DEBUG for testing various move types
-        # rnd = randint(0,3)
-        # if rnd == 0:
-        #     print(u"Generating ExchangeMove")
-        #     move = ExchangeMove(self.state.player_rack().contents()[0:randint(1,7)])
-        # else:
         apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
         self.state.apply_move(move)
         self.moves.append((1 - self.player_index, move, self.state.rack(1 - self.player_index)))
         self.last_move = move
 
-    def human_move(self, move):
-        """ Register the human move, update the score and move list """
+    def local_move(self, move):
+        """ Register the local player's move, update the score and move list """
         self.state.apply_move(move)
         self.moves.append((self.player_index, move, self.state.rack(self.player_index)))
         self.last_move = None # No autoplayer move yet
@@ -506,7 +538,7 @@ class Game:
     def client_state(self):
         """ Create a package of information for the client about the current state """
         reply = dict()
-        if self.state.is_game_over():
+        if self.is_over():
             # The game is now over - one of the players finished it
             reply["result"] = Error.GAME_OVER # Not really an error
             num_moves = 1
@@ -544,7 +576,7 @@ class Game:
     def statistics(self):
         """ Return a set of statistics on the game to be displayed by the client """
         reply = dict()
-        if self.state.is_game_over():
+        if self.is_over():
             reply["result"] = Error.GAME_OVER # Indicate that the game is over (not really an error)
         else:
             reply["result"] = 0 # Game still in progress
@@ -606,7 +638,7 @@ class Game:
 
 
 def _process_move(movecount, movelist):
-    """ Process a move from the client (the human player)
+    """ Process a move from the client (the local player)
         Returns True if OK or False if the move was illegal
     """
 
@@ -666,14 +698,14 @@ def _process_move(movecount, movelist):
         return jsonify(result = err, msg = msg)
 
     # Move is OK: register it and update the state
-    game.human_move(m)
+    game.local_move(m)
 
     # Respond immediately with an autoplayer move
     # (can be a bit time consuming if rack has one or two blank tiles)
-    if not game.state.is_game_over():
+    if not game.is_over():
         game.autoplayer_move()
 
-    if game.state.is_game_over():
+    if game.is_over():
         # If the game is now over, tally the final score
         game.state.finalize_score()
 
@@ -687,30 +719,51 @@ def _process_move(movecount, movelist):
 def _userlist(range_from, range_to):
     """ Return a list of users matching the filter criteria """
     result = []
-    if not range_from and not range_to:
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+    if range_from == u"fav" and not range_to:
         # Return favorites of the current user
         logging.info(u"_userlist: iterating favorites".encode("latin-1"))
-        uid = User.current().id()
-        i = iter(FavoriteModel.list_favorites(uid, max_len = 50))
-        for fav_uuid, srcuser_id, destuser_id in i:
-            u = User.load(destuser_id)
+        if cuid is not None:
+            i = iter(FavoriteModel.list_favorites(cuid, max_len = 50))
+            for favid in i:
+                fu = User.load(favid)
+                result.append({
+                    "userid": favid,
+                    "nick": fu.nickname(),
+                    "fullname": fu.full_name(),
+                    "fav": True,
+                    "chall": False if cuser is None else cuser.has_challenge(favid)
+                })
+    elif range_from == u"robots" and not range_to:
+        # Return the list of available autoplayers
+        robots = [
+            (Game.AUTOPLAYER_LEVEL_3, Game.AUTOPLAYER_NAME_3, Game.AUTOPLAYER_STRENGTH_3),
+            (Game.AUTOPLAYER_LEVEL_2, Game.AUTOPLAYER_NAME_2, Game.AUTOPLAYER_STRENGTH_2),
+            (Game.AUTOPLAYER_LEVEL_1, Game.AUTOPLAYER_NAME_1, Game.AUTOPLAYER_STRENGTH_1)]
+        for r in robots:
             result.append({
-                "userid": destuser_id,
-                "nick": u.nickname(),
-                "fullname": u.full_name(),
-                "fav": fav_uuid
+                "userid": u"robot-" + str(r[2]),
+                "nick": r[0],
+                "fullname": r[1],
+                "fav": False,
+                "chall": False
             })
     else:
         # Return users within a particular nickname range
         logging.info(u"_userlist: iterating from {0} to {1}".format(range_from, range_to).encode("latin-1"))
         i = iter(UserModel.list(range_from, range_to, max_len = 50))
         for uid in i:
+            if uid == cuid:
+                # Do not include the current user, if any, in the list
+                continue
             u = User.load(uid)
             result.append({
                 "userid": uid,
                 "nick": u.nickname(),
                 "fullname": u.full_name(),
-                "fav": None
+                "fav": False if cuser is None else cuser.has_favorite(uid),
+                "chall": False if cuser is None else cuser.has_challenge(uid)
             })
     return result
 
@@ -764,18 +817,35 @@ def gamestats():
 def userlist():
     """ Return user lists with particular criteria """
 
-    user = User.current()
-    user_id = None if user is None else user.id()
-    if not user_id:
-        # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
-
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
 
-    logging.info(u"Userlist: range_from is {0}, range_to is {1}".format(range_from, range_to).encode("latin-1"))
+    logging.info(u"userlist(): range_from is {0}, range_to is {1}".format(range_from, range_to).encode("latin-1"))
 
     return jsonify(result = 0, userlist = _userlist(range_from, range_to))
+
+
+@app.route("/favorite", methods=['POST'])
+def favorite():
+    """ Create or delete an A-favors-B relation """
+
+    user = User.current()
+    if user is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    destuser = request.form.get('destuser', None)
+    action = request.form.get('action', u"add")
+
+    logging.info(u"favorite(): destuser is {0}, action is {1}".format(destuser, action).encode("latin-1"))
+
+    if destuser is not None:
+        if action == u"add":
+            user.add_favorite(destuser)
+        elif action == u"delete":
+            user.del_favorite(destuser)
+
+    return jsonify(result = 0)
 
 
 @app.route("/review")
@@ -792,23 +862,6 @@ def review():
 
     if uuid is not None:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid, user.nickname())
-
-    if game is None:
-        game = Game.current()
-
-    if game is None:
-        # !!! Debug: load a finished game to display
-        user_id = user.id()
-        if not user_id:
-            # No game state found
-            return redirect(url_for("main"))
-        # No game in cache: attempt to find one in the database
-        uuid = GameModel.find_finished_game(user_id)
-        if uuid is None:
-            # Not found in persistent storage
-            return redirect(url_for("main"))
-        # Load from persistent storage
         game = Game.load(uuid, user.nickname())
 
     if game is None:
@@ -865,25 +918,6 @@ def userprefs():
     return render_template("userprefs.html", user = user)
 
 
-@app.route("/login", methods=['GET', 'POST'])
-def login():
-    """ Handler for the user login page """
-    login_error = False
-    if request.method == 'POST':
-        try:
-            # Funny string addition below ensures that username is
-            # a Unicode string under both Python 2 and 3
-            username = u'' + request.form['username'].strip()
-        except:
-            username = u''
-        if username:
-            # !!! TODO: Add validation of username here
-            session['username'] = username
-            return redirect(url_for("main"))
-        login_error = True
-    return render_template("login.html", err = login_error)
-
-
 @app.route("/newgame", methods=['GET', 'POST'])
 def newgame():
     """ Show page to initiate a new game """
@@ -894,7 +928,7 @@ def newgame():
         return redirect(users.create_login_url("/"))
 
     game = Game.current()
-    if game is not None and not game.state.is_game_over():
+    if game is not None and not game.is_over():
         # The previous game is not over: can't create a new one
         return redirect(url_for("main"))
 
@@ -916,11 +950,31 @@ def newgame():
     return render_template("newgame.html", user = user)
 
 
-@app.route("/logout")
-def logout():
-    """ Handler for the user logout page """
-    session.pop('username', None)
-    return redirect(url_for("login"))
+@app.route("/board")
+def board():
+    """ The main game page """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(users.create_login_url("/"))
+
+    uuid = request.args.get("game", None)
+    game = None
+
+    if uuid is not None:
+        # Attempt to load the game whose id is in the URL query string
+        game = Game.load(uuid, user.nickname())
+
+    if game is not None and game.is_over():
+        # Go back to main screen if game is no longer active
+        game = None
+
+    if game is None:
+        # No active game to display: go back to main screen
+        return redirect(url_for("main"))
+
+    return render_template("board.html", game = game, user = user)
 
 
 @app.route("/")
@@ -932,22 +986,6 @@ def main():
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url("/"))
 
-    game = Game.current()
-    if game is not None and game.state.is_game_over():
-        logging.info(u"Previous game is over, triggering new".encode("latin-1"))
-        # Trigger creation of a new game if the previous one was finished
-        game = None
-
-    if game is None:
-        # Initiate a new game
-        return redirect(url_for("newgame"))
-
-    return render_template("board.html", game = game, user = user)
-
-@app.route("/help")
-def help():
-    """ Show help page """
-    user = User.current()
     recent_games = None
         
     def game_info_map():
@@ -970,13 +1008,13 @@ def help():
     if user is not None:
         recent_games = iter(game_info_map())
 
-    return render_template("nshelp.html", recent_games = recent_games)
+    return render_template("main.html", user = user)
 
 
-@app.route("/twoletter")
-def twoletter():
-    """ Show list of two letter words """
-    return render_template("twoletter.html")
+@app.route("/help")
+def help():
+    """ Show help page """
+    return render_template("nshelp.html")
 
 
 @app.errorhandler(404)
