@@ -144,9 +144,8 @@ class User:
         return FavoriteModel.has_relation(self.id(), destuser_id)
 
     def has_challenge(self, destuser_id):
-        """ Returns True if this user has been challenged by destuser or vice versa """
-        return (ChallengeModel.has_relation(self.id(), destuser_id) or
-            ChallengeModel.has_relation(destuser_id, self.id()))
+        """ Returns True if this user has challenged destuser """
+        return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def issue_challenge(self, destuser_id, prefs):
         """ Issue a challenge to the destuser """
@@ -532,8 +531,8 @@ class Game:
         return len(self.moves)
 
     def start_time(self):
-        """ Returns the timestamp of the game in a readable ISO-based format """
-        return u"" if self.timestamp is None else (u"" + self.timestamp.isoformat(' ')[0:19])
+        """ Returns the timestamp of the game in a readable format """
+        return u"" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
 
     def client_state(self):
         """ Create a package of information for the client about the current state """
@@ -790,7 +789,7 @@ def _gamelist():
                 "opp_is_robot": g["opp"] is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": g["ts"].isoformat(' ')[0:19],
+                "ts": Alphabet.format_timestamp(g["ts"]),
                 "my_turn": g["my_turn"]
             })
     return result
@@ -803,7 +802,7 @@ def _recentlist():
     cuid = None if cuser is None else cuser.id()
     logging.info(u"_recentlist: iterating games".encode("latin-1"))
     if cuid is not None:
-        i = iter(GameModel.list_finished_games(cuid, max_len = 12))
+        i = iter(GameModel.list_finished_games(cuid, max_len = 14))
         for g in i:
             if g["opp"] is None:
                 # Autoplayer opponent
@@ -818,7 +817,49 @@ def _recentlist():
                 "opp_is_robot": g["opp"] is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": g["ts"].isoformat(' ')[0:19]
+                "ts": Alphabet.format_timestamp(g["ts"])
+            })
+    return result
+
+
+def _challengelist():
+    """ Return a list of challenges issued or received by the current user """
+    result = []
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+    logging.info(u"_challengelist: iterating challenges".encode("latin-1"))
+    if cuid is not None:
+
+        def preftext(pd):
+            # Translate the challenge preferences to a descriptive text
+            # !!! TBD
+            return u"Venjuleg ótímabundin viðureign"
+
+        # List received challenges
+        i = iter(ChallengeModel.list_received(cuid, max_len = 20))
+        for c in i:
+            u = User.load(c[0]) # User id
+            nick = u.nickname()
+            prefs = preftext(c[1])
+            result.append({
+                "received": True,
+                "userid": c[0],
+                "opp": nick,
+                "prefs": prefs,
+                "ts": Alphabet.format_timestamp(c[2])
+            })
+        # List issued challenges
+        i = iter(ChallengeModel.list_issued(cuid, max_len = 20))
+        for c in i:
+            u = User.load(c[0]) # User id
+            nick = u.nickname()
+            prefs = preftext(c[1])
+            result.append({
+                "received": False,
+                "userid": c[0],
+                "opp": nick,
+                "prefs": prefs,
+                "ts": Alphabet.format_timestamp(c[2])
             })
     return result
 
@@ -892,6 +933,13 @@ def recentlist():
     """ Return a list of recently completed games for the current user """
 
     return jsonify(result = 0, recentlist = _recentlist())
+
+
+@app.route("/challengelist", methods=['POST'])
+def challengelist():
+    """ Return a list of challenges issued or received by the current user """
+
+    return jsonify(result = 0, challengelist = _challengelist())
 
 
 @app.route("/favorite", methods=['POST'])

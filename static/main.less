@@ -90,6 +90,19 @@
 .glyphicon-hand-left:before {
    content: "\e128";
 }
+.glyphicon-thumbs-down:before {
+   content: "\e126";
+}
+.glyphicon-remove-circle:before {
+   content: "\e088";
+}
+.glyphicon-th:before {
+   content: "\e011";
+}
+.glyphicon-user:before {
+   content: "\e008";
+}
+
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -904,23 +917,23 @@ div.closebtn {
    left: 312px;
 }
 
-div.help {
+div.tabbed-page {
    position: absolute;
    left: 110px;
-   top: 4px;
+   top: 12px;
    width: 880px;
-   height: 680px;
+   height: 744px;
    overflow: hidden;
    font-size: 13px;
    line-height: 23px;
 }
 
-.help a:link, .help a:visited {
+.tabbed-page a:link, .tabbed-page a:visited {
    text-decoration: none;
    color: @help-link;
 }
 
-.help a:hover {
+.tabbed-page a:hover {
    text-decoration: none;
    color: @pass-btn;
 }
@@ -948,11 +961,11 @@ div.listitem {
 }
 
 div.oddlist {
-   background-color: @theme1;
+   background-color: @theme2;
 }
 
 div.evenlist {
-   background-color: @theme2;
+   background-color: @theme1;
 }
 
 div.listheader {
@@ -968,10 +981,9 @@ span.list-ts {
    width: 180px;
 }
 
-span.list-opp {
+span.list-chall {
    display: inline-block;
-   width: 300px;
-   font-weight: 700;
+   width: 360px;
 }
 
 span.list-s0 {
@@ -994,10 +1006,18 @@ span.list-scorehdr {
 
 span.list-ch,
 span.list-fav,
-span.list-myturn,
-span.list-win {
+span.list-icon,
+span.list-myturn {
    display: inline-block;
    font-size: 20px;
+   width: 32px;
+   margin-left: 2px;
+   cursor: pointer;
+}
+
+span.list-win {
+   display: inline-block;
+   font-size: 18px;
    width: 32px;
    margin-left: 2px;
    cursor: pointer;
@@ -1006,6 +1026,12 @@ span.list-win {
 span.list-nick {
    display: inline-block;
    width: 200px;
+   font-weight: 700;
+}
+
+span.list-opp {
+   display: inline-block;
+   width: 300px;
    font-weight: 700;
 }
 
@@ -1018,8 +1044,15 @@ span.list-fullname {
    font-size: 16px;
    cursor: pointer;
    padding-left: 4px;
-   padding-right: 4px;
-   margin: 1px;
+   padding-top: 1px;
+   padding-bottom: 1px;
+   padding-right: 6px;
+   margin: 2px;
+}
+
+#initials span.shown {
+   background-color: fade(@double-letter, 30%);
+   border-radius: 4px;
 }
 
 #initials span:hover {
@@ -1028,19 +1061,19 @@ span.list-fullname {
    border-radius: 4px;
 }
 
-div #userlist {
-   height: 500px;
-   overflow: auto;
-}
-
-div #gamelist {
-   height: 500px;
-   overflow: auto;
-}
-
+div #userlist,
+div #gamelist,
 div #recentlist {
-   height: 500px;
-   overflow: auto;
+   height: 512px;
+   overflow-y: auto;
+   overflow-x: hidden;
+}
+
+div #chall-sent,
+div #chall-received {
+   height: 210px;
+   overflow-y: auto;
+   overflow-x: hidden;
 }
 
 #userlist span.glyphicon.glyphicon-star {
@@ -1048,6 +1081,9 @@ div #recentlist {
 }
 
 #userlist span.glyphicon.glyphicon-hand-right,
+#chall-sent span.glyphicon.glyphicon-hand-right,
+#chall-received span.glyphicon.glyphicon-thumbs-down,
+p span.glyphicon.glyphicon-flag,
 #gamelist span.glyphicon.glyphicon-flag {
    color: @triple-word;
 }
@@ -1058,13 +1094,17 @@ div #recentlist {
 
 .listheader span.glyphicon.glyphicon-star-empty,
 .listheader span.glyphicon.glyphicon-hand-right.grayed,
+.listheader span.glyphicon.glyphicon-thumbs-down.grayed,
 .listheader span.glyphicon.glyphicon-flag.grayed,
-.listheader span.glyphicon.glyphicon-bookmark.grayed,
-#recentlist span.glyphicon.glyphicon-bookmark.grayed,
 #gamelist span.glyphicon.glyphicon-flag.grayed,
 #userlist span.glyphicon.glyphicon-star-empty,
 #userlist span.glyphicon.glyphicon-hand-right.grayed {
    color: fade(black, 15%);
+}
+
+.listheader span.glyphicon.glyphicon-bookmark.grayed,
+#recentlist span.glyphicon.glyphicon-bookmark.grayed {
+   color: fade(black, 6%);
 }
 
 div.loginform {

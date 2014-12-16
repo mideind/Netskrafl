@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" Language and alphabet encapsulation module
+""" Language, locale and alphabet encapsulation module
 
     Author: Vilhjalmur Thorsteinsson, 2014
 
@@ -169,3 +169,8 @@ class Alphabet:
         """ Return a full bag of tiles """
         return u''.join([tile * count for (tile, count) in Alphabet.bag_tiles])
 
+    @staticmethod
+    def format_timestamp(ts, format = None):
+        """ Return a timestamp formatted as a readable string """
+        # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
+        return u"" + ts.isoformat(' ')[0:19]

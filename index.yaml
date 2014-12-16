@@ -10,6 +10,16 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: ChallengeModel
+  properties:
+  - name: destuser
+  - name: timestamp
+
+- kind: ChallengeModel
+  ancestor: yes
+  properties:
+  - name: timestamp
+
 - kind: GameModel
   properties:
   - name: over

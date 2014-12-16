@@ -9,21 +9,20 @@
 
 {% block content %}
 
-<div class="help">
-
-   <h2>Velkomin(n) í Netskrafl!</h2>
+<div class="tabbed-page">
 
    <div id="tabs">
    <ul>
-      <li><a href="#tabs-1">Viðureignir</a></li>
-      <li><a href="#tabs-2">Áskoranir</a></li>
-      <li><a href="#tabs-3">Andstæðingar</a></li>
-      <li><a href="#tabs-4">Afrek</a></li>
+      <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Viðureignir</a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir</a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-user'></span>&nbsp;&nbsp;Andstæðingar</a></li>
+      <li><a href="#tabs-4"><span class='glyphicon glyphicon-bookmark'></span>&nbsp;&nbsp;Ferill</a></li>
    </ul>
 
    <div id="tabs-1">
 
-      <p>Virkar viðureignir - smelltu til að skoða stöðuna og leika ef þú átt leik:</p>
+      <p>Viðureignir sem standa yfir - smelltu til að skoða stöðuna og leika ef
+      <span class='glyphicon glyphicon-flag'></span> þú átt leik:</p>
 
       <div class="listitem listheader"><span
       class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><span
@@ -38,16 +37,25 @@
 
    <div id="tabs-2">
 
-      <p>Skorað á þig:</p>
+      <p>Skorað á þig - smelltu til að taka áskoruninni og hefja leik:</p>
 
-      <div class="listitem listheader"><span class="list-ts">Hvenær</span><span class="list-opp">Áskorandi</span><span class="list-chall">Hvernig</span></div>
+      <div class="listitem listheader"><span
+      class="list-icon"><span title="Hafna" class='glyphicon glyphicon-thumbs-down grayed'></span></span><span
+      class="list-ts">Hvenær</span><span
+      class="list-nick">Áskorandi</span><span
+      class="list-chall">Hvernig</span></div>
 
       <!-- Challenge lists will be populated by populateChallengeList() below -->
       <div id="chall-received"></div>
 
       <p>Þú skorar á aðra:</p>
 
-      <div class="listitem listheader"><span class="list-ts">Hvenær</span><span class="list-opp">Andstæðingur</span><span class="list-chall">Hvernig</span></div>
+      <div class="listitem listheader"><span
+      class="list-icon"><span title="Afturkalla" class='glyphicon glyphicon-hand-right grayed'></span></span><span
+      class="list-ts">Hvenær</span><span
+      class="list-nick">Andstæðingur</span><span
+      class="list-chall">Hvernig</span></div>
+
       <div id="chall-sent"></div>
 
    </div>
@@ -64,18 +72,18 @@
 
    <div id="tabs-3">
       <p id="initials">
-         <span id="fav">Uppáhalds</span>
-         <span id="robots">Þjarkar</span>
-         <span>a-á</span><span>b-c</span><span>d-ð</span><span>e-é</span>
-         <span>f</span><span>g</span><span>h</span><span>i-í</span>
-         <span>j</span><span>k</span><span>l</span><span>m</span>
-         <span>n</span><span>o-ó</span><span>p-q</span><span>r</span>
-         <span>s</span><span>t</span><span>u-ú</span><span>v-w</span>
-         <span>x-z</span><span>þ</span><span>æ</span><span>ö</span>
+         <span id="robots" class="shown"><span style='padding:0' class='glyphicon glyphicon-cog'></span> Þjarkar</span>
+         <span id="fav"><span style='padding:0' class='glyphicon glyphicon-star'></span> Uppáhalds</span>
+         <span>a-c</span><span>d-é</span>
+         <span>f-g</span><span>h-í</span>
+         <span>j-k</span><span>l-n</span>
+         <span>o-q</span><span>r-s</span>
+         <span>t-ú</span><span>v-z</span>
+         <span>þ-ö</span>
       </p>
       <div class="listitem listheader">
          <span
-         class="list-ch"><span title="Áskorun"
+         class="list-ch"><span title="Skora á"
          class='glyphicon glyphicon-hand-right grayed'></span></span><span
          class="list-fav"><span title="Uppáhald"
          class='glyphicon glyphicon-star-empty'></span></span><span
@@ -178,14 +186,27 @@ function markFavorite(elem, uid) {
       }, null); // No success func needed - it's a one-way notification
 }
 
+function updateChallenges(json) {
+   /* Coming back from an update of challeges:
+      refresh the challenge list */
+   refreshChallengeList();
+}
+
 function markChallenge(elem, uid) {
-   /* Toggle a challenge for the indicated user */
+   /* Change the state of a challenge for the indicated user */
    var action;
+   if ($(elem).hasClass("glyphicon-thumbs-down")) {
+      /* A challenge from another user is being declined */
+      action = "decline";
+   }
+   else
    if ($(elem).hasClass("grayed")) {
       $(elem).removeClass("grayed");
+      /* A challenge is being issued to another user */
       action = "issue";
    }
    else {
+      /* A challenge to another user is being retracted */
       $(elem).addClass("grayed");
       action = "retract";
    }
@@ -199,7 +220,7 @@ function markChallenge(elem, uid) {
          // Identify the relation in question
          destuser: uid,
          action: action
-      }, null); // No success func needed - it's a one-way notification
+      }, updateChallenges);
 }
 
 function populateUserList(json) {
@@ -221,7 +242,7 @@ function populateUserList(json) {
          fav = "<span title='Uppáhald' class='glyphicon glyphicon-star" +
          ((!item.fav) ? "-empty" : "") +
          "' onclick='markFavorite(this, \"" + item.userid + "\")'></span>";
-      var ch = "<span title='Áskorun' class='glyphicon glyphicon-hand-right" +
+      var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
          (item.chall ? "'" : " grayed'") +
          " onclick='markChallenge(this, \"" + item.userid + "\")'></span>";
       var nick = escapeHtml(item.nick);
@@ -238,13 +259,28 @@ function populateUserList(json) {
    }
 }
 
+var displayedUserRange = null;
+
+function redisplayUserList() {
+   /* Redisplay the user list that is being shown */
+   if (displayedUserRange !== null)
+      refreshUserList({ data: displayedUserRange });
+}
+
 function refreshUserList(ev) {
    /* Erase existing user list, if any */
    $("#userlist").html("");
+   /* Indicate which subtab is being shown */
+   if (ev.target) {
+      $("#initials span").removeClass("shown");
+      $(ev.target).addClass("shown");
+   }
    /* Establish the alphabet range that we want to display */
    var range = ev.data;
    var from_range = null;
    var to_range = null;
+   /* Note the last displayed range in case we need to redisplay */
+   displayedUserRange = range;
    if (range == "fav" || range == "robots") {
       /* Special requests: list of favorites or robots */
       from_range = range;
@@ -339,11 +375,63 @@ function refreshRecentList() {
       populateRecentList);
 }
 
+function markChallAndRefresh(elem, userid) {
+   /* Mark a challenge and refresh the user list */
+   markChallenge(elem, userid);
+   redisplayUserList();
+}
+
+function populateChallengeList(json) {
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   var countReceived = 0, countSent = 0;
+   for (var i = 0; i < json.challengelist.length; i++) {
+      var item = json.challengelist[i];
+      var opp = escapeHtml(item.opp);
+      var prefs = escapeHtml(item.prefs);
+      var odd = ((item.received ? countReceived : countSent) % 2 === 0);
+      /* Show Decline icon (thumb down) if received challenge;
+         show Delete icon (cross) if issued challenge */
+      var icon;
+      if (item.received)
+         icon = "<span title='Hafna' " +
+            "class='glyphicon glyphicon-thumbs-down'";
+      else
+         icon = "<span title='Afturkalla' " +
+            "class='glyphicon glyphicon-hand-right'";
+      icon += " onclick='markChallAndRefresh(this, \"" + item.userid + "\")'></span>";
+      var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
+         "<span class='list-icon'>" + icon + "</span>" +
+         (item.received ? ("<a href='#' onclick='acceptChallenge(\"" + item.userid + "\")'>") : "") +
+         "<span class='list-ts'>" + item.ts + "</span>" +
+         "<span class='list-nick'>" + opp + "</span>" +
+         "<span class='list-chall'>" + prefs + "</span>" +
+         (item.received ? "</a>" : "") + "</div>";
+      if (item.received) {
+         $("#chall-received").append(str);
+         countReceived++;
+      }
+      else {
+         $("#chall-sent").append(str);
+         countSent++;
+      }
+   }
+}
+
 function refreshChallengeList() {
-   /* Update list of challenges sent by this user */
-   $("#chall-sent").html("");
-   /* Update list of challenges received by this user */
+   /* Clear list of challenges received by this user */
    $("#chall-received").html("");
+   /* Clear list of challenges sent by this user */
+   $("#chall-sent").html("");
+   serverQuery("/challengelist",
+      {
+         // No data to send with query - current user is implicit
+      },
+      populateChallengeList);
 }
 
 $("#tabs").tabs();
@@ -357,8 +445,8 @@ refreshRecentList();
 /* Initialize challenge list */
 refreshChallengeList();
 
-/* Initialize user list to show favorites */
-refreshUserList({ data: "fav" });
+/* Initialize user list to show robots by default */
+refreshUserList({ data: "robots" });
 
 /* Initialize alphabet categories in user list header */
 $("#initials").find("span").each(function() {

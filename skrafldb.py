@@ -381,7 +381,8 @@ class ChallengeModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ancestor = k).order(-ChallengeModel.timestamp)
+        # List issued challenges in ascending order by timestamp (oldest first)
+        q = cls.query(ancestor = k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
             # Map a favorite relation into a list of users
@@ -398,11 +399,12 @@ class ChallengeModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ChallengeModel.destuser == k).order(-ChallengeModel.timestamp)
+        # List received challenges in ascending order by timestamp (oldest first)
+        q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
             # Map a favorite relation into a list of users
-            p0 = cm.parent()
+            p0 = cm.key.parent()
             id0 = None if p0 is None else p0.id()
             return (id0, cm.prefs, cm.timestamp)
 
