@@ -180,7 +180,7 @@ function placeMove(player, co, tiles) {
 
 function colorOf(player) {
    /* Return the highlight color of tiles for the given player index */
-   return player == humanPlayer() ? "0" : "1";
+   return player == localPlayer() ? "0" : "1";
 }
 
 function highlightNewestMove(playerColor) {
@@ -364,7 +364,7 @@ function appendMove(player, co, tiles, score) {
    if (wrdclass != "gameover") {
       var m = movelist.children().last();
       var playerColor = "0";
-      if (player === humanPlayer())
+      if (player === localPlayer())
          m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
       else {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
@@ -428,7 +428,7 @@ function appendBestMove(player, co, tiles, score) {
    movelist.append(str);
    var m = movelist.children().last();
    var playerColor = "0";
-   if (player === humanPlayer())
+   if (player === localPlayer())
       m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
    else {
       m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
@@ -1324,7 +1324,7 @@ function initSkrafl(jQuery) {
    initDropTargets();
    initMoveList();
    initBag();
-   if (humanPlayer() === 0) {
+   if (localPlayer() === 0) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }

@@ -14,10 +14,10 @@
 {%- endfor -%}
 
 {% if move_number > 0 %}
-{% for player, m, r in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.summary(state.board()) -%}
-      newestMove = placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
-      highlightNewestMove(colorOf({{ player }}));
+{% for m in game.moves[move_number-1:move_number] %}
+{%- set coord, tiles, score = m.move.summary(state.board()) -%}
+      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
+      highlightNewestMove(colorOf({{ m.player }}));
       $("div.score").text("{{ score }}");
 {% endfor %}
 {% endif %}
@@ -30,8 +30,8 @@
    function initMoveList() {
       /* Show the most recent move in the player's color */
 {% if move_number > 0 %}
-{% for player, m, r in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.summary(state.board()) -%}
+{% for m in game.moves[move_number-1:move_number] %}
+{%- set coord, tiles, score = m.move.summary(state.board()) -%}
       appendBestHeader({{ move_number }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
@@ -48,9 +48,9 @@
       updateBag("{{ state.display_bag(state.player_to_move()) }}");
    }
 
-   function humanPlayer() {
+   function localPlayer() {
       /* Identify whether the human player is 0 or 1 */
-      return {{ game.player_index }};
+      return {{ game.player_index(user.id()) }};
    }
 </script>
 
@@ -65,24 +65,24 @@
 <div class="rightcol">
    <div class="heading">
       <h3 class="playerleft">
-{% if game.player_index == 0 %}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- else -%}
+{% if game.is_autoplayer(0) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- else -%}
+<a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- endif -%}
       {{ game.state.player_name(0) }}
-{%- if game.player_index == 0 -%}
+{%- if not game.is_autoplayer(0) -%}
 </a>
 {% endif %}
       </h3>
       <h3 class="playerright">
-{% if game.player_index == 1 %}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- else -%}
+{% if game.is_autoplayer(1) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- else -%}
+<a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- endif -%}
       {{ game.state.player_name(1) }}
-{%- if game.player_index == 1 -%}
+{%- if not game.is_autoplayer(1) -%}
 </a>
 {% endif %}
       </h3>
@@ -124,15 +124,15 @@
 <div class="gamestats" onclick="navFirst()">
 <div style="position:relative;width:100%">
 <h3 class="playerleft">
-{%- if game.player_index == 1 -%}
+{%- if game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-{{ game.state.player_name(0) }}</h3>
+{{ game.player_nickname(0) }}</h3>
 <h3 class="playerright">
-{%- if game.player_index == 0 -%}
+{%- if game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-{{ game.state.player_name(1) }}</h3>
+{{ game.player_nickname(1) }}</h3>
 </div>
 <div id="gamestarted">
 <p>Viðureign hófst <span id="gamestart"></span></p>
@@ -219,7 +219,7 @@ function initReview(jQuery) {
    initMoveList();
    initBag();
    $("div.racktile").css("cursor", "default");
-   if (humanPlayer() === 0) {
+   if (localPlayer() === 0) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }
@@ -227,7 +227,7 @@ function initReview(jQuery) {
       $("h3.playerright").addClass("humancolor");
       $("h3.playerleft").addClass("autoplayercolor");
    }
-{% if state.player_to_move() == 1 - game.player_index %}
+{% if state.player_to_move() == 1 - game.player_index(user.id()) %}
    /* Show the racks in the players' colors */
    $("div.racktile").addClass("freshtile").removeClass("racktile");
 {% endif %}

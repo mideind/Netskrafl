@@ -125,6 +125,7 @@ class MoveModel(ndb.Model):
     tiles = ndb.StringProperty()
     score = ndb.IntegerProperty(default = 0)
     rack = ndb.StringProperty(required = False, default = None)
+    timestamp = ndb.DateTimeProperty(required = False, default = None)
 
 
 class GameModel(ndb.Model):
@@ -154,6 +155,9 @@ class GameModel(ndb.Model):
 
     # When was the game started?
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
+
+    # When was the game started?
+    ts_last_move = ndb.DateTimeProperty(required = False, default = None)
 
     # The moves so far
     moves = ndb.LocalStructuredProperty(MoveModel, repeated = True)

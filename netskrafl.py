@@ -209,91 +209,69 @@ class Game:
         or completed. Contains inter alia a State instance.
     """
 
-    # The human-readable names of the autoplayers (robots)
-    AUTOPLAYER_LEVEL_3 = u"Fullsterkur"
-    AUTOPLAYER_NAME_3 = u"Velur stigahæsta leik í hverri stöðu"
-    AUTOPLAYER_STRENGTH_3 = 0 # Always picks best move
-    AUTOPLAYER_LEVEL_2 = u"Miðlungur"
-    AUTOPLAYER_NAME_2 = u"Velur af handahófi einn af átta stigahæstu leikjum í hverri stöðu"
-    AUTOPLAYER_STRENGTH_2 = 8 # Picks one of the eight best moves
-    AUTOPLAYER_LEVEL_1 = u"Amlóði"
-    AUTOPLAYER_NAME_1 = u"Velur af handahófi einn af fimmtán stigahæstu leikjum í hverri stöðu"
-    AUTOPLAYER_STRENGTH_1 = 15 # Picks one of the fifteen best moves
+    # The available autoplayers (robots)
+    AUTOPLAYERS = [
+        (u"Fullsterkur", u"Velur stigahæsta leik í hverri stöðu", 0),
+        (u"Miðlungur", u"Velur af handahófi einn af átta stigahæstu leikjum í hverri stöðu", 8),
+        (u"Amlóði", u"Velur af handahófi einn af fimmtán stigahæstu leikjum í hverri stöðu", 15)
+        ]
 
     UNDEFINED_NAME = u"[Ónefndur]"
 
     _lock = threading.Lock()
+
+    Move = collections.namedtuple("Move", ["move", "player", "rack", "ts"])
 
     def __init__(self, uuid = None):
         # Unique id of the game
         self.uuid = uuid
         # The start time of the game
         self.timestamp = None
-        # The nickname of the local player
-        self.username = None
+        # The user ids of the players (None if autoplayer)
+        # Player 0 is the one that begins the game
+        self.player_ids = [None, None]
         # The current game state
         self.state = None
-        # Is the local player 0 or 1, where player 0 begins the game?
-        self.player_index = 0
         # The ability level of the autoplayer (0 = strongest)
         self.robot_level = 0
         # The last move made by the remote player
         self.last_move = None
+        # The timestamp of the last move made in the game
+        self.ts_last_move = None
         # Was the game finished by resigning?
         self.resigned = False
-        # History of moves in this game so far, in tuples: (player, move, rack)
+        # History of moves in this game so far, as a list of Move namedtuples
         self.moves = []
         # Initial rack contents
         self.initial_racks = [None, None]
 
-    def _make_new(self, username, robot_level):
+    def _make_new(self, player0_id, player1_id, robot_level = 0):
         """ Initialize a new, fresh game """
-        self.username = username
+        # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
+        self.player_ids = [player0_id, player1_id]
         self.state = State(drawtiles = True)
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
-        self.player_index = randint(0, 1)
-        self.timestamp = datetime.utcnow()
-        self.set_human_name(username)
+        self.timestamp = self.ts_last_move = datetime.utcnow()
 
     @classmethod
-    def current(cls):
-        """ Obtain the current game state """
-        with Game._lock:
-            user = User.current()
-            user_id = None if user is None else user.id()
-            if not user_id:
-                # No user, therefore no game state found
-                return None
-            # First check the cache to see if we have a live game already in memory
-            game = memcache.get(user_id, namespace='game')
-            if game is not None and not game.is_over():
-                logging.info(u"Found live game in cache".encode("latin-1"))
-                return game
-            # No game in cache: attempt to find one in the database
-            uuid = GameModel.find_live_game(user_id)
-            if uuid is None:
-                # Not found in persistent storage
-                logging.info(u"Did not find live game for user".encode("latin-1"))
-                return None
-            # Load from persistent storage and update memcache
-            return cls.load(uuid, user.nickname())
-
-    @classmethod
-    def new(cls, username, robot_level):
+    def new(cls, player0_id, player1_id, robot_level = 0):
         """ Start and initialize a new game """
         game = cls(Unique.id()) # Assign a new unique id to the game
-        game._make_new(username, robot_level)
+        if randint(0, 1) == 1:
+            # Randomize which player starts the game
+            player0_id, player1_id = player1_id, player0_id
+        game._make_new(player0_id, player1_id, robot_level)
         # If AutoPlayer is first to move, generate the first move
-        if game.player_index == 1:
+        if game.player_id_to_move() is None:
             game.autoplayer_move()
         # Store the new game in persistent storage and add to the memcache
         game.store()
         return game
 
     @classmethod
-    def load(cls, uuid, username):
+    def load(cls, uuid):
 
         """ Load an already existing game from persistent storage """
 
@@ -305,19 +283,17 @@ class Game:
         # Initialize a new Game instance with a pre-existing uuid
         game = cls(uuid)
 
-        game.username = username
         game.timestamp = gm.timestamp
+        game.ts_last_move = gm.ts_last_move
+        if game.ts_last_move is None:
+            game.ts_last_move = game.timestamp
+
         game.state = State(drawtiles = False)
 
-        if gm.player0 is None:
-            # Player 0 is an Autoplayer
-            game.player_index = 1 # Human (local) player is 1
-        else:
-            assert gm.player1 is None
-            game.player_index = 0 # Human (local) player is 0
+        game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
+        game.player_ids[1] = None if gm.player1 is None else gm.player1.id()
 
-        game.robot_level = gm.robot_level # Must come before set_human_name()
-        game.set_human_name(username)
+        game.robot_level = gm.robot_level
 
         # Load the initial racks
         game.initial_racks[0] = gm.irack0
@@ -376,7 +352,7 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, True)
                 # Append to the move history
-                game.moves.append((player, m, mm.rack))
+                game.moves.append(Game.Move (player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
         # Account for the final tiles in the rack
@@ -410,8 +386,9 @@ class Game:
             return
         gm = GameModel(id = self.uuid)
         gm.timestamp = self.timestamp
-        gm.set_player(self.player_index, user.id())
-        gm.set_player(1 - self.player_index, None)
+        gm.ts_last_move = self.ts_last_move
+        gm.set_player(0, self.player_ids[0])
+        gm.set_player(1, self.player_ids[1])
         gm.irack0 = self.initial_racks[0]
         gm.irack1 = self.initial_racks[1]
         gm.rack0 = self.state.rack(0)
@@ -422,13 +399,14 @@ class Game:
         gm.robot_level = self.robot_level
         gm.over = self.is_over()
         movelist = []
-        for player, m, rack in self.moves:
+        for m in self.moves:
             mm = MoveModel()
-            coord, tiles, score = m.summary(self.state.board())
+            coord, tiles, score = m.move.summary(self.state.board())
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
-            mm.rack = rack
+            mm.rack = m.rack
+            mm.timestamp = m.ts
             movelist.append(mm)
         gm.moves = movelist
         gm.put()
@@ -442,25 +420,26 @@ class Game:
     @classmethod
     def autoplayer_name(cls, level):
         """ Return the autoplayer name for a given level """
-        ap_name = Game.AUTOPLAYER_LEVEL_3 # Strongest player by default
-        if level >= Game.AUTOPLAYER_STRENGTH_1:
-            ap_name = Game.AUTOPLAYER_LEVEL_1 # Weakest player
-        elif level >= Game.AUTOPLAYER_STRENGTH_2:
-            ap_name = Game.AUTOPLAYER_LEVEL_2 # Middle player
-        return ap_name
+        i = len(Game.AUTOPLAYERS)
+        while i > 0:
+            i -= 1
+            if level >= Game.AUTOPLAYERS[i][2]:
+                return Game.AUTOPLAYERS[i][0]
+        return Game.AUTOPLAYERS[0][0] # Strongest player by default
 
-    def set_human_name(self, nickname):
-        """ Set the nickname of the local player """
-        if nickname[0:8] == u"https://":
-            # Raw name (path) from Google Accounts: use a more readable version
-            nickname = Game.UNDEFINED_NAME
-        self.state.set_player_name(self.player_index, nickname)
-        # Set the autoplayer's name as well
-        self.state.set_player_name(1 - self.player_index, Game.autoplayer_name(self.robot_level))
-        # Make sure that the cache reflects these changes
-        user = User.current()
-        if user is not None:
-            memcache.set(user.id(), self, namespace='game')
+    def player_nickname(self, index):
+        """ Returns the nickname of a player """
+        u = None if self.player_ids[index] is None else User.load(self.player_ids[index])
+        if u is None:
+            # This is an autoplayer
+            nick = Game.autoplayer_name(self.robot_level)
+        else:
+            # This is a human user
+            nick = u.nickname()
+            if nickname[0:8] == u"https://":
+                # Raw name (path) from Google Accounts: use a more readable version
+                nickname = Game.UNDEFINED_NAME
+        return nickname
 
     def resign(self):
         """ The local player is resigning the game """
@@ -482,16 +461,21 @@ class Game:
 
     def autoplayer_move(self):
         """ Let the AutoPlayer make its move """
+        player_index = self.player_to_move()
         apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
         self.state.apply_move(move)
-        self.moves.append((1 - self.player_index, move, self.state.rack(1 - self.player_index)))
+        self.moves.append(Game.Move(player_index, move,
+            self.state.rack(player_index), datetime.utcnow()))
+        self.ts_last_move = datetime.utcnow()
         self.last_move = move
 
     def local_move(self, move):
         """ Register the local player's move, update the score and move list """
+        player_index = self.player_to_move()
         self.state.apply_move(move)
-        self.moves.append((self.player_index, move, self.state.rack(self.player_index)))
+        self.moves.append(Game.Move(player_index, move, self.state.rack(player_index), datetime.utcnow()))
+        self.ts_last_move = datetime.utcnow()
         self.last_move = None # No autoplayer move yet
 
     def enum_tiles(self, state = None):
@@ -514,10 +498,10 @@ class Game:
                 # Load the initial rack
                 s.set_rack(ix, self.initial_racks[ix])
         # Apply the moves
-        for player, m, rack in self.moves[0 : move_number]:
-            s.apply_move(m, True)
+        for m in self.moves[0 : move_number]:
+            s.apply_move(m.move, True)
             if rack is not None:
-                s.set_rack(player, rack)
+                s.set_rack(m.player, m.rack)
         s.recalc_bag()
         return s
 
@@ -529,6 +513,25 @@ class Game:
     def num_moves(self):
         """ Returns the number of moves in the game so far """
         return len(self.moves)
+
+    def player_to_move(self):
+        """ Returns the index (0 or 1) of the player whose move it is """
+        return self.state.player_to_move()
+
+    def player_id_to_move(self):
+        """ Return the userid of the player whose turn it is, or None if autoplayer """
+        return self.player_ids[self.player_to_move()]
+
+    def is_autoplayer(self, index):
+        """ Return True if the player in question is an autoplayer """
+        return self.player_ids[index] is None
+
+    def player_index(self, user_id):
+        if self.player_ids[0] == user_id:
+            return 0
+        if self.player_ids[1] == user_id:
+            return 1
+        raise ValueException
 
     def start_time(self):
         """ Returns the timestamp of the game in a readable format """
@@ -545,9 +548,9 @@ class Game:
                 # Show the autoplayer move if it was the last move in the game
                 reply["lastmove"] = self.last_move.details()
                 num_moves = 2 # One new move to be added to move list
-            newmoves = [(player, m.summary(self.state.board())) for player, m, rack in self.moves[-num_moves:]]
+            newmoves = [(m.player, m.move.summary(self.state.board())) for m in self.moves[-num_moves:]]
             # Lastplayer is the player who finished the game
-            lastplayer = self.moves[-1][0]
+            lastplayer = self.moves[-1].player
             if not self.resigned:
                 # If the game did not end by resignation,
                 # account for the losing rack
@@ -566,7 +569,7 @@ class Game:
             reply["result"] = 0 # Indicate no error
             reply["rack"] = self.state.player_rack().details()
             reply["lastmove"] = self.last_move.details()
-            reply["newmoves"] = [(player, m.summary(self.state.board())) for player, m, rack in self.moves[-2:]]
+            reply["newmoves"] = [(m.player, m.move.summary(self.state.board())) for m in self.moves[-2:]]
             reply["bag"] = self.display_bag()
             reply["xchg"] = self.state.is_exchange_allowed()
         reply["scores"] = self.state.scores()
@@ -584,7 +587,7 @@ class Game:
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
-        ncovers = [(p, m.num_covers()) for p, m, r in self.moves]
+        ncovers = [(m.player, m.move.num_covers()) for m in self.moves]
         bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
         # Number of bingoes
         reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
@@ -596,15 +599,15 @@ class Game:
         letterscore = [0, 0]
         cleanscore = [0, 0]
         # Loop through the moves, collecting stats
-        for p, m, r in self.moves:
-            coord, wrd, msc = m.summary(self.state.board())
+        for m in self.moves:
+            coord, wrd, msc = m.move.summary(self.state.board())
             if wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score
                 cleanscore[p] += msc
-            if m.num_covers() == 0:
+            if m.move.num_covers() == 0:
                 # Exchange, pass or resign move
                 continue
-            for coord, tile, letter, score in m.details():
+            for coord, tile, letter, score in m.move.details():
                 if tile == u'?':
                     blanks[p] += 1
                 letterscore[p] += score
@@ -699,9 +702,9 @@ def _process_move(movecount, movelist):
     # Move is OK: register it and update the state
     game.local_move(m)
 
-    # Respond immediately with an autoplayer move
+    # If it's the autoplayer's move, respond immediately
     # (can be a bit time consuming if rack has one or two blank tiles)
-    if not game.is_over():
+    if not game.is_over() and game.player_id_to_move() is None:
         game.autoplayer_move()
 
     if game.is_over():
@@ -736,11 +739,7 @@ def _userlist(range_from, range_to):
                 })
     elif range_from == u"robots" and not range_to:
         # Return the list of available autoplayers
-        robots = [
-            (Game.AUTOPLAYER_LEVEL_3, Game.AUTOPLAYER_NAME_3, Game.AUTOPLAYER_STRENGTH_3),
-            (Game.AUTOPLAYER_LEVEL_2, Game.AUTOPLAYER_NAME_2, Game.AUTOPLAYER_STRENGTH_2),
-            (Game.AUTOPLAYER_LEVEL_1, Game.AUTOPLAYER_NAME_1, Game.AUTOPLAYER_STRENGTH_1)]
-        for r in robots:
+        for r in Game.AUTOPLAYERS:
             result.append({
                 "userid": u"robot-" + str(r[2]),
                 "nick": r[0],
@@ -1057,9 +1056,6 @@ def userprefs():
             user.set_full_name(full_name)
             user.set_email(email)
             user.update()
-            game = Game.current()
-            if game is not None:
-                game.set_human_name(nickname)
             return redirect(url_for("main"))
     return render_template("userprefs.html", user = user)
 
@@ -1082,7 +1078,7 @@ def newgame():
         # Starting a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         logging.info(u"Starting a new game with robot level {0}".format(robot_level).encode("latin-1"))
-        game = Game.new(user.nickname(), robot_level)
+        game = Game.new(user.id(), None, robot_level)
         return redirect(url_for("board", game = game.id()))
 
     # !!! TBD: Handling the start of a game against a human
@@ -1103,7 +1099,7 @@ def board():
 
     if uuid is not None:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid, user.nickname())
+        game = Game.load(uuid)
 
     if game is not None and game.is_over():
         # Go back to main screen if game is no longer active

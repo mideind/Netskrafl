@@ -8,14 +8,14 @@
 
 <script>
    function placeTiles() {
-{% for player, m, r in game.moves %}
-{%- set coord, tiles, score = m.summary(game.state.board()) %}
-      newestMove = placeMove({{ player }}, "{{ coord }}", "{{ tiles }}");
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
 {% endfor %}
 
       /* Show the most recent move in the player's color */
-{% for player, m, r in game.moves[-1:] %}
-      highlightNewestMove(colorOf({{ player }}));
+{% for m in game.moves[-1:] %}
+      highlightNewestMove(colorOf({{ m.player }}));
 {% endfor %}
 
       /* Place the rack tiles */
@@ -25,9 +25,9 @@
    }
 
    function initMoveList() {
-{% for player, m, r in game.moves %}
-{%- set coord, tiles, score = m.summary(game.state.board()) %}
-      appendMove({{ player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+      appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
    }
 
@@ -38,9 +38,13 @@
 {%- endif -%}      
    }
 
-   function humanPlayer() {
-      /* Identify whether the human player is 0 or 1 */
-      return {{ game.player_index }};
+   function localPlayer() {
+      /* Identify whether the current player is 0 or 1 */
+      return {{ game.player_index(user.id()) }};
+   }
+
+   function localTurn() {
+      return {{ "true" if game.player_id_to_move() == game.player_index(user.id()) else "false" }};
    }
 
    function navToReview() {
