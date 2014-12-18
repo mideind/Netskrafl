@@ -205,6 +205,8 @@ class User:
         return u.nickname()
 
 
+MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
+
 class Game:
 
     """ A wrapper class for a particular game that is in process
@@ -221,8 +223,6 @@ class Game:
     UNDEFINED_NAME = u"[Ónefndur]"
 
     _lock = threading.Lock()
-
-    Move = collections.namedtuple("Move", ["move", "player", "rack", "ts"])
 
     def __init__(self, uuid = None):
         # Unique id of the game
@@ -242,7 +242,7 @@ class Game:
         self.ts_last_move = None
         # Was the game finished by resigning?
         self.resigned = False
-        # History of moves in this game so far, as a list of Move namedtuples
+        # History of moves in this game so far, as a list of MoveTuple namedtuples
         self.moves = []
         # Initial rack contents
         self.initial_racks = [None, None]
@@ -364,7 +364,7 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, True)
                 # Append to the move history
-                game.moves.append(Game.Move(player, m, mm.rack, mm.timestamp))
+                game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
         # Account for the final tiles in the rack
@@ -442,10 +442,10 @@ class Game:
         else:
             # This is a human user
             nick = u.nickname()
-            if nickname[0:8] == u"https://":
+            if nick[0:8] == u"https://":
                 # Raw name (path) from Google Accounts: use a more readable version
-                nickname = Game.UNDEFINED_NAME
-        return nickname
+                nick = Game.UNDEFINED_NAME
+        return nick
 
     def resign(self):
         """ The local player is resigning the game """
@@ -471,7 +471,7 @@ class Game:
         apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
         self.state.apply_move(move)
-        self.moves.append(Game.Move(player_index, move,
+        self.moves.append(MoveTuple(player_index, move,
             self.state.rack(player_index), datetime.utcnow()))
         self.ts_last_move = datetime.utcnow()
         self.last_move = move
@@ -480,7 +480,7 @@ class Game:
         """ Register the local player's move, update the score and move list """
         player_index = self.player_to_move()
         self.state.apply_move(move)
-        self.moves.append(Game.Move(player_index, move, self.state.rack(player_index), datetime.utcnow()))
+        self.moves.append(MoveTuple(player_index, move, self.state.rack(player_index), datetime.utcnow()))
         self.ts_last_move = datetime.utcnow()
         self.last_move = None # No autoplayer move yet
 
@@ -538,7 +538,7 @@ class Game:
             return 0
         if self.player_ids[1] == user_id:
             return 1
-        raise ValueError, u"User_id {0} is not a player of this game".format(user_id)
+        raise ValueError(u"User_id {0} is not a player of this game".format(user_id))
 
     def has_player(self, user_id):
         """ Return True if the indicated user is a player of this game """
