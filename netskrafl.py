@@ -73,12 +73,12 @@ class User:
         self._inactive = False
         self._preferences = { }
 
-    def fetch(self):
+    def _fetch(self):
         """ Fetch the user's record from the database """
         u = UserModel.fetch(self._user_id)
         if u is None:
-            UserModel.create(self._user_id, self.nickname())
             # Use the default properties for a newly created user
+            UserModel.create(self._user_id, self.nickname()) # This updates the database
             return
         self._nickname = u.nickname
         self._inactive = u.inactive
@@ -86,8 +86,9 @@ class User:
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
-        UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
-        memcache.set(self._user_id, self, namespace='user')
+        with User._lock:
+            UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
+            memcache.set(self._user_id, self, namespace='user')
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -175,7 +176,7 @@ class User:
             u = memcache.get(uid, namespace='user')
             if u is None:
                 u = User(uid)
-                u.fetch()
+                u._fetch()
                 memcache.add(uid, u, namespace='user')
             return u
 
@@ -189,8 +190,9 @@ class User:
             u = memcache.get(user.user_id(), namespace='user')
             if u is not None:
                 return u
+            # This might be a user that is not yet in the database
             u = cls()
-            u.fetch()
+            u._fetch() # Creates a database record if this is a fresh user
             memcache.add(u.id(), u, namespace='user')
             return u
 
@@ -272,8 +274,18 @@ class Game:
 
     @classmethod
     def load(cls, uuid):
+        """ Load an already existing game from cache or persistent storage """
+        with Game._lock:
+            return cls._load_locked(uuid)
 
-        """ Load an already existing game from persistent storage """
+    @classmethod
+    def _load_locked(cls, uuid):
+        """ Load an existing game from cache or persistent storage under lock """
+
+        # Try the memcache first
+        game = memcache.get(uuid, namespace="game")
+        if game is not None:
+            return game
 
         gm = GameModel.fetch(uuid)
         if gm is None:
@@ -352,7 +364,7 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, True)
                 # Append to the move history
-                game.moves.append(Game.Move (player, m, mm.rack, mm.timestamp))
+                game.moves.append(Game.Move(player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
         # Account for the final tiles in the rack
@@ -370,48 +382,42 @@ class Game:
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
 
-        # Cache the game so it can be looked up by user id
-        user = User.current()
-        if user is not None:
-            memcache.set(user.id(), game, namespace='game')
+        # Cache the game
+        memcache.add(uuid, game, namespace='game')
         return game
 
     def store(self):
         """ Store the game state in persistent storage """
         assert self.uuid is not None
-        user = User.current()
-        if user is None:
-            # No current user: can't store game
-            assert False
-            return
-        gm = GameModel(id = self.uuid)
-        gm.timestamp = self.timestamp
-        gm.ts_last_move = self.ts_last_move
-        gm.set_player(0, self.player_ids[0])
-        gm.set_player(1, self.player_ids[1])
-        gm.irack0 = self.initial_racks[0]
-        gm.irack1 = self.initial_racks[1]
-        gm.rack0 = self.state.rack(0)
-        gm.rack1 = self.state.rack(1)
-        gm.score0 = self.state.scores()[0]
-        gm.score1 = self.state.scores()[1]
-        gm.to_move = len(self.moves) % 2
-        gm.robot_level = self.robot_level
-        gm.over = self.is_over()
-        movelist = []
-        for m in self.moves:
-            mm = MoveModel()
-            coord, tiles, score = m.move.summary(self.state.board())
-            mm.coord = coord
-            mm.tiles = tiles
-            mm.score = score
-            mm.rack = m.rack
-            mm.timestamp = m.ts
-            movelist.append(mm)
-        gm.moves = movelist
-        gm.put()
-        # Update the memcache as well as the persistent store
-        memcache.set(user.id(), self, namespace='game')
+        with Game._lock:
+            gm = GameModel(id = self.uuid)
+            gm.timestamp = self.timestamp
+            gm.ts_last_move = self.ts_last_move
+            gm.set_player(0, self.player_ids[0])
+            gm.set_player(1, self.player_ids[1])
+            gm.irack0 = self.initial_racks[0]
+            gm.irack1 = self.initial_racks[1]
+            gm.rack0 = self.state.rack(0)
+            gm.rack1 = self.state.rack(1)
+            gm.score0 = self.state.scores()[0]
+            gm.score1 = self.state.scores()[1]
+            gm.to_move = len(self.moves) % 2
+            gm.robot_level = self.robot_level
+            gm.over = self.is_over()
+            movelist = []
+            for m in self.moves:
+                mm = MoveModel()
+                coord, tiles, score = m.move.summary(self.state.board())
+                mm.coord = coord
+                mm.tiles = tiles
+                mm.score = score
+                mm.rack = m.rack
+                mm.timestamp = m.ts
+                movelist.append(mm)
+            gm.moves = movelist
+            gm.put()
+            # Update the memcache as well as the persistent store
+            memcache.set(self.uuid, self, namespace='game')
 
     def id(self):
         """ Returns the unique id of this game """
@@ -505,10 +511,10 @@ class Game:
         s.recalc_bag()
         return s
 
-    def display_bag(self):
-        """ Returns the bag as it should be displayed to the current player,
+    def display_bag(self, user_id):
+        """ Returns the bag as it should be displayed to the indicated player,
             including the opponent's rack and sorted """
-        return self.state.display_bag(self.player_index)
+        return self.state.display_bag(self.player_index(user_id))
 
     def num_moves(self):
         """ Returns the number of moves in the game so far """
@@ -527,11 +533,22 @@ class Game:
         return self.player_ids[index] is None
 
     def player_index(self, user_id):
+        """ Return the player index (0 or 1) of the given user, or throw ValueError if not a player """
         if self.player_ids[0] == user_id:
             return 0
         if self.player_ids[1] == user_id:
             return 1
-        raise ValueException
+        raise ValueError, u"User_id {0} is not a player of this game".format(user_id)
+
+    def has_player(self, user_id):
+        """ Return True if the indicated user is a player of this game """
+        try:
+            pix = self.player_index(user_id)
+        except ValueError:
+            # Nope
+            return False
+        # player_index was obtained: the user is a player
+        return True
 
     def start_time(self):
         """ Returns the timestamp of the game in a readable format """
@@ -884,26 +901,20 @@ def gamestats():
     """ Calculate and return statistics on the current game """
 
     user = User.current()
-    user_id = None if user is None else user.id()
-    if not user_id:
+    if not user:
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
     uuid = request.form.get('game', None)
-    if uuid is None:
-        game = Game.current()
-    else:
-        game = Game.load(uuid, user.nickname())
+    if uuid is not None:
+        game = Game.load(uuid)
+        # Check whether the user was a player in this game
+        if not game.has_player(user.id ()):
+            # Nope: don't allow looking at the stats
+            game = None
 
     if game is None:
-        # !!! Debug
-        # No live game found: attempt to find one in the database
-        uuid = GameModel.find_finished_game(user_id)
-        if uuid is not None:
-            game = Game.load(uuid, user.nickname())
-
-    if game is None:
-       return jsonify(result = Error.LOGIN_REQUIRED)
+       return jsonify(result = Error.LOGIN_REQUIRED) # Strictly speaking: game not found
 
     return jsonify(game.statistics())
 
@@ -1007,10 +1018,11 @@ def review():
 
     if uuid is not None:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid, user.nickname())
+        game = Game.load(uuid)
 
-    if game is None:
-       return redirect(url_for("main"))
+    if game is None or not game.has_player(user.id()):
+        # The game is not found or the current user did not play it: abort
+        return redirect(url_for("main"))
 
     move_number = int(request.args.get("move", "0"))
     if move_number > game.num_moves():
@@ -1101,7 +1113,7 @@ def board():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is not None and game.is_over():
+    if game is not None and (game.is_over() or not game.has_player(user.id())):
         # Go back to main screen if game is no longer active
         game = None
 
