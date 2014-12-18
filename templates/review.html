@@ -39,18 +39,18 @@
 {% if best_moves != None %}
 {% for m, sc in best_moves %}
 {%- set coord, tiles, score = m.summary(state.board()) -%}
-      appendBestMove({{ state.player_to_move() }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+      appendBestMove({{ player_index }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
    }
 
    function initBag(bag) {
-      updateBag("{{ state.display_bag(state.player_to_move()) }}");
+      updateBag("{{ state.display_bag(player_index) }}");
    }
 
    function localPlayer() {
-      /* Identify whether the human player is 0 or 1 */
-      return {{ game.player_index(user.id()) }};
+      /* Identify whether the requesting user is player 0 or 1 in this game */
+      return {{ user_index }};
    }
 </script>
 
@@ -65,24 +65,24 @@
 <div class="rightcol">
    <div class="heading">
       <h3 class="playerleft">
-{% if game.is_autoplayer(0) %}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- else -%}
+{% if user_index == 0 %}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
+{% elif game.is_autoplayer(0) %}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-      {{ game.state.player_name(0) }}
-{%- if not game.is_autoplayer(0) -%}
+      {{ game.player_nickname(0) }}
+{%- if user_index == 0 -%}
 </a>
 {% endif %}
       </h3>
       <h3 class="playerright">
-{% if game.is_autoplayer(1) %}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- else -%}
+{% if user_index == 1 %}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
+{% elif game.is_autoplayer(1) %}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-      {{ game.state.player_name(1) }}
-{%- if not game.is_autoplayer(1) -%}
+      {{ game.player_nickname(1) }}
+{%- if user_index == 1 -%}
 </a>
 {% endif %}
       </h3>
@@ -227,7 +227,7 @@ function initReview(jQuery) {
       $("h3.playerright").addClass("humancolor");
       $("h3.playerleft").addClass("autoplayercolor");
    }
-{% if state.player_to_move() == 1 - game.player_index(user.id()) %}
+{% if state.player_to_move() == 1 - user_index %}
    /* Show the racks in the players' colors */
    $("div.racktile").addClass("freshtile").removeClass("racktile");
 {% endif %}

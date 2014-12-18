@@ -499,6 +499,10 @@ class State:
         """ Return the contents of the rack (indexed by 0 or 1) """
         return self._racks[index].contents()
 
+    def rack_details(self, index):
+        """ Return the contents of the rack (indexed by 0 or 1) """
+        return self._racks[index].details()
+
     def set_rack(self, index, tiles):
         """ Set the contents of the rack (indexed by 0 or 1) """
         self._racks[index].set_tiles(u"" if tiles is None else tiles)
@@ -588,7 +592,8 @@ class Error:
     TOO_MANY_TILES_EXCHANGED = 12
     OUT_OF_SYNC = 13
     LOGIN_REQUIRED = 14
-    GAME_OVER = 15
+    WRONG_USER = 15
+    GAME_OVER = 16
 
     @staticmethod
     def errortext(errcode):
@@ -607,6 +612,7 @@ class Error:
             u"TOO_MANY_TILES_EXCHANGED",
             u"OUT_OF_SYNC",
             u"LOGIN_REQUIRED",
+            u"WRONG_USER",
             u"GAME_OVER"][errcode]
 
 

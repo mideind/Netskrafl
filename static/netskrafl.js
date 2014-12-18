@@ -56,7 +56,7 @@ var LETTERSCORE = new Array(
    "111113111311111",
    "111211111112111");
 
-var GAME_OVER = 15; /* Error code corresponding to the Error class in skraflmechanics.py */
+var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmechanics.py */
 
 /* Global variables */
 
@@ -723,11 +723,11 @@ function updateButtonState() {
       $("div.recallbtn").css("visibility", "hidden");
    }
    else {
-      var score = calcScore();
-      if (score === undefined)
+      var scoreResult = calcScore();
+      if (scoreResult === undefined)
          $("div.score").text("?");
       else
-         $("div.score").text(score.toString());
+         $("div.score").text(scoreResult.score.toString());
       $("div.recallbtn").css("visibility", "visible");
    }
 }
@@ -768,13 +768,14 @@ function letterScore(row, col) {
 }
 
 function calcScore() {
-   /* Return a list of the newly laid tiles on the board */
+   /* Calculate the score for the tiles that have been laid on the board in the current move */
    var score = 0, crossScore = 0;
    var wsc = 1;
    var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
    var maxrow = 0, maxcol = 0;
    var numtiles = 0, numcrosses = 0;
-   // console.log("calcScore()");
+   var word = "";
+   // var words = new Array();
    $("div.tile").each(function() {
       var sq = $(this).parent().attr("id");
       var t = $(this).data("tile");
@@ -784,7 +785,6 @@ function calcScore() {
          var col = parseInt(sq.slice(1)) - 1;
          var sc = $(this).data("score") * letterScore(row, col);
          numtiles++;
-         // console.log("calcScore() tile at "+sq+" row "+row.toString()+" col "+col.toString()+" score "+sc.toString())
          wsc *= wordScore(row, col);
          if (row < minrow)
             minrow = row;
@@ -797,7 +797,6 @@ function calcScore() {
          score += sc;
       }
    });
-   // console.log("calcScore() at "+score.toString()+" for "+numtiles.toString()+" tiles ");
    if (minrow != maxrow && mincol != maxcol)
       /* Not a pure horizontal or vertical move */
       return undefined;
@@ -817,7 +816,6 @@ function calcScore() {
       y -= dy;
    }
    var t = null;
-   // console.log("calcScore() word starts at col "+x.toString()+", row "+y.toString());
    /* Find the end of the word */
    while ((t = tileAt(y, x)) !== null) {
       if ($(t).hasClass("racktile")) {
@@ -834,10 +832,11 @@ function calcScore() {
          score += $(t).data("score");
          numcrosses++;
       }
+      /* Accumulate the word being formed */
+      word += t.childNodes[0].nodeValue;
       x += dx;
       y += dy;
    }
-   // console.log("calcScore() word ends at col "+x.toString()+", row "+y.toString());
    if (numMoves === 0) {
       // First move must go through center square
       if (null === tileAt(7, 7))
@@ -853,7 +852,7 @@ function calcScore() {
       return undefined;
    if (dy && (y <= maxrow))
       return undefined;
-   return score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0);
+   return { word: word, score: score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0) };
 }
 
 function calcCrossScore(oy, ox, dy, dx) {
@@ -1285,7 +1284,9 @@ function sendMove(movetype) {
       data: {
          moves: moves,
          // Send a move count to ensure that the client and the server are in sync
-         mcount: numMoves
+         mcount: numMoves,
+         // Send the game's UUID
+         uuid: gameId()
       },
 
       // whether this is a POST or GET request

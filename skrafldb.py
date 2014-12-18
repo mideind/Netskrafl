@@ -246,10 +246,11 @@ class GameModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False).order(-GameModel.timestamp)
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False)
+        # Used to be .order(-GameModel.timestamp) but we want the displayed list to be sorted by ts_last_move
 
         def game_callback(gm):
-            # Map a game entity to a result tuple with useful info about the game
+            """ Map a game entity to a result tuple with useful info about the game """
             uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
@@ -266,7 +267,7 @@ class GameModel(ndb.Model):
                 my_turn = (gm.to_move == 1)
             return dict(
                 uuid = uuid,
-                ts = gm.timestamp,
+                ts = gm.ts_last_move or gm.timestamp,
                 opp = opp,
                 my_turn = my_turn,
                 sc0 = sc0,

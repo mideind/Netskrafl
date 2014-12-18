@@ -197,6 +197,12 @@ class User:
             return u
 
     @classmethod
+    def current_id(cls):
+        """ Return the id of the currently logged in user """
+        user = users.get_current_user()
+        return None if user is None else user.user_id()
+
+    @classmethod
     def current_nickname(cls):
         """ Return the nickname of the current user """
         u = cls.current()
@@ -204,7 +210,7 @@ class User:
             return None
         return u.nickname()
 
-
+# Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
 
 class Game:
@@ -506,15 +512,15 @@ class Game:
         # Apply the moves
         for m in self.moves[0 : move_number]:
             s.apply_move(m.move, True)
-            if rack is not None:
+            if m.rack is not None:
                 s.set_rack(m.player, m.rack)
         s.recalc_bag()
         return s
 
-    def display_bag(self, user_id):
+    def display_bag(self, player_index):
         """ Returns the bag as it should be displayed to the indicated player,
             including the opponent's rack and sorted """
-        return self.state.display_bag(self.player_index(user_id))
+        return self.state.display_bag(player_index)
 
     def num_moves(self):
         """ Returns the number of moves in the game so far """
@@ -528,9 +534,9 @@ class Game:
         """ Return the userid of the player whose turn it is, or None if autoplayer """
         return self.player_ids[self.player_to_move()]
 
-    def is_autoplayer(self, index):
+    def is_autoplayer(self, player_index):
         """ Return True if the player in question is an autoplayer """
-        return self.player_ids[index] is None
+        return self.player_ids[player_index] is None
 
     def player_index(self, user_id):
         """ Return the player index (0 or 1) of the given user, or throw ValueError if not a player """
@@ -587,7 +593,7 @@ class Game:
             reply["rack"] = self.state.player_rack().details()
             reply["lastmove"] = self.last_move.details()
             reply["newmoves"] = [(m.player, m.move.summary(self.state.board())) for m in self.moves[-2:]]
-            reply["bag"] = self.display_bag()
+            reply["bag"] = self.display_bag(self.player_to_move())
             reply["xchg"] = self.state.is_exchange_allowed()
         reply["scores"] = self.state.scores()
         return reply
@@ -620,14 +626,14 @@ class Game:
             coord, wrd, msc = m.move.summary(self.state.board())
             if wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score
-                cleanscore[p] += msc
+                cleanscore[m.player] += msc
             if m.move.num_covers() == 0:
                 # Exchange, pass or resign move
                 continue
             for coord, tile, letter, score in m.move.details():
                 if tile == u'?':
-                    blanks[p] += 1
-                letterscore[p] += score
+                    blanks[m.player] += 1
+                letterscore[m.player] += score
         # Number of blanks laid down
         reply["blanks0"] = b0 = blanks[0]
         reply["blanks1"] = b1 = blanks[1]
@@ -656,12 +662,12 @@ class Game:
         return reply
 
 
-def _process_move(movecount, movelist):
+def _process_move(movecount, movelist, uuid):
     """ Process a move from the client (the local player)
         Returns True if OK or False if the move was illegal
     """
 
-    game = Game.current()
+    game = None if uuid is None else Game.load(uuid)
 
     if game is None:
         return jsonify(result = Error.LOGIN_REQUIRED)
@@ -670,6 +676,9 @@ def _process_move(movecount, movelist):
     # check the move count
     if movecount != game.num_moves():
         return jsonify(result = Error.OUT_OF_SYNC)
+
+    if game.player_id_to_move() != User.current_id():
+        return jsonify(result = Error.WRONG_USER)
 
     # Parse the move from the movestring we got back
     m = Move(u'', 0, 0)
@@ -685,7 +694,7 @@ def _process_move(movecount, movelist):
                 break
             if mstr == u"rsgn":
                 # Resign from game, forfeiting all points
-                m = ResignMove(game.state.scores()[game.player_index])
+                m = ResignMove(game.state.scores()[game.state.player_to_move()])
                 game.resign()
                 break
             sq, tile = mstr.split(u'=')
@@ -790,7 +799,8 @@ def _gamelist():
     cuid = None if cuser is None else cuser.id()
     logging.info(u"_gamelist: iterating games".encode("latin-1"))
     if cuid is not None:
-        i = iter(GameModel.list_live_games(cuid, max_len = 50))
+        i = list(GameModel.list_live_games(cuid, max_len = 50))
+        i.sort(key = lambda x: x["ts"], reverse = True)
         for g in i:
             if g["opp"] is None:
                 # Autoplayer opponent
@@ -885,15 +895,20 @@ def submitmove():
     """ Handle a move that is being submitted from the client """
     movelist = []
     movecount = 0
+    uuid = None
     if request.method == 'POST':
         # This URL should only receive Ajax POSTs from the client
         try:
+            # The new move (as a list of covers)
             movelist = request.form.getlist('moves[]')
+            # The client's move count, to verify synchronization
             movecount = int(request.form.get('mcount', 0))
+            # The game's UUID
+            uuid = request.form.get('uuid', None)
         except:
             pass
     # Process the movestring
-    return _process_move(movecount, movelist)
+    return _process_move(movecount, movelist, uuid)
 
 
 @app.route("/gamestats", methods=['POST'])
@@ -1033,10 +1048,13 @@ def review():
         # Show best moves if available and it is proper to do so (i.e. the game is finished)
         apl = AutoPlayer(state)
         best_moves = apl.generate_best_moves(20)
+    player_index = state.player_to_move()
+    user_index = game.player_index(user.id())
 
     return render_template("review.html",
-        user = user, game = game, state = state, move_number = move_number,
-        best_moves = best_moves)
+        user = user, game = game, state = state,
+        player_index = player_index, user_index = user_index,
+        move_number = move_number, best_moves = best_moves)
 
 
 @app.route("/userprefs", methods=['GET', 'POST'])
@@ -1121,7 +1139,9 @@ def board():
         # No active game to display: go back to main screen
         return redirect(url_for("main"))
 
-    return render_template("board.html", game = game, user = user)
+    player_index = game.player_index(user.id())
+
+    return render_template("board.html", game = game, user = user, player_index = player_index)
 
 
 @app.route("/")
