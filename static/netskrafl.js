@@ -80,6 +80,49 @@ function escapeHtml(string) {
    });
 }
 
+function nullFunc(json) {
+   /* Null placeholder function to use for Ajax queries that don't need a success func */
+}
+
+function errFunc(xhr, status, errorThrown) {
+   /* Error handling function for Ajax communications */
+   alert("Villa í netsamskiptum");
+   console.log("Error: " + errorThrown);
+   console.log("Status: " + status);
+   console.dir(xhr);
+}
+
+function serverQuery(requestUrl, jsonData, successFunc) {
+   /* Wraps a simple, standard Ajax request to the server */
+   $.ajax({
+      // The URL for the request
+      url: requestUrl,
+
+      // The data to send
+      data: jsonData,
+
+      // Whether this is a POST or GET request
+      type: "POST",
+
+      // The type of data we expect back
+      dataType : "json",
+
+      cache: false,
+
+      // Code to run if the request succeeds;
+      // the response is passed to the function
+      success: (!successFunc) ? nullFunc : successFunc,
+
+      // Code to run if the request fails; the raw request and
+      // status codes are passed to the function
+      error: errFunc,
+
+      // code to run regardless of success or failure
+      complete: function(xhr, status) {
+      }
+   });
+}
+
 function coord(row, col) {
    /* Return the co-ordinate string for the given 0-based row and col */
    return ROWIDS.charAt(row) + (col + 1).toString();
@@ -704,6 +747,22 @@ function handleDrop(e, ui) {
    elementDragged = null;
 }
 
+/* The word that is being checked for validity with a server query */
+var wordToCheck = "";
+
+function wordGoodOrBad(flagGood, flagBad) {
+   /* Flag whether the word being laid down is good or bad (or neither when we don't know) */
+   $("div.word-check").toggleClass("word-good", flagGood);
+   $("div.word-check").toggleClass("word-bad", flagBad);
+}
+
+function showWordCheck(json) {
+   /* The server has returned our word check result: show it */
+   if (json && json.word == wordToCheck)
+      /* Nothing significant has changed since we sent the request */
+      wordGoodOrBad(json.ok, !json.ok);
+}
+
 function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
    var tilesPlaced = findCovers().length;
@@ -720,14 +779,25 @@ function updateButtonState() {
    /* Calculate tentative score */
    if (tilesPlaced === 0) {
       $("div.score").text("");
+      wordToCheck = "";
+      wordGoodOrBad(false, false);
       $("div.recallbtn").css("visibility", "hidden");
    }
    else {
       var scoreResult = calcScore();
-      if (scoreResult === undefined)
+      if (scoreResult === undefined) {
          $("div.score").text("?");
-      else
+         wordToCheck = "";
+         wordGoodOrBad(false, false);
+      }
+      else {
          $("div.score").text(scoreResult.score.toString());
+         /* Start a word check request to the server, checking the
+            word laid down and all cross words */
+         wordToCheck = scoreResult.word;
+         wordGoodOrBad(false, false);
+         serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
+      }
       $("div.recallbtn").css("visibility", "visible");
    }
 }
@@ -775,7 +845,7 @@ function calcScore() {
    var maxrow = 0, maxcol = 0;
    var numtiles = 0, numcrosses = 0;
    var word = "";
-   // var words = new Array();
+   var words = [];
    $("div.tile").each(function() {
       var sq = $(this).parent().attr("id");
       var t = $(this).data("tile");
@@ -821,10 +891,11 @@ function calcScore() {
       if ($(t).hasClass("racktile")) {
          // Add score for cross words
          var csc = calcCrossScore(y, x, 1 - dy, 1 - dx);
-         if (csc >= 0) {
+         if (csc.score >= 0) {
             /* There was a cross word there (it can score 0 if blank) */
-            crossScore += csc;
+            crossScore += csc.score;
             numcrosses++;
+            words.push(csc.word);
          }
       }
       else {
@@ -852,7 +923,9 @@ function calcScore() {
       return undefined;
    if (dy && (y <= maxrow))
       return undefined;
-   return { word: word, score: score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0) };
+   words.push(word);
+   return { word: word, words: words,
+      score: score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0) };
 }
 
 function calcCrossScore(oy, ox, dy, dx) {
@@ -860,6 +933,7 @@ function calcCrossScore(oy, ox, dy, dx) {
    var score = 0;
    var hascross = false;
    var x = ox, y = oy;
+   var word = "";
    /* Find the beginning of the word */
    while (tileAt(y - dy, x - dx) !== null) {
       x -= dx;
@@ -873,13 +947,14 @@ function calcCrossScore(oy, ox, dy, dx) {
          sc *= letterScore(y, x);
       else
          hascross = true;
+      word += t.childNodes[0].nodeValue;
       score += sc;
       x += dx;
       y += dy;
    }
    if (!hascross)
-      return -1;
-   return score * wordScore(oy, ox);
+      return { score: -1, word: "" };
+   return { score: score * wordScore(oy, ox), word: word };
 }
 
 function resetRack(ev) {
@@ -1214,12 +1289,7 @@ function showStats(gameId) {
 
       // code to run if the request fails; the raw request and
       // status codes are passed to the function
-      error: function(xhr, status, errorThrown) {
-         alert("Villa í netsamskiptum");
-         console.log("Error: " + errorThrown);
-         console.log("Status: " + status);
-         console.dir(xhr);
-      },
+      error: errFunc,
 
       // code to run regardless of success or failure
       complete: function(xhr, status) {
@@ -1303,12 +1373,7 @@ function sendMove(movetype) {
 
       // code to run if the request fails; the raw request and
       // status codes are passed to the function
-      error: function(xhr, status, errorThrown) {
-         alert("Villa í netsamskiptum");
-         console.log("Error: " + errorThrown);
-         console.log("Status: " + status);
-         console.dir(xhr);
-      },
+      error: errFunc,
 
       // code to run regardless of success or failure
       complete: function(xhr, status) {

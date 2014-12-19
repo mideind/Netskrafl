@@ -824,10 +824,44 @@ div.score {
    text-align: center;
    bottom: 174px;
    left: 652px;
-   background-color: none;
+   background-color: transparent;
    font-size: 26px;
    font-weight: 700;
    color: black;
+}
+
+div.word-check {
+   position: absolute;
+   width: 48px;
+   height: 48px;
+   text-align: center;
+   top: 410px;
+   left: 652px;
+   background-color: transparent;
+   font-family: 'Glyphicons Halflings';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 26px;
+   visibility: hidden;
+}
+
+div.word-check.word-good {
+   color: @freshtile;
+   visibility: visible;
+}
+
+div.word-check.word-good:before {
+   content: "\e125"; /* glyphicon-thumbs-up */
+   /* content: "\e089"; // glyphicon-ok-circle */
+}
+
+div.word-check.word-bad {
+   color: @alert;
+   visibility: visible;
+}
+
+div.word-check.word-bad:before {
+   content: "\e090"; /* glyphicon-ban-circle */
 }
 
 div.recallbtn {
@@ -1239,17 +1273,17 @@ a.nodecorate:hover {
 
 a.iconlink:link {
    text-decoration: none;
-   color: @double-letter;
+   color: @triple-letter;
 }
 
 a.iconlink:visited {
    text-decoration: none;
-   color: @double-letter;
+   color: @triple-letter;
 }
 
 a.iconlink:hover {
    text-decoration: none;
-   color: @triple-letter;
+   color: @double-letter;
 }
 
 div.twolist {

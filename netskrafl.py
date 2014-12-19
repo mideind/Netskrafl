@@ -911,6 +911,26 @@ def submitmove():
     return _process_move(movecount, movelist, uuid)
 
 
+@app.route("/wordcheck", methods=['POST'])
+def wordcheck():
+    """ Check a list of words for validity """
+    words = []
+    word = u""
+    if request.method == 'POST':
+        # This URL should only receive Ajax POSTs from the client
+        try:
+            # The words to check
+            words = request.form.getlist('words[]')
+            # The original word laid down (used as a sync token)
+            word = request.form.get('word', u"")
+        except:
+            pass
+    # Check the words against the dictionary
+    wdb = Manager.word_db()
+    ok = all([w in wdb for w in words])
+    return jsonify(word = word, ok = ok)
+
+
 @app.route("/gamestats", methods=['POST'])
 def gamestats():
     """ Calculate and return statistics on the current game """
