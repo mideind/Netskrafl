@@ -102,6 +102,15 @@
 .glyphicon-user:before {
    content: "\e008";
 }
+.glyphicon-comment:before {
+   content: "\e111";
+}
+.glyphicon-eye-open:before {
+   content: "\e105";
+}
+.glyphicon-paperclip:before {
+   content: "\e142";
+}
 
 
 body {
@@ -237,10 +246,7 @@ td.highlight {
    border-width: 1px;
    border-color: transparent;
    margin: 0;
-   padding-top: 0; /* 2px; */
-   padding-bottom: 0; /* 4px; */
-   padding-left: 0;
-   padding-right: 0;
+   padding: 0;
 }
 
 td.rowid {
@@ -288,12 +294,12 @@ td.rowid {
 div.tile {
    background-color: @tile;
    font-size: 25px;
-   line-height: 25px;
+   line-height: 26px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
    height: 30px;
-   width: 30px; /* 100%; 30px; */
+   width: 30px;
    overflow: hidden;
    margin: 0px;
    padding-top: 2px;
@@ -337,7 +343,7 @@ div.highlight1 {
 
 div.letterscore {
    position: relative;
-   top: -8px;
+   bottom: 8px;
    left: 22px;
    height: 9px;
    width: 9px;

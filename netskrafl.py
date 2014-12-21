@@ -56,6 +56,7 @@ class User:
 
     """ Information about a human user including nickname and preferences """
 
+    # Use a lock to avoid potential race conditions between memcache and database
     _lock = threading.Lock()
 
     def __init__(self, uid = None):
@@ -75,18 +76,21 @@ class User:
 
     def _fetch(self):
         """ Fetch the user's record from the database """
-        u = UserModel.fetch(self._user_id)
-        if u is None:
+        um = UserModel.fetch(self._user_id)
+        if um is None:
             # Use the default properties for a newly created user
             UserModel.create(self._user_id, self.nickname()) # This updates the database
-            return
-        self._nickname = u.nickname
-        self._inactive = u.inactive
-        self._preferences = u.prefs
+        else:
+            # Obtain the properties from the database entity
+            self._nickname = um.nickname
+            self._inactive = um.inactive
+            self._preferences = um.prefs
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
         with User._lock:
+            # Use a lock to avoid the scenaro where a user is fetched by another
+            # request in the interval between a database update and a memcache update
             UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
             memcache.set(self._user_id, self, namespace='user')
 
@@ -175,7 +179,10 @@ class User:
         with User._lock:
             u = memcache.get(uid, namespace='user')
             if u is None:
-                u = User(uid)
+                # Not found in the memcache: create a user object,
+                # populate it from a database entity (or initialize
+                # a fresh one if no entity exists) and add it to the cache
+                u = cls(uid)
                 u._fetch()
                 memcache.add(uid, u, namespace='user')
             return u
@@ -192,7 +199,7 @@ class User:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
-            u._fetch() # Creates a database record if this is a fresh user
+            u._fetch() # Creates a database entity if this is a fresh user
             memcache.add(u.id(), u, namespace='user')
             return u
 
@@ -226,6 +233,8 @@ class Game:
         (u"Amlóði", u"Velur af handahófi einn af fimmtán stigahæstu leikjum í hverri stöðu", 15)
         ]
 
+    # The default nickname to display if a player has an unreadable nick
+    # (for instance a default Google nick with a https:// prefix)
     UNDEFINED_NAME = u"[Ónefndur]"
 
     _lock = threading.Lock()
@@ -282,6 +291,8 @@ class Game:
     def load(cls, uuid):
         """ Load an already existing game from cache or persistent storage """
         with Game._lock:
+            # Ensure that the game load does not introduce race conditions
+            # between the database and the memcache
             return cls._load_locked(uuid)
 
     @classmethod
@@ -301,13 +312,17 @@ class Game:
         # Initialize a new Game instance with a pre-existing uuid
         game = cls(uuid)
 
+        # Set the timestamps
         game.timestamp = gm.timestamp
         game.ts_last_move = gm.ts_last_move
         if game.ts_last_move is None:
+            # If no last move timestamp, default to the start of the game
             game.ts_last_move = game.timestamp
 
+        # Initialize a fresh, empty state with no tiles drawn into the racks
         game.state = State(drawtiles = False)
 
+        # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
         game.player_ids[1] = None if gm.player1 is None else gm.player1.id()
 
@@ -323,10 +338,10 @@ class Game:
 
         # Process the moves
         player = 0
-        mx = 0
+        # mx = 0 # Move counter for debugging/logging
         for mm in gm.moves:
 
-            mx += 1
+            # mx += 1
             # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1], mm.tiles).encode("latin-1"))
 
             m = None
@@ -396,6 +411,7 @@ class Game:
         """ Store the game state in persistent storage """
         assert self.uuid is not None
         with Game._lock:
+            # Avoid race conditions by securing the lock before storing
             gm = GameModel(id = self.uuid)
             gm.timestamp = self.timestamp
             gm.ts_last_move = self.ts_last_move
@@ -421,16 +437,17 @@ class Game:
                 mm.timestamp = m.ts
                 movelist.append(mm)
             gm.moves = movelist
+            # Update the database entity
             gm.put()
-            # Update the memcache as well as the persistent store
+            # Update the memcache as well
             memcache.set(self.uuid, self, namespace='game')
 
     def id(self):
         """ Returns the unique id of this game """
         return self.uuid
 
-    @classmethod
-    def autoplayer_name(cls, level):
+    @staticmethod
+    def autoplayer_name(level):
         """ Return the autoplayer name for a given level """
         i = len(Game.AUTOPLAYERS)
         while i > 0:
@@ -466,29 +483,24 @@ class Game:
         if self.initial_racks[0] is None or self.initial_racks[1] is None:
             # This is an old game stored without rack information: can't display best moves
             return False
-        if not self.is_over():
-            # Never show best moves for games that are still being played
-            return False
-        return True
+        # Never show best moves for games that are still being played
+        return self.is_over()
+
+    def register_move(self, move):
+        """ Register a new move, updating the score and appending to the move list """
+        player_index = self.player_to_move()
+        self.state.apply_move(move)
+        self.ts_last_move = datetime.utcnow()
+        self.moves.append(MoveTuple(player_index, move,
+            self.state.rack(player_index), self.ts_last_move))
+        self.last_move = None # No autoplayer move yet
 
     def autoplayer_move(self):
-        """ Let the AutoPlayer make its move """
-        player_index = self.player_to_move()
+        """ Generate an AutoPlayer move and register it """
         apl = AutoPlayer(self.state, self.robot_level)
         move = apl.generate_move()
-        self.state.apply_move(move)
-        self.moves.append(MoveTuple(player_index, move,
-            self.state.rack(player_index), datetime.utcnow()))
-        self.ts_last_move = datetime.utcnow()
-        self.last_move = move
-
-    def local_move(self, move):
-        """ Register the local player's move, update the score and move list """
-        player_index = self.player_to_move()
-        self.state.apply_move(move)
-        self.moves.append(MoveTuple(player_index, move, self.state.rack(player_index), datetime.utcnow()))
-        self.ts_last_move = datetime.utcnow()
-        self.last_move = None # No autoplayer move yet
+        self.register_move(move)
+        self.last_move = move # Save the last autoplayer move
 
     def enum_tiles(self, state = None):
         """ Enumerate all tiles on the board in a convenient form """
@@ -500,7 +512,9 @@ class Game:
 
     def state_after_move(self, move_number):
         """ Return a game state after the indicated move, 0=beginning state """
+        # Initialize a fresh state object
         s = State(drawtiles = False)
+        # Set up the initial state
         for ix in range(2):
             s.set_player_name(ix, self.state.player_name(ix))
             if self.initial_racks[ix] is None:
@@ -509,9 +523,9 @@ class Game:
             else:
                 # Load the initial rack
                 s.set_rack(ix, self.initial_racks[ix])
-        # Apply the moves
+        # Apply the moves up to the state point
         for m in self.moves[0 : move_number]:
-            s.apply_move(m.move, True)
+            s.apply_move(m.move, shallow = True) # Shallow apply
             if m.rack is not None:
                 s.set_rack(m.player, m.rack)
         s.recalc_bag()
@@ -726,7 +740,7 @@ def _process_move(movecount, movelist, uuid):
         return jsonify(result = err, msg = msg)
 
     # Move is OK: register it and update the state
-    game.local_move(m)
+    game.register_move(m)
 
     # If it's the autoplayer's move, respond immediately
     # (can be a bit time consuming if rack has one or two blank tiles)
@@ -795,24 +809,28 @@ def _userlist(range_from, range_to):
 def _gamelist():
     """ Return a list of active games for the current user """
     result = []
-    cuser = User.current()
-    cuid = None if cuser is None else cuser.id()
+    cuid = User.current_id()
     logging.info(u"_gamelist: iterating games".encode("latin-1"))
     if cuid is not None:
+        # Obtain up to 50 live games where this user is a player
         i = list(GameModel.list_live_games(cuid, max_len = 50))
+        # Sort in reverse order by timestamp of last move,
+        # i.e. games with newest moves first
         i.sort(key = lambda x: x["ts"], reverse = True)
+        # Iterate through the game list
         for g in i:
-            if g["opp"] is None:
+            opp = g["opp"] # User id of opponent
+            if opp is None:
                 # Autoplayer opponent
                 nick = Game.autoplayer_name(g["robot_level"])
             else:
                 # Human opponent
-                u = User.load(g["opp"])
+                u = User.load(opp)
                 nick = u.nickname()
             result.append({
                 "url": url_for('board', game = g["uuid"]),
                 "opp": nick,
-                "opp_is_robot": g["opp"] is None,
+                "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
                 "ts": Alphabet.format_timestamp(g["ts"]),
@@ -824,23 +842,24 @@ def _gamelist():
 def _recentlist():
     """ Return a list of recent games for the current user """
     result = []
-    cuser = User.current()
-    cuid = None if cuser is None else cuser.id()
+    cuid = User.current_id()
     logging.info(u"_recentlist: iterating games".encode("latin-1"))
     if cuid is not None:
+        # Obtain a list of recently finished games where this user was a player
         i = iter(GameModel.list_finished_games(cuid, max_len = 14))
         for g in i:
-            if g["opp"] is None:
+            opp = g["opp"]
+            if opp is None:
                 # Autoplayer opponent
                 nick = Game.autoplayer_name(g["robot_level"])
             else:
                 # Human opponent
-                u = User.load(g["opp"])
+                u = User.load(opp)
                 nick = u.nickname()
             result.append({
                 "url": url_for('review', game = g["uuid"]),
                 "opp": nick,
-                "opp_is_robot": g["opp"] is None,
+                "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
                 "ts": Alphabet.format_timestamp(g["ts"])
@@ -851,8 +870,7 @@ def _recentlist():
 def _challengelist():
     """ Return a list of challenges issued or received by the current user """
     result = []
-    cuser = User.current()
-    cuid = None if cuser is None else cuser.id()
+    cuid = User.current_id()
     logging.info(u"_challengelist: iterating challenges".encode("latin-1"))
     if cuid is not None:
 
@@ -914,6 +932,7 @@ def submitmove():
 @app.route("/wordcheck", methods=['POST'])
 def wordcheck():
     """ Check a list of words for validity """
+
     words = []
     word = u""
     if request.method == 'POST':
@@ -925,6 +944,11 @@ def wordcheck():
             word = request.form.get('word', u"")
         except:
             pass
+
+    if not User.current_id():
+        # If no user is logged in, we always return False
+        return jsonify(word = word, ok = False)
+
     # Check the words against the dictionary
     wdb = Manager.word_db()
     ok = all([w in wdb for w in words])
@@ -935,8 +959,8 @@ def wordcheck():
 def gamestats():
     """ Calculate and return statistics on the current game """
 
-    user = User.current()
-    if not user:
+    cuid = User.current_id()
+    if not cuid:
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
@@ -944,7 +968,7 @@ def gamestats():
     if uuid is not None:
         game = Game.load(uuid)
         # Check whether the user was a player in this game
-        if not game.has_player(user.id ()):
+        if not game.has_player(cuid):
             # Nope: don't allow looking at the stats
             game = None
 
@@ -958,6 +982,9 @@ def gamestats():
 def userlist():
     """ Return user lists with particular criteria """
 
+    if not User.current_id():
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
 
@@ -970,6 +997,8 @@ def userlist():
 def gamelist():
     """ Return a list of active games for the current user """
 
+    # _gamelist() returns an empty list if no user is logged in
+
     return jsonify(result = 0, gamelist = _gamelist())
 
 
@@ -977,12 +1006,16 @@ def gamelist():
 def recentlist():
     """ Return a list of recently completed games for the current user """
 
+    # _recentlist() returns an empty list if no user is logged in
+
     return jsonify(result = 0, recentlist = _recentlist())
 
 
 @app.route("/challengelist", methods=['POST'])
 def challengelist():
     """ Return a list of challenges issued or received by the current user """
+
+    # _challengelist() returns an empty list if no user is logged in
 
     return jsonify(result = 0, challengelist = _challengelist())
 
@@ -1055,7 +1088,7 @@ def review():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is None or not game.has_player(user.id()):
+    if game is None or not game.is_over() or not game.has_player(user.id()):
         # The game is not found or the current user did not play it: abort
         return redirect(url_for("main"))
 
@@ -1063,11 +1096,13 @@ def review():
     if move_number > game.num_moves():
         move_number = game.num_moves()
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
+
     best_moves = None
     if game.allows_best_moves():
         # Show best moves if available and it is proper to do so (i.e. the game is finished)
         apl = AutoPlayer(state)
         best_moves = apl.generate_best_moves(20)
+
     player_index = state.player_to_move()
     user_index = game.player_index(user.id())
 
@@ -1185,13 +1220,13 @@ def help():
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
-    return u'Sorry, nothing at this URL', 404
+    return u'Þessi vefslóð er ekki rétt', 404
 
 
 @app.errorhandler(500)
 def server_error(e):
     """ Return a custom 500 error """
-    return u'Sorry, unexpected error: {}'.format(e), 500
+    return u'Eftirfarandi villa kom upp: {}'.format(e), 500
 
 
 # Run a default Flask web server for testing if invoked directly as a main program
