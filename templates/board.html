@@ -192,7 +192,47 @@
    $(document).ready(initSkrafl);
 </script>
 
+{% if channel_token %}
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<script>
+
+// Open a channel back to the server using the server-generated channel token
+var channel = new goog.appengine.Channel("{{ channel_token }}");
+
+function channelOnOpen() {
+   // alert("Channel open");
+}
+
+function channelOnMessage(msg) {
+   /* The server has sent a notification message back on our channel */
+   var json = jQuery.parseJSON(msg.data);
+   if (json.kind == "move") {
+      // A move has been made in a game for this user
+      // Reload the board page
+      window.location.reload(false);
+   }
+}
+
+function channelOnError(err) {
+   /* Act on err.code and err.description here */
+   // alert("Channel error: " + err.code + "," + err.description);
+}
+
+function channelOnClose() {
+   // alert("Channel closed");
+   // !!! TBD: Add code to reopen a channel here
+}
+
+var socket = channel.open({
+   onopen : channelOnOpen,
+   onmessage : channelOnMessage,
+   onerror : channelOnError,
+   onclose : channelOnClose
+});
+
+</script>
+{% endif %}
 
 {% endblock %}

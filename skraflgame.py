@@ -533,6 +533,10 @@ class Game:
         """ Return the userid of the player whose turn it is, or None if autoplayer """
         return self.player_ids[self.player_to_move()]
 
+    def player_id(self, player_index):
+        """ Return the userid of the indicated player """
+        return self.player_ids[player_index]
+
     def my_turn(self, user_id):
         """ Return True if it is the indicated player's turn to move """
         return self.player_id_to_move() == user_id

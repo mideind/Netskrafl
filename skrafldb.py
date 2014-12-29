@@ -500,16 +500,18 @@ class ChannelModel(ndb.Model):
 
         logging.info(u"Preparing send to {0} {1}".format(kind, entity).encode("latin-1"))
         CHUNK_SIZE = 20
-        while True:
-            q = cls.query(ChannelModel.expiry > now).filter(
-                ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+        q = cls.query(ChannelModel.expiry > now).filter(
+            ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+        offset = 0
+        while q is not None:
             # Query and send message in chunks
             count = 0
-            for cm in q.fetch(CHUNK_SIZE):
+            for cm in q.fetch(CHUNK_SIZE, offset = offset):
                 logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
                 channel.send_message(cm.chid, msg)
                 count += 1
             if count < CHUNK_SIZE:
                 # Hit end of query: We're done
                 break
+            offset += count
 

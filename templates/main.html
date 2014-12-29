@@ -476,24 +476,35 @@ $("#initials").find("span").each(function() {
 
 <script>
 
+// Open a channel back to the server using the server-generated channel token
 var channel = new goog.appengine.Channel("{{ channel_token }}");
 
 function channelOnOpen() {
-   alert("Channel open");
+   // alert("Channel open");
 }
 
 function channelOnMessage(msg) {
-   /* Handle msg.data here */
-   alert(msg.data);
+   /* The server has sent a notification message back on our channel */
+   var json = jQuery.parseJSON(msg.data);
+   if (json.kind == "challenge") {
+      // A challenge to this user has been issued or retracted
+      refreshChallengeList();
+      redisplayUserList();
+   }
+   else
+   if (json.kind == "game")
+      // A move has been made in a game for this user
+      refreshGameList();
 }
 
 function channelOnError(err) {
    /* Act on err.code and err.description here */
-   alert("Channel error: " + err.code + "," + err.description);
+   // alert("Channel error: " + err.code + "," + err.description);
 }
 
 function channelOnClose() {
-   alert("Channel closed");
+   // alert("Channel closed");
+   // !!! TBD: Add code to reopen a channel here
 }
 
 var socket = channel.open({

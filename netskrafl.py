@@ -115,7 +115,8 @@ def _process_move(movecount, movelist, uuid):
 
     # If it's the autoplayer's move, respond immediately
     # (can be a bit time consuming if rack has one or two blank tiles)
-    if not game.is_over() and game.player_id_to_move() is None:
+    opponent = game.player_id_to_move()
+    if not game.is_over() and opponent is None:
         game.autoplayer_move()
 
     if game.is_over():
@@ -124,6 +125,11 @@ def _process_move(movecount, movelist, uuid):
 
     # Make sure the new game state is persistently recorded
     game.store()
+
+    # Notify the opponent, if he has one or more active channels
+    if opponent is not None:
+        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }');
+        ChannelModel.send_message(u"game", game.id(), u'{ "kind": "move" }');
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
@@ -441,18 +447,16 @@ def challenge():
     if destuser is not None:
         if action == u"issue":
             user.issue_challenge(destuser, { }) # !!! No preference parameters yet
-            # Notify the receiving user, if he has active channels
-            ChannelModel.send_message(u"user", destuser, u'{ kind: "challenge" }');
         elif action == u"retract":
             user.retract_challenge(destuser)
-            # Notify the receiving user, if he has active channels
-            ChannelModel.send_message(u"user", destuser, u'{ kind: "challenge" }');
         elif action == u"decline":
             # Decline challenge previously made by the destuser (really srcuser)
             user.decline_challenge(destuser)
         elif action == u"accept":
             # Accept a challenge previously made by the destuser (really srcuser)
             user.accept_challenge(destuser)
+        # Notify the destination user, if he has one or more active channels
+        ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }');
 
     return jsonify(result = 0)
 
