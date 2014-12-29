@@ -78,6 +78,9 @@
 .glyphicon-flag:before {
    content: "\e034";
 }
+.glyphicon-flag-after:after {
+   content: "\e034";
+}
 .glyphicon-bookmark:before {
    content: "\e044";
 }
@@ -369,7 +372,7 @@ h3.playerleft {
    display: inline-block;
    position: absolute;
    top: 0; left: 0;
-   width: 50%;
+   width: 147px;
    font-size: 16px;
    line-height: 24px;
    font-weight: 700;
@@ -386,7 +389,7 @@ h3.playerright {
    display: inline-block;
    position: absolute;
    top: 0; right: 0;
-   width: 50%;
+   width: 147px;
    font-size: 16px;
    line-height: 24px;
    font-weight: 700;
@@ -399,12 +402,20 @@ h3.playerright {
    padding-right: 4px;
 }
 
+span#left-to-move.glyphicon.glyphicon-flag {
+   color: @alert;
+}
+
+span#right-to-move.glyphicon.glyphicon-flag-after {
+   color: @alert;
+}
+
 h3.scoreleft {
    display: inline-block;
    position: absolute;
    top: 42px;
    left: 0;
-   width: 50%;
+   width: 147px;
    font-size: 24px;
    line-height: 24px;
    font-weight: 700;
@@ -421,7 +432,7 @@ h3.scoreright {
    position: absolute;
    top: 42px;
    right: 0;
-   width: 50%;
+   width: 147px;
    font-size: 24px;
    line-height: 24px;
    font-weight: 700;
@@ -732,15 +743,9 @@ div.gameinfo {
    padding-top: 10px;
 }
 
-div.submitnewgame {
-   display: none;
+.standard-button {
    position: absolute;
-   width: 100px;
-   height: 28px;
    text-align: center;
-   bottom: 98px;
-   left: 562px;
-   background-color: @freshtile;
    font-size: 18px;
    font-weight: 700;
    color: white;
@@ -749,78 +754,58 @@ div.submitnewgame {
    padding-top: 8px;
    border-radius: 5px;
    cursor: pointer;
+}
+
+.submitbutton {
+   .standard-button;
+   width: 100px;
+   height: 28px;
+   bottom: 98px;
+   left: 562px;
+   background-color: @freshtile;
+}
+
+div.submitnewgame {
+   .submitbutton;
+   display: none;
 }
 
 div.submitmove {
-   position: absolute;
-   width: 100px;
-   height: 28px;
-   text-align: center;
-   bottom: 98px;
-   left: 562px;
-   background-color: @freshtile;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
+   .submitbutton;
+   display: block;
+}
+
+div.waitmove {
+   .submitbutton;
+   display: none;
+   z-index: 10;
 }
 
 div.submitpass {
-   position: absolute;
+   .standard-button;
    width: 36px;
    height: 28px;
-   text-align: center;
    bottom: 98px;
    left: 91px;
    background-color: @pass-btn;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0px;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 div.submitresign {
-   position: absolute;
+   .standard-button;
    width: 36px;
    height: 28px;
-   text-align: center;
    bottom: 98px;
    left: 26px;
    background-color: @alert;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 div.submitexchange {
-   position: absolute;
+   .standard-button;
    width: 36px;
    height: 28px;
-   text-align: center;
    bottom: 98px;
    left: 156px;
    background-color: @freshtile;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 div.score {
@@ -858,7 +843,6 @@ div.word-check.word-good {
 
 div.word-check.word-good:before {
    content: "\e125"; /* glyphicon-thumbs-up */
-   /* content: "\e089"; // glyphicon-ok-circle */
 }
 
 div.word-check.word-bad {
@@ -911,20 +895,11 @@ div.posdiff {
 }
 
 div.navbtn {
-   position: absolute;
+   .standard-button;
    width: 100px;
    height: 28px;
-   text-align: center;
    bottom: 98px;
    background-color: @nav-btn;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 #navnext {
@@ -936,20 +911,11 @@ div.navbtn {
 }
 
 div.closebtn {
-   position: absolute;
+   .standard-button;
    width: 100px;
    height: 28px;
-   text-align: center;
    bottom: 12px;
    background-color: @close-btn;
-   font-size: 18px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 8px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 #close
@@ -981,6 +947,31 @@ div.tabbed-page {
 div.smallprint {
    font-size: 12px;
    padding-top: 6px;
+}
+
+div.userid {
+   position: absolute;
+   top: 27px;
+   right: 60px;
+   width: 150px;
+   height: 24px;
+   text-align: right;
+   font-size: 18px;
+   font-weight: 700;
+   color: white;
+   overflow: hidden;
+   z-index: 20;
+   color: white;
+}
+
+.userid a:link, .userid a:visited {
+   text-decoration: none;
+   color: white;
+}
+
+.userid a:hover {
+   text-decoration: none;
+   color: @triple-letter;
 }
 
 div.listitem {

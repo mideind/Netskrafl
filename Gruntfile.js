@@ -26,7 +26,8 @@ module.exports = function (grunt) {
                unused: false,
                maxlen: 120,
                predef: ['$', 'document', 'prompt', 'alert', 'console', 'Mousetrap',
-                  'localPlayer', 'placeTiles', 'initBag', 'initMoveList', 'gameId']
+                  'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
+                  'gameId']
             }
          }
       },

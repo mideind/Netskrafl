@@ -13,10 +13,12 @@
       newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
 {% endfor %}
 
-      /* Show the most recent move in the player's color */
+{% if game.my_turn(user.id()) %}
+      /* Show the opponent's most recent move */
 {% for m in game.moves[-1:] %}
       highlightNewestMove(colorOf({{ m.player }}));
 {% endfor %}
+{% endif %}
 
       /* Place the rack tiles */
 {% for tile, score in game.state.rack_details(player_index) %}
@@ -47,10 +49,6 @@
       return "{{ game.id() }}";
    }
 
-   function localTurn() {
-      return {{ "true" if game.player_id_to_move() == player_index else "false" }};
-   }
-
    function navToReview() {
       /* Show the game review page */
       window.location.href='{{ url_for('review', game = game.id(), move = 0) | safe }}';
@@ -68,8 +66,8 @@
 <!-- Player names, scores and move history -->
 <div class="rightcol">
    <div class="heading">
-      <h3 class="playerleft">
-{% if player_index == 0 %}
+      <h3 class="playerleft"><span id="left-to-move" class="glyphicon glyphicon-flag"></span>
+{%- if player_index == 0 -%}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- elif game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
@@ -77,7 +75,7 @@
       {{ game.player_nickname(0) }}
 {%- if player_index == 0 -%}
 </a>
-{% endif %}
+{%- endif -%}
       </h3>
       <h3 class="playerright">
 {% if player_index == 1 %}
@@ -88,8 +86,8 @@
       {{ game.player_nickname(1) }}
 {%- if player_index == 1 -%}
 </a>
-{% endif %}
-      </h3>
+{%- endif -%}
+      <span id="right-to-move" class="glyphicon glyphicon-flag-after"></span></h3>
       <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
    </div>
@@ -133,6 +131,9 @@
 <!-- Move submit button -->
 <div class="submitmove disabled" title="Leika" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="submitMove(this)">Leika <span class="glyphicon glyphicon-play"></span></div>
+
+<!-- Wait placeholder -->
+<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border=0/></div>
 
 <!-- New game button -->
 <div class="submitnewgame" title="Nýr leikur" onmouseover="buttonOver(this)"
@@ -190,5 +191,8 @@
 <script>
    $(document).ready(initSkrafl);
 </script>
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
 
 {% endblock %}

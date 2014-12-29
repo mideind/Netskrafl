@@ -4,6 +4,9 @@ runtime: python27
 api_version: 1
 threadsafe: true
 
+inbound_services:
+- warmup
+
 handlers:
 - url: /favicon.ico
   static_files: static/favicon.ico

@@ -98,7 +98,13 @@
 
    </div> <!-- id="tabs" -->
 
-</div> <!-- class="help" -->
+</div> <!-- class="tabbed-page" -->
+
+<!-- Display user identifier in upper right corner -->
+
+<div class="userid">
+   <a href="{{ url_for('userprefs') }}">{{ user.nickname() }}</a>
+</div>
 
 {% endblock %}
 
@@ -314,7 +320,8 @@ function populateGameList(json) {
       if (item.opp_is_robot)
          // Mark robots with a cog icon
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
-      var myTurn = "<span class='glyphicon glyphicon-flag" +
+      var turnText = item.my_turn ? "Þú átt leik" : (opp + " á leik");
+      var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
          (item.my_turn ? "" : " grayed") + "'></span>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
@@ -373,6 +380,11 @@ function refreshRecentList() {
          // No data to send with query - current user is implicit
       },
       populateRecentList);
+}
+
+function acceptChallenge(userid) {
+   /* Accept a previously issued challenge from the user in question */
+   window.location.href = "{{ url_for('newgame') | safe }}" + "?opp=" + userid;
 }
 
 function markChallAndRefresh(elem, userid) {
@@ -455,6 +467,40 @@ $("#initials").find("span").each(function() {
       // Not a special category, i.e. favorites or robots
       data = $(this).text();
    $(this).click(data, refreshUserList);
+});
+
+</script>
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<script>
+
+var channel = new goog.appengine.Channel("{{ channel_token }}");
+
+function channelOnOpen() {
+   alert("Channel open");
+}
+
+function channelOnMessage(msg) {
+   /* Handle msg.data here */
+   alert(msg.data);
+}
+
+function channelOnError(err) {
+   /* Act on err.code and err.description here */
+   alert("Channel error: " + err.code + "," + err.description);
+}
+
+function channelOnClose() {
+   alert("Channel closed");
+}
+
+var socket = channel.open({
+   onopen : channelOnOpen,
+   onmessage : channelOnMessage,
+   onerror : channelOnError,
+   onclose : channelOnClose
 });
 
 </script>

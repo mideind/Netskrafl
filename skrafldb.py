@@ -17,9 +17,10 @@
 
     MoveModel:
         coord : string
-        tiles : string
+        tiles : string # Blanks are denoted by '?' followed by meaning
         score : integer
         rack : string # Contents of rack after move
+        timestamp : timestamp
 
     GameModel:
         player0 : key into UserModel
@@ -30,9 +31,10 @@
         rack1 : string
         score0 : integer
         score1 : integer
-        to_move : integer
-        over : boolean
-        timestamp : timestamp
+        to_move : integer # Whose move is it, 0 or 1
+        over : boolean # Is the game over?
+        timestamp : timestamp # Start time of game
+        ts_last_move : timestamp # Time of last move
         moves : array of MoveModel
 
     FavoriteModel:
@@ -49,8 +51,10 @@
 
 import logging
 import uuid
+from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
+from google.appengine.api import channel
 
 from languages import Alphabet
 
@@ -58,8 +62,8 @@ from languages import Alphabet
 class Unique:
     """ Wrapper for generation of unique id strings for keys """
 
-    @classmethod
-    def id(cls):
+    @staticmethod
+    def id():
         """ Generates unique id strings """
         return str(uuid.uuid1()) # Random UUID
 
@@ -84,6 +88,7 @@ class UserModel(ndb.Model):
 
     @classmethod
     def update(cls, user_id, nickname, inactive, prefs):
+        """ Update an existing user entity """
         user = cls.fetch(user_id)
         user.nickname = nickname
         user.inactive = inactive
@@ -92,6 +97,7 @@ class UserModel(ndb.Model):
 
     @classmethod
     def fetch(cls, user_id):
+        """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
 
     @classmethod
@@ -110,6 +116,7 @@ class UserModel(ndb.Model):
             if not um.inactive:
                 nick = Alphabet.tolower(um.nickname)
                 if len(nick) > 0 and nick[0] in Alphabet.full_order:
+                    # Nicknames that do not start with an alpabetic character are not listed
                     o_nick = Alphabet.full_order.index(nick[0])
                     if o_nick >= o_from and o_nick <= o_to:
                         yield um.key.id()
@@ -156,7 +163,7 @@ class GameModel(ndb.Model):
     # When was the game started?
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
 
-    # When was the game started?
+    # The timestamp of the last move in the game
     ts_last_move = ndb.DateTimeProperty(required = False, default = None)
 
     # The moves so far
@@ -176,7 +183,7 @@ class GameModel(ndb.Model):
 
     @classmethod
     def fetch(cls, uuid):
-        """ Fetch a game model given its uuid """
+        """ Fetch a game entity given its uuid """
         return cls.get_by_id(uuid)
 
     @classmethod
@@ -214,7 +221,7 @@ class GameModel(ndb.Model):
         q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == True).order(-GameModel.timestamp)
 
         def game_callback(gm):
-            # Map a game entity to a result tuple with useful info about the game
+            """ Map a game entity to a result tuple with useful info about the game """
             uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
@@ -281,7 +288,7 @@ class GameModel(ndb.Model):
 class FavoriteModel(ndb.Model):
     """ Models the fact that a user has marked another user as a favorite """
 
-    # The originating user is the parent/ancestor of the relation
+    # The originating (source) user is the parent/ancestor of the relation
     destuser = ndb.KeyProperty(kind = UserModel)
 
     def set_dest(self, user_id):
@@ -302,7 +309,7 @@ class FavoriteModel(ndb.Model):
 
     @classmethod
     def has_relation(cls, srcuser_id, destuser_id):
-        """ Returns True if destuser is a favorite of user """
+        """ Return True if destuser is a favorite of user """
         if srcuser_id is None or destuser_id is None:
             return False
         ks = ndb.Key(UserModel, srcuser_id)
@@ -319,6 +326,7 @@ class FavoriteModel(ndb.Model):
 
     @classmethod
     def del_relation(cls, src_id, dest_id):
+        """ Delete a favorite relation between a source user and a destination user """
         ks = ndb.Key(UserModel, src_id)
         kd = ndb.Key(UserModel, dest_id)
         while True:
@@ -333,6 +341,8 @@ class FavoriteModel(ndb.Model):
 
 class ChallengeModel(ndb.Model):
     """ Models a challenge issued by a user to another user """
+
+    # The challenging (source) user is the parent/ancestor of the relation
 
     # The challenged user
     destuser = ndb.KeyProperty(kind = UserModel)
@@ -350,7 +360,7 @@ class ChallengeModel(ndb.Model):
 
     @classmethod
     def has_relation(cls, srcuser_id, destuser_id):
-        """ Returns True if srcuser has issued a challenge to destuser """
+        """ Return True if srcuser has issued a challenge to destuser """
         if srcuser_id is None or destuser_id is None:
             return False
         ks = ndb.Key(UserModel, srcuser_id)
@@ -368,16 +378,24 @@ class ChallengeModel(ndb.Model):
 
     @classmethod
     def del_relation(cls, src_id, dest_id):
+        """ Delete a challenge relation between a source user and a destination user """
         ks = ndb.Key(UserModel, src_id)
         kd = ndb.Key(UserModel, dest_id)
+        prefs = None
+        found = False
         while True:
             # There might conceivably be more than one relation,
             # so repeat the query/delete cycle until we don't find any more
             q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
-            fmk = q.get(keys_only = True)
-            if fmk is None:
-                return
-            fmk.delete()
+            cm = q.get()
+            if cm is None:
+                # Return the preferences of the challenge, if any
+                return (found, prefs)
+            # Found the relation in question: store the associated preferences
+            found = True
+            if prefs is None:
+                prefs = cm.prefs
+            cm.key.delete()
 
     @classmethod
     def list_issued(cls, user_id, max_len = 20):
@@ -390,7 +408,7 @@ class ChallengeModel(ndb.Model):
         q = cls.query(ancestor = k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
-            # Map a favorite relation into a list of users
+            """ Map a favorite relation into a list of users """
             id0 = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
 
@@ -408,7 +426,7 @@ class ChallengeModel(ndb.Model):
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
-            # Map a favorite relation into a list of users
+            """ Map a favorite relation into a list of users """
             p0 = cm.key.parent()
             id0 = None if p0 is None else p0.id()
             return (id0, cm.prefs, cm.timestamp)
@@ -417,4 +435,81 @@ class ChallengeModel(ndb.Model):
             yield ch_callback(cm)
 
 
+class ChannelModel(ndb.Model):
+    """ Models connected clients receiving notifications via a Google Appl Engine channel """
+
+    # Channel id (UUID)
+    chid = ndb.StringProperty()
+
+    # Type of channel: can be 'user' or 'game'
+    kind = ndb.StringProperty()
+
+    # The associated entity, either a userid or a game uuid
+    entity = ndb.StringProperty()
+
+    # The expiration time of the channel
+    expiry = ndb.DateTimeProperty()
+
+    # When should the next cleanup of expired channels be done?
+    _CLEANUP_INTERVAL = 1 # Hours
+    _next_cleanup = datetime.utcnow() + timedelta(hours = _CLEANUP_INTERVAL)
+
+    @classmethod
+    def create_new(cls, kind, entity, lifetime = None):
+        """ Create a new channel and return its token """
+        # Every channel is assigned a random UUID
+        chid = Unique.id()
+        cm = cls()
+        cm.chid = chid
+        cm.kind = kind
+        cm.entity = entity
+        if lifetime is None:
+            lifetime = timedelta(hours = 2)
+        cm.expiry = datetime.utcnow() + lifetime
+        cm.put()
+        return channel.create_channel(chid, duration_minutes = int(lifetime.total_seconds() / 60))
+
+    @classmethod
+    def del_expired(cls):
+        """ Delete all expired channels """
+        now = datetime.utcnow()
+        CHUNK_SIZE = 20
+        while True:
+            q = cls.query(ChannelModel.expiry < now)
+            # Query and delete in chunks
+            count = 0
+            for k in q.fetch(CHUNK_SIZE, keys_only = True):
+                k.delete()
+                count += 1
+            if count < CHUNK_SIZE:
+                # Hit end of query: We're done
+                break
+
+    @classmethod
+    def send_message(cls, kind, entity, msg):
+        """ Send a message to all channels matching the kind and entity """
+
+        now = datetime.utcnow()
+
+        # Start by checking whether a cleanup of expired channels is due
+        if now > cls._next_cleanup:
+            # Yes: do the cleanup
+            cls.del_expired()
+            # Schedule the next one
+            cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
+
+        logging.info(u"Preparing send to {0} {1}".format(kind, entity).encode("latin-1"))
+        CHUNK_SIZE = 20
+        while True:
+            q = cls.query(ChannelModel.expiry > now).filter(
+                ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+            # Query and send message in chunks
+            count = 0
+            for cm in q.fetch(CHUNK_SIZE):
+                logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
+                channel.send_message(cm.chid, msg)
+                count += 1
+            if count < CHUNK_SIZE:
+                # Hit end of query: We're done
+                break
 

@@ -84,6 +84,10 @@ function nullFunc(json) {
    /* Null placeholder function to use for Ajax queries that don't need a success func */
 }
 
+function nullCompleteFunc(xhr, status) {
+   /* Null placeholder function for Ajax completion */
+}
+
 function errFunc(xhr, status, errorThrown) {
    /* Error handling function for Ajax communications */
    alert("Villa í netsamskiptum");
@@ -92,7 +96,7 @@ function errFunc(xhr, status, errorThrown) {
    console.dir(xhr);
 }
 
-function serverQuery(requestUrl, jsonData, successFunc) {
+function serverQuery(requestUrl, jsonData, successFunc, completeFunc) {
    /* Wraps a simple, standard Ajax request to the server */
    $.ajax({
       // The URL for the request
@@ -118,8 +122,7 @@ function serverQuery(requestUrl, jsonData, successFunc) {
       error: errFunc,
 
       // code to run regardless of success or failure
-      complete: function(xhr, status) {
-      }
+      complete: (!completeFunc) ? nullCompleteFunc : completeFunc
    });
 }
 
@@ -224,6 +227,11 @@ function placeMove(player, co, tiles) {
 function colorOf(player) {
    /* Return the highlight color of tiles for the given player index */
    return player == localPlayer() ? "0" : "1";
+}
+
+function localTurn() {
+   /* Is it this player's turn to move? */
+   return (numMoves % 2) == localPlayer();
 }
 
 function highlightNewestMove(playerColor) {
@@ -766,14 +774,33 @@ function showWordCheck(json) {
 function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
    var tilesPlaced = findCovers().length;
-   $("div.submitmove").toggleClass("disabled",
-      (tilesPlaced === 0 || showingDialog));
-   $("div.submitexchange").toggleClass("disabled",
-      (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
-   $("div.submitpass").toggleClass("disabled",
-      (tilesPlaced !== 0 || showingDialog));
-   $("div.submitresign").toggleClass("disabled",
-      showingDialog);
+   if (localTurn()) {
+      /* The local player's turn */
+      $("div.submitmove").css("visibility", "visible");
+      $("div.submitexchange").css("visibility", "visible");
+      $("div.submitpass").css("visibility", "visible");
+      $("div.submitresign").css("visibility", "visible");
+      /* Disable or enable buttons according to current state */
+      $("div.submitmove").toggleClass("disabled",
+         (tilesPlaced === 0 || showingDialog));
+      $("div.submitexchange").toggleClass("disabled",
+         (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
+      $("div.submitpass").toggleClass("disabled",
+         (tilesPlaced !== 0 || showingDialog));
+      $("div.submitresign").toggleClass("disabled",
+         showingDialog);
+      $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+   }
+   else {
+      /* The other player's turn */
+      $("div.submitmove").css("visibility", "hidden");
+      $("div.submitexchange").css("visibility", "hidden");
+      $("div.submitpass").css("visibility", "hidden");
+      $("div.submitresign").css("visibility", "hidden");
+      $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+   }
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
@@ -1073,10 +1100,11 @@ function updateState(json) {
             placeTile(sq, t, letter, score);
          }
       });
+      /* Remove highlight from previous move, if any */
+      $("div.highlight1").removeClass("highlight1");
+      $("div.highlight0").removeClass("highlight0");
       /* Add the new tiles laid down in response */
       if (json.lastmove !== undefined) {
-         /* Remove highlight from previous move, if any */
-         $("div.highlight1").removeClass("highlight1");
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
             placeTile(sq, /* Coordinate */
@@ -1265,49 +1293,25 @@ function updateStats(json) {
 function showStats(gameId) {
    $("div.gamestats").css("visibility", "visible");
    /* Get the statistics from the server */
-   $.ajax({
-      // the URL for the request
-      url: "/gamestats",
-
-      // the data to send
-      data: {
-         // Identify the game in question
-         game: gameId
-      },
-
-      // whether this is a POST or GET request
-      type: "POST",
-
-      // the type of data we expect back
-      dataType : "json",
-
-      cache: false,
-
-      // code to run if the request succeeds;
-      // the response is passed to the function
-      success: updateStats,
-
-      // code to run if the request fails; the raw request and
-      // status codes are passed to the function
-      error: errFunc,
-
-      // code to run regardless of success or failure
-      complete: function(xhr, status) {
-      }
-   });
+   serverQuery("/gamestats", { game: gameId }, updateStats);
 }
 
 function hideStats() {
    $("div.gamestats").css("visibility", "hidden");
 }
 
-var submitTemp = "";
+var submitInProgress = false;
+
+function moveComplete(xhr, status) {
+   /* Called when a move has been submitted, regardless of success or failure */
+   $("div.waitmove").css("display", "none");
+   submitInProgress = false;
+}
 
 function sendMove(movetype) {
    /* Send a move to the back-end server using Ajax */
-   if (submitTemp.length > 0)
-      /* Avoid re-entrancy: if submitTemp contains text, we are already
-         processing a previous Ajax call */
+   if (submitInProgress)
+      /* Avoid re-entrancy */
       return;
    var moves = [];
    if (movetype === null || movetype == 'move') {
@@ -1335,52 +1339,29 @@ function sendMove(movetype) {
       /* Resigning from game */
       moves.push("rsgn");
    }
-   if (moves.length === 0)
-      return;
+   /* Be sure to remove the halo from the submit button */
+   $("div.submitmove").removeClass("over");
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Freshly laid tiles are no longer fresh */
    $("div.freshtile").removeClass("freshtile");
+   if (moves.length === 0)
+      /* Nothing to submit */
+      return;
    /* Show a temporary animated GIF while the Ajax call is being processed */
-   submitTemp = $("div.submitmove").html();
-   $("div.submitmove").removeClass("disabled").removeClass("over");
-   $("div.submitmove").html("<img src='/static/ajax-loader.gif' border=0/>");
+   submitInProgress = true;
+   /* Show an animated GIF while waiting for the server to respond */
+   $("div.waitmove").css("display", "block");
    /* Talk to the game server using jQuery/Ajax */
-   $.ajax({
-      // the URL for the request
-      url: "/submitmove",
-
-      // the data to send
-      data: {
+   serverQuery("/submitmove",
+      {
          moves: moves,
          // Send a move count to ensure that the client and the server are in sync
          mcount: numMoves,
          // Send the game's UUID
          uuid: gameId()
       },
-
-      // whether this is a POST or GET request
-      type: "POST",
-
-      // the type of data we expect back
-      dataType : "json",
-
-      cache: false,
-
-      // code to run if the request succeeds;
-      // the response is passed to the function
-      success: updateState,
-
-      // code to run if the request fails; the raw request and
-      // status codes are passed to the function
-      error: errFunc,
-
-      // code to run regardless of success or failure
-      complete: function(xhr, status) {
-         $("div.submitmove").html(submitTemp);
-         submitTemp = "";
-      }
-   });
+      updateState, moveComplete);
 }
 
 function initSkrafl(jQuery) {

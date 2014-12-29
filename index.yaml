@@ -20,6 +20,12 @@ indexes:
   properties:
   - name: timestamp
 
+- kind: ChannelModel
+  properties:
+  - name: entity
+  - name: kind
+  - name: expiry
+
 - kind: GameModel
   properties:
   - name: over
