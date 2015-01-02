@@ -467,6 +467,7 @@ class ChannelModel(ndb.Model):
             lifetime = timedelta(hours = 2)
         cm.expiry = datetime.utcnow() + lifetime
         cm.put()
+        logging.info(u"Creating channel with id {0}".format(chid).encode("latin-1"))
         return channel.create_channel(chid, duration_minutes = int(lifetime.total_seconds() / 60))
 
     @classmethod

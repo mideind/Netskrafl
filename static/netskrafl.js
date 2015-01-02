@@ -1010,6 +1010,7 @@ function resetRack(ev) {
       }
    });
    updateButtonState();
+   return true;
 }
 
 function rescrambleRack(ev) {

@@ -114,6 +114,9 @@
 .glyphicon-paperclip:before {
    content: "\e142";
 }
+.glyphicon-link:before {
+   content: "\e144";
+}
 
 
 body {
@@ -819,6 +822,26 @@ div.score {
    font-size: 26px;
    font-weight: 700;
    color: black;
+}
+
+div.channel {
+   position: absolute;
+   width: 32px;
+   height: 32px;
+   text-align: center;
+   bottom: 40px;
+   left: 32px;
+   background-color: transparent;
+   font-family: 'Glyphicons Halflings';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 20px;
+   overflow: hidden;
+   visibility: hidden;
+}
+
+div.channel:before {
+   content: "\e144"; /* glyphicon-link */
 }
 
 div.word-check {

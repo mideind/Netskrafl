@@ -611,6 +611,43 @@ def board():
         player_index = player_index, channel_token = channel_token)
 
 
+@app.route("/newchannel", methods=['POST'])
+def newchannel():
+    """ Issue a new channel token for an expired client session """
+
+    user = User.current()
+    if user is None:
+        # No user: no channel token
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uuid = request.form.get("game", None)
+    game = None
+
+    if uuid is not None:
+        # Attempt to load the game whose id is in the URL query string
+        game = Game.load(uuid)
+
+    if game is not None and (game.is_over() or not game.has_player(user.id())):
+        game = None
+
+    if game is None:
+        # No associated game: return error
+        return jsonify(result = Error.WRONG_USER)
+
+    player_index = game.player_index(user.id())
+
+    if game.is_autoplayer(1 - player_index):
+        # No need for a channel if the opponent is an autoplayer
+        return jsonify(result = Error.WRONG_USER)
+
+    # Create a Google App Engine Channel API token
+    # to enable refreshing of the board when the
+    # opponent makes a move
+    channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
+
+    return jsonify(result = Error.LEGAL, token = channel_token)
+
+
 @app.route("/")
 def main():
     """ Handler for the main (index) page """
