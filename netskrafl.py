@@ -22,6 +22,7 @@
 """
 
 import logging
+import json
 
 from flask import Flask
 from flask import render_template, redirect, jsonify
@@ -128,8 +129,11 @@ def _process_move(movecount, movelist, uuid):
 
     # Notify the opponent, if he has one or more active channels
     if opponent is not None:
-        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }');
-        ChannelModel.send_message(u"game", game.id(), u'{ "kind": "move" }');
+        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
+        # Send a game update to the opponent channel, if any, including
+        # the full client state
+        ChannelModel.send_message(u"game", game.id() + u":" + str(1 - player_index),
+            json.dumps(game.client_state(1 - player_index, m)))
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
@@ -601,7 +605,7 @@ def board():
         # Create a Google App Engine Channel API token
         # to enable refreshing of the board when the
         # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game", game.id())
+        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
 
     return render_template("board.html", game = game, user = user,
         player_index = player_index, channel_token = channel_token)

@@ -208,11 +208,8 @@ function channelOnOpen() {
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   if (json.kind == "move") {
-      // A move has been made in a game for this user
-      // Reload the board page
-      window.location.reload(false);
-   }
+   // json now contains an entire client state update, as a after submitMove()
+   updateState(json);
 }
 
 function channelOnError(err) {

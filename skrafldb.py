@@ -436,7 +436,7 @@ class ChallengeModel(ndb.Model):
 
 
 class ChannelModel(ndb.Model):
-    """ Models connected clients receiving notifications via a Google Appl Engine channel """
+    """ Models connected clients receiving notifications via a Google App Engine channel """
 
     # Channel id (UUID)
     chid = ndb.StringProperty()
@@ -452,7 +452,7 @@ class ChannelModel(ndb.Model):
 
     # When should the next cleanup of expired channels be done?
     _CLEANUP_INTERVAL = 1 # Hours
-    _next_cleanup = datetime.utcnow() + timedelta(hours = _CLEANUP_INTERVAL)
+    _next_cleanup = None
 
     @classmethod
     def create_new(cls, kind, entity, lifetime = None):
@@ -472,6 +472,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def del_expired(cls):
         """ Delete all expired channels """
+        logging.info(u"Deleting all expired channels".encode("latin-1"))
         now = datetime.utcnow()
         CHUNK_SIZE = 20
         while True:
@@ -492,7 +493,7 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
 
         # Start by checking whether a cleanup of expired channels is due
-        if now > cls._next_cleanup:
+        if cls._next_cleanup is None or (now > cls._next_cleanup):
             # Yes: do the cleanup
             cls.del_expired()
             # Schedule the next one

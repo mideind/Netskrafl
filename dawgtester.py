@@ -57,7 +57,7 @@ class DawgTester:
         self._test_false(u"eipeði")
         self._test_false(u"abs")
         self._test_true(u"halló")
-        self._test_true(u"hraðskákmótin")
+        # self._test_true(u"hraðskákmótin") # Not in BÍN
         # self._test_true(u"jólahraðskákmótið") # Longer than 15 letters
         self._test_true(u"nafnskírteinið")
         self._test_false(u"abstraktmálarið")
@@ -65,8 +65,14 @@ class DawgTester:
         self._test_false(u"abstraktmálar")
         self._test_false(u"abstraktmála")
         self._test_true(u"prófun")
+        self._test_true(u"upphitun")
         self._test_false(u"")
         self._test_false(u"abo550")
+        self._test_false(u"ertðu")
+        self._test_false(u"sértðu")
+        self._test_true(u"sértu")
+        self._test_true(u"dren")
+        self._test_true(u"drensins")
 
         # All two-letter words accepted by the Icelandic Scrabble(tm)-like game
         # at ordaleikur.appspot.com

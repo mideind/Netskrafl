@@ -567,7 +567,7 @@ class Game:
         """ Returns the timestamp of the game in a readable format """
         return u"" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
 
-    def client_state(self, player_index):
+    def client_state(self, player_index, lastmove = None):
         """ Create a package of information for the client about the current state """
 
         reply = dict()
@@ -576,6 +576,10 @@ class Game:
             # Show the autoplayer move that was made in response
             reply["lastmove"] = self.last_move.details()
             num_moves = 2 # One new move to be added to move list
+        elif lastmove is not None:
+            # The indicated move should be included in the client state
+            # (used when notifying an opponent of a new move through a channel)
+            reply["lastmove"] = lastmove.details()
         newmoves = [(m.player, m.move.summary(self.state.board())) for m in self.moves[-num_moves:]]
 
         if self.is_over():
