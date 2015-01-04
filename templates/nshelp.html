@@ -20,11 +20,13 @@
 
    <div id="tabs-1">
    <p><strong>Velkomin í Netskrafl!</strong><p>
-   <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn. Leikreglurnar eru eins og í
+   <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn.
+   Leikreglurnar eru eins og í
    hefðbundnu borðskrafli, en aðeins eru leyfð orð sem fyrirfinnast í
-   <a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu íslensks
-   nútímamáls</a> - og tveggja stafa orð
-   samkvæmt lista Skraflfélags Íslands. Ekki er því unnt að véfengja orð sem lögð eru
+   <a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
+   íslensks nútímamáls</a> - og tveggja stafa orð samkvæmt
+   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.
+   Ekki er því unnt að véfengja orð sem lögð eru
    niður, né er hægt að leggja niður önnur orð en þau sem eru í orðalistunum.</p>
    <p>Í upphafi leiks hefur þú sjö stafaflísar sem sýndar eru í rekkanum fyrir neðan
    borðið. Þú leggur þær niður með því að draga þær með músinni (smella á flís,
@@ -58,7 +60,7 @@
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur. Þú getur
    <a href="{{ url_for('userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
-   með því að smella á notandanafnið í dálkhausnum hægra megin á aðalskjánum.
+   með því að smella á notandanafnið efst hægra megin í glugganum.
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
    <p>Taktu þátt í þróun Netskrafls með því að
    <a href="https://www.facebook.com/groups/828426797220211/" target="_blank">ganga í fésbókarhópinn</a>!</p>
@@ -70,7 +72,7 @@
    </div>
 
    <div id="tabs-2">
-   <p>Netskrafl leyfir tveggja stafa orð sem eru á lista Skraflfélags Íslands
+   <p>Netskrafl leyfir tveggja stafa orð sem eru á <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
    eins og hann var á Íslandsmóti í Skrafli 2014. Þau eru eftirfarandi:</p>
    <div class="twolist">
    <div class="twoline">
@@ -185,6 +187,11 @@
 <script>
 
 $("#tabs").tabs();
+
+{% if show_twoletter %}
+// Select the tab with two letter words to show initially
+$("#tabs").tabs("option", "active", 1);
+{% endif %}
 
 </script>
 

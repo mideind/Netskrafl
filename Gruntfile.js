@@ -32,6 +32,7 @@ module.exports = function (grunt) {
          }
       },
 
+/*
       uglify: {
          all: {
             files: {
@@ -39,6 +40,7 @@ module.exports = function (grunt) {
             }
          }
       },
+*/
 
       less: {
          development: {
@@ -66,10 +68,12 @@ module.exports = function (grunt) {
             files: 'static/netskrafl.js',
             tasks: 'jshint'
          },
+/*
          uglify: {
             files: 'static/netskrafl.js',
             tasks: 'uglify'
          },
+*/
          less: {
             files: 'static/*.less',
             tasks: 'less:development'

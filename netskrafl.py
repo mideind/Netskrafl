@@ -32,6 +32,7 @@ from google.appengine.api import users
 
 from languages import Alphabet
 from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Unique, UserModel, GameModel, MoveModel,\
     FavoriteModel, ChallengeModel, ChannelModel
@@ -129,6 +130,7 @@ def _process_move(movecount, movelist, uuid):
 
     # Notify the opponent, if he has one or more active channels
     if opponent is not None:
+        # Human opponent
         ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
         # Send a game update to the opponent channel, if any, including
         # the full client state
@@ -294,9 +296,30 @@ def warmup():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
 
     wdb = Game.manager.word_db()
-    ok = u"upphitun" in wdb
+    ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
     logging.info(u"Warmup, ok is {0}".format(ok).encode("latin-1"))
     return jsonify(ok = ok)
+
+
+@app.route("/_ah/channel/connected/", methods=['POST'])
+def channel_connected():
+    """ A client channel has been connected """
+    chid = request.form.get('from', None)
+    logging.info(u"Channel connect from id {0}".format(chid).encode('latin-1'))
+    # Mark the entity as being connected
+    ChannelModel.connect(chid)
+    return jsonify(ok = True)
+
+
+@app.route("/_ah/channel/disconnected/", methods=['POST'])
+def channel_disconnected():
+    """ A client channel has been disconnected """
+
+    chid = request.form.get('from', None)
+    logging.info(u"Channel disconnect from id {0}".format(chid).encode('latin-1'))
+    # Mark the entity as being disconnected
+    ChannelModel.disconnect(chid)
+    return jsonify(ok = True)
 
 
 @app.route("/submitmove", methods=['POST'])
@@ -381,7 +404,7 @@ def userlist():
 
     # logging.info(u"userlist(): range_from is {0}, range_to is {1}".format(range_from, range_to).encode("latin-1"))
 
-    return jsonify(result = 0, userlist = _userlist(range_from, range_to))
+    return jsonify(result = Error.LEGAL, userlist = _userlist(range_from, range_to))
 
 
 @app.route("/gamelist", methods=['POST'])
@@ -390,7 +413,7 @@ def gamelist():
 
     # _gamelist() returns an empty list if no user is logged in
 
-    return jsonify(result = 0, gamelist = _gamelist())
+    return jsonify(result = Error.LEGAL, gamelist = _gamelist())
 
 
 @app.route("/recentlist", methods=['POST'])
@@ -399,7 +422,7 @@ def recentlist():
 
     # _recentlist() returns an empty list if no user is logged in
 
-    return jsonify(result = 0, recentlist = _recentlist())
+    return jsonify(result = Error.LEGAL, recentlist = _recentlist())
 
 
 @app.route("/challengelist", methods=['POST'])
@@ -408,7 +431,7 @@ def challengelist():
 
     # _challengelist() returns an empty list if no user is logged in
 
-    return jsonify(result = 0, challengelist = _challengelist())
+    return jsonify(result = Error.LEGAL, challengelist = _challengelist())
 
 
 @app.route("/favorite", methods=['POST'])
@@ -431,7 +454,7 @@ def favorite():
         elif action == u"delete":
             user.del_favorite(destuser)
 
-    return jsonify(result = 0)
+    return jsonify(result = Error.LEGAL)
 
 
 @app.route("/challenge", methods=['POST'])
@@ -462,7 +485,7 @@ def challenge():
         # Notify the destination user, if he has one or more active channels
         ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }');
 
-    return jsonify(result = 0)
+    return jsonify(result = Error.LEGAL)
 
 
 @app.route("/review")
@@ -620,30 +643,38 @@ def newchannel():
         # No user: no channel token
         return jsonify(result = Error.LOGIN_REQUIRED)
 
+    channel_token = None
     uuid = request.form.get("game", None)
-    game = None
 
-    if uuid is not None:
+    if uuid is None:
+        # This is probably a user channel request
+        uuid = request.form.get("user", None)
+        if uuid == user.id():
+            # Create a Google App Engine Channel API token
+            # for user notification
+            channel_token = ChannelModel.create_new(u"user", uuid)
+    else:
+        # Game channel request
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is not None and (game.is_over() or not game.has_player(user.id())):
-        game = None
+        if game is not None and (game.is_over() or not game.has_player(user.id())):
+            game = None
 
-    if game is None:
-        # No associated game: return error
-        return jsonify(result = Error.WRONG_USER)
+        if game is None:
+            # No associated game: return error
+            return jsonify(result = Error.WRONG_USER)
 
-    player_index = game.player_index(user.id())
+        player_index = game.player_index(user.id())
 
-    if game.is_autoplayer(1 - player_index):
-        # No need for a channel if the opponent is an autoplayer
-        return jsonify(result = Error.WRONG_USER)
+        if game.is_autoplayer(1 - player_index):
+            # No need for a channel if the opponent is an autoplayer
+            return jsonify(result = Error.WRONG_USER)
 
-    # Create a Google App Engine Channel API token
-    # to enable refreshing of the board when the
-    # opponent makes a move
-    channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
+        # Create a Google App Engine Channel API token
+        # to enable refreshing of the board when the
+        # opponent makes a move
+        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
 
     return jsonify(result = Error.LEGAL, token = channel_token)
 
@@ -674,7 +705,17 @@ def help():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user)
+    return render_template("nshelp.html", user = user, show_twoletter = False)
+
+
+@app.route("/twoletter")
+def twoletter():
+    """ Show help page """
+
+    user = User.current()
+    # We tolerate a null (not logged in) user here
+
+    return render_template("nshelp.html", user = user, show_twoletter = True)
 
 
 @app.errorhandler(404)

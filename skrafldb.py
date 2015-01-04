@@ -450,6 +450,12 @@ class ChannelModel(ndb.Model):
     # The expiration time of the channel
     expiry = ndb.DateTimeProperty()
 
+    # Is this channel presently connected?
+    connected = ndb.BooleanProperty(required = False, default = False)
+
+    # Is this channel stale (i.e. has missed updates)?
+    stale = ndb.BooleanProperty(required = False, default = False)
+
     # When should the next cleanup of expired channels be done?
     _CLEANUP_INTERVAL = 1 # Hours
     _next_cleanup = None
@@ -463,12 +469,44 @@ class ChannelModel(ndb.Model):
         cm.chid = chid
         cm.kind = kind
         cm.entity = entity
+        cm.connected = True
+        cm.stale = False
         if lifetime is None:
             lifetime = timedelta(hours = 2)
+            # lifetime = timedelta(minutes = 1)
         cm.expiry = datetime.utcnow() + lifetime
         cm.put()
         logging.info(u"Creating channel with id {0}".format(chid).encode("latin-1"))
         return channel.create_channel(chid, duration_minutes = int(lifetime.total_seconds() / 60))
+
+    @classmethod
+    def disconnect(cls, chid):
+        """ A channel with the given id has been disconnected """
+        logging.info(u"Disconnecting channel {0}".format(chid).encode("latin-1"))
+        q = cls.query(ChannelModel.chid == chid)
+        now = datetime.utcnow()
+        for cm in q.fetch(1):
+            if cm.expiry < now:
+                # Disconnected and expired: delete it
+                cm.key.delete()
+            else:
+                # Mark as not connected
+                cm.connected = False
+                cm.put()
+
+    @classmethod
+    def connect(cls, chid):
+        """ A channel with the given id is now connected """
+        logging.info(u"Connecting channel {0}".format(chid).encode("latin-1"))
+        q = cls.query(ChannelModel.chid == chid)
+        for cm in q.fetch(1):
+            stale = cm.stale # Did this channel miss notifications?
+            cm.stale = False
+            cm.connected = True
+            cm.put()
+            if stale:
+                logging.info(u"Channel {0} is stale".format(chid).encode("latin-1"))
+                channel.send_message(cm.chid, u'{ "stale": true }')
 
     @classmethod
     def del_expired(cls):
@@ -509,8 +547,13 @@ class ChannelModel(ndb.Model):
             # Query and send message in chunks
             count = 0
             for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
-                channel.send_message(cm.chid, msg)
+                if cm.connected:
+                    logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
+                    channel.send_message(cm.chid, msg)
+                else:
+                    logging.info(u"Marking disconnected channel {0} as stale".format(cm.chid).encode("latin-1"))
+                    cm.stale = True
+                    cm.put()
                 count += 1
             if count < CHUNK_SIZE:
                 # Hit end of query: We're done

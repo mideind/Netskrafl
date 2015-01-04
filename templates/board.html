@@ -122,9 +122,6 @@
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
-<!-- Real-time channel open -->
-<div class="channel"></div>
-
 <!-- A button to recall all tiles back into the rack -->
 <div class="recallbtn" title="Færa stafi aftur í rekka"
    onmouseover="this.classList.add('hover')"
@@ -217,22 +214,23 @@ function openChannel() {
 }
 
 function channelOnOpen() {
-   // alert("Channel open");
-   $("div.channel").css("visibility", "visible").css("color", "green");
 }
 
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   // json now contains an entire client state update, as a after submitMove()
-   resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
-   updateState(json);
+   if (json.stale)
+      // We missed updates on our channel: reload the board
+      window.location.reload(false);
+   else {
+      // json now contains an entire client state update, as a after submitMove()
+      resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
+      updateState(json);
+   }
 }
 
 function channelOnError(err) {
    /* Act on err.code and err.description here */
-   // alert("Channel error: " + err.code + "," + err.description);
-   $("div.channel").css("color", "red");
 }
 
 function newChannel(json) {
@@ -245,9 +243,10 @@ function newChannel(json) {
 }
 
 function channelOnClose() {
-   // alert("Channel closed");
-   $("div.channel").css("visibility", "hidden");
-   serverQuery("newchannel", { game: gameId(), oldch: channelToken }, newChannel);
+   /* The channel has expired or is being closed for other reasons: request a new one */
+   serverQuery("newchannel",
+      { game: gameId(), oldch: channelToken },
+      newChannel);
    channelToken = null;
    channel = null;
    socket = null;
@@ -256,6 +255,7 @@ function channelOnClose() {
 openChannel();
 
 </script>
+
 {% endif %}
 
 {% endblock %}

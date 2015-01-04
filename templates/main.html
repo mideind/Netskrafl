@@ -13,8 +13,8 @@
 
    <div id="tabs">
    <ul>
-      <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Viðureignir</a></li>
-      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir</a></li>
+      <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Viðureignir<span id="numgames">0</span></a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir<span id="numchallenges">0</span></a></li>
       <li><a href="#tabs-3"><span class='glyphicon glyphicon-user'></span>&nbsp;&nbsp;Andstæðingar</a></li>
       <li><a href="#tabs-4"><span class='glyphicon glyphicon-bookmark'></span>&nbsp;&nbsp;Ferill</a></li>
    </ul>
@@ -32,6 +32,22 @@
 
       <!-- Game list will be populated by populateGameList() below -->
       <div id="gamelist"></div>
+
+      <div class="hint">
+      <p>Ef þig vantar einhvern til að skrafla við, veldu
+      <a href="#" id="opponents">flipann "Andstæðingar"</a>
+      og skoraðu á tölvuþjarka - <span class="glyphicon glyphicon-cog"></span>&nbsp;<b>Amlóða</b>,
+      <span class="glyphicon glyphicon-cog"></span>&nbsp;<b>Miðlung</b> eða
+      <span class="glyphicon glyphicon-cog"></span>&nbsp;<b>Fullsterkan</b> -
+      eða veldu þér annan leikmann úr stafrófslistunum sem þar er að finna til að skora á.</p>
+      <p>Þú stofnar áskorun með því að smella á bendi-teiknið <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span> vinstra megin við nafn andstæðingsins.</p>
+      <p>Tölvuþjarkarnir eru
+      ætíð reiðubúnir að skrafla og leikur við þá hefst strax. Aðrir leikmenn
+      þurfa að samþykkja áskorun áður en leikur hefst.</p>
+      <p><a href="{{ url_for('help') }}">Hjálp</a> má fá með því að smella á bláa
+      &nbsp;<span class="glyphicon glyphicon-info-sign"></span> - teiknið hér til vinstri.</p>
+      <p>Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á merki Netskrafls vinstra megin í glugganum.</p>
+      </div>
 
    </div>
 
@@ -314,7 +330,9 @@ function populateGameList(json) {
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   for (var i = 0; i < json.gamelist.length; i++) {
+   numGames = json.gamelist.length;
+   numMyTurns = 0;
+   for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
       var opp = escapeHtml(item.opp);
       if (item.opp_is_robot)
@@ -332,6 +350,19 @@ function populateGameList(json) {
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "</a></div>";
       $("#gamelist").append(str);
+      if (item.my_turn)
+         numMyTurns++;
+   }
+   // Update the count of games where it's this user's turn
+   if (numMyTurns === 0) {
+      $("#numgames").css("display", "none");
+      // Display a hint to select an opponent
+      $("div.hint").css("display", "block");
+   }
+   else {
+      $("#numgames").css("display", "inline-block").text(numMyTurns.toString());
+      // Hide the hint
+      $("div.hint").css("display", "none");
    }
 }
 
@@ -432,6 +463,13 @@ function populateChallengeList(json) {
          countSent++;
       }
    }
+   // Update the count of received challenges
+   if (countReceived === 0) {
+      $("#numchallenges").css("display", "none");
+   }
+   else {
+      $("#numchallenges").css("display", "inline-block").text(countReceived.toString());
+   }
 }
 
 function refreshChallengeList() {
@@ -447,6 +485,11 @@ function refreshChallengeList() {
 }
 
 $("#tabs").tabs();
+
+$("#opponents").click(function() {
+   // Select and show the opponents tab
+   $("#tabs").tabs("option", "active", 2);
+});
 
 /* Initialize game list */
 refreshGameList();
@@ -476,23 +519,33 @@ $("#initials").find("span").each(function() {
 
 <script>
 
-// Open a channel back to the server using the server-generated channel token
-var channel = new goog.appengine.Channel("{{ channel_token }}");
+var channelToken = "{{ channel_token }}";
+var channel = null;
+var socket = null;
+
+function openChannel() {
+   /* Open a new channel using the token stored in channelToken */
+   channel = new goog.appengine.Channel(channelToken);
+   socket = channel.open({
+      onopen : channelOnOpen,
+      onmessage : channelOnMessage,
+      onerror : channelOnError,
+      onclose : channelOnClose
+   });
+}
 
 function channelOnOpen() {
-   // alert("Channel open");
 }
 
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   if (json.kind == "challenge") {
+   if (json.stale || json.kind == "challenge") {
       // A challenge to this user has been issued or retracted
       refreshChallengeList();
       redisplayUserList();
    }
-   else
-   if (json.kind == "game")
+   if (json.stale || json.kind == "game")
       // A move has been made in a game for this user
       refreshGameList();
 }
@@ -502,17 +555,24 @@ function channelOnError(err) {
    // alert("Channel error: " + err.code + "," + err.description);
 }
 
-function channelOnClose() {
-   // alert("Channel closed");
-   // !!! TBD: Add code to reopen a channel here
+function newChannel(json) {
+   /* Ajax callback, called when the server has issued a new channel token */
+   if (json && json.result === 0) {
+      // No error: get the new token and reopen the channel
+      channelToken = json.token;
+      openChannel();
+   }
 }
 
-var socket = channel.open({
-   onopen : channelOnOpen,
-   onmessage : channelOnMessage,
-   onerror : channelOnError,
-   onclose : channelOnClose
-});
+function channelOnClose() {
+   /* Channel expired: Ask for a new channel from the server */
+   serverQuery("newchannel", { user: "{{ user.id() }}", oldch: channelToken }, newChannel);
+   channelToken = null;
+   channel = null;
+   socket = null;
+}
+
+openChannel();
 
 </script>
 
