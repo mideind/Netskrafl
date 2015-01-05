@@ -591,6 +591,10 @@ def newgame():
     logging.info(u"Starting a new game: {0} vs {1}".format(user.nickname(), opp).encode("latin-1"))
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)
+
+    # Notify the opponent that there is a new game
+    ChannelModel.send_message(u"user", opp, u'{ "kind": "game" }')
+
     # Go to the game page
     return redirect(url_for("board", game = game.id()))
 

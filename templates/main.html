@@ -42,8 +42,8 @@
       eða veldu þér annan leikmann úr stafrófslistunum sem þar er að finna til að skora á.</p>
       <p>Þú stofnar áskorun með því að smella á bendi-teiknið <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span> vinstra megin við nafn andstæðingsins.</p>
       <p>Tölvuþjarkarnir eru
-      ætíð reiðubúnir að skrafla og leikur við þá hefst strax. Aðrir leikmenn
-      þurfa að samþykkja áskorun áður en leikur hefst.</p>
+      ætíð reiðubúnir að skrafla og viðureign við þá hefst strax. Aðrir leikmenn
+      þurfa að samþykkja áskorun áður en viðureign hefst.</p>
       <p><a href="{{ url_for('help') }}">Hjálp</a> má fá með því að smella á bláa
       &nbsp;<span class="glyphicon glyphicon-info-sign"></span> - teiknið hér til vinstri.</p>
       <p>Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á merki Netskrafls vinstra megin í glugganum.</p>
@@ -53,7 +53,7 @@
 
    <div id="tabs-2">
 
-      <p>Skorað á þig - smelltu til að taka áskoruninni og hefja leik:</p>
+      <p>Skorað á þig - smelltu til að taka áskoruninni og hefja viðureign:</p>
 
       <div class="listitem listheader"><span
       class="list-icon"><span title="Hafna" class='glyphicon glyphicon-thumbs-down grayed'></span></span><span
@@ -356,11 +356,15 @@ function populateGameList(json) {
    // Update the count of games where it's this user's turn
    if (numMyTurns === 0) {
       $("#numgames").css("display", "none");
-      // Display a hint to select an opponent
-      $("div.hint").css("display", "block");
    }
    else {
       $("#numgames").css("display", "inline-block").text(numMyTurns.toString());
+   }
+   if (numGames === 0) {
+      // No games in the list: Display a hint to select an opponent
+      $("div.hint").css("display", "block");
+   }
+   else {
       // Hide the hint
       $("div.hint").css("display", "none");
    }
