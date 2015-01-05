@@ -518,9 +518,12 @@ class ChannelModel(ndb.Model):
             q = cls.query(ChannelModel.expiry < now)
             # Query and delete in chunks
             count = 0
+            list_k = []
             for k in q.fetch(CHUNK_SIZE, keys_only = True):
-                k.delete()
+                list_k.append(k)
                 count += 1
+            if count:
+                ndb.delete_multi(list_k)
             if count < CHUNK_SIZE:
                 # Hit end of query: We're done
                 break
@@ -546,6 +549,7 @@ class ChannelModel(ndb.Model):
         while q is not None:
             # Query and send message in chunks
             count = 0
+            list_stale = []
             for cm in q.fetch(CHUNK_SIZE, offset = offset):
                 if cm.connected:
                     logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
@@ -553,8 +557,10 @@ class ChannelModel(ndb.Model):
                 else:
                     logging.info(u"Marking disconnected channel {0} as stale".format(cm.chid).encode("latin-1"))
                     cm.stale = True
-                    cm.put()
+                    list_stale.append(cm)
                 count += 1
+            if list_stale:
+                ndb.put_multi(list_stale)
             if count < CHUNK_SIZE:
                 # Hit end of query: We're done
                 break

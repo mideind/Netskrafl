@@ -536,11 +536,20 @@ class State:
         if self._game_resigned:
             # In case of a resignation, the resigning player has already lost all points
             return
+        if any(self._racks[ix].is_empty() for ix in range(2)):
+            # Normal win by one of the players
+            for ix in range(2):
+                # Add the score of the opponent's tiles
+                self._scores[ix] += Alphabet.score(self.rack(1 - ix))
+                # Subtract the score of the player's own tiles
+                self._scores[ix] -= Alphabet.score(self.rack(ix))
+        else:
+            # Game expired by passes
+            for ix in range(2):
+                # Subtract the score of the player's own tiles
+                self._scores[ix] -= Alphabet.score(self.rack(ix))
+        # Make sure the scores are not negative, just in case
         for ix in range(2):
-            # Add the score of the opponent's tiles
-            self._scores[ix] += Alphabet.score(self.rack(1 - ix))
-            # Subtract the score of the player's own tiles
-            self._scores[ix] -= Alphabet.score(self.rack(ix))
             if self._scores[ix] < 0:
                 self._scores[ix] = 0
 
@@ -887,7 +896,6 @@ class Move:
                 else:
                     cross = board.letters_left(c.row, c.col) + c.letter + board.letters_right(c.row, c.col)
                 if len(cross) > 1 and cross not in Manager.word_db():
-                    # print(u"Cross check fails for {0}".format(cross)) # !!! DEBUG
                     return (Error.CROSS_WORD_NOT_IN_DICTIONARY, cross)
         # All checks pass: the play is legal
         return Error.LEGAL
@@ -939,7 +947,6 @@ class Move:
                 wsc = Board.wordscore(c.row, c.col)
                 for tile in cross:
                     sc += 0 if tile == u'?' else Alphabet.scores[tile]
-                # print(u"Cross {0} scores {1}".format(cross, sc * wsc)) # !!! DEBUG
                 total += sc * wsc
         # Add the bingo bonus of 50 points for playing all (seven) tiles
         if numcovers == Rack.MAX_TILES:

@@ -195,11 +195,13 @@ class User:
             return None
         return u.nickname()
 
+
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
 # !!! Temporary hack to make old pickles work
-import netskrafl
-setattr(netskrafl, MoveTuple.__name__, MoveTuple)
+# import netskrafl
+# setattr(netskrafl, MoveTuple.__name__, MoveTuple)
+
 
 class Game:
 
@@ -589,12 +591,19 @@ class Game:
             lastplayer = self.moves[-1].player
             if not self.resigned:
                 # If the game did not end by resignation,
-                # account for the losing rack
-                rack = self.state.rack(1 - lastplayer)
-                # Subtract the score of the losing rack from the losing player
-                newmoves.append((1 - lastplayer, (u"", rack, -1 * Alphabet.score(rack))))
-                # Add the score of the losing rack to the winning player
-                newmoves.append((lastplayer, (u"", rack, 1 * Alphabet.score(rack))))
+                # account for the racks that are left
+                opp_rack = self.state.rack(1 - lastplayer)
+                opp_score = Alphabet.score(opp_rack)
+                last_rack = self.state.rack(lastplayer)
+                last_score = Alphabet.score(last_rack)
+                # Subtract the score of the rack from the next-to-last player
+                newmoves.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
+                if not last_rack:
+                    # Won with an empty rack: Add the score of the losing rack to the winning player
+                    newmoves.append((lastplayer, (u"", opp_rack, 1 * opp_score)))
+                else:
+                    # The game has ended by passes: subtrack the score of the rack from the last player
+                    newmoves.append((lastplayer, (u"", last_rack, -1 * last_score)))
             # Add a synthetic "game over" move
             newmoves.append((1 - lastplayer, (u"", u"OVER", 0)))
             reply["bag"] = "" # Bag is now empty, by definition

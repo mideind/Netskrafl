@@ -112,6 +112,8 @@ class Alphabet:
     @staticmethod
     def score(tiles):
         """ Return the net (plain) score of the given tiles """
+        if not tiles:
+            return 0
         return sum([Alphabet.scores[tile] for tile in tiles if tile != u'?'])
 
     @staticmethod
