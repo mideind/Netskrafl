@@ -14,24 +14,30 @@
 
       <div><span class="caption">Einkenni:</span><input type="text" name="nickname" id="nickname" maxlength=15
          autofocus required
-         class="text username" value="{{ user.nickname() }}"></input>
+         class="text username" value="{{ uf.nickname }}"></input>
       &nbsp;<span style="color:red">*</span></div>
       <div class="explain">Verður að vera útfyllt</div>
+{% if err.get('nickname', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('nickname') }}</div>
+{% endif %}
 
       <div><span class="caption">Fullt nafn:</span><input type="text" name="full_name" id="full_name" maxlength=32
-         class="text fullname" value="{{ user.full_name() }}"></input></div>
+         class="text fullname" value="{{ uf.full_name }}"></input></div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
 
       <div><span class="caption">Tölvupóstfang:</span><input type="text" name="email" id="email" maxlength=32
-         class="text email" value="{{ user.email() }}"></input></div>
-      <div class="explain">Ef póstfang er gefið upp sendir Netskrafl tölvupóst þegar þú átt leik</div>
+         class="text email" value="{{ uf.email }}"></input></div>
+      <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
+{% if err.get('email', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
+{% endif %}
 
       <div><span class="caption"></span><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Uppfæra</button></div>
 
    </form>
    </div>
    <div><span class="caption"></span>
-	   <a href='{{ user.logout_url() }}'>
+	   <a href='{{ uf.logout_url }}'>
 			<button type="submit" id="logout" class="logout">
 	   		<span class="glyphicon glyphicon-log-out"></span>&nbsp;&nbsp;Skrá mig út
 	   	</button>

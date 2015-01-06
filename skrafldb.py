@@ -187,31 +187,6 @@ class GameModel(ndb.Model):
         return cls.get_by_id(uuid)
 
     @classmethod
-    def find_live_game(cls, user_id):
-        """ Query to find a live (ongoing) game for the given user, if it exists """
-        assert user_id is not None
-        if user_id is None:
-            return None
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False)
-        reskey = q.get(keys_only = True)
-        logging.info(u"Loaded game {0} for user {1}".format(u"[not found]" if reskey is None else reskey.id(), user_id).encode("latin-1"))
-        return None if reskey is None else reskey.id()
-
-    @classmethod
-    def find_finished_game(cls, user_id):
-        """ Query to find any finished game for the given user, if it exists """
-        # Used mostly for debugging purposes
-        assert user_id is not None
-        if user_id is None:
-            return None
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == True)
-        reskey = q.get(keys_only = True)
-        logging.info(u"Loaded game {0} for user {1}".format(u"[not found]" if reskey is None else reskey.id(), user_id).encode("latin-1"))
-        return None if reskey is None else reskey.id()
-
-    @classmethod
     def list_finished_games(cls, user_id, max_len = 10):
         """ Query for a list of recently finished games for the given user """
         assert user_id is not None
@@ -476,13 +451,11 @@ class ChannelModel(ndb.Model):
             # lifetime = timedelta(minutes = 1)
         cm.expiry = datetime.utcnow() + lifetime
         cm.put()
-        logging.info(u"Creating channel with id {0}".format(chid).encode("latin-1"))
         return channel.create_channel(chid, duration_minutes = int(lifetime.total_seconds() / 60))
 
     @classmethod
     def disconnect(cls, chid):
         """ A channel with the given id has been disconnected """
-        logging.info(u"Disconnecting channel {0}".format(chid).encode("latin-1"))
         q = cls.query(ChannelModel.chid == chid)
         now = datetime.utcnow()
         for cm in q.fetch(1):
@@ -497,7 +470,6 @@ class ChannelModel(ndb.Model):
     @classmethod
     def connect(cls, chid):
         """ A channel with the given id is now connected """
-        logging.info(u"Connecting channel {0}".format(chid).encode("latin-1"))
         q = cls.query(ChannelModel.chid == chid)
         for cm in q.fetch(1):
             stale = cm.stale # Did this channel miss notifications?
@@ -505,13 +477,11 @@ class ChannelModel(ndb.Model):
             cm.connected = True
             cm.put()
             if stale:
-                logging.info(u"Channel {0} is stale".format(chid).encode("latin-1"))
                 channel.send_message(cm.chid, u'{ "stale": true }')
 
     @classmethod
     def del_expired(cls):
         """ Delete all expired channels """
-        logging.info(u"Deleting all expired channels".encode("latin-1"))
         now = datetime.utcnow()
         CHUNK_SIZE = 20
         while True:
@@ -541,7 +511,6 @@ class ChannelModel(ndb.Model):
             # Schedule the next one
             cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
 
-        logging.info(u"Preparing send to {0} {1}".format(kind, entity).encode("latin-1"))
         CHUNK_SIZE = 20
         q = cls.query(ChannelModel.expiry > now).filter(
             ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
@@ -552,10 +521,10 @@ class ChannelModel(ndb.Model):
             list_stale = []
             for cm in q.fetch(CHUNK_SIZE, offset = offset):
                 if cm.connected:
-                    logging.info(u"Sending channel message to {0}: {1}".format(cm.chid, msg).encode("latin-1"))
+                    # Connected and listening: send the message
                     channel.send_message(cm.chid, msg)
                 else:
-                    logging.info(u"Marking disconnected channel {0} as stale".format(cm.chid).encode("latin-1"))
+                    # Channel appears to be disconnected: mark it as stale
                     cm.stale = True
                     list_stale.append(cm)
                 count += 1

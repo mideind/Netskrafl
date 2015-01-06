@@ -148,7 +148,6 @@ def _userlist(range_from, range_to):
     cuid = None if cuser is None else cuser.id()
     if range_from == u"fav" and not range_to:
         # Return favorites of the current user
-        # logging.info(u"_userlist: iterating favorites".encode("latin-1"))
         if cuid is not None:
             i = iter(FavoriteModel.list_favorites(cuid, max_len = 50))
             for favid in i:
@@ -172,7 +171,6 @@ def _userlist(range_from, range_to):
             })
     else:
         # Return users within a particular nickname range
-        # logging.info(u"_userlist: iterating from {0} to {1}".format(range_from, range_to).encode("latin-1"))
         i = iter(UserModel.list(range_from, range_to, max_len = 50))
         for uid in i:
             if uid == cuid:
@@ -193,7 +191,6 @@ def _gamelist():
     """ Return a list of active games for the current user """
     result = []
     cuid = User.current_id()
-    # logging.info(u"_gamelist: iterating games".encode("latin-1"))
     if cuid is not None:
         # Obtain up to 50 live games where this user is a player
         i = list(GameModel.list_live_games(cuid, max_len = 50))
@@ -226,7 +223,6 @@ def _recentlist():
     """ Return a list of recent games for the current user """
     result = []
     cuid = User.current_id()
-    # logging.info(u"_recentlist: iterating games".encode("latin-1"))
     if cuid is not None:
         # Obtain a list of recently finished games where this user was a player
         i = iter(GameModel.list_finished_games(cuid, max_len = 14))
@@ -254,7 +250,6 @@ def _challengelist():
     """ Return a list of challenges issued or received by the current user """
     result = []
     cuid = User.current_id()
-    # logging.info(u"_challengelist: iterating challenges".encode("latin-1"))
     if cuid is not None:
 
         def preftext(pd):
@@ -305,7 +300,7 @@ def warmup():
 def channel_connected():
     """ A client channel has been connected """
     chid = request.form.get('from', None)
-    logging.info(u"Channel connect from id {0}".format(chid).encode('latin-1'))
+    # logging.info(u"Channel connect from id {0}".format(chid).encode('latin-1'))
     # Mark the entity as being connected
     ChannelModel.connect(chid)
     return jsonify(ok = True)
@@ -316,7 +311,7 @@ def channel_disconnected():
     """ A client channel has been disconnected """
 
     chid = request.form.get('from', None)
-    logging.info(u"Channel disconnect from id {0}".format(chid).encode('latin-1'))
+    # logging.info(u"Channel disconnect from id {0}".format(chid).encode('latin-1'))
     # Mark the entity as being disconnected
     ChannelModel.disconnect(chid)
     return jsonify(ok = True)
@@ -402,8 +397,6 @@ def userlist():
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
 
-    # logging.info(u"userlist(): range_from is {0}, range_to is {1}".format(range_from, range_to).encode("latin-1"))
-
     return jsonify(result = Error.LEGAL, userlist = _userlist(range_from, range_to))
 
 
@@ -446,8 +439,6 @@ def favorite():
     destuser = request.form.get('destuser', None)
     action = request.form.get('action', u"add")
 
-    # logging.info(u"favorite(): destuser is {0}, action is {1}".format(destuser, action).encode("latin-1"))
-
     if destuser is not None:
         if action == u"add":
             user.add_favorite(destuser)
@@ -468,8 +459,6 @@ def challenge():
 
     destuser = request.form.get('destuser', None)
     action = request.form.get('action', u"issue")
-
-    # logging.info(u"challenge(): destuser is {0}, action is {1}".format(destuser, action).encode("latin-1"))
 
     if destuser is not None:
         if action == u"issue":
@@ -537,28 +526,73 @@ def userprefs():
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url(url_for("userprefs")))
 
-    if request.method == 'POST':
-        try:
-            # Funny string addition below ensures that username is
-            # a Unicode string under both Python 2 and 3
-            nickname = u'' + request.form['nickname'].strip()
-        except:
-            nickname = u''
-        try:
-            full_name = u'' + request.form['full_name'].strip()
-        except:
-            full_name = u''
-        try:
-            email = u'' + request.form['email'].strip()
-        except:
-            email = u''
-        if nickname:
-            user.set_nickname(nickname)
-            user.set_full_name(full_name)
-            user.set_email(email)
-            user.update()
+    class UserForm:
+        """ Encapsulates the data in the user preferences form """
+
+        def __init__(self):
+            self.full_name = u''
+            self.nickname = u''
+            self.email = u''
+            self.logout_url = User.logout_url()
+
+        def init_from_form(self, form):
+            """ The form has been submitted after editing: retrieve the entered data """
+            try:
+                self.nickname = u'' + form['nickname'].strip()
+            except:
+                pass
+            try:
+                self.full_name = u'' + form['full_name'].strip()
+            except:
+                pass
+            try:
+                self.email = u'' + form['email'].strip()
+            except:
+                pass
+
+        def init_from_user(self, usr):
+            """ Load the data to be edited upon initial display of the form """
+            self.nickname = usr.nickname()
+            self.full_name = usr.full_name()
+            self.email = usr.email()
+
+        def validate(self):
+            """ Check the current form data for validity and return a dict of errors, if any """
+            errors = dict()
+            if not self.nickname:
+                errors['nickname'] = u"Notandi verður að hafa einkenni"
+            elif (self.nickname[0] not in Alphabet.full_order) and (self.nickname[0] not in Alphabet.full_upper):
+                errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
+            elif len(self.nickname) > 15:
+                errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
+            if self.email and u'@' not in self.email:
+                errors['email'] = u"Tölvupóstfang verður að innihalda @-merki"
+            return errors
+
+        def store(self, usr):
+            """ Store validated form data back into the user entity """
+            usr.set_nickname(self.nickname)
+            usr.set_full_name(self.full_name)
+            usr.set_email(self.email)
+            usr.update()
+
+    uf = UserForm()
+    err = dict()
+
+    if request.method == 'GET':
+        # Entering the form for the first time: load the user data
+        uf.init_from_user(user)
+    elif request.method == 'POST':
+        # Attempting to submit modified data: retrieve it and validate
+        uf.init_from_form(request.form)
+        err = uf.validate()
+        if not err:
+            # All is fine: store the data back in the user entity
+            uf.store(user)
             return redirect(url_for("main"))
-    return render_template("userprefs.html", user = user)
+
+    # Render the form with the current data and error messages, if any
+    return render_template("userprefs.html", uf = uf, err = err)
 
 
 @app.route("/newgame")
@@ -578,7 +612,6 @@ def newgame():
     if opp[0:6] == u"robot-":
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
-        logging.info(u"Starting a new game with robot level {0}".format(robot_level).encode("latin-1"))
         game = Game.new(user.id(), None, robot_level)
         return redirect(url_for("board", game = game.id()))
 
@@ -588,7 +621,6 @@ def newgame():
         # No challenge existed between the users: redirect to main page
         return redirect(url_for("main"))
 
-    logging.info(u"Starting a new game: {0} vs {1}".format(user.nickname(), opp).encode("latin-1"))
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)
 

@@ -148,7 +148,8 @@ class User:
         # Delete the accepted challenge and return the associated preferences
         return ChallengeModel.del_relation(srcuser_id, self.id())
 
-    def logout_url(self):
+    @staticmethod
+    def logout_url():
         return users.create_logout_url("/")
 
     @classmethod
@@ -376,7 +377,6 @@ class Game:
                 player = 1 - player
 
         # Account for the final tiles in the rack
-        # logging.info(u"Game move load completed after move {0}, score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1]).encode("latin-1"))
         if game.is_over():
             game.state.finalize_score()
         # If the moves were correctly applied, the scores should match
