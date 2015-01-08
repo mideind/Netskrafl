@@ -109,6 +109,7 @@ class Alphabet:
     # Letter bit pattern
     bit = [1 << n for n in range(len(order))]
 
+
     @staticmethod
     def score(tiles):
         """ Return the net (plain) score of the given tiles """
@@ -145,7 +146,7 @@ class Alphabet:
     def sortkey(word):
         """ Return a sort key with the proper lexicographic ordering
             for the given word. """
-        # This assumes that Alphabet.order is correctly ordered in ascending order.
+        # This assumes that Alphabet.full_order is correctly ordered in ascending order.
         return [Alphabet.full_order.index(ch) for ch in word]
 
     @staticmethod
@@ -176,3 +177,30 @@ class Alphabet:
         """ Return a timestamp formatted as a readable string """
         # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
         return u"" + ts.isoformat(' ')[0:19]
+
+#    @staticmethod
+#    def _init():
+#        lcmap = u''.join(unichr(i) for i in range (0,256))
+#        last = None
+#        for c in Alphabet.full_upper:
+#            if last is None:
+#                last = c
+#                gap = 1
+#            if ord(c) > ord(last) + gap:
+#                # Extraordinary move
+#                lcmap = lcmap[0:]
+#                gap += 1
+#            else:
+#                gap = 1
+#                last = c
+#
+#    @staticmethod
+#    def cmp(str1, str2):
+#        """ Compares two strings using the default locale collation, set above """
+#        return locale.strcoll(str1, str2)
+#
+    @staticmethod
+    def sortkey(lstr):
+        """ Key function for locale-based sorting """
+        return lstr # !!! TBD !!!
+

@@ -85,6 +85,16 @@ class User:
         """ Sets the human-readable nickname of a user """
         self._nickname = nickname
 
+    def is_displayable(self):
+        """ Returns True if this user should appear in user lists """
+        if self._inactive:
+            # Inactive users are hidden
+            return False
+        # Nicknames that haven't been properly set aren't displayed
+        if not self._nickname:
+            return False
+        return self._nickname[0:8] != u"https://"
+
     def get_pref(self, pref):
         """ Retrieve a preference, or None if not found """
         if self._preferences is None:

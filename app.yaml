@@ -1,11 +1,12 @@
 application: netskrafl
-version: 1
+version: topkapi
 runtime: python27
 api_version: 1
 threadsafe: true
 
 inbound_services:
 - warmup
+- channel_presence
 
 handlers:
 - url: /favicon.ico

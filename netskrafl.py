@@ -146,19 +146,21 @@ def _userlist(range_from, range_to):
     result = []
     cuser = User.current()
     cuid = None if cuser is None else cuser.id()
+    sort_result = True
     if range_from == u"fav" and not range_to:
         # Return favorites of the current user
         if cuid is not None:
             i = iter(FavoriteModel.list_favorites(cuid, max_len = 50))
             for favid in i:
                 fu = User.load(favid)
-                result.append({
-                    "userid": favid,
-                    "nick": fu.nickname(),
-                    "fullname": fu.full_name(),
-                    "fav": True,
-                    "chall": False if cuser is None else cuser.has_challenge(favid)
-                })
+                if fu and fu.is_displayable():
+                    result.append({
+                        "userid": favid,
+                        "nick": fu.nickname(),
+                        "fullname": fu.full_name(),
+                        "fav": True,
+                        "chall": False if cuser is None else cuser.has_challenge(favid)
+                    })
     elif range_from == u"robots" and not range_to:
         # Return the list of available autoplayers
         for r in Game.AUTOPLAYERS:
@@ -169,6 +171,8 @@ def _userlist(range_from, range_to):
                 "fav": False,
                 "chall": False
             })
+        # Don't sort the resulting list of robots
+        sort_result = False
     else:
         # Return users within a particular nickname range
         i = iter(UserModel.list(range_from, range_to, max_len = 50))
@@ -177,13 +181,17 @@ def _userlist(range_from, range_to):
                 # Do not include the current user, if any, in the list
                 continue
             u = User.load(uid)
-            result.append({
-                "userid": uid,
-                "nick": u.nickname(),
-                "fullname": u.full_name(),
-                "fav": False if cuser is None else cuser.has_favorite(uid),
-                "chall": False if cuser is None else cuser.has_challenge(uid)
-            })
+            if u and u.is_displayable():
+                result.append({
+                    "userid": uid,
+                    "nick": u.nickname(),
+                    "fullname": u.full_name(),
+                    "fav": False if cuser is None else cuser.has_favorite(uid),
+                    "chall": False if cuser is None else cuser.has_challenge(uid)
+                })
+    # Sort the user list in ascending order by nickname
+    if sort_result:
+        result.sort(key = lambda x: Alphabet.sortkey(x["nick"]))
     return result
 
 
