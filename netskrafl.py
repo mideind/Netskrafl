@@ -150,7 +150,7 @@ def _userlist(range_from, range_to):
     if range_from == u"fav" and not range_to:
         # Return favorites of the current user
         if cuid is not None:
-            i = iter(FavoriteModel.list_favorites(cuid, max_len = 50))
+            i = iter(FavoriteModel.list_favorites(cuid, max_len = 100))
             for favid in i:
                 fu = User.load(favid)
                 if fu and fu.is_displayable():
@@ -175,7 +175,7 @@ def _userlist(range_from, range_to):
         sort_result = False
     else:
         # Return users within a particular nickname range
-        i = iter(UserModel.list(range_from, range_to, max_len = 50))
+        i = iter(UserModel.list(range_from, range_to, max_len = 200))
         for uid in i:
             if uid == cuid:
                 # Do not include the current user, if any, in the list
@@ -189,9 +189,9 @@ def _userlist(range_from, range_to):
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": False if cuser is None else cuser.has_challenge(uid)
                 })
-    # Sort the user list in ascending order by nickname
+    # Sort the user list in ascending order by nickname, case-insensitive
     if sort_result:
-        result.sort(key = lambda x: Alphabet.sortkey(x["nick"]))
+        result.sort(key = lambda x: Alphabet.sortkey_nocase(x["nick"]))
     return result
 
 
