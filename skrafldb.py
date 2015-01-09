@@ -104,7 +104,7 @@ class UserModel(ndb.Model):
     def list(cls, nick_from, nick_to, max_len = 100):
         """ Query for a list of users within a nickname range """
 
-        q = cls.query().order(UserModel.nickname)
+        q = cls.query() # .order(UserModel.nickname)
 
         nick_from = u"" if nick_from is None else Alphabet.tolower(nick_from)
         nick_to = u"" if nick_to is None else Alphabet.tolower(nick_to)
@@ -119,7 +119,7 @@ class UserModel(ndb.Model):
         except:
             o_to = 255
 
-        CHUNK_SIZE = 20
+        CHUNK_SIZE = 50
         offset = 0
         while True:
             chunk = 0
