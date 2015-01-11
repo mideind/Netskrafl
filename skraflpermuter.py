@@ -75,23 +75,24 @@ class WordDatabase:
             fname = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
             logging.info(u"Loading graph from file {0}".format(fname))
             t0 = time.time()
-            self._dawg = dawgdictionary.DawgDictionary()
-            self._dawg.load(fname)
+            dawg = dawgdictionary.DawgDictionary()
+            dawg.load(fname)
             t1 = time.time()
-            logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(self._dawg.num_nodes(), t1 - t0))
+            logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
+            # Do not assign self._dawg until fully loaded, to prevent race conditions
+            self._dawg = dawg
 
     def initialize(self):
         """ Force preloading of word lists into memory """
         if self._dawg is None:
             self._load()
+        assert self._dawg is not None
 
     def is_valid_word(self, word):
         """ Checks whether a word is found in the list of legal words """
         if not word:
             return False
-        if self._dawg is None:
-            self._load()
-        assert self._dawg is not None
+        self.initialize()
         return self._dawg.find(word)
 
     def __contains__(self, word):
@@ -102,25 +103,19 @@ class WordDatabase:
         """ Find all embedded words within a rack """
         if not rack:
             return None
-        if self._dawg is None:
-            self._load()
-        assert self._dawg is not None
+        self.initialize()
         return self._dawg.find_permutations(rack)
 
     def find_matches(self, pattern, sort=True):
         """ Find all words that match a pattern """
         if not pattern:
             return None
-        if self._dawg is None:
-            self._load()
-        assert self._dawg is not None
+        self.initialize()
         return self._dawg.find_matches(pattern, sort)
 
     def navigate(self, nav):
         """ Use a generic navigator to traverse the graph """
-        if self._dawg is None:
-            self._load()
-        assert self._dawg is not None
+        self.initialize()
         self._dawg.navigate(nav)
 
 
