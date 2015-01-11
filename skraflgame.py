@@ -52,6 +52,8 @@ class User:
             self._user_id = uid
         self._inactive = False
         self._preferences = { }
+        # Set of favorite users, only loaded upon demand
+        self._favorites = None
 
     def _fetch(self):
         """ Fetch the user's record from the database """
@@ -125,20 +127,35 @@ class User:
         """ Sets the e-mail address of a user """
         self.set_pref(u"email", email)
 
+    def _load_favorites(self):
+        """ Loads favorites of this user from the database into a set in memory """
+        if hasattr(self, "_favorites") and self._favorites:
+            # Already have the favorites in memory
+            return
+        self._favorites = set()
+        i = iter(FavoriteModel.list_favorites(self.id()))
+        self._favorites.update(i)
+
     def add_favorite(self, destuser_id):
         """ Add an A-favors-B relation between this user and the destuser """
+        self._load_favorites()
+        self._favorites.add(destuser_id)
         FavoriteModel.add_relation(self.id(), destuser_id)
 
     def del_favorite(self, destuser_id):
         """ Delete an A-favors-B relation between this user and the destuser """
+        self._load_favorites()
+        self._favorites.discard(destuser_id)
         FavoriteModel.del_relation(self.id(), destuser_id)
 
     def has_favorite(self, destuser_id):
         """ Returns True if there is an A-favors-B relation between this user and the destuser """
-        return FavoriteModel.has_relation(self.id(), destuser_id)
+        self._load_favorites()
+        return destuser_id in self._favorites
 
     def has_challenge(self, destuser_id):
         """ Returns True if this user has challenged destuser """
+        # !!! TODO: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def issue_challenge(self, destuser_id, prefs):
@@ -209,9 +226,6 @@ class User:
 
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
-# !!! Temporary hack to make old pickles work
-# import netskrafl
-# setattr(netskrafl, MoveTuple.__name__, MoveTuple)
 
 
 class Game:

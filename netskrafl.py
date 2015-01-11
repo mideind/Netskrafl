@@ -150,7 +150,7 @@ def _userlist(range_from, range_to):
     if range_from == u"fav" and not range_to:
         # Return favorites of the current user
         if cuid is not None:
-            i = iter(FavoriteModel.list_favorites(cuid, max_len = 100))
+            i = iter(FavoriteModel.list_favorites(cuid))
             for favid in i:
                 fu = User.load(favid)
                 if fu and fu.is_displayable():
@@ -294,14 +294,20 @@ def _challengelist():
     return result
 
 
-@app.route("/_ah/warmup")
-def warmup():
+@app.route("/_ah/start")
+def start():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
 
     wdb = Game.manager.word_db()
     ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
-    logging.info(u"Warmup, ok is {0}".format(ok).encode("latin-1"))
+    logging.info(u"Start/warmup, ok is {0}".format(ok).encode("latin-1"))
     return jsonify(ok = ok)
+
+
+@app.route("/_ah/warmup")
+def warmup():
+    """ App Engine is starting a fresh instance - warm it up by loading word database """
+    return start()
 
 
 @app.route("/_ah/channel/connected/", methods=['POST'])

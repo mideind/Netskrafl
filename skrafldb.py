@@ -72,7 +72,7 @@ class UserModel(ndb.Model):
 
     """ Models an individual user """
 
-    nickname = ndb.StringProperty()
+    nickname = ndb.StringProperty(indexed = True)
     inactive = ndb.BooleanProperty()
     prefs = ndb.JsonProperty()
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
@@ -104,20 +104,32 @@ class UserModel(ndb.Model):
     def list(cls, nick_from, nick_to, max_len = 100):
         """ Query for a list of users within a nickname range """
 
-        q = cls.query() # .order(UserModel.nickname)
-
-        nick_from = u"" if nick_from is None else Alphabet.tolower(nick_from)
-        nick_to = u"" if nick_to is None else Alphabet.tolower(nick_to)
+        nick_from = u"a" if nick_from is None else Alphabet.tolower(nick_from)
+        nick_to = u"ö" if nick_to is None else Alphabet.tolower(nick_to)
         counter = 0
 
         try:
-            o_from = 0 if not nick_from else Alphabet.full_order.index(nick_from[0])
+            o_from = Alphabet.full_order.index(nick_from[0])
         except:
             o_from = 0
         try:
-            o_to = 255 if not nick_to else Alphabet.full_order.index(nick_to[0])
+            o_to = Alphabet.full_order.index(nick_to[0])
         except:
-            o_to = 255
+            o_to = len(Alphabet.full_order) - 1
+
+        # Try to minimize the query range as much as possible.
+        # These shenanigans are necessary because NDB maintains its string
+        # indexes by Unicode ordinal index, which is quite different from
+        # the actual sort collation order we need. Additionally, the
+        # indexes are case-sensitive while our query boundaries is not.
+        # Therefore, we calculate the lowest Unicode ordinal within our range
+        # as well as the highest one, and limit the query by these values.
+        q_from = min([min(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
+        q_to = max([max(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
+        q_to = unichr(ord(q_to) + 1)
+
+        # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
+        q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
 
         CHUNK_SIZE = 50
         offset = 0
@@ -280,6 +292,8 @@ class GameModel(ndb.Model):
 class FavoriteModel(ndb.Model):
     """ Models the fact that a user has marked another user as a favorite """
 
+    MAX_FAVORITES = 100 # The maximum number of favorites that a user can have
+
     # The originating (source) user is the parent/ancestor of the relation
     destuser = ndb.KeyProperty(kind = UserModel)
 
@@ -289,7 +303,7 @@ class FavoriteModel(ndb.Model):
         self.destuser = k
 
     @classmethod
-    def list_favorites(cls, user_id, max_len = 10):
+    def list_favorites(cls, user_id, max_len = MAX_FAVORITES):
         """ Query for a list of favorite users for the given user """
         assert user_id is not None
         if user_id is None:
