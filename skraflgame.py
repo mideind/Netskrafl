@@ -39,7 +39,13 @@ class User:
     _lock = threading.Lock()
 
     def __init__(self, uid = None):
+        """ Initialize a fresh User instance """
         self._nickname = u""
+        self._inactive = False
+        self._preferences = { }
+        # Set of favorite users, only loaded upon demand
+        self._favorites = None
+
         if uid is None:
             # Obtain information from the currently logged in user
             u = users.get_current_user()
@@ -48,12 +54,12 @@ class User:
             else:
                 self._user_id = u.user_id()
                 self._nickname = u.nickname() # Default
+                # Use the user's email address, if available
+                email = u.email()
+                if email:
+                    self.set_email(email)
         else:
             self._user_id = uid
-        self._inactive = False
-        self._preferences = { }
-        # Set of favorite users, only loaded upon demand
-        self._favorites = None
 
     def _fetch(self):
         """ Fetch the user's record from the database """
@@ -185,12 +191,14 @@ class User:
         with User._lock:
             u = memcache.get(uid, namespace='user')
             if u is None:
-                # Not found in the memcache: create a user object,
+                # Not found in the memcache: create a user object and
                 # populate it from a database entity (or initialize
-                # a fresh one if no entity exists) and add it to the cache
+                # a fresh one if no entity exists).
+                # Note that this does not add the user to the memcache.
+                # It turns out that it is not efficient to store other
+                # users than the currently logged-in user there.
                 u = cls(uid)
                 u._fetch()
-                memcache.add(uid, u, namespace='user')
             return u
 
     @classmethod
