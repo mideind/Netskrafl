@@ -845,7 +845,7 @@ body .ui-tooltip {
 	font-size: 1em;
 }
 .ui-widget-content {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #fcfdfd;
 	color: #222222;
 }
@@ -853,7 +853,7 @@ body .ui-tooltip {
 	color: #222222;
 }
 .ui-widget-header {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #afb8bf; /* Pantone 7543 U */ /* #2191c0; */
 	color: #eaf5f7;
 	font-weight: bold;
@@ -867,7 +867,7 @@ body .ui-tooltip {
 .ui-state-default,
 .ui-widget-content .ui-state-default,
 .ui-widget-header .ui-state-default {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #afb8bf; /* Pantone 7543 U */ /* #0078ae; */
 	font-weight: bold;
 	color: #ffffff;
@@ -882,14 +882,14 @@ body .ui-tooltip {
 .ui-widget-content .ui-state-hover,
 .ui-state-focus,
 .ui-widget-content .ui-state-focus {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #78aee6; /* Pantone 284 U */ /* #79c9ec; */
 	font-weight: bold;
 	color: #ffffff;
 }
 .ui-widget-header .ui-state-hover,
 .ui-widget-header .ui-state-focus {
-	border: 2px solid white; /* #fcce43; */
+	border: 2px solid #fcfdfd;
 	background-color: #78aee6; /* Pantone 284 U */ /* #79c9ec; */
 	font-weight: bold;
 	color: #ffffff;
@@ -921,21 +921,21 @@ body .ui-tooltip {
 }
 .ui-state-active,
 .ui-widget-content .ui-state-active {
-	border: 2px solid white;
-	background-color: #fcce43; /* Pantone 7404 U */ /* #6eac2c; */
+	border: 2px solid #fcfdfd;
+	background-color: #fcce43; /* Pantone 7404 U */
 	font-weight: bold;
 	color: #000000; /* #ffffff; */
 }
 .ui-widget-header .ui-state-active {
-	border: 2px solid white; /* #fcce43; */
-	background-color: white; /* #fcce43; */ /* Pantone 7404 U */ /* #6eac2c; */
+	border: 2px solid #fcfdfd;
+	background-color: #fcfdfd;
 	font-weight: bold;
 	color: #000000; /* #ffffff; */
 }
 .ui-state-active a,
 .ui-state-active a:link,
 .ui-state-active a:visited {
-	color: #ffffff;
+	color: #fcfdfd;
 	text-decoration: none;
 }
 .ui-widget-header .ui-state-active a,
@@ -948,7 +948,7 @@ body .ui-tooltip {
 ----------------------------------*/
 .ui-state-highlight,
 .ui-widget-content .ui-state-highlight {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #f8da4e;
 	color: #915608;
 }
@@ -964,7 +964,7 @@ body .ui-tooltip {
 }
 .ui-state-error,
 .ui-widget-content .ui-state-error {
-	border: 2px solid white;
+	border: 2px solid #fcfdfd;
 	background-color: #e14f1c;
 	color: #ffffff;
 }

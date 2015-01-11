@@ -110,6 +110,9 @@
       <!-- User list will be populated by populateUserList() below -->
       <div id="userlist"></div>
 
+      <!-- Spinner that appears while the user list is being loaded -->
+      <div id="user-load"></div>
+
    </div>
 
    </div> <!-- id="tabs" -->
@@ -246,6 +249,8 @@ function markChallenge(elem, uid) {
 }
 
 function populateUserList(json) {
+   // Hide the user load spinner
+   $("#user-load").css("display", "none");
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
@@ -297,6 +302,8 @@ function refreshUserList(ev) {
       $("#initials span").removeClass("shown");
       $(ev.target).addClass("shown");
    }
+   /* Show the user load spinner */
+   $("#user-load").css("display", "block");
    /* Establish the alphabet range that we want to display */
    var range = ev.data;
    var from_range = null;
