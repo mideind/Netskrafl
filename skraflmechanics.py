@@ -336,7 +336,7 @@ class Rack:
 
     def details(self):
         """ Return the detailed contents of the rack, i.e. tiles and their scores """
-        return [(t, 0 if t == u'?' else Alphabet.scores[t]) for t in self._tiles]
+        return [(t, Alphabet.scores[t]) for t in self._tiles]
 
     def num_tiles(self):
         """ Return the number of tiles in the rack """
@@ -662,7 +662,7 @@ class Move:
         """ Return a list of tuples describing this move """
         return [(Board.ROWIDS[c.row] + str(c.col + 1), # Coordinate
             c.tile, c.letter, # Tile and letter
-            0 if c.tile == u'?' else Alphabet.scores[c.tile]) # Score
+            Alphabet.scores[c.tile]) # Score
             for c in self._covers]
 
     def summary(self, board):
@@ -915,26 +915,30 @@ class Move:
         cix = 0
         # Number of tiles freshly covered
         numcovers = len(self._covers)
+        # Coordinate and step
+        row, col = self._row, self._col
+        xd, yd = (0, 1) if self._horizontal else (1, 0)
+
         # Tally the score of the primary word
         for ix in range(self._numletters):
-            if self._horizontal:
-                this_ix = self._col + ix
-                cover_ix = 0 if cix >= numcovers else self._covers[cix].col
-            else:
-                this_ix = self._row + ix
-                cover_ix = 0 if cix >= numcovers else self._covers[cix].row
-            if cix < numcovers and this_ix == cover_ix:
+            c = self._covers[cix] if cix < numcovers else None
+            if c and (c.col == col) and (c.row == row):
                 # This is one of the new tiles
-                c = self._covers[cix]
-                lscore = 0 if c.tile == u'?' else Alphabet.scores[c.tile]
-                lscore *= Board.letterscore(c.row, c.col)
-                wsc *= Board.wordscore(c.row, c.col)
+                lscore = Alphabet.scores[c.tile]
+                lscore *= Board.letterscore(row, col)
+                wsc *= Board.wordscore(row, col)
                 cix += 1
             else:
-                # This is a letter that was already on the board
-                lscore = Alphabet.scores[self._word[ix]]
+                # This is a tile that was already on the board
+                # lscore = Alphabet.scores[self._word[ix]]
+                tile = board.tile_at(row, col)
+                lscore = Alphabet.scores[tile]
             sc += lscore
+            row += xd
+            col += yd
+
         total = sc * wsc
+
         # Tally the scores of words formed across the primary word
         for c in self._covers:
             if self._horizontal:
@@ -942,11 +946,10 @@ class Move:
             else:
                 cross = board.tiles_left(c.row, c.col) + board.tiles_right(c.row, c.col)
             if cross:
-                sc = 0 if c.tile == u'?' else Alphabet.scores[c.tile]
+                sc = Alphabet.scores[c.tile]
                 sc *= Board.letterscore(c.row, c.col)
                 wsc = Board.wordscore(c.row, c.col)
-                for tile in cross:
-                    sc += 0 if tile == u'?' else Alphabet.scores[tile]
+                sc += sum(Alphabet.scores[tile] for tile in cross)
                 total += sc * wsc
         # Add the bingo bonus of 50 points for playing all (seven) tiles
         if numcovers == Rack.MAX_TILES:

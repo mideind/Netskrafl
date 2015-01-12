@@ -60,7 +60,7 @@ var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmech
 
 /* Global variables */
 
-var numMoves = 0;
+var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
 
@@ -354,6 +354,7 @@ function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
    var rawCoord = co;
+   var tileMove = false;
    if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
@@ -385,6 +386,7 @@ function appendMove(player, co, tiles, score) {
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
       tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+      tileMove = true;
    }
    var str;
    if (wrdclass == "gameover") {
@@ -444,6 +446,8 @@ function appendMove(player, co, tiles, score) {
       movelist.scrollTop(topoffset - height);
    /* Count the moves */
    numMoves += 1;
+   if (tileMove)
+      numTileMoves += 1;
    /* Update the scores */
    if (player === 0)
       leftTotal += score;
@@ -935,8 +939,8 @@ function calcScore() {
       x += dx;
       y += dy;
    }
-   if (numMoves === 0) {
-      // First move must go through center square
+   if (numTileMoves === 0) {
+      // First move that actually lays down tiles must go through center square
       if (null === tileAt(7, 7))
          return undefined;
    }

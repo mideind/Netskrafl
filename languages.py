@@ -55,7 +55,8 @@ class Alphabet:
         u'ý': 9,
         u'þ': 4,
         u'æ': 5,
-        u'ö': 7
+        u'ö': 7,
+        u'?': 0
     }
 
     # Tiles in initial bag, with frequencies
@@ -119,7 +120,7 @@ class Alphabet:
         """ Return the net (plain) score of the given tiles """
         if not tiles:
             return 0
-        return sum([Alphabet.scores[tile] for tile in tiles if tile != u'?'])
+        return sum([Alphabet.scores[tile] for tile in tiles])
 
     @staticmethod
     def bit_pattern(word):

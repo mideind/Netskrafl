@@ -416,8 +416,8 @@ class Game:
             logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(game.state._scores[0], gm.score0).encode("latin-1"))
         if game.state._scores[1] != gm.score1:
             logging.info(u"Game state score1 is {0} while gm.score1 is {1}'".format(game.state._scores[1], gm.score1).encode("latin-1"))
-        assert game.state._scores[0] == gm.score0
-        assert game.state._scores[1] == gm.score1
+        # assert game.state._scores[0] == gm.score0
+        # assert game.state._scores[1] == gm.score1
 
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
@@ -526,8 +526,7 @@ class Game:
         if state is None:
             state = self.state
         for x, y, tile, letter in state.board().enum_tiles():
-            yield (Board.ROWIDS[x] + str(y + 1), tile, letter,
-                0 if tile == u'?' else Alphabet.scores[tile])
+            yield (Board.ROWIDS[x] + str(y + 1), tile, letter, Alphabet.scores[tile])
 
     def state_after_move(self, move_number):
         """ Return a game state after the indicated move, 0=beginning state """
