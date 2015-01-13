@@ -122,6 +122,18 @@
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
+<!-- A dialog to ask for the meaning of a blank tile -->
+<div id="blank-dialog">
+   <p>Hvaða staf táknar auða flísin?</p>
+   <form>
+      <fieldset>
+         <div id="tilelist"></div>
+         <!-- Allow form submission with keyboard without duplicating the dialog button -->
+         <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+   </form>
+</div>
+
 <!-- A button to recall all tiles back into the rack -->
 <div class="recallbtn" title="Færa stafi aftur í rekka"
    onmouseover="this.classList.add('hover')"

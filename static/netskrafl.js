@@ -90,7 +90,7 @@ function nullCompleteFunc(xhr, status) {
 
 function errFunc(xhr, status, errorThrown) {
    /* Error handling function for Ajax communications */
-   alert("Villa í netsamskiptum");
+   // alert("Villa í netsamskiptum");
    console.log("Error: " + errorThrown);
    console.log("Status: " + status);
    console.dir(xhr);
@@ -552,6 +552,7 @@ function promptForBlank() {
    var err = "\nSláðu inn einn staf í íslenska stafrófinu.";
    var q = defq;
    while(true) {
+
       var letter = prompt(q);
       if (letter === null)
          /* Pressed Esc or terminated */
@@ -1385,6 +1386,7 @@ function initSkrafl(jQuery) {
       $("h3.playerleft").addClass("autoplayercolor");
    }
    updateButtonState();
+
    /* Bind Esc key to a function to reset the rack */
    Mousetrap.bind('esc', resetRack);
    /* Bind Backspace key to a function to rescramble the rack */
