@@ -834,9 +834,11 @@ body .ui-tooltip {
 	font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
 	font-size: 1.2em;
 }
+/*
 .ui-widget .ui-widget {
 	font-size: 1em;
 }
+*/
 .ui-widget input,
 .ui-widget select,
 .ui-widget textarea,

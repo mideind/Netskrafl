@@ -523,6 +523,11 @@ $("#initials").find("span").each(function() {
    $(this).click(data, refreshUserList);
 });
 
+{% if tab %}
+/* Select default tab when opening page */
+$("#tabs").tabs("option", "active", {{ tab }});
+{% endif %}
+
 </script>
 
 <!-- Google App Engine Channel API -->

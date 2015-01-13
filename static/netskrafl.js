@@ -13,6 +13,7 @@ var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
+var BLANK_TILES_PER_LINE = 6;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
 var TILESCORE = {
@@ -546,6 +547,37 @@ function appendBestHeader(moveNumber, co, tiles, score) {
    $("div.movelist").append(str);
 }
 
+function closeBlankDialog(ev) {
+   // ev.data contains the tile selected, or "" if none
+   $("#blank-dialog").css("visibility", "hidden");
+   alert("You selected" + ev.data);
+}
+
+function showBlankDialog() {
+   /* Show the modal dialog to prompt for the meaning of the blank tile */
+   // Fill in the letter choices
+   var bt = $("#blank-meaning");
+   bt.html("");
+   var len = LEGAL_LETTERS.length;
+   var ix = 0;
+   while (len > 0) {
+      /* Rows */
+      var str = "<tr>";
+      /* Columns: max BLANK_TILES_PER_LINE tiles per row */
+      for (var i = 0; i < BLANK_TILES_PER_LINE && len > 0; i++) {
+         var tile = LEGAL_LETTERS[ix++];
+         str += "<td><div class='blank-choice'>" + tile + "</div></td>";
+         len--;
+      }
+      str += "</tr>";
+      bt.append(str);
+   }
+   $("div.blank-choice").addClass("tile").addClass("racktile").each(function() {
+      $(this).click($(this).text(), closeBlankDialog);
+   });
+   $("#blank-dialog").css("visibility", "visible");
+}
+
 function promptForBlank() {
    /* When dropping a blank tile, ask for its meaning */
    var defq = "Hvaða staf táknar auða flísin?";
@@ -553,7 +585,9 @@ function promptForBlank() {
    var q = defq;
    while(true) {
 
-      var letter = prompt(q);
+      showBlankDialog();
+
+      var letter = null; // prompt(q);
       if (letter === null)
          /* Pressed Esc or terminated */
          return null;
@@ -1386,6 +1420,9 @@ function initSkrafl(jQuery) {
       $("h3.playerleft").addClass("autoplayercolor");
    }
    updateButtonState();
+
+   // Bind the close button in the meaning-of-blank-tile dialog
+   $("#blank-close").click("", closeBlankDialog);
 
    /* Bind Esc key to a function to reset the rack */
    Mousetrap.bind('esc', resetRack);

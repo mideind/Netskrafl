@@ -1209,9 +1209,48 @@ div.hint {
    margin-right: 160px;
 }
 
-div#blank-dialog {
-   display: none;
+div.modal-dialog {
+   visibility: hidden;
+   position: absolute;
+   left: 0px;
+   top: 0px;
+   width: 100%;
+   height: 100%;
    z-index: 10;
+   background-color: rgba(32, 32, 32, 0.2);
+}
+
+div.modal-close {
+   .standard-button;
+   width: 36px;
+   height: 28px;
+   bottom: 12px;
+   right: 12px;
+   background-color: @alert;
+}
+
+div#blank-form {
+   position: absolute;
+   top: 124px;
+   right: 12px;
+   width: 274px;
+   height: 400px;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   z-index: 20;
+   box-shadow: 3px 3px 5px 2px #333333;
+}
+
+div.blank-rack {
+   position: relative;
+   top: 0;
+   left: 0;
+}
+
+.blank-rack table.board {
+   border-spacing: 8px;
 }
 
 div.loginform {

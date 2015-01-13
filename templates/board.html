@@ -3,6 +3,8 @@
 
 {% block scripts %}
 
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
 <!-- Netskrafl client script -->
 <script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
 
@@ -123,15 +125,18 @@
 <div class="score"></div>
 
 <!-- A dialog to ask for the meaning of a blank tile -->
-<div id="blank-dialog">
+<div id="blank-dialog" class="modal-dialog">
+<div id="blank-form" class="ui-widget ui-widget-content ui-corner-all">
    <p>Hvaða staf táknar auða flísin?</p>
-   <form>
-      <fieldset>
-         <div id="tilelist"></div>
-         <!-- Allow form submission with keyboard without duplicating the dialog button -->
-         <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
-      </fieldset>
-   </form>
+   <div class="rack blank-rack">
+      <table class="board" id="blank-meaning">
+         <!-- Tile rows and cells will be inserted here -->
+      </table>
+   </div>
+   <!-- Close button -->
+   <div class="modal-close" id="blank-close" title="Hætta við" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+</div>
 </div>
 
 <!-- A button to recall all tiles back into the rack -->

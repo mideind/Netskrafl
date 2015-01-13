@@ -630,7 +630,7 @@ def newgame():
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None:
-        return redirect(url_for("main"))
+        return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
 
     if opp[0:6] == u"robot-":
         # Start a new game against an autoplayer (robot)
@@ -747,6 +747,9 @@ def main():
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url("/"))
 
+    # Initial tab to show, if any
+    tab = request.args.get("tab", None)
+
     # Create a Google App Engine Channel API token
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
@@ -754,7 +757,7 @@ def main():
     channel_token = ChannelModel.create_new(u"user", user.id())
 
     return render_template("main.html", user = user,
-        channel_token = channel_token)
+        channel_token = channel_token, tab = tab)
 
 
 @app.route("/help")
