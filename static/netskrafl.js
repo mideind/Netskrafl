@@ -550,7 +550,8 @@ function appendBestHeader(moveNumber, co, tiles, score) {
 function closeBlankDialog(ev) {
    // ev.data contains the tile selected, or "" if none
    $("#blank-dialog").css("visibility", "hidden");
-   alert("You selected" + ev.data);
+   alert("You selected " + ev.data);
+   // !!! TBD: place the blank tile with the indicated meaning on the board
 }
 
 function showBlankDialog() {
@@ -575,6 +576,12 @@ function showBlankDialog() {
    $("div.blank-choice").addClass("tile").addClass("racktile").each(function() {
       $(this).click($(this).text(), closeBlankDialog);
    });
+   // Show a yellow frame around the letter under the mouse pointer
+   bt.find("td").hover(
+      function() { $(this).addClass("over"); },
+      function() { $(this).removeClass("over"); }
+   );
+   // Show the dialog
    $("#blank-dialog").css("visibility", "visible");
 }
 
@@ -762,6 +769,7 @@ function handleDrop(e, ui) {
          var t = $(eld).data("tile");
          if (!dropToRack && t == '?') {
             /* Dropping a blank tile on to the board: we need to ask for its meaning */
+            // !!! TBD: Save the coordinate, highlight the location and bring up the modal dialog
             e.target.classList.add("over");
             eld.style.opacity = "0.8";
             var letter = promptForBlank();
