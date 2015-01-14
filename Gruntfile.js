@@ -25,7 +25,7 @@ module.exports = function (grunt) {
                undef: true,
                unused: false,
                maxlen: 120,
-               predef: ['$', 'document', 'prompt', 'alert', 'console', 'Mousetrap',
+               predef: ['$', 'document', 'window', 'alert', 'console', 'Mousetrap',
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
                   'gameId']
             }

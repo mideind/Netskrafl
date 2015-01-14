@@ -547,18 +547,59 @@ function appendBestHeader(moveNumber, co, tiles, score) {
    $("div.movelist").append(str);
 }
 
-function closeBlankDialog(ev) {
-   // ev.data contains the tile selected, or "" if none
-   $("#blank-dialog").css("visibility", "hidden");
-   alert("You selected " + ev.data);
-   // !!! TBD: place the blank tile with the indicated meaning on the board
+function blankFlasher() {
+   // Flash a frame around the target square for a blank tile
+   var target = $("#blank-dialog").data("param").target;
+   if (target !== undefined)
+      $(target).toggleClass("over");
 }
 
-function showBlankDialog() {
-   /* Show the modal dialog to prompt for the meaning of the blank tile */
-   // Fill in the letter choices
+function openBlankDialog(elDragged, target) {
+   /* Show the modal dialog to prompt for the meaning of a blank tile */
+   // Hide the blank in its original position
+   $(elDragged).css("visibility", "hidden");
+   // Flash a frame around the target square
+   var iv = window.setInterval(blankFlasher, 500);
+   // Show the dialog
+   $("#blank-dialog")
+      .data("param", { eld: elDragged, target: target, ival: iv })
+      .css("visibility", "visible");
+}
+
+function closeBlankDialog(ev) {
+   /* The blank tile dialog is being closed: place the tile as instructed */
+   // ev.data contains the tile selected, or "" if none
+   var letter = ev.data;
+   var param = $("#blank-dialog").data("param");
+   // The DIV for the blank tile being dragged
+   var eld = param.eld;
+   // The target TD for the tile
+   var target = param.target;
+   // Stop flashing
+   window.clearInterval(param.ival);
+   // Remove the highlight of the target square, if any
+   $(target).removeClass("over");
+   $(eld).css("visibility", "visible");
+   if (letter !== "") {
+      // Place the blank tile with the indicated meaning on the board
+      $(eld).data("letter", letter);
+      $(eld).addClass("blanktile");
+      eld.childNodes[0].nodeValue = letter;
+      eld.parentNode.removeChild(eld);
+      target.appendChild(eld);
+   }
+   // Hide the dialog
+   $("#blank-dialog")
+      .data("param", null)
+      .css("visibility", "hidden");
+   updateButtonState();
+}
+
+function prepareBlankDialog() {
+   /* Construct the blank tile dialog DOM to make it ready for display */
    var bt = $("#blank-meaning");
    bt.html("");
+   // Create tile TDs and DIVs for all legal letters
    var len = LEGAL_LETTERS.length;
    var ix = 0;
    while (len > 0) {
@@ -573,6 +614,8 @@ function showBlankDialog() {
       str += "</tr>";
       bt.append(str);
    }
+   /* Add a click handler to each tile, calling closeBlankDialog with the
+      associated letter as an event parameter */
    $("div.blank-choice").addClass("tile").addClass("racktile").each(function() {
       $(this).click($(this).text(), closeBlankDialog);
    });
@@ -581,35 +624,8 @@ function showBlankDialog() {
       function() { $(this).addClass("over"); },
       function() { $(this).removeClass("over"); }
    );
-   // Show the dialog
-   $("#blank-dialog").css("visibility", "visible");
-}
-
-function promptForBlank() {
-   /* When dropping a blank tile, ask for its meaning */
-   var defq = "Hvaða staf táknar auða flísin?";
-   var err = "\nSláðu inn einn staf í íslenska stafrófinu.";
-   var q = defq;
-   while(true) {
-
-      showBlankDialog();
-
-      var letter = null; // prompt(q);
-      if (letter === null)
-         /* Pressed Esc or terminated */
-         return null;
-      if (letter.length != 1) {
-         q = defq + err;
-         continue;
-      }
-      letter = letter.toLowerCase();
-      if (LEGAL_LETTERS.indexOf(letter) == -1) {
-         /* Not an allowed letter: add an error message and prompt again */
-         q = defq + err;
-         continue;
-      }
-      return letter;
-   }
+   // Make the close button close the dialog
+   $("#blank-close").click("", closeBlankDialog);
 }
 
 var elementDragged = null; /* The element being dragged with the mouse */
@@ -769,19 +785,8 @@ function handleDrop(e, ui) {
          var t = $(eld).data("tile");
          if (!dropToRack && t == '?') {
             /* Dropping a blank tile on to the board: we need to ask for its meaning */
-            // !!! TBD: Save the coordinate, highlight the location and bring up the modal dialog
-            e.target.classList.add("over");
-            eld.style.opacity = "0.8";
-            var letter = promptForBlank();
-            eld.style.opacity = "1.0";
-            e.target.classList.remove("over");
-            if (letter === null)
-               ok = false;
-            else {
-               $(eld).data("letter", letter);
-               $(eld).addClass("blanktile");
-               eld.childNodes[0].nodeValue = letter;
-            }
+            openBlankDialog(eld, e.target);
+            ok = false; // The drop will be completed later, when the blank dialog is closed
          }
       }
       if (ok) {
@@ -1429,8 +1434,8 @@ function initSkrafl(jQuery) {
    }
    updateButtonState();
 
-   // Bind the close button in the meaning-of-blank-tile dialog
-   $("#blank-close").click("", closeBlankDialog);
+   // Prepare the dialog box that asks for the meaning of a blank tile
+   prepareBlankDialog();
 
    /* Bind Esc key to a function to reset the rack */
    Mousetrap.bind('esc', resetRack);
