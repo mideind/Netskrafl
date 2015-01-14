@@ -1158,13 +1158,17 @@ function updateState(json) {
       $("div.highlight0").removeClass("highlight0");
       /* Add the new tiles laid down in response */
       if (json.lastmove !== undefined) {
+         var delay = 0;
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
             placeTile(sq, /* Coordinate */
                json.lastmove[i][1], /* Tile */
                json.lastmove[i][2], /* Letter */
                json.lastmove[i][3]); /* Score */
-            $("#"+sq).children().eq(0).addClass("freshtile");
+            // Show the new tiles with a progressive fade-in effect
+            $("#"+sq).children().eq(0).addClass("freshtile")
+               .hide().delay(delay).fadeIn();
+            delay += 200; // 200 ms between tiles
          }
       }
       /* Update the scores */
