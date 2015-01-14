@@ -168,7 +168,21 @@ def _userlist(range_from, range_to):
         challenges.update([ch[0] # Identifier of challenged user
             for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
 
-    if range_from == u"fav" and not range_to:
+    if range_from == u"live" and not range_to:
+        # Return all connected (live) users
+        i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+        for uid in i:
+            lu = User.load(uid)
+            if lu and lu.is_displayable():
+                result.append({
+                    "userid": uid,
+                    "nick": lu.nickname(),
+                    "fullname": lu.full_name(),
+                    "fav": True,
+                    "chall": uid in challenges
+                })
+
+    elif range_from == u"fav" and not range_to:
         # Return favorites of the current user
         if cuid is not None:
             i = iter(FavoriteModel.list_favorites(cuid))
@@ -182,6 +196,7 @@ def _userlist(range_from, range_to):
                         "fav": True,
                         "chall": favid in challenges
                     })
+
     else:
         # Return users within a particular nickname range
         i = iter(UserModel.list(range_from, range_to, max_len = 200))
@@ -687,7 +702,7 @@ def board():
         # Create a Google App Engine Channel API token
         # to enable refreshing of the board when the
         # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
+        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
 
     return render_template("board.html", game = game, user = user,
         player_index = player_index, channel_token = channel_token)
@@ -711,7 +726,7 @@ def newchannel():
         if uuid == user.id():
             # Create a Google App Engine Channel API token
             # for user notification
-            channel_token = ChannelModel.create_new(u"user", uuid)
+            channel_token = ChannelModel.create_new(u"user", uuid, uuid)
     else:
         # Game channel request
         # Attempt to load the game whose id is in the URL query string
@@ -733,7 +748,7 @@ def newchannel():
         # Create a Google App Engine Channel API token
         # to enable refreshing of the board when the
         # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index))
+        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
 
     return jsonify(result = Error.LEGAL, token = channel_token)
 
@@ -754,7 +769,7 @@ def main():
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
-    channel_token = ChannelModel.create_new(u"user", user.id())
+    channel_token = ChannelModel.create_new(u"user", user.id(), user.id())
 
     return render_template("main.html", user = user,
         channel_token = channel_token, tab = tab)

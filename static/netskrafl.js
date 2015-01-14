@@ -592,6 +592,8 @@ function closeBlankDialog(ev) {
    $("#blank-dialog")
       .data("param", null)
       .css("visibility", "hidden");
+   // Make sure that all yellow frames are removed
+   $("#blank-meaning").find("td").removeClass("over");
    updateButtonState();
 }
 

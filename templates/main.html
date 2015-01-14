@@ -90,6 +90,7 @@
       <p id="initials">
          <span id="robots" class="shown"><span style='padding:0' class='glyphicon glyphicon-cog'></span> Þjarkar</span>
          <span id="fav"><span style='padding:0' class='glyphicon glyphicon-star'></span> Uppáhalds</span>
+         <span id="live"><span style='padding:0' class='glyphicon glyphicon-star'></span> Álínis</span>
          <span>a-c</span><span>d-é</span>
          <span>f-g</span><span>h-í</span>
          <span>j-k</span><span>l-n</span>
@@ -310,8 +311,8 @@ function refreshUserList(ev) {
    var to_range = null;
    /* Note the last displayed range in case we need to redisplay */
    displayedUserRange = range;
-   if (range == "fav" || range == "robots") {
-      /* Special requests: list of favorites or robots */
+   if (range == "fav" || range == "robots" || range == "live") {
+      /* Special requests: list of favorites, live users or robots */
       from_range = range;
    }
    else {
@@ -337,8 +338,8 @@ function populateGameList(json) {
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   numGames = json.gamelist.length;
-   numMyTurns = 0;
+   var numGames = json.gamelist.length;
+   var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
       var opp = escapeHtml(item.opp);
@@ -363,9 +364,11 @@ function populateGameList(json) {
    // Update the count of games where it's this user's turn
    if (numMyTurns === 0) {
       $("#numgames").css("display", "none");
+      document.title = "Netskrafl";
    }
    else {
       $("#numgames").css("display", "inline-block").text(numMyTurns.toString());
+      document.title = "(" + numMyTurns.toString() + ") Netskrafl";
    }
    if (numGames === 0) {
       // No games in the list: Display a hint to select an opponent

@@ -50,7 +50,9 @@
 """
 
 import logging
+import threading
 import uuid
+
 from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
@@ -462,12 +464,16 @@ class ChannelModel(ndb.Model):
     # Is this channel stale (i.e. has missed updates)?
     stale = ndb.BooleanProperty(required = False, default = False)
 
+    # The user associated with this channel
+    user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
+
     # When should the next cleanup of expired channels be done?
     _CLEANUP_INTERVAL = 1 # Hours
     _next_cleanup = None
+    _lock = threading.Lock()
 
     @classmethod
-    def create_new(cls, kind, entity, lifetime = None):
+    def create_new(cls, kind, entity, user_id, lifetime = None):
         """ Create a new channel and return its token """
         # Every channel is assigned a random UUID
         chid = Unique.id()
@@ -481,6 +487,7 @@ class ChannelModel(ndb.Model):
             lifetime = timedelta(hours = 2)
             # lifetime = timedelta(minutes = 1)
         cm.expiry = datetime.utcnow() + lifetime
+        cm.user = None if user_id is None else ndb.Key(UserModel, user_id)
         cm.put()
         return channel.create_channel(chid, duration_minutes = int(lifetime.total_seconds() / 60))
 
@@ -511,7 +518,26 @@ class ChannelModel(ndb.Model):
                 channel.send_message(cm.chid, u'{ "stale": true }')
 
     @classmethod
-    def del_expired(cls):
+    def list_connected(cls):
+        """ List all presently connected users """
+        CHUNK_SIZE = 20
+        now = datetime.utcnow()
+        # Obtain all connected channels that have not expired
+        q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)
+        offset = 0
+        while q is not None:
+            count = 0
+            for cm in q.fetch(CHUNK_SIZE, offset = offset):
+                if cm.user is not None:
+                    # Connected channel associated with a user: return the user id
+                    yield cm.user.id()
+                count += 1
+            if count < CHUNK_SIZE:
+                break
+            offset += CHUNK_SIZE
+
+    @classmethod
+    def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
         CHUNK_SIZE = 20
@@ -535,34 +561,36 @@ class ChannelModel(ndb.Model):
 
         now = datetime.utcnow()
 
-        # Start by checking whether a cleanup of expired channels is due
-        if cls._next_cleanup is None or (now > cls._next_cleanup):
-            # Yes: do the cleanup
-            cls.del_expired()
-            # Schedule the next one
-            cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
+        with ChannelModel._lock:
 
-        CHUNK_SIZE = 20
-        q = cls.query(ChannelModel.expiry > now).filter(
-            ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
-        offset = 0
-        while q is not None:
-            # Query and send message in chunks
-            count = 0
-            list_stale = []
-            for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                if cm.connected:
-                    # Connected and listening: send the message
-                    channel.send_message(cm.chid, msg)
-                else:
-                    # Channel appears to be disconnected: mark it as stale
-                    cm.stale = True
-                    list_stale.append(cm)
-                count += 1
-            if list_stale:
-                ndb.put_multi(list_stale)
-            if count < CHUNK_SIZE:
-                # Hit end of query: We're done
-                break
-            offset += count
+            # Start by checking whether a cleanup of expired channels is due
+            if cls._next_cleanup is None or (now > cls._next_cleanup):
+                # Yes: do the cleanup
+                cls._del_expired()
+                # Schedule the next one
+                cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
+
+            CHUNK_SIZE = 20
+            q = cls.query(ChannelModel.expiry > now).filter(
+                ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+            offset = 0
+            while q is not None:
+                # Query and send message in chunks
+                count = 0
+                list_stale = []
+                for cm in q.fetch(CHUNK_SIZE, offset = offset):
+                    if cm.connected:
+                        # Connected and listening: send the message
+                        channel.send_message(cm.chid, msg)
+                    else:
+                        # Channel appears to be disconnected: mark it as stale
+                        cm.stale = True
+                        list_stale.append(cm)
+                    count += 1
+                if list_stale:
+                    ndb.put_multi(list_stale)
+                if count < CHUNK_SIZE:
+                    # Hit end of query: We're done
+                    break
+                offset += count
 

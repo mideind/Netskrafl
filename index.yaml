@@ -22,6 +22,11 @@ indexes:
 
 - kind: ChannelModel
   properties:
+  - name: connected
+  - name: expiry
+
+- kind: ChannelModel
+  properties:
   - name: entity
   - name: kind
   - name: expiry
