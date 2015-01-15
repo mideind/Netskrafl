@@ -90,7 +90,7 @@
       <p id="initials">
          <span id="robots" class="shown"><span style='padding:0' class='glyphicon glyphicon-cog'></span> Þjarkar</span>
          <span id="fav"><span style='padding:0' class='glyphicon glyphicon-star'></span> Uppáhalds</span>
-         <span id="live"><span style='padding:0' class='glyphicon glyphicon-star'></span> Álínis</span>
+         <span id="live"><span style='padding:0' class='glyphicon glyphicon-flash'></span> Álínis</span>
          <span>a-c</span><span>d-é</span>
          <span>f-g</span><span>h-í</span>
          <span>j-k</span><span>l-n</span>
@@ -249,9 +249,14 @@ function markChallenge(elem, uid) {
       }, updateChallenges);
 }
 
+// Is a user list request already in progress?
+var ulRq = false;
+
 function populateUserList(json) {
+   /* Display a user list that has been returned from the server */
    // Hide the user load spinner
    $("#user-load").css("display", "none");
+   ulRq = false; // Allow another user list request to proceed
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
@@ -287,6 +292,7 @@ function populateUserList(json) {
    }
 }
 
+// What range of users was last displayed, in case we need to refresh?
 var displayedUserRange = null;
 
 function redisplayUserList() {
@@ -295,7 +301,21 @@ function redisplayUserList() {
       refreshUserList({ data: displayedUserRange });
 }
 
+function periodicUserList() {
+   /* This function gets called at regular intervals to
+      refresh the list of live (connected) users, if
+      that list is selected */
+   if (displayedUserRange && (displayedUserRange == "live")) {
+      refreshUserList({ data: "live" });
+   }
+}
+
 function refreshUserList(ev) {
+   /* Erase existing user list and issue a request to the server for a new one */
+   if (ulRq)
+      // A user list request is already in progress: avoid race condition
+      return;
+   ulRq = true; // Set to false again in populateUserList()
    /* Erase existing user list, if any */
    $("#userlist").html("");
    /* Indicate which subtab is being shown */
@@ -306,11 +326,11 @@ function refreshUserList(ev) {
    /* Show the user load spinner */
    $("#user-load").css("display", "block");
    /* Establish the alphabet range that we want to display */
-   var range = ev.data;
+   var range = ev.data + "";
    var from_range = null;
    var to_range = null;
    /* Note the last displayed range in case we need to redisplay */
-   displayedUserRange = range;
+   displayedUserRange = range + "";
    if (range == "fav" || range == "robots" || range == "live") {
       /* Special requests: list of favorites, live users or robots */
       from_range = range;
@@ -318,7 +338,7 @@ function refreshUserList(ev) {
    else {
       from_range = range ? range.charAt(0) : null;
       to_range = from_range;
-      if (range && range.length == 3)
+      if (range && (range.length == 3))
          /* Range has x-y format */
          to_range = range.charAt(2);
    }
@@ -525,6 +545,9 @@ $("#initials").find("span").each(function() {
       data = $(this).text();
    $(this).click(data, refreshUserList);
 });
+
+/* Refresh the live user list periodically while it is being displayed */
+window.setInterval(periodicUserList, 5 * 60 * 1000); // Every five minutes
 
 {% if tab %}
 /* Select default tab when opening page */

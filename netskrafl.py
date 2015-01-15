@@ -172,6 +172,9 @@ def _userlist(range_from, range_to):
         # Return all connected (live) users
         i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
         for uid in i:
+            if uid == cuid:
+                # Do not include the current user, if any, in the list
+                continue
             lu = User.load(uid)
             if lu and lu.is_displayable():
                 result.append({
@@ -695,14 +698,13 @@ def board():
 
     player_index = game.player_index(user.id())
 
-    if game.is_autoplayer(1 - player_index):
-        # No need for a channel if the opponent is an autoplayer
-        channel_token = None
-    else:
-        # Create a Google App Engine Channel API token
-        # to enable refreshing of the board when the
-        # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
+    # Create a Google App Engine Channel API token
+    # to enable refreshing of the board when the
+    # opponent makes a move. We do this even if the
+    # opponent is an autoplayer as we do want the
+    # presence detection functionality for the human
+    # user.
+    channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
 
     return render_template("board.html", game = game, user = user,
         player_index = player_index, channel_token = channel_token)
@@ -740,10 +742,6 @@ def newchannel():
             return jsonify(result = Error.WRONG_USER)
 
         player_index = game.player_index(user.id())
-
-        if game.is_autoplayer(1 - player_index):
-            # No need for a channel if the opponent is an autoplayer
-            return jsonify(result = Error.WRONG_USER)
 
         # Create a Google App Engine Channel API token
         # to enable refreshing of the board when the
