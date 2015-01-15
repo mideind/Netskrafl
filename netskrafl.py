@@ -181,7 +181,7 @@ def _userlist(range_from, range_to):
                     "userid": uid,
                     "nick": lu.nickname(),
                     "fullname": lu.full_name(),
-                    "fav": True,
+                    "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": uid in challenges
                 })
 
