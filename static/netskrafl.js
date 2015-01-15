@@ -564,12 +564,14 @@ function openBlankDialog(elDragged, target) {
    $("#blank-dialog")
       .data("param", { eld: elDragged, target: target, ival: iv })
       .css("visibility", "visible");
+   // Reset the esc key to make it close the dialog
+   Mousetrap.bind('esc', function() { closeBlankDialog(null); } );
 }
 
 function closeBlankDialog(ev) {
    /* The blank tile dialog is being closed: place the tile as instructed */
    // ev.data contains the tile selected, or "" if none
-   var letter = ev.data;
+   var letter = (!ev) ? "" : ev.data;
    var param = $("#blank-dialog").data("param");
    // The DIV for the blank tile being dragged
    var eld = param.eld;
@@ -594,6 +596,8 @@ function closeBlankDialog(ev) {
       .css("visibility", "hidden");
    // Make sure that all yellow frames are removed
    $("#blank-meaning").find("td").removeClass("over");
+   // Rebind the Esc key to the resetRack() function
+   Mousetrap.bind('esc', resetRack);
    updateButtonState();
 }
 
