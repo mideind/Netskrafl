@@ -319,9 +319,9 @@ function refreshUserList(ev) {
    /* Erase existing user list, if any */
    $("#userlist").html("");
    /* Indicate which subtab is being shown */
-   if (ev.target) {
+   if (ev.delegateTarget) {
       $("#initials span").removeClass("shown");
-      $(ev.target).addClass("shown");
+      $(ev.delegateTarget).addClass("shown");
    }
    /* Show the user load spinner */
    $("#user-load").css("display", "block");
@@ -538,7 +538,7 @@ refreshChallengeList();
 refreshUserList({ data: "robots" });
 
 /* Initialize alphabet categories in user list header */
-$("#initials").find("span").each(function() {
+$("#initials").children("span").each(function() {
    var data = $(this).attr('id');
    if (data === undefined)
       // Not a special category, i.e. favorites or robots

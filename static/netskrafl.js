@@ -845,6 +845,8 @@ function updateButtonState() {
          showingDialog);
       $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      // Indicate that it's this player's turn in the window/tab title
+      document.title = "(1) Netskrafl";
    }
    else {
       /* The other player's turn */
@@ -854,6 +856,8 @@ function updateButtonState() {
       $("div.submitresign").css("visibility", "hidden");
       $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      // Reset to normal window/tab title
+      document.title = "Netskrafl";
    }
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
