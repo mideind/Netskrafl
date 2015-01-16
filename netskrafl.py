@@ -229,9 +229,9 @@ def _gamelist():
     if cuid is not None:
         # Obtain up to 50 live games where this user is a player
         i = list(GameModel.list_live_games(cuid, max_len = 50))
-        # Sort in reverse order by timestamp of last move,
+        # Sort in reverse order by turn and then by timestamp of the last move,
         # i.e. games with newest moves first
-        i.sort(key = lambda x: x["ts"], reverse = True)
+        i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
         # Iterate through the game list
         for g in i:
             opp = g["opp"] # User id of opponent

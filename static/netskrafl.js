@@ -871,7 +871,7 @@ function updateButtonState() {
       $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       // Indicate that it's this player's turn in the window/tab title
-      document.title = "(1) Netskrafl";
+      document.title = "\u25B6 Netskrafl";
    }
    else {
       /* The other player's turn */

@@ -279,14 +279,21 @@ function populateUserList(json) {
          (item.chall ? "'" : " grayed'") +
          " onclick='markChallenge(this, \"" + item.userid + "\")'></span>";
       var nick = escapeHtml(item.nick);
-      if (isRobot)
+      var alink = "", aclose = "";
+      if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
+         // Put a hyperlink on the robot name and description
+         alink = "<a href='{{ url_for('newgame') }}?opp=" + item.userid + "'>";
+         aclose = "</a>"
+      }
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-fav'>" + fav + "</span>" +
+         alink +
          "<span class='list-nick'>" + nick + "</span>" +
          "<span class='list-fullname'>" + escapeHtml(item.fullname) + "</span>" +
+         aclose +
          "</div>";
       $("#userlist").append(str);
    }
