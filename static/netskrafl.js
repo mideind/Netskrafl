@@ -554,6 +554,17 @@ function blankFlasher() {
       $(target).toggleClass("over");
 }
 
+function keyBlankDialog(ev, combo) {
+   /* Handle a key press from Mousetrap: close the blank dialog with the indicated letter chosen */
+   var letter = combo;
+   if (letter == "esc")
+      letter = "";
+   else
+   if (letter.indexOf("shift+") === 0)
+      letter = letter.charAt(6);
+   closeBlankDialog({ data: letter });
+}
+
 function openBlankDialog(elDragged, target) {
    /* Show the modal dialog to prompt for the meaning of a blank tile */
    // Hide the blank in its original position
@@ -565,7 +576,12 @@ function openBlankDialog(elDragged, target) {
       .data("param", { eld: elDragged, target: target, ival: iv })
       .css("visibility", "visible");
    // Reset the esc key to make it close the dialog
-   Mousetrap.bind('esc', function() { closeBlankDialog(null); } );
+   Mousetrap.bind('esc', keyBlankDialog);
+   // Bind all normal keys to make them select a letter and close the dialog
+   for (var i = 0; i < LEGAL_LETTERS.length; i++) {
+      Mousetrap.bind(LEGAL_LETTERS[i], keyBlankDialog);
+      Mousetrap.bind("shift+" + LEGAL_LETTERS[i], keyBlankDialog);
+   }
 }
 
 function closeBlankDialog(ev) {
@@ -598,6 +614,11 @@ function closeBlankDialog(ev) {
    $("#blank-meaning").find("td").removeClass("over");
    // Rebind the Esc key to the resetRack() function
    Mousetrap.bind('esc', resetRack);
+   // Unbind the alphabetic letters
+   for (var i = 0; i < LEGAL_LETTERS.length; i++) {
+      Mousetrap.unbind(LEGAL_LETTERS[i]);
+      Mousetrap.unbind("shift+" + LEGAL_LETTERS[i]);
+   }
    updateButtonState();
 }
 
