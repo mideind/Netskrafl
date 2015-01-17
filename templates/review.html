@@ -65,26 +65,16 @@
 <div class="rightcol">
    <div class="heading">
       <h3 class="playerleft">
-{% if user_index == 0 %}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{% elif game.is_autoplayer(0) %}
+{% if game.is_autoplayer(0) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(0) }}
-{%- if user_index == 0 -%}
-</a>
-{% endif %}
       </h3>
       <h3 class="playerright">
-{% if user_index == 1 %}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{% elif game.is_autoplayer(1) %}
+{% if game.is_autoplayer(1) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(1) }}
-{%- if user_index == 1 -%}
-</a>
-{% endif %}
       </h3>
       <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ state.scores()[1] }}</h3>
@@ -123,12 +113,12 @@
 <!-- Game statistics -->
 <div class="gamestats" onclick="navFirst()">
 <div style="position:relative;width:100%">
-<h3 class="playerleft">
+<h3 class="playerleft" style="width:50%">
 {%- if game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
 {{ game.player_nickname(0) }}</h3>
-<h3 class="playerright">
+<h3 class="playerright" style="width:50%">
 {%- if game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}

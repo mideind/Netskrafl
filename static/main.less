@@ -124,6 +124,13 @@
    content: "\e162";
 }
 
+.noselect {
+   -webkit-user-select: none;
+   -khtml-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+}
 
 body {
    font-family: @font1, @font2, @font3, @font4;
@@ -218,6 +225,7 @@ table.board {
    border-spacing: 0;
    border-collapse: separate;
    table-layout: fixed;
+   .noselect;
 }
 
 .board td {
@@ -548,6 +556,7 @@ div.gamestats {
    cursor: pointer;
    padding: 12px;
    border-radius: 5px;
+   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div.statscol {
@@ -763,6 +772,7 @@ div.gameinfo {
    padding-top: 8px;
    border-radius: 5px;
    cursor: pointer;
+   .noselect;
 }
 
 .submitbutton {
@@ -1263,15 +1273,15 @@ div.loginform {
 }
 
 div.loginhdr {
-   font-size: 22px;
+   font-size: 24px;
    font-weight: 700;
-   padding-bottom: 20px;
+   padding-bottom: 24px;
 }
 
 div.blurb {
-   font-size: 16px;
+   font-size: 18px;
    font-weight: bold;
-   padding-bottom: 20px;
+   padding-bottom: 22px;
 }
 
 div.welcome {

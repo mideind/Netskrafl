@@ -200,3 +200,7 @@ def test():
     dt = DawgTester()
     dt.run("ordalisti", "resources")
 
+
+if __name__ == '__main__':
+
+    test()

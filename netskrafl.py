@@ -407,23 +407,20 @@ def wordcheck():
 
 @app.route("/gamestats", methods=['POST'])
 def gamestats():
-    """ Calculate and return statistics on the current game """
-
-    cuid = User.current_id()
-    if not cuid:
-        # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+    """ Calculate and return statistics on a given finished game """
 
     uuid = request.form.get('game', None)
+    game = None
+
     if uuid is not None:
         game = Game.load(uuid)
-        # Check whether the user was a player in this game
-        if not game.has_player(cuid):
-            # Nope: don't allow looking at the stats
+        # Check whether the game is still in progress
+        if (game is not None) and not game.is_over():
+            # Don't allow looking at the stats in this case
             game = None
 
     if game is None:
-       return jsonify(result = Error.LOGIN_REQUIRED) # Strictly speaking: game not found
+        return jsonify(result = Error.LOGIN_REQUIRED) # Strictly speaking: game not found
 
     return jsonify(game.statistics())
 
@@ -522,10 +519,7 @@ def challenge():
 def review():
     """ Show game review page """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url(url_for("review")))
+    # This page does not require - and should not require - a logged-in user
 
     game = None
     uuid = request.args.get("game", None)
@@ -534,8 +528,8 @@ def review():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is None or not game.is_over() or not game.has_player(user.id()):
-        # The game is not found or the current user did not play it: abort
+    if game is None or not game.is_over():
+        # The game is not found: abort
         return redirect(url_for("main"))
 
     move_number = int(request.args.get("move", "0"))
@@ -550,10 +544,17 @@ def review():
         best_moves = apl.generate_best_moves(20)
 
     player_index = state.player_to_move()
-    user_index = game.player_index(user.id())
+    user = User.current()
+    if user and game.has_player(user.id()):
+        # Look at the game from the point of view of this player
+        user_index = game.player_index(user.id())
+    else:
+        # This is an outside spectator: look at it from the point of view of
+        # player 0, or the human player if player 0 is an autoplayer
+        user_index = 1 if game.is_autoplayer(0) else 0
 
     return render_template("review.html",
-        user = user, game = game, state = state,
+        game = game, state = state,
         player_index = player_index, user_index = user_index,
         move_number = move_number, best_moves = best_moves)
 

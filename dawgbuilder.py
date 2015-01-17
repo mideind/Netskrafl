@@ -788,3 +788,6 @@ def run_skrafl():
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
+if __name__ == '__main__':
+
+    run_skrafl()

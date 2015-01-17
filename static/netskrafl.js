@@ -351,6 +351,12 @@ function highlightMove(ev) {
       $(this).find("span.score").removeClass("highlight");
 }
 
+function lookupWord(ev) {
+   /* Look up the word on the official word list website */
+   window.open('http://bin.arnastofnun.is/leit/?q=' + ev.data.tiles +
+      '&ordmyndir=on', 'bin');
+}
+
 function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
@@ -397,7 +403,7 @@ function appendMove(player, co, tiles, score) {
    else
    if (player === 0) {
       /* Left side player */
-      str = '<div class="leftmove">' +
+      str = '<div title="Smelltu til að fletta upp" class="leftmove">' +
          '<span class="total">' + (leftTotal + score) + '</span>' +
          '<span class="score">' + score + '</span>' +
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
@@ -406,7 +412,7 @@ function appendMove(player, co, tiles, score) {
    }
    else {
       /* Right side player */
-      str = '<div class="rightmove">' +
+      str = '<div title="Smelltu til að fletta upp" class="rightmove">' +
          '<span class="' + wrdclass + '">' + co +
          ' <i>' + tiles + '</i></span>' +
          '<span class="score">' + score + '</span>' + 
@@ -433,6 +439,11 @@ function appendMove(player, co, tiles, score) {
          m.on("mouseout",
             { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: false },
             highlightMove
+         );
+         // Clicking on a word in the word list looks up the word on the official word list website
+         m.on("click",
+            { tiles: tiles },
+            lookupWord
          );
       }
    }
