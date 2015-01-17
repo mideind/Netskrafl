@@ -206,7 +206,7 @@ class User:
         """ Return the currently logged in user """
         with User._lock:
             user = users.get_current_user()
-            if user is None:
+            if user is None or user.user_id() is None:
                 return None
             u = memcache.get(user.user_id(), namespace='user')
             if u is not None:
