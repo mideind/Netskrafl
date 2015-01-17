@@ -643,7 +643,7 @@ def newgame():
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url("/"))
+        return redirect(url_for('login'))
 
     # Get the opponent id
     opp = request.args.get("opp", None)
@@ -679,7 +679,7 @@ def board():
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url("/"))
+        return redirect(url_for('login'))
 
     uuid = request.args.get("game", None)
     game = None
@@ -758,7 +758,7 @@ def main():
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url("/"))
+        return redirect(url_for('login'))
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
@@ -771,6 +771,15 @@ def main():
 
     return render_template("main.html", user = user,
         channel_token = channel_token, tab = tab)
+
+
+@app.route("/login")
+def login():
+    """ Handler for the login & greeting page """
+
+    login_url = users.create_login_url("/")
+
+    return render_template("login.html", login_url = login_url)
 
 
 @app.route("/help")

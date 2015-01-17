@@ -1,0 +1,47 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="loginform">
+   <div class="loginhdr">
+      <span class="caption"></span>Velkomin í Netskrafl!
+   </div>
+   <div class="blurb">
+      <span class="caption"></span>Skemmtilegt | spennandi | ókeypis
+   </div>
+   <div class="welcome">
+      <span class="caption"></span>Netskrafl notar Google Accounts innskráningu, þá
+      sömu og er notuð m.a. í Gmail.
+   </div>
+   <div class="welcome">
+      <span class="caption"></span>Netskrafl safnar hvorki persónuupplýsingum né geymir þær.
+   </div>
+   <div class="welcome">
+      <span class="caption"></span>Þú getur
+      fengið <a href="{{ url_for('help') }}">hjálp</a> með því að
+      smella á <a href="{{ url_for('help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
+      hér til vinstri.
+   </div>
+   <div>
+      <span class="caption"></span><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
+   </div>
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+$("#submit").click(function() {
+   window.location.href = "{{ login_url | safe }}";
+});
+
+</script>
+
+{% endblock %}
