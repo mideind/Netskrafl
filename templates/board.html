@@ -200,11 +200,9 @@
    <span class="yesnobutton xchgbtn" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
    <span class="yesnobutton xchgbtn" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
 </div>
+{%- endblock -%}
 
-{% endblock %}
-
-{% block endscripts %}
-
+{%- block endscripts -%}
 <script>
    $(document).ready(initSkrafl);
 </script>
@@ -212,7 +210,6 @@
 {% if channel_token %}
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
 <script>
 
 var channelToken = "{{ channel_token }}";
@@ -272,7 +269,5 @@ function channelOnClose() {
 openChannel();
 
 </script>
-
-{% endif %}
-
-{% endblock %}
+{%- endif -%}
+{%- endblock -%}

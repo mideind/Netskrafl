@@ -143,7 +143,7 @@ div.container {
    top: 0;
    left: 0;
    width: 1024px;
-   height: 720px;
+   height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
    background-color: @container;
    padding: 0;
    margin: 0;
@@ -1021,7 +1021,7 @@ div.userid {
    font-weight: 700;
    color: white;
    overflow: hidden;
-   z-index: 20;
+   z-index: 5;
    color: white;
 }
 
@@ -1046,6 +1046,7 @@ div.listitem {
 
 .listitem a:link, .listitem a:visited {
    color: black;
+   text-decoration: none;
 }
 
 .listitem a:hover {
@@ -1132,6 +1133,18 @@ span.list-fullname {
    width: 500px;
 }
 
+span.list-duration {
+   display: inline-block;
+   width: 210px;
+   text-align: right;
+}
+
+span.list-info {
+   display: inline-block;
+   width: 40px;
+   text-align: right;
+}
+
 #initials span {
    font-size: 16px;
    cursor: pointer;
@@ -1140,6 +1153,7 @@ span.list-fullname {
    padding-bottom: 1px;
    padding-right: 6px;
    margin: 2px;
+   .noselect;
 }
 
 #initials span.shown {
@@ -1153,9 +1167,33 @@ span.list-fullname {
    border-radius: 5px;
 }
 
+span.usr-info {
+   .glyphicon;
+   cursor: pointer;
+   color: white;
+   background-color: @freshtile;
+   border-radius: 5px;
+   padding: 5px;
+   margin: 0px;
+}
+
+span.usr-info:before {
+   content: "\e003"; /* Search */ /* 015 Zoom in */
+}
+
+span.usr-info:hover {
+   background-color: @pass-btn;
+}
+
 div #userlist,
 div #gamelist,
 div #recentlist {
+   height: 512px;
+   overflow-y: auto;
+   overflow-x: hidden;
+}
+
+div #usr-recent {
    height: 512px;
    overflow-y: auto;
    overflow-x: hidden;
@@ -1180,7 +1218,9 @@ p span.glyphicon.glyphicon-flag,
    color: @triple-word;
 }
 
-#recentlist span.glyphicon.glyphicon-bookmark {
+#recentlist span.glyphicon.glyphicon-bookmark,
+#usr-recent span.glyphicon.glyphicon-bookmark,
+#gamelist span.glyphicon.glyphicon-bookmark {
    color: @freshtile;
 }
 
@@ -1195,7 +1235,9 @@ p span.glyphicon.glyphicon-flag,
 }
 
 .listheader span.glyphicon.glyphicon-bookmark.grayed,
-#recentlist span.glyphicon.glyphicon-bookmark.grayed {
+#recentlist span.glyphicon.glyphicon-bookmark.grayed,
+#usr-recent span.glyphicon.glyphicon-bookmark.grayed,
+#gamelist span.glyphicon.glyphicon-bookmark.grayed {
    color: fade(black, 6%);
 }
 
@@ -1239,6 +1281,13 @@ div.modal-close {
    height: 28px;
    bottom: 12px;
    right: 12px;
+}
+
+div#usr-info-close {
+   background-color: @freshtile;
+}
+
+div#blank-close {
    background-color: @alert;
 }
 
@@ -1254,6 +1303,45 @@ div#blank-form {
    padding-bottom: 6px;
    z-index: 20;
    box-shadow: 3px 3px 5px 2px #333333;
+}
+
+div#usr-info-form {
+   position: absolute;
+   top: 12px;
+   right: 12px;
+   width: 884px;
+   height: 670px;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   z-index: 20;
+   font-size: 1em;
+   box-shadow: 3px 3px 5px 2px #333333;
+}
+
+div.usr-info-hdr {
+   font-size: 18px;
+   margin-top: 6px;
+   margin-bottom: 15px;
+}
+
+h1#usr-info-nick {
+   display: inline;
+}
+
+h2#usr-info-fullname {
+   display: inline;
+}
+
+span.usr-info-vbar {
+   color: @background;
+   font-size: 2em;
+}
+
+h1.usr-info-icon {
+   display: inline;
+   color: @background;
 }
 
 div.blank-rack {

@@ -227,7 +227,7 @@ class GameModel(ndb.Model):
         q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == True).order(-GameModel.timestamp)
 
         def game_callback(gm):
-            """ Map a game entity to a result tuple with useful info about the game """
+            """ Map a game entity to a result dictionary with useful info about the game """
             uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
@@ -243,6 +243,7 @@ class GameModel(ndb.Model):
             return dict(
                 uuid = uuid,
                 ts = gm.timestamp,
+                ts_last_move = gm.ts_last_move,
                 opp = opp,
                 sc0 = sc0,
                 sc1 = sc1,

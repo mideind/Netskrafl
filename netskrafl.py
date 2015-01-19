@@ -24,6 +24,8 @@
 import logging
 import json
 
+from datetime import timedelta
+
 from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
@@ -254,13 +256,12 @@ def _gamelist():
     return result
 
 
-def _recentlist():
-    """ Return a list of recent games for the current user """
+def _recentlist(cuid, max_len):
+    """ Return a list of recent games for the indicated user """
     result = []
-    cuid = User.current_id()
     if cuid is not None:
-        # Obtain a list of recently finished games where this user was a player
-        i = iter(GameModel.list_finished_games(cuid, max_len = 14))
+        # Obtain a list of recently finished games where the indicated user was a player
+        i = iter(GameModel.list_finished_games(cuid, max_len = max_len))
         for g in i:
             opp = g["opp"]
             if opp is None:
@@ -270,13 +271,30 @@ def _recentlist():
                 # Human opponent
                 u = User.load(opp)
                 nick = u.nickname()
+
+            # Calculate the duration of the game in days, hours, minutes
+            ts_start = g["ts"]
+            ts_end = g["ts_last_move"]
+
+            if (ts_start is None) or (ts_end is None):
+                days, hours, minutes = (0, 0, 0)
+            else:
+                td = ts_end - ts_start # Timedelta
+                tsec = td.total_seconds()
+                days, tsec = divmod(tsec, 24 * 60 * 60)
+                hours, tsec = divmod(tsec, 60 * 60)
+                minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
+
             result.append({
                 "url": url_for('review', game = g["uuid"]),
                 "opp": nick,
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp(g["ts"])
+                "ts": Alphabet.format_timestamp(g["ts"]),
+                "days": int(days),
+                "hours": int(hours),
+                "minutes": int(minutes)
             })
     return result
 
@@ -449,11 +467,15 @@ def gamelist():
 
 @app.route("/recentlist", methods=['POST'])
 def recentlist():
-    """ Return a list of recently completed games for the current user """
+    """ Return a list of recently completed games for the indicated user """
 
-    # _recentlist() returns an empty list if no user is logged in
+    # _recentlist() returns an empty list for a nonexistent user
 
-    return jsonify(result = Error.LEGAL, recentlist = _recentlist())
+    user_id = request.form.get('user', None)
+    if user_id is None:
+        user_id = User.current_id()
+
+    return jsonify(result = Error.LEGAL, recentlist = _recentlist(user_id, max_len = 14))
 
 
 @app.route("/challengelist", methods=['POST'])

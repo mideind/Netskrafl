@@ -28,6 +28,7 @@
       class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><span
       class="list-ts">Síðasti leikur</span><span
       class="list-opp">Andstæðingur</span><span
+      class="list-win"><span title="Yfir" class='glyphicon glyphicon-bookmark grayed'></span></span><span
       class="list-scorehdr">Staða</span></div>
 
       <!-- Game list will be populated by populateGameList() below -->
@@ -79,7 +80,12 @@
    <div id="tabs-4">
       <p>Nýlegar viðureignir þínar - smelltu til að skoða og rifja upp:</p>
       <div class="listitem listheader"><span
-      class="list-win"><span title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span class="list-ts">Viðureign hófst</span><span class="list-opp">Andstæðingur</span><span class="list-scorehdr">Úrslit</span></div>
+      class="list-win"><span
+      title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
+      class="list-ts">Viðureign hófst</span><span
+      class="list-opp">Andstæðingur</span><span
+      class="list-scorehdr">Úrslit</span><span
+      class="list-duration">Lengd</span></div>
 
       <!-- Recent game lists will be populated by populateRecentList() below -->
       <div id="recentlist"></div>
@@ -105,7 +111,8 @@
          class="list-fav"><span title="Uppáhald"
          class='glyphicon glyphicon-star-empty'></span></span><span
          class="list-nick">Einkenni</span><span
-         class="list-fullname">Nafn</span>
+         class="list-fullname">Nafn</span><span
+         class="list-info" id="usr-list-info">Ferill</span>
       </div>
 
       <!-- User list will be populated by populateUserList() below -->
@@ -126,10 +133,34 @@
    <a href="{{ url_for('userprefs') }}">{{ user.nickname() }}</a>
 </div>
 
-{% endblock %}
+<!-- A dialog to show info about a particular user -->
+<div id="usr-info-dialog" class="modal-dialog">
+<div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
 
-{% block endscripts %}
+   <div class="usr-info-hdr">
+      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1> <h1 id="usr-info-nick"></h1> <span class="usr-info-vbar">|</span> <h2 id="usr-info-fullname"></h2>
+   </div>
 
+   <!-- Recent games for this user -->
+   <div class="listitem listheader"><span
+   class="list-win"><span
+   title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
+   class="list-ts">Viðureign hófst</span><span
+   class="list-opp">Andstæðingur</span><span
+   class="list-scorehdr">Úrslit</span><span
+   class="list-duration">Lengd</span></div>
+
+   <!-- Recent game lists will be populated by populateRecentList() below -->
+   <div id="usr-recent"></div>
+
+   <!-- Close button -->
+   <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
+</div>
+{%- endblock -%}
+{%- block endscripts -%}
 <script>
 
 var entityMap = {
@@ -191,6 +222,17 @@ function serverQuery(requestUrl, jsonData, successFunc) {
    });
 }
 
+function buttonOver(elem) {
+   /* Show a hover effect on a button */
+   if (!$(elem).hasClass("disabled"))
+      $(elem).toggleClass("over", true);
+}
+
+function buttonOut(elem) {
+   /* Hide a hover effect on a button */
+   $(elem).toggleClass("over", false);
+}
+
 function markFavorite(elem, uid) {
    /* Toggle a favorite mark for the indicated user */
    var action;
@@ -249,6 +291,25 @@ function markChallenge(elem, uid) {
       }, updateChallenges);
 }
 
+function showUserInfo(ev) {
+   /* Show the user information dialog */
+   $("#usr-info-nick").text(ev.data.nick);
+   $("#usr-info-fullname").text(ev.data.fullname);
+   $("#usr-info-dialog").css("visibility", "visible");
+   // Populate the #usr-recent DIV
+   serverQuery("/recentlist",
+      {
+         user: ev.data.userid
+      },
+      populateUserInfo);
+}
+
+function hideUserInfo(ev) {
+   /* Hide the user information dialog */
+   $("#usr-info-dialog").css("visibility", "hidden");
+   $("#usr-recent").html("");
+}
+
 // Is a user list request already in progress?
 var ulRq = false;
 
@@ -279,13 +340,17 @@ function populateUserList(json) {
          (item.chall ? "'" : " grayed'") +
          " onclick='markChallenge(this, \"" + item.userid + "\")'></span>";
       var nick = escapeHtml(item.nick);
-      var alink = "", aclose = "";
+      var alink = "", aclose = "", info = "";
       if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
          // Put a hyperlink on the robot name and description
          alink = "<a href='{{ url_for('newgame') }}?opp=" + item.userid + "'>";
          aclose = "</a>"
+      }
+      else {
+         // Create a link to access user info
+         info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
       }
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
@@ -294,8 +359,15 @@ function populateUserList(json) {
          "<span class='list-nick'>" + nick + "</span>" +
          "<span class='list-fullname'>" + escapeHtml(item.fullname) + "</span>" +
          aclose +
+         "<span class='list-info'>" + info + "</span>" +
          "</div>";
       $("#userlist").append(str);
+      // Associate a click handler with the info button, if present
+      if (info.length)
+         $("#usr" + i.toString()).click(
+            { userid: item.userid, nick: item.nick, fullname: item.fullname },
+            showUserInfo
+         );
    }
 }
 
@@ -349,6 +421,8 @@ function refreshUserList(ev) {
          /* Range has x-y format */
          to_range = range.charAt(2);
    }
+   // Hide the user info button header if listing the robots
+   $("#usr-list-info").css("visibility", (range == "robots") ? "hidden" : "visible");
    serverQuery("/userlist",
       {
          // Identify the game in question
@@ -376,11 +450,14 @@ function populateGameList(json) {
       var turnText = item.my_turn ? "Þú átt leik" : (opp + " á leik");
       var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
          (item.my_turn ? "" : " grayed") + "'></span>";
+      var myWin = "<span class='glyphicon glyphicon-bookmark" +
+         (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
+         "<span class='list-win'>" + myWin + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>:" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "</a></div>";
@@ -418,6 +495,17 @@ function refreshGameList() {
 }
 
 function populateRecentList(json) {
+   /* Populate a list of recent games for the current user */
+   _populateRecentList(json, "#recentlist");
+}
+
+function populateUserInfo(json) {
+   /* Populate a game list for a user info dialog */
+   _populateRecentList(json, "#usr-recent");
+}
+
+function _populateRecentList(json, listId) {
+   /* Worker function to populate a list of recent games */
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
@@ -430,8 +518,31 @@ function populateRecentList(json) {
       if (item.opp_is_robot)
          // Mark robots with a cog icon
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
+      // Show won games with a ribbon
       var myWin = "<span class='glyphicon glyphicon-bookmark" +
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
+      // Format the game duration
+      var duration = "";
+      if (item.days || item.hours || item.minutes) {
+         if (item.days > 1)
+            duration = item.days.toString() + " dagar";
+         else
+         if (item.days == 1)
+            duration = "1 dagur";
+         if (item.hours > 0) {
+            if (duration.length)
+               duration += " og ";
+            duration += item.hours.toString() + " klst"
+         }
+         if (item.days === 0) {
+            if (duration.length)
+               duration += " og ";
+            if (item.minutes == 1)
+               duration += "1 mínúta";
+            else
+               duration += item.minutes.toString() + " mínútur";
+         }
+      }
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +
@@ -439,8 +550,9 @@ function populateRecentList(json) {
          "<span class='list-opp'>" + opp + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>:" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
+         "<span class='list-duration'>" + duration + "</span>" +
          "</a></div>";
-      $("#recentlist").append(str);
+      $(listId).append(str);
    }
 }
 
@@ -556,16 +668,17 @@ $("#initials").children("span").each(function() {
 /* Refresh the live user list periodically while it is being displayed */
 window.setInterval(periodicUserList, 5 * 60 * 1000); // Every five minutes
 
+/* Enable the close button in the user info dialog */
+$("#usr-info-close").click(hideUserInfo);
+
 {% if tab %}
 /* Select default tab when opening page */
 $("#tabs").tabs("option", "active", {{ tab }});
 {% endif %}
 
 </script>
-
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
 <script>
 
 var channelToken = "{{ channel_token }}";
@@ -624,6 +737,4 @@ function channelOnClose() {
 openChannel();
 
 </script>
-
-{% endblock %}
-
+{%- endblock -%}
