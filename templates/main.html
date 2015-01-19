@@ -302,7 +302,7 @@ function showUserInfo(ev) {
    serverQuery("/recentlist",
       {
          user: ev.data.userid,
-         count: 12 // Limit recent game count to 12
+         count: 20 // Limit recent game count to 20
       },
       populateUserInfo);
 }
@@ -564,7 +564,8 @@ function refreshRecentList() {
    $("#recentlist").html("");
    serverQuery("/recentlist",
       {
-         // No data to send with query - current user is implicit
+         // Current user is implicit
+         count: 20
       },
       populateRecentList);
 }
