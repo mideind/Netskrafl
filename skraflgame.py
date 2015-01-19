@@ -245,7 +245,7 @@ class Game:
     # The available autoplayers (robots)
     AUTOPLAYERS = [
         (u"Fullsterkur", u"Velur stigahæsta leik í hverri stöðu", 0),
-        (u"Miðlungur", u"Velur af handahófi einn af átta stigahæstu leikjum í hverri stöðu", 8),
+        (u"Miðlungur", u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu", 8),
         (u"Amlóði", u"Velur af handahófi einn af 15 stigahæstu leikjum í hverri stöðu", 15)
         ]
 

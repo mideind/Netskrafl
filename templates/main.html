@@ -355,6 +355,8 @@ function populateUserList(json) {
          // Create a link to access user info
          info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
       }
+      if (info.length)
+         info = "<span class='list-info'>" + info + "</span>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-fav'>" + fav + "</span>" +
@@ -362,7 +364,7 @@ function populateUserList(json) {
          "<span class='list-nick'>" + nick + "</span>" +
          "<span class='list-fullname'>" + escapeHtml(item.fullname) + "</span>" +
          aclose +
-         "<span class='list-info'>" + info + "</span>" +
+         info +
          "</div>";
       $("#userlist").append(str);
       // Associate a click handler with the info button, if present
