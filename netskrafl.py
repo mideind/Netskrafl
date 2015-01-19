@@ -472,10 +472,18 @@ def recentlist():
     # _recentlist() returns an empty list for a nonexistent user
 
     user_id = request.form.get('user', None)
+    count = 14 # Default number of recent games to return
+    try:
+        count = int(request.form.get('count', str(count)))
+    except:
+        pass
+    # Limit count to 50 games
+    if count > 50:
+        count = 50
     if user_id is None:
         user_id = User.current_id()
 
-    return jsonify(result = Error.LEGAL, recentlist = _recentlist(user_id, max_len = 14))
+    return jsonify(result = Error.LEGAL, recentlist = _recentlist(user_id, max_len = count))
 
 
 @app.route("/challengelist", methods=['POST'])

@@ -141,6 +141,8 @@
       <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1> <h1 id="usr-info-nick"></h1> <span class="usr-info-vbar">|</span> <h2 id="usr-info-fullname"></h2>
    </div>
 
+   <p>Nýjustu viðureignir:</p>
+
    <!-- Recent games for this user -->
    <div class="listitem listheader"><span
    class="list-win"><span
@@ -299,7 +301,8 @@ function showUserInfo(ev) {
    // Populate the #usr-recent DIV
    serverQuery("/recentlist",
       {
-         user: ev.data.userid
+         user: ev.data.userid,
+         count: 12 // Limit recent game count to 12
       },
       populateUserInfo);
 }
