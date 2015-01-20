@@ -72,6 +72,9 @@
 .glyphicon-circle-arrow-down:before {
    content: "\e134";
 }
+.glyphicon-download:before {
+   content: "\e026";
+}
 .glyphicon-star:before {
    content: "\e006";
 }
@@ -157,9 +160,22 @@ div.logo {
    height: 400px;
 }
 
+div.logo-back {
+   position: absolute;
+   top: 34px;
+   left: 24px;
+   width: 46px;
+   height: 46px;
+   font-size: 46px;
+   line-height: 46px;
+   -ms-transform: rotate(90deg);
+   -webkit-transform: rotate(90deg);
+   transform: rotate(90deg);
+}
+
 div.info {
    position: absolute;
-   top: 460px;
+   top: 456px;
    left: 22px;
    width: 50px;
    height: 50px;
@@ -184,7 +200,7 @@ div.rightcol {
 div.rack {
    position: absolute;
    text-align: center;
-   bottom: 93px;
+   bottom: 125px;
    left: 244px;
    background-color: @board-background;
    padding: 6px;
@@ -195,7 +211,7 @@ div.rack {
 
 div.bag {
    position: absolute;
-   bottom: 4px;
+   bottom: 32px;
    right: 14px;
    width: 302px;
    height: 160px;
@@ -660,7 +676,7 @@ div.error {
    position: absolute;
    text-align: center;
    display: block;
-   bottom: 40px;
+   bottom: 72px;
    left: 130px;
    width: 512px;
    height: 28px;
@@ -684,11 +700,29 @@ div.error p {
    padding: 0;
 }
 
+div.opp-turn {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 80px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   font-size: 16px;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+div.opp-turn span {
+   color: @alert;
+}
+
 div.resign {
    position: absolute;
    text-align: center;
    display: block;
-   bottom: 40px;
+   bottom: 68px;
    left: 130px;
    width: 512px;
    height: 28px;
@@ -728,7 +762,7 @@ div.exchange {
    position: absolute;
    text-align: center;
    display: block;
-   bottom: 40px;
+   bottom: 68px;
    left: 130px;
    width: 512px;
    height: 28px;
@@ -779,7 +813,7 @@ div.gameinfo {
    .standard-button;
    width: 100px;
    height: 28px;
-   bottom: 98px;
+   bottom: 130px;
    left: 562px;
    background-color: @freshtile;
 }
@@ -804,7 +838,7 @@ div.submitpass {
    .standard-button;
    width: 36px;
    height: 28px;
-   bottom: 98px;
+   bottom: 130px;
    left: 91px;
    background-color: @pass-btn;
 }
@@ -813,7 +847,7 @@ div.submitresign {
    .standard-button;
    width: 36px;
    height: 28px;
-   bottom: 98px;
+   bottom: 130px;
    left: 26px;
    background-color: @alert;
 }
@@ -822,7 +856,7 @@ div.submitexchange {
    .standard-button;
    width: 36px;
    height: 28px;
-   bottom: 98px;
+   bottom: 130px;
    left: 156px;
    background-color: @freshtile;
 }
@@ -832,7 +866,7 @@ div.score {
    width: 48px;
    height: 32px;
    text-align: center;
-   bottom: 174px;
+   bottom: 202px;
    left: 652px;
    background-color: transparent;
    font-size: 26px;
@@ -899,17 +933,17 @@ div.recallbtn {
    height: 48px;
    text-align: center;
    vertical-align: middle;
-   top: 460px;
+   top: 456px;
    left: 652px;
    font-size: 40px;
    font-weight: normal;
-   color: fade(@racktile, 75%);
+   color: fade(@racktile, 80%);
    visibility: hidden;
    cursor: pointer;
 }
 
 div.recallbtn.hover {
-   color: fade(@racktile, 100%);
+   color: @pass-btn;
 }
 
 div.scorediff {
@@ -1522,17 +1556,17 @@ a.nodecorate:hover {
 
 a.iconlink:link {
    text-decoration: none;
-   color: @triple-letter;
+   color: darken(@freshtile, 15%); /* @triple-letter; */
 }
 
 a.iconlink:visited {
    text-decoration: none;
-   color: @triple-letter;
+   color: darken(@freshtile, 15%); /* @triple-letter; */
 }
 
 a.iconlink:hover {
    text-decoration: none;
-   color: @double-letter;
+   color: @pass-btn;
 }
 
 div.twolist {

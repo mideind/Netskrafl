@@ -64,6 +64,10 @@
 
 {% endblock %}
 
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
 {% block content %}
 
 <!-- The board -->
@@ -171,6 +175,9 @@
 <!-- Resign button -->
 <div class="submitresign" title="Gefa leik" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
+
+<!-- Notification that it's the opponent's turn -->
+<div class="opp-turn"><span class="glyphicon glyphicon-flag-after"></span><strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>

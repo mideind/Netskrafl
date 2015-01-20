@@ -881,6 +881,7 @@ function updateButtonState() {
          showingDialog);
       $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      $("div.opp-turn").css("visibility", "hidden");
       // Indicate that it's this player's turn in the window/tab title
       document.title = "\u25B6 Netskrafl";
    }
@@ -892,6 +893,7 @@ function updateButtonState() {
       $("div.submitresign").css("visibility", "hidden");
       $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      $("div.opp-turn").css("visibility", "visible");
       // Reset to normal window/tab title
       document.title = "Netskrafl";
    }
