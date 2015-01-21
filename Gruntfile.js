@@ -6,10 +6,10 @@ module.exports = function (grunt) {
       // See: http://www.jshint.com/docs/
       jshint: {
          all: {
-            src: 'static/netskrafl.js',
+            src: ['static/netskrafl.js', 'static/main.js'],
             options: {
                bitwise: true,
-               camelcase: true,
+               camelcase: false,
                curly: false,
                eqeqeq: false,
                forin: true,
@@ -27,7 +27,7 @@ module.exports = function (grunt) {
                maxlen: 120,
                predef: ['$', 'document', 'window', 'alert', 'console', 'Mousetrap',
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
-                  'gameId']
+                  'gameId', 'userId', 'jQuery', 'newgameUrl', 'lateInit', 'goog']
             }
          }
       },
@@ -65,7 +65,7 @@ module.exports = function (grunt) {
 
       watch: {
          jshint: {
-            files: 'static/netskrafl.js',
+            files: ['static/netskrafl.js', 'static/main.js', 'gruntfile.js'],
             tasks: 'jshint'
          },
 /*
@@ -75,7 +75,7 @@ module.exports = function (grunt) {
          },
 */
          less: {
-            files: 'static/*.less',
+            files: ['static/*.less', 'gruntfile.js'],
             tasks: 'less:development'
          },
          configFiles: {

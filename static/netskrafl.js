@@ -1,9 +1,9 @@
 /*
 
    Netskrafl.js
-   Client-side script for the Netskrafl server in netskrafl.py
+   Client-side script for board.html, the game board page
 
-   Author: Vilhjalmur Thorsteinsson, 2014
+   Author: Vilhjalmur Thorsteinsson, 2015
 
 */
 
@@ -1465,6 +1465,62 @@ function sendMove(movetype) {
       updateState, moveComplete);
 }
 
+/* Channel API stuff */
+
+var channelToken = null;
+var channel = null;
+var socket = null;
+
+function openChannel(token) {
+   /* Open a new channel using the token stored in channelToken */
+   channelToken = token;
+   channel = new goog.appengine.Channel(token);
+   socket = channel.open({
+      onopen : channelOnOpen,
+      onmessage : channelOnMessage,
+      onerror : channelOnError,
+      onclose : channelOnClose
+   });
+}
+
+function channelOnOpen() {
+}
+
+function channelOnMessage(msg) {
+   /* The server has sent a notification message back on our channel */
+   var json = jQuery.parseJSON(msg.data);
+   if (json.stale)
+      // We missed updates on our channel: reload the board
+      window.location.reload(false);
+   else {
+      // json now contains an entire client state update, as a after submitMove()
+      resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
+      updateState(json);
+   }
+}
+
+function channelOnError(err) {
+   /* Act on err.code and err.description here */
+}
+
+function newChannel(json) {
+   /* Ajax callback, called when the server has issued a new channel token */
+   if (json && json.result === 0) {
+      // No error: get the new token and reopen the channel
+      openChannel(json.token);
+   }
+}
+
+function channelOnClose() {
+   /* The channel has expired or is being closed for other reasons: request a new one */
+   serverQuery("newchannel",
+      { game: gameId(), oldch: channelToken },
+      newChannel);
+   channelToken = null;
+   channel = null;
+   socket = null;
+}
+
 function initSkrafl(jQuery) {
    /* Called when the page is displayed or refreshed */
    placeTiles();
@@ -1491,6 +1547,7 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('backspace', rescrambleRack);
    /* Bind pinch gesture to a function to reset the rack */
    /* $('body').bind('pinchclose', resetRack); */
-}
 
+   lateInit();
+}
 

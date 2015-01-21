@@ -141,35 +141,28 @@ body {
    margin: 0;
 }
 
-div.fixer {
-   position: fixed;
-   top: 0;
-   left: 0;
-   width: 1024px;
-   height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
-}
-
 div.container {
    position: relative;
    top: 0;
    left: 0;
-   width: 100%;
-   height: 100%;
+   width: 1024px;
+   height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
    background-color: @container;
+   overflow-y: hidden;
 }
 
 div.logo {
    position: absolute;
    top: 28px;
-   left: 24px;
+   left: 28px;
    width: 46px;
    height: 400px;
 }
 
 div.logo-back {
    position: absolute;
-   top: 34px;
-   left: 24px;
+   top: 38px;
+   left: 28px;
    width: 46px;
    height: 46px;
    font-size: 46px;
@@ -182,7 +175,7 @@ div.logo-back {
 div.info {
    position: absolute;
    top: 456px;
-   left: 22px;
+   left: 26px;
    width: 50px;
    height: 50px;
    text-align: center;
@@ -954,7 +947,7 @@ div.recallbtn {
 }
 
 div.recallbtn.hover {
-   color: @pass-btn;
+   color: @hover-link;
 }
 
 div.scorediff {
@@ -1025,7 +1018,7 @@ div.tabbed-page {
 
 .tabbed-page a:hover {
    text-decoration: none;
-   color: @pass-btn;
+   color: @hover-link;
 }
 
 .notifier {
@@ -1096,7 +1089,7 @@ div.listitem {
 }
 
 .listitem a:hover {
-   color: @pass-btn;
+   color: @hover-link;
 }
 
 div.oddlist {
@@ -1231,7 +1224,7 @@ span.usr-info:before {
 }
 
 span.usr-info:hover {
-   background-color: @pass-btn;
+   background-color: @hover-link;
 }
 
 div #userlist,
@@ -1435,7 +1428,7 @@ div.welcome {
 
 .welcome a:hover {
    text-decoration: none;
-   color: @pass-btn;
+   color: @hover-link;
 }
 
 span.caption {
@@ -1567,17 +1560,32 @@ a.nodecorate:hover {
 
 a.iconlink:link {
    text-decoration: none;
-   color: @freshtile; /* @triple-letter; */
+   color: @triple-letter;
 }
 
 a.iconlink:visited {
    text-decoration: none;
-   color: @freshtile; /* @triple-letter; */
+   color: @triple-letter;
 }
 
 a.iconlink:hover {
    text-decoration: none;
-   color: @pass-btn;
+   color: @hover-link;
+}
+
+a.backlink:link {
+   text-decoration: none;
+   color: @board-background;
+}
+
+a.backlink:visited {
+   text-decoration: none;
+   color: @board-background;
+}
+
+a.backlink:hover {
+   text-decoration: none;
+   color: @hover-link;
 }
 
 div.twolist {
