@@ -141,15 +141,21 @@ body {
    margin: 0;
 }
 
-div.container {
-   position: relative;
+div.fixer {
+   position: fixed;
    top: 0;
    left: 0;
    width: 1024px;
    height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
+}
+
+div.container {
+   position: relative;
+   top: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
    background-color: @container;
-   padding: 0;
-   margin: 0;
 }
 
 div.logo {
@@ -435,12 +441,21 @@ h3.playerright {
    padding-right: 4px;
 }
 
-span#left-to-move.glyphicon.glyphicon-flag {
+.move-indicator {
+   .glyphicon;
    color: @alert;
 }
 
-span#right-to-move.glyphicon.glyphicon-flag-after {
-   color: @alert;
+span.move-indicator:before {
+   content: "\e034";
+}
+
+span#left-to-move.glyphicon-flag {
+   .move-indicator;
+}
+
+span#right-to-move.glyphicon-flag-after {
+   .move-indicator;
 }
 
 h3.scoreleft {
@@ -712,10 +727,6 @@ div.opp-turn {
    margin: 0;
    padding-top: 4px;
    visibility: hidden;
-}
-
-div.opp-turn span {
-   color: @alert;
 }
 
 div.resign {
@@ -1556,12 +1567,12 @@ a.nodecorate:hover {
 
 a.iconlink:link {
    text-decoration: none;
-   color: darken(@freshtile, 15%); /* @triple-letter; */
+   color: @freshtile; /* @triple-letter; */
 }
 
 a.iconlink:visited {
    text-decoration: none;
-   color: darken(@freshtile, 15%); /* @triple-letter; */
+   color: @freshtile; /* @triple-letter; */
 }
 
 a.iconlink:hover {

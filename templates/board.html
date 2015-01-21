@@ -12,6 +12,9 @@
 <!-- Netskrafl client script -->
 <script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
 
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
 <script>
    function placeTiles() {
 {% for m in game.moves %}
@@ -76,7 +79,7 @@
 <!-- Player names, scores and move history -->
 <div class="rightcol">
    <div class="heading">
-      <h3 class="playerleft"><span id="left-to-move" class="glyphicon glyphicon-flag"></span>
+      <h3 class="playerleft"><span id="left-to-move" class="glyphicon-flag"></span>
 {%- if player_index == 0 -%}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- elif game.is_autoplayer(0) -%}
@@ -97,7 +100,7 @@
 {%- if player_index == 1 -%}
 </a>
 {%- endif -%}
-      <span id="right-to-move" class="glyphicon glyphicon-flag-after"></span></h3>
+      <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
       <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
    </div>
@@ -177,7 +180,7 @@
    onmouseout="buttonOut(this)" onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
 
 <!-- Notification that it's the opponent's turn -->
-<div class="opp-turn"><span class="glyphicon glyphicon-flag-after"></span><strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
+<div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>
@@ -215,13 +218,10 @@
 
 {%- block endscripts -%}
 <script>
-   $(document).ready(initSkrafl);
-</script>
 
-{% if channel_token %}
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
-<script>
+$(document).ready(initSkrafl);
+
+/* Channel API stuff */
 
 var channelToken = "{{ channel_token }}";
 var channel = null;
@@ -280,5 +280,4 @@ function channelOnClose() {
 openChannel();
 
 </script>
-{%- endif -%}
 {%- endblock -%}
