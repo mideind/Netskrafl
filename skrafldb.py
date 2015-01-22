@@ -538,6 +538,22 @@ class ChannelModel(ndb.Model):
             offset += CHUNK_SIZE
 
     @classmethod
+    def is_connected(cls, user_id):
+        """ Returns True if the given user is presently connected (online) """
+        if not user_id:
+            return False
+        now = datetime.utcnow()
+        u_key = ndb.Key(UserModel, user_id)
+        # Query for all connected channels for this user that have not expired
+        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
+            .filter(ChannelModel.expiry > now)
+        for cm in q.fetch(1):
+            # Found one: return True
+            return True
+        # Found no channel meeting the criteria: return False
+        return False
+
+    @classmethod
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()

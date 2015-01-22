@@ -522,13 +522,29 @@ function prepareChallenge() {
    });
 }
 
+function markOnline(json) {
+   /* If the challenged user is online, show a bright icon */
+   if (json && json.online !== undefined && json.online) {
+      $("#chall-online").addClass("online");
+      $("#chall-online").attr("title", "Er álínis");
+   }
+}
+
 function showChallenge(elemid, userid, nick, fullname) {
    /* Show the challenge dialog */
    $("#chall-nick").text(nick);
    $("#chall-fullname").text(fullname);
+   $("#chall-online").removeClass("online");
+   $("#chall-online").attr("title", "Er ekki álínis");
    $("#chall-dialog")
       .data("param", { elemid: elemid, userid: userid })
       .css("visibility", "visible");
+   /* Launch a query to check whether the challenged user is online */
+   serverQuery("/onlinecheck",
+      {
+         user: userid
+      },
+      markOnline);
 }
 
 function cancelChallenge(ev) {

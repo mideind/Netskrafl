@@ -544,6 +544,23 @@ def challenge():
     return jsonify(result = Error.LEGAL)
 
 
+@app.route("/onlinecheck", methods=['POST'])
+def onlinecheck():
+    """ Check whether a particular user is online """
+
+    if not User.current_id():
+        # We must have a logged-in user
+        return jsonify(online = False)
+
+    user_id = request.form.get('user', None)
+    online = False
+
+    if user_id is not None:
+        online = ChannelModel.is_connected(user_id)
+
+    return jsonify(online = online)
+
+
 @app.route("/review")
 def review():
     """ Show game review page """

@@ -1220,7 +1220,7 @@ span.usr-info {
 }
 
 span.usr-info:before {
-   content: "\e003"; /* Search */ /* 015 Zoom in */
+   content: "\e003"; /* Search */
 }
 
 span.usr-info:hover {
@@ -1331,12 +1331,13 @@ div#usr-info-close {
 }
 
 div#chall-cancel {
-   right: 108px; /* 12 + 72 + 12 + 12 */
+   right: 162px; /* 12 + 72 + 12 + 12 + 54 */
    width: 72px; /* Override */
    background-color: @alert;
 }
 
 div#chall-ok {
+   right: 66px; /* 12 + 54 */
    width: 72px; /* Override */
    background-color: @freshtile;
 }
@@ -1434,9 +1435,10 @@ td.l-border {
 }
 
 h1#chall-nick {
-   display: block;
+   display: inline-block;
    font-size: 28px;
    line-height: 30px;
+   margin-left: 6px;
    margin-top: 0;
    margin-bottom: 8px;
 }
@@ -1447,13 +1449,13 @@ h2#chall-fullname {
    line-height: 24px;
    margin-top: 6px;
    margin-bottom: 4px;
-   color: @background;
+   color: darken(@background, 10%);
 }
 
 h1.chall-icon {
-   display: inline;
-   color: @background;
-   margin-right: 6px;
+   display: block;
+   color: darken(@background, 10%);
+   margin-right: 12px;
    margin-top: 0;
    margin-bottom: 0;
 }
@@ -1490,6 +1492,25 @@ div.chall-time:hover {
 
 div.chall-time.selected:hover {
    background-color: @racktile;
+}
+
+span#chall-online {
+   .glyphicon;
+   display: inline-block;
+   top: 0px;
+   color: white;
+   background-color: fade(@board-background, 65%);
+   border-radius: 5px;
+   padding: 5px;
+   margin: 0px;
+}
+
+span#chall-online:before {
+   content: "\e162"; /* Flash */
+}
+
+span#chall-online.online {
+   background-color: @freshtile;
 }
 
 div.blank-rack {
