@@ -104,16 +104,16 @@ function updateChallenges(json) {
    refreshChallengeList();
 }
 
-function markChallenge(elem, uid) {
-   /* Change the state of a challenge for the indicated user */
+function markChallenge(ev) {
+   /* Change the state of a challenge upon a click on a challenge icon */
    var action;
+   var elem = ev.delegateTarget;
    if ($(elem).hasClass("glyphicon-thumbs-down")) {
       /* A challenge from another user is being declined */
       action = "decline";
    }
    else
    if ($(elem).hasClass("grayed")) {
-      $(elem).removeClass("grayed");
       /* A challenge is being issued to another user */
       action = "issue";
    }
@@ -122,17 +122,23 @@ function markChallenge(elem, uid) {
       $(elem).addClass("grayed");
       action = "retract";
    }
-   if (action == "issue" && uid.indexOf("robot-") === 0) {
-      /* Challenging a robot: Create a new game and display it right away */
-      window.location.href = newgameUrl(uid);
-      return;
+   if (action == "issue") {
+      if (ev.data.userid.indexOf("robot-") === 0) {
+         /* Challenging a robot: Create a new game and display it right away */
+         window.location.href = newgameUrl(ev.data.userid);
+         return;
+      }
+      /* New challenge: show dialog */
+      showChallenge(elem.id, ev.data.userid, ev.data.nick, ev.data.fullname);
    }
-   serverQuery("/challenge",
-      {
-         // Identify the relation in question
-         destuser: uid,
-         action: action
-      }, updateChallenges);
+   else
+      serverQuery("/challenge",
+         {
+            // Identify the relation in question
+            destuser: ev.data.userid,
+            action: action
+         }, updateChallenges
+      );
 }
 
 function showUserInfo(ev) {
@@ -181,9 +187,10 @@ function populateUserList(json) {
          fav = "<span title='Uppáhald' class='glyphicon glyphicon-star" +
          ((!item.fav) ? "-empty" : "") +
          "' onclick='markFavorite(this, \"" + item.userid + "\")'></span>";
+      var chId = "chall" + i.toString();
       var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
          (item.chall ? "'" : " grayed'") +
-         " onclick='markChallenge(this, \"" + item.userid + "\")'></span>";
+         " id='" + chId + "'></span>";
       var nick = escapeHtml(item.nick);
       var alink = "", aclose = "", info = "";
       if (isRobot) {
@@ -215,6 +222,11 @@ function populateUserList(json) {
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
             showUserInfo
          );
+      // Associate a click handler with the challenge icon
+      $("#" + chId).click(
+         { userid: item.userid, nick: item.nick, fullname: item.fullname },
+         markChallenge
+      );
    }
 }
 
@@ -419,13 +431,23 @@ function acceptChallenge(userid) {
    window.location.href = newgameUrl(userid);
 }
 
-function markChallAndRefresh(elem, userid) {
+function markChallAndRefresh(ev) {
    /* Mark a challenge and refresh the user list */
-   markChallenge(elem, userid);
+   markChallenge(ev);
    redisplayUserList();
 }
 
+function challengeDescription(json) {
+   /* Return a human-readable string describing a challenge
+      according to the enclosed preferences */
+   if (!json || json.duration === undefined || json.duration === 0)
+      /* Normal unbounded (untimed) game */
+      return "Venjuleg ótímabundin viðureign";
+   return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
+}
+
 function populateChallengeList(json) {
+   /* Populate the lists of received and issued challenges */
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
@@ -436,7 +458,7 @@ function populateChallengeList(json) {
    for (var i = 0; i < json.challengelist.length; i++) {
       var item = json.challengelist[i];
       var opp = escapeHtml(item.opp);
-      var prefs = escapeHtml(item.prefs);
+      var prefs = escapeHtml(challengeDescription(item.prefs));
       var odd = ((item.received ? countReceived : countSent) % 2 === 0);
       /* Show Decline icon (thumb down) if received challenge;
          show Delete icon (cross) if issued challenge */
@@ -447,7 +469,8 @@ function populateChallengeList(json) {
       else
          icon = "<span title='Afturkalla' " +
             "class='glyphicon glyphicon-hand-right'";
-      icon += " onclick='markChallAndRefresh(this, \"" + item.userid + "\")'></span>";
+      var chId = "chl" + i.toString();
+      icon += " id='" + chId + "'></span>";
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
          (item.received ? ("<a href='#' onclick='acceptChallenge(\"" + item.userid + "\")'>") : "") +
@@ -463,6 +486,10 @@ function populateChallengeList(json) {
          $("#chall-sent").append(str);
          countSent++;
       }
+      $("#" + chId).click(
+         { userid: item.userid, nick: item.opp, fullname: "" },
+         markChallAndRefresh
+      );
    }
    // Update the count of received challenges
    if (countReceived === 0) {
@@ -484,6 +511,59 @@ function refreshChallengeList() {
       },
       populateChallengeList);
 }
+
+function prepareChallenge() {
+   /* Enable buttons in the challenge dialog */
+   $("#chall-cancel").click(cancelChallenge);
+   $("#chall-ok").click(okChallenge);
+   $("div.chall-time").click(function() {
+      $("div.chall-time").removeClass("selected");
+      $(this).addClass("selected");
+   });
+}
+
+function showChallenge(elemid, userid, nick, fullname) {
+   /* Show the challenge dialog */
+   $("#chall-nick").text(nick);
+   $("#chall-fullname").text(fullname);
+   $("#chall-dialog")
+      .data("param", { elemid: elemid, userid: userid })
+      .css("visibility", "visible");
+}
+
+function cancelChallenge(ev) {
+   /* Hide the challenge dialog without issuing a challenge */
+   $("#chall-dialog")
+      .data("param", null)
+      .css("visibility", "hidden");
+}
+
+function okChallenge(ev) {
+   /* Issue a challenge from the challenge dialog */
+   var param = $("#chall-dialog").data("param");
+   /* Find out which duration is selected */
+   var duration = $("div.chall-time.selected").attr("id").slice(6);
+   if (duration == "none")
+      duration = 0;
+   else
+      duration = parseInt(duration);
+   /* Inform the server */
+   serverQuery("/challenge",
+      {
+         // Identify the relation in question
+         destuser: param.userid,
+         action: "issue",
+         duration : duration
+      },
+      updateChallenges
+   );
+   /* Mark the challenge element */
+   $("#" + param.elemid).removeClass("grayed");
+   /* Tear down the dialog as we're done */
+   cancelChallenge(ev);
+}
+
+/* Google Channel API stuff */
 
 var channel = null;
 var socket = null;
@@ -574,6 +654,9 @@ function initMain() {
 
    /* Enable the close button in the user info dialog */
    $("#usr-info-close").click(hideUserInfo);
+
+   /* Prepare the challenge dialog */
+   prepareChallenge();
 
    /* Call initialization that requires variables coming from the server */
    lateInit();

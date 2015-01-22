@@ -305,22 +305,16 @@ def _challengelist():
     cuid = User.current_id()
     if cuid is not None:
 
-        def preftext(pd):
-            # Translate the challenge preferences to a descriptive text
-            # !!! TBD
-            return u"Venjuleg ótímabundin viðureign"
-
         # List received challenges
         i = iter(ChallengeModel.list_received(cuid, max_len = 20))
         for c in i:
             u = User.load(c[0]) # User id
             nick = u.nickname()
-            prefs = preftext(c[1])
             result.append({
                 "received": True,
                 "userid": c[0],
                 "opp": nick,
-                "prefs": prefs,
+                "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2])
             })
         # List issued challenges
@@ -328,12 +322,11 @@ def _challengelist():
         for c in i:
             u = User.load(c[0]) # User id
             nick = u.nickname()
-            prefs = preftext(c[1])
             result.append({
                 "received": False,
                 "userid": c[0],
                 "opp": nick,
-                "prefs": prefs,
+                "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2])
             })
     return result
@@ -527,10 +520,16 @@ def challenge():
 
     destuser = request.form.get('destuser', None)
     action = request.form.get('action', u"issue")
+    duration = 0
+    try:
+        duration = int(request.form.get('duration', 0))
+    except:
+        pass
 
     if destuser is not None:
         if action == u"issue":
-            user.issue_challenge(destuser, { }) # !!! No preference parameters yet
+            logging.info(u"Issuing challenge with duration {0}".format(duration))
+            user.issue_challenge(destuser, { "duration" : duration })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":

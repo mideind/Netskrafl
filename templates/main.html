@@ -177,7 +177,7 @@ function lateInit() {
 <div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
 
    <div class="usr-info-hdr">
-      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1> <h1 id="usr-info-nick"></h1> <span class="usr-info-vbar">|</span> <h2 id="usr-info-fullname"></h2>
+      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1> <h1 id="usr-info-nick"></h1> <span class="vbar">|</span> <h2 id="usr-info-fullname"></h2>
    </div>
 
    <p>Nýjustu viðureignir:</p>
@@ -196,6 +196,42 @@ function lateInit() {
 
    <!-- Close button -->
    <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
+</div>
+
+<!-- A dialog for a new challenge that is being issued -->
+<div id="chall-dialog" class="modal-dialog">
+<div id="chall-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="chall-hdr">
+      <table><tr><td>
+      <h1 class="chall-icon"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;</h1>
+      </td><td class="l-border"><h1 id="chall-nick"></h1><h2 id="chall-fullname"></h2></td>
+      </tr></table>
+   </div>
+
+   <div style="text-align: center">
+
+      <p><strong>Áskorun</strong> - veldu lengd viðureignar:</p>
+
+      <div class="chall-time selected" id="chall-none">Viðureign án klukku</div>
+      <div class="chall-time" id="chall-20">2 x 20 mínútur</div>
+      <div class="chall-time" id="chall-25">2 x 25 mínútur</div>
+      <div class="chall-time" id="chall-30">2 x 30 mínútur</div>
+      <div class="chall-time" id="chall-45">2 x 45 mínútur</div>
+
+   </div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="chall-cancel" title="Hætta við"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+
+   <!-- OK button -->
+   <div class="modal-close" id="chall-ok" title="Skora á"
+      onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
 
 </div>
