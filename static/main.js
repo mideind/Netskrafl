@@ -426,9 +426,16 @@ function refreshRecentList() {
       populateRecentList);
 }
 
-function acceptChallenge(userid) {
+function acceptChallenge(ev) {
    /* Accept a previously issued challenge from the user in question */
-   window.location.href = newgameUrl(userid);
+   var param = ev.data;
+   var prefs = param.prefs;
+   if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
+      /* Accepting a timed challenge: go to a wait page */
+      window.location.href = waitUrl(param.userid);
+   else
+      /* Accepting a normal challenge: start a new game immediately */
+      window.location.href = newgameUrl(param.userid);
 }
 
 function markChallAndRefresh(ev) {
@@ -469,17 +476,23 @@ function populateChallengeList(json) {
       else
          icon = "<span title='Afturkalla' " +
             "class='glyphicon glyphicon-hand-right'";
+      var accId = "accept" + i.toString();
       var chId = "chl" + i.toString();
       icon += " id='" + chId + "'></span>";
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
-         (item.received ? ("<a href='#' onclick='acceptChallenge(\"" + item.userid + "\")'>") : "") +
+         (item.received ? ("<span id='" + accId + "'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-nick'>" + opp + "</span>" +
          "<span class='list-chall'>" + prefs + "</span>" +
-         (item.received ? "</a>" : "") + "</div>";
+         (item.received ? "</span>" : "") + "</div>";
       if (item.received) {
          $("#chall-received").append(str);
+         // Route a click on the acceptance span
+         $("#" + accId).click(
+            { userid: item.userid, prefs: item.prefs },
+            acceptChallenge
+         );
          countReceived++;
       }
       else {

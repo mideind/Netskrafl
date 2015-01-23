@@ -27,6 +27,11 @@ function newgameUrl(opp) {
    return "{{ url_for('newgame') | safe }}?opp=" + opp;
 }
 
+function waitUrl(opp) {
+   /* The URL for a wait page for a new game */
+   return "{{ url_for('wait') | safe }}?opp=" + opp;
+}
+
 function lateInit() {
    /* Initialization that needs server-side info. Called from initMain() */
 

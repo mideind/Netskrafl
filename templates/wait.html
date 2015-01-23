@@ -1,0 +1,86 @@
+
+{% extends "container.html" %}
+
+{% block styles %}
+
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+{% endblock %}
+
+{% block scripts %}
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<!-- Wait page script -->
+<script src="{{ url_for('static', filename='wait.js') }}"></script>
+
+<script>
+
+function userId() {
+   /* The logged-in user who requested this page */
+   return "{{ user.id() }}";
+}
+
+function newgameUrl(opp) {
+   /* The URL for a new game against the given opponent */
+   return "{{ url_for('newgame') | safe }}?opp=" + opp;
+}
+
+function cancelWait() {
+   /* Tired of waiting: Go back to the main page */
+   window.location.href = "{{ url_for('main') | safe }}";
+}
+
+function lateInit() {
+   /* Called from initWait() */
+   openChannel("{{ channel_token }}");
+}
+
+</script>
+
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Wait for the opponent (the challenge initiator) to be ready -->
+<div id="wait-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="wait-hdr">
+      <table><tr>
+      <td>
+      <h1 class="chall-icon"><span class='glyphicon glyphicon-hand-right'></span></h1>
+      </td>
+      <td class="l-border"><span id="chall-online" title="Álínis?"></span><h1 id="chall-nick"></h1><h2 id="chall-fullname"></h2>
+      </td>
+      </tr></table>
+   </div>
+
+   <div style="text-align: center">
+
+      <p>Áskorun tekið - beðið eftir andstæðingi</p>
+
+   </div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="wait-cancel" title="Hætta við"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+
+</div>
+
+{%- endblock -%}
+
+{%- block endscripts -%}
+
+<script>
+
+$(document).ready(initWait);
+
+</script>
+
+{%- endblock -%}
