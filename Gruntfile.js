@@ -6,7 +6,7 @@ module.exports = function (grunt) {
       // See: http://www.jshint.com/docs/
       jshint: {
          all: {
-            src: ['static/netskrafl.js', 'static/main.js'],
+            src: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
             options: {
                bitwise: true,
                camelcase: false,
@@ -27,7 +27,8 @@ module.exports = function (grunt) {
                maxlen: 120,
                predef: ['$', 'document', 'window', 'alert', 'console', 'Mousetrap',
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
-                  'gameId', 'userId', 'jQuery', 'newgameUrl', 'lateInit', 'goog']
+                  'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
+                  'goToGame', 'cancelWait', 'lateInit', 'goog']
             }
          }
       },
@@ -65,7 +66,7 @@ module.exports = function (grunt) {
 
       watch: {
          jshint: {
-            files: ['static/netskrafl.js', 'static/main.js', 'gruntfile.js'],
+            files: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
             tasks: 'jshint'
          },
 /*

@@ -22,9 +22,10 @@ function userId() {
    return "{{ user.id() }}";
 }
 
-function newgameUrl(opp) {
+function newgameUrl(opp, reversed) {
    /* The URL for a new game against the given opponent */
-   return "{{ url_for('newgame') | safe }}?opp=" + opp;
+   return "{{ url_for('newgame') | safe }}?opp=" + opp +
+      (reversed ? "&rev=1" : "");
 }
 
 function waitUrl(opp) {
@@ -58,7 +59,7 @@ function lateInit() {
    <div id="tabs">
    <ul>
       <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Viðureignir<span id="numgames">0</span></a></li>
-      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir<span id="numchallenges">0</span></a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir<span id="numchallenges" class="opp-ready">0</span></a></li>
       <li><a href="#tabs-3"><span class='glyphicon glyphicon-user'></span>&nbsp;&nbsp;Andstæðingar</a></li>
       <li><a href="#tabs-4"><span class='glyphicon glyphicon-bookmark'></span>&nbsp;&nbsp;Ferill</a></li>
    </ul>

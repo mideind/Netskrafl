@@ -22,9 +22,13 @@ function userId() {
    return "{{ user.id() }}";
 }
 
-function newgameUrl(opp) {
-   /* The URL for a new game against the given opponent */
-   return "{{ url_for('newgame') | safe }}?opp=" + opp;
+function opponentId() {
+   return "{{ opp.id() }}";
+}
+
+function goToGame(uuid) {
+   /* The URL for a freshly created timed game against the given opponent */
+   window.location.href = "{{ url_for('board') | safe }}?game=" + uuid;
 }
 
 function cancelWait() {
@@ -35,6 +39,7 @@ function cancelWait() {
 function lateInit() {
    /* Called from initWait() */
    openChannel("{{ channel_token }}");
+   initForm(opponentId(), "{{ opp.nickname() }}", "{{ opp.full_name() }}", {{ prefs.duration }});
 }
 
 </script>
@@ -50,19 +55,22 @@ function lateInit() {
 <!-- Wait for the opponent (the challenge initiator) to be ready -->
 <div id="wait-form" class="ui-widget ui-widget-content ui-corner-all">
 
-   <div class="wait-hdr">
+   <div class="chall-hdr">
       <table><tr>
       <td>
-      <h1 class="chall-icon"><span class='glyphicon glyphicon-hand-right'></span></h1>
+      <h1 class="chall-icon"><span class='glyphicon glyphicon-time'></span></h1>
       </td>
       <td class="l-border"><span id="chall-online" title="Álínis?"></span><h1 id="chall-nick"></h1><h2 id="chall-fullname"></h2>
       </td>
       </tr></table>
    </div>
 
-   <div style="text-align: center">
+   <div class="wait-explain">
 
-      <p>Áskorun tekið - beðið eftir andstæðingi</p>
+      <p>Þú ert reiðubúin(n) að taka áskorun um viðureign með klukku, <strong>2 x <span id="chall-duration"></span> mínútur.</strong></p>
+      <p>Beðið er eftir að áskorandinn <strong><span id="chall-nick-2"></span></strong> sé <span id="chall-is-online">álínis og </span>til í tuskið.</p>
+      <p>Leikur hefst um leið og áskorandinn bregst við. Handahóf ræður hvor byrjar.</p>
+      <p>Ef þér leiðist biðin geturðu hætt við og reynt aftur síðar.</p>
 
    </div>
 

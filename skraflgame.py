@@ -164,6 +164,10 @@ class User:
         # !!! TODO: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
+    def find_challenge(self, srcuser_id):
+        """ Returns (found, prefs) """
+        return ChallengeModel.find_relation(srcuser_id, self.id())
+
     def issue_challenge(self, destuser_id, prefs):
         """ Issue a challenge to the destuser """
         ChallengeModel.add_relation(self.id(), destuser_id, prefs)
@@ -280,6 +284,8 @@ class Game:
         self.moves = []
         # Initial rack contents
         self.initial_racks = [None, None]
+        # Preferences (such as time limit, alternative bag or board, etc.)
+        self._preferences = None
 
     def _make_new(self, player0_id, player1_id, robot_level = 0, prefs = None):
         """ Initialize a new, fresh game """
@@ -290,7 +296,7 @@ class Game:
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.timestamp = self.ts_last_move = datetime.utcnow()
-        # !!! TBD: decode the preferences in prefs
+        self._preferences = prefs
 
     @classmethod
     def new(cls, player0_id, player1_id, robot_level = 0, prefs = None):
@@ -303,7 +309,7 @@ class Game:
         # If AutoPlayer is first to move, generate the first move
         if game.player_id_to_move() is None:
             game.autoplayer_move()
-        # Store the new game in persistent storage and add to the memcache
+        # Store the new game in persistent storage
         game.store()
         return game
 
@@ -322,6 +328,8 @@ class Game:
         # Try the memcache first
         game = memcache.get(uuid, namespace="game")
         if game is not None:
+            if not hasattr(game, "_preferences"):
+                game._preferences = None
             return game
 
         gm = GameModel.fetch(uuid)
@@ -338,6 +346,9 @@ class Game:
         if game.ts_last_move is None:
             # If no last move timestamp, default to the start of the game
             game.ts_last_move = game.timestamp
+
+        # Initialize the preferences
+        game._preferences = gm.prefs
 
         # Initialize a fresh, empty state with no tiles drawn into the racks
         game.state = State(drawtiles = False)
@@ -445,6 +456,7 @@ class Game:
             gm.to_move = len(self.moves) % 2
             gm.robot_level = self.robot_level
             gm.over = self.is_over()
+            gm.prefs = self._preferences
             movelist = []
             for m in self.moves:
                 mm = MoveModel()
@@ -488,6 +500,39 @@ class Game:
                 # Raw name (path) from Google Accounts: use a more readable version
                 nick = Game.UNDEFINED_NAME
         return nick
+
+    def get_pref(self, pref):
+        """ Retrieve a preference, or None if not found """
+        if self._preferences is None:
+            return None
+        return self._preferences.get(pref, None)
+
+    def set_pref(self, pref, value):
+        """ Set a preference to a value """
+        if self._preferences is None:
+            self._preferences = { }
+        self._preferences[pref] = value
+
+    def get_duration(self):
+        """ Return the duration for each player in the game, e.g. 25 if 2x25 minute game """
+        return self.get_pref(u"duration") or 0
+
+    def set_duration(self, duration):
+        """ Set the duration for each player in the game, e.g. 25 if 2x25 minute game """
+        self.set_pref(u"duration", duration)
+
+    def get_elapsed(self):
+        """ Return the elapsed time for both players, in seconds, as a tuple """
+        elapsed = [0.0, 0.0]
+        last_ts = self.timestamp
+        for m in self.moves:
+            delta = m.ts - last_ts
+            last_ts = m.ts
+            elapsed[m.player] += delta.total_seconds()
+        # Add the time from the last move until now
+        delta = datetime.utcnow() - last_ts
+        elapsed[self.player_to_move()] += delta.total_seconds()
+        return tuple(elapsed)
 
     def resign(self):
         """ The local player is resigning the game """

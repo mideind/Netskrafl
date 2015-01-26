@@ -23,6 +23,14 @@ indexes:
 - kind: ChannelModel
   properties:
   - name: connected
+  - name: entity
+  - name: kind
+  - name: user
+  - name: expiry
+
+- kind: ChannelModel
+  properties:
+  - name: connected
   - name: expiry
 
 - kind: ChannelModel

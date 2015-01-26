@@ -64,6 +64,7 @@ var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmech
 var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
+var gameTime = null; // Game timing info, i.e. duration and elapsed time
 
 var entityMap = {
    "&": "&amp;",
@@ -162,6 +163,23 @@ function tileAt(row, col) {
    if ($(el.firstChild).hasClass("ui-draggable-dragging"))
       return null;
    return el.firstChild;
+}
+
+function textTimeToGo(player) {
+   /* Return the time left for a player in a nice MM:SS format */
+   var timeToGo = Math.max(gameTime.duration * 60.0 - gameTime.elapsed[player], 0.0);
+   var min = Math.floor(timeToGo / 60.0);
+   var sec = Math.floor(timeToGo - min * 60.0);
+   return ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
+}
+
+function showClock() {
+   /* This is a timed game: show the clock stuff */
+   $(".clockleft").css("display", "inline-block");
+   $(".clockright").css("display", "inline-block");
+   $("div.movelist").addClass("with-clock");
+   $(".clockleft").text(textTimeToGo(0));
+   $(".clockright").text(textTimeToGo(1));
 }
 
 function placeTile(sq, tile, letter, score) {
@@ -1523,6 +1541,14 @@ function channelOnClose() {
 
 function initSkrafl(jQuery) {
    /* Called when the page is displayed or refreshed */
+
+   // Initialize the game timing information (duration, elapsed time)
+   gameTime = initialGameTime();
+
+   if (gameTime.duration > 0)
+      // This is a timed game: move things around and show the clock
+      showClock();
+
    placeTiles();
    initRackDraggable(true);
    initDropTargets();

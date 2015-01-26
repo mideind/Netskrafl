@@ -21,6 +21,7 @@
 
 """
 
+import os
 import logging
 import json
 
@@ -43,7 +44,13 @@ from skrafldb import Unique, UserModel, GameModel, MoveModel,\
 # Standard Flask initialization
 
 app = Flask(__name__)
-app.config['DEBUG'] = False
+
+running_local = os.environ.get('SERVER_SOFTWARE','').startswith('Development')
+
+if running_local:
+    logging.info(u"Netskrafl app running with DEBUG set to True")
+
+app.config['DEBUG'] = running_local
 
 # !!! TODO: Change this to read the secret key from a config file at run-time
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
@@ -299,10 +306,31 @@ def _recentlist(cuid, max_len):
     return result
 
 
+def _opponent_waiting(user_id, opp_id):
+    """ Return True if the given opponent is waiting on this user's challenge """
+    return ChannelModel.exists(u"wait", user_id, opp_id)
+
+
 def _challengelist():
     """ Return a list of challenges issued or received by the current user """
+
     result = []
     cuid = User.current_id()
+
+    def is_timed(prefs):
+        """ Return True if the challenge is for a timed game """
+        if prefs is None:
+            return False
+        return prefs.get("duration", 0) > 0
+
+    def opp_ready(c):
+        """ Returns True if this is a timed challenge and the opponent is ready to play """
+        if not is_timed(c[1]):
+            return False
+        # Timed challenge: see if there is a valid wait channel connection
+        # where the opponent is waiting for this user
+        return _opponent_waiting(cuid, c[0])
+
     if cuid is not None:
 
         # List received challenges
@@ -315,7 +343,8 @@ def _challengelist():
                 "userid": c[0],
                 "opp": nick,
                 "prefs": c[1],
-                "ts": Alphabet.format_timestamp(c[2])
+                "ts": Alphabet.format_timestamp(c[2]),
+                "opp_ready" : False
             })
         # List issued challenges
         i = iter(ChallengeModel.list_issued(cuid, max_len = 20))
@@ -327,7 +356,8 @@ def _challengelist():
                 "userid": c[0],
                 "opp": nick,
                 "prefs": c[1],
-                "ts": Alphabet.format_timestamp(c[2])
+                "ts": Alphabet.format_timestamp(c[2]),
+                "opp_ready" : opp_ready(c)
             })
     return result
 
@@ -338,7 +368,8 @@ def start():
 
     wdb = Game.manager.word_db()
     ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
-    logging.info(u"Start/warmup, ok is {0}".format(ok).encode("latin-1"))
+    logging.info(u"Start/warmup, instance {0}, ok is {1}".format(
+        os.environ.get("INSTANCE_ID", ""), ok))
     return jsonify(ok = ok)
 
 
@@ -561,6 +592,23 @@ def onlinecheck():
     return jsonify(online = online)
 
 
+@app.route("/waitcheck", methods=['POST'])
+def waitcheck():
+    """ Check whether a particular opponent is waiting on a challenge """
+
+    if not User.current_id():
+        # We must have a logged-in user
+        return jsonify(waiting = False)
+
+    opp_id = request.form.get('user', None)
+    waiting = False
+
+    if opp_id is not None:
+        waiting = _opponent_waiting(User.current_id(), opp_id)
+
+    return jsonify(waiting = waiting)
+
+
 @app.route("/review")
 def review():
     """ Show game review page """
@@ -683,9 +731,9 @@ def userprefs():
     return render_template("userprefs.html", uf = uf, err = err)
 
 
-@app.route("/newgame")
-def newgame():
-    """ Show page to initiate a new game """
+@app.route("/wait")
+def wait():
+    """ Show page to wait for a timed game to start """
 
     user = User.current()
     if user is None:
@@ -703,10 +751,77 @@ def newgame():
         game = Game.new(user.id(), None, robot_level)
         return redirect(url_for("board", game = game.id()))
 
-    # Start a new game between two human users
-    found, prefs = user.accept_challenge(opp)
+    # Find the challenge being accepted
+    found, prefs = user.find_challenge(opp)
     if not found:
         # No challenge existed between the users: redirect to main page
+        logging.info(u"No challenge found, redirecting to main")
+        return redirect(url_for("main"))
+
+    opp_user = User.load(opp)
+    if opp_user is None:
+        # Opponent id not found
+        return redirect(url_for("main"))
+
+    # Notify the opponent of a change in the challenge list
+    ChannelModel.send_message(u"user", opp, u'{ "kind": "challenge" }')
+
+    # Create a Google App Engine Channel API token
+    # to enable notification when the original challenger
+    # is ready and we can start the game. The channel has
+    # a short lifetime to reduce the risk of false positives.
+    channel_token = ChannelModel.create_new(u"wait", opp, user.id(),
+        timedelta(minutes = 1))
+
+    # Go to the wait page
+    return render_template("wait.html", user = user, opp = opp_user,
+        prefs = prefs, channel_token = channel_token)
+
+
+@app.route("/newgame")
+def newgame():
+    """ Show page to initiate a new game """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(url_for('login'))
+
+    # Get the opponent id
+    opp = request.args.get("opp", None)
+
+    # Is this a reverse action, i.e. the challenger initiating a timed game,
+    # instead of the challenged player initiating a normal one?
+    rev = request.args.get("rev", None) is not None
+
+    if opp is None:
+        logging.info(u"Newgame: opp is None, redirecting to main")
+        return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
+
+    if opp[0:6] == u"robot-":
+        # Start a new game against an autoplayer (robot)
+        robot_level = int(opp[6:])
+        game = Game.new(user.id(), None, robot_level)
+        return redirect(url_for("board", game = game.id()))
+
+    # Start a new game between two human users
+    if rev:
+        # Timed game: load the opponent
+        opp_user = User.load(opp)
+        if opp_user is None:
+            logging.info(u"Newgame: opp_user is None")
+            return redirect(url_for("main"))
+        # In this case, the opponent accepts the challenge
+        logging.info(u"Newgame: Reverse acceptance of challenge")
+        # !!! TBD: Check that the opponent is still ready in a wait state
+        found, prefs = opp_user.accept_challenge(user.id())
+    else:
+        # The current user accepts the challenge
+        found, prefs = user.accept_challenge(opp)
+
+    if not found:
+        # No challenge existed between the users: redirect to main page
+        logging.info(u"Newgame: accept_challenge returned False")
         return redirect(url_for("main"))
 
     # Create a fresh game object
@@ -714,6 +829,11 @@ def newgame():
 
     # Notify the opponent that there is a new game
     ChannelModel.send_message(u"user", opp, u'{ "kind": "game" }')
+
+    # If this is a timed game, notify the waiting party
+    if prefs and prefs.get("duration", 0) > 0:
+        logging.info(u"Sending ready message on wait channel, opponent id {0}".format(user.id()))
+        ChannelModel.send_message(u"wait", user.id(), u'{ "kind": "ready", "game": "' + game.id() + u'" }')
 
     # Go to the game page
     return redirect(url_for("board", game = game.id()))
@@ -751,10 +871,13 @@ def board():
     # opponent is an autoplayer as we do want the
     # presence detection functionality for the human
     # user.
-    channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
+    channel_token = ChannelModel.create_new(u"game",
+        game.id() + u":" + str(player_index), user.id())
 
     return render_template("board.html", game = game, user = user,
-        player_index = player_index, channel_token = channel_token)
+        player_index = player_index,
+        time_info = dict(duration = game.get_duration(), elapsed = game.get_elapsed()),
+        channel_token = channel_token)
 
 
 @app.route("/newchannel", methods=['POST'])
@@ -766,16 +889,28 @@ def newchannel():
         # No user: no channel token
         return jsonify(result = Error.LOGIN_REQUIRED)
 
+    logging.info(u"Newchannel called")
+
     channel_token = None
     uuid = request.form.get("game", None)
 
     if uuid is None:
         # This is probably a user channel request
         uuid = request.form.get("user", None)
-        if uuid == user.id():
+        if uuid == None:
+            uuid = request.form.get("wait", None)
+            if uuid is not None:
+                logging.info(u"Renewing channel token for wait channel with opponent id {0}".format(uuid))
+                channel_token = ChannelModel.create_new(u"wait", uuid,
+                    user.id(), timedelta(minutes = 1))
+
+        elif uuid == user.id():
             # Create a Google App Engine Channel API token
             # for user notification
             channel_token = ChannelModel.create_new(u"user", uuid, uuid)
+        if channel_token is None:
+            return jsonify(result = Error.WRONG_USER)
+
     else:
         # Game channel request
         # Attempt to load the game whose id is in the URL query string
@@ -793,7 +928,8 @@ def newchannel():
         # Create a Google App Engine Channel API token
         # to enable refreshing of the board when the
         # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game", game.id() + u":" + str(player_index), user.id())
+        channel_token = ChannelModel.create_new(u"game",
+            game.id() + u":" + str(player_index), user.id())
 
     return jsonify(result = Error.LEGAL, token = channel_token)
 

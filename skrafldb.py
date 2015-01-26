@@ -204,6 +204,9 @@ class GameModel(ndb.Model):
     irack0 = ndb.StringProperty(required = False, indexed = False, default = None)
     irack1 = ndb.StringProperty(required = False, indexed = False, default = None)
 
+    # Game preferences, such as duration, alternative bags or boards, etc.
+    prefs = ndb.JsonProperty(required = False, default = None)
+
     def set_player(self, ix, user_id):
         """ Set a player key property to point to a given user, or None """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
@@ -376,6 +379,21 @@ class ChallengeModel(ndb.Model):
         kd = ndb.Key(UserModel, destuser_id)
         q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
         return q.get(keys_only = True) != None
+
+    @classmethod
+    def find_relation(cls, srcuser_id, destuser_id):
+        """ Return (found, prefs) where found is True if srcuser has challenged destuser """
+        if srcuser_id is None or destuser_id is None:
+            return (False, None)
+        ks = ndb.Key(UserModel, srcuser_id)
+        kd = ndb.Key(UserModel, destuser_id)
+        q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
+        cm = q.get()
+        if cm == None:
+            # Not found
+            return (False, None)
+        # Found: return the preferences associated with the challenge (if any)
+        return (True, cm.prefs)
 
     @classmethod
     def add_relation(cls, src_id, dest_id, prefs):
@@ -554,6 +572,24 @@ class ChannelModel(ndb.Model):
         return False
 
     @classmethod
+    def exists(cls, kind, entity, user_id):
+        """ Returns True if a connection with the given attributes exists """
+        if not user_id:
+            return False
+        now = datetime.utcnow()
+        u_key = ndb.Key(UserModel, user_id)
+        # Query for all connected channels for this user that have not expired
+        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
+            .filter(ChannelModel.expiry > now) \
+            .filter(ChannelModel.kind == kind) \
+            .filter(ChannelModel.entity == entity)
+        for cm in q.fetch(1):
+            # Found one: return True
+            return True
+        # Found no channel meeting the criteria: return False
+        return False
+
+    @classmethod
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
@@ -598,6 +634,7 @@ class ChannelModel(ndb.Model):
                 for cm in q.fetch(CHUNK_SIZE, offset = offset):
                     if cm.connected:
                         # Connected and listening: send the message
+                        logging.info(u"Send_message kind {0} entity {1} chid {2} msg {3}".format(kind, entity, cm.chid, msg))
                         channel.send_message(cm.chid, msg)
                     else:
                         # Channel appears to be disconnected: mark it as stale

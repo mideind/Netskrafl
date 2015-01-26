@@ -125,7 +125,7 @@ function markChallenge(ev) {
    if (action == "issue") {
       if (ev.data.userid.indexOf("robot-") === 0) {
          /* Challenging a robot: Create a new game and display it right away */
-         window.location.href = newgameUrl(ev.data.userid);
+         window.location.href = newgameUrl(ev.data.userid, false);
          return;
       }
       /* New challenge: show dialog */
@@ -197,7 +197,7 @@ function populateUserList(json) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
          // Put a hyperlink on the robot name and description
-         alink = "<a href='" + newgameUrl(item.userid) + "'>";
+         alink = "<a href='" + newgameUrl(item.userid, false) + "'>";
          aclose = "</a>";
       }
       else {
@@ -428,6 +428,7 @@ function refreshRecentList() {
 
 function acceptChallenge(ev) {
    /* Accept a previously issued challenge from the user in question */
+   ev.preventDefault();
    var param = ev.data;
    var prefs = param.prefs;
    if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
@@ -435,7 +436,20 @@ function acceptChallenge(ev) {
       window.location.href = waitUrl(param.userid);
    else
       /* Accepting a normal challenge: start a new game immediately */
-      window.location.href = newgameUrl(param.userid);
+      window.location.href = newgameUrl(param.userid, false);
+}
+
+function readyChallenge(ev) {
+   /* Triggering a timed game which the opponent is ready to accept */
+   ev.preventDefault();
+   var param = ev.data;
+   var prefs = param.prefs;
+   if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
+      /* Create a new timed game. The true parameter indicates
+         that the normal roles are reversed, i.e. here it is the
+         original issuer of the challenge that is causing the new
+         game to be created, not the challenged opponent */
+      window.location.href = newgameUrl(param.userid, true);
 }
 
 function markChallAndRefresh(ev) {
@@ -453,15 +467,25 @@ function challengeDescription(json) {
    return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
 }
 
+var ival = null; // Flashing interval timer
+
+function readyFlasher() {
+   $(".opp-ready").toggleClass("blink");
+}
+
 function populateChallengeList(json) {
    /* Populate the lists of received and issued challenges */
+   if (ival) {
+      window.clearInterval(ival);
+      ival = null;
+   }
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   var countReceived = 0, countSent = 0;
+   var countReceived = 0, countSent = 0, countReady = 0;
    for (var i = 0; i < json.challengelist.length; i++) {
       var item = json.challengelist[i];
       var opp = escapeHtml(item.opp);
@@ -470,25 +494,33 @@ function populateChallengeList(json) {
       /* Show Decline icon (thumb down) if received challenge;
          show Delete icon (cross) if issued challenge */
       var icon;
+      var opp_ready = false;
       if (item.received)
          icon = "<span title='Hafna' " +
             "class='glyphicon glyphicon-thumbs-down'";
-      else
+      else {
          icon = "<span title='Afturkalla' " +
             "class='glyphicon glyphicon-hand-right'";
+         if (item.opp_ready)
+            opp_ready = true; // Opponent ready and waiting for timed game
+      }
       var accId = "accept" + i.toString();
+      var readyId = "ready" + i.toString();
       var chId = "chl" + i.toString();
       icon += " id='" + chId + "'></span>";
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
-         (item.received ? ("<span id='" + accId + "'>") : "") +
+         (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
+         (opp_ready ? ("<a href='#' id='" + readyId + "' class='opp-ready'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-nick'>" + opp + "</span>" +
          "<span class='list-chall'>" + prefs + "</span>" +
-         (item.received ? "</span>" : "") + "</div>";
+         (item.received ? "</a>" : "") +
+         (opp_ready ? "</a>" : "") +
+         "</div>";
       if (item.received) {
          $("#chall-received").append(str);
-         // Route a click on the acceptance span
+         // Route a click on the acceptance link
          $("#" + accId).click(
             { userid: item.userid, prefs: item.prefs },
             acceptChallenge
@@ -497,6 +529,14 @@ function populateChallengeList(json) {
       }
       else {
          $("#chall-sent").append(str);
+         // Route a click on the opponent ready link
+         if (opp_ready) {
+            $("#" + readyId).click(
+               { userid: item.userid, prefs: item.prefs },
+               readyChallenge
+            );
+            countReady++;
+         }
          countSent++;
       }
       $("#" + chId).click(
@@ -504,13 +544,18 @@ function populateChallengeList(json) {
          markChallAndRefresh
       );
    }
-   // Update the count of received challenges
-   if (countReceived === 0) {
+   // Update the count of received challenges and ready opponents
+   if (countReceived + countReady === 0) {
       $("#numchallenges").css("display", "none");
    }
    else {
-      $("#numchallenges").css("display", "inline-block").text(countReceived.toString());
+      $("#numchallenges").css("display", "inline-block")
+         .text((countReceived + countReady).toString());
    }
+   // If there is an opponent ready and waiting for a timed game,
+   // do some serious flashing
+   if (countReady)
+      ival = window.setInterval(readyFlasher, 500);
 }
 
 function refreshChallengeList() {

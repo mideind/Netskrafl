@@ -126,6 +126,9 @@
 .glyphicon-flash:before {
    content: "\e162";
 }
+.glyphicon-time:before {
+   content: "\e023";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -485,6 +488,40 @@ h3.scoreright {
    padding-right: 4px;
 }
 
+h3.clockleft {
+   display: none;
+   position: absolute;
+   top: 82px;
+   left: 0;
+   width: 147px;
+   font-size: 24px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: left;
+   color: black;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-left: 4px;
+}
+
+h3.clockright {
+   display: none;
+   position: absolute;
+   top: 82px;
+   right: 0;
+   width: 147px;
+   font-size: 24px;
+   line-height: 24px;
+   font-weight: 700;
+   text-align: right;
+   color: black;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-right: 4px;
+}
+
 div.movelist {
    position: absolute;
    top: 82px;
@@ -498,6 +535,11 @@ div.movelist {
    font-weight: 400;
    color: black;
    cursor: default;
+}
+
+div.movelist.with-clock {
+   top: 122px;
+   height: 384px;
 }
 
 div.leftmove {
@@ -1169,7 +1211,7 @@ span.list-opp {
 
 span.list-fullname {
    display: inline-block;
-   width: 464px;
+   width: 468px;
 }
 
 span.list-duration {
@@ -1180,7 +1222,7 @@ span.list-duration {
 
 span.list-info {
    display: inline-block;
-   width: 32px;
+   width: 28px;
    text-align: right;
    height: 24px;
    line-height: 20px;
@@ -1340,6 +1382,12 @@ div#chall-ok {
    right: 66px; /* 12 + 54 */
    width: 72px; /* Override */
    background-color: @freshtile;
+}
+
+div#wait-cancel {
+   right: 12px;
+   width: 72px; /* Override */
+   background-color: @alert;
 }
 
 div#blank-close {
@@ -1511,6 +1559,43 @@ span#chall-online:before {
 
 span#chall-online.online {
    background-color: @freshtile;
+}
+
+div#wait-form {
+   position: absolute;
+   top: 56px;
+   right: 202px;
+   width: 504px;
+   height: 544px;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   z-index: 20;
+   font-size: 1em;
+   box-shadow: 3px 3px 5px 2px #333333;
+}
+
+div.wait-explain {
+   padding-left: 48px;
+   padding-right: 12px;
+   padding-top: 24px;
+   padding-bottom: 24px;
+}
+
+.blink {
+   opacity: 0.1;
+}
+
+a.opp-ready:link,
+a.opp-ready:visited {
+   font-weight: bold;
+   color: @alert;
+}
+
+a.opp-ready:hover {
+   font-weight: bold;
+   color: @hover-link;
 }
 
 div.blank-rack {

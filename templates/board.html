@@ -63,9 +63,18 @@
       return "{{ game.id() }}";
    }
 
+   function initialGameTime() {
+      /* Return the time state of the game, i.e. its duration in minutes
+         per player and the elapsed time so far for each player in seconds */
+      return {
+         duration: {{ time_info.duration }},
+         elapsed: [{{ time_info.elapsed[0] }}, {{ time_info.elapsed[1] }}]
+      };
+   }
+
    function navToReview() {
       /* Show the game review page */
-      window.location.href='{{ url_for('review', game = game.id(), move = 0) | safe }}';
+      window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
    }
 
    function lateInit() {
@@ -113,6 +122,8 @@
       <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
       <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
+      <h3 class="clockleft"></h3>
+      <h3 class="clockright"></h3>
    </div>
    <div class="movelist">
    </div>
