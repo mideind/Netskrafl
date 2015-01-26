@@ -28,7 +28,7 @@ module.exports = function (grunt) {
                predef: ['$', 'document', 'window', 'alert', 'console', 'Mousetrap',
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
                   'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
-                  'goToGame', 'cancelWait', 'lateInit', 'goog']
+                  'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog']
             }
          }
       },

@@ -497,7 +497,7 @@ h3.clockleft {
    line-height: 28px;
    font-weight: 700;
    text-align: left;
-   color: black;
+   color: @triple-letter;
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
@@ -514,11 +514,19 @@ h3.clockright {
    line-height: 28px;
    font-weight: 700;
    text-align: right;
-   color: black;
+   color: @triple-letter;
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
    padding-right: 4px;
+}
+
+h3.clockleft.running-out {
+   color: @alert;
+}
+
+h3.clockright.running-out {
+   color: @alert;
 }
 
 div.movelist {

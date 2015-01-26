@@ -64,7 +64,7 @@ var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmech
 var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
-var gameTime = null; // Game timing info, i.e. duration and elapsed time
+var gameTime = null, gameTimeBase = null; // Game timing info, i.e. duration and elapsed time
 
 var entityMap = {
    "&": "&amp;",
@@ -167,19 +167,58 @@ function tileAt(row, col) {
 
 function textTimeToGo(player) {
    /* Return the time left for a player in a nice MM:SS format */
-   var timeToGo = Math.max(gameTime.duration * 60.0 - gameTime.elapsed[player], 0.0);
+   var elapsed = gameTime.elapsed[player];
+   if ((numMoves % 2) == player) {
+      // This player's turn: add the local elapsed time
+      var now = new Date();
+      elapsed += (now.getTime() - gameTimeBase.getTime()) / 1000;
+   }
+   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, 0.0);
    var min = Math.floor(timeToGo / 60.0);
    var sec = Math.floor(timeToGo - min * 60.0);
    return ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
 }
 
-function showClock() {
+var runningOut0 = false;
+var runningOut1 = false;
+
+function updateClock() {
+   /* Show the current remaining time for both players */
+   var txt0 = textTimeToGo(0);
+   var txt1 = textTimeToGo(1);
+   $("h3.clockleft").text(txt0);
+   $("h3.clockright").text(txt1);
+   // Check whether time is running out - and display accordingly
+   if (txt0 <= "02:00" && !runningOut0) {
+      $("h3.clockleft").addClass("running-out");
+      runningOut0 = true;
+   }
+   if (txt1 <= "02:00" && !runningOut1) {
+      $("h3.clockright").addClass("running-out");
+      runningOut1 = true;
+   }
+   // If less than 30 seconds remaining, blink
+   if (runningOut0 && txt0 <= "00:30")
+      $("h3.clockleft").toggleClass("blink");
+   if (runningOut1 && txt1 <= "00:30")
+      $("h3.clockright").toggleClass("blink");
+}
+
+function resetClock(newGameTime) {
+   /* Set a new time base after receiving an update from the server */
+   gameTime = newGameTime;
+   gameTimeBase = new Date();
+   updateClock();
+}
+
+function showClock(initialGameTime) {
    /* This is a timed game: show the clock stuff */
    $(".clockleft").css("display", "inline-block");
    $(".clockright").css("display", "inline-block");
    $("div.movelist").addClass("with-clock");
-   $(".clockleft").text(textTimeToGo(0));
-   $(".clockright").text(textTimeToGo(1));
+   resetClock(initialGameTime);
+   // Make sure the clock ticks reasonably regularly, once per second - according to Nyquist
+   window.setInterval(updateClock, 500);
 }
 
 function placeTile(sq, tile, letter, score) {
@@ -1273,6 +1312,9 @@ function updateState(json) {
          // Fill in word if provided in error message
          errorP.find("span.errword").text(json.msg);
    }
+   if (json.time_info !== undefined)
+      // New timing information from the server: reset and update the clock
+      resetClock(json.time_info);
 }
 
 function submitMove(btn) {
@@ -1543,11 +1585,11 @@ function initSkrafl(jQuery) {
    /* Called when the page is displayed or refreshed */
 
    // Initialize the game timing information (duration, elapsed time)
-   gameTime = initialGameTime();
+   var igt = initialGameTime();
 
-   if (gameTime.duration > 0)
+   if (igt.duration > 0)
       // This is a timed game: move things around and show the clock
-      showClock();
+      showClock(igt);
 
    placeTiles();
    initRackDraggable(true);

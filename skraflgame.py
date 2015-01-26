@@ -534,6 +534,10 @@ class Game:
         elapsed[self.player_to_move()] += delta.total_seconds()
         return tuple(elapsed)
 
+    def time_info(self):
+        """ Returns a dict with timing information about this game """
+        return dict(duration = self.get_duration(), elapsed = self.get_elapsed())
+
     def resign(self):
         """ The local player is resigning the game """
         self.resigned = True
@@ -693,6 +697,9 @@ class Game:
 
         reply["newmoves"] = newmoves
         reply["scores"] = self.state.scores()
+        if self.get_duration():
+            # Timed game: send information about elapsed time
+            reply["time_info"] = self.time_info()
         return reply
 
     def statistics(self):

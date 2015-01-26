@@ -87,7 +87,7 @@ function channelOnOpen() {
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   alert("channelOnMessage: Json.kind is " + json.kind);
+   // alert("channelOnMessage: Json.kind is " + json.kind);
    if (json.kind == "ready")
       // The opponent is ready and a new game has been created:
       // navigate to it
@@ -96,7 +96,7 @@ function channelOnMessage(msg) {
 
 function channelOnError(err) {
    /* Act on err.code and err.description here */
-   alert("Channel error: " + err.code + "," + err.description);
+   // alert("Channel error: " + err.code + "," + err.description);
 }
 
 function newChannel(json) {
@@ -109,7 +109,7 @@ function newChannel(json) {
 
 function channelOnClose() {
    /* Channel expired: Ask for a new channel from the server */
-   alert("Channel closed: calling newchannel()");
+   // alert("Channel closed: calling newchannel()");
    var chTok = channelToken;
    channelToken = null;
    channel = null;

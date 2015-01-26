@@ -876,7 +876,7 @@ def board():
 
     return render_template("board.html", game = game, user = user,
         player_index = player_index,
-        time_info = dict(duration = game.get_duration(), elapsed = game.get_elapsed()),
+        time_info = game.time_info(),
         channel_token = channel_token)
 
 
