@@ -66,8 +66,8 @@ function lateInit() {
 
    <div id="tabs-1">
 
-      <p>Viðureignir sem standa yfir - smelltu til að skoða stöðuna og leika ef
-      <span class='glyphicon glyphicon-flag'></span> þú átt leik:</p>
+      <p><strong>Viðureignir sem standa yfir</strong> - smelltu á viðureign til að skoða
+      stöðuna og leika ef <span class='glyphicon glyphicon-flag'></span> þú átt leik</p>
 
       <div class="listitem listheader"><span
       class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><span
@@ -86,20 +86,25 @@ function lateInit() {
       <span class="glyphicon glyphicon-cog"></span>&nbsp;<b>Miðlung</b> eða
       <span class="glyphicon glyphicon-cog"></span>&nbsp;<b>Fullsterkan</b> -
       eða veldu þér annan leikmann úr stafrófslistunum sem þar er að finna til að skora á.</p>
-      <p>Þú stofnar áskorun með því að smella á bendi-teiknið <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span> vinstra megin við nafn andstæðingsins.</p>
+      <p>Þú stofnar áskorun með því að smella á bendi-teiknið
+      <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span>
+      vinstra megin við nafn andstæðingsins.</p>
       <p>Tölvuþjarkarnir eru
       ætíð reiðubúnir að skrafla og viðureign við þá hefst strax. Aðrir leikmenn
       þurfa að samþykkja áskorun áður en viðureign hefst.</p>
       <p><a href="{{ url_for('help') }}">Hjálp</a> má fá með því að smella á bláa
       &nbsp;<span class="glyphicon glyphicon-info-sign"></span> - teiknið hér til vinstri.</p>
-      <p>Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á merki Netskrafls vinstra megin í glugganum.</p>
+      <p>Þú kemst alltaf aftur í þessa aðalsíðu með því að smella örvarmerkið efst
+      vinstra megin í glugganum.</p>
       </div>
 
    </div>
 
    <div id="tabs-2">
 
-      <p>Skorað á þig - smelltu til að taka áskoruninni og hefja viðureign:</p>
+      <p><strong>Skorað á þig</strong> - smelltu á áskorun til að taka henni og hefja viðureign,
+      eða á <span class="glyphicon glyphicon-thumbs-down" style="margin-left:6px;margin-right:6px;"></span>
+      til að hafna henni</p>
 
       <div class="listitem listheader"><span
       class="list-icon"><span title="Hafna" class='glyphicon glyphicon-thumbs-down grayed'></span></span><span
@@ -110,7 +115,9 @@ function lateInit() {
       <!-- Challenge lists will be populated by populateChallengeList() below -->
       <div id="chall-received"></div>
 
-      <p>Þú skorar á aðra:</p>
+      <p><strong>Þú skorar á aðra</strong> - smelltu á
+      <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span>
+      til að afturkalla áskorun</p>
 
       <div class="listitem listheader"><span
       class="list-icon"><span title="Afturkalla" class='glyphicon glyphicon-hand-right grayed'></span></span><span
@@ -123,11 +130,12 @@ function lateInit() {
    </div>
 
    <div id="tabs-4">
-      <p>Nýlegar viðureignir þínar - smelltu til að skoða og rifja upp:</p>
+      <p><strong>Nýlegar viðureignir þínar</strong> - smelltu á viðureign til að skoða hana
+      og rifja upp</p>
       <div class="listitem listheader"><span
       class="list-win"><span
       title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
-      class="list-ts">Viðureign hófst</span><span
+      class="list-ts">Viðureign lauk</span><span
       class="list-opp">Andstæðingur</span><span
       class="list-scorehdr">Úrslit</span><span
       class="list-duration">Lengd</span></div>
@@ -183,7 +191,10 @@ function lateInit() {
 <div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
 
    <div class="usr-info-hdr">
-      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1> <h1 id="usr-info-nick"></h1> <span class="vbar">|</span> <h2 id="usr-info-fullname"></h2>
+      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1>
+      <h1 id="usr-info-nick"></h1>
+      <span class="vbar">|</span>
+      <h2 id="usr-info-fullname"></h2>
    </div>
 
    <p>Nýjustu viðureignir:</p>
@@ -192,7 +203,7 @@ function lateInit() {
    <div class="listitem listheader"><span
    class="list-win"><span
    title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
-   class="list-ts">Viðureign hófst</span><span
+   class="list-ts">Viðureign lauk</span><span
    class="list-opp">Andstæðingur</span><span
    class="list-scorehdr">Úrslit</span><span
    class="list-duration">Lengd</span></div>
@@ -223,7 +234,7 @@ function lateInit() {
 
    <div style="text-align: center">
 
-      <p><strong>Áskorun</strong> - veldu lengd viðureignar:</p>
+      <p><strong>Ný áskorun</strong> - veldu lengd viðureignar:</p>
 
       <div class="chall-time selected" id="chall-none">Viðureign án klukku</div>
       <div class="chall-time" id="chall-20">2 x 20 mínútur</div>

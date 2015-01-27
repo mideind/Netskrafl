@@ -132,7 +132,7 @@ def _process_move(movecount, movelist, uuid):
 
     if game.is_over():
         # If the game is now over, tally the final score
-        game.state.finalize_score()
+        game.finalize_score()
 
     # Make sure the new game state is persistently recorded
     game.store()
@@ -298,7 +298,7 @@ def _recentlist(cuid, max_len):
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp(g["ts"]),
+                "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
                 "days": int(days),
                 "hours": int(hours),
                 "minutes": int(minutes)

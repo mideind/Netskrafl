@@ -529,7 +529,10 @@ class State:
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players have passed 3 times in a row """
-        return self._racks[0].is_empty() or self._racks[1].is_empty() or (self._num_passes >= 6) or self._game_resigned
+        # Nuance: The 2 x 3 pass rule does not apply if the score is zero-zero
+        return self._racks[0].is_empty() or self._racks[1].is_empty() or \
+            ((self._num_passes >= 6) and sum(self._scores) > 0) or \
+            self._game_resigned
 
     def finalize_score(self):
         """ When game is completed, update scores with the tiles left """
@@ -539,10 +542,8 @@ class State:
         if any(self._racks[ix].is_empty() for ix in range(2)):
             # Normal win by one of the players
             for ix in range(2):
-                # Add the score of the opponent's tiles
-                self._scores[ix] += Alphabet.score(self.rack(1 - ix))
-                # Subtract the score of the player's own tiles
-                self._scores[ix] -= Alphabet.score(self.rack(ix))
+                # Add double the score of the opponent's tiles (will be zero for the losing player)
+                self._scores[ix] += 2 * Alphabet.score(self.rack(1 - ix))
         else:
             # Game expired by passes
             for ix in range(2):
@@ -550,6 +551,14 @@ class State:
                 self._scores[ix] -= Alphabet.score(self.rack(ix))
         # Make sure the scores are not negative, just in case
         for ix in range(2):
+            if self._scores[ix] < 0:
+                self._scores[ix] = 0
+
+    def adjust_scores(self, adjustment):
+        """ Adjust the scores by the adjustment, assumed to be a tuple of two deltas """
+        # This is used to adjust the game score due to overtime, if any
+        for ix in range(2):
+            self._scores[ix] += adjustment[ix]
             if self._scores[ix] < 0:
                 self._scores[ix] = 0
 
@@ -1012,7 +1021,7 @@ class ExchangeMove:
         """ Apply this move, assumed to be legal, to the current game state """
         if not shallow:
             state.player_rack().exchange(state.bag(), self._tiles)
-        state.reset_passes()
+        state.add_pass() # An exchange counts towards the pass count
 
 
 class PassMove:

@@ -227,7 +227,9 @@ class GameModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == True).order(-GameModel.timestamp)
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
+            .filter(GameModel.over == True) \
+            .order(-GameModel.ts_last_move)
 
         def game_callback(gm):
             """ Map a game entity to a result dictionary with useful info about the game """
@@ -246,7 +248,7 @@ class GameModel(ndb.Model):
             return dict(
                 uuid = uuid,
                 ts = gm.timestamp,
-                ts_last_move = gm.ts_last_move,
+                ts_last_move = gm.ts_last_move or gm.timestamp,
                 opp = opp,
                 sc0 = sc0,
                 sc1 = sc1,
@@ -263,8 +265,9 @@ class GameModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(GameModel.over == False)
-        # Used to be .order(-GameModel.timestamp) but we want the displayed list to be sorted by ts_last_move
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
+            .filter(GameModel.over == False) \
+            .order(-GameModel.ts_last_move)
 
         def game_callback(gm):
             """ Map a game entity to a result tuple with useful info about the game """

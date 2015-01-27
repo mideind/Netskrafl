@@ -405,7 +405,7 @@ function _populateRecentList(json, listId) {
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +
-         "<span class='list-ts'>" + item.ts + "</span>" +
+         "<span class='list-ts'>" + item.ts_last_move + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>:" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +

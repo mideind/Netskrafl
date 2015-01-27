@@ -173,10 +173,12 @@ function textTimeToGo(player) {
       var now = new Date();
       elapsed += (now.getTime() - gameTimeBase.getTime()) / 1000;
    }
-   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, 0.0);
-   var min = Math.floor(timeToGo / 60.0);
-   var sec = Math.floor(timeToGo - min * 60.0);
-   return ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
+   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -(99.0 * 60.0 + 59.0));
+   var absTime = Math.abs(timeToGo);
+   var min = Math.floor(absTime / 60.0);
+   var sec = Math.floor(absTime - min * 60.0);
+   return (timeToGo < 0.0 ? "-" : "") +
+      ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
 }
 
 var runningOut0 = false;

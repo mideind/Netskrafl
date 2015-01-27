@@ -419,9 +419,9 @@ class Game:
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
-        # Account for the final tiles in the rack
+        # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
-            game.state.finalize_score()
+            game.finalize_score()
         # If the moves were correctly applied, the scores should match
         if game.state._scores[0] != gm.score0:
             logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(game.state._scores[0], gm.score0).encode("latin-1"))
@@ -529,9 +529,10 @@ class Game:
             delta = m.ts - last_ts
             last_ts = m.ts
             elapsed[m.player] += delta.total_seconds()
-        # Add the time from the last move until now
-        delta = datetime.utcnow() - last_ts
-        elapsed[self.player_to_move()] += delta.total_seconds()
+        if not self.is_over():
+            # Game still going on: Add the time from the last move until now
+            delta = datetime.utcnow() - last_ts
+            elapsed[self.player_to_move()] += delta.total_seconds()
         return tuple(elapsed)
 
     def time_info(self):
@@ -545,6 +546,25 @@ class Game:
     def is_over(self):
         """ Return True if the game is over """
         return self.state.is_game_over()
+
+    def overtime_adjustment(self):
+        """ Return score adjustments due to overtime, as a tuple with two deltas """
+        adjustment = [0, 0]
+        duration = self.get_duration()
+        if duration:
+            # Timed game: calculate the overtime
+            el = self.get_elapsed()
+            for player in range(2):
+                overtime = el[player] - duration * 60.0
+                if overtime > 0.0:
+                    # 10 point subtraction for every started minute
+                    adjustment[player] = -10 * ((int(overtime + 0.9) + 59) // 60)
+        return tuple(adjustment)
+
+    def finalize_score(self):
+        """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
+        self.state.finalize_score()
+        self.state.adjust_scores(self.overtime_adjustment())
 
     def allows_best_moves(self):
         """ Returns True if this game supports full review (has stored racks, etc.) """
