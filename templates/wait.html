@@ -39,7 +39,7 @@ function cancelWait() {
 function lateInit() {
    /* Called from initWait() */
    openChannel("{{ channel_token }}");
-   initForm(opponentId(), "{{ opp.nickname() }}", "{{ opp.full_name() }}", {{ prefs.duration }});
+   initForm(opponentId(), "{{ opp.nickname() | safe }}", "{{ opp.full_name() | safe }}", {{ prefs.duration }});
 }
 
 </script>
