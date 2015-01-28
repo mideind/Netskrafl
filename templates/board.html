@@ -80,6 +80,9 @@
    function lateInit() {
       /* Execute late initialization - called from initSkrafl() */
       openChannel("{{ channel_token }}");
+      scoreLeft = {{ game.state.scores()[0] }};
+      scoreRight = {{ game.state.scores()[1] }};
+      updateScores();
    }
 
 </script>
@@ -120,8 +123,8 @@
 </a>
 {%- endif -%}
       <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
-      <h3 class="scoreleft">{{ game.state.scores()[0] }}</h3>
-      <h3 class="scoreright">{{ game.state.scores()[1] }}</h3>
+      <h3 class="scoreleft"></h3>
+      <h3 class="scoreright"></h3>
       <h3 class="clockleft"></h3>
       <h3 class="clockright"></h3>
    </div>

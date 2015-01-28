@@ -550,20 +550,42 @@ class Game:
     def overtime_adjustment(self):
         """ Return score adjustments due to overtime, as a tuple with two deltas """
         adjustment = [0, 0]
-        duration = self.get_duration()
+        duration = self.get_duration() * 60.0 # In seconds
         if duration:
-            # Timed game: calculate the overtime
+            # Timed game: calculate the overtime and impose a penalty
             el = self.get_elapsed()
             for player in range(2):
-                overtime = el[player] - duration * 60.0
+                overtime = el[player] - duration
                 if overtime > 0.0:
                     # 10 point subtraction for every started minute
+                    # The formula means that 0.1 second into a new minute
+                    # a 10-point loss is incurred
                     adjustment[player] = -10 * ((int(overtime + 0.9) + 59) // 60)
+            # Do a second round checking whether a player explicitly timed out
+            # (10 minutes or more overtime)
+            # In this case, the official rules say that the player should get 100 points
+            # subtracted, and if that is not sufficient to make him lose, reduce his
+            # score to 1 below the opponent's score
+            scores = self.state.scores()
+            for player in range(2):
+                overtime = el[player] - duration
+                if overtime >= 10 * 60.0:
+                    # 10 minute overtime: the player lost on overtime
+                    # Subtract 100 points
+                    adjustment[player] = -100
+                    opp_score = scores[1 - player] + adjustment[1 - player]
+                    if scores[player] + adjustment[player] >= opp_score:
+                        # Still scoring more than the opponent: adjust so that the score becomes 1 less than opponent
+                        adjustment[player] = opp_score - scores[player] - 1
+                        assert scores[player] + adjustment[player] == scores[1 - player] - 1
         return tuple(adjustment)
 
     def finalize_score(self):
         """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
+        assert self.is_over()
+        # "Mechanical" adjustments due to rack leave
         self.state.finalize_score()
+        # Adjustment due to overtime, if this was a timed game
         self.state.adjust_scores(self.overtime_adjustment())
 
     def allows_best_moves(self):
@@ -669,6 +691,10 @@ class Game:
         """ Returns the timestamp of the game in a readable format """
         return u"" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
 
+    def end_time(self):
+        """ Returns the time of the last move in a readable format """
+        return u"" if self.ts_last_move is None else Alphabet.format_timestamp(self.ts_last_move)
+
     def client_state(self, player_index, lastmove = None):
         """ Create a package of information for the client about the current state """
 
@@ -696,14 +722,20 @@ class Game:
                 opp_score = Alphabet.score(opp_rack)
                 last_rack = self.state.rack(lastplayer)
                 last_score = Alphabet.score(last_rack)
-                # Subtract the score of the rack from the next-to-last player
-                newmoves.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
                 if not last_rack:
-                    # Won with an empty rack: Add the score of the losing rack to the winning player
-                    newmoves.append((lastplayer, (u"", opp_rack, 1 * opp_score)))
+                    # Won with an empty rack: Add double the score of the losing rack
+                    newmoves.append((1 - lastplayer, (u"", last_rack, 0)))
+                    newmoves.append((lastplayer, (u"", opp_rack, 2 * opp_score)))
                 else:
-                    # The game has ended by passes: subtrack the score of the rack from the last player
+                    # The game has ended by passes: each player gets her own rack subtracted
+                    newmoves.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
                     newmoves.append((lastplayer, (u"", last_rack, -1 * last_score)))
+                # If this is a timed game, add eventual overtime adjustment
+                if self.get_duration() > 0:
+                    adjustment = self.overtime_adjustment()
+                    if adjustment != (0, 0):
+                        newmoves.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
+                        newmoves.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
             # Add a synthetic "game over" move
             newmoves.append((1 - lastplayer, (u"", u"OVER", 0)))
             reply["bag"] = "" # Bag is now empty, by definition
@@ -730,6 +762,8 @@ class Game:
         else:
             reply["result"] = 0 # Game still in progress
         reply["gamestart"] = self.start_time()
+        reply["gameend"] = self.end_time()
+        reply["duration"] = self.get_duration()
         reply["scores"] = sc = self.state.scores()
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
@@ -779,6 +813,10 @@ class Game:
         # Contribution of remaining tiles at the end of the game
         reply["remaining0"] = sc[0] - cleanscore[0]
         reply["remaining1"] = sc[1] - cleanscore[1]
+        # Contribution of overtime at the end of the game
+        overtime = self.overtime_adjustment()
+        reply["overtime0"] = overtime[0]
+        reply["overtime1"] = overtime[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
         reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0

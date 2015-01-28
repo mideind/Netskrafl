@@ -65,6 +65,8 @@ var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actu
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
 var gameTime = null, gameTimeBase = null; // Game timing info, i.e. duration and elapsed time
+var scoreLeft = 0, scoreRight = 0;
+var penaltyLeft = 0, penaltyRight = 0; // Current overtime penalty score
 
 var entityMap = {
    "&": "&amp;",
@@ -165,7 +167,7 @@ function tileAt(row, col) {
    return el.firstChild;
 }
 
-function textTimeToGo(player) {
+function calcTimeToGo(player) {
    /* Return the time left for a player in a nice MM:SS format */
    var elapsed = gameTime.elapsed[player];
    if ((numMoves % 2) == player) {
@@ -173,12 +175,27 @@ function textTimeToGo(player) {
       var now = new Date();
       elapsed += (now.getTime() - gameTimeBase.getTime()) / 1000;
    }
-   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -(99.0 * 60.0 + 59.0));
+   // The overtime is max 10 minutes - at that point you lose
+   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -(10 * 60.0));
    var absTime = Math.abs(timeToGo);
    var min = Math.floor(absTime / 60.0);
    var sec = Math.floor(absTime - min * 60.0);
+   if (timeToGo < 0.0) {
+      // We're into overtime: calculate the score penalty
+      if (player === 0)
+         penaltyLeft = -10 * Math.floor((min * 60 + sec + 59) / 60);
+      else
+         penaltyRight = -10 * Math.floor((min * 60 + sec + 59) / 60);
+   }
    return (timeToGo < 0.0 ? "-" : "") +
       ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
+}
+
+function updateScores() {
+   var displayLeft = Math.max(scoreLeft + penaltyLeft, 0);
+   var displayRight = Math.max(scoreRight + penaltyRight, 0);
+   $(".scoreleft").text(displayLeft);
+   $(".scoreright").text(displayRight);
 }
 
 var runningOut0 = false;
@@ -186,8 +203,8 @@ var runningOut1 = false;
 
 function updateClock() {
    /* Show the current remaining time for both players */
-   var txt0 = textTimeToGo(0);
-   var txt1 = textTimeToGo(1);
+   var txt0 = calcTimeToGo(0);
+   var txt1 = calcTimeToGo(1);
    $("h3.clockleft").text(txt0);
    $("h3.clockright").text(txt1);
    // Check whether time is running out - and display accordingly
@@ -204,6 +221,9 @@ function updateClock() {
       $("h3.clockleft").toggleClass("blink");
    if (runningOut1 && txt1 <= "00:30")
       $("h3.clockright").toggleClass("blink");
+   if (penaltyLeft !== 0 || penaltyRight !== 0)
+      // If we are applying an overtime penalty to the scores, update them in real-time
+      updateScores();
 }
 
 function resetClock(newGameTime) {
@@ -219,7 +239,8 @@ function showClock(initialGameTime) {
    $(".clockright").css("display", "inline-block");
    $("div.movelist").addClass("with-clock");
    resetClock(initialGameTime);
-   // Make sure the clock ticks reasonably regularly, once per second - according to Nyquist
+   // Make sure the clock ticks reasonably regularly, once per second
+   // According to Nyquist, we need a refresh interval of no more than 1/2 second
    window.setInterval(updateClock, 500);
 }
 
@@ -438,6 +459,11 @@ function appendMove(player, co, tiles, score) {
          /* Resigned from game */
          tiles = "Gaf leikinn";
       else
+      if (tiles == "TIME") {
+         /* Overtime adjustment */
+         tiles = "Umframtími";
+      }
+      else
       if (tiles == "OVER") {
          /* Game over */
          tiles = "Leik lokið";
@@ -455,6 +481,7 @@ function appendMove(player, co, tiles, score) {
       tileMove = true;
    }
    var str;
+   var title = tileMove ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
       str = '<div class="gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
@@ -462,7 +489,7 @@ function appendMove(player, co, tiles, score) {
    else
    if (player === 0) {
       /* Left side player */
-      str = '<div title="Smelltu til að fletta upp" class="leftmove">' +
+      str = '<div ' + title + 'class="leftmove">' +
          '<span class="total">' + (leftTotal + score) + '</span>' +
          '<span class="score">' + score + '</span>' +
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
@@ -471,7 +498,7 @@ function appendMove(player, co, tiles, score) {
    }
    else {
       /* Right side player */
-      str = '<div title="Smelltu til að fletta upp" class="rightmove">' +
+      str = '<div ' + title + 'class="rightmove">' +
          '<span class="' + wrdclass + '">' + co +
          ' <i>' + tiles + '</i></span>' +
          '<span class="score">' + score + '</span>' + 
@@ -489,7 +516,7 @@ function appendMove(player, co, tiles, score) {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
          playerColor = "1";
       }
-      if (wrdclass == "wordmove") {
+      if (tileMove) {
          /* Register a hover event handler to highlight this move */
          m.on("mouseover",
             { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: true },
@@ -1275,8 +1302,8 @@ function updateState(json) {
          }
       }
       /* Update the scores */
-      $(".scoreleft").text(json.scores[0]);
-      $(".scoreright").text(json.scores[1]);
+      scoreLeft = json.scores[0];
+      scoreRight = json.scores[1];
       /* Update the move list */
       if (json.newmoves !== undefined) {
          for (i = 0; i < json.newmoves.length; i++) {
@@ -1317,6 +1344,8 @@ function updateState(json) {
    if (json.time_info !== undefined)
       // New timing information from the server: reset and update the clock
       resetClock(json.time_info);
+   // Update the scores display after we have timing info
+   updateScores();
 }
 
 function submitMove(btn) {
