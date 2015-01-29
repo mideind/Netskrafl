@@ -577,7 +577,8 @@ class Game:
                     if scores[player] + adjustment[player] >= opp_score:
                         # Still scoring more than the opponent: adjust so that the score becomes 1 less than opponent
                         adjustment[player] = opp_score - scores[player] - 1
-                        assert scores[player] + adjustment[player] == scores[1 - player] - 1
+                        assert scores[player] + adjustment[player] == opp_score - 1
+                    break # Only one player loses on overtime
         return tuple(adjustment)
 
     def finalize_score(self):
@@ -663,6 +664,8 @@ class Game:
 
     def my_turn(self, user_id):
         """ Return True if it is the indicated player's turn to move """
+        if self.is_over():
+            return False
         return self.player_id_to_move() == user_id
 
     def is_autoplayer(self, player_index):
@@ -695,6 +698,40 @@ class Game:
         """ Returns the time of the last move in a readable format """
         return u"" if self.ts_last_move is None else Alphabet.format_timestamp(self.ts_last_move)
 
+    def _append_final_adjustments(self, movelist):
+        """ Appends final score adjustment transactions to the given movelist """
+        # Lastplayer is the player who finished the game
+        lastplayer = self.moves[-1].player
+        if not self.resigned:
+            # If the game did not end by resignation,
+            # account for the racks that are left
+            opp_rack = self.state.rack(1 - lastplayer)
+            opp_score = Alphabet.score(opp_rack)
+            last_rack = self.state.rack(lastplayer)
+            last_score = Alphabet.score(last_rack)
+            if not last_rack:
+                # Won with an empty rack: Add double the score of the losing rack
+                movelist.append((1 - lastplayer, (u"", u"--", 0)))
+                movelist.append((lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score)))
+            else:
+                # The game has ended by passes: each player gets her own rack subtracted
+                movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
+                movelist.append((lastplayer, (u"", last_rack, -1 * last_score)))
+            # If this is a timed game, add eventual overtime adjustment
+            if self.get_duration() > 0:
+                adjustment = self.overtime_adjustment()
+                if adjustment != (0, 0):
+                    movelist.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
+                    movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
+        # Add a synthetic "game over" move
+        movelist.append((1 - lastplayer, (u"", u"OVER", 0)))
+
+    def get_final_adjustments(self):
+        """ Get a fresh list of the final adjustments made to the game score """
+        movelist = []
+        self._append_final_adjustments(movelist)
+        return movelist
+
     def client_state(self, player_index, lastmove = None):
         """ Create a package of information for the client about the current state """
 
@@ -713,31 +750,7 @@ class Game:
         if self.is_over():
             # The game is now over - one of the players finished it
             reply["result"] = Error.GAME_OVER # Not really an error
-            # Lastplayer is the player who finished the game
-            lastplayer = self.moves[-1].player
-            if not self.resigned:
-                # If the game did not end by resignation,
-                # account for the racks that are left
-                opp_rack = self.state.rack(1 - lastplayer)
-                opp_score = Alphabet.score(opp_rack)
-                last_rack = self.state.rack(lastplayer)
-                last_score = Alphabet.score(last_rack)
-                if not last_rack:
-                    # Won with an empty rack: Add double the score of the losing rack
-                    newmoves.append((1 - lastplayer, (u"", last_rack, 0)))
-                    newmoves.append((lastplayer, (u"", opp_rack, 2 * opp_score)))
-                else:
-                    # The game has ended by passes: each player gets her own rack subtracted
-                    newmoves.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
-                    newmoves.append((lastplayer, (u"", last_rack, -1 * last_score)))
-                # If this is a timed game, add eventual overtime adjustment
-                if self.get_duration() > 0:
-                    adjustment = self.overtime_adjustment()
-                    if adjustment != (0, 0):
-                        newmoves.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
-                        newmoves.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
-            # Add a synthetic "game over" move
-            newmoves.append((1 - lastplayer, (u"", u"OVER", 0)))
+            self._append_final_adjustments(newmoves)
             reply["bag"] = "" # Bag is now empty, by definition
             reply["xchg"] = False # Exchange move not allowed
         else:

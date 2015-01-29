@@ -65,8 +65,10 @@ var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actu
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
 var newestMove = null; // The tiles placed in the newest move (used in move review)
 var gameTime = null, gameTimeBase = null; // Game timing info, i.e. duration and elapsed time
+var clockIval = null; // Clock interval timer
 var scoreLeft = 0, scoreRight = 0;
 var penaltyLeft = 0, penaltyRight = 0; // Current overtime penalty score
+var gameOver = false;
 
 var entityMap = {
    "&": "&amp;",
@@ -170,7 +172,7 @@ function tileAt(row, col) {
 function calcTimeToGo(player) {
    /* Return the time left for a player in a nice MM:SS format */
    var elapsed = gameTime.elapsed[player];
-   if ((numMoves % 2) == player) {
+   if (!gameOver && ((numMoves % 2) == player)) {
       // This player's turn: add the local elapsed time
       var now = new Date();
       elapsed += (now.getTime() - gameTimeBase.getTime()) / 1000;
@@ -180,6 +182,12 @@ function calcTimeToGo(player) {
    var absTime = Math.abs(timeToGo);
    var min = Math.floor(absTime / 60.0);
    var sec = Math.floor(absTime - min * 60.0);
+   if (gameOver) {
+      // We already got a correct score from the server
+      penaltyLeft = 0;
+      penaltyRight = 0;
+   }
+   else
    if (timeToGo < 0.0) {
       // We're into overtime: calculate the score penalty
       if (player === 0)
@@ -231,6 +239,14 @@ function resetClock(newGameTime) {
    gameTime = newGameTime;
    gameTimeBase = new Date();
    updateClock();
+   if (gameOver && clockIval) {
+      // Game over: stop updating the clock
+      window.clearInterval(clockIval);
+      clockIval = null;
+      // Stop blinking, if any
+      $("h3.clockleft").removeClass("blink");
+      $("h3.clockright").removeClass("blink");
+   }
 }
 
 function showClock(initialGameTime) {
@@ -241,7 +257,7 @@ function showClock(initialGameTime) {
    resetClock(initialGameTime);
    // Make sure the clock ticks reasonably regularly, once per second
    // According to Nyquist, we need a refresh interval of no more than 1/2 second
-   window.setInterval(updateClock, 500);
+   clockIval = window.setInterval(updateClock, 500);
 }
 
 function placeTile(sq, tile, letter, score) {
@@ -468,11 +484,13 @@ function appendMove(player, co, tiles, score) {
          /* Game over */
          tiles = "Leik lokið";
          wrdclass = "gameover";
+         gameOver = true;
       }
-      else
+      else {
          /* The rack leave at the end of the game (which is always in lowercase
             and thus cannot be confused with the above abbreviations) */
          wrdclass = "wordmove";
+      }
    }
    else {
       co = "(" + co + ")";
@@ -1330,6 +1348,7 @@ function updateState(json) {
          /* Hide Move button and display New Game button */
          $("div.submitmove").css("display", "none");
          $("div.submitnewgame").css("display", "inline");
+         gameOver = true;
       }
    }
    else {

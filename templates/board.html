@@ -43,6 +43,11 @@
 {%- set coord, tiles, score = m.move.summary(game.state.board()) %}
       appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
+{% if game.is_over() %}
+{% for m in game.get_final_adjustments() %}
+      appendMove({{ m[0] }}, "{{ m[1][0] }}", "{{ m[1][1] }}", {{ m[1][2] }});
+{% endfor %}
+{% endif %}
    }
 
    function initBag(bag) {
@@ -79,7 +84,9 @@
 
    function lateInit() {
       /* Execute late initialization - called from initSkrafl() */
+{% if channel_token %}      
       openChannel("{{ channel_token }}");
+{% endif %}
       scoreLeft = {{ game.state.scores()[0] }};
       scoreRight = {{ game.state.scores()[1] }};
       updateScores();
@@ -204,7 +211,9 @@
    onmouseout="buttonOut(this)" onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
 
 <!-- Notification that it's the opponent's turn -->
+{% if not game.is_over() %}
 <div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
+{% endif %}
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>

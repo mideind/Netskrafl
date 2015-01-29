@@ -855,7 +855,7 @@ def board():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is not None and (game.is_over() or not game.has_player(user.id())):
+    if game is not None and (not game.has_player(user.id())):
         # Go back to main screen if game is no longer active
         game = None
 
@@ -871,8 +871,11 @@ def board():
     # opponent is an autoplayer as we do want the
     # presence detection functionality for the human
     # user.
-    channel_token = ChannelModel.create_new(u"game",
-        game.id() + u":" + str(player_index), user.id())
+    if game.is_over():
+        channel_token = None
+    else:
+        channel_token = ChannelModel.create_new(u"game",
+            game.id() + u":" + str(player_index), user.id())
 
     return render_template("board.html", game = game, user = user,
         player_index = player_index,
