@@ -1397,6 +1397,12 @@ div#wait-cancel {
    background-color: @alert;
 }
 
+div#accept-cancel {
+   right: 12px;
+   width: 72px; /* Override */
+   background-color: @alert;
+}
+
 div#blank-close {
    background-color: @alert;
 }
@@ -1590,18 +1596,31 @@ div.wait-explain {
    padding-bottom: 24px;
 }
 
+div#accept-form {
+   position: absolute;
+   top: 100px;
+   right: 300px;
+   width: 428px;
+   height: 532px;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 12px;
+   padding-bottom: 6px;
+   z-index: 20;
+   font-size: 1em;
+   box-shadow: 3px 3px 5px 2px #333333;
+}
+
 .blink {
    opacity: 0.1;
 }
 
 a.opp-ready:link,
 a.opp-ready:visited {
-   font-weight: bold;
    color: @alert;
 }
 
 a.opp-ready:hover {
-   font-weight: bold;
    color: @hover-link;
 }
 

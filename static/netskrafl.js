@@ -200,6 +200,7 @@ function calcTimeToGo(player) {
 }
 
 function updateScores() {
+   /* Display the current score including overtime penalty, if any */
    var displayLeft = Math.max(scoreLeft + penaltyLeft, 0);
    var displayRight = Math.max(scoreRight + penaltyRight, 0);
    $(".scoreleft").text(displayLeft);
@@ -498,6 +499,11 @@ function appendMove(player, co, tiles, score) {
       tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
       tileMove = true;
    }
+   /* Update the scores */
+   if (player === 0)
+      leftTotal = Math.max(leftTotal + score, 0);
+   else
+      rightTotal = Math.max(rightTotal + score, 0);
    var str;
    var title = tileMove ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
@@ -508,7 +514,7 @@ function appendMove(player, co, tiles, score) {
    if (player === 0) {
       /* Left side player */
       str = '<div ' + title + 'class="leftmove">' +
-         '<span class="total">' + (leftTotal + score) + '</span>' +
+         '<span class="total">' + leftTotal + '</span>' +
          '<span class="score">' + score + '</span>' +
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
          co + '</span>' +
@@ -520,7 +526,7 @@ function appendMove(player, co, tiles, score) {
          '<span class="' + wrdclass + '">' + co +
          ' <i>' + tiles + '</i></span>' +
          '<span class="score">' + score + '</span>' + 
-         '<span class="total">' + (rightTotal + score) + '</span>' +
+         '<span class="total">' + rightTotal + '</span>' +
          '</div>';
    }
    var movelist = $("div.movelist");
@@ -564,11 +570,6 @@ function appendMove(player, co, tiles, score) {
    numMoves += 1;
    if (tileMove)
       numTileMoves += 1;
-   /* Update the scores */
-   if (player === 0)
-      leftTotal += score;
-   else
-      rightTotal += score;
 }
 
 function appendBestMove(player, co, tiles, score) {
@@ -967,8 +968,8 @@ function showWordCheck(json) {
 
 function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
-   var tilesPlaced = findCovers().length;
-   if (localTurn()) {
+   var tilesPlaced = gameOver ? 0 : findCovers().length;
+   if ((!gameOver) && localTurn()) {
       /* The local player's turn */
       $("div.submitmove").css("visibility", "visible");
       $("div.submitexchange").css("visibility", "visible");
@@ -1642,9 +1643,12 @@ function initSkrafl(jQuery) {
       showClock(igt);
 
    placeTiles();
-   initRackDraggable(true);
-   initDropTargets();
-   initMoveList();
+   initMoveList(); // Sets gameOver to true if the game is over
+   if (!gameOver) {
+      // Prepare drag-and-drop
+      initRackDraggable(true);
+      initDropTargets();
+   }
    initBag();
    if (localPlayer() === 0) {
       $("h3.playerleft").addClass("humancolor");

@@ -197,7 +197,7 @@ function lateInit() {
       <h2 id="usr-info-fullname"></h2>
    </div>
 
-   <p>Nýjustu viðureignir:</p>
+   <p><strong>Nýjustu viðureignir</strong></p>
 
    <!-- Recent games for this user -->
    <div class="listitem listheader"><span
@@ -240,7 +240,7 @@ function lateInit() {
       <div class="chall-time" id="chall-20">2 x 20 mínútur</div>
       <div class="chall-time" id="chall-25">2 x 25 mínútur</div>
       <div class="chall-time" id="chall-30">2 x 30 mínútur</div>
-      <div class="chall-time" id="chall-45">2 x 45 mínútur</div>
+      <div class="chall-time" id="chall-3">2 x 3 mínútur</div>
 
    </div>
 
@@ -253,6 +253,36 @@ function lateInit() {
    <div class="modal-close" id="chall-ok" title="Skora á"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
+</div>
+
+<!-- A dialog for acceptance of a timed game challenge -->
+<div id="accept-dialog" class="modal-dialog">
+<div id="accept-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="chall-hdr">
+      <table><tr>
+      <td>
+      <h1 class="chall-icon"><span class='glyphicon glyphicon-time'></span></h1>
+      </td>
+      <td class="l-border"><span id="chall-online" title="Álínis?"></span><h1 id="accept-nick"></h1>
+      </td>
+      </tr></table>
+   </div>
+
+   <div style="text-align: center">
+
+      <p><strong>Set upp viðureign með klukku</strong></p>
+
+      <p id="accept-status">Athuga hvort andstæðingur er tilbúinn...</p>
+
+   </div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="accept-cancel" title="Reyna síðar"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
 </div>
 </div>

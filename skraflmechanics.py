@@ -530,8 +530,11 @@ class State:
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players have passed 3 times in a row """
         # Nuance: The 2 x 3 pass rule does not apply if the score is zero-zero
+        # !!! BUG This was ((self._num_passes >= 6) and sum(self._scores) > 0)
+        # !!! Need to differentiate between "pure" word score on one hand
+        # !!! and finalized score with adjustment on the other
         return self._racks[0].is_empty() or self._racks[1].is_empty() or \
-            ((self._num_passes >= 6) and sum(self._scores) > 0) or \
+            (self._num_passes >= 6) or \
             self._game_resigned
 
     def finalize_score(self):

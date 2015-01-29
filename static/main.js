@@ -439,17 +439,49 @@ function acceptChallenge(ev) {
       window.location.href = newgameUrl(param.userid, false);
 }
 
-function readyChallenge(ev) {
-   /* Triggering a timed game which the opponent is ready to accept */
-   ev.preventDefault();
-   var param = ev.data;
-   var prefs = param.prefs;
-   if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
+function waitAccept(json) {
+   /* Coming back from an opponent waiting query that was sent to the server */
+   if (json && json.waiting)
       /* Create a new timed game. The true parameter indicates
          that the normal roles are reversed, i.e. here it is the
          original issuer of the challenge that is causing the new
          game to be created, not the challenged opponent */
-      window.location.href = newgameUrl(param.userid, true);
+      window.location.href = newgameUrl(json.userid, true);
+   else {
+      // The opponent is not ready
+      $("#accept-status").text("Andstæðingurinn er ekki reiðubúinn");
+      // We seem to have a reason to update the challenge list
+      refreshChallengeList();
+   }
+}
+
+function cancelAccept(ev) {
+   /* Dismiss the acceptance dialog without creating a new game */
+   $("#accept-dialog")
+      .css("visibility", "hidden");
+}
+
+function showAccept(userid, nick, prefs) {
+   /* Show the acceptance dialog */
+   $("#accept-nick").text(nick);
+   $("#accept-dialog")
+      .css("visibility", "visible");
+   /* Launch a query to check whether the challenged user is online */
+   serverQuery("/waitcheck",
+      {
+         user: userid
+      },
+      waitAccept);
+}
+
+function readyAccept(ev) {
+   /* Trigger a timed game, if the opponent is waiting and ready to accept */
+   ev.preventDefault();
+   var param = ev.data;
+   var prefs = param.prefs;
+   if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0) {
+      showAccept(param.userid, param.nick, prefs);
+   }
 }
 
 function markChallAndRefresh(ev) {
@@ -532,8 +564,8 @@ function populateChallengeList(json) {
          // Route a click on the opponent ready link
          if (opp_ready) {
             $("#" + readyId).click(
-               { userid: item.userid, prefs: item.prefs },
-               readyChallenge
+               { userid: item.userid, nick: item.opp, prefs: item.prefs },
+               readyAccept
             );
             countReady++;
          }
@@ -731,6 +763,9 @@ function initMain() {
 
    /* Prepare the challenge dialog */
    prepareChallenge();
+
+   /* Enable the cancel button in the acceptance dialog */
+   $("#accept-cancel").click(cancelAccept);
 
    /* Call initialization that requires variables coming from the server */
    lateInit();

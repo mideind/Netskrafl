@@ -606,7 +606,7 @@ def waitcheck():
     if opp_id is not None:
         waiting = _opponent_waiting(User.current_id(), opp_id)
 
-    return jsonify(waiting = waiting)
+    return jsonify(userid = opp_id, waiting = waiting)
 
 
 @app.route("/review")
