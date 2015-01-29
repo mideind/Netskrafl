@@ -330,6 +330,8 @@ class Game:
         if game is not None:
             if not hasattr(game, "_preferences"):
                 game._preferences = None
+            if not hasattr(game.state, "_adj_scores"):
+                game.state._adj_scores = [0, 0]
             return game
 
         gm = GameModel.fetch(uuid)
@@ -423,12 +425,11 @@ class Game:
         if game.is_over():
             game.finalize_score()
         # If the moves were correctly applied, the scores should match
-        if game.state._scores[0] != gm.score0:
-            logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(game.state._scores[0], gm.score0).encode("latin-1"))
-        if game.state._scores[1] != gm.score1:
-            logging.info(u"Game state score1 is {0} while gm.score1 is {1}'".format(game.state._scores[1], gm.score1).encode("latin-1"))
-        # assert game.state._scores[0] == gm.score0
-        # assert game.state._scores[1] == gm.score1
+        final_scores = game.final_scores()
+        if final_scores[0] != gm.score0:
+            logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(final_scores[0], gm.score0))
+        if final_scores[1] != gm.score1:
+            logging.info(u"Game state score1 is {0} while gm.score1 is {1}'".format(final_scores[1], gm.score1))
 
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
@@ -451,11 +452,12 @@ class Game:
             gm.irack1 = self.initial_racks[1]
             gm.rack0 = self.state.rack(0)
             gm.rack1 = self.state.rack(1)
-            gm.score0 = self.state.scores()[0]
-            gm.score1 = self.state.scores()[1]
+            gm.over = self.is_over()
+            sc = self.state.final_scores() # Includes adjustments if game is over
+            gm.score0 = sc[0]
+            gm.score1 = sc[1]
             gm.to_move = len(self.moves) % 2
             gm.robot_level = self.robot_level
-            gm.over = self.is_over()
             gm.prefs = self._preferences
             movelist = []
             for m in self.moves:
@@ -560,34 +562,20 @@ class Game:
                     # 10 point subtraction for every started minute
                     # The formula means that 0.1 second into a new minute
                     # a 10-point loss is incurred
-                    adjustment[player] = -10 * ((int(overtime + 0.9) + 59) // 60)
-            # Do a second round checking whether a player explicitly timed out
-            # (10 minutes or more overtime)
-            # In this case, the official rules say that the player should get 100 points
-            # subtracted, and if that is not sufficient to make him lose, reduce his
-            # score to 1 below the opponent's score
-            scores = self.state.scores()
-            for player in range(2):
-                overtime = el[player] - duration
-                if overtime >= 10 * 60.0:
-                    # 10 minute overtime: the player lost on overtime
-                    # Subtract 100 points
-                    adjustment[player] = -100
-                    opp_score = scores[1 - player] + adjustment[1 - player]
-                    if scores[player] + adjustment[player] >= opp_score:
-                        # Still scoring more than the opponent: adjust so that the score becomes 1 less than opponent
-                        adjustment[player] = opp_score - scores[player] - 1
-                        assert scores[player] + adjustment[player] == opp_score - 1
-                    break # Only one player loses on overtime
+                    # After 10 minutes, the game is lost and the adjustment maxes out at -100
+                    adjustment[player] = max(-100, -10 * ((int(overtime + 0.9) + 59) // 60))
+                    logging.info(u"Adjustment for player {0} is {1}".format(player, adjustment[player]))
         return tuple(adjustment)
 
     def finalize_score(self):
         """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
         assert self.is_over()
-        # "Mechanical" adjustments due to rack leave
-        self.state.finalize_score()
-        # Adjustment due to overtime, if this was a timed game
-        self.state.adjust_scores(self.overtime_adjustment())
+        # Final adjustments to score, including rack leave and overtime, if any
+        self.state.finalize_score(self.overtime_adjustment())
+
+    def final_scores(self):
+        """ Return the final score of the game after adjustments, if any """
+        return self.state.final_scores()
 
     def allows_best_moves(self):
         """ Returns True if this game supports full review (has stored racks, etc.) """
@@ -700,29 +688,44 @@ class Game:
 
     def _append_final_adjustments(self, movelist):
         """ Appends final score adjustment transactions to the given movelist """
+
         # Lastplayer is the player who finished the game
         lastplayer = self.moves[-1].player
+
         if not self.resigned:
-            # If the game did not end by resignation,
-            # account for the racks that are left
-            opp_rack = self.state.rack(1 - lastplayer)
-            opp_score = Alphabet.score(opp_rack)
-            last_rack = self.state.rack(lastplayer)
-            last_score = Alphabet.score(last_rack)
-            if not last_rack:
-                # Won with an empty rack: Add double the score of the losing rack
-                movelist.append((1 - lastplayer, (u"", u"--", 0)))
-                movelist.append((lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score)))
+            # If the game did not end by resignation, check for a timeout
+            adjustment = list(self.overtime_adjustment())
+            sc = self.state.scores()
+            if any(adjustment[ix] <= -100 for ix in range(2)):
+                # Game ended with a loss on overtime
+                ix = 0 if adjustment[0] <= -100 else 1
+                adjustment[1 - ix] = 0
+                # Adjust score of losing player down by 100 points
+                adjustment[ix] = - min(100, sc[ix])
+                # If losing player is still winning on points, add points to the
+                # winning player so that she leads by one point
+                if sc[ix] + adjustment[ix] >= sc[1 - ix]:
+                    adjustment[1 - ix] = sc[ix] + adjustment[ix] + 1 - sc[1 - ix]
             else:
-                # The game has ended by passes: each player gets her own rack subtracted
-                movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
-                movelist.append((lastplayer, (u"", last_rack, -1 * last_score)))
+                # Normal end of game
+                opp_rack = self.state.rack(1 - lastplayer)
+                opp_score = Alphabet.score(opp_rack)
+                last_rack = self.state.rack(lastplayer)
+                last_score = Alphabet.score(last_rack)
+                if not last_rack:
+                    # Won with an empty rack: Add double the score of the losing rack
+                    movelist.append((1 - lastplayer, (u"", u"--", 0)))
+                    movelist.append((lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score)))
+                else:
+                    # The game has ended by passes: each player gets her own rack subtracted
+                    movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
+                    movelist.append((lastplayer, (u"", last_rack, -1 * last_score)))
+
             # If this is a timed game, add eventual overtime adjustment
-            if self.get_duration() > 0:
-                adjustment = self.overtime_adjustment()
-                if adjustment != (0, 0):
-                    movelist.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
-                    movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
+            if tuple(adjustment) != (0, 0):
+                movelist.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
+                movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
+
         # Add a synthetic "game over" move
         movelist.append((1 - lastplayer, (u"", u"OVER", 0)))
 
@@ -761,7 +764,7 @@ class Game:
             reply["xchg"] = self.state.is_exchange_allowed()
 
         reply["newmoves"] = newmoves
-        reply["scores"] = self.state.scores()
+        reply["scores"] = self.final_scores()
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()

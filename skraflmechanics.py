@@ -403,7 +403,8 @@ class State:
         if copy is None:
             self._board = Board()
             self._player_to_move = 0
-            self._scores = [0, 0]
+            self._scores = [0, 0] # "Pure" scores from moves on the board
+            self._adj_scores = [0, 0] # Adjustments (deltas) made at the end of the game
             self._player_names = [u"", u""]
             self._num_passes = 0 # Number of consecutive Pass moves
             self._num_moves = 0 # Number of moves made
@@ -420,6 +421,7 @@ class State:
             self._board = Board(copy._board)
             self._player_to_move = copy._player_to_move
             self._scores = copy._scores[:]
+            self._adj_scores = copy._adj_scores[:]
             self._player_names = copy._player_names[:]
             self._num_passes = copy._num_passes
             self._num_moves = copy._num_moves
@@ -466,6 +468,12 @@ class State:
     def scores(self):
         """ Return the current score for both players """
         return tuple(self._scores)
+
+    def final_scores(self):
+        """ Return the final scores including adjustments, if any """
+        f0 = max(self._scores[0] + self._adj_scores[0], 0)
+        f1 = max(self._scores[1] + self._adj_scores[1], 0)
+        return (f0, f1)
 
     def num_moves(self):
         """ Return the number of moves made so far """
@@ -528,42 +536,47 @@ class State:
         return u''.join(sorted(displaybag, key=lambda ch: Bag.SORT_ORDER.index(ch)))
 
     def is_game_over(self):
-        """ The game is over if either rack is empty or if both players have passed 3 times in a row """
-        # Nuance: The 2 x 3 pass rule does not apply if the score is zero-zero
-        # !!! BUG This was ((self._num_passes >= 6) and sum(self._scores) > 0)
-        # !!! Need to differentiate between "pure" word score on one hand
-        # !!! and finalized score with adjustment on the other
+        """ The game is over if either rack is empty or if both players have made zero-score moves 3 times in a row """
         return self._racks[0].is_empty() or self._racks[1].is_empty() or \
-            (self._num_passes >= 6) or \
-            self._game_resigned
+            (self._num_passes >= 6) or self._game_resigned
 
-    def finalize_score(self):
-        """ When game is completed, update scores with the tiles left """
+    def finalize_score(self, overtime_adjustment = None):
+        """ When game is completed, calculate the final score adjustments """
+
         if self._game_resigned:
             # In case of a resignation, the resigning player has already lost all points
             return
+
+        # Handle losing a game on overtime
+        oa = overtime_adjustment
+        sc = self._scores
+        adj = self._adj_scores
+        if oa and any(oa[ix] <= -100 for ix in range(2)):
+            # One of the players lost on overtime
+            player = 0 if oa[0] <= -100 else 1
+            # Subtract 100 points from the player
+            adj[player] = - min(100, sc[player])
+            # If not enough to make the other player win, add to the other player
+            if sc[player] + adj[player] >= sc[1 - player]:
+                adj[1 - player] = sc[player] + adj[player] + 1 - sc[1 - player]
+            # There is no consideration of rack leave in this case
+            return
+
         if any(self._racks[ix].is_empty() for ix in range(2)):
             # Normal win by one of the players
             for ix in range(2):
                 # Add double the score of the opponent's tiles (will be zero for the losing player)
-                self._scores[ix] += 2 * Alphabet.score(self.rack(1 - ix))
+                adj[ix] = 2 * Alphabet.score(self.rack(1 - ix))
         else:
             # Game expired by passes
             for ix in range(2):
                 # Subtract the score of the player's own tiles
-                self._scores[ix] -= Alphabet.score(self.rack(ix))
-        # Make sure the scores are not negative, just in case
-        for ix in range(2):
-            if self._scores[ix] < 0:
-                self._scores[ix] = 0
+                adj[ix] = - Alphabet.score(self.rack(ix))
 
-    def adjust_scores(self, adjustment):
-        """ Adjust the scores by the adjustment, assumed to be a tuple of two deltas """
-        # This is used to adjust the game score due to overtime, if any
-        for ix in range(2):
-            self._scores[ix] += adjustment[ix]
-            if self._scores[ix] < 0:
-                self._scores[ix] = 0
+        # Apply overtime adjustment
+        if oa:
+            for ix in range(2):
+                adj[ix] += oa[ix]
 
     def is_exchange_allowed(self):
         """ Is an ExchangeMove allowed? """

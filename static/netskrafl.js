@@ -230,7 +230,7 @@ function updateClock() {
       $("h3.clockleft").toggleClass("blink");
    if (runningOut1 && txt1 <= "00:30")
       $("h3.clockright").toggleClass("blink");
-   if (penaltyLeft !== 0 || penaltyRight !== 0)
+   if (gameOver || penaltyLeft !== 0 || penaltyRight !== 0)
       // If we are applying an overtime penalty to the scores, update them in real-time
       updateScores();
 }
@@ -240,25 +240,32 @@ function resetClock(newGameTime) {
    gameTime = newGameTime;
    gameTimeBase = new Date();
    updateClock();
-   if (gameOver && clockIval) {
+   if (gameOver) {
       // Game over: stop updating the clock
-      window.clearInterval(clockIval);
-      clockIval = null;
+      if (clockIval) {
+         window.clearInterval(clockIval);
+         clockIval = null;
+      }
       // Stop blinking, if any
       $("h3.clockleft").removeClass("blink");
       $("h3.clockright").removeClass("blink");
    }
 }
 
-function showClock(initialGameTime) {
+function showClock() {
    /* This is a timed game: show the clock stuff */
    $(".clockleft").css("display", "inline-block");
    $(".clockright").css("display", "inline-block");
    $("div.movelist").addClass("with-clock");
-   resetClock(initialGameTime);
+}
+
+function startClock(igt) {
+   /* Start the clock ticking - called from initSkrafl() */
+   resetClock(igt);
    // Make sure the clock ticks reasonably regularly, once per second
    // According to Nyquist, we need a refresh interval of no more than 1/2 second
-   clockIval = window.setInterval(updateClock, 500);
+   if (!gameOver)
+      clockIval = window.setInterval(updateClock, 500);
 }
 
 function placeTile(sq, tile, letter, score) {
@@ -478,7 +485,7 @@ function appendMove(player, co, tiles, score) {
       else
       if (tiles == "TIME") {
          /* Overtime adjustment */
-         tiles = "Umframtími";
+         tiles = " Umframtími "; // Extra spaces intentional
       }
       else
       if (tiles == "OVER") {
@@ -998,7 +1005,10 @@ function updateButtonState() {
       $("div.submitresign").css("visibility", "hidden");
       $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
-      $("div.opp-turn").css("visibility", "visible");
+      if (gameOver)
+         $("div.opp-turn").css("visibility", "hidden");
+      else
+         $("div.opp-turn").css("visibility", "visible");
       // Reset to normal window/tab title
       document.title = "Netskrafl";
    }
@@ -1640,7 +1650,7 @@ function initSkrafl(jQuery) {
 
    if (igt.duration > 0)
       // This is a timed game: move things around and show the clock
-      showClock(igt);
+      showClock();
 
    placeTiles();
    initMoveList(); // Sets gameOver to true if the game is over
@@ -1671,5 +1681,8 @@ function initSkrafl(jQuery) {
    /* $('body').bind('pinchclose', resetRack); */
 
    lateInit();
+
+   if (igt.duration > 0)
+      startClock(igt);
 }
 

@@ -87,9 +87,8 @@
 {% if channel_token %}      
       openChannel("{{ channel_token }}");
 {% endif %}
-      scoreLeft = {{ game.state.scores()[0] }};
-      scoreRight = {{ game.state.scores()[1] }};
-      updateScores();
+      scoreLeft = {{ game.final_scores()[0] }};
+      scoreRight = {{ game.final_scores()[1] }};
    }
 
 </script>
@@ -130,8 +129,8 @@
 </a>
 {%- endif -%}
       <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
-      <h3 class="scoreleft"></h3>
-      <h3 class="scoreright"></h3>
+      <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
+      <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
       <h3 class="clockleft"></h3>
       <h3 class="clockright"></h3>
    </div>
