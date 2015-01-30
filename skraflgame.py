@@ -564,7 +564,6 @@ class Game:
                     # a 10-point loss is incurred
                     # After 10 minutes, the game is lost and the adjustment maxes out at -100
                     adjustment[player] = max(-100, -10 * ((int(overtime + 0.9) + 59) // 60))
-                    logging.info(u"Adjustment for player {0} is {1}".format(player, adjustment[player]))
         return tuple(adjustment)
 
     def finalize_score(self):
@@ -780,7 +779,7 @@ class Game:
         reply["gamestart"] = self.start_time()
         reply["gameend"] = self.end_time()
         reply["duration"] = self.get_duration()
-        reply["scores"] = sc = self.state.scores()
+        reply["scores"] = sc = self.final_scores()
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
@@ -826,13 +825,13 @@ class Game:
         # Plain sum of move scores
         reply["cleantotal0"] = cleanscore[0]
         reply["cleantotal1"] = cleanscore[1]
-        # Contribution of remaining tiles at the end of the game
-        reply["remaining0"] = sc[0] - cleanscore[0]
-        reply["remaining1"] = sc[1] - cleanscore[1]
         # Contribution of overtime at the end of the game
         overtime = self.overtime_adjustment()
         reply["overtime0"] = overtime[0]
         reply["overtime1"] = overtime[1]
+        # Contribution of remaining tiles at the end of the game
+        reply["remaining0"] = sc[0] - cleanscore[0] - overtime[0]
+        reply["remaining1"] = sc[1] - cleanscore[1] - overtime[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
         reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
