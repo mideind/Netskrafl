@@ -540,20 +540,19 @@ class State:
         return self._racks[0].is_empty() or self._racks[1].is_empty() or \
             (self._num_passes >= 6) or self._game_resigned
 
-    def finalize_score(self, overtime_adjustment = None):
+    def finalize_score(self, lost_on_overtime, overtime_adjustment):
         """ When game is completed, calculate the final score adjustments """
 
         if self._game_resigned:
             # In case of a resignation, the resigning player has already lost all points
             return
 
-        # Handle losing a game on overtime
-        oa = overtime_adjustment
         sc = self._scores
         adj = self._adj_scores
-        if oa and any(oa[ix] <= -100 for ix in range(2)):
+
+        if lost_on_overtime is not None:
             # One of the players lost on overtime
-            player = 0 if oa[0] <= -100 else 1
+            player = lost_on_overtime
             # Subtract 100 points from the player
             adj[player] = - min(100, sc[player])
             # If not enough to make the other player win, add to the other player
@@ -573,10 +572,10 @@ class State:
                 # Subtract the score of the player's own tiles
                 adj[ix] = - Alphabet.score(self.rack(ix))
 
-        # Apply overtime adjustment
-        if oa:
+        # Apply overtime adjustment, if any
+        if overtime_adjustment:
             for ix in range(2):
-                adj[ix] += oa[ix]
+                adj[ix] += overtime_adjustment[ix]
 
     def is_exchange_allowed(self):
         """ Is an ExchangeMove allowed? """

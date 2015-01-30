@@ -449,7 +449,8 @@ function waitAccept(json) {
       window.location.href = newgameUrl(json.userid, true);
    else {
       // The opponent is not ready
-      $("#accept-status").text("Andstæðingurinn er ekki reiðubúinn");
+      $("#accept-status").html("Andstæðingurinn <strong><span id='accept-opp'></span></strong> er ekki reiðubúinn");
+      $("#accept-opp").text($("#accept-nick").text());
       // We seem to have a reason to update the challenge list
       refreshChallengeList();
    }
@@ -463,6 +464,7 @@ function cancelAccept(ev) {
 
 function showAccept(userid, nick, prefs) {
    /* Show the acceptance dialog */
+   $("#accept-status").text("Athuga hvort andstæðingur er reiðubúinn...");
    $("#accept-nick").text(nick);
    $("#accept-dialog")
       .css("visibility", "visible");

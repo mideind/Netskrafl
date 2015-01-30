@@ -59,6 +59,8 @@ var LETTERSCORE = new Array(
 
 var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmechanics.py */
 
+var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
+
 /* Global variables */
 
 var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
@@ -169,6 +171,11 @@ function tileAt(row, col) {
    return el.firstChild;
 }
 
+function reloadPage() {
+   /* Reload this page from the server */
+   window.location.reload(true); // Bypass cache
+}
+
 function calcTimeToGo(player) {
    /* Return the time left for a player in a nice MM:SS format */
    var elapsed = gameTime.elapsed[player];
@@ -176,9 +183,15 @@ function calcTimeToGo(player) {
       // This player's turn: add the local elapsed time
       var now = new Date();
       elapsed += (now.getTime() - gameTimeBase.getTime()) / 1000;
+      if (elapsed - gameTime.duration * 60.0 > MAX_OVERTIME) {
+         // 10 minutes overtime has passed:
+         // The player has lost - do this the brute force way and refresh the page
+         // to get the server's final verdict
+         window.setInterval(reloadPage, 500); // Do this in half a sec
+      }
    }
    // The overtime is max 10 minutes - at that point you lose
-   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -(10 * 60.0));
+   var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -MAX_OVERTIME);
    var absTime = Math.abs(timeToGo);
    var min = Math.floor(absTime / 60.0);
    var sec = Math.floor(absTime - min * 60.0);
@@ -207,8 +220,8 @@ function updateScores() {
    $(".scoreright").text(displayRight);
 }
 
-var runningOut0 = false;
-var runningOut1 = false;
+var runningOut0 = false, blinking0 = false;
+var runningOut1 = false, blinking1 = false;
 
 function updateClock() {
    /* Show the current remaining time for both players */
@@ -225,11 +238,25 @@ function updateClock() {
       $("h3.clockright").addClass("running-out");
       runningOut1 = true;
    }
+   var locp = localPlayer();
    // If less than 30 seconds remaining, blink
-   if (runningOut0 && txt0 <= "00:30")
+   if (runningOut0 && txt0 >= "00:00" && txt0 <= "00:30" && locp === 0) {
       $("h3.clockleft").toggleClass("blink");
-   if (runningOut1 && txt1 <= "00:30")
+      blinking0 = true;
+   }
+   if (runningOut1 && txt1 >= "00:00" && txt1 <= "00:30" && locp === 1) {
       $("h3.clockright").toggleClass("blink");
+      blinking1 = true;
+   }
+   // Remove blinking once we're into overtime
+   if (txt0.charAt(0) == "-" && blinking0) {
+      $("h3.clockleft").removeClass("blink");
+      blinking0 = false;
+   }
+   if (txt1.charAt(0) == "-" && blinking1) {
+      $("h3.clockright").removeClass("blink");
+      blinking1 = false;
+   }
    if (gameOver || penaltyLeft !== 0 || penaltyRight !== 0)
       // If we are applying an overtime penalty to the scores, update them in real-time
       updateScores();

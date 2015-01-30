@@ -127,10 +127,14 @@ def _process_move(movecount, movelist, uuid):
     # If it's the autoplayer's move, respond immediately
     # (can be a bit time consuming if rack has one or two blank tiles)
     opponent = game.player_id_to_move()
-    if not game.is_over() and opponent is None:
-        game.autoplayer_move()
 
-    if game.is_over():
+    is_over = game.is_over()
+
+    if not is_over and opponent is None:
+        game.autoplayer_move()
+        is_over = game.is_over() # State may change during autoplayer_move()
+
+    if is_over:
         # If the game is now over, tally the final score
         game.finalize_score()
 

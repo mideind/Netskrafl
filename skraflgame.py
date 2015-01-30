@@ -257,6 +257,9 @@ class Game:
     # (for instance a default Google nick with a https:// prefix)
     UNDEFINED_NAME = u"[Ónefndur]"
 
+    # The maximum overtime in a game, after which a player automatically loses
+    MAX_OVERTIME = 10 * 60.0 # 10 minutes, in seconds
+
     _lock = threading.Lock()
 
     # Singleton Manager instance for the word database
@@ -453,7 +456,7 @@ class Game:
             gm.rack0 = self.state.rack(0)
             gm.rack1 = self.state.rack(1)
             gm.over = self.is_over()
-            sc = self.state.final_scores() # Includes adjustments if game is over
+            sc = self.final_scores() # Includes adjustments if game is over
             gm.score0 = sc[0]
             gm.score1 = sc[1]
             gm.to_move = len(self.moves) % 2
@@ -531,7 +534,7 @@ class Game:
             delta = m.ts - last_ts
             last_ts = m.ts
             elapsed[m.player] += delta.total_seconds()
-        if not self.is_over():
+        if not self.state.is_game_over():
             # Game still going on: Add the time from the last move until now
             delta = datetime.utcnow() - last_ts
             elapsed[self.player_to_move()] += delta.total_seconds()
@@ -541,36 +544,57 @@ class Game:
         """ Returns a dict with timing information about this game """
         return dict(duration = self.get_duration(), elapsed = self.get_elapsed())
 
+    def overtime(self):
+        """ Return overtime for both players, in seconds """
+        overtime = [0, 0]
+        duration = self.get_duration() * 60.0 # In seconds
+        if duration > 0.0:
+            # Timed game: calculate the overtime
+            el = self.get_elapsed()
+            for player in range(2):
+                overtime[player] = max(0.0, el[player] - duration) # Never negative
+        return tuple(overtime)
+
+    def overtime_adjustment(self):
+        """ Return score adjustments due to overtime, as a tuple with two deltas """
+        overtime = self.overtime()
+        adjustment = [0, 0]
+        for player in range(2):
+            if overtime[player] > 0.0:
+                # 10 point subtraction for every started minute
+                # The formula means that 0.1 second into a new minute
+                # a 10-point loss is incurred
+                # After 10 minutes, the game is lost and the adjustment maxes out at -100
+                adjustment[player] = max(-100, -10 * ((int(overtime[player] + 0.9) + 59) // 60))
+        return tuple(adjustment)
+
     def resign(self):
         """ The local player is resigning the game """
         self.resigned = True
 
     def is_over(self):
         """ Return True if the game is over """
-        return self.state.is_game_over()
-
-    def overtime_adjustment(self):
-        """ Return score adjustments due to overtime, as a tuple with two deltas """
-        adjustment = [0, 0]
-        duration = self.get_duration() * 60.0 # In seconds
-        if duration:
-            # Timed game: calculate the overtime and impose a penalty
-            el = self.get_elapsed()
-            for player in range(2):
-                overtime = el[player] - duration
-                if overtime > 0.0:
-                    # 10 point subtraction for every started minute
-                    # The formula means that 0.1 second into a new minute
-                    # a 10-point loss is incurred
-                    # After 10 minutes, the game is lost and the adjustment maxes out at -100
-                    adjustment[player] = max(-100, -10 * ((int(overtime + 0.9) + 59) // 60))
-        return tuple(adjustment)
+        if self.state.is_game_over():
+            return True
+        if self.get_duration() == 0:
+            # Not a timed game: it's not over
+            return False
+        # Timed game: might now be lost on overtime
+        overtime = self.overtime()
+        return any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2))
 
     def finalize_score(self):
         """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
         assert self.is_over()
         # Final adjustments to score, including rack leave and overtime, if any
-        self.state.finalize_score(self.overtime_adjustment())
+        overtime = self.overtime()
+        # Check whether a player lost on overtime
+        lost_on_overtime = None
+        for player in range(2):
+            if overtime[player] >= Game.MAX_OVERTIME:
+                lost_on_overtime = player
+                break
+        self.state.finalize_score(lost_on_overtime, self.overtime_adjustment())
 
     def final_scores(self):
         """ Return the final score of the game after adjustments, if any """
@@ -692,12 +716,16 @@ class Game:
         lastplayer = self.moves[-1].player
 
         if not self.resigned:
+
             # If the game did not end by resignation, check for a timeout
+            overtime = self.overtime()
             adjustment = list(self.overtime_adjustment())
             sc = self.state.scores()
-            if any(adjustment[ix] <= -100 for ix in range(2)):
+
+            if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)): # 10 minutes overtime
                 # Game ended with a loss on overtime
-                ix = 0 if adjustment[0] <= -100 else 1
+                logging.info(u"Loss on overtime")
+                ix = 0 if overtime[0] >= Game.MAX_OVERTIME else 1
                 adjustment[1 - ix] = 0
                 # Adjust score of losing player down by 100 points
                 adjustment[ix] = - min(100, sc[ix])
