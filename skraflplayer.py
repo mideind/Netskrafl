@@ -67,8 +67,8 @@
 import logging
 from random import randint
 
-from dawgdictionary import DawgDictionary, Navigation
-from skraflmechanics import Manager, State, Board, Cover, Move, ExchangeMove, PassMove
+from dawgdictionary import DawgDictionary, Navigation, Wordbase
+from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
 from languages import Alphabet
 
 
@@ -214,7 +214,7 @@ class Axis:
                     query += below
                 if len(query) > 1:
                     # Nontrivial cross-check: Query the word database for words that fit this pattern
-                    matches = Manager.word_db().find_matches(query, False) # Don't need a sorted result
+                    matches = Wordbase.dawg().find_matches(query, False) # Don't need a sorted result
                     bits = 0
                     if matches:
                         cix = 0 if not above else len(above)
@@ -245,7 +245,7 @@ class Axis:
                 ix -= 1
             # Use the ExtendRightNavigator to find valid words with this left part
             nav = LeftFindNavigator(leftpart)
-            Manager.word_db().navigate(nav)
+            Wordbase.dawg().navigate(nav)
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
@@ -259,7 +259,7 @@ class Axis:
         # Begin by extending an empty prefix to the right, i.e. placing
         # tiles on the anchor square itself and to its right
         nav = ExtendRightNavigator(self, index, self._rack)
-        Manager.word_db().navigate(nav)
+        Wordbase.dawg().navigate(nav)
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
@@ -636,7 +636,7 @@ class AutoPlayer:
         # rack that form left parts of words, ordering them by length
         if len(self._rack) > 1:
             lpn = LeftPermutationNavigator(self._rack)
-            Manager.word_db().navigate(lpn)
+            Wordbase.dawg().navigate(lpn)
         else:
             lpn = None
 

@@ -34,6 +34,7 @@ from flask import request, session, url_for
 from google.appengine.api import users
 
 from languages import Alphabet
+from dawgdictionary import Wordbase
 from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
@@ -370,7 +371,7 @@ def _challengelist():
 def start():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
 
-    wdb = Game.manager.word_db()
+    wdb = Wordbase.dawg()
     ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
     logging.info(u"Start/warmup, instance {0}, ok is {1}".format(
         os.environ.get("INSTANCE_ID", ""), ok))
@@ -446,7 +447,7 @@ def wordcheck():
         return jsonify(word = word, ok = False)
 
     # Check the words against the dictionary
-    wdb = Game.manager.word_db()
+    wdb = Wordbase.dawg()
     ok = all([w in wdb for w in words])
     return jsonify(word = word, ok = ok)
 

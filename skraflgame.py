@@ -25,7 +25,7 @@ from datetime import datetime
 
 from google.appengine.api import users, memcache
 
-from skraflmechanics import Manager, State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from languages import Alphabet
 from skrafldb import Unique, UserModel, GameModel, MoveModel, FavoriteModel, ChallengeModel
@@ -262,9 +262,6 @@ class Game:
 
     _lock = threading.Lock()
 
-    # Singleton Manager instance for the word database
-    manager = Manager()
-
     def __init__(self, uuid = None):
         # Unique id of the game
         self.uuid = uuid
@@ -289,6 +286,8 @@ class Game:
         self.initial_racks = [None, None]
         # Preferences (such as time limit, alternative bag or board, etc.)
         self._preferences = None
+        # Cache of game over state (becomes True when the game is definitely over)
+        self._game_over = None
 
     def _make_new(self, player0_id, player1_id, robot_level = 0, prefs = None):
         """ Initialize a new, fresh game """
@@ -318,28 +317,26 @@ class Game:
 
     @classmethod
     def load(cls, uuid):
-        """ Load an already existing game from cache or persistent storage """
+        """ Load an already existing game from persistent storage """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
-            # between the database and the memcache
             return cls._load_locked(uuid)
+
+    def store(self):
+        """ Store the game state in persistent storage """
+        # Avoid race conditions by securing the lock before storing
+        with Game._lock:
+            self._store_locked()
 
     @classmethod
     def _load_locked(cls, uuid):
         """ Load an existing game from cache or persistent storage under lock """
 
-        # Try the memcache first
-        game = memcache.get(uuid, namespace="game")
-        if game is not None:
-            if not hasattr(game, "_preferences"):
-                game._preferences = None
-            if not hasattr(game.state, "_adj_scores"):
-                game.state._adj_scores = [0, 0]
-            return game
-
+        logging.info(u"game._load_locked()")
         gm = GameModel.fetch(uuid)
         if gm is None:
             # A game with this uuid is not found in the database: give up
+            logging.info(u"game._load_locked(): uuid not found in database")
             return None
 
         # Initialize a new Game instance with a pre-existing uuid
@@ -424,59 +421,59 @@ class Game:
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
-        # Account for the final tiles in the rack and overtime, if any
-        if game.is_over():
-            game.finalize_score()
-        # If the moves were correctly applied, the scores should match
-        final_scores = game.final_scores()
-        if final_scores[0] != gm.score0:
-            logging.info(u"Game state score0 is {0} while gm.score0 is {1}'".format(final_scores[0], gm.score0))
-        if final_scores[1] != gm.score1:
-            logging.info(u"Game state score1 is {0} while gm.score1 is {1}'".format(final_scores[1], gm.score1))
-
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
 
-        # Cache the game
-        memcache.add(uuid, game, namespace='game')
+        logging.info(u"game._load_locked(): recalc_bag done")
+
+        # Account for the final tiles in the rack and overtime, if any
+        if game.is_over():
+            logging.info(u"game._load_locked(): calling finalize_score")
+            game.finalize_score()
+            if not gm.over:
+                # The game was not marked as over when we loaded it from
+                # the datastore, but it is over now. One of the players must
+                # have lost on overtime. We need to update the persistent state.
+                logging.info(u"game._load_locked(): calling store")
+                game._store_locked()
+
         return game
 
-    def store(self):
-        """ Store the game state in persistent storage """
+    def _store_locked(self):
+        """ Store the game after having acquired the object lock """
+
         assert self.uuid is not None
-        with Game._lock:
-            # Avoid race conditions by securing the lock before storing
-            gm = GameModel(id = self.uuid)
-            gm.timestamp = self.timestamp
-            gm.ts_last_move = self.ts_last_move
-            gm.set_player(0, self.player_ids[0])
-            gm.set_player(1, self.player_ids[1])
-            gm.irack0 = self.initial_racks[0]
-            gm.irack1 = self.initial_racks[1]
-            gm.rack0 = self.state.rack(0)
-            gm.rack1 = self.state.rack(1)
-            gm.over = self.is_over()
-            sc = self.final_scores() # Includes adjustments if game is over
-            gm.score0 = sc[0]
-            gm.score1 = sc[1]
-            gm.to_move = len(self.moves) % 2
-            gm.robot_level = self.robot_level
-            gm.prefs = self._preferences
-            movelist = []
-            for m in self.moves:
-                mm = MoveModel()
-                coord, tiles, score = m.move.summary(self.state.board())
-                mm.coord = coord
-                mm.tiles = tiles
-                mm.score = score
-                mm.rack = m.rack
-                mm.timestamp = m.ts
-                movelist.append(mm)
-            gm.moves = movelist
-            # Update the database entity
-            gm.put()
-            # Update the memcache as well
-            memcache.set(self.uuid, self, namespace='game')
+
+        logging.info(u"game._store_locked()")
+        gm = GameModel(id = self.uuid)
+        gm.timestamp = self.timestamp
+        gm.ts_last_move = self.ts_last_move
+        gm.set_player(0, self.player_ids[0])
+        gm.set_player(1, self.player_ids[1])
+        gm.irack0 = self.initial_racks[0]
+        gm.irack1 = self.initial_racks[1]
+        gm.rack0 = self.state.rack(0)
+        gm.rack1 = self.state.rack(1)
+        gm.over = self.is_over()
+        sc = self.final_scores() # Includes adjustments if game is over
+        gm.score0 = sc[0]
+        gm.score1 = sc[1]
+        gm.to_move = len(self.moves) % 2
+        gm.robot_level = self.robot_level
+        gm.prefs = self._preferences
+        movelist = []
+        for m in self.moves:
+            mm = MoveModel()
+            coord, tiles, score = m.move.summary(self.state.board())
+            mm.coord = coord
+            mm.tiles = tiles
+            mm.score = score
+            mm.rack = m.rack
+            mm.timestamp = m.ts
+            movelist.append(mm)
+        gm.moves = movelist
+        # Update the database entity
+        gm.put()
 
     def id(self):
         """ Returns the unique id of this game """
@@ -546,6 +543,7 @@ class Game:
 
     def overtime(self):
         """ Return overtime for both players, in seconds """
+        logging.info(u"game.overtime()")
         overtime = [0, 0]
         duration = self.get_duration() * 60.0 # In seconds
         if duration > 0.0:
@@ -557,6 +555,7 @@ class Game:
 
     def overtime_adjustment(self):
         """ Return score adjustments due to overtime, as a tuple with two deltas """
+        logging.info(u"game.overtime_adjustment()")
         overtime = self.overtime()
         adjustment = [0, 0]
         for player in range(2):
@@ -574,17 +573,27 @@ class Game:
 
     def is_over(self):
         """ Return True if the game is over """
+        logging.info(u"game.is_over()")
+        if self._game_over:
+            # Use the cached result if available and True
+            return True
         if self.state.is_game_over():
+            self._game_over = True
             return True
         if self.get_duration() == 0:
             # Not a timed game: it's not over
             return False
         # Timed game: might now be lost on overtime
         overtime = self.overtime()
-        return any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2))
+        if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)):
+            # The game has been lost on overtime
+            self._game_over = True
+            return True
+        return False
 
     def finalize_score(self):
         """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
+        logging.info(u"game.finalize_score()")
         assert self.is_over()
         # Final adjustments to score, including rack leave and overtime, if any
         overtime = self.overtime()

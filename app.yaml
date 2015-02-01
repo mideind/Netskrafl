@@ -17,24 +17,31 @@ handlers:
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
+  expiration: 1d
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico
+  expiration: 1d
 - url: /browserconfig.xml
   static_files: static/browserconfig.xml
   upload: static/browserconfig.xml
+  expiration: 1d
 - url: /apple-touch-icon.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
+  expiration: 1d
 - url: /touch-icon-ipad.png
   static_files: static/touch-icon-ipad.png
   upload: static/touch-icon-ipad.png
+  expiration: 1d
 - url: /touch-icon-ipad-retina.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
+  expiration: 1d
 - url: /touch-icon-iphone-retina.png
   static_files: static/touch-icon-iphone-retina.png
   upload: static/touch-icon-iphone-retina.png
+  expiration: 1d
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$  
@@ -47,12 +54,15 @@ handlers:
 - url: /static/jquery.ui.touch-punch.min.js
   static_files: static/jquery.ui.touch-punch.min.js
   upload: static/jquery.ui.touch-punch.min.js
+  expiration: 1d
 - url: /static/glyphicons-halflings-regular.ttf
   static_files: static/glyphicons-halflings-regular.ttf
   upload: static/glyphicons-halflings-regular.ttf
+  expiration: 1d
 - url: /static/glyphicons-halflings-regular.woff
   static_files: static/glyphicons-halflings-regular.woff
   upload: static/glyphicons-halflings-regular.woff
+  expiration: 1d
 - url: .*
   script: netskrafl.app
 
@@ -61,6 +71,8 @@ skip_files:
 - ^(.*/)?.*\.psd$
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
+- ^(.*/)?.*\.md$
+- ^(.*/)?.*\.bak$
 - ^(.*/)?.*\.less$
 - ^(.*/)?#.*#$
 - ^(.*/)?.*~$
@@ -68,4 +80,5 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$
 - ^node_modules/.*$
+- ^[gG]runtfile.js$
 - ^(.*/)?\..*$

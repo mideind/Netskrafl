@@ -26,6 +26,7 @@ profile.bin
 *.sublime-project
 *.sublime-workspace
 static/NetskraflFacebookCover.jpg
+*.bak
 
 # Distribution / packaging
 .Python

@@ -20,26 +20,7 @@
 
 from random import randint
 from languages import Alphabet
-from skraflpermuter import WordDatabase
-
-
-class Manager:
-
-    # A singleton instance of the WordDatabase class, used by
-    # all Manager instances throughout a server session
-    _word_db = None
-
-    def __init__(self):
-        if Manager._word_db is None:
-            # The word database will be lazily loaded from file upon first use
-            Manager._word_db = WordDatabase()
-
-    @staticmethod
-    def word_db():
-        if Manager._word_db is None:
-            # The word database will be lazily loaded from file upon first use
-            Manager._word_db = WordDatabase()
-        return Manager._word_db
+from dawgdictionary import Wordbase
 
 
 class Board:
@@ -895,7 +876,7 @@ class Move:
                     self._tiles += ltr
 
         # Check whether the word is in the dictionary
-        if self._word not in Manager.word_db():
+        if self._word not in Wordbase.dawg():
             # print(u"Word '{0}' not found in dictionary".format(self._word))
             return (Error.WORD_NOT_IN_DICTIONARY, self._word)
         # Check that the play is adjacent to some previously placed tile
@@ -919,7 +900,7 @@ class Move:
                     cross = board.letters_above(c.row, c.col) + c.letter + board.letters_below(c.row, c.col)
                 else:
                     cross = board.letters_left(c.row, c.col) + c.letter + board.letters_right(c.row, c.col)
-                if len(cross) > 1 and cross not in Manager.word_db():
+                if len(cross) > 1 and cross not in Wordbase.dawg():
                     return (Error.CROSS_WORD_NOT_IN_DICTIONARY, cross)
         # All checks pass: the play is legal
         return Error.LEGAL

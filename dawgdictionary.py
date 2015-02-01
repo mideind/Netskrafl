@@ -54,6 +54,8 @@
 import os
 import codecs
 import threading
+import logging
+import time
 
 from languages import Alphabet
 
@@ -119,6 +121,9 @@ class DawgDictionary:
         # Reset the graph contents
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
+            if self._nodes is not None:
+                # Already loaded
+                return
             self._nodes = dict()
             self._index = 1
             with codecs.open(fname, mode='r', encoding='utf-8') as fin:
@@ -192,6 +197,37 @@ class DawgDictionary:
             return
         root = self._nodes[0] # Start at the root
         Navigation(nav).go(root)
+
+
+class Wordbase:
+
+    """ Container for a singleton instance of the word database """
+
+    _dawg = None
+    _lock = threading.Lock()
+
+    @staticmethod
+    def _load():
+        with Wordbase._lock:
+            if Wordbase._dawg is not None:
+                return
+            fname = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
+            logging.info(u"Instance {0} loading DAWG from file {1}"
+                .format(os.environ.get("INSTANCE_ID", ""), fname))
+            t0 = time.time()
+            dawg = DawgDictionary()
+            dawg.load(fname)
+            t1 = time.time()
+            logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
+            # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
+            Wordbase._dawg = dawg
+
+    @staticmethod
+    def dawg():
+        if Wordbase._dawg is None:
+            Wordbase._load()
+        assert Wordbase._dawg is not None
+        return Wordbase._dawg
 
 
 class Navigation:
