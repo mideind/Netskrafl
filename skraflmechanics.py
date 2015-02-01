@@ -484,6 +484,10 @@ class State:
         """ Cause the game to end by resigning from it """
         self._game_resigned = True
 
+    def is_resigned(self):
+        """ Returns True if the game has been ended by resignation """
+        return self._game_resigned
+
     def rack(self, index):
         """ Return the contents of the rack (indexed by 0 or 1) """
         return self._racks[index].contents()

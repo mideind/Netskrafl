@@ -278,8 +278,6 @@ class Game:
         self.last_move = None
         # The timestamp of the last move made in the game
         self.ts_last_move = None
-        # Was the game finished by resigning?
-        self.resigned = False
         # History of moves in this game so far, as a list of MoveTuple namedtuples
         self.moves = []
         # Initial rack contents
@@ -567,10 +565,6 @@ class Game:
                 adjustment[player] = max(-100, -10 * ((int(overtime[player] + 0.9) + 59) // 60))
         return tuple(adjustment)
 
-    def resign(self):
-        """ The local player is resigning the game """
-        self.resigned = True
-
     def is_over(self):
         """ Return True if the game is over """
         logging.info(u"game.is_over()")
@@ -693,22 +687,16 @@ class Game:
         return self.player_ids[player_index] is None
 
     def player_index(self, user_id):
-        """ Return the player index (0 or 1) of the given user, or throw ValueError if not a player """
+        """ Return the player index (0 or 1) of the given user, or None if not a player """
         if self.player_ids[0] == user_id:
             return 0
         if self.player_ids[1] == user_id:
             return 1
-        raise ValueError(u"User_id {0} is not a player of this game".format(user_id))
+        return None
 
     def has_player(self, user_id):
         """ Return True if the indicated user is a player of this game """
-        try:
-            pix = self.player_index(user_id)
-        except ValueError:
-            # Nope
-            return False
-        # player_index was obtained: the user is a player
-        return True
+        return self.player_index(user_id) is not None
 
     def start_time(self):
         """ Returns the timestamp of the game in a readable format """
@@ -724,7 +712,7 @@ class Game:
         # Lastplayer is the player who finished the game
         lastplayer = self.moves[-1].player
 
-        if not self.resigned:
+        if not self.state.is_resigned():
 
             # If the game did not end by resignation, check for a timeout
             overtime = self.overtime()
@@ -788,17 +776,17 @@ class Game:
 
         if self.is_over():
             # The game is now over - one of the players finished it
-            reply["result"] = Error.GAME_OVER # Not really an error
             self._append_final_adjustments(newmoves)
-            reply["bag"] = "" # Bag is now empty, by definition
+            reply["result"] = Error.GAME_OVER # Not really an error
             reply["xchg"] = False # Exchange move not allowed
+            reply["bag"] = self.state.bag().contents()
         else:
             # Game is still in progress
             reply["result"] = 0 # Indicate no error
-            reply["rack"] = self.state.rack_details(player_index)
-            reply["bag"] = self.display_bag(player_index)
             reply["xchg"] = self.state.is_exchange_allowed()
+            reply["bag"] = self.display_bag(player_index)
 
+        reply["rack"] = self.state.rack_details(player_index)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
         if self.get_duration():

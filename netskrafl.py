@@ -298,7 +298,7 @@ def _recentlist(cuid, max_len):
                 minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
 
             result.append({
-                "url": url_for('review', game = g["uuid"]),
+                "url": url_for('board', game = g["uuid"]), # Was 'review'
                 "opp": nick,
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
@@ -640,7 +640,7 @@ def review():
     if game.allows_best_moves():
         # Show best moves if available and it is proper to do so (i.e. the game is finished)
         apl = AutoPlayer(state)
-        best_moves = apl.generate_best_moves(20)
+        best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
 
     player_index = state.player_to_move()
     user = User.current()
@@ -860,15 +860,19 @@ def board():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game is not None and (not game.has_player(user.id())):
-        # Go back to main screen if game is no longer active
-        game = None
+    is_over = False
+
+    if game is not None:
+        is_over = game.is_over()
+        if not (is_over or game.has_player(user.id())):
+            # Non-players are only allowed to view if the game is over
+            game = None
 
     if game is None:
         # No active game to display: go back to main screen
         return redirect(url_for("main"))
 
-    player_index = game.player_index(user.id())
+    player_index = game.player_index(user.id()) # May be None
 
     # Create a Google App Engine Channel API token
     # to enable refreshing of the board when the
@@ -879,6 +883,7 @@ def board():
     if game.is_over():
         channel_token = None
     else:
+        assert player_index is not None
         channel_token = ChannelModel.create_new(u"game",
             game.id() + u":" + str(player_index), user.id())
 
@@ -924,8 +929,9 @@ def newchannel():
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-        if game is not None and (game.is_over() or not game.has_player(user.id())):
-            game = None
+        if game is not None:
+            if game.is_over() or not game.has_player(user.id()):
+                game = None
 
         if game is None:
             # No associated game: return error

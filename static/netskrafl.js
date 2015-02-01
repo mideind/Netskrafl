@@ -1310,18 +1310,18 @@ function updateState(json) {
       board, the rack, the scores and the move history */
    if (json.result === 0 || json.result == GAME_OVER) {
       /* Successful move */
-      /* Reinitialize the rack */
+      /* Reinitialize the rack - we show it even if the game is over */
       var i = 0;
-      if (json.result === 0)
-         for (i = 0; i < json.rack.length; i++)
-            placeTile("R" + (i + 1).toString(), /* Coordinate */
-               json.rack[i][0], /* Tile */
-               json.rack[i][0], /* Letter */
-               json.rack[i][1]); /* Score */
+      for (; i < json.rack.length; i++)
+         placeTile("R" + (i + 1).toString(), /* Coordinate */
+            json.rack[i][0], /* Tile */
+            json.rack[i][0], /* Letter */
+            json.rack[i][1]); /* Score */
       /* Clear the rest of the rack */
       for (; i < RACK_SIZE; i++)
          placeTile("R" + (i + 1).toString(), "", "", 0);
       if (json.result === 0)
+         /* The rack is only draggable if the game is still ongoing */
          initRackDraggable(true);
       /* Glue the laid-down tiles to the board */
       $("div.tile").each(function() {
@@ -1509,6 +1509,7 @@ function updateStats(json) {
       /* !!! TBD: Add error reporting here */
       return;
    setStat("gamestart", json);
+   setStat("gameend", json);
    /* Statistics for player 0 (left player) */
    setStat("moves0", json);
    setStat("bingoes0", json);
@@ -1519,6 +1520,7 @@ function updateStats(json) {
    setStat("multiple0", json, 2);
    setStat("cleantotal0", json);
    setStat("remaining0", json);
+   setStat("overtime0", json);
    setStat("bingopoints0", json, 0, json.bingoes0 * 50);
    setStat("avgmove0", json, 2);
    setStat("total0", json, 0, json.scores[0]);
@@ -1533,6 +1535,7 @@ function updateStats(json) {
    setStat("multiple1", json, 2);
    setStat("cleantotal1", json);
    setStat("remaining1", json);
+   setStat("overtime1", json);
    setStat("bingopoints1", json, 0, json.bingoes1 * 50);
    setStat("avgmove1", json, 2);
    setStat("total1", json, 0, json.scores[1]);

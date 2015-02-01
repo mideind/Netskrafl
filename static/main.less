@@ -560,8 +560,9 @@ div.rightmove {
 }
 
 div.reviewhdr {
+   height: 18px;
    text-align: left;
-   padding: 9px;
+   padding: 11px;
    background-color: @pass-btn;
    color: white;
    font-weight: 400;
@@ -623,9 +624,9 @@ div.gamestats {
    z-index: 20;
    position: absolute;
    width: 724px;
-   height: 520px;
+   height: 580px;
    left: 150px;
-   top: 114px;
+   top: 80px;
    cursor: pointer;
    padding: 12px;
    border-radius: 5px;
@@ -1044,9 +1045,15 @@ div.closebtn {
    background-color: @close-btn;
 }
 
-#close
+#review-close
 {
-   left: 312px;
+   right: 12px;
+}
+
+span#total0, span#total1 {
+   font-size: 28px;
+   margin-left: 8px;
+   margin-right: 8px;
 }
 
 div.tabbed-page {
@@ -1548,11 +1555,14 @@ div.chall-time.selected {
 
 div.chall-time:hover {
    background-color: @double-letter;
-   /* outline: yellow solid 3px; */
 }
 
 div.chall-time.selected:hover {
    background-color: @racktile;
+}
+
+div.chall-time span.glyphicon-time {
+   margin-right: 8px;
 }
 
 span#chall-online {

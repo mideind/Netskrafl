@@ -32,9 +32,11 @@
 {% endif %}
 
       /* Place the rack tiles */
+{% if player_index != None %}
 {% for tile, score in game.state.rack_details(player_index) %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
+{%- endif -%}
    }
 
    function initMoveList() {
@@ -52,7 +54,11 @@
 
    function initBag(bag) {
       /* Initialize the bag */
+{% if game.is_over() %}
+      updateBag("{{ game.state.bag().contents() }}");
+{% else %}
       updateBag("{{ game.display_bag(player_index) }}");
+{% endif %}
 {% if not game.state.is_exchange_allowed() %}
       exchangeAllowed = false;
 {%- endif -%}      
@@ -60,7 +66,7 @@
 
    function localPlayer() {
       /* Identify whether the current player is 0 or 1 */
-      return {{ player_index }};
+      return {{ 0 if player_index == None else player_index }};
    }
 
    function gameId() {
@@ -108,24 +114,24 @@
 <div class="rightcol">
    <div class="heading">
       <h3 class="playerleft"><span id="left-to-move" class="glyphicon-flag"></span>
-{%- if player_index == 0 -%}
+{%- if player_index != None and player_index == 0 -%}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- elif game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(0) }}
-{%- if player_index == 0 -%}
+{%- if player_index != None and player_index == 0 -%}
 </a>
 {%- endif -%}
       </h3>
       <h3 class="playerright">
-{% if player_index == 1 %}
+{% if player_index != None and player_index == 1 %}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- elif game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(1) }}
-{%- if player_index == 1 -%}
+{%- if player_index != None and player_index == 1 -%}
 </a>
 {%- endif -%}
       <span id="right-to-move" class="glyphicon-flag-after"></span></h3>

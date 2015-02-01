@@ -83,8 +83,7 @@
       <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ state.scores()[1] }}</h3>
    </div>
-   <div class="movelist">
-   </div>
+   <div class="movelist"></div>
 </div>
 
 <!-- The rack -->
@@ -129,7 +128,7 @@
 {{ game.player_nickname(1) }}</h3>
 </div>
 <div id="gamestarted">
-<p>Viðureign hófst <span id="gamestart"></span></p>
+<p>Viðureignin hófst <span id="gamestart"></span><br>og henni lauk <span id="gameend"></span></p>
 </div>
 <div class="statscol" style="clear:left">
 <p>Fjöldi leikja: <span id="moves0"></span></p>
@@ -141,6 +140,7 @@
 <p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
 <p>Meðalstig hvers leiks: <span id="avgmove0"></span></p>
 <p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
+<p>Umframtími: <span id="overtime0"></span></p>
 <p>Stig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
 </div>
 <div class="statscol">
@@ -153,12 +153,13 @@
 <p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
 <p>Meðalstig hvers leiks: <span id="avgmove1"></span></p>
 <p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
+<p>Umframtími: <span id="overtime1"></span></p>
 <p>Stig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
-
-<div id="close" class="closebtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-play"></span> Skoða</div>
-
 </div>
+
+<div id="review-close" class="closebtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-play"></span> Rekja</div>
+
 </div>
 
 <!-- Previous move button -->
