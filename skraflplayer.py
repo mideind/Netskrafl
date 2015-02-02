@@ -64,7 +64,7 @@
 
 """
 
-import logging
+# import logging
 from random import randint
 
 from dawgdictionary import DawgDictionary, Navigation, Wordbase
@@ -250,7 +250,7 @@ class Axis:
             if ns is not None:
                 # We found a matching prefix in the graph
                 matched, prefix, nextnode = ns
-                assert matched == leftpart
+                # assert matched == leftpart
                 nav = ExtendRightNavigator(self, index, self._rack)
                 Navigation(nav).resume(prefix, nextnode, leftpart)
             return
@@ -303,7 +303,7 @@ class LeftPermutationNavigator:
         self._rack = rack
         self._stack = []
         self._maxleft = len(rack) - 1 # One tile on the anchor itself
-        assert self._maxleft > 0
+        # assert self._maxleft > 0
         self._leftparts = [None] * self._maxleft
         self._index = 0
 
@@ -394,7 +394,7 @@ class LeftFindNavigator:
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
         if self._prefix[self._pix] != newchar:
-            assert False
+            # assert False
             return False # Should not happen - all prefixes should exist in the graph
         # So far, so good: move on
         self._pix += 1
@@ -497,7 +497,7 @@ class ExtendRightNavigator:
                 self._rack = self._rack.replace(newchar, u'', 1)
             else:
                 # Must be wildcard: remove it
-                assert u'?' in self._rack
+                # assert u'?' in self._rack
                 self._rack = self._rack.replace(u'?', u'', 1)
         return True
 
@@ -528,8 +528,8 @@ class ExtendRightNavigator:
                         rack = rack.replace(u'?', u'', 1)
                         tile = u'?'
                         tiles += tile + c
-                    assert row in range(Board.SIZE)
-                    assert col in range(Board.SIZE)
+                    # assert row in range(Board.SIZE)
+                    # assert col in range(Board.SIZE)
                     # Add this cover to the Move object
                     move.add_validated_cover(Cover(row, col, tile, c))
                 else:
@@ -540,7 +540,7 @@ class ExtendRightNavigator:
             # Note the tiles played in the move
             move.set_tiles(tiles)
             # Check that we've picked off the correct number of tiles
-            assert len(rack) == len(self._rack)
+            # assert len(rack) == len(self._rack)
             autoplayer.add_candidate(move)
 
     def pop_edge(self):
@@ -715,7 +715,7 @@ class AutoPlayer:
     def _find_best_move(self, depth):
         """ Analyze the list of candidate moves and pick the highest-scoring one """
 
-        assert depth >= 0
+        # assert depth >= 0
 
         if not self._candidates:
             # No moves: must exchange or pass instead
@@ -765,7 +765,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
     def _find_best_move(self, depth):
         """ Analyze the list of candidate moves and pick the best one """
 
-        assert depth >= 0
+        # assert depth >= 0
 
         if not self._candidates:
             # No moves: must exchange or pass instead

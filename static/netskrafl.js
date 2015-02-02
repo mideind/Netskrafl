@@ -358,7 +358,11 @@ function placeMove(player, co, tiles) {
 
 function colorOf(player) {
    /* Return the highlight color of tiles for the given player index */
-   return player == localPlayer() ? "0" : "1";
+   var lcp = localPlayer();
+   if (lcp == -1)
+      // Looking at a game between third parties: player 0 is the "local" player by convention
+      return player === 0 ? "0" : "1";
+   return player == lcp ? "0" : "1";
 }
 
 function localTurn() {
@@ -543,6 +547,15 @@ function appendMove(player, co, tiles, score) {
    if (wrdclass == "gameover") {
       str = '<div class="gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
+      // Show a congratulatory message if the local player is the winner
+      var winner = -2; // -1 is reserved
+      if (leftTotal > rightTotal)
+         winner = 0;
+      else
+      if (leftTotal < rightTotal)
+         winner = 1;
+      if (localPlayer() == winner)
+         $("#congrats").css("visibility", "visible");
    }
    else
    if (player === 0) {
@@ -568,7 +581,8 @@ function appendMove(player, co, tiles, score) {
    if (wrdclass != "gameover") {
       var m = movelist.children().last();
       var playerColor = "0";
-      if (player === localPlayer())
+      var lcp = localPlayer();
+      if (player === lcp || (lcp == -1 && player === 0))
          m.addClass("humangrad" + (player === 0 ? "_left" : "_right")); /* Local player */
       else {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
@@ -1640,9 +1654,9 @@ function channelOnOpen() {
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   if (json.stale)
+   if (json.stale !== undefined && json.stale)
       // We missed updates on our channel: reload the board
-      window.location.reload(false);
+      window.location.reload(true);
    else {
       // json now contains an entire client state update, as a after submitMove()
       resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
@@ -1690,13 +1704,14 @@ function initSkrafl(jQuery) {
       initDropTargets();
    }
    initBag();
-   if (localPlayer() === 0) {
-      $("h3.playerleft").addClass("humancolor");
-      $("h3.playerright").addClass("autoplayercolor");
-   }
-   else {
+   if (localPlayer() === 1) {
       $("h3.playerright").addClass("humancolor");
       $("h3.playerleft").addClass("autoplayercolor");
+   }
+   else {
+      // This is the default color scheme if looking at games by third parties
+      $("h3.playerleft").addClass("humancolor");
+      $("h3.playerright").addClass("autoplayercolor");
    }
    updateButtonState();
 

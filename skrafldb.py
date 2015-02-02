@@ -526,6 +526,9 @@ class ChannelModel(ndb.Model):
                 # Mark as not connected
                 cm.connected = False
                 cm.put()
+            # If disconnecting a wait channel, notify the opponent
+            if cm.kind == u"wait":
+                ChannelModel.send_message(u"user", cm.entity, u'{ "kind": "challenge" }')
 
     @classmethod
     def connect(cls, chid):
@@ -637,7 +640,7 @@ class ChannelModel(ndb.Model):
                 for cm in q.fetch(CHUNK_SIZE, offset = offset):
                     if cm.connected:
                         # Connected and listening: send the message
-                        logging.info(u"Send_message kind {0} entity {1} chid {2} msg {3}".format(kind, entity, cm.chid, msg))
+                        # logging.info(u"Send_message kind {0} entity {1} chid {2} msg {3}".format(kind, entity, cm.chid, msg))
                         channel.send_message(cm.chid, msg)
                     else:
                         # Channel appears to be disconnected: mark it as stale

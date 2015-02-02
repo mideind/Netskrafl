@@ -330,11 +330,9 @@ class Game:
     def _load_locked(cls, uuid):
         """ Load an existing game from cache or persistent storage under lock """
 
-        logging.info(u"game._load_locked()")
         gm = GameModel.fetch(uuid)
         if gm is None:
             # A game with this uuid is not found in the database: give up
-            logging.info(u"game._load_locked(): uuid not found in database")
             return None
 
         # Initialize a new Game instance with a pre-existing uuid
@@ -422,17 +420,13 @@ class Game:
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
 
-        logging.info(u"game._load_locked(): recalc_bag done")
-
         # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
-            logging.info(u"game._load_locked(): calling finalize_score")
             game.finalize_score()
             if not gm.over:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
-                logging.info(u"game._load_locked(): calling store")
                 game._store_locked()
 
         return game
@@ -442,7 +436,6 @@ class Game:
 
         assert self.uuid is not None
 
-        logging.info(u"game._store_locked()")
         gm = GameModel(id = self.uuid)
         gm.timestamp = self.timestamp
         gm.ts_last_move = self.ts_last_move
@@ -526,9 +519,10 @@ class Game:
         elapsed = [0.0, 0.0]
         last_ts = self.timestamp
         for m in self.moves:
-            delta = m.ts - last_ts
-            last_ts = m.ts
-            elapsed[m.player] += delta.total_seconds()
+            if m.ts is not None:
+                delta = m.ts - last_ts
+                last_ts = m.ts
+                elapsed[m.player] += delta.total_seconds()
         if not self.state.is_game_over():
             # Game still going on: Add the time from the last move until now
             delta = datetime.utcnow() - last_ts
@@ -541,7 +535,6 @@ class Game:
 
     def overtime(self):
         """ Return overtime for both players, in seconds """
-        logging.info(u"game.overtime()")
         overtime = [0, 0]
         duration = self.get_duration() * 60.0 # In seconds
         if duration > 0.0:
@@ -553,7 +546,6 @@ class Game:
 
     def overtime_adjustment(self):
         """ Return score adjustments due to overtime, as a tuple with two deltas """
-        logging.info(u"game.overtime_adjustment()")
         overtime = self.overtime()
         adjustment = [0, 0]
         for player in range(2):
@@ -567,7 +559,6 @@ class Game:
 
     def is_over(self):
         """ Return True if the game is over """
-        logging.info(u"game.is_over()")
         if self._game_over:
             # Use the cached result if available and True
             return True
@@ -585,9 +576,19 @@ class Game:
             return True
         return False
 
+    def winning_player(self):
+        """ Returns index of winning player, or -1 if game is tied or not over """
+        if not self.is_over():
+            return -1
+        sc = self.final_scores()
+        if sc[0] > sc[1]:
+            return 0
+        if sc[1] > sc[0]:
+            return 1
+        return -1
+
     def finalize_score(self):
         """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
-        logging.info(u"game.finalize_score()")
         assert self.is_over()
         # Final adjustments to score, including rack leave and overtime, if any
         overtime = self.overtime()
@@ -721,7 +722,6 @@ class Game:
 
             if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)): # 10 minutes overtime
                 # Game ended with a loss on overtime
-                logging.info(u"Loss on overtime")
                 ix = 0 if overtime[0] >= Game.MAX_OVERTIME else 1
                 adjustment[1 - ix] = 0
                 # Adjust score of losing player down by 100 points

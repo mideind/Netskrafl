@@ -487,38 +487,31 @@ h3.scoreright {
    padding-right: 4px;
 }
 
-h3.clockleft {
+.clock {
    display: none;
    position: absolute;
    top: 82px;
-   left: 0;
    width: 147px;
    font-size: 28px;
    line-height: 28px;
    font-weight: 700;
-   text-align: left;
-   color: @triple-letter;
+   color: @clock-digits;
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
    padding-left: 4px;
 }
 
+h3.clockleft {
+   .clock;
+   left: 0;
+   text-align: left;
+}
+
 h3.clockright {
-   display: none;
-   position: absolute;
-   top: 82px;
+   .clock;
    right: 0;
-   width: 147px;
-   font-size: 28px;
-   line-height: 28px;
-   font-weight: 700;
    text-align: right;
-   color: @triple-letter;
-   overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 4px;
-   padding-right: 4px;
 }
 
 h3.clockleft.running-out {
@@ -542,6 +535,10 @@ div.movelist {
    font-weight: 400;
    color: black;
    cursor: default;
+}
+
+div.movelist.noscroll {
+   overflow-y: hidden;
 }
 
 div.movelist.with-clock {
@@ -770,6 +767,24 @@ div.opp-turn {
    margin: 0;
    padding-top: 4px;
    visibility: hidden;
+}
+
+div#congrats {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 80px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   font-size: 16px;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+div#congrats span.glyphicon-bookmark {
+   color: @freshtile;
 }
 
 div.resign {

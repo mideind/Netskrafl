@@ -123,8 +123,8 @@ class Board:
 
     def set_letter(self, row, col, letter):
         """ Set the letter at the specified co-ordinate """
-        assert letter is not None
-        assert len(letter) == 1
+        # assert letter is not None
+        # assert len(letter) == 1
         prev = self.letter_at(row, col)
         if prev == letter:
             # Unchanged square: we're done
@@ -136,8 +136,8 @@ class Board:
 
     def set_tile(self, row, col, tile):
         """ Set the tile at the specified co-ordinate """
-        assert tile is not None
-        assert len(tile) == 1
+        # assert tile is not None
+        # assert len(tile) == 1
         prev = self.tile_at(row, col)
         if prev == tile:
             # Unchanged square: we're done
@@ -510,7 +510,7 @@ class State:
 
     def recalc_bag(self):
         """ Recalculate the bag by subtracting from it the tiles on the board and in the racks """
-        assert self._bag.is_full()
+        # assert self._bag.is_full()
         self._bag.subtract_board(self._board)
         self._bag.subtract_rack(self.rack(0))
         self._bag.subtract_rack(self.rack(1))
@@ -741,8 +741,8 @@ class Move:
             row += xd
             col += yd
         # Sanity checks: we've enumerated correctly through the laid-down word
-        assert row - self._row == self._numletters * xd
-        assert col - self._col == self._numletters * yd
+        # assert row - self._row == self._numletters * xd
+        # assert col - self._col == self._numletters * yd
 
     def check_legality(self, state):
         """ Check whether this move is legal on the board """
@@ -816,7 +816,7 @@ class Move:
                             # Found gap: illegal play
                             return Error.HAS_GAP
                 else:
-                    assert vert
+                    # assert vert
                     # Vertical: check squares within column
                     for ix in range(row + 1, c.row):
                         if not board.is_covered(ix, c.col):

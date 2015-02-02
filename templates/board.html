@@ -66,7 +66,7 @@
 
    function localPlayer() {
       /* Identify whether the current player is 0 or 1 */
-      return {{ 0 if player_index == None else player_index }};
+      return {{ -1 if player_index == None else player_index }};
    }
 
    function gameId() {
@@ -219,6 +219,8 @@
 {% if not game.is_over() %}
 <div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
 {% endif %}
+
+<div id="congrats"><span class="glyphicon glyphicon-bookmark"></span> <strong>Til hamingju með sigurinn!</strong></div>
 
 <!-- Error message, normally hidden -->
 <div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>

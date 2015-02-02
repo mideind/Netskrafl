@@ -8,7 +8,11 @@
     a crossword game similar to SCRABBLE(tm).
 
     The actual game logic is found in skraflplayer.py and
-    skraflmechanics.py. The web client code is found in netskrafl.js
+    skraflmechanics.py.
+
+    The User and Game classes are found in skraflgame.py.
+
+    The web client code is found in netskrafl.js.
 
     The server is compatible with Python 2.7 and 3.x, CPython and PyPy.
     (To get it to run under PyPy 2.7.6 the author had to patch
@@ -142,14 +146,14 @@ def _process_move(movecount, movelist, uuid):
     # Make sure the new game state is persistently recorded
     game.store()
 
-    # Notify the opponent, if he has one or more active channels
+    # Notify the opponent, if he is not a robot and has one or more active channels
     if opponent is not None:
-        # Human opponent
-        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
         # Send a game update to the opponent channel, if any, including
-        # the full client state
+        # the full client state. board.html listens to this.
         ChannelModel.send_message(u"game", game.id() + u":" + str(1 - player_index),
             json.dumps(game.client_state(1 - player_index, m)))
+        # Notify the opponent that it's his turn to move. main.html listens to this.
+        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
@@ -564,7 +568,6 @@ def challenge():
 
     if destuser is not None:
         if action == u"issue":
-            logging.info(u"Issuing challenge with duration {0}".format(duration))
             user.issue_challenge(destuser, { "duration" : duration })
         elif action == u"retract":
             user.retract_challenge(destuser)
@@ -760,7 +763,6 @@ def wait():
     found, prefs = user.find_challenge(opp)
     if not found:
         # No challenge existed between the users: redirect to main page
-        logging.info(u"No challenge found, redirecting to main")
         return redirect(url_for("main"))
 
     opp_user = User.load(opp)
@@ -800,7 +802,6 @@ def newgame():
     rev = request.args.get("rev", None) is not None
 
     if opp is None:
-        logging.info(u"Newgame: opp is None, redirecting to main")
         return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
 
     if opp[0:6] == u"robot-":
@@ -814,11 +815,8 @@ def newgame():
         # Timed game: load the opponent
         opp_user = User.load(opp)
         if opp_user is None:
-            logging.info(u"Newgame: opp_user is None")
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
-        logging.info(u"Newgame: Reverse acceptance of challenge")
-        # !!! TBD: Check that the opponent is still ready in a wait state
         found, prefs = opp_user.accept_challenge(user.id())
     else:
         # The current user accepts the challenge
@@ -826,7 +824,6 @@ def newgame():
 
     if not found:
         # No challenge existed between the users: redirect to main page
-        logging.info(u"Newgame: accept_challenge returned False")
         return redirect(url_for("main"))
 
     # Create a fresh game object
@@ -837,7 +834,6 @@ def newgame():
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
-        logging.info(u"Sending ready message on wait channel, opponent id {0}".format(user.id()))
         ChannelModel.send_message(u"wait", user.id(), u'{ "kind": "ready", "game": "' + game.id() + u'" }')
 
     # Go to the game page
@@ -902,8 +898,6 @@ def newchannel():
         # No user: no channel token
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    logging.info(u"Newchannel called")
-
     channel_token = None
     uuid = request.form.get("game", None)
 
@@ -913,7 +907,7 @@ def newchannel():
         if uuid == None:
             uuid = request.form.get("wait", None)
             if uuid is not None:
-                logging.info(u"Renewing channel token for wait channel with opponent id {0}".format(uuid))
+                # logging.info(u"Renewing channel token for wait channel with opponent id {0}".format(uuid))
                 channel_token = ChannelModel.create_new(u"wait", uuid,
                     user.id(), timedelta(minutes = 1))
 
@@ -922,6 +916,7 @@ def newchannel():
             # for user notification
             channel_token = ChannelModel.create_new(u"user", uuid, uuid)
         if channel_token is None:
+            # logging.info(u"newchannel() returning Error.WRONG_USER")
             return jsonify(result = Error.WRONG_USER)
 
     else:
@@ -935,6 +930,7 @@ def newchannel():
 
         if game is None:
             # No associated game: return error
+            # logging.info(u"newchannel() returning Error.WRONG_USER")
             return jsonify(result = Error.WRONG_USER)
 
         player_index = game.player_index(user.id())
