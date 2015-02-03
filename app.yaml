@@ -1,5 +1,5 @@
 application: netskrafl
-version: hagia
+version: sophia
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -41,6 +41,14 @@ handlers:
 - url: /touch-icon-iphone-retina.png
   static_files: static/touch-icon-iphone-retina.png
   upload: static/touch-icon-iphone-retina.png
+  expiration: 1d
+- url: /static/ajax-loader.gif
+  static_files: static/ajax-loader.gif
+  upload: static/ajax-loader.gif
+  expiration: 1d
+- url: /static/user-loader.gif
+  static_files: static/user-loader.gif
+  upload: static/user-loader.gif
   expiration: 1d
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1

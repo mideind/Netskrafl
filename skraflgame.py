@@ -851,12 +851,20 @@ class Game:
         reply["cleantotal0"] = cleanscore[0]
         reply["cleantotal1"] = cleanscore[1]
         # Contribution of overtime at the end of the game
-        overtime = self.overtime_adjustment()
-        reply["overtime0"] = overtime[0]
-        reply["overtime1"] = overtime[1]
-        # Contribution of remaining tiles at the end of the game
-        reply["remaining0"] = sc[0] - cleanscore[0] - overtime[0]
-        reply["remaining1"] = sc[1] - cleanscore[1] - overtime[1]
+        ov = self.overtime()
+        if any(ov[ix] >= Game.MAX_OVERTIME for ix in range(2)):
+            # Game was lost on overtime
+            reply["remaining0"] = 0
+            reply["remaining1"] = 0
+            reply["overtime0"] = sc[0] - cleanscore[0]
+            reply["overtime1"] = sc[1] - cleanscore[1]
+        else:
+            oa = self.overtime_adjustment()
+            reply["overtime0"] = oa[0]
+            reply["overtime1"] = oa[1]
+            # Contribution of remaining tiles at the end of the game
+            reply["remaining0"] = sc[0] - cleanscore[0] - oa[0]
+            reply["remaining1"] = sc[1] - cleanscore[1] - oa[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
         reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
