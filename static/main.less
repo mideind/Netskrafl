@@ -499,7 +499,6 @@ h3.scoreright {
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
-   padding-left: 4px;
 }
 
 h3.clockleft {
@@ -520,6 +519,17 @@ h3.clockleft.running-out {
 
 h3.clockright.running-out {
    color: @alert;
+}
+
+div.clockface {
+   display: none;
+   position: absolute;
+   top: 84px;
+   width: 100%;
+   text-align: center;
+   font-size: 28px;
+   line-height: 28px;
+   color: @pass-btn;
 }
 
 div.movelist {
@@ -1668,9 +1678,15 @@ div.blank-rack {
    border-spacing: 8px;
 }
 
-div.loginform {
+div.userform {
    position: absolute;
    left: 180px;
+   top: 80px;
+}
+
+div.loginform {
+   position: absolute;
+   left: 120px;
    top: 80px;
 }
 

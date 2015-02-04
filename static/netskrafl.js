@@ -283,6 +283,7 @@ function showClock() {
    /* This is a timed game: show the clock stuff */
    $(".clockleft").css("display", "inline-block");
    $(".clockright").css("display", "inline-block");
+   $(".clockface").css("display", "block");
    $("div.movelist").addClass("with-clock");
 }
 
