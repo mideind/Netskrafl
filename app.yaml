@@ -7,9 +7,9 @@ threadsafe: true
 instance_class: F2
 automatic_scaling:
   min_idle_instances: 1
-  max_idle_instances: auto
-  min_pending_latency: 200
-  max_pending_latency: 1500
+  max_idle_instances: automatic
+  min_pending_latency: 200ms
+  max_pending_latency: 1500ms
 
 inbound_services:
 - warmup
