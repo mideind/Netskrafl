@@ -96,7 +96,6 @@ def _process_move(movecount, movelist, uuid):
             if mstr == u"rsgn":
                 # Resign from game, forfeiting all points
                 m = ResignMove(game.state.scores()[game.state.player_to_move()])
-                game.resign()
                 break
             sq, tile = mstr.split(u'=')
             row = u"ABCDEFGHIJKLMNO".index(sq[0])

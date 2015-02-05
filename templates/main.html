@@ -9,6 +9,9 @@
 
 {% block scripts %}
 
+<!-- Facebook SDK init -->
+<!-- include "fbinit.html" -->
+
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
 
@@ -185,6 +188,16 @@ function lateInit() {
 <div class="userid">
    <a href="{{ url_for('userprefs') }}">{{ user.nickname() }}</a>
 </div>
+
+<!-- Facebook like/share -->
+<!--
+<div
+  class="fb-like"
+  data-share="true"
+  data-width="450"
+  data-show-faces="true">
+</div>
+-->
 
 <!-- A dialog to show info about a particular user -->
 <div id="usr-info-dialog" class="modal-dialog">
