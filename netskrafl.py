@@ -35,7 +35,7 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
-from google.appengine.api import users
+from google.appengine.api import users, memcache
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -187,7 +187,15 @@ def _userlist(range_from, range_to):
 
     if range_from == u"live" and not range_to:
         # Return all connected (live) users
-        i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+
+        # Start by looking in the cache
+        i = memcache.get("live", namespace="userlist")
+        if i is None:
+            # Not found: do a query
+            i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+            # Store the result in the cache with a lifetime of 1 minute
+            memcache.set("live", i, time=60, namespace="userlist")
+
         for uid in i:
             if uid == cuid:
                 # Do not include the current user, if any, in the list

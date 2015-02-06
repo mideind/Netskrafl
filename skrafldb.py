@@ -545,7 +545,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def list_connected(cls):
         """ List all presently connected users """
-        CHUNK_SIZE = 20
+        CHUNK_SIZE = 50
         now = datetime.utcnow()
         # Obtain all connected channels that have not expired
         q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)

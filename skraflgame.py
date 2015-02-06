@@ -38,6 +38,9 @@ class User:
     # Use a lock to avoid potential race conditions between the memcache and the database
     _lock = threading.Lock()
 
+    # User object expiration in memcache
+    _CACHE_EXPIRY = 600 # 10 minutes
+
     def __init__(self, uid = None):
         """ Initialize a fresh User instance """
         self._nickname = u""
@@ -79,7 +82,7 @@ class User:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
             UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
-            memcache.set(self._user_id, self, namespace='user')
+            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user')
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -198,11 +201,9 @@ class User:
                 # Not found in the memcache: create a user object and
                 # populate it from a database entity (or initialize
                 # a fresh one if no entity exists).
-                # Note that this does not add the user to the memcache.
-                # It turns out that it is not efficient to store other
-                # users than the currently logged-in user there.
                 u = cls(uid)
                 u._fetch()
+                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user')
             return u
 
     @classmethod
@@ -218,7 +219,7 @@ class User:
             # This might be a user that is not yet in the database
             u = cls()
             u._fetch() # Creates a database entity if this is a fresh user
-            memcache.add(u.id(), u, namespace='user')
+            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user')
             return u
 
     @classmethod

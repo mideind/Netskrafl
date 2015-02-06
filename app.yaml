@@ -9,7 +9,7 @@ automatic_scaling:
   min_idle_instances: 1
   max_idle_instances: automatic
   min_pending_latency: 200ms
-  max_pending_latency: 1500ms
+  max_pending_latency: 1200ms
 
 inbound_services:
 - warmup
