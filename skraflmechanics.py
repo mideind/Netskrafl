@@ -525,7 +525,7 @@ class State:
         return self._racks[0].is_empty() or self._racks[1].is_empty() or \
             (self._num_passes >= 6) or self._game_resigned
 
-    def finalize_score(self, lost_on_overtime, overtime_adjustment):
+    def finalize_score(self, lost_on_overtime = None, overtime_adjustment = None):
         """ When game is completed, calculate the final score adjustments """
 
         if self._game_resigned:
@@ -558,7 +558,7 @@ class State:
                 adj[ix] = - Alphabet.score(self.rack(ix))
 
         # Apply overtime adjustment, if any
-        if overtime_adjustment:
+        if overtime_adjustment is not None:
             for ix in range(2):
                 adj[ix] += overtime_adjustment[ix]
 
