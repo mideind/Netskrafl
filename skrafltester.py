@@ -19,7 +19,7 @@ from __future__ import print_function
 import sys
 import getopt
 
-from skraflmechanics import Manager, State, Board, Move, ExchangeMove, Error
+from skraflmechanics import State, Board, Move, ExchangeMove, Error
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
 import time
 
@@ -145,8 +145,6 @@ def test_game(players, silent):
 
 
 def test(num_games, opponent, silent):
-
-    manager = Manager()
 
     def autoplayer_creator(state):
         return AutoPlayer(state)
