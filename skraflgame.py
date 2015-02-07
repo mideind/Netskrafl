@@ -39,7 +39,7 @@ class User:
     _lock = threading.Lock()
 
     # User object expiration in memcache
-    _CACHE_EXPIRY = 600 # 10 minutes
+    _CACHE_EXPIRY = 15 * 60 # 15 minutes
 
     def __init__(self, uid = None):
         """ Initialize a fresh User instance """

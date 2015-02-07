@@ -729,24 +729,42 @@ function channelOnClose() {
 function initMain() {
    /* Called when the page is displayed or refreshed */
 
-   $("#tabs").tabs();
+   // Put lazy loading logic in place for tabs that are not displayed initially
+   $("#tabs").tabs({
+      heightStyle: "auto",
+      activate: function(event, ui) {
+         var panelId = ui.newPanel.attr('id');
+         if (panelId == "tabs-2") {
+            if (!$("#chall-received").html() && !$("#chall-sent").html())
+               // Delay load challenge list
+               refreshChallengeList();
+         }
+         else
+         if (panelId == "tabs-4") {
+            if (!$("#recentlist").html())
+               // Delay load recent game list
+               refreshRecentList();
+         }
+         else
+         if (panelId == "tabs-3") {
+            if (!$("#userlist").html())
+               // Delay load user list
+               if (displayedUserRange !== null)
+                  refreshUserList({ data: displayedUserRange });
+               else
+                  /* Initialize user list to show robots by default */
+                  refreshUserList({ data: "robots" });
+         }
+      }
+   });
 
    $("#opponents").click(function() {
-      // Select and show the opponents tab
+      // Select and show the user list (opponents) tab
       $("#tabs").tabs("option", "active", 2);
    });
 
    /* Initialize game list */
    refreshGameList();
-
-   /* Initialize list of recent games */
-   refreshRecentList();
-
-   /* Initialize challenge list */
-   refreshChallengeList();
-
-   /* Initialize user list to show robots by default */
-   refreshUserList({ data: "robots" });
 
    /* Initialize alphabet categories in user list header */
    $("#initials").children("span").each(function() {

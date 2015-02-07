@@ -193,8 +193,8 @@ def _userlist(range_from, range_to):
         if i is None:
             # Not found: do a query
             i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
-            # Store the result in the cache with a lifetime of 1 minute
-            memcache.set("live", i, time=60, namespace="userlist")
+            # Store the result in the cache with a lifetime of 2 minutes
+            memcache.set("live", i, time=2 * 60, namespace="userlist")
 
         for uid in i:
             if uid == cuid:
@@ -227,7 +227,18 @@ def _userlist(range_from, range_to):
 
     else:
         # Return users within a particular nickname range
-        i = iter(UserModel.list(range_from, range_to, max_len = 200))
+
+        cache_range = ("" if range_from is None else range_from) + \
+            "-" + ("" if range_to is None else range_to)
+
+        # Start by looking in the cache
+        i = memcache.get(cache_range, namespace="userlist")
+        if i is None:
+            # Not found: do a query
+            i = list(UserModel.list(range_from, range_to, max_len = 250))
+            # Store the result in the cache with a lifetime of 5 minutes
+            memcache.set(cache_range, i, time=5 * 60, namespace="userlist")
+
         for uid in i:
             if uid == cuid:
                 # Do not include the current user, if any, in the list
