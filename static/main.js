@@ -150,7 +150,7 @@ function showUserInfo(ev) {
    serverQuery("/recentlist",
       {
          user: ev.data.userid,
-         count: 20 // Limit recent game count to 20
+         count: 40 // Limit recent game count to 40
       },
       populateUserInfo);
 }
@@ -317,7 +317,8 @@ function populateGameList(json) {
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
          "<span class='list-win'>" + myWin + "</span>" +
-         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s0'>" + item.sc0 + "</span>" +
+         "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "</a></div>";
       $("#gamelist").append(str);
@@ -407,7 +408,8 @@ function _populateRecentList(json, listId) {
          "<span class='list-win'>" + myWin + "</span>" +
          "<span class='list-ts'>" + item.ts_last_move + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
-         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s0'>" + item.sc0 + "</span>" +
+         "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "<span class='list-duration'>" + duration + "</span>" +
          "</a></div>";
@@ -421,7 +423,7 @@ function refreshRecentList() {
    serverQuery("/recentlist",
       {
          // Current user is implicit
-         count: 20
+         count: 40
       },
       populateRecentList);
 }

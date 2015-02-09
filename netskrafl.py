@@ -708,6 +708,7 @@ def userprefs():
             self.full_name = u''
             self.nickname = u''
             self.email = u''
+            self.audio = True
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -724,12 +725,17 @@ def userprefs():
                 self.email = u'' + form['email'].strip()
             except:
                 pass
+            try:
+                self.audio = 'audio' in form # State of the checkbox
+            except:
+                pass
 
         def init_from_user(self, usr):
             """ Load the data to be edited upon initial display of the form """
             self.nickname = usr.nickname()
             self.full_name = usr.full_name()
             self.email = usr.email()
+            self.audio = usr.audio()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -749,6 +755,7 @@ def userprefs():
             usr.set_nickname(self.nickname)
             usr.set_full_name(self.full_name)
             usr.set_email(self.email)
+            usr.set_audio(self.audio)
             usr.update()
 
     uf = UserForm()

@@ -185,9 +185,7 @@ function lateInit() {
 
 <!-- Display user identifier in upper right corner -->
 
-<div class="userid">
-   <a href="{{ url_for('userprefs') }}">{{ user.nickname() }}</a>
-</div>
+<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'">{{ user.nickname() }}</div>
 
 <!-- Facebook like/share -->
 <!--

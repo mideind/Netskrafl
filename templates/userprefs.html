@@ -1,7 +1,35 @@
 
 {% extends "container.html" %}
 
+{% block styles %}
+
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+{% endblock %}
+
 {% block scripts %}
+
+<script>
+
+function buttonOver(elem) {
+   /* Show a hover effect on a button */
+   if (!$(elem).hasClass("disabled"))
+      $(elem).toggleClass("over", true);
+}
+
+function buttonOut(elem) {
+   /* Hide a hover effect on a button */
+   $(elem).toggleClass("over", false);
+}
+
+function submitForm() {
+   // POST the form to the server
+   // First transfer the state of our fancy simulated checkbox
+   $("#audio").prop('checked', $("#opt2").hasClass("selected"));
+   document.getElementById('frm1').submit();
+}
+
+</script>
 
 {% endblock %}
 
@@ -11,43 +39,97 @@
 
 {% block content %}
 
-<div class="userform">
-   <div class="loginhdr"><span class="caption"></span>Upplýsingar um notanda</div>
+<div id="user-dialog" class="modal-dialog">
+<div id="user-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="loginhdr"><span class='glyphicon glyphicon-user'></span> Upplýsingar um notanda</div>
    <div>
    <form name="frm1" id="frm1" action="{{ url_for('userprefs') }}" method="post">
 
-      <div><span class="caption">Einkenni:</span><input type="text" name="nickname" id="nickname" maxlength=15
-         autofocus required
-         class="text username" value="{{ uf.nickname }}"></input>
-      &nbsp;<span style="color:red">*</span></div>
+      <div><span class="caption">Einkenni:</span>
+         <input type="text" name="nickname" id="nickname" tabindex="1"
+            maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"></input>
+         &nbsp;<span style="color:red">*</span></div>
       <div class="explain">Verður að vera útfyllt</div>
 {% if err.get('nickname', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('nickname') }}</div>
 {% endif %}
 
-      <div><span class="caption">Fullt nafn:</span><input type="text" name="full_name" id="full_name" maxlength=32
-         class="text fullname" value="{{ uf.full_name }}"></input></div>
+      <div><span class="caption">Fullt nafn:</span>
+         <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
+            class="text fullname" value="{{ uf.full_name }}"></input></div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
 
-      <div><span class="caption">Tölvupóstfang:</span><input type="text" name="email" id="email" maxlength=32
-         class="text email" value="{{ uf.email }}"></input></div>
+      <div><span class="caption">Tölvupóstfang:</span>
+         <input type="text" name="email" id="email" maxlength="32" tabindex="3"
+            class="text email" value="{{ uf.email }}"></input></div>
       <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
 {% if err.get('email', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
 {% endif %}
 
-      <div><span class="caption"></span><button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Uppfæra</button></div>
+      <div><span class="caption">Hljóðmerki:</span>
+         <input type="checkbox" name="audio" id="audio"
+            class="checkbox audio" value="True"
+{% if uf.audio %}
+            checked
+{% endif %}
+         ></input>
+         <div id="audio-toggler" class="toggler" tabindex="4">
+            <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div>
+            <div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
+         </div>
+      </div>
+      <div class="explain">Stillir hvort þú færð hljóðmerki þegar andstæðingur leikur</div>
 
    </form>
    </div>
-   <div><span class="caption"></span>
-	   <a href='{{ uf.logout_url }}'>
-			<button type="submit" id="logout" class="logout">
-	   		<span class="glyphicon glyphicon-log-out"></span>&nbsp;&nbsp;Skrá mig út
-	   	</button>
-	   </a>
-   </div>
-</div>
+
+   <!-- Logout button -->
+   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="7"
+      onclick="location.href='{{ uf.logout_url }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="6"
+      onclick="location.href='{{ url_for('main') }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+
+   <!-- OK button -->
+   <div class="modal-close" id="user-ok" title="Vista" tabindex="5"
+      onclick="submitForm()"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div> <!-- user-form -->
+</div> <!-- user-dialog -->
 
 {% endblock %}
 
+{%- block endscripts -%}
+
+<script>
+
+   if ($("#audio").prop('checked'))
+      $("#opt2").addClass("selected");
+   else
+      $("#opt1").addClass("selected");
+
+   $("#audio-toggler").click(function() {
+      // Toggle from one state to the other
+      $("#opt1").toggleClass("selected");
+      $("#opt2").toggleClass("selected");
+   });
+   $("#audio-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32) {
+         // Space bar pressed
+         $("#opt1").toggleClass("selected");
+         $("#opt2").toggleClass("selected");
+      }
+   });
+
+</script>
+
+{%- endblock -%}

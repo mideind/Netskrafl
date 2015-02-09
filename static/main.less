@@ -129,6 +129,12 @@
 .glyphicon-time:before {
    content: "\e023";
 }
+.glyphicon-volume-off:before {
+   content: "\e036";
+}
+.glyphicon-volume-up:before {
+   content: "\e038";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1132,35 +1138,40 @@ div.smallprint {
 
 div.userid {
    position: absolute;
-   top: 27px;
-   right: 60px;
-   width: 200px;
-   height: 24px;
+   top: 24px;
+   right: 48px;
+   max-width: 210px;
+   height: 22px;
    text-align: right;
    font-size: 18px;
+   line-height: 18px;
    font-weight: 700;
    color: white;
    overflow: hidden;
+   padding-top: 7px;
+   padding-bottom: 3px;
+   padding-left: 10px;
+   padding-right: 10px;
+   margin: 0;
    z-index: 5;
-   color: white;
+   color: @board-background;
+   background-color: white;
+   border-radius: 5px;
+   cursor: pointer;
+   .noselect;
 }
 
-.userid a:link, .userid a:visited {
-   text-decoration: none;
+div.userid:hover {
+   background-color: @double-letter;
    color: white;
-}
-
-.userid a:hover {
-   text-decoration: none;
-   color: @triple-letter;
 }
 
 div.listitem {
    height: 24px;
    padding-left: 4px;
    padding-right: 4px;
-   padding-top: 6px;
-   padding-bottom: 6px;
+   padding-top: 7px;
+   padding-bottom: 5px;
    overflow: hidden;
    vertical-align: middle;
 }
@@ -1193,29 +1204,45 @@ div.listheader {
 span.list-ts {
    display: inline-block;
    width: 180px;
+   max-width: 180px;
+   overflow: hidden;
 }
 
 span.list-chall {
    display: inline-block;
    width: 360px;
+   max-width: 360px;
+   overflow: hidden;
 }
 
 span.list-s0 {
    display: inline-block;
    width: 40px;
+   max-width: 40px;
    text-align: right;
+   overflow: hidden;
 }
 
 span.list-s1 {
    display: inline-block;
    width: 40px;
+   max-width: 40px;
    text-align: left;
+   overflow: hidden;
+}
+
+span.list-colon {
+   display: inline-block;
+   text-align: center;
+   overflow: hidden;
 }
 
 span.list-scorehdr {
    display: inline-block;
    width: 80px;
+   max-width: 80px;
    text-align: center;
+   overflow: hidden;
 }
 
 span.list-ch,
@@ -1225,47 +1252,61 @@ span.list-myturn {
    display: inline-block;
    font-size: 20px;
    width: 32px;
+   max-width: 32px;
    margin-left: 2px;
    cursor: pointer;
+   overflow: hidden;
 }
 
 span.list-win {
    display: inline-block;
    font-size: 18px;
    width: 32px;
+   max-width: 32px;
    margin-left: 2px;
    cursor: pointer;
+   overflow: hidden;
 }
 
 span.list-nick {
    display: inline-block;
    width: 200px;
+   max-width: 200px;
+   overflow: hidden;
    font-weight: 700;
 }
 
 span.list-opp {
    display: inline-block;
    width: 290px;
+   max-width: 290px;
    font-weight: 700;
+   overflow: hidden;
 }
 
 span.list-fullname {
    display: inline-block;
    width: 468px;
+   max-width: 468px;
+   overflow: hidden;
 }
 
 span.list-duration {
    display: inline-block;
    width: 200px;
+   max-width: 200px;
    text-align: right;
+   overflow: hidden;
 }
 
 span.list-info {
    display: inline-block;
-   width: 28px;
+   width: 40px;
+   top: -3px;
    text-align: right;
    height: 24px;
    line-height: 20px;
+   overflow: hidden;
 }
 
 #initials span {
@@ -1440,33 +1481,31 @@ div#blank-close {
    background-color: @alert;
 }
 
-div#blank-form {
+.std-form {
    position: absolute;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   z-index: 20;
+   box-shadow: 3px 3px 5px 2px #333333;
+   font-size: 1em;
+}
+
+div#blank-form {
+   .std-form;
    top: 124px;
    right: 12px;
    width: 274px;
    height: 400px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div#usr-info-form {
-   position: absolute;
+   .std-form;
    top: 16px;
    right: 12px;
    width: 884px;
    height: 644px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div.usr-info-hdr {
@@ -1494,18 +1533,12 @@ h1.usr-info-icon {
 }
 
 div#chall-form {
-   position: absolute;
+   .std-form;
    top: 100px;
    right: 300px;
    width: 428px;
    height: 532px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 12px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
+   padding-top: 12px; /* Override */
 }
 
 div.chall-hdr {
@@ -1611,18 +1644,11 @@ span#chall-online.online {
 }
 
 div#wait-form {
-   position: absolute;
+   .std-form;
    top: 56px;
    right: 202px;
    width: 504px;
    height: 544px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div.wait-explain {
@@ -1632,19 +1658,43 @@ div.wait-explain {
    padding-bottom: 24px;
 }
 
+div#user-dialog {
+   visibility: visible;
+}
+
+div#user-form {
+   .std-form;
+   top: 80px;
+   right: 40px;
+   width: 760px;
+   height: 544px;
+}
+
+div#user-logout {
+   left: 12px;
+   width: 144px; /* Override */
+   background-color: @pass-btn;
+}
+
+div#user-cancel {
+   right: 108px; /* 12 + 72 + 12 + 12 */
+   width: 72px; /* Override */
+   background-color: @alert;
+}
+
+div#user-ok {
+   right: 12px; /* 12 */
+   width: 72px; /* Override */
+   background-color: @freshtile;
+}
+
 div#accept-form {
-   position: absolute;
+   .std-form;
    top: 220px;
    right: 300px;
    width: 428px;
    height: 292px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 12px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
+   padding-top: 12px; /* Override */
 }
 
 h1#accept-nick {
@@ -1677,12 +1727,6 @@ div.blank-rack {
 
 .blank-rack table.board {
    border-spacing: 8px;
-}
-
-div.userform {
-   position: absolute;
-   left: 180px;
-   top: 80px;
 }
 
 div.loginform {
@@ -1816,6 +1860,36 @@ button.login {
 button.logout {
    margin-top: 80px;
    background-color: @alert;
+}
+
+input[type="checkbox"] {
+   display: none;
+}
+
+div.toggler {
+   display: inline-block;
+   background-color: fade(@board-background, 50%);
+   color: white;
+   margin-top: 12px;
+   margin-bottom: 6px;
+   border-radius: 5px;
+   cursor: pointer;
+   overflow: hidden;
+   .noselect;
+}
+
+div.toggler div.option {
+   display: inline-block;
+   width: 48px;
+   height: 32px;
+   font-size: 24px;
+   padding-top: 4px;
+   padding-bottom: 4px;
+   text-align: center;
+}
+
+div.toggler div.option.selected {
+   background-color: @triple-letter;
 }
 
 div #radioset {
