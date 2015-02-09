@@ -302,6 +302,13 @@ function lateInit() {
 
 {%- block endscripts -%}
 
+{%- if user.audio() -%}
+<!-- Audio resources -->
+<audio id="your-turn" preload="auto">
+   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+{% endif %}
+
 <script>
 
 $(document).ready(initMain);

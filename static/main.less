@@ -1143,13 +1143,13 @@ div.userid {
    max-width: 210px;
    height: 22px;
    text-align: right;
-   font-size: 18px;
-   line-height: 18px;
+   font-size: 16px;
+   line-height: 16px;
    font-weight: 700;
    color: white;
    overflow: hidden;
-   padding-top: 7px;
-   padding-bottom: 3px;
+   padding-top: 8px;
+   padding-bottom: 2px;
    padding-left: 10px;
    padding-right: 10px;
    margin: 0;
@@ -1665,8 +1665,8 @@ div#user-dialog {
 div#user-form {
    .std-form;
    top: 80px;
-   right: 40px;
-   width: 760px;
+   right: 64px;
+   width: 736px;
    height: 544px;
 }
 
@@ -1738,6 +1738,7 @@ div.loginform {
 div.loginhdr {
    font-size: 34px;
    font-weight: 700;
+   padding-top: 12px;
    padding-bottom: 24px;
 }
 
@@ -1796,7 +1797,7 @@ input.text {
    font-weight: 700;
    height: 32px;
    border-style: solid;
-   border-color: #55cc66;
+   border-color: @freshtile;
    border-width: 2px;
    border-radius: 5px;
    margin-bottom: 6px;
@@ -1807,12 +1808,12 @@ input.text {
 }
 
 input.text:focus {
-   background-color: #ffffc8;
+   background-color: @focal;
    border-style: solid;
-   border-color: #55cc66;
+   border-color: @freshtile;
    border-width: 2px;
    border-radius: 5px;
-   outline: none;
+   outline-style: none;
 }
 
 input.username {
@@ -1872,10 +1873,15 @@ div.toggler {
    color: white;
    margin-top: 12px;
    margin-bottom: 6px;
-   border-radius: 5px;
+   border-radius: 10px;
    cursor: pointer;
    overflow: hidden;
    .noselect;
+}
+
+div.toggler:focus {
+   background-color: fade(@freshtile, 40%);
+   outline-style: none;
 }
 
 div.toggler div.option {

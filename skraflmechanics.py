@@ -438,8 +438,8 @@ class State:
             # Draw new tiles if required
             if not shallow:
                 self.player_rack().replenish(self._bag)
-            # It's the other player's move
-            self._player_to_move = 1 - self._player_to_move
+        # It's the other player's move (i.e. if the game is not over by now)
+        self._player_to_move = 1 - self._player_to_move
         return True
 
     def score(self, move):

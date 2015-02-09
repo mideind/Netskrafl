@@ -702,9 +702,18 @@ function channelOnMessage(msg) {
       refreshChallengeList();
       redisplayUserList();
    }
-   if (json.stale || json.kind == "game")
+   if (json.stale || json.kind == "game") {
       // A move has been made in a game for this user
       refreshGameList();
+   }
+   if (json.kind && json.kind == "game") {
+      // Play audio, if present
+      var yourTurn = document.getElementById("your-turn");
+      if (yourTurn)
+         // Note that playing media outside user-invoked event handlers does not work on iOS.
+         // That is a 'feature' introduced and documented by Apple.
+         yourTurn.play();
+   }
 }
 
 function channelOnError(err) {
