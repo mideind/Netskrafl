@@ -1662,6 +1662,12 @@ function channelOnMessage(msg) {
       // json now contains an entire client state update, as a after submitMove()
       resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
       updateState(json);
+      // Play audio, if present
+      /*
+      var yourTurn = document.getElementById("your-turn");
+      if (yourTurn)
+         yourTurn.play();
+      */
    }
 }
 

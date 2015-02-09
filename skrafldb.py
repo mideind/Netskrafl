@@ -145,7 +145,14 @@ class UserModel(ndb.Model):
                         # Nicknames that do not start with an alpabetic character are not listed
                         o_nick = Alphabet.full_order.index(nick[0])
                         if (o_nick >= o_from) and (o_nick <= o_to):
-                            yield um.key.id()
+                            # This entity matches: return a dict describing it
+                            yield dict(
+                                id = um.key.id(),
+                                nickname = um.nickname,
+                                inactive = um.inactive,
+                                prefs = um.prefs,
+                                timestamp = um.timestamp
+                            )
                             counter += 1
                             if max_len > 0 and counter >= max_len:
                                 # Hit limit on returned users: stop iterating

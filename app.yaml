@@ -52,6 +52,10 @@ handlers:
   static_files: static/user-loader.gif
   upload: static/user-loader.gif
   expiration: 1d
+- url: /static/mousetrap.min.js
+  static_files: static/mousetrap.min.js
+  upload: static/mousetrap.min.js
+  expiration: 1d
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$  
@@ -73,6 +77,10 @@ handlers:
   static_files: static/glyphicons-halflings-regular.woff
   upload: static/glyphicons-halflings-regular.woff
   expiration: 1d
+- url: /static/your-turn.mp3
+  static_files: static/your-turn.mp3
+  upload: static/your-turn.mp3
+  mime_type: audio/mpeg
 - url: .*
   script: netskrafl.app
 

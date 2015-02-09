@@ -95,6 +95,15 @@
 {% endif %}
       scoreLeft = {{ game.final_scores()[0] }};
       scoreRight = {{ game.final_scores()[1] }};
+      // User wants audio:
+      // Append the audio source tag and URL to the document body
+      /*
+      $("<audio id='your-turn'><source src='{{ url_for('static', filename='your-turn.mp3') }}' type='audio/mpeg'></audio>")
+         .appendTo('body');
+      var yourTurn = document.getElementById("your-turn");
+      if (yourTurn)
+         yourTurn.load();
+      */
    }
 
 </script>

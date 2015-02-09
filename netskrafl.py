@@ -228,7 +228,8 @@ def _userlist(range_from, range_to):
     else:
         # Return users within a particular nickname range
 
-        cache_range = ("" if range_from is None else range_from) + \
+        # The "1:" prefix is a version header
+        cache_range = "1:" + ("" if range_from is None else range_from) + \
             "-" + ("" if range_to is None else range_to)
 
         # Start by looking in the cache
@@ -239,16 +240,28 @@ def _userlist(range_from, range_to):
             # Store the result in the cache with a lifetime of 5 minutes
             memcache.set(cache_range, i, time=5 * 60, namespace="userlist")
 
-        for uid in i:
+        def displayable(ud):
+            """ Determine whether a user entity is displayable in a list """
+            if ud["inactive"]:
+                # Inactive users are not displayed
+                return False
+            nick = ud["nickname"]
+            if not nick:
+                # No nickname: do not display
+                return False
+            # https prefix on nickname: do not display
+            return nick[0:8] != u"https://"
+
+        for ud in i:
+            uid = ud["id"]
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
-            u = User.load(uid)
-            if u and u.is_displayable():
+            if displayable(ud):
                 result.append({
                     "userid": uid,
-                    "nick": u.nickname(),
-                    "fullname": u.full_name(),
+                    "nick": ud["nickname"],
+                    "fullname": User.full_name_from_prefs(ud["prefs"]),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": uid in challenges
                 })

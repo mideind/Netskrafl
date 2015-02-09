@@ -118,6 +118,14 @@ class User:
             self._preferences = { }
         self._preferences[pref] = value
 
+    @staticmethod
+    def full_name_from_prefs(prefs):
+        """ Returns the full name of a user from a dict of preferences """
+        if prefs is None:
+            return u""
+        fn = prefs.get(u"full_name")
+        return u"" if fn is None else fn
+
     def full_name(self):
         """ Returns the full name of a user """
         fn = self.get_pref(u"full_name")
