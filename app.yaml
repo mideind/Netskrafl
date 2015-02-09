@@ -59,9 +59,9 @@ handlers:
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$  
-- url: /static/skrafl.css
-  static_files: static/skrafl.css
-  upload: static/skrafl.css
+- url: /static/skrafl-curry.css
+  static_files: static/skrafl-curry.css
+  upload: static/skrafl-curry.css
 - url: /static/netskrafl.js
   static_files: static/netskrafl.js
   upload: static/netskrafl.js
