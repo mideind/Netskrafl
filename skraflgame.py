@@ -144,6 +144,17 @@ class User:
         """ Sets the e-mail address of a user """
         self.set_pref(u"email", email)
 
+    def audio(self):
+        """ Returns True if the user wants audible signals """
+        em = self.get_pref(u"audio")
+        # True by default
+        return True if em is None else em
+
+    def set_audio(self, audio):
+        """ Sets the audio preference of a user to True or False """
+        assert isinstance(audio, bool)
+        self.set_pref(u"audio", audio)
+
     def _load_favorites(self):
         """ Loads favorites of this user from the database into a set in memory """
         if hasattr(self, "_favorites") and self._favorites:

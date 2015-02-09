@@ -1663,11 +1663,11 @@ function channelOnMessage(msg) {
       resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
       updateState(json);
       // Play audio, if present
-      /*
       var yourTurn = document.getElementById("your-turn");
       if (yourTurn)
+         // Note that playing media outside user-invoked event handlers does not work on iOS.
+         // That is a 'feature' introduced and documented by Apple.
          yourTurn.play();
-      */
    }
 }
 
