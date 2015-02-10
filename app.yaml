@@ -81,6 +81,7 @@ handlers:
   static_files: static/your-turn.mp3
   upload: static/your-turn.mp3
   mime_type: audio/mpeg
+  expiration: 1d
 - url: .*
   script: netskrafl.app
 
