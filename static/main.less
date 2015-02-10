@@ -1876,22 +1876,25 @@ div.toggler {
    border-radius: 10px;
    cursor: pointer;
    overflow: hidden;
+   border: white solid 2px;
    .noselect;
 }
 
 div.toggler:focus {
-   background-color: fade(@freshtile, 40%);
+   /* background-color: fade(@freshtile, 40%); */
    outline-style: none;
+   border: yellow solid 2px;
 }
 
 div.toggler div.option {
    display: inline-block;
-   width: 48px;
+   width: 52px;
    height: 32px;
    font-size: 24px;
    padding-top: 4px;
    padding-bottom: 4px;
    text-align: center;
+   border-style: none;
 }
 
 div.toggler div.option.selected {

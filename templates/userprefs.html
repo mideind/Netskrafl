@@ -76,8 +76,9 @@ function submitForm() {
 {% endif %}
          ></input>
          <div id="audio-toggler" class="toggler" tabindex="4">
-            <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div>
-            <div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
+            <div class="option"
+            id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><div class="option"
+            id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
          </div>
       </div>
       <div class="explain">Stillir hvort þú færð hljóðmerki þegar andstæðingur leikur</div>
@@ -110,24 +111,35 @@ function submitForm() {
 
 {%- block endscripts -%}
 
+<!-- Audio resources -->
+<audio id="your-turn" preload="auto">
+   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+
 <script>
 
+   function doToggle() {
+      // Toggle from one state to the other
+      $("#opt1").toggleClass("selected");
+      $("#opt2").toggleClass("selected");
+      if ($("#opt2").hasClass("selected")) {
+         // Play a demo
+         var yourTurn = document.getElementById("your-turn");
+         if (yourTurn)
+            yourTurn.play();
+      }
+   }
+
+   // Initialize the audio toggler
    if ($("#audio").prop('checked'))
       $("#opt2").addClass("selected");
    else
       $("#opt1").addClass("selected");
 
-   $("#audio-toggler").click(function() {
-      // Toggle from one state to the other
-      $("#opt1").toggleClass("selected");
-      $("#opt2").toggleClass("selected");
-   });
+   $("#audio-toggler").click(doToggle);
    $("#audio-toggler").keypress(function(ev) {
-      if (ev.keyCode === 0 || ev.keyCode == 32) {
-         // Space bar pressed
-         $("#opt1").toggleClass("selected");
-         $("#opt2").toggleClass("selected");
-      }
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doToggle();
    });
 
 </script>
