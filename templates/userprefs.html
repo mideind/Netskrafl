@@ -46,7 +46,7 @@ function submitForm() {
    <div>
    <form name="frm1" id="frm1" action="{{ url_for('userprefs') }}" method="post">
 
-      <div><span class="caption">Einkenni:</span>
+      <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
             maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"></input>
          &nbsp;<span style="color:red">*</span></div>
@@ -55,12 +55,12 @@ function submitForm() {
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('nickname') }}</div>
 {% endif %}
 
-      <div><span class="caption">Fullt nafn:</span>
+      <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
          <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
             class="text fullname" value="{{ uf.full_name }}"></input></div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
 
-      <div><span class="caption">Tölvupóstfang:</span>
+      <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
          <input type="text" name="email" id="email" maxlength="32" tabindex="3"
             class="text email" value="{{ uf.email }}"></input></div>
       <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
@@ -68,7 +68,7 @@ function submitForm() {
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
 {% endif %}
 
-      <div><span class="caption">Hljóðmerki:</span>
+      <div class="dialog-spacer"><span class="caption">Hljóðmerki:</span>
          <input type="checkbox" name="audio" id="audio"
             class="checkbox audio" value="True"
 {% if uf.audio %}

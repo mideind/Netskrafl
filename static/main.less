@@ -1309,7 +1309,23 @@ span.list-info {
    overflow: hidden;
 }
 
-#initials span {
+div#initials {
+   margin-top: 0;
+   margin-bottom: 6px;
+   padding: 0;
+}
+
+div.user-cat {
+   display: inline-block;
+   vertical-align: middle;
+}
+
+div.user-cat#user-alphabet {
+   margin-left: 32px;
+   line-height: 32px;
+}
+
+div.user-cat span {
    font-size: 16px;
    cursor: pointer;
    padding-left: 4px;
@@ -1320,12 +1336,12 @@ span.list-info {
    .noselect;
 }
 
-#initials span.shown {
+div.user-cat span.shown {
    background-color: fade(@double-letter, 30%);
    border-radius: 5px;
 }
 
-#initials span:hover {
+div.user-cat span:hover {
    color: white;
    background-color: @double-letter;
    border-radius: 5px;
@@ -1764,12 +1780,17 @@ div.welcome {
    color: @hover-link;
 }
 
+div.dialog-spacer {
+   margin-top: 4px;
+   margin-bottom: 2px;
+}
+
 span.caption {
    display: inline-block;
    position: relative;
-   top: 4px;
+   vertical-align: top;
+   top: 10px;
    width: 140px;
-   margin-top: 20px;
    margin-right: 12px;
    overflow: hidden;
    text-align: right;
@@ -1777,14 +1798,14 @@ span.caption {
 
 div.explain {
    margin-left: 158px;
-   margin-bottom: 6px;
+   margin-bottom: 12px;
    font-size: 14px;
    text-align: left;
 }
 
 div.errinput {
    margin-left: 158px;
-   margin-bottom: 6px;
+   margin-bottom: 10px;
    font-size: 16px;
    text-align: left;
    font-weight: bold;

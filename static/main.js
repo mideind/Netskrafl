@@ -258,7 +258,7 @@ function refreshUserList(ev) {
    $("#userlist").html("");
    /* Indicate which subtab is being shown */
    if (ev.delegateTarget) {
-      $("#initials span").removeClass("shown");
+      $("div.user-cat span").removeClass("shown");
       $(ev.delegateTarget).addClass("shown");
    }
    /* Show the user load spinner */
@@ -778,7 +778,7 @@ function initMain() {
    refreshGameList();
 
    /* Initialize alphabet categories in user list header */
-   $("#initials").children("span").each(function() {
+   $("div.user-cat span").each(function() {
       var data = $(this).attr('id');
       if (data === undefined)
          // Not a special category, i.e. favorites or robots
