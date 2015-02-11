@@ -155,6 +155,17 @@ class User:
         assert isinstance(audio, bool)
         self.set_pref(u"audio", audio)
 
+    def beginner(self):
+        """ Returns True if the user is a beginner so we show help panels, etc. """
+        em = self.get_pref(u"beginner")
+        # True by default
+        return True if em is None else em
+
+    def set_beginner(self, beginner):
+        """ Sets the beginner state of a user to True or False """
+        assert isinstance(beginner, bool)
+        self.set_pref(u"beginner", beginner)
+
     def _load_favorites(self):
         """ Loads favorites of this user from the database into a set in memory """
         if hasattr(self, "_favorites") and self._favorites:

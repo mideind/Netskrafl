@@ -614,6 +614,31 @@ def challenge():
     return jsonify(result = Error.LEGAL)
 
 
+@app.route("/setuserpref", methods=['POST'])
+def setuserpref():
+    """ Set a user preference """
+
+    user = User.current()
+    if user is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    # Check for the beginner preference and convert it to bool if we can
+    beginner = request.form.get('beginner', None)
+    if beginner is not None:
+        if beginner == u"false":
+            beginner = False
+        elif beginner == u"true":
+            beginner = True
+
+    if beginner is not None and isinstance(beginner, bool):
+        # Setting a new state for the beginner preference
+        user.set_beginner(beginner)
+        user.update()
+
+    return jsonify(result = Error.LEGAL)
+
+
 @app.route("/onlinecheck", methods=['POST'])
 def onlinecheck():
     """ Check whether a particular user is online """

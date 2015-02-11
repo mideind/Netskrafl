@@ -97,14 +97,14 @@ function nullCompleteFunc(xhr, status) {
 }
 
 function errFunc(xhr, status, errorThrown) {
-   /* Error handling function for Ajax communications */
+   /* Default error handling function for Ajax communications */
    // alert("Villa í netsamskiptum");
    console.log("Error: " + errorThrown);
    console.log("Status: " + status);
    console.dir(xhr);
 }
 
-function serverQuery(requestUrl, jsonData, successFunc, completeFunc) {
+function serverQuery(requestUrl, jsonData, successFunc, completeFunc, errorFunc) {
    /* Wraps a simple, standard Ajax request to the server */
    $.ajax({
       // The URL for the request
@@ -127,7 +127,7 @@ function serverQuery(requestUrl, jsonData, successFunc, completeFunc) {
 
       // Code to run if the request fails; the raw request and
       // status codes are passed to the function
-      error: errFunc,
+      error: (!errorFunc) ? errFunc : errorFunc,
 
       // code to run regardless of success or failure
       complete: (!completeFunc) ? nullCompleteFunc : completeFunc
@@ -1575,6 +1575,12 @@ function moveComplete(xhr, status) {
    submitInProgress = false;
 }
 
+function serverError(xhr, status, errorThrown) {
+   /* The server threw an error back at us (probably 5XX): inform the user */
+   $("div.error").css("visibility", "visible").find("p").css("display", "none");
+   $("div.error").find("#err_server").css("display", "inline");
+}
+
 function sendMove(movetype) {
    /* Send a move to the back-end server using Ajax */
    if (submitInProgress)
@@ -1628,7 +1634,17 @@ function sendMove(movetype) {
          // Send the game's UUID
          uuid: gameId()
       },
-      updateState, moveComplete);
+      updateState, moveComplete, serverError);
+}
+
+function closeHelpPanel() {
+   /* Close the board color help panel and set a user preference to not display it again */
+   $("div.board-help").css("display", "none");
+   serverQuery("/setuserpref",
+      {
+         beginner: false
+      }
+   );
 }
 
 /* Channel API stuff */
@@ -1731,6 +1747,9 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('backspace', rescrambleRack);
    /* Bind pinch gesture to a function to reset the rack */
    /* $('body').bind('pinchclose', resetRack); */
+
+   // Bind a handler to the close icon on the board color help panel
+   $("div.board-help-close span").click(closeHelpPanel);
 
    lateInit();
 

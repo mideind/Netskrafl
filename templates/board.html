@@ -221,6 +221,7 @@
 <div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
 {% endif %}
 
+<!-- Congratulations on a win -->
 <div id="congrats"><span class="glyphicon glyphicon-bookmark"></span> <strong>Til hamingju með sigurinn!</strong></div>
 
 <!-- Error message, normally hidden -->
@@ -240,6 +241,7 @@
    <p id="err_12">Of mörgum stöfum skipt</p> <!-- TOO_MANY_TILES_EXCHANGED = 12 -->
    <p id="err_13">Leik vantar á borðið - notið F5/Refresh</p> <!-- OUT_OF_SYNC = 13 -->
    <p id="err_14">Notandi ekki innskráður - notið F5/Refresh</p> <!-- LOGIN_REQUIRED = 14 -->
+   <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
 </div>
 
 <!-- Confirm resignation of game -->
@@ -255,6 +257,20 @@
    <span class="yesnobutton xchgbtn" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
    <span class="yesnobutton xchgbtn" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
 </div>
+
+{% if user.beginner() %}
+<!-- Help on the board colors -->
+<div class="board-help" title="Hvernig reitirnir margfalda stigin">
+<div class="board-help-close" title="Loka þessari hjálp"><span class="glyphicon glyphicon-remove"></span></div>
+<div class="board-colors">
+<div class="board-color" id="triple-word">3 x<br>orð</div>
+<div class="board-color" id="double-word">2 x<br>orð</div>
+<div class="board-color" id="triple-letter">3 x<br> stafur</div>
+<div class="board-color" id="double-letter">2 x<br> stafur</div>
+<div class="board-color" id="single-letter">1 x<br> stafur</div>
+</div>
+</div>
+{% endif %}
 
 {%- endblock -%}
 
