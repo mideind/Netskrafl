@@ -734,6 +734,7 @@ def userprefs():
             self.nickname = u''
             self.email = u''
             self.audio = True
+            self.beginner = True
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -752,6 +753,7 @@ def userprefs():
                 pass
             try:
                 self.audio = 'audio' in form # State of the checkbox
+                self.beginner = 'beginner' in form
             except:
                 pass
 
@@ -761,6 +763,7 @@ def userprefs():
             self.full_name = usr.full_name()
             self.email = usr.email()
             self.audio = usr.audio()
+            self.beginner = usr.beginner()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -781,6 +784,7 @@ def userprefs():
             usr.set_full_name(self.full_name)
             usr.set_email(self.email)
             usr.set_audio(self.audio)
+            usr.set_beginner(self.beginner)
             usr.update()
 
     uf = UserForm()

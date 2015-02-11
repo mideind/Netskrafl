@@ -1040,6 +1040,8 @@ div.board-help {
    background-color: white;
    padding: 2px;
    border-radius: 5px;
+   cursor: default;
+   .noselect;
 }
 
 div.board-help-close {
@@ -1053,6 +1055,8 @@ div.board-help-close span {
    background-color: @alert;
    color: white;
    padding: 1px;
+   padding-top: 2px;
+   padding-left: 2px;
    cursor: pointer;
 }
 
@@ -1754,10 +1758,10 @@ div#user-dialog {
 
 div#user-form {
    .std-form;
-   top: 80px;
+   top: 50px;
    right: 64px;
    width: 736px;
-   height: 544px;
+   height: 614px;
 }
 
 div#user-logout {
@@ -1966,8 +1970,8 @@ div.toggler {
    display: inline-block;
    background-color: fade(@board-background, 50%);
    color: white;
-   margin-top: 12px;
-   margin-bottom: 6px;
+   margin-top: 9px;
+   margin-bottom: 3px;
    border-radius: 10px;
    cursor: pointer;
    overflow: hidden;
