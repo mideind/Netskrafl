@@ -72,12 +72,14 @@ function lateInit() {
       <p><strong>Viðureignir sem standa yfir</strong> - smelltu á viðureign til að skoða
       stöðuna og leika ef <span class='glyphicon glyphicon-flag'></span> þú átt leik</p>
 
-      <div class="listitem listheader"><span
-      class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><span
-      class="list-ts">Síðasti leikur</span><span
-      class="list-opp">Andstæðingur</span><span
-      class="list-win"><span title="Yfir" class='glyphicon glyphicon-bookmark grayed'></span></span><span
-      class="list-scorehdr">Staða</span></div>
+      <div class="listitem listheader">
+      <span class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><!--
+   --><span class="list-overdue"><span title="Langt frá síðasta leik?" class='glyphicon glyphicon-hourglass grayed'></span></span><!--
+   --><span class="list-ts">Síðasti leikur</span><!--
+   --><span class="list-opp">Andstæðingur</span><!--
+   --><span class="list-win"><span title="Yfir" class='glyphicon glyphicon-bookmark grayed'></span></span><!--
+   --><span class="list-scorehdr">Staða</span>
+      </div>
 
       <!-- Game list will be populated by populateGameList() below -->
       <div id="gamelist"></div>

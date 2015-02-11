@@ -497,7 +497,7 @@ class ChannelModel(ndb.Model):
     user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
 
     # When should the next cleanup of expired channels be done?
-    _CLEANUP_INTERVAL = 1 # Hours
+    _CLEANUP_INTERVAL = 30 # Minutes
     _next_cleanup = None
     _lock = threading.Lock()
 
@@ -606,7 +606,7 @@ class ChannelModel(ndb.Model):
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
-        CHUNK_SIZE = 20
+        CHUNK_SIZE = 50
         while True:
             q = cls.query(ChannelModel.expiry < now)
             # Query and delete in chunks
@@ -634,9 +634,9 @@ class ChannelModel(ndb.Model):
                 # Yes: do the cleanup
                 cls._del_expired()
                 # Schedule the next one
-                cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
+                cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
-            CHUNK_SIZE = 20
+            CHUNK_SIZE = 50
             q = cls.query(ChannelModel.expiry > now).filter(
                 ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
             offset = 0

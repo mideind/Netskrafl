@@ -309,11 +309,16 @@ function populateGameList(json) {
       var turnText = item.my_turn ? "Þú átt leik" : (opp + " á leik");
       var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
          (item.my_turn ? "" : " grayed") + "'></span>";
+      var overdueText = item.overdue ?
+         (item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf") : "";
+      var overdue = "<span title='" + overdueText + "' class='glyphicon glyphicon-hourglass" +
+         (item.overdue ? "" : " grayed") + "'></span>";
       var myWin = "<span class='glyphicon glyphicon-bookmark" +
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
+         "<span class='list-overdue'>" + overdue + "</span>" +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
          "<span class='list-win'>" + myWin + "</span>" +

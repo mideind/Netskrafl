@@ -29,7 +29,7 @@ import os
 import logging
 import json
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from flask import Flask
 from flask import render_template, redirect, jsonify
@@ -275,6 +275,7 @@ def _gamelist():
     """ Return a list of active games for the current user """
     result = []
     cuid = User.current_id()
+    now = datetime.utcnow()
     if cuid is not None:
         # Obtain up to 50 live games where this user is a player
         i = list(GameModel.list_live_games(cuid, max_len = 50))
@@ -284,6 +285,8 @@ def _gamelist():
         # Iterate through the game list
         for g in i:
             opp = g["opp"] # User id of opponent
+            ts = g["ts"]
+            overdue = False
             if opp is None:
                 # Autoplayer opponent
                 nick = Game.autoplayer_name(g["robot_level"])
@@ -291,14 +294,22 @@ def _gamelist():
                 # Human opponent
                 u = User.load(opp)
                 nick = u.nickname()
+                delta = now - ts
+                if g["my_turn"]:
+                    # Start to show warning after 12 days
+                    overdue = (delta >= timedelta(days = 12))
+                else:
+                    # Show mark after 14 days
+                    overdue = (delta >= timedelta(days = 14))
             result.append({
                 "url": url_for('board', game = g["uuid"]),
                 "opp": nick,
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp(g["ts"]),
-                "my_turn": g["my_turn"]
+                "ts": Alphabet.format_timestamp(ts),
+                "my_turn": g["my_turn"],
+                "overdue": overdue
             })
     return result
 
