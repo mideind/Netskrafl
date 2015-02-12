@@ -61,23 +61,13 @@ app.config['DEBUG'] = running_local
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
 
-def _process_move(movecount, movelist, uuid):
-    """ Process a move from the client (the local player)
-        Returns True if OK or False if the move was illegal
-    """
+def _process_move(game, movelist):
+    """ Process a move coming in from the client """
 
-    game = None if uuid is None else Game.load(uuid)
+    assert game is not None
 
-    if game is None:
-        return jsonify(result = Error.LOGIN_REQUIRED)
-
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result = Error.OUT_OF_SYNC)
-
-    if game.player_id_to_move() != User.current_id():
-        return jsonify(result = Error.WRONG_USER)
+    if game.is_over():
+        return jsonify(result = Error.GAME_NOT_FOUND)
 
     player_index = game.player_to_move()
 
@@ -242,9 +232,6 @@ def _userlist(range_from, range_to):
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
-            if ud["inactive"]:
-                # Inactive users are not displayed
-                return False
             nick = ud["nickname"]
             if not nick:
                 # No nickname: do not display
@@ -297,10 +284,10 @@ def _gamelist():
                 delta = now - ts
                 if g["my_turn"]:
                     # Start to show warning after 12 days
-                    overdue = (delta >= timedelta(days = 12))
+                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS - 2))
                 else:
                     # Show mark after 14 days
-                    overdue = (delta >= timedelta(days = 14))
+                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
             result.append({
                 "url": url_for('board', game = g["uuid"]),
                 "opp": nick,
@@ -454,6 +441,10 @@ def channel_disconnected():
 @app.route("/submitmove", methods=['POST'])
 def submitmove():
     """ Handle a move that is being submitted from the client """
+
+    if User.current_id() is None:
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
     movelist = []
     movecount = 0
     uuid = None
@@ -468,8 +459,56 @@ def submitmove():
             uuid = request.form.get('uuid', None)
         except:
             pass
+
+    game = None if uuid is None else Game.load(uuid)
+
+    if game is None:
+        return jsonify(result = Error.GAME_NOT_FOUND)
+
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result = Error.OUT_OF_SYNC)
+
+    if game.player_id_to_move() != User.current_id():
+        return jsonify(result = Error.WRONG_USER)
+
     # Process the movestring
-    return _process_move(movecount, movelist, uuid)
+    return _process_move(game, movelist)
+
+
+@app.route("/forceresign", methods=['POST'])
+def forceresign():
+    """ Forces a tardy user to resign, if the game is overdue """
+
+    user_id = User.current_id()
+    if user_id is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uuid = request.form.get('game', None)
+
+    game = None if uuid is None else Game.load(uuid)
+
+    if game is None:
+        return jsonify(result = Error.GAME_NOT_FOUND)
+
+    # Only the user who is the opponent of the tardy user can force a resign
+    if game.player_id(1 - game.player_to_move()) != User.current_id():
+        return jsonify(result = Error.WRONG_USER)
+
+    movecount = int(request.form.get('mcount', 0))
+
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result = Error.OUT_OF_SYNC)
+
+    if not game.is_overdue():
+        return jsonify(result = Error.GAME_NOT_OVERDUE)
+
+    # Send in a resign move on behalf of the opponent
+    return _process_move(game, [u"rsgn"])
 
 
 @app.route("/wordcheck", methods=['POST'])

@@ -57,7 +57,7 @@ var LETTERSCORE = new Array(
    "111113111311111",
    "111211111112111");
 
-var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmechanics.py */
+var GAME_OVER = 99; /* Error code corresponding to the Error class in skraflmechanics.py */
 
 var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
 
@@ -1645,6 +1645,19 @@ function closeHelpPanel() {
          beginner: false
       }
    );
+}
+
+function forceResign() {
+   /* The game is overdue and the waiting user wants to force the opponent to resign */
+   $("#force-resign").css("display", "none");
+   serverQuery("/forceresign",
+      {
+         game: gameId(),
+         // Send a move count to ensure that the client and the server are in sync
+         mcount: numMoves
+      }
+   );
+   // We trust that the Channel API will return a new client state to us
 }
 
 /* Channel API stuff */

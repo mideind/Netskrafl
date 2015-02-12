@@ -95,6 +95,10 @@
 {% endif %}
       scoreLeft = {{ game.final_scores()[0] }};
       scoreRight = {{ game.final_scores()[1] }};
+{% if game.is_overdue() and not game.my_turn(user.id()) %}
+      // Display option to force opponent to resign
+      $("#force-resign").css("display", "inline");
+{% endif %}
    }
 
 </script>
@@ -218,7 +222,11 @@
 
 <!-- Notification that it's the opponent's turn -->
 {% if not game.is_over() %}
-<div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
+<div class="opp-turn"><span class="move-indicator"></span>
+<strong>{{ game.player_nickname(1 - player_index) }}</strong>
+á leik
+<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton" onclick="forceResign()">Þvinga til uppgjafar</span>
+</div>
 {% endif %}
 
 <!-- Congratulations on a win -->

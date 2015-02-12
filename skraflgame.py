@@ -21,7 +21,7 @@ import collections
 import threading
 
 from random import randint
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google.appengine.api import users, memcache
 
@@ -291,6 +291,10 @@ class Game:
     # The maximum overtime in a game, after which a player automatically loses
     MAX_OVERTIME = 10 * 60.0 # 10 minutes, in seconds
 
+    # After this number of days the game becomes overdue and the
+    # waiting player can force the tardy opponent to resign
+    OVERDUE_DAYS = 14
+
     _lock = threading.Lock()
 
     def __init__(self, uuid = None):
@@ -544,6 +548,12 @@ class Game:
     def set_duration(self, duration):
         """ Set the duration for each player in the game, e.g. 25 if 2x25 minute game """
         self.set_pref(u"duration", duration)
+
+    def is_overdue(self):
+        """ Return True if no move has been made in the game for OVERDUE_DAYS days """
+        ts_last_move = self.ts_last_move or self.timestamp
+        delta = datetime.utcnow() - ts_last_move
+        return delta >= timedelta(days = Game.OVERDUE_DAYS)
 
     def get_elapsed(self):
         """ Return the elapsed time for both players, in seconds, as a tuple """

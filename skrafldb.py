@@ -119,48 +119,58 @@ class UserModel(ndb.Model):
         except:
             o_to = len(Alphabet.full_order) - 1
 
-        # Try to minimize the query range as much as possible.
+        # We do this by issuing a series of queries, each returning
+        # nicknames beginning with a particular letter.
         # These shenanigans are necessary because NDB maintains its string
         # indexes by Unicode ordinal index, which is quite different from
         # the actual sort collation order we need. Additionally, the
-        # indexes are case-sensitive while our query boundaries is not.
-        # Therefore, we calculate the lowest Unicode ordinal within our range
-        # as well as the highest one, and limit the query by these values.
-        q_from = min([min(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
-        q_to = max([max(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
-        q_to = unichr(ord(q_to) + 1)
+        # indexes are case-sensitive while our query boundaries are not.
 
-        # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
-        q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
+        # Prepare the list of query letters
+        q_letters = []
 
-        CHUNK_SIZE = 50
-        offset = 0
-        while True:
-            chunk = 0
-            for um in q.fetch(CHUNK_SIZE, offset = offset):
-                chunk += 1
-                if um.nickname and not um.inactive:
-                    nick = Alphabet.tolower(um.nickname)
-                    if len(nick) > 0 and nick[0] in Alphabet.full_order:
-                        # Nicknames that do not start with an alpabetic character are not listed
-                        o_nick = Alphabet.full_order.index(nick[0])
-                        if (o_nick >= o_from) and (o_nick <= o_to):
-                            # This entity matches: return a dict describing it
-                            yield dict(
-                                id = um.key.id(),
-                                nickname = um.nickname,
-                                inactive = um.inactive,
-                                prefs = um.prefs,
-                                timestamp = um.timestamp
-                            )
-                            counter += 1
-                            if max_len > 0 and counter >= max_len:
-                                # Hit limit on returned users: stop iterating
-                                return
-            if chunk < CHUNK_SIZE:
-                # Hit end of query: stop iterating
-                return
-            offset += chunk
+        for i in range(o_from, o_to + 1):
+            # Append the lower case letter
+            q_letters.append(Alphabet.full_order[i])
+            # Append the upper case letter
+            q_letters.append(Alphabet.full_upper[i])
+
+        # For aesthetic cleanliness, sort the query letters (in Unicode order)
+        q_letters.sort()
+
+        for q_from in q_letters:
+
+            q_to = unichr(ord(q_from) + 1)
+
+            logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
+            q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
+
+            CHUNK_SIZE = 50
+            offset = 0
+            go = True
+            while go:
+                chunk = 0
+                logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
+                for um in q.fetch(CHUNK_SIZE, offset = offset):
+                    chunk += 1
+                    if not um.inactive:
+                        # This entity matches: return a dict describing it
+                        yield dict(
+                            id = um.key.id(),
+                            nickname = um.nickname,
+                            prefs = um.prefs,
+                            timestamp = um.timestamp
+                        )
+                        counter += 1
+                        if max_len > 0 and counter >= max_len:
+                            # Hit limit on returned users: stop iterating
+                            return
+                if chunk < CHUNK_SIZE:
+                    # Hit end of query: stop iterating
+                    go = False
+                else:
+                    # Continue with the next chunk
+                    offset += chunk
 
 
 class MoveModel(ndb.Model):
