@@ -599,11 +599,20 @@ function populateChallengeList(json) {
       ival = window.setInterval(readyFlasher, 500);
 }
 
+/* Interval timer for the initial fetch of the challenge list,
+   which occurs 2 seconds after the page is first loaded */
+var ivalChallengeList = null;
+
 function refreshChallengeList() {
    /* Clear list of challenges received by this user */
    $("#chall-received").html("");
    /* Clear list of challenges sent by this user */
    $("#chall-sent").html("");
+   /* If we're being called as a result of an interval timer, clear it */
+   if (ivalChallengeList !== null) {
+      window.clearInterval(ivalChallengeList);
+      ivalChallengeList = null;
+   }
    serverQuery("/challengelist",
       {
          // No data to send with query - current user is implicit
@@ -781,6 +790,9 @@ function initMain() {
 
    /* Initialize game list */
    refreshGameList();
+
+   /* Initialize the challenge list after two seconds */
+   ivalChallengeList = window.setInterval(refreshChallengeList, 2 * 1000);
 
    /* Initialize alphabet categories in user list header */
    $("div.user-cat span").each(function() {

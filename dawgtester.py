@@ -47,6 +47,13 @@ class DawgTester:
         t1 = time.time()
 
         print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
+
+        t0 = time.time()
+        self._dawg.store_pickle(os.path.abspath(os.path.join(relpath, fname + ".dawg.pickle")))
+        t1 = time.time()
+
+        print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+
         print("Checking a set of random words:")
         self._test_true(u"abbadísarinnar")
         self._test_true(u"absintufyllirí")

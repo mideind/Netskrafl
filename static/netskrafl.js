@@ -1684,7 +1684,7 @@ function channelOnOpen() {
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   if (json.stale !== undefined && json.stale)
+   if ((json.stale !== undefined) && json.stale)
       // We missed updates on our channel: reload the board
       window.location.reload(true);
    else {
