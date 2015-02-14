@@ -46,6 +46,8 @@ class User:
         self._nickname = u""
         self._inactive = False
         self._preferences = { }
+        self._ready = False
+        self._ready_timed = False
         # Set of favorite users, only loaded upon demand
         self._favorites = None
 
@@ -75,13 +77,17 @@ class User:
             self._nickname = um.nickname
             self._inactive = um.inactive
             self._preferences = um.prefs
+            self._ready = um.ready
+            self._ready_timed = um.ready_timed
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
         with User._lock:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
-            UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
+            UserModel.update(self._user_id, self._nickname,
+                self._inactive, self._preferences,
+                self._ready, self._ready_timed)
             memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user')
 
     def id(self):
@@ -96,15 +102,20 @@ class User:
         """ Sets the human-readable nickname of a user """
         self._nickname = nickname
 
+    @staticmethod
+    def is_valid_nick(nick):
+        """ Check whether a nickname is valid and displayable """
+        if not nick:
+            return False
+        return nick[0:8] != u"https://" and nick[0:7] != u"http://"
+
     def is_displayable(self):
         """ Returns True if this user should appear in user lists """
         if self._inactive:
             # Inactive users are hidden
             return False
         # Nicknames that haven't been properly set aren't displayed
-        if not self._nickname:
-            return False
-        return self._nickname[0:8] != u"https://"
+        return User.is_valid_nick(self._nickname)
 
     def get_pref(self, pref):
         """ Retrieve a preference, or None if not found """
@@ -165,6 +176,24 @@ class User:
         """ Sets the beginner state of a user to True or False """
         assert isinstance(beginner, bool)
         self.set_pref(u"beginner", beginner)
+
+    def is_ready(self):
+        """ Returns True if the user is ready to accept challenges """
+        return self._ready
+
+    def set_ready(self, ready):
+        """ Sets the ready state of a user to True or False """
+        assert isinstance(ready, bool)
+        self._ready = ready
+
+    def is_ready_timed(self):
+        """ Returns True if the user is ready for timed games """
+        return self._ready_timed
+
+    def set_ready_timed(self, ready):
+        """ Sets the whether a user is ready for timed games """
+        assert isinstance(ready, bool)
+        self._ready_timed = ready
 
     def _load_favorites(self):
         """ Loads favorites of this user from the database into a set in memory """

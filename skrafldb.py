@@ -78,6 +78,10 @@ class UserModel(ndb.Model):
     inactive = ndb.BooleanProperty()
     prefs = ndb.JsonProperty()
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
+    # Ready for challenges?
+    ready = ndb.BooleanProperty(required = False, default = False)
+    # Ready for timed challenges?
+    ready_timed = ndb.BooleanProperty(required = False, default = False)
 
     @classmethod
     def create(cls, user_id, nickname):
@@ -86,15 +90,19 @@ class UserModel(ndb.Model):
         user.nickname = nickname # Default to the same nickname
         user.inactive = False # A new user is always active
         user.prefs = { } # No preferences
+        user.ready = False # Not ready for new challenges unless explicitly set
+        user.ready_timed = False # Not ready for timed games unless explicitly set
         return user.put().id()
 
     @classmethod
-    def update(cls, user_id, nickname, inactive, prefs):
+    def update(cls, user_id, nickname, inactive, prefs, ready, ready_timed):
         """ Update an existing user entity """
         user = cls.fetch(user_id)
         user.nickname = nickname
         user.inactive = inactive
         user.prefs = prefs
+        user.ready = ready
+        user.ready_timed = ready_timed
         user.put()
 
     @classmethod
@@ -159,7 +167,9 @@ class UserModel(ndb.Model):
                             id = um.key.id(),
                             nickname = um.nickname,
                             prefs = um.prefs,
-                            timestamp = um.timestamp
+                            timestamp = um.timestamp,
+                            ready = um.ready,
+                            ready_timed = um.ready_timed
                         )
                         counter += 1
                         if max_len > 0 and counter >= max_len:

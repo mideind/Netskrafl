@@ -162,9 +162,11 @@ def _userlist(range_from, range_to):
                 "nick": r[0],
                 "fullname": r[1],
                 "fav": False,
-                "chall": False
+                "chall": False,
+                "ready": True, # The robots are always ready for a challenge
+                "ready_timed": False # Timed games are not available for robots
             })
-        # That's it; we're done
+        # That's it; we're done (no sorting required)
         return result
 
     # We will be returning a list of human players
@@ -175,29 +177,34 @@ def _userlist(range_from, range_to):
         challenges.update([ch[0] # Identifier of challenged user
             for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
 
+    # Get the list of online users
+
+    # Start by looking in the cache
+    online = memcache.get("live", namespace="userlist")
+    if online is None:
+        # Not found: do a query
+        online = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+        # Store the result in the cache with a lifetime of 2 minutes
+        memcache.set("live", online, time=2 * 60, namespace="userlist")
+
     if range_from == u"live" and not range_to:
-        # Return all connected (live) users
+        # Return all online (live) users
 
-        # Start by looking in the cache
-        i = memcache.get("live", namespace="userlist")
-        if i is None:
-            # Not found: do a query
-            i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
-            # Store the result in the cache with a lifetime of 2 minutes
-            memcache.set("live", i, time=2 * 60, namespace="userlist")
-
-        for uid in i:
+        for uid in online:
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
             lu = User.load(uid)
             if lu and lu.is_displayable():
+                chall = uid in challenges
                 result.append({
                     "userid": uid,
                     "nick": lu.nickname(),
                     "fullname": lu.full_name(),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": uid in challenges
+                    "chall": chall,
+                    "ready": lu.is_ready() and not chall,
+                    "ready_timed": lu.is_ready_timed() and not chall
                 })
 
     elif range_from == u"fav" and not range_to:
@@ -207,12 +214,15 @@ def _userlist(range_from, range_to):
             for favid in i:
                 fu = User.load(favid)
                 if fu and fu.is_displayable():
+                    chall = favid in challenges
                     result.append({
                         "userid": favid,
                         "nick": fu.nickname(),
                         "fullname": fu.full_name(),
                         "fav": True,
-                        "chall": favid in challenges
+                        "chall": chall,
+                        "ready": fu.is_ready() and favid in online and not chall,
+                        "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
 
     else:
@@ -232,12 +242,7 @@ def _userlist(range_from, range_to):
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
-            nick = ud["nickname"]
-            if not nick:
-                # No nickname: do not display
-                return False
-            # https prefix on nickname: do not display
-            return nick[0:8] != u"https://"
+            return User.is_valid_nick(ud["nickname"])
 
         for ud in i:
             uid = ud["id"]
@@ -245,16 +250,28 @@ def _userlist(range_from, range_to):
                 # Do not include the current user, if any, in the list
                 continue
             if displayable(ud):
+                chall = uid in challenges
                 result.append({
                     "userid": uid,
                     "nick": ud["nickname"],
                     "fullname": User.full_name_from_prefs(ud["prefs"]),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": uid in challenges
+                    "chall": chall,
+                    "ready": ud["ready"] and uid in online and not chall,
+                    "ready_timed": ud["ready_timed"] and uid in online and not chall
                 })
 
-    # Sort the user list in ascending order by nickname, case-insensitive
-    result.sort(key = lambda x: Alphabet.sortkey_nocase(x["nick"]))
+    # Sort the user list. The list is ordered so that users who are
+    # ready for any kind of challenge come first, then users who are ready for
+    # a timed game, and finally all other users. Each category is sorted
+    # by nickname, case-insensitive.
+    result.sort(key = lambda x: (
+        # First by readiness
+        0 if x["ready"] else 1 if x ["ready_timed"] else 2,
+        # Then by nickname
+        Alphabet.sortkey_nocase(x["nick"])
+        )
+    )
     return result
 
 
@@ -684,7 +701,32 @@ def setuserpref():
     if beginner is not None and isinstance(beginner, bool):
         # Setting a new state for the beginner preference
         user.set_beginner(beginner)
-        user.update()
+
+    # Check for the ready state and convert it to bool if we can
+    ready = request.form.get('ready', None)
+    if ready is not None:
+        if ready == u"false":
+            ready = False
+        elif ready == u"true":
+            ready = True
+
+    if ready is not None and isinstance(ready, bool):
+        # Setting a new state for the ready preference
+        user.set_ready(ready)
+
+    # Check for the ready_timed state and convert it to bool if we can
+    ready_timed = request.form.get('ready_timed', None)
+    if ready_timed is not None:
+        if ready_timed == u"false":
+            ready_timed = False
+        elif ready_timed == u"true":
+            ready_timed = True
+
+    if ready_timed is not None and isinstance(ready_timed, bool):
+        # Setting a new state for the ready_timed preference
+        user.set_ready_timed(ready_timed)
+
+    user.update()
 
     return jsonify(result = Error.LEGAL)
 

@@ -9,7 +9,7 @@ automatic_scaling:
   min_idle_instances: 2
   max_idle_instances: automatic
   min_pending_latency: 200ms
-  max_pending_latency: 1000ms
+  max_pending_latency: 1250ms
 
 inbound_services:
 - warmup
@@ -73,18 +73,22 @@ handlers:
   static_files: static/glyphicons-regular.ttf
   upload: static/glyphicons-regular.ttf
   expiration: 1d
+  mime_type: application/font-sfnt
 - url: /static/glyphicons-regular.eot
   static_files: static/glyphicons-regular.eot
   upload: static/glyphicons-regular.eot
   expiration: 1d
+  mime_type: application/vnd.ms-fontobject
 - url: /static/glyphicons-regular.svg
   static_files: static/glyphicons-regular.svg
   upload: static/glyphicons-regular.svg
   expiration: 1d
+  mime_type: image/svg+xml
 - url: /static/glyphicons-regular.woff
   static_files: static/glyphicons-regular.woff
   upload: static/glyphicons-regular.woff
   expiration: 1d
+  mime_type: application/font-woff
 - url: /static/your-turn.mp3
   static_files: static/your-turn.mp3
   upload: static/your-turn.mp3

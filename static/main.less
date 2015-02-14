@@ -97,6 +97,9 @@
 .glyphicon-hand-left:before {
    content: "\E347";
 }
+.glyphicon-thumbs-up:before {
+   content: "\E344";
+}
 .glyphicon-thumbs-down:before {
    content: "\E345";
 }
@@ -1261,7 +1264,9 @@ div.listitem {
    padding-top: 7px;
    padding-bottom: 5px;
    overflow: hidden;
-   vertical-align: middle;
+   vertical-align: top;
+   text-overflow: ellipsis;
+   white-space: nowrap;
 }
 
 .listitem a:link, .listitem a:visited {
@@ -1436,14 +1441,52 @@ div.user-cat span:hover {
    border-radius: 5px;
 }
 
+span.ready-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @double-letter;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.ready-btn:before {
+   content: "\E344"; /* thumbs-up */
+}
+
+span.timed-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @double-letter;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.timed-btn:before {
+   content: "\E055"; /* time */
+}
+
 span.usr-info {
    .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
    top: 0px;
    cursor: pointer;
    color: white;
    background-color: @freshtile;
    border-radius: 5px;
-   padding: 5px;
+   padding: 4px;
    margin: 0px;
 }
 
@@ -2010,8 +2053,28 @@ div.toggler div.option {
    border-style: none;
 }
 
+div.toggler div.option.small {
+   width: 40px;
+   height: 26px;
+   font-size: 20px;
+   padding-top: 3px;
+   padding-bottom: 3px;
+}
+
 div.toggler div.option.selected {
    background-color: @triple-letter;
+}
+
+div#ready-toggler {
+   position: absolute;
+   left: 10px;
+   top: 618px;
+}
+
+div#timed-toggler {
+   position: absolute;
+   left: 10px;
+   top: 670px;
 }
 
 div #radioset {

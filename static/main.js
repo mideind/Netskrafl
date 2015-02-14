@@ -192,7 +192,7 @@ function populateUserList(json) {
          (item.chall ? "'" : " grayed'") +
          " id='" + chId + "'></span>";
       var nick = escapeHtml(item.nick);
-      var alink = "", aclose = "", info = "";
+      var alink = "", aclose = "", info = "", ready = "";
       if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
@@ -205,13 +205,19 @@ function populateUserList(json) {
          info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
       }
       if (info.length)
-         info = "<span class='list-info'>" + info + "</span>";
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+      // Readiness buttons
+      if (item.ready && !isRobot)
+         ready = "<span class='ready-btn' title='Álínis og tekur við áskorunum'></span> ";
+      if (item.ready_timed)
+         ready += "<span class='timed-btn' title='Til í viðureign með klukku'></span> ";
+      // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-fav'>" + fav + "</span>" +
          alink +
          "<span class='list-nick'>" + nick + "</span>" +
-         "<span class='list-fullname'>" + escapeHtml(item.fullname) + "</span>" +
+         "<span class='list-fullname'>" + ready + escapeHtml(item.fullname) + "</span>" +
          aclose +
          info +
          "</div>";
@@ -685,6 +691,44 @@ function okChallenge(ev) {
    $("#" + param.elemid).removeClass("grayed");
    /* Tear down the dialog as we're done */
    cancelChallenge(ev);
+}
+
+function toggle(ev) {
+   // Toggle from one state to the other
+   var elemid = "#" + ev.delegateTarget.id;
+   var state = $(elemid + " #opt2").hasClass("selected");
+   $(elemid + " #opt1").toggleClass("selected", state);
+   $(elemid + " #opt2").toggleClass("selected", !state);
+   // Return the new state of the toggle
+   return !state;
+}
+
+function toggleReady(ev) {
+   // The ready toggle has been clicked
+   var readyState = toggle(ev);
+   serverQuery("/setuserpref",
+      {
+         ready: readyState
+      }
+   );
+}
+
+function toggleTimed(ev) {
+   // The timed toggle has been clicked
+   var timedState = toggle(ev);
+   serverQuery("/setuserpref",
+      {
+         ready_timed: timedState
+      }
+   );
+}
+
+function initToggle(elemid, state) {
+   // Initialize a toggle
+   if (state)
+      $(elemid + " #opt2").addClass("selected");
+   else
+      $(elemid + " #opt1").addClass("selected");
 }
 
 /* Google Channel API stuff */

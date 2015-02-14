@@ -45,6 +45,12 @@ function lateInit() {
 {% endif %}
 
    openChannel("{{ channel_token }}");
+
+   // Initialize the ready state togglers
+   initToggle("#ready-toggler", {{ "true" if user.is_ready() else "false" }});
+   initToggle("#timed-toggler", {{ "true" if user.is_ready_timed() else "false" }});
+   $("#ready-toggler").click(toggleReady);
+   $("#timed-toggler").click(toggleTimed);
 }
 
 </script>
@@ -189,7 +195,7 @@ function lateInit() {
          class="list-fav"><span title="Uppáhald"
          class='glyphicon glyphicon-star-empty'></span></span><span
          class="list-nick">Einkenni</span><span
-         class="list-fullname">Nafn</span><span
+         class="list-fullname">Staða og nafn</span><span
          class="list-info" id="usr-list-info">Ferill</span>
       </div>
 
@@ -208,6 +214,18 @@ function lateInit() {
 <!-- Display user identifier in upper right corner -->
 
 <div class="userid" onclick="location.href='{{ url_for('userprefs') }}'">{{ user.nickname() }}</div>
+
+<!-- Readiness indicator toggle -->
+<div id="ready-toggler" class="toggler" title="Tek við áskorunum!">
+   <div class="option small" id="opt1">&nbsp;</div><!--
+--><div class="option small" id="opt2"><span class="glyphicon glyphicon-thumbs-up"></span></div>
+</div>
+
+<!-- Indicator toggle for timed game readiness -->
+<div id="timed-toggler" class="toggler" title="Til í viðureign með klukku!">
+   <div class="option small" id="opt1">&nbsp;</div><!--
+--><div class="option small" id="opt2"><span class="glyphicon glyphicon-time"></span></div>
+</div>
 
 <!-- Facebook like/share -->
 <!--
