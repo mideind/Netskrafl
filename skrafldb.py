@@ -142,15 +142,15 @@ class UserModel(ndb.Model):
 
             q_to = unichr(ord(q_from) + 1)
 
-            logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
+            # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
             q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
 
-            CHUNK_SIZE = 50
+            CHUNK_SIZE = 250 # Individual letters contain >600 users as of 2015-02-12
             offset = 0
             go = True
             while go:
                 chunk = 0
-                logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
+                # logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
                 for um in q.fetch(CHUNK_SIZE, offset = offset):
                     chunk += 1
                     if not um.inactive:
@@ -562,7 +562,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def list_connected(cls):
         """ List all presently connected users """
-        CHUNK_SIZE = 50
+        CHUNK_SIZE = 100
         now = datetime.utcnow()
         # Obtain all connected channels that have not expired
         q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)
@@ -616,7 +616,7 @@ class ChannelModel(ndb.Model):
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
-        CHUNK_SIZE = 50
+        CHUNK_SIZE = 100
         while True:
             q = cls.query(ChannelModel.expiry < now)
             # Query and delete in chunks

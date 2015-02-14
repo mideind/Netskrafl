@@ -219,14 +219,14 @@ def _userlist(range_from, range_to):
         # Return users within a particular nickname range
 
         # The "1:" prefix is a version header
-        cache_range = "1:" + ("" if range_from is None else range_from) + \
+        cache_range = "2:" + ("" if range_from is None else range_from) + \
             "-" + ("" if range_to is None else range_to)
 
         # Start by looking in the cache
         i = memcache.get(cache_range, namespace="userlist")
         if i is None:
-            # Not found: do a query
-            i = list(UserModel.list(range_from, range_to, max_len = 250))
+            # Not found: do an unlimited query
+            i = list(UserModel.list(range_from, range_to, max_len = 0))
             # Store the result in the cache with a lifetime of 5 minutes
             memcache.set(cache_range, i, time=5 * 60, namespace="userlist")
 
