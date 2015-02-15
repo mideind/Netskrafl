@@ -51,6 +51,9 @@ class User:
         # Set of favorite users, only loaded upon demand
         self._favorites = None
 
+        # NOTE: When new properties are added, the memcache namespace version id
+        # should be incremented!
+
         if uid is None:
             # Obtain information from the currently logged in user
             u = users.get_current_user()
@@ -88,7 +91,9 @@ class User:
             UserModel.update(self._user_id, self._nickname,
                 self._inactive, self._preferences,
                 self._ready, self._ready_timed)
-            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user')
+            # Note: the namespace version should be incremented each time
+            # that the class properties change
+            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user:1')
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -255,14 +260,14 @@ class User:
     def load(cls, uid):
         """ Load a user from persistent storage given his/her user id """
         with User._lock:
-            u = memcache.get(uid, namespace='user')
+            u = memcache.get(uid, namespace='user:1')
             if u is None:
                 # Not found in the memcache: create a user object and
                 # populate it from a database entity (or initialize
                 # a fresh one if no entity exists).
                 u = cls(uid)
                 u._fetch()
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user')
+                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user:1')
             return u
 
     @classmethod
@@ -272,13 +277,13 @@ class User:
             user = users.get_current_user()
             if user is None or user.user_id() is None:
                 return None
-            u = memcache.get(user.user_id(), namespace='user')
+            u = memcache.get(user.user_id(), namespace='user:1')
             if u is not None:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
             u._fetch() # Creates a database entity if this is a fresh user
-            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user')
+            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user:1')
             return u
 
     @classmethod

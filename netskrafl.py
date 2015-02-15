@@ -267,7 +267,7 @@ def _userlist(range_from, range_to):
     # by nickname, case-insensitive.
     result.sort(key = lambda x: (
         # First by readiness
-        0 if x["ready"] else 1 if x ["ready_timed"] else 2,
+        0 if x["ready"] else 1 if x["ready_timed"] else 2,
         # Then by nickname
         Alphabet.sortkey_nocase(x["nick"])
         )
