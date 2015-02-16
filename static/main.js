@@ -532,6 +532,10 @@ function populateChallengeList(json) {
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
+   /* Clear list of challenges received by this user */
+   $("#chall-received").html("");
+   /* Clear list of challenges sent by this user */
+   $("#chall-sent").html("");
    var countReceived = 0, countSent = 0, countReady = 0;
    for (var i = 0; i < json.challengelist.length; i++) {
       var item = json.challengelist[i];
@@ -610,15 +614,12 @@ function populateChallengeList(json) {
 var ivalChallengeList = null;
 
 function refreshChallengeList() {
-   /* Clear list of challenges received by this user */
-   $("#chall-received").html("");
-   /* Clear list of challenges sent by this user */
-   $("#chall-sent").html("");
    /* If we're being called as a result of an interval timer, clear it */
    if (ivalChallengeList !== null) {
       window.clearInterval(ivalChallengeList);
       ivalChallengeList = null;
    }
+   // populateChallengeList clears out the existing content, if any
    serverQuery("/challengelist",
       {
          // No data to send with query - current user is implicit
@@ -803,12 +804,16 @@ function initMain() {
       heightStyle: "auto",
       activate: function(event, ui) {
          var panelId = ui.newPanel.attr('id');
+         /* The challenge list is loaded automatically after a short delay,
+            so the following is not necessary */
+         /*
          if (panelId == "tabs-2") {
             if (!$("#chall-received").html() && !$("#chall-sent").html())
                // Delay load challenge list
                refreshChallengeList();
          }
          else
+         */
          if (panelId == "tabs-4") {
             if (!$("#recentlist").html())
                // Delay load recent game list

@@ -111,6 +111,11 @@ class UserModel(ndb.Model):
         return cls.get_by_id(user_id)
 
     @classmethod
+    def count(cls):
+        """ Return a count of user entities """
+        return cls.query().count()
+
+    @classmethod
     def list(cls, nick_from, nick_to, max_len = 100):
         """ Query for a list of users within a nickname range """
 

@@ -1165,6 +1165,9 @@ def server_error(e):
     """ Return a custom 500 error """
     return u'Eftirfarandi villa kom upp: {}'.format(e), 500
 
+# Continue to add handlers for the admin web
+
+import admin
 
 # Run a default Flask web server for testing if invoked directly as a main program
 
