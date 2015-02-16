@@ -142,6 +142,12 @@
 .glyphicon-hourglass:before {
    content: "\231B";
 }
+.glyphicon-random:before {
+   content: "\E084";
+}
+.glyphicon-down-arrow:before {
+   content: "\E213";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -171,7 +177,7 @@ div.container {
 div.logo {
    position: absolute;
    top: 28px;
-   left: 28px;
+   left: 24px;
    width: 46px;
    height: 400px;
 }
@@ -179,7 +185,7 @@ div.logo {
 div.logo-back {
    position: absolute;
    top: 38px;
-   left: 28px;
+   left: 24px;
    width: 46px;
    height: 46px;
    font-size: 46px;
@@ -192,7 +198,7 @@ div.logo-back {
 div.info {
    position: absolute;
    top: 456px;
-   left: 26px;
+   left: 22px;
    width: 50px;
    height: 50px;
    text-align: center;
@@ -202,7 +208,7 @@ div.info {
 div.board {
    position: absolute;
    top: 8px;
-   left: 96px;
+   left: 88px;
 }
 
 div.rightcol {
@@ -216,7 +222,7 @@ div.rack {
    position: absolute;
    text-align: center;
    bottom: 125px;
-   left: 244px;
+   left: 236px;
    background-color: @board-background;
    padding: 6px;
    border-width: 0;
@@ -828,13 +834,29 @@ div.resign {
    visibility: hidden;
 }
 
+div.pass {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @pass-btn;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 span.yesnobutton {
    height: 20px;
    text-align: center;
    background-color: white;
    font-size: 16px;
    font-weight: 700;
-   color: @alert;
    margin-top: 0;
    margin-bottom: 0;
    margin-left: 4px;
@@ -847,7 +869,15 @@ span.yesnobutton {
    cursor: pointer;
 }
 
-span.xchgbtn {
+div.resign span.yesnobutton {
+   color: @alert;
+}
+
+div.pass span.yesnobutton {
+   color: @pass-btn;
+}
+
+div.exchange span.yesnobutton {
    color: @freshtile;
 }
 
@@ -897,34 +927,32 @@ div.gameinfo {
 .standard-button {
    position: absolute;
    text-align: center;
-   font-size: 18px;
+   font-size: 20px;
    font-weight: 700;
    color: white;
    margin: 0;
    padding: 6px;
    padding-top: 8px;
    border-radius: 5px;
+   vertical-align: middle;
    cursor: pointer;
    .noselect;
 }
 
 .submitbutton {
    .standard-button;
-   width: 100px;
-   height: 28px;
+   width: 82px;
+   height: 30px;
    bottom: 130px;
-   left: 562px;
+   left: 600px;
    background-color: @freshtile;
+   font-size: 18px;
+   font-weight: 700;
 }
 
 div.submitnewgame {
    .submitbutton;
    display: none;
-}
-
-div.submitmove {
-   .submitbutton;
-   display: block;
 }
 
 div.waitmove {
@@ -933,44 +961,98 @@ div.waitmove {
    z-index: 10;
 }
 
+div.submitmove {
+   .submitbutton;
+   display: block;
+}
+
 div.submitpass {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 91px;
+   left: 600px;
    background-color: @pass-btn;
 }
 
 div.submitresign {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 26px;
+   left: 101px;
    background-color: @alert;
 }
 
 div.submitexchange {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 156px;
+   left: 167px;
    background-color: @freshtile;
+}
+
+div.recallbtn {
+   .standard-button;
+   width: 40px;
+   height: 30px;
+   bottom: 130px;
+   left: 534px;
+   background-color: darken(@racktile, 10%);
+}
+
+div.scramblebtn {
+   .standard-button;
+   width: 40px;
+   height: 30px;
+   bottom: 130px;
+   left: 534px;
+   background-color: darken(@racktile, 10%);
 }
 
 div.score {
    position: absolute;
    width: 48px;
-   height: 32px;
+   height: 48px;
    text-align: center;
-   bottom: 202px;
-   left: 652px;
+   vertical-align: middle;
+   bottom: 204px;
+   left: 644px;
    background-color: transparent;
-   font-size: 26px;
+   font-size: 24px;
    font-weight: 700;
-   color: black;
+   line-height: 46px;
+   color: @board-background;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
+   border-color: @board-background;
+}
+
+div.score.word-good {
+   color: @freshtile;
+   border-color: @freshtile;
+}
+
+@keyframes colorPulse {
+   0% {color: @freshtile;}
+   40% {color: @alert;}
+   60% {color: @alert;}
+   100% {color: @freshtile;}
+}
+
+@-webkit-keyframes colorPulse {
+   0% {color: @freshtile;}
+   40% {color: @alert;}
+   60% {color: @alert;}
+   100% {color: @freshtile;}
+}
+
+div.score.word-great {
+   animation: colorPulse 1.5s infinite;
+   -webkit-animation: colorPulse 1.5s infinite;
+   border-color: @freshtile;
 }
 
 div.channel {
@@ -998,18 +1080,24 @@ div.word-check {
    width: 48px;
    height: 48px;
    text-align: center;
-   top: 410px;
-   left: 652px;
+   vertical-align: middle;
+   bottom: 268px;
+   left: 644px;
    background-color: transparent;
    font-family: 'Glyphicons Regular';
    font-style: normal;
    font-weight: normal;
    font-size: 26px;
+   line-height: 45px;
    visibility: hidden;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
 }
 
 div.word-check.word-good {
    color: @freshtile;
+   border-color: @freshtile;
    visibility: visible;
 }
 
@@ -1019,6 +1107,7 @@ div.word-check.word-good:before {
 
 div.word-check.word-bad {
    color: @alert;
+   border-color: @alert;
    visibility: visible;
 }
 
@@ -1026,28 +1115,9 @@ div.word-check.word-bad:before {
    content: "\E200"; /* glyphicon-ban-circle */
 }
 
-div.recallbtn {
-   position: absolute;
-   width: 48px;
-   height: 48px;
-   text-align: center;
-   vertical-align: middle;
-   top: 456px;
-   left: 652px;
-   font-size: 40px;
-   font-weight: normal;
-   color: fade(@racktile, 80%);
-   visibility: hidden;
-   cursor: pointer;
-}
-
-div.recallbtn.hover {
-   color: @hover-link;
-}
-
 div.board-help {
    position: absolute;
-   left: 22px;
+   left: 18px;
    top: 160px;
    width: 54px;
    background-color: white;

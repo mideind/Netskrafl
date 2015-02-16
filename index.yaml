@@ -72,3 +72,8 @@ indexes:
   - name: player1
   - name: ts_last_move
     direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: ts_last_move

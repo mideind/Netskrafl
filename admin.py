@@ -45,16 +45,21 @@ def admin_usercount():
 @app.route("/admin/fetchgames", methods=['GET', 'POST'])
 def admin_fetchgames():
     """ Return a JSON representation of all finished games """
-    q = GameModel.query(GameModel.over == True)
+    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     gamelist = []
     for gm in q.fetch():
         gamelist.append(dict(
-            player0 = gm.player0.id(),
-            player1 = gm.player1.id(),
-            rack0 = gm.rack0,
-            rack1 = gm.rack1
+            id = gm.key.id(),
+            ts = Alphabet.format_timestamp(gm.timestamp),
+            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp),
+            p0 = None if gm.player0 is None else gm.player0.id(),
+            p1 = None if gm.player1 is None else gm.player1.id(),
+            rl = gm.robot_level,
+            s0 = gm.score0,
+            s1 = gm.score1,
+            pr = gm.prefs
         ))
-    return jsonify(gamelist)
+    return jsonify(gamelist = gamelist)
 
 
 @app.route("/admin/main")

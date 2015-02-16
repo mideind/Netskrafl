@@ -1006,6 +1006,12 @@ function wordGoodOrBad(flagGood, flagBad) {
    /* Flag whether the word being laid down is good or bad (or neither when we don't know) */
    $("div.word-check").toggleClass("word-good", flagGood);
    $("div.word-check").toggleClass("word-bad", flagBad);
+   $("div.score").toggleClass("word-good", flagGood);
+   if (flagGood) {
+      // Show a 50+ point word with a special color
+      if (parseInt($("div.score").text()) >= 50)
+         $("div.score").addClass("word-great");
+   }
 }
 
 function showWordCheck(json) {
@@ -1018,12 +1024,18 @@ function showWordCheck(json) {
 function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
    var tilesPlaced = gameOver ? 0 : findCovers().length;
+   var showResign = false;
+   var showExchange = false;
+   var showPass = false;
+   var showRecall = false;
+   var showScramble = false;
+   var showMove = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
-      $("div.submitmove").css("visibility", "visible");
-      $("div.submitexchange").css("visibility", "visible");
-      $("div.submitpass").css("visibility", "visible");
-      $("div.submitresign").css("visibility", "visible");
+      showMove = (tilesPlaced !== 0);
+      showExchange = true;
+      showPass = (tilesPlaced === 0);
+      showResign = true;
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
          (tilesPlaced === 0 || showingDialog));
@@ -1031,8 +1043,9 @@ function updateButtonState() {
          (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
       $("div.submitpass").toggleClass("disabled",
          (tilesPlaced !== 0 || showingDialog));
-      $("div.submitresign").toggleClass("disabled",
-         showingDialog);
+      $("div.submitresign").toggleClass("disabled", showingDialog);
+      $("div.recallbtn").toggleClass("disabled", showingDialog);
+      $("div.scramblebtn").toggleClass("disabled", showingDialog);
       $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("div.opp-turn").css("visibility", "hidden");
@@ -1041,10 +1054,6 @@ function updateButtonState() {
    }
    else {
       /* The other player's turn */
-      $("div.submitmove").css("visibility", "hidden");
-      $("div.submitexchange").css("visibility", "hidden");
-      $("div.submitpass").css("visibility", "hidden");
-      $("div.submitresign").css("visibility", "hidden");
       $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       if (gameOver)
@@ -1057,29 +1066,36 @@ function updateButtonState() {
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
+   $("div.score").removeClass("word-good").removeClass("word-great");
    if (tilesPlaced === 0) {
-      $("div.score").text("");
+      $("div.score").text("").css("visibility", "hidden");
       wordToCheck = "";
       wordGoodOrBad(false, false);
-      $("div.recallbtn").css("visibility", "hidden");
+      showScramble = true;
    }
    else {
       var scoreResult = calcScore();
       if (scoreResult === undefined) {
-         $("div.score").text("?");
+         $("div.score").text("?").css("visibility", "visible");
          wordToCheck = "";
          wordGoodOrBad(false, false);
       }
       else {
-         $("div.score").text(scoreResult.score.toString());
+         $("div.score").text(scoreResult.score.toString()).css("visibility", "visible");
          /* Start a word check request to the server, checking the
             word laid down and all cross words */
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
          serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
       }
-      $("div.recallbtn").css("visibility", "visible");
+      showRecall = true;
    }
+   $("div.submitmove").css("visibility", showMove ? "visible" : "hidden");
+   $("div.submitexchange").css("visibility", showExchange ? "visible" : "hidden");
+   $("div.submitpass").css("visibility", showPass ? "visible" : "hidden");
+   $("div.submitresign").css("visibility", showResign ? "visible" : "hidden");
+   $("div.recallbtn").css("visibility", showRecall ? "visible" : "hidden");
+   $("div.scramblebtn").css("visibility", showScramble ? "visible" : "hidden");
 }
 
 function buttonOver(elem) {
@@ -1270,7 +1286,6 @@ function rescrambleRack(ev) {
    /* Reorder the rack randomly. Bound to the Backspace key. */
    if (showingDialog)
       return false;
-
    resetRack(ev);
    var array = [];
    var i, rackTileId;
@@ -1426,12 +1441,6 @@ function submitMove(btn) {
       sendMove('move');
 }
 
-function submitPass(btn) {
-   /* The Pass button has been pressed: submit a Pass move */
-   if (!$(btn).hasClass("disabled"))
-      sendMove('pass');
-}
-
 function confirmExchange(yes) {
    /* The user has either confirmed or cancelled the exchange */
    $("div.exchange").css("visibility", "hidden");
@@ -1497,6 +1506,27 @@ function submitResign(btn) {
    /* The user has clicked the resign button: show resignation banner */
    if (!$(btn).hasClass("disabled")) {
       $("div.resign").css("visibility", "visible");
+      showingDialog = true;
+      initRackDraggable(false);
+      /* Disable all other actions while panel is shown */
+      updateButtonState();
+   }
+}
+
+function confirmPass(yes) {
+   /* The user has either confirmed or cancelled the pass move */
+   $("div.pass").css("visibility", "hidden");
+   showingDialog = false;
+   initRackDraggable(true);
+   updateButtonState();
+   if (yes)
+      sendMove('pass');
+}
+
+function submitPass(btn) {
+   /* The user has clicked the pass button: show confirmation banner */
+   if (!$(btn).hasClass("disabled")) {
+      $("div.pass").css("visibility", "visible");
       showingDialog = true;
       initRackDraggable(false);
       /* Disable all other actions while panel is shown */
