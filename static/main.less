@@ -762,7 +762,7 @@ div.error {
    text-align: center;
    display: block;
    bottom: 72px;
-   left: 130px;
+   left: 122px;
    width: 512px;
    height: 28px;
    background-color: @alert;
@@ -878,7 +878,7 @@ div.pass span.yesnobutton {
 }
 
 div.exchange span.yesnobutton {
-   color: @freshtile;
+   color: darken(@freshtile, 10%);
 }
 
 div.exchange {
@@ -889,7 +889,7 @@ div.exchange {
    left: 130px;
    width: 512px;
    height: 28px;
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
    font-size: 16px;
    font-weight: 700;
    color: white;
@@ -913,7 +913,7 @@ div.gameinfo {
    text-align: center;
    display: block;
    bottom: 56px;
-   left: 130px;
+   left: 122px;
    width: 512px;
    height: 34px;
    background-color: @background;
@@ -927,12 +927,12 @@ div.gameinfo {
 .standard-button {
    position: absolute;
    text-align: center;
-   font-size: 20px;
+   font-size: 19px;
    font-weight: 700;
    color: white;
    margin: 0;
    padding: 6px;
-   padding-top: 8px;
+   padding-top: 9px;
    border-radius: 5px;
    vertical-align: middle;
    cursor: pointer;
@@ -945,7 +945,7 @@ div.gameinfo {
    height: 30px;
    bottom: 130px;
    left: 600px;
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
    font-size: 18px;
    font-weight: 700;
 }
@@ -990,7 +990,7 @@ div.submitexchange {
    height: 30px;
    bottom: 130px;
    left: 167px;
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
 }
 
 div.recallbtn {
@@ -1008,7 +1008,7 @@ div.scramblebtn {
    height: 30px;
    bottom: 130px;
    left: 534px;
-   background-color: darken(@racktile, 10%);
+   background-color: darken(@double-letter, 10%);
 }
 
 div.score {
@@ -1031,8 +1031,8 @@ div.score {
 }
 
 div.score.word-good {
-   color: @freshtile;
-   border-color: @freshtile;
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
 }
 
 @keyframes colorPulse {
@@ -1052,7 +1052,7 @@ div.score.word-good {
 div.score.word-great {
    animation: colorPulse 1.5s infinite;
    -webkit-animation: colorPulse 1.5s infinite;
-   border-color: @freshtile;
+   border-color: darken(@freshtile, 10%);
 }
 
 div.channel {
@@ -1096,8 +1096,8 @@ div.word-check {
 }
 
 div.word-check.word-good {
-   color: @freshtile;
-   border-color: @freshtile;
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
    visibility: visible;
 }
 
@@ -1199,8 +1199,8 @@ div.scorediff {
    height: 28px;
    text-align: center;
    vertical-align: middle;
-   bottom: 244px;
-   left: 652px;
+   bottom: 272px;
+   left: 646px;
    background-color: @alert;
    font-size: 18px;
    font-weight: normal;
@@ -1211,23 +1211,23 @@ div.scorediff {
 }
 
 div.posdiff {
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
 }
 
 div.navbtn {
    .standard-button;
    width: 100px;
-   height: 28px;
+   height: 30px;
    bottom: 130px;
    background-color: @nav-btn;
 }
 
 #navnext {
-   left: 562px;
+   left: 554px;
 }
 
 #navprev {
-   left: 92px;
+   left: 84px;
 }
 
 div.closebtn {

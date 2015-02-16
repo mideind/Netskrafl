@@ -1071,7 +1071,8 @@ function updateButtonState() {
       $("div.score").text("").css("visibility", "hidden");
       wordToCheck = "";
       wordGoodOrBad(false, false);
-      showScramble = true;
+      if (!gameOver)
+         showScramble = true;
    }
    else {
       var scoreResult = calcScore();

@@ -28,6 +28,7 @@
 import os
 import logging
 import json
+import threading
 
 from datetime import datetime, timedelta
 
@@ -59,6 +60,11 @@ app.config['DEBUG'] = running_local
 
 # !!! TODO: Change this to read the secret key from a config file at run-time
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
+
+# To try to finish requests as soon as possible and avoid DeadlineExceeded
+# exceptions, run the AutoPlayer move generator serially and exclusively
+# within an instance
+_autoplayer_lock = threading.Lock()
 
 
 def _process_move(game, movelist):
@@ -115,25 +121,28 @@ def _process_move(game, movelist):
         # show the user a corresponding error message
         return jsonify(result = err, msg = msg)
 
-    # Move is OK: register it and update the state
-    game.register_move(m)
+    # Serialize access to the following code section
+    with _autoplayer_lock:
 
-    # If it's the autoplayer's move, respond immediately
-    # (can be a bit time consuming if rack has one or two blank tiles)
-    opponent = game.player_id_to_move()
+        # Move is OK: register it and update the state
+        game.register_move(m)
 
-    is_over = game.is_over()
+        # If it's the autoplayer's move, respond immediately
+        # (can be a bit time consuming if rack has one or two blank tiles)
+        opponent = game.player_id_to_move()
 
-    if not is_over and opponent is None:
-        game.autoplayer_move()
-        is_over = game.is_over() # State may change during autoplayer_move()
+        is_over = game.is_over()
 
-    if is_over:
-        # If the game is now over, tally the final score
-        game.finalize_score()
+        if not is_over and opponent is None:
+            game.autoplayer_move()
+            is_over = game.is_over() # State may change during autoplayer_move()
 
-    # Make sure the new game state is persistently recorded
-    game.store()
+        if is_over:
+            # If the game is now over, tally the final score
+            game.finalize_score()
+
+        # Make sure the new game state is persistently recorded
+        game.store()
 
     # Notify the opponent, if he is not a robot and has one or more active channels
     if opponent is not None:
@@ -514,7 +523,10 @@ def forceresign():
     if game.player_id(1 - game.player_to_move()) != User.current_id():
         return jsonify(result = Error.WRONG_USER)
 
-    movecount = int(request.form.get('mcount', 0))
+    try:
+        movecount = int(request.form.get('mcount', "0"))
+    except:
+        movecount = -1
 
     # Make sure the client is in sync with the server:
     # check the move count
@@ -608,9 +620,13 @@ def recentlist():
         count = int(request.form.get('count', str(count)))
     except:
         pass
+
     # Limit count to 50 games
     if count > 50:
         count = 50
+    elif count < 1:
+        count = 1
+
     if user_id is None:
         user_id = User.current_id()
 
@@ -660,9 +676,14 @@ def challenge():
     action = request.form.get('action', u"issue")
     duration = 0
     try:
-        duration = int(request.form.get('duration', 0))
+        duration = int(request.form.get('duration', "0"))
     except:
         pass
+
+    if duration < 0:
+        duration = 0
+    elif duration > 100:
+        duration = 100
 
     if destuser is not None:
         if action == u"issue":
@@ -782,16 +803,27 @@ def review():
         # The game is not found: abort
         return redirect(url_for("main"))
 
-    move_number = int(request.args.get("move", "0"))
+    try:
+        move_number = int(request.args.get("move", "0"))
+    except:
+        move_number = 0
+
     if move_number > game.num_moves():
         move_number = game.num_moves()
+    elif move_number < 0:
+        move_number = 0
+
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
 
     best_moves = None
     if game.allows_best_moves():
-        # Show best moves if available and it is proper to do so (i.e. the game is finished)
-        apl = AutoPlayer(state)
-        best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
+
+        # Serialize access to the following section
+        with _autoplayer_lock:
+
+            # Show best moves if available and it is proper to do so (i.e. the game is finished)
+            apl = AutoPlayer(state)
+            best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
 
     player_index = state.player_to_move()
     user = User.current()
