@@ -559,6 +559,11 @@ function populateChallengeList(json) {
       var readyId = "ready" + i.toString();
       var chId = "chl" + i.toString();
       icon += " id='" + chId + "'></span>";
+
+      // Opponent track record button
+      var info = "<span id='chusr" + i.toString() + "' class='usr-info'></span>";
+      info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
          (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
@@ -568,6 +573,7 @@ function populateChallengeList(json) {
          "<span class='list-chall'>" + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
+         info +
          "</div>";
       if (item.received) {
          $("#chall-received").append(str);
@@ -590,9 +596,15 @@ function populateChallengeList(json) {
          }
          countSent++;
       }
+      // Enable mark challenge button (to decline or retract challenges)
       $("#" + chId).click(
          { userid: item.userid, nick: item.opp, fullname: "" },
          markChallAndRefresh
+      );
+      // Enable user track record button
+      $("#chusr" + i.toString()).click(
+         { userid: item.userid, nick: item.opp, fullname: "" },
+         showUserInfo
       );
    }
    // Update the count of received challenges and ready opponents

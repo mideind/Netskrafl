@@ -79,12 +79,14 @@ function lateInit() {
       stöðuna og leika ef <span class='glyphicon glyphicon-flag'></span> þú átt leik</p>
 
       <div class="listitem listheader">
-      <span class="list-myturn"><span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span></span><!--
-   --><span class="list-overdue"><span title="Langt frá síðasta leik?" class='glyphicon glyphicon-hourglass grayed'></span></span><!--
-   --><span class="list-ts">Síðasti leikur</span><!--
-   --><span class="list-opp">Andstæðingur</span><!--
-   --><span class="list-win"><span title="Yfir" class='glyphicon glyphicon-bookmark grayed'></span></span><!--
-   --><span class="list-scorehdr">Staða</span>
+         <span class="list-myturn">
+            <span title="Átt þú leik?" class='glyphicon glyphicon-flag grayed'></span>
+         </span><!--
+      --><span class="list-overdue"><span title="Langt frá síðasta leik?" class='glyphicon glyphicon-hourglass grayed'></span></span><!--
+      --><span class="list-ts">Síðasti leikur</span><!--
+      --><span class="list-opp">Andstæðingur</span><!--
+      --><span class="list-win"><span title="Yfir" class='glyphicon glyphicon-bookmark grayed'></span></span><!--
+      --><span class="list-scorehdr">Staða</span>
       </div>
 
       <!-- Game list will be populated by populateGameList() below -->
@@ -117,11 +119,15 @@ function lateInit() {
       eða á <span class="glyphicon glyphicon-thumbs-down" style="margin-left:6px;margin-right:6px;"></span>
       til að hafna henni</p>
 
-      <div class="listitem listheader"><span
-      class="list-icon"><span title="Hafna" class='glyphicon glyphicon-thumbs-down grayed'></span></span><span
-      class="list-ts">Hvenær</span><span
-      class="list-nick">Áskorandi</span><span
-      class="list-chall">Hvernig</span></div>
+      <div class="listitem listheader"><!--
+      --><span class="list-icon"><!--
+         --><span title="Hafna" class='glyphicon glyphicon-thumbs-down grayed'></span><!--
+      --></span><!--
+      --><span class="list-ts">Hvenær</span><!--
+      --><span class="list-nick">Áskorandi</span><!--
+      --><span class="list-chall">Hvernig</span><!--
+      --><span class="list-info">Ferill</span><!--
+   --></div>
 
       <!-- Challenge lists will be populated by populateChallengeList() below -->
       <div id="chall-received"></div>
@@ -130,11 +136,15 @@ function lateInit() {
       <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span>
       til að afturkalla áskorun</p>
 
-      <div class="listitem listheader"><span
-      class="list-icon"><span title="Afturkalla" class='glyphicon glyphicon-hand-right grayed'></span></span><span
-      class="list-ts">Hvenær</span><span
-      class="list-nick">Andstæðingur</span><span
-      class="list-chall">Hvernig</span></div>
+      <div class="listitem listheader"><!--
+      --><span class="list-icon"><!--
+         --><span title="Afturkalla" class='glyphicon glyphicon-hand-right grayed'></span><!--
+      --></span><!--
+      --><span class="list-ts">Hvenær</span><!--
+      --><span class="list-nick">Andstæðingur</span><!--
+      --><span class="list-chall">Hvernig</span><!--
+      --><span class="list-info">Ferill</span><!--
+   --></div>
 
       <div id="chall-sent"></div>
 
@@ -189,15 +199,16 @@ function lateInit() {
          </div>
       </div>
       <div class="listitem listheader">
-         <span
-         class="list-ch"><span title="Skora á"
-         class='glyphicon glyphicon-hand-right grayed'></span></span><span
-         class="list-fav"><span title="Uppáhald"
-         class='glyphicon glyphicon-star-empty'></span></span><span
-         class="list-nick">Einkenni</span><span
-         class="list-fullname">Nafn og merki</span><span
-         class="list-info" id="usr-list-info">Ferill</span>
-      </div>
+         <span class="list-ch"><!--
+         --><span title="Skora á" class='glyphicon glyphicon-hand-right grayed'></span><!--
+      --></span><!--
+      --><span class="list-fav"><!--
+         --><span title="Uppáhald" class='glyphicon glyphicon-star-empty'></span><!--
+      --></span><!--
+      --><span class="list-nick">Einkenni</span><!--
+      --><span class="list-fullname">Nafn og merki</span><!--
+      --><span class="list-info" id="usr-list-info">Ferill</span><!--
+   --></div>
 
       <!-- User list will be populated by populateUserList() below -->
       <div id="userlist"></div>

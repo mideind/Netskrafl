@@ -158,7 +158,7 @@ class UserModel(ndb.Model):
             # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
             q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
 
-            CHUNK_SIZE = 250 # Individual letters contain >600 users as of 2015-02-12
+            CHUNK_SIZE = 1000 # Individual letters contain >600 users as of 2015-02-12
             offset = 0
             go = True
             while go:
@@ -577,7 +577,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def list_connected(cls):
         """ List all presently connected users """
-        CHUNK_SIZE = 100
+        CHUNK_SIZE = 500
         now = datetime.utcnow()
         # Obtain all connected channels that have not expired
         q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)
@@ -631,7 +631,7 @@ class ChannelModel(ndb.Model):
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
-        CHUNK_SIZE = 100
+        CHUNK_SIZE = 500
         while True:
             q = cls.query(ChannelModel.expiry < now)
             # Query and delete in chunks
@@ -661,7 +661,7 @@ class ChannelModel(ndb.Model):
                 # Schedule the next one
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
-            CHUNK_SIZE = 50
+            CHUNK_SIZE = 50 # There are never going to be many matches for this query
             q = cls.query(ChannelModel.expiry > now).filter(
                 ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
             offset = 0
