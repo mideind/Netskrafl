@@ -43,11 +43,15 @@ app.config['DEBUG'] = running_local
 # !!! TODO: Change this to read the secret key from a config file at run-time
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
+
 class UserRecord(object):
+
+    """ Accumulation of statistics about a particular user """
 
     def __init__(self, key):
         self.key = key
         self.elo = 1200 # Initial rating
+        self.human_elo = 1200 # From human games only
         self.num_games = 0
         self.num_human_games = 0
         self.total_score = 0
@@ -58,6 +62,70 @@ class UserRecord(object):
         self.num_losses = 0
         self.num_human_wins = 0
         self.num_human_losses = 0
+
+
+def _compute_elo(p0, p1, o_elo, sc0, sc1):
+    """ Computes the ELO points of the two users after their game """
+    # If no points scored, this is a null game having no effect
+    assert sc0 >= 0
+    assert sc1 >= 0
+    if sc0 + sc1 == 0:
+        return (0, 0)
+    # The constant K used for adjustments
+    # !!! TBD: select K depending on number of games played and other factors
+    K = 32.0
+    # Current ELO ratings
+    elo0 = o_elo[0]
+    elo1 = o_elo[1]
+    # Calculate the quotients for each player using a logistic function.
+    # For instance, a player with 1_200 ELO points would get a Q of 10^3 = 1_000,
+    # a player with 800 ELO points would get Q = 100
+    # and a player with 1_600 ELO points would get Q = 10_000.
+    # This means that the 1_600 point player would have a 99% expected probability
+    # of winning a game against the 800 point one, and a 91% expected probability
+    # of winning a game against the 1_200 point player.
+    q0 = 10.0 ** (float(elo0) / 400)
+    q1 = 10.0 ** (float(elo1) / 400)
+    # Calculate the expected winning probability of each player
+    exp0 = q0 / (q0 + q1)
+    exp1 = q1 / (q0 + q1)
+    # Bring in the actuals
+    # First calculate the score ratio for each player
+    pct0 = float(sc0) / (sc0 + sc1)
+    pct1 = float(sc1) / (sc0 + sc1)
+    # These two ratios sum up to 1.0
+    # Divide by 2 and add 0.5 to the winning player
+    WF = 0.5 # Weight of the win as such
+    pct0 = pct0 * (1.0 - WF)
+    pct1 = pct1 * (1.0 - WF)
+    if sc0 > sc1:
+        # Player 0 won
+        pct0 += WF
+    elif sc1 > sc0:
+        # Player 1 won
+        pct1 += WF
+    else:
+        # Draw
+        pct0 += WF / 2.0
+        pct1 += WF / 2.0
+    # The score and win weightings mean the following:
+    # A trounced game of 400:100 gives original pct0 = 0.8 and pct1 = 0.2
+    # After adjustment, pct0 is 0.4 and pct1 is 0.1
+    # Adding the win weight gives pct0 = 0.9 and pct1 = 0.1
+    # A more even game of 500:450 gives original pct0 = 0.526 and pct1 = 0.474
+    # After adjustment, pct0 is 0.263 and pct1 is 0.237
+    # Adding the win weight gives pct0 = 0.763 and pct1 = 0.237
+    # Calculate the adjustments to be made (one positive, one negative)
+    adj0 = (pct0 - exp0) * K
+    adj1 = (pct1 - exp1) * K
+    # Calculate the final adjustment tuple
+    adj = (int(round(adj0)), int(round(adj1)))
+
+    logging.info(u"Game with score {0}:{1}".format(sc0, sc1))
+    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}".format(p0, elo0, elo0 + adj[0], adj0))
+    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}".format(p1, elo1, elo1 + adj[1], adj1))
+
+    return adj
 
 
 def _run_stats():
@@ -119,8 +187,20 @@ def _run_stats():
             elif s1 > s0:
                 urec1.num_human_wins += 1
                 urec0.num_human_losses += 1
+        # Compute the ELO points of both players
+        adj = _compute_elo(p0, p1, (urec0.elo, urec1.elo), s0, s1)
+        urec0.elo += adj[0]
+        urec1.elo += adj[1]
+        # If not a robot game, compute the human-only ELO
+        if not robot_game:
+            adj = _compute_elo(p0, p1, (urec0.human_elo, urec1.human_elo), s0, s1)
+            urec0.human_elo += adj[0]
+            urec1.human_elo += adj[1]
+
     logging.info(u"Generated stats for {0} users".format(len(users)))
+
     return users
+
 
 @app.route("/_ah/start")
 def start():
@@ -165,13 +245,13 @@ def stats_run():
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
-    return u'Þessi vefslóð er ekki rétt', 404
+    return u'Incorrect URL path', 404
 
 
 @app.errorhandler(500)
 def server_error(e):
     """ Return a custom 500 error """
-    return u'Eftirfarandi villa kom upp: {}'.format(e), 500
+    return u'Server error: {}'.format(e), 500
 
 # Run a default Flask web server for testing if invoked directly as a main program
 
