@@ -80,8 +80,8 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     elo1 = o_elo[1]
     # Calculate the quotients for each player using a logistic function.
     # For instance, a player with 1_200 ELO points would get a Q of 10^3 = 1_000,
-    # a player with 800 ELO points would get Q = 100
-    # and a player with 1_600 ELO points would get Q = 10_000.
+    # a player with 800 ELO points would get Q = 10^2 = 100
+    # and a player with 1_600 ELO points would get Q = 10^4 = 10_000.
     # This means that the 1_600 point player would have a 99% expected probability
     # of winning a game against the 800 point one, and a 91% expected probability
     # of winning a game against the 1_200 point player.
@@ -94,6 +94,7 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     exp0 = q0 / (q0 + q1)
     exp1 = q1 / (q0 + q1)
     # Represent the actual outcome
+    # !!! TBD: Use a more fine-grained representation incorporating the score difference?
     if sc0 > sc1:
         # Player 0 won
         act0 = 1.0
@@ -122,6 +123,11 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}, exp {4:.2f} act {5:.2f}".format(p1, elo1, elo1 + adj[1], adj1, exp1, act1))
 
     return adj
+
+
+def _write_stats(urecs):
+    """ Writes the freshly calculated statistics records to the database """
+    pass
 
 
 def _run_stats():
@@ -194,6 +200,7 @@ def _run_stats():
             urec1.human_elo += adj[1]
 
     logging.info(u"Generated stats for {0} users".format(len(users)))
+    _write_stats(users)
 
     return users
 
