@@ -856,7 +856,7 @@ function initMain() {
    ivalChallengeList = window.setInterval(refreshChallengeList, 2 * 1000);
 
    /* Initialize alphabet categories in user list header */
-   $("div.user-cat span").each(function() {
+   $("div.user-cat > span").each(function() {
       var data = $(this).attr('id');
       if (data === undefined)
          // Not a special category, i.e. favorites or robots

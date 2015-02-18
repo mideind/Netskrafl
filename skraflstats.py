@@ -13,6 +13,7 @@
 import os
 import logging
 import json
+import time
 
 from datetime import datetime, timedelta
 
@@ -86,44 +87,39 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     # of winning a game against the 1_200 point player.
     q0 = 10.0 ** (float(elo0) / 400)
     q1 = 10.0 ** (float(elo1) / 400)
+    if q0 + q1 < 1.0:
+        # Strange corner case: give up
+        return (0, 0)
     # Calculate the expected winning probability of each player
     exp0 = q0 / (q0 + q1)
     exp1 = q1 / (q0 + q1)
-    # Bring in the actuals
-    # First calculate the score ratio for each player
-    pct0 = float(sc0) / (sc0 + sc1)
-    pct1 = float(sc1) / (sc0 + sc1)
-    # These two ratios sum up to 1.0
-    # Divide by 2 and add 0.5 to the winning player
-    WF = 0.5 # Weight of the win as such
-    pct0 = pct0 * (1.0 - WF)
-    pct1 = pct1 * (1.0 - WF)
+    # Represent the actual outcome
     if sc0 > sc1:
         # Player 0 won
-        pct0 += WF
+        act0 = 1.0
+        act1 = 0.0
     elif sc1 > sc0:
         # Player 1 won
-        pct1 += WF
+        act1 = 1.0
+        act0 = 0.0
     else:
         # Draw
-        pct0 += WF / 2.0
-        pct1 += WF / 2.0
-    # The score and win weightings mean the following:
-    # A trounced game of 400:100 gives original pct0 = 0.8 and pct1 = 0.2
-    # After adjustment, pct0 is 0.4 and pct1 is 0.1
-    # Adding the win weight gives pct0 = 0.9 and pct1 = 0.1
-    # A more even game of 500:450 gives original pct0 = 0.526 and pct1 = 0.474
-    # After adjustment, pct0 is 0.263 and pct1 is 0.237
-    # Adding the win weight gives pct0 = 0.763 and pct1 = 0.237
+        act0 = 0.5
+        act1 = 0.5
     # Calculate the adjustments to be made (one positive, one negative)
-    adj0 = (pct0 - exp0) * K
-    adj1 = (pct1 - exp1) * K
+    adj0 = (act0 - exp0) * K
+    adj1 = (act1 - exp1) * K
     # Calculate the final adjustment tuple
     adj = (int(round(adj0)), int(round(adj1)))
+    # Make sure we don't adjust to a negative number
+    if adj[0] + elo0 < 0:
+        adj[0] = -elo0
+    if adj[1] + elo1 < 0:
+        adj[1] = -elo1
 
     logging.info(u"Game with score {0}:{1}".format(sc0, sc1))
-    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}".format(p0, elo0, elo0 + adj[0], adj0))
-    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}".format(p1, elo1, elo1 + adj[1], adj1))
+    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}, exp {4:.2f} act {5:.2f}".format(p0, elo0, elo0 + adj[0], adj0, exp0, act0))
+    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}, exp {4:.2f} act {5:.2f}".format(p1, elo1, elo1 + adj[1], adj1, exp1, act1))
 
     return adj
 
@@ -234,10 +230,14 @@ def stats_run():
     if stats_running:
         return u"/stats/run already running", 200
 
+    logging.info(u"Starting stats calculation")
     stats_running = True
+    t0 = time.time()
     stats = _run_stats()
     ser_stats = [val.__dict__ for k, val in stats.items()]
+    t1 = time.time()
     stats_running = False
+    logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
     return jsonify(stats = ser_stats)
 
