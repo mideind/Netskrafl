@@ -680,3 +680,119 @@ class ChannelModel(ndb.Model):
                     break
                 offset += count
 
+
+class StatsModel(ndb.Model):
+    """ Models statistics about users """
+
+    # The user associated with this statistic
+    user = ndb.KeyProperty(kind = UserModel)
+
+    # The timestamp of this statistic
+    timestamp = ndb.DateTimeProperty(indexed = True, auto_now_add = True)
+
+    games = ndb.IntegerProperty()
+    human_games = ndb.IntegerProperty()
+
+    elo = ndb.IntegerProperty(indexed = True, default = 1200)
+    human_elo = ndb.IntegerProperty(indexed = True, default = 1200)
+
+    score = ndb.IntegerProperty()
+    human_score = ndb.IntegerProperty()
+
+    score_against = ndb.IntegerProperty()
+    human_score_against = ndb.IntegerProperty()
+
+    wins = ndb.IntegerProperty()
+    losses = ndb.IntegerProperty()
+
+    human_wins = ndb.IntegerProperty()
+    human_losses = ndb.IntegerProperty()
+
+    MAX_STATS = 100
+
+
+    def set_user(self, user_id):
+        """ Set the user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.user = k
+
+
+    @classmethod
+    def create(cls, user_id):
+        """ Create a fresh instance with default values """
+        sm = cls()
+        sm.set_user(user_id)
+        sm.elo = 1200
+        sm.human_elo = 1200
+        sm.games = 0
+        sm.human_games = 0
+        sm.score = 0
+        sm.human_score = 0
+        sm.score_against = 0
+        sm.human_score_against = 0
+        sm.wins = 0
+        sm.losses = 0
+        sm.human_wins = 0
+        sm.human_losses = 0
+        return sm
+
+
+    @classmethod
+    def _list_by(cls, prop, timestamp = None, max_len = MAX_STATS):
+        """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
+        if timestamp is None:
+            timestamp = datetime.utcnow()
+        # Start by finding the timestamp most closely before the given one
+        q = cls.query(StatsModel.timestamp <= timestamp)
+        sm = q.get()
+        if sm is None:
+            # No statistics available before this time point
+            return
+        # This is the reference timestamp we'll use
+        ref_ts = sm.timestamp
+        q = cls.query(StatsModel.timestamp == ref_ts).order(- prop)
+        for sm in q.fetch(max_len):
+            yield dict(
+                user = sm.user.id(),
+                games = sm.games,
+                human_games = sm.human_games,
+                elo = sm.elo,
+                human_elo = sm.human_elo,
+                score = sm.score,
+                human_score = sm.human_score,
+                score_against = sm.score_against,
+                wins = sm.wins,
+                losses = sm.losses,
+                human_wins = sm.human_wins,
+                human_losses = sm.human_losses
+            )
+
+
+    @classmethod
+    def list_elo(cls, timestamp = None, max_len = MAX_STATS):
+        yield cls._list_by(StatsModel.elo, timestamp, max_len)
+
+
+    @classmethod
+    def list_human_elo(cls, timestamp = None, max_len = MAX_STATS):
+        yield cls._list_by(StatsModel.human_elo, timestamp, max_len)
+
+
+    @classmethod
+    def newest(cls, user_id):
+        """ Returns the newest available stats record for the user """
+        if user_id is None:
+            return None
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(StatsModel.user == k).order(- StatsModel.timestamp)
+        sm = q.get()
+        if sm is None:
+            # No stats record for the user in the database: return a default one
+            sm = cls.create(user_id)
+        return sm
+
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple stats records """
+        ndb.put_multi(recs)
+

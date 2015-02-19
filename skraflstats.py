@@ -21,13 +21,9 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
-from google.appengine.api import users, memcache
-
 from languages import Alphabet
-from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflgame import User, Game
-from skrafldb import Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel
+from skrafldb import UserModel, GameModel, MoveModel, StatsModel
 
 
 # Standard Flask initialization
@@ -45,39 +41,23 @@ app.config['DEBUG'] = running_local
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
 
-class UserRecord(object):
-
-    """ Accumulation of statistics about a particular user """
-
-    def __init__(self, key):
-        self.key = key
-        self.elo = 1200 # Initial rating
-        self.human_elo = 1200 # From human games only
-        self.num_games = 0
-        self.num_human_games = 0
-        self.total_score = 0
-        self.total_human_score = 0
-        self.total_score_against = 0
-        self.total_human_score_against = 0
-        self.num_wins = 0
-        self.num_losses = 0
-        self.num_human_wins = 0
-        self.num_human_losses = 0
-
-
 def _compute_elo(p0, p1, o_elo, sc0, sc1):
     """ Computes the ELO points of the two users after their game """
+
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
     assert sc1 >= 0
     if sc0 + sc1 == 0:
         return (0, 0)
+
     # The constant K used for adjustments
     # !!! TBD: select K depending on number of games played and other factors
     K = 32.0
+
     # Current ELO ratings
     elo0 = o_elo[0]
     elo1 = o_elo[1]
+
     # Calculate the quotients for each player using a logistic function.
     # For instance, a player with 1_200 ELO points would get a Q of 10^3 = 1_000,
     # a player with 800 ELO points would get Q = 10^2 = 100
@@ -90,9 +70,11 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     if q0 + q1 < 1.0:
         # Strange corner case: give up
         return (0, 0)
+
     # Calculate the expected winning probability of each player
     exp0 = q0 / (q0 + q1)
     exp1 = q1 / (q0 + q1)
+
     # Represent the actual outcome
     # !!! TBD: Use a more fine-grained representation incorporating the score difference?
     if sc0 > sc1:
@@ -107,11 +89,14 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
         # Draw
         act0 = 0.5
         act1 = 0.5
+
     # Calculate the adjustments to be made (one positive, one negative)
     adj0 = (act0 - exp0) * K
     adj1 = (act1 - exp1) * K
+
     # Calculate the final adjustment tuple
     adj = (int(round(adj0)), int(round(adj1)))
+
     # Make sure we don't adjust to a negative number
     if adj[0] + elo0 < 0:
         adj[0] = -elo0
@@ -127,7 +112,17 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
 
 def _write_stats(urecs):
     """ Writes the freshly calculated statistics records to the database """
-    pass
+    # Establish the reference timestamp for the entire stats series
+    ts = datetime.utcnow()
+    for sm in urecs.values():
+        sm.timestamp = ts
+    StatsModel.put_multi(urecs.values())
+
+
+def _make_stat(user_id):
+    """ Makes a fresh StatsModel instance for the given user """
+    sm = StatsModel.create(user_id)
+    return sm
 
 
 def _run_stats():
@@ -154,41 +149,41 @@ def _run_stats():
         if p0 in users:
             urec0 = users[p0]
         else:
-            users[p0] = urec0 = UserRecord(p0)
+            users[p0] = urec0 = _make_stat(p0)
         if p1 in users:
             urec1 = users[p1]
         else:
-            users[p1] = urec1 = UserRecord(p1)
+            users[p1] = urec1 = _make_stat(p1)
         # Number of games played
-        urec0.num_games += 1
-        urec1.num_games += 1
+        urec0.games += 1
+        urec1.games += 1
         if not robot_game:
-            urec0.num_human_games += 1
-            urec1.num_human_games += 1
+            urec0.human_games += 1
+            urec1.human_games += 1
         # Total scores
-        urec0.total_score += s0
-        urec1.total_score += s1
-        urec0.total_score_against += s1
-        urec1.total_score_against += s0
+        urec0.score += s0
+        urec1.score += s1
+        urec0.score_against += s1
+        urec1.score_against += s0
         if not robot_game:
-            urec0.total_human_score += s0
-            urec1.total_human_score += s1
-            urec0.total_human_score_against += s1
-            urec1.total_human_score_against += s0
+            urec0.human_score += s0
+            urec1.human_score += s1
+            urec0.human_score_against += s1
+            urec1.human_score_against += s0
         # Wins and losses
         if s0 > s1:
-            urec0.num_wins += 1
-            urec1.num_losses += 1
+            urec0.wins += 1
+            urec1.losses += 1
         elif s1 > s0:
-            urec1.num_wins += 1
-            urec0.num_losses += 1
+            urec1.wins += 1
+            urec0.losses += 1
         if not robot_game:
             if s0 > s1:
-                urec0.num_human_wins += 1
-                urec1.num_human_losses += 1
+                urec0.human_wins += 1
+                urec1.human_losses += 1
             elif s1 > s0:
-                urec1.num_human_wins += 1
-                urec0.num_human_losses += 1
+                urec1.human_wins += 1
+                urec0.human_losses += 1
         # Compute the ELO points of both players
         adj = _compute_elo(p0, p1, (urec0.elo, urec1.elo), s0, s1)
         urec0.elo += adj[0]
@@ -227,6 +222,7 @@ def warmup():
     logging.info(u"Warmup instance {0}".format(os.environ.get("INSTANCE_ID", "")))
     return jsonify(ok = True)
 
+
 # Use a simple flag to avoid re-entrancy
 stats_running = False
 
@@ -241,12 +237,10 @@ def stats_run():
     stats_running = True
     t0 = time.time()
     stats = _run_stats()
-    ser_stats = [val.__dict__ for k, val in stats.items()]
     t1 = time.time()
     stats_running = False
-    logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
-    return jsonify(stats = ser_stats)
+    return u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0), 200
 
 
 @app.errorhandler(404)
@@ -259,6 +253,7 @@ def page_not_found(e):
 def server_error(e):
     """ Return a custom 500 error """
     return u'Server error: {}'.format(e), 500
+
 
 # Run a default Flask web server for testing if invoked directly as a main program
 
