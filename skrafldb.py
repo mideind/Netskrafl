@@ -603,11 +603,8 @@ class ChannelModel(ndb.Model):
         # Query for all connected channels for this user that have not expired
         q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
             .filter(ChannelModel.expiry > now)
-        for cm in q.fetch(1):
-            # Found one: return True
-            return True
-        # Found no channel meeting the criteria: return False
-        return False
+        # Return True if we find at least one entity fulfilling the criteria
+        return q.get(keys_only = True) != None
 
     @classmethod
     def exists(cls, kind, entity, user_id):
@@ -621,11 +618,8 @@ class ChannelModel(ndb.Model):
             .filter(ChannelModel.expiry > now) \
             .filter(ChannelModel.kind == kind) \
             .filter(ChannelModel.entity == entity)
-        for cm in q.fetch(1):
-            # Found one: return True
-            return True
-        # Found no channel meeting the criteria: return False
-        return False
+        # Return True if we find at least one entity fulfilling the criteria
+        return q.get(keys_only = True) != None
 
     @classmethod
     def _del_expired(cls):
@@ -665,7 +659,7 @@ class ChannelModel(ndb.Model):
             q = cls.query(ChannelModel.expiry > now).filter(
                 ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
             offset = 0
-            while q is not None:
+            while True:
                 # Query and send message in chunks
                 count = 0
                 list_stale = []

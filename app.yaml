@@ -15,6 +15,9 @@ inbound_services:
 - warmup
 - channel_presence
 
+builtins:
+- deferred: on
+
 handlers:
 - url: /robots.txt
   static_files: static/robots.txt
