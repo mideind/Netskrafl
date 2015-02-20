@@ -14,6 +14,7 @@ import os
 import logging
 import json
 import time
+import calendar
 
 from datetime import datetime, timedelta
 
@@ -23,7 +24,7 @@ from flask import request, session, url_for
 
 from languages import Alphabet
 from skraflgame import User, Game
-from skrafldb import UserModel, GameModel, MoveModel, StatsModel
+from skrafldb import UserModel, GameModel, MoveModel, StatsModel, RatingModel
 
 
 # Standard Flask initialization
@@ -47,8 +48,16 @@ ELO_K = 32.0
 # before becoming an established one
 ESTABLISHED_MARK = 10
 
-def _compute_elo(p0, p1, o_elo, sc0, sc1):
-    """ Computes the ELO points of the two users after their game """
+def monthdelta(date, delta):
+    """ Calculate a date x months from now, in the past or in the future """
+    m, y = (date.month + delta) % 12, date.year + (date.month + delta - 1) // 12
+    if not m: m = 12
+    d = min(date.day, calendar.monthrange(y, m)[1])
+    return date.replace(day = d, month = m, year = y)
+
+
+def _compute_elo(o_elo, sc0, sc1):
+    """ Computes the Elo points of the two users after their game """
 
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
@@ -56,14 +65,14 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     if sc0 + sc1 == 0:
         return (0, 0)
 
-    # Current ELO ratings
+    # Current Elo ratings
     elo0 = o_elo[0]
     elo1 = o_elo[1]
 
     # Calculate the quotients for each player using a logistic function.
-    # For instance, a player with 1_200 ELO points would get a Q of 10^3 = 1_000,
-    # a player with 800 ELO points would get Q = 10^2 = 100
-    # and a player with 1_600 ELO points would get Q = 10^4 = 10_000.
+    # For instance, a player with 1_200 Elo points would get a Q of 10^3 = 1_000,
+    # a player with 800 Elo points would get Q = 10^2 = 100
+    # and a player with 1_600 Elo points would get Q = 10^4 = 10_000.
     # This means that the 1_600 point player would have a 99% expected probability
     # of winning a game against the 800 point one, and a 91% expected probability
     # of winning a game against the 1_200 point player.
@@ -105,10 +114,6 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     if adj[1] + elo1 < 0:
         adj[1] = -elo1
 
-    logging.info(u"Game with score {0}:{1}".format(sc0, sc1))
-    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}, exp {4:.2f} act {5:.2f}".format(p0, elo0, elo0 + adj[0], adj0, exp0, act0))
-    logging.info(u"Adjusted ELO of player {0} by {3:.2f} from {1} to {2}, exp {4:.2f} act {5:.2f}".format(p1, elo1, elo1 + adj[1], adj1, exp1, act1))
-
     return adj
 
 
@@ -119,16 +124,17 @@ def _write_stats(urecs):
     for sm in urecs.values():
         sm.timestamp = ts
     StatsModel.put_multi(urecs.values())
+    # Return the reference timestamp
+    return ts
 
 
-def _make_stat(user_id):
+def _make_stat(user_id, robot_level):
     """ Makes a fresh StatsModel instance for the given user """
-    sm = StatsModel.create(user_id)
-    return sm
+    return StatsModel.create(user_id, robot_level)
 
 
 def _run_stats():
-    """ Runs a process to update user statistics and ELO ratings """
+    """ Runs a process to update user statistics and Elo ratings """
     # Iterate over all finished games in temporal order
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     # The accumulated user statistics
@@ -141,21 +147,27 @@ def _run_stats():
         p1 = None if gm.player1 is None else gm.player1.id()
         robot_game = (p0 is None) or (p1 is None)
         rl = gm.robot_level
+        if not robot_game:
+            rl = 0
         s0 = gm.score0
         s1 = gm.score1
         pr = gm.prefs
         if p0 is None:
-            p0 = "robot_" + str(rl)
+            k0 = "robot_" + str(rl)
+        else:
+            k0 = p0
         if p1 is None:
-            p1 = "robot_" + str(rl)
+            k1 = "robot_" + str(rl)
+        else:
+            k1 = p1
         if p0 in users:
-            urec0 = users[p0]
+            urec0 = users[k0]
         else:
-            users[p0] = urec0 = _make_stat(p0)
-        if p1 in users:
-            urec1 = users[p1]
+            users[k0] = urec0 = _make_stat(p0, rl)
+        if k1 in users:
+            urec1 = users[k1]
         else:
-            users[p1] = urec1 = _make_stat(p1)
+            users[k1] = urec1 = _make_stat(p1, rl)
         # Number of games played
         urec0.games += 1
         urec1.games += 1
@@ -186,8 +198,8 @@ def _run_stats():
             elif s1 > s0:
                 urec1.human_wins += 1
                 urec0.human_losses += 1
-        # Compute the ELO points of both players
-        adj = _compute_elo(p0, p1, (urec0.elo, urec1.elo), s0, s1)
+        # Compute the Elo points of both players
+        adj = _compute_elo((urec0.elo, urec1.elo), s0, s1)
         # When an established player is playing a beginning (provisional) player,
         # leave the Elo score of the established player unchanged
         est0 = urec0.games > ESTABLISHED_MARK
@@ -198,18 +210,101 @@ def _run_stats():
         if est0 or not est1:
             # Playing an established player or not established myself: adjust
             urec1.elo += adj[1]
-        # If not a robot game, compute the human-only ELO
+        # If not a robot game, compute the human-only Elo
         if not robot_game:
-            adj = _compute_elo(p0, p1, (urec0.human_elo, urec1.human_elo), s0, s1)
+            adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1)
             if est1 or not est0:
                 urec0.human_elo += adj[0]
             if est0 or not est1:
                 urec1.human_elo += adj[1]
 
     logging.info(u"Generated stats for {0} users".format(len(users)))
-    _write_stats(users)
+    # Return the timestamp of the new stats
+    return _write_stats(users)
 
-    return users
+
+def _create_ratings(timestamp):
+    """ Create the Top 100 ratings tables """
+
+    logging.info(u"Starting _create_ratings")
+
+    def _key(sm):
+        """ Return a dictionary key that works for human users and robots """
+        if sm["user"] is None:
+            return "robot_" + str(sm["robot_level"])
+        return sm["user"]
+
+    def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
+        """ Go through a table of top scoring users and augment it with data from previous time points """
+
+        for sm in t:
+            # Augment the rating with info about progress
+            key = _key(sm)
+
+            def _augment(prop):
+                if key in t_yesterday:
+                    sm[prop + "_yesterday"] = t_yesterday[key][prop]
+                if key in t_week_ago:
+                    sm[prop + "_week_ago"] = t_week_ago[key][prop]
+                if key in t_month_ago:
+                    sm[prop + "_month_ago"] = t_month_ago[key][prop]
+
+            _augment("rank")
+            _augment("games")
+            _augment("elo")
+            _augment("wins")
+            _augment("losses")
+            _augment("score")
+            _augment("score_against")
+
+    # All players including robot games
+
+    top100_all = [ sm for sm in StatsModel.list_elo(timestamp, 100) ]
+    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 1), 100) }
+    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 7), 100) }
+    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(monthdelta(timestamp, -1), 100) }
+
+    # Augment the table for all games
+    _augment_table(top100_all, top100_all_yesterday, top100_all_week_ago, top100_all_month_ago)
+
+    # Human only games
+
+    top100_human = [ sm for sm in StatsModel.list_human_elo(timestamp, 100) ]
+    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 1), 100) }
+    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 7), 100) }
+    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(monthdelta(timestamp, -1), 100) }
+
+    # Augment the table for human only games
+    _augment_table(top100_human, top100_human_yesterday, top100_human_week_ago, top100_human_month_ago)
+
+    logging.info(u"Writing top 100 tables to the database")
+
+    # Write the Top 100 tables to the database
+    for rank in range(0, 100):
+
+        # All players including robots
+        rm = RatingModel.get_or_create("all", rank + 1)
+        if rank < len(top100_all):
+            rm.assign(top100_all[rank])
+        else:
+            # Sentinel empty records
+            rm.user = None
+            rm.robot_level = -1
+            rm.games = -1
+        rm.put()
+
+        # Humans only
+        rm = RatingModel.get_or_create("human", rank + 1)
+        if rank < len(top100_human):
+            rm.assign(top100_human[rank])
+        else:
+            # Sentinel empty records
+            rm.user = None
+            rm.robot_level = -1
+            rm.games = -1
+        rm.put()
+
+    logging.info(u"Finishing _create_ratings")
 
 
 @app.route("/_ah/start")
@@ -248,7 +343,8 @@ def stats_run():
     logging.info(u"Starting stats calculation")
     stats_running = True
     t0 = time.time()
-    stats = _run_stats()
+    timestamp = _run_stats()
+    _create_ratings(timestamp)
     t1 = time.time()
     stats_running = False
 

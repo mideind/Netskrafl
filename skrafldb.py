@@ -684,8 +684,9 @@ class ChannelModel(ndb.Model):
 class StatsModel(ndb.Model):
     """ Models statistics about users """
 
-    # The user associated with this statistic
-    user = ndb.KeyProperty(kind = UserModel)
+    # The user associated with this statistic or None if robot
+    user = ndb.KeyProperty(kind = UserModel, indexed = True, required = False, default = None)
+    robot_level = ndb.IntegerProperty(required = False, default = 0)
 
     # The timestamp of this statistic
     timestamp = ndb.DateTimeProperty(indexed = True, auto_now_add = True)
@@ -711,17 +712,18 @@ class StatsModel(ndb.Model):
     MAX_STATS = 100
 
 
-    def set_user(self, user_id):
+    def set_user(self, user_id, robot_level = 0):
         """ Set the user key property """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         self.user = k
+        self.robot_level = robot_level
 
 
     @classmethod
-    def create(cls, user_id):
+    def create(cls, user_id, robot_level = 0):
         """ Create a fresh instance with default values """
         sm = cls()
-        sm.set_user(user_id)
+        sm.set_user(user_id, robot_level)
         sm.elo = 1200
         sm.human_elo = 1200
         sm.games = 0
@@ -738,7 +740,7 @@ class StatsModel(ndb.Model):
 
 
     @classmethod
-    def _list_by(cls, prop, timestamp = None, max_len = MAX_STATS):
+    def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
         """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
         if timestamp is None:
             timestamp = datetime.utcnow()
@@ -751,31 +753,50 @@ class StatsModel(ndb.Model):
         # This is the reference timestamp we'll use
         ref_ts = sm.timestamp
         q = cls.query(StatsModel.timestamp == ref_ts).order(- prop)
+        rank = 0
         for sm in q.fetch(max_len):
-            yield dict(
-                user = sm.user.id(),
-                games = sm.games,
-                human_games = sm.human_games,
-                elo = sm.elo,
-                human_elo = sm.human_elo,
-                score = sm.score,
-                human_score = sm.human_score,
-                score_against = sm.score_against,
-                wins = sm.wins,
-                losses = sm.losses,
-                human_wins = sm.human_wins,
-                human_losses = sm.human_losses
-            )
+            rank += 1
+            yield makedict(rank, sm)
 
 
     @classmethod
     def list_elo(cls, timestamp = None, max_len = MAX_STATS):
-        yield cls._list_by(StatsModel.elo, timestamp, max_len)
+        """ Return the top Elo-rated users for all games (including robots) """
+
+        def _makedict(rank, sm):
+            return dict(
+                rank = rank,
+                user = None if sm.user is None else sm.user.id(),
+                robot_level = sm.robot_level,
+                games = sm.games,
+                elo = sm.elo,
+                score = sm.score,
+                score_against = sm.score_against,
+                wins = sm.wins,
+                losses = sm.losses,
+            )
+
+        return iter(cls._list_by(StatsModel.elo, _makedict, timestamp, max_len))
 
 
     @classmethod
     def list_human_elo(cls, timestamp = None, max_len = MAX_STATS):
-        yield cls._list_by(StatsModel.human_elo, timestamp, max_len)
+        """ Return the top Elo-rated users for human-only games """
+
+        def _makedict(rank, sm):
+            return dict(
+                rank = rank,
+                user = None if sm.user is None else sm.user.id(),
+                robot_level = sm.robot_level,
+                games = sm.human_games,
+                elo = sm.human_elo,
+                score = sm.human_score,
+                score_against = sm.human_score_against,
+                wins = sm.human_wins,
+                losses = sm.human_losses,
+            )
+
+        return iter(cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len))
 
 
     @classmethod
@@ -796,4 +817,70 @@ class StatsModel(ndb.Model):
     def put_multi(recs):
         """ Insert or update multiple stats records """
         ndb.put_multi(recs)
+
+
+class RatingModel(ndb.Model):
+    """ Models tables of user ratings """
+
+    # Typically "all" or "human"
+    kind = ndb.StringProperty(required = True)
+
+    # The ordinal rank
+    rank = ndb.IntegerProperty(required = True)
+
+    user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
+    robot_level = ndb.IntegerProperty(required = False, default = 0)
+
+    games = ndb.IntegerProperty(required = False, default = 0)
+    elo = ndb.IntegerProperty(required = False, default = 1200)
+    score = ndb.IntegerProperty(required = False, default = 0)
+    score_against = ndb.IntegerProperty(required = False, default = 0)
+    wins = ndb.IntegerProperty(required = False, default = 0)
+    losses = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    games_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    elo_yesterday = ndb.IntegerProperty(required = False, default = 1200)
+    score_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    score_against_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    wins_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    losses_yesterday = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    games_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    elo_week_ago = ndb.IntegerProperty(required = False, default = 1200)
+    score_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    score_against_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    wins_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    losses_week_ago = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    games_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    elo_month_ago = ndb.IntegerProperty(required = False, default = 1200)
+    score_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    score_against_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    wins_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    losses_month_ago = ndb.IntegerProperty(required = False, default = 0)
+
+    @classmethod
+    def get_or_create(cls, kind, rank):
+        """ Get an existing entity or create a new one if it doesn't exist """
+        k = ndb.Key(cls, kind + ":" + str(rank))
+        rm = k.get()
+        if rm is None:
+            # Did not already exist in the database:
+            # create a fresh instance
+            rm = cls(id = kind + ":" + str(rank))
+        rm.kind = kind
+        rm.rank = rank
+        return rm
+
+    def assign(self, dict_args):
+        """ Populate attributes from a dict """
+        for key, val in dict_args.items():
+            if key == "user":
+                # Re-pack the user id into a key
+                setattr(self, key, None if val is None else ndb.Key(UserModel, val))
+            else:
+                setattr(self, key, val)
 

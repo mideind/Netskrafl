@@ -77,3 +77,15 @@ indexes:
   properties:
   - name: over
   - name: ts_last_move
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: human_elo
+    direction: desc
