@@ -40,6 +40,12 @@ app.config['DEBUG'] = running_local
 # !!! TODO: Change this to read the secret key from a config file at run-time
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
+# The K constant used in the Elo calculation
+ELO_K = 32.0
+
+# How many games a player plays as a provisional player
+# before becoming an established one
+ESTABLISHED_MARK = 10
 
 def _compute_elo(p0, p1, o_elo, sc0, sc1):
     """ Computes the ELO points of the two users after their game """
@@ -49,10 +55,6 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
     assert sc1 >= 0
     if sc0 + sc1 == 0:
         return (0, 0)
-
-    # The constant K used for adjustments
-    # !!! TBD: select K depending on number of games played and other factors
-    K = 32.0
 
     # Current ELO ratings
     elo0 = o_elo[0]
@@ -91,8 +93,8 @@ def _compute_elo(p0, p1, o_elo, sc0, sc1):
         act1 = 0.5
 
     # Calculate the adjustments to be made (one positive, one negative)
-    adj0 = (act0 - exp0) * K
-    adj1 = (act1 - exp1) * K
+    adj0 = (act0 - exp0) * ELO_K
+    adj1 = (act1 - exp1) * ELO_K
 
     # Calculate the final adjustment tuple
     adj = (int(round(adj0)), int(round(adj1)))
@@ -186,13 +188,23 @@ def _run_stats():
                 urec0.human_losses += 1
         # Compute the ELO points of both players
         adj = _compute_elo(p0, p1, (urec0.elo, urec1.elo), s0, s1)
-        urec0.elo += adj[0]
-        urec1.elo += adj[1]
+        # When an established player is playing a beginning (provisional) player,
+        # leave the Elo score of the established player unchanged
+        est0 = urec0.games > ESTABLISHED_MARK
+        est1 = urec1.games > ESTABLISHED_MARK
+        if est1 or not est0:
+            # Playing an established player or not established myself: adjust
+            urec0.elo += adj[0]
+        if est0 or not est1:
+            # Playing an established player or not established myself: adjust
+            urec1.elo += adj[1]
         # If not a robot game, compute the human-only ELO
         if not robot_game:
             adj = _compute_elo(p0, p1, (urec0.human_elo, urec1.human_elo), s0, s1)
-            urec0.human_elo += adj[0]
-            urec1.human_elo += adj[1]
+            if est1 or not est0:
+                urec0.human_elo += adj[0]
+            if est0 or not est1:
+                urec1.human_elo += adj[1]
 
     logging.info(u"Generated stats for {0} users".format(len(users)))
     _write_stats(users)

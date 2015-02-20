@@ -791,6 +791,7 @@ class StatsModel(ndb.Model):
             sm = cls.create(user_id)
         return sm
 
+
     @staticmethod
     def put_multi(recs):
         """ Insert or update multiple stats records """
