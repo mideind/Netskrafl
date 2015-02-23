@@ -834,12 +834,11 @@ class StatsModel(ndb.Model):
         if ts:
             # Try to query using the timestamp
             if user_id is None:
-                # Robot
-                q = cls.query(ndb.AND(StatsModel.user == None, StatsModel.robot_level == robot_level))
+                k = None
             else:
-                # Human
                 k = ndb.Key(UserModel, user_id)
-                q = cls.query(StatsModel.user == k)
+            # Use a common query structure and index for humans and robots
+            q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level))
             q = q.filter(StatsModel.timestamp <= ts).order(- StatsModel.timestamp)
             sm_before = q.get()
             if sm_before is not None:
@@ -852,6 +851,14 @@ class StatsModel(ndb.Model):
     def put_multi(recs):
         """ Insert or update multiple stats records """
         ndb.put_multi(recs)
+
+
+    @classmethod
+    def delete_ts(cls, timestamp):
+        """ Delete all stats records at a particular timestamp """
+        ndb.delete_multi(
+            cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True)
+        )
 
 
 class RatingModel(ndb.Model):

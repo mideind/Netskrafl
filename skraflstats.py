@@ -124,8 +124,9 @@ def _compute_elo(o_elo, sc0, sc1):
 
 def _write_stats(timestamp, urecs):
     """ Writes the freshly calculated statistics records to the database """
-    # Establish the reference timestamp for the entire stats series
-    # !!! TBD: Delete all previous stats with the same timestamp
+    # Delete all previous stats with the same timestamp, if any
+    StatsModel.delete_ts(timestamp = timestamp)
+    # Set the reference timestamp for the entire stats series
     for sm in urecs.values():
         sm.timestamp = timestamp
     StatsModel.put_multi(urecs.values())
@@ -168,8 +169,9 @@ def _run_stats(from_time, to_time):
             p0 = None if gm.player0 is None else gm.player0.id()
             p1 = None if gm.player1 is None else gm.player1.id()
             robot_game = (p0 is None) or (p1 is None)
-            rl = gm.robot_level
-            if not robot_game:
+            if robot_game:
+                rl = gm.robot_level
+            else:
                 rl = 0
             s0 = gm.score0
             s1 = gm.score1
@@ -183,7 +185,7 @@ def _run_stats(from_time, to_time):
             else:
                 k1 = p1
 
-            if p0 in users:
+            if k0 in users:
                 urec0 = users[k0]
             else:
                 users[k0] = urec0 = _init_stat(p0, rl if p0 is None else 0)
@@ -408,11 +410,19 @@ def stats_run():
     """ Calculate a new set of statistics """
 
     logging.info(u"Starting stats calculation")
-    # !!! DEBUG: do a hard-coded run of January 20 and 22, 2015
-    from_time = datetime(year = 2015, month = 1, day = 1)
-    to_time = datetime(year = 2015, month = 1, day = 23)
-    deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
 
+    year = int(request.args.get("year", "2015"))
+    month = int(request.args.get("month", "1"))
+    day = int(request.args.get("day", "1"))
+
+    try:
+        from_time = datetime(year = year, month = month, day = day)
+        to_time = from_time + timedelta(days = 1)
+        deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
+    except Exception as ex:
+        return u"Stats calculation failed with exception {0}".format(ex), 200
+
+    # All is well so far and the calculation has been submitted to a task queue
     return u"Stats calculation has been started", 200
 
 

@@ -81,12 +81,6 @@ indexes:
 - kind: StatsModel
   properties:
   - name: robot_level
-  - name: timestamp
-    direction: desc
-
-- kind: StatsModel
-  properties:
-  - name: robot_level
   - name: user
   - name: timestamp
     direction: desc
@@ -101,10 +95,4 @@ indexes:
   properties:
   - name: timestamp
   - name: human_elo
-    direction: desc
-
-- kind: StatsModel
-  properties:
-  - name: user
-  - name: timestamp
     direction: desc
