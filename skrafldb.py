@@ -61,6 +61,15 @@ from google.appengine.api import channel
 from languages import Alphabet
 
 
+class Context:
+    """ Wrapper for NDB context operations """
+
+    @staticmethod
+    def disable_cache():
+        """ Disable the NDB in-context cache """
+        ndb.get_context().set_cache_policy(False)
+
+
 class Unique:
     """ Wrapper for generation of unique id strings for keys """
 
@@ -697,17 +706,17 @@ class StatsModel(ndb.Model):
     elo = ndb.IntegerProperty(indexed = True, default = 1200)
     human_elo = ndb.IntegerProperty(indexed = True, default = 1200)
 
-    score = ndb.IntegerProperty()
-    human_score = ndb.IntegerProperty()
+    score = ndb.IntegerProperty(indexed = False)
+    human_score = ndb.IntegerProperty(indexed = False)
 
-    score_against = ndb.IntegerProperty()
-    human_score_against = ndb.IntegerProperty()
+    score_against = ndb.IntegerProperty(indexed = False)
+    human_score_against = ndb.IntegerProperty(indexed = False)
 
-    wins = ndb.IntegerProperty()
-    losses = ndb.IntegerProperty()
+    wins = ndb.IntegerProperty(indexed = False)
+    losses = ndb.IntegerProperty(indexed = False)
 
-    human_wins = ndb.IntegerProperty()
-    human_losses = ndb.IntegerProperty()
+    human_wins = ndb.IntegerProperty(indexed = False)
+    human_losses = ndb.IntegerProperty(indexed = False)
 
     MAX_STATS = 100
 
@@ -737,6 +746,25 @@ class StatsModel(ndb.Model):
         sm.human_wins = 0
         sm.human_losses = 0
         return sm
+
+
+    def copy_from(self, src):
+        """ Copy data from the src instance """
+        # user and robot_level are assumed to be in place already
+        assert hasattr(self, "user")
+        assert hasattr(self, "robot_level")
+        self.elo = src.elo
+        self.human_elo = src.human_elo
+        self.games = src.games
+        self.human_games = src.human_games
+        self.score = src.score
+        self.human_score = src.human_score
+        self.score_against = src.score_against
+        self.human_score_against = src.human_score_against
+        self.wins = src.wins
+        self.losses = src.losses
+        self.human_wins = src.human_wins
+        self.human_losses = src.human_losses
 
 
     @classmethod
@@ -800,16 +828,23 @@ class StatsModel(ndb.Model):
 
 
     @classmethod
-    def newest(cls, user_id):
-        """ Returns the newest available stats record for the user """
-        if user_id is None:
-            return None
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(StatsModel.user == k).order(- StatsModel.timestamp)
-        sm = q.get()
-        if sm is None:
-            # No stats record for the user in the database: return a default one
-            sm = cls.create(user_id)
+    def newest_before(cls, ts, user_id, robot_level = 0):
+        """ Returns the newest available stats record for the user at or before the given time """
+        sm = cls.create(user_id, robot_level)
+        if ts:
+            # Try to query using the timestamp
+            if user_id is None:
+                # Robot
+                q = cls.query(ndb.AND(StatsModel.user == None, StatsModel.robot_level == robot_level))
+            else:
+                # Human
+                k = ndb.Key(UserModel, user_id)
+                q = cls.query(StatsModel.user == k)
+            q = q.filter(StatsModel.timestamp <= ts).order(- StatsModel.timestamp)
+            sm_before = q.get()
+            if sm_before is not None:
+                # Found: copy the stats
+                sm.copy_from(sm_before)
         return sm
 
 

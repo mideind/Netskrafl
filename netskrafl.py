@@ -43,7 +43,7 @@ from dawgdictionary import Wordbase
 from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Unique, UserModel, GameModel, MoveModel,\
+from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
     FavoriteModel, ChallengeModel, ChannelModel
 
 
@@ -595,6 +595,10 @@ def userlist():
 
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
+
+    # Disable the in-context cache to save memory
+    # (it doesn't give any speed advantage for user lists anyway)
+    Context.disable_cache()
 
     return jsonify(result = Error.LEGAL, userlist = _userlist(range_from, range_to))
 

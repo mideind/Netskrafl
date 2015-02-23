@@ -1,5 +1,5 @@
 application: netskrafl
-version: ahmet
+version: izmir
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -111,6 +111,8 @@ skip_files:
 - ^(.*/)?.*\.log$
 - ^(.*/)?.*\.md$
 - ^(.*/)?.*\.bak$
+- ^(.*/)?.*\.tmp$
+- ^(.*/)?.*\.TMP$
 - ^(.*/)?.*\.less$
 - ^(.*/)?#.*#$
 - ^(.*/)?.*~$

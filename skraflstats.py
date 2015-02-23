@@ -18,13 +18,17 @@ import calendar
 
 from datetime import datetime, timedelta
 
+from google.appengine.api import users
+from google.appengine.ext import deferred
+from google.appengine.runtime import DeadlineExceededError
+
 from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
 from languages import Alphabet
 from skraflgame import User, Game
-from skrafldb import UserModel, GameModel, MoveModel, StatsModel, RatingModel
+from skrafldb import Context, UserModel, GameModel, MoveModel, StatsModel, RatingModel
 
 
 # Standard Flask initialization
@@ -47,6 +51,7 @@ ELO_K = 32.0
 # How many games a player plays as a provisional player
 # before becoming an established one
 ESTABLISHED_MARK = 10
+
 
 def monthdelta(date, delta):
     """ Calculate a date x months from now, in the past or in the future """
@@ -117,110 +122,152 @@ def _compute_elo(o_elo, sc0, sc1):
     return adj
 
 
-def _write_stats(urecs):
+def _write_stats(timestamp, urecs):
     """ Writes the freshly calculated statistics records to the database """
     # Establish the reference timestamp for the entire stats series
-    ts = datetime.utcnow()
+    # !!! TBD: Delete all previous stats with the same timestamp
     for sm in urecs.values():
-        sm.timestamp = ts
+        sm.timestamp = timestamp
     StatsModel.put_multi(urecs.values())
-    # Return the reference timestamp
-    return ts
 
 
-def _make_stat(user_id, robot_level):
-    """ Makes a fresh StatsModel instance for the given user """
-    return StatsModel.create(user_id, robot_level)
-
-
-def _run_stats():
+def _run_stats(from_time, to_time):
     """ Runs a process to update user statistics and Elo ratings """
-    # Iterate over all finished games in temporal order
-    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
+
+    logging.info(u"Generating stats from {0} to {1}".format(from_time, to_time))
+
+    if from_time is None or to_time is None:
+        # Time range must be specified
+        return
+
+    if from_time >= to_time:
+        # Null time range
+        return
+
+    # Iterate over all finished games within the time span in temporal order
+    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move) \
+        .filter(GameModel.ts_last_move > from_time) \
+        .filter(GameModel.ts_last_move <= to_time)
+
     # The accumulated user statistics
     users = dict()
-    for gm in q.fetch():
-        uuid = gm.key.id()
-        ts = Alphabet.format_timestamp(gm.timestamp)
-        lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
-        p0 = None if gm.player0 is None else gm.player0.id()
-        p1 = None if gm.player1 is None else gm.player1.id()
-        robot_game = (p0 is None) or (p1 is None)
-        rl = gm.robot_level
-        if not robot_game:
-            rl = 0
-        s0 = gm.score0
-        s1 = gm.score1
-        pr = gm.prefs
-        if p0 is None:
-            k0 = "robot_" + str(rl)
-        else:
-            k0 = p0
-        if p1 is None:
-            k1 = "robot_" + str(rl)
-        else:
-            k1 = p1
-        if p0 in users:
-            urec0 = users[k0]
-        else:
-            users[k0] = urec0 = _make_stat(p0, rl)
-        if k1 in users:
-            urec1 = users[k1]
-        else:
-            users[k1] = urec1 = _make_stat(p1, rl)
-        # Number of games played
-        urec0.games += 1
-        urec1.games += 1
-        if not robot_game:
-            urec0.human_games += 1
-            urec1.human_games += 1
-        # Total scores
-        urec0.score += s0
-        urec1.score += s1
-        urec0.score_against += s1
-        urec1.score_against += s0
-        if not robot_game:
-            urec0.human_score += s0
-            urec1.human_score += s1
-            urec0.human_score_against += s1
-            urec1.human_score_against += s0
-        # Wins and losses
-        if s0 > s1:
-            urec0.wins += 1
-            urec1.losses += 1
-        elif s1 > s0:
-            urec1.wins += 1
-            urec0.losses += 1
-        if not robot_game:
-            if s0 > s1:
-                urec0.human_wins += 1
-                urec1.human_losses += 1
-            elif s1 > s0:
-                urec1.human_wins += 1
-                urec0.human_losses += 1
-        # Compute the Elo points of both players
-        adj = _compute_elo((urec0.elo, urec1.elo), s0, s1)
-        # When an established player is playing a beginning (provisional) player,
-        # leave the Elo score of the established player unchanged
-        est0 = urec0.games > ESTABLISHED_MARK
-        est1 = urec1.games > ESTABLISHED_MARK
-        if est1 or not est0:
-            # Playing an established player or not established myself: adjust
-            urec0.elo += adj[0]
-        if est0 or not est1:
-            # Playing an established player or not established myself: adjust
-            urec1.elo += adj[1]
-        # If not a robot game, compute the human-only Elo
-        if not robot_game:
-            adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1)
-            if est1 or not est0:
-                urec0.human_elo += adj[0]
-            if est0 or not est1:
-                urec1.human_elo += adj[1]
 
-    logging.info(u"Generated stats for {0} users".format(len(users)))
-    # Return the timestamp of the new stats
-    return _write_stats(users)
+    def _init_stat(user_id, robot_level):
+        """ Returns the newest StatsModel instance available for the given user """
+        return StatsModel.newest_before(from_time, user_id, robot_level)
+
+    # Use i as a progress counter
+    i = 0
+    ts_last_processed = None
+
+    try:
+        for i, gm in enumerate(q):
+            uuid = gm.key.id()
+            ts = Alphabet.format_timestamp(gm.timestamp)
+            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
+            p0 = None if gm.player0 is None else gm.player0.id()
+            p1 = None if gm.player1 is None else gm.player1.id()
+            robot_game = (p0 is None) or (p1 is None)
+            rl = gm.robot_level
+            if not robot_game:
+                rl = 0
+            s0 = gm.score0
+            s1 = gm.score1
+            pr = gm.prefs
+            if p0 is None:
+                k0 = "robot_" + str(rl)
+            else:
+                k0 = p0
+            if p1 is None:
+                k1 = "robot_" + str(rl)
+            else:
+                k1 = p1
+
+            if p0 in users:
+                urec0 = users[k0]
+            else:
+                users[k0] = urec0 = _init_stat(p0, rl if p0 is None else 0)
+            if k1 in users:
+                urec1 = users[k1]
+            else:
+                users[k1] = urec1 = _init_stat(p1, rl if p1 is None else 0)
+            # Number of games played
+            urec0.games += 1
+            urec1.games += 1
+            if not robot_game:
+                urec0.human_games += 1
+                urec1.human_games += 1
+            # Total scores
+            urec0.score += s0
+            urec1.score += s1
+            urec0.score_against += s1
+            urec1.score_against += s0
+            if not robot_game:
+                urec0.human_score += s0
+                urec1.human_score += s1
+                urec0.human_score_against += s1
+                urec1.human_score_against += s0
+            # Wins and losses
+            if s0 > s1:
+                urec0.wins += 1
+                urec1.losses += 1
+            elif s1 > s0:
+                urec1.wins += 1
+                urec0.losses += 1
+            if not robot_game:
+                if s0 > s1:
+                    urec0.human_wins += 1
+                    urec1.human_losses += 1
+                elif s1 > s0:
+                    urec1.human_wins += 1
+                    urec0.human_losses += 1
+            # Compute the Elo points of both players
+            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1)
+            # When an established player is playing a beginning (provisional) player,
+            # leave the Elo score of the established player unchanged
+            est0 = urec0.games > ESTABLISHED_MARK
+            est1 = urec1.games > ESTABLISHED_MARK
+            if est1 or not est0:
+                # Playing an established player or not established myself: adjust
+                urec0.elo += adj[0]
+            if est0 or not est1:
+                # Playing an established player or not established myself: adjust
+                urec1.elo += adj[1]
+            # If not a robot game, compute the human-only Elo
+            if not robot_game:
+                adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1)
+                if est1 or not est0:
+                    urec0.human_elo += adj[0]
+                if est0 or not est1:
+                    urec1.human_elo += adj[1]
+            # Save the last processed timestamp
+            ts_last_processed = lm
+            # Report on our progress
+            if (i + 1) % 1000 == 0:
+                logging.info(u"Processed {0} games".format(i + 1))
+
+    except DeadlineExceededError as ex:
+        # Hit deadline: save the stuff we already have and
+        # defer a new task to continue where we left off
+        logging.info(u"Deadline exceeded in stats loop after {0} games and {1} users"
+            .format(i, len(users)))
+        logging.info(u"Resuming from timestamp {0}".format(ts_last_processed))
+        if ts_last_processed is not None:
+            _write_stats(ts_last_processed, users)
+        deferred.defer(deferred_stats,
+            from_time = ts_last_processed or from_time, to_time = to_time)
+        # Normal return prevents this task from being run again
+        return
+
+    except Exception as ex:
+        logging.info(u"Exception in stats loop: {0}".format(ex))
+        # Avoid having the task retried
+        raise deferred.PermanentTaskFailure()
+
+    # Completed without incident
+    logging.info(u"Normal completion of stats for {1} games and {0} users".format(len(users), i))
+
+    _write_stats(to_time, users)
 
 
 def _create_ratings(timestamp):
@@ -307,6 +354,32 @@ def _create_ratings(timestamp):
     logging.info(u"Finishing _create_ratings")
 
 
+def deferred_stats(from_time, to_time):
+    """ This is the deferred stats collection process """
+    # Disable the in-context cache to save memory
+    # (it doesn't give any speed advantage for this processing)
+    Context.disable_cache()
+
+    t0 = time.time()
+    _run_stats(from_time, to_time)
+    t1 = time.time()
+
+    logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
+
+
+def deferred_ratings(timestamp):
+    """ This is the deferred ratings table calculation process """
+    # Disable the in-context cache to save memory
+    # (it doesn't give any speed advantage for this processing)
+    Context.disable_cache()
+
+    t0 = time.time()
+    _create_ratings(timestamp)
+    t1 = time.time()
+
+    logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+
+
 @app.route("/_ah/start")
 def start():
     """ App Engine is starting a fresh instance """
@@ -330,25 +403,44 @@ def warmup():
     return jsonify(ok = True)
 
 
-# Use a simple flag to avoid re-entrancy
-stats_running = False
-
 @app.route("/stats/run")
 def stats_run():
     """ Calculate a new set of statistics """
-    global stats_running
-    if stats_running:
-        return u"/stats/run already running", 200
 
     logging.info(u"Starting stats calculation")
-    stats_running = True
-    t0 = time.time()
-    timestamp = _run_stats()
-    _create_ratings(timestamp)
-    t1 = time.time()
-    stats_running = False
+    # !!! DEBUG: do a hard-coded run of January 20 and 22, 2015
+    from_time = datetime(year = 2015, month = 1, day = 1)
+    to_time = datetime(year = 2015, month = 1, day = 23)
+    deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
 
-    return u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0), 200
+    return u"Stats calculation has been started", 200
+
+
+@app.route("/stats/ratings")
+def stats_ratings():
+    """ Calculate new ratings tables """
+
+    logging.info(u"Starting ratings calculation")
+    # A normal ratings calculation is based on the present point in time
+    timestamp = datetime.utcnow()
+    deferred.defer(deferred_ratings, timestamp = timestamp)
+
+    return u"Ratings calculation has been started", 200
+
+
+@app.route("/stats/login")
+def stats_login():
+    """ Handler for the login & greeting page """
+
+    login_url = users.create_login_url(url_for("stats_ping"))
+
+    return render_template("statslogin.html", login_url = login_url)
+
+
+@app.route("/stats/ping")
+def stats_ping():
+    """ Confirm that the stats module is ready and serving """
+    return u"Stats module is up and running", 200
 
 
 @app.errorhandler(404)
