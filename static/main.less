@@ -151,6 +151,9 @@
 .glyphicon-signal:before {
    content: "\E080";
 }
+.glyphicon-crown:before {
+   content: "\E362";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1040,15 +1043,15 @@ div.score.word-good {
 
 @keyframes colorPulse {
    0% {color: @freshtile;}
-   40% {color: @alert;}
-   60% {color: @alert;}
+   40% {color: @alert; transform: scale(1.05);}
+   60% {color: @alert; transform: scale(1.05);}
    100% {color: @freshtile;}
 }
 
 @-webkit-keyframes colorPulse {
    0% {color: @freshtile;}
-   40% {color: @alert;}
-   60% {color: @alert;}
+   40% {color: @alert; transform: scale(1.05);}
+   60% {color: @alert; transform: scale(1.05);}
    100% {color: @freshtile;}
 }
 
@@ -1488,18 +1491,18 @@ span.list-rank {
    display: inline-block;
    width: 32px;
    max-width: 32px;
-   text-align: right;
+   text-align: center;
    overflow: hidden;
-   margin-right: 6px;
+   margin-right: 10px;
 }
 
 span.list-elo {
    display: inline-block;
    width: 40px;
    max-width: 40px;
-   text-align: right;
+   text-align: center;
    overflow: hidden;
-   margin-right: 6px;
+   margin-right: 10px;
 }
 
 span.list-games {
@@ -1508,7 +1511,7 @@ span.list-games {
    max-width: 48px;
    text-align: right;
    overflow: hidden;
-   margin-right: 6px;
+   margin-right: 10px;
 }
 
 span.list-ratio {
@@ -1517,7 +1520,7 @@ span.list-ratio {
    max-width: 40px;
    text-align: right;
    overflow: hidden;
-   margin-right: 6px;
+   margin-right: 10px;
 }
 
 span.list-avgpts {
@@ -1526,7 +1529,15 @@ span.list-avgpts {
    max-width: 36px;
    text-align: right;
    overflow: hidden;
-   margin-right: 6px;
+   margin-right: 16px;
+}
+
+div#elo-hdr span {
+   cursor: default;
+}
+
+span.bold {
+   font-weight: 700;
 }
 
 div#initials {
@@ -1541,7 +1552,7 @@ div.user-cat {
 }
 
 div.user-cat#user-alphabet {
-   margin-left: 32px;
+   margin-left: 20px;
    line-height: 32px;
 }
 

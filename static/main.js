@@ -258,14 +258,6 @@ function populateEloList(json) {
       var item = json.rating[i];
       // Robot userids start with 'robot-'
       var isRobot = item.userid.indexOf("robot-") === 0;
-      var fav;
-      if (isRobot)
-         // Can't favorite a robot
-         fav = "<span class='glyphicon glyphicon-star-empty'></span>";
-      else
-         fav = "<span title='Uppáhald' class='glyphicon glyphicon-star" +
-         ((!item.fav) ? "-empty" : "") +
-         "' onclick='markFavorite(this, \"" + item.userid + "\")'></span>";
       var chId = "chall" + i.toString();
       var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
          (item.chall ? "'" : " grayed'") +
@@ -285,16 +277,15 @@ function populateEloList(json) {
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
-         "<span class='list-fav'>" + fav + "</span>" +
-         "<span class='list-rank'>" + rankStr(item.rank) + "</span>" +
+         "<span class='list-rank bold'>" + rankStr(item.rank) + "</span>" +
          "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
          "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
          "<span class='list-nick'>" + nick + "</span>" +
-         "<span class='list-elo'>" + item.elo.toString() + "</span>" +
+         "<span class='list-elo bold'>" + item.elo.toString() + "</span>" +
          "<span class='list-elo'>" + item.elo_yesterday.toString() + "</span>" +
          "<span class='list-elo'>" + item.elo_week_ago.toString() + "</span>" +
          "<span class='list-elo'>" + item.elo_month_ago.toString() + "</span>" +
-         "<span class='list-games'>" + item.games.toString() + "</span>" +
+         "<span class='list-games bold'>" + item.games.toString() + "</span>" +
          "<span class='list-ratio'>" + item.ratio.toString() + "%</span>" +
          "<span class='list-avgpts'>" + item.avgpts.toString() + "</span>" +
          info +

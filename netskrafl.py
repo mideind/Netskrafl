@@ -352,7 +352,6 @@ def _rating(kind):
             nick = Game.autoplayer_name(int(uid[6:]))
             fullname = nick
             chall = False
-            fav = False
         else:
             usr = User.load(uid)
             if usr is None or not usr.is_displayable():
@@ -361,7 +360,6 @@ def _rating(kind):
             nick = usr.nickname()
             fullname = usr.full_name()
             chall = uid in challenges
-            fav = False if cuser is None else cuser.has_favorite(uid)
 
         games = ru["games"]
         if games == 0:
@@ -380,7 +378,6 @@ def _rating(kind):
             "userid": uid,
             "nick": nick,
             "fullname": fullname,
-            "fav": fav,
             "chall": chall,
 
             "elo": ru["elo"],
