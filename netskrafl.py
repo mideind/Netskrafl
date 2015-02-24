@@ -44,7 +44,7 @@ from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel
 
 
 # Standard Flask initialization
@@ -325,6 +325,11 @@ def _gamelist():
                 "overdue": overdue
             })
     return result
+
+
+def _rating(kind):
+    """ Return a list of Elo ratings of the given kind ('all' or 'human') """
+    return list(RatingModel.list_rating(kind))
 
 
 def _recentlist(cuid, max_len):
@@ -610,6 +615,18 @@ def gamelist():
     # _gamelist() returns an empty list if no user is logged in
 
     return jsonify(result = Error.LEGAL, gamelist = _gamelist())
+
+
+@app.route("/rating", methods=['GET', 'POST'])
+def rating():
+    """ Return the newest rating of a given kind ('all' or 'human') """
+
+    if not User.current_id():
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    kind = request.form.get('kind', 'all')
+
+    return jsonify(result = Error.LEGAL, rating = _rating(kind))
 
 
 @app.route("/recentlist", methods=['POST'])

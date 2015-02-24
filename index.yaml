@@ -78,6 +78,11 @@ indexes:
   - name: over
   - name: ts_last_move
 
+- kind: RatingModel
+  properties:
+  - name: kind
+  - name: rank
+
 - kind: StatsModel
   properties:
   - name: robot_level

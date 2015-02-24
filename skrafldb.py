@@ -733,6 +733,7 @@ class StatsModel(ndb.Model):
         """ Create a fresh instance with default values """
         sm = cls()
         sm.set_user(user_id, robot_level)
+        sm.timestamp = None
         sm.elo = 1200
         sm.human_elo = 1200
         sm.games = 0
@@ -753,6 +754,7 @@ class StatsModel(ndb.Model):
         # user and robot_level are assumed to be in place already
         assert hasattr(self, "user")
         assert hasattr(self, "robot_level")
+        self.timestamp = src.timestamp
         self.elo = src.elo
         self.human_elo = src.human_elo
         self.games = src.games
@@ -767,35 +769,109 @@ class StatsModel(ndb.Model):
         self.human_losses = src.human_losses
 
 
+    @staticmethod
+    def dict_key(d):
+        """ Return a dictionary key that works for human users and robots """
+        if d["user"] is None:
+            return "robot_" + str(d["robot_level"])
+        return d["user"]
+
+
     @classmethod
     def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
         """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
+
         if timestamp is None:
             timestamp = datetime.utcnow()
-        # Start by finding the timestamp most closely before the given one
-        q = cls.query(StatsModel.timestamp <= timestamp)
-        sm = q.get()
-        if sm is None:
-            # No statistics available before this time point
-            return
-        # This is the reference timestamp we'll use
-        ref_ts = sm.timestamp
-        q = cls.query(StatsModel.timestamp == ref_ts).order(- prop)
-        rank = 0
-        for sm in q.fetch(max_len):
-            rank += 1
-            yield makedict(rank, sm)
+
+        # Use descending Elo order
+        # Ndb doesn't allow us to put an inequality filter on the timestamp here
+        # so we need to fetch irrespective of timestamp and manually filter
+        q = cls.query().order(- prop)
+
+        result = dict()
+        CHUNK_SIZE = 100
+        offset = 0
+        lowest_elo = None
+
+        # The following loop may yield an incorrect result since there may
+        # be newer stats records for individual users with lower Elo scores
+        # than those scanned to create the list. In other words, there may
+        # be false positives on the list (but not false negatives, i.e.
+        # there can't be higher Elo scores somewhere that didn't make it
+        # to the list). We attempt to address this by fetching double the
+        # number of requested users, then separately checking each of them for
+        # false positives. If we have too many false positives, we don't return
+        # the full requested number of result records.
+
+        go_on = True
+        while go_on:
+            # Query in chunks
+            count = 0
+            for sm in q.fetch(CHUNK_SIZE, offset = offset):
+                if sm.timestamp <= timestamp:
+                    # Within our time range
+                    d = makedict(sm)
+                    ukey = cls.dict_key(d)
+                    if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
+                        # Fresh entry or newer (and also lower) than the previous one
+                        result[ukey] = d
+                        if (lowest_elo is None) or (d["elo"] < lowest_elo):
+                            lowest_elo = d["elo"]
+                        if len(result) >= max_len * 2:
+                            # We have double the number of entries requested: done
+                            go_on = False
+                            break # From for loop
+                count += 1
+            if go_on and count < CHUNK_SIZE:
+                # Hit end of query: We're done
+                go_on = False
+            offset += count
+
+        # Do another loop through the result to check for false positives
+        false_pos = 0
+        for ukey, d in result.items():
+            sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
+            assert sm is not None # We should always have an entity here
+            nd = makedict(sm)
+            if nd["timestamp"] > d["timestamp"]:
+                # This is a newer one than we have already
+                # It must be a lower Elo score, or we would already have it
+                assert nd["elo"] <= d["elo"]
+                assert lowest_elo is not None
+                if nd["elo"] < lowest_elo:
+                    # The entry didn't belong on the list at all
+                    false_pos += 1
+                # Replace the entry with the newer one (which will lower it)
+                result[ukey] = nd
+
+        logging.info(u"False positives are {0}".format(false_pos))
+        if false_pos > max_len:
+            # Houston, we have a problem: the original list was way off
+            # and the corrections are not sufficient;
+            # truncate the result accordingly
+            logging.info(u"False positives caused ratings list to be truncated")
+            max_len -= (false_pos - max_len)
+            if max_len < 0:
+                max_len = 0
+
+        # Sort in descending order by Elo, and finally rank and return the result
+        result_list = sorted(result.values(), key = lambda x: - x["elo"])[0:max_len]
+        for ix, d in enumerate(result_list):
+            d["rank"] = ix + 1
+
+        return result_list
 
 
     @classmethod
     def list_elo(cls, timestamp = None, max_len = MAX_STATS):
         """ Return the top Elo-rated users for all games (including robots) """
 
-        def _makedict(rank, sm):
+        def _makedict(sm):
             return dict(
-                rank = rank,
                 user = None if sm.user is None else sm.user.id(),
                 robot_level = sm.robot_level,
+                timestamp = sm.timestamp,
                 games = sm.games,
                 elo = sm.elo,
                 score = sm.score,
@@ -804,18 +880,18 @@ class StatsModel(ndb.Model):
                 losses = sm.losses,
             )
 
-        return iter(cls._list_by(StatsModel.elo, _makedict, timestamp, max_len))
+        return cls._list_by(StatsModel.elo, _makedict, timestamp, max_len)
 
 
     @classmethod
     def list_human_elo(cls, timestamp = None, max_len = MAX_STATS):
         """ Return the top Elo-rated users for human-only games """
 
-        def _makedict(rank, sm):
+        def _makedict(sm):
             return dict(
-                rank = rank,
                 user = None if sm.user is None else sm.user.id(),
                 robot_level = sm.robot_level,
+                timestamp = sm.timestamp,
                 games = sm.human_games,
                 elo = sm.human_elo,
                 score = sm.human_score,
@@ -824,7 +900,7 @@ class StatsModel(ndb.Model):
                 losses = sm.human_losses,
             )
 
-        return iter(cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len))
+        return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
 
 
     @classmethod
@@ -904,6 +980,7 @@ class RatingModel(ndb.Model):
     wins_month_ago = ndb.IntegerProperty(required = False, default = 0)
     losses_month_ago = ndb.IntegerProperty(required = False, default = 0)
 
+
     @classmethod
     def get_or_create(cls, kind, rank):
         """ Get an existing entity or create a new one if it doesn't exist """
@@ -917,6 +994,7 @@ class RatingModel(ndb.Model):
         rm.rank = rank
         return rm
 
+
     def assign(self, dict_args):
         """ Populate attributes from a dict """
         for key, val in dict_args.items():
@@ -925,4 +1003,68 @@ class RatingModel(ndb.Model):
                 setattr(self, key, None if val is None else ndb.Key(UserModel, val))
             else:
                 setattr(self, key, val)
+
+
+    @classmethod
+    def list_rating(cls, kind):
+        """ Iterate through the rating table of a given kind, in ascending order by rank """
+        CHUNK_SIZE = 100
+        q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
+        offset = 0
+        while True:
+            count = 0
+            for rm in q.fetch(CHUNK_SIZE, offset = offset):
+                v = dict(
+                    rank = rm.rank,
+
+                    games = rm.games,
+                    elo = rm.elo,
+                    score = rm.score,
+                    score_against = rm.score_against,
+                    wins = rm.wins,
+                    losses = rm.losses,
+
+                    rank_yesterday = rm.rank_yesterday,
+                    games_yesterday = rm.games_yesterday,
+                    elo_yesterday = rm.elo_yesterday,
+                    score_yesterday = rm.score_yesterday,
+                    score_against_yesterday = rm.score_against_yesterday,
+                    wins_yesterday = rm.wins_yesterday,
+                    losses_yesterday = rm.losses_yesterday,
+
+                    rank_week_ago = rm.rank_week_ago,
+                    games_week_ago = rm.games_week_ago,
+                    elo_week_ago = rm.elo_week_ago,
+                    score_week_ago = rm.score_week_ago,
+                    score_against_week_ago = rm.score_against_week_ago,
+                    wins_week_ago = rm.wins_week_ago,
+                    losses_week_ago = rm.losses_week_ago,
+
+                    rank_month_ago = rm.rank_month_ago,
+                    games_month_ago = rm.games_month_ago,
+                    elo_month_ago = rm.elo_month_ago,
+                    score_month_ago = rm.score_month_ago,
+                    score_against_month_ago = rm.score_against_month_ago,
+                    wins_month_ago = rm.wins_month_ago,
+                    losses_month_ago = rm.losses_month_ago
+                )
+
+                # Stringify a user id
+                if rm.user is None:
+                    if rm.robot_level < 0:
+                        v["userid"] = ""
+                    else:
+                        v["userid"] = "robot_" + str(rm.robot_level)
+                else:
+                    v["userid"] = rm.user.id()
+
+                yield v
+                count += 1
+
+            if count < CHUNK_SIZE:
+                break
+            if count == 100:
+                # The rating lists normally contain 100 entities
+                break
+            offset += CHUNK_SIZE
 

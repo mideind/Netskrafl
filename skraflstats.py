@@ -277,11 +277,7 @@ def _create_ratings(timestamp):
 
     logging.info(u"Starting _create_ratings")
 
-    def _key(sm):
-        """ Return a dictionary key that works for human users and robots """
-        if sm["user"] is None:
-            return "robot_" + str(sm["robot_level"])
-        return sm["user"]
+    _key = StatsModel.dict_key
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
         """ Go through a table of top scoring users and augment it with data from previous time points """
