@@ -329,7 +329,75 @@ def _gamelist():
 
 def _rating(kind):
     """ Return a list of Elo ratings of the given kind ('all' or 'human') """
-    return list(RatingModel.list_rating(kind))
+    result = []
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+
+    # Generate a list of challenges issued by this user
+    challenges = set()
+    if cuid:
+        challenges.update([ch[0] # Identifier of challenged user
+            for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
+
+    for ru in RatingModel.list_rating(kind):
+
+        uid = ru["userid"]
+        if not uid:
+            # Hit the end of the list
+            break
+        is_robot = False
+        usr = None
+        if uid.startswith(u"robot-"):
+            is_robot = True
+            nick = Game.autoplayer_name(int(uid[6:]))
+            fullname = nick
+            chall = False
+            fav = False
+        else:
+            usr = User.load(uid)
+            if usr is None or not usr.is_displayable():
+                # Something wrong with this one: don't bother
+                continue
+            nick = usr.nickname()
+            fullname = usr.full_name()
+            chall = uid in challenges
+            fav = False if cuser is None else cuser.has_favorite(uid)
+
+        games = ru["games"]
+        if games == 0:
+            ratio = 0
+            avgpts = 0
+        else:
+            ratio = int(round(100.0 * float(ru["wins"]) / games))
+            avgpts = int(round(float(ru["score"]) / games))
+
+        result.append({
+            "rank": ru["rank"],
+            "rank_yesterday": ru["rank_yesterday"],
+            "rank_week_ago": ru["rank_week_ago"],
+            "rank_month_ago": ru["rank_month_ago"],
+
+            "userid": uid,
+            "nick": nick,
+            "fullname": fullname,
+            "fav": fav,
+            "chall": chall,
+
+            "elo": ru["elo"],
+            "elo_yesterday": ru["elo_yesterday"],
+            "elo_week_ago": ru["elo_week_ago"],
+            "elo_month_ago": ru["elo_month_ago"],
+
+            "games": games,
+            "games_yesterday": ru["games_yesterday"],
+            "games_week_ago": ru["games_week_ago"],
+            "games_month_ago": ru["games_month_ago"],
+
+            "ratio": ratio,
+            "avgpts": avgpts
+        })
+
+    return result
 
 
 def _recentlist(cuid, max_len):
@@ -617,7 +685,7 @@ def gamelist():
     return jsonify(result = Error.LEGAL, gamelist = _gamelist())
 
 
-@app.route("/rating", methods=['GET', 'POST'])
+@app.route("/rating", methods=['POST'])
 def rating():
     """ Return the newest rating of a given kind ('all' or 'human') """
 

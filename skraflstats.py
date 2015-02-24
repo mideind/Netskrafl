@@ -177,11 +177,11 @@ def _run_stats(from_time, to_time):
             s1 = gm.score1
             pr = gm.prefs
             if p0 is None:
-                k0 = "robot_" + str(rl)
+                k0 = "robot-" + str(rl)
             else:
                 k0 = p0
             if p1 is None:
-                k1 = "robot_" + str(rl)
+                k1 = "robot-" + str(rl)
             else:
                 k1 = p1
 

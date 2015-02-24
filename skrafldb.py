@@ -773,7 +773,7 @@ class StatsModel(ndb.Model):
     def dict_key(d):
         """ Return a dictionary key that works for human users and robots """
         if d["user"] is None:
-            return "robot_" + str(d["robot_level"])
+            return "robot-" + str(d["robot_level"])
         return d["user"]
 
 
@@ -834,7 +834,8 @@ class StatsModel(ndb.Model):
             sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
             assert sm is not None # We should always have an entity here
             nd = makedict(sm)
-            if nd["timestamp"] > d["timestamp"]:
+            nd_ts = nd["timestamp"] # This may be None if a default record was created
+            if (nd_ts is not None) and nd_ts > d["timestamp"]:
                 # This is a newer one than we have already
                 # It must be a lower Elo score, or we would already have it
                 assert nd["elo"] <= d["elo"]
@@ -1054,7 +1055,7 @@ class RatingModel(ndb.Model):
                     if rm.robot_level < 0:
                         v["userid"] = ""
                     else:
-                        v["userid"] = "robot_" + str(rm.robot_level)
+                        v["userid"] = "robot-" + str(rm.robot_level)
                 else:
                     v["userid"] = rm.user.id()
 

@@ -236,6 +236,84 @@ function populateUserList(json) {
    }
 }
 
+function rankStr(rank) {
+   // Return a rank string or dash if no rank
+   if (rank === 0)
+      return "--";
+   return rank.toString();
+}
+
+function populateEloList(json) {
+   /* Display a user list that has been returned from the server */
+   // Hide the user load spinner
+   $("#user-load").css("display", "none");
+   ulRq = false; // Allow another user list request to proceed
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   for (var i = 0; i < json.rating.length; i++) {
+      var item = json.rating[i];
+      // Robot userids start with 'robot-'
+      var isRobot = item.userid.indexOf("robot-") === 0;
+      var fav;
+      if (isRobot)
+         // Can't favorite a robot
+         fav = "<span class='glyphicon glyphicon-star-empty'></span>";
+      else
+         fav = "<span title='Uppáhald' class='glyphicon glyphicon-star" +
+         ((!item.fav) ? "-empty" : "") +
+         "' onclick='markFavorite(this, \"" + item.userid + "\")'></span>";
+      var chId = "chall" + i.toString();
+      var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
+         (item.chall ? "'" : " grayed'") +
+         " id='" + chId + "'></span>";
+      var nick = escapeHtml(item.nick);
+      var info = "", ready = "";
+      if (isRobot) {
+         // Mark robots with a cog icon
+         nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
+      }
+      else {
+         // Create a link to access user info
+         info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
+      }
+      if (info.length)
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+      // Assemble the entire line
+      var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
+         "<span class='list-ch'>" + ch + "</span>" +
+         "<span class='list-fav'>" + fav + "</span>" +
+         "<span class='list-rank'>" + rankStr(item.rank) + "</span>" +
+         "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
+         "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
+         "<span class='list-nick'>" + nick + "</span>" +
+         "<span class='list-elo'>" + item.elo.toString() + "</span>" +
+         "<span class='list-elo'>" + item.elo_yesterday.toString() + "</span>" +
+         "<span class='list-elo'>" + item.elo_week_ago.toString() + "</span>" +
+         "<span class='list-elo'>" + item.elo_month_ago.toString() + "</span>" +
+         "<span class='list-games'>" + item.games.toString() + "</span>" +
+         "<span class='list-ratio'>" + item.ratio.toString() + "%</span>" +
+         "<span class='list-avgpts'>" + item.avgpts.toString() + "</span>" +
+         info +
+         "</div>";
+      $("#userlist").append(str);
+      // Associate a click handler with the info button, if present
+      if (info.length)
+         $("#usr" + i.toString()).click(
+            { userid: item.userid, nick: item.nick, fullname: item.fullname },
+            showUserInfo
+         );
+      // Associate a click handler with the challenge icon
+      $("#" + chId).click(
+         { userid: item.userid, nick: item.nick, fullname: item.fullname },
+         markChallenge
+      );
+   }
+}
+
 // What range of users was last displayed, in case we need to refresh?
 var displayedUserRange = null;
 
@@ -275,8 +353,17 @@ function refreshUserList(ev) {
    var toRange = null;
    /* Note the last displayed range in case we need to redisplay */
    displayedUserRange = range + "";
-   if (range == "fav" || range == "robots" || range == "live") {
-      /* Special requests: list of favorites, live users or robots */
+   if (range == "elo") {
+      // Show the Elo list header
+      $("#usr-hdr").css("display", "none");
+      $("#elo-hdr").css("display", "block");
+   }
+   else {
+      $("#elo-hdr").css("display", "none");
+      $("#usr-hdr").css("display", "block");
+   }
+   if (range == "fav" || range == "robots" || range == "live" || range == "elo") {
+      /* Special requests: list of favorites, live users, robots or Elo ratings */
       fromRange = range;
    }
    else {
@@ -288,13 +375,19 @@ function refreshUserList(ev) {
    }
    // Hide the user info button header if listing the robots
    $("#usr-list-info").css("visibility", (range == "robots") ? "hidden" : "visible");
-   serverQuery("/userlist",
-      {
-         // Identify the game in question
-         from: fromRange,
-         to: toRange
-      },
-      populateUserList);
+   if (range == "elo")
+      serverQuery("/rating",
+         {
+            kind: "human"
+         },
+         populateEloList);
+   else
+      serverQuery("/userlist",
+         {
+            from: fromRange,
+            to: toRange
+         },
+         populateUserList);
 }
 
 function populateGameList(json) {
