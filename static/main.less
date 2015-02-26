@@ -154,6 +154,9 @@
 .glyphicon-crown:before {
    content: "\E362";
 }
+.glyphicon-dashboard:before {
+   content: "\E332";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1834,7 +1837,7 @@ h1.usr-info-icon {
 }
 
 div#stats-toggler {
-   margin-top: 6px;
+   margin-top: 7px;
    margin-right: 8px;
 }
 
@@ -1859,17 +1862,16 @@ div#usr-stats-all {
 
 div.stats-fig {
    display: inline-block;
-   width: 72px;
-   height: 26px;
+   width: 80px;
+   height: 27px;
    padding: 6px;
-   padding-top: 5px;
    border-radius: 5px;
    background-color: transparent;
-   color: @freshtile;
+   color: darken(@triple-letter, 10%);
    border-style: solid;
    border-width: 2px;
    border-radius: 5px;
-   border-color: @freshtile;
+   border-color: darken(@triple-letter, 10%);
    text-align: center;
    font-weight: 700;
    font-size: 20px;
@@ -1879,6 +1881,21 @@ div.stats-fig {
    margin-left: 8px;
    cursor: default;
    .noselect;
+}
+
+div#usr-stats-human-games, div#usr-stats-games {
+   color: darken(@pass-btn, 10%);
+   border-color: darken(@pass-btn, 10%);
+}
+
+div#usr-stats-human-win-ratio, div#usr-stats-win-ratio {
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
+}
+
+div#usr-stats-human-avg-score, div#usr-stats-avg-score {
+   color: darken(@triple-word, 10%);
+   border-color: darken(@triple-word, 10%);
 }
 
 div#chall-form {

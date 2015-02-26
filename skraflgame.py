@@ -587,6 +587,11 @@ class Game:
             self._preferences = { }
         self._preferences[pref] = value
 
+    @staticmethod
+    def get_duration_from_prefs(prefs):
+        """ Return the duration given a dict of game preferences """
+        return 0 if prefs is None else prefs.get(u"duration", 0)
+
     def get_duration(self):
         """ Return the duration for each player in the game, e.g. 25 if 2x25 minute game """
         return self.get_pref(u"duration") or 0

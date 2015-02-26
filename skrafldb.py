@@ -293,7 +293,8 @@ class GameModel(ndb.Model):
                 opp = opp,
                 sc0 = sc0,
                 sc1 = sc1,
-                robot_level = gm.robot_level)
+                robot_level = gm.robot_level,
+                prefs = gm.prefs)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)

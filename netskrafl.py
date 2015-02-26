@@ -442,7 +442,8 @@ def _recentlist(cuid, max_len):
                 "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
                 "days": int(days),
                 "hours": int(hours),
-                "minutes": int(minutes)
+                "minutes": int(minutes),
+                "duration": Game.get_duration_from_prefs(g["prefs"])
             })
     return result
 

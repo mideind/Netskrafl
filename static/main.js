@@ -145,6 +145,9 @@ function showUserInfo(ev) {
    /* Show the user information dialog */
    $("#usr-info-nick").text(ev.data.nick);
    $("#usr-info-fullname").text(ev.data.fullname);
+   initToggle("#stats-toggler", false); // Show human only stats by default
+   $("#usr-stats-human").css("display", "inline-block");
+   $("#usr-stats-all").css("display", "none");
    $("#usr-info-dialog").css("visibility", "visible");
    // Populate the #usr-recent DIV
    serverQuery("/recentlist",
@@ -167,12 +170,22 @@ function hideUserInfo(ev) {
    $("#usr-recent").html("");
 }
 
+function showStat(id, val, icon, suffix) {
+   // Display a user statistics figure, eventually with an icon
+   var txt = val.toString();
+   if (suffix !== undefined)
+      txt += suffix;
+   if (icon !== undefined)
+      txt = "<span class='glyphicon glyphicon-" + icon + "'></span>&nbsp;" + txt;
+   $("#usr-stats-" + id).html(txt);
+}
+
 function populateUserStats(json) {
    // Display user statistics in a user info dialog
-   $("#usr-stats-elo").text(json.elo.toString());
-   $("#usr-stats-human-elo").text(json.human_elo.toString());
-   $("#usr-stats-games").text(json.games.toString());
-   $("#usr-stats-human-games").text(json.human_games.toString());
+   showStat("elo", json.elo, "crown");
+   showStat("human-elo", json.human_elo, "crown");
+   showStat("games", json.games, "th");
+   showStat("human-games", json.human_games, "th");
    var winRatio = 0, winRatioHuman = 0;
    if (json.games > 0)
       winRatio = Math.round(100.0 * json.wins / json.games);
@@ -183,10 +196,10 @@ function populateUserStats(json) {
       avgScore = Math.round(json.score / json.games);
    if (json.human_games > 0)
       avgScoreHuman = Math.round(json.human_score / json.human_games);
-   $("#usr-stats-win-ratio").text(winRatio.toString() + "%");
-   $("#usr-stats-human-win-ratio").text(winRatioHuman.toString() + "%");
-   $("#usr-stats-avg-score").text(avgScore.toString());
-   $("#usr-stats-human-avg-score").text(avgScoreHuman.toString());
+   showStat("win-ratio", winRatio, "bookmark", "%");
+   showStat("human-win-ratio", winRatioHuman, "bookmark", "%");
+   showStat("avg-score", avgScore, "dashboard");
+   showStat("human-avg-score", avgScoreHuman, "dashboard");
 }
 
 function toggleStats(ev) {
@@ -531,26 +544,32 @@ function _populateRecentList(json, listId) {
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       // Format the game duration
       var duration = "";
-      if (item.days || item.hours || item.minutes) {
-         if (item.days > 1)
-            duration = item.days.toString() + " dagar";
-         else
-         if (item.days == 1)
-            duration = "1 dagur";
-         if (item.hours > 0) {
-            if (duration.length)
-               duration += " og ";
-            duration += item.hours.toString() + " klst";
-         }
-         if (item.days === 0) {
-            if (duration.length)
-               duration += " og ";
-            if (item.minutes == 1)
-               duration += "1 mínúta";
+      if (item.duration === 0) {
+         if (item.days || item.hours || item.minutes) {
+            if (item.days > 1)
+               duration = item.days.toString() + " dagar";
             else
-               duration += item.minutes.toString() + " mínútur";
+            if (item.days == 1)
+               duration = "1 dagur";
+            if (item.hours > 0) {
+               if (duration.length)
+                  duration += " og ";
+               duration += item.hours.toString() + " klst";
+            }
+            if (item.days === 0) {
+               if (duration.length)
+                  duration += " og ";
+               if (item.minutes == 1)
+                  duration += "1 mínúta";
+               else
+                  duration += item.minutes.toString() + " mínútur";
+            }
          }
       }
+      else
+         // This was a timed game
+         duration = "<span class='timed-btn' title='Viðureign með klukku'></span> 2 x " +
+            item.duration.toString();
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +
@@ -875,10 +894,8 @@ function toggleTimed(ev) {
 
 function initToggle(elemid, state) {
    // Initialize a toggle
-   if (state)
-      $(elemid + " #opt2").addClass("selected");
-   else
-      $(elemid + " #opt1").addClass("selected");
+   $(elemid + " #opt2").toggleClass("selected", state);
+   $(elemid + " #opt1").toggleClass("selected", !state);
 }
 
 /* Google Channel API stuff */

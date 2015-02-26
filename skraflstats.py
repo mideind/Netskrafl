@@ -407,9 +407,14 @@ def stats_run():
 
     logging.info(u"Starting stats calculation")
 
-    year = int(request.args.get("year", "2015"))
-    month = int(request.args.get("month", "1"))
-    day = int(request.args.get("day", "1"))
+    # If invoked without parameters (such as from a cron job),
+    # this will calculate yesterday's statistics
+    now = datetime.utcnow()
+    yesterday = now - timedelta(days = 1)
+
+    year = int(request.args.get("year", str(yesterday.year)))
+    month = int(request.args.get("month", str(yesterday.month)))
+    day = int(request.args.get("day", str(yesterday.day)))
 
     try:
         from_time = datetime(year = year, month = month, day = day)
