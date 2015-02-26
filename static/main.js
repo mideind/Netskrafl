@@ -153,12 +153,47 @@ function showUserInfo(ev) {
          count: 40 // Limit recent game count to 40
       },
       populateUserInfo);
+   // Populate the user statistics
+   serverQuery("/userstats",
+      {
+         user: ev.data.userid
+      },
+      populateUserStats);
 }
 
 function hideUserInfo(ev) {
    /* Hide the user information dialog */
    $("#usr-info-dialog").css("visibility", "hidden");
    $("#usr-recent").html("");
+}
+
+function populateUserStats(json) {
+   // Display user statistics in a user info dialog
+   $("#usr-stats-elo").text(json.elo.toString());
+   $("#usr-stats-human-elo").text(json.human_elo.toString());
+   $("#usr-stats-games").text(json.games.toString());
+   $("#usr-stats-human-games").text(json.human_games.toString());
+   var winRatio = 0, winRatioHuman = 0;
+   if (json.games > 0)
+      winRatio = Math.round(100.0 * json.wins / json.games);
+   if (json.human_games > 0)
+      winRatioHuman = Math.round(100.0 * json.human_wins / json.human_games);
+   var avgScore = 0, avgScoreHuman = 0;
+   if (json.games > 0)
+      avgScore = Math.round(json.score / json.games);
+   if (json.human_games > 0)
+      avgScoreHuman = Math.round(json.human_score / json.human_games);
+   $("#usr-stats-win-ratio").text(winRatio.toString() + "%");
+   $("#usr-stats-human-win-ratio").text(winRatioHuman.toString() + "%");
+   $("#usr-stats-avg-score").text(avgScore.toString());
+   $("#usr-stats-human-avg-score").text(avgScoreHuman.toString());
+}
+
+function toggleStats(ev) {
+   // Toggle between displaying user stats for human games only or for all
+   var state = toggle(ev);
+   $("#usr-stats-human").css("display", state ? "none" : "inline-block");
+   $("#usr-stats-all").css("display", state ? "inline-block" : "none");
 }
 
 // Is a user list request already in progress?
@@ -236,9 +271,10 @@ function populateUserList(json) {
    }
 }
 
-function rankStr(rank) {
-   // Return a rank string or dash if no rank
-   if (rank === 0)
+function rankStr(rank, ref) {
+   // Return a rank string or dash if no rank or not meaningful
+   // (i.e. if the reference, such as the number of games, is zero)
+   if (rank === 0 || (ref !== undefined && ref === 0))
       return "--";
    return rank.toString();
 }
@@ -282,9 +318,9 @@ function populateEloList(json) {
          "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
          "<span class='list-nick'>" + nick + "</span>" +
          "<span class='list-elo bold'>" + item.elo.toString() + "</span>" +
-         "<span class='list-elo'>" + item.elo_yesterday.toString() + "</span>" +
-         "<span class='list-elo'>" + item.elo_week_ago.toString() + "</span>" +
-         "<span class='list-elo'>" + item.elo_month_ago.toString() + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
          "<span class='list-games bold'>" + item.games.toString() + "</span>" +
          "<span class='list-ratio'>" + item.ratio.toString() + "%</span>" +
          "<span class='list-avgpts'>" + item.avgpts.toString() + "</span>" +
@@ -303,6 +339,23 @@ function populateEloList(json) {
          markChallenge
       );
    }
+}
+
+function toggleElo(ev) {
+   // The Elo rating list toggle has been clicked:
+   // display a list of all users including robots, or a list of humans only
+   if (ulRq)
+      return;
+   var eloState = toggle(ev);
+   $("#userlist").html("");
+   /* Show the user load spinner */
+   $("#user-load").css("display", "block");
+   ulRq = true; // Set to false again in populateEloList()
+   serverQuery("/rating",
+   {
+      kind: eloState ? "all" : "human"
+   },
+   populateEloList);
 }
 
 // What range of users was last displayed, in case we need to refresh?

@@ -339,7 +339,14 @@ def _rating(kind):
         challenges.update([ch[0] # Identifier of challenged user
             for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
 
-    for ru in RatingModel.list_rating(kind):
+    rating = memcache.get(kind, namespace="rating")
+    if rating is None:
+        # Not found: do a query
+        rating = list(RatingModel.list_rating(kind))
+        # Store the result in the cache with a lifetime of 1 hour
+        memcache.set(kind, rating, time=1 * 60 * 60, namespace="rating")
+
+    for ru in rating:
 
         uid = ru["userid"]
         if not uid:
@@ -651,9 +658,25 @@ def gamestats():
             game = None
 
     if game is None:
-        return jsonify(result = Error.LOGIN_REQUIRED) # Strictly speaking: game not found
+        return jsonify(result = Error.GAME_NOT_FOUND)
 
     return jsonify(game.statistics())
+
+
+@app.route("/userstats", methods=['POST'])
+def userstats():
+    """ Calculate and return statistics on a given user """
+
+    uid = request.form.get('user', None)
+    user = None
+
+    if uid is not None:
+        user = User.load(uid)
+
+    if user is None:
+        return jsonify(result = Error.WRONG_USER)
+
+    return jsonify(user.statistics())
 
 
 @app.route("/userlist", methods=['POST'])
@@ -684,7 +707,7 @@ def gamelist():
 
 @app.route("/rating", methods=['POST'])
 def rating():
-    """ Return the newest rating of a given kind ('all' or 'human') """
+    """ Return the newest Elo ratings table (top 100) of a given kind ('all' or 'human') """
 
     if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)

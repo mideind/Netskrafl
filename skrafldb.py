@@ -769,6 +769,22 @@ class StatsModel(ndb.Model):
         self.human_losses = src.human_losses
 
 
+    def populate_dict(self, d):
+        """ Copy statistics data to the given dict """
+        d["elo"] = self.elo
+        d["human_elo"] = self.human_elo
+        d["games"] = self.games
+        d["human_games"] = self.human_games
+        d["score"] = self.score
+        d["human_score"] = self.human_score
+        d["score_against"] = self.score_against
+        d["human_score_against"] = self.human_score_against
+        d["wins"] = self.wins
+        d["losses"] = self.losses
+        d["human_wins"] = self.human_wins
+        d["human_losses"] = self.human_losses
+
+
     @staticmethod
     def dict_key(d):
         """ Return a dictionary key that works for human users and robots """
@@ -921,6 +937,22 @@ class StatsModel(ndb.Model):
             if sm_before is not None:
                 # Found: copy the stats
                 sm.copy_from(sm_before)
+        return sm
+
+
+    @classmethod
+    def newest_for_user(cls, user_id):
+        """ Returns the newest available stats record for the user """
+        if user_id is None:
+            return None
+        k = ndb.Key(UserModel, user_id)
+        # Use a common query structure and index for humans and robots
+        q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)) \
+            .order(- StatsModel.timestamp)
+        sm = q.get()
+        if sm is None:
+            # No record in the database: return a default entity
+            sm = cls.create(user_id)
         return sm
 
 

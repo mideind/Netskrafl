@@ -906,6 +906,8 @@ function initDropTargets() {
       sq = $("#R" + x.toString());
       initDropTarget(sq);
    }
+   /* Make the background a drop target */
+   initDropTarget($("#container"));
 }
 
 function handleDrop(e, ui) {
@@ -915,13 +917,29 @@ function handleDrop(e, ui) {
    var eld = elementDragged;
    if (eld === null)
       return;
+   var i, rslot;
    eld.style.opacity = "1.0";
+   if (e.target.id == "container") {
+      // Dropping to the background container:
+      // shuffle things around so it looks like we are dropping to the first empty rack slot
+      rslot = null;
+      for (i = 1; i <= RACK_SIZE; i++) {
+         rslot = document.getElementById("R" + i.toString());
+         if (!rslot.firstChild)
+            /* Empty slot in the rack */
+            break;
+         rslot = null;
+      }
+      if (!rslot)
+         return; // Shouldn't really happen
+      e.target = rslot;
+   }
    var dropToRack = (e.target.id.charAt(0) == 'R');
    if (dropToRack && e.target.firstChild !== null) {
       /* Dropping into an already occupied rack slot: shuffle the rack tiles to make room */
       var ix = parseInt(e.target.id.slice(1));
-      var rslot = null;
-      var i = 0;
+      rslot = null;
+      i = 0;
       /* Try to find an empty slot to the right */
       for (i = ix + 1; i <= RACK_SIZE; i++) {
          rslot = document.getElementById("R" + i.toString());
@@ -1319,6 +1337,9 @@ function updateBag(bag) {
    $("#bag").html("");
    var lenbag = bag.length;
    var ix = 0;
+   // If 7 or fewer unseen tiles, the bag is empty and they're all in the opponent's
+   // rack; display the tiles in the opponent's color
+   $("#bag").toggleClass("empty", lenbag <= RACK_SIZE);
    while (lenbag > 0) {
       /* Rows */
       var str = "<tr>";

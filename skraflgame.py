@@ -25,10 +25,12 @@ from datetime import datetime, timedelta
 
 from google.appengine.api import users, memcache
 
-from skraflmechanics import State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import State, Board, Rack, Error, \
+    Move, PassMove, ExchangeMove, ResignMove
 from skraflplayer import AutoPlayer
 from languages import Alphabet
-from skrafldb import Unique, UserModel, GameModel, MoveModel, FavoriteModel, ChallengeModel
+from skrafldb import Unique, UserModel, GameModel, MoveModel, \
+    FavoriteModel, ChallengeModel, StatsModel
 
 
 class User:
@@ -299,6 +301,16 @@ class User:
         if u is None:
             return None
         return u.nickname()
+
+    def statistics(self):
+        """ Return a set of key statistics on the user """
+        reply = dict()
+        sm = StatsModel.newest_for_user(self.id())
+        reply["result"] = Error.LEGAL
+        reply["nickname"] = self.nickname()
+        reply["fullname"] = self.full_name()
+        sm.populate_dict(reply)
+        return reply
 
 
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)

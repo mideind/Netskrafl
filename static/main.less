@@ -251,15 +251,19 @@ div.bag {
    opacity: 0.75;
 }
 
-table #bag {
+table#bag {
 }
 
-#bag td {
+table#bag td {
    min-width: 12px;
    min-height: 17px;
    background-color: @tile;
    overflow: hidden;
    cursor: default;
+}
+
+table#bag.empty td {
+   background-color: @freshtile;
 }
 
 table.board {
@@ -1288,6 +1292,7 @@ div.tabbed-page {
    margin-left: 6px;
    padding-left: 5px;
    padding-right: 5px;
+   top: -3px;
 }
 
 span#numgames {
@@ -1536,6 +1541,14 @@ div#elo-hdr span {
    cursor: default;
 }
 
+div#elo-toggler {
+   display: inline-block;
+   position: relative;
+   top: -42px;
+   left: 284px;
+   z-index: 10;
+}
+
 span.bold {
    font-weight: 700;
 }
@@ -1638,7 +1651,7 @@ span.usr-info:hover {
 div #userlist,
 div #gamelist,
 div #recentlist {
-   height: 504px; /* 14 lines @ 36px each */
+   height: 540px; /* 15 lines @ 36px each */
    overflow-y: auto;
    overflow-x: hidden;
 }
@@ -1818,6 +1831,54 @@ span.vbar {
 h1.usr-info-icon {
    display: inline;
    color: @background;
+}
+
+div#stats-toggler {
+   margin-top: 6px;
+   margin-right: 8px;
+}
+
+div#usr-stats {
+   position: absolute;
+   height: 48px;
+   width: 680px;
+   bottom: 12px;
+   left: 12px;
+   vertical-align: top;
+}
+
+div#usr-stats-human {
+   display: inline-block;
+   vertical-align: top;
+}
+
+div#usr-stats-all {
+   display: none;
+   vertical-align: top;
+}
+
+div.stats-fig {
+   display: inline-block;
+   width: 72px;
+   height: 26px;
+   padding: 6px;
+   padding-top: 5px;
+   border-radius: 5px;
+   background-color: transparent;
+   color: @freshtile;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
+   border-color: @freshtile;
+   text-align: center;
+   font-weight: 700;
+   font-size: 20px;
+   vertical-align: middle;
+   margin-top: 4px;
+   margin-right: 8px;
+   margin-left: 8px;
+   cursor: default;
+   .noselect;
 }
 
 div#chall-form {
@@ -2198,6 +2259,14 @@ div.toggler div.option.small {
    padding-bottom: 3px;
 }
 
+div.toggler div.option.x-small {
+   width: 32px;
+   height: 20px;
+   font-size: 15px;
+   padding-top: 1px;
+   padding-bottom: 3px;
+}
+
 div.toggler div.option.selected {
    background-color: @triple-letter;
 }
@@ -2205,13 +2274,13 @@ div.toggler div.option.selected {
 div#ready-toggler {
    position: absolute;
    left: 10px;
-   top: 618px;
+   top: 578px;
 }
 
 div#timed-toggler {
    position: absolute;
    left: 10px;
-   top: 670px;
+   top: 630px;
 }
 
 div #radioset {

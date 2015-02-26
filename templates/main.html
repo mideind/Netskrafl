@@ -51,6 +51,13 @@ function lateInit() {
    initToggle("#timed-toggler", {{ "true" if user.is_ready_timed() else "false" }});
    $("#ready-toggler").click(toggleReady);
    $("#timed-toggler").click(toggleTimed);
+
+   // Initialize the Elo list toggler
+   initToggle("#elo-toggler", false);
+   $("#elo-toggler").click(toggleElo);
+   // Initialize the stats toggler
+   initToggle("#stats-toggler", false);
+   $("#stats-toggler").click(toggleStats);
 }
 
 </script>
@@ -209,7 +216,7 @@ function lateInit() {
       --></span><!--
       --><span class="list-nick">Einkenni</span><!--
       --><span class="list-fullname">Nafn og merki</span><!--
-      --><span class="list-info-hdr" id="elo-list-info">Ferill</span><!--
+      --><span class="list-info-hdr" id="usr-list-info">Ferill</span><!--
    --></div>
 
       <div id="elo-hdr" class="listitem listheader">
@@ -217,18 +224,24 @@ function lateInit() {
          --><span title="Skora á" class='glyphicon glyphicon-hand-right grayed'></span><!--
       --></span><!--
       --><span class="list-rank">Röð</span><!--
-      --><span class="list-rank" title="Röð í gær">G</span><!--
-      --><span class="list-rank" title="Röð fyrir viku">V</span><!--
+      --><span class="list-rank" title="Röð í gær">1d</span><!--
+      --><span class="list-rank" title="Röð fyrir viku">7d</span><!--
       --><span class="list-nick">Einkenni</span><!--
       --><span class="list-elo" title="Elo-stig">Elo</span><!--
-      --><span class="list-elo" title="Elo-stig í gær">G</span><!--
-      --><span class="list-elo" title="Elo-stig fyrir viku">V</span><!--
-      --><span class="list-elo" title="Elo-stig fyrir mánuði">M</span><!--
+      --><span class="list-elo" title="Elo-stig í gær">1d</span><!--
+      --><span class="list-elo" title="Elo-stig fyrir viku">7d</span><!--
+      --><span class="list-elo" title="Elo-stig fyrir mánuði">30d</span><!--
       --><span class="list-games" title="Fjöldi viðureigna">Fj</span><!--
       --><span class="list-ratio" title="Vinningshlutfall">V%</span><!--
       --><span class="list-avgpts" title="Meðalstigafjöldi">Mst</span><!--
-      --><span class="list-info-hdr" title="Skoða feril" id="usr-list-info">Ferill</span><!--
-   --></div>
+      --><span class="list-info-hdr" title="Skoða feril" id="elo-list-info">Ferill</span>
+         <!-- Toggle for type of Elo list - all or human-only -->
+         <br>
+         <div id="elo-toggler" class="toggler" title="Með þjörkum eða án">
+            <div class="option x-small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+         --><div class="option x-small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+         </div>
+      </div>
 
       <!-- User list will be populated by populateUserList() below -->
       <div id="userlist"></div>
@@ -290,8 +303,28 @@ function lateInit() {
    class="list-scorehdr">Úrslit</span><span
    class="list-duration">Lengd</span></div>
 
-   <!-- Recent game lists will be populated by populateRecentList() below -->
+   <!-- Recent game lists will be populated by populateRecentList() -->
    <div id="usr-recent"></div>
+
+   <!-- Statistics -->
+   <div id="usr-stats">
+      <div id="stats-toggler" class="toggler" title="Með þjörkum eða án">
+         <div class="option small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+      --><div class="option small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+      </div><!--
+   --><div id="usr-stats-human"><!--
+      --><div class="stats-fig" id="usr-stats-human-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div><!--
+   --><div id="usr-stats-all"><!--
+      --><div class="stats-fig" id="usr-stats-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div>
+   </div>
 
    <!-- Close button -->
    <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
