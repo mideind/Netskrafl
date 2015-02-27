@@ -19,7 +19,8 @@
    <ul>
       <li><a href="#tabs-1"><span class='glyphicon glyphicon-info-sign'></span>&nbsp;&nbsp;Hjálp</a></li>
       <li><a href="#tabs-2"><span class='glyphicon glyphicon-paperclip'></span>&nbsp;&nbsp;Tveggja stafa orð</a></li>
-      <li><a href="#tabs-3"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um Netskrafl</a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-crown'></span>&nbsp;&nbsp;Elo-stig</a></li>
+      <li><a href="#tabs-4"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um Netskrafl</a></li>
    </ul>
 
    <div id="tabs-1">
@@ -64,6 +65,43 @@
    </div>
 
    <div id="tabs-3">
+   <p>Netskrafl reiknar svokölluð <strong>Elo-stig</strong> fyrir alla leikmenn og einnig tölvuþjarkana. Útreikningarnir eru gerðir einu sinni á sólarhring, og taka til
+   viðureigna sem lokið er á miðnætti.</p>
+   <p>Nýskráðir leikmenn fá í upphafi 1200 Elo-stig. Stigunum fjölgar
+   í hvert sinn sem leikmaður sigrar í viðureign, en fækkar við tap.</p>
+   <p>Elo-stig 100 efstu leikmanna má sjá undir flipanum <strong>Andstæðingar</strong>
+   ef smellt er á hnappinn
+   <span class="glyphicon glyphicon-crown"></span>&nbsp;<strong>Topp 100</strong>.
+   Unnt er að sjá Elo-stig sem byggja eingöngu á viðureignum milli mennskra
+   leikmanna (<span class="glyphicon glyphicon-user"></span>), eða stig
+   sem reiknuð eru fyrir allar viðureignir, að þjörkum meðtöldum
+   (<span class="glyphicon glyphicon-cog"></span>).</p>
+   <p>Elo-stig virka í stórum dráttum þannig að á grundvelli þeirra er gerð spá um
+   niðurstöðu viðureignar, eða nánar til tekið um vinningslíkur hvors leikmanns.
+   Þegar niðurstaðan liggur fyrir eru Elo-stig færð frá
+   þeim sem tapaði til þess sem sigraði, í hlutfalli við frávik niðurstöðunnar frá spánni.
+   Segja má að kerfið sé stöðugt að leiðrétta eigin spár og leitast við að færa þær nær
+   raunverulegum niðurstöðum viðureigna.</p>
+   <p>Þar sem óvíst er framan af hversu öflugir nýskráðir notendur eru, er gerð
+   undantekning fyrir fyrstu 10 viðureignir nýliða. Þær breyta aðeins Elo-stigum nýliðans,
+   en ekki andstæðingsins hverju sinni (nema hann sé einnig nýliði). Það er því "óhætt"
+   fyrir reynda leikmenn að spila við nýliða og efla þannig leikreynslu þeirra.</p>
+   <div style="font-size: 0.9em">
+   <p><strong>Elo-formúla Netskrafls:</strong> Ef E(a) eru Elo-stig leikmanns A og E(b) stig leikmanns B,
+   reiknar kerfið S(a) = 10^(E(a)/400) og S(b) = 10^(E(b)/400). Vinningslíkur A eru þá
+   L(a) = S(a) / (S(a) + S(b)), en vinningslíkur B eru L(b) = S(b) / (S(a)+ S(b)). Ef A sigrar leikinn
+   fær hann 32 * (1 - L(a)) Elo-stig í viðbót, en tapi hann leiknum dragast af honum
+   32 * (1 - L(b)) = 32 * L(a) enda er L(a) + L(b) = 1. Sama gildir fyrir B með öfugum formerkjum.</p>
+   <p><strong>Dæmi:</strong> A hefur 1200 Elo-stig en B 1600. S(a) = 10^3 = 1000. S(b) = 10^4 = 10000.
+   L(a) = 1000 / 11000 = 9,09%. L(b) = 10000/11000 = 90,91%. B er sem sagt talinn 10 sinnum líklegri
+   en A til að sigra leikinn. Ef það verður niðurstaðan fær B 32 * 9,09% = 3 Elo-stig í viðbót,
+   enda sigurinn mjög nálægt spánni. Ef B tapar hins vegar, dragast af honum 32 * 90,91% =
+   29 Elo-stig, sem A fær - enda er A þá talinn vanmetinn leikmaður sem eigi að færast nær
+   B í stigafjölda.</p>
+   </div>
+   </div>
+
+   <div id="tabs-4">
    <img src="{{ url_for('static', filename='Villi.png') }}" id="villi"><p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur. Þú getur
