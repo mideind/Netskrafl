@@ -1652,9 +1652,14 @@ span.usr-info:hover {
 }
 
 div #userlist,
-div #gamelist,
-div #recentlist {
+div #gamelist {
    height: 540px; /* 15 lines @ 36px each */
+   overflow-y: auto;
+   overflow-x: hidden;
+}
+
+div #recentlist {
+   height: 468px; /* 13 lines @ 36px each */
    overflow-y: auto;
    overflow-x: hidden;
 }
@@ -1841,6 +1846,11 @@ div#stats-toggler {
    margin-right: 8px;
 }
 
+div#own-toggler {
+   margin-top: 7px;
+   margin-right: 8px;
+}
+
 div#usr-stats {
    position: absolute;
    height: 48px;
@@ -1850,12 +1860,30 @@ div#usr-stats {
    vertical-align: top;
 }
 
+div#own-stats {
+   margin-top: 16px;
+   margin-bottom: 24px;
+   height: 48px;
+   width: 680px;
+   vertical-align: top;
+}
+
 div#usr-stats-human {
    display: inline-block;
    vertical-align: top;
 }
 
 div#usr-stats-all {
+   display: none;
+   vertical-align: top;
+}
+
+div#own-stats-human {
+   display: inline-block;
+   vertical-align: top;
+}
+
+div#own-stats-all {
    display: none;
    vertical-align: top;
 }
@@ -1883,17 +1911,17 @@ div.stats-fig {
    .noselect;
 }
 
-div#usr-stats-human-games, div#usr-stats-games {
+div.stats-games {
    color: darken(@pass-btn, 10%);
    border-color: darken(@pass-btn, 10%);
 }
 
-div#usr-stats-human-win-ratio, div#usr-stats-win-ratio {
+div.stats-win-ratio {
    color: darken(@freshtile, 10%);
    border-color: darken(@freshtile, 10%);
 }
 
-div#usr-stats-human-avg-score, div#usr-stats-avg-score {
+div.stats-avg-score {
    color: darken(@triple-word, 10%);
    border-color: darken(@triple-word, 10%);
 }

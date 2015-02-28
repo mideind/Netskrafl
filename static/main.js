@@ -170,22 +170,23 @@ function hideUserInfo(ev) {
    $("#usr-recent").html("");
 }
 
-function showStat(id, val, icon, suffix) {
+function showStat(prefix, id, val, icon, suffix) {
    // Display a user statistics figure, eventually with an icon
    var txt = val.toString();
    if (suffix !== undefined)
       txt += suffix;
    if (icon !== undefined)
       txt = "<span class='glyphicon glyphicon-" + icon + "'></span>&nbsp;" + txt;
-   $("#usr-stats-" + id).html(txt);
+   $("#" + prefix + "-stats-" + id).html(txt);
 }
 
-function populateUserStats(json) {
-   // Display user statistics in a user info dialog
-   showStat("elo", json.elo, "crown");
-   showStat("human-elo", json.human_elo, "crown");
-   showStat("games", json.games, "th");
-   showStat("human-games", json.human_games, "th");
+function _populateStats(prefix, json) {
+   // Display user statistics, either the client user's own,
+   // or a third party in a user info dialog
+   showStat(prefix, "elo", json.elo, "crown");
+   showStat(prefix, "human-elo", json.human_elo, "crown");
+   showStat(prefix, "games", json.games, "th");
+   showStat(prefix, "human-games", json.human_games, "th");
    var winRatio = 0, winRatioHuman = 0;
    if (json.games > 0)
       winRatio = Math.round(100.0 * json.wins / json.games);
@@ -196,10 +197,20 @@ function populateUserStats(json) {
       avgScore = Math.round(json.score / json.games);
    if (json.human_games > 0)
       avgScoreHuman = Math.round(json.human_score / json.human_games);
-   showStat("win-ratio", winRatio, "bookmark", "%");
-   showStat("human-win-ratio", winRatioHuman, "bookmark", "%");
-   showStat("avg-score", avgScore, "dashboard");
-   showStat("human-avg-score", avgScoreHuman, "dashboard");
+   showStat(prefix, "win-ratio", winRatio, "bookmark", "%");
+   showStat(prefix, "human-win-ratio", winRatioHuman, "bookmark", "%");
+   showStat(prefix, "avg-score", avgScore, "dashboard");
+   showStat(prefix, "human-avg-score", avgScoreHuman, "dashboard");
+}
+
+function populateUserStats(json) {
+   // Populate the statistics for a particular user
+   _populateStats("usr", json);
+}
+
+function populateOwnStats(json) {
+   // Populate the user's own statistics
+   _populateStats("own", json);
 }
 
 function toggleStats(ev) {
@@ -207,6 +218,13 @@ function toggleStats(ev) {
    var state = toggle(ev);
    $("#usr-stats-human").css("display", state ? "none" : "inline-block");
    $("#usr-stats-all").css("display", state ? "inline-block" : "none");
+}
+
+function toggleOwnStats(ev) {
+   // Toggle between displaying the user's own stats for human games only or for all
+   var state = toggle(ev);
+   $("#own-stats-human").css("display", state ? "none" : "inline-block");
+   $("#own-stats-all").css("display", state ? "inline-block" : "none");
 }
 
 // Is a user list request already in progress?
@@ -593,6 +611,12 @@ function refreshRecentList() {
          count: 40
       },
       populateRecentList);
+   // Update the user's own statistics
+   serverQuery("/userstats",
+      {
+         // Current user is implicit
+      },
+      populateOwnStats);
 }
 
 function acceptChallenge(ev) {

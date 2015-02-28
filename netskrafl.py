@@ -668,7 +668,11 @@ def gamestats():
 def userstats():
     """ Calculate and return statistics on a given user """
 
-    uid = request.form.get('user', None)
+    cid = User.current_id()
+    if not cid:
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uid = request.form.get('user', cid) # Current user is implicit
     user = None
 
     if uid is not None:

@@ -175,6 +175,14 @@ def _run_stats(from_time, to_time):
                 rl = 0
             s0 = gm.score0
             s1 = gm.score1
+
+            if (s0 == 0) and (s1 == 0):
+                # When a game ends by resigning immediately,
+                # make sure that the weaker player
+                # doesn't get Elo points for a draw; in fact,
+                # ignore such a game altogether in the statistics
+                continue
+
             pr = gm.prefs
             if p0 is None:
                 k0 = "robot-" + str(rl)

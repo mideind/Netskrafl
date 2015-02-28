@@ -55,9 +55,11 @@ function lateInit() {
    // Initialize the Elo list toggler
    initToggle("#elo-toggler", false);
    $("#elo-toggler").click(toggleElo);
-   // Initialize the stats toggler
+   // Initialize the stats togglers
    initToggle("#stats-toggler", false);
    $("#stats-toggler").click(toggleStats);
+   initToggle("#own-toggler", false);
+   $("#own-toggler").click(toggleOwnStats);
 }
 
 </script>
@@ -158,8 +160,30 @@ function lateInit() {
    </div>
 
    <div id="tabs-4">
+
+      <!-- Statistics -->
+      <div id="own-stats">
+         <div id="own-toggler" class="toggler" title="Með þjörkum eða án">
+            <div class="option small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+         --><div class="option small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+         </div><!--
+      --><div id="own-stats-human"><!--
+         --><div class="stats-fig" id="own-stats-human-elo" title="Elo-stig"></div><!--
+         --><div class="stats-fig stats-games" id="own-stats-human-games" title="Fjöldi viðureigna"></div><!--
+         --><div class="stats-fig stats-win-ratio" id="own-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+         --><div class="stats-fig stats-avg-score" id="own-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+      --></div><!--
+      --><div id="own-stats-all"><!--
+         --><div class="stats-fig" id="own-stats-elo" title="Elo-stig"></div><!--
+         --><div class="stats-fig stats-games" id="own-stats-games" title="Fjöldi viðureigna"></div><!--
+         --><div class="stats-fig stats-win-ratio" id="own-stats-win-ratio" title="Vinningshlutfall"></div><!--
+         --><div class="stats-fig stats-avg-score" id="own-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+      --></div>
+      </div>
+
       <p><strong>Nýlegar viðureignir þínar</strong> - smelltu á viðureign til að skoða hana
       og rifja upp</p>
+
       <div class="listitem listheader"><span
       class="list-win"><span
       title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
@@ -314,15 +338,15 @@ function lateInit() {
       </div><!--
    --><div id="usr-stats-human"><!--
       --><div class="stats-fig" id="usr-stats-human-elo" title="Elo-stig"></div><!--
-      --><div class="stats-fig" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
-      --><div class="stats-fig" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
-      --><div class="stats-fig" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
    --></div><!--
    --><div id="usr-stats-all"><!--
       --><div class="stats-fig" id="usr-stats-elo" title="Elo-stig"></div><!--
-      --><div class="stats-fig" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
-      --><div class="stats-fig" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
-      --><div class="stats-fig" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
    --></div>
    </div>
 
@@ -351,21 +375,21 @@ function lateInit() {
 
       <p><strong>Ný áskorun</strong> - veldu lengd viðureignar:</p>
 
-      <div class="chall-time selected" id="chall-none">Viðureign án klukku</div>
-      <div class="chall-time" id="chall-15"><span class='glyphicon glyphicon-time'></span> 2 x 15 mínútur</div>
-      <div class="chall-time" id="chall-20"><span class='glyphicon glyphicon-time'></span>2 x 20 mínútur</div>
-      <div class="chall-time" id="chall-25"><span class='glyphicon glyphicon-time'></span> 2 x 25 mínútur</div>
-      <div class="chall-time" id="chall-30"><span class='glyphicon glyphicon-time'></span> 2 x 30 mínútur</div>
+      <div tabindex="1" class="chall-time selected" id="chall-none">Viðureign án klukku</div>
+      <div tabindex="2" class="chall-time" id="chall-15"><span class='glyphicon glyphicon-time'></span> 2 x 15 mínútur</div>
+      <div tabindex="3" class="chall-time" id="chall-20"><span class='glyphicon glyphicon-time'></span>2 x 20 mínútur</div>
+      <div tabindex="4" class="chall-time" id="chall-25"><span class='glyphicon glyphicon-time'></span> 2 x 25 mínútur</div>
+      <div tabindex="5" class="chall-time" id="chall-30"><span class='glyphicon glyphicon-time'></span> 2 x 30 mínútur</div>
 
    </div>
 
    <!-- Cancel button -->
-   <div class="modal-close" id="chall-cancel" title="Hætta við"
+   <div tabindex="6" class="modal-close" id="chall-cancel" title="Hætta við"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
    <!-- OK button -->
-   <div class="modal-close" id="chall-ok" title="Skora á"
+   <div tabindex="7" class="modal-close" id="chall-ok" title="Skora á"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
 
