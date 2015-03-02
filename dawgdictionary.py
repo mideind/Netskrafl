@@ -244,20 +244,20 @@ class Wordbase:
 
             dawg = DawgDictionary()
 
-            if fname_t is not None and pname_t is not None and pname_t >= fname_t:
-                # We have a newer pickle file: use it
-                logging.info(u"Instance {0} loading DAWG from pickle file {1}"
-                    .format(os.environ.get("INSTANCE_ID", ""), pname))
-                t0 = time.time()
-                dawg.load_pickle(pname)
-                t1 = time.time()
-                logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
-            else:
-                # Load in the traditional way, from the text file
+            if fname_t is not None and (pname_t is None or fname_t > pname_t):
+                # We have a newer text file (or no pickle): load it
                 logging.info(u"Instance {0} loading DAWG from text file {1}"
                     .format(os.environ.get("INSTANCE_ID", ""), fname))
                 t0 = time.time()
                 dawg.load(fname)
+                t1 = time.time()
+                logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
+            else:
+                # Newer pickle file or no text file: load the pickle
+                logging.info(u"Instance {0} loading DAWG from pickle file {1}"
+                    .format(os.environ.get("INSTANCE_ID", ""), pname))
+                t0 = time.time()
+                dawg.load_pickle(pname)
                 t1 = time.time()
                 logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
 
