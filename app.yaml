@@ -1,5 +1,5 @@
 application: netskrafl
-version: pergamon
+version: bosporus
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -105,7 +105,8 @@ handlers:
   script: netskrafl.app
 
 skip_files:
-- ^(.*/)?ordalistimax15\..*$
+- ^resources/.*\.txt$
+- ^resources/.*\.dawg$
 - ^(.*/)?.*\.psd$
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
