@@ -684,12 +684,23 @@ class AutoPlayer:
         return PassMove()
 
     def _score_candidates(self):
-        # Calculate the score of each candidate
-        scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
+        """ Calculate the score of each candidate """
+
+        if self._robot_level == 15:
+            # Special case for the weakest robot:
+            # Eliminate candidates that are not common words
+            # (except two-letter words which are OK)
+            # !!! TODO: Eliminate candidates that form
+            # !!! cross words that are not common?
+            common = Wordbase.dawg_common()
+            scored_candidates = [(m, m.score(self._board)) for m in self._candidates
+                if m.num_covers() == 2 or m.word() in common]
+        else:
+            scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
 
         def keyfunc(x):
-            # Sort moves first by descending score;
-            # in case of ties prefer shorter words
+            """ Sort moves first by descending score;
+                in case of ties prefer shorter words """
             # !!! TODO: Insert more sophisticated logic here,
             # including whether triple-word-score opportunities
             # are being opened for the opponent, minimal use
@@ -698,9 +709,10 @@ class AutoPlayer:
             return (- x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            # Special case for first move:
-            # Sort moves first by descending score, and in case of ties,
-            # try to go to the upper half of the board for a more open game
+            """ Special case for first move:
+                Sort moves first by descending score, and in case of ties,
+                try to go to the upper half of the board for a more open game
+            """
             return (- x[1], x[0]._row)
 
         # Sort the candidate moves using the appropriate key function

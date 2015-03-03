@@ -11,11 +11,6 @@ __pycache__/
 # Pickled DAWG trees
 *.pickle
 
-# Original files from BIN
-resources/smaord.txt
-resources/TWL06.txt
-resources/testwords.txt
-
 # CSS files generated from Less
 static/skrafl-curry.css
 static/skrafl-desat.css

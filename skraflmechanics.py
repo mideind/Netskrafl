@@ -675,6 +675,10 @@ class Move:
         """ Number of empty squares covered by this move """
         return len(self._covers)
 
+    def word(self):
+        """ Return the word formed by this move """
+        return self._word
+
     def details(self):
         """ Return a list of tuples describing this move """
         return [(Board.ROWIDS[c.row] + str(c.col + 1), # Coordinate

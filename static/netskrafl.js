@@ -1484,7 +1484,8 @@ function confirmExchange(yes) {
       }
    }
    initRackDraggable(true);
-   if (yes) {
+   if (yes && exch.length > 0) {
+      // The user wants to exchange tiles: submit an exchange move
       sendMove('exch=' + exch);
    }
 }

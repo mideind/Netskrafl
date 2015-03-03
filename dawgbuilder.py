@@ -881,6 +881,36 @@ def run_skrafl():
 
     print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
 
+    # Process list of common words
+
+    print(u"Starting DAWG build for list of common words")
+    db = DawgBuilder()
+    t0 = time.time()
+    # "isl" specifies Icelandic sorting order - modify this for other languages
+    db.build(
+        ["ordalisti.algeng.sorted.txt"], # Input files to be merged
+        "algeng", # Output file - full name will be ordalisti.text.dawg
+        "resources", # Subfolder of input and output files
+        "isl", # Identifier of locale to use for sorting order
+        filter_skrafl # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    dawg = DawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "algeng.text.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
+
+    t0 = time.time()
+    dawg.store_pickle(os.path.abspath(os.path.join("resources", "algeng.dawg.pickle")))
+    t1 = time.time()
+
+    print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+
 
 if __name__ == '__main__':
 
