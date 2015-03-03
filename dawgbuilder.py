@@ -95,6 +95,7 @@
 """
 
 import os
+import sys
 import codecs
 import locale
 
@@ -783,7 +784,7 @@ def run_skrafl():
         ["ordalistimax15.sorted.txt"], # Input files to be merged
         "ordalisti", # Output file - full name will be ordalisti.text.dawg
         "resources", # Subfolder of input and output files
-        "isl", # Identifier of locale to use for sorting order
+        "isl" if sys.platform.startswith("win32") else "is_IS", # Identifier of locale to use for sorting order
         filter_skrafl) # Word filter function to apply
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
