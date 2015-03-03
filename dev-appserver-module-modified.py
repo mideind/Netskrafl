@@ -389,11 +389,17 @@ class Module(object):
     for inst in instances_to_quit:
       inst.quit(allow_async=True)
 
+  ### !!! START ADDITION by V. Thorsteinsson ###
+
   def _strip_tempfiles(self, filelist):
     """ Strip out temporary files of various kinds from the list of changed files """
     TEMP_EXTENSIONS = set([".tmp", ".TMP", ".pyc", ".less", ".css", ".js"])
     result = []
     for fname in filelist:
+      if not os.path.isfile(fname):
+        # Skip directories and symlinks
+        logging.info("Ignoring directory or symlink {0}".format(fname))
+        continue
       if fname.startswith("."):
         # Skip everything starting with a period
         logging.info("Ignoring changed file {0}".format(fname))
@@ -408,6 +414,8 @@ class Module(object):
       result.append(fname)
     return result
 
+  ### !!! END ADDITION by V. Thorsteinsson ###
+
   def _handle_changes(self, timeout=0):
     """Handle file or configuration changes."""
     # Always check for config and file changes because checking also clears
@@ -420,8 +428,9 @@ class Module(object):
 
     file_changes = self._watcher.changes(timeout)
 
-    # !!! ADDED by V. Thorsteinsson 2015-02-23
+    ### !!! ADDED by V. Thorsteinsson 2015-02-23 ###
     file_changes = self._strip_tempfiles(file_changes)
+    ### !!! END ADDITION by V. Thorsteinsson ###
 
     if file_changes:
       logging.info(
