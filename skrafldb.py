@@ -61,6 +61,15 @@ from google.appengine.api import channel
 from languages import Alphabet
 
 
+class Context:
+    """ Wrapper for NDB context operations """
+
+    @staticmethod
+    def disable_cache():
+        """ Disable the NDB in-context cache """
+        ndb.get_context().set_cache_policy(False)
+
+
 class Unique:
     """ Wrapper for generation of unique id strings for keys """
 
@@ -78,6 +87,10 @@ class UserModel(ndb.Model):
     inactive = ndb.BooleanProperty()
     prefs = ndb.JsonProperty()
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
+    # Ready for challenges?
+    ready = ndb.BooleanProperty(required = False, default = False)
+    # Ready for timed challenges?
+    ready_timed = ndb.BooleanProperty(required = False, default = False)
 
     @classmethod
     def create(cls, user_id, nickname):
@@ -86,21 +99,30 @@ class UserModel(ndb.Model):
         user.nickname = nickname # Default to the same nickname
         user.inactive = False # A new user is always active
         user.prefs = { } # No preferences
+        user.ready = False # Not ready for new challenges unless explicitly set
+        user.ready_timed = False # Not ready for timed games unless explicitly set
         return user.put().id()
 
     @classmethod
-    def update(cls, user_id, nickname, inactive, prefs):
+    def update(cls, user_id, nickname, inactive, prefs, ready, ready_timed):
         """ Update an existing user entity """
         user = cls.fetch(user_id)
         user.nickname = nickname
         user.inactive = inactive
         user.prefs = prefs
+        user.ready = ready
+        user.ready_timed = ready_timed
         user.put()
 
     @classmethod
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
+
+    @classmethod
+    def count(cls):
+        """ Return a count of user entities """
+        return cls.query().count()
 
     @classmethod
     def list(cls, nick_from, nick_to, max_len = 100):
@@ -119,41 +141,60 @@ class UserModel(ndb.Model):
         except:
             o_to = len(Alphabet.full_order) - 1
 
-        # Try to minimize the query range as much as possible.
+        # We do this by issuing a series of queries, each returning
+        # nicknames beginning with a particular letter.
         # These shenanigans are necessary because NDB maintains its string
         # indexes by Unicode ordinal index, which is quite different from
         # the actual sort collation order we need. Additionally, the
-        # indexes are case-sensitive while our query boundaries is not.
-        # Therefore, we calculate the lowest Unicode ordinal within our range
-        # as well as the highest one, and limit the query by these values.
-        q_from = min([min(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
-        q_to = max([max(Alphabet.full_order[i], Alphabet.full_upper[i]) for i in range(o_from, o_to + 1)])
-        q_to = unichr(ord(q_to) + 1)
+        # indexes are case-sensitive while our query boundaries are not.
 
-        # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
-        q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
+        # Prepare the list of query letters
+        q_letters = []
 
-        CHUNK_SIZE = 50
-        offset = 0
-        while True:
-            chunk = 0
-            for um in q.fetch(CHUNK_SIZE, offset = offset):
-                chunk += 1
-                if um.nickname and not um.inactive:
-                    nick = Alphabet.tolower(um.nickname)
-                    if len(nick) > 0 and nick[0] in Alphabet.full_order:
-                        # Nicknames that do not start with an alpabetic character are not listed
-                        o_nick = Alphabet.full_order.index(nick[0])
-                        if (o_nick >= o_from) and (o_nick <= o_to):
-                            yield um.key.id()
-                            counter += 1
-                            if max_len > 0 and counter >= max_len:
-                                # Hit limit on returned users: stop iterating
-                                return
-            if chunk < CHUNK_SIZE:
-                # Hit end of query: stop iterating
-                return
-            offset += chunk
+        for i in range(o_from, o_to + 1):
+            # Append the lower case letter
+            q_letters.append(Alphabet.full_order[i])
+            # Append the upper case letter
+            q_letters.append(Alphabet.full_upper[i])
+
+        # For aesthetic cleanliness, sort the query letters (in Unicode order)
+        q_letters.sort()
+
+        for q_from in q_letters:
+
+            q_to = unichr(ord(q_from) + 1)
+
+            # logging.info(u"Issuing user query from '{0}' to '{1}'".format(q_from, q_to).encode('latin-1'))
+            q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
+
+            CHUNK_SIZE = 1000 # Individual letters contain >600 users as of 2015-02-12
+            offset = 0
+            go = True
+            while go:
+                chunk = 0
+                # logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
+                for um in q.fetch(CHUNK_SIZE, offset = offset):
+                    chunk += 1
+                    if not um.inactive:
+                        # This entity matches: return a dict describing it
+                        yield dict(
+                            id = um.key.id(),
+                            nickname = um.nickname,
+                            prefs = um.prefs,
+                            timestamp = um.timestamp,
+                            ready = um.ready,
+                            ready_timed = um.ready_timed
+                        )
+                        counter += 1
+                        if max_len > 0 and counter >= max_len:
+                            # Hit limit on returned users: stop iterating
+                            return
+                if chunk < CHUNK_SIZE:
+                    # Hit end of query: stop iterating
+                    go = False
+                else:
+                    # Continue with the next chunk
+                    offset += chunk
 
 
 class MoveModel(ndb.Model):
@@ -252,7 +293,8 @@ class GameModel(ndb.Model):
                 opp = opp,
                 sc0 = sc0,
                 sc1 = sc1,
-                robot_level = gm.robot_level)
+                robot_level = gm.robot_level,
+                prefs = gm.prefs)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
@@ -490,7 +532,7 @@ class ChannelModel(ndb.Model):
     user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
 
     # When should the next cleanup of expired channels be done?
-    _CLEANUP_INTERVAL = 1 # Hours
+    _CLEANUP_INTERVAL = 30 # Minutes
     _next_cleanup = None
     _lock = threading.Lock()
 
@@ -545,7 +587,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def list_connected(cls):
         """ List all presently connected users """
-        CHUNK_SIZE = 50
+        CHUNK_SIZE = 500
         now = datetime.utcnow()
         # Obtain all connected channels that have not expired
         q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)
@@ -571,11 +613,8 @@ class ChannelModel(ndb.Model):
         # Query for all connected channels for this user that have not expired
         q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
             .filter(ChannelModel.expiry > now)
-        for cm in q.fetch(1):
-            # Found one: return True
-            return True
-        # Found no channel meeting the criteria: return False
-        return False
+        # Return True if we find at least one entity fulfilling the criteria
+        return q.get(keys_only = True) != None
 
     @classmethod
     def exists(cls, kind, entity, user_id):
@@ -589,17 +628,14 @@ class ChannelModel(ndb.Model):
             .filter(ChannelModel.expiry > now) \
             .filter(ChannelModel.kind == kind) \
             .filter(ChannelModel.entity == entity)
-        for cm in q.fetch(1):
-            # Found one: return True
-            return True
-        # Found no channel meeting the criteria: return False
-        return False
+        # Return True if we find at least one entity fulfilling the criteria
+        return q.get(keys_only = True) != None
 
     @classmethod
     def _del_expired(cls):
         """ Delete all expired channels """
         now = datetime.utcnow()
-        CHUNK_SIZE = 20
+        CHUNK_SIZE = 500
         while True:
             q = cls.query(ChannelModel.expiry < now)
             # Query and delete in chunks
@@ -627,13 +663,13 @@ class ChannelModel(ndb.Model):
                 # Yes: do the cleanup
                 cls._del_expired()
                 # Schedule the next one
-                cls._next_cleanup = now + timedelta(hours = ChannelModel._CLEANUP_INTERVAL)
+                cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
-            CHUNK_SIZE = 20
+            CHUNK_SIZE = 50 # There are never going to be many matches for this query
             q = cls.query(ChannelModel.expiry > now).filter(
                 ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
             offset = 0
-            while q is not None:
+            while True:
                 # Query and send message in chunks
                 count = 0
                 list_stale = []
@@ -653,4 +689,416 @@ class ChannelModel(ndb.Model):
                     # Hit end of query: We're done
                     break
                 offset += count
+
+
+class StatsModel(ndb.Model):
+    """ Models statistics about users """
+
+    # The user associated with this statistic or None if robot
+    user = ndb.KeyProperty(kind = UserModel, indexed = True, required = False, default = None)
+    robot_level = ndb.IntegerProperty(required = False, default = 0)
+
+    # The timestamp of this statistic
+    timestamp = ndb.DateTimeProperty(indexed = True, auto_now_add = True)
+
+    games = ndb.IntegerProperty()
+    human_games = ndb.IntegerProperty()
+
+    elo = ndb.IntegerProperty(indexed = True, default = 1200)
+    human_elo = ndb.IntegerProperty(indexed = True, default = 1200)
+
+    score = ndb.IntegerProperty(indexed = False)
+    human_score = ndb.IntegerProperty(indexed = False)
+
+    score_against = ndb.IntegerProperty(indexed = False)
+    human_score_against = ndb.IntegerProperty(indexed = False)
+
+    wins = ndb.IntegerProperty(indexed = False)
+    losses = ndb.IntegerProperty(indexed = False)
+
+    human_wins = ndb.IntegerProperty(indexed = False)
+    human_losses = ndb.IntegerProperty(indexed = False)
+
+    MAX_STATS = 100
+
+
+    def set_user(self, user_id, robot_level = 0):
+        """ Set the user key property """
+        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.user = k
+        self.robot_level = robot_level
+
+
+    @classmethod
+    def create(cls, user_id, robot_level = 0):
+        """ Create a fresh instance with default values """
+        sm = cls()
+        sm.set_user(user_id, robot_level)
+        sm.timestamp = None
+        sm.elo = 1200
+        sm.human_elo = 1200
+        sm.games = 0
+        sm.human_games = 0
+        sm.score = 0
+        sm.human_score = 0
+        sm.score_against = 0
+        sm.human_score_against = 0
+        sm.wins = 0
+        sm.losses = 0
+        sm.human_wins = 0
+        sm.human_losses = 0
+        return sm
+
+
+    def copy_from(self, src):
+        """ Copy data from the src instance """
+        # user and robot_level are assumed to be in place already
+        assert hasattr(self, "user")
+        assert hasattr(self, "robot_level")
+        self.timestamp = src.timestamp
+        self.elo = src.elo
+        self.human_elo = src.human_elo
+        self.games = src.games
+        self.human_games = src.human_games
+        self.score = src.score
+        self.human_score = src.human_score
+        self.score_against = src.score_against
+        self.human_score_against = src.human_score_against
+        self.wins = src.wins
+        self.losses = src.losses
+        self.human_wins = src.human_wins
+        self.human_losses = src.human_losses
+
+
+    def populate_dict(self, d):
+        """ Copy statistics data to the given dict """
+        d["elo"] = self.elo
+        d["human_elo"] = self.human_elo
+        d["games"] = self.games
+        d["human_games"] = self.human_games
+        d["score"] = self.score
+        d["human_score"] = self.human_score
+        d["score_against"] = self.score_against
+        d["human_score_against"] = self.human_score_against
+        d["wins"] = self.wins
+        d["losses"] = self.losses
+        d["human_wins"] = self.human_wins
+        d["human_losses"] = self.human_losses
+
+
+    @staticmethod
+    def dict_key(d):
+        """ Return a dictionary key that works for human users and robots """
+        if d["user"] is None:
+            return "robot-" + str(d["robot_level"])
+        return d["user"]
+
+
+    @classmethod
+    def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
+        """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
+
+        if timestamp is None:
+            timestamp = datetime.utcnow()
+
+        # Use descending Elo order
+        # Ndb doesn't allow us to put an inequality filter on the timestamp here
+        # so we need to fetch irrespective of timestamp and manually filter
+        q = cls.query().order(- prop)
+
+        result = dict()
+        CHUNK_SIZE = 100
+        offset = 0
+        lowest_elo = None
+
+        # The following loop may yield an incorrect result since there may
+        # be newer stats records for individual users with lower Elo scores
+        # than those scanned to create the list. In other words, there may
+        # be false positives on the list (but not false negatives, i.e.
+        # there can't be higher Elo scores somewhere that didn't make it
+        # to the list). We attempt to address this by fetching double the
+        # number of requested users, then separately checking each of them for
+        # false positives. If we have too many false positives, we don't return
+        # the full requested number of result records.
+
+        go_on = True
+        while go_on:
+            # Query in chunks
+            count = 0
+            for sm in q.fetch(CHUNK_SIZE, offset = offset):
+                if sm.timestamp <= timestamp:
+                    # Within our time range
+                    d = makedict(sm)
+                    ukey = cls.dict_key(d)
+                    if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
+                        # Fresh entry or newer (and also lower) than the previous one
+                        result[ukey] = d
+                        if (lowest_elo is None) or (d["elo"] < lowest_elo):
+                            lowest_elo = d["elo"]
+                        if len(result) >= max_len * 2:
+                            # We have double the number of entries requested: done
+                            go_on = False
+                            break # From for loop
+                count += 1
+            if go_on and count < CHUNK_SIZE:
+                # Hit end of query: We're done
+                go_on = False
+            offset += count
+
+        # Do another loop through the result to check for false positives
+        false_pos = 0
+        for ukey, d in result.items():
+            sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
+            assert sm is not None # We should always have an entity here
+            nd = makedict(sm)
+            nd_ts = nd["timestamp"] # This may be None if a default record was created
+            if (nd_ts is not None) and nd_ts > d["timestamp"]:
+                # This is a newer one than we have already
+                # It must be a lower Elo score, or we would already have it
+                assert nd["elo"] <= d["elo"]
+                assert lowest_elo is not None
+                if nd["elo"] < lowest_elo:
+                    # The entry didn't belong on the list at all
+                    false_pos += 1
+                # Replace the entry with the newer one (which will lower it)
+                result[ukey] = nd
+
+        logging.info(u"False positives are {0}".format(false_pos))
+        if false_pos > max_len:
+            # Houston, we have a problem: the original list was way off
+            # and the corrections are not sufficient;
+            # truncate the result accordingly
+            logging.info(u"False positives caused ratings list to be truncated")
+            max_len -= (false_pos - max_len)
+            if max_len < 0:
+                max_len = 0
+
+        # Sort in descending order by Elo, and finally rank and return the result
+        result_list = sorted(result.values(), key = lambda x: - x["elo"])[0:max_len]
+        for ix, d in enumerate(result_list):
+            d["rank"] = ix + 1
+
+        return result_list
+
+
+    @classmethod
+    def list_elo(cls, timestamp = None, max_len = MAX_STATS):
+        """ Return the top Elo-rated users for all games (including robots) """
+
+        def _makedict(sm):
+            return dict(
+                user = None if sm.user is None else sm.user.id(),
+                robot_level = sm.robot_level,
+                timestamp = sm.timestamp,
+                games = sm.games,
+                elo = sm.elo,
+                score = sm.score,
+                score_against = sm.score_against,
+                wins = sm.wins,
+                losses = sm.losses,
+            )
+
+        return cls._list_by(StatsModel.elo, _makedict, timestamp, max_len)
+
+
+    @classmethod
+    def list_human_elo(cls, timestamp = None, max_len = MAX_STATS):
+        """ Return the top Elo-rated users for human-only games """
+
+        def _makedict(sm):
+            return dict(
+                user = None if sm.user is None else sm.user.id(),
+                robot_level = sm.robot_level,
+                timestamp = sm.timestamp,
+                games = sm.human_games,
+                elo = sm.human_elo,
+                score = sm.human_score,
+                score_against = sm.human_score_against,
+                wins = sm.human_wins,
+                losses = sm.human_losses,
+            )
+
+        return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
+
+
+    @classmethod
+    def newest_before(cls, ts, user_id, robot_level = 0):
+        """ Returns the newest available stats record for the user at or before the given time """
+        sm = cls.create(user_id, robot_level)
+        if ts:
+            # Try to query using the timestamp
+            if user_id is None:
+                k = None
+            else:
+                k = ndb.Key(UserModel, user_id)
+            # Use a common query structure and index for humans and robots
+            q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level))
+            q = q.filter(StatsModel.timestamp <= ts).order(- StatsModel.timestamp)
+            sm_before = q.get()
+            if sm_before is not None:
+                # Found: copy the stats
+                sm.copy_from(sm_before)
+        return sm
+
+
+    @classmethod
+    def newest_for_user(cls, user_id):
+        """ Returns the newest available stats record for the user """
+        if user_id is None:
+            return None
+        k = ndb.Key(UserModel, user_id)
+        # Use a common query structure and index for humans and robots
+        q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)) \
+            .order(- StatsModel.timestamp)
+        sm = q.get()
+        if sm is None:
+            # No record in the database: return a default entity
+            sm = cls.create(user_id)
+        return sm
+
+
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple stats records """
+        ndb.put_multi(recs)
+
+
+    @classmethod
+    def delete_ts(cls, timestamp):
+        """ Delete all stats records at a particular timestamp """
+        ndb.delete_multi(
+            cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True)
+        )
+
+
+class RatingModel(ndb.Model):
+    """ Models tables of user ratings """
+
+    # Typically "all" or "human"
+    kind = ndb.StringProperty(required = True)
+
+    # The ordinal rank
+    rank = ndb.IntegerProperty(required = True)
+
+    user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
+    robot_level = ndb.IntegerProperty(required = False, default = 0)
+
+    games = ndb.IntegerProperty(required = False, default = 0)
+    elo = ndb.IntegerProperty(required = False, default = 1200)
+    score = ndb.IntegerProperty(required = False, default = 0)
+    score_against = ndb.IntegerProperty(required = False, default = 0)
+    wins = ndb.IntegerProperty(required = False, default = 0)
+    losses = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    games_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    elo_yesterday = ndb.IntegerProperty(required = False, default = 1200)
+    score_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    score_against_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    wins_yesterday = ndb.IntegerProperty(required = False, default = 0)
+    losses_yesterday = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    games_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    elo_week_ago = ndb.IntegerProperty(required = False, default = 1200)
+    score_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    score_against_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    wins_week_ago = ndb.IntegerProperty(required = False, default = 0)
+    losses_week_ago = ndb.IntegerProperty(required = False, default = 0)
+
+    rank_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    games_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    elo_month_ago = ndb.IntegerProperty(required = False, default = 1200)
+    score_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    score_against_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    wins_month_ago = ndb.IntegerProperty(required = False, default = 0)
+    losses_month_ago = ndb.IntegerProperty(required = False, default = 0)
+
+
+    @classmethod
+    def get_or_create(cls, kind, rank):
+        """ Get an existing entity or create a new one if it doesn't exist """
+        k = ndb.Key(cls, kind + ":" + str(rank))
+        rm = k.get()
+        if rm is None:
+            # Did not already exist in the database:
+            # create a fresh instance
+            rm = cls(id = kind + ":" + str(rank))
+        rm.kind = kind
+        rm.rank = rank
+        return rm
+
+
+    def assign(self, dict_args):
+        """ Populate attributes from a dict """
+        for key, val in dict_args.items():
+            if key == "user":
+                # Re-pack the user id into a key
+                setattr(self, key, None if val is None else ndb.Key(UserModel, val))
+            else:
+                setattr(self, key, val)
+
+
+    @classmethod
+    def list_rating(cls, kind):
+        """ Iterate through the rating table of a given kind, in ascending order by rank """
+        CHUNK_SIZE = 100
+        q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
+        offset = 0
+        while True:
+            count = 0
+            for rm in q.fetch(CHUNK_SIZE, offset = offset):
+                v = dict(
+                    rank = rm.rank,
+
+                    games = rm.games,
+                    elo = rm.elo,
+                    score = rm.score,
+                    score_against = rm.score_against,
+                    wins = rm.wins,
+                    losses = rm.losses,
+
+                    rank_yesterday = rm.rank_yesterday,
+                    games_yesterday = rm.games_yesterday,
+                    elo_yesterday = rm.elo_yesterday,
+                    score_yesterday = rm.score_yesterday,
+                    score_against_yesterday = rm.score_against_yesterday,
+                    wins_yesterday = rm.wins_yesterday,
+                    losses_yesterday = rm.losses_yesterday,
+
+                    rank_week_ago = rm.rank_week_ago,
+                    games_week_ago = rm.games_week_ago,
+                    elo_week_ago = rm.elo_week_ago,
+                    score_week_ago = rm.score_week_ago,
+                    score_against_week_ago = rm.score_against_week_ago,
+                    wins_week_ago = rm.wins_week_ago,
+                    losses_week_ago = rm.losses_week_ago,
+
+                    rank_month_ago = rm.rank_month_ago,
+                    games_month_ago = rm.games_month_ago,
+                    elo_month_ago = rm.elo_month_ago,
+                    score_month_ago = rm.score_month_ago,
+                    score_against_month_ago = rm.score_against_month_ago,
+                    wins_month_ago = rm.wins_month_ago,
+                    losses_month_ago = rm.losses_month_ago
+                )
+
+                # Stringify a user id
+                if rm.user is None:
+                    if rm.robot_level < 0:
+                        v["userid"] = ""
+                    else:
+                        v["userid"] = "robot-" + str(rm.robot_level)
+                else:
+                    v["userid"] = rm.user.id()
+
+                yield v
+                count += 1
+
+            if count < CHUNK_SIZE:
+                break
+            if count == 100:
+                # The rating lists normally contain 100 entities
+                break
+            offset += CHUNK_SIZE
 

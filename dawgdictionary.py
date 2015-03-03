@@ -56,17 +56,21 @@ import codecs
 import threading
 import logging
 import time
+import cPickle as pickle
 
 from languages import Alphabet
 
 
+class _Node:
+
+    """ This class must be at module level for pickling """
+
+    def __init__(self):
+        self.final = False
+        self.edges = dict()
+
+
 class DawgDictionary:
-
-    class _Node:
-
-        def __init__(self):
-            self.final = False
-            self.edges = dict()
 
     def __init__(self):
         # Initialize an empty graph
@@ -96,7 +100,7 @@ class DawgDictionary:
             newnode = self._nodes[nodeid]
         else:
             # The id is appearing for the first time: add it
-            newnode = DawgDictionary._Node()
+            newnode = _Node()
             self._nodes[nodeid] = newnode
         newnode.final = final
         # Process the edges
@@ -112,7 +116,7 @@ class DawgDictionary:
                 newnode.edges[prefix] = self._nodes[edgeid]
             else:
                 # Edge leads to a new, previously unseen node: Create it
-                newterminal = DawgDictionary._Node()
+                newterminal = _Node()
                 newnode.edges[prefix] = newterminal
                 self._nodes[edgeid] = newterminal
 
@@ -136,6 +140,20 @@ class DawgDictionary:
                         line = line[0:-1]
                     if line:
                         self._parse_and_add(line)
+
+    def store_pickle(self, fname):
+        """ Store a DAWG in a Python pickle file """
+        with open(fname, "wb") as pf:
+            pickle.dump(self._nodes, pf, pickle.HIGHEST_PROTOCOL)
+
+    def load_pickle(self, fname):
+        """ Load a DAWG from a Python pickle file """
+        with self._lock:
+            if self._nodes is not None:
+                # Already loaded
+                return
+            with open(fname, "rb") as pf:
+                self._nodes = pickle.load(pf)
 
     def num_nodes(self):
         """ Return a count of unique nodes in the DAWG """
@@ -201,33 +219,87 @@ class DawgDictionary:
 
 class Wordbase:
 
-    """ Container for a singleton instance of the word database """
+    """ Container for two singleton instances of the word database,
+        one for the main dictionary and the other for common words
+    """
 
     _dawg = None
+    _dawg_common = None
+
     _lock = threading.Lock()
+    _lock_common = threading.Lock()
 
     @staticmethod
-    def _load():
-        with Wordbase._lock:
-            if Wordbase._dawg is not None:
-                return
-            fname = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
-            logging.info(u"Instance {0} loading DAWG from file {1}"
+    def _load_resource(resource):
+        """ Load a DawgDictionary, from either a text file or a pickle file """
+        # Assumes that the appropriate lock has been acquired
+        # Compare the file times of the text version vs. the pickled version
+        fname = os.path.abspath(os.path.join("resources", resource + ".text.dawg"))
+        pname = os.path.abspath(os.path.join("resources", resource + ".dawg.pickle"))
+        try:
+            fname_t = os.path.getmtime(fname)
+        except os.error:
+            fname_t = None
+        try:
+            pname_t = os.path.getmtime(pname)
+        except os.error:
+            pname_t = None
+
+        dawg = DawgDictionary()
+
+        if fname_t is not None and (pname_t is None or fname_t > pname_t):
+            # We have a newer text file (or no pickle): load it
+            logging.info(u"Instance {0} loading DAWG from text file {1}"
                 .format(os.environ.get("INSTANCE_ID", ""), fname))
             t0 = time.time()
-            dawg = DawgDictionary()
             dawg.load(fname)
             t1 = time.time()
             logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
-            # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
-            Wordbase._dawg = dawg
+        else:
+            # Newer pickle file or no text file: load the pickle
+            logging.info(u"Instance {0} loading DAWG from pickle file {1}"
+                .format(os.environ.get("INSTANCE_ID", ""), pname))
+            t0 = time.time()
+            dawg.load_pickle(pname)
+            t1 = time.time()
+            logging.info(u"Loaded {0} graph nodes in {1:.2f} seconds".format(dawg.num_nodes(), t1 - t0))
+
+        # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
+        return dawg
+
+    @staticmethod
+    def _load():
+        """ Load a main dictionary """
+        with Wordbase._lock:
+            if Wordbase._dawg is not None:
+                # Already loaded: nothing to do
+                return Wordbase._dawg
+            return Wordbase._load_resource("ordalisti") # Main dictionary
 
     @staticmethod
     def dawg():
+        """ Return the main dictionary DAWG object, loading it if required """
         if Wordbase._dawg is None:
-            Wordbase._load()
+            Wordbase._dawg = Wordbase._load()
         assert Wordbase._dawg is not None
         return Wordbase._dawg
+
+    @staticmethod
+    def _load_common():
+        """ Load a dictionary of common words """
+        with Wordbase._lock_common:
+            if Wordbase._dawg_common is not None:
+                # Already loaded: nothing to do
+                return Wordbase._dawg_common
+            return Wordbase._load_resource("algeng") # Common words
+
+    @staticmethod
+    def dawg_common():
+        """ Return the common words DAWG object, loading it if required """
+        if Wordbase._dawg_common is None:
+            Wordbase._dawg_common = Wordbase._load_common()
+        assert Wordbase._dawg_common is not None
+        return Wordbase._dawg_common
 
 
 class Navigation:

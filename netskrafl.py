@@ -28,8 +28,9 @@
 import os
 import logging
 import json
+import threading
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from flask import Flask
 from flask import render_template, redirect, jsonify
@@ -42,8 +43,8 @@ from dawgdictionary import Wordbase
 from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel
+from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel
 
 
 # Standard Flask initialization
@@ -60,24 +61,19 @@ app.config['DEBUG'] = running_local
 # !!! TODO: Change this to read the secret key from a config file at run-time
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
+# To try to finish requests as soon as possible and avoid DeadlineExceeded
+# exceptions, run the AutoPlayer move generator serially and exclusively
+# within an instance
+_autoplayer_lock = threading.Lock()
 
-def _process_move(movecount, movelist, uuid):
-    """ Process a move from the client (the local player)
-        Returns True if OK or False if the move was illegal
-    """
 
-    game = None if uuid is None else Game.load(uuid)
+def _process_move(game, movelist):
+    """ Process a move coming in from the client """
 
-    if game is None:
-        return jsonify(result = Error.LOGIN_REQUIRED)
+    assert game is not None
 
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result = Error.OUT_OF_SYNC)
-
-    if game.player_id_to_move() != User.current_id():
-        return jsonify(result = Error.WRONG_USER)
+    if game.is_over():
+        return jsonify(result = Error.GAME_NOT_FOUND)
 
     player_index = game.player_to_move()
 
@@ -125,25 +121,28 @@ def _process_move(movecount, movelist, uuid):
         # show the user a corresponding error message
         return jsonify(result = err, msg = msg)
 
-    # Move is OK: register it and update the state
-    game.register_move(m)
+    # Serialize access to the following code section
+    with _autoplayer_lock:
 
-    # If it's the autoplayer's move, respond immediately
-    # (can be a bit time consuming if rack has one or two blank tiles)
-    opponent = game.player_id_to_move()
+        # Move is OK: register it and update the state
+        game.register_move(m)
 
-    is_over = game.is_over()
+        # If it's the autoplayer's move, respond immediately
+        # (can be a bit time consuming if rack has one or two blank tiles)
+        opponent = game.player_id_to_move()
 
-    if not is_over and opponent is None:
-        game.autoplayer_move()
-        is_over = game.is_over() # State may change during autoplayer_move()
+        is_over = game.is_over()
 
-    if is_over:
-        # If the game is now over, tally the final score
-        game.finalize_score()
+        if not is_over and opponent is None:
+            game.autoplayer_move()
+            is_over = game.is_over() # State may change during autoplayer_move()
 
-    # Make sure the new game state is persistently recorded
-    game.store()
+        if is_over:
+            # If the game is now over, tally the final score
+            game.finalize_score()
+
+        # Make sure the new game state is persistently recorded
+        game.store()
 
     # Notify the opponent, if he is not a robot and has one or more active channels
     if opponent is not None:
@@ -172,9 +171,11 @@ def _userlist(range_from, range_to):
                 "nick": r[0],
                 "fullname": r[1],
                 "fav": False,
-                "chall": False
+                "chall": False,
+                "ready": True, # The robots are always ready for a challenge
+                "ready_timed": False # Timed games are not available for robots
             })
-        # That's it; we're done
+        # That's it; we're done (no sorting required)
         return result
 
     # We will be returning a list of human players
@@ -185,29 +186,34 @@ def _userlist(range_from, range_to):
         challenges.update([ch[0] # Identifier of challenged user
             for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
 
+    # Get the list of online users
+
+    # Start by looking in the cache
+    online = memcache.get("live", namespace="userlist")
+    if online is None:
+        # Not found: do a query
+        online = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+        # Store the result in the cache with a lifetime of 2 minutes
+        memcache.set("live", online, time=2 * 60, namespace="userlist")
+
     if range_from == u"live" and not range_to:
-        # Return all connected (live) users
+        # Return all online (live) users
 
-        # Start by looking in the cache
-        i = memcache.get("live", namespace="userlist")
-        if i is None:
-            # Not found: do a query
-            i = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
-            # Store the result in the cache with a lifetime of 1 minute
-            memcache.set("live", i, time=60, namespace="userlist")
-
-        for uid in i:
+        for uid in online:
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
             lu = User.load(uid)
             if lu and lu.is_displayable():
+                chall = uid in challenges
                 result.append({
                     "userid": uid,
                     "nick": lu.nickname(),
                     "fullname": lu.full_name(),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": uid in challenges
+                    "chall": chall,
+                    "ready": lu.is_ready() and not chall,
+                    "ready_timed": lu.is_ready_timed() and not chall
                 })
 
     elif range_from == u"fav" and not range_to:
@@ -217,33 +223,64 @@ def _userlist(range_from, range_to):
             for favid in i:
                 fu = User.load(favid)
                 if fu and fu.is_displayable():
+                    chall = favid in challenges
                     result.append({
                         "userid": favid,
                         "nick": fu.nickname(),
                         "fullname": fu.full_name(),
                         "fav": True,
-                        "chall": favid in challenges
+                        "chall": chall,
+                        "ready": fu.is_ready() and favid in online and not chall,
+                        "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
 
     else:
         # Return users within a particular nickname range
-        i = iter(UserModel.list(range_from, range_to, max_len = 200))
-        for uid in i:
+
+        # The "1:" prefix is a version header
+        cache_range = "2:" + ("" if range_from is None else range_from) + \
+            "-" + ("" if range_to is None else range_to)
+
+        # Start by looking in the cache
+        i = memcache.get(cache_range, namespace="userlist")
+        if i is None:
+            # Not found: do an unlimited query
+            i = list(UserModel.list(range_from, range_to, max_len = 0))
+            # Store the result in the cache with a lifetime of 5 minutes
+            memcache.set(cache_range, i, time=5 * 60, namespace="userlist")
+
+        def displayable(ud):
+            """ Determine whether a user entity is displayable in a list """
+            return User.is_valid_nick(ud["nickname"])
+
+        for ud in i:
+            uid = ud["id"]
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
-            u = User.load(uid)
-            if u and u.is_displayable():
+            if displayable(ud):
+                chall = uid in challenges
                 result.append({
                     "userid": uid,
-                    "nick": u.nickname(),
-                    "fullname": u.full_name(),
+                    "nick": ud["nickname"],
+                    "fullname": User.full_name_from_prefs(ud["prefs"]),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": uid in challenges
+                    "chall": chall,
+                    "ready": ud["ready"] and uid in online and not chall,
+                    "ready_timed": ud["ready_timed"] and uid in online and not chall
                 })
 
-    # Sort the user list in ascending order by nickname, case-insensitive
-    result.sort(key = lambda x: Alphabet.sortkey_nocase(x["nick"]))
+    # Sort the user list. The list is ordered so that users who are
+    # ready for any kind of challenge come first, then users who are ready for
+    # a timed game, and finally all other users. Each category is sorted
+    # by nickname, case-insensitive.
+    result.sort(key = lambda x: (
+        # First by readiness
+        0 if x["ready"] else 1 if x["ready_timed"] else 2,
+        # Then by nickname
+        Alphabet.sortkey_nocase(x["nick"])
+        )
+    )
     return result
 
 
@@ -251,6 +288,7 @@ def _gamelist():
     """ Return a list of active games for the current user """
     result = []
     cuid = User.current_id()
+    now = datetime.utcnow()
     if cuid is not None:
         # Obtain up to 50 live games where this user is a player
         i = list(GameModel.list_live_games(cuid, max_len = 50))
@@ -260,6 +298,8 @@ def _gamelist():
         # Iterate through the game list
         for g in i:
             opp = g["opp"] # User id of opponent
+            ts = g["ts"]
+            overdue = False
             if opp is None:
                 # Autoplayer opponent
                 nick = Game.autoplayer_name(g["robot_level"])
@@ -267,15 +307,100 @@ def _gamelist():
                 # Human opponent
                 u = User.load(opp)
                 nick = u.nickname()
+                delta = now - ts
+                if g["my_turn"]:
+                    # Start to show warning after 12 days
+                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS - 2))
+                else:
+                    # Show mark after 14 days
+                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
             result.append({
                 "url": url_for('board', game = g["uuid"]),
                 "opp": nick,
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp(g["ts"]),
-                "my_turn": g["my_turn"]
+                "ts": Alphabet.format_timestamp(ts),
+                "my_turn": g["my_turn"],
+                "overdue": overdue
             })
+    return result
+
+
+def _rating(kind):
+    """ Return a list of Elo ratings of the given kind ('all' or 'human') """
+    result = []
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+
+    # Generate a list of challenges issued by this user
+    challenges = set()
+    if cuid:
+        challenges.update([ch[0] # Identifier of challenged user
+            for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
+
+    rating = memcache.get(kind, namespace="rating")
+    if rating is None:
+        # Not found: do a query
+        rating = list(RatingModel.list_rating(kind))
+        # Store the result in the cache with a lifetime of 1 hour
+        memcache.set(kind, rating, time=1 * 60 * 60, namespace="rating")
+
+    for ru in rating:
+
+        uid = ru["userid"]
+        if not uid:
+            # Hit the end of the list
+            break
+        is_robot = False
+        usr = None
+        if uid.startswith(u"robot-"):
+            is_robot = True
+            nick = Game.autoplayer_name(int(uid[6:]))
+            fullname = nick
+            chall = False
+        else:
+            usr = User.load(uid)
+            if usr is None or not usr.is_displayable():
+                # Something wrong with this one: don't bother
+                continue
+            nick = usr.nickname()
+            fullname = usr.full_name()
+            chall = uid in challenges
+
+        games = ru["games"]
+        if games == 0:
+            ratio = 0
+            avgpts = 0
+        else:
+            ratio = int(round(100.0 * float(ru["wins"]) / games))
+            avgpts = int(round(float(ru["score"]) / games))
+
+        result.append({
+            "rank": ru["rank"],
+            "rank_yesterday": ru["rank_yesterday"],
+            "rank_week_ago": ru["rank_week_ago"],
+            "rank_month_ago": ru["rank_month_ago"],
+
+            "userid": uid,
+            "nick": nick,
+            "fullname": fullname,
+            "chall": chall,
+
+            "elo": ru["elo"],
+            "elo_yesterday": ru["elo_yesterday"],
+            "elo_week_ago": ru["elo_week_ago"],
+            "elo_month_ago": ru["elo_month_ago"],
+
+            "games": games,
+            "games_yesterday": ru["games_yesterday"],
+            "games_week_ago": ru["games_week_ago"],
+            "games_month_ago": ru["games_month_ago"],
+
+            "ratio": ratio,
+            "avgpts": avgpts
+        })
+
     return result
 
 
@@ -317,7 +442,8 @@ def _recentlist(cuid, max_len):
                 "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
                 "days": int(days),
                 "hours": int(hours),
-                "minutes": int(minutes)
+                "minutes": int(minutes),
+                "duration": Game.get_duration_from_prefs(g["prefs"])
             })
     return result
 
@@ -419,6 +545,10 @@ def channel_disconnected():
 @app.route("/submitmove", methods=['POST'])
 def submitmove():
     """ Handle a move that is being submitted from the client """
+
+    if User.current_id() is None:
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
     movelist = []
     movecount = 0
     uuid = None
@@ -433,8 +563,59 @@ def submitmove():
             uuid = request.form.get('uuid', None)
         except:
             pass
+
+    game = None if uuid is None else Game.load(uuid)
+
+    if game is None:
+        return jsonify(result = Error.GAME_NOT_FOUND)
+
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result = Error.OUT_OF_SYNC)
+
+    if game.player_id_to_move() != User.current_id():
+        return jsonify(result = Error.WRONG_USER)
+
     # Process the movestring
-    return _process_move(movecount, movelist, uuid)
+    return _process_move(game, movelist)
+
+
+@app.route("/forceresign", methods=['POST'])
+def forceresign():
+    """ Forces a tardy user to resign, if the game is overdue """
+
+    user_id = User.current_id()
+    if user_id is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uuid = request.form.get('game', None)
+
+    game = None if uuid is None else Game.load(uuid)
+
+    if game is None:
+        return jsonify(result = Error.GAME_NOT_FOUND)
+
+    # Only the user who is the opponent of the tardy user can force a resign
+    if game.player_id(1 - game.player_to_move()) != User.current_id():
+        return jsonify(result = Error.WRONG_USER)
+
+    try:
+        movecount = int(request.form.get('mcount', "0"))
+    except:
+        movecount = -1
+
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result = Error.OUT_OF_SYNC)
+
+    if not game.is_overdue():
+        return jsonify(result = Error.GAME_NOT_OVERDUE)
+
+    # Send in a resign move on behalf of the opponent
+    return _process_move(game, [u"rsgn"])
 
 
 @app.route("/wordcheck", methods=['POST'])
@@ -478,9 +659,29 @@ def gamestats():
             game = None
 
     if game is None:
-        return jsonify(result = Error.LOGIN_REQUIRED) # Strictly speaking: game not found
+        return jsonify(result = Error.GAME_NOT_FOUND)
 
     return jsonify(game.statistics())
+
+
+@app.route("/userstats", methods=['POST'])
+def userstats():
+    """ Calculate and return statistics on a given user """
+
+    cid = User.current_id()
+    if not cid:
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    uid = request.form.get('user', cid) # Current user is implicit
+    user = None
+
+    if uid is not None:
+        user = User.load(uid)
+
+    if user is None:
+        return jsonify(result = Error.WRONG_USER)
+
+    return jsonify(user.statistics())
 
 
 @app.route("/userlist", methods=['POST'])
@@ -493,6 +694,10 @@ def userlist():
     range_from = request.form.get('from', None)
     range_to = request.form.get('to', None)
 
+    # Disable the in-context cache to save memory
+    # (it doesn't give any speed advantage for user lists anyway)
+    Context.disable_cache()
+
     return jsonify(result = Error.LEGAL, userlist = _userlist(range_from, range_to))
 
 
@@ -503,6 +708,18 @@ def gamelist():
     # _gamelist() returns an empty list if no user is logged in
 
     return jsonify(result = Error.LEGAL, gamelist = _gamelist())
+
+
+@app.route("/rating", methods=['POST'])
+def rating():
+    """ Return the newest Elo ratings table (top 100) of a given kind ('all' or 'human') """
+
+    if not User.current_id():
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    kind = request.form.get('kind', 'all')
+
+    return jsonify(result = Error.LEGAL, rating = _rating(kind))
 
 
 @app.route("/recentlist", methods=['POST'])
@@ -517,9 +734,13 @@ def recentlist():
         count = int(request.form.get('count', str(count)))
     except:
         pass
+
     # Limit count to 50 games
     if count > 50:
         count = 50
+    elif count < 1:
+        count = 1
+
     if user_id is None:
         user_id = User.current_id()
 
@@ -569,9 +790,14 @@ def challenge():
     action = request.form.get('action', u"issue")
     duration = 0
     try:
-        duration = int(request.form.get('duration', 0))
+        duration = int(request.form.get('duration', "0"))
     except:
         pass
+
+    if duration < 0:
+        duration = 0
+    elif duration > 100:
+        duration = 100
 
     if destuser is not None:
         if action == u"issue":
@@ -586,6 +812,56 @@ def challenge():
             user.accept_challenge(destuser)
         # Notify the destination user, if he has one or more active channels
         ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }');
+
+    return jsonify(result = Error.LEGAL)
+
+
+@app.route("/setuserpref", methods=['POST'])
+def setuserpref():
+    """ Set a user preference """
+
+    user = User.current()
+    if user is None:
+        # We must have a logged-in user
+        return jsonify(result = Error.LOGIN_REQUIRED)
+
+    # Check for the beginner preference and convert it to bool if we can
+    beginner = request.form.get('beginner', None)
+    if beginner is not None:
+        if beginner == u"false":
+            beginner = False
+        elif beginner == u"true":
+            beginner = True
+
+    if beginner is not None and isinstance(beginner, bool):
+        # Setting a new state for the beginner preference
+        user.set_beginner(beginner)
+
+    # Check for the ready state and convert it to bool if we can
+    ready = request.form.get('ready', None)
+    if ready is not None:
+        if ready == u"false":
+            ready = False
+        elif ready == u"true":
+            ready = True
+
+    if ready is not None and isinstance(ready, bool):
+        # Setting a new state for the ready preference
+        user.set_ready(ready)
+
+    # Check for the ready_timed state and convert it to bool if we can
+    ready_timed = request.form.get('ready_timed', None)
+    if ready_timed is not None:
+        if ready_timed == u"false":
+            ready_timed = False
+        elif ready_timed == u"true":
+            ready_timed = True
+
+    if ready_timed is not None and isinstance(ready_timed, bool):
+        # Setting a new state for the ready_timed preference
+        user.set_ready_timed(ready_timed)
+
+    user.update()
 
     return jsonify(result = Error.LEGAL)
 
@@ -641,16 +917,27 @@ def review():
         # The game is not found: abort
         return redirect(url_for("main"))
 
-    move_number = int(request.args.get("move", "0"))
+    try:
+        move_number = int(request.args.get("move", "0"))
+    except:
+        move_number = 0
+
     if move_number > game.num_moves():
         move_number = game.num_moves()
+    elif move_number < 0:
+        move_number = 0
+
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
 
     best_moves = None
     if game.allows_best_moves():
-        # Show best moves if available and it is proper to do so (i.e. the game is finished)
-        apl = AutoPlayer(state)
-        best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
+
+        # Serialize access to the following section
+        with _autoplayer_lock:
+
+            # Show best moves if available and it is proper to do so (i.e. the game is finished)
+            apl = AutoPlayer(state)
+            best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
 
     player_index = state.player_to_move()
     user = User.current()
@@ -684,6 +971,8 @@ def userprefs():
             self.full_name = u''
             self.nickname = u''
             self.email = u''
+            self.audio = True
+            self.beginner = True
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -700,12 +989,19 @@ def userprefs():
                 self.email = u'' + form['email'].strip()
             except:
                 pass
+            try:
+                self.audio = 'audio' in form # State of the checkbox
+                self.beginner = 'beginner' in form
+            except:
+                pass
 
         def init_from_user(self, usr):
             """ Load the data to be edited upon initial display of the form """
             self.nickname = usr.nickname()
             self.full_name = usr.full_name()
             self.email = usr.email()
+            self.audio = usr.audio()
+            self.beginner = usr.beginner()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -725,6 +1021,8 @@ def userprefs():
             usr.set_nickname(self.nickname)
             usr.set_full_name(self.full_name)
             usr.set_email(self.email)
+            usr.set_audio(self.audio)
+            usr.set_beginner(self.beginner)
             usr.update()
 
     uf = UserForm()
@@ -1013,6 +1311,9 @@ def server_error(e):
     """ Return a custom 500 error """
     return u'Eftirfarandi villa kom upp: {}'.format(e), 500
 
+# Continue to add handlers for the admin web
+
+import admin
 
 # Run a default Flask web server for testing if invoked directly as a main program
 

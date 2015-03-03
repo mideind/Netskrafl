@@ -21,14 +21,16 @@ import collections
 import threading
 
 from random import randint
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google.appengine.api import users, memcache
 
-from skraflmechanics import State, Board, Rack, Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import State, Board, Rack, Error, \
+    Move, PassMove, ExchangeMove, ResignMove
 from skraflplayer import AutoPlayer
 from languages import Alphabet
-from skrafldb import Unique, UserModel, GameModel, MoveModel, FavoriteModel, ChallengeModel
+from skrafldb import Unique, UserModel, GameModel, MoveModel, \
+    FavoriteModel, ChallengeModel, StatsModel
 
 
 class User:
@@ -39,15 +41,20 @@ class User:
     _lock = threading.Lock()
 
     # User object expiration in memcache
-    _CACHE_EXPIRY = 600 # 10 minutes
+    _CACHE_EXPIRY = 15 * 60 # 15 minutes
 
     def __init__(self, uid = None):
         """ Initialize a fresh User instance """
         self._nickname = u""
         self._inactive = False
         self._preferences = { }
+        self._ready = False
+        self._ready_timed = False
         # Set of favorite users, only loaded upon demand
         self._favorites = None
+
+        # NOTE: When new properties are added, the memcache namespace version id
+        # should be incremented!
 
         if uid is None:
             # Obtain information from the currently logged in user
@@ -75,14 +82,20 @@ class User:
             self._nickname = um.nickname
             self._inactive = um.inactive
             self._preferences = um.prefs
+            self._ready = um.ready
+            self._ready_timed = um.ready_timed
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
         with User._lock:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
-            UserModel.update(self._user_id, self._nickname, self._inactive, self._preferences)
-            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user')
+            UserModel.update(self._user_id, self._nickname,
+                self._inactive, self._preferences,
+                self._ready, self._ready_timed)
+            # Note: the namespace version should be incremented each time
+            # that the class properties change
+            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user:1')
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -96,15 +109,20 @@ class User:
         """ Sets the human-readable nickname of a user """
         self._nickname = nickname
 
+    @staticmethod
+    def is_valid_nick(nick):
+        """ Check whether a nickname is valid and displayable """
+        if not nick:
+            return False
+        return nick[0:8] != u"https://" and nick[0:7] != u"http://"
+
     def is_displayable(self):
         """ Returns True if this user should appear in user lists """
         if self._inactive:
             # Inactive users are hidden
             return False
         # Nicknames that haven't been properly set aren't displayed
-        if not self._nickname:
-            return False
-        return self._nickname[0:8] != u"https://"
+        return User.is_valid_nick(self._nickname)
 
     def get_pref(self, pref):
         """ Retrieve a preference, or None if not found """
@@ -117,6 +135,14 @@ class User:
         if self._preferences is None:
             self._preferences = { }
         self._preferences[pref] = value
+
+    @staticmethod
+    def full_name_from_prefs(prefs):
+        """ Returns the full name of a user from a dict of preferences """
+        if prefs is None:
+            return u""
+        fn = prefs.get(u"full_name")
+        return u"" if fn is None else fn
 
     def full_name(self):
         """ Returns the full name of a user """
@@ -135,6 +161,46 @@ class User:
     def set_email(self, email):
         """ Sets the e-mail address of a user """
         self.set_pref(u"email", email)
+
+    def audio(self):
+        """ Returns True if the user wants audible signals """
+        em = self.get_pref(u"audio")
+        # True by default
+        return True if em is None else em
+
+    def set_audio(self, audio):
+        """ Sets the audio preference of a user to True or False """
+        assert isinstance(audio, bool)
+        self.set_pref(u"audio", audio)
+
+    def beginner(self):
+        """ Returns True if the user is a beginner so we show help panels, etc. """
+        em = self.get_pref(u"beginner")
+        # True by default
+        return True if em is None else em
+
+    def set_beginner(self, beginner):
+        """ Sets the beginner state of a user to True or False """
+        assert isinstance(beginner, bool)
+        self.set_pref(u"beginner", beginner)
+
+    def is_ready(self):
+        """ Returns True if the user is ready to accept challenges """
+        return self._ready
+
+    def set_ready(self, ready):
+        """ Sets the ready state of a user to True or False """
+        assert isinstance(ready, bool)
+        self._ready = ready
+
+    def is_ready_timed(self):
+        """ Returns True if the user is ready for timed games """
+        return self._ready_timed
+
+    def set_ready_timed(self, ready):
+        """ Sets the whether a user is ready for timed games """
+        assert isinstance(ready, bool)
+        self._ready_timed = ready
 
     def _load_favorites(self):
         """ Loads favorites of this user from the database into a set in memory """
@@ -196,14 +262,14 @@ class User:
     def load(cls, uid):
         """ Load a user from persistent storage given his/her user id """
         with User._lock:
-            u = memcache.get(uid, namespace='user')
+            u = memcache.get(uid, namespace='user:1')
             if u is None:
                 # Not found in the memcache: create a user object and
                 # populate it from a database entity (or initialize
                 # a fresh one if no entity exists).
                 u = cls(uid)
                 u._fetch()
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user')
+                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user:1')
             return u
 
     @classmethod
@@ -213,13 +279,13 @@ class User:
             user = users.get_current_user()
             if user is None or user.user_id() is None:
                 return None
-            u = memcache.get(user.user_id(), namespace='user')
+            u = memcache.get(user.user_id(), namespace='user:1')
             if u is not None:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
             u._fetch() # Creates a database entity if this is a fresh user
-            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user')
+            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user:1')
             return u
 
     @classmethod
@@ -235,6 +301,16 @@ class User:
         if u is None:
             return None
         return u.nickname()
+
+    def statistics(self):
+        """ Return a set of key statistics on the user """
+        reply = dict()
+        sm = StatsModel.newest_for_user(self.id())
+        reply["result"] = Error.LEGAL
+        reply["nickname"] = self.nickname()
+        reply["fullname"] = self.full_name()
+        sm.populate_dict(reply)
+        return reply
 
 
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
@@ -260,6 +336,10 @@ class Game:
 
     # The maximum overtime in a game, after which a player automatically loses
     MAX_OVERTIME = 10 * 60.0 # 10 minutes, in seconds
+
+    # After this number of days the game becomes overdue and the
+    # waiting player can force the tardy opponent to resign
+    OVERDUE_DAYS = 14
 
     _lock = threading.Lock()
 
@@ -507,6 +587,11 @@ class Game:
             self._preferences = { }
         self._preferences[pref] = value
 
+    @staticmethod
+    def get_duration_from_prefs(prefs):
+        """ Return the duration given a dict of game preferences """
+        return 0 if prefs is None else prefs.get(u"duration", 0)
+
     def get_duration(self):
         """ Return the duration for each player in the game, e.g. 25 if 2x25 minute game """
         return self.get_pref(u"duration") or 0
@@ -514,6 +599,12 @@ class Game:
     def set_duration(self, duration):
         """ Set the duration for each player in the game, e.g. 25 if 2x25 minute game """
         self.set_pref(u"duration", duration)
+
+    def is_overdue(self):
+        """ Return True if no move has been made in the game for OVERDUE_DAYS days """
+        ts_last_move = self.ts_last_move or self.timestamp
+        delta = datetime.utcnow() - ts_last_move
+        return delta >= timedelta(days = Game.OVERDUE_DAYS)
 
     def get_elapsed(self):
         """ Return the elapsed time for both players, in seconds, as a tuple """

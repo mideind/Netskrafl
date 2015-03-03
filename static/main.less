@@ -7,127 +7,155 @@
 */
 
 @font-face {
-   font-family: 'Glyphicons Halflings';
-   src: url('glyphicons-halflings-regular.eot');
-   src: url('glyphicons-halflings-regular.eot?#iefix') format('embedded-opentype'),
-   url('glyphicons-halflings-regular.woff') format('woff'),
-   url('glyphicons-halflings-regular.ttf') format('truetype'),
-   url('glyphicons-halflings-regular.svg#glyphicons_halflingsregular') format('svg');
+   font-family: 'Glyphicons Regular';
+   src: url('glyphicons-regular.eot');
+   src: url('glyphicons-regular.eot?#iefix') format('embedded-opentype'),
+      url('glyphicons-regular.woff') format('woff'),
+      url('glyphicons-regular.ttf') format('truetype'),
+      url('glyphicons-regular.svg#glyphiconsregular') format('svg');
 }
 
 .glyphicon {
    position: relative;
    top: 2px;
    display: inline-block;
-   font-family: 'Glyphicons Halflings';
+   font-family: 'Glyphicons Regular';
    font-style: normal;
    font-weight: normal;
    line-height: 1;
+   /* vertical-align: top; */
    -webkit-font-smoothing: antialiased;
    -moz-osx-font-smoothing: grayscale;
 }
 
 .glyphicon-play:before {
-   content: "\e072";
+   content: "\E174";
 }
 .glyphicon-exclamation-sign:before {
-   content: "\e101";
+   content: "\E197";
 }
 .glyphicon-log-in:before {
-   content: "\e161";
+   content: "\E387";
 }
 .glyphicon-log-out:before {
-   content: "\e163";
+   content: "\E388";
 }
 .glyphicon-screenshot:before {
-   content: "\e087";
+   content: "\E186";
 }
 .glyphicon-refresh:before {
-   content: "\e031";
+   content: "\E082";
 }
 .glyphicon-forward:before {
-   content: "\e075";
+   content: "\E177";
 }
 .glyphicon-fire:before {
-   content: "\e104";
+   content: "\E023";
 }
 .glyphicon-ok:before {
-   content: "\e013";
+   content: "\E207";
 }
 .glyphicon-remove:before {
-   content: "\e014";
+   content: "\E208";
 }
 .glyphicon-info-sign:before {
-   content: "\e086";
+   content: "\E196";
 }
 .glyphicon-cog:before {
-   content: "\e019";
+   content: "\E137";
 }
 .glyphicon-chevron-left:before {
-   content: "\e079";
+   content: "\E225";
 }
 .glyphicon-chevron-right:before {
-   content: "\e080";
+   content: "\E224";
 }
 .glyphicon-circle-arrow-down:before {
-   content: "\e134";
+   content: "\E220";
 }
 .glyphicon-download:before {
-   content: "\e026";
+   content: "\E201";
 }
 .glyphicon-star:before {
-   content: "\e006";
+   content: "\E050";
 }
 .glyphicon-flag:before {
-   content: "\e034";
+   content: "\E267";
 }
 .glyphicon-flag-after:after {
-   content: "\e034";
+   content: "\E267";
 }
 .glyphicon-bookmark:before {
-   content: "\e044";
+   content: "\E073";
 }
 .glyphicon-star-empty:before {
-   content: "\e007";
+   content: "\E049";
 }
 .glyphicon-hand-right:before {
-   content: "\e127";
+   content: "\E346";
 }
 .glyphicon-hand-left:before {
-   content: "\e128";
+   content: "\E347";
+}
+.glyphicon-thumbs-up:before {
+   content: "\E344";
 }
 .glyphicon-thumbs-down:before {
-   content: "\e126";
+   content: "\E345";
 }
 .glyphicon-remove-circle:before {
-   content: "\e088";
+   content: "\E198";
 }
 .glyphicon-th:before {
-   content: "\e011";
+   content: "\E157";
 }
 .glyphicon-user:before {
-   content: "\e008";
+   content: "\E004";
 }
 .glyphicon-comment:before {
-   content: "\e111";
+   content: "\E310";
 }
 .glyphicon-eye-open:before {
-   content: "\e105";
+   content: "\E052";
 }
 .glyphicon-paperclip:before {
-   content: "\e142";
+   content: "\E063";
 }
 .glyphicon-link:before {
-   content: "\e144";
+   content: "\E051";
 }
 .glyphicon-arrow-up:before {
-   content: "\e093";
+   content: "\E214";
 }
 .glyphicon-flash:before {
-   content: "\e162";
+   content: "\E242";
 }
 .glyphicon-time:before {
-   content: "\e023";
+   content: "\E055";
+}
+.glyphicon-volume-off:before {
+   content: "\E183";
+}
+.glyphicon-volume-up:before {
+   content: "\E185";
+}
+.glyphicon-hourglass:before {
+   content: "\231B";
+}
+.glyphicon-random:before {
+   content: "\E084";
+}
+.glyphicon-down-arrow:before {
+   content: "\E213";
+}
+.glyphicon-signal:before {
+   content: "\E080";
+}
+.glyphicon-crown:before {
+   content: "\E362";
+}
+.glyphicon-dashboard:before {
+   content: "\E332";
 }
 
 .noselect {
@@ -142,6 +170,7 @@ body {
    font-family: @font1, @font2, @font3, @font4;
    padding: 0;
    margin: 0;
+   background-color: @container;
 }
 
 div.container {
@@ -150,14 +179,14 @@ div.container {
    left: 0;
    width: 1024px;
    height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
-   background-color: @container;
    overflow-y: hidden;
+   margin: 0 auto;
 }
 
 div.logo {
    position: absolute;
    top: 28px;
-   left: 28px;
+   left: 24px;
    width: 46px;
    height: 400px;
 }
@@ -165,7 +194,7 @@ div.logo {
 div.logo-back {
    position: absolute;
    top: 38px;
-   left: 28px;
+   left: 24px;
    width: 46px;
    height: 46px;
    font-size: 46px;
@@ -178,7 +207,7 @@ div.logo-back {
 div.info {
    position: absolute;
    top: 456px;
-   left: 26px;
+   left: 22px;
    width: 50px;
    height: 50px;
    text-align: center;
@@ -188,7 +217,7 @@ div.info {
 div.board {
    position: absolute;
    top: 8px;
-   left: 96px;
+   left: 88px;
 }
 
 div.rightcol {
@@ -202,7 +231,7 @@ div.rack {
    position: absolute;
    text-align: center;
    bottom: 125px;
-   left: 244px;
+   left: 236px;
    background-color: @board-background;
    padding: 6px;
    border-width: 0;
@@ -225,15 +254,19 @@ div.bag {
    opacity: 0.75;
 }
 
-table #bag {
+table#bag {
 }
 
-#bag td {
+table#bag td {
    min-width: 12px;
    min-height: 17px;
    background-color: @tile;
    overflow: hidden;
    cursor: default;
+}
+
+table#bag.empty td {
+   background-color: @freshtile;
 }
 
 table.board {
@@ -442,7 +475,7 @@ h3.playerright {
 }
 
 span.move-indicator:before {
-   content: "\e034";
+   content: "\E267";
 }
 
 span#left-to-move.glyphicon-flag {
@@ -742,7 +775,7 @@ div.error {
    text-align: center;
    display: block;
    bottom: 72px;
-   left: 130px;
+   left: 122px;
    width: 512px;
    height: 28px;
    background-color: @alert;
@@ -814,13 +847,29 @@ div.resign {
    visibility: hidden;
 }
 
+div.pass {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @pass-btn;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 span.yesnobutton {
    height: 20px;
    text-align: center;
    background-color: white;
    font-size: 16px;
    font-weight: 700;
-   color: @alert;
    margin-top: 0;
    margin-bottom: 0;
    margin-left: 4px;
@@ -833,8 +882,16 @@ span.yesnobutton {
    cursor: pointer;
 }
 
-span.xchgbtn {
-   color: @freshtile;
+div.resign span.yesnobutton {
+   color: @alert;
+}
+
+div.pass span.yesnobutton {
+   color: @pass-btn;
+}
+
+div.exchange span.yesnobutton {
+   color: darken(@freshtile, 10%);
 }
 
 div.exchange {
@@ -845,7 +902,7 @@ div.exchange {
    left: 130px;
    width: 512px;
    height: 28px;
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
    font-size: 16px;
    font-weight: 700;
    color: white;
@@ -858,12 +915,18 @@ span.closebtn {
    color: @pass-btn;
 }
 
+span.yesnobutton#force-resign {
+   display: none;
+   background-color: @alert;
+   color: white;
+}
+
 div.gameinfo {
    position: absolute;
    text-align: center;
    display: block;
    bottom: 56px;
-   left: 130px;
+   left: 122px;
    width: 512px;
    height: 34px;
    background-color: @background;
@@ -877,34 +940,32 @@ div.gameinfo {
 .standard-button {
    position: absolute;
    text-align: center;
-   font-size: 18px;
+   font-size: 19px;
    font-weight: 700;
    color: white;
    margin: 0;
    padding: 6px;
-   padding-top: 8px;
+   padding-top: 9px;
    border-radius: 5px;
+   vertical-align: middle;
    cursor: pointer;
    .noselect;
 }
 
 .submitbutton {
    .standard-button;
-   width: 100px;
-   height: 28px;
+   width: 82px;
+   height: 30px;
    bottom: 130px;
-   left: 562px;
-   background-color: @freshtile;
+   left: 600px;
+   background-color: darken(@freshtile, 10%);
+   font-size: 18px;
+   font-weight: 700;
 }
 
 div.submitnewgame {
    .submitbutton;
    display: none;
-}
-
-div.submitmove {
-   .submitbutton;
-   display: block;
 }
 
 div.waitmove {
@@ -913,44 +974,98 @@ div.waitmove {
    z-index: 10;
 }
 
+div.submitmove {
+   .submitbutton;
+   display: block;
+}
+
 div.submitpass {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 91px;
+   left: 600px;
    background-color: @pass-btn;
 }
 
 div.submitresign {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 26px;
+   left: 101px;
    background-color: @alert;
 }
 
 div.submitexchange {
    .standard-button;
-   width: 36px;
-   height: 28px;
+   width: 40px;
+   height: 30px;
    bottom: 130px;
-   left: 156px;
-   background-color: @freshtile;
+   left: 167px;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.recallbtn {
+   .standard-button;
+   width: 40px;
+   height: 30px;
+   bottom: 130px;
+   left: 534px;
+   background-color: darken(@racktile, 10%);
+}
+
+div.scramblebtn {
+   .standard-button;
+   width: 40px;
+   height: 30px;
+   bottom: 130px;
+   left: 534px;
+   background-color: darken(@double-letter, 10%);
 }
 
 div.score {
    position: absolute;
    width: 48px;
-   height: 32px;
+   height: 48px;
    text-align: center;
-   bottom: 202px;
-   left: 652px;
+   vertical-align: middle;
+   bottom: 204px;
+   left: 644px;
    background-color: transparent;
-   font-size: 26px;
+   font-size: 24px;
    font-weight: 700;
-   color: black;
+   line-height: 46px;
+   color: @board-background;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
+   border-color: @board-background;
+}
+
+div.score.word-good {
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
+}
+
+@keyframes colorPulse {
+   0% {color: @freshtile;}
+   40% {color: @alert; transform: scale(1.05);}
+   60% {color: @alert; transform: scale(1.05);}
+   100% {color: @freshtile;}
+}
+
+@-webkit-keyframes colorPulse {
+   0% {color: @freshtile;}
+   40% {color: @alert; transform: scale(1.05);}
+   60% {color: @alert; transform: scale(1.05);}
+   100% {color: @freshtile;}
+}
+
+div.score.word-great {
+   animation: colorPulse 1.5s infinite;
+   -webkit-animation: colorPulse 1.5s infinite;
+   border-color: darken(@freshtile, 10%);
 }
 
 div.channel {
@@ -961,7 +1076,7 @@ div.channel {
    bottom: 40px;
    left: 32px;
    background-color: transparent;
-   font-family: 'Glyphicons Halflings';
+   font-family: 'Glyphicons Regular';
    font-style: normal;
    font-weight: normal;
    font-size: 20px;
@@ -970,7 +1085,7 @@ div.channel {
 }
 
 div.channel:before {
-   content: "\e144"; /* glyphicon-link */
+   content: "\E051"; /* glyphicon-link */
 }
 
 div.word-check {
@@ -978,51 +1093,117 @@ div.word-check {
    width: 48px;
    height: 48px;
    text-align: center;
-   top: 410px;
-   left: 652px;
+   vertical-align: middle;
+   bottom: 268px;
+   left: 644px;
    background-color: transparent;
-   font-family: 'Glyphicons Halflings';
+   font-family: 'Glyphicons Regular';
    font-style: normal;
    font-weight: normal;
    font-size: 26px;
+   line-height: 45px;
    visibility: hidden;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
 }
 
 div.word-check.word-good {
-   color: @freshtile;
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
    visibility: visible;
 }
 
 div.word-check.word-good:before {
-   content: "\e125"; /* glyphicon-thumbs-up */
+   content: "\E344"; /* glyphicon-thumbs-up */
 }
 
 div.word-check.word-bad {
    color: @alert;
+   border-color: @alert;
    visibility: visible;
 }
 
 div.word-check.word-bad:before {
-   content: "\e090"; /* glyphicon-ban-circle */
+   content: "\E200"; /* glyphicon-ban-circle */
 }
 
-div.recallbtn {
+div.board-help {
    position: absolute;
-   width: 48px;
-   height: 48px;
-   text-align: center;
-   vertical-align: middle;
-   top: 456px;
-   left: 652px;
-   font-size: 40px;
-   font-weight: normal;
-   color: fade(@racktile, 80%);
-   visibility: hidden;
+   left: 18px;
+   top: 160px;
+   width: 54px;
+   background-color: white;
+   padding: 2px;
+   border-radius: 5px;
+   cursor: default;
+   .noselect;
+}
+
+div.board-help-close {
+   width: 50px;
+   text-align: right;
+   background-color: white;
+   margin: 2px;
+}
+
+div.board-help-close span {
+   background-color: @alert;
+   color: white;
+   padding: 1px;
+   padding-top: 2px;
+   padding-left: 2px;
    cursor: pointer;
 }
 
-div.recallbtn.hover {
-   color: @hover-link;
+div.board-help-close span:hover {
+   background-color: @pass-btn;
+}
+
+div.board-colors {
+   margin: 0;
+   padding: 0;
+}
+
+div.board-color {
+   width: 44px;
+   text-align: center;
+   font-size: 12px;
+   line-height: 15px;
+   padding-left: 3px;
+   padding-right: 3px;
+   padding-top: 4px;
+   padding-bottom: 4px;
+   font-weight: 400;
+   border: solid 2px white;
+   border-collapse: collapse;
+}
+
+div.board-color#triple-word {
+   background-color: @triple-word;
+   color: white;
+   border-bottom: none;
+}
+
+div.board-color#double-word {
+   background-color: @double-word;
+   border-bottom: none;
+}
+
+div.board-color#triple-letter {
+   background-color: @triple-letter;
+   color: white;
+   border-bottom: none;
+}
+
+div.board-color#double-letter {
+   background-color: @double-letter;
+   border-bottom: none;
+}
+
+div.board-color#single-letter {
+   background-color: @board-background;
+   color: white;
 }
 
 div.scorediff {
@@ -1031,8 +1212,8 @@ div.scorediff {
    height: 28px;
    text-align: center;
    vertical-align: middle;
-   bottom: 244px;
-   left: 652px;
+   bottom: 272px;
+   left: 646px;
    background-color: @alert;
    font-size: 18px;
    font-weight: normal;
@@ -1043,23 +1224,23 @@ div.scorediff {
 }
 
 div.posdiff {
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
 }
 
 div.navbtn {
    .standard-button;
    width: 100px;
-   height: 28px;
+   height: 30px;
    bottom: 130px;
    background-color: @nav-btn;
 }
 
 #navnext {
-   left: 562px;
+   left: 554px;
 }
 
 #navprev {
-   left: 92px;
+   left: 84px;
 }
 
 div.closebtn {
@@ -1114,6 +1295,7 @@ div.tabbed-page {
    margin-left: 6px;
    padding-left: 5px;
    padding-right: 5px;
+   top: -3px;
 }
 
 span#numgames {
@@ -1131,37 +1313,44 @@ div.smallprint {
 
 div.userid {
    position: absolute;
-   top: 27px;
-   right: 60px;
-   width: 200px;
-   height: 24px;
+   top: 24px;
+   right: 48px;
+   max-width: 210px;
+   height: 22px;
    text-align: right;
-   font-size: 18px;
+   font-size: 16px;
+   line-height: 16px;
    font-weight: 700;
    color: white;
    overflow: hidden;
+   padding-top: 8px;
+   padding-bottom: 2px;
+   padding-left: 10px;
+   padding-right: 10px;
+   margin: 0;
    z-index: 5;
-   color: white;
+   color: @board-background;
+   background-color: white;
+   border-radius: 5px;
+   cursor: pointer;
+   .noselect;
 }
 
-.userid a:link, .userid a:visited {
-   text-decoration: none;
+div.userid:hover {
+   background-color: @double-letter;
    color: white;
-}
-
-.userid a:hover {
-   text-decoration: none;
-   color: @triple-letter;
 }
 
 div.listitem {
    height: 24px;
    padding-left: 4px;
    padding-right: 4px;
-   padding-top: 6px;
-   padding-bottom: 6px;
+   padding-top: 7px;
+   padding-bottom: 5px;
    overflow: hidden;
-   vertical-align: middle;
+   vertical-align: top;
+   text-overflow: ellipsis;
+   white-space: nowrap;
 }
 
 .listitem a:link, .listitem a:visited {
@@ -1192,82 +1381,198 @@ div.listheader {
 span.list-ts {
    display: inline-block;
    width: 180px;
+   max-width: 180px;
+   overflow: hidden;
 }
 
 span.list-chall {
    display: inline-block;
-   width: 360px;
+   width: 325px;
+   max-width: 325px;
+   overflow: hidden;
 }
 
 span.list-s0 {
    display: inline-block;
    width: 40px;
+   max-width: 40px;
    text-align: right;
+   overflow: hidden;
 }
 
 span.list-s1 {
    display: inline-block;
    width: 40px;
+   max-width: 40px;
    text-align: left;
+   overflow: hidden;
+}
+
+span.list-colon {
+   display: inline-block;
+   text-align: center;
+   overflow: hidden;
 }
 
 span.list-scorehdr {
    display: inline-block;
    width: 80px;
+   max-width: 80px;
    text-align: center;
+   overflow: hidden;
 }
 
 span.list-ch,
 span.list-fav,
 span.list-icon,
-span.list-myturn {
+span.list-myturn,
+span.list-overdue {
    display: inline-block;
    font-size: 20px;
    width: 32px;
+   max-width: 32px;
    margin-left: 2px;
    cursor: pointer;
+   overflow: hidden;
 }
 
 span.list-win {
    display: inline-block;
    font-size: 18px;
    width: 32px;
+   max-width: 32px;
    margin-left: 2px;
    cursor: pointer;
+   overflow: hidden;
 }
 
 span.list-nick {
    display: inline-block;
    width: 200px;
+   max-width: 200px;
+   overflow: hidden;
    font-weight: 700;
 }
 
 span.list-opp {
    display: inline-block;
    width: 290px;
+   max-width: 290px;
    font-weight: 700;
+   overflow: hidden;
 }
 
 span.list-fullname {
    display: inline-block;
    width: 468px;
+   max-width: 468px;
+   overflow: hidden;
 }
 
 span.list-duration {
    display: inline-block;
    width: 200px;
+   max-width: 200px;
    text-align: right;
+   overflow: hidden;
+}
+
+span.list-info-hdr {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: right;
+   overflow: hidden;
 }
 
 span.list-info {
    display: inline-block;
-   width: 28px;
+   width: 40px;
+   top: -3px;
    text-align: right;
    height: 24px;
    line-height: 20px;
+   overflow: hidden;
 }
 
-#initials span {
+span.list-rank {
+   display: inline-block;
+   width: 32px;
+   max-width: 32px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-elo {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-games {
+   display: inline-block;
+   width: 48px;
+   max-width: 48px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-ratio {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-avgpts {
+   display: inline-block;
+   width: 36px;
+   max-width: 36px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 16px;
+}
+
+div#elo-hdr span {
+   cursor: default;
+}
+
+div#elo-toggler {
+   display: inline-block;
+   position: relative;
+   top: -42px;
+   left: 284px;
+   z-index: 10;
+}
+
+span.bold {
+   font-weight: 700;
+}
+
+div#initials {
+   margin-top: 0;
+   margin-bottom: 6px;
+   padding: 0;
+}
+
+div.user-cat {
+   display: inline-block;
+   vertical-align: middle;
+}
+
+div.user-cat#user-alphabet {
+   margin-left: 20px;
+   line-height: 32px;
+}
+
+div.user-cat span {
    font-size: 16px;
    cursor: pointer;
    padding-left: 4px;
@@ -1278,30 +1583,68 @@ span.list-info {
    .noselect;
 }
 
-#initials span.shown {
+div.user-cat span.shown {
    background-color: fade(@double-letter, 30%);
    border-radius: 5px;
 }
 
-#initials span:hover {
+div.user-cat span:hover {
    color: white;
    background-color: @double-letter;
    border-radius: 5px;
 }
 
+span.ready-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @double-letter;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.ready-btn:before {
+   content: "\E344"; /* thumbs-up */
+}
+
+span.timed-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: darken(@double-word, 10%);
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.timed-btn:before {
+   content: "\E055"; /* time */
+}
+
 span.usr-info {
    .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
    top: 0px;
    cursor: pointer;
    color: white;
    background-color: @freshtile;
    border-radius: 5px;
-   padding: 5px;
+   padding: 4px;
    margin: 0px;
 }
 
 span.usr-info:before {
-   content: "\e003"; /* Search */
+   content: "\E028"; /* Search */
 }
 
 span.usr-info:hover {
@@ -1309,9 +1652,14 @@ span.usr-info:hover {
 }
 
 div #userlist,
-div #gamelist,
+div #gamelist {
+   height: 540px; /* 15 lines @ 36px each */
+   overflow-y: auto;
+   overflow-x: hidden;
+}
+
 div #recentlist {
-   height: 504px; /* 14 lines @ 36px each */
+   height: 468px; /* 13 lines @ 36px each */
    overflow-y: auto;
    overflow-x: hidden;
 }
@@ -1337,7 +1685,8 @@ div #chall-received {
 #chall-sent span.glyphicon.glyphicon-hand-right,
 #chall-received span.glyphicon.glyphicon-thumbs-down,
 p span.glyphicon.glyphicon-flag,
-#gamelist span.glyphicon.glyphicon-flag {
+#gamelist span.glyphicon.glyphicon-flag,
+#gamelist span.glyphicon.glyphicon-hourglass {
    color: @triple-word;
 }
 
@@ -1358,9 +1707,11 @@ p span.glyphicon.glyphicon-flag,
 }
 
 .listheader span.glyphicon.glyphicon-bookmark.grayed,
+.listheader span.glyphicon.glyphicon-hourglass.grayed,
 #recentlist span.glyphicon.glyphicon-bookmark.grayed,
 #usr-recent span.glyphicon.glyphicon-bookmark.grayed,
-#gamelist span.glyphicon.glyphicon-bookmark.grayed {
+#gamelist span.glyphicon.glyphicon-bookmark.grayed,
+#gamelist span.glyphicon.glyphicon-hourglass.grayed {
    color: fade(black, 6%);
 }
 
@@ -1439,33 +1790,31 @@ div#blank-close {
    background-color: @alert;
 }
 
-div#blank-form {
+.std-form {
    position: absolute;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   z-index: 20;
+   box-shadow: 3px 3px 5px 2px #333333;
+   font-size: 1em;
+}
+
+div#blank-form {
+   .std-form;
    top: 124px;
    right: 12px;
    width: 274px;
    height: 400px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div#usr-info-form {
-   position: absolute;
+   .std-form;
    top: 16px;
    right: 12px;
    width: 884px;
    height: 644px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div.usr-info-hdr {
@@ -1492,19 +1841,98 @@ h1.usr-info-icon {
    color: @background;
 }
 
-div#chall-form {
+div#stats-toggler {
+   margin-top: 7px;
+   margin-right: 8px;
+}
+
+div#own-toggler {
+   margin-top: 7px;
+   margin-right: 8px;
+}
+
+div#usr-stats {
    position: absolute;
+   height: 48px;
+   width: 680px;
+   bottom: 12px;
+   left: 12px;
+   vertical-align: top;
+}
+
+div#own-stats {
+   margin-top: 16px;
+   margin-bottom: 24px;
+   height: 48px;
+   width: 680px;
+   vertical-align: top;
+}
+
+div#usr-stats-human {
+   display: inline-block;
+   vertical-align: top;
+}
+
+div#usr-stats-all {
+   display: none;
+   vertical-align: top;
+}
+
+div#own-stats-human {
+   display: inline-block;
+   vertical-align: top;
+}
+
+div#own-stats-all {
+   display: none;
+   vertical-align: top;
+}
+
+div.stats-fig {
+   display: inline-block;
+   width: 80px;
+   height: 27px;
+   padding: 6px;
+   border-radius: 5px;
+   background-color: transparent;
+   color: darken(@triple-letter, 10%);
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 5px;
+   border-color: darken(@triple-letter, 10%);
+   text-align: center;
+   font-weight: 700;
+   font-size: 20px;
+   vertical-align: middle;
+   margin-top: 4px;
+   margin-right: 8px;
+   margin-left: 8px;
+   cursor: default;
+   .noselect;
+}
+
+div.stats-games {
+   color: darken(@pass-btn, 10%);
+   border-color: darken(@pass-btn, 10%);
+}
+
+div.stats-win-ratio {
+   color: darken(@freshtile, 10%);
+   border-color: darken(@freshtile, 10%);
+}
+
+div.stats-avg-score {
+   color: darken(@triple-word, 10%);
+   border-color: darken(@triple-word, 10%);
+}
+
+div#chall-form {
+   .std-form;
    top: 100px;
    right: 300px;
    width: 428px;
    height: 532px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 12px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
+   padding-top: 12px; /* Override */
 }
 
 div.chall-hdr {
@@ -1602,7 +2030,7 @@ span#chall-online {
 }
 
 span#chall-online:before {
-   content: "\e162"; /* Flash */
+   content: "\E242"; /* Flash */
 }
 
 span#chall-online.online {
@@ -1610,18 +2038,11 @@ span#chall-online.online {
 }
 
 div#wait-form {
-   position: absolute;
+   .std-form;
    top: 56px;
    right: 202px;
    width: 504px;
    height: 544px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
 }
 
 div.wait-explain {
@@ -1631,19 +2052,43 @@ div.wait-explain {
    padding-bottom: 24px;
 }
 
+div#user-dialog {
+   visibility: visible;
+}
+
+div#user-form {
+   .std-form;
+   top: 50px;
+   right: 64px;
+   width: 736px;
+   height: 614px;
+}
+
+div#user-logout {
+   left: 12px;
+   width: 144px; /* Override */
+   background-color: @pass-btn;
+}
+
+div#user-cancel {
+   right: 108px; /* 12 + 72 + 12 + 12 */
+   width: 72px; /* Override */
+   background-color: @alert;
+}
+
+div#user-ok {
+   right: 12px; /* 12 */
+   width: 72px; /* Override */
+   background-color: @freshtile;
+}
+
 div#accept-form {
-   position: absolute;
+   .std-form;
    top: 220px;
    right: 300px;
    width: 428px;
    height: 292px;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 12px;
-   padding-bottom: 6px;
-   z-index: 20;
-   font-size: 1em;
-   box-shadow: 3px 3px 5px 2px #333333;
+   padding-top: 12px; /* Override */
 }
 
 h1#accept-nick {
@@ -1678,12 +2123,6 @@ div.blank-rack {
    border-spacing: 8px;
 }
 
-div.userform {
-   position: absolute;
-   left: 180px;
-   top: 80px;
-}
-
 div.loginform {
    position: absolute;
    left: 120px;
@@ -1693,6 +2132,7 @@ div.loginform {
 div.loginhdr {
    font-size: 34px;
    font-weight: 700;
+   padding-top: 12px;
    padding-bottom: 24px;
 }
 
@@ -1718,12 +2158,17 @@ div.welcome {
    color: @hover-link;
 }
 
+div.dialog-spacer {
+   margin-top: 4px;
+   margin-bottom: 2px;
+}
+
 span.caption {
    display: inline-block;
    position: relative;
-   top: 4px;
+   vertical-align: top;
+   top: 10px;
    width: 140px;
-   margin-top: 20px;
    margin-right: 12px;
    overflow: hidden;
    text-align: right;
@@ -1731,14 +2176,14 @@ span.caption {
 
 div.explain {
    margin-left: 158px;
-   margin-bottom: 6px;
+   margin-bottom: 12px;
    font-size: 14px;
    text-align: left;
 }
 
 div.errinput {
    margin-left: 158px;
-   margin-bottom: 6px;
+   margin-bottom: 10px;
    font-size: 16px;
    text-align: left;
    font-weight: bold;
@@ -1751,7 +2196,7 @@ input.text {
    font-weight: 700;
    height: 32px;
    border-style: solid;
-   border-color: #55cc66;
+   border-color: @freshtile;
    border-width: 2px;
    border-radius: 5px;
    margin-bottom: 6px;
@@ -1762,12 +2207,12 @@ input.text {
 }
 
 input.text:focus {
-   background-color: #ffffc8;
+   background-color: @focal;
    border-style: solid;
-   border-color: #55cc66;
+   border-color: @freshtile;
    border-width: 2px;
    border-radius: 5px;
-   outline: none;
+   outline-style: none;
 }
 
 input.username {
@@ -1815,6 +2260,72 @@ button.login {
 button.logout {
    margin-top: 80px;
    background-color: @alert;
+}
+
+input[type="checkbox"] {
+   display: none;
+}
+
+div.toggler {
+   display: inline-block;
+   background-color: fade(@board-background, 50%);
+   color: white;
+   margin-top: 9px;
+   margin-bottom: 3px;
+   border-radius: 10px;
+   cursor: pointer;
+   overflow: hidden;
+   border: white solid 2px;
+   .noselect;
+}
+
+div.toggler:focus {
+   /* background-color: fade(@freshtile, 40%); */
+   outline-style: none;
+   border: yellow solid 2px;
+}
+
+div.toggler div.option {
+   display: inline-block;
+   width: 46px;
+   height: 28px;
+   font-size: 21px;
+   padding-top: 3px;
+   padding-bottom: 3px;
+   text-align: center;
+   border-style: none;
+}
+
+div.toggler div.option.small {
+   width: 40px;
+   height: 26px;
+   font-size: 20px;
+   padding-top: 3px;
+   padding-bottom: 3px;
+}
+
+div.toggler div.option.x-small {
+   width: 32px;
+   height: 20px;
+   font-size: 15px;
+   padding-top: 1px;
+   padding-bottom: 3px;
+}
+
+div.toggler div.option.selected {
+   background-color: @triple-letter;
+}
+
+div#ready-toggler {
+   position: absolute;
+   left: 10px;
+   top: 538px;
+}
+
+div#timed-toggler {
+   position: absolute;
+   left: 10px;
+   top: 590px;
 }
 
 div #radioset {

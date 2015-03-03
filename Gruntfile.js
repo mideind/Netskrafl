@@ -76,11 +76,11 @@ module.exports = function (grunt) {
          },
 */
          less: {
-            files: ['static/*.less', 'gruntfile.js'],
+            files: ['static/*.less'],
             tasks: 'less:development'
          },
          configFiles: {
-            files: 'Gruntfile.js',
+            files: 'Gruntfile.js'
          }
       }
 

@@ -103,6 +103,8 @@ import binascii
 import struct
 import io
 
+from dawgdictionary import DawgDictionary
+
 from languages import Alphabet
 
 MAXLEN = 48 # Longest possible word to be processed
@@ -525,7 +527,7 @@ class DawgBuilder:
     def __init__(self):
         self._dawg = None
 
-    class _InFile:
+    class _InFile(object):
         """ InFile represents a single sorted input file. """
 
         def __init__(self, relpath, fname):
@@ -534,6 +536,9 @@ class DawgBuilder:
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin = codecs.open(fpath, mode='r', encoding='utf-8')
             print(u"Opened input file {0}".format(fpath))
+            self._init()
+
+        def _init(self):
             # Read the first word from the file to initialize the iteration
             self.read_word()
 
@@ -571,7 +576,54 @@ class DawgBuilder:
                 self._fin.close()
             self._fin = None
 
-    def _load(self, relpath, inputs, localeid, filter):
+    class _InFileToBeSorted(_InFile):
+        """ InFileToBeSorted represents an input file that should be pre-sorted in memory """
+
+        def __init__(self, relpath, fname):
+            # Call base class constructor
+            super(DawgBuilder._InFileToBeSorted, self).__init__(relpath, fname)
+
+        def _init(self):
+            """ Read the entire file and pre-sort it """
+            self._list = []
+            self._index = 0
+            try:
+                for line in self._fin:
+                    if line.endswith(u'\r\n'):
+                        # Cut off trailing CRLF (Windows-style)
+                        line = line[0:-2]
+                    elif line.endswith(u'\n'):
+                        # Cut off trailing LF (Unix-style)
+                        line = line[0:-1]
+                    if line and len(line) < MAXLEN:
+                        # Valid word
+                        self._list.append(line)
+            except StopIteration:
+                pass
+            finally:
+                self._fin.close()
+                self._fin = None
+            self._len = len(self._list)
+            self._list.sort(cmp = locale.strcoll)
+            # !!! DEBUG
+            #print(u"_InFileToBeSorted: content is:")
+            #for w in self._list:
+            #    print(u"" + w)
+            self.read_word()
+
+        def read_word(self):
+            if self._index >= self._len:
+                self._eof = True
+                return False
+            self._nxt = self._list[self._index]
+            self._index += 1
+            return True
+
+        def close(self):
+            """ Close the associated file, if it is still open """
+            pass
+
+    def _load(self, relpath, inputs, removals, localeid, filter):
         """ Load word lists into the DAWG from one or more static text files,
             assumed to be located in the relpath subdirectory.
             The text files should contain one word per line,
@@ -579,7 +631,8 @@ class DawgBuilder:
             Upper or lower case should be consistent throughout.
             All lower case is preferred. The words should appear in
             ascending sort order within each file. The input files will
-            be merged in sorted order in the load process.
+            be merged in sorted order in the load process. Words found
+            in the removals file will be removed from the output.
         """
         self._dawg = _Dawg()
         # Total number of words read from input files
@@ -589,13 +642,25 @@ class DawgBuilder:
         outcount = 0
         # Total number of duplicate words found in input files
         duplicates = 0
+        # Count removed words due to the removed word list
+        removed = 0
         # If a locale for sorting/collation is specified, set it
         if localeid:
             locale.setlocale(locale.LC_COLLATE, localeid)
         # Enforce strict ascending lexicographic order
         lastword = None
-        # Open the input files
-        infiles = [DawgBuilder._InFile(relpath, f) for f in inputs]
+        # Open the input files. The first (main) input file is assumed
+        # to be pre-sorted. Other input files are sorted in memory before
+        # being used.
+        infiles = [DawgBuilder._InFile(relpath, f) if ix == 0 else
+            DawgBuilder._InFileToBeSorted(relpath, f)
+            for ix, f in enumerate(inputs)]
+        # Open the removal file, if any
+        if removals is None:
+            removal = None
+        else:
+            removal = DawgBuilder._InFileToBeSorted(relpath, removals)
+        remove_word = None if removal is None else removal.next_word()
         # Merge the inputs
         while True:
             smallest = None
@@ -630,10 +695,21 @@ class DawgBuilder:
                 else:
                     duplicates += 1
             elif (filter is None) or filter(word):
-                # This word passes the filter: add it to the graph
-                self._dawg.add_word(word)
+                # This word passes the filter: check the removal list, if any
+                while remove_word is not None and locale.strcoll(remove_word, word) < 0:
+                    # Skip past words in the removal file as needed
+                    removal.read_word()
+                    remove_word = removal.next_word()
+                if remove_word is not None and locale.strcoll(remove_word, word) == 0:
+                    # Found a word to be removed
+                    removal.read_word()
+                    remove_word = removal.next_word()
+                    removed += 1
+                else:
+                    # Not a word to be removed: add it to the graph
+                    self._dawg.add_word(word)
+                    outcount += 1
                 lastword = word
-                outcount += 1
             if incount % 5000 == 0:
                 # Progress indicator
                 print ("{0}...\r".format(incount)),
@@ -646,7 +722,8 @@ class DawgBuilder:
             f = None
         # Complete and clean up
         self._dawg.finish()
-        print("Finished loading {0} words, output {1} words, {2} duplicates skipped".format(incount, outcount, duplicates))
+        print("Finished loading {0} words, output {1} words, {2} duplicates skipped, {3} removed"
+            .format(incount, outcount, duplicates, removed))
 
     def _output_binary(self, relpath, output):
         """ Write the DAWG to a flattened binary output file with extension '.dawg' """
@@ -671,7 +748,7 @@ class DawgBuilder:
         with codecs.open(fname, mode='w', encoding='utf-8') as fout:
             self._dawg.write_text(fout)
 
-    def build(self, inputs, output, relpath="resources", localeid=None, filter=None):
+    def build(self, inputs, output, relpath="resources", localeid=None, filter=None, removals=None):
         """ Build a DAWG from input file(s) and write it to the output file(s) (potentially in multiple formats).
             The input files are assumed to be individually sorted in correct ascending alphabetical
             order. They will be merged in parallel into a single sorted stream and added to the DAWG.
@@ -685,7 +762,7 @@ class DawgBuilder:
             # Nothing to do
             print("No inputs or no output: Nothing to do")
             return
-        self._load(relpath, inputs, localeid, filter)
+        self._load(relpath, inputs, removals, localeid, filter)
         # print("Dumping...")
         # self._dawg.dump()
         print("Outputting...")
@@ -781,13 +858,60 @@ def run_skrafl():
     t0 = time.time()
     # "isl" specifies Icelandic sorting order - modify this for other languages
     db.build(
-        ["ordalistimax15.sorted.txt"], # Input files to be merged
+        ["ordalistimax15.sorted.txt", "ordalisti.add.txt"], # Input files to be merged
         "ordalisti", # Output file - full name will be ordalisti.text.dawg
         "resources", # Subfolder of input and output files
         "isl" if sys.platform.startswith("win32") else "is_IS", # Identifier of locale to use for sorting order
-        filter_skrafl) # Word filter function to apply
+        filter_skrafl, # Word filter function to apply
+        "ordalisti.remove.txt" # Words to remove
+    )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    dawg = DawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
+
+    t0 = time.time()
+    dawg.store_pickle(os.path.abspath(os.path.join("resources", "ordalisti.dawg.pickle")))
+    t1 = time.time()
+
+    print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+
+    # Process list of common words
+
+    print(u"Starting DAWG build for list of common words")
+    db = DawgBuilder()
+    t0 = time.time()
+    # "isl" specifies Icelandic sorting order - modify this for other languages
+    db.build(
+        ["ordalisti.algeng.sorted.txt"], # Input files to be merged
+        "algeng", # Output file - full name will be ordalisti.text.dawg
+        "resources", # Subfolder of input and output files
+        "isl" if sys.platform.startswith("win32") else "is_IS", # Identifier of locale to use for sorting order
+        filter_skrafl # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    dawg = DawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "algeng.text.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
+
+    t0 = time.time()
+    dawg.store_pickle(os.path.abspath(os.path.join("resources", "algeng.dawg.pickle")))
+    t1 = time.time()
+
+    print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+
 
 if __name__ == '__main__':
 

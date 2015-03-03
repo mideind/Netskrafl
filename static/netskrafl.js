@@ -57,7 +57,7 @@ var LETTERSCORE = new Array(
    "111113111311111",
    "111211111112111");
 
-var GAME_OVER = 16; /* Error code corresponding to the Error class in skraflmechanics.py */
+var GAME_OVER = 99; /* Error code corresponding to the Error class in skraflmechanics.py */
 
 var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
 
@@ -97,14 +97,14 @@ function nullCompleteFunc(xhr, status) {
 }
 
 function errFunc(xhr, status, errorThrown) {
-   /* Error handling function for Ajax communications */
+   /* Default error handling function for Ajax communications */
    // alert("Villa í netsamskiptum");
    console.log("Error: " + errorThrown);
    console.log("Status: " + status);
    console.dir(xhr);
 }
 
-function serverQuery(requestUrl, jsonData, successFunc, completeFunc) {
+function serverQuery(requestUrl, jsonData, successFunc, completeFunc, errorFunc) {
    /* Wraps a simple, standard Ajax request to the server */
    $.ajax({
       // The URL for the request
@@ -127,7 +127,7 @@ function serverQuery(requestUrl, jsonData, successFunc, completeFunc) {
 
       // Code to run if the request fails; the raw request and
       // status codes are passed to the function
-      error: errFunc,
+      error: (!errorFunc) ? errFunc : errorFunc,
 
       // code to run regardless of success or failure
       complete: (!completeFunc) ? nullCompleteFunc : completeFunc
@@ -906,6 +906,8 @@ function initDropTargets() {
       sq = $("#R" + x.toString());
       initDropTarget(sq);
    }
+   /* Make the background a drop target */
+   initDropTarget($("#container"));
 }
 
 function handleDrop(e, ui) {
@@ -915,13 +917,29 @@ function handleDrop(e, ui) {
    var eld = elementDragged;
    if (eld === null)
       return;
+   var i, rslot;
    eld.style.opacity = "1.0";
+   if (e.target.id == "container") {
+      // Dropping to the background container:
+      // shuffle things around so it looks like we are dropping to the first empty rack slot
+      rslot = null;
+      for (i = 1; i <= RACK_SIZE; i++) {
+         rslot = document.getElementById("R" + i.toString());
+         if (!rslot.firstChild)
+            /* Empty slot in the rack */
+            break;
+         rslot = null;
+      }
+      if (!rslot)
+         return; // Shouldn't really happen
+      e.target = rslot;
+   }
    var dropToRack = (e.target.id.charAt(0) == 'R');
    if (dropToRack && e.target.firstChild !== null) {
       /* Dropping into an already occupied rack slot: shuffle the rack tiles to make room */
       var ix = parseInt(e.target.id.slice(1));
-      var rslot = null;
-      var i = 0;
+      rslot = null;
+      i = 0;
       /* Try to find an empty slot to the right */
       for (i = ix + 1; i <= RACK_SIZE; i++) {
          rslot = document.getElementById("R" + i.toString());
@@ -1006,6 +1024,12 @@ function wordGoodOrBad(flagGood, flagBad) {
    /* Flag whether the word being laid down is good or bad (or neither when we don't know) */
    $("div.word-check").toggleClass("word-good", flagGood);
    $("div.word-check").toggleClass("word-bad", flagBad);
+   $("div.score").toggleClass("word-good", flagGood);
+   if (flagGood) {
+      // Show a 50+ point word with a special color
+      if (parseInt($("div.score").text()) >= 50)
+         $("div.score").addClass("word-great");
+   }
 }
 
 function showWordCheck(json) {
@@ -1018,12 +1042,18 @@ function showWordCheck(json) {
 function updateButtonState() {
    /* Refresh state of action buttons depending on availability */
    var tilesPlaced = gameOver ? 0 : findCovers().length;
+   var showResign = false;
+   var showExchange = false;
+   var showPass = false;
+   var showRecall = false;
+   var showScramble = false;
+   var showMove = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
-      $("div.submitmove").css("visibility", "visible");
-      $("div.submitexchange").css("visibility", "visible");
-      $("div.submitpass").css("visibility", "visible");
-      $("div.submitresign").css("visibility", "visible");
+      showMove = (tilesPlaced !== 0);
+      showExchange = true;
+      showPass = (tilesPlaced === 0);
+      showResign = true;
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
          (tilesPlaced === 0 || showingDialog));
@@ -1031,8 +1061,9 @@ function updateButtonState() {
          (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
       $("div.submitpass").toggleClass("disabled",
          (tilesPlaced !== 0 || showingDialog));
-      $("div.submitresign").toggleClass("disabled",
-         showingDialog);
+      $("div.submitresign").toggleClass("disabled", showingDialog);
+      $("div.recallbtn").toggleClass("disabled", showingDialog);
+      $("div.scramblebtn").toggleClass("disabled", showingDialog);
       $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("div.opp-turn").css("visibility", "hidden");
@@ -1041,10 +1072,6 @@ function updateButtonState() {
    }
    else {
       /* The other player's turn */
-      $("div.submitmove").css("visibility", "hidden");
-      $("div.submitexchange").css("visibility", "hidden");
-      $("div.submitpass").css("visibility", "hidden");
-      $("div.submitresign").css("visibility", "hidden");
       $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
       $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
       if (gameOver)
@@ -1057,29 +1084,37 @@ function updateButtonState() {
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
+   $("div.score").removeClass("word-good").removeClass("word-great");
    if (tilesPlaced === 0) {
-      $("div.score").text("");
+      $("div.score").text("").css("visibility", "hidden");
       wordToCheck = "";
       wordGoodOrBad(false, false);
-      $("div.recallbtn").css("visibility", "hidden");
+      if (!gameOver)
+         showScramble = true;
    }
    else {
       var scoreResult = calcScore();
       if (scoreResult === undefined) {
-         $("div.score").text("?");
+         $("div.score").text("?").css("visibility", "visible");
          wordToCheck = "";
          wordGoodOrBad(false, false);
       }
       else {
-         $("div.score").text(scoreResult.score.toString());
+         $("div.score").text(scoreResult.score.toString()).css("visibility", "visible");
          /* Start a word check request to the server, checking the
             word laid down and all cross words */
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
          serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
       }
-      $("div.recallbtn").css("visibility", "visible");
+      showRecall = true;
    }
+   $("div.submitmove").css("visibility", showMove ? "visible" : "hidden");
+   $("div.submitexchange").css("visibility", showExchange ? "visible" : "hidden");
+   $("div.submitpass").css("visibility", showPass ? "visible" : "hidden");
+   $("div.submitresign").css("visibility", showResign ? "visible" : "hidden");
+   $("div.recallbtn").css("visibility", showRecall ? "visible" : "hidden");
+   $("div.scramblebtn").css("visibility", showScramble ? "visible" : "hidden");
 }
 
 function buttonOver(elem) {
@@ -1270,7 +1305,6 @@ function rescrambleRack(ev) {
    /* Reorder the rack randomly. Bound to the Backspace key. */
    if (showingDialog)
       return false;
-
    resetRack(ev);
    var array = [];
    var i, rackTileId;
@@ -1303,6 +1337,9 @@ function updateBag(bag) {
    $("#bag").html("");
    var lenbag = bag.length;
    var ix = 0;
+   // If 7 or fewer unseen tiles, the bag is empty and they're all in the opponent's
+   // rack; display the tiles in the opponent's color
+   $("#bag").toggleClass("empty", lenbag <= RACK_SIZE);
    while (lenbag > 0) {
       /* Rows */
       var str = "<tr>";
@@ -1426,12 +1463,6 @@ function submitMove(btn) {
       sendMove('move');
 }
 
-function submitPass(btn) {
-   /* The Pass button has been pressed: submit a Pass move */
-   if (!$(btn).hasClass("disabled"))
-      sendMove('pass');
-}
-
 function confirmExchange(yes) {
    /* The user has either confirmed or cancelled the exchange */
    $("div.exchange").css("visibility", "hidden");
@@ -1453,7 +1484,8 @@ function confirmExchange(yes) {
       }
    }
    initRackDraggable(true);
-   if (yes) {
+   if (yes && exch.length > 0) {
+      // The user wants to exchange tiles: submit an exchange move
       sendMove('exch=' + exch);
    }
 }
@@ -1497,6 +1529,27 @@ function submitResign(btn) {
    /* The user has clicked the resign button: show resignation banner */
    if (!$(btn).hasClass("disabled")) {
       $("div.resign").css("visibility", "visible");
+      showingDialog = true;
+      initRackDraggable(false);
+      /* Disable all other actions while panel is shown */
+      updateButtonState();
+   }
+}
+
+function confirmPass(yes) {
+   /* The user has either confirmed or cancelled the pass move */
+   $("div.pass").css("visibility", "hidden");
+   showingDialog = false;
+   initRackDraggable(true);
+   updateButtonState();
+   if (yes)
+      sendMove('pass');
+}
+
+function submitPass(btn) {
+   /* The user has clicked the pass button: show confirmation banner */
+   if (!$(btn).hasClass("disabled")) {
+      $("div.pass").css("visibility", "visible");
       showingDialog = true;
       initRackDraggable(false);
       /* Disable all other actions while panel is shown */
@@ -1575,6 +1628,12 @@ function moveComplete(xhr, status) {
    submitInProgress = false;
 }
 
+function serverError(xhr, status, errorThrown) {
+   /* The server threw an error back at us (probably 5XX): inform the user */
+   $("div.error").css("visibility", "visible").find("p").css("display", "none");
+   $("div.error").find("#err_server").css("display", "inline");
+}
+
 function sendMove(movetype) {
    /* Send a move to the back-end server using Ajax */
    if (submitInProgress)
@@ -1628,7 +1687,30 @@ function sendMove(movetype) {
          // Send the game's UUID
          uuid: gameId()
       },
-      updateState, moveComplete);
+      updateState, moveComplete, serverError);
+}
+
+function closeHelpPanel() {
+   /* Close the board color help panel and set a user preference to not display it again */
+   $("div.board-help").css("display", "none");
+   serverQuery("/setuserpref",
+      {
+         beginner: false
+      }
+   );
+}
+
+function forceResign() {
+   /* The game is overdue and the waiting user wants to force the opponent to resign */
+   $("#force-resign").css("display", "none");
+   serverQuery("/forceresign",
+      {
+         game: gameId(),
+         // Send a move count to ensure that the client and the server are in sync
+         mcount: numMoves
+      }
+   );
+   // We trust that the Channel API will return a new client state to us
 }
 
 /* Channel API stuff */
@@ -1655,13 +1737,19 @@ function channelOnOpen() {
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   if (json.stale !== undefined && json.stale)
+   if ((json.stale !== undefined) && json.stale)
       // We missed updates on our channel: reload the board
       window.location.reload(true);
    else {
       // json now contains an entire client state update, as a after submitMove()
       resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
       updateState(json);
+      // Play audio, if present
+      var yourTurn = document.getElementById("your-turn");
+      if (yourTurn)
+         // Note that playing media outside user-invoked event handlers does not work on iOS.
+         // That is a 'feature' introduced and documented by Apple.
+         yourTurn.play();
    }
 }
 
@@ -1725,6 +1813,9 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('backspace', rescrambleRack);
    /* Bind pinch gesture to a function to reset the rack */
    /* $('body').bind('pinchclose', resetRack); */
+
+   // Bind a handler to the close icon on the board color help panel
+   $("div.board-help-close span").click(closeHelpPanel);
 
    lateInit();
 

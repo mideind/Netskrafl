@@ -95,6 +95,10 @@
 {% endif %}
       scoreLeft = {{ game.final_scores()[0] }};
       scoreRight = {{ game.final_scores()[1] }};
+{% if game.is_overdue() and not game.my_turn(user.id()) %}
+      // Display option to force opponent to resign
+      $("#force-resign").css("display", "inline");
+{% endif %}
    }
 
 </script>
@@ -189,38 +193,54 @@
 
 <!-- A button to recall all tiles back into the rack -->
 <div class="recallbtn" title="Færa stafi aftur í rekka"
-   onmouseover="this.classList.add('hover')"
-   onmouseout="this.classList.remove('hover')"
-   onclick="resetRack()"><span class="glyphicon glyphicon-circle-arrow-down"></span></div>
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="resetRack()"><span class="glyphicon glyphicon-down-arrow"></span></div>
+
+<!-- A button to shuffle the rack -->
+<div class="scramblebtn" title="Stokka upp rekka"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="rescrambleRack()"><span class="glyphicon glyphicon-random"></span></div>
 
 <!-- Move submit button -->
-<div class="submitmove disabled" title="Leika" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitMove(this)">Leika <span class="glyphicon glyphicon-play"></span></div>
+<div class="submitmove disabled" title="Leika"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitMove(this)">Leika
+   <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Wait placeholder -->
-<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border=0/></div>
+<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border="0"/></div>
 
 <!-- New game button -->
-<div class="submitnewgame" title="Nýr leikur" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="window.location.href='{{ url_for('newgame') }}'">Nýr <span class="glyphicon glyphicon-play"></span></div>
+<div class="submitnewgame" title="Nýr leikur"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="window.location.href='{{ url_for('newgame') }}'">Nýr
+   <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Pass button -->
-<div class="submitpass" title="Pass" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitPass(this)"><span class="glyphicon glyphicon-forward"></span></div>
+<div class="submitpass" title="Pass"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitPass(this)"><span class="glyphicon glyphicon-forward"></span></div>
 
 <!-- Exchange button -->
-<div class="submitexchange" title="Skipta stöfum" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitExchange(this)"><span class="glyphicon glyphicon-refresh"></span></div>
+<div class="submitexchange" title="Skipta stöfum"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitExchange(this)"><span class="glyphicon glyphicon-refresh"></span></div>
 
 <!-- Resign button -->
-<div class="submitresign" title="Gefa leik" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
+<div class="submitresign" title="Gefa leik"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
 
 <!-- Notification that it's the opponent's turn -->
 {% if not game.is_over() %}
-<div class="opp-turn"><span class="move-indicator"></span> <strong>{{ game.player_nickname(1 - player_index) }}</strong> á leik</div>
+<div class="opp-turn"><span class="move-indicator"></span>
+<strong>{{ game.player_nickname(1 - player_index) }}</strong>
+á leik
+<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton" onclick="forceResign()">Þvinga til uppgjafar</span>
+</div>
 {% endif %}
 
+<!-- Congratulations on a win -->
 <div id="congrats"><span class="glyphicon glyphicon-bookmark"></span> <strong>Til hamingju með sigurinn!</strong></div>
 
 <!-- Error message, normally hidden -->
@@ -240,25 +260,55 @@
    <p id="err_12">Of mörgum stöfum skipt</p> <!-- TOO_MANY_TILES_EXCHANGED = 12 -->
    <p id="err_13">Leik vantar á borðið - notið F5/Refresh</p> <!-- OUT_OF_SYNC = 13 -->
    <p id="err_14">Notandi ekki innskráður - notið F5/Refresh</p> <!-- LOGIN_REQUIRED = 14 -->
+   <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
 </div>
 
 <!-- Confirm resignation of game -->
 <div class="resign"><span class="glyphicon glyphicon-exclamation-sign"></span>
    &nbsp;Viltu gefa leikinn?&nbsp;
-   <span class="yesnobutton" onclick="confirmResign(true)">Já</span>
-   <span class="yesnobutton" onclick="confirmResign(false)">Nei</span>
+   <span class="yesnobutton" onclick="confirmResign(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmResign(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+<!-- Confirm pass move -->
+<div class="pass"><span class="glyphicon glyphicon-forward"></span>
+   &nbsp;Segja pass? <span style="font-weight:400">2x3 pöss í röð ljúka viðureign</span>&nbsp;
+   <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
 
 <!-- Exchange tiles -->
 <div class="exchange"><span class="glyphicon glyphicon-refresh"></span>
    &nbsp;Smelltu á flísarnar sem þú vilt skipta&nbsp;
-   <span class="yesnobutton xchgbtn" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
-   <span class="yesnobutton xchgbtn" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
+   <span class="yesnobutton" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
+   <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
 </div>
+
+{% if user.beginner() %}
+<!-- Help on the board colors -->
+<div class="board-help" title="Hvernig reitirnir margfalda stigin">
+<div class="board-help-close" title="Loka þessari hjálp"><span class="glyphicon glyphicon-remove"></span></div>
+<div class="board-colors">
+<div class="board-color" id="triple-word">3 x<br>orð</div>
+<div class="board-color" id="double-word">2 x<br>orð</div>
+<div class="board-color" id="triple-letter">3 x<br> stafur</div>
+<div class="board-color" id="double-letter">2 x<br> stafur</div>
+<div class="board-color" id="single-letter">1 x<br> stafur</div>
+</div>
+</div>
+{% endif %}
 
 {%- endblock -%}
 
 {%- block endscripts -%}
+
+{%- if user.audio() -%}
+<!-- Audio resources -->
+<audio id="your-turn" preload="auto">
+   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+{% endif %}
+
 <script>
 
 $(document).ready(initSkrafl);

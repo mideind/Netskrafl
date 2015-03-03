@@ -72,3 +72,32 @@ indexes:
   - name: player1
   - name: ts_last_move
     direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: ts_last_move
+
+- kind: RatingModel
+  properties:
+  - name: kind
+  - name: rank
+
+- kind: StatsModel
+  properties:
+  - name: robot_level
+  - name: user
+  - name: timestamp
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: human_elo
+    direction: desc

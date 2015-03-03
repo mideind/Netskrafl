@@ -8,10 +8,8 @@ __pycache__/
 # Compressed DAWG trees
 *.dawg
 
-# Original files from BIN
-resources/smaord.txt
-resources/TWL06.txt
-resources/testwords.txt
+# Pickled DAWG trees
+*.pickle
 
 # CSS files generated from Less
 static/skrafl-curry.css

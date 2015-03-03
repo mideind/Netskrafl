@@ -145,20 +145,86 @@ function showUserInfo(ev) {
    /* Show the user information dialog */
    $("#usr-info-nick").text(ev.data.nick);
    $("#usr-info-fullname").text(ev.data.fullname);
+   initToggle("#stats-toggler", false); // Show human only stats by default
+   $("#usr-stats-human").css("display", "inline-block");
+   $("#usr-stats-all").css("display", "none");
    $("#usr-info-dialog").css("visibility", "visible");
    // Populate the #usr-recent DIV
    serverQuery("/recentlist",
       {
          user: ev.data.userid,
-         count: 20 // Limit recent game count to 20
+         count: 40 // Limit recent game count to 40
       },
       populateUserInfo);
+   // Populate the user statistics
+   serverQuery("/userstats",
+      {
+         user: ev.data.userid
+      },
+      populateUserStats);
 }
 
 function hideUserInfo(ev) {
    /* Hide the user information dialog */
    $("#usr-info-dialog").css("visibility", "hidden");
    $("#usr-recent").html("");
+}
+
+function showStat(prefix, id, val, icon, suffix) {
+   // Display a user statistics figure, eventually with an icon
+   var txt = val.toString();
+   if (suffix !== undefined)
+      txt += suffix;
+   if (icon !== undefined)
+      txt = "<span class='glyphicon glyphicon-" + icon + "'></span>&nbsp;" + txt;
+   $("#" + prefix + "-stats-" + id).html(txt);
+}
+
+function _populateStats(prefix, json) {
+   // Display user statistics, either the client user's own,
+   // or a third party in a user info dialog
+   showStat(prefix, "elo", json.elo, "crown");
+   showStat(prefix, "human-elo", json.human_elo, "crown");
+   showStat(prefix, "games", json.games, "th");
+   showStat(prefix, "human-games", json.human_games, "th");
+   var winRatio = 0, winRatioHuman = 0;
+   if (json.games > 0)
+      winRatio = Math.round(100.0 * json.wins / json.games);
+   if (json.human_games > 0)
+      winRatioHuman = Math.round(100.0 * json.human_wins / json.human_games);
+   var avgScore = 0, avgScoreHuman = 0;
+   if (json.games > 0)
+      avgScore = Math.round(json.score / json.games);
+   if (json.human_games > 0)
+      avgScoreHuman = Math.round(json.human_score / json.human_games);
+   showStat(prefix, "win-ratio", winRatio, "bookmark", "%");
+   showStat(prefix, "human-win-ratio", winRatioHuman, "bookmark", "%");
+   showStat(prefix, "avg-score", avgScore, "dashboard");
+   showStat(prefix, "human-avg-score", avgScoreHuman, "dashboard");
+}
+
+function populateUserStats(json) {
+   // Populate the statistics for a particular user
+   _populateStats("usr", json);
+}
+
+function populateOwnStats(json) {
+   // Populate the user's own statistics
+   _populateStats("own", json);
+}
+
+function toggleStats(ev) {
+   // Toggle between displaying user stats for human games only or for all
+   var state = toggle(ev);
+   $("#usr-stats-human").css("display", state ? "none" : "inline-block");
+   $("#usr-stats-all").css("display", state ? "inline-block" : "none");
+}
+
+function toggleOwnStats(ev) {
+   // Toggle between displaying the user's own stats for human games only or for all
+   var state = toggle(ev);
+   $("#own-stats-human").css("display", state ? "none" : "inline-block");
+   $("#own-stats-all").css("display", state ? "inline-block" : "none");
 }
 
 // Is a user list request already in progress?
@@ -192,7 +258,7 @@ function populateUserList(json) {
          (item.chall ? "'" : " grayed'") +
          " id='" + chId + "'></span>";
       var nick = escapeHtml(item.nick);
-      var alink = "", aclose = "", info = "";
+      var alink = "", aclose = "", info = "", ready = "";
       if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
@@ -205,13 +271,19 @@ function populateUserList(json) {
          info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
       }
       if (info.length)
-         info = "<span class='list-info'>" + info + "</span>";
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+      // Readiness buttons
+      if (item.ready && !isRobot)
+         ready = "<span class='ready-btn' title='Álínis og tekur við áskorunum'></span> ";
+      if (item.ready_timed)
+         ready += "<span class='timed-btn' title='Til í viðureign með klukku'></span> ";
+      // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-fav'>" + fav + "</span>" +
          alink +
          "<span class='list-nick'>" + nick + "</span>" +
-         "<span class='list-fullname'>" + escapeHtml(item.fullname) + "</span>" +
+         "<span class='list-fullname'>" + ready + escapeHtml(item.fullname) + "</span>" +
          aclose +
          info +
          "</div>";
@@ -228,6 +300,93 @@ function populateUserList(json) {
          markChallenge
       );
    }
+}
+
+function rankStr(rank, ref) {
+   // Return a rank string or dash if no rank or not meaningful
+   // (i.e. if the reference, such as the number of games, is zero)
+   if (rank === 0 || (ref !== undefined && ref === 0))
+      return "--";
+   return rank.toString();
+}
+
+function populateEloList(json) {
+   /* Display a user list that has been returned from the server */
+   // Hide the user load spinner
+   $("#user-load").css("display", "none");
+   ulRq = false; // Allow another user list request to proceed
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   for (var i = 0; i < json.rating.length; i++) {
+      var item = json.rating[i];
+      // Robot userids start with 'robot-'
+      var isRobot = item.userid.indexOf("robot-") === 0;
+      var chId = "chall" + i.toString();
+      var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
+         (item.chall ? "'" : " grayed'") +
+         " id='" + chId + "'></span>";
+      var nick = escapeHtml(item.nick);
+      var info = "", ready = "";
+      if (isRobot) {
+         // Mark robots with a cog icon
+         nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
+      }
+      else {
+         // Create a link to access user info
+         info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
+      }
+      if (info.length)
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+      // Assemble the entire line
+      var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
+         "<span class='list-ch'>" + ch + "</span>" +
+         "<span class='list-rank bold'>" + rankStr(item.rank) + "</span>" +
+         "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
+         "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
+         "<span class='list-nick'>" + nick + "</span>" +
+         "<span class='list-elo bold'>" + item.elo.toString() + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
+         "<span class='list-elo'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
+         "<span class='list-games bold'>" + item.games.toString() + "</span>" +
+         "<span class='list-ratio'>" + item.ratio.toString() + "%</span>" +
+         "<span class='list-avgpts'>" + item.avgpts.toString() + "</span>" +
+         info +
+         "</div>";
+      $("#userlist").append(str);
+      // Associate a click handler with the info button, if present
+      if (info.length)
+         $("#usr" + i.toString()).click(
+            { userid: item.userid, nick: item.nick, fullname: item.fullname },
+            showUserInfo
+         );
+      // Associate a click handler with the challenge icon
+      $("#" + chId).click(
+         { userid: item.userid, nick: item.nick, fullname: item.fullname },
+         markChallenge
+      );
+   }
+}
+
+function toggleElo(ev) {
+   // The Elo rating list toggle has been clicked:
+   // display a list of all users including robots, or a list of humans only
+   if (ulRq)
+      return;
+   var eloState = toggle(ev);
+   $("#userlist").html("");
+   /* Show the user load spinner */
+   $("#user-load").css("display", "block");
+   ulRq = true; // Set to false again in populateEloList()
+   serverQuery("/rating",
+   {
+      kind: eloState ? "all" : "human"
+   },
+   populateEloList);
 }
 
 // What range of users was last displayed, in case we need to refresh?
@@ -258,7 +417,7 @@ function refreshUserList(ev) {
    $("#userlist").html("");
    /* Indicate which subtab is being shown */
    if (ev.delegateTarget) {
-      $("#initials span").removeClass("shown");
+      $("div.user-cat span").removeClass("shown");
       $(ev.delegateTarget).addClass("shown");
    }
    /* Show the user load spinner */
@@ -269,8 +428,17 @@ function refreshUserList(ev) {
    var toRange = null;
    /* Note the last displayed range in case we need to redisplay */
    displayedUserRange = range + "";
-   if (range == "fav" || range == "robots" || range == "live") {
-      /* Special requests: list of favorites, live users or robots */
+   if (range == "elo") {
+      // Show the Elo list header
+      $("#usr-hdr").css("display", "none");
+      $("#elo-hdr").css("display", "block");
+   }
+   else {
+      $("#elo-hdr").css("display", "none");
+      $("#usr-hdr").css("display", "block");
+   }
+   if (range == "fav" || range == "robots" || range == "live" || range == "elo") {
+      /* Special requests: list of favorites, live users, robots or Elo ratings */
       fromRange = range;
    }
    else {
@@ -282,13 +450,19 @@ function refreshUserList(ev) {
    }
    // Hide the user info button header if listing the robots
    $("#usr-list-info").css("visibility", (range == "robots") ? "hidden" : "visible");
-   serverQuery("/userlist",
-      {
-         // Identify the game in question
-         from: fromRange,
-         to: toRange
-      },
-      populateUserList);
+   if (range == "elo")
+      serverQuery("/rating",
+         {
+            kind: "human"
+         },
+         populateEloList);
+   else
+      serverQuery("/userlist",
+         {
+            from: fromRange,
+            to: toRange
+         },
+         populateUserList);
 }
 
 function populateGameList(json) {
@@ -309,15 +483,21 @@ function populateGameList(json) {
       var turnText = item.my_turn ? "Þú átt leik" : (opp + " á leik");
       var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
          (item.my_turn ? "" : " grayed") + "'></span>";
+      var overdueText = item.overdue ?
+         (item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf") : "";
+      var overdue = "<span title='" + overdueText + "' class='glyphicon glyphicon-hourglass" +
+         (item.overdue ? "" : " grayed") + "'></span>";
       var myWin = "<span class='glyphicon glyphicon-bookmark" +
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
+         "<span class='list-overdue'>" + overdue + "</span>" +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
          "<span class='list-win'>" + myWin + "</span>" +
-         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s0'>" + item.sc0 + "</span>" +
+         "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "</a></div>";
       $("#gamelist").append(str);
@@ -382,32 +562,39 @@ function _populateRecentList(json, listId) {
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       // Format the game duration
       var duration = "";
-      if (item.days || item.hours || item.minutes) {
-         if (item.days > 1)
-            duration = item.days.toString() + " dagar";
-         else
-         if (item.days == 1)
-            duration = "1 dagur";
-         if (item.hours > 0) {
-            if (duration.length)
-               duration += " og ";
-            duration += item.hours.toString() + " klst";
-         }
-         if (item.days === 0) {
-            if (duration.length)
-               duration += " og ";
-            if (item.minutes == 1)
-               duration += "1 mínúta";
+      if (item.duration === 0) {
+         if (item.days || item.hours || item.minutes) {
+            if (item.days > 1)
+               duration = item.days.toString() + " dagar";
             else
-               duration += item.minutes.toString() + " mínútur";
+            if (item.days == 1)
+               duration = "1 dagur";
+            if (item.hours > 0) {
+               if (duration.length)
+                  duration += " og ";
+               duration += item.hours.toString() + " klst";
+            }
+            if (item.days === 0) {
+               if (duration.length)
+                  duration += " og ";
+               if (item.minutes == 1)
+                  duration += "1 mínúta";
+               else
+                  duration += item.minutes.toString() + " mínútur";
+            }
          }
       }
+      else
+         // This was a timed game
+         duration = "<span class='timed-btn' title='Viðureign með klukku'></span> 2 x " +
+            item.duration.toString();
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +
          "<span class='list-ts'>" + item.ts_last_move + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
-         "<span class='list-s0'>" + item.sc0 + "</span>:" +
+         "<span class='list-s0'>" + item.sc0 + "</span>" +
+         "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "<span class='list-duration'>" + duration + "</span>" +
          "</a></div>";
@@ -421,9 +608,15 @@ function refreshRecentList() {
    serverQuery("/recentlist",
       {
          // Current user is implicit
-         count: 20
+         count: 40
       },
       populateRecentList);
+   // Update the user's own statistics
+   serverQuery("/userstats",
+      {
+         // Current user is implicit
+      },
+      populateOwnStats);
 }
 
 function acceptChallenge(ev) {
@@ -519,6 +712,10 @@ function populateChallengeList(json) {
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
+   /* Clear list of challenges received by this user */
+   $("#chall-received").html("");
+   /* Clear list of challenges sent by this user */
+   $("#chall-sent").html("");
    var countReceived = 0, countSent = 0, countReady = 0;
    for (var i = 0; i < json.challengelist.length; i++) {
       var item = json.challengelist[i];
@@ -542,6 +739,11 @@ function populateChallengeList(json) {
       var readyId = "ready" + i.toString();
       var chId = "chl" + i.toString();
       icon += " id='" + chId + "'></span>";
+
+      // Opponent track record button
+      var info = "<span id='chusr" + i.toString() + "' class='usr-info'></span>";
+      info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
          (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
@@ -551,6 +753,7 @@ function populateChallengeList(json) {
          "<span class='list-chall'>" + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
+         info +
          "</div>";
       if (item.received) {
          $("#chall-received").append(str);
@@ -573,9 +776,15 @@ function populateChallengeList(json) {
          }
          countSent++;
       }
+      // Enable mark challenge button (to decline or retract challenges)
       $("#" + chId).click(
          { userid: item.userid, nick: item.opp, fullname: "" },
          markChallAndRefresh
+      );
+      // Enable user track record button
+      $("#chusr" + i.toString()).click(
+         { userid: item.userid, nick: item.opp, fullname: "" },
+         showUserInfo
       );
    }
    // Update the count of received challenges and ready opponents
@@ -592,11 +801,17 @@ function populateChallengeList(json) {
       ival = window.setInterval(readyFlasher, 500);
 }
 
+/* Interval timer for the initial fetch of the challenge list,
+   which occurs 2 seconds after the page is first loaded */
+var ivalChallengeList = null;
+
 function refreshChallengeList() {
-   /* Clear list of challenges received by this user */
-   $("#chall-received").html("");
-   /* Clear list of challenges sent by this user */
-   $("#chall-sent").html("");
+   /* If we're being called as a result of an interval timer, clear it */
+   if (ivalChallengeList !== null) {
+      window.clearInterval(ivalChallengeList);
+      ivalChallengeList = null;
+   }
+   // populateChallengeList clears out the existing content, if any
    serverQuery("/challengelist",
       {
          // No data to send with query - current user is implicit
@@ -671,6 +886,42 @@ function okChallenge(ev) {
    cancelChallenge(ev);
 }
 
+function toggle(ev) {
+   // Toggle from one state to the other
+   var elemid = "#" + ev.delegateTarget.id;
+   var state = $(elemid + " #opt2").hasClass("selected");
+   $(elemid + " #opt1").toggleClass("selected", state);
+   $(elemid + " #opt2").toggleClass("selected", !state);
+   // Return the new state of the toggle
+   return !state;
+}
+
+function toggleReady(ev) {
+   // The ready toggle has been clicked
+   var readyState = toggle(ev);
+   serverQuery("/setuserpref",
+      {
+         ready: readyState
+      }
+   );
+}
+
+function toggleTimed(ev) {
+   // The timed toggle has been clicked
+   var timedState = toggle(ev);
+   serverQuery("/setuserpref",
+      {
+         ready_timed: timedState
+      }
+   );
+}
+
+function initToggle(elemid, state) {
+   // Initialize a toggle
+   $(elemid + " #opt2").toggleClass("selected", state);
+   $(elemid + " #opt1").toggleClass("selected", !state);
+}
+
 /* Google Channel API stuff */
 
 var channel = null;
@@ -700,9 +951,18 @@ function channelOnMessage(msg) {
       refreshChallengeList();
       redisplayUserList();
    }
-   if (json.stale || json.kind == "game")
+   if (json.stale || json.kind == "game") {
       // A move has been made in a game for this user
       refreshGameList();
+   }
+   if (json.kind && json.kind == "game") {
+      // Play audio, if present
+      var yourTurn = document.getElementById("your-turn");
+      if (yourTurn)
+         // Note that playing media outside user-invoked event handlers does not work on iOS.
+         // That is a 'feature' introduced and documented by Apple.
+         yourTurn.play();
+   }
 }
 
 function channelOnError(err) {
@@ -729,27 +989,52 @@ function channelOnClose() {
 function initMain() {
    /* Called when the page is displayed or refreshed */
 
-   $("#tabs").tabs();
+   // Put lazy loading logic in place for tabs that are not displayed initially
+   $("#tabs").tabs({
+      heightStyle: "auto",
+      activate: function(event, ui) {
+         var panelId = ui.newPanel.attr('id');
+         /* The challenge list is loaded automatically after a short delay,
+            so the following is not necessary */
+         /*
+         if (panelId == "tabs-2") {
+            if (!$("#chall-received").html() && !$("#chall-sent").html())
+               // Delay load challenge list
+               refreshChallengeList();
+         }
+         else
+         */
+         if (panelId == "tabs-4") {
+            if (!$("#recentlist").html())
+               // Delay load recent game list
+               refreshRecentList();
+         }
+         else
+         if (panelId == "tabs-3") {
+            if (!$("#userlist").html())
+               // Delay load user list
+               if (displayedUserRange !== null)
+                  refreshUserList({ data: displayedUserRange });
+               else
+                  /* Initialize user list to show robots by default */
+                  refreshUserList({ data: "robots" });
+         }
+      }
+   });
 
    $("#opponents").click(function() {
-      // Select and show the opponents tab
+      // Select and show the user list (opponents) tab
       $("#tabs").tabs("option", "active", 2);
    });
 
    /* Initialize game list */
    refreshGameList();
 
-   /* Initialize list of recent games */
-   refreshRecentList();
-
-   /* Initialize challenge list */
-   refreshChallengeList();
-
-   /* Initialize user list to show robots by default */
-   refreshUserList({ data: "robots" });
+   /* Initialize the challenge list after two seconds */
+   ivalChallengeList = window.setInterval(refreshChallengeList, 2 * 1000);
 
    /* Initialize alphabet categories in user list header */
-   $("#initials").children("span").each(function() {
+   $("div.user-cat > span").each(function() {
       var data = $(this).attr('id');
       if (data === undefined)
          // Not a special category, i.e. favorites or robots

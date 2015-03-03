@@ -1,0 +1,9 @@
+cron:
+- description: Generate skraflstats
+  url: /stats/run
+  schedule: every day 02:00
+  target: skraflstats
+- description: Generate Elo ratings
+  url: /stats/ratings
+  schedule: every day 02:10
+  target: skraflstats

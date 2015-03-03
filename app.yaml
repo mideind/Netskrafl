@@ -1,19 +1,22 @@
 application: netskrafl
-version: sophia
+version: bosporus
 runtime: python27
 api_version: 1
 threadsafe: true
 
 instance_class: F2
 automatic_scaling:
-  min_idle_instances: 1
+  min_idle_instances: 2
   max_idle_instances: automatic
   min_pending_latency: 200ms
-  max_pending_latency: 1200ms
+  max_pending_latency: 1250ms
 
 inbound_services:
 - warmup
 - channel_presence
+
+builtins:
+- deferred: on
 
 handlers:
 - url: /robots.txt
@@ -52,12 +55,16 @@ handlers:
   static_files: static/user-loader.gif
   upload: static/user-loader.gif
   expiration: 1d
+- url: /static/mousetrap.min.js
+  static_files: static/mousetrap.min.js
+  upload: static/mousetrap.min.js
+  expiration: 1d
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$  
-- url: /static/skrafl.css
-  static_files: static/skrafl.css
-  upload: static/skrafl.css
+- url: /static/skrafl-curry.css
+  static_files: static/skrafl-curry.css
+  upload: static/skrafl-curry.css
 - url: /static/netskrafl.js
   static_files: static/netskrafl.js
   upload: static/netskrafl.js
@@ -65,24 +72,48 @@ handlers:
   static_files: static/jquery.ui.touch-punch.min.js
   upload: static/jquery.ui.touch-punch.min.js
   expiration: 1d
-- url: /static/glyphicons-halflings-regular.ttf
-  static_files: static/glyphicons-halflings-regular.ttf
-  upload: static/glyphicons-halflings-regular.ttf
+- url: /static/glyphicons-regular.ttf
+  static_files: static/glyphicons-regular.ttf
+  upload: static/glyphicons-regular.ttf
   expiration: 1d
-- url: /static/glyphicons-halflings-regular.woff
-  static_files: static/glyphicons-halflings-regular.woff
-  upload: static/glyphicons-halflings-regular.woff
+  mime_type: application/font-sfnt
+- url: /static/glyphicons-regular.eot
+  static_files: static/glyphicons-regular.eot
+  upload: static/glyphicons-regular.eot
   expiration: 1d
+  mime_type: application/vnd.ms-fontobject
+- url: /static/glyphicons-regular.svg
+  static_files: static/glyphicons-regular.svg
+  upload: static/glyphicons-regular.svg
+  expiration: 1d
+  mime_type: image/svg+xml
+- url: /static/glyphicons-regular.woff
+  static_files: static/glyphicons-regular.woff
+  upload: static/glyphicons-regular.woff
+  expiration: 1d
+  mime_type: application/font-woff
+- url: /static/your-turn.mp3
+  static_files: static/your-turn.mp3
+  upload: static/your-turn.mp3
+  mime_type: audio/mpeg
+  expiration: 1d
+- url: /admin/.*
+  script: netskrafl.app
+  login: admin
+  auth_fail_action: unauthorized
 - url: .*
   script: netskrafl.app
 
 skip_files:
-- ^(.*/)?ordalistimax15\..*$
+- ^resources/.*\.txt$
+- ^resources/.*\.dawg$
 - ^(.*/)?.*\.psd$
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
 - ^(.*/)?.*\.md$
 - ^(.*/)?.*\.bak$
+- ^(.*/)?.*\.tmp$
+- ^(.*/)?.*\.TMP$
 - ^(.*/)?.*\.less$
 - ^(.*/)?#.*#$
 - ^(.*/)?.*~$

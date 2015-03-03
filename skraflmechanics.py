@@ -438,8 +438,8 @@ class State:
             # Draw new tiles if required
             if not shallow:
                 self.player_rack().replenish(self._bag)
-            # It's the other player's move
-            self._player_to_move = 1 - self._player_to_move
+        # It's the other player's move (i.e. if the game is not over by now)
+        self._player_to_move = 1 - self._player_to_move
         return True
 
     def score(self, move):
@@ -611,11 +611,18 @@ class Error:
     OUT_OF_SYNC = 13
     LOGIN_REQUIRED = 14
     WRONG_USER = 15
-    GAME_OVER = 16
+    GAME_NOT_FOUND = 16
+    GAME_NOT_OVERDUE = 17
+    # Insert new error codes above this line
+    # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
+    GAME_OVER = 99
 
     @staticmethod
     def errortext(errcode):
-        return [u"LEGAL", 
+        if errcode == Error.GAME_OVER:
+            # Special case
+            return u"GAME_OVER"
+        return [u"LEGAL",
             u"NULL_MOVE", 
             u"FIRST_MOVE_NOT_IN_CENTER", 
             u"DISJOINT", 
@@ -631,7 +638,8 @@ class Error:
             u"OUT_OF_SYNC",
             u"LOGIN_REQUIRED",
             u"WRONG_USER",
-            u"GAME_OVER"][errcode]
+            u"GAME_NOT_FOUND",
+            u"GAME_NOT_OVERDUE"][errcode]
 
 
 class Move:
@@ -666,6 +674,10 @@ class Move:
     def num_covers(self):
         """ Number of empty squares covered by this move """
         return len(self._covers)
+
+    def word(self):
+        """ Return the word formed by this move """
+        return self._word
 
     def details(self):
         """ Return a list of tuples describing this move """
