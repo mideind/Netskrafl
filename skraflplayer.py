@@ -565,6 +565,18 @@ class AutoPlayer:
         use more sophisticated heuristics to choose a move.
     """
 
+    # The robot level that uses only common words
+    AUTOPLAYER_COMMON = 15
+
+    @staticmethod
+    def create(state, robot_level = 0):
+        """ Create an Autoplayer instance of the desired ability level """
+        if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
+            # Create an AutoPlayer that only plays common words
+            return AutoPlayer_Common(state, robot_level)
+        # Create a normal AutoPlayer using the entire vocabulary
+        return AutoPlayer(state, robot_level)
+
     def __init__(self, state, robot_level = 0):
 
         # List of valid, candidate moves
@@ -677,35 +689,18 @@ class AutoPlayer:
         move = self._find_best_move(depth)
         if move is not None:
             return move
+
         # Can't do anything: try exchanging all tiles
         if self._state.is_exchange_allowed():
             return ExchangeMove(self.rack())
+
         # If we can't exchange tiles, we have to pass
         return PassMove()
 
     def _score_candidates(self):
         """ Calculate the score of each candidate """
 
-        if self._robot_level == 15:
-            # Special case for the weakest robot:
-            # Eliminate candidates that are not common words
-            # (except two-letter words which are OK)
-            # !!! TODO: Eliminate candidates that form
-            # !!! cross words that are not common?
-            logging.info(u"Scoring {0} candidates".format(len(self._candidates)))
-            common = Wordbase.dawg_common()
-            scored_candidates = []
-            for m in self._candidates:
-                sc = m.score(self._board)
-                if m.num_covers() == 2 or m.word() in common:
-                    scored_candidates.append((m, sc))
-                else:
-                    logging.info(u"Eliminating uncommon candidate {0} scoring {1}"
-                        .format(m.word(), sc))
-            #scored_candidates = [(m, m.score(self._board)) for m in self._candidates
-            #    if m.num_covers() == 2 or m.word() in common]
-        else:
-            scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
+        scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
 
         def keyfunc(x):
             """ Sort moves first by descending score;
@@ -733,30 +728,10 @@ class AutoPlayer:
             scored_candidates.sort(key=keyfunc)
         return scored_candidates
 
-    def _find_best_move(self, depth):
-        """ Analyze the list of candidate moves and pick the highest-scoring one """
+    def _pick_candidate(self, scored_candidates):
+        """ From a sorted list of >1 scored candidates, pick a move to make """
 
-        # assert depth >= 0
-
-        if not self._candidates:
-            # No moves: must exchange or pass instead
-            return None
-
-        num_candidates = len(self._candidates)
-
-        if num_candidates == 1:
-            # Only one legal move: play it without further complication
-            return self._candidates[0]
-
-        scored_candidates = self._score_candidates()
-
-        # Simply return the top scoring move
-        # print(u"Autoplayer: Rack '{0}' generated {1} candidate moves:".format(self._rack, len(scored_candidates)))
-        # Show top 20 candidates
-        # for m, sc in scored_candidates[0:20]:
-        #    print(u"Move {0} score {1}".format(m, sc))
-
-        # Pick one of N best moves, depending on the robot level
+        num_candidates = len(scored_candidates)
         picklist = self._robot_level
         if picklist < 1:
             picklist = 1
@@ -772,6 +747,59 @@ class AutoPlayer:
         # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
         #    logging.info(u"Move {0} score {1}".format(m, sc).encode("latin-1"))
         return scored_candidates[top_equal + randint(0, picklist - 1)][0]
+
+    def _find_best_move(self, depth):
+        """ Analyze the list of candidate moves and pick the highest-scoring one """
+
+        if not self._candidates:
+            # No moves: must exchange or pass instead
+            return None
+
+        if len(self._candidates) == 1:
+            # Only one legal move: play it without further complication
+            return self._candidates[0]
+
+        return self._pick_candidate(self._score_candidates())
+
+
+class AutoPlayer_Common(AutoPlayer):
+
+    """ This subclass of AutoPlayer only plays words from a
+        list of common words.
+    """
+
+    def __init__(self, state, robot_level):
+        AutoPlayer.__init__(self, state, robot_level)
+
+    def _pick_candidate(self, scored_candidates):
+        """ From a sorted list of >1 scored candidates, pick a move to make """
+
+        num_candidates = len(scored_candidates)
+        common = Wordbase.dawg_common() # List of playable common words
+        playable_candidates = []
+        # Iterate through the candidates in descending score order
+        # until we have enough playable ones or we have exhausted the list
+        i = 0 # Candidate index
+        p = 0 # Playable index
+        while p < self._robot_level and i < num_candidates:
+            m = scored_candidates[i][0] # Candidate move
+            w = m.word() # The principal word being played
+            if len(w) == 2 or w in common:
+                # This one is playable - but we still won't put it on
+                # the candidate list if has the same score as the
+                # first (top-scoring) playable word
+                if p == 1 and scored_candidates[i][1] == playable_candidates[0][1]:
+                    pass
+                else:
+                    playable_candidates.append(scored_candidates[i])
+                    p += 1
+            i += 1
+        # Now we have a list of up to self._robot_level playable moves
+        if p == 0:
+            # No playable move: give up and do an Exchange or Pass instead
+            return None
+        # Pick a move at random from the playable list
+        return playable_candidates[randint(0, p - 1)][0]
 
 
 class AutoPlayer_MiniMax(AutoPlayer):

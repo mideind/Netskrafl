@@ -1,5 +1,5 @@
 application: netskrafl
-version: bosporus
+version: algebra
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -8,7 +8,7 @@ instance_class: F2
 automatic_scaling:
   min_idle_instances: 2
   max_idle_instances: automatic
-  min_pending_latency: 200ms
+  min_pending_latency: 220ms
   max_pending_latency: 1250ms
 
 inbound_services:

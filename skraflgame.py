@@ -715,7 +715,9 @@ class Game:
 
     def autoplayer_move(self):
         """ Generate an AutoPlayer move and register it """
-        apl = AutoPlayer(self.state, self.robot_level)
+        # Create an appropriate AutoPlayer subclass instance
+        # depending on the robot level in question
+        apl = AutoPlayer.create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
         self.last_move = move # Store a response move
