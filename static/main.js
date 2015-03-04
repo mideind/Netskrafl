@@ -326,11 +326,14 @@ function populateEloList(json) {
       // Robot userids start with 'robot-'
       var isRobot = item.userid.indexOf("robot-") === 0;
       var chId = "chall" + i.toString();
-      var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
-         (item.chall ? "'" : " grayed'") +
-         " id='" + chId + "'></span>";
+      var ch = "";
       var nick = escapeHtml(item.nick);
       var info = "", ready = "";
+      if (item.userid != userId())
+         // Not the logged-in user himself: allow a challenge
+         ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
+            (item.chall ? "'" : " grayed'") +
+            " id='" + chId + "'></span>";
       if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
@@ -364,11 +367,13 @@ function populateEloList(json) {
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
             showUserInfo
          );
-      // Associate a click handler with the challenge icon
-      $("#" + chId).click(
-         { userid: item.userid, nick: item.nick, fullname: item.fullname },
-         markChallenge
-      );
+      if (ch.length)
+         // Associate a click handler with the challenge icon,
+         // if this is not the logged-in user himself
+         $("#" + chId).click(
+            { userid: item.userid, nick: item.nick, fullname: item.fullname },
+            markChallenge
+         );
    }
 }
 
