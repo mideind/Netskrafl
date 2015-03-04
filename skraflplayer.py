@@ -64,7 +64,7 @@
 
 """
 
-# import logging
+import logging
 from random import randint
 
 from dawgdictionary import DawgDictionary, Navigation, Wordbase
@@ -692,9 +692,18 @@ class AutoPlayer:
             # (except two-letter words which are OK)
             # !!! TODO: Eliminate candidates that form
             # !!! cross words that are not common?
+            logging.info(u"Scoring {0} candidates".format(len(self._candidates)))
             common = Wordbase.dawg_common()
-            scored_candidates = [(m, m.score(self._board)) for m in self._candidates
-                if m.num_covers() == 2 or m.word() in common]
+            scored_candidates = []
+            for m in self._candidates:
+                sc = m.score(self._board)
+                if m.num_covers() == 2 or m.word() in common:
+                    scored_candidates.append((m, sc))
+                else:
+                    logging.info(u"Eliminating uncommon candidate {0} scoring {1}"
+                        .format(m.word(), sc))
+            #scored_candidates = [(m, m.score(self._board)) for m in self._candidates
+            #    if m.num_covers() == 2 or m.word() in common]
         else:
             scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
 

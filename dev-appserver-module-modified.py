@@ -398,18 +398,18 @@ class Module(object):
     for fname in filelist:
       if not os.path.isfile(fname):
         # Skip directories and symlinks
-        logging.info("Ignoring directory or symlink {0}".format(fname))
+        #logging.info("Ignoring directory or symlink {0}".format(fname))
         continue
       if fname.startswith("."):
         # Skip everything starting with a period
-        logging.info("Ignoring changed file {0}".format(fname))
+        #logging.info("Ignoring changed file {0}".format(fname))
         continue
       # Skip files with the extensions specified
       dot_ix = fname.rfind(".")
       if dot_ix >= 0:
         ext = fname[dot_ix:]
         if ext in TEMP_EXTENSIONS:
-          logging.info("Ignoring changed file {0}".format(fname))
+          #logging.info("Ignoring changed file {0}".format(fname))
           continue
       result.append(fname)
     return result
