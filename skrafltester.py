@@ -191,16 +191,25 @@ def test(num_games, opponent, silent):
 
     t1 = time.time()
 
-    print(u"Test completed, {0} games played in {1:.2f} seconds, {2:.2f} seconds per game".format(num_games,
-        t1 - t0, (t1 - t0) / num_games))
+    print(u"Test completed, {0} games played in {1:.2f} seconds, {2:.2f} seconds per game"
+        .format(num_games,
+            t1 - t0, (t1 - t0) / num_games)
+    )
 
     def reportscore(player):
         if gameswon[player] == 0:
-            print(u"{2} won {0} games and scored an average of {1:.1f} points per game".format(gameswon[player],
-                float(totalpoints[player]) / num_games, players[player][0]))
+            print(u"{2} won {0} games and scored an average of {1:.1f} points per game"
+                .format(gameswon[player],
+                    float(totalpoints[player]) / num_games,
+                    players[player][0])
+            )
         else:
-            print(u"{3} won {0} games with an average margin of {2:.1f} and scored an average of {1:.1f} points per game".format(gameswon[player],
-                float(totalpoints[player]) / num_games, float(sumofmargin[player]) / gameswon[player], players[player][0]))
+            print(u"{3} won {0} games with an average margin of {2:.1f} and scored an average of {1:.1f} points per game"
+                .format(gameswon[player],
+                    float(totalpoints[player]) / num_games,
+                    float(sumofmargin[player]) / gameswon[player],
+                    players[player][0])
+            )
 
     reportscore(0)
     reportscore(1)
