@@ -95,6 +95,8 @@
 
 """
 
+from __future__ import print_function
+
 import os
 import sys
 import codecs
@@ -105,11 +107,13 @@ import struct
 import io
 
 from dawgdictionary import DawgDictionary
-
 from languages import Alphabet
+
 
 MAXLEN = 48 # Longest possible word to be processed
 SCRABBLE_MAXLEN = 15 # Longest possible word in a Scrabble database
+COMMON_MAXLEN = 12 # Longest words in common word list used by weakest robot
+
 
 class _DawgNode:
 
@@ -713,7 +717,8 @@ class DawgBuilder:
                 lastword = word
             if incount % 5000 == 0:
                 # Progress indicator
-                print ("{0}...\r".format(incount)),
+                print ("{0}...".format(incount), end="\r")
+                sys.stdout.flush()
             # Advance to the next word in the file we read from
             smallest.read_word()
         # Done merging: close all files
@@ -771,6 +776,7 @@ class DawgBuilder:
         self._output_text(relpath, output)
         print("DawgBuilder done")
 
+
 # Filter functions
 # The resulting DAWG will include all words for which filter() returns True, and exclude others.
 # Useful for excluding long words or words containing "foreign" characters.
@@ -779,7 +785,6 @@ def nofilter(word):
     """ No filtering - include all input words in output graph """
     return True
 
-# disallowed = set([u"je", u"oj", u"pé"]) # Previously had u"im" and u"ím" here
 
 def filter_skrafl(word):
     """ Filtering for Icelandic Scrabble(tm)
@@ -788,19 +793,19 @@ def filter_skrafl(word):
         Exclude two-letter words in the word database that are not
             allowed according to Icelandic Scrabble rules
     """
-    lenw = len(word)
-    if lenw > SCRABBLE_MAXLEN:
-        # Too long, not necessary for Scrabble
-        return False
-#    if any(c in word for c in u"cqwzü"):
-#        # Non-Icelandic character
-#        return False
-#    if word in disallowed:
-#        # Two-letter word that is not allowed in Icelandic Scrabble
-#        return False
-    return True
+    return len(word) <= SCRABBLE_MAXLEN
+
+
+def filter_common(word):
+    """ For the list of common words used by the weakest robot,
+        skip words longer than 12 characters (those would almost
+        never be used anyway)
+    """
+    return len(word) <= COMMON_MAXLEN
+
 
 import time
+
 
 def run_test():
     """ Build a DAWG from the files listed """
@@ -815,6 +820,7 @@ def run_test():
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
+
 def run_twl06():
     """ Build a DAWG from the files listed """
     # This creates a DAWG from a single file named TWL06.txt,
@@ -825,50 +831,37 @@ def run_twl06():
     db.build(
         ["TWL06.txt"], # Input files to be merged
         "TWL06", # Output file - full name will be TWL06.text.dawg
-        "resources") # Subfolder of input and output files
+        "resources" # Subfolder of input and output files
+    )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-def run_full_bin():
-    """ Build a DAWG from the files listed """
-    # This creates a DAWG from the full database of 'Beygingarlýsing íslensks nútímamáls' (BIN)
-    # (except abbreviations, 'skammstafanir', and proper names, 'sérnöfn')
-    # This is about 2.6 million words, generating 103,200 graph nodes
-    print(u"Starting DAWG build for Beygingarlýsing íslensks nútímamáls")
-    db = DawgBuilder()
-    t0 = time.time()
-    # "isl" specifies Icelandic sorting order - modify this for other languages
-    db.build(
-        ["ordalisti1.txt", "ordalisti2.txt", "smaord.sorted.txt"], # Input files to be merged
-        "ordalisti-bin", # Output file - full name will be ordalisti-bin.text.dawg
-        "resources", # Subfolder of input and output files
-        "isl", # Identifier of locale to use for sorting order
-        nofilter) # Word filter function to apply
-    t1 = time.time()
-    print("Build took {0:.2f} seconds".format(t1 - t0))
 
 def run_skrafl():
     """ Build a DAWG from the files listed """
-    # This creates a DAWG from the full database of 'Beygingarlýsing íslensks nútímamáls' (BIN)
-    # (except abbreviations, 'skammstafanir', and proper names, 'sérnöfn'), but
-    # filtered according to filter_skrafl() (see comment above) and with a few two-letter
-    # words added according to Icelandic Scrabble rules
-    # Output is about 2.2 million words, generating 102,668 graph nodes
+    # This creates a DAWG from the full database of Icelandic words in
+    # 'Beygingarlýsing íslensks nútímamáls' (BIN), except abbreviations,
+    # 'skammstafanir', and proper names, 'sérnöfn'.
+    # The words in ordalisti.add.txt are added to BIN, and words in
+    # ordalisti.remove.txt (known errors) are removed.
+    # The result is about 2.3 million words, generating >100,000 graph nodes
     print(u"Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
     db = DawgBuilder()
     t0 = time.time()
-    # "isl" specifies Icelandic sorting order - modify this for other languages
+    # "isl"/"is_IS" specifies Icelandic locale collation (sorting) order -
+    # modify this for other languages
     db.build(
         ["ordalistimax15.sorted.txt", "ordalisti.add.txt"], # Input files to be merged
         "ordalisti", # Output file - full name will be ordalisti.text.dawg
         "resources", # Subfolder of input and output files
-        "isl" if sys.platform.startswith("win32") else "is_IS", # Identifier of locale to use for sorting order
+        "isl" if sys.platform.startswith("win32") else "is_IS", # See comment above
         filter_skrafl, # Word filter function to apply
         "ordalisti.remove.txt" # Words to remove
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
+    # Test loading of DAWG
     dawg = DawgDictionary()
     fpath = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
     t0 = time.time()
@@ -877,6 +870,7 @@ def run_skrafl():
 
     print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
 
+    # Store DAWG as a Python cPickle file
     t0 = time.time()
     dawg.store_pickle(os.path.abspath(os.path.join("resources", "ordalisti.dawg.pickle")))
     t1 = time.time()
@@ -888,17 +882,18 @@ def run_skrafl():
     print(u"Starting DAWG build for list of common words")
     db = DawgBuilder()
     t0 = time.time()
-    # "isl" specifies Icelandic sorting order - modify this for other languages
+    # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
         ["ordalisti.algeng.sorted.txt"], # Input files to be merged
-        "algeng", # Output file - full name will be ordalisti.text.dawg
+        "algeng", # Output file - full name will be algeng.text.dawg
         "resources", # Subfolder of input and output files
-        "isl" if sys.platform.startswith("win32") else "is_IS", # Identifier of locale to use for sorting order
-        filter_skrafl # Word filter function to apply
+        "isl" if sys.platform.startswith("win32") else "is_IS",
+        filter_common # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
+    # Test loading of DAWG for common words
     dawg = DawgDictionary()
     fpath = os.path.abspath(os.path.join("resources", "algeng.text.dawg"))
     t0 = time.time()
@@ -907,13 +902,18 @@ def run_skrafl():
 
     print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
 
+    # Store common words DAWG in a Python cPickle file
     t0 = time.time()
     dawg.store_pickle(os.path.abspath(os.path.join("resources", "algeng.dawg.pickle")))
     t1 = time.time()
 
     print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
 
+    print("DAWG builder run complete")
+
 
 if __name__ == '__main__':
 
+    # Build the whole Icelandic Netskrafl word database by default
     run_skrafl()
+

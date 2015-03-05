@@ -770,6 +770,7 @@ class AutoPlayer_Common(AutoPlayer):
 
     def __init__(self, state, robot_level):
         AutoPlayer.__init__(self, state, robot_level)
+        self._play_one_of = 20 # Plays one of the 20 top candidates
 
     def _pick_candidate(self, scored_candidates):
         """ From a sorted list of >1 scored candidates, pick a move to make """
@@ -781,7 +782,7 @@ class AutoPlayer_Common(AutoPlayer):
         # until we have enough playable ones or we have exhausted the list
         i = 0 # Candidate index
         p = 0 # Playable index
-        while p < self._robot_level and i < num_candidates:
+        while p < self._play_one_of and i < num_candidates:
             m = scored_candidates[i][0] # Candidate move
             w = m.word() # The principal word being played
             if len(w) == 2 or w in common:
@@ -794,7 +795,7 @@ class AutoPlayer_Common(AutoPlayer):
                     playable_candidates.append(scored_candidates[i])
                     p += 1
             i += 1
-        # Now we have a list of up to self._robot_level playable moves
+        # Now we have a list of up to self._play_one_of playable moves
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None

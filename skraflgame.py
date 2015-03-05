@@ -325,9 +325,12 @@ class Game:
 
     # The available autoplayers (robots)
     AUTOPLAYERS = [
-        (u"Fullsterkur", u"Velur stigahæsta leik í hverri stöðu", 0),
-        (u"Miðlungur", u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu", 8),
-        (u"Amlóði", u"Velur af handahófi einn af 15 stigahæstu leikjum í hverri stöðu", 15)
+        (u"Fullsterkur",
+            u"Velur stigahæsta leik í hverri stöðu", 0),
+        (u"Miðlungur",
+            u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu", 8),
+        (u"Amlóði",
+            u"Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita", 15)
         ]
 
     # The default nickname to display if a player has an unreadable nick
