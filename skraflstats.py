@@ -295,12 +295,9 @@ def _create_ratings(timestamp):
             key = _key(sm)
 
             def _augment(prop):
-                if key in t_yesterday:
-                    sm[prop + "_yesterday"] = t_yesterday[key][prop]
-                if key in t_week_ago:
-                    sm[prop + "_week_ago"] = t_week_ago[key][prop]
-                if key in t_month_ago:
-                    sm[prop + "_month_ago"] = t_month_ago[key][prop]
+                sm[prop + "_yesterday"] = t_yesterday[key][prop] if key in t_yesterday else 0
+                sm[prop + "_week_ago"] = t_week_ago[key][prop] if key in t_week_ago else 0
+                sm[prop + "_month_ago"] = t_month_ago[key][prop] if key in t_month_ago else 0
 
             _augment("rank")
             _augment("games")

@@ -1,5 +1,5 @@
 application: netskrafl
-version: algebra
+version: burqa
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -111,6 +111,7 @@ skip_files:
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
 - ^(.*/)?.*\.md$
+- ^(.*/)?.*\.bat$
 - ^(.*/)?.*\.bak$
 - ^(.*/)?.*\.tmp$
 - ^(.*/)?.*\.TMP$

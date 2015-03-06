@@ -24,7 +24,7 @@
       newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
 {% endfor %}
 
-{% if game.my_turn(user.id()) %}
+{% if user and game.my_turn(user.id()) %}
       /* Show the opponent's most recent move */
 {% for m in game.moves[-1:] %}
       highlightNewestMove(colorOf({{ m.player }}));
@@ -95,7 +95,7 @@
 {% endif %}
       scoreLeft = {{ game.final_scores()[0] }};
       scoreRight = {{ game.final_scores()[1] }};
-{% if game.is_overdue() and not game.my_turn(user.id()) %}
+{% if user and game.is_overdue() and not game.my_turn(user.id()) %}
       // Display option to force opponent to resign
       $("#force-resign").css("display", "inline");
 {% endif %}
@@ -284,7 +284,7 @@
    <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
 </div>
 
-{% if user.beginner() %}
+{% if user and user.beginner() %}
 <!-- Help on the board colors -->
 <div class="board-help" title="Hvernig reitirnir margfalda stigin">
 <div class="board-help-close" title="Loka þessari hjálp"><span class="glyphicon glyphicon-remove"></span></div>
@@ -302,7 +302,7 @@
 
 {%- block endscripts -%}
 
-{%- if user.audio() -%}
+{%- if user and user.audio() -%}
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
    <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">

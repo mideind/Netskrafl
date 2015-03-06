@@ -322,7 +322,8 @@ def _gamelist():
                 "sc1": g["sc1"],
                 "ts": Alphabet.format_timestamp(ts),
                 "my_turn": g["my_turn"],
-                "overdue": overdue
+                "overdue": overdue,
+                "tile_count" : g["tile_count"]
             })
     return result
 
@@ -1149,31 +1150,31 @@ def newgame():
 def board():
     """ The main game page """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
-
     uuid = request.args.get("game", None)
     game = None
 
-    if uuid is not None:
+    if uuid:
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
-
-    is_over = False
-
-    if game is not None:
-        is_over = game.is_over()
-        if not (is_over or game.has_player(user.id())):
-            # Non-players are only allowed to view if the game is over
-            game = None
 
     if game is None:
         # No active game to display: go back to main screen
         return redirect(url_for("main"))
 
-    player_index = game.player_index(user.id()) # May be None
+    user = User.current()
+    is_over = game.is_over()
+
+    if not is_over:
+        # Game still in progress
+        if user is None:
+            # User hasn't logged in yet: redirect to login page
+            return redirect(url_for('login'))
+        if not game.has_player(user.id()):
+            # This user is not a party to the game: redirect to main page
+            return redirect(url_for("main"))
+
+    # user can be None if the game is over - we do not require a login in that case
+    player_index = None if user is None else game.player_index(user.id())
 
     # Create a Google App Engine Channel API token
     # to enable refreshing of the board when the
@@ -1181,7 +1182,7 @@ def board():
     # opponent is an autoplayer as we do want the
     # presence detection functionality for the human
     # user.
-    if game.is_over():
+    if is_over:
         channel_token = None
     else:
         assert player_index is not None

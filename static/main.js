@@ -492,18 +492,19 @@ function populateGameList(json) {
          (item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf") : "";
       var overdue = "<span title='" + overdueText + "' class='glyphicon glyphicon-hourglass" +
          (item.overdue ? "" : " grayed") + "'></span>";
-      var myWin = "<span class='glyphicon glyphicon-bookmark" +
-         (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
+      var winLose = item.sc0 < item.sc1 ? " losing" : "";
+      var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
+         Math.round(item.tile_count * 100 / 104).toString() + "%'></div></div>";
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
          "<span class='list-overdue'>" + overdue + "</span>" +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp'>" + opp + "</span>" +
-         "<span class='list-win'>" + myWin + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>" +
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
+         "<span class='list-tc'>" + tileCount + "</span>" +
          "</a></div>";
       $("#gamelist").append(str);
       if (item.my_turn)

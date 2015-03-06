@@ -327,6 +327,12 @@ class GameModel(ndb.Model):
                 opp = u0
                 sc1, sc0 = gm.score0, gm.score1
                 my_turn = (gm.to_move == 1)
+            # Count the tiles that have been laid down
+            tc = 0
+            for m in gm.moves:
+                if m.coord:
+                    # Normal tile move
+                    tc += len(m.tiles.replace(u'?', u''))
             return dict(
                 uuid = uuid,
                 ts = gm.ts_last_move or gm.timestamp,
@@ -334,7 +340,8 @@ class GameModel(ndb.Model):
                 my_turn = my_turn,
                 sc0 = sc0,
                 sc1 = sc1,
-                robot_level = gm.robot_level)
+                robot_level = gm.robot_level,
+                tile_count = tc)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
