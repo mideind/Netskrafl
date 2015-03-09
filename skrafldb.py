@@ -248,6 +248,9 @@ class GameModel(ndb.Model):
     # Game preferences, such as duration, alternative bags or boards, etc.
     prefs = ndb.JsonProperty(required = False, default = None)
 
+    # Count of tiles that have been laid on the board
+    tile_count = ndb.IntegerProperty(required = False, indexed = False, default = None)
+
     def set_player(self, ix, user_id):
         """ Set a player key property to point to a given user, or None """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
@@ -327,12 +330,17 @@ class GameModel(ndb.Model):
                 opp = u0
                 sc1, sc0 = gm.score0, gm.score1
                 my_turn = (gm.to_move == 1)
-            # Count the tiles that have been laid down
-            tc = 0
-            for m in gm.moves:
-                if m.coord:
-                    # Normal tile move
-                    tc += len(m.tiles.replace(u'?', u''))
+            # Obtain a count of the tiles that have been laid down
+            tc = gm.tile_count
+            if tc is None:
+                # Not stored: we must count the tiles manually
+                # This will not be 100% accurate as tiles will be double-counted
+                # if they are a part of two words
+                tc = 0
+                for m in gm.moves:
+                    if m.coord:
+                        # Normal tile move
+                        tc += len(m.tiles.replace(u'?', u''))
             return dict(
                 uuid = uuid,
                 ts = gm.ts_last_move or gm.timestamp,
@@ -1108,4 +1116,52 @@ class RatingModel(ndb.Model):
                 # The rating lists normally contain 100 entities
                 break
             offset += CHUNK_SIZE
+
+
+class ChatModel(ndb.Model):
+    """ Models chat communications between users """
+
+    # The channel (conversation) identifier
+    channel = ndb.StringProperty(indexed = True, required = True)
+
+    # The user originating this chat message
+    user = ndb.KeyProperty(kind = UserModel, indexed = True, required = True)
+
+    # The timestamp of this chat message
+    timestamp = ndb.DateTimeProperty(indexed = True, auto_now_add = True)
+
+    # The actual message
+    msg = ndb.StringProperty(indexed = False)
+
+    @classmethod
+    def list_conversation(cls, channel, maxlen = 100):
+        """ Return the newest items in a conversation """
+        CHUNK_SIZE = 100
+        q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
+        offset = 0
+        while True:
+            count = 0
+            for cm in q.fetch(CHUNK_SIZE, offset = offset):
+                v = dict(
+                    user = cm.user.id(),
+                    ts = cm.timestamp,
+                    msg = cm.msg
+                )
+                yield v
+                count += 1
+                if maxlen and offset + count >= maxlen:
+                    return
+            if count < CHUNK_SIZE:
+                break
+            offset += CHUNK_SIZE
+
+    @classmethod
+    def add_msg(cls, channel, userid, msg, timestamp=None):
+        """ Adds a message to a chat conversation on a channel """
+        cm = cls()
+        cm.channel = channel
+        cm.user = ndb.Key(UserModel, userid)
+        cm.msg = msg
+        cm.timestamp = timestamp or datetime.utcnow()
+        cm.put()
 

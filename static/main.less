@@ -157,6 +157,21 @@
 .glyphicon-dashboard:before {
    content: "\E332";
 }
+.glyphicon-show-lines:before {
+   content: "\E159";
+}
+.glyphicon-user-conversation:before {
+   content: "\E527";
+}
+.glyphicon-life-preserver:before {
+   content: "\E308";
+}
+.glyphicon-conversation:before {
+   content: "\E245";
+}
+.glyphicon-chat:before {
+   content: "\E246";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -565,14 +580,12 @@ div.clockface {
    color: @pass-btn;
 }
 
-div.movelist {
-   position: absolute;
-   top: 86px;
+div.right-area {
+   position: relative;
+   margin-top: 8px;
    left: 0px;
    height: 420px;
    width: 100%;
-   background-color: @background;
-   overflow: auto;
    font-size: 16px;
    line-height: 16px;
    font-weight: 400;
@@ -580,13 +593,187 @@ div.movelist {
    cursor: default;
 }
 
-div.movelist.noscroll {
-   overflow-y: hidden;
+div.right-area.with-clock {
+   height: 380px;
+   margin-top: 48px;
 }
 
-div.movelist.with-clock {
-   top: 126px;
-   height: 380px;
+div.movelist {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @background;
+   overflow: auto;
+   z-index: 3;
+}
+
+div.twoletter {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme4;
+   z-index: 2;
+}
+
+div.chat {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme5;
+   z-index: 1;
+}
+
+div.chat-area {
+   position: absolute;
+   top: 6px;
+   left: 6px;
+   height: 350px;
+   width: 278px;
+   padding: 6px;
+   overflow: auto;
+}
+
+div.chat-area.with-clock {
+   height: 310px;
+}
+
+div.chat-msg {
+   display: inline-block;
+   border-radius: 8px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   padding-left: 10px;
+   padding-right: 10px;
+   color: black;
+   font-size: 15px;
+   line-height: 20px;
+   max-width: 80%;
+   margin-bottom: 6px;
+}
+
+div.chat-msg.left {
+   float: left;
+   clear: both;
+   text-align: left;
+}
+
+div.chat-msg.right {
+   float: right;
+   clear: both;
+   text-align: right;
+}
+
+div.chat-msg.local {
+   background-color: lighten(@racktile,18%);
+}
+
+div.chat-msg.remote {
+   background-color: lighten(@freshtile,18%);
+}
+
+div.chat-msg img {
+   vertical-align: -10px; /* Emoticon alignment to baseline */
+}
+
+div.chat-input {
+   position: absolute;
+   bottom: 0px;
+   left: 0px;
+   height: 36px;
+   padding: 6px;
+   vertical-align: bottom;
+}
+
+input.chat-txt {
+   font-family: @font1, @font2, @font3, @font4;
+   width: 218px;
+   font-size: 15px;
+   height: 22px;
+   font-weight: normal;
+   border-style: solid;
+   border-color: @freshtile;
+   border-width: 1px;
+   border-radius: 3px;
+   margin-top: 1px;
+   padding-top: 4px;
+   padding-bottom: 3px;
+   padding-left: 6px;
+   padding-right: 6px;
+}
+
+div.modal-close#chat-send {
+   display: inline-block;
+   position: relative;
+   font-size: 18px;
+   line-height: 18px;
+   height: 25px;
+   bottom: 0px;
+   right: 0px;
+   margin-left: 8px;
+   margin-bottom: 2px;
+   margin-right: 0;
+   margin-top: 0;
+   padding-top: 4px;
+   padding-bottom: 0px;
+   background-color: darken(@double-letter, 10%);
+   color: white;
+}
+
+div.right-tab {
+   position: absolute;
+   left: -40px;
+   height: 38px;
+   min-height: 38px;
+   width: 45px;
+   min-width: 45px;
+   overflow: visible;
+   visibility: visible;
+   text-align: left;
+   vertical-align: middle;
+   padding-top: 14px;
+   padding-left: 10px;
+   font-size: 20px;
+   line-height: 20px;
+   border-radius: 5px;
+   opacity: 0.6;
+}
+
+div.right-tab#tab-movelist {
+   top: 0px;
+   background-color: @background;
+}
+
+div.right-tab#tab-twoletter {
+   top: 58px;
+   background-color: @theme4;
+}
+
+div.right-tab#tab-chat {
+   top: 116px;
+   background-color: @theme5;
+}
+
+div.right-tab.selected {
+   opacity: 1.0;
+}
+
+div.right-tab:hover {
+   opacity: 1.0;
+}
+
+div.right-tab.alert {
+   color: @alert;
+   opacity: 0.8;
+}
+
+div.movelist.noscroll {
+   overflow-y: hidden;
 }
 
 div.leftmove {

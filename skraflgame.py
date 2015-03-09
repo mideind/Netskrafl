@@ -536,10 +536,14 @@ class Game:
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
         gm.prefs = self._preferences
+        tile_count = 0
         movelist = []
         for m in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state.board())
+            if coord:
+                # Regular move: count the tiles actually laid down
+                tile_count += m.move.num_covers()
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
@@ -547,6 +551,7 @@ class Game:
             mm.timestamp = m.ts
             movelist.append(mm)
         gm.moves = movelist
+        gm.tile_count = tile_count
         # Update the database entity
         gm.put()
 

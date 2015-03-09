@@ -284,7 +284,8 @@ function showClock() {
    $(".clockleft").css("display", "inline-block");
    $(".clockright").css("display", "inline-block");
    $(".clockface").css("display", "block");
-   $("div.movelist").addClass("with-clock");
+   $("div.right-area").addClass("with-clock");
+   $("div.chat-area").addClass("with-clock");
 }
 
 function startClock(igt) {
@@ -546,7 +547,7 @@ function appendMove(player, co, tiles, score) {
    var str;
    var title = tileMove ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
-      str = '<div class="gameover"><span class="gameovermsg">' + tiles + '</span>' +
+      str = '<div class="move gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
       // Show a congratulatory message if the local player is the winner
       var winner = -2; // -1 is reserved
@@ -561,7 +562,7 @@ function appendMove(player, co, tiles, score) {
    else
    if (player === 0) {
       /* Left side player */
-      str = '<div ' + title + 'class="leftmove">' +
+      str = '<div ' + title + 'class="move leftmove">' +
          '<span class="total">' + leftTotal + '</span>' +
          '<span class="score">' + score + '</span>' +
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
@@ -570,7 +571,7 @@ function appendMove(player, co, tiles, score) {
    }
    else {
       /* Right side player */
-      str = '<div ' + title + 'class="rightmove">' +
+      str = '<div ' + title + 'class="move rightmove">' +
          '<span class="' + wrdclass + '">' + co +
          ' <i>' + tiles + '</i></span>' +
          '<span class="score">' + score + '</span>' + 
@@ -607,11 +608,11 @@ function appendMove(player, co, tiles, score) {
       }
    }
    /* Manage the scrolling of the move list */
-   var lastchild = $("div.movelist:last-child"); /* .children().last() causes problems */
-   var firstchild = movelist.children().eq(0);
+   var lastchild = $("div.movelist .move").last();
+   var firstchild = $("div.movelist .move").first();
    var topoffset = lastchild.position().top -
       firstchild.position().top +
-      lastchild.height();
+      lastchild.outerHeight();
    var height = movelist.height();
    if (topoffset >= height)
       movelist.scrollTop(topoffset - height);
@@ -1713,6 +1714,117 @@ function forceResign() {
    // We trust that the Channel API will return a new client state to us
 }
 
+// Have we loaded this game's chat channel from the server?
+var chatLoaded = false;
+
+function populateChat(json) {
+   // Populate the chat window with the existing conversation for this game
+   $("#chat-area").html("");
+   if (json.messages === undefined)
+      // Something went wrong
+      return;
+   var player_index = localPlayer();
+   var i = 0;
+   for (; i < json.messages.length; i++) {
+      var m = json.messages[i];
+      var p = player_index;
+      if (m.from_userid != userId())
+         // The message is from the remote user
+         p = 1 - p;
+      showChatMsg(p, m.msg);
+   }
+}
+
+function loadChat() {
+   // Load this game's chat channel from the server
+   chatLoaded = true; // Prevent race condition
+   serverQuery("/chatload",
+      {
+         channel: "game:" + gameId()
+      },
+      populateChat
+   );
+}
+
+function selectTab(ev) {
+   /* A right-side tab has been selected: bring it to the foreground */
+   var tabSel = $(this).attr("id");
+   $("div.movelist").css("z-index", tabSel == "tab-movelist" ? "3" : "1");
+   $("#tab-movelist").toggleClass("selected", tabSel == "tab-movelist");
+   $("div.twoletter").css("z-index", tabSel == "tab-twoletter" ? "3" : "1");
+   $("#tab-twoletter").toggleClass("selected", tabSel == "tab-twoletter");
+   $("div.chat").css("z-index", tabSel == "tab-chat" ? "3" : "1");
+   $("#tab-chat").toggleClass("selected", tabSel == "tab-chat");
+   if (tabSel == "tab-chat") {
+      // Selecting the chat tab
+      // Remove the alert, if any
+      $("#tab-chat").removeClass("alert");
+      // Check whether the chat conversation needs loading
+      if (!chatLoaded)
+         loadChat();
+      // Focus on the text input field
+      $("#msg").focus();
+   }
+}
+
+function sendChatMsg() {
+   /* Send a chat message that has been entered in the chat text input box */
+   var chatMsg = $("#msg").val().trim();
+   if (chatMsg.length)
+      // Send chat message to server
+      serverQuery("/chatmsg",
+         {
+            channel: "game:" + gameId(),
+            msg: chatMsg
+         }
+      );
+   $("#msg").val("").focus();
+}
+
+function handleChatEnter(ev) {
+   /* Handle the Enter key when pressed in the chat message text field */
+   if (ev.keyCode == 13) {
+      ev.preventDefault();
+      sendChatMsg();
+   }
+}
+
+function showChatMsg(player_index, msg) {
+   /* Show a newly arrived chat message. It may be coming from the
+      current player herself or from the opponent */
+   var escMsg = escapeHtml(msg);
+   escMsg = replaceEmoticons(escMsg);
+   var str = "<div class='chat-msg " +
+      (player_index === 0 ? "left " : "right ") +
+      (player_index == localPlayer() ? "local" : "remote") +
+      "'>" + escMsg + "</div>";
+   var chatArea = $("#chat-area");
+   chatArea.append(str);
+   /* Manage the scrolling of the chat message list */
+   var lastchild = $("#chat-area .chat-msg").last();
+   var firstchild = $("#chat-area .chat-msg").first();
+   var topoffset = lastchild.position().top -
+      firstchild.position().top +
+      lastchild.outerHeight();
+   var height = chatArea.height();
+   if (topoffset >= height)
+      chatArea.scrollTop(topoffset - height);
+}
+
+function markChatMsg() {
+   // If the chat tab is not visible (selected), put an alert on it
+   // to indicate that a new chat message has arrived
+   if (!$("#tab-chat").hasClass("selected")) {
+      $("#tab-chat").toggleClass("alert", true);
+      // Play audio, if present
+      var newMsg = document.getElementById("new-msg");
+      if (newMsg)
+         // Note that playing media outside user-invoked event handlers does not work on iOS.
+         // That is a 'feature' introduced and documented by Apple.
+         newMsg.play();
+   }
+}
+
 /* Channel API stuff */
 
 var channelToken = null;
@@ -1740,6 +1852,18 @@ function channelOnMessage(msg) {
    if ((json.stale !== undefined) && json.stale)
       // We missed updates on our channel: reload the board
       window.location.reload(true);
+   else
+   if (json.msg !== undefined) {
+      // This is a chat message
+      var player_index = localPlayer();
+      if (json.from_userid != userId()) {
+         // The message is from the remote user
+         player_index = 1 - player_index;
+         // Put an alert on the chat tab if it is not selected
+         markChatMsg();
+      }
+      showChatMsg(player_index, json.msg);
+   }
    else {
       // json now contains an entire client state update, as a after submitMove()
       resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
@@ -1816,6 +1940,13 @@ function initSkrafl(jQuery) {
 
    // Bind a handler to the close icon on the board color help panel
    $("div.board-help-close span").click(closeHelpPanel);
+
+   // Prepare the right-side tabs
+   $("div.right-tab").click(selectTab);
+
+   // Chat message send button
+   $("#chat-send").click(sendChatMsg);
+   $("#msg").keypress(13, handleChatEnter);
 
    lateInit();
 

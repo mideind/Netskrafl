@@ -74,6 +74,30 @@
       return "{{ game.id() }}";
    }
 
+   function userId() {
+      /* Return the identifier of the local user */
+      return "{{ '' if user == None else user.id() }}";
+   }
+
+   /* Array of supported emoticons in chat */
+   var emoticons = Array(
+      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" }
+   );
+
+   function replaceEmoticons(str) {
+      // Replace all emoticon shortcuts in the string str with a corresponding image URL
+      var i;
+      for (i = 0; i < emoticons.length; i++) {
+         var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+         // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
+         str = str.split(emoticons[i].icon).join(img);
+      }
+      return str;
+   }
+
    function initialGameTime() {
       /* Return the time state of the game, i.e. its duration in minutes
          per player and the elapsed time so far for each player in seconds */
@@ -145,7 +169,22 @@
       <h3 class="clockright"></h3>
       <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
    </div>
-   <div class="movelist">
+   <div class="right-area">
+      <div class="right-tab selected" id="tab-movelist"><span class="glyphicon glyphicon-show-lines"></span></div>
+      <div class="movelist">
+      </div>
+      <div class="right-tab" id="tab-twoletter"><span class="glyphicon glyphicon-life-preserver"></div>
+      <div class="twoletter">
+         <p>Hi, this is twoletter!</p>
+      </div>
+      <div class="right-tab" id="tab-chat"><span class="glyphicon glyphicon-conversation"></span></div>
+      <div class="chat">
+         <div class="chat-area" id="chat-area"></div>
+         <div class="chat-input">
+            <input type="text" name="msg" id="msg" maxlength="254" class="chat-txt"></input><!--
+         --><div class="modal-close" id="chat-send" title="Senda"><span class="glyphicon glyphicon-chat"></span></div>
+         </div>
+      </div>
    </div>
 </div>
 
@@ -306,6 +345,9 @@
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
    <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="new-msg" preload="auto">
+   <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
 </audio>
 {% endif %}
 

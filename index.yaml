@@ -45,6 +45,12 @@ indexes:
   - name: kind
   - name: expiry
 
+- kind: ChatModel
+  properties:
+  - name: channel
+  - name: timestamp
+    direction: desc
+
 - kind: GameModel
   properties:
   - name: over

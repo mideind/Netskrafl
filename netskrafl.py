@@ -44,7 +44,7 @@ from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel, RatingModel
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel
 
 
 # Standard Flask initialization
@@ -899,6 +899,56 @@ def waitcheck():
         waiting = _opponent_waiting(User.current_id(), opp_id)
 
     return jsonify(userid = opp_id, waiting = waiting)
+
+
+@app.route("/chatmsg", methods=['POST'])
+def chatmsg():
+    """ Send a chat message on a conversation channel """
+
+    channel = request.form.get('channel', u"")
+    msg = request.form.get('msg', u"")
+
+    if not User.current_id() or not channel or not msg:
+        # We must have a logged-in user
+        return jsonify(ok = False)
+
+    # Add a message entity to the data store
+    ChatModel.add_msg(channel, User.current_id(), msg)
+    if channel.startswith(u"game:"):
+        # Send notifications to both players on the game channel
+        uuid = channel[5:] # The game id
+        # The message to be sent in JSON form on the channel
+        md = dict(from_userid = User.current_id(), msg = msg)
+        for p in range(0, 2):
+            ChannelModel.send_message(u"game",
+                uuid + u":" + str(p),
+                json.dumps(md)
+            )
+
+    return jsonify(ok = True)
+
+
+@app.route("/chatload", methods=['POST'])
+def chatload():
+    """ Load all chat messages on a conversation channel """
+
+    if not User.current_id():
+        # We must have a logged-in user
+        return jsonify(ok = False)
+
+    channel = request.form.get('channel', u"")
+    messages = []
+
+    if channel:
+        # Return the messages sorted in ascending timestamp order.
+        # ChatModel.list_conversations returns them in descending
+        # order since its maxlen limit cuts off the oldest messages.
+        messages = [
+            dict(from_userid = cm["user"], msg = cm["msg"])
+            for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
+        ]
+
+    return jsonify(ok = True, messages = messages)
 
 
 @app.route("/review")
