@@ -1,4 +1,3 @@
-
 {% extends "container.html" %}
 
 {% block styles %}
@@ -84,7 +83,8 @@
       { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
       { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
       { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" }
+      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
    );
 
    function replaceEmoticons(str) {
@@ -170,14 +170,45 @@
       <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
    </div>
    <div class="right-area">
-      <div class="right-tab selected" id="tab-movelist"><span class="glyphicon glyphicon-show-lines"></span></div>
+      <div class="right-tab selected" id="tab-movelist" title="Leikir"><span class="glyphicon glyphicon-show-lines"></span></div>
       <div class="movelist">
       </div>
-      <div class="right-tab" id="tab-twoletter"><span class="glyphicon glyphicon-life-preserver"></div>
+      <div class="right-tab" id="tab-twoletter" title="Tveggja stafa orð"><span class="glyphicon glyphicon-life-preserver"></div>
       <div class="twoletter">
-         <p>Hi, this is twoletter!</p>
+         <div class="twoletter-area">
+<b>a</b>ð af ak al an ar as at ax<br>
+<b>á</b>a áð ái ál ám án ár ás át<br>
+<b>b</b>í bú bý bæ&nbsp;&nbsp;
+<b>d</b>á do dó dý<br>
+<b>e</b>ð ef eg ei ek el em en er et ex ey<br>
+<b>é</b>g él ét&nbsp;&nbsp;
+<b>f</b>a fá fé fæ&nbsp;&nbsp;
+<b>g</b>á<br>
+<b>h</b>a há hí hó hý hæ&nbsp;&nbsp;
+<b>i</b>ð il im&nbsp;&nbsp;
+<b>í</b>ð íl ím ís<br>
+<b>j</b>á jó jú&nbsp;&nbsp;
+<b>k</b>á ku kú&nbsp;&nbsp;
+<b>l</b>a lá lé ló lý læ<br>
+<b>m</b>á mi mó mý&nbsp;&nbsp;
+<b>n</b>á né nó nú ný næ<br>
+<b>o</b>f og ok op or<br>
+<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>
+<b>p</b>í pu pú&nbsp;&nbsp;
+<b>r</b>á re ré rí ró rú rý ræ<br>
+<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp;
+<b>t</b>á te té ti tí tó tý<br>
+<b>u</b>m un&nbsp;&nbsp;
+<b>ú</b>a úð úf úi úr út<br>
+<b>v</b>á vé ví vó&nbsp;&nbsp;
+<b>y</b>l ym yr ys<br>
+<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp;
+<b>þ</b>á þó þú þý<br>
+<b>æ</b>ð æf æg æi æl æp ær æs æt<br>
+<b>ö</b>l ör ös öt öx
+         </div>
       </div>
-      <div class="right-tab" id="tab-chat"><span class="glyphicon glyphicon-conversation"></span></div>
+      <div class="right-tab" id="tab-chat" title="Spjall"><span class="glyphicon glyphicon-conversation"></span></div>
       <div class="chat">
          <div class="chat-area" id="chat-area"></div>
          <div class="chat-input">
