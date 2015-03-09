@@ -1232,10 +1232,11 @@ def board():
     # opponent is an autoplayer as we do want the
     # presence detection functionality for the human
     # user.
-    if is_over:
-        channel_token = None
-    else:
-        assert player_index is not None
+    channel_token = None
+    if player_index is not None:
+        # If one of the players is looking at the game, we create a channel
+        # even if the game is over - as the players can continue chatting
+        # in that case.
         channel_token = ChannelModel.create_new(u"game",
             game.id() + u":" + str(player_index), user.id())
 

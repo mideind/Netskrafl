@@ -286,6 +286,7 @@ function showClock() {
    $(".clockface").css("display", "block");
    $("div.right-area").addClass("with-clock");
    $("div.chat-area").addClass("with-clock");
+   $("div.twoletter-area").addClass("with-clock");
 }
 
 function startClock(igt) {
@@ -1825,6 +1826,13 @@ function markChatMsg() {
    }
 }
 
+function switchTwoLetter() {
+   // Switch the two-letter help panel from sorting by 1st to the 2nd letter or vice versa
+   var switchFrom = $(this).attr("id");
+   $("#two-1").css("visibility", switchFrom == "two-1" ? "hidden" : "visible");
+   $("#two-2").css("visibility", switchFrom == "two-2" ? "hidden" : "visible");
+}
+
 /* Channel API stuff */
 
 var channelToken = null;
@@ -1943,6 +1951,9 @@ function initSkrafl(jQuery) {
 
    // Prepare the right-side tabs
    $("div.right-tab").click(selectTab);
+
+   // Two letter help area switch
+   $("div.twoletter-area").click(switchTwoLetter);
 
    // Chat message send button
    $("#chat-send").click(sendChatMsg);

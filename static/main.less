@@ -616,25 +616,45 @@ div.twoletter {
    width: 100%;
    height: 100%;
    background-color: @theme4;
+   overflow: hidden;
    z-index: 2;
 }
 
 div.twoletter-area {
+   position: absolute;
+   top: 0px; right: 0px;
    padding: 14px;
-   overflow: auto;
-   font-size: 15px;
-   line-height: 18px;
-   margin-left: 4px;
+   text-align: right;
+   height: 100%;
+   cursor: pointer;
 }
 
-div.twoletter-area b {
-   display: inline-block;
-   background-color: @freshtile;
+div.twoletter-area span {
+   font-size: 15px;
+   line-height: 23px;
+   padding-bottom: 4px;
+   margin-top: 3px;
+   margin-bottom: 3px;
+}
+
+div.twoletter-area.with-clock span {
+   font-size: 13px;
+   line-height: 21px;
+   padding-bottom: 4px;
+   margin-top: 3px;
+   margin-bottom: 3px;
+}
+
+div.twoletter-area span b {
+   background-color: darken(@freshtile, 5%);
    color: white;
    padding-left: 2px;
    padding-right: 2px;
-   margin-top: 3px;
-   margin-bottom: 2px;
+   border-radius: 2px;
+}
+
+div.twoletter-area#two-2 {
+   visibility: hidden;
 }
 
 div.chat {

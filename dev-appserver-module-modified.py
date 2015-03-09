@@ -392,8 +392,9 @@ class Module(object):
   ### !!! START ADDITION by V. Thorsteinsson ###
 
   def _strip_tempfiles(self, filelist):
-    """ Strip out temporary files of various kinds from the list of changed files """
-    TEMP_EXTENSIONS = set([".tmp", ".TMP", ".pyc", ".less", ".css", ".js"])
+    """ Strip out temporary files and static assets of various kinds from the list of changed files """
+    TEMP_EXTENSIONS = set([".tmp", ".TMP", ".pyc", ".less", ".css", ".js",
+      ".png", ".mp3", ".jpg", ".psd"])
     result = []
     for fname in filelist:
       if not os.path.isfile(fname):

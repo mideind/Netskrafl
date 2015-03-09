@@ -84,17 +84,28 @@
       { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
       { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
       { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : "B-|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
       { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
    );
 
    function replaceEmoticons(str) {
       // Replace all emoticon shortcuts in the string str with a corresponding image URL
       var i;
-      for (i = 0; i < emoticons.length; i++) {
-         var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
-         // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
-         str = str.split(emoticons[i].icon).join(img);
-      }
+      for (i = 0; i < emoticons.length; i++)
+         if (str.indexOf(emoticons[i].icon) >= 0) {
+            // The string contains the emoticon: prepare to replace all occurrences
+            var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+            // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
+            str = str.split(emoticons[i].icon).join(img);
+         }
       return str;
    }
 
@@ -123,7 +134,13 @@
       // Display option to force opponent to resign
       $("#force-resign").css("display", "inline");
 {% endif %}
-   }
+{% if player_index == None or game.is_autoplayer(0) or game.is_autoplayer(1) %}
+   // Only show the chat tab if the user is a player of this game and the
+   // opponent is not a robot
+   $("#tab-chat").css("display", "none");
+   $("div.chat").css("display", "none");
+{% endif %}
+}
 
 </script>
 
@@ -175,7 +192,8 @@
       </div>
       <div class="right-tab" id="tab-twoletter" title="Tveggja stafa orð"><span class="glyphicon glyphicon-life-preserver"></div>
       <div class="twoletter">
-         <div class="twoletter-area">
+         <div class="twoletter-area" id="two-1" title="Smelltu til að raða eftir seinni staf">
+<span>
 <b>a</b>ð af ak al an ar as at ax<br>
 <b>á</b>a áð ái ál ám án ár ás át<br>
 <b>b</b>í bú bý bæ&nbsp;&nbsp;
@@ -206,6 +224,36 @@
 <b>þ</b>á þó þú þý<br>
 <b>æ</b>ð æf æg æi æl æp ær æs æt<br>
 <b>ö</b>l ör ös öt öx
+</span>
+         </div>
+         <div class="twoletter-area" id="two-2" title="Smelltu til að raða eftir fyrri staf">
+<span>
+á<b>a</b> fa ha la óa úa&nbsp;&nbsp;
+d<b>á</b> fá gá há<br>já ká lá má ná rá sá tá vá þá<br>
+a<b>ð</b> áð eð ið íð óð úð æð&nbsp;&nbsp;
+r<b>e</b> te<br>
+f<b>é</b> lé né ré sé té vé&nbsp;
+a<b>f</b> ef of óf úf ýf æf<br>
+e<b>g</b> ég og ýg æg&nbsp;&nbsp;
+á<b>i</b> ei mi ói ti úi ýi æi<br>
+b<b>í</b> hí pí rí sí tí ví&nbsp;&nbsp;
+a<b>k</b> ek ok ók ýk<br>
+a<b>l</b> ál el él il íl ól yl ýl æl öl<br>
+á<b>m</b> em im ím óm um ym<br>
+a<b>n</b> án en ón un&nbsp;&nbsp;
+d<b>o</b> so<br>
+d<b>ó</b> hó jó ló mó nó ró tó vó þó<br>
+o<b>p</b> óp æp&nbsp;&nbsp;
+a<b>r</b> ár er or úr yr ýr ær ör<br>
+a<b>s</b> ás ís ós ys ýs æs ös<br>
+a<b>t</b> át et ét út ýt æt öt<br>
+k<b>u</b> pu&nbsp;&nbsp;
+b<b>ú</b> jú kú nú pú rú sú þú<br>
+a<b>x</b> ex óx öx&nbsp;&nbsp;
+e<b>y</b><br>
+b<b>ý</b> dý hý lý mý ný rý sý tý þý<br>
+b<b>æ</b> fæ hæ læ næ ræ sæ
+</span>
          </div>
       </div>
       <div class="right-tab" id="tab-chat" title="Spjall"><span class="glyphicon glyphicon-conversation"></span></div>
