@@ -14,6 +14,7 @@ var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
+var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
 var TILESCORE = {
@@ -1717,10 +1718,12 @@ function forceResign() {
 
 // Have we loaded this game's chat channel from the server?
 var chatLoaded = false;
+var numChatMessages = 0;
 
 function populateChat(json) {
    // Populate the chat window with the existing conversation for this game
    $("#chat-area").html("");
+   numChatMessages = 0;
    if (json.messages === undefined)
       // Something went wrong
       return;
@@ -1801,6 +1804,10 @@ function showChatMsg(player_index, msg) {
       "'>" + escMsg + "</div>";
    var chatArea = $("#chat-area");
    chatArea.append(str);
+   numChatMessages++;
+   if (numChatMessages >= MAX_CHAT_MESSAGES)
+      // Disable tne entry field once we've hit the maximum number of chat messages
+      $("#msg").prop("disabled", true);
    /* Manage the scrolling of the chat message list */
    var lastchild = $("#chat-area .chat-msg").last();
    var firstchild = $("#chat-area .chat-msg").first();

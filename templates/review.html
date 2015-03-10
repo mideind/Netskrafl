@@ -83,7 +83,9 @@
       <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ state.scores()[1] }}</h3>
    </div>
-   <div class="movelist noscroll"></div>
+   <div class="right-area">
+      <div class="movelist noscroll"></div>
+   </div>
 </div>
 
 <!-- The rack -->
@@ -102,7 +104,7 @@
 </div>
 
 <!-- The bag -->
-<div class="bag" title="Flísar sem eftir eru í pokanum">
+<div class="bag" title="Flísar sem voru í pokanum">
 <table id="bag">
 </table>
 </div>
@@ -164,11 +166,17 @@
 
 <!-- Previous move button -->
 <div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navPrev(this)"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</div>
+   onmouseout="buttonOut(this)" onclick="navPrev(this)">
+   <span id="nav-prev-visible"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</span>
+   <span id="nav-prev-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+</div>
 
 <!-- Next move button -->
 <div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navNext(this)">Næsti <span class="glyphicon glyphicon-chevron-right"></span></div>
+   onmouseout="buttonOut(this)" onclick="navNext(this)">
+   <span id="nav-next-visible">Næsti <span class="glyphicon glyphicon-chevron-right"></span></span>
+   <span id="nav-next-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+</div>
 
 {% if move_number > 0 %}
 <!-- Game info bar -->
@@ -188,6 +196,9 @@ function navPrev(btn) {
    /* Display the previous move */
    if ($(btn).hasClass("disabled"))
       return;
+   // Show animated GIF while waiting for page load
+   $("#nav-prev-visible").css("display", "none");
+   $("#nav-prev-waiting").css("display", "inline");
    window.location.href='{{ url_for('review', game = game.id(), move = move_number - 1) | safe }}';
 }
 
@@ -195,6 +206,9 @@ function navNext(btn) {
    /* Display the next move */
    if ($(btn).hasClass("disabled"))
       return;
+   // Show animated GIF while waiting for page load
+   $("#nav-next-visible").css("display", "none");
+   $("#nav-next-waiting").css("display", "inline");
    window.location.href='{{ url_for('review', game = game.id(), move = move_number + 1) | safe }}';
 }
 

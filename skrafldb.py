@@ -1134,7 +1134,7 @@ class ChatModel(ndb.Model):
     msg = ndb.StringProperty(indexed = False)
 
     @classmethod
-    def list_conversation(cls, channel, maxlen = 100):
+    def list_conversation(cls, channel, maxlen = 250):
         """ Return the newest items in a conversation """
         CHUNK_SIZE = 100
         q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
@@ -1156,7 +1156,7 @@ class ChatModel(ndb.Model):
             offset += CHUNK_SIZE
 
     @classmethod
-    def add_msg(cls, channel, userid, msg, timestamp=None):
+    def add_msg(cls, channel, userid, msg, timestamp = None):
         """ Adds a message to a chat conversation on a channel """
         cm = cls()
         cm.channel = channel
