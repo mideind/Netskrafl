@@ -795,10 +795,11 @@ def challenge():
     except:
         pass
 
+    # Ensure that the duration is reasonable
     if duration < 0:
         duration = 0
-    elif duration > 100:
-        duration = 100
+    elif duration > 90:
+        duration = 90
 
     if destuser is not None:
         if action == u"issue":
@@ -912,13 +913,14 @@ def chatmsg():
         # We must have a logged-in user
         return jsonify(ok = False)
 
-    # Add a message entity to the data store
-    ChatModel.add_msg(channel, User.current_id(), msg)
+    # Add a message entity to the data store and remember its timestamp
+    ts = ChatModel.add_msg(channel, User.current_id(), msg)
+
     if channel.startswith(u"game:"):
         # Send notifications to both players on the game channel
         uuid = channel[5:] # The game id
         # The message to be sent in JSON form on the channel
-        md = dict(from_userid = User.current_id(), msg = msg)
+        md = dict(from_userid = User.current_id(), msg = msg, ts = Alphabet.format_timestamp(ts))
         for p in range(0, 2):
             ChannelModel.send_message(u"game",
                 uuid + u":" + str(p),
@@ -944,7 +946,11 @@ def chatload():
         # ChatModel.list_conversations returns them in descending
         # order since its maxlen limit cuts off the oldest messages.
         messages = [
-            dict(from_userid = cm["user"], msg = cm["msg"])
+            dict(
+                from_userid = cm["user"],
+                msg = cm["msg"],
+                ts = Alphabet.format_timestamp(cm["ts"])
+            )
             for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
         ]
 

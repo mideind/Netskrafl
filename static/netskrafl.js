@@ -1735,7 +1735,7 @@ function populateChat(json) {
       if (m.from_userid != userId())
          // The message is from the remote user
          p = 1 - p;
-      showChatMsg(p, m.msg);
+      showChatMsg(p, m.msg, m.ts);
    }
 }
 
@@ -1793,24 +1793,70 @@ function handleChatEnter(ev) {
    }
 }
 
-function showChatMsg(player_index, msg) {
+// Timestamp of the last message added to the chat window
+var dtsLastMsg = null;
+
+function decodeTimestamp(ts) {
+   // Parse and split a timestamp string from the format YYYY-MM-DD HH:MM:SS
+   return {
+      year: parseInt(ts.substr(0, 4)),
+      month: parseInt(ts.substr(5, 2)),
+      day: parseInt(ts.substr(8, 2)),
+      hour: parseInt(ts.substr(11, 2)),
+      minute: parseInt(ts.substr(14, 2)),
+      second: parseInt(ts.substr(17, 2))
+   };
+}
+
+function timeDiff(dFrom, dTo) {
+   // Return the difference between two decoded timestamps, in seconds
+   var mFrom = Date.UTC(dFrom.year, dFrom.month - 1, dFrom.day,
+      dFrom.hour, dFrom.minute, dFrom.second);
+   var mTo = Date.UTC(dTo.year, dTo.month - 1, dTo.day,
+      dTo.hour, dTo.minute, dTo.second);
+   var diff = mTo - mFrom;
+   return Math.round(diff / 1000.0);
+}
+
+function showChatMsg(player_index, msg, ts) {
    /* Show a newly arrived chat message. It may be coming from the
       current player herself or from the opponent */
+   var chatArea = $("#chat-area");
    var escMsg = escapeHtml(msg);
    escMsg = replaceEmoticons(escMsg);
    var str = "<div class='chat-msg " +
       (player_index === 0 ? "left " : "right ") +
       (player_index == localPlayer() ? "local" : "remote") +
       "'>" + escMsg + "</div>";
-   var chatArea = $("#chat-area");
+   var dts = decodeTimestamp(ts);
+   if (dtsLastMsg === null || timeDiff(dtsLastMsg, dts) >= 5 * 60) {
+      // If 5 minutes or longer interval between messages,
+      // insert a timestamp
+      var strTs;
+      var dtsNow = decodeTimestamp((new Date()).toISOString()); // Current time
+      // !!! BUG: doesn't work across months
+      if (dtsNow.year != dts.year || dtsNow.month != dts.month ||
+         (dtsNow.day - dts.day) > 1)
+         // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
+         strTs = ts.slice(0, -3);
+      else
+      if (dtsNow.day == dts.day + 1)
+         // Yesterday
+         strTs = "Í gær " + ts.substr(11, 5);
+      else
+         // Today
+         strTs = ts.substr(11, 5);
+      chatArea.append("<div class='chat-ts'>" + strTs + "</div>");
+   }
    chatArea.append(str);
    numChatMessages++;
+   dtsLastMsg = dts;
    if (numChatMessages >= MAX_CHAT_MESSAGES)
       // Disable tne entry field once we've hit the maximum number of chat messages
       $("#msg").prop("disabled", true);
    /* Manage the scrolling of the chat message list */
-   var lastchild = $("#chat-area .chat-msg").last();
-   var firstchild = $("#chat-area .chat-msg").first();
+   var lastchild = $("#chat-area .chat-msg").last(); // Last always a chat-msg
+   var firstchild = $("#chat-area .chat-ts").first(); // First always a chat-ts
    var topoffset = lastchild.position().top -
       firstchild.position().top +
       lastchild.outerHeight();
@@ -1877,7 +1923,7 @@ function channelOnMessage(msg) {
          // Put an alert on the chat tab if it is not selected
          markChatMsg();
       }
-      showChatMsg(player_index, json.msg);
+      showChatMsg(player_index, json.msg, json.ts);
    }
    else {
       // json now contains an entire client state update, as a after submitMove()

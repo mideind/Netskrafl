@@ -376,7 +376,7 @@ class FavoriteModel(ndb.Model):
             return
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ancestor = k)
-        for fm in q.fetch(max_len):
+        for fm in q.fetch(max_len, read_policy = ndb.EVENTUAL_CONSISTENCY):
             yield None if fm.destuser is None else fm.destuser.id()
 
     @classmethod
@@ -1164,4 +1164,6 @@ class ChatModel(ndb.Model):
         cm.msg = msg
         cm.timestamp = timestamp or datetime.utcnow()
         cm.put()
+        # Return the message timestamp
+        return cm.timestamp
 
