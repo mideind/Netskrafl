@@ -1,22 +1,27 @@
-## Netskrafl - an Icelandic SCRABBLE(tm) website
+## Netskrafl - an Icelandic crossword game website
 
 ### English summary
 
-This repository contains the implementation of an Icelandic SCRABBLE(tm)-like word game.
+This repository contains the implementation of an Icelandic crossword game
+inspired by SCRABBLE(tm).
 The game is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
 [http://netskrafl.appspot.com](http://netskrafl.appspot.com)
 
 The game backend is implemented in Python 2.7 for Google AppEngine but the core code is also
 compatible with Python 3.x and PyPy.
 
-The frontend is a web client in HTML5 and JavaScript connecting via Ajax to a Flask-based web
-server on the backend.
+The frontend is a tablet- and smartphone-friendly web client in HTML5 and JavaScript connecting
+via Ajax to a Flask-based web server on the backend.
 
-The game contains a SCRABBLE(tm)-playing robot written in Python. The algorithm is based
+The game contains a robot crossword player written in Python. The algorithm is based
 on Appel & Jacobson's classic paper
 ["The World's Fastest Scrabble Program"](http://www.cs.cmu.edu/afs/cs/academic/class/15451-s06/www/lectures/scrabble.pdf).
-The robot always plays the highest-scoring move possible but additional and alternative strategies can
-be plugged in relatively easily.
+At maximum strength level, the robot always plays the highest-scoring move possible but additional and
+alternative strategies can be plugged in relatively easily. At the lowest strength level, the
+robot is limited to a set of common words, about a quarter of the size of the entire word database.
+
+The software has a range of features such as real-time synchronized games with clocks,
+Elo scoring of players, an online chat window, and the ability to view player track records.
 
 The game uses a word database encoded in a Directed Acyclic Word Graph (DAWG).
 For Icelandic, the graph contains almost 2.3 million word forms. Further information
