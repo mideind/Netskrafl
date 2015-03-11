@@ -20,8 +20,9 @@ At maximum strength level, the robot always plays the highest-scoring move possi
 alternative strategies can be plugged in relatively easily. At the lowest strength level, the
 robot is limited to a set of common words, about a quarter of the size of the entire word database.
 
-The software has a range of features such as real-time synchronized games with clocks,
-Elo scoring of players, an online chat window, and the ability to view player track records.
+The software has a range of features such as immediate tile-by-tile feedback on word validity and score,
+real-time synchronized games with clocks, Elo scoring of players, an online chat window,
+and the ability to view player track records.
 
 The game uses a word database encoded in a Directed Acyclic Word Graph (DAWG).
 For Icelandic, the graph contains almost 2.3 million word forms. Further information
