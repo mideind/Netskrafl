@@ -87,7 +87,7 @@ handlers:
   mime_type: application/font-woff
 - url: /static/(.*\.mp3)$
   static_files: static/\1
-  upload: static/\1
+  upload: static/.*\.mp3$
   mime_type: audio/mpeg
   expiration: 1d
 - url: /admin/.*
