@@ -30,7 +30,7 @@ from skraflmechanics import State, Board, Rack, Error, \
 from skraflplayer import AutoPlayer
 from languages import Alphabet
 from skrafldb import Unique, UserModel, GameModel, MoveModel, \
-    FavoriteModel, ChallengeModel, StatsModel
+    FavoriteModel, ChallengeModel, StatsModel, ChatModel
 
 
 class User:
@@ -789,6 +789,10 @@ class Game:
         """ Return True if the player in question is an autoplayer """
         return self.player_ids[player_index] is None
 
+    def is_robot_game(self):
+        """ Return True if one of the players is an autoplayer """
+        return self.is_autoplayer(0) or self.is_autoplayer(1)
+
     def player_index(self, user_id):
         """ Return the player index (0 or 1) of the given user, or None if not a player """
         if self.player_ids[0] == user_id:
@@ -808,6 +812,16 @@ class Game:
     def end_time(self):
         """ Returns the time of the last move in a readable format """
         return u"" if self.ts_last_move is None else Alphabet.format_timestamp(self.ts_last_move)
+
+    def has_new_chat_msg(self, user_id):
+        """ Return True if there is a new chat message that the given user hasn't seen """
+        p = self.player_index(user_id)
+        if p is None or self.is_autoplayer(1 - p):
+            # The user is not a player of this game, or robot opponent: no chat
+            return False
+        # Check the database
+        # !!! TBD: consider memcaching this
+        return ChatModel.check_conversation(u"game:" + self.id(), user_id)
 
     def _append_final_adjustments(self, movelist):
         """ Appends final score adjustment transactions to the given movelist """

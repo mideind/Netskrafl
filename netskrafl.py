@@ -909,15 +909,17 @@ def chatmsg():
     channel = request.form.get('channel', u"")
     msg = request.form.get('msg', u"")
 
-    if not User.current_id() or not channel or not msg:
-        # We must have a logged-in user
+    if not User.current_id() or not channel:
+        # We must have a logged-in user and a valid channel
         return jsonify(ok = False)
 
     # Add a message entity to the data store and remember its timestamp
     ts = ChatModel.add_msg(channel, User.current_id(), msg)
 
-    if channel.startswith(u"game:"):
+    if channel.startswith(u"game:") and msg:
         # Send notifications to both players on the game channel
+        # No need to send empty messages, which are to be interpreted
+        # as read confirmations
         uuid = channel[5:] # The game id
         # The message to be sent in JSON form on the channel
         md = dict(from_userid = User.current_id(), msg = msg, ts = Alphabet.format_timestamp(ts))
@@ -1239,7 +1241,7 @@ def board():
     # presence detection functionality for the human
     # user.
     channel_token = None
-    if player_index is not None:
+    if player_index is not None and not game.is_autoplayer(1 - player_index):
         # If one of the players is looking at the game, we create a channel
         # even if the game is over - as the players can continue chatting
         # in that case.

@@ -1719,11 +1719,14 @@ function forceResign() {
 // Have we loaded this game's chat channel from the server?
 var chatLoaded = false;
 var numChatMessages = 0;
+// Timestamp of the last message added to the chat window
+var dtLastMsg = null;
 
 function populateChat(json) {
    // Populate the chat window with the existing conversation for this game
    $("#chat-area").html("");
    numChatMessages = 0;
+   dtLastMsg = null;
    if (json.messages === undefined)
       // Something went wrong
       return;
@@ -1762,13 +1765,29 @@ function selectTab(ev) {
    if (tabSel == "tab-chat") {
       // Selecting the chat tab
       // Remove the alert, if any
-      $("#tab-chat").removeClass("alert");
+      var hadUnseen = $("#tab-chat").hasClass("alert");
+      if (hadUnseen)
+         $("#tab-chat").removeClass("alert");
       // Check whether the chat conversation needs loading
-      if (!chatLoaded)
+      if (!chatLoaded) {
          loadChat();
+         if (hadUnseen)
+            // Indicate that we've now seen previously unseen messages
+            sendChatSeenMarker();
+      }
       // Focus on the text input field
       $("#msg").focus();
    }
+}
+
+function sendChatSeenMarker() {
+   /* Send a marker to the server indicating that we've seen chat messages to this point */
+   serverQuery("/chatmsg",
+      {
+         channel: "game:" + gameId(),
+         msg: "" // Special indicator
+      }
+   );
 }
 
 function sendChatMsg() {
@@ -1793,9 +1812,6 @@ function handleChatEnter(ev) {
    }
 }
 
-// Timestamp of the last message added to the chat window
-var dtsLastMsg = null;
-
 function decodeTimestamp(ts) {
    // Parse and split a timestamp string from the format YYYY-MM-DD HH:MM:SS
    return {
@@ -1808,14 +1824,9 @@ function decodeTimestamp(ts) {
    };
 }
 
-function timeDiff(dFrom, dTo) {
-   // Return the difference between two decoded timestamps, in seconds
-   var mFrom = Date.UTC(dFrom.year, dFrom.month - 1, dFrom.day,
-      dFrom.hour, dFrom.minute, dFrom.second);
-   var mTo = Date.UTC(dTo.year, dTo.month - 1, dTo.day,
-      dTo.hour, dTo.minute, dTo.second);
-   var diff = mTo - mFrom;
-   return Math.round(diff / 1000.0);
+function timeDiff(dtFrom, dtTo) {
+   // Return the difference between two JavaScript time points, in seconds
+   return Math.round((dtTo - dtFrom) / 1000.0);
 }
 
 function showChatMsg(player_index, msg, ts) {
@@ -1828,19 +1839,24 @@ function showChatMsg(player_index, msg, ts) {
       (player_index === 0 ? "left " : "right ") +
       (player_index == localPlayer() ? "local" : "remote") +
       "'>" + escMsg + "</div>";
-   var dts = decodeTimestamp(ts);
-   if (dtsLastMsg === null || timeDiff(dtsLastMsg, dts) >= 5 * 60) {
+   // Decode the ISO format timestamp we got from the server
+   var dcTs = decodeTimestamp(ts);
+   // Create a JavaScript millisecond-based representation of the time stamp
+   var dtTs = Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
+      dcTs.hour, dcTs.minute, dcTs.second);
+   if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
       // If 5 minutes or longer interval between messages,
-      // insert a timestamp
+      // insert a time
+      var ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours expressed in milliseconds
+      var dtNow = new Date().getTime();
+      var dtToday = dtNow - dtNow % ONE_DAY; // Start of today (00:00 UTC)
+      var dtYesterday = dtToday - ONE_DAY; // Start of yesterday
       var strTs;
-      var dtsNow = decodeTimestamp((new Date()).toISOString()); // Current time
-      // !!! BUG: doesn't work across months
-      if (dtsNow.year != dts.year || dtsNow.month != dts.month ||
-         (dtsNow.day - dts.day) > 1)
+      if (dtTs < dtYesterday)
          // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
          strTs = ts.slice(0, -3);
       else
-      if (dtsNow.day == dts.day + 1)
+      if (dtTs < dtToday)
          // Yesterday
          strTs = "Í gær " + ts.substr(11, 5);
       else
@@ -1850,7 +1866,7 @@ function showChatMsg(player_index, msg, ts) {
    }
    chatArea.append(str);
    numChatMessages++;
-   dtsLastMsg = dts;
+   dtLastMsg = dtTs;
    if (numChatMessages >= MAX_CHAT_MESSAGES)
       // Disable tne entry field once we've hit the maximum number of chat messages
       $("#msg").prop("disabled", true);
@@ -1876,7 +1892,11 @@ function markChatMsg() {
          // Note that playing media outside user-invoked event handlers does not work on iOS.
          // That is a 'feature' introduced and documented by Apple.
          newMsg.play();
+      // Return false to indicate that the message has not been seen yet
+      return false;
    }
+   // Return true to indicate that the message has been seen
+   return true;
 }
 
 function switchTwoLetter() {
@@ -1921,9 +1941,13 @@ function channelOnMessage(msg) {
          // The message is from the remote user
          player_index = 1 - player_index;
          // Put an alert on the chat tab if it is not selected
-         markChatMsg();
+         if (markChatMsg()) {
+            // The message was seen: inform the server
+            sendChatSeenMarker();
+         }
       }
-      showChatMsg(player_index, json.msg, json.ts);
+      if (chatLoaded)
+         showChatMsg(player_index, json.msg, json.ts);
    }
    else {
       // json now contains an entire client state update, as a after submitMove()

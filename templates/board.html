@@ -135,11 +135,14 @@
       // Display option to force opponent to resign
       $("#force-resign").css("display", "inline");
 {% endif %}
-{% if player_index == None or game.is_autoplayer(0) or game.is_autoplayer(1) %}
+{% if player_index == None or game.is_robot_game() %}
    // Only show the chat tab if the user is a player of this game and the
    // opponent is not a robot
    $("#tab-chat").css("display", "none");
    $("div.chat").css("display", "none");
+{% elif game.has_new_chat_msg(user.id()) %}
+   // There is an unseen chat message
+   markChatMsg();
 {% endif %}
 }
 

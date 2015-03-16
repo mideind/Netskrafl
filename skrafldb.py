@@ -1130,7 +1130,8 @@ class ChatModel(ndb.Model):
     # The timestamp of this chat message
     timestamp = ndb.DateTimeProperty(indexed = True, auto_now_add = True)
 
-    # The actual message
+    # The actual message - by convention, an empty msg from a user means that
+    # the user has seen all older messages
     msg = ndb.StringProperty(indexed = False)
 
     @classmethod
@@ -1142,17 +1143,39 @@ class ChatModel(ndb.Model):
         while True:
             count = 0
             for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                v = dict(
-                    user = cm.user.id(),
-                    ts = cm.timestamp,
-                    msg = cm.msg
-                )
-                yield v
+                if cm.msg:
+                    # Don't return empty messages (read markers)
+                    yield dict(
+                        user = cm.user.id(),
+                        ts = cm.timestamp,
+                        msg = cm.msg
+                    )
                 count += 1
                 if maxlen and offset + count >= maxlen:
                     return
             if count < CHUNK_SIZE:
                 break
+            offset += CHUNK_SIZE
+
+    @classmethod
+    def check_conversation(cls, channel, userid):
+        """ Returns True if there are unseen messages in the conversation """
+        CHUNK_SIZE = 20
+        q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
+        offset = 0
+        while True:
+            count = 0
+            for cm in q.fetch(CHUNK_SIZE, offset = offset):
+                if (cm.user.id() != userid) and cm.msg:
+                    # Found a message originated by the other user
+                    return True
+                if (cm.user.id() == userid) and not cm.msg:
+                    # Found an 'already seen' indicator (empty message) from the querying user
+                    return False
+                count += 1
+            if count < CHUNK_SIZE:
+                # We've come to the beginning of the conversation with no unseen messages
+                return False
             offset += CHUNK_SIZE
 
     @classmethod
