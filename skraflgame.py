@@ -827,7 +827,7 @@ class Game:
         """ Appends final score adjustment transactions to the given movelist """
 
         # Lastplayer is the player who finished the game
-        lastplayer = self.moves[-1].player
+        lastplayer = self.moves[-1].player if self.moves else 0
 
         if not self.state.is_resigned():
 

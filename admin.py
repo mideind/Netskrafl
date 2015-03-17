@@ -62,6 +62,39 @@ def admin_fetchgames():
     return jsonify(gamelist = gamelist)
 
 
+@app.route("/admin/loadgame", methods=['POST'])
+def admin_loadgame():
+    """ Fetch a game object and return it as JSON """
+
+    uuid = request.form.get("uuid", None)
+    game = None
+
+    if uuid:
+        # Attempt to load the game whose id is in the URL query string
+        game = Game.load(uuid)
+
+    if game:
+        board = game.state.board()
+        g = dict(
+            uuid = game.uuid,
+            timestamp = Alphabet.format_timestamp(game.timestamp),
+            player0 = game.player_ids[0],
+            player1 = game.player_ids[1],
+            robot_level = game.robot_level,
+            ts_last_move = Alphabet.format_timestamp(game.ts_last_move),
+            irack0 = game.initial_racks[0],
+            irack1 = game.initial_racks[1],
+            prefs = game._preferences,
+            over = game.is_over(),
+            moves = [ (m.player, m.move.summary(board),
+                m.rack, Alphabet.format_timestamp(m.ts)) for m in game.moves ]
+        )
+    else:
+        g = None
+
+    return jsonify(game = g)
+
+
 @app.route("/admin/main")
 def admin_main():
     """ Show main administration page """
