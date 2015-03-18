@@ -16,7 +16,7 @@ handlers:
 - url: /stats/login
   script: skraflstats.app
 - url: /_ah/queue/deferred
-  script: $PYTHON_LIB/google/appengine/ext/deferred/handler.py
+  script: google.appengine.ext.deferred.deferred.application
   login: admin
 - url: /_ah/.*
   script: skraflstats.app

@@ -46,7 +46,8 @@ app.config['DEBUG'] = running_local
 app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
 
 # The K constant used in the Elo calculation
-ELO_K = 32.0
+ELO_K = 20.0 # For established players
+BEGINNER_K = 32.0 # For beginning players
 
 # How many games a player plays as a provisional player
 # before becoming an established one
@@ -61,7 +62,7 @@ def monthdelta(date, delta):
     return date.replace(day = d, month = m, year = y)
 
 
-def _compute_elo(o_elo, sc0, sc1):
+def _compute_elo(o_elo, sc0, sc1, est0, est1):
     """ Computes the Elo points of the two users after their game """
 
     # If no points scored, this is a null game having no effect
@@ -107,8 +108,8 @@ def _compute_elo(o_elo, sc0, sc1):
         act1 = 0.5
 
     # Calculate the adjustments to be made (one positive, one negative)
-    adj0 = (act0 - exp0) * ELO_K
-    adj1 = (act1 - exp1) * ELO_K
+    adj0 = (act0 - exp0) * (ELO_K if est0 else BEGINNER_K)
+    adj1 = (act1 - exp1) * (ELO_K if est1 else BEGINNER_K)
 
     # Calculate the final adjustment tuple
     adj = (int(round(adj0)), int(round(adj1)))
@@ -231,12 +232,13 @@ def _run_stats(from_time, to_time):
                 elif s1 > s0:
                     urec1.human_wins += 1
                     urec0.human_losses += 1
-            # Compute the Elo points of both players
-            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1)
-            # When an established player is playing a beginning (provisional) player,
-            # leave the Elo score of the established player unchanged
+            # Find out whether players are established or beginners
             est0 = urec0.games > ESTABLISHED_MARK
             est1 = urec1.games > ESTABLISHED_MARK
+            # Compute the Elo points of both players
+            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
+            # When an established player is playing a beginning (provisional) player,
+            # leave the Elo score of the established player unchanged
             if est1 or not est0:
                 # Playing an established player or not established myself: adjust
                 urec0.elo += adj[0]
@@ -245,7 +247,7 @@ def _run_stats(from_time, to_time):
                 urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
-                adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1)
+                adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1, est0, est1)
                 if est1 or not est0:
                     urec0.human_elo += adj[0]
                 if est0 or not est1:
