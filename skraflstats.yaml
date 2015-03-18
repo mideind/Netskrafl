@@ -9,6 +9,9 @@ basic_scaling:
   max_instances: 1
   idle_timeout: 2m
 
+builtins:
+- deferred: on
+
 handlers:
 - url: /stats/login
   script: skraflstats.app
@@ -24,12 +27,14 @@ handlers:
   auth_fail_action: unauthorized
 
 skip_files:
-- ^(.*/)?ordalistimax15\..*$
+- ^resources/.*\.txt$
+- ^resources/.*\.dawg$
 - ^(.*/)?.*\.psd$
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
 - ^(.*/)?.*\.md$
 - ^(.*/)?.*\.bak$
+- ^(.*/)?.*\.bat$
 - ^(.*/)?.*\.tmp$
 - ^(.*/)?.*\.TMP$
 - ^(.*/)?.*\.less$

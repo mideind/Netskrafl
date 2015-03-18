@@ -54,9 +54,11 @@ import threading
 import uuid
 
 from datetime import datetime, timedelta
+from random import randint
 
 from google.appengine.ext import ndb
 from google.appengine.api import channel
+from google.appengine.ext import deferred
 
 from languages import Alphabet
 
@@ -547,7 +549,11 @@ class ChannelModel(ndb.Model):
     user = ndb.KeyProperty(kind = UserModel, required = False, default = None)
 
     # When should the next cleanup of expired channels be done?
-    _CLEANUP_INTERVAL = 30 # Minutes
+    # We select an interval in minutes at random from a list of primes so that
+    # multiple concurrent instances are more unlikely to do parallel cleanups
+    _CLEANUP_INTERVALS = [29, 31, 37, 41, 43, 47, 53] # Prime numbers
+    _CLEANUP_INTERVAL =  _CLEANUP_INTERVALS[randint(0, len(_CLEANUP_INTERVALS) - 1)]
+
     _next_cleanup = None
     _lock = threading.Lock()
 
@@ -647,12 +653,12 @@ class ChannelModel(ndb.Model):
         return q.get(keys_only = True) != None
 
     @classmethod
-    def _del_expired(cls):
+    def _del_expired(cls, ts):
         """ Delete all expired channels """
-        now = datetime.utcnow()
+        logging.info(u"ChannelModel._del_expired(), ts is {0}".format(ts))
         CHUNK_SIZE = 500
         while True:
-            q = cls.query(ChannelModel.expiry < now)
+            q = cls.query(ChannelModel.expiry < ts)
             # Query and delete in chunks
             count = 0
             list_k = []
@@ -675,9 +681,12 @@ class ChannelModel(ndb.Model):
 
             # Start by checking whether a cleanup of expired channels is due
             if cls._next_cleanup is None or (now > cls._next_cleanup):
-                # Yes: do the cleanup
-                cls._del_expired()
+                if cls._next_cleanup is not None:
+                    # The scheduled next cleanup is due: defer it for execution
+                    deferred.defer(cls._del_expired, ts = now)
                 # Schedule the next one
+                logging.info("ChannelModel.send_message() scheduling cleanup in {0} minutes"
+                    .format(ChannelModel._CLEANUP_INTERVAL))
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
             CHUNK_SIZE = 50 # There are never going to be many matches for this query

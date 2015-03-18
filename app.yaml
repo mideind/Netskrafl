@@ -19,6 +19,9 @@ builtins:
 - deferred: on
 
 handlers:
+- url: /_ah/queue/deferred
+  script: $PYTHON_LIB/google/appengine/ext/deferred/handler.py
+  login: admin
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
