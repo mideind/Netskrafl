@@ -884,6 +884,17 @@ function initRackDraggable(state) {
    }
 }
 
+function firstEmptyRackSlot() {
+   /* Returns the identifier of the first available rack slot or null if none */
+   for (var i = 1; i <= RACK_SIZE; i++) {
+      var rackTileId = "R" + i.toString();
+      var rackTile = document.getElementById(rackTileId);
+      if (rackTile && !rackTile.firstChild)
+         return rackTileId;
+   }
+   return null; // No empty slot in rack
+}
+
 function initDropTarget(elem) {
    /* Prepare a board square or a rack slot to accept drops */
    if (elem !== null)
@@ -1360,40 +1371,49 @@ function updateBag(bag) {
    }
 }
 
-function updateState(json) {
+function _updateState(json, preserveTiles) {
    /* Work through the returned JSON object to update the
       board, the rack, the scores and the move history */
    if (json.result === 0 || json.result == GAME_OVER) {
       /* Successful move */
       /* Reinitialize the rack - we show it even if the game is over */
       var i = 0;
-      for (; i < json.rack.length; i++)
-         placeTile("R" + (i + 1).toString(), /* Coordinate */
-            json.rack[i][0], /* Tile */
-            json.rack[i][0], /* Letter */
-            json.rack[i][1]); /* Score */
-      /* Clear the rest of the rack */
-      for (; i < RACK_SIZE; i++)
-         placeTile("R" + (i + 1).toString(), "", "", 0);
-      if (json.result === 0)
-         /* The rack is only draggable if the game is still ongoing */
-         initRackDraggable(true);
-      /* Glue the laid-down tiles to the board */
-      $("div.tile").each(function() {
-         var sq = $(this).parent().attr("id");
-         var t = $(this).data("tile");
-         var score = $(this).data("score");
-         if (t !== null && t !== undefined && sq.charAt(0) != "R") {
-            var letter = t;
-            if (letter == '?') {
-               /* Blank tile: get its meaning */
-               letter = $(this).data("letter");
-               if (letter === null || letter === undefined)
-                  letter = t;
+      var score;
+      if (preserveTiles && json.result == GAME_OVER) {
+         // The user may have placed tiles on the board: force them back
+         // into the rack and make the rack non-draggable
+         resetRack();
+         initRackDraggable(false);
+      }
+      if (!preserveTiles) {
+         for (; i < json.rack.length; i++)
+            placeTile("R" + (i + 1).toString(), /* Coordinate */
+               json.rack[i][0], /* Tile */
+               json.rack[i][0], /* Letter */
+               json.rack[i][1]); /* Score */
+         /* Clear the rest of the rack */
+         for (; i < RACK_SIZE; i++)
+            placeTile("R" + (i + 1).toString(), "", "", 0);
+         if (json.result === 0)
+            /* The rack is only draggable if the game is still ongoing */
+            initRackDraggable(true);
+         /* Glue the laid-down tiles to the board */
+         $("div.tile").each(function() {
+            var sq = $(this).parent().attr("id");
+            var t = $(this).data("tile");
+            score = $(this).data("score");
+            if (t !== null && t !== undefined && sq.charAt(0) != "R") {
+               var letter = t;
+               if (letter == '?') {
+                  /* Blank tile: get its meaning */
+                  letter = $(this).data("letter");
+                  if (letter === null || letter === undefined)
+                     letter = t;
+               }
+               placeTile(sq, t, letter, score);
             }
-            placeTile(sq, t, letter, score);
-         }
-      });
+         });
+      }
       /* Remove highlight from previous move, if any */
       $("div.highlight1").removeClass("highlight1");
       $("div.highlight0").removeClass("highlight0");
@@ -1402,6 +1422,20 @@ function updateState(json) {
          var delay = 0;
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
+            if (preserveTiles && document.getElementById(sq).firstChild) {
+               // The incoming move is overwriting a tile from the local user:
+               // send it to the rack
+               var m = $("#"+sq).children().eq(0);
+               var t = m.data("tile");
+               score = m.data("score");
+               // Find an empty slot in the rack
+               var rsq = firstEmptyRackSlot();
+               if (rsq) { // Should always be non-null
+                  placeTile(rsq, t, t, score);
+                  // Make the rack tile draggable
+                  initDraggable(document.getElementById(rsq).firstChild);
+               }
+            }
             placeTile(sq, /* Coordinate */
                json.lastmove[i][1], /* Tile */
                json.lastmove[i][2], /* Letter */
@@ -1421,7 +1455,7 @@ function updateState(json) {
             var player = json.newmoves[i][0];
             var co = json.newmoves[i][1][0];
             var tiles = json.newmoves[i][1][1];
-            var score = json.newmoves[i][1][2];
+            score = json.newmoves[i][1][2];
             appendMove(player, co, tiles, score);
          }
       }
@@ -1458,6 +1492,18 @@ function updateState(json) {
       resetClock(json.time_info);
    // Update the scores display after we have timing info
    updateScores();
+}
+
+function updateState(json) {
+   /* Normal move submit: update the state without preserving
+      tiles that may have been placed experimentally on the board */
+   _updateState(json, false);
+}
+
+function updateStateGently(json) {
+   /* Handle an incoming move: update the state while trying to
+      preserve tiles that the user may have been placing experimentally on the board */
+   _updateState(json, true);
 }
 
 function submitMove(btn) {
@@ -1951,8 +1997,8 @@ function channelOnMessage(msg) {
    }
    else {
       // json now contains an entire client state update, as a after submitMove()
-      resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
-      updateState(json);
+      // resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
+      updateStateGently(json); // Try to preserve tiles that the user may have placed on the board
       // Play audio, if present
       var yourTurn = document.getElementById("your-turn");
       if (yourTurn)
