@@ -235,23 +235,32 @@ def _run_stats(from_time, to_time):
             # Find out whether players are established or beginners
             est0 = urec0.games > ESTABLISHED_MARK
             est1 = urec1.games > ESTABLISHED_MARK
+            # Save the Elo point state used in the calculation
+            gm.elo0, gm.elo1 = urec0.elo, urec1.elo
             # Compute the Elo points of both players
             adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
             if est1 or not est0:
                 # Playing an established player or not established myself: adjust
+                gm.elo0_adj = adj[0]
                 urec0.elo += adj[0]
             if est0 or not est1:
                 # Playing an established player or not established myself: adjust
+                gm.elo1_adj = adj[1]
                 urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
+                gm.human_elo0, gm.human_elo1 = urec0.human_elo, urec1.human_elo
                 adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1, est0, est1)
                 if est1 or not est0:
+                    gm.human_elo0_adj = adj[0]
                     urec0.human_elo += adj[0]
                 if est0 or not est1:
+                    gm.human_elo1_adj = adj[1]
                     urec1.human_elo += adj[1]
+            # Save the game object with the new Elo adjustment statistics
+            gm.put()
             # Save the last processed timestamp
             ts_last_processed = lm
             # Report on our progress

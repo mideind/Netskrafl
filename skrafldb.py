@@ -253,6 +253,21 @@ class GameModel(ndb.Model):
     # Count of tiles that have been laid on the board
     tile_count = ndb.IntegerProperty(required = False, indexed = False, default = None)
 
+    # Elo statistics properties - only defined for finished games
+    # Elo points of both players when game finished, before adjustment
+    elo0 = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    elo1 = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    # Adjustment of Elo points of both players as a result of this game
+    elo0_adj = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    elo1_adj = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    # Human-only Elo points of both players when game finished (not defined if robot game)
+    human_elo0 = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    human_elo1 = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    # Human-only Elo point adjustment as a result of this game
+    human_elo0_adj = ndb.IntegerProperty(required = False, indexed = False, default = None)
+    human_elo1_adj = ndb.IntegerProperty(required = False, indexed = False, default = None)
+
+
     def set_player(self, ix, user_id):
         """ Set a player key property to point to a given user, or None """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
@@ -296,9 +311,13 @@ class GameModel(ndb.Model):
                 ts = gm.timestamp,
                 ts_last_move = gm.ts_last_move or gm.timestamp,
                 opp = opp,
+                robot_level = gm.robot_level,
                 sc0 = sc0,
                 sc1 = sc1,
-                robot_level = gm.robot_level,
+                elo0_adj = gm.elo0_adj,
+                elo1_adj = gm.elo1_adj,
+                human_elo0_adj = gm.human_elo0_adj,
+                human_elo1_adj = gm.human_elo1_adj,
                 prefs = gm.prefs)
 
         for gm in q.fetch(max_len):
@@ -347,10 +366,10 @@ class GameModel(ndb.Model):
                 uuid = uuid,
                 ts = gm.ts_last_move or gm.timestamp,
                 opp = opp,
+                robot_level = gm.robot_level,
                 my_turn = my_turn,
                 sc0 = sc0,
                 sc1 = sc1,
-                robot_level = gm.robot_level,
                 tile_count = tc)
 
         for gm in q.fetch(max_len):
