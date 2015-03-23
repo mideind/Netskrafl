@@ -1679,6 +1679,22 @@ span.list-scorehdr {
    overflow: hidden;
 }
 
+span.list-elo-adj {
+   display: inline-block;
+   width: 44px;
+   max-width: 44px;
+   text-align: center;
+   overflow: hidden;
+}
+
+span.list-elo-hdr {
+   display: inline-block;
+   width: 88px; /* list-elo-adj * 2 */
+   max-width: 88px;
+   text-align: center;
+   overflow: hidden;
+}
+
 span.list-tc {
    display: inline-block;
    width: 100px;
@@ -1920,6 +1936,27 @@ span.timed-btn {
 
 span.timed-btn:before {
    content: "\E055"; /* time */
+}
+
+span.elo-btn {
+   position: relative;
+   display: inline-block;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   font-weight: bold;
+   color: white;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+}
+
+span.elo-btn.elo-win {
+   background-color: @freshtile;
+}
+
+span.elo-btn.elo-loss {
+   background-color: @alert;
 }
 
 span.usr-info {

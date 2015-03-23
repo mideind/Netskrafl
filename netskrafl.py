@@ -440,6 +440,8 @@ def _recentlist(cuid, max_len):
                 "opp_is_robot": opp is None,
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
+                "elo_adj": g["elo_adj"],
+                "human_elo_adj": g["human_elo_adj"],
                 "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
                 "days": int(days),
                 "hours": int(hours),

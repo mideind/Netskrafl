@@ -301,11 +301,15 @@ class GameModel(ndb.Model):
                 # Player 0 is the source player, 1 is the opponent
                 opp = u1
                 sc0, sc1 = gm.score0, gm.score1
+                elo_adj = gm.elo0_adj
+                human_elo_adj = gm.human_elo0_adj
             else:
                 # Player 1 is the source player, 0 is the opponent
                 assert u1 == user_id
                 opp = u0
                 sc1, sc0 = gm.score0, gm.score1
+                elo_adj = gm.elo1_adj
+                human_elo_adj = gm.human_elo1_adj
             return dict(
                 uuid = uuid,
                 ts = gm.timestamp,
@@ -314,10 +318,8 @@ class GameModel(ndb.Model):
                 robot_level = gm.robot_level,
                 sc0 = sc0,
                 sc1 = sc1,
-                elo0_adj = gm.elo0_adj,
-                elo1_adj = gm.elo1_adj,
-                human_elo0_adj = gm.human_elo0_adj,
-                human_elo1_adj = gm.human_elo1_adj,
+                elo_adj = elo_adj,
+                human_elo_adj = human_elo_adj,
                 prefs = gm.prefs)
 
         for gm in q.fetch(max_len):
