@@ -593,19 +593,43 @@ function _populateRecentList(json, listId) {
       else
          // This was a timed game
          duration = "<span class='timed-btn' title='Viðureign með klukku'></span> 2 x " +
-            item.duration.toString();
+            item.duration.toString() + " mínútur";
+      // Show the Elo point adjustments resulting from the game
       var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
       var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
-      if (item.elo_adj && item.elo_adj > 0)
-         eloAdj = "+" + eloAdj;
-      if (item.human_elo_adj && item.human_elo_adj > 0)
-         eloAdjHuman = "+" + eloAdjHuman;
-      if (eloAdj.length)
-         eloAdj = "<span class='elo-btn elo-" +
-            (item.elo_adj > 0 ? "win" : "loss") + "'>" + eloAdj + "</span>";
-      if (eloAdjHuman.length)
-         eloAdjHuman = "<span class='elo-btn elo-" +
-            (item.human_elo_adj > 0 ? "win" : "loss") + "'>" + eloAdjHuman + "</span>";
+      var eloAdjClass, eloAdjHumanClass;
+      // Find out the appropriate class to use depending on the adjustment sign
+      if (item.elo_adj !== null)
+         if (item.elo_adj > 0) {
+            eloAdj = "+" + eloAdj;
+            eloAdjClass = "elo-win";
+         }
+         else
+         if (item.elo_adj < 0)
+            eloAdjClass = "elo-loss";
+         else {
+            eloAdjClass = "elo-neutral";
+            eloAdj = "<span class='glyphicon glyphicon-stroller' title='Byrjandi'></span>";
+         }
+      if (item.human_elo_adj !== null)
+         if (item.human_elo_adj > 0) {
+            eloAdjHuman = "+" + eloAdjHuman;
+            eloAdjHumanClass = "elo-win";
+         }
+         else
+         if (item.human_elo_adj < 0)
+            eloAdjHumanClass = "elo-loss";
+         else {
+            eloAdjHumanClass = "elo-neutral";
+            eloAdj = "<span class='glyphicon glyphicon-stroller' title='Byrjandi'></span>";
+         }
+      eloAdj = "<span class='elo-btn right " + eloAdjClass +
+         (eloAdj.length ? "" : " invisible") +
+         "'>" + eloAdj + "</span>";
+      eloAdjHuman = "<span class='elo-btn left " + eloAdjHumanClass +
+         (eloAdjHuman.length ? "" : " invisible") +
+         "'>" + eloAdjHuman + "</span>";
+      // Assemble the table row
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +

@@ -172,6 +172,12 @@
 .glyphicon-chat:before {
    content: "\E246";
 }
+.glyphicon-baby-formula:before {
+   content: "\E492";
+}
+.glyphicon-stroller:before {
+   content: "\E076";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1681,16 +1687,17 @@ span.list-scorehdr {
 
 span.list-elo-adj {
    display: inline-block;
-   width: 44px;
-   max-width: 44px;
+   width: 46px;
+   max-width: 46px;
    text-align: center;
    overflow: hidden;
+   margin-bottom: 2px;
 }
 
 span.list-elo-hdr {
    display: inline-block;
-   width: 88px; /* list-elo-adj * 2 */
-   max-width: 88px;
+   width: 92px; /* list-elo-adj * 2 */
+   max-width: 92px;
    text-align: center;
    overflow: hidden;
 }
@@ -1779,8 +1786,8 @@ span.list-fullname {
 
 span.list-duration {
    display: inline-block;
-   width: 200px;
-   max-width: 200px;
+   width: 196px;
+   max-width: 196px;
    text-align: right;
    overflow: hidden;
 }
@@ -1941,22 +1948,63 @@ span.timed-btn:before {
 span.elo-btn {
    position: relative;
    display: inline-block;
+   width: 30px;
+   min-width: 30px;
    font-size: 15px;
    line-height: 15px;
+   text-align: center;
    top: 0px;
    font-weight: bold;
    color: white;
    border-radius: 5px;
    padding: 4px;
+   padding-left: 6px;
+   padding-right: 6px;
    margin: 0px;
 }
 
+span.elo-btn.left {
+   margin-right: 4px;
+}
+
+span.elo-btn.right {
+   margin-left: 4px;
+}
+
+span.elo-btn.invisible {
+   visibility: hidden;
+}
+
 span.elo-btn.elo-win {
-   background-color: @freshtile;
+   background-color: fade(darken(@freshtile, 10%), 65%);
 }
 
 span.elo-btn.elo-loss {
-   background-color: @alert;
+   background-color: fade(darken(@triple-word, 10%), 65%);
+}
+
+span.elo-btn.elo-neutral {
+   background-color: fade(darken(@double-letter, 5%), 80%);
+}
+
+span.elo-hdr-left {
+   background-color: fade(@triple-letter, 75%);
+   color: white;
+   border-radius: 5px;
+   padding: 4px;
+   padding-left: 6px;
+   padding-right: 6px;
+   margin-right: 6px;
+}
+
+span.elo-hdr-right {
+   background-color: fade(@triple-letter, 75%);
+   color: white;
+   border-radius: 5px;
+   padding: 4px;
+   padding-left: 6px;
+   padding-right: 6px;
+   margin-left: 6px;
 }
 
 span.usr-info {

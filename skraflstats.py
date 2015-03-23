@@ -158,11 +158,11 @@ def _run_stats(from_time, to_time):
         """ Returns the newest StatsModel instance available for the given user """
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
-    # Use i as a progress counter
-    i = 0
+    cnt = 0
     ts_last_processed = None
 
     try:
+        # Use i as a progress counter
         for i, gm in enumerate(q):
             uuid = gm.key.id()
             ts = Alphabet.format_timestamp(gm.timestamp)
@@ -241,28 +241,35 @@ def _run_stats(from_time, to_time):
             adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
-            if est1 or not est0:
-                # Playing an established player or not established myself: adjust
-                gm.elo0_adj = adj[0]
-                urec0.elo += adj[0]
-            if est0 or not est1:
-                # Playing an established player or not established myself: adjust
-                gm.elo1_adj = adj[1]
-                urec1.elo += adj[1]
+            # Adjust player 0
+            if est0 and not est1:
+                adj = (0, adj[1])
+            gm.elo0_adj = adj[0]
+            urec0.elo += adj[0]
+            # Adjust player 1
+            if est1 and not est0:
+                adj = (adj[0], 0)
+            gm.elo1_adj = adj[1]
+            urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
                 gm.human_elo0, gm.human_elo1 = urec0.human_elo, urec1.human_elo
                 adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1, est0, est1)
-                if est1 or not est0:
-                    gm.human_elo0_adj = adj[0]
-                    urec0.human_elo += adj[0]
-                if est0 or not est1:
-                    gm.human_elo1_adj = adj[1]
-                    urec1.human_elo += adj[1]
+                # Adjust player 0
+                if est0 and not est1:
+                    adj = (0, adj[1])
+                gm.human_elo0_adj = adj[0]
+                urec0.human_elo += adj[0]
+                # Adjust player 1
+                if est1 and not est0:
+                    adj = (adj[0], 0)
+                gm.human_elo1_adj = adj[1]
+                urec1.human_elo += adj[1]
             # Save the game object with the new Elo adjustment statistics
             gm.put()
             # Save the last processed timestamp
             ts_last_processed = lm
+            cnt += 1
             # Report on our progress
             if (i + 1) % 1000 == 0:
                 logging.info(u"Processed {0} games".format(i + 1))
@@ -271,7 +278,7 @@ def _run_stats(from_time, to_time):
         # Hit deadline: save the stuff we already have and
         # defer a new task to continue where we left off
         logging.info(u"Deadline exceeded in stats loop after {0} games and {1} users"
-            .format(i, len(users)))
+            .format(cnt, len(users)))
         logging.info(u"Resuming from timestamp {0}".format(ts_last_processed))
         if ts_last_processed is not None:
             _write_stats(ts_last_processed, users)
@@ -286,7 +293,7 @@ def _run_stats(from_time, to_time):
         raise deferred.PermanentTaskFailure()
 
     # Completed without incident
-    logging.info(u"Normal completion of stats for {1} games and {0} users".format(len(users), i))
+    logging.info(u"Normal completion of stats for {1} games and {0} users".format(len(users), cnt))
 
     _write_stats(to_time, users)
 
