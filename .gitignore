@@ -17,6 +17,8 @@ static/skrafl-desat.css
 
 # Minified JavaScript
 static/netskrafl.min.js
+static/main.min.js
+static/wait.min.js
 
 # Scratch work files
 templates/main-scratch.html
