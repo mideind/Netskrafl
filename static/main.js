@@ -621,7 +621,7 @@ function _populateRecentList(json, listId) {
             eloAdjHumanClass = "elo-loss";
          else {
             eloAdjHumanClass = "elo-neutral";
-            eloAdj = "<span class='glyphicon glyphicon-stroller' title='Byrjandi'></span>";
+            eloAdjHuman = "<span class='glyphicon glyphicon-stroller' title='Byrjandi'></span>";
          }
       eloAdj = "<span class='elo-btn right " + eloAdjClass +
          (eloAdj.length ? "" : " invisible") +
