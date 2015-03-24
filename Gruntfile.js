@@ -34,15 +34,16 @@ module.exports = function (grunt) {
          }
       },
 
-/*
       uglify: {
-         all: {
-            files: {
-               'static/netskrafl.min.js': 'static/netskrafl.js'
-            }
+         netskrafl_js: {
+            src: 'static/netskrafl.js',
+            dest: 'static/netskrafl.min.js'
+         },
+         main_js: {
+            src: 'static/main.js',
+            dest: 'static/main.min.js'
          }
       },
-*/
 
       less: {
          development: {
@@ -70,12 +71,10 @@ module.exports = function (grunt) {
             files: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
             tasks: 'jshint'
          },
-/*
          uglify: {
-            files: 'static/netskrafl.js',
+            files: ['static/netskrafl.js', 'static/main.js'],
             tasks: 'uglify'
          },
-*/
          less: {
             files: ['static/*.less'],
             tasks: 'less:development'
