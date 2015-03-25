@@ -29,18 +29,6 @@
    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
  <![endif]-->
 
-<!-- jQuery -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
-
-<script src="{{ url_for('static', filename='jquery.ui.touch-punch.min.js') }}"></script>
-
-<!-- Mousetrap global keyboard handler -->
-<script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
-
-<!-- JGestures library -->
-<!-- <script src="{{ url_for('static', filename='jgestures.js') }}"></script> -->
-
 {% block scripts %}
 {% endblock %}
 
@@ -63,7 +51,23 @@
 
    </div> <!-- container -->
 
-{%- block endscripts -%}
-{%- endblock -%}
+{% block media %}
+{% endblock %}
+
+<!-- jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+<script src="{{ url_for('static', filename='jquery.ui.touch-punch.min.js') }}"></script>
+
+<!-- Mousetrap global keyboard handler -->
+<script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
+
+<!-- JGestures library -->
+<!-- <script src="{{ url_for('static', filename='jgestures.js') }}"></script> -->
+
+{% block endscripts %}
+{% endblock %}
+
 </body>
 </html>

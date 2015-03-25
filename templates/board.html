@@ -7,147 +7,6 @@
 {% endblock %}
 
 {% block scripts %}
-
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
-<!-- Netskrafl client script -->
-<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
-
-<script>
-
-   function placeTiles() {
-      /* Initialize the board tiles */
-{% for m in game.moves %}
-{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
-      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
-{% endfor %}
-
-{% if user and game.my_turn(user.id()) %}
-      /* Show the opponent's most recent move */
-{% for m in game.moves[-1:] %}
-      highlightNewestMove(colorOf({{ m.player }}));
-{% endfor %}
-{% endif %}
-
-      /* Place the rack tiles */
-{% if player_index != None %}
-{% for tile, score in game.state.rack_details(player_index) %}
-      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
-{%- endfor -%}
-{%- endif -%}
-   }
-
-   function initMoveList() {
-      /* Initialize the move list */
-{% for m in game.moves %}
-{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
-      appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
-{% endfor %}
-{% if game.is_over() %}
-{% for m in game.get_final_adjustments() %}
-      appendMove({{ m[0] }}, "{{ m[1][0] }}", "{{ m[1][1] }}", {{ m[1][2] }});
-{% endfor %}
-{% endif %}
-   }
-
-   function initBag(bag) {
-      /* Initialize the bag */
-{% if game.is_over() %}
-      updateBag("{{ game.state.bag().contents() }}");
-{% else %}
-      updateBag("{{ game.display_bag(player_index) }}");
-{% endif %}
-{% if not game.state.is_exchange_allowed() %}
-      exchangeAllowed = false;
-{%- endif -%}      
-   }
-
-   function localPlayer() {
-      /* Identify whether the current player is 0 or 1 */
-      return {{ -1 if player_index == None else player_index }};
-   }
-
-   function gameId() {
-      /* Return the unique identifier of this game */
-      return "{{ game.id() }}";
-   }
-
-   function userId() {
-      /* Return the identifier of the local user */
-      return "{{ '' if user == None else user.id() }}";
-   }
-
-   /* Array of supported emoticons in chat */
-   var emoticons = Array(
-      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
-      { icon : "B-|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
-      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : ":P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "B|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
-      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
-   );
-
-   function replaceEmoticons(str) {
-      // Replace all emoticon shortcuts in the string str with a corresponding image URL
-      var i;
-      for (i = 0; i < emoticons.length; i++)
-         if (str.indexOf(emoticons[i].icon) >= 0) {
-            // The string contains the emoticon: prepare to replace all occurrences
-            var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
-            // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
-            str = str.split(emoticons[i].icon).join(img);
-         }
-      return str;
-   }
-
-   function initialGameTime() {
-      /* Return the time state of the game, i.e. its duration in minutes
-         per player and the elapsed time so far for each player in seconds */
-      return {
-         duration: {{ time_info.duration }},
-         elapsed: [{{ time_info.elapsed[0] }}, {{ time_info.elapsed[1] }}]
-      };
-   }
-
-   function navToReview() {
-      /* Show the game review page */
-      window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
-   }
-
-   function lateInit() {
-      /* Execute late initialization - called from initSkrafl() */
-{% if channel_token %}      
-      openChannel("{{ channel_token }}");
-{% endif %}
-      scoreLeft = {{ game.final_scores()[0] }};
-      scoreRight = {{ game.final_scores()[1] }};
-{% if user and game.is_overdue() and not game.my_turn(user.id()) %}
-      // Display option to force opponent to resign
-      $("#force-resign").css("display", "inline");
-{% endif %}
-{% if player_index == None or game.is_robot_game() %}
-   // Only show the chat tab if the user is a player of this game and the
-   // opponent is not a robot
-   $("#tab-chat").css("display", "none");
-   $("div.chat").css("display", "none");
-{% elif game.has_new_chat_msg(user.id()) %}
-   // There is an unseen chat message
-   markChatMsg();
-{% endif %}
-}
-
-</script>
-
 {% endblock %}
 
 {% block logo %}
@@ -330,7 +189,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Wait placeholder -->
-<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border="0"/></div>
+<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border="0" width="16" height="16"/></div>
 
 <!-- New game button -->
 <div class="submitnewgame" title="Nýr leikur"
@@ -422,7 +281,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 {%- endblock -%}
 
-{%- block endscripts -%}
+{% block media %}
 
 {%- if user and user.audio() -%}
 <!-- Audio resources -->
@@ -434,10 +293,150 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 </audio>
 {% endif %}
 
+{% endblock %}
+
+{% block endscripts %}
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<!-- Netskrafl client script -->
+<script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
+
 <script>
+
+   function placeTiles() {
+      /* Initialize the board tiles */
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
+{% endfor %}
+
+{% if user and game.my_turn(user.id()) %}
+      /* Show the opponent's most recent move */
+{% for m in game.moves[-1:] %}
+      highlightNewestMove(colorOf({{ m.player }}));
+{% endfor %}
+{% endif %}
+
+      /* Place the rack tiles */
+{% if player_index != None %}
+{% for tile, score in game.state.rack_details(player_index) %}
+      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
+{%- endfor -%}
+{%- endif -%}
+   }
+
+   function initMoveList() {
+      /* Initialize the move list */
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+      appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% endfor %}
+{% if game.is_over() %}
+{% for m in game.get_final_adjustments() %}
+      appendMove({{ m[0] }}, "{{ m[1][0] }}", "{{ m[1][1] }}", {{ m[1][2] }});
+{% endfor %}
+{% endif %}
+   }
+
+   function initBag(bag) {
+      /* Initialize the bag */
+{% if game.is_over() %}
+      updateBag("{{ game.state.bag().contents() }}");
+{% else %}
+      updateBag("{{ game.display_bag(player_index) }}");
+{% endif %}
+{% if not game.state.is_exchange_allowed() %}
+      exchangeAllowed = false;
+{%- endif -%}      
+   }
+
+   function localPlayer() {
+      /* Identify whether the current player is 0 or 1 */
+      return {{ -1 if player_index == None else player_index }};
+   }
+
+   function gameId() {
+      /* Return the unique identifier of this game */
+      return "{{ game.id() }}";
+   }
+
+   function userId() {
+      /* Return the identifier of the local user */
+      return "{{ '' if user == None else user.id() }}";
+   }
+
+   /* Array of supported emoticons in chat */
+   var emoticons = Array(
+      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : "B-|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B|", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
+   );
+
+   function replaceEmoticons(str) {
+      // Replace all emoticon shortcuts in the string str with a corresponding image URL
+      var i;
+      for (i = 0; i < emoticons.length; i++)
+         if (str.indexOf(emoticons[i].icon) >= 0) {
+            // The string contains the emoticon: prepare to replace all occurrences
+            var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+            // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
+            str = str.split(emoticons[i].icon).join(img);
+         }
+      return str;
+   }
+
+   function initialGameTime() {
+      /* Return the time state of the game, i.e. its duration in minutes
+         per player and the elapsed time so far for each player in seconds */
+      return {
+         duration: {{ time_info.duration }},
+         elapsed: [{{ time_info.elapsed[0] }}, {{ time_info.elapsed[1] }}]
+      };
+   }
+
+   function navToReview() {
+      /* Show the game review page */
+      window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+   }
+
+   function lateInit() {
+      /* Execute late initialization - called from initSkrafl() */
+{% if channel_token %}      
+      openChannel("{{ channel_token }}");
+{% endif %}
+      scoreLeft = {{ game.final_scores()[0] }};
+      scoreRight = {{ game.final_scores()[1] }};
+{% if user and game.is_overdue() and not game.my_turn(user.id()) %}
+      // Display option to force opponent to resign
+      $("#force-resign").css("display", "inline");
+{% endif %}
+{% if player_index == None or game.is_robot_game() %}
+   // Only show the chat tab if the user is a player of this game and the
+   // opponent is not a robot
+   $("#tab-chat").css("display", "none");
+   $("div.chat").css("display", "none");
+{% elif game.has_new_chat_msg(user.id()) %}
+   // There is an unseen chat message
+   markChatMsg();
+{% endif %}
+}
 
 $(document).ready(initSkrafl);
 
 </script>
 
-{%- endblock -%}
+{% endblock %}

@@ -69,15 +69,23 @@ module.exports = function (grunt) {
       watch: {
          jshint: {
             files: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
-            tasks: 'jshint'
+            tasks: 'jshint',
+            options: { spawn: false }
          },
-         uglify: {
-            files: ['static/netskrafl.js', 'static/main.js'],
-            tasks: 'uglify'
+         uglify_netskrafl: {
+            files: ['static/netskrafl.js'],
+            tasks: 'uglify:netskrafl_js',
+            options: { spawn: false }
+         },
+         uglify_main: {
+            files: ['static/main.js'],
+            tasks: 'uglify:main_js',
+            options: { spawn: false }
          },
          less: {
             files: ['static/*.less'],
-            tasks: 'less:development'
+            tasks: 'less:development',
+            options: { spawn: false }
          },
          configFiles: {
             files: 'Gruntfile.js'
@@ -96,5 +104,10 @@ module.exports = function (grunt) {
    */
 
    grunt.registerTask('default', ['watch']);
+
+   // On watch events configure jshint:all to only run on changed file
+   grunt.event.on('watch', function(action, filepath) {
+     grunt.config('jshint.all.src', filepath);
+   });
 
 };

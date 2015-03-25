@@ -1,9 +1,13 @@
+#
+# App.yaml for the Netskrafl application on Google App Engine
+#
 application: netskrafl
 version: couscous
 runtime: python27
 api_version: 1
 threadsafe: true
 
+# Running on frontend instances of class 2 (256 MB RAM)
 instance_class: F2
 automatic_scaling:
   min_idle_instances: 2
@@ -19,21 +23,31 @@ builtins:
 - deferred: on
 
 handlers:
+
+# Predefined App Engine task queue deferral URL, admin only
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin
+
+# Robots.txt URL, cacheable
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
   expiration: 1d
+
+# Favorite icon URL, cacheable
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico
   expiration: 1d
+
+# Internet Explorer & Windows 8 resource file, can be cached  
 - url: /browserconfig.xml
   static_files: static/browserconfig.xml
   upload: static/browserconfig.xml
   expiration: 1d
+
+# Special Apple iOS URLs for image resources, all cacheable
 - url: /apple-touch-icon.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
@@ -50,24 +64,29 @@ handlers:
   static_files: static/touch-icon-iphone-retina.png
   upload: static/touch-icon-iphone-retina.png
   expiration: 1d
-- url: /static/mousetrap.min.js
-  static_files: static/mousetrap.min.js
-  upload: static/mousetrap.min.js
-  expiration: 1d
+
+# Image files that can be cached
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$
   expiration: 1d
+
+# CSS files, not to be cached
 - url: /static/skrafl-curry.css
   static_files: static/skrafl-curry.css
   upload: static/skrafl-curry.css
-- url: /static/netskrafl.js
-  static_files: static/netskrafl.js
-  upload: static/netskrafl.js
+
+# Third party JavaScript files that can be cached
 - url: /static/jquery.ui.touch-punch.min.js
   static_files: static/jquery.ui.touch-punch.min.js
   upload: static/jquery.ui.touch-punch.min.js
   expiration: 1d
+- url: /static/mousetrap.min.js
+  static_files: static/mousetrap.min.js
+  upload: static/mousetrap.min.js
+  expiration: 1d
+
+# Font files that can be cached
 - url: /static/glyphicons-regular.ttf
   static_files: static/glyphicons-regular.ttf
   upload: static/glyphicons-regular.ttf
@@ -88,35 +107,47 @@ handlers:
   upload: static/glyphicons-regular.woff
   expiration: 1d
   mime_type: application/font-woff
+
+# MP3 sound files that can be cached  
 - url: /static/(.*\.mp3)$
   static_files: static/\1
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
-  expiration: 1d
+  expiration: "1d 0m"
+
+# Catchall for noncacheable JavaScript
+- url: /static/(.*\.js)$
+  static_files: static/\1
+  upload: static/.*\.js$
+
+# Admin web URLs, requiring admin authorization
 - url: /admin/.*
   script: netskrafl.app
   login: admin
   auth_fail_action: unauthorized
+
+# Catchall for all other URLS
 - url: .*
   script: netskrafl.app
 
+# Files that should not be uploaded to App Engine
 skip_files:
-- ^resources/.*\.txt$
-- ^resources/.*\.dawg$
-- ^(.*/)?.*\.psd$
-- ^(.*/)?.*\.ai$
-- ^(.*/)?.*\.log$
-- ^(.*/)?.*\.md$
-- ^(.*/)?.*\.bat$
-- ^(.*/)?.*\.bak$
-- ^(.*/)?.*\.tmp$
-- ^(.*/)?.*\.TMP$
-- ^(.*/)?.*\.less$
-- ^(.*/)?#.*#$
-- ^(.*/)?.*~$
-- ^(.*/)?.*\.py[co]$
+- ^resources/.*\.txt$   # Raw text resources, such as word lists
+- ^resources/.*\.dawg$  # Compiled but not pickled DAWG trees
+- ^(.*/)?.*\.psd$       # Photoshop files
+- ^(.*/)?.*\.ai$        # Illustrator files
+- ^(.*/)?.*\.log$       # Local log files
+- ^(.*/)?.*\.md$        # MarkDown documentation files
+- ^(.*/)?.*\.bat$       # Windows batch files
+- ^(.*/)?.*\.bak$       # Backup files
+- ^(.*/)?.*\.tmp$       # Temporary files
+- ^(.*/)?.*\.TMP$       # Temporary files
+- ^(.*/)?.*\.less$      # Style sheets in LESS, to be compiled to CSS
+- ^(.*/)?#.*#$          # File names enclosed in hashes
+- ^(.*/)?.*~$           # Temporary files ending in a curl
+- ^(.*/)?.*\.py[co]$    # Python bytecode files
 - ^(.*/)?.*/RCS/.*$
-- ^\.git/.*$
-- ^node_modules/.*$
-- ^[gG]runtfile.js$
-- ^(.*/)?\..*$
+- ^\.git/.*$            # GitHub stuff
+- ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
+- ^[gG]runtfile.js$     # Gruntfile
+- ^(.*/)?\..*$          # Files whose names start with a period

@@ -8,62 +8,6 @@
 {% endblock %}
 
 {% block scripts %}
-
-<!-- Facebook SDK init -->
-<!-- include "fbinit.html" -->
-
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
-<!-- Main page script -->
-<script src="{{ url_for('static', filename='main.js') }}"></script>
-
-<script>
-
-function userId() {
-   /* The logged-in user who requested this page */
-   return "{{ user.id() }}";
-}
-
-function newgameUrl(opp, reversed) {
-   /* The URL for a new game against the given opponent */
-   return "{{ url_for('newgame') | safe }}?opp=" + opp +
-      (reversed ? "&rev=1" : "");
-}
-
-function waitUrl(opp) {
-   /* The URL for a wait page for a new game */
-   return "{{ url_for('wait') | safe }}?opp=" + opp;
-}
-
-function lateInit() {
-   /* Initialization that needs server-side info. Called from initMain() */
-
-{% if tab %}
-   /* Select default tab when opening page */
-   $("#tabs").tabs("option", "active", {{ tab }});
-{% endif %}
-
-   openChannel("{{ channel_token }}");
-
-   // Initialize the ready state togglers
-   initToggle("#ready-toggler", {{ "true" if user.is_ready() else "false" }});
-   initToggle("#timed-toggler", {{ "true" if user.is_ready_timed() else "false" }});
-   $("#ready-toggler").click(toggleReady);
-   $("#timed-toggler").click(toggleTimed);
-
-   // Initialize the Elo list toggler
-   initToggle("#elo-toggler", false);
-   $("#elo-toggler").click(toggleElo);
-   // Initialize the stats togglers
-   initToggle("#stats-toggler", false);
-   $("#stats-toggler").click(toggleStats);
-   initToggle("#own-toggler", false);
-   $("#own-toggler").click(toggleOwnStats);
-}
-
-</script>
-
 {% endblock %}
 
 {% block logo %}
@@ -434,7 +378,7 @@ function lateInit() {
 
 {%- endblock -%}
 
-{%- block endscripts -%}
+{% block media %}
 
 {%- if user.audio() -%}
 <!-- Audio resources -->
@@ -443,10 +387,65 @@ function lateInit() {
 </audio>
 {% endif %}
 
+{% endblock %}
+
+{% block endscripts %}
+
+<!-- Facebook SDK init -->
+<!-- include "fbinit.html" -->
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<!-- Main page script -->
+<script src="{{ url_for('static', filename='main.min.js') }}"></script>
+
 <script>
+
+function userId() {
+   /* The logged-in user who requested this page */
+   return "{{ user.id() }}";
+}
+
+function newgameUrl(opp, reversed) {
+   /* The URL for a new game against the given opponent */
+   return "{{ url_for('newgame') | safe }}?opp=" + opp +
+      (reversed ? "&rev=1" : "");
+}
+
+function waitUrl(opp) {
+   /* The URL for a wait page for a new game */
+   return "{{ url_for('wait') | safe }}?opp=" + opp;
+}
+
+function lateInit() {
+   /* Initialization that needs server-side info. Called from initMain() */
+
+{% if tab %}
+   /* Select default tab when opening page */
+   $("#tabs").tabs("option", "active", {{ tab }});
+{% endif %}
+
+   openChannel("{{ channel_token }}");
+
+   // Initialize the ready state togglers
+   initToggle("#ready-toggler", {{ "true" if user.is_ready() else "false" }});
+   initToggle("#timed-toggler", {{ "true" if user.is_ready_timed() else "false" }});
+   $("#ready-toggler").click(toggleReady);
+   $("#timed-toggler").click(toggleTimed);
+
+   // Initialize the Elo list toggler
+   initToggle("#elo-toggler", false);
+   $("#elo-toggler").click(toggleElo);
+   // Initialize the stats togglers
+   initToggle("#stats-toggler", false);
+   $("#stats-toggler").click(toggleStats);
+   initToggle("#own-toggler", false);
+   $("#own-toggler").click(toggleOwnStats);
+}
 
 $(document).ready(initMain);
 
 </script>
 
-{%- endblock -%}
+{% endblock %}
