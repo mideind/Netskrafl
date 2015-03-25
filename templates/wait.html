@@ -8,42 +8,6 @@
 {% endblock %}
 
 {% block scripts %}
-
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
-<!-- Wait page script -->
-<script src="{{ url_for('static', filename='wait.js') }}"></script>
-
-<script>
-
-function userId() {
-   /* The logged-in user who requested this page */
-   return "{{ user.id() }}";
-}
-
-function opponentId() {
-   return "{{ opp.id() }}";
-}
-
-function goToGame(uuid) {
-   /* The URL for a freshly created timed game against the given opponent */
-   window.location.href = "{{ url_for('board') | safe }}?game=" + uuid;
-}
-
-function cancelWait() {
-   /* Tired of waiting: Go back to the main page */
-   window.location.href = "{{ url_for('main') | safe }}";
-}
-
-function lateInit() {
-   /* Called from initWait() */
-   openChannel("{{ channel_token }}");
-   initForm(opponentId(), "{{ opp.nickname() | safe }}", "{{ opp.full_name() | safe }}", {{ prefs.duration }});
-}
-
-</script>
-
 {% endblock %}
 
 {% block logo %}
@@ -83,12 +47,45 @@ function lateInit() {
 
 {%- endblock -%}
 
-{%- block endscripts -%}
+{% block endscripts %}
+
+<!-- Google App Engine Channel API -->
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+
+<!-- Wait page script -->
+<script src="{{ url_for('static', filename='wait.min.js') }}"></script>
 
 <script>
+
+function userId() {
+   /* The logged-in user who requested this page */
+   return "{{ user.id() }}";
+}
+
+function opponentId() {
+   return "{{ opp.id() }}";
+}
+
+function goToGame(uuid) {
+   /* The URL for a freshly created timed game against the given opponent */
+   window.location.href = "{{ url_for('board') | safe }}?game=" + uuid;
+}
+
+function cancelWait() {
+   /* Tired of waiting: Go back to the main page */
+   window.location.href = "{{ url_for('main') | safe }}";
+}
+
+function lateInit() {
+   /* Called from initWait() */
+   openChannel("{{ channel_token }}");
+   initForm(opponentId(), "{{ opp.nickname() | safe }}",
+      "{{ opp.full_name() | safe }}",
+      {{ prefs.duration }});
+}
 
 $(document).ready(initWait);
 
 </script>
 
-{%- endblock -%}
+{% endblock %}

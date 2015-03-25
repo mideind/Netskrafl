@@ -42,6 +42,10 @@ module.exports = function (grunt) {
          main_js: {
             src: 'static/main.js',
             dest: 'static/main.min.js'
+         },
+         wait_js: {
+            src: 'static/wait.js',
+            dest: 'static/wait.min.js'
          }
       },
 
@@ -80,6 +84,11 @@ module.exports = function (grunt) {
          uglify_main: {
             files: ['static/main.js'],
             tasks: 'uglify:main_js',
+            options: { spawn: false }
+         },
+         uglify_wait: {
+            files: ['static/wait.js'],
+            tasks: 'uglify:wait_js',
             options: { spawn: false }
          },
          less: {
