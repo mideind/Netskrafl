@@ -558,8 +558,13 @@ function appendMove(player, co, tiles, score) {
       else
       if (leftTotal < rightTotal)
          winner = 1;
-      if (localPlayer() == winner)
+      if (localPlayer() == winner) {
          $("#congrats").css("visibility", "visible");
+         // Play fanfare sound if audio enabled
+         var youWin = document.getElementById("you-win");
+         if (youWin)
+            youWin.play();
+      }
    }
    else
    if (player === 0) {

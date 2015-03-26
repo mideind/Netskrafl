@@ -285,11 +285,14 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 {%- if user and user.audio() -%}
 <!-- Audio resources -->
-<audio id="your-turn" preload="auto">
+<audio id="your-turn" preload="none">
    <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
 </audio>
-<audio id="new-msg" preload="auto">
+<audio id="new-msg" preload="none">
    <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="you-win" preload="none">
+   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
 {% endif %}
 
