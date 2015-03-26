@@ -1687,8 +1687,8 @@ span.list-scorehdr {
 
 span.list-elo-adj {
    display: inline-block;
-   width: 46px;
-   max-width: 46px;
+   width: 52px;
+   max-width: 52px;
    text-align: center;
    overflow: hidden;
    margin-bottom: 2px;
@@ -1696,8 +1696,8 @@ span.list-elo-adj {
 
 span.list-elo-hdr {
    display: inline-block;
-   width: 92px; /* list-elo-adj * 2 */
-   max-width: 92px;
+   width: 104px; /* list-elo-adj * 2 */
+   max-width: 104px;
    text-align: center;
    overflow: hidden;
 }
@@ -1964,11 +1964,13 @@ span.elo-btn {
 }
 
 span.elo-btn.left {
+   margin-left: 6px;
    margin-right: 4px;
 }
 
 span.elo-btn.right {
    margin-left: 4px;
+   margin-right: 6px;
 }
 
 span.elo-btn.invisible {
@@ -1976,35 +1978,37 @@ span.elo-btn.invisible {
 }
 
 span.elo-btn.elo-win {
-   background-color: fade(darken(@freshtile, 10%), 65%);
+   background-color: lighten(@freshtile, 10%); /* darken 10% fade 65% */
 }
 
 span.elo-btn.elo-loss {
-   background-color: fade(darken(@triple-word, 10%), 65%);
+   background-color: lighten(@triple-word, 15%); /* fade 65% */
 }
 
 span.elo-btn.elo-neutral {
-   background-color: fade(darken(@double-letter, 5%), 80%);
+   background-color: lighten(@double-letter, 5%);
 }
 
 span.elo-hdr-left {
-   background-color: fade(@triple-letter, 75%);
-   color: white;
-   border-radius: 5px;
-   padding: 4px;
-   padding-left: 6px;
-   padding-right: 6px;
-   margin-right: 6px;
-}
-
-span.elo-hdr-right {
-   background-color: fade(@triple-letter, 75%);
+   background-color: @triple-letter;
    color: white;
    border-radius: 5px;
    padding: 4px;
    padding-left: 6px;
    padding-right: 6px;
    margin-left: 6px;
+   margin-right: 6px;
+}
+
+span.elo-hdr-right {
+   background-color: @triple-letter;
+   color: white;
+   border-radius: 5px;
+   padding: 4px;
+   padding-left: 6px;
+   padding-right: 6px;
+   margin-left: 6px;
+   margin-right: 6px;
 }
 
 span.usr-info {
