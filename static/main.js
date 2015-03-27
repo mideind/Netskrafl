@@ -485,9 +485,22 @@ function populateGameList(json) {
       if (item.opp_is_robot)
          // Mark robots with a cog icon
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
-      var turnText = item.my_turn ? "Þú átt leik" : (opp + " á leik");
+      var turnText;
+      if (item.my_turn)
+         turnText = "Þú átt leik";
+      else
+      if (item.zombie)
+         turnText = "Viðureign lokið";
+      else
+         turnText = opp + " á leik";
+      var flagClass = " grayed";
+      if (item.my_turn)
+         flagClass = "";
+      else
+      if (item.zombie)
+         flagClass = " zombie";
       var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
-         (item.my_turn ? "" : " grayed") + "'></span>";
+         flagClass + "'></span>";
       var overdueText = item.overdue ?
          (item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf") : "";
       var overdue = "<span title='" + overdueText + "' class='glyphicon glyphicon-hourglass" +
@@ -507,7 +520,7 @@ function populateGameList(json) {
          "<span class='list-tc'>" + tileCount + "</span>" +
          "</a></div>";
       $("#gamelist").append(str);
-      if (item.my_turn)
+      if (item.my_turn || item.zombie)
          numMyTurns++;
    }
    // Update the count of games where it's this user's turn

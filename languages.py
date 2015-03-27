@@ -95,6 +95,9 @@ class Alphabet:
         (u"ö", 1),
         (u"?", 2)] # Blank tiles
 
+    # Number of tiles in bag
+    BAG_SIZE = sum(n for letter, n in bag_tiles)
+
     # Sort ordering of Icelandic letters allowed in Scrabble
     order = u'aábdðeéfghiíjklmnoóprstuúvxyýþæö'
     # Upper case version of the order string

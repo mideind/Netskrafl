@@ -561,8 +561,9 @@ function appendMove(player, co, tiles, score) {
          winner = 1;
       if (localPlayer() == winner) {
          $("#congrats").css("visibility", "visible");
-         if (!initializing) {
-            // The local player is winning in real time:
+         if (!initializing || gameIsZombie()) {
+            // The local player is winning in real time or opening the
+            // game for the first time after winning it in absentia:
             // Play fanfare sound if audio enabled
             var youWin = document.getElementById("you-win");
             if (youWin)
@@ -2006,7 +2007,6 @@ function channelOnMessage(msg) {
    }
    else {
       // json now contains an entire client state update, as a after submitMove()
-      // resetRack(); // Recall all tiles into the rack - no need to pass the ev parameter
       updateStateGently(json); // Try to preserve tiles that the user may have placed on the board
       // Play audio, if present
       var yourTurn = document.getElementById("your-turn");
@@ -2014,6 +2014,11 @@ function channelOnMessage(msg) {
          // Note that playing media outside user-invoked event handlers does not work on iOS.
          // That is a 'feature' introduced and documented by Apple.
          yourTurn.play();
+      if (gameOver) {
+         // The game is now over and the player has seen it happen:
+         // let the server know so it can remove the game from the zombie list
+         serverQuery("gameover", { game: gameId(), player: userId() });
+      }
    }
 }
 

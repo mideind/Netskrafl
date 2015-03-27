@@ -44,7 +44,8 @@ from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel,\
+    ZombieModel
 
 
 # Standard Flask initialization
@@ -143,6 +144,12 @@ def _process_move(game, movelist):
 
         # Make sure the new game state is persistently recorded
         game.store()
+
+        # If the game is now over, and the opponent is human, add it to the
+        # zombie game list so that the opponent has a better chance to notice
+        # the result
+        if is_over and opponent is not None:
+            ZombieModel.add_game(game.id(), opponent)
 
     # Notify the opponent, if he is not a robot and has one or more active channels
     if opponent is not None:
@@ -285,46 +292,68 @@ def _userlist(range_from, range_to):
 
 
 def _gamelist():
-    """ Return a list of active games for the current user """
+    """ Return a list of active and zombie games for the current user """
     result = []
     cuid = User.current_id()
+    if not cuid:
+        return result
     now = datetime.utcnow()
-    if cuid is not None:
-        # Obtain up to 50 live games where this user is a player
-        i = list(GameModel.list_live_games(cuid, max_len = 50))
-        # Sort in reverse order by turn and then by timestamp of the last move,
-        # i.e. games with newest moves first
-        i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
-        # Iterate through the game list
-        for g in i:
-            opp = g["opp"] # User id of opponent
-            ts = g["ts"]
-            overdue = False
-            if opp is None:
-                # Autoplayer opponent
-                nick = Game.autoplayer_name(g["robot_level"])
+    # Place zombie games (recently finished games that this player
+    # has not seen) at the top of the list
+    for g in ZombieModel.list_games(cuid):
+        opp = g["opp"] # User id of opponent
+        u = User.load(opp)
+        nick = u.nickname()
+        result.append({
+            "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
+            "opp": nick,
+            "opp_is_robot": False,
+            "sc0": g["sc0"],
+            "sc1": g["sc1"],
+            "ts": Alphabet.format_timestamp(g["ts"]),
+            "my_turn": False,
+            "overdue": False,
+            "zombie": True,
+            "tile_count" : Alphabet.BAG_SIZE # All tiles accounted for
+        })
+    # Sort zombies in decreasing order by last move, i.e. most recently completed games first
+    result.sort(key = lambda x: x["ts"], reverse = True)
+    # Obtain up to 50 live games where this user is a player
+    i = list(GameModel.list_live_games(cuid, max_len = 50))
+    # Sort in reverse order by turn and then by timestamp of the last move,
+    # i.e. games with newest moves first
+    i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
+    # Iterate through the game list
+    for g in i:
+        opp = g["opp"] # User id of opponent
+        ts = g["ts"]
+        overdue = False
+        if opp is None:
+            # Autoplayer opponent
+            nick = Game.autoplayer_name(g["robot_level"])
+        else:
+            # Human opponent
+            u = User.load(opp)
+            nick = u.nickname()
+            delta = now - ts
+            if g["my_turn"]:
+                # Start to show warning after 12 days
+                overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS - 2))
             else:
-                # Human opponent
-                u = User.load(opp)
-                nick = u.nickname()
-                delta = now - ts
-                if g["my_turn"]:
-                    # Start to show warning after 12 days
-                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS - 2))
-                else:
-                    # Show mark after 14 days
-                    overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
-            result.append({
-                "url": url_for('board', game = g["uuid"]),
-                "opp": nick,
-                "opp_is_robot": opp is None,
-                "sc0": g["sc0"],
-                "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp(ts),
-                "my_turn": g["my_turn"],
-                "overdue": overdue,
-                "tile_count" : g["tile_count"]
-            })
+                # Show mark after 14 days
+                overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
+        result.append({
+            "url": url_for('board', game = g["uuid"]),
+            "opp": nick,
+            "opp_is_robot": opp is None,
+            "sc0": g["sc0"],
+            "sc1": g["sc1"],
+            "ts": Alphabet.format_timestamp(ts),
+            "my_turn": g["my_turn"],
+            "overdue": overdue,
+            "zombie": False,
+            "tile_count" : g["tile_count"]
+        })
     return result
 
 
@@ -1211,6 +1240,7 @@ def board():
     """ The main game page """
 
     uuid = request.args.get("game", None)
+    zombie = request.args.get("zombie", None) # Requesting a look at a newly finished game
     game = None
 
     if uuid:
@@ -1250,10 +1280,32 @@ def board():
         channel_token = ChannelModel.create_new(u"game",
             game.id() + u":" + str(player_index), user.id())
 
+    if zombie and player_index is not None:
+        # This is a newly finished game that is now being viewed by clicking
+        # on it from a zombie list: remove it from the list
+        ZombieModel.del_game(game.id(), user.id())
+
     return render_template("board.html", game = game, user = user,
-        player_index = player_index,
+        player_index = player_index, zombie = bool(zombie),
         time_info = game.time_info(),
         channel_token = channel_token)
+
+
+@app.route("/gameover", methods=['POST'])
+def gameover():
+    """ Remove a game from the zombie list, if it is there """
+
+    if not User.current_id():
+        # We must have a logged-in user
+        return jsonify(online = False)
+
+    user_id = request.form.get('user', None)
+    online = False
+
+    if user_id is not None:
+        online = ChannelModel.is_connected(user_id)
+
+    return jsonify(online = online)
 
 
 @app.route("/newchannel", methods=['POST'])

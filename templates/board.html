@@ -370,6 +370,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       return "{{ '' if user == None else user.id() }}";
    }
 
+   function gameIsZombie() {
+      /* Return true if the game is newly finished and is being viewed to confirm results */
+      return {{ "true" if zombie else "false" }};
+   }
+
    /* Array of supported emoticons in chat */
    var emoticons = Array(
       { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },

@@ -1220,3 +1220,77 @@ class ChatModel(ndb.Model):
         # Return the message timestamp
         return cm.timestamp
 
+
+class ZombieModel(ndb.Model):
+    """ Models finished games that have not been seen by one of the players """
+
+    # The zombie game
+    game = ndb.KeyProperty(kind = GameModel)
+    # The player that has not seen the result
+    player = ndb.KeyProperty(kind = UserModel)
+
+    def set_player(self, user_id):
+        """ Set the player's user id """
+        self.player = None if user_id is None else ndb.Key(UserModel, user_id)
+
+    def set_game(self, game_id):
+        """ Set the game id """
+        self.game = None if game_id is None else ndb.Key(GameModel, game_id)
+
+    @classmethod
+    def add_game(cls, game_id, user_id):
+        """ Add a zombie game that has not been seen by the player in question """
+        zm = cls()
+        zm.set_game(game_id)
+        zm.set_player(user_id)
+        zm.put()
+
+    @classmethod
+    def del_game(cls, game_id, user_id):
+        """ Delete a zombie game after the player has seen it """
+        kg = ndb.Key(GameModel, game_id)
+        kp = ndb.Key(UserModel, user_id)
+        q = cls.query(ZombieModel.game == kg).filter(ZombieModel.player == kp)
+        zmk = q.get(keys_only = True)
+        if not zmk:
+            # No such game in the zombie list
+            return
+        zmk.delete()
+
+    @classmethod
+    def list_games(cls, user_id):
+        """ List all zombie games for the given player """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        # List issued challenges in ascending order by timestamp (oldest first)
+        q = cls.query(ZombieModel.player == k)
+
+        def z_callback(zm):
+            """ Map a ZombieModel entity to a game descriptor """
+            if not zm.game:
+                return None
+            gm = GameModel.fetch(zm.game.id())
+            u0 = None if gm.player0 is None else gm.player0.id()
+            u1 = None if gm.player1 is None else gm.player1.id()
+            if u0 == user_id:
+                # Player 0 is the source player, 1 is the opponent
+                opp = u1
+                sc0, sc1 = gm.score0, gm.score1
+            else:
+                # Player 1 is the source player, 0 is the opponent
+                assert u1 == user_id
+                opp = u0
+                sc1, sc0 = gm.score0, gm.score1
+            return dict(
+                uuid = zm.game.id(),
+                ts = gm.ts_last_move or gm.timestamp,
+                opp = opp,
+                robot_level = gm.robot_level,
+                sc0 = sc0,
+                sc1 = sc1)
+
+        for zm in q.fetch():
+            yield z_callback(zm)
+
