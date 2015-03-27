@@ -72,6 +72,7 @@ var clockIval = null; // Clock interval timer
 var scoreLeft = 0, scoreRight = 0;
 var penaltyLeft = 0, penaltyRight = 0; // Current overtime penalty score
 var gameOver = false;
+var initializing = true; // True while loading initial move list and setting up
 
 var entityMap = {
    "&": "&amp;",
@@ -560,10 +561,13 @@ function appendMove(player, co, tiles, score) {
          winner = 1;
       if (localPlayer() == winner) {
          $("#congrats").css("visibility", "visible");
-         // Play fanfare sound if audio enabled
-         var youWin = document.getElementById("you-win");
-         if (youWin)
-            youWin.play();
+         if (!initializing) {
+            // The local player is winning in real time:
+            // Play fanfare sound if audio enabled
+            var youWin = document.getElementById("you-win");
+            if (youWin)
+               youWin.play();
+         }
       }
    }
    else
@@ -2091,5 +2095,8 @@ function initSkrafl(jQuery) {
 
    if (igt.duration > 0)
       startClock(igt);
+
+   // Done with the initialization phase
+   initializing = false;
 }
 
