@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: couscous
+version: halva
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -116,9 +116,9 @@ handlers:
   expiration: "1d 0m"
 
 # Catchall for noncacheable JavaScript
-- url: /static/(.*\.js)$
+- url: /static/(.*\.min\.js)$
   static_files: static/\1
-  upload: static/.*\.js$
+  upload: static/.*\.min\.js$
 
 # Admin web URLs, requiring admin authorization
 - url: /admin/.*
