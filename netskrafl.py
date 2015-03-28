@@ -1293,19 +1293,23 @@ def board():
 
 @app.route("/gameover", methods=['POST'])
 def gameover():
-    """ Remove a game from the zombie list, if it is there """
+    """ A player has seen a game finish: remove it from the zombie list, if it is there """
 
-    if not User.current_id():
+    cuid = User.current_id()
+    if not cuid:
         # We must have a logged-in user
-        return jsonify(online = False)
+        return jsonify(result = Error.LOGIN_REQUIRED)
 
-    user_id = request.form.get('user', None)
-    online = False
+    game_id = request.form.get('game', None)
+    user_id = request.form.get('player', None)
 
-    if user_id is not None:
-        online = ChannelModel.is_connected(user_id)
+    if not game_id or cuid != user_id:
+        # A user can only remove her own games from the zombie list
+        return jsonify(result = Error.GAME_NOT_FOUND)
 
-    return jsonify(online = online)
+    ZombieModel.del_game(game_id, user_id)
+
+    return jsonify(result = Error.LEGAL)
 
 
 @app.route("/newchannel", methods=['POST'])

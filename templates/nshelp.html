@@ -40,8 +40,10 @@
    draga hana á réttan stað og sleppa músarhnappnum). Einnig má nota fingur til
    að draga flísar á spjaldtölvum og snertiskjám. Þú getur flutt flísar til á
    borðinu eða dregið þær til baka í rekkann ef þú færð bakþanka.
-   <strong>Esc</strong> hnappurinn á lyklaborðinu sendir allar flísar til baka í rekkann,
-   en <strong>Backspace</strong> endurraðar rekkanum af handahófi.</p>
+   <img src="{{ url_for('static', filename='Recall.png') }}" width=20 height=20>
+   og <strong>Esc</strong> hnappurinn á lyklaborðinu senda allar flísar til baka í rekkann,
+   en <img src="{{ url_for('static', filename='Shuffle.png') }}" width=20 height=20>
+   og <strong>Backspace</strong> endurraða rekkanum af handahófi.</p>
    <p>Þegar þú hefur lagt niður orð eins og þú vilt hafa það smellirðu
    á græna hnappinn
    <img src="{{ url_for('static', filename='Leika.png') }}" width=53 height=20>.
@@ -120,9 +122,13 @@
    </div>
 
    <div id="tabs-2">
-   <p>Netskrafl leyfir tveggja stafa orð sem eru á <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
+   <p>Netskrafl leyfir tveggja stafa orð sem eru á
+   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
    eins og hann var á Íslandsmóti í Skrafli 2014.</p>
-   <p>Þau eru eftirfarandi:</p>
+   <p>Þú getur flett upp í listanum meðan á viðureign stendur með því að smella á
+   flipann sem merktur er með björgunarhring
+   <span class="glyphicon glyphicon-life-preserver"></span>.</p>
+   <p>Leyfileg tveggja stafa orð eru eftirfarandi:</p>
    <div class="twolist">
    <div class="twoline">
    <span class="twoword">að</span> <span class="twoword">af</span> <span class="twoword">ak</span> <span class="twoword">al</span> <span class="twoword">an</span> <span class="twoword">ar</span> <span class="twoword">as</span> <span class="twoword">at</span> <span class="twoword">ax</span>
