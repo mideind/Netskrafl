@@ -1,5 +1,21 @@
 {% extends "container.html" %}
 
+{% block opengraph %}
+{% if og != None %}
+<meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
+<meta property="og:description" content="{{ og.player0 + ' og ' + og.player1 + ' áttust við. Úrslit urðu ' + og.score0 + ' gegn ' + og.score1 + ('!' if og.win else '.') }}" />
+<meta property="og:locale" content="is_IS" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og) | safe }}" />
+<meta property="og:image" content="http://www.netskrafl.is/static/NetskraflFacebookImage.jpg" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="600" />
+<meta property="og:image:height" content="315" />
+<meta property="fb:app_id" content="622492364544510" />
+{% endif %}
+{% endblock %}
+
 {% block styles %}
 
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">

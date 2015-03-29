@@ -1241,8 +1241,24 @@ def board():
 
     uuid = request.args.get("game", None)
     zombie = request.args.get("zombie", None) # Requesting a look at a newly finished game
-    game = None
+    try:
+        # If the og argument is present, it indicates that OpenGraph data
+        # should be included in the page header, from the point of view of
+        # the player that the argument represents (i.e. og=0 or og=1).
+        # If og=-1, OpenGraph data should be included but from a neutral
+        # (third party) point of view.
+        og = request.args.get("og", None)
+        if og is not None:
+            # This should be a player index: -1 (third party), 0 or 1
+            og = int(og) # May throw an exception
+            if og < -1:
+                og = -1
+            elif og > 1:
+                og = 1
+    except:
+        og = None
 
+    game = None
     if uuid:
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
@@ -1285,9 +1301,27 @@ def board():
         # on it from a zombie list: remove it from the list
         ZombieModel.del_game(game.id(), user.id())
 
+    ogd = None # OpenGraph data
+    if og is not None and is_over:
+        # This game is a valid and visible OpenGraph object
+        # Calculate the OpenGraph stuff to be included in the page header
+        pix = 0 if og <= 0 else 1 # Player indexing
+        sc = game.final_scores()
+        winner = game.winning_player() # -1 if draw
+        ogd = dict(
+            og = og,
+            player0 = game.player_nickname(pix),
+            player1 = game.player_nickname(1 - pix),
+            winner = winner,
+            win = False if og == -1 else (og == winner),
+            draw = (winner == -1),
+            score0 = str(sc[pix]),
+            score1 = str(sc[1 - pix])
+        )
+
     return render_template("board.html", game = game, user = user,
         player_index = player_index, zombie = bool(zombie),
-        time_info = game.time_info(),
+        time_info = game.time_info(), og = ogd, # OpenGraph data
         channel_token = channel_token)
 
 

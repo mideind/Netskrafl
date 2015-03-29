@@ -9,6 +9,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
+<!-- OpenGraph properties -->
+{% block opengraph %}
+{% endblock %}
+
 <!-- Apple iPhone and iPad touch icons -->
 <link rel="apple-touch-icon" sizes="76x76" href="/touch-icon-ipad.png">
 <link rel="apple-touch-icon" sizes="120x120" href="/touch-icon-iphone-retina.png">
@@ -62,9 +66,6 @@
 
 <!-- Mousetrap global keyboard handler -->
 <script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
-
-<!-- JGestures library -->
-<!-- <script src="{{ url_for('static', filename='jgestures.js') }}"></script> -->
 
 {% block endscripts %}
 {% endblock %}
