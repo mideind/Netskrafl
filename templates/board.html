@@ -307,6 +307,9 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 <audio id="new-msg" preload="none">
    <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
 </audio>
+{% endif %}
+
+{%- if user and user.fanfare() -%}
 <audio id="you-win" preload="none">
    <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>

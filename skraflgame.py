@@ -173,6 +173,17 @@ class User:
         assert isinstance(audio, bool)
         self.set_pref(u"audio", audio)
 
+    def fanfare(self):
+        """ Returns True if the user wants a fanfare sound when winning """
+        em = self.get_pref(u"fanfare")
+        # True by default
+        return True if em is None else em
+
+    def set_fanfare(self, fanfare):
+        """ Sets the fanfare preference of a user to True or False """
+        assert isinstance(fanfare, bool)
+        self.set_pref(u"fanfare", fanfare)
+
     def beginner(self):
         """ Returns True if the user is a beginner so we show help panels, etc. """
         em = self.get_pref(u"beginner")

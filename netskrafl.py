@@ -1062,6 +1062,7 @@ def userprefs():
             self.nickname = u''
             self.email = u''
             self.audio = True
+            self.fanfare = True
             self.beginner = True
             self.logout_url = User.logout_url()
 
@@ -1081,6 +1082,7 @@ def userprefs():
                 pass
             try:
                 self.audio = 'audio' in form # State of the checkbox
+                self.fanfare = 'fanfare' in form # State of the checkbox
                 self.beginner = 'beginner' in form
             except:
                 pass
@@ -1091,6 +1093,7 @@ def userprefs():
             self.full_name = usr.full_name()
             self.email = usr.email()
             self.audio = usr.audio()
+            self.fanfare = usr.fanfare()
             self.beginner = usr.beginner()
 
         def validate(self):
@@ -1112,6 +1115,7 @@ def userprefs():
             usr.set_full_name(self.full_name)
             usr.set_email(self.email)
             usr.set_audio(self.audio)
+            usr.set_fanfare(self.fanfare)
             usr.set_beginner(self.beginner)
             usr.update()
 
@@ -1305,7 +1309,7 @@ def board():
     if og is not None and is_over:
         # This game is a valid and visible OpenGraph object
         # Calculate the OpenGraph stuff to be included in the page header
-        pix = 0 if og <= 0 else 1 # Player indexing
+        pix = 0 if og < 0 else og # Player indexing
         sc = game.final_scores()
         winner = game.winning_player() # -1 if draw
         ogd = dict(

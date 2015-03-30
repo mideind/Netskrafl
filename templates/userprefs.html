@@ -26,6 +26,7 @@ function submitForm() {
    // POST the form to the server
    // First transfer the state of our fancy simulated checkbox
    $("#audio").prop('checked', $("#audio-toggler #opt2").hasClass("selected"));
+   $("#fanfare").prop('checked', $("#fanfare-toggler #opt2").hasClass("selected"));
    $("#beginner").prop('checked', $("#beginner-toggler #opt2").hasClass("selected"));
    document.getElementById('frm1').submit();
 }
@@ -80,8 +81,19 @@ function submitForm() {
             <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
          </div>
+         <input type="checkbox" name="fanfare" id="fanfare"
+            class="checkbox audio" value="True"
+{% if uf.fanfare %}
+            checked
+{% endif %}
+         ></input>
+         <span class="subcaption">Lúðraþytur eftir sigur:</span>
+         <div id="fanfare-toggler" class="toggler" tabindex="5">
+            <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
+         </div>
       </div>
-      <div class="explain">Stillir hvort hljóðmerki heyrist t.d. þegar andstæðingur leikur og þegar sigur vinnst</div>
+      <div class="explain">Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst</div>
 
       <div class="dialog-spacer"><span class="caption">Sýna reitagildi:</span>
          <input type="checkbox" name="beginner" id="beginner"
@@ -90,7 +102,7 @@ function submitForm() {
             checked
 {% endif %}
          ></input>
-         <div id="beginner-toggler" class="toggler" tabindex="5">
+         <div id="beginner-toggler" class="toggler" tabindex="6">
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-ok"></span></div>
          </div>
@@ -101,19 +113,19 @@ function submitForm() {
    </div>
 
    <!-- Logout button -->
-   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="8"
+   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="9"
       onclick="location.href='{{ uf.logout_url }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
 
    <!-- Cancel button -->
-   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="7"
+   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="8"
       onclick="location.href='{{ url_for('main') }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
    <!-- OK button -->
-   <div class="modal-close" id="user-ok" title="Vista" tabindex="6"
+   <div class="modal-close" id="user-ok" title="Vista" tabindex="7"
       onclick="submitForm()"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
@@ -128,6 +140,10 @@ function submitForm() {
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
    <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="you-win" preload="auto">
+   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>
@@ -154,6 +170,30 @@ function submitForm() {
    $("#audio-toggler").keypress(function(ev) {
       if (ev.keyCode === 0 || ev.keyCode == 32)
          doAudioToggle();
+   });
+
+   function doFanfareToggle() {
+      // Toggle from one state to the other
+      $("#fanfare-toggler #opt1").toggleClass("selected");
+      $("#fanfare-toggler #opt2").toggleClass("selected");
+      if ($("#fanfare-toggler #opt2").hasClass("selected")) {
+         // Play a demo
+         var youWin = document.getElementById("you-win");
+         if (youWin)
+            youWin.play();
+      }
+   }
+
+   // Initialize the fanfare toggler
+   if ($("#fanfare").prop('checked'))
+      $("#fanfare-toggler #opt2").addClass("selected");
+   else
+      $("#fanfare-toggler #opt1").addClass("selected");
+
+   $("#fanfare-toggler").click(doFanfareToggle);
+   $("#fanfare-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFanfareToggle();
    });
 
    function doBeginnerToggle() {
