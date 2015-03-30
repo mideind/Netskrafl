@@ -2096,6 +2096,9 @@ function initSkrafl(jQuery) {
    $("#chat-send").click(sendChatMsg);
    $("#msg").keypress(13, handleChatEnter);
 
+   // Facebook share button
+   $("div.fb-share").click(fbShare);
+
    lateInit();
 
    if (igt.duration > 0)

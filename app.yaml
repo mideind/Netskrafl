@@ -69,6 +69,7 @@ handlers:
 - url: /static/(.*\.(gif|png|jpg))$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$
+  mime_type: image/\1
   expiration: 1d
 
 # CSS files, not to be cached

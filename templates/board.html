@@ -3,12 +3,12 @@
 {% block opengraph %}
 {% if og != None %}
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
-<meta property="og:description" content="{{ og.player0 + ' og ' + og.player1 + ' áttust við. Úrslit urðu ' + og.score0 + ' gegn ' + og.score1 + ('!' if og.win else '.') }}" />
+<meta property="og:description" content="{{ og.player0 + ' og ' + og.player1 + ' áttust við. Úrslit urðu ' + og.score0 + ' stig gegn ' + og.score1 + ('!' if og.win else '.') }}" />
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
-<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og) | safe }}" />
-<meta property="og:image" content="http://www.netskrafl.is/static/NetskraflFacebookImage.jpg" />
+<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
+<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImage.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="315" />
@@ -295,6 +295,9 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 </div>
 {% endif %}
 
+<!-- Facebook share button -->
+<div class="fb-share">Deila á Facebook</div>
+
 {%- endblock -%}
 
 {% block media %}
@@ -318,6 +321,25 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 {% endblock %}
 
 {% block endscripts %}
+
+<!-- Facebook stuff -->
+<div id="fb-root"></div>
+<script>
+window.fbAsyncInit = function() {
+   FB.init({
+      appId: '622492364544510',
+      xfbml: true,
+      version: 'v2.3'
+   });
+};
+(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/is_IS/sdk.js";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
+</script>
 
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
@@ -440,6 +462,23 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
    }
 
+   function fbShare() {
+      /* Share a finished game on Facebook */
+      FB.ui({
+            method: "share",
+            href: "{{ url_for('board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | safe }}",
+         },
+         function(response) {
+            if (response && !response.error_code) {
+               alert('Posting completed.');
+            }
+            else {
+               alert('Error while posting.');
+            }
+         }
+      );
+   }
+
    function lateInit() {
       /* Execute late initialization - called from initSkrafl() */
 {% if channel_token %}      
@@ -452,15 +491,15 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       $("#force-resign").css("display", "inline");
 {% endif %}
 {% if player_index == None or game.is_robot_game() %}
-   // Only show the chat tab if the user is a player of this game and the
-   // opponent is not a robot
-   $("#tab-chat").css("display", "none");
-   $("div.chat").css("display", "none");
+      // Only show the chat tab if the user is a player of this game and the
+      // opponent is not a robot
+      $("#tab-chat").css("display", "none");
+      $("div.chat").css("display", "none");
 {% elif game.has_new_chat_msg(user.id()) %}
-   // There is an unseen chat message
-   markChatMsg();
+      // There is an unseen chat message
+      markChatMsg();
 {% endif %}
-}
+   }
 
 $(document).ready(initSkrafl);
 
