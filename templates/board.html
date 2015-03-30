@@ -49,7 +49,7 @@
 {%- endif -%}
       </h3>
       <h3 class="playerright">
-{% if player_index != None and player_index == 1 %}
+{%- if player_index != None and player_index == 1 -%}
 <a class="nodecorate" href="{{ url_for('userprefs') }}">
 {%- elif game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
