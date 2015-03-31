@@ -1312,6 +1312,7 @@ def board():
         pix = 0 if og < 0 else og # Player indexing
         sc = game.final_scores()
         winner = game.winning_player() # -1 if draw
+        bingoes = game.bingoes()
         ogd = dict(
             og = og,
             player0 = game.player_nickname(pix),
@@ -1320,7 +1321,9 @@ def board():
             win = False if og == -1 else (og == winner),
             draw = (winner == -1),
             score0 = str(sc[pix]),
-            score1 = str(sc[1 - pix])
+            score1 = str(sc[1 - pix]),
+            bingo0 = bingoes[pix],
+            bingo1 = bingoes[1 - pix]
         )
 
     return render_template("board.html", game = game, user = user,

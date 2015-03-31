@@ -921,6 +921,18 @@ class Game:
             reply["time_info"] = self.time_info()
         return reply
 
+    def bingoes(self):
+        """ Returns a tuple of lists of bingoes for both players """
+        board = self.state.board()
+        # List all bingoes in the game
+        bingoes = [(m.player, m.move.summary(board)) for m in self.moves if m.move.num_covers() == Rack.MAX_TILES]
+        def _stripq(s):
+            return s.replace(u'?', u'')
+        # Populate (word, score) tuples for each bingo for each player
+        bingo0 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 0]
+        bingo1 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 1]
+        return (bingo0, bingo1)
+
     def statistics(self):
         """ Return a set of statistics on the game to be displayed by the client """
         reply = dict()

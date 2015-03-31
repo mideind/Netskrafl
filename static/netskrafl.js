@@ -570,6 +570,8 @@ function appendMove(player, co, tiles, score) {
                youWin.play();
          }
       }
+      // Show the Facebook share button if the game is over
+      $("div.fb-share").css("visibility", "visible");
    }
    else
    if (player === 0) {

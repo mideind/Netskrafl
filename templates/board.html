@@ -2,24 +2,45 @@
 
 {% block opengraph %}
 {% if og != None %}
+
+{%- macro descr(og) -%}
+   {{ og.player0 }} og {{ og.player1 }} áttust við í Netskrafli.
+   {% if og.win -%}
+   {{ og.player0 }} sigraði með {{ og.score0 }} stigum gegn {{ og.score1 }}!
+   {%- else -%}
+   Úrslit urðu {{ og.score0 }} stig gegn {{ og.score1 }}.
+   {%- endif -%}
+   {%- if og.bingo0 -%}
+   {{ ' ' + og.player0 }} lagði niður {{ 'bingóin ' if og.bingo0|length > 1 else 'bingóið ' }}
+   {% for w, sc in og.bingo0 -%}
+      {{ w | upper }} ({{ sc }} stig){{ '' if loop.last else ', '}}
+   {%- endfor -%}.
+   {%- endif -%}
+   {%- if og.bingo1 -%}
+   {{ ' ' + og.player1 }} lagði niður {{ 'bingóin ' if og.bingo1|length > 1 else 'bingóið ' }}
+   {% for w, sc in og.bingo1 -%}
+      {{ w | upper }} ({{ sc }} stig){{ '' if loop.last else ', '}}
+   {%- endfor -%}.
+   {%- endif -%}
+{%- endmacro -%}
+
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
-<meta property="og:description" content="{{ og.player0 + ' og ' + og.player1 + ' áttust við. Úrslit urðu ' + og.score0 + ' stig gegn ' + og.score1 + ('!' if og.win else '.') }}" />
+<meta property="og:description" content="{{ descr(og) }}" />
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
 <meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
 <meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImage.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
-<meta property="og:image:width" content="600" />
-<meta property="og:image:height" content="315" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta property="fb:app_id" content="622492364544510" />
+
 {% endif %}
 {% endblock %}
 
 {% block styles %}
-
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
-
 {% endblock %}
 
 {% block scripts %}
@@ -296,7 +317,8 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 {% endif %}
 
 <!-- Facebook share button -->
-<div class="fb-share">Deila á Facebook</div>
+<div class="fb-share" title="Deila á Facebook"><img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}"
+   width="29" height="29"><br>Deila</div>
 
 {%- endblock -%}
 
@@ -469,12 +491,6 @@ window.fbAsyncInit = function() {
             href: "{{ url_for('board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | safe }}",
          },
          function(response) {
-            if (response && !response.error_code) {
-               alert('Posting completed.');
-            }
-            else {
-               alert('Error while posting.');
-            }
          }
       );
    }
