@@ -13,27 +13,27 @@
    {%- if og.bingo0 -%}
    {{ ' ' + og.player0 }} lagði niður {{ 'bingóin ' if og.bingo0|length > 1 else 'bingóið ' }}
    {% for w, sc in og.bingo0 -%}
-      {{ w | upper }} ({{ sc }} stig){{ '' if loop.last else ', '}}
+      {{ ' og ' if (loop.last and not loop.first) else '' if loop.first else ', ' }}{{ w | upper }} ({{ sc }} stig)
    {%- endfor -%}.
    {%- endif -%}
    {%- if og.bingo1 -%}
    {{ ' ' + og.player1 }} lagði niður {{ 'bingóin ' if og.bingo1|length > 1 else 'bingóið ' }}
    {% for w, sc in og.bingo1 -%}
-      {{ w | upper }} ({{ sc }} stig){{ '' if loop.last else ', '}}
+      {{ ' og ' if (loop.last and not loop.first) else '' if loop.first else ', ' }}{{ w | upper }} ({{ sc }} stig)
    {%- endfor -%}.
    {%- endif -%}
 {%- endmacro -%}
 
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
-<meta property="og:description" content="{{ descr(og) }}" />
+<meta property="og:description" content="{{ descr(og) | stripwhite }}" />
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
 <meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
-<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImage.jpg', _external=True) | safe }}" />
+<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
+<meta property="og:image:width" content="600" />
+<meta property="og:image:height" content="600" />
 <meta property="fb:app_id" content="622492364544510" />
 
 {% endif %}
@@ -344,25 +344,6 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 {% block endscripts %}
 
-<!-- Facebook stuff -->
-<div id="fb-root"></div>
-<script>
-window.fbAsyncInit = function() {
-   FB.init({
-      appId: '622492364544510',
-      xfbml: true,
-      version: 'v2.3'
-   });
-};
-(function(d, s, id) {
-  var js, fjs = d.getElementsByTagName(s)[0];
-  if (d.getElementById(id)) return;
-  js = d.createElement(s); js.id = id;
-  js.src = "//connect.facebook.net/is_IS/sdk.js";
-  fjs.parentNode.insertBefore(js, fjs);
-}(document, 'script', 'facebook-jssdk'));
-</script>
-
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
 
@@ -486,13 +467,11 @@ window.fbAsyncInit = function() {
 
    function fbShare() {
       /* Share a finished game on Facebook */
-      FB.ui({
-            method: "share",
-            href: "{{ url_for('board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | safe }}",
-         },
-         function(response) {
-         }
-      );
+      /* Redirect to a Facebook URL - the JavaScript API doesn't work well on the iPad */
+      window.location.href = "https://www.facebook.com/dialog/share?" +
+         "app_id=622492364544510&display=popup&" +
+         "href={{ url_for('board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | urlencode}}&" +
+         "redirect_uri={{ url_for('board', game = game.id(), _external=True) | urlencode }}";
    }
 
    function lateInit() {

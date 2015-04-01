@@ -29,6 +29,7 @@ import os
 import logging
 import json
 import threading
+import re
 
 from datetime import datetime, timedelta
 
@@ -59,13 +60,21 @@ if running_local:
 
 app.config['DEBUG'] = running_local
 
-# !!! TODO: Change this to read the secret key from a config file at run-time
-app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
+# Read secret session key from file
+with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
+    app.secret_key = f.read()
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
 # exceptions, run the AutoPlayer move generator serially and exclusively
 # within an instance
 _autoplayer_lock = threading.Lock()
+
+
+@app.template_filter('stripwhite')
+def stripwhite(s):
+    """ Flask/Jinja2 template filter to strip out consecutive whitespace """
+    # Convert all consecutive runs of whitespace of 1 char or more into a single space
+    return re.sub(r'\s+', ' ', s)
 
 
 def _process_move(game, movelist):

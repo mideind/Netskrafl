@@ -11,6 +11,9 @@ __pycache__/
 # Pickled DAWG trees
 *.pickle
 
+# Secret session key
+resources/secret_key.bin
+
 # CSS files generated from Less
 static/skrafl-curry.css
 static/skrafl-desat.css
