@@ -73,6 +73,8 @@ var scoreLeft = 0, scoreRight = 0;
 var penaltyLeft = 0, penaltyRight = 0; // Current overtime penalty score
 var gameOver = false;
 var initializing = true; // True while loading initial move list and setting up
+var _hasLocal = null; // Is HTML5 local storage supported by the browser?
+var _localPrefix = null; // Prefix of local storage for this game
 
 var entityMap = {
    "&": "&amp;",
@@ -88,6 +90,155 @@ function escapeHtml(string) {
    return String(string).replace(/[&<>"'\/]/g, function (s) {
       return entityMap[s];
    });
+}
+
+function hasLocalStorage() {
+   /* Return true if HTML5 local storage is supported by the browser */
+   if (_hasLocal === null)
+      try {
+         _hasLocal = 'localStorage' in window && window.localStorage !== null;
+         if (_hasLocal)
+            _localPrefix = "game." + gameId();
+      } catch (e) {
+         _hasLocal = false;
+      }
+   return _hasLocal;
+}
+
+function getLocalTile(ix) {
+   return localStorage[_localPrefix + ".tile." + ix + ".t"];
+}
+
+function getLocalTileSq(ix) {
+   return localStorage[_localPrefix + ".tile." + ix + ".sq"];
+}
+
+function setLocalTile(ix, t) {
+   localStorage[_localPrefix + ".tile." + ix + ".t"] = t;
+}
+
+function setLocalTileSq(ix, sq) {
+   localStorage[_localPrefix + ".tile." + ix + ".sq"] = sq;
+}
+
+function clearTiles() {
+   /* Clean up local storage when game is over */
+   if(!hasLocalStorage())
+      return;
+   for (var i = 1; i <= RACK_SIZE; i++) {
+      localStorage.removeItem(_localPrefix + ".tile." + i + ".sq");
+      localStorage.removeItem(_localPrefix + ".tile." + i + ".t");
+   }
+}
+
+function saveTiles() {
+   /* Save tile locations in local storage */
+   if(!hasLocalStorage())
+      return;
+   var i = 1;
+   $("div.racktile").each(function() {
+      // Ignore the clone created during dragging
+      if (!$(this).hasClass("ui-draggable-dragging")) {
+         var sq = $(this).parent().attr("id");
+         var t = $(this).data("tile");
+         if (t !== null && t !== undefined) {
+            if (t == '?' && sq.charAt(0) != 'R')
+               /* Blank tile on the board: add its meaning */
+               t += $(this).data("letter");
+            setLocalTileSq(i, sq);
+            setLocalTile(i, t);
+            i++;
+         }
+      }
+   });
+   while (i <= RACK_SIZE) {
+      setLocalTileSq(i, "");
+      setLocalTile(i, "");
+      i++;
+   }
+}
+
+function arrayEqual(a, b) {
+   /* Return true if arrays a and b are equal */
+   if (a.length != b.length)
+      return false;
+   for (var i = 0; i < a.length; i++)
+      if (a[i] != b[i])
+         return false;
+   return true;
+}
+
+function restoreTiles() {
+   /* Restore tile locations from local storage */
+   if (!hasLocalStorage())
+      return;
+   /* First check whether the rack matches by comparing sorted arrays */
+   var i, sq, t, rackTileId, rackTile;
+   var lcs = [];
+   for (i = 1; i <= RACK_SIZE; i++) {
+      t = getLocalTile(i);
+      if (t && t.length)
+         lcs.push(t.charAt(0));
+   }
+   if (!lcs.length)
+      // Nothing stored, so nothing to restore
+      return;
+   lcs.sort();
+   var rack = [];
+   for (i = 1; i <= RACK_SIZE; i++) {
+      rackTileId = "R" + i.toString();
+      rackTile = document.getElementById(rackTileId);
+      if (rackTile && rackTile.firstChild)
+         /* There is a tile in this rack slot */
+         rack.push($(rackTile.firstChild).data("tile"));
+   }
+   rack.sort();
+   if (!arrayEqual(lcs, rack))
+      /* Local storage tiles not identical to current rack: do not restore */
+      return;
+   /* Same tiles: restore them by moving from the rack if possible */
+   /* Start by emptying the rack */
+   for (i = 1; i <= RACK_SIZE; i++)
+      placeTile("R" + i, "", "", 0);
+   var backToRack = [];
+   var letter, tile, el;
+   for (i = 1; i <= RACK_SIZE; i++) {
+      t = getLocalTile(i);
+      if (t.length) {
+         sq = getLocalTileSq(i);
+         el = document.getElementById(sq);
+         if (el && el.firstChild)
+            // Already a tile there: push it back to the rack
+            backToRack.push(t);
+         else {
+            // Put this tile into the stored location for it
+            tile = t;
+            letter = t;
+            if (t.charAt(0) == '?') {
+               // Blank tile
+               tile = '?';
+               if (t.length >= 2)
+                  // We have info about the meaning of the blank tile
+                  letter = t.charAt(1);
+            }
+            placeTile(sq, tile, letter, TILESCORE[tile]);
+            // Do additional stuff to make this look like a proper rack tile
+            $("#" + sq).children().eq(0).addClass("racktile").data("tile", tile);
+            if (tile == '?' && letter != tile)
+               // Blank tile that has been dragged to the board: include its meaning
+               $("#" + sq).children().eq(0).data("letter", letter);
+         }
+      }
+   }
+   // Place any remaining tiles back into the rack at the first available position
+   for (i = 0; i < backToRack.length; i++) {
+      t = backToRack[i];
+      tile = t.charAt(0);
+      // We don't need to worry about the meaning of blank tiles here
+      sq = firstEmptyRackSlot();
+      if (sq !== null)
+         placeTile(sq, tile, tile, TILESCORE[tile]);
+   }
 }
 
 function nullFunc(json) {
@@ -572,6 +723,8 @@ function appendMove(player, co, tiles, score) {
       }
       // Show the Facebook share button if the game is over
       $("div.fb-share").css("visibility", "visible");
+      // Clear local storage, if any
+      clearTiles();
    }
    else
    if (player === 0) {
@@ -799,6 +952,7 @@ function closeBlankDialog(ev) {
       Mousetrap.unbind(LEGAL_LETTERS[i]);
       Mousetrap.unbind("shift+" + LEGAL_LETTERS[i]);
    }
+   saveTiles();
    updateButtonState();
 }
 
@@ -847,7 +1001,7 @@ function handleDragstart(e, ui) {
 
 function handleDragend(e, ui) {
    if (elementDragged !== null)
-      elementDragged.style.opacity = "1.0";
+      elementDragged.style.opacity = null; // "1.0";
    elementDragged = null;
 }
 
@@ -884,16 +1038,18 @@ function removeDraggable(elem) {
 function initRackDraggable(state) {
    /* Make the seven tiles in the rack draggable or not, depending on
       the state parameter */
-   for (var i = 1; i <= RACK_SIZE; i++) {
-      var rackTileId = "R" + i.toString();
-      var rackTile = document.getElementById(rackTileId);
-      if (rackTile && rackTile.firstChild)
-         /* There is a tile in this rack slot */
-         if (state)
-            initDraggable(rackTile.firstChild);
-         else
-            removeDraggable(rackTile.firstChild);
-   }
+   $("div.racktile").each(function() {
+      if (!$(this).hasClass("ui-draggable-dragging")) {
+         var sq = $(this).parent().attr("id");
+         var rackTile = document.getElementById(sq);
+         if (rackTile && rackTile.firstChild)
+            /* There is a tile in this rack slot */
+            if (state)
+               initDraggable(rackTile.firstChild);
+            else
+               removeDraggable(rackTile.firstChild);
+      }
+   });
 }
 
 function firstEmptyRackSlot() {
@@ -944,7 +1100,7 @@ function handleDrop(e, ui) {
    if (eld === null)
       return;
    var i, rslot;
-   eld.style.opacity = "1.0";
+   eld.style.opacity = null; // "1.0";
    if (e.target.id == "container") {
       // Dropping to the background container:
       // shuffle things around so it looks like we are dropping to the first empty rack slot
@@ -1037,6 +1193,9 @@ function handleDrop(e, ui) {
                eld.childNodes[0].nodeValue = "\xa0"; // Non-breaking space, i.e. &nbsp;
             }
          }
+         // Save this state in local storage,
+         // to be restored when coming back to this game
+         saveTiles();
       }
       updateButtonState();
    }
@@ -1323,6 +1482,7 @@ function resetRack(ev) {
          }
       }
    });
+   saveTiles();
    updateButtonState();
    return true;
 }
@@ -1355,6 +1515,7 @@ function rescrambleRack(ev) {
       if (array[i-1] !== null)
          elem.appendChild(array[i-1]);
    }
+   saveTiles();
    return false; // Stop default behavior
 }
 
@@ -1477,6 +1638,8 @@ function _updateState(json, preserveTiles) {
       /* See if an exchange move is still allowed */
       if (json.xchg !== undefined)
          exchangeAllowed = json.xchg;
+      /* Save the new tile state */
+      saveTiles();
       /* Enable and disable buttons as required */
       updateButtonState();
       if (json.result == GAME_OVER) {
@@ -2059,6 +2222,8 @@ function initSkrafl(jQuery) {
    placeTiles();
    initMoveList(); // Sets gameOver to true if the game is over
    if (!gameOver) {
+      // Restore previous tile positions, if saved
+      restoreTiles();
       // Prepare drag-and-drop
       initRackDraggable(true);
       initDropTargets();

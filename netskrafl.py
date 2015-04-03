@@ -70,6 +70,14 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
 _autoplayer_lock = threading.Lock()
 
 
+@app.context_processor
+def inject_into_context():
+    """ Inject variables and functions into all Flask contexts """
+    return dict(
+        dev_server = running_local # Variable dev_server is True if running on the GAE development server
+    )
+
+
 @app.template_filter('stripwhite')
 def stripwhite(s):
     """ Flask/Jinja2 template filter to strip out consecutive whitespace """
@@ -1274,7 +1282,7 @@ def board():
     game = None
     if uuid:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid)
+        game = Game.load(uuid, use_cache = False)
 
     if game is None:
         # No active game to display: go back to main screen

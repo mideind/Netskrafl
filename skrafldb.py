@@ -277,8 +277,11 @@ class GameModel(ndb.Model):
             self.player1 = k
 
     @classmethod
-    def fetch(cls, uuid):
+    def fetch(cls, uuid, use_cache = True):
         """ Fetch a game entity given its uuid """
+        if not use_cache:
+            return cls.get_by_id(uuid, use_cache = False, use_memcache = False)
+        # Default caching policy if caching is not explictly prohibited
         return cls.get_by_id(uuid)
 
     @classmethod

@@ -29,7 +29,7 @@ module.exports = function (grunt) {
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
                   'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
                   'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog',
-                  'replaceEmoticons', 'gameIsZombie', 'fbShare']
+                  'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage']
             }
          }
       },

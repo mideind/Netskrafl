@@ -409,11 +409,11 @@ class Game:
         return game
 
     @classmethod
-    def load(cls, uuid):
+    def load(cls, uuid, use_cache = True):
         """ Load an already existing game from persistent storage """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
-            return cls._load_locked(uuid)
+            return cls._load_locked(uuid, use_cache)
 
     def store(self):
         """ Store the game state in persistent storage """
@@ -422,10 +422,10 @@ class Game:
             self._store_locked()
 
     @classmethod
-    def _load_locked(cls, uuid):
+    def _load_locked(cls, uuid, use_cache = True):
         """ Load an existing game from cache or persistent storage under lock """
 
-        gm = GameModel.fetch(uuid)
+        gm = GameModel.fetch(uuid, use_cache)
         if gm is None:
             # A game with this uuid is not found in the database: give up
             return None

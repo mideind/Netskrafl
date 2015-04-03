@@ -348,7 +348,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
 
 <!-- Netskrafl client script -->
+{% if dev_server %}
+<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+{% else %}
 <script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
+{% endif %}
 
 <script>
 

@@ -243,16 +243,6 @@
 --><div class="option small" id="opt2"><span class="glyphicon glyphicon-time"></span></div>
 </div>
 
-<!-- Facebook like/share -->
-<!--
-<div
-  class="fb-like"
-  data-share="true"
-  data-width="450"
-  data-show-faces="true">
-</div>
--->
-
 <!-- A dialog to show info about a particular user -->
 <div id="usr-info-dialog" class="modal-dialog">
 <div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
@@ -392,14 +382,15 @@
 
 {% block endscripts %}
 
-<!-- Facebook SDK init -->
-<!-- include "fbinit.html" -->
-
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
 
 <!-- Main page script -->
+{% if dev_server %}
+<script src="{{ url_for('static', filename='main.js') }}"></script>
+{% else %}
 <script src="{{ url_for('static', filename='main.min.js') }}"></script>
+{% endif %}
 
 <script>
 
