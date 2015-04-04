@@ -322,7 +322,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 {%- endblock -%}
 
-{% block media %}
+{%- block media -%}
 
 {%- if user and user.audio() -%}
 <!-- Audio resources -->
@@ -333,27 +333,23 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
 </audio>
 {% endif %}
-
 {%- if user and user.fanfare() -%}
 <audio id="you-win" preload="none">
    <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
-{% endif %}
+{%- endif -%}
 
-{% endblock %}
+{%- endblock -%}
 
-{% block endscripts %}
-
+{%- block endscripts -%}
 <!-- Google App Engine Channel API -->
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
-
 <!-- Netskrafl client script -->
-{% if dev_server %}
+{%- if dev_server %}
 <script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
 {% else %}
 <script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
-{% endif %}
-
+{% endif -%}
 <script>
 
    function placeTiles() {
@@ -504,4 +500,4 @@ $(document).ready(initSkrafl);
 
 </script>
 
-{% endblock %}
+{%- endblock -%}

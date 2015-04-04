@@ -51,24 +51,18 @@
       </div>
 
 {% block content %}
-{% endblock %}
-
+{% endblock -%}
    </div> <!-- container -->
-
-{% block media %}
-{% endblock %}
-
+{%- block media -%}
+{%- endblock -%}
 <!-- jQuery -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
-
+<!-- Touch support for jQuery -->
 <script src="{{ url_for('static', filename='jquery.ui.touch-punch.min.js') }}"></script>
-
 <!-- Mousetrap global keyboard handler -->
 <script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
-
-{% block endscripts %}
-{% endblock %}
-
+{%- block endscripts -%}
+{%- endblock -%}
 </body>
 </html>
