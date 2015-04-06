@@ -96,7 +96,9 @@ function hasLocalStorage() {
    /* Return true if HTML5 local storage is supported by the browser */
    if (_hasLocal === null)
       try {
-         _hasLocal = 'localStorage' in window && window.localStorage !== null;
+         _hasLocal = ('localStorage' in window) &&
+            (window.localStorage !== null) &&
+            (window.localStorage !== undefined);
          if (_hasLocal)
             _localPrefix = "game." + gameId();
       } catch (e) {
@@ -125,9 +127,13 @@ function clearTiles() {
    /* Clean up local storage when game is over */
    if(!hasLocalStorage())
       return;
-   for (var i = 1; i <= RACK_SIZE; i++) {
-      localStorage.removeItem(_localPrefix + ".tile." + i + ".sq");
-      localStorage.removeItem(_localPrefix + ".tile." + i + ".t");
+   try {
+      for (var i = 1; i <= RACK_SIZE; i++) {
+         localStorage.removeItem(_localPrefix + ".tile." + i + ".sq");
+         localStorage.removeItem(_localPrefix + ".tile." + i + ".t");
+      }
+   }
+   catch (e) {
    }
 }
 
@@ -135,26 +141,30 @@ function saveTiles() {
    /* Save tile locations in local storage */
    if(!hasLocalStorage())
       return;
-   var i = 1;
-   $("div.racktile").each(function() {
-      // Ignore the clone created during dragging
-      if (!$(this).hasClass("ui-draggable-dragging")) {
-         var sq = $(this).parent().attr("id");
-         var t = $(this).data("tile");
-         if (t !== null && t !== undefined) {
-            if (t == '?' && sq.charAt(0) != 'R')
-               /* Blank tile on the board: add its meaning */
-               t += $(this).data("letter");
-            setLocalTileSq(i, sq);
-            setLocalTile(i, t);
-            i++;
+   try {
+      var i = 1;
+      $("div.racktile").each(function() {
+         // Ignore the clone created during dragging
+         if (!$(this).hasClass("ui-draggable-dragging")) {
+            var sq = $(this).parent().attr("id");
+            var t = $(this).data("tile");
+            if (t !== null && t !== undefined) {
+               if (t == '?' && sq.charAt(0) != 'R')
+                  /* Blank tile on the board: add its meaning */
+                  t += $(this).data("letter");
+               setLocalTileSq(i, sq);
+               setLocalTile(i, t);
+               i++;
+            }
          }
+      });
+      while (i <= RACK_SIZE) {
+         setLocalTileSq(i, "");
+         setLocalTile(i, "");
+         i++;
       }
-   });
-   while (i <= RACK_SIZE) {
-      setLocalTileSq(i, "");
-      setLocalTile(i, "");
-      i++;
+   }
+   catch (e) {
    }
 }
 
@@ -172,72 +182,81 @@ function restoreTiles() {
    /* Restore tile locations from local storage */
    if (!hasLocalStorage())
       return;
-   /* First check whether the rack matches by comparing sorted arrays */
-   var i, sq, t, rackTileId, rackTile;
-   var lcs = [];
-   for (i = 1; i <= RACK_SIZE; i++) {
-      t = getLocalTile(i);
-      if (t && t.length)
-         lcs.push(t.charAt(0));
-   }
-   if (!lcs.length)
-      // Nothing stored, so nothing to restore
-      return;
-   lcs.sort();
-   var rack = [];
-   for (i = 1; i <= RACK_SIZE; i++) {
-      rackTileId = "R" + i.toString();
-      rackTile = document.getElementById(rackTileId);
-      if (rackTile && rackTile.firstChild)
-         /* There is a tile in this rack slot */
-         rack.push($(rackTile.firstChild).data("tile"));
-   }
-   rack.sort();
-   if (!arrayEqual(lcs, rack))
-      /* Local storage tiles not identical to current rack: do not restore */
-      return;
-   /* Same tiles: restore them by moving from the rack if possible */
-   /* Start by emptying the rack */
-   for (i = 1; i <= RACK_SIZE; i++)
-      placeTile("R" + i, "", "", 0);
-   var backToRack = [];
-   var letter, tile, el;
-   for (i = 1; i <= RACK_SIZE; i++) {
-      t = getLocalTile(i);
-      if (t.length) {
-         sq = getLocalTileSq(i);
-         el = document.getElementById(sq);
-         if (el && el.firstChild)
-            // Already a tile there: push it back to the rack
-            backToRack.push(t);
-         else {
-            // Put this tile into the stored location for it
-            tile = t;
-            letter = t;
-            if (t.charAt(0) == '?') {
-               // Blank tile
-               tile = '?';
-               if (t.length >= 2)
-                  // We have info about the meaning of the blank tile
-                  letter = t.charAt(1);
+   try {
+      /* First check whether the rack matches by comparing sorted arrays */
+      var i, sq, t, rackTileId, rackTile;
+      var lcs = [];
+      for (i = 1; i <= RACK_SIZE; i++) {
+         t = getLocalTile(i);
+         if ((typeof t === "string") && t.length)
+            lcs.push(t.charAt(0));
+      }
+      if (!lcs.length)
+         // Nothing stored, so nothing to restore
+         return;
+      lcs.sort();
+      var rack = [];
+      for (i = 1; i <= RACK_SIZE; i++) {
+         rackTileId = "R" + i.toString();
+         rackTile = document.getElementById(rackTileId);
+         if (rackTile && rackTile.firstChild)
+            /* There is a tile in this rack slot */
+            rack.push($(rackTile.firstChild).data("tile"));
+      }
+      rack.sort();
+      if (!arrayEqual(lcs, rack))
+         /* Local storage tiles not identical to current rack: do not restore */
+         return;
+      /* Same tiles: restore them by moving from the rack if possible */
+      /* Start by emptying the rack */
+      for (i = 1; i <= RACK_SIZE; i++)
+         placeTile("R" + i, "", "", 0);
+      var backToRack = [];
+      var letter, tile, el;
+      for (i = 1; i <= RACK_SIZE; i++) {
+         t = getLocalTile(i);
+         if ((typeof t === "string") && t.length) {
+            sq = getLocalTileSq(i);
+            if ((typeof sq !== "string") || !sq.length)
+               continue;
+            el = document.getElementById(sq);
+            if (el && el.firstChild)
+               // Already a tile there: push it back to the rack
+               backToRack.push(t);
+            else {
+               // Put this tile into the stored location for it
+               tile = t;
+               letter = t;
+               if (t.charAt(0) == '?') {
+                  // Blank tile
+                  tile = '?';
+                  if (t.length >= 2)
+                     // We have info about the meaning of the blank tile
+                     letter = t.charAt(1);
+               }
+               placeTile(sq, tile, letter, TILESCORE[tile]);
+               // Do additional stuff to make this look like a proper rack tile
+               $("#" + sq).children().eq(0).addClass("racktile").data("tile", tile);
+               if (tile == '?' && letter != tile)
+                  // Blank tile that has been dragged to the board: include its meaning
+                  $("#" + sq).children().eq(0).data("letter", letter);
             }
-            placeTile(sq, tile, letter, TILESCORE[tile]);
-            // Do additional stuff to make this look like a proper rack tile
-            $("#" + sq).children().eq(0).addClass("racktile").data("tile", tile);
-            if (tile == '?' && letter != tile)
-               // Blank tile that has been dragged to the board: include its meaning
-               $("#" + sq).children().eq(0).data("letter", letter);
          }
       }
+      // Place any remaining tiles back into the rack at the first available position
+      for (i = 0; i < backToRack.length; i++) {
+         t = backToRack[i];
+         tile = t.charAt(0);
+         // We don't need to worry about the meaning of blank tiles here
+         sq = firstEmptyRackSlot();
+         if (sq !== null)
+            placeTile(sq, tile, tile, TILESCORE[tile]);
+      }
    }
-   // Place any remaining tiles back into the rack at the first available position
-   for (i = 0; i < backToRack.length; i++) {
-      t = backToRack[i];
-      tile = t.charAt(0);
-      // We don't need to worry about the meaning of blank tiles here
-      sq = firstEmptyRackSlot();
-      if (sq !== null)
-         placeTile(sq, tile, tile, TILESCORE[tile]);
+   catch (e) {
+      // Corruption of the local storage should not
+      // jeopardize the game script, so we silently catch
+      // all exceptions here
    }
 }
 
