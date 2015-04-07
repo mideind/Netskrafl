@@ -405,6 +405,7 @@ def _rating(kind):
             break
         is_robot = False
         usr = None
+        inactive = False
         if uid.startswith(u"robot-"):
             is_robot = True
             nick = Game.autoplayer_name(int(uid[6:]))
@@ -413,13 +414,16 @@ def _rating(kind):
             fairplay = False
         else:
             usr = User.load(uid)
-            if usr is None or not usr.is_displayable():
+            if usr is None:
                 # Something wrong with this one: don't bother
                 continue
             nick = usr.nickname()
+            if not User.is_valid_nick(nick):
+                nick = u"--"
             fullname = usr.full_name()
             chall = uid in challenges
             fairplay = usr.fairplay()
+            inactive = usr.is_inactive()
 
         games = ru["games"]
         if games == 0:
@@ -440,6 +444,7 @@ def _rating(kind):
             "fullname": fullname,
             "chall": chall,
             "fairplay": fairplay,
+            "inactive": inactive,
 
             "elo": ru["elo"],
             "elo_yesterday": ru["elo_yesterday"],

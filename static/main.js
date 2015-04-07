@@ -332,12 +332,12 @@ function populateEloList(json) {
       var item = json.rating[i];
       // Robot userids start with 'robot-'
       var isRobot = item.userid.indexOf("robot-") === 0;
-      var chId = "chall" + i.toString();
+      var chId = "chall" + i;
       var ch = "";
       var nick = escapeHtml(item.nick);
       var info = "";
-      if (item.userid != userId())
-         // Not the logged-in user himself: allow a challenge
+      if (item.userid != userId() && !item.inactive)
+         // Not the logged-in user himself and not inactive: allow a challenge
          ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
             (item.chall ? "'" : " grayed'") +
             " id='" + chId + "'></span>";
@@ -347,7 +347,7 @@ function populateEloList(json) {
       }
       else {
          // Create a link to access user info
-         info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
+         info = "<span id='usr" + i + "' class='usr-info'></span>";
       }
       // Fair play commitment
       if (item.fairplay)
@@ -361,19 +361,19 @@ function populateEloList(json) {
          "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
          "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
          "<span class='list-nick'>" + nick + "</span>" +
-         "<span class='list-elo bold'>" + item.elo.toString() + "</span>" +
+         "<span class='list-elo bold'>" + item.elo + "</span>" +
          "<span class='list-elo'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
          "<span class='list-elo'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
          "<span class='list-elo'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
-         "<span class='list-games bold'>" + item.games.toString() + "</span>" +
-         "<span class='list-ratio'>" + item.ratio.toString() + "%</span>" +
-         "<span class='list-avgpts'>" + item.avgpts.toString() + "</span>" +
+         "<span class='list-games bold'>" + item.games + "</span>" +
+         "<span class='list-ratio'>" + item.ratio + "%</span>" +
+         "<span class='list-avgpts'>" + item.avgpts + "</span>" +
          info +
          "</div>";
       $("#userlist").append(str);
       // Associate a click handler with the info button, if present
       if (info.length)
-         $("#usr" + i.toString()).click(
+         $("#usr" + i).click(
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
             showUserInfo
          );

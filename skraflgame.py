@@ -116,6 +116,10 @@ class User:
             return False
         return nick[0:8] != u"https://" and nick[0:7] != u"http://"
 
+    def is_inactive(self):
+        """ Return True if the user is marked as inactive """
+        return self._inactive
+
     def is_displayable(self):
         """ Returns True if this user should appear in user lists """
         if self._inactive:
