@@ -131,7 +131,8 @@ function markChallenge(ev) {
          return;
       }
       /* New challenge: show dialog */
-      showChallenge(elem.id, ev.data.userid, ev.data.nick, ev.data.fullname);
+      showChallenge(elem.id, ev.data.userid, ev.data.nick,
+         ev.data.fullname, ev.data.fairplay);
    }
    else
       serverQuery("/challenge",
@@ -279,6 +280,9 @@ function populateUserList(json) {
          ready = "<span class='ready-btn' title='Álínis og tekur við áskorunum'></span> ";
       if (item.ready_timed)
          ready += "<span class='timed-btn' title='Til í viðureign með klukku'></span> ";
+      // Fair play commitment
+      if (item.fairplay)
+         ready += "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> ";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
@@ -298,7 +302,8 @@ function populateUserList(json) {
          );
       // Associate a click handler with the challenge icon
       $("#" + chId).click(
-         { userid: item.userid, nick: item.nick, fullname: item.fullname },
+         { userid: item.userid, nick: item.nick, fullname: item.fullname,
+            fairplay: item.fairplay },
          markChallenge
       );
    }
@@ -330,7 +335,7 @@ function populateEloList(json) {
       var chId = "chall" + i.toString();
       var ch = "";
       var nick = escapeHtml(item.nick);
-      var info = "", ready = "";
+      var info = "";
       if (item.userid != userId())
          // Not the logged-in user himself: allow a challenge
          ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
@@ -344,6 +349,9 @@ function populateEloList(json) {
          // Create a link to access user info
          info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
       }
+      // Fair play commitment
+      if (item.fairplay)
+         nick = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + nick;
       if (info.length)
          info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
       // Assemble the entire line
@@ -373,7 +381,8 @@ function populateEloList(json) {
          // Associate a click handler with the challenge icon,
          // if this is not the logged-in user himself
          $("#" + chId).click(
-            { userid: item.userid, nick: item.nick, fullname: item.fullname },
+            { userid: item.userid, nick: item.nick, fullname: item.fullname,
+               fairplay: item.fairplay },
             markChallenge
          );
    }
@@ -803,13 +812,18 @@ function populateChallengeList(json) {
       var info = "<span id='chusr" + i.toString() + "' class='usr-info'></span>";
       info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
 
+      // Fair play indicator
+      var fairplay = "";
+      if (item.prefs.fairplay)
+         fairplay = "<span class='fairplay-btn' title='Án hjálpartækja'></span> ";
+
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
          (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
          (opp_ready ? ("<a href='#' id='" + readyId + "' class='opp-ready'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-nick'>" + opp + "</span>" +
-         "<span class='list-chall'>" + prefs + "</span>" +
+         "<span class='list-chall'>" + fairplay + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
          info +
@@ -837,7 +851,7 @@ function populateChallengeList(json) {
       }
       // Enable mark challenge button (to decline or retract challenges)
       $("#" + chId).click(
-         { userid: item.userid, nick: item.opp, fullname: "" },
+         { userid: item.userid, nick: item.opp, fullname: "", fairplay: false },
          markChallAndRefresh
       );
       // Enable user track record button
@@ -896,14 +910,18 @@ function markOnline(json) {
    }
 }
 
-function showChallenge(elemid, userid, nick, fullname) {
+function showChallenge(elemid, userid, nick, fullname, fairplayOpp) {
    /* Show the challenge dialog */
    $("#chall-nick").text(nick);
    $("#chall-fullname").text(fullname);
    $("#chall-online").removeClass("online");
    $("#chall-online").attr("title", "Er ekki álínis");
+   // This is a fair play challenge if the issuing user and the
+   // opponent are both marked as consenting to fair play
+   var fairplayChallenge = fairplayOpp && fairPlay();
+   $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
    $("#chall-dialog")
-      .data("param", { elemid: elemid, userid: userid })
+      .data("param", { elemid: elemid, userid: userid, fairplay: fairplayChallenge })
       .css("visibility", "visible");
    /* Launch a query to check whether the challenged user is online */
    serverQuery("/onlinecheck",
@@ -935,7 +953,8 @@ function okChallenge(ev) {
          // Identify the relation in question
          destuser: param.userid,
          action: "issue",
-         duration : duration
+         duration: duration,
+         fairplay: param.fairplay
       },
       updateChallenges
    );

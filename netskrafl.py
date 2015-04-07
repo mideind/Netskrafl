@@ -196,6 +196,7 @@ def _userlist(range_from, range_to):
                 "fullname": r[1],
                 "fav": False,
                 "chall": False,
+                "fairplay": False, # The robots don't play fair ;-)
                 "ready": True, # The robots are always ready for a challenge
                 "ready_timed": False # Timed games are not available for robots
             })
@@ -236,6 +237,7 @@ def _userlist(range_from, range_to):
                     "fullname": lu.full_name(),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
+                    "fairplay": lu.fairplay(),
                     "ready": lu.is_ready() and not chall,
                     "ready_timed": lu.is_ready_timed() and not chall
                 })
@@ -254,6 +256,7 @@ def _userlist(range_from, range_to):
                         "fullname": fu.full_name(),
                         "fav": True,
                         "chall": chall,
+                        "fairplay": fu.fairplay(),
                         "ready": fu.is_ready() and favid in online and not chall,
                         "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
@@ -261,7 +264,7 @@ def _userlist(range_from, range_to):
     else:
         # Return users within a particular nickname range
 
-        # The "1:" prefix is a version header
+        # The "N:" prefix is a version header
         cache_range = "2:" + ("" if range_from is None else range_from) + \
             "-" + ("" if range_to is None else range_to)
 
@@ -290,6 +293,7 @@ def _userlist(range_from, range_to):
                     "fullname": User.full_name_from_prefs(ud["prefs"]),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
+                    "fairplay": User.fairplay_from_prefs(ud["prefs"]),
                     "ready": ud["ready"] and uid in online and not chall,
                     "ready_timed": ud["ready_timed"] and uid in online and not chall
                 })
@@ -406,6 +410,7 @@ def _rating(kind):
             nick = Game.autoplayer_name(int(uid[6:]))
             fullname = nick
             chall = False
+            fairplay = False
         else:
             usr = User.load(uid)
             if usr is None or not usr.is_displayable():
@@ -414,6 +419,7 @@ def _rating(kind):
             nick = usr.nickname()
             fullname = usr.full_name()
             chall = uid in challenges
+            fairplay = usr.fairplay()
 
         games = ru["games"]
         if games == 0:
@@ -433,6 +439,7 @@ def _rating(kind):
             "nick": nick,
             "fullname": fullname,
             "chall": chall,
+            "fairplay": fairplay,
 
             "elo": ru["elo"],
             "elo_yesterday": ru["elo_yesterday"],
@@ -842,6 +849,12 @@ def challenge():
         duration = int(request.form.get('duration', "0"))
     except:
         pass
+    fairplay = False
+    try:
+        fp = request.form.get('fairplay', None)
+        fairplay = True if fp is not None and fp == u"true" else False
+    except:
+        fairplay = False
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -851,7 +864,7 @@ def challenge():
 
     if destuser is not None:
         if action == u"issue":
-            user.issue_challenge(destuser, { "duration" : duration })
+            user.issue_challenge(destuser, { "duration" : duration, "fairplay" : fairplay })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":
@@ -1081,6 +1094,7 @@ def userprefs():
             self.audio = True
             self.fanfare = True
             self.beginner = True
+            self.fairplay = False # Defaults to False, must be explicitly set to True
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -1099,8 +1113,9 @@ def userprefs():
                 pass
             try:
                 self.audio = 'audio' in form # State of the checkbox
-                self.fanfare = 'fanfare' in form # State of the checkbox
+                self.fanfare = 'fanfare' in form
                 self.beginner = 'beginner' in form
+                self.fairplay = 'fairplay' in form
             except:
                 pass
 
@@ -1112,6 +1127,7 @@ def userprefs():
             self.audio = usr.audio()
             self.fanfare = usr.fanfare()
             self.beginner = usr.beginner()
+            self.fairplay = usr.fairplay()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -1134,6 +1150,7 @@ def userprefs():
             usr.set_audio(self.audio)
             usr.set_fanfare(self.fanfare)
             usr.set_beginner(self.beginner)
+            usr.set_fairplay(self.fairplay)
             usr.update()
 
     uf = UserForm()

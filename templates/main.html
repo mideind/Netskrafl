@@ -324,6 +324,10 @@
 
    </div>
 
+   <div class="hidden" id="chall-fairplay">Báðir leikmenn lýsa því yfir að þeir skrafla
+   <strong>án stafrænna hjálpartækja</strong>
+   af nokkru tagi.</div>
+
    <!-- Cancel button -->
    <div tabindex="6" class="modal-close" id="chall-cancel" title="Hætta við"
       onmouseover="buttonOver(this)"
@@ -397,6 +401,11 @@
 function userId() {
    /* The logged-in user who requested this page */
    return "{{ user.id() }}";
+}
+
+function fairPlay() {
+   /* The fair-play status of the logged in user */
+   return {{ "true" if user.fairplay() else "false" }};
 }
 
 function newgameUrl(opp, reversed) {

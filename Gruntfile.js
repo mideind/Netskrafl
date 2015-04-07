@@ -29,7 +29,8 @@ module.exports = function (grunt) {
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
                   'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
                   'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog',
-                  'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage']
+                  'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage',
+                  'gameIsFairplay', 'fairPlay']
             }
          }
       },

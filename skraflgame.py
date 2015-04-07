@@ -195,6 +195,25 @@ class User:
         assert isinstance(beginner, bool)
         self.set_pref(u"beginner", beginner)
 
+    @staticmethod
+    def fairplay_from_prefs(prefs):
+        """ Returns the fairplay preference of a user """
+        if prefs is None:
+            return False
+        fp = prefs.get(u"fairplay")
+        return False if fp is None else fp
+
+    def fairplay(self):
+        """ Returns True if the user has committed to a fair play statement """
+        em = self.get_pref(u"fairplay")
+        # False by default
+        return False if em is None else em
+
+    def set_fairplay(self, state):
+        """ Sets the fairplay state of a user to True or False """
+        assert isinstance(state, bool)
+        self.set_pref(u"fairplay", state)
+
     def is_ready(self):
         """ Returns True if the user is ready to accept challenges """
         return self._ready
@@ -605,6 +624,14 @@ class Game:
         if self._preferences is None:
             self._preferences = { }
         self._preferences[pref] = value
+
+    def get_fairplay(self):
+        """ True if this was originated as a fairplay game """
+        return self.get_pref(u"fairplay") or False
+
+    def set_fairplay(self, state):
+        """ Set the fairplay commitment of this game """
+        self.set_pref(u"fairplay", state)
 
     @staticmethod
     def get_duration_from_prefs(prefs):

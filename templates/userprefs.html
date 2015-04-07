@@ -28,6 +28,7 @@ function submitForm() {
    $("#audio").prop('checked', $("#audio-toggler #opt2").hasClass("selected"));
    $("#fanfare").prop('checked', $("#fanfare-toggler #opt2").hasClass("selected"));
    $("#beginner").prop('checked', $("#beginner-toggler #opt2").hasClass("selected"));
+   $("#fairplay").prop('checked', $("#fairplay-toggler #opt2").hasClass("selected"));
    document.getElementById('frm1').submit();
 }
 
@@ -106,29 +107,46 @@ function submitForm() {
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-ok"></span></div>
          </div>
+         <div class="subexplain">Stillir hvort <strong>minnismiði</strong> um margföldunargildi reita er sýndur við borðið</div>
       </div>
-      <div class="explain">Stillir hvort minnismiði um margföldunargildi reita er sýndur við borðið</div>
+
+      <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
+         <input type="checkbox" name="fairplay" id="fairplay"
+            class="checkbox fairplay" value="True"
+{% if uf.fairplay %}
+            checked
+{% endif %}
+         ></input>
+         <div id="fairplay-toggler" class="toggler" tabindex="7">
+            <div class="option" id="opt1">&nbsp;</div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-edit"></span></div>
+         </div>
+         <div class="subexplain">Með því að velja þessa merkingu lýsir þú
+         því yfir að þú
+         skraflir við aðra leikmenn <strong>án stafrænna hjálpartækja</strong>
+         af nokkru tagi</span>
+      </div>
 
    </form>
    </div>
 
-   <!-- Logout button -->
-   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="9"
-      onclick="location.href='{{ uf.logout_url }}'"
+   <!-- OK button -->
+   <div class="modal-close" id="user-ok" title="Vista" tabindex="8"
+      onclick="submitForm()"
       onmouseover="buttonOver(this)"
-      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
 
    <!-- Cancel button -->
-   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="8"
+   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="9"
       onclick="location.href='{{ url_for('main') }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
-   <!-- OK button -->
-   <div class="modal-close" id="user-ok" title="Vista" tabindex="7"
-      onclick="submitForm()"
+   <!-- Logout button -->
+   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="10"
+      onclick="location.href='{{ uf.logout_url }}'"
       onmouseover="buttonOver(this)"
-      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
 
 </div> <!-- user-form -->
 </div> <!-- user-dialog -->
@@ -202,7 +220,7 @@ function submitForm() {
       $("#beginner-toggler #opt2").toggleClass("selected");
    }
 
-   // Initialize the audio toggler
+   // Initialize the beginner toggler
    if ($("#beginner").prop('checked'))
       $("#beginner-toggler #opt2").addClass("selected");
    else
@@ -212,6 +230,24 @@ function submitForm() {
    $("#beginner-toggler").keypress(function(ev) {
       if (ev.keyCode === 0 || ev.keyCode == 32)
          doBeginnerToggle();
+   });
+
+   function doFairplayToggle() {
+      // Toggle from one state to the other
+      $("#fairplay-toggler #opt1").toggleClass("selected");
+      $("#fairplay-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the fairplay toggler
+   if ($("#fairplay").prop('checked'))
+      $("#fairplay-toggler #opt2").addClass("selected");
+   else
+      $("#fairplay-toggler #opt1").addClass("selected");
+
+   $("#fairplay-toggler").click(doFairplayToggle);
+   $("#fairplay-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFairplayToggle();
    });
 
 </script>

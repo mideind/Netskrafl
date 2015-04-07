@@ -85,6 +85,7 @@
       <h3 class="clockleft"></h3>
       <h3 class="clockright"></h3>
       <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
+      <div class="fairplay"><span class="fairplay-btn large" title="Skraflað án hjálpartækja"></span></div>
    </div>
    <div class="right-area">
       <div class="right-tab selected" id="tab-movelist" title="Leikir"><span class="glyphicon glyphicon-show-lines"></span></div>
@@ -417,6 +418,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    function gameIsZombie() {
       /* Return true if the game is newly finished and is being viewed to confirm results */
       return {{ "true" if zombie else "false" }};
+   }
+
+   function gameIsFairplay() {
+      /* Return true if the game is a fairplay game */
+      return {{ "true" if game.get_fairplay() else "false" }};
    }
 
    /* Array of supported emoticons in chat */

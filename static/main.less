@@ -178,6 +178,9 @@
 .glyphicon-stroller:before {
    content: "\E076";
 }
+.glyphicon-edit:before {
+   content: "\E151";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -521,7 +524,7 @@ h3.scoreleft {
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
-   padding-left: 4px;
+   padding-left: 6px;
 }
 
 h3.scoreright {
@@ -538,7 +541,7 @@ h3.scoreright {
    overflow: hidden;
    margin-top: 4px;
    margin-bottom: 4px;
-   padding-right: 4px;
+   padding-right: 6px;
 }
 
 .clock {
@@ -584,6 +587,17 @@ div.clockface {
    font-size: 28px;
    line-height: 28px;
    color: @pass-btn;
+}
+
+div.fairplay {
+   display: none;
+   position: absolute;
+   top: 44px;
+   width: 100%;
+   text-align: center;
+   font-size: 28px;
+   line-height: 28px;
+   color: @freshtile;
 }
 
 div.right-area {
@@ -1778,8 +1792,8 @@ span.list-win {
 
 span.list-nick {
    display: inline-block;
-   width: 200px;
-   max-width: 200px;
+   width: 220px;
+   max-width: 220px;
    overflow: hidden;
    font-weight: 700;
    cursor: default;
@@ -1959,6 +1973,31 @@ span.timed-btn {
 
 span.timed-btn:before {
    content: "\E055"; /* time */
+}
+
+span.fairplay-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @freshtile;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.fairplay-btn:before {
+   content: "\E151"; /* edit */
+}
+
+span.fairplay-btn.large {
+   font-size: 18px;
+   border-width: 1px;
+   border-color: white;
+   border-style: solid;
 }
 
 span.elo-btn {
@@ -2334,10 +2373,10 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 100px;
+   top: 75px;
    right: 300px;
    width: 428px;
-   height: 532px;
+   height: 580px;
    padding-top: 12px; /* Override */
 }
 
@@ -2445,6 +2484,17 @@ span#chall-online.online {
    background-color: @freshtile;
 }
 
+div#chall-fairplay {
+   padding-left: 52px;
+   padding-right: 52px;
+   font-size: 14px;
+   text-align: right;
+}
+
+div.hidden {
+   visibility: hidden;
+}
+
 div#wait-form {
    .std-form;
    top: 56px;
@@ -2466,10 +2516,10 @@ div#user-dialog {
 
 div#user-form {
    .std-form;
-   top: 50px;
+   top: 35px;
    right: 64px;
    width: 736px;
-   height: 614px;
+   height: 634px;
 }
 
 div#user-logout {
@@ -2567,8 +2617,8 @@ div.welcome {
 }
 
 div.dialog-spacer {
-   margin-top: 4px;
-   margin-bottom: 2px;
+   margin-top: 2px;
+   margin-bottom: 4px;
 }
 
 span.caption {
@@ -2598,6 +2648,16 @@ div.explain {
    text-align: left;
 }
 
+div.subexplain {
+   display: inline-block;
+   width: 420px;
+   vertical-align: top;
+   margin-top: 8px;
+   margin-left: 18px;
+   margin-right: 6px;
+   font-size: 14px;
+}
+
 div.errinput {
    margin-left: 158px;
    margin-bottom: 10px;
@@ -2616,7 +2676,7 @@ input.text {
    border-color: @freshtile;
    border-width: 2px;
    border-radius: 5px;
-   margin-bottom: 6px;
+   margin-bottom: 4px;
    padding-top: 2px;
    padding-bottom: 2px;
    padding-left: 8px;

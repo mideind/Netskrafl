@@ -2257,6 +2257,9 @@ function initSkrafl(jQuery) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }
+   if (gameIsFairplay())
+      // Display fair play indicator
+      $("div.fairplay").css("display", "block");
    updateButtonState();
 
    // Prepare the dialog box that asks for the meaning of a blank tile
