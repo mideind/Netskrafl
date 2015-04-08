@@ -335,6 +335,7 @@ def _gamelist():
             "my_turn": False,
             "overdue": False,
             "zombie": True,
+            "fairplay": u.fairplay(),
             "tile_count" : Alphabet.BAG_SIZE # All tiles accounted for
         })
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
@@ -349,6 +350,7 @@ def _gamelist():
         opp = g["opp"] # User id of opponent
         ts = g["ts"]
         overdue = False
+        fairplay = False
         if opp is None:
             # Autoplayer opponent
             nick = Game.autoplayer_name(g["robot_level"])
@@ -356,6 +358,7 @@ def _gamelist():
             # Human opponent
             u = User.load(opp)
             nick = u.nickname()
+            fairplay = u.fairplay()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
@@ -373,6 +376,7 @@ def _gamelist():
             "my_turn": g["my_turn"],
             "overdue": overdue,
             "zombie": False,
+            "fairplay": fairplay,
             "tile_count" : g["tile_count"]
         })
     return result

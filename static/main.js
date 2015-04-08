@@ -510,6 +510,9 @@ function populateGameList(json) {
       else
       if (item.zombie)
          flagClass = " zombie";
+      // Fair play commitment
+      if (item.fairplay)
+         opp = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + opp;
       var myTurn = "<span title='" + turnText + "' class='glyphicon glyphicon-flag" +
          flagClass + "'></span>";
       var overdueText = item.overdue ?
