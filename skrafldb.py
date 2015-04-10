@@ -93,6 +93,17 @@ class UserModel(ndb.Model):
     ready = ndb.BooleanProperty(required = False, default = False)
     # Ready for timed challenges?
     ready_timed = ndb.BooleanProperty(required = False, default = False)
+    # Elo points
+    elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    # Elo points for human-only games
+    human_elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    # Best total score in a game
+    highest_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    highest_score_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    # Best word laid down
+    best_word = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    best_word_game = ndb.StringProperty(required = False, default = None, indexed = False)
 
     @classmethod
     def create(cls, user_id, nickname):
@@ -104,17 +115,6 @@ class UserModel(ndb.Model):
         user.ready = False # Not ready for new challenges unless explicitly set
         user.ready_timed = False # Not ready for timed games unless explicitly set
         return user.put().id()
-
-    @classmethod
-    def update(cls, user_id, nickname, inactive, prefs, ready, ready_timed):
-        """ Update an existing user entity """
-        user = cls.fetch(user_id)
-        user.nickname = nickname
-        user.inactive = inactive
-        user.prefs = prefs
-        user.ready = ready
-        user.ready_timed = ready_timed
-        user.put()
 
     @classmethod
     def fetch(cls, user_id):
