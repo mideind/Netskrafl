@@ -256,7 +256,7 @@ function populateUserList(json) {
          fav = "<span title='Uppáhald' class='glyphicon glyphicon-star" +
          ((!item.fav) ? "-empty" : "") +
          "' onclick='markFavorite(this, \"" + item.userid + "\")'></span>";
-      var chId = "chall" + i.toString();
+      var chId = "chall" + i;
       var ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +
          (item.chall ? "'" : " grayed'") +
          " id='" + chId + "'></span>";
@@ -271,7 +271,7 @@ function populateUserList(json) {
       }
       else {
          // Create a link to access user info
-         info = "<span id='usr" + i.toString() + "' class='usr-info'></span>";
+         info = "<span id='usr" + i + "' class='usr-info'></span>";
       }
       if (info.length)
          info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
@@ -296,7 +296,7 @@ function populateUserList(json) {
       $("#userlist").append(str);
       // Associate a click handler with the info button, if present
       if (info.length)
-         $("#usr" + i.toString()).click(
+         $("#usr" + i).click(
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
             showUserInfo
          );
@@ -620,7 +620,7 @@ function _populateRecentList(json, listId) {
       else
          // This was a timed game
          duration = "<span class='timed-btn' title='Viðureign með klukku'></span> 2 x " +
-            item.duration.toString() + " mínútur";
+            item.duration + " mínútur";
       // Show the Elo point adjustments resulting from the game
       var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
       var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
