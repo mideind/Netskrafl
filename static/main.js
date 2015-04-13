@@ -151,7 +151,9 @@ function showUserInfo(ev) {
    initToggle("#stats-toggler", false); // Show human only stats by default
    $("#usr-stats-human").css("display", "inline-block");
    $("#usr-stats-all").css("display", "none");
-   $("#usr-info-dialog").css("visibility", "visible");
+   $("#usr-info-dialog")
+      .data("userid", ev.data.userid)
+      .css("visibility", "visible");
    // Populate the #usr-recent DIV
    serverQuery("/recentlist",
       {
@@ -165,6 +167,13 @@ function showUserInfo(ev) {
          user: ev.data.userid
       },
       populateUserStats);
+}
+
+function favUserInfo() {
+   // The favorite star icon has been clicked: modify the favorite status
+   var userId = $("#usr-info-dialog").data("userid");
+   var elem = document.getElementById("usr-info-fav-star");
+   markFavorite(elem, userId);
 }
 
 function hideUserInfo(ev) {
@@ -204,6 +213,12 @@ function _populateStats(prefix, json) {
    showStat(prefix, "human-win-ratio", winRatioHuman, "bookmark", "%");
    showStat(prefix, "avg-score", avgScore, "dashboard");
    showStat(prefix, "human-avg-score", avgScoreHuman, "dashboard");
+   if (prefix == "usr") {
+      // Show a star shape depending on favorite status
+      var favStar = $("#usr-info-fav-star");
+      favStar.toggleClass("glyphicon-star-empty", !json.favorite);
+      favStar.toggleClass("glyphicon-star", json.favorite);
+   }
 }
 
 function populateUserStats(json) {
@@ -335,6 +350,7 @@ function populateEloList(json) {
       var chId = "chall" + i;
       var ch = "";
       var nick = escapeHtml(item.nick);
+      var fullname = escapeHtml(item.fullname);
       var info = "";
       if (item.userid != userId() && !item.inactive)
          // Not the logged-in user himself and not inactive: allow a challenge
@@ -345,22 +361,22 @@ function populateEloList(json) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
       }
-      else {
+      else
+      if (item.userid != userId()) {
          // Create a link to access user info
          info = "<span id='usr" + i + "' class='usr-info'></span>";
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
       }
       // Fair play commitment
       if (item.fairplay)
          nick = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + nick;
-      if (info.length)
-         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-rank bold'>" + rankStr(item.rank) + "</span>" +
          "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
          "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
-         "<span class='list-nick'>" + nick + "</span>" +
+         "<span class='list-nick' title='" + fullname + "'>" + nick + "</span>" +
          "<span class='list-elo bold'>" + item.elo + "</span>" +
          "<span class='list-elo'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
          "<span class='list-elo'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
@@ -492,8 +508,9 @@ function populateGameList(json) {
    var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
+      var fullname = escapeHtml(item.fullname);
       var opp = escapeHtml(item.opp);
-      if (item.opp_is_robot)
+      if (item.oppid === null)
          // Mark robots with a cog icon
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
       var turnText;
@@ -522,18 +539,33 @@ function populateGameList(json) {
       var winLose = item.sc0 < item.sc1 ? " losing" : "";
       var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
          Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'></div></div>";
+      // Opponent track record button
+      var info = "";
+      if (item.oppid !== null) {
+         info = "<span id='gmusr" + i + "' class='usr-info'></span>";
+         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+      }
+
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
          "<span class='list-overdue'>" + overdue + "</span>" +
          "<span class='list-ts'>" + item.ts + "</span>" +
-         "<span class='list-opp'>" + opp + "</span>" +
+         "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
+         "</a>" +
+         "<span class='list-info'>" + info + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>" +
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "<span class='list-tc'>" + tileCount + "</span>" +
-         "</a></div>";
+         "</div>";
       $("#gamelist").append(str);
+      // Enable user track record button
+      $("#gmusr" + i).click(
+         { userid: item.oppid, nick: item.opp, fullname: item.fullname },
+         showUserInfo
+      );
+      // Count games where it's this user's turn
       if (item.my_turn || item.zombie)
          numMyTurns++;
    }
@@ -791,6 +823,7 @@ function populateChallengeList(json) {
    for (var i = 0; i < json.challengelist.length; i++) {
       var item = json.challengelist[i];
       var opp = escapeHtml(item.opp);
+      var fullname = escapeHtml(item.fullname);
       var prefs = escapeHtml(challengeDescription(item.prefs));
       var odd = ((item.received ? countReceived : countSent) % 2 === 0);
       /* Show Decline icon (thumb down) if received challenge;
@@ -806,13 +839,13 @@ function populateChallengeList(json) {
          if (item.opp_ready)
             opp_ready = true; // Opponent ready and waiting for timed game
       }
-      var accId = "accept" + i.toString();
-      var readyId = "ready" + i.toString();
-      var chId = "chl" + i.toString();
+      var accId = "accept" + i;
+      var readyId = "ready" + i;
+      var chId = "chl" + i;
       icon += " id='" + chId + "'></span>";
 
       // Opponent track record button
-      var info = "<span id='chusr" + i.toString() + "' class='usr-info'></span>";
+      var info = "<span id='chusr" + i + "' class='usr-info'></span>";
       info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
 
       // Fair play indicator
@@ -825,7 +858,7 @@ function populateChallengeList(json) {
          (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
          (opp_ready ? ("<a href='#' id='" + readyId + "' class='opp-ready'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
-         "<span class='list-nick'>" + opp + "</span>" +
+         "<span class='list-nick' title='" + fullname + "'>" + opp + "</span>" +
          "<span class='list-chall'>" + fairplay + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
@@ -854,12 +887,12 @@ function populateChallengeList(json) {
       }
       // Enable mark challenge button (to decline or retract challenges)
       $("#" + chId).click(
-         { userid: item.userid, nick: item.opp, fullname: "", fairplay: false },
+         { userid: item.userid, nick: item.opp, fullname: item.fullname, fairplay: false },
          markChallAndRefresh
       );
       // Enable user track record button
       $("#chusr" + i.toString()).click(
-         { userid: item.userid, nick: item.opp, fullname: "" },
+         { userid: item.userid, nick: item.opp, fullname: item.fullname },
          showUserInfo
       );
    }
@@ -1128,6 +1161,9 @@ function initMain() {
 
    /* Enable the close button in the user info dialog */
    $("#usr-info-close").click(hideUserInfo);
+
+   /* Enable clicking on the favorite star icon in the user info dialog */
+   $("div.usr-info-fav").click(favUserInfo);
 
    /* Prepare the challenge dialog */
    prepareChallenge();

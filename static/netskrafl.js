@@ -2146,6 +2146,19 @@ function switchTwoLetter() {
    $("#two-2").css("visibility", switchFrom == "two-2" ? "hidden" : "visible");
 }
 
+function lookAtPlayer() {
+   // Click on a player identifier: open user preferences or track record dialog
+   var playerId = $(this).attr("id");
+   var playerIndex = (playerId == "player-0" ? 0 : 1);
+   if (playerIndex == localPlayer())
+      // Clicking on the player's own identifier opens the user preferences
+      navToUserprefs();
+   else {
+      // Show information about the opponent
+      alert("Show opponent info goes here");
+   }
+}
+
 /* Channel API stuff */
 
 var channelToken = null;
@@ -2271,6 +2284,9 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('backspace', rescrambleRack);
    /* Bind pinch gesture to a function to reset the rack */
    /* $('body').bind('pinchclose', resetRack); */
+
+   // Clicking on player identifier buttons
+   $("div.player-btn").click(lookAtPlayer);
 
    // Bind a handler to the close icon on the board color help panel
    $("div.board-help-close span").click(closeHelpPanel);

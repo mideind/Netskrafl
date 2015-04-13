@@ -30,7 +30,7 @@ module.exports = function (grunt) {
                   'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
                   'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog',
                   'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage',
-                  'gameIsFairplay', 'fairPlay']
+                  'gameIsFairplay', 'fairPlay', 'navToUserprefs']
             }
          }
       },

@@ -327,8 +327,9 @@ def _gamelist():
         nick = u.nickname()
         result.append({
             "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
+            "oppid": opp,
             "opp": nick,
-            "opp_is_robot": False,
+            "fullname": u.full_name(),
             "sc0": g["sc0"],
             "sc1": g["sc1"],
             "ts": Alphabet.format_timestamp(g["ts"]),
@@ -351,6 +352,7 @@ def _gamelist():
         ts = g["ts"]
         overdue = False
         fairplay = False
+        fullname = ""
         if opp is None:
             # Autoplayer opponent
             nick = Game.autoplayer_name(g["robot_level"])
@@ -358,6 +360,7 @@ def _gamelist():
             # Human opponent
             u = User.load(opp)
             nick = u.nickname()
+            fullname = u.full_name()
             fairplay = u.fairplay()
             delta = now - ts
             if g["my_turn"]:
@@ -368,8 +371,9 @@ def _gamelist():
                 overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
         result.append({
             "url": url_for('board', game = g["uuid"]),
+            "oppid": opp,
             "opp": nick,
-            "opp_is_robot": opp is None,
+            "fullname": fullname,
             "sc0": g["sc0"],
             "sc1": g["sc1"],
             "ts": Alphabet.format_timestamp(ts),
@@ -549,6 +553,7 @@ def _challengelist():
                 "received": True,
                 "userid": c[0],
                 "opp": nick,
+                "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2]),
                 "opp_ready" : False
@@ -562,6 +567,7 @@ def _challengelist():
                 "received": False,
                 "userid": c[0],
                 "opp": nick,
+                "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2]),
                 "opp_ready" : opp_ready(c)
@@ -746,7 +752,15 @@ def userstats():
     if user is None:
         return jsonify(result = Error.WRONG_USER)
 
-    return jsonify(user.statistics())
+    stats = user.statistics()
+    # Include info on whether this user is a favorite of the current user
+    fav = False
+    cuser = User.current()
+    if uid != cuser.id():
+        fav = cuser.has_favorite(uid)
+    stats["favorite"] = fav
+
+    return jsonify(stats)
 
 
 @app.route("/userlist", methods=['POST'])

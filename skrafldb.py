@@ -121,6 +121,11 @@ class UserModel(ndb.Model):
         """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
 
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple user records """
+        ndb.put_multi(recs)
+
     @classmethod
     def count(cls):
         """ Return a count of user entities """

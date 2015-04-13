@@ -58,28 +58,32 @@
 <!-- Player names, scores and move history -->
 <div class="rightcol">
    <div class="heading">
-      <h3 class="playerleft"><span id="left-to-move" class="glyphicon-flag"></span>
-{%- if player_index != None and player_index == 0 -%}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- elif game.is_autoplayer(0) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{ game.player_nickname(0) }}
-{%- if player_index != None and player_index == 0 -%}
-</a>
+      <h3 class="playerleft">
+{%- if game.is_autoplayer(0) -%}
+      <div class="robot-btn left"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(0) -}}
+      </div>
+{%- else -%}
+      <div class="player-btn left" id="player-0"><!--
+      --><span id="left-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(0) -}}
+      </div>
 {%- endif -%}
       </h3>
       <h3 class="playerright">
-{%- if player_index != None and player_index == 1 -%}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- elif game.is_autoplayer(1) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- if game.is_autoplayer(1) -%}
+      <div class="robot-btn right"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(1) -}}
+      </div>
+{%- else -%}
+      <div class="player-btn right" id="player-1"><!--
+      -->{{- game.player_nickname(1) -}}<!--
+      --><span id="right-to-move" class="glyphicon-flag-after"></span>
+      </div>
 {%- endif -%}
-      {{ game.player_nickname(1) }}
-{%- if player_index != None and player_index == 1 -%}
-</a>
-{%- endif -%}
-      <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
+      </h3>
       <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
       <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
       <h3 class="clockleft"></h3>
@@ -469,6 +473,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    function navToReview() {
       /* Show the game review page */
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+   }
+
+   function navToUserprefs() {
+      /* Show the user preferences page */
+      window.location.href = "{{ url_for('userprefs') | safe }}";
    }
 
    function fbShare() {
