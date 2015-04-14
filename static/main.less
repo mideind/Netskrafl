@@ -181,6 +181,9 @@
 .glyphicon-edit:before {
    content: "\E151";
 }
+.glyphicon-circle-question-mark:before {
+   content: "\E195";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -678,7 +681,7 @@ div.movelist {
    height: 100%;
    background-color: @background;
    overflow: auto;
-   z-index: 3;
+   z-index: 4;
 }
 
 div.twoletter {
@@ -689,7 +692,7 @@ div.twoletter {
    height: 100%;
    background-color: @theme4;
    overflow: hidden;
-   z-index: 2;
+   z-index: 3;
 }
 
 div.twoletter-area {
@@ -727,6 +730,43 @@ div.twoletter-area span b {
 
 div.twoletter-area#two-2 {
    visibility: hidden;
+}
+
+div.games {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme6;
+   overflow: auto;
+   z-index: 2;
+}
+
+div.at-top-left {
+   position: absolute;
+   top: 6px;
+   left: 10px;
+}
+
+div.at-top-left div.tilecount {
+   font-size: 24px;
+   line-height: 24px;
+   width: 284px;
+   min-width: 284px;
+   border-radius: 5px;
+   border-width: 0;
+}
+
+div.at-top-left div.tilecount div.tc {
+   opacity: 0.3;
+   border-radius: 5px;
+   border-width: 0;
+}
+
+div.at-top-left span.list-opp {
+   margin-top: 2px;
+   margin-left: 6px;
 }
 
 div.chat {
@@ -876,8 +916,13 @@ div.right-tab#tab-twoletter {
    background-color: @theme4;
 }
 
-div.right-tab#tab-chat {
+div.right-tab#tab-games {
    top: 116px;
+   background-color: @theme6;
+}
+
+div.right-tab#tab-chat {
+   top: 174px;
    background-color: @theme5;
 }
 
@@ -891,7 +936,7 @@ div.right-tab:hover {
 
 div.right-tab.alert {
    color: @alert;
-   opacity: 0.8;
+   /* opacity: 0.8; */
 }
 
 div.movelist.noscroll {
@@ -1685,6 +1730,7 @@ div.userid:hover {
 }
 
 div.listitem {
+   position: relative;
    height: 24px;
    padding-left: 4px;
    padding-right: 4px;
@@ -2933,6 +2979,48 @@ div#tabs-1 p img {
    margin-left: 4px;
    margin-right: 4px;
    vertical-align: -3px;
+}
+
+div.help-container {
+   width: 828px;
+   height: 640px;
+   overflow: auto;
+   padding-right: 24px;
+}
+
+div.help-container ol li {
+   font-weight: bold;
+}
+
+div.help-container ul li {
+   font-weight: normal;
+   list-style-type:disc;
+}
+
+div.help-container table {
+   border-spacing: 0;
+   border-collapse: collapse;
+}
+
+div.help-container td {
+   margin: 0;
+   padding: 4px;
+   padding-left: 8px;
+   padding-right: 8px;
+   text-align: right;
+   border-width: 1px;
+   border-style: solid;
+   width: 80px;
+}
+
+div.help-container td.row-caption {
+   text-align: left;
+   font-weight: bold;
+   width: 120px;
+}
+
+div.help-container span.glyphicon-hourglass {
+   color: @alert;
 }
 
 div.twolist {

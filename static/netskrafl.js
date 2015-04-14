@@ -12,6 +12,7 @@
 var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
+var BAG_SIZE = 104; // Number of tiles in bag at start of game
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
 var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
@@ -1993,14 +1994,67 @@ function loadChat() {
    );
 }
 
+var gamesLoading = false;
+
+function populateGames(json) {
+   // Populate the list of pending games
+   gamesLoading = false;
+   $("div.games").html("");
+   if (!json || json.result === undefined)
+      return;
+   if (json.result !== 0)
+      /* Probably out of sync or login required */
+      /* !!! TBD: Add error reporting here */
+      return;
+   var numGames = json.gamelist.length;
+   var numMyTurns = 0;
+   for (var i = 0; i < numGames; i++) {
+      var item = json.gamelist[i];
+      if (!item.my_turn && !item.zombie)
+         continue; // Only show pending games
+      var fullname = escapeHtml(item.fullname);
+      var opp = escapeHtml(item.opp);
+      if (item.oppid === null)
+         // Mark robots with a cog icon
+         opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
+      var winLose = item.sc0 < item.sc1 ? " losing" : "";
+      var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
+         Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'></div></div>";
+      var str = "<div class='listitem " + ((numMyTurns % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
+         "<div class='at-top-left'>" + tileCount + "</div>" +
+         "<div class='at-top-left'>" +
+         "<a href='" + item.url + "'>" +
+         "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
+         "</a></div>" +
+         "</div>";
+      $("div.games").append(str);
+      numMyTurns++;
+   }
+   // Show a red flag if there are pending games
+   $("#tab-games").toggleClass("alert", numMyTurns !== 0);
+}
+
+function loadGames() {
+   // Load list of pending games from the server
+   if (gamesLoading)
+      return; // Avoid race conditions
+   gamesLoading = true;
+   serverQuery("/gamelist",
+      { }, // No parameter data required
+      populateGames
+   );
+}
+
 function selectTab(ev) {
    /* A right-side tab has been selected: bring it to the foreground */
    var tabSel = $(this).attr("id");
-   $("div.movelist").css("z-index", tabSel == "tab-movelist" ? "3" : "1");
+   $("div.movelist").css("z-index", tabSel == "tab-movelist" ? "4" : "1");
    $("#tab-movelist").toggleClass("selected", tabSel == "tab-movelist");
-   $("div.twoletter").css("z-index", tabSel == "tab-twoletter" ? "3" : "1");
+   $("div.twoletter").css("z-index", tabSel == "tab-twoletter" ? "4" : "1");
    $("#tab-twoletter").toggleClass("selected", tabSel == "tab-twoletter");
-   $("div.chat").css("z-index", tabSel == "tab-chat" ? "3" : "1");
+   $("div.games").css("z-index", tabSel == "tab-games" ? "4" : "1");
+   $("#tab-games").toggleClass("selected", tabSel == "tab-games");
+   $("div.chat").css("z-index", tabSel == "tab-chat" ? "4" : "1");
    $("#tab-chat").toggleClass("selected", tabSel == "tab-chat");
    if (tabSel == "tab-chat") {
       // Selecting the chat tab
@@ -2017,6 +2071,11 @@ function selectTab(ev) {
       }
       // Focus on the text input field
       $("#msg").focus();
+   }
+   else
+   if (tabSel == "tab-games") {
+      // Selecting the games tab: load the pending games
+      loadGames();
    }
 }
 
