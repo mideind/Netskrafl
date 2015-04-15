@@ -28,8 +28,8 @@
    <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn.
    Leikreglurnar eru eins og í
    hefðbundnu borðskrafli, en aðeins eru leyfð orð sem fyrirfinnast í
-   <a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
-   íslensks nútímamáls</a> - og tveggja stafa orð samkvæmt
+   <i><a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
+   íslensks nútímamáls</a></i> - og tveggja stafa orð samkvæmt
    <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.
    Ekki er því unnt að véfengja orð sem lögð eru
    niður, né er hægt að leggja niður önnur orð en þau sem eru í orðalistunum.</p>
@@ -85,8 +85,8 @@
    <p>Frumforrit Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á
    <img src="{{ url_for('static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a>.</p>
    <p>Höfundarréttur að
-   <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi Stofnunar
-   Árna Magnússonar í íslenskum fræðum. BÍN er notuð í Netskrafli skv.
+   <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi <i>Stofnunar
+   Árna Magnússonar í íslenskum fræðum</i>. BÍN er notuð í Netskrafli skv.
    <a href="http://bin.arnastofnun.is/gogn/skilmalar/" target="_blank">skilmálum SÁM</a>.</p>
    </div>
 
@@ -208,10 +208,23 @@
 
 <script>
 
-$("#tabs").tabs({ heightStyle: "auto" });
+$("#tabs").tabs(
+   {
+      heightStyle: "auto",
+      activate: function(ev, ui) {
+         var panelId = ui.newPanel.attr('id');
+         if (panelId == "tabs-3" && window.location.pathname.indexOf("/faq") != 0)
+            // Selecting the FAQ tab: Make sure we come back to the /faq URL
+            history.replaceState({ }, "FAQ", "/faq");
+      }
+   }
+);
 
 {% if show_twoletter %}
 // Select the tab with two letter words to show initially
+$("#tabs").tabs("option", "active", 2);
+{% elif show_faq %}
+// Select the tab with FAQs to show initially
 $("#tabs").tabs("option", "active", 1);
 {% endif %}
 

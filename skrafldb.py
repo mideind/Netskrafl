@@ -295,10 +295,6 @@ class GameModel(ndb.Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
-            .filter(GameModel.over == True) \
-            .order(-GameModel.ts_last_move)
 
         def game_callback(gm):
             """ Map a game entity to a result dictionary with useful info about the game """
@@ -329,6 +325,21 @@ class GameModel(ndb.Model):
                 elo_adj = elo_adj,
                 human_elo_adj = human_elo_adj,
                 prefs = gm.prefs)
+
+        k = ndb.Key(UserModel, user_id)
+
+        # Run the query in two parts as experience suggests that
+        # AppEngine is not efficient with ndb.OR between two distinct values
+        # This also means that the returned list may be twice max_len
+
+        q = cls.query(GameModel.over == True) \
+            .filter(GameModel.player0 == k)
+
+        for gm in q.fetch(max_len):
+            yield game_callback(gm)
+
+        q = cls.query(GameModel.over == True) \
+            .filter(GameModel.player1 == k)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)

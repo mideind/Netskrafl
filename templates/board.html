@@ -1,6 +1,7 @@
 {% extends "container.html" %}
 
 {% block opengraph %}
+
 {% if og != None %}
 
 {%- macro descr(og) -%}
@@ -26,17 +27,19 @@
 
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
 <meta property="og:description" content="{{ descr(og) | stripwhite }}" />
+<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
+<meta property="fb:app_id" content="622492364544510" />
+
+{% endif %}
+
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
-<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
 <meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
-<meta property="fb:app_id" content="622492364544510" />
 
-{% endif %}
 {% endblock %}
 
 {% block styles %}

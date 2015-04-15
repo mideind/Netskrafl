@@ -476,8 +476,11 @@ def _recentlist(cuid, max_len):
     result = []
     if cuid is not None:
         # Obtain a list of recently finished games where the indicated user was a player
-        i = iter(GameModel.list_finished_games(cuid, max_len = max_len))
-        for g in i:
+        temp = list(GameModel.list_finished_games(cuid, max_len = max_len))
+        # Temp may be up to 2 * max_len as it is composed of two queries
+        # Sort it and bring it down to size before processing it further
+        temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
+        for g in temp[0:max_len]:
             opp = g["opp"]
             if opp is None:
                 # Autoplayer opponent
@@ -508,7 +511,7 @@ def _recentlist(cuid, max_len):
                 "sc1": g["sc1"],
                 "elo_adj": g["elo_adj"],
                 "human_elo_adj": g["human_elo_adj"],
-                "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
+                "ts_last_move": Alphabet.format_timestamp(ts_end),
                 "days": int(days),
                 "hours": int(hours),
                 "minutes": int(minutes),
@@ -1503,7 +1506,8 @@ def help():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user, show_twoletter = False)
+    return render_template("nshelp.html", user = user,
+        show_twoletter = False, show_faq = False)
 
 
 @app.route("/twoletter")
@@ -1513,7 +1517,19 @@ def twoletter():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user, show_twoletter = True)
+    return render_template("nshelp.html", user = user,
+        show_twoletter = True, show_faq = False)
+
+
+@app.route("/faq")
+def faq():
+    """ Show help page """
+
+    user = User.current()
+    # We tolerate a null (not logged in) user here
+
+    return render_template("nshelp.html", user = user,
+        show_twoletter = False, show_faq = True)
 
 
 @app.errorhandler(404)
