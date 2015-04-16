@@ -2010,6 +2010,8 @@ function populateGames(json) {
    var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
+      if (item.uuid == gameId())
+         continue; // Don't show this game
       if (!item.my_turn && !item.zombie)
          continue; // Only show pending games
       var fullname = escapeHtml(item.fullname);
@@ -2019,14 +2021,14 @@ function populateGames(json) {
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
       var winLose = item.sc0 < item.sc1 ? " losing" : "";
       var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
-         Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'></div></div>";
-      var str = "<div class='listitem " + ((numMyTurns % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
-         "<div class='at-top-left'>" + tileCount + "</div>" +
-         "<div class='at-top-left'>" +
+         Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'>" + opp + "</div></div>";
+      var str = "<div class='games-item'>" +
          "<a href='" + item.url + "'>" +
+         "<div class='at-top-left'>" +
          "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
-         "</a></div>" +
-         "</div>";
+         "</div>" +
+         "<div class='at-top-left'>" + tileCount + "</div>" +
+         "</a></div>";
       $("div.games").append(str);
       numMyTurns++;
    }

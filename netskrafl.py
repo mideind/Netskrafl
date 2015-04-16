@@ -326,6 +326,7 @@ def _gamelist():
         u = User.load(opp)
         nick = u.nickname()
         result.append({
+            "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
             "oppid": opp,
             "opp": nick,
@@ -370,6 +371,7 @@ def _gamelist():
                 # Show mark after 14 days
                 overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
         result.append({
+            "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"]),
             "oppid": opp,
             "opp": nick,

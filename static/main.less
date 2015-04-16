@@ -743,6 +743,28 @@ div.games {
    z-index: 2;
 }
 
+div.games-item {
+   position: relative;
+   height: 24px;
+   padding-left: 4px;
+   padding-right: 4px;
+   padding-top: 7px;
+   padding-bottom: 5px;
+   overflow: hidden;
+   vertical-align: top;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+div.games-item a:link, div.games-item a:visited {
+   color: black;
+   text-decoration: none;
+}
+
+div.games-item a:hover {
+   color: @hover-link;
+}
+
 div.at-top-left {
    position: absolute;
    top: 6px;
@@ -750,23 +772,28 @@ div.at-top-left {
 }
 
 div.at-top-left div.tilecount {
-   font-size: 24px;
+   font-size: 16px;
    line-height: 24px;
    width: 284px;
    min-width: 284px;
    border-radius: 5px;
    border-width: 0;
+   background-color: transparent;
 }
 
 div.at-top-left div.tilecount div.tc {
-   opacity: 0.3;
    border-radius: 5px;
    border-width: 0;
+   color: white;
+   font-weight: bold;
+   padding-left: 2px;
+   overflow: hidden;
 }
 
 div.at-top-left span.list-opp {
-   margin-top: 2px;
+   margin-top: 4px;
    margin-left: 6px;
+   vertical-align: baseline;
 }
 
 div.chat {
