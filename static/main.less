@@ -1218,6 +1218,11 @@ div.pass {
    visibility: hidden;
 }
 
+span.pass-explain {
+   font-weight: normal;
+   font-style: italic;
+}
+
 span.yesnobutton {
    height: 20px;
    text-align: center;
@@ -2917,12 +2922,20 @@ div#timed-toggler {
    top: 590px;
 }
 
+div#fairplay-toggler div.option.selected {
+   background-color: @freshtile;
+}
+
 div #radioset {
    padding-top: 6px;
    padding-bottom: 24px;
 }
 
 div.over {
+   outline: yellow solid 3px;
+}
+
+span.over {
    outline: yellow solid 3px;
 }
 

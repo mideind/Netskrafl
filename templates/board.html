@@ -265,7 +265,8 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 <div class="opp-turn"><span class="move-indicator"></span>
 <strong>{{ game.player_nickname(1 - player_index) }}</strong>
 á leik
-<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton" onclick="forceResign()">Þvinga til uppgjafar</span>
+<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton"
+   onclick="forceResign()" onmouseover="buttonOver(this)" onmouseout="buttonOut(this)">Þvinga til uppgjafar</span>
 </div>
 {% endif %}
 
@@ -301,7 +302,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 <!-- Confirm pass move -->
 <div class="pass"><span class="glyphicon glyphicon-forward"></span>
-   &nbsp;Segja pass? <span style="font-weight:400">2x3 pöss í röð ljúka viðureign</span>&nbsp;
+   &nbsp;Segja pass? <span class="pass-explain">2x3 pöss í röð ljúka viðureign</span>&nbsp;
    <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
    <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
