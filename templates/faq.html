@@ -26,15 +26,16 @@
 <li><a href="#faq-11">Hvar get ég séð tveggja stafa orðalistann?</a></li>
 <li><a href="#faq-12">Get ég losnað við lúðraþytinn sem heyrist þegar ég sigra í viðureign?</a></li>
 <li><a href="#faq-13">Ég lokaði óvart minnismiðanum sem útskýrir hvað litirnir á borðinu þýða. Hvernig fæ ég hann aftur upp?</a></li>
-<li><a href="#faq-14">Hvernig eru stigin reiknuð?</a></li>
-<li><a href="#faq-15">Hvað eru Elo-stig?</a></li>
-<li><a href="#faq-16">Hvar sé ég Elo-stigin?</a></li>
-<li><a href="#faq-17">Hvernig eru Elo-stigin reiknuð?</a></li>
-<li><a href="#faq-18">Hver er formúlan fyrir Elo-stigunum nákvæmlega?</a></li>
-<li><a href="#faq-19">Af hverju vantar Elo-stig á nýjustu viðureignir hjá mér?</a></li>
-<li><a href="#faq-20">Af hverju eru tveir Elo-listar?</a></li>
-<li><a href="#faq-21">Hvað þýðir blái barnavagninn í Elo-dálknum í viðureignalista?</a></li>
-<li><a href="#faq-22">Stendur til að búa til smáforrit fyrir snjallsíma?</a></li>
+<li><a href="#faq-14">Af hverju fæ ég upp vefsíðu frá Google þegar ég ætla að opna Netskraflið?</a></li>
+<li><a href="#faq-15">Hvernig eru stigin reiknuð?</a></li>
+<li><a href="#faq-16">Hvað eru Elo-stig?</a></li>
+<li><a href="#faq-17">Hvar sé ég Elo-stigin?</a></li>
+<li><a href="#faq-18">Hvernig eru Elo-stigin reiknuð?</a></li>
+<li><a href="#faq-19">Hver er formúlan fyrir Elo-stigunum nákvæmlega?</a></li>
+<li><a href="#faq-20">Af hverju vantar Elo-stig á nýjustu viðureignir hjá mér?</a></li>
+<li><a href="#faq-21">Af hverju eru tveir Elo-listar?</a></li>
+<li><a href="#faq-22">Hvað þýðir blái barnavagninn í Elo-dálknum í viðureignalista?</a></li>
+<li><a href="#faq-23">Stendur til að búa til smáforrit fyrir snjallsíma?</a></li>
 </ol>
 
 <p><b>Svör:</b></p>
@@ -119,7 +120,14 @@
 <li id="faq-13">Ég lokaði óvart minnismiðanum sem útskýrir hvað litirnir á borðinu þýða. Hvernig fæ ég hann aftur upp?</li>
 <p>Hann er opnaður í stillingunum. (Hægt er að <a href="{{ url_for('userprefs') }}">opna stillingarnar</a> með því að smella á nafnið sitt efst í hægra horni síðunnar.)</p>
 
-<li id="faq-14">Hvernig eru stigin reiknuð?</li>
+<li id="faq-14">Af hverju fæ ég upp vefsíðu frá Google þegar ég ætla að opna Netskraflið?</li>
+<p>Netskrafl notar Google innskráningu til að auðkenna notendur, þá sömu og er
+til dæmis notuð í Gmail og Google Maps. Innskráning gildir í tiltekinn tíma,
+yfirleitt ekki lengur en 30 daga. Þegar innskráningin rennur út kemur upp
+skráningarmynd frá Google og þá þarf að slá inn notandaauðkenni og lykilorð.
+Að því loknu birtist Netskraflið eins og venjulega.</p>
+
+<li id="faq-15">Hvernig eru stigin reiknuð?</li>
 <p>Stig fyrir hvern leik eru reiknuð með sama hætti og í hefðbundnu borðskrafli. Meginreglurnar eru:</p>
 <ul>
 <li>Lögð eru saman stafgildi (stig) flísanna í <b>öllum heilum orðum</b> sem niðurlögn þín myndar, hvort sem það eru ný orð eða viðbætur við orð sem fyrir voru á borðinu. Orð geta myndast bæði lárétt og lóðrétt, “þvers og kruss”. Öll orð verða að sjálfsögðu að vera leyfileg.</li>
@@ -132,7 +140,7 @@
 </ul>
 <p>Ef þú segir pass eða velur að skipta út flísum færðu engin stig í þeirri umferð.</p>
 
-<li id="faq-15">Hvað eru Elo-stig?</li>
+<li id="faq-16">Hvað eru Elo-stig?</li>
 <p>Netskrafl reiknar svokölluð <strong>Elo-stig</strong> (sjá <a href="http://en.wikipedia.org/wiki/Elo_rating_system" target="_new">hér</a>) fyrir alla leikmenn og einnig tölvuþjarkana. Útreikningarnir eru gerðir einu sinni á sólarhring, og ná til
 viðureigna sem lokið er á miðnætti.</p>
 <p>Stigin eru <b>vísbending</b> um styrk leikmanna, en á ekki að taka of alvarlega.</p>
@@ -145,7 +153,7 @@ niðurstöðu viðureignar, eða nánar til tekið um vinningslíkur hvors leikm
 Segja má að kerfið sé stöðugt að leiðrétta eigin spár og leitast við að færa þær nær
 raunverulegum niðurstöðum viðureigna.</p>
 
-<li id="faq-16">Hvar sé ég Elo-stigin?</li>
+<li id="faq-17">Hvar sé ég Elo-stigin?</li>
 <p>Þú sérð þín eigin Elo-stig undir flipanum <strong>Ferill</strong>. Þau eru einkennd með dökkblárri kórónu <span class="glyphicon glyphicon-crown"></span>.</p>
 <p>Elo-stig 100 efstu leikmanna má sjá undir flipanum <strong>Andstæðingar</strong>
 ef smellt er á hnappinn
@@ -155,7 +163,7 @@ leikmanna (<span class="glyphicon glyphicon-user"></span>), eða stig
 sem reiknuð eru fyrir allar viðureignir, að þjörkum meðtöldum
 (<span class="glyphicon glyphicon-cog"></span>).</p>
 
-<li id="faq-17">Hvernig eru Elo-stigin reiknuð?</li>
+<li id="faq-18">Hvernig eru Elo-stigin reiknuð?</li>
 <p>Elo-kerfið er stillt þannig af að hækkun um 400 stig táknar tíföldun líkinda á sigri. Það þýðir að ef tveir leikmenn eigast við, þar sem annar hefur t.d. 1100 stig en hinn 1500, eru líkur þess síðarnefnda á sigri taldar vera 10:1 (tíu á móti einum), þ.e. 10/11, en hins fyrrnefnda 1/11.</p>
 <p>Ef allt fer eins og líklegast er talið og sá stigahærri sigrar, urðu úrslitin 1:0 fyrir honum eða með öðrum orðum 11/11 honum í hag en 0/11 fyrir andstæðinginn. Niðurstaðan er 1/11 umfram spá, sem var 10/11. Það umframhlutfall er margfaldað með tölunni 20 og rúnnað af í heila tölu. Útkoman er að stigahái leikmaðurinn bætir við sig 2 Elo stigum með sigrinum, enda er hann í góðu samræmi við spá kerfisins.</p>
 <p>Ef á hinn bóginn sá með 1100 stigin sigrar óvænt þann með 1500 snýr dæmið öfugt. Árangur stigalága leikmannsins varð 11/11 en spáð var 1/11. Umframárangur var 10/11 og þegar hann er margfaldaður með 20 og rúnnað af fæst út að leikmaðurinn bætir við sig 18 Elo-stigum - sem sá sterki tapar. Bilið milli þeirra minnkar því úr 400 stigum í 364.</p>
@@ -189,7 +197,7 @@ leikmaður</td>
 <p>Elo-kerfi Netskrafls lítur aðeins á sigur, jafntefli eða tap. Ekki skiptir máli með hversu mörgum stigum viðureign vannst eða tapaðist. Jafntefli er talið sem hálfur vinningur hjá hvorum leikmanni.</p>
 <p>Sú undantekning er gerð að fyrstu 10 viðureignir byrjenda breyta aðeins Elo-stigum þeirra sjálfra, ekki andstæðinga þeirra (nema þeir séu einnig byrjendur). Það er því óhætt fyrir reyndari leikmenn að etja kappi við byrjendur, þó Elo-stig þeirra séu hugsanlega röng til að byrja með.</p>
 
-<li id="faq-18">Hver er formúlan fyrir Elo-stigunum nákvæmlega?</li>
+<li id="faq-19">Hver er formúlan fyrir Elo-stigunum nákvæmlega?</li>
 <p>Ef E(a) eru Elo-stig leikmanns A og E(b) stig leikmanns B,
 reiknar kerfið S(a) = 10^(E(a)/400) og S(b) = 10^(E(b)/400). Vinningslíkur A eru þá
 L(a) = S(a) / (S(a) + S(b)), en vinningslíkur B eru L(b) = S(b) / (S(a)+ S(b)). Ef A sigrar leikinn
@@ -202,15 +210,15 @@ enda sigurinn mjög nálægt spánni. Ef B tapar hins vegar, dragast af honum 20
 18 Elo-stig, sem A fær - enda er A þá talinn vanmetinn leikmaður sem eigi að færast nær
 B í stigafjölda.</p>
 
-<li id="faq-19">Af hverju vantar Elo-stig á nýjustu viðureignir hjá mér?</li>
+<li id="faq-20">Af hverju vantar Elo-stig á nýjustu viðureignir hjá mér?</li>
 <p>Elo-útreikningarnir fara fram í kring um kl. 02:15 á hverri nóttu og miðast við viðureignir sem lokið var á miðnætti.</p>
 
-<li id="faq-20">Af hverju eru tveir Elo-listar?</li>
+<li id="faq-21">Af hverju eru tveir Elo-listar?</li>
 <p>Annar listinn, sem merktur er <span class="glyphicon glyphicon-cog"></span>, tekur mið af öllum viðureignum, einnig við þjarka. Hinn listinn, sem merktur er <span class="glyphicon glyphicon-user"></span>, er aðeins reiknaður út frá viðureignum milli fólks. Elo-staða leikmanna getur verið mismunandi á þessum tveimur listum.</p>
 
-<li id="faq-21">Hvað þýðir blái barnavagninn í Elo-dálknum í viðureignalista?</li>
+<li id="faq-22">Hvað þýðir blái barnavagninn í Elo-dálknum í viðureignalista?</li>
 <p>Viðureignir við byrjendur, þá sem eru ennþá með færri en 10 viðureignir, teljast ekki með í Elo-stigum reyndari leikmanna. Þær eru sérstaklega merktar með bláum barnavagni í stað Elo-stiga.</p>
 
-<li id="faq-22">Stendur til að búa til smáforrit fyrir snjallsíma?</li>
+<li id="faq-23">Stendur til að búa til smáforrit fyrir snjallsíma?</li>
 <p>Nei, ekki að svo stöddu. Vefur Netskrafls er hins vegar hannaður til að virka vel á skjám spjaldtölva, t.d. iPad, og þokkalega vel á stærri snjallsímum.</p>
 
