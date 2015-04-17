@@ -655,7 +655,7 @@ class ChannelModel(ndb.Model):
         offset = 0
         while q is not None:
             count = 0
-            for cm in q.fetch(CHUNK_SIZE, offset = offset):
+            for cm in q.fetch(CHUNK_SIZE, offset = offset, projection=[ChannelModel.user]):
                 if cm.user is not None:
                     # Connected channel associated with a user: return the user id
                     yield cm.user.id()
@@ -672,8 +672,9 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
-        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
-            .filter(ChannelModel.expiry > now)
+        q = cls.query(ChannelModel.connected == True) \
+            .filter(ChannelModel.expiry > now) \
+            .filter(ChannelModel.user == u_key)
         # Return True if we find at least one entity fulfilling the criteria
         return q.get(keys_only = True) != None
 
@@ -685,8 +686,9 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
-        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
+        q = cls.query(ChannelModel.connected == True) \
             .filter(ChannelModel.expiry > now) \
+            .filter(ChannelModel.user == u_key) \
             .filter(ChannelModel.kind == kind) \
             .filter(ChannelModel.entity == entity)
         # Return True if we find at least one entity fulfilling the criteria

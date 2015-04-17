@@ -754,6 +754,10 @@ div.games-item {
    vertical-align: top;
    text-overflow: ellipsis;
    white-space: nowrap;
+   margin-left: 4px;
+   margin-right: 4px;
+   margin-top: 2px;
+   margin-bottom: 2px;
 }
 
 div.games-item a:link, div.games-item a:visited {
@@ -762,38 +766,53 @@ div.games-item a:link, div.games-item a:visited {
 }
 
 div.games-item a:hover {
-   color: @hover-link;
+   color: black;
+}
+
+div.games-item:hover {
+   border-radius: 5px;
+   background-color: fade(@pure-blue, 50%);
 }
 
 div.at-top-left {
    position: absolute;
    top: 6px;
    left: 10px;
+   height: 24px;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
 }
 
 div.at-top-left div.tilecount {
-   font-size: 16px;
-   line-height: 24px;
-   width: 284px;
-   min-width: 284px;
-   border-radius: 5px;
+   width: 276px;
+   min-width: 276px;
+   height: 24px;
+   border-radius: 10px;
    border-width: 0;
-   background-color: transparent;
+   background-color: darken(@theme6, 10%);
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
 }
 
 div.at-top-left div.tilecount div.tc {
-   border-radius: 5px;
-   border-width: 0;
-   color: white;
-   font-weight: bold;
-   padding-left: 2px;
+   color: #f4f4f4;
+   padding-left: 4px;
    overflow: hidden;
+   border-radius: 10px;
+   border-width: 0;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
+   padding-top: 2px;
+   padding-bottom: 2px;
 }
 
 div.at-top-left span.list-opp {
    margin-top: 4px;
-   margin-left: 6px;
-   vertical-align: baseline;
+   margin-left: 8px;
+   vertical-align: top;
 }
 
 div.chat {

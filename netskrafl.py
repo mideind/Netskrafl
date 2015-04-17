@@ -175,6 +175,8 @@ def _process_move(game, movelist):
         ChannelModel.send_message(u"game", game.id() + u":" + str(1 - player_index),
             json.dumps(game.client_state(1 - player_index, m)))
         # Notify the opponent that it's his turn to move. main.html listens to this.
+        # !!! TODO: Figure out a way to have board.html listen to these
+        # !!! notifications as well, since we now have a gamelist there
         ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
@@ -1290,7 +1292,8 @@ def newgame():
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)
 
-    # Notify the opponent that there is a new game
+    # Notify the opponent's main.html that there is a new game
+    # !!! board.html eventually needs to listen to this as well
     ChannelModel.send_message(u"user", opp, u'{ "kind": "game" }')
 
     # If this is a timed game, notify the waiting party
@@ -1451,6 +1454,9 @@ def newchannel():
         game = Game.load(uuid)
 
         if game is not None:
+            # !!! Strictly speaking the users may continue to chat after
+            # the game is over, so the game.is_over() check below may
+            # be too stringent
             if game.is_over() or not game.has_player(user.id()):
                 game = None
 

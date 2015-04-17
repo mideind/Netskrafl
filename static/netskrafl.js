@@ -2020,9 +2020,10 @@ function populateGames(json) {
          // Mark robots with a cog icon
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
       var winLose = item.sc0 < item.sc1 ? " losing" : "";
+      var title = "Staðan er " + item.sc0 + ":" + item.sc1;
       var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
          Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'>" + opp + "</div></div>";
-      var str = "<div class='games-item'>" +
+      var str = "<div class='games-item' title='" + title + "'>" +
          "<a href='" + item.url + "'>" +
          "<div class='at-top-left'>" +
          "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
