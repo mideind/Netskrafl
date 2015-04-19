@@ -68,7 +68,11 @@
       {{- game.player_nickname(0) -}}
       </div>
 {%- else -%}
+{% if player_index != None %}
       <div class="player-btn left" id="player-0">
+{%- else -%}
+      <div class="robot-btn left" id="player-0">
+{%- endif -%}
       <span id="left-to-move" class="glyphicon-flag"></span><!--
       -->{{- game.player_nickname(0) -}}
       </div>
@@ -81,7 +85,11 @@
       {{- game.player_nickname(1) -}}
       </div>
 {%- else -%}
+{% if player_index != None %}
       <div class="player-btn right" id="player-1">
+{%- else -%}
+      <div class="robot-btn right" id="player-1">
+{%- endif -%}
       {{- game.player_nickname(1) -}}<!--
       --><span id="right-to-move" class="glyphicon-flag-after"></span>
       </div>

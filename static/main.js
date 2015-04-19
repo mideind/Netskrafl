@@ -540,7 +540,7 @@ function populateGameList(json) {
       var tileCount = "<div class='tilecount'><div class='tc" + winLose + "' style='width:" +
          Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'></div></div>";
       // Opponent track record button
-      var info = "";
+      var info = "&nbsp;"; // Necessary for correct rendering on iPad
       if (item.oppid !== null) {
          info = "<span id='gmusr" + i + "' class='usr-info' title='Skoða feril'></span>";
       }
