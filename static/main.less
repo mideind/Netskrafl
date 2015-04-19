@@ -790,15 +790,18 @@ div.at-top-left div.tilecount {
    height: 24px;
    border-radius: 10px;
    border-width: 0;
+   overflow: hidden;
    background-color: darken(@theme6, 10%);
-   font-size: 16px;
-   line-height: 20px;
-   font-weight: bold;
+}
+
+div.at-top-left div.tilecount.trans {
+   background-color: transparent;
 }
 
 div.at-top-left div.tilecount div.tc {
    color: #f4f4f4;
    padding-left: 4px;
+   margin-left: 0px;
    overflow: hidden;
    border-radius: 10px;
    border-width: 0;
@@ -809,10 +812,17 @@ div.at-top-left div.tilecount div.tc {
    padding-bottom: 2px;
 }
 
-div.at-top-left span.list-opp {
-   margin-top: 4px;
-   margin-left: 8px;
-   vertical-align: top;
+div.at-top-left div.tilecount div.oc {
+   color: black;
+   padding-left: 8px;
+   margin-left: 0px;
+   overflow: hidden;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   background-color: transparent;
 }
 
 div.chat {
@@ -1989,6 +1999,10 @@ span.list-info {
    overflow: hidden;
 }
 
+span.list-info.center {
+   text-align: center;
+}
+
 span.list-rank {
    display: inline-block;
    width: 32px;
@@ -2439,7 +2453,7 @@ div.usr-info-fav {
    display: inline-block;
    position: absolute;
    top: 26px;
-   right: 14px;
+   right: 20px;
    color: @triple-letter;
    font-size: 26px;
    cursor: pointer;

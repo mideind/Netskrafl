@@ -1338,6 +1338,7 @@ def board():
 
     user = User.current()
     is_over = game.is_over()
+    opp = None # The opponent
 
     if not is_over:
         # Game still in progress
@@ -1364,6 +1365,8 @@ def board():
         # in that case.
         channel_token = ChannelModel.create_new(u"game",
             game.id() + u":" + str(player_index), user.id())
+        # Load information about the opponent
+        opp = User.load(game.player_id(1 - player_index))
 
     if zombie and player_index is not None:
         # This is a newly finished game that is now being viewed by clicking
@@ -1391,7 +1394,8 @@ def board():
             bingo1 = bingoes[1 - pix]
         )
 
-    return render_template("board.html", game = game, user = user,
+    return render_template("board.html",
+        game = game, user = user, opp = opp,
         player_index = player_index, zombie = bool(zombie),
         time_info = game.time_info(), og = ogd, # OpenGraph data
         channel_token = channel_token)

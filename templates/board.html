@@ -68,8 +68,8 @@
       {{- game.player_nickname(0) -}}
       </div>
 {%- else -%}
-      <div class="player-btn left" id="player-0"><!--
-      --><span id="left-to-move" class="glyphicon-flag"></span><!--
+      <div class="player-btn left" id="player-0">
+      <span id="left-to-move" class="glyphicon-flag"></span><!--
       -->{{- game.player_nickname(0) -}}
       </div>
 {%- endif -%}
@@ -81,8 +81,8 @@
       {{- game.player_nickname(1) -}}
       </div>
 {%- else -%}
-      <div class="player-btn right" id="player-1"><!--
-      -->{{- game.player_nickname(1) -}}<!--
+      <div class="player-btn right" id="player-1">
+      {{- game.player_nickname(1) -}}<!--
       --><span id="right-to-move" class="glyphicon-flag-after"></span>
       </div>
 {%- endif -%}
@@ -314,6 +314,62 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
 </div>
 
+<!-- A dialog to show info about a particular user -->
+<div id="usr-info-dialog" class="modal-dialog">
+<div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="usr-info-hdr">
+      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1>
+      <h1 id="usr-info-nick"></h1>
+      <span class="vbar">|</span>
+      <h2 id="usr-info-fullname"></h2>
+      <div class="usr-info-fav" title="Uppáhald"><span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span></div>
+   </div>
+
+   <p><strong>Nýjustu viðureignir</strong></p>
+
+   <!-- Recent games for this user -->
+   <div class="listitem listheader"><span
+   class="list-win"><span
+   title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
+   class="list-ts">Viðureign lauk</span><span
+   class="list-nick">Andstæðingur</span><span
+   class="list-scorehdr">Úrslit</span><span
+   class="list-elo-hdr"><span
+      title="Mennskir andstæðingar" class='glyphicon glyphicon-user elo-hdr-left'></span>Elo<span
+      title="Allir andstæðingar" class='glyphicon glyphicon-cog elo-hdr-right'></span></span><span
+   class="list-duration">Lengd</span></div>
+
+   <!-- Recent game lists will be populated by populateRecentList() -->
+   <div id="usr-recent"></div>
+
+   <!-- Statistics -->
+   <div id="usr-stats">
+      <div id="stats-toggler" class="toggler" title="Með þjörkum eða án">
+         <div class="option small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+      --><div class="option small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+      </div><!--
+   --><div id="usr-stats-human"><!--
+      --><div class="stats-fig" id="usr-stats-human-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div><!--
+   --><div id="usr-stats-all"><!--
+      --><div class="stats-fig" id="usr-stats-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div>
+   </div>
+
+   <!-- Close button -->
+   <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
+</div>
+
 {% if user and user.beginner() %}
 <!-- Help on the board colors -->
 <div class="board-help" title="Hvernig reitirnir margfalda stigin">
@@ -424,6 +480,19 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    function userId() {
       /* Return the identifier of the local user */
       return "{{ '' if user == None else user.id() }}";
+   }
+
+   function opponentInfo() {
+      /* Return information about the opponent */
+{% if opp == None %}
+      return null;
+{% else %}
+      return {
+         nick: "{{ opp.nickname() | safe }}",
+         fullname: "{{ opp.full_name() | safe }}",
+         userid: "{{ opp.id() | safe }}"
+      }
+{% endif %}
    }
 
    function gameIsZombie() {

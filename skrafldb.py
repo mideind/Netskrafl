@@ -47,6 +47,12 @@
         timestamp : timestamp
         prefs : dict
 
+    According to the NDB documentation, an ideal index for a query
+    should contain - in the order given:
+    1) Properties used in equality filters
+    2) Property used in an inequality filter (only one allowed)
+    3) Properties used for ordering
+
 """
 
 import logging
@@ -673,8 +679,8 @@ class ChannelModel(ndb.Model):
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
         q = cls.query(ChannelModel.connected == True) \
-            .filter(ChannelModel.expiry > now) \
-            .filter(ChannelModel.user == u_key)
+            .filter(ChannelModel.user == u_key) \
+            .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
         return q.get(keys_only = True) != None
 
@@ -687,10 +693,10 @@ class ChannelModel(ndb.Model):
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
         q = cls.query(ChannelModel.connected == True) \
-            .filter(ChannelModel.expiry > now) \
             .filter(ChannelModel.user == u_key) \
             .filter(ChannelModel.kind == kind) \
-            .filter(ChannelModel.entity == entity)
+            .filter(ChannelModel.entity == entity) \
+            .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
         return q.get(keys_only = True) != None
 
@@ -732,8 +738,9 @@ class ChannelModel(ndb.Model):
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
             CHUNK_SIZE = 50 # There are never going to be many matches for this query
-            q = cls.query(ChannelModel.expiry > now).filter(
-                ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+            q = cls.query(ChannelModel.kind == kind) \
+                .filter(ChannelModel.entity == entity) \
+                .filter(ChannelModel.expiry > now)
             offset = 0
             while True:
                 # Query and send message in chunks

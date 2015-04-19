@@ -542,8 +542,7 @@ function populateGameList(json) {
       // Opponent track record button
       var info = "";
       if (item.oppid !== null) {
-         info = "<span id='gmusr" + i + "' class='usr-info'></span>";
-         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
+         info = "<span id='gmusr" + i + "' class='usr-info' title='Skoða feril'></span>";
       }
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -553,7 +552,7 @@ function populateGameList(json) {
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
          "</a>" +
-         "<span class='list-info'>" + info + "</span>" +
+         "<span class='list-info center'>" + info + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>" +
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
