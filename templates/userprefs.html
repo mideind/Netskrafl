@@ -62,6 +62,9 @@ function submitForm() {
          <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
             class="text fullname" value="{{ uf.full_name }}"></input></div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
+{% if err.get('full_name', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('full_name') }}</div>
+{% endif %}
 
       <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
          <input type="text" name="email" id="email" maxlength="32" tabindex="3"

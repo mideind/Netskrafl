@@ -1168,6 +1168,10 @@ def userprefs():
                 errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
             elif len(self.nickname) > 15:
                 errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
+            elif u'"' in self.nickname:
+                errors['nickname'] = u"Einkenni má ekki innihalda gæsalappir"
+            if u'"' in self.full_name:
+                errors['full_name'] = u"Nafn má ekki innihalda gæsalappir"
             if self.email and u'@' not in self.email:
                 errors['email'] = u"Tölvupóstfang verður að innihalda @-merki"
             return errors
