@@ -58,8 +58,6 @@ import logging
 import time
 import cPickle as pickle
 
-from functools32 import lru_cache
-
 from languages import Alphabet
 
 
@@ -161,9 +159,6 @@ class DawgDictionary:
         """ Return a count of unique nodes in the DAWG """
         return 0 if self._nodes is None else len(self._nodes)
 
-    # This is a very common code path.
-    # Use LRU caching from functools32 to speed up lookups of common words
-    @lru_cache(maxsize = 1024)
     def find(self, word):
         """ Look for a word in the graph, returning True if it is found or False if not """
         nav = FindNavigator(word)

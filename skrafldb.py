@@ -332,20 +332,23 @@ class GameModel(ndb.Model):
                 human_elo_adj = human_elo_adj,
                 prefs = gm.prefs)
 
-        k = ndb.Key(UserModel, user_id)
 
         # Run the query in two parts as experience suggests that
         # AppEngine is not efficient with ndb.OR between two distinct values
         # This also means that the returned list may be twice max_len
 
+        k = ndb.Key(UserModel, user_id)
+
         q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player0 == k)
+            .filter(GameModel.player0 == k) \
+            .order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
 
         q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player1 == k)
+            .filter(GameModel.player1 == k) \
+            .order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)

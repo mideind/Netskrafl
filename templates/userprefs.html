@@ -47,7 +47,7 @@ function submitForm() {
 
    <div class="loginhdr"><span class='glyphicon glyphicon-user'></span> Upplýsingar um leikmann</div>
    <div>
-   <form name="frm1" id="frm1" action="{{ url_for('userprefs') }}" method="post">
+   <form name="frm1" id="frm1" action="{{ url_for('userprefs', from = from_url) | safe }}" method="post">
 
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
@@ -141,13 +141,17 @@ function submitForm() {
 
    <!-- Cancel button -->
    <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="9"
-      onclick="location.href='{{ url_for('main') }}'"
+{% if from_url %}
+      onclick="location.href='{{ from_url | safe }}'"
+{% else %}
+      onclick="location.href='{{ url_for('main') | safe }}'"
+{% endif %}
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
    <!-- Logout button -->
    <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="10"
-      onclick="location.href='{{ uf.logout_url }}'"
+      onclick="location.href='{{ uf.logout_url | safe }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
 

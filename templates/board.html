@@ -561,7 +561,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
    function navToUserprefs() {
       /* Show the user preferences page */
-      window.location.href = "{{ url_for('userprefs') | safe }}";
+      window.location.href = "{{ url_for('userprefs', from = url_for('board', game = game.id())) | safe }}";
    }
 
    function fbShare() {

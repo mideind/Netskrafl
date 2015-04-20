@@ -53,7 +53,7 @@ from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
 
 app = Flask(__name__)
 
-running_local = os.environ.get('SERVER_SOFTWARE','').startswith('Development')
+running_local = os.environ.get('SERVER_SOFTWARE', '').startswith('Development')
 
 if running_local:
     logging.info(u"Netskrafl app running with DEBUG set to True")
@@ -1190,6 +1190,9 @@ def userprefs():
     uf = UserForm()
     err = dict()
 
+    # The URL to go back to, if not main.html
+    from_url = request.args.get("from", None)
+
     if request.method == 'GET':
         # Entering the form for the first time: load the user data
         uf.init_from_user(user)
@@ -1200,10 +1203,10 @@ def userprefs():
         if not err:
             # All is fine: store the data back in the user entity
             uf.store(user)
-            return redirect(url_for("main"))
+            return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return render_template("userprefs.html", uf = uf, err = err)
+    return render_template("userprefs.html", uf = uf, err = err, from_url = from_url)
 
 
 @app.route("/wait")
