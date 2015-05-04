@@ -53,7 +53,7 @@ from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
 
 app = Flask(__name__)
 
-running_local = os.environ.get('SERVER_SOFTWARE','').startswith('Development')
+running_local = os.environ.get('SERVER_SOFTWARE', '').startswith('Development')
 
 if running_local:
     logging.info(u"Netskrafl app running with DEBUG set to True")
@@ -175,6 +175,8 @@ def _process_move(game, movelist):
         ChannelModel.send_message(u"game", game.id() + u":" + str(1 - player_index),
             json.dumps(game.client_state(1 - player_index, m)))
         # Notify the opponent that it's his turn to move. main.html listens to this.
+        # !!! TODO: Figure out a way to have board.html listen to these
+        # !!! notifications as well, since we now have a gamelist there
         ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
@@ -326,9 +328,11 @@ def _gamelist():
         u = User.load(opp)
         nick = u.nickname()
         result.append({
+            "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
+            "oppid": opp,
             "opp": nick,
-            "opp_is_robot": False,
+            "fullname": u.full_name(),
             "sc0": g["sc0"],
             "sc1": g["sc1"],
             "ts": Alphabet.format_timestamp(g["ts"]),
@@ -351,6 +355,7 @@ def _gamelist():
         ts = g["ts"]
         overdue = False
         fairplay = False
+        fullname = ""
         if opp is None:
             # Autoplayer opponent
             nick = Game.autoplayer_name(g["robot_level"])
@@ -358,6 +363,7 @@ def _gamelist():
             # Human opponent
             u = User.load(opp)
             nick = u.nickname()
+            fullname = u.full_name()
             fairplay = u.fairplay()
             delta = now - ts
             if g["my_turn"]:
@@ -367,9 +373,11 @@ def _gamelist():
                 # Show mark after 14 days
                 overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
         result.append({
+            "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"]),
+            "oppid": opp,
             "opp": nick,
-            "opp_is_robot": opp is None,
+            "fullname": fullname,
             "sc0": g["sc0"],
             "sc1": g["sc1"],
             "ts": Alphabet.format_timestamp(ts),
@@ -472,8 +480,11 @@ def _recentlist(cuid, max_len):
     result = []
     if cuid is not None:
         # Obtain a list of recently finished games where the indicated user was a player
-        i = iter(GameModel.list_finished_games(cuid, max_len = max_len))
-        for g in i:
+        temp = list(GameModel.list_finished_games(cuid, max_len = max_len))
+        # Temp may be up to 2 * max_len as it is composed of two queries
+        # Sort it and bring it down to size before processing it further
+        temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
+        for g in temp[0:max_len]:
             opp = g["opp"]
             if opp is None:
                 # Autoplayer opponent
@@ -504,7 +515,7 @@ def _recentlist(cuid, max_len):
                 "sc1": g["sc1"],
                 "elo_adj": g["elo_adj"],
                 "human_elo_adj": g["human_elo_adj"],
-                "ts_last_move": Alphabet.format_timestamp(g["ts_last_move"]),
+                "ts_last_move": Alphabet.format_timestamp(ts_end),
                 "days": int(days),
                 "hours": int(hours),
                 "minutes": int(minutes),
@@ -549,6 +560,7 @@ def _challengelist():
                 "received": True,
                 "userid": c[0],
                 "opp": nick,
+                "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2]),
                 "opp_ready" : False
@@ -562,6 +574,7 @@ def _challengelist():
                 "received": False,
                 "userid": c[0],
                 "opp": nick,
+                "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp(c[2]),
                 "opp_ready" : opp_ready(c)
@@ -746,7 +759,15 @@ def userstats():
     if user is None:
         return jsonify(result = Error.WRONG_USER)
 
-    return jsonify(user.statistics())
+    stats = user.statistics()
+    # Include info on whether this user is a favorite of the current user
+    fav = False
+    cuser = User.current()
+    if uid != cuser.id():
+        fav = cuser.has_favorite(uid)
+    stats["favorite"] = fav
+
+    return jsonify(stats)
 
 
 @app.route("/userlist", methods=['POST'])
@@ -1147,6 +1168,10 @@ def userprefs():
                 errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
             elif len(self.nickname) > 15:
                 errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
+            elif u'"' in self.nickname:
+                errors['nickname'] = u"Einkenni má ekki innihalda gæsalappir"
+            if u'"' in self.full_name:
+                errors['full_name'] = u"Nafn má ekki innihalda gæsalappir"
             if self.email and u'@' not in self.email:
                 errors['email'] = u"Tölvupóstfang verður að innihalda @-merki"
             return errors
@@ -1165,6 +1190,9 @@ def userprefs():
     uf = UserForm()
     err = dict()
 
+    # The URL to go back to, if not main.html
+    from_url = request.args.get("from", None)
+
     if request.method == 'GET':
         # Entering the form for the first time: load the user data
         uf.init_from_user(user)
@@ -1175,10 +1203,10 @@ def userprefs():
         if not err:
             # All is fine: store the data back in the user entity
             uf.store(user)
-            return redirect(url_for("main"))
+            return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return render_template("userprefs.html", uf = uf, err = err)
+    return render_template("userprefs.html", uf = uf, err = err, from_url = from_url)
 
 
 @app.route("/wait")
@@ -1271,7 +1299,8 @@ def newgame():
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)
 
-    # Notify the opponent that there is a new game
+    # Notify the opponent's main.html that there is a new game
+    # !!! board.html eventually needs to listen to this as well
     ChannelModel.send_message(u"user", opp, u'{ "kind": "game" }')
 
     # If this is a timed game, notify the waiting party
@@ -1316,6 +1345,7 @@ def board():
 
     user = User.current()
     is_over = game.is_over()
+    opp = None # The opponent
 
     if not is_over:
         # Game still in progress
@@ -1342,6 +1372,8 @@ def board():
         # in that case.
         channel_token = ChannelModel.create_new(u"game",
             game.id() + u":" + str(player_index), user.id())
+        # Load information about the opponent
+        opp = User.load(game.player_id(1 - player_index))
 
     if zombie and player_index is not None:
         # This is a newly finished game that is now being viewed by clicking
@@ -1369,7 +1401,8 @@ def board():
             bingo1 = bingoes[1 - pix]
         )
 
-    return render_template("board.html", game = game, user = user,
+    return render_template("board.html",
+        game = game, user = user, opp = opp,
         player_index = player_index, zombie = bool(zombie),
         time_info = game.time_info(), og = ogd, # OpenGraph data
         channel_token = channel_token)
@@ -1432,6 +1465,9 @@ def newchannel():
         game = Game.load(uuid)
 
         if game is not None:
+            # !!! Strictly speaking the users may continue to chat after
+            # the game is over, so the game.is_over() check below may
+            # be too stringent
             if game.is_over() or not game.has_player(user.id()):
                 game = None
 
@@ -1489,7 +1525,8 @@ def help():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user, show_twoletter = False)
+    return render_template("nshelp.html", user = user,
+        show_twoletter = False, show_faq = False)
 
 
 @app.route("/twoletter")
@@ -1499,7 +1536,19 @@ def twoletter():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user, show_twoletter = True)
+    return render_template("nshelp.html", user = user,
+        show_twoletter = True, show_faq = False)
+
+
+@app.route("/faq")
+def faq():
+    """ Show help page """
+
+    user = User.current()
+    # We tolerate a null (not logged in) user here
+
+    return render_template("nshelp.html", user = user,
+        show_twoletter = False, show_faq = True)
 
 
 @app.errorhandler(404)

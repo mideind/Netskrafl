@@ -18,8 +18,8 @@
    <div id="tabs">
    <ul>
       <li><a href="#tabs-1"><span class='glyphicon glyphicon-info-sign'></span>&nbsp;&nbsp;Hjálp</a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-circle-question-mark'></span>&nbsp;&nbsp;Spurningar</a></li>
       <li><a href="#tabs-2"><span class='glyphicon glyphicon-paperclip'></span>&nbsp;&nbsp;Tveggja stafa orð</a></li>
-      <li><a href="#tabs-3"><span class='glyphicon glyphicon-crown'></span>&nbsp;&nbsp;Elo-stig</a></li>
       <li><a href="#tabs-4"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um Netskrafl</a></li>
    </ul>
 
@@ -28,8 +28,8 @@
    <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn.
    Leikreglurnar eru eins og í
    hefðbundnu borðskrafli, en aðeins eru leyfð orð sem fyrirfinnast í
-   <a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
-   íslensks nútímamáls</a> - og tveggja stafa orð samkvæmt
+   <i><a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
+   íslensks nútímamáls</a></i> - og tveggja stafa orð samkvæmt
    <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.
    Ekki er því unnt að véfengja orð sem lögð eru
    niður, né er hægt að leggja niður önnur orð en þau sem eru í orðalistunum.</p>
@@ -67,39 +67,8 @@
    </div>
 
    <div id="tabs-3">
-   <p>Netskrafl reiknar svokölluð <strong>Elo-stig</strong> (sjá <a href="http://en.wikipedia.org/wiki/Elo_rating_system" target="_new">hér</a>) fyrir alla leikmenn og einnig tölvuþjarkana. Útreikningarnir eru gerðir einu sinni á sólarhring, og ná til
-   viðureigna sem lokið er á miðnætti.</p>
-   <p>Nýskráðir leikmenn fá í upphafi <strong>1200</strong> Elo-stig. Stigunum fjölgar
-   í hvert sinn sem leikmaður sigrar í viðureign, en fækkar við tap.</p>
-   <p>Elo-stig 100 efstu leikmanna má sjá undir flipanum <strong>Andstæðingar</strong>
-   ef smellt er á hnappinn
-   <span class="glyphicon glyphicon-crown"></span>&nbsp;<strong>Topp 100</strong>.
-   Unnt er að sjá Elo-stig sem byggja eingöngu á viðureignum milli mennskra
-   leikmanna (<span class="glyphicon glyphicon-user"></span>), eða stig
-   sem reiknuð eru fyrir allar viðureignir, að þjörkum meðtöldum
-   (<span class="glyphicon glyphicon-cog"></span>).</p>
-   <p>Elo-stig virka í stórum dráttum þannig að á grundvelli þeirra er gerð spá um
-   niðurstöðu viðureignar, eða nánar til tekið um vinningslíkur hvors leikmanns.
-   Þegar niðurstaðan liggur fyrir eru Elo-stig færð frá
-   þeim sem tapaði til þess sem sigraði, í hlutfalli við frávik niðurstöðunnar frá spánni.
-   Segja má að kerfið sé stöðugt að leiðrétta eigin spár og leitast við að færa þær nær
-   raunverulegum niðurstöðum viðureigna.</p>
-   <p>Þar sem óvíst er framan af hversu öflugir nýskráðir notendur eru, er gerð
-   <strong>undantekning</strong> fyrir <strong>fyrstu 10 viðureignir</strong> nýliða. Þær breyta aðeins Elo-stigum nýliðans,
-   en ekki andstæðingsins hverju sinni (nema hann sé einnig nýliði). Það er því "óhætt"
-   fyrir reynda leikmenn að spila við nýliða og efla þannig leikreynslu þeirra.</p>
-   <div style="font-size: 0.9em">
-   <p><strong>Elo-formúla Netskrafls:</strong> Ef E(a) eru Elo-stig leikmanns A og E(b) stig leikmanns B,
-   reiknar kerfið S(a) = 10^(E(a)/400) og S(b) = 10^(E(b)/400). Vinningslíkur A eru þá
-   L(a) = S(a) / (S(a) + S(b)), en vinningslíkur B eru L(b) = S(b) / (S(a)+ S(b)). Ef A sigrar leikinn
-   fær hann 20 * (1 - L(a)) Elo-stig í viðbót, en tapi hann leiknum dragast af honum
-   20 * (1 - L(b)) = 20 * L(a) enda er L(a) + L(b) = 1. Sama gildir fyrir B með öfugum formerkjum.</p>
-   <p><strong>Dæmi:</strong> A hefur 1200 Elo-stig en B 1600. S(a) = 10^3 = 1000. S(b) = 10^4 = 10000.
-   L(a) = 1000 / 11000 = 9,09%. L(b) = 10000/11000 = 90,91%. B er sem sagt talinn 10 sinnum líklegri
-   en A til að sigra leikinn. Ef það verður niðurstaðan fær B 20 * 9,09% = 2 Elo-stig í viðbót,
-   enda sigurinn mjög nálægt spánni. Ef B tapar hins vegar, dragast af honum 20 * 90,91% =
-   18 Elo-stig, sem A fær - enda er A þá talinn vanmetinn leikmaður sem eigi að færast nær
-   B í stigafjölda.</p>
+   <div class="help-container">
+{% include 'faq.html' %}
    </div>
    </div>
 
@@ -112,12 +81,12 @@
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
    <p>Fylgstu með og taktu þátt með því að
    <a href="https://www.facebook.com/groups/828426797220211/" target="_blank">ganga
-   í&nbsp;&nbsp;<img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;fésbókarhópinn</a>!</p>
+   í&nbsp;&nbsp;<img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
    <p>Frumforrit Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á
    <img src="{{ url_for('static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a>.</p>
    <p>Höfundarréttur að
-   <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi Stofnunar
-   Árna Magnússonar í íslenskum fræðum. BÍN er notuð í Netskrafli skv.
+   <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi <i>Stofnunar
+   Árna Magnússonar í íslenskum fræðum</i>. BÍN er notuð í Netskrafli skv.
    <a href="http://bin.arnastofnun.is/gogn/skilmalar/" target="_blank">skilmálum SÁM</a>.</p>
    </div>
 
@@ -220,8 +189,8 @@
    <div class="twoline">
    <span class="twoword">öl</span> <span class="twoword">ör</span> <span class="twoword">ös</span> <span class="twoword">öt</span> <span class="twoword">öx</span>
    </div>
-   </div>
-   </div>
+   </div> <!-- class='twolist' -->
+   </div> <!-- id='tabs-2' -->
 
    </div> <!-- id = 'tabs' -->
 
@@ -239,10 +208,23 @@
 
 <script>
 
-$("#tabs").tabs({ heightStyle: "auto" });
+$("#tabs").tabs(
+   {
+      heightStyle: "auto",
+      activate: function(ev, ui) {
+         var panelId = ui.newPanel.attr('id');
+         if (panelId == "tabs-3" && window.location.pathname.indexOf("/faq") != 0)
+            // Selecting the FAQ tab: Make sure we come back to the /faq URL
+            history.replaceState({ }, "FAQ", "/faq");
+      }
+   }
+);
 
 {% if show_twoletter %}
 // Select the tab with two letter words to show initially
+$("#tabs").tabs("option", "active", 2);
+{% elif show_faq %}
+// Select the tab with FAQs to show initially
 $("#tabs").tabs("option", "active", 1);
 {% endif %}
 

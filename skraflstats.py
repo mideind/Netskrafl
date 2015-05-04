@@ -42,8 +42,9 @@ if running_local:
 
 app.config['DEBUG'] = running_local
 
-# !!! TODO: Change this to read the secret key from a config file at run-time
-app.secret_key = '\x03\\_,i\xfc\xaf=:L\xce\x9b\xc8z\xf8l\x000\x84\x11\xe1\xe6\xb4M'
+# Read secret session key from file
+with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
+    app.secret_key = f.read()
 
 # The K constant used in the Elo calculation
 ELO_K = 20.0 # For established players
@@ -127,10 +128,22 @@ def _write_stats(timestamp, urecs):
     """ Writes the freshly calculated statistics records to the database """
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp = timestamp)
-    # Set the reference timestamp for the entire stats series
+    um_list = []
     for sm in urecs.values():
+        # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
+        # Fetch user information to update Elo statistics
+        if sm.user:
+            # Not robot
+            um = UserModel.fetch(sm.user.id())
+            if um:
+                um.elo = sm.elo
+                um.human_elo = sm.human_elo
+                um_list.append(um)
+    # Update the statistics records
     StatsModel.put_multi(urecs.values())
+    # Update the user records
+    UserModel.put_multi(um_list)
 
 
 def _run_stats(from_time, to_time):

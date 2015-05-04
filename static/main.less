@@ -181,6 +181,9 @@
 .glyphicon-edit:before {
    content: "\E151";
 }
+.glyphicon-circle-question-mark:before {
+   content: "\E195";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -463,34 +466,86 @@ h3.playerleft {
    display: inline-block;
    position: absolute;
    top: 0; left: 0;
-   width: 147px;
+   width: 151px;
+   height: 40px;
+   min-height: 40px;
    font-size: 16px;
    line-height: 24px;
    font-weight: 700;
    text-align: left;
    color: @neutral;
-   overflow: hidden;
-   margin-top: 0px;
-   padding-top: 8px;
-   padding-bottom: 8px;
-   padding-left: 4px;
+   margin: 0;
+   padding: 0;
 }
 
 h3.playerright {
    display: inline-block;
    position: absolute;
    top: 0; right: 0;
-   width: 147px;
+   width: 151px;
+   height: 40px;
+   min-height: 40px;
    font-size: 16px;
    line-height: 24px;
    font-weight: 700;
    text-align: right;
    color: @neutral;
+   margin: 0;
+   padding: 0;
+}
+
+div.robot-btn {
+   display: inline-block;
+   position: relative;
+   top: 0; left: 0;
+   margin: 2px;
+   padding: 2px;
+   padding-top: 6px;
+   width: 141px;
+   height: 28px;
+   min-height: 28px;
+   border-width: 0px;
    overflow: hidden;
-   margin-top: 0px;
-   padding-top: 8px;
-   padding-bottom: 8px;
+   background-color: transparent;
+}
+
+div.robot-btn.left {
+   padding-left: 4px;
+}
+
+div.robot-btn.right {
    padding-right: 4px;
+}
+
+div.player-btn {
+   display: inline-block;
+   position: relative;
+   top: 0; left: 0;
+   margin: 2px;
+   padding: 2px;
+   padding-top: 6px;
+   width: 141px;
+   height: 28px;
+   min-height: 28px;
+   border-radius: 5px;
+   border-width: 0px;
+   overflow: hidden;
+   background-color: transparent;
+   color: @neutral;
+   cursor: pointer;
+}
+
+div.player-btn.left {
+   padding-left: 4px;
+}
+
+div.player-btn.right {
+   padding-right: 4px;
+}
+
+div.player-btn:hover {
+   background-color: white;
+   color: @neutral;
 }
 
 .move-indicator {
@@ -515,7 +570,7 @@ h3.scoreleft {
    position: absolute;
    top: 42px;
    left: 0;
-   width: 147px;
+   width: 145px;
    font-size: 24px;
    line-height: 24px;
    font-weight: 700;
@@ -532,7 +587,7 @@ h3.scoreright {
    position: absolute;
    top: 42px;
    right: 0;
-   width: 147px;
+   width: 145px;
    font-size: 24px;
    line-height: 24px;
    font-weight: 700;
@@ -626,7 +681,7 @@ div.movelist {
    height: 100%;
    background-color: @background;
    overflow: auto;
-   z-index: 3;
+   z-index: 4;
 }
 
 div.twoletter {
@@ -637,7 +692,7 @@ div.twoletter {
    height: 100%;
    background-color: @theme4;
    overflow: hidden;
-   z-index: 2;
+   z-index: 3;
 }
 
 div.twoletter-area {
@@ -675,6 +730,99 @@ div.twoletter-area span b {
 
 div.twoletter-area#two-2 {
    visibility: hidden;
+}
+
+div.games {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme6;
+   overflow: auto;
+   z-index: 2;
+}
+
+div.games-item {
+   position: relative;
+   height: 24px;
+   padding-left: 4px;
+   padding-right: 4px;
+   padding-top: 7px;
+   padding-bottom: 5px;
+   overflow: hidden;
+   vertical-align: top;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   margin-left: 4px;
+   margin-right: 4px;
+   margin-top: 2px;
+   margin-bottom: 2px;
+}
+
+div.games-item a:link, div.games-item a:visited {
+   color: black;
+   text-decoration: none;
+}
+
+div.games-item a:hover {
+   color: black;
+}
+
+div.games-item:hover {
+   border-radius: 5px;
+   background-color: fade(@pure-blue, 50%);
+}
+
+div.at-top-left {
+   position: absolute;
+   top: 6px;
+   left: 10px;
+   height: 24px;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
+}
+
+div.at-top-left div.tilecount {
+   width: 276px;
+   min-width: 276px;
+   height: 24px;
+   border-radius: 10px;
+   border-width: 0;
+   overflow: hidden;
+   background-color: darken(@theme6, 10%);
+}
+
+div.at-top-left div.tilecount.trans {
+   background-color: transparent;
+}
+
+div.at-top-left div.tilecount div.tc {
+   color: #f4f4f4;
+   padding-left: 4px;
+   margin-left: 0px;
+   overflow: hidden;
+   border-radius: 10px;
+   border-width: 0;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
+   padding-top: 2px;
+   padding-bottom: 2px;
+}
+
+div.at-top-left div.tilecount div.oc {
+   color: black;
+   padding-left: 8px;
+   margin-left: 0px;
+   overflow: hidden;
+   font-size: 16px;
+   line-height: 20px;
+   font-weight: bold;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   background-color: transparent;
 }
 
 div.chat {
@@ -824,8 +972,13 @@ div.right-tab#tab-twoletter {
    background-color: @theme4;
 }
 
-div.right-tab#tab-chat {
+div.right-tab#tab-games {
    top: 116px;
+   background-color: @theme6;
+}
+
+div.right-tab#tab-chat {
+   top: 174px;
    background-color: @theme5;
 }
 
@@ -839,7 +992,7 @@ div.right-tab:hover {
 
 div.right-tab.alert {
    color: @alert;
-   opacity: 0.8;
+   /* opacity: 0.8; */
 }
 
 div.movelist.noscroll {
@@ -1119,6 +1272,11 @@ div.pass {
    margin: 0;
    padding-top: 4px;
    visibility: hidden;
+}
+
+span.pass-explain {
+   font-weight: normal;
+   font-style: italic;
 }
 
 span.yesnobutton {
@@ -1633,6 +1791,7 @@ div.userid:hover {
 }
 
 div.listitem {
+   position: relative;
    height: 24px;
    padding-left: 4px;
    padding-right: 4px;
@@ -1838,6 +1997,10 @@ span.list-info {
    height: 24px;
    line-height: 20px;
    overflow: hidden;
+}
+
+span.list-info.center {
+   text-align: center;
 }
 
 span.list-rank {
@@ -2284,6 +2447,20 @@ span.vbar {
 h1.usr-info-icon {
    display: inline;
    color: @background;
+}
+
+div.usr-info-fav {
+   display: inline-block;
+   position: absolute;
+   top: 26px;
+   right: 20px;
+   color: @triple-letter;
+   font-size: 26px;
+   cursor: pointer;
+}
+
+div.usr-info-fav span.glyphicon-star-empty {
+   color: fade(black, 15%);
 }
 
 div#stats-toggler {
@@ -2805,12 +2982,20 @@ div#timed-toggler {
    top: 590px;
 }
 
+div#fairplay-toggler div.option.selected {
+   background-color: @freshtile;
+}
+
 div #radioset {
    padding-top: 6px;
    padding-bottom: 24px;
 }
 
 div.over {
+   outline: yellow solid 3px;
+}
+
+span.over {
    outline: yellow solid 3px;
 }
 
@@ -2867,6 +3052,48 @@ div#tabs-1 p img {
    margin-left: 4px;
    margin-right: 4px;
    vertical-align: -3px;
+}
+
+div.help-container {
+   width: 828px;
+   height: 640px;
+   overflow: auto;
+   padding-right: 24px;
+}
+
+div.help-container ol li {
+   font-weight: bold;
+}
+
+div.help-container ul li {
+   font-weight: normal;
+   list-style-type:disc;
+}
+
+div.help-container table {
+   border-spacing: 0;
+   border-collapse: collapse;
+}
+
+div.help-container td {
+   margin: 0;
+   padding: 4px;
+   padding-left: 8px;
+   padding-right: 8px;
+   text-align: right;
+   border-width: 1px;
+   border-style: solid;
+   width: 80px;
+}
+
+div.help-container td.row-caption {
+   text-align: left;
+   font-weight: bold;
+   width: 120px;
+}
+
+div.help-container span.glyphicon-hourglass {
+   color: @alert;
 }
 
 div.twolist {

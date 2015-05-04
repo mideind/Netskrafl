@@ -47,6 +47,12 @@
         timestamp : timestamp
         prefs : dict
 
+    According to the NDB documentation, an ideal index for a query
+    should contain - in the order given:
+    1) Properties used in equality filters
+    2) Property used in an inequality filter (only one allowed)
+    3) Properties used for ordering
+
 """
 
 import logging
@@ -93,6 +99,17 @@ class UserModel(ndb.Model):
     ready = ndb.BooleanProperty(required = False, default = False)
     # Ready for timed challenges?
     ready_timed = ndb.BooleanProperty(required = False, default = False)
+    # Elo points
+    elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    # Elo points for human-only games
+    human_elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    # Best total score in a game
+    highest_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    highest_score_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    # Best word laid down
+    best_word = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
+    best_word_game = ndb.StringProperty(required = False, default = None, indexed = False)
 
     @classmethod
     def create(cls, user_id, nickname):
@@ -106,20 +123,14 @@ class UserModel(ndb.Model):
         return user.put().id()
 
     @classmethod
-    def update(cls, user_id, nickname, inactive, prefs, ready, ready_timed):
-        """ Update an existing user entity """
-        user = cls.fetch(user_id)
-        user.nickname = nickname
-        user.inactive = inactive
-        user.prefs = prefs
-        user.ready = ready
-        user.ready_timed = ready_timed
-        user.put()
-
-    @classmethod
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
+
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple user records """
+        ndb.put_multi(recs)
 
     @classmethod
     def count(cls):
@@ -290,10 +301,6 @@ class GameModel(ndb.Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
-            .filter(GameModel.over == True) \
-            .order(-GameModel.ts_last_move)
 
         def game_callback(gm):
             """ Map a game entity to a result dictionary with useful info about the game """
@@ -324,6 +331,24 @@ class GameModel(ndb.Model):
                 elo_adj = elo_adj,
                 human_elo_adj = human_elo_adj,
                 prefs = gm.prefs)
+
+
+        # Run the query in two parts as experience suggests that
+        # AppEngine is not efficient with ndb.OR between two distinct values
+        # This also means that the returned list may be twice max_len
+
+        k = ndb.Key(UserModel, user_id)
+
+        q = cls.query(GameModel.over == True) \
+            .filter(GameModel.player0 == k) \
+            .order(-GameModel.ts_last_move)
+
+        for gm in q.fetch(max_len):
+            yield game_callback(gm)
+
+        q = cls.query(GameModel.over == True) \
+            .filter(GameModel.player1 == k) \
+            .order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
@@ -639,7 +664,7 @@ class ChannelModel(ndb.Model):
         offset = 0
         while q is not None:
             count = 0
-            for cm in q.fetch(CHUNK_SIZE, offset = offset):
+            for cm in q.fetch(CHUNK_SIZE, offset = offset, projection=[ChannelModel.user]):
                 if cm.user is not None:
                     # Connected channel associated with a user: return the user id
                     yield cm.user.id()
@@ -656,7 +681,8 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
-        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
+        q = cls.query(ChannelModel.connected == True) \
+            .filter(ChannelModel.user == u_key) \
             .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
         return q.get(keys_only = True) != None
@@ -669,10 +695,11 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
         u_key = ndb.Key(UserModel, user_id)
         # Query for all connected channels for this user that have not expired
-        q = cls.query(ndb.AND(ChannelModel.connected == True, ChannelModel.user == u_key)) \
-            .filter(ChannelModel.expiry > now) \
+        q = cls.query(ChannelModel.connected == True) \
+            .filter(ChannelModel.user == u_key) \
             .filter(ChannelModel.kind == kind) \
-            .filter(ChannelModel.entity == entity)
+            .filter(ChannelModel.entity == entity) \
+            .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
         return q.get(keys_only = True) != None
 
@@ -714,8 +741,9 @@ class ChannelModel(ndb.Model):
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
             CHUNK_SIZE = 50 # There are never going to be many matches for this query
-            q = cls.query(ChannelModel.expiry > now).filter(
-                ndb.AND(ChannelModel.kind == kind, ChannelModel.entity == entity))
+            q = cls.query(ChannelModel.kind == kind) \
+                .filter(ChannelModel.entity == entity) \
+                .filter(ChannelModel.expiry > now)
             offset = 0
             while True:
                 # Query and send message in chunks

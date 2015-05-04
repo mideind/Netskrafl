@@ -1,6 +1,7 @@
 {% extends "container.html" %}
 
 {% block opengraph %}
+
 {% if og != None %}
 
 {%- macro descr(og) -%}
@@ -26,17 +27,19 @@
 
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
 <meta property="og:description" content="{{ descr(og) | stripwhite }}" />
+<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
+<meta property="fb:app_id" content="622492364544510" />
+
+{% endif %}
+
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
-<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
 <meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
-<meta property="fb:app_id" content="622492364544510" />
 
-{% endif %}
 {% endblock %}
 
 {% block styles %}
@@ -58,28 +61,40 @@
 <!-- Player names, scores and move history -->
 <div class="rightcol">
    <div class="heading">
-      <h3 class="playerleft"><span id="left-to-move" class="glyphicon-flag"></span>
-{%- if player_index != None and player_index == 0 -%}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- elif game.is_autoplayer(0) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
+      <h3 class="playerleft">
+{%- if game.is_autoplayer(0) -%}
+      <div class="robot-btn left"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(0) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn left" id="player-0">
+{%- else -%}
+      <div class="robot-btn left" id="player-0">
 {%- endif -%}
-      {{ game.player_nickname(0) }}
-{%- if player_index != None and player_index == 0 -%}
-</a>
+      <span id="left-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(0) -}}
+      </div>
 {%- endif -%}
       </h3>
       <h3 class="playerright">
-{%- if player_index != None and player_index == 1 -%}
-<a class="nodecorate" href="{{ url_for('userprefs') }}">
-{%- elif game.is_autoplayer(1) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- if game.is_autoplayer(1) -%}
+      <div class="robot-btn right"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(1) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn right" id="player-1">
+{%- else -%}
+      <div class="robot-btn right" id="player-1">
 {%- endif -%}
-      {{ game.player_nickname(1) }}
-{%- if player_index != None and player_index == 1 -%}
-</a>
+      {{- game.player_nickname(1) -}}<!--
+      --><span id="right-to-move" class="glyphicon-flag-after"></span>
+      </div>
 {%- endif -%}
-      <span id="right-to-move" class="glyphicon-flag-after"></span></h3>
+      </h3>
       <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
       <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
       <h3 class="clockleft"></h3>
@@ -164,6 +179,9 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
             <input type="text" name="msg" id="msg" maxlength="254" class="chat-txt"></input><!--
          --><div class="modal-close" id="chat-send" title="Senda"><span class="glyphicon glyphicon-chat"></span></div>
          </div>
+      </div>
+      <div class="right-tab" id="tab-games" title="Viðureignir"><span class="glyphicon glyphicon-flag"></span></div>
+      <div class="games">
       </div>
    </div>
 </div>
@@ -255,7 +273,8 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 <div class="opp-turn"><span class="move-indicator"></span>
 <strong>{{ game.player_nickname(1 - player_index) }}</strong>
 á leik
-<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton" onclick="forceResign()">Þvinga til uppgjafar</span>
+<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton"
+   onclick="forceResign()" onmouseover="buttonOver(this)" onmouseout="buttonOut(this)">Þvinga til uppgjafar</span>
 </div>
 {% endif %}
 
@@ -291,7 +310,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
 
 <!-- Confirm pass move -->
 <div class="pass"><span class="glyphicon glyphicon-forward"></span>
-   &nbsp;Segja pass? <span style="font-weight:400">2x3 pöss í röð ljúka viðureign</span>&nbsp;
+   &nbsp;Segja pass? <span class="pass-explain">2x3 pöss í röð ljúka viðureign</span>&nbsp;
    <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
    <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
@@ -301,6 +320,62 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    &nbsp;Smelltu á flísarnar sem þú vilt skipta&nbsp;
    <span class="yesnobutton" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
    <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
+</div>
+
+<!-- A dialog to show info about a particular user -->
+<div id="usr-info-dialog" class="modal-dialog">
+<div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="usr-info-hdr">
+      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1>
+      <h1 id="usr-info-nick"></h1>
+      <span class="vbar">|</span>
+      <h2 id="usr-info-fullname"></h2>
+      <div class="usr-info-fav" title="Uppáhald"><span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span></div>
+   </div>
+
+   <p><strong>Nýjustu viðureignir</strong></p>
+
+   <!-- Recent games for this user -->
+   <div class="listitem listheader"><span
+   class="list-win"><span
+   title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
+   class="list-ts">Viðureign lauk</span><span
+   class="list-nick">Andstæðingur</span><span
+   class="list-scorehdr">Úrslit</span><span
+   class="list-elo-hdr"><span
+      title="Mennskir andstæðingar" class='glyphicon glyphicon-user elo-hdr-left'></span>Elo<span
+      title="Allir andstæðingar" class='glyphicon glyphicon-cog elo-hdr-right'></span></span><span
+   class="list-duration">Lengd</span></div>
+
+   <!-- Recent game lists will be populated by populateRecentList() -->
+   <div id="usr-recent"></div>
+
+   <!-- Statistics -->
+   <div id="usr-stats">
+      <div id="stats-toggler" class="toggler" title="Með þjörkum eða án">
+         <div class="option small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+      --><div class="option small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+      </div><!--
+   --><div id="usr-stats-human"><!--
+      --><div class="stats-fig" id="usr-stats-human-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div><!--
+   --><div id="usr-stats-all"><!--
+      --><div class="stats-fig" id="usr-stats-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div>
+   </div>
+
+   <!-- Close button -->
+   <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
 </div>
 
 {% if user and user.beginner() %}
@@ -415,6 +490,19 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       return "{{ '' if user == None else user.id() }}";
    }
 
+   function opponentInfo() {
+      /* Return information about the opponent */
+{% if opp == None %}
+      return null;
+{% else %}
+      return {
+         nick: "{{ opp.nickname() | safe }}",
+         fullname: "{{ opp.full_name() | safe }}",
+         userid: "{{ opp.id() | safe }}"
+      }
+{% endif %}
+   }
+
    function gameIsZombie() {
       /* Return true if the game is newly finished and is being viewed to confirm results */
       return {{ "true" if zombie else "false" }};
@@ -469,6 +557,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    function navToReview() {
       /* Show the game review page */
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+   }
+
+   function navToUserprefs() {
+      /* Show the user preferences page */
+      window.location.href = "{{ url_for('userprefs', from = url_for('board', game = game.id())) | safe }}";
    }
 
    function fbShare() {

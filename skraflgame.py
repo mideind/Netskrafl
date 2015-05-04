@@ -42,6 +42,8 @@ class User:
 
     # User object expiration in memcache
     _CACHE_EXPIRY = 15 * 60 # 15 minutes
+    # Current namespace (schema) for memcached User objects
+    _NAMESPACE = "user:2"
 
     def __init__(self, uid = None):
         """ Initialize a fresh User instance """
@@ -50,11 +52,18 @@ class User:
         self._preferences = { }
         self._ready = False
         self._ready_timed = False
+        self._elo = 0
+        self._human_elo = 0
+        self._highest_score = 0
+        self._highest_score_game = None
+        self._best_word = None
+        self._best_word_score = 0
+        self._best_word_game = None
         # Set of favorite users, only loaded upon demand
         self._favorites = None
 
         # NOTE: When new properties are added, the memcache namespace version id
-        # should be incremented!
+        # (User._NAMESPACE, above) should be incremented!
 
         if uid is None:
             # Obtain information from the currently logged in user
@@ -84,18 +93,38 @@ class User:
             self._preferences = um.prefs
             self._ready = um.ready
             self._ready_timed = um.ready_timed
+            self._elo = um.elo
+            self._human_elo = um.human_elo
+            self._highest_score = um.highest_score
+            self._highest_score_game = um.highest_score_game
+            self._best_word = um.best_word
+            self._best_word_score = um.best_word_score
+            self._best_word_game = um.best_word_game
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
         with User._lock:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
-            UserModel.update(self._user_id, self._nickname,
-                self._inactive, self._preferences,
-                self._ready, self._ready_timed)
+            um = UserModel.fetch(self._user_id)
+            assert um != None
+            um.nickname = self._nickname
+            um.inactive = self._inactive
+            um.prefs = self._preferences
+            um.ready = self._ready
+            um.ready_timed = self._ready_timed
+            um.elo = self._elo
+            um.human_elo = self._human_elo
+            um.highest_score = self._highest_score
+            um.highest_score_game = self._highest_score_game
+            um.best_word = self._best_word
+            um.best_word_score = self._best_word_score
+            um.best_word_game = self._best_word_game
+            um.put()
+
             # Note: the namespace version should be incremented each time
             # that the class properties change
-            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace='user:1')
+            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -288,6 +317,27 @@ class User:
         # Delete the accepted challenge and return the associated preferences
         return ChallengeModel.del_relation(srcuser_id, self.id())
 
+    def adjust_highest_score(self, score, game_uuid):
+        """ If this is the highest score of the player, modify it """
+        if self._highest_score and self._highest_score >= score:
+            # Not a new record
+            return False
+        # New record
+        self._highest_score = score
+        self._highest_score_game = game_uuid
+        return True
+
+    def adjust_best_word(self, word, score, game_uuid):
+        """ If this is the highest scoring word of the player, modify it """
+        if self._best_word_score and self._best_word_score >= score:
+            # Not a new record
+            return False
+        # New record
+        self._best_word = word
+        self._best_word_score = score
+        self._best_word_game = game_uuid
+        return True
+
     @staticmethod
     def logout_url():
         return users.create_logout_url("/")
@@ -296,14 +346,14 @@ class User:
     def load(cls, uid):
         """ Load a user from persistent storage given his/her user id """
         with User._lock:
-            u = memcache.get(uid, namespace='user:1')
+            u = memcache.get(uid, namespace=User._NAMESPACE)
             if u is None:
                 # Not found in the memcache: create a user object and
                 # populate it from a database entity (or initialize
                 # a fresh one if no entity exists).
                 u = cls(uid)
                 u._fetch()
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace='user:1')
+                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod
@@ -313,13 +363,13 @@ class User:
             user = users.get_current_user()
             if user is None or user.user_id() is None:
                 return None
-            u = memcache.get(user.user_id(), namespace='user:1')
+            u = memcache.get(user.user_id(), namespace=User._NAMESPACE)
             if u is not None:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
             u._fetch() # Creates a database entity if this is a fresh user
-            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace='user:1')
+            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod
@@ -572,22 +622,49 @@ class Game:
         gm.prefs = self._preferences
         tile_count = 0
         movelist = []
+        best_word = [None, None]
+        best_word_score = [0, 0]
+        player = 0
         for m in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state.board())
             if coord:
                 # Regular move: count the tiles actually laid down
                 tile_count += m.move.num_covers()
+                # Keep track of best words laid down by each player
+                if score > best_word_score[player]:
+                    best_word_score[player] = score
+                    best_word[player] = tiles
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
             mm.rack = m.rack
             mm.timestamp = m.ts
             movelist.append(mm)
+            player = 1 - player
         gm.moves = movelist
         gm.tile_count = tile_count
         # Update the database entity
         gm.put()
+
+        # Storing a game that is now over: update the player statistics as well
+        if self.is_over():
+            pid_0 = self.player_ids[0]
+            pid_1 = self.player_ids[1]
+            u0 = User.load(pid_0) if pid_0 else None
+            u1 = User.load(pid_1) if pid_1 else None
+            if u0:
+                mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
+                mod_0 |= u0.adjust_best_word(best_word[0], best_word_score[0], self.uuid)
+                if mod_0:
+                    # Modified: store the updated user entity
+                    u0.update()
+            if u1:
+                mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
+                mod_1 |= u1.adjust_best_word(best_word[1], best_word_score[1], self.uuid)
+                if mod_1:
+                    # Modified: store the updated user entity
+                    u1.update()
 
     def id(self):
         """ Returns the unique id of this game """

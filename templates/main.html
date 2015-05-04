@@ -39,11 +39,12 @@
       --><span class="list-overdue"><span title="Langt frá síðasta leik?" class='glyphicon glyphicon-hourglass grayed'></span></span><!--
       --><span class="list-ts">Síðasti leikur</span><!--
       --><span class="list-opp">Andstæðingur</span><!--
+      --><span class="list-info-hdr">Ferill</span><!--
       --><span class="list-scorehdr">Staða</span><!--
       --><span class="list-tc">Framvinda</span>
       </div>
 
-      <!-- Game list will be populated by populateGameList() below -->
+      <!-- Game list will be populated by populateGameList() -->
       <div id="gamelist"></div>
 
       <div class="hint">
@@ -80,7 +81,7 @@
       --><span class="list-ts">Hvenær</span><!--
       --><span class="list-nick">Áskorandi</span><!--
       --><span class="list-chall">Hvernig</span><!--
-      --><span class="list-info">Ferill</span><!--
+      --><span class="list-info-hdr">Ferill</span><!--
    --></div>
 
       <!-- Challenge lists will be populated by populateChallengeList() below -->
@@ -97,7 +98,7 @@
       --><span class="list-ts">Hvenær</span><!--
       --><span class="list-nick">Andstæðingur</span><!--
       --><span class="list-chall">Hvernig</span><!--
-      --><span class="list-info">Ferill</span><!--
+      --><span class="list-info-hdr">Ferill</span><!--
    --></div>
 
       <div id="chall-sent"></div>
@@ -206,7 +207,7 @@
       --><span class="list-games" title="Fjöldi viðureigna"><span class='glyphicon glyphicon-th'></span></span><!--
       --><span class="list-ratio" title="Vinningshlutfall"><span class='glyphicon glyphicon-bookmark'></span></span><!--
       --><span class="list-avgpts" title="Meðalstigafjöldi"><span class='glyphicon glyphicon-dashboard'></span></span><!--
-      --><span class="list-info-hdr" title="Skoða feril" id="elo-list-info">Ferill</span>
+      --><span class="list-info-hdr">Ferill</span>
          <!-- Toggle for type of Elo list - all or human-only -->
          <br>
          <div id="elo-toggler" class="toggler" title="Með þjörkum eða án">
@@ -252,6 +253,7 @@
       <h1 id="usr-info-nick"></h1>
       <span class="vbar">|</span>
       <h2 id="usr-info-fullname"></h2>
+      <div class="usr-info-fav" title="Uppáhald"><span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span></div>
    </div>
 
    <p><strong>Nýjustu viðureignir</strong></p>
