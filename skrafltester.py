@@ -19,6 +19,8 @@ from __future__ import print_function
 
 import sys
 import getopt
+import codecs
+sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 from skraflmechanics import State, Board, Move, ExchangeMove, Error
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
@@ -82,7 +84,7 @@ def test_exchange(state, numtiles):
     return True
 
 
-def test_game(players, silent):
+def test_game(players, silent, log_bag):
     """ Go through a whole game by pitting two AutoPlayers against each other """
     # The players parameter is a list of tuples: (playername, constructorfunc)
     # where constructorfunc accepts a State parameter and returns a freshly
@@ -90,11 +92,17 @@ def test_game(players, silent):
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(drawtiles = True)
+    if log_bag:
+        state = State(drawtiles = False, log_bag = log_bag)
+    else:
+        state = State(drawtiles = True, log_bag = log_bag)
 
     # Set player names
     for ix in range(2):
         state.set_player_name(ix, players[ix][0])
+
+    if log_bag:
+        state.draw_initial_racks()
 
     if not silent:
         print(state.__str__()) # This works in Python 2 and 3
@@ -127,6 +135,14 @@ def test_game(players, silent):
         if not silent:
             print(u"Play {0} scores {1} points ({2:.2f} seconds)".format(move, state.score(move), g1 - g0))
 
+        if log_bag:
+            summary = move.summary(state.board())
+            if len(summary[0]) > 0:
+                move_identifier = summary[0] + u":" + summary[1]
+            else:
+                move_identifier = summary[1]
+            print(u'BAG LOG: {{"Type": "P", "Move": "{0}", "Points": {1}, "Player": "{2}" }},'.format(move_identifier, summary[2], state.player_name(state.player_to_move())))
+
         # Apply the move to the state and switch players
         state.apply_move(move)
 
@@ -142,10 +158,14 @@ def test_game(players, silent):
         print(u"Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)".format(p0, p1,
             state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1)))
 
+    if log_bag:
+        print(u'BAG LOG: {{"Type": "F", "MoveCount": "{2}", "Time": "{3:.2f} seconds", "Result": [{{"Player": "{4}", "Points": {0}}}, {{"Player": "{5}", "Points": {1}}}]}}'.format(p0, p1,
+            state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1)))
+
     return state.scores()
 
 
-def test(num_games, opponent, silent):
+def test(num_games, opponent, silent, log_bag):
 
     def autoplayer_creator(state):
         return AutoPlayer(state)
@@ -155,8 +175,8 @@ def test(num_games, opponent, silent):
 
     players = [None, None]
     if opponent and opponent == u'autoplayer':
-        players[0] = (u"AutoPlayer A", autoplayer_creator)
-        players[1] = (u"AutoPlayer B", autoplayer_creator)
+        players[0] = (u"APA", autoplayer_creator)
+        players[1] = (u"APB", autoplayer_creator)
     else:
         players[0] = (u"AutoPlayer", autoplayer_creator)
         players[1] = (u"MiniMax", minimax_creator)
@@ -168,18 +188,27 @@ def test(num_games, opponent, silent):
     t0 = time.time()
 
     # Run games
+    print(u'BAG LOG: [')
     for ix in range(num_games):
         if not silent:
             print(u"\nGame {0}/{1} starting".format(ix + 1, num_games))
+        if log_bag:
+            print(u'BAG LOG: {{ "game_number": {0},'.format(ix + 1))
+            print(u'BAG LOG: "game_log": [')
         if ix % 2 == 1:
             # Odd game: swap players
             players[0], players[1] = players[1], players[0]
-            p1, p0 = test_game(players, silent)
+            p1, p0 = test_game(players, silent, log_bag)
             # Swap back
             players[0], players[1] = players[1], players[0]
         else:
             # Even game
-            p0, p1 = test_game(players, silent)
+            p0, p1 = test_game(players, silent, log_bag)
+        if log_bag:
+            if num_games - ix > 1:
+                print(u'BAG LOG: ]},')
+            else:
+                print(u'BAG LOG: ]}')
         if p0 > p1:
             gameswon[0] += 1
             sumofmargin[0] += (p0 - p1)
@@ -188,6 +217,7 @@ def test(num_games, opponent, silent):
             sumofmargin[1] += (p1 - p0)
         totalpoints[0] += p0
         totalpoints[1] += p1
+    print(u'BAG LOG: ]')
 
     t1 = time.time()
 
@@ -228,17 +258,20 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hn:o:s", ["help", "numgames", "opponent", "silent"])
+            opts, args = getopt.getopt(argv[1:], "hln:o:s", ["help", "logbag", "numgames", "opponent", "silent"])
         except getopt.error as msg:
              raise Usage(msg)
         num_games = 4
         opponent = None
         silent = False
+        log_bag = False
         # process options
         for o, a in opts:
             if o in ("-h", "--help"):
                 print(__doc__)
                 sys.exit(0)
+            elif o in ("-l", "--logbag"):
+                log_bag = True
             elif o in ("-n", "--numgames"):
                 num_games = int(a)
             elif o in ("-o", "--opponent"):
@@ -252,7 +285,7 @@ def main(argv=None):
         print(u"Welcome to the Skrafl game tester")
         print(u"Running {0} games against {1}".format(num_games, opponent or u"autoplayer"))
 
-        test(num_games, opponent, silent)
+        test(num_games, opponent, silent, log_bag)
 
     except Usage as err:
         print(err.msg, file=sys.stderr)

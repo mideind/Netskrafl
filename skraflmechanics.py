@@ -294,13 +294,31 @@ class Rack:
 
     MAX_TILES = 7
 
-    def __init__(self, copy = None):
+    def __init__(self, copy = None, log_bag = False):
 
         if copy is None:
             self._tiles = u''
+            self._player_name = u''
+            self._log_bag = log_bag
         else:
             # Copy constructor: initialize from another Rack
             self._tiles = copy._tiles
+            self._player_name = copy._player_name
+            self._log_bag = copy._log_bag
+
+    def set_player_name(self, name):
+        """ Set the name of the player """
+        self._player_name = name
+
+    def player_name(self):
+        """ Return the name of the player with the given index, 0 or 1 """
+        return self._player_name
+
+    def play_tile(self, tile):
+        """ Place a tile from the rack """
+        if self._log_bag:
+            print(u'BAG LOG: {{"Type": "L", "Tile": "{0}", "Player": "{1}" }},'.format(tile, self._player_name))
+        self.remove_tile(tile)
 
     def remove_tile(self, tile):
         """ Remove a tile from the rack """
@@ -309,7 +327,10 @@ class Rack:
     def replenish(self, bag):
         """ Draw tiles from the bag until we have 7 tiles or the bag is empty """
         while len(self._tiles) < Rack.MAX_TILES and not bag.is_empty():
-            self._tiles += bag.draw_tile()
+            temp_tile = bag.draw_tile()
+            if self._log_bag:
+                print(u'BAG LOG: {{"Type": "D", "Tile": "{0}", "Player": "{1}" }},'.format(temp_tile, self._player_name))
+            self._tiles += temp_tile
 
     def contents(self):
         """ Return the contents of the rack """
@@ -349,6 +370,8 @@ class Rack:
         for c in tiles:
             if c in self._tiles:
                 # Be careful and only remove tiles that actually were there
+                if self._log_bag:
+                    print(u'BAG LOG: {{"Type": "R", "Tile": "{0}", "Player": "{1}" }},'.format(c, self._player_name))
                 self.remove_tile(c)
                 removed += c
         self.replenish(bag)
@@ -379,7 +402,7 @@ class State:
         Contains the current board, the racks, scores, etc.
     """
 
-    def __init__(self, drawtiles = True, copy = None):
+    def __init__(self, drawtiles = True, copy = None, log_bag = False):
 
         if copy is None:
             self._board = Board()
@@ -390,7 +413,8 @@ class State:
             self._num_passes = 0 # Number of consecutive Pass moves
             self._num_moves = 0 # Number of moves made
             self._game_resigned = False
-            self._racks = [Rack(), Rack()]
+            self._log_bag = log_bag
+            self._racks = [Rack(log_bag=log_bag), Rack(log_bag=log_bag)]
             # Initialize a fresh, full bag of tiles
             self._bag = Bag()
             if drawtiles:
@@ -407,8 +431,14 @@ class State:
             self._num_passes = copy._num_passes
             self._num_moves = copy._num_moves
             self._game_resigned = copy._game_resigned
+            self._log_bag = copy._log_bag
             self._racks = [Rack(copy._racks[0]), Rack(copy._racks[1])]
             self._bag = Bag(copy._bag)
+
+    def draw_initial_racks(self):
+        """ Draw the racks from the bag """
+        for rack in self._racks:
+            rack.replenish(self._bag)
 
     def load_board(self, board):
         """ Load a Board into this state """
@@ -463,6 +493,8 @@ class State:
     def set_player_name(self, index, name):
         """ Set the name of the player whose index is given, 0 or 1 """
         self._player_names[index] = name
+        if self._log_bag:
+            self._racks[index].set_player_name(name)
 
     def player_name(self, index):
         """ Return the name of the player with the given index, 0 or 1 """
@@ -987,7 +1019,7 @@ class Move:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
             if not shallow:
-                rack.remove_tile(c.tile)
+                rack.play_tile(c.tile)
         state.reset_passes()
 
 
