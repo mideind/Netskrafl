@@ -420,7 +420,7 @@ div.xchgsel {
    background-color: @alert;
 }
 
-div.blanktile {
+.blanktile {
    color: #777777;
 }
 
@@ -990,9 +990,24 @@ div.right-tab:hover {
    opacity: 1.0;
 }
 
+@keyframes redBlink {
+   0% { opacity: 0.3; }
+   15% { opacity: 1.0; }
+   85% { opacity: 1.0; }
+   100% { opacity: 0.3; }
+}
+
+@-webkit-keyframes redBlink {
+   0% { opacity: 0.3; }
+   15% { opacity: 1.0; }
+   85% { opacity: 1.0; }
+   100% { opacity: 0.3; }
+}
+
 div.right-tab.alert {
    color: @alert;
-   /* opacity: 0.8; */
+   animation: redBlink 1.0s infinite;
+   -webkit-animation: redBlink 1.0s infinite;
 }
 
 div.movelist.noscroll {
@@ -2102,6 +2117,28 @@ div.user-cat span:hover {
    border-radius: 5px;
 }
 
+span.versus-cat span {
+   font-size: 16px;
+   cursor: pointer;
+   padding-left: 6px;
+   padding-top: 1px;
+   padding-bottom: 1px;
+   padding-right: 6px;
+   margin: 2px;
+   .noselect;
+}
+
+span.versus-cat span.shown {
+   background-color: fade(@double-letter, 30%);
+   border-radius: 5px;
+}
+
+span.versus-cat span:hover {
+   color: white;
+   background-color: @double-letter;
+   border-radius: 5px;
+}
+
 span.ready-btn {
    .glyphicon;
    font-size: 15px;
@@ -2463,6 +2500,38 @@ div.usr-info-fav span.glyphicon-star-empty {
    color: fade(black, 15%);
 }
 
+span.best-word {
+   text-transform: uppercase;
+   font-weight: bold;
+   font-style: italic;
+}
+
+p#usr-best {
+   display: inline-block;
+   position: absolute;
+   right: 16px;
+   top: 62px;
+   text-align: right;
+}
+
+p#usr-best a:link, p#usr-best a:visited {
+   text-decoration: none;
+   color: @help-link;
+}
+
+p#usr-best a:hover {
+   text-decoration: none;
+   color: @hover-link;
+}
+
+p#own-best {
+   display: inline-block;
+   position: absolute;
+   right: 30px;
+   top: 66px;
+   text-align: right;
+}
+
 div#stats-toggler {
    margin-top: 7px;
    margin-right: 8px;
@@ -2550,10 +2619,10 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 75px;
+   top: 55px;
    right: 300px;
    width: 428px;
-   height: 580px;
+   height: 620px;
    padding-top: 12px; /* Override */
 }
 
@@ -2614,8 +2683,8 @@ div.chall-time {
    padding-bottom: 0px;
    padding-left: 12px;
    padding-right: 12px;
-   margin-top: 9px;
-   margin-bottom: 6px;
+   margin-top: 7px;
+   margin-bottom: 4px;
    text-align: center;
    font-size: 20px;
    font-weight: 700;
@@ -2662,6 +2731,7 @@ span#chall-online.online {
 }
 
 div#chall-fairplay {
+   margin-top: 9px;
    padding-left: 52px;
    padding-right: 52px;
    font-size: 14px;

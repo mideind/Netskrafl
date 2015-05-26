@@ -296,7 +296,7 @@ class GameModel(ndb.Model):
         return cls.get_by_id(uuid)
 
     @classmethod
-    def list_finished_games(cls, user_id, max_len = 10):
+    def list_finished_games(cls, user_id, versus = None, max_len = 10):
         """ Query for a list of recently finished games for the given user """
         assert user_id is not None
         if user_id is None:
@@ -338,17 +338,28 @@ class GameModel(ndb.Model):
         # This also means that the returned list may be twice max_len
 
         k = ndb.Key(UserModel, user_id)
+        v = ndb.Key(UserModel, versus) if versus else None
 
         q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player0 == k) \
-            .order(-GameModel.ts_last_move)
+            .filter(GameModel.player0 == k)
+
+        if v:
+            # Add a filter on the opponent
+            q = q.filter(GameModel.player1 == v)
+
+        q = q.order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
 
         q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player1 == k) \
-            .order(-GameModel.ts_last_move)
+            .filter(GameModel.player1 == k)
+
+        if v:
+            # Add a filter on the opponent
+            q = q.filter(GameModel.player0 == v)
+
+        q = q.order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)

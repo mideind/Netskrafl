@@ -394,6 +394,12 @@ class User:
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         sm.populate_dict(reply)
+        # Add statistics from the user entity
+        reply["highest_score"] = self._highest_score
+        reply["highest_score_game"] = self._highest_score_game
+        reply["best_word"] = self._best_word
+        reply["best_word_score"] = self._best_word_score
+        reply["best_word_game"] = self._best_word_game
         return reply
 
 

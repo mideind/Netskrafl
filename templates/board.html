@@ -334,7 +334,7 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       <div class="usr-info-fav" title="Uppáhald"><span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span></div>
    </div>
 
-   <p><strong>Nýjustu viðureignir</strong></p>
+   <p><strong>Nýjustu viðureignir</strong> <span class="versus-cat"><span class="shown" id="versus-all">gegn öllum</span> <span id="versus-you">gegn þér</span></span></p>
 
    <!-- Recent games for this user -->
    <div class="listitem listheader"><span
@@ -370,6 +370,9 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
       --><div class="stats-fig stats-avg-score" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
    --></div>
    </div>
+
+   <!-- Highest word and game scores -->
+   <p id="usr-best"></p>
 
    <!-- Close button -->
    <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
@@ -562,6 +565,11 @@ b<b>æ</b> fæ hæ læ næ ræ sæ
    function navToUserprefs() {
       /* Show the user preferences page */
       window.location.href = "{{ url_for('userprefs', from = url_for('board', game = game.id())) | safe }}";
+   }
+
+   function gameUrl(uuid) {
+      /* Return the URL for a game with a given uuid */
+      return "{{ url_for('board') | safe }}?game=" + uuid;
    }
 
    function fbShare() {

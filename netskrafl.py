@@ -475,52 +475,54 @@ def _rating(kind):
     return result
 
 
-def _recentlist(cuid, max_len):
-    """ Return a list of recent games for the indicated user """
+def _recentlist(cuid, versus, max_len):
+    """ Return a list of recent games for the indicated user, eventually
+        filtered by the opponent id (versus) """
+    if cuid is None:
+        return []
     result = []
-    if cuid is not None:
-        # Obtain a list of recently finished games where the indicated user was a player
-        temp = list(GameModel.list_finished_games(cuid, max_len = max_len))
-        # Temp may be up to 2 * max_len as it is composed of two queries
-        # Sort it and bring it down to size before processing it further
-        temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
-        for g in temp[0:max_len]:
-            opp = g["opp"]
-            if opp is None:
-                # Autoplayer opponent
-                nick = Game.autoplayer_name(g["robot_level"])
-            else:
-                # Human opponent
-                u = User.load(opp)
-                nick = u.nickname()
+    # Obtain a list of recently finished games where the indicated user was a player
+    temp = list(GameModel.list_finished_games(cuid, versus = versus, max_len = max_len))
+    # Temp may be up to 2 * max_len as it is composed of two queries
+    # Sort it and bring it down to size before processing it further
+    temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
+    for g in temp[0:max_len]:
+        opp = g["opp"]
+        if opp is None:
+            # Autoplayer opponent
+            nick = Game.autoplayer_name(g["robot_level"])
+        else:
+            # Human opponent
+            u = User.load(opp)
+            nick = u.nickname()
 
-            # Calculate the duration of the game in days, hours, minutes
-            ts_start = g["ts"]
-            ts_end = g["ts_last_move"]
+        # Calculate the duration of the game in days, hours, minutes
+        ts_start = g["ts"]
+        ts_end = g["ts_last_move"]
 
-            if (ts_start is None) or (ts_end is None):
-                days, hours, minutes = (0, 0, 0)
-            else:
-                td = ts_end - ts_start # Timedelta
-                tsec = td.total_seconds()
-                days, tsec = divmod(tsec, 24 * 60 * 60)
-                hours, tsec = divmod(tsec, 60 * 60)
-                minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
+        if (ts_start is None) or (ts_end is None):
+            days, hours, minutes = (0, 0, 0)
+        else:
+            td = ts_end - ts_start # Timedelta
+            tsec = td.total_seconds()
+            days, tsec = divmod(tsec, 24 * 60 * 60)
+            hours, tsec = divmod(tsec, 60 * 60)
+            minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
 
-            result.append({
-                "url": url_for('board', game = g["uuid"]), # Was 'review'
-                "opp": nick,
-                "opp_is_robot": opp is None,
-                "sc0": g["sc0"],
-                "sc1": g["sc1"],
-                "elo_adj": g["elo_adj"],
-                "human_elo_adj": g["human_elo_adj"],
-                "ts_last_move": Alphabet.format_timestamp(ts_end),
-                "days": int(days),
-                "hours": int(hours),
-                "minutes": int(minutes),
-                "duration": Game.get_duration_from_prefs(g["prefs"])
-            })
+        result.append({
+            "url": url_for('board', game = g["uuid"]), # Was 'review'
+            "opp": nick,
+            "opp_is_robot": opp is None,
+            "sc0": g["sc0"],
+            "sc1": g["sc1"],
+            "elo_adj": g["elo_adj"],
+            "human_elo_adj": g["human_elo_adj"],
+            "ts_last_move": Alphabet.format_timestamp(ts_end),
+            "days": int(days),
+            "hours": int(hours),
+            "minutes": int(minutes),
+            "duration": Game.get_duration_from_prefs(g["prefs"])
+        })
     return result
 
 
@@ -815,6 +817,7 @@ def recentlist():
     # _recentlist() returns an empty list for a nonexistent user
 
     user_id = request.form.get('user', None)
+    versus = request.form.get('versus', None)
     count = 14 # Default number of recent games to return
     try:
         count = int(request.form.get('count', str(count)))
@@ -830,7 +833,8 @@ def recentlist():
     if user_id is None:
         user_id = User.current_id()
 
-    return jsonify(result = Error.LEGAL, recentlist = _recentlist(user_id, max_len = count))
+    return jsonify(result = Error.LEGAL,
+        recentlist = _recentlist(user_id, versus = versus, max_len = count))
 
 
 @app.route("/challengelist", methods=['POST'])

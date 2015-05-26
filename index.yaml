@@ -61,6 +61,14 @@ indexes:
   properties:
   - name: over
   - name: player0
+  - name: player1
+  - name: ts_last_move
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player0
   - name: timestamp
     direction: desc
 

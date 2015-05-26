@@ -151,6 +151,8 @@ function showUserInfo(ev) {
    initToggle("#stats-toggler", false); // Show human only stats by default
    $("#usr-stats-human").css("display", "inline-block");
    $("#usr-stats-all").css("display", "none");
+   $("#versus-all").toggleClass("shown", true);
+   $("#versus-you").toggleClass("shown", false);
    $("#usr-info-dialog")
       .data("userid", ev.data.userid)
       .css("visibility", "visible");
@@ -158,6 +160,7 @@ function showUserInfo(ev) {
    serverQuery("/recentlist",
       {
          user: ev.data.userid,
+         versus: null,
          count: 40 // Limit recent game count to 40
       },
       populateUserInfo);
@@ -167,6 +170,21 @@ function showUserInfo(ev) {
          user: ev.data.userid
       },
       populateUserStats);
+}
+
+function toggleVersus(ev) {
+   /* Show recent games between this user and the given opponent,
+      or all games for this user, depending on toggle state */
+   var oppId = $("#usr-info-dialog").data("userid");
+   $("#versus-all").toggleClass("shown", ev.data == "versus-all");
+   $("#versus-you").toggleClass("shown", ev.data == "versus-you");
+   serverQuery("/recentlist",
+      {
+         user: oppId,
+         versus: (ev.data == "versus-all" ? null : userId()),
+         count: 40 // Limit recent game count to 40
+      },
+      populateUserInfo);
 }
 
 function favUserInfo() {
@@ -219,6 +237,32 @@ function _populateStats(prefix, json) {
       favStar.toggleClass("glyphicon-star-empty", !json.favorite);
       favStar.toggleClass("glyphicon-star", json.favorite);
    }
+   // Populate the highest score/best word field
+   var best = "";
+   if (json.highest_score)
+      best = "Hæsta skor <b><a href='" + gameUrl(json.highest_score_game) + "'>" +
+         json.highest_score + "</a></b>";
+   if (json.best_word) {
+      if (best.length)
+         if (prefix == "own")
+            best += "<br>"; // Own stats: Line break between parts
+         else
+            best += " | "; // Opponent stats: Divider bar between parts
+      var bw = json.best_word;
+      var s = "";
+      // Make sure blank tiles get a different color
+      for (var i = 0; i < bw.length; i++)
+         if (bw[i] == '?') {
+            s += "<span class='blanktile'>" + bw[i+1] + "</span>";
+            i += 1;
+         }
+         else
+            s += bw[i];
+      best += "Besta orð <span class='best-word'>" + s + "</span>, " +
+         "<b><a href='" + gameUrl(json.best_word_game) + "'>" +
+         json.best_word_score + "</a></b> stig";
+   }
+   $("#" + prefix + "-best").html(best);
 }
 
 function populateUserStats(json) {
@@ -609,6 +653,7 @@ function populateUserInfo(json) {
 
 function _populateRecentList(json, listId) {
    /* Worker function to populate a list of recent games */
+   $(listId).html("");
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
@@ -710,6 +755,7 @@ function refreshRecentList() {
    serverQuery("/recentlist",
       {
          // Current user is implicit
+         versus: null,
          count: 40
       },
       populateRecentList);
@@ -1163,6 +1209,12 @@ function initMain() {
 
    /* Enable clicking on the favorite star icon in the user info dialog */
    $("div.usr-info-fav").click(favUserInfo);
+
+   /* Initialize versus toggle in user info dialog */
+   $("span.versus-cat > span").each(function() {
+      var data = $(this).attr('id');
+      $(this).click(data, toggleVersus);
+   });
 
    /* Prepare the challenge dialog */
    prepareChallenge();

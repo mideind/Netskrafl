@@ -127,6 +127,9 @@
       --></div>
       </div>
 
+      <!-- Highest word and game scores -->
+      <p id="own-best"></p>
+
       <p><strong>Nýlegar viðureignir þínar</strong> - smelltu á viðureign til að skoða hana
       og rifja upp</p>
 
@@ -256,7 +259,7 @@
       <div class="usr-info-fav" title="Uppáhald"><span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span></div>
    </div>
 
-   <p><strong>Nýjustu viðureignir</strong></p>
+   <p><strong>Nýjustu viðureignir</strong> <span class="versus-cat"><span class="shown" id="versus-all">gegn öllum</span> <span id="versus-you">gegn þér</span></span></p>
 
    <!-- Recent games for this user -->
    <div class="listitem listheader"><span
@@ -293,6 +296,9 @@
    --></div>
    </div>
 
+   <!-- Highest word and game scores -->
+   <p id="usr-best"></p>
+
    <!-- Close button -->
    <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
@@ -319,10 +325,11 @@
       <p><strong>Ný áskorun</strong> - veldu lengd viðureignar:</p>
 
       <div tabindex="1" class="chall-time selected" id="chall-none">Viðureign án klukku</div>
-      <div tabindex="2" class="chall-time" id="chall-15"><span class='glyphicon glyphicon-time'></span> 2 x 15 mínútur</div>
-      <div tabindex="3" class="chall-time" id="chall-20"><span class='glyphicon glyphicon-time'></span>2 x 20 mínútur</div>
-      <div tabindex="4" class="chall-time" id="chall-25"><span class='glyphicon glyphicon-time'></span> 2 x 25 mínútur</div>
-      <div tabindex="5" class="chall-time" id="chall-30"><span class='glyphicon glyphicon-time'></span> 2 x 30 mínútur</div>
+      <div tabindex="2" class="chall-time" id="chall-10"><span class='glyphicon glyphicon-time'></span> 2 x 10 mínútur</div>
+      <div tabindex="3" class="chall-time" id="chall-15"><span class='glyphicon glyphicon-time'></span> 2 x 15 mínútur</div>
+      <div tabindex="4" class="chall-time" id="chall-20"><span class='glyphicon glyphicon-time'></span>2 x 20 mínútur</div>
+      <div tabindex="5" class="chall-time" id="chall-25"><span class='glyphicon glyphicon-time'></span> 2 x 25 mínútur</div>
+      <div tabindex="6" class="chall-time" id="chall-30"><span class='glyphicon glyphicon-time'></span> 2 x 30 mínútur</div>
 
    </div>
 
@@ -331,12 +338,12 @@
    af nokkru tagi.</div>
 
    <!-- Cancel button -->
-   <div tabindex="6" class="modal-close" id="chall-cancel" title="Hætta við"
+   <div tabindex="7" class="modal-close" id="chall-cancel" title="Hætta við"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
    <!-- OK button -->
-   <div tabindex="7" class="modal-close" id="chall-ok" title="Skora á"
+   <div tabindex="8" class="modal-close" id="chall-ok" title="Skora á"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
 
@@ -419,6 +426,11 @@ function newgameUrl(opp, reversed) {
 function waitUrl(opp) {
    /* The URL for a wait page for a new game */
    return "{{ url_for('wait') | safe }}?opp=" + opp;
+}
+
+function gameUrl(uuid) {
+   /* Return the URL for a game with a given uuid */
+   return "{{ url_for('board') | safe }}?game=" + uuid;
 }
 
 function lateInit() {
