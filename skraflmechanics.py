@@ -18,10 +18,9 @@
 
 """
 
-from random import randint
+from random import SystemRandom
 from languages import Alphabet
 from dawgdictionary import Wordbase
-
 
 class Board:
 
@@ -232,6 +231,8 @@ class Bag:
 
     # The sort order for displaying the bag, with blank tiles last
     SORT_ORDER = Alphabet.order + u'?'
+    # The random number generator to use to draw tiles
+    RNG = SystemRandom()
 
     def __init__(self, copy = None):
 
@@ -246,7 +247,7 @@ class Bag:
         """ Draw a single tile from the bag """
         if self.is_empty():
             return None
-        tile = self._tiles[randint(0, len(self._tiles) - 1)]
+        tile = self._tiles[Bag.RNG.randint(0, len(self._tiles) - 1)]
         self._tiles = self._tiles.replace(tile, u'', 1)
         return tile
 
