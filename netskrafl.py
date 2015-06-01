@@ -658,7 +658,21 @@ def submitmove():
         return jsonify(result = Error.WRONG_USER)
 
     # Process the movestring
-    return _process_move(game, movelist)
+    # Try twice in case of timeout or other exception
+    result = None
+    for attempt in reversed(range(2)):
+        try:
+            result = _process_move(game, movelist)
+        except Exception as e:
+            logging.info("Exception in submitmove(): {0} {1}"
+                .format(e, "- retrying" if attempt > 0 else "").encode("latin-1"))
+            if attempt == 0:
+                # Final attempt failed
+                result = jsonify(result = Error.OUT_OF_SYNC)
+        else:
+            # No exception: done
+            break
+    return result
 
 
 @app.route("/forceresign", methods=['POST'])
