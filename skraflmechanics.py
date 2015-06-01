@@ -614,6 +614,7 @@ class Error:
     WRONG_USER = 15
     GAME_NOT_FOUND = 16
     GAME_NOT_OVERDUE = 17
+    SERVER_ERROR = 18
     # Insert new error codes above this line
     # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
     GAME_OVER = 99
@@ -640,7 +641,8 @@ class Error:
             u"LOGIN_REQUIRED",
             u"WRONG_USER",
             u"GAME_NOT_FOUND",
-            u"GAME_NOT_OVERDUE"][errcode]
+            u"GAME_NOT_OVERDUE",
+            u"SERVER_ERROR"][errcode]
 
 
 class Move:

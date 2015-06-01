@@ -38,6 +38,7 @@ from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
 from google.appengine.api import users, memcache
+from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -663,12 +664,17 @@ def submitmove():
     for attempt in reversed(range(2)):
         try:
             result = _process_move(game, movelist)
+        except DeadlineExceededError:
+            logging.info("Deadline exceeded in submitmove()")
+            result = jsonify(result = Error.SERVER_ERROR)
+            # No use attempting to retry if deadline exceeded: get out
+            break
         except Exception as e:
             logging.info("Exception in submitmove(): {0} {1}"
                 .format(e, "- retrying" if attempt > 0 else "").encode("latin-1"))
             if attempt == 0:
                 # Final attempt failed
-                result = jsonify(result = Error.OUT_OF_SYNC)
+                result = jsonify(result = Error.SERVER_ERROR)
         else:
             # No exception: done
             break
