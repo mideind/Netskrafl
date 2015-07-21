@@ -513,7 +513,8 @@ function refreshUserList(ev) {
       $("#elo-hdr").css("display", "none");
       $("#usr-hdr").css("display", "block");
    }
-   if (range == "fav" || range == "robots" || range == "live" || range == "elo") {
+   if (range == "fav" || range == "robots" ||
+      range == "live" || range == "elo" || range == "alike") {
       /* Special requests: list of favorites, live users, robots or Elo ratings */
       fromRange = range;
    }

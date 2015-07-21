@@ -209,6 +209,70 @@ class UserModel(ndb.Model):
                     # Continue with the next chunk
                     offset += chunk
 
+    @classmethod
+    def list_similar_elo(cls, elo, max_len = 40):
+        """ List users with a similar (human) Elo rating """
+        # Start with max_len users with a lower Elo rating
+
+        def fetch(q, max_len):
+            """ Generator for returning query result keys """
+            assert max_len > 0
+            counter = 0 # Number of results already returned
+            offset = 0 # Current chunk offset
+            while True:
+                chunk = 0 # Index within current chunk
+                for k in q.fetch(max_len, offset = offset, projection=[UserModel.highest_score]):
+                    chunk += 1
+                    if k.highest_score > 0:
+                        # Has played at least one game: Yield the key value
+                        yield k.key.id()
+                        counter += 1
+                        if counter >= max_len:
+                            # Returned the requested number of records: done
+                            return
+                if chunk < max_len:
+                    # Hit the end: done
+                    return
+                # Advance our offset
+                offset += chunk
+
+        q = cls.query(UserModel.human_elo < elo).order(- UserModel.human_elo) # Descending order
+        lower = list(fetch(q, max_len))
+        # Convert to an ascending list
+        lower.reverse()
+        # Repeat the query for same or higher rating
+        q = cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo) # Ascending order
+        higher = list(fetch(q, max_len))
+        # Concatenate the upper part of the lower range with the
+        # lower part of the higher range in the most balanced way
+        # available (considering that either of the lower or upper
+        # ranges may be empty or have fewer than max_len//2 entries)
+        len_lower = len(lower)
+        len_higher = len(higher)
+        # Ideal balanced length from each range
+        half_len = max_len // 2
+        ix = 0 # Default starting index in the lower range
+        if len_lower >= half_len:
+            # We have enough entries in the lower range for a balanced result,
+            # if the higher range allows
+            # Move the start index
+            ix = len_lower - half_len
+            if len_higher < half_len:
+                # We don't have enough entries in the upper range
+                # to balance the result: move the beginning index down
+                if ix >= half_len - len_higher:
+                    # Shift the entire missing balance to the lower range
+                    ix -= half_len - len_higher
+                else:
+                    # Take as much slack as possible
+                    ix = 0
+        # Concatenate the two slices into one result and return it
+        logging.info("Len_lower is {0}, len_higher {1}, half_len {2}, ix {3}"
+            .format(len_lower, len_higher, half_len, ix))
+        assert max_len >= (len_lower - ix)
+        result = lower[ix:] + higher[0:max_len - (len_lower - ix)]
+        return result
+
 
 class MoveModel(ndb.Model):
     """ Models a single move in a Game """

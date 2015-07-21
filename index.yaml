@@ -121,3 +121,14 @@ indexes:
   - name: timestamp
   - name: human_elo
     direction: desc
+
+- kind: UserModel
+  properties:
+  - name: human_elo
+  - name: highest_score
+
+- kind: UserModel
+  properties:
+  - name: human_elo
+    direction: desc
+  - name: highest_score

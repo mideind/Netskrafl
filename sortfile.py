@@ -26,7 +26,11 @@ Keyed = namedtuple("Keyed", ["key", "obj"])
 lexorder = u'\naábdðeéfghiíjklmnoóprstuúvxyýþæö'
 
 def keyfunc(line):
-    return [lexorder.index(c) for c in line]
+    try:
+        return [lexorder.index(c) for c in line]
+    except ValueError as e:
+        print(u"Error: unknown character in word '{0}'".format(line))
+        raise
 
 def merge(*iterables):
     # based on code posted by Scott David Daniels in c.l.p.

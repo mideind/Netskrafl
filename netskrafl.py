@@ -186,9 +186,8 @@ def _process_move(game, movelist):
 
 def _userlist(range_from, range_to):
     """ Return a list of users matching the filter criteria """
+
     result = []
-    cuser = User.current()
-    cuid = None if cuser is None else cuser.id()
 
     if range_from == u"robots" and not range_to:
         # Return the list of available autoplayers
@@ -207,6 +206,8 @@ def _userlist(range_from, range_to):
         return result
 
     # We will be returning a list of human players
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
 
     # Generate a list of challenges issued by this user
     challenges = set()
@@ -264,12 +265,33 @@ def _userlist(range_from, range_to):
                         "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
 
+    elif range_from == u"alike" and not range_to:
+        # Return users with similar Elo ratings
+        if cuid is not None:
+            i = iter(UserModel.list_similar_elo(cuser.human_elo(), max_len = 40))
+            for uid in i:
+                if uid == cuid:
+                    # Do not include the current user in the list
+                    continue
+                au = User.load(uid)
+                if au and au.is_displayable():
+                    chall = uid in challenges
+                    result.append({
+                        "userid": uid,
+                        "nick": au.nickname(),
+                        "fullname": au.full_name(),
+                        "fav": False if cuser is None else cuser.has_favorite(uid),
+                        "chall": chall,
+                        "fairplay": au.fairplay(),
+                        "ready": au.is_ready() and uid in online and not chall,
+                        "ready_timed": au.is_ready_timed() and uid in online and not chall
+                    })
+
     else:
         # Return users within a particular nickname range
 
         # The "N:" prefix is a version header
-        cache_range = "2:" + ("" if range_from is None else range_from) + \
-            "-" + ("" if range_to is None else range_to)
+        cache_range = "2:" + (range_from or "") + "-" + (range_to or "")
 
         # Start by looking in the cache
         i = memcache.get(cache_range, namespace="userlist")

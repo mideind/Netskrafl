@@ -45,6 +45,9 @@ class User:
     # Current namespace (schema) for memcached User objects
     _NAMESPACE = "user:2"
 
+    # Default Elo points if not explicitly assigned
+    DEFAULT_ELO = 1200
+
     def __init__(self, uid = None):
         """ Initialize a fresh User instance """
         self._nickname = u""
@@ -144,6 +147,10 @@ class User:
         if not nick:
             return False
         return nick[0:8] != u"https://" and nick[0:7] != u"http://"
+
+    def human_elo(self):
+        """ Return the human-only Elo points of the user """
+        return self._human_elo or User.DEFAULT_ELO
 
     def is_inactive(self):
         """ Return True if the user is marked as inactive """
