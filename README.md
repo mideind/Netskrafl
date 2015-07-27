@@ -53,6 +53,14 @@ The word database is in ```resources/ordalisti.text.dawg```.
 *SCRABBLE is a registered trademark. This software or its author are in no way affiliated
 with or endorsed by the owners or licensees of the SCRABBLE trademark.*
 
+### To build and run locally
+Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python.
+Run ```npm install``` to install node dependencies
+Run ```grunt watch``` (only creates files on changes).
+Run ```python dawgbuilder.py``` to generate the DAWG .pickle files
+Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use
+Create a bogus secret key in `resources/secret_key.bin`
+Run either ```runserver.bat``` or ```runserver.sh```.
 
 ### Author
 Vilhjalmur Thorsteinsson
