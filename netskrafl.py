@@ -189,6 +189,10 @@ def _userlist(range_from, range_to):
 
     result = []
 
+    def elo_str(elo):
+        """ Return a string representation of an Elo score, or a hyphen if none """
+        return unicode(elo) if elo else u"-"
+
     if range_from == u"robots" and not range_to:
         # Return the list of available autoplayers
         for r in Game.AUTOPLAYERS:
@@ -196,6 +200,7 @@ def _userlist(range_from, range_to):
                 "userid": u"robot-" + str(r[2]),
                 "nick": r[0],
                 "fullname": r[1],
+                "human_elo": elo_str(None),
                 "fav": False,
                 "chall": False,
                 "fairplay": False, # The robots don't play fair ;-)
@@ -239,6 +244,7 @@ def _userlist(range_from, range_to):
                     "userid": uid,
                     "nick": lu.nickname(),
                     "fullname": lu.full_name(),
+                    "human_elo": elo_str(lu.human_elo()),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
                     "fairplay": lu.fairplay(),
@@ -258,6 +264,7 @@ def _userlist(range_from, range_to):
                         "userid": favid,
                         "nick": fu.nickname(),
                         "fullname": fu.full_name(),
+                        "human_elo": elo_str(fu.human_elo()),
                         "fav": True,
                         "chall": chall,
                         "fairplay": fu.fairplay(),
@@ -280,6 +287,7 @@ def _userlist(range_from, range_to):
                         "userid": uid,
                         "nick": au.nickname(),
                         "fullname": au.full_name(),
+                        "human_elo": elo_str(au.human_elo()),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
                         "fairplay": au.fairplay(),
@@ -291,7 +299,7 @@ def _userlist(range_from, range_to):
         # Return users within a particular nickname range
 
         # The "N:" prefix is a version header
-        cache_range = "2:" + (range_from or "") + "-" + (range_to or "")
+        cache_range = "3:" + (range_from or "") + "-" + (range_to or "")
 
         # Start by looking in the cache
         i = memcache.get(cache_range, namespace="userlist")
@@ -316,6 +324,7 @@ def _userlist(range_from, range_to):
                     "userid": uid,
                     "nick": ud["nickname"],
                     "fullname": User.full_name_from_prefs(ud["prefs"]),
+                    "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
                     "fairplay": User.fairplay_from_prefs(ud["prefs"]),

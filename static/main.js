@@ -320,17 +320,22 @@ function populateUserList(json) {
          (item.chall ? "'" : " grayed'") +
          " id='" + chId + "'></span>";
       var nick = escapeHtml(item.nick);
-      var alink = "", aclose = "", info = "", ready = "";
+      var alink = "", aclose = "", info = "", ready = "", elo = "";
+      var clsFullname = "list-fullname";
       if (isRobot) {
          // Mark robots with a cog icon
          nick = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + nick;
          // Put a hyperlink on the robot name and description
          alink = "<a href='" + newgameUrl(item.userid, false) + "'>";
          aclose = "</a>";
+         // Wider name column for robots
+         clsFullname = "list-fullname-robot";
       }
       else {
          // Create a link to access user info
          info = "<span id='usr" + i + "' class='usr-info'></span>";
+         // Show Elo points
+         elo = "<span class='list-human-elo'>" + item.human_elo + "</span>";
       }
       if (info.length)
          info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
@@ -348,7 +353,8 @@ function populateUserList(json) {
          "<span class='list-fav'>" + fav + "</span>" +
          alink +
          "<span class='list-nick'>" + nick + "</span>" +
-         "<span class='list-fullname'>" + ready + escapeHtml(item.fullname) + "</span>" +
+         "<span class='" + clsFullname + "'>" + ready + escapeHtml(item.fullname) + "</span>" +
+         elo +
          aclose +
          info +
          "</div>";
@@ -525,8 +531,9 @@ function refreshUserList(ev) {
          /* Range has x-y format */
          toRange = range.charAt(2);
    }
-   // Hide the user info button header if listing the robots
+   // Hide the Elo and user info button headers if listing the robots
    $("#usr-list-info").css("visibility", (range == "robots") ? "hidden" : "visible");
+   $("#usr-list-elo").css("visibility", (range == "robots") ? "hidden" : "visible");
    if (range == "elo")
       serverQuery("/rating",
          {
@@ -597,7 +604,7 @@ function populateGameList(json) {
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
          "</a>" +
-         "<span class='list-info center'>" + info + "</span>" +
+         "<span class='list-info' title='Skoða feril'>" + info + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>" +
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +

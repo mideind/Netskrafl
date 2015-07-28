@@ -196,7 +196,8 @@ class UserModel(ndb.Model):
                             prefs = um.prefs,
                             timestamp = um.timestamp,
                             ready = um.ready,
-                            ready_timed = um.ready_timed
+                            ready_timed = um.ready_timed,
+                            human_elo = um.human_elo
                         )
                         counter += 1
                         if max_len > 0 and counter >= max_len:
@@ -267,8 +268,6 @@ class UserModel(ndb.Model):
                     # Take as much slack as possible
                     ix = 0
         # Concatenate the two slices into one result and return it
-        logging.info("Len_lower is {0}, len_higher {1}, half_len {2}, ix {3}"
-            .format(len_lower, len_higher, half_len, ix))
         assert max_len >= (len_lower - ix)
         result = lower[ix:] + higher[0:max_len - (len_lower - ix)]
         return result
