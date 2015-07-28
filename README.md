@@ -50,9 +50,6 @@ The various Flask HTML templates are found in ```templates/*.html```.
 The word database is in ```resources/ordalisti.text.dawg```.
 
 
-*SCRABBLE is a registered trademark. This software or its author are in no way affiliated
-with or endorsed by the owners or licensees of the SCRABBLE trademark.*
-
 ### To build and run locally
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python.
@@ -72,3 +69,6 @@ with or endorsed by the owners or licensees of the SCRABBLE trademark.*
 ### Author
 Vilhjalmur Thorsteinsson
 
+
+*SCRABBLE is a registered trademark. This software or its author are in no way affiliated
+with or endorsed by the owners or licensees of the SCRABBLE trademark.*
