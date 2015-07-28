@@ -54,13 +54,20 @@ The word database is in ```resources/ordalisti.text.dawg```.
 with or endorsed by the owners or licensees of the SCRABBLE trademark.*
 
 ### To build and run locally
-Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python.
-Run ```npm install``` to install node dependencies
-Run ```grunt watch``` (only creates files on changes).
-Run ```python dawgbuilder.py``` to generate the DAWG .pickle files
-Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use
-Create a bogus secret key in `resources/secret_key.bin`
-Run either ```runserver.bat``` or ```runserver.sh```.
+
+1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python.
+
+2. Run ```npm install``` to install node dependencies.
+
+3. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified.
+
+4. Run ```python dawgbuilder.py``` to generate the DAWG ```*.pickle``` files.
+
+5. Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use.
+
+6. Create a secret session key for Flask in `resources/secret_key.bin` (see [How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/), you need to scroll down to find the heading).
+
+7. Run either ```runserver.bat``` or ```runserver.sh```.
 
 ### Author
 Vilhjalmur Thorsteinsson

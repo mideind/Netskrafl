@@ -695,7 +695,10 @@ class DawgBuilder:
                 # Something appears to be wrong with the input sort order.
                 # If it's a duplicate, we don't mind too much, but if it's out
                 # of order, display a warning
-                if locale.strcoll(lastword, word) <= 0:
+                if locale.strcoll(lastword, word) > 0:
+                    print(u"Warning: input files should be in ascending order, but \"{0}\" > \"{1}\"".format(lastword, word))
+                else:
+                    # Identical to previous word
                     duplicates += 1
             elif (filter is None) or filter(word):
                 # This word passes the filter: check the removal list, if any
