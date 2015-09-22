@@ -143,11 +143,11 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
-    def stringify_edges(edges, arr):
+    def stringify_edges(edges):
         """ Utility function to create a compact descriptor string and hashable key for node edges """
-        for prefix, node in edges.items():
-            arr.append(prefix + u':' + (u'0' if node is None else str(node.id)))
-        return "_".join(arr)
+        edges = [ prefix + u':' + (u'0' if node is None else str(node.id))
+            for prefix, node in edges.items() ]
+        return "_".join(edges)
 
     def __init__(self):
         self.id = _DawgNode._nextid
@@ -161,15 +161,13 @@ class _DawgNode:
         """ Return a string representation of this node, cached if possible """
         if not self._strng:
             # We don't have a cached string representation: create it
-            arr = []
-            if self.final: 
-                arr.append("|")
-            self._strng = _DawgNode.stringify_edges(self.edges, arr)
+            edges = _DawgNode.stringify_edges(self.edges)
+            self._strng = "|_" + edges if self.final else edges
         return self._strng
 
     def __hash__(self):
         """ Return a hash of this node, cached if possible """
-        if not self._hash:
+        if self._hash is None:
             # We don't have a cached hash: create it
             self._hash = self.__str__().__hash__()
         return self._hash
@@ -388,8 +386,7 @@ class _Dawg:
         # We don't have to write node ids since they correspond to line numbers.
         # The root is always in the first line and the first node after the root has id 2.
         # Start with the root edges
-        arr = []
-        stream.write(_DawgNode.stringify_edges(self._root, arr) + u"\n")
+        stream.write(_DawgNode.stringify_edges(self._root) + u"\n")
         for node in self._unique_nodes.values():
             if node is not None:
                 stream.write(node.__str__() + u"\n")

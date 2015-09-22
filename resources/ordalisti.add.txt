@@ -8,9 +8,12 @@ hógla
 hretla
 hrumla
 hæfla
+im
+ím
 jagla
 mörla
 níðla
+nó
 ógjörla
 ragla
 rangla
@@ -43,3 +46,8 @@ rýðu
 rýjandi
 rúð
 rúðs
+es
+je
+lú
+oj
+pæ
