@@ -248,6 +248,7 @@ def _userlist(range_from, range_to):
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
                     "fairplay": lu.fairplay(),
+                    "newbag": lu.new_bag(),
                     "ready": lu.is_ready() and not chall,
                     "ready_timed": lu.is_ready_timed() and not chall
                 })
@@ -268,6 +269,7 @@ def _userlist(range_from, range_to):
                         "fav": True,
                         "chall": chall,
                         "fairplay": fu.fairplay(),
+                        "newbag": fu.new_bag(),
                         "ready": fu.is_ready() and favid in online and not chall,
                         "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
@@ -291,6 +293,7 @@ def _userlist(range_from, range_to):
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
                         "fairplay": au.fairplay(),
+                        "newbag": au.new_bag(),
                         "ready": au.is_ready() and uid in online and not chall,
                         "ready_timed": au.is_ready_timed() and uid in online and not chall
                     })
@@ -328,6 +331,7 @@ def _userlist(range_from, range_to):
                     "fav": False if cuser is None else cuser.has_favorite(uid),
                     "chall": chall,
                     "fairplay": User.fairplay_from_prefs(ud["prefs"]),
+                    "newbag": User.new_bag_from_prefs(ud["prefs"]),
                     "ready": ud["ready"] and uid in online and not chall,
                     "ready_timed": ud["ready_timed"] and uid in online and not chall
                 })
@@ -372,7 +376,7 @@ def _gamelist():
             "overdue": False,
             "zombie": True,
             "fairplay": u.fairplay(),
-            "tile_count" : Alphabet.BAG_SIZE # All tiles accounted for
+            "tile_count" : 100 # All tiles accounted for
         })
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
     result.sort(key = lambda x: x["ts"], reverse = True)
@@ -387,6 +391,8 @@ def _gamelist():
         ts = g["ts"]
         overdue = False
         fairplay = False
+        prefs = g.get("prefs", None)
+        tileset = Game.tileset_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -417,7 +423,7 @@ def _gamelist():
             "overdue": overdue,
             "zombie": False,
             "fairplay": fairplay,
-            "tile_count" : g["tile_count"]
+            "tile_count" : int(g["tile_count"] * 100 / tileset.num_tiles())
         })
     return result
 
@@ -1180,6 +1186,7 @@ def userprefs():
             self.fanfare = True
             self.beginner = True
             self.fairplay = False # Defaults to False, must be explicitly set to True
+            self.newbag = False # Defaults to False, must be explicitly set to True
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -1201,6 +1208,7 @@ def userprefs():
                 self.fanfare = 'fanfare' in form
                 self.beginner = 'beginner' in form
                 self.fairplay = 'fairplay' in form
+                self.newbag = 'newbag' in form
             except:
                 pass
 
@@ -1213,6 +1221,7 @@ def userprefs():
             self.fanfare = usr.fanfare()
             self.beginner = usr.beginner()
             self.fairplay = usr.fairplay()
+            self.newbag = usr.new_bag()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -1240,6 +1249,7 @@ def userprefs():
             usr.set_fanfare(self.fanfare)
             usr.set_beginner(self.beginner)
             usr.set_fairplay(self.fairplay)
+            usr.set_new_bag(self.newbag)
             usr.update()
 
     uf = UserForm()
@@ -1332,7 +1342,9 @@ def newgame():
     if opp[0:6] == u"robot-":
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
-        game = Game.new(user.id(), None, robot_level)
+        # Play the game with the new bag if the user prefers it
+        prefs = { "newbag" : True } if user.new_bag() else None
+        game = Game.new(user.id(), None, robot_level, prefs = prefs)
         return redirect(url_for("board", game = game.id()))
 
     # Start a new game between two human users

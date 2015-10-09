@@ -19,10 +19,11 @@ from __future__ import print_function
 
 import sys
 import getopt
+import time
 
 from skraflmechanics import State, Board, Move, ExchangeMove, Error
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
-import time
+from languages import OldTileSet, NewTileSet
 
 
 def test_move(state, movestring):
@@ -90,7 +91,12 @@ def test_game(players, silent):
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(drawtiles = True)
+    state = State(tileset = NewTileSet, drawtiles = True)
+
+    print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print(u"Bag contents are:\n{0}".format(state.bag().contents()))
+    print(u"Rack 0 is {0}".format(state.rack(0)))
+    print(u"Rack 1 is {0}".format(state.rack(1)))
 
     # Set player names
     for ix in range(2):

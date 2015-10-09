@@ -28,7 +28,7 @@ from google.appengine.api import users, memcache
 from skraflmechanics import State, Board, Rack, Error, \
     Move, PassMove, ExchangeMove, ResignMove
 from skraflplayer import AutoPlayer
-from languages import Alphabet
+from languages import Alphabet, OldTileSet, NewTileSet
 from skrafldb import Unique, UserModel, GameModel, MoveModel, \
     FavoriteModel, ChallengeModel, StatsModel, ChatModel
 
@@ -42,6 +42,7 @@ class User:
 
     # User object expiration in memcache
     _CACHE_EXPIRY = 15 * 60 # 15 minutes
+
     # Current namespace (schema) for memcached User objects
     _NAMESPACE = "user:2"
 
@@ -253,6 +254,25 @@ class User:
         """ Sets the fairplay state of a user to True or False """
         assert isinstance(state, bool)
         self.set_pref(u"fairplay", state)
+
+    @staticmethod
+    def new_bag_from_prefs(prefs):
+        """ Returns the new bag preference of a user """
+        if prefs is None:
+            return False
+        newbag = prefs.get(u"newbag")
+        return False if newbag is None else newbag
+
+    def new_bag(self):
+        """ Returns True if the user would like to play with the new bag """
+        newbag = self.get_pref(u"newbag")
+        # False by default
+        return False if newbag is None else newbag
+
+    def set_new_bag(self, state):
+        """ Sets the new bag preference of a user to True or False """
+        assert isinstance(state, bool)
+        self.set_pref(u"newbag", state)
 
     def is_ready(self):
         """ Returns True if the user is ready to accept challenges """
@@ -470,14 +490,14 @@ class Game:
 
     def _make_new(self, player0_id, player1_id, robot_level = 0, prefs = None):
         """ Initialize a new, fresh game """
+        self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
         self.player_ids = [player0_id, player1_id]
-        self.state = State(drawtiles = True)
+        self.state = State(drawtiles = True, tileset = self.tileset)
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.timestamp = self.ts_last_move = datetime.utcnow()
-        self._preferences = prefs
 
     @classmethod
     def new(cls, player0_id, player1_id, robot_level = 0, prefs = None):
@@ -530,7 +550,7 @@ class Game:
         game._preferences = gm.prefs
 
         # Initialize a fresh, empty state with no tiles drawn into the racks
-        game.state = State(drawtiles = False)
+        game.state = State(drawtiles = False, tileset = game.tileset)
 
         # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
@@ -640,7 +660,7 @@ class Game:
         player = 0
         for m in self.moves:
             mm = MoveModel()
-            coord, tiles, score = m.move.summary(self.state.board())
+            coord, tiles, score = m.move.summary(self.state)
             if coord:
                 # Regular move: count the tiles actually laid down
                 tile_count += m.move.num_covers()
@@ -726,6 +746,31 @@ class Game:
     def set_fairplay(self, state):
         """ Set the fairplay commitment of this game """
         self.set_pref(u"fairplay", state)
+
+    def new_bag(self):
+        """ True if this game uses the new bag """
+        return self.get_pref(u"newbag") or False
+
+    def set_new_bag(self, state):
+        """ Configures the game as using the new bag """
+        self.set_pref(u"newbag", state)
+
+    @staticmethod
+    def new_bag_from_prefs(prefs):
+        """ Returns true if the game preferences specify a new bag """
+        new_bag = prefs.get(u"newbag", None) if prefs else None
+        return False if new_bag is None else new_bag
+
+    @staticmethod
+    def tileset_from_prefs(prefs):
+        """ Returns the tileset specified by the given game preferences """
+        new_bag = Game.new_bag_from_prefs(prefs)
+        return NewTileSet if new_bag else OldTileSet
+
+    @property
+    def tileset(self):
+        """ Return the tile set used in this game """
+        return NewTileSet if self.new_bag() else OldTileSet
 
     @staticmethod
     def get_duration_from_prefs(prefs):
@@ -867,12 +912,12 @@ class Game:
         if state is None:
             state = self.state
         for x, y, tile, letter in state.board().enum_tiles():
-            yield (Board.ROWIDS[x] + str(y + 1), tile, letter, Alphabet.scores[tile])
+            yield (Board.ROWIDS[x] + str(y + 1), tile, letter, self.tileset.scores[tile])
 
     def state_after_move(self, move_number):
         """ Return a game state after the indicated move, 0=beginning state """
         # Initialize a fresh state object
-        s = State(drawtiles = False)
+        s = State(drawtiles = False, tileset = self.tileset)
         # Set up the initial state
         for ix in range(2):
             s.set_player_name(ix, self.state.player_name(ix))
@@ -981,9 +1026,9 @@ class Game:
             else:
                 # Normal end of game
                 opp_rack = self.state.rack(1 - lastplayer)
-                opp_score = Alphabet.score(opp_rack)
+                opp_score = self.tileset.score(opp_rack)
                 last_rack = self.state.rack(lastplayer)
-                last_score = Alphabet.score(last_rack)
+                last_score = self.tileset.score(last_rack)
                 if not last_rack:
                     # Won with an empty rack: Add double the score of the losing rack
                     movelist.append((1 - lastplayer, (u"", u"--", 0)))
@@ -1014,13 +1059,13 @@ class Game:
         num_moves = 1
         if self.last_move is not None:
             # Show the autoplayer move that was made in response
-            reply["lastmove"] = self.last_move.details()
+            reply["lastmove"] = self.last_move.details(self.state)
             num_moves = 2 # One new move to be added to move list
         elif lastmove is not None:
             # The indicated move should be included in the client state
             # (used when notifying an opponent of a new move through a channel)
-            reply["lastmove"] = lastmove.details()
-        newmoves = [(m.player, m.move.summary(self.state.board())) for m in self.moves[-num_moves:]]
+            reply["lastmove"] = lastmove.details(self.state)
+        newmoves = [(m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]]
 
         if self.is_over():
             # The game is now over - one of the players finished it
@@ -1044,9 +1089,8 @@ class Game:
 
     def bingoes(self):
         """ Returns a tuple of lists of bingoes for both players """
-        board = self.state.board()
         # List all bingoes in the game
-        bingoes = [(m.player, m.move.summary(board)) for m in self.moves if m.move.num_covers() == Rack.MAX_TILES]
+        bingoes = [(m.player, m.move.summary(self.state)) for m in self.moves if m.move.num_covers() == Rack.MAX_TILES]
         def _stripq(s):
             return s.replace(u'?', u'')
         # Populate (word, score) tuples for each bingo for each player
@@ -1065,6 +1109,8 @@ class Game:
         reply["gameend"] = self.end_time()
         reply["duration"] = self.get_duration()
         reply["scores"] = sc = self.final_scores()
+        # New bag?
+        reply["newbag"] = self.new_bag()
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
@@ -1081,14 +1127,14 @@ class Game:
         cleanscore = [0, 0]
         # Loop through the moves, collecting stats
         for m in self.moves:
-            coord, wrd, msc = m.move.summary(self.state.board())
+            coord, wrd, msc = m.move.summary(self.state)
             if wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score
                 cleanscore[m.player] += msc
             if m.move.num_covers() == 0:
                 # Exchange, pass or resign move
                 continue
-            for coord, tile, letter, score in m.move.details():
+            for coord, tile, letter, score in m.move.details(self.state):
                 if tile == u'?':
                     blanks[m.player] += 1
                 letterscore[m.player] += score

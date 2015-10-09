@@ -19,7 +19,7 @@
 """
 
 from random import SystemRandom
-from languages import Alphabet
+from languages import Alphabet, OldTileSet, NewTileSet
 from dawgdictionary import Wordbase
 
 class Board:
@@ -234,14 +234,16 @@ class Bag:
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
-    def __init__(self, copy = None):
+    def __init__(self, tileset, copy = None):
 
         if copy is None:
-            # Get a full bag from the Alphabet; this varies between languages
-            self._tiles = Alphabet.full_bag()
+            # Get a full bag from the requested tile set
+            self._tiles = tileset.full_bag()
+            self._size = len(self._tiles)
         else:
             # Copy constructor: initialize from another Bag
             self._tiles = copy._tiles
+            self._size = copy._size
 
     def draw_tile(self):
         """ Draw a single tile from the bag """
@@ -273,7 +275,7 @@ class Bag:
 
     def is_full(self):
         """ Returns True if the bag is full, i.e. no tiles have been drawn """
-        return self.num_tiles() == len(Alphabet.full_bag())
+        return self.num_tiles() == self._size
 
     def allows_exchange(self):
         """ Does the bag contain enough tiles to allow exchange? """
@@ -316,9 +318,9 @@ class Rack:
         """ Return the contents of the rack """
         return self._tiles
 
-    def details(self):
+    def details(self, tileset):
         """ Return the detailed contents of the rack, i.e. tiles and their scores """
-        return [(t, Alphabet.scores[t]) for t in self._tiles]
+        return [(t, tileset.scores[t]) for t in self._tiles]
 
     def num_tiles(self):
         """ Return the number of tiles in the rack """
@@ -380,7 +382,7 @@ class State:
         Contains the current board, the racks, scores, etc.
     """
 
-    def __init__(self, drawtiles = True, copy = None):
+    def __init__(self, tileset, drawtiles = True, copy = None):
 
         if copy is None:
             self._board = Board()
@@ -393,7 +395,8 @@ class State:
             self._game_resigned = False
             self._racks = [Rack(), Rack()]
             # Initialize a fresh, full bag of tiles
-            self._bag = Bag()
+            self._tileset = tileset
+            self._bag = Bag(tileset)
             if drawtiles:
                 # Draw the racks from the bag
                 for rack in self._racks:
@@ -409,7 +412,8 @@ class State:
             self._num_moves = copy._num_moves
             self._game_resigned = copy._game_resigned
             self._racks = [Rack(copy._racks[0]), Rack(copy._racks[1])]
-            self._bag = Bag(copy._bag)
+            self._tileset = copy._tileset
+            self._bag = Bag(tileset = None, copy = copy._bag)
 
     def load_board(self, board):
         """ Load a Board into this state """
@@ -443,9 +447,14 @@ class State:
         self._player_to_move = 1 - self._player_to_move
         return True
 
+    @property
+    def tileset(self):
+        """ Return the tileset for this game state """
+        return self._tileset
+
     def score(self, move):
         """ Calculate the score of the move """
-        return move.score(self._board)
+        return move.score(self)
 
     def scores(self):
         """ Return the current score for both players """
@@ -495,7 +504,7 @@ class State:
 
     def rack_details(self, index):
         """ Return the contents of the rack (indexed by 0 or 1) """
-        return self._racks[index].details()
+        return self._racks[index].details(self._tileset)
 
     def set_rack(self, index, tiles):
         """ Set the contents of the rack (indexed by 0 or 1) """
@@ -551,12 +560,12 @@ class State:
             # Normal win by one of the players
             for ix in range(2):
                 # Add double the score of the opponent's tiles (will be zero for the losing player)
-                adj[ix] = 2 * Alphabet.score(self.rack(1 - ix))
+                adj[ix] = 2 * self._tileset.score(self.rack(1 - ix))
         else:
             # Game expired by passes
             for ix in range(2):
                 # Subtract the score of the player's own tiles
-                adj[ix] = - Alphabet.score(self.rack(ix))
+                adj[ix] = - self._tileset.score(self.rack(ix))
 
         # Apply overtime adjustment, if any
         if overtime_adjustment is not None:
@@ -682,16 +691,19 @@ class Move:
         """ Return the word formed by this move """
         return self._word
 
-    def details(self):
+    def details(self, state):
         """ Return a list of tuples describing this move """
+        assert isinstance(state, State)
+        scores = state.tileset.scores
         return [(Board.ROWIDS[c.row] + str(c.col + 1), # Coordinate
             c.tile, c.letter, # Tile and letter
-            Alphabet.scores[c.tile]) # Score
+            scores[c.tile]) # Score
             for c in self._covers]
 
-    def summary(self, board):
+    def summary(self, state):
         """ Return a summary of the move, as a tuple: (coordinate, tiles, score) """
-        return (self.short_coordinate(), self._tiles, self.score(board))
+        assert isinstance(state, State)
+        return (self.short_coordinate(), self._tiles, self.score(state))
 
     def short_coordinate(self):
         """ Return the coordinate of the move in 'Scrabble notation',
@@ -924,8 +936,10 @@ class Move:
         # All checks pass: the play is legal
         return Error.LEGAL
 
-    def score(self, board):
+    def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
+
+        assert isinstance(state, State)
 
         # Check for cached score
         if self._score is not None:
@@ -943,12 +957,15 @@ class Move:
         row, col = self._row, self._col
         xd, yd = (0, 1) if self._horizontal else (1, 0)
 
+        scores = state.tileset.scores
+        board = state.board()
+
         # Tally the score of the primary word
         for ix in range(self._numletters):
             c = self._covers[cix] if cix < numcovers else None
             if c and (c.col == col) and (c.row == row):
                 # This is one of the new tiles
-                lscore = Alphabet.scores[c.tile]
+                lscore = scores[c.tile]
                 lscore *= Board.letterscore(row, col)
                 wsc *= Board.wordscore(row, col)
                 cix += 1
@@ -956,7 +973,7 @@ class Move:
                 # This is a tile that was already on the board
                 # lscore = Alphabet.scores[self._word[ix]]
                 tile = board.tile_at(row, col)
-                lscore = Alphabet.scores[tile]
+                lscore = scores[tile]
             sc += lscore
             row += xd
             col += yd
@@ -970,10 +987,10 @@ class Move:
             else:
                 cross = board.tiles_left(c.row, c.col) + board.tiles_right(c.row, c.col)
             if cross:
-                sc = Alphabet.scores[c.tile]
+                sc = scores[c.tile]
                 sc *= Board.letterscore(c.row, c.col)
                 wsc = Board.wordscore(c.row, c.col)
-                sc += sum(Alphabet.scores[tile] for tile in cross)
+                sc += sum(scores[tile] for tile in cross)
                 total += sc * wsc
         # Add the bingo bonus of 50 points for playing all (seven) tiles
         if numcovers == Rack.MAX_TILES:
@@ -1019,11 +1036,11 @@ class ExchangeMove:
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"EXCH " + self._tiles, 0)
 
-    def details(self):
+    def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
         return [] # No tiles
 
-    def score(self, board):
+    def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # An exchange move does not affect the score
         return 0
@@ -1054,7 +1071,7 @@ class PassMove:
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"PASS", 0)
 
-    def details(self):
+    def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
         return [] # No tiles
 
@@ -1063,7 +1080,7 @@ class PassMove:
         # Always legal
         return Error.LEGAL
 
-    def score(self, board):
+    def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # A pass move does not affect the score
         return 0
@@ -1093,7 +1110,7 @@ class ResignMove:
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"RSGN", - self._forfeited_points)
 
-    def details(self):
+    def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
         return [] # No tiles
 
@@ -1102,7 +1119,7 @@ class ResignMove:
         # Always legal
         return Error.LEGAL
 
-    def score(self, board):
+    def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # A resignation loses all points
         return - self._forfeited_points

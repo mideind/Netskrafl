@@ -214,7 +214,7 @@ class Axis:
                     query += below
                 if len(query) > 1:
                     # Nontrivial cross-check: Query the word database for words that fit this pattern
-                    matches = Wordbase.dawg().find_matches(query, False) # Don't need a sorted result
+                    matches = Wordbase.dawg().find_matches(query, sort = False) # Don't need a sorted result
                     bits = 0
                     if matches:
                         cix = 0 if not above else len(above)
@@ -700,7 +700,7 @@ class AutoPlayer:
     def _score_candidates(self):
         """ Calculate the score of each candidate """
 
-        scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
+        scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
             """ Sort moves first by descending score;
@@ -829,7 +829,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # few and weak candidates
 
         # Calculate the score of each candidate
-        scored_candidates = [(m, m.score(self._board)) for m in self._candidates]
+        scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
             # Sort moves first by descending score;
@@ -879,7 +879,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print(u"Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
-            teststate = State(copy = self._state) # Copy constructor
+            teststate = State(tileset = None, copy = self._state) # Copy constructor
             teststate.apply_move(m)
 
             countermoves = list()

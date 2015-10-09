@@ -14,91 +14,14 @@
 
 from functools import reduce
 
+
 class Alphabet:
 
     """ This implementation of the Alphabet class encapsulates particulars of the Icelandic
-        language and Scrabble rules. Other languages can be supported by modifying
-        or subclassing this class.
+        language. Other languages can be supported by modifying or subclassing this class.
     """
 
-    # Dictionary of Scrabble letter scores
-
-    scores = {
-        u'a': 1,
-        u'á': 4,
-        u'b': 6,
-        u'd': 4,
-        u'ð': 2,
-        u'e': 1,
-        u'é': 6,
-        u'f': 3,
-        u'g': 2,
-        u'h': 3,
-        u'i': 1,
-        u'í': 4,
-        u'j': 5,
-        u'k': 2,
-        u'l': 2,
-        u'm': 2,
-        u'n': 1,
-        u'o': 3,
-        u'ó': 6,
-        u'p': 8,
-        u'r': 1,
-        u's': 1,
-        u't': 1,
-        u'u': 1,
-        u'ú': 8,
-        u'v': 3,
-        u'x': 10,
-        u'y': 7,
-        u'ý': 9,
-        u'þ': 4,
-        u'æ': 5,
-        u'ö': 7,
-        u'?': 0
-    }
-
-    # Tiles in initial bag, with frequencies
-    bag_tiles = [
-        (u"a", 10),
-        (u"á", 2),
-        (u"b", 1),
-        (u"d", 2),
-        (u"ð", 5),
-        (u"e", 6),
-        (u"é", 1),
-        (u"f", 3),
-        (u"g", 4),
-        (u"h", 2),
-        (u"i", 8),
-        (u"í", 2),
-        (u"j", 1),
-        (u"k", 3),
-        (u"l", 3),
-        (u"m", 3),
-        (u"n", 8),
-        (u"o", 3),
-        (u"ó", 1),
-        (u"p", 1),
-        (u"r", 7),
-        (u"s", 6),
-        (u"t", 5),
-        (u"u", 6),
-        (u"ú", 1),
-        (u"v", 2),
-        (u"x", 1),
-        (u"y", 1),
-        (u"ý", 1),
-        (u"þ", 1),
-        (u"æ", 1),
-        (u"ö", 1),
-        (u"?", 2)] # Blank tiles
-
-    # Number of tiles in bag
-    BAG_SIZE = sum(n for letter, n in bag_tiles)
-
-    # Sort ordering of Icelandic letters allowed in Scrabble
+    # Sort ordering of allowed Icelandic letters
     order = u'aábdðeéfghiíjklmnoóprstuúvxyýþæö'
     # Upper case version of the order string
     upper = u'AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ'
@@ -117,13 +40,6 @@ class Alphabet:
     _lcmap = None # Case sensitive
     _lcmap_nocase = None # Case insensitive
 
-
-    @staticmethod
-    def score(tiles):
-        """ Return the net (plain) score of the given tiles """
-        if not tiles:
-            return 0
-        return sum([Alphabet.scores[tile] for tile in tiles])
 
     @staticmethod
     def bit_pattern(word):
@@ -174,11 +90,6 @@ class Alphabet:
         lcount = [a.count(c) - b.count(c) for c in Alphabet.all_tiles]
         return u''.join([Alphabet.all_tiles[ix] * lcount[ix]
             for ix in range(len(lcount)) if lcount[ix] > 0])
-
-    @staticmethod
-    def full_bag():
-        """ Return a full bag of tiles """
-        return u''.join([tile * count for (tile, count) in Alphabet.bag_tiles])
 
     @staticmethod
     def format_timestamp(ts, format = None):
@@ -238,4 +149,190 @@ class Alphabet:
 
 # Initialize the locale collation (sorting) map
 Alphabet._init()
+
+
+class TileSet(object):
+
+    """ Abstract base class for tile sets. Concrete classes are found below. """
+
+    @classmethod
+    def score(cls, tiles):
+        """ Return the net (plain) score of the given tiles """
+        if not tiles:
+            return 0
+        return sum([cls.scores[tile] for tile in tiles])
+
+    @classmethod
+    def full_bag(cls):
+        """ Return a full bag of tiles """
+        if not hasattr(cls, "_full_bag"):
+            # Cache the bag
+            cls._full_bag = u''.join([tile * count for (tile, count) in cls.bag_tiles])
+        return cls._full_bag
+
+    @classmethod
+    def num_tiles(cls):
+        return sum(n for letter, n in cls.bag_tiles)
+
+
+class OldTileSet(TileSet):
+
+    # Letter scores in the old (original) Icelandic tile set
+
+    scores = {
+        u'a': 1,
+        u'á': 4,
+        u'b': 6,
+        u'd': 4,
+        u'ð': 2,
+        u'e': 1,
+        u'é': 6,
+        u'f': 3,
+        u'g': 2,
+        u'h': 3,
+        u'i': 1,
+        u'í': 4,
+        u'j': 5,
+        u'k': 2,
+        u'l': 2,
+        u'm': 2,
+        u'n': 1,
+        u'o': 3,
+        u'ó': 6,
+        u'p': 8,
+        u'r': 1,
+        u's': 1,
+        u't': 1,
+        u'u': 1,
+        u'ú': 8,
+        u'v': 3,
+        u'x': 10,
+        u'y': 7,
+        u'ý': 9,
+        u'þ': 4,
+        u'æ': 5,
+        u'ö': 7,
+        u'?': 0
+    }
+
+    # Tiles in initial bag, with frequencies
+
+    bag_tiles = [
+        (u"a", 10),
+        (u"á", 2),
+        (u"b", 1),
+        (u"d", 2),
+        (u"ð", 5),
+        (u"e", 6),
+        (u"é", 1),
+        (u"f", 3),
+        (u"g", 4),
+        (u"h", 2),
+        (u"i", 8),
+        (u"í", 2),
+        (u"j", 1),
+        (u"k", 3),
+        (u"l", 3),
+        (u"m", 3),
+        (u"n", 8),
+        (u"o", 3),
+        (u"ó", 1),
+        (u"p", 1),
+        (u"r", 7),
+        (u"s", 6),
+        (u"t", 5),
+        (u"u", 6),
+        (u"ú", 1),
+        (u"v", 2),
+        (u"x", 1),
+        (u"y", 1),
+        (u"ý", 1),
+        (u"þ", 1),
+        (u"æ", 1),
+        (u"ö", 1),
+        (u"?", 2)] # Blank tiles
+
+# Number of tiles in bag
+OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
+
+
+class NewTileSet(TileSet):
+
+    # Scores in new Icelandic tile set
+
+    scores = {
+        u'a': 1,
+        u'á': 3,
+        u'b': 5,
+        u'd': 5,
+        u'ð': 2,
+        u'e': 3,
+        u'é': 7,
+        u'f': 3,
+        u'g': 3,
+        u'h': 4,
+        u'i': 1,
+        u'í': 4,
+        u'j': 6,
+        u'k': 2,
+        u'l': 2,
+        u'm': 2,
+        u'n': 1,
+        u'o': 5,
+        u'ó': 3,
+        u'p': 5,
+        u'r': 1,
+        u's': 1,
+        u't': 2,
+        u'u': 2,
+        u'ú': 4,
+        u'v': 5,
+        u'x': 10,
+        u'y': 6,
+        u'ý': 5,
+        u'þ': 7,
+        u'æ': 4,
+        u'ö': 6,
+        u'?': 0
+    }
+
+    # New Icelandic tile set
+
+    bag_tiles = [
+        (u"a", 11),
+        (u"á", 2),
+        (u"b", 1),
+        (u"d", 1),
+        (u"ð", 4),
+        (u"e", 3),
+        (u"é", 1),
+        (u"f", 3),
+        (u"g", 3),
+        (u"h", 1),
+        (u"i", 7),
+        (u"í", 1),
+        (u"j", 1),
+        (u"k", 4),
+        (u"l", 5),
+        (u"m", 3),
+        (u"n", 7),
+        (u"o", 1),
+        (u"ó", 2),
+        (u"p", 1),
+        (u"r", 8),
+        (u"s", 7),
+        (u"t", 6),
+        (u"u", 6),
+        (u"ú", 1),
+        (u"v", 1),
+        (u"x", 1),
+        (u"y", 1),
+        (u"ý", 1),
+        (u"þ", 1),
+        (u"æ", 2),
+        (u"ö", 1),
+        (u"?", 2)] # Blank tiles
+
+# Number of tiles in bag
+NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 

@@ -15,14 +15,14 @@
 
 {% if move_number > 0 %}
 {% for m in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.move.summary(state.board()) -%}
+{%- set coord, tiles, score = m.move.summary(state) -%}
       newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
       highlightNewestMove(colorOf({{ m.player }}));
       $("div.score").text("{{ score }}");
 {% endfor %}
 {% endif %}
 
-{% for tile, score in state.player_rack().details() %}
+{% for tile, score in state.rack_details(state.player_to_move()) %}
       placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
 {%- endfor -%}
    }
@@ -31,21 +31,26 @@
       /* Show the most recent move in the player's color */
 {% if move_number > 0 %}
 {% for m in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.move.summary(state.board()) -%}
+{%- set coord, tiles, score = m.move.summary(state) -%}
       appendBestHeader({{ move_number }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
       /* Show the list of best moves */
 {% if best_moves != None %}
 {% for m, sc in best_moves %}
-{%- set coord, tiles, score = m.summary(state.board()) -%}
+{%- set coord, tiles, score = m.summary(state) -%}
       appendBestMove({{ player_index }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% endif %}
    }
 
-   function initBag(bag) {
+   function initBag() {
       updateBag("{{ state.display_bag(player_index) }}");
+   }
+
+   function gameUsesNewBag() {
+      /* Return true if the game uses the new bag */
+      return {{ "true" if game.new_bag() else "false" }};
    }
 
    function localPlayer() {
@@ -69,17 +74,19 @@
 <div class="rightcol">
    <div class="heading">
       <h3 class="playerleft">
+      <div class="robot-btn left">
 {% if game.is_autoplayer(0) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(0) }}
-      </h3>
+      </div></h3>
       <h3 class="playerright">
+      <div class="robot-btn right">
 {% if game.is_autoplayer(1) %}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
       {{ game.player_nickname(1) }}
-      </h3>
+      </div></h3>
       <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ state.scores()[1] }}</h3>
    </div>
@@ -119,18 +126,25 @@
 <div class="gamestats" onclick="navFirst()">
 <div style="position:relative;width:100%">
 <h3 class="playerleft" style="width:50%">
+<div class="robot-btn left">
 {%- if game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-{{ game.player_nickname(0) }}</h3>
+{{ game.player_nickname(0) }}</div></h3>
 <h3 class="playerright" style="width:50%">
+<div class="robot-btn right">
 {%- if game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-{{ game.player_nickname(1) }}</h3>
+{{ game.player_nickname(1) }}</div></h3>
 </div>
 <div id="gamestarted">
 <p>Viðureignin hófst <span id="gamestart"></span><br>og henni lauk <span id="gameend"></span></p>
+{% if game.new_bag() %}
+<p>Leikið var með <b>nýja</b> skraflpokanum.</p>
+{% else %}
+<p>Leikið var með <b>eldri</b> (upphaflega) skraflpokanum.</p>
+{% endif %}
 </div>
 <div class="statscol" style="clear:left">
 <p>Fjöldi leikja: <span id="moves0"></span></p>
@@ -223,7 +237,12 @@ function closeReview() {
 }
 
 function initReview(jQuery) {
+
    /* Called when the page is displayed or refreshed */
+
+   if (gameUsesNewBag())
+      // Switch tile scores to the new bag
+      TILESCORE = NEW_TILESCORE;
    placeTiles();
    initMoveList();
    initBag();

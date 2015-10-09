@@ -187,6 +187,9 @@
 .glyphicon-resize-small:before {
    content: "\E215";
 }
+.glyphicon-shopping-bag:before {
+   content: "\E351";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -293,6 +296,10 @@ table#bag td {
    background-color: @tile;
    overflow: hidden;
    cursor: default;
+}
+
+table#bag.new td {
+   background-color: @double-letter;
 }
 
 table#bag.empty td {
@@ -1117,10 +1124,13 @@ div #gamestarted {
    text-align: center;
    position:relative;
    top: 42px;
+   margin-bottom: 24px;
 }
 
 #gamestarted p {
    font-style: italic;
+   margin-top: 4px;
+   margin-bottom: 8px;
 }
 
 .humancolor {
@@ -2785,10 +2795,10 @@ div#user-dialog {
 
 div#user-form {
    .std-form;
-   top: 35px;
+   top: 28px;
    right: 64px;
    width: 736px;
-   height: 634px;
+   height: 660px;
 }
 
 div#user-logout {

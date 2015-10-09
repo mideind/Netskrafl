@@ -439,7 +439,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    function placeTiles() {
       /* Initialize the board tiles */
 {% for m in game.moves %}
-{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+{%- set coord, tiles, score = m.move.summary(game.state) %}
       newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
 {% endfor %}
 
@@ -461,7 +461,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    function initMoveList() {
       /* Initialize the move list */
 {% for m in game.moves %}
-{%- set coord, tiles, score = m.move.summary(game.state.board()) %}
+{%- set coord, tiles, score = m.move.summary(game.state) %}
       appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 {% if game.is_over() %}
@@ -471,7 +471,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% endif %}
    }
 
-   function initBag(bag) {
+   function initBag() {
       /* Initialize the bag */
 {% if game.is_over() %}
       updateBag("{{ game.state.bag().contents() }}");
@@ -519,6 +519,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    function gameIsFairplay() {
       /* Return true if the game is a fairplay game */
       return {{ "true" if game.get_fairplay() else "false" }};
+   }
+
+   function gameUsesNewBag() {
+      /* Return true if the game uses the new bag */
+      return {{ "true" if game.new_bag() else "false" }};
    }
 
    /* Array of supported emoticons in chat */

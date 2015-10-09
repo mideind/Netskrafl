@@ -12,18 +12,29 @@
 var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = 15;
 var RACK_SIZE = 7;
-var BAG_SIZE = 104; // Number of tiles in bag at start of game
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
 var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 
-var TILESCORE = {
+// Original Icelandic bag
+var OLD_TILESCORE = {
    'a': 1, 'á': 4, 'b': 6, 'd': 4, 'ð': 2, 'e': 1, 'é': 6, 'f': 3, 'g': 2,
    'h': 3, 'i': 1, 'í': 4, 'j': 5, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 3,
    'ó': 6, 'p': 8, 'r': 1, 's': 1, 't': 1, 'u': 1, 'ú': 8, 'v': 3, 'x': 10,
    'y': 7, 'ý': 9, 'þ': 4, 'æ': 5, 'ö': 7, '?': 0
 };
+
+// New Icelandic bag
+var NEW_TILESCORE = {
+   'a': 1, 'á': 3, 'b': 5, 'd': 5, 'ð': 2, 'e': 3, 'é': 7, 'f': 3, 'g': 3,
+   'h': 4, 'i': 1, 'í': 4, 'j': 6, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 5,
+   'ó': 3, 'p': 5, 'r': 1, 's': 1, 't': 2, 'u': 2, 'ú': 4, 'v': 5, 'x': 10,
+   'y': 6, 'ý': 5, 'þ': 7, 'æ': 4, 'ö': 6, '?': 0
+};
+
+// Default to the old bag
+var TILESCORE = OLD_TILESCORE;
 
 var WORDSCORE = new Array(
    "311111131111113",
@@ -1546,7 +1557,15 @@ function updateBag(bag) {
    var ix = 0;
    // If 7 or fewer unseen tiles, the bag is empty and they're all in the opponent's
    // rack; display the tiles in the opponent's color
-   $("#bag").toggleClass("empty", lenbag <= RACK_SIZE);
+   if (lenbag <= RACK_SIZE) {
+      $("#bag").toggleClass("new", false);
+      $("#bag").toggleClass("empty", true);
+   }
+   else
+   if (gameUsesNewBag()) {
+      // Indicate visually that we're using the new bag
+      $("#bag").toggleClass("new", true);
+   }
    while (lenbag > 0) {
       /* Rows */
       var str = "<tr>";
@@ -2022,7 +2041,7 @@ function populateGames(json) {
       var winLose = item.sc0 < item.sc1 ? " losing" : "";
       var title = "Staðan er " + item.sc0 + ":" + item.sc1;
       var tileCount = "<div class='tilecount trans'><div class='tc" + winLose + "' style='width:" +
-         Math.round(item.tile_count * 100 / BAG_SIZE).toString() + "%'>" + opp + "</div></div>";
+         item.tile_count.toString() + "%'>" + opp + "</div></div>";
       var str = "<div class='games-item' title='" + title + "'>" +
          "<a href='" + item.url + "'>" +
          "<div class='at-top-left'>" +
@@ -2588,6 +2607,10 @@ function initSkrafl(jQuery) {
    if (igt.duration > 0)
       // This is a timed game: move things around and show the clock
       showClock();
+
+   if (gameUsesNewBag())
+      // Switch tile scores to the new bag
+      TILESCORE = NEW_TILESCORE;
 
    placeTiles();
    initMoveList(); // Sets gameOver to true if the game is over
