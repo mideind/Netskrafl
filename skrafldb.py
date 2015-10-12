@@ -474,6 +474,7 @@ class GameModel(ndb.Model):
                 my_turn = my_turn,
                 sc0 = sc0,
                 sc1 = sc1,
+                prefs = gm.prefs,
                 tile_count = tc)
 
         for gm in q.fetch(max_len):
@@ -620,7 +621,7 @@ class ChallengeModel(ndb.Model):
         q = cls.query(ancestor = k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
-            """ Map a favorite relation into a list of users """
+            """ Map an issued challenge to a tuple of useful info """
             id0 = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
 
@@ -638,7 +639,7 @@ class ChallengeModel(ndb.Model):
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm):
-            """ Map a favorite relation into a list of users """
+            """ Map a received challenge to a tuple of useful info """
             p0 = cm.key.parent()
             id0 = None if p0 is None else p0.id()
             return (id0, cm.prefs, cm.timestamp)

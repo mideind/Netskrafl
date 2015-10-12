@@ -41,7 +41,10 @@
       --><span class="list-opp">Andstæðingur</span><!--
       --><span class="list-info-hdr">Ferill</span><!--
       --><span class="list-scorehdr">Staða</span><!--
-      --><span class="list-tc">Framvinda</span>
+      --><span class="list-tc">Framvinda</span><!--
+      --><span class="list-newbag"><!--
+         --><span title="Nýi pokinn" class='glyphicon glyphicon-shopping-bag grayed'></span><!--
+      --></span>
       </div>
 
       <!-- Game list will be populated by populateGameList() -->
@@ -82,7 +85,10 @@
       --><span class="list-nick">Áskorandi</span><!--
       --><span class="list-chall">Hvernig</span><!--
       --><span class="list-info-hdr">Ferill</span><!--
-   --></div>
+      --><span class="list-newbag"><!--
+         --><span title="Nýi pokinn" class='glyphicon glyphicon-shopping-bag grayed'></span><!--
+      --></span>
+      </div>
 
       <!-- Challenge lists will be populated by populateChallengeList() below -->
       <div id="chall-received"></div>
@@ -99,7 +105,10 @@
       --><span class="list-nick">Andstæðingur</span><!--
       --><span class="list-chall">Hvernig</span><!--
       --><span class="list-info-hdr">Ferill</span><!--
-   --></div>
+      --><span class="list-newbag"><!--
+         --><span title="Nýi pokinn" class='glyphicon glyphicon-shopping-bag grayed'></span><!--
+      --></span>
+      </div>
 
       <div id="chall-sent"></div>
 
@@ -195,6 +204,9 @@
       --><span class="list-fullname">Nafn og merki</span><!--
       --><span class="list-human-elo" id="usr-list-elo">Elo</span><!--
       --><span class="list-info-hdr" id="usr-list-info">Ferill</span><!--
+      --><span class="list-newbag"><!--
+         --><span title="Nýi pokinn" class='glyphicon glyphicon-shopping-bag grayed'></span><!--
+      --></span><!--
    --></div>
 
       <div id="elo-hdr" class="listitem listheader">
@@ -212,10 +224,9 @@
       --><span class="list-games" title="Fjöldi viðureigna"><span class='glyphicon glyphicon-th'></span></span><!--
       --><span class="list-ratio" title="Vinningshlutfall"><span class='glyphicon glyphicon-bookmark'></span></span><!--
       --><span class="list-avgpts" title="Meðalstigafjöldi"><span class='glyphicon glyphicon-dashboard'></span></span><!--
-      --><span class="list-info-hdr">Ferill</span>
-         <!-- Toggle for type of Elo list - all or human-only -->
-         <br>
-         <div id="elo-toggler" class="toggler" title="Með þjörkum eða án">
+      --><span class="list-info-hdr">Ferill</span><!--
+         Toggle for type of Elo list - all or human-only
+      --><div id="elo-toggler" class="toggler" title="Með þjörkum eða án">
             <div class="option x-small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
          --><div class="option x-small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
          </div>
@@ -335,9 +346,17 @@
 
    </div>
 
-   <div class="hidden" id="chall-fairplay">Báðir leikmenn lýsa því yfir að þeir skrafla
-   <strong>án stafrænna hjálpartækja</strong>
-   af nokkru tagi.</div>
+   <div class="hidden" id="chall-fairplay">Báðir leikmenn lýsa því yfir að
+   þeir skrafla <strong>án stafrænna hjálpartækja</strong> af nokkru tagi.</div>
+
+   <div class="hidden" id="chall-newbag">
+   <table>
+   <tr>
+   <td><span class='glyphicon glyphicon-shopping-bag'></span></td>
+   <td>Viðureign með<br><strong>nýja skraflpokanum</strong></td>
+   </tr>
+   </table>
+   </div>
 
    <!-- Cancel button -->
    <div tabindex="7" class="modal-close" id="chall-cancel" title="Hætta við"
@@ -417,6 +436,11 @@ function userId() {
 function fairPlay() {
    /* The fair-play status of the logged in user */
    return {{ "true" if user.fairplay() else "false" }};
+}
+
+function newBag() {
+   /* The new bag preference of the logged in user */
+   return {{ "true" if user.new_bag() else "false" }};
 }
 
 function newgameUrl(opp, reversed) {

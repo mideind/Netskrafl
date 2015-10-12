@@ -193,6 +193,10 @@ def _userlist(range_from, range_to):
         """ Return a string representation of an Elo score, or a hyphen if none """
         return unicode(elo) if elo else u"-"
 
+    # We will be returning a list of human players
+    cuser = User.current()
+    cuid = None if cuser is None else cuser.id()
+
     if range_from == u"robots" and not range_to:
         # Return the list of available autoplayers
         for r in Game.AUTOPLAYERS:
@@ -204,15 +208,12 @@ def _userlist(range_from, range_to):
                 "fav": False,
                 "chall": False,
                 "fairplay": False, # The robots don't play fair ;-)
+                "newbag": cuser is not None and cuser.new_bag(),
                 "ready": True, # The robots are always ready for a challenge
                 "ready_timed": False # Timed games are not available for robots
             })
         # That's it; we're done (no sorting required)
         return result
-
-    # We will be returning a list of human players
-    cuser = User.current()
-    cuid = None if cuser is None else cuser.id()
 
     # Generate a list of challenges issued by this user
     challenges = set()
@@ -305,12 +306,12 @@ def _userlist(range_from, range_to):
         cache_range = "3:" + (range_from or "") + "-" + (range_to or "")
 
         # Start by looking in the cache
-        i = memcache.get(cache_range, namespace="userlist")
+        i = memcache.get(cache_range, namespace = "userlist")
         if i is None:
             # Not found: do an unlimited query
             i = list(UserModel.list(range_from, range_to, max_len = 0))
             # Store the result in the cache with a lifetime of 5 minutes
-            memcache.set(cache_range, i, time=5 * 60, namespace="userlist")
+            memcache.set(cache_range, i, time = 5 * 60, namespace = "userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
@@ -363,6 +364,9 @@ def _gamelist():
         opp = g["opp"] # User id of opponent
         u = User.load(opp)
         nick = u.nickname()
+        prefs = g.get("prefs", None)
+        fairplay = Game.fairplay_from_prefs(prefs)
+        newbag = Game.new_bag_from_prefs(prefs)
         result.append({
             "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
@@ -375,8 +379,9 @@ def _gamelist():
             "my_turn": False,
             "overdue": False,
             "zombie": True,
-            "fairplay": u.fairplay(),
-            "tile_count" : 100 # All tiles accounted for
+            "fairplay": fairplay,
+            "newbag": newbag,
+            "tile_count" : 100 # All tiles (100%) accounted for
         })
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
     result.sort(key = lambda x: x["ts"], reverse = True)
@@ -390,9 +395,10 @@ def _gamelist():
         opp = g["opp"] # User id of opponent
         ts = g["ts"]
         overdue = False
-        fairplay = False
         prefs = g.get("prefs", None)
         tileset = Game.tileset_from_prefs(prefs)
+        fairplay = Game.fairplay_from_prefs(prefs)
+        newbag = Game.new_bag_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -402,7 +408,6 @@ def _gamelist():
             u = User.load(opp)
             nick = u.nickname()
             fullname = u.full_name()
-            fairplay = u.fairplay()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
@@ -423,6 +428,7 @@ def _gamelist():
             "overdue": overdue,
             "zombie": False,
             "fairplay": fairplay,
+            "newbag": newbag,
             "tile_count" : int(g["tile_count"] * 100 / tileset.num_tiles())
         })
     return result
@@ -462,6 +468,8 @@ def _rating(kind):
             fullname = nick
             chall = False
             fairplay = False
+            # Robots have the same new bag preference as the user
+            newbag = cuser and cuser.new_bag()
         else:
             usr = User.load(uid)
             if usr is None:
@@ -473,6 +481,7 @@ def _rating(kind):
             fullname = usr.full_name()
             chall = uid in challenges
             fairplay = usr.fairplay()
+            newbag = usr.new_bag()
             inactive = usr.is_inactive()
 
         games = ru["games"]
@@ -494,6 +503,7 @@ def _rating(kind):
             "fullname": fullname,
             "chall": chall,
             "fairplay": fairplay,
+            "newbag": newbag,
             "inactive": inactive,
 
             "elo": ru["elo"],
@@ -935,17 +945,26 @@ def challenge():
 
     destuser = request.form.get('destuser', None)
     action = request.form.get('action', u"issue")
+
     duration = 0
     try:
         duration = int(request.form.get('duration', "0"))
     except:
         pass
+
     fairplay = False
     try:
         fp = request.form.get('fairplay', None)
-        fairplay = True if fp is not None and fp == u"true" else False
+        fairplay = fp is not None and fp == u"true"
     except:
         fairplay = False
+
+    newbag = False
+    try:
+        nb = request.form.get('newbag', None)
+        newbag = nb is not None and nb == u"true"
+    except:
+        newbag = False
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -955,7 +974,8 @@ def challenge():
 
     if destuser is not None:
         if action == u"issue":
-            user.issue_challenge(destuser, { "duration" : duration, "fairplay" : fairplay })
+            user.issue_challenge(destuser,
+                { "duration" : duration, "fairplay" : fairplay, "newbag" : newbag })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":
@@ -1285,14 +1305,8 @@ def wait():
 
     # Get the opponent id
     opp = request.args.get("opp", None)
-    if opp is None:
+    if opp is None or opp.startswith(u"robot-"):
         return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
-
-    if opp[0:6] == u"robot-":
-        # Start a new game against an autoplayer (robot)
-        robot_level = int(opp[6:])
-        game = Game.new(user.id(), None, robot_level)
-        return redirect(url_for("board", game = game.id()))
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
@@ -1339,7 +1353,7 @@ def newgame():
     if opp is None:
         return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
 
-    if opp[0:6] == u"robot-":
+    if opp.startswith(u"robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it

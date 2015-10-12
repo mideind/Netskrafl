@@ -114,23 +114,6 @@ function submitForm() {
          <div class="subexplain">Stillir hvort <strong>minnismiði</strong> um margföldunargildi reita er sýndur við borðið</div>
       </div>
 
-      <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
-         <input type="checkbox" name="fairplay" id="fairplay"
-            class="checkbox fairplay" value="True"
-{% if uf.fairplay %}
-            checked
-{% endif %}
-         ></input>
-         <div id="fairplay-toggler" class="toggler" tabindex="7">
-            <div class="option" id="opt1">&nbsp;</div><!--
-         --><div class="option" id="opt2"><span class="glyphicon glyphicon-edit"></span></div>
-         </div>
-         <div class="subexplain">Með því að velja þessa merkingu lýsir þú
-         því yfir að þú
-         skraflir við aðra leikmenn <strong>án stafrænna hjálpartækja</strong>
-         af nokkru tagi</span>
-      </div>
-
       <div class="dialog-spacer"><span class="caption">Nýi skraflpokinn:</span>
          <input type="checkbox" name="newbag" id="newbag"
             class="checkbox newbag" value="True"
@@ -138,12 +121,28 @@ function submitForm() {
             checked
 {% endif %}
          ></input>
-         <div id="newbag-toggler" class="toggler" tabindex="8">
+         <div id="newbag-toggler" class="toggler" tabindex="7">
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-shopping-bag"></span></div>
          </div>
          <div class="subexplain">Gefur til kynna hvort þú sért reiðubúin(n) að
-         skrafla með nýja íslenska skraflpokanum</span>
+         skrafla með <strong>nýja íslenska skraflpokanum</strong></span>
+      </div>
+
+      <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
+         <input type="checkbox" name="fairplay" id="fairplay"
+            class="checkbox fairplay" value="True"
+{% if uf.fairplay %}
+            checked
+{% endif %}
+         ></input>
+         <div id="fairplay-toggler" class="toggler" tabindex="8">
+            <div class="option" id="opt1">&nbsp;</div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-edit"></span></div>
+         </div>
+         <div class="subexplain">Með því að velja þessa merkingu lýsir þú því yfir að þú
+         skraflir við aðra leikmenn <strong>án stafrænna hjálpartækja</strong>
+         af nokkru tagi</span>
       </div>
 
    </form>

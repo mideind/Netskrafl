@@ -739,6 +739,11 @@ class Game:
             self._preferences = { }
         self._preferences[pref] = value
 
+    @staticmethod
+    def fairplay_from_prefs(prefs):
+        """ Returns the fairplay commitment specified by the given game preferences """
+        return prefs is not None and prefs.get(u"fairplay", False)
+
     def get_fairplay(self):
         """ True if this was originated as a fairplay game """
         return self.get_pref(u"fairplay") or False
@@ -758,8 +763,7 @@ class Game:
     @staticmethod
     def new_bag_from_prefs(prefs):
         """ Returns true if the game preferences specify a new bag """
-        new_bag = prefs.get(u"newbag", None) if prefs else None
-        return False if new_bag is None else new_bag
+        return prefs is not None and prefs.get(u"newbag", False)
 
     @staticmethod
     def tileset_from_prefs(prefs):

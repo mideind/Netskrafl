@@ -7,8 +7,6 @@
 
 */
 
-var BAG_SIZE = 104; // Number of tiles in bag at start of game
-
 var entityMap = {
    "&": "&amp;",
    "<": "&lt;",
@@ -132,7 +130,7 @@ function markChallenge(ev) {
       }
       /* New challenge: show dialog */
       showChallenge(elem.id, ev.data.userid, ev.data.nick,
-         ev.data.fullname, ev.data.fairplay);
+         ev.data.fullname, ev.data.fairplay, ev.data.newbag);
    }
    else
       serverQuery("/challenge",
@@ -347,6 +345,11 @@ function populateUserList(json) {
       // Fair play commitment
       if (item.fairplay)
          ready += "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> ";
+      // New bag preference
+      var newbag = "";
+      if (item.newbag)
+         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
+      newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
@@ -357,6 +360,7 @@ function populateUserList(json) {
          elo +
          aclose +
          info +
+         newbag +
          "</div>";
       $("#userlist").append(str);
       // Associate a click handler with the info button, if present
@@ -368,7 +372,7 @@ function populateUserList(json) {
       // Associate a click handler with the challenge icon
       $("#" + chId).click(
          { userid: item.userid, nick: item.nick, fullname: item.fullname,
-            fairplay: item.fairplay },
+            fairplay: item.fairplay, newbag: item.newbag },
          markChallenge
       );
    }
@@ -448,7 +452,7 @@ function populateEloList(json) {
          // if this is not the logged-in user himself
          $("#" + chId).click(
             { userid: item.userid, nick: item.nick, fullname: item.fullname,
-               fairplay: item.fairplay },
+               fairplay: item.fairplay, newbag: item.newbag },
             markChallenge
          );
    }
@@ -596,6 +600,10 @@ function populateGameList(json) {
       if (item.oppid !== null) {
          info = "<span id='gmusr" + i + "' class='usr-info' title='Skoða feril'></span>";
       }
+      // Is the game using the new bag?
+      var newbag = "";
+      if (item.newbag)
+         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
@@ -609,6 +617,7 @@ function populateGameList(json) {
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "<span class='list-tc'>" + tileCount + "</span>" +
+         "<span class='list-newbag'>" + newbag + "</span>" +
          "</div>";
       $("#gamelist").append(str);
       // Enable user track record button
@@ -906,6 +915,12 @@ function populateChallengeList(json) {
       if (item.prefs.fairplay)
          fairplay = "<span class='fairplay-btn' title='Án hjálpartækja'></span> ";
 
+      // New bag preference
+      var newbag = "";
+      if (item.prefs.newbag)
+         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
+      newbag = "<span class='list-newbag'>" + newbag + "</span>";
+
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-icon'>" + icon + "</span>" +
          (item.received ? ("<a href='#' id='" + accId + "'>") : "") +
@@ -916,7 +931,9 @@ function populateChallengeList(json) {
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
          info +
+         newbag +
          "</div>";
+
       if (item.received) {
          $("#chall-received").append(str);
          // Route a click on the acceptance link
@@ -938,9 +955,11 @@ function populateChallengeList(json) {
          }
          countSent++;
       }
+
       // Enable mark challenge button (to decline or retract challenges)
       $("#" + chId).click(
-         { userid: item.userid, nick: item.opp, fullname: item.fullname, fairplay: false },
+         { userid: item.userid, nick: item.opp, fullname: item.fullname,
+            fairplay: false, newbag: false },
          markChallAndRefresh
       );
       // Enable user track record button
@@ -999,7 +1018,7 @@ function markOnline(json) {
    }
 }
 
-function showChallenge(elemid, userid, nick, fullname, fairplayOpp) {
+function showChallenge(elemid, userid, nick, fullname, fairplayOpp, newbagOpp) {
    /* Show the challenge dialog */
    $("#chall-nick").text(nick);
    $("#chall-fullname").text(fullname);
@@ -1008,9 +1027,14 @@ function showChallenge(elemid, userid, nick, fullname, fairplayOpp) {
    // This is a fair play challenge if the issuing user and the
    // opponent are both marked as consenting to fair play
    var fairplayChallenge = fairplayOpp && fairPlay();
+   // This is a new bag challenge if the issuing user and the
+   // opponent both want the new bag
+   var newbagChallenge = newbagOpp && newBag();
    $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
+   $("#chall-newbag").toggleClass("hidden", !newbagChallenge);
    $("#chall-dialog")
-      .data("param", { elemid: elemid, userid: userid, fairplay: fairplayChallenge })
+      .data("param", { elemid: elemid, userid: userid,
+         fairplay: fairplayChallenge, newbag: newbagChallenge })
       .css("visibility", "visible");
    /* Launch a query to check whether the challenged user is online */
    serverQuery("/onlinecheck",
@@ -1043,7 +1067,8 @@ function okChallenge(ev) {
          destuser: param.userid,
          action: "issue",
          duration: duration,
-         fairplay: param.fairplay
+         fairplay: param.fairplay,
+         newbag: param.newbag
       },
       updateChallenges
    );

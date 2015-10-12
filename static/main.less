@@ -1858,15 +1858,15 @@ div.listheader {
 
 span.list-ts {
    display: inline-block;
-   width: 170px;
-   max-width: 170px;
+   width: 164px;
+   max-width: 164px;
    overflow: hidden;
 }
 
 span.list-chall {
    display: inline-block;
-   width: 325px;
-   max-width: 325px;
+   width: 315px;
+   max-width: 315px;
    overflow: hidden;
 }
 
@@ -1967,6 +1967,16 @@ span.list-overdue {
    overflow: hidden;
 }
 
+span.list-newbag {
+   display: inline-block;
+   font-size: 18px;
+   color: @double-letter;
+   width: 28px;
+   max-width: 28px;
+   margin-left: 14px;
+   overflow: hidden;
+}
+
 span.list-win {
    display: inline-block;
    font-size: 18px;
@@ -1996,15 +2006,15 @@ span.list-opp {
 
 span.list-fullname {
    display: inline-block;
-   width: 425px;
-   max-width: 425px;
+   width: 400px;
+   max-width: 400px;
    overflow: hidden;
 }
 
 span.list-fullname-robot {
    display: inline-block;
-   width: 470px;
-   max-width: 470px;
+   width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
+   max-width: 486px;
    overflow: hidden;
    font-style: italic;
 }
@@ -2096,8 +2106,8 @@ div#elo-hdr span {
 
 div#elo-toggler {
    display: inline-block;
-   position: relative;
-   top: -42px;
+   position: absolute;
+   bottom: 0px;
    left: 284px;
    z-index: 10;
 }
@@ -2368,6 +2378,7 @@ p span.glyphicon.glyphicon-flag,
 .listheader span.glyphicon.glyphicon-hand-right.grayed,
 .listheader span.glyphicon.glyphicon-thumbs-down.grayed,
 .listheader span.glyphicon.glyphicon-flag.grayed,
+.listheader span.glyphicon.glyphicon-shopping-bag.grayed,
 #gamelist span.glyphicon.glyphicon-flag.grayed,
 #userlist span.glyphicon.glyphicon-star-empty,
 #userlist span.glyphicon.glyphicon-hand-right.grayed {
@@ -2587,7 +2598,7 @@ div#own-stats {
    margin-top: 16px;
    margin-bottom: 24px;
    height: 48px;
-   width: 680px;
+   width: 600px;
    vertical-align: top;
 }
 
@@ -2651,10 +2662,10 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 55px;
+   top: 51px;
    right: 300px;
    width: 428px;
-   height: 620px;
+   height: 628px;
    padding-top: 12px; /* Override */
 }
 
@@ -2768,6 +2779,19 @@ div#chall-fairplay {
    padding-right: 52px;
    font-size: 14px;
    text-align: right;
+}
+
+div#chall-newbag {
+   margin-top: 28px;
+   padding-left: 6px;
+   padding-right: 152px;
+   font-size: 14px;
+   text-align: left;
+}
+
+div#chall-newbag td {
+   vertical-align: middle;
+   padding-right: 12px;
 }
 
 div.hidden {
