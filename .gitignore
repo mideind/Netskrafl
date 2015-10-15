@@ -26,6 +26,13 @@ static/netskrafl.min.js
 static/main.min.js
 static/wait.min.js
 
+# Python package folders required for AppEngine
+flask/
+werkzeug/
+jinja2/
+markupsafe/
+itsdangerous.py
+
 # Scratch work files
 templates/main-scratch.html
 profile.bin

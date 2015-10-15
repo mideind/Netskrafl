@@ -346,9 +346,8 @@ function populateUserList(json) {
       if (item.fairplay)
          ready += "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> ";
       // New bag preference
-      var newbag = "";
-      if (item.newbag)
-         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
+      var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
+         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -601,9 +600,8 @@ function populateGameList(json) {
          info = "<span id='gmusr" + i + "' class='usr-info' title='Skoða feril'></span>";
       }
       // Is the game using the new bag?
-      var newbag = "";
-      if (item.newbag)
-         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
+      var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
+         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
@@ -916,9 +914,8 @@ function populateChallengeList(json) {
          fairplay = "<span class='fairplay-btn' title='Án hjálpartækja'></span> ";
 
       // New bag preference
-      var newbag = "";
-      if (item.prefs.newbag)
-         newbag = "<span class='glyphicon glyphicon-shopping-bag' title='Nýi pokinn'></span>";
+      var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
+         (item.prefs.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
 
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
