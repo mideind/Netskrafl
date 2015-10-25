@@ -1,7 +1,7 @@
 /*
 
    Main.js
-   Client-side script for main.html, the main page
+   Client-side script for main.html, the main page of Netskrafl
 
    Author: Vilhjalmur Thorsteinsson, 2015
 
@@ -418,11 +418,15 @@ function populateEloList(json) {
       if (item.userid != userId()) {
          // Create a link to access user info
          info = "<span id='usr" + i + "' class='usr-info'></span>";
-         info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
       }
+      info = "<span class='list-info' title='Skoða feril'>" + info + "</span>";
       // Fair play commitment
       if (item.fairplay)
          nick = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + nick;
+      // New bag preference
+      var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
+         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+      newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
@@ -438,6 +442,7 @@ function populateEloList(json) {
          "<span class='list-ratio'>" + item.ratio + "%</span>" +
          "<span class='list-avgpts'>" + item.avgpts + "</span>" +
          info +
+         newbag +
          "</div>";
       $("#userlist").append(str);
       // Associate a click handler with the info button, if present

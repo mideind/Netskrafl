@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: refugee
+version: rebus
 runtime: python27
 api_version: 1
 threadsafe: true

@@ -19,8 +19,9 @@
    <ul>
       <li><a href="#tabs-1"><span class='glyphicon glyphicon-info-sign'></span>&nbsp;&nbsp;Hjálp</a></li>
       <li><a href="#tabs-3"><span class='glyphicon glyphicon-circle-question-mark'></span>&nbsp;&nbsp;Spurningar</a></li>
-      <li><a href="#tabs-2"><span class='glyphicon glyphicon-paperclip'></span>&nbsp;&nbsp;Tveggja stafa orð</a></li>
-      <li><a href="#tabs-4"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um Netskrafl</a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-paperclip'></span>&nbsp;&nbsp;2ja stafa orð</a></li>
+      <li><a href="#tabs-5"><span class='glyphicon glyphicon-shopping-bag'></span>&nbsp;&nbsp;Nýi pokinn</a></li>
+      <li><a href="#tabs-4"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um</a></li>
    </ul>
 
    <div id="tabs-1">
@@ -72,12 +73,46 @@
    </div>
    </div>
 
+   <div id="tabs-5">
+   <div class="help-container">
+
+   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBag.png') }}"></p>
+   <p style="text-align:right"><i>(Sömu mynd á PDF-formi má
+   <a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
+
+   <p>Frá og með október 2015 er unnt að spila Netskrafl með nýjum íslenskum skraflpoka
+   sem búinn var til á vegum Skraflfélags Íslands.</p>
+   <p>Á eldri (upphaflega) skraflpokanum eru ýmsir vankantar, eins og skraflarar kannast
+   við. Í honum eru til dæmis of mörg E sem gefa of fá stig; stafirnir Ú og Ý eru
+   happafengur enda stigaháir en auðvelt að koma þeim út, og svo mætti áfram telja.</p>
+   <p>Við hönnun nýs skraflpoka var leitast við að gera alla stafi því
+   sem næst <strong>jafn ákjósanlega</strong>, í þeim skilningi að þeir staldri jafn lengi við í rekka
+   leikmanns að meðaltali. Leitað var að bestu lausn með því að láta tölvu prófa sig áfram
+   í átt að betri poka í yfir tíu milljónum viðureigna. Þess var jafnframt gætt að hæfilegt
+   jafnvægi væri milli sérhljóða og samhljóða, og að dreifing stafanna væri nálægt því
+   sem gerist í íslenskum texta almennt.</p>
+   <p>Með nýja pokanum er unnt að leggja niður lengri orð að meðaltali, og heppni
+   í stafadrætti skiptir eilítið minna máli en áður. Í honum eru 100 flísar í stað 104
+   í eldri pokanum, en samanlögð stig flísanna eru jafnmörg.</p>
+   <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
+   velja rofa í <a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>.
+   Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
+   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBagPreference.png') }}" width=695 height=69></p>
+   <p>Nýi pokinn er aðeins notaður í viðureign ef báðir leikmenn eru tilbúnir til þess.
+   Þjarkarnir laga sig ætíð að ósk mennska leikmannsins.</p>
+   <p>Nýi pokinn hefur engin áhrif á Elo-stig leikmanna eða útreikning þeirra.</p>
+
+   </div>
+   </div>
+
    <div id="tabs-4">
-   <img src="{{ url_for('static', filename='Villi.png') }}" id="villi"><p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>.</p>
-   <p>Bestu þakkir fyrir veitta aðstoð: <i>Borgar Þorsteinsson, Hlín Önnudóttir,
+   <img src="{{ url_for('static', filename='Villi.png') }}" id="villi">
+   <p><strong>Um Netskrafl</strong></p>
+   <p>Höfundur Netskrafls er <a href="http://blog.pressan.is/vthorsteinsson" target="_blank">Vilhjálmur Þorsteinsson</a>.</p>
+   <p>Bestu þakkir fyrir veitta aðstoð:<br><i>Borgar Þorsteinsson, Hlín Önnudóttir,
    Páll Hilmarsson, Sigrún Helga Lund</i>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
-   notendur. Þú getur
+   notendur.<br>Þú getur
    <a href="{{ url_for('userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
    með því að smella á notandanafnið efst hægra megin í glugganum.
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
@@ -93,7 +128,7 @@
    </div>
 
    <div id="tabs-2">
-   <p>Netskrafl leyfir tveggja stafa orð sem eru á
+   <p>Netskrafl leyfir <strong>tveggja stafa orð</strong> sem eru á
    <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
    samkvæmt ákvörðun Orðanefndar þess í september 2015.</p>
    <p>Þú getur flett upp í listanum meðan á viðureign stendur með því að smella á
@@ -222,12 +257,15 @@ $("#tabs").tabs(
    }
 );
 
-{% if show_twoletter %}
+{% if tab == "twoletter" %}
 // Select the tab with two letter words to show initially
 $("#tabs").tabs("option", "active", 2);
-{% elif show_faq %}
+{% elif tab == "faq" %}
 // Select the tab with FAQs to show initially
 $("#tabs").tabs("option", "active", 1);
+{% elif tab == "newbag" %}
+// Select the tab with new bag info to show initially
+$("#tabs").tabs("option", "active", 3);
 {% endif %}
 
 </script>

@@ -1,5 +1,11 @@
 @ECHO OFF
 ECHO Deploy an update to App Server
+IF EXIST "c:\program files (x86)\google\google_appengine\appcfg.py" GOTO :X86
+SET APPCFG="c:\program files\google\google_appengine\appcfg.py"
+GOTO :CHECKS
+:X86
+SET APPCFG="c:\program files (x86)\google\google_appengine\appcfg.py"
+:CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
 IF /i "%1" EQU "STATS" GOTO STATS
 IF /i "%1" EQU "S" GOTO STATS
@@ -11,26 +17,26 @@ IF /i "%1" EQU "C" GOTO CRON
 IF /i "%1" EQU "DEFAULT" GOTO DEFAULT
 IF /i "%1" EQU "D" GOTO DEFAULT
 ECHO Full deployment starting
-"c:\program files\google\google_appengine\appcfg.py" update app.yaml skraflstats.yaml
+%APPCFG% update app.yaml skraflstats.yaml --noauth_local_webserver
 ECHO Full deployment completed
 GOTO :EOF
 :DEFAULT
 ECHO Default module deployment starting
-"c:\program files\google\google_appengine\appcfg.py" update app.yaml
+%APPCFG% update app.yaml --noauth_local_webserver
 ECHO Default module deployment completed
 GOTO :EOF
 :INDEXES
 ECHO Index update starting
-"c:\program files\google\google_appengine\appcfg.py" update_indexes .
+%APPCFG% update_indexes . --noauth_local_webserver
 ECHO Index update completed
 GOTO :EOF
 :CRON
 ECHO Cron update starting
-"c:\program files\google\google_appengine\appcfg.py" update_cron .
+%APPCFG% update_cron . --noauth_local_webserver
 ECHO Cron update completed
 GOTO :EOF
 :STATS
 ECHO Skraflstats deployment starting
-"c:\program files\google\google_appengine\appcfg.py" update skraflstats.yaml
+%APPCFG% update skraflstats.yaml --noauth_local_webserver
 ECHO Skraflstats deployment completed
 GOTO :EOF

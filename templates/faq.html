@@ -37,6 +37,8 @@ Ef spurningu þinni er ekki svarað hér er um að gera að leggja hana fram í
 <li><a href="#faq-21">Af hverju eru tveir Elo-listar?</a></li>
 <li><a href="#faq-22">Hvað þýðir blái barnavagninn í Elo-dálknum í viðureignalista?</a></li>
 <li><a href="#faq-23">Stendur til að búa til smáforrit fyrir snjallsíma?</a></li>
+<li><a href="#faq-24">Hvað er „nýi pokinn“?</a></li>
+<li><a href="#faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?</a></li>
 </ol>
 
 <p><b>Svör:</b></p>
@@ -365,4 +367,27 @@ stað Elo-stiga.</p>
 <li id="faq-23">Stendur til að búa til smáforrit fyrir snjallsíma?</li>
 <p>Nei, ekki að svo stöddu. Vefur Netskrafls er hins vegar hannaður til að virka vel á
 skjám spjaldtölva, t.d. iPad, og þokkalega vel á stærri snjallsímum.</p>
+
+<li id="faq-24">Hvað er „nýi pokinn“?</li>
+<p>Nýi íslenski skraflpokinn var búinn til á vegum Skraflfélags Íslands og kynntur
+í október 2015. Hann er
+endurbót á eldri, upphaflega skraflpokanum sem fylgdi íslensku borðskrafli á sínum tíma.</p>
+<p>Í nýja pokanum eru 100 flísar í stað 104 í þeim eldri. Fjöldi stafa og stig
+þeirra voru stillt af, með tölvuútreikningum og -hermun, þannig að allir stafir
+væru því sem næst <strong>jafn ákjósanlegir</strong> í rekkanum. Jafnframt var gætt að
+jafnvægi milli sérhljóða og samhljóða, og að tíðni stafa endurspeglaði íslenskt
+ritmál.</p>
+<p>Nánar er fjallað um nýja pokann <a href="{{ url_for('newbag') }}">hér</a>.</p>
+<p>PDF skrá sem sýnir nýja pokann grafískt má
+<a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>.</p>
+
+<li id="faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?</li>
+<p>Ef leikmaður er tilbúinn í nýja pokann, hefur merkt sig þannig í
+<a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>,
+og skorar á andstæðing sem er einnig tilbúinn, kemur eftirfarandi fram í áskorunarglugganum:</p>
+<p style="text-align:center"><img src="{{ url_for('static', filename='NewBagChallenge.png') }}"></p>
+<p>Nýi pokinn þekkist á því að hann er <strong>fölblár</strong> á litinn, neðst í hægra horni leikborðsins:</p>
+<p style="text-align:center"><img src="{{ url_for('static', filename='NewBagExample.png') }}"></p>
+
+</ol>
 

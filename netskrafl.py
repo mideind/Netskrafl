@@ -1606,8 +1606,7 @@ def help():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user,
-        show_twoletter = False, show_faq = False)
+    return render_template("nshelp.html", user = user, tab = None)
 
 
 @app.route("/twoletter")
@@ -1617,8 +1616,7 @@ def twoletter():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user,
-        show_twoletter = True, show_faq = False)
+    return render_template("nshelp.html", user = user, tab = "twoletter")
 
 
 @app.route("/faq")
@@ -1628,8 +1626,17 @@ def faq():
     user = User.current()
     # We tolerate a null (not logged in) user here
 
-    return render_template("nshelp.html", user = user,
-        show_twoletter = False, show_faq = True)
+    return render_template("nshelp.html", user = user, tab = "faq")
+
+
+@app.route("/newbag")
+def newbag():
+    """ Show help page """
+
+    user = User.current()
+    # We tolerate a null (not logged in) user here
+
+    return render_template("nshelp.html", user = user, tab = "newbag")
 
 
 @app.errorhandler(404)
