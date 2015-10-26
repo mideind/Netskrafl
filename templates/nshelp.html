@@ -76,14 +76,21 @@
    <div id="tabs-5">
    <div class="help-container">
 
+   <p>Frá og með október 2015 er unnt að spila Netskrafl með <strong>nýjum íslenskum skraflpoka</strong>
+   sem búinn var til á vegum Skraflfélags Íslands.</p>
+
+   <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
+   velja rofa í <a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>.
+   Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
+   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBagPreference.png') }}" width=695 height=69></p>
+
+   <p>Hér sést nýi pokinn í myndrænu formi:</p>
    <p style='text-align:center'><img src="{{ url_for('static', filename='NewBag.png') }}"></p>
-   <p style="text-align:right"><i>(Sömu mynd á PDF-formi má
+   <p style="text-align:right"><i>(Sömu mynd á PDF-formi til útprentunar má
    <a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
 
-   <p>Frá og með október 2015 er unnt að spila Netskrafl með nýjum íslenskum skraflpoka
-   sem búinn var til á vegum Skraflfélags Íslands.</p>
    <p>Á eldri (upphaflega) skraflpokanum eru ýmsir vankantar, eins og skraflarar kannast
-   við. Í honum eru til dæmis of mörg E sem gefa of fá stig; stafirnir Ú og Ý eru
+   við. Í honum eru til dæmis <strong>of mörg E</strong> sem gefa of fá stig; stafirnir Ú og Ý eru
    happafengur enda stigaháir en auðvelt að koma þeim út, og svo mætti áfram telja.</p>
    <p>Við hönnun nýs skraflpoka var leitast við að gera alla stafi því
    sem næst <strong>jafn ákjósanlega</strong>, í þeim skilningi að þeir staldri jafn lengi við í rekka
@@ -92,13 +99,9 @@
    jafnvægi væri milli sérhljóða og samhljóða, og að dreifing stafanna væri nálægt því
    sem gerist í íslenskum texta almennt.</p>
    <p>Með nýja pokanum er unnt að leggja niður lengri orð að meðaltali, og heppni
-   í stafadrætti skiptir eilítið minna máli en áður. Í honum eru 100 flísar í stað 104
+   í stafadrætti skiptir eilítið minna máli en áður. Í honum eru <strong>100 flísar</strong> í stað 104
    í eldri pokanum, en samanlögð stig flísanna eru jafnmörg.</p>
-   <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
-   velja rofa í <a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>.
-   Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
-   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBagPreference.png') }}" width=695 height=69></p>
-   <p>Nýi pokinn er aðeins notaður í viðureign ef báðir leikmenn eru tilbúnir til þess.
+   <p>Nýi pokinn er aðeins notaður í viðureign ef <strong>báðir leikmenn</strong> eru tilbúnir til þess.
    Þjarkarnir laga sig ætíð að ósk mennska leikmannsins.</p>
    <p>Nýi pokinn hefur engin áhrif á Elo-stig leikmanna eða útreikning þeirra.</p>
 
@@ -236,7 +239,9 @@
 <!-- Display user identifier in upper right corner -->
 
 {% if user %}
-<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'">{{ user.nickname() }}</div>
+<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
+</div>
 {% endif %}
 
 {% endblock %}

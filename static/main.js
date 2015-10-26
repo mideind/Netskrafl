@@ -404,7 +404,7 @@ function populateEloList(json) {
       var ch = "";
       var nick = escapeHtml(item.nick);
       var fullname = escapeHtml(item.fullname);
-      var info = "";
+      var info = "&nbsp;"; // Necessary for correct rendering on iPad
       if (item.userid != userId() && !item.inactive)
          // Not the logged-in user himself and not inactive: allow a challenge
          ch = "<span title='Skora á' class='glyphicon glyphicon-hand-right" +

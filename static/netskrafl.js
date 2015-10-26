@@ -7,7 +7,7 @@
 
 */
 
-/* Constants */
+// Constants
 
 var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = 15;
@@ -1021,12 +1021,29 @@ function prepareBlankDialog() {
 }
 
 var elementDragged = null; /* The element being dragged with the mouse */
+var tileSelected = null; /* The selected (single-clicked) tile */
 var showingDialog = false; /* Is a modal dialog banner being shown? */
 var exchangeAllowed = true; /* Is an exchange move allowed? */
 
+function selectTile(elem) {
+   if (elem === tileSelected) {
+      if (elem !== null)
+         $(elem).toggleClass("sel");
+      return;
+   }
+   if (tileSelected !== null)
+      $(tileSelected).removeClass("sel");
+   tileSelected = elem;
+   if (tileSelected !== null)
+      $(tileSelected).addClass("sel");
+}
+
 function handleDragstart(e, ui) {
-   /* The dragstart target is the DIV inside a TD */
+   // Remove selection, if any
+   selectTile(null);
+   // The dragstart target is the DIV inside a TD
    elementDragged = e.target;
+   // The original tile, still shown while dragging
    elementDragged.style.opacity = "0.5";
 }
 
@@ -1051,7 +1068,7 @@ function initDraggable(elem) {
    /* The DIVs inside the board TDs are draggable */
    $(elem).draggable(
       {
-         opacity : 0.8,
+         opacity : 0.9,
          helper : "clone",
          cursor : "pointer",
          zIndex : 100,
@@ -1059,11 +1076,15 @@ function initDraggable(elem) {
          stop : handleDragend
       }
    );
+   $(elem).click(function() { selectTile(this); });
 }
 
 function removeDraggable(elem) {
    /* The DIVs inside the board TDs are draggable */
    $(elem).draggable("destroy");
+   if (elem === tileSelected)
+      selectTile(null);
+   $(elem).off("click");
 }
 
 function initRackDraggable(state) {

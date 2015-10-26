@@ -249,7 +249,9 @@
 
 <!-- Display user identifier in upper right corner -->
 
-<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'">{{ user.nickname() }}</div>
+<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
+</div>
 
 <!-- Readiness indicator toggle -->
 <div id="ready-toggler" class="toggler" title="Tek við áskorunum!">

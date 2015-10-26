@@ -190,6 +190,9 @@
 .glyphicon-shopping-bag:before {
    content: "\E351";
 }
+.glyphicon-address-book:before {
+   content: "\E089";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -418,6 +421,17 @@ div.tile {
 
 div.racktile {
    cursor: pointer;
+   background-color: @racktile;
+}
+
+div.sel {
+   color: white;
+   background-color: @alert;
+}
+
+div.ui-draggable-dragging {
+   box-shadow: 2px 2px 4px 1px #333333;
+   color: black;
    background-color: @racktile;
 }
 
@@ -1759,6 +1773,10 @@ div.tabbed-page {
    color: @hover-link;
 }
 
+a.ui-tabs-anchor:link, a.ui-tabs-anchor:visited {
+   color: white;
+}
+
 .notifier {
    display: none; /* Set to inline-block by the script if shown */
    background-color: @alert;
@@ -1792,17 +1810,19 @@ div.userid {
    position: absolute;
    top: 22px;
    right: 26px;
-   max-width: 220px;
+   max-width: 210px;
    height: 22px;
    text-align: right;
    font-size: 16px;
    line-height: 16px;
    font-weight: 700;
    color: white;
+   text-overflow: ellipsis;
+   white-space: nowrap;
    overflow: hidden;
-   padding-top: 8px;
-   padding-bottom: 2px;
-   padding-left: 10px;
+   padding-top: 6px;
+   padding-bottom: 4px;
+   padding-left: 6px;
    padding-right: 10px;
    margin: 0;
    z-index: 5;
