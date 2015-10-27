@@ -424,9 +424,50 @@ div.racktile {
    background-color: @racktile;
 }
 
+@keyframes selBlink {
+   0% { color: white; background-color: @alert; }
+   45% { color: white; background-color: @alert; }
+   50% { color: black; background-color: @racktile; }
+   95% { color: black; background-color: @racktile; }
+   100% { color: white; background-color: @alert; }
+}
+
+@-webkit-keyframes selBlink {
+   0% { color: white; background-color: @alert; }
+   45% { color: white; background-color: @alert; }
+   50% { color: black; background-color: @racktile; }
+   95% { color: black; background-color: @racktile; }
+   100% { color: white; background-color: @alert; }
+}
+
+@keyframes selBlank {
+   0% { color: white; background-color: @alert; }
+   45% { color: white; background-color: @alert; }
+   50% { color: #777777; background-color: @racktile; }
+   95% { color: #777777; background-color: @racktile; }
+   100% { color: white; background-color: @alert; }
+}
+
+@-webkit-keyframes selBlank {
+   0% { color: white; background-color: @alert; }
+   45% { color: white; background-color: @alert; }
+   50% { color: #777777; background-color: @racktile; }
+   95% { color: #777777; background-color: @racktile; }
+   100% { color: white; background-color: @alert; }
+}
+
 div.sel {
-   color: white;
-   background-color: @alert;
+   animation: selBlink 1.2s infinite;
+   -webkit-animation: selBlink 1.2s infinite;
+}
+
+div.blanktile.sel {
+   animation: selBlank 1.2s infinite;
+   -webkit-animation: selBlank 1.2s infinite;
+}
+
+td.sel {
+   outline: @alert solid 3px;
 }
 
 div.ui-draggable-dragging {
@@ -1012,20 +1053,6 @@ div.right-tab.selected {
 
 div.right-tab:hover {
    opacity: 1.0;
-}
-
-@keyframes redBlink {
-   0% { opacity: 0.3; }
-   15% { opacity: 1.0; }
-   85% { opacity: 1.0; }
-   100% { opacity: 0.3; }
-}
-
-@-webkit-keyframes redBlink {
-   0% { opacity: 0.3; }
-   15% { opacity: 1.0; }
-   85% { opacity: 1.0; }
-   100% { opacity: 0.3; }
 }
 
 div.right-tab.alert {

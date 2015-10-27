@@ -1025,22 +1025,63 @@ var tileSelected = null; /* The selected (single-clicked) tile */
 var showingDialog = false; /* Is a modal dialog banner being shown? */
 var exchangeAllowed = true; /* Is an exchange move allowed? */
 
+function moveSelectedTile(sq) {
+   // Move the tileSelected to the target square
+   if (sq.firstChild === null) {
+      moveTile(tileSelected, sq);
+      selectTile(null);
+   }
+}
+
+function selOver(sq) {
+   if (sq.firstChild === null)
+      // Legitimate drop target
+      $(sq).addClass("sel");
+}
+
+function selOut(sq) {
+   $(sq).removeClass("sel");
+}
+
 function selectTile(elem) {
    if (elem === tileSelected) {
-      if (elem !== null)
-         $(elem).toggleClass("sel");
-      return;
+      if (elem === null)
+         // Nothing was selected - nothing to do
+         return;
+      // Re-clicking on an already selected tile:
+      // remove the selection
+      $(elem).removeClass("sel");
+      tileSelected = null;
    }
-   if (tileSelected !== null)
-      $(tileSelected).removeClass("sel");
-   tileSelected = elem;
-   if (tileSelected !== null)
-      $(tileSelected).addClass("sel");
+   else {
+      // Changing the selection
+      if (tileSelected !== null)
+         $(tileSelected).removeClass("sel");
+      tileSelected = elem;
+      if (tileSelected !== null)
+         $(tileSelected).addClass("sel");
+   }
+   if (tileSelected !== null) {
+      // We have a selected tile: show a red square around
+      // drop targets for it
+      $("table.board td.ui-droppable").hover(
+         function() { selOver(this); },
+         function() { selOut(this); }
+      ).click(
+         function() { moveSelectedTile(this); }
+      );
+   }
+   else {
+      // No selected tile: no hover
+      $("table.board td.ui-droppable").off("mouseenter mouseleave click").removeClass("sel");
+   }
 }
 
 function handleDragstart(e, ui) {
    // Remove selection, if any
    selectTile(null);
+   // Remove the blinking sel class from the drag clone, if there
+   $("div.ui-draggable-dragging").removeClass("sel");
    // The dragstart target is the DIV inside a TD
    elementDragged = e.target;
    // The original tile, still shown while dragging
@@ -1076,7 +1117,7 @@ function initDraggable(elem) {
          stop : handleDragend
       }
    );
-   $(elem).click(function() { selectTile(this); });
+   $(elem).click(function(ev) { selectTile(this); ev.stopPropagation(); });
 }
 
 function removeDraggable(elem) {
@@ -1142,6 +1183,39 @@ function initDropTargets() {
    }
    /* Make the background a drop target */
    initDropTarget($("#container"));
+}
+
+function moveTile(src, target) {
+   // src is a DIV; target is a TD
+   var ok = true;
+   var parentid = src.parentNode.id;
+   if (parentid.charAt(0) == 'R') {
+      /* Dropping from the rack */
+      var t = $(src).data("tile");
+      var dropToRack = (target.id.charAt(0) == 'R');
+      if (!dropToRack && t == '?') {
+         /* Dropping a blank tile on to the board: we need to ask for its meaning */
+         openBlankDialog(src, target);
+         ok = false; // The drop will be completed later, when the blank dialog is closed
+      }
+   }
+   if (ok) {
+      /* Complete the drop */
+      src.parentNode.removeChild(src);
+      target.appendChild(src);
+      if (target.id.charAt(0) == 'R') {
+         /* Dropping into the rack */
+         if ($(src).data("tile") == '?') {
+            /* Dropping a blank tile: erase its letter value, if any */
+            $(src).data("letter", ' ');
+            src.childNodes[0].nodeValue = "\xa0"; // Non-breaking space, i.e. &nbsp;
+         }
+      }
+      // Save this state in local storage,
+      // to be restored when coming back to this game
+      saveTiles();
+   }
+   updateButtonState();
 }
 
 function handleDrop(e, ui) {
@@ -1222,34 +1296,7 @@ function handleDrop(e, ui) {
    }
    if (e.target.firstChild === null) {
       /* Looks like a legitimate drop */
-      var ok = true;
-      var parentid = eld.parentNode.id;
-      if (parentid.charAt(0) == 'R') {
-         /* Dropping from the rack */
-         var t = $(eld).data("tile");
-         if (!dropToRack && t == '?') {
-            /* Dropping a blank tile on to the board: we need to ask for its meaning */
-            openBlankDialog(eld, e.target);
-            ok = false; // The drop will be completed later, when the blank dialog is closed
-         }
-      }
-      if (ok) {
-         /* Complete the drop */
-         eld.parentNode.removeChild(eld);
-         e.target.appendChild(eld);
-         if (e.target.id.charAt(0) == 'R') {
-            /* Dropping into the rack */
-            if ($(eld).data("tile") == '?') {
-               /* Dropping a blank tile: erase its letter value, if any */
-               $(eld).data("letter", ' ');
-               eld.childNodes[0].nodeValue = "\xa0"; // Non-breaking space, i.e. &nbsp;
-            }
-         }
-         // Save this state in local storage,
-         // to be restored when coming back to this game
-         saveTiles();
-      }
-      updateButtonState();
+      moveTile(eld, e.target);
    }
    elementDragged = null;
 }
