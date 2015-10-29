@@ -699,7 +699,7 @@ function appendMove(player, co, tiles, score) {
       else
       if (tiles == "RSGN")
          /* Resigned from game */
-         tiles = " Gaf leikinn"; // Extra space intentional
+         tiles = " Gaf viðureign"; // Extra space intentional
       else
       if (tiles == "TIME") {
          /* Overtime adjustment */
@@ -708,7 +708,7 @@ function appendMove(player, co, tiles, score) {
       else
       if (tiles == "OVER") {
          /* Game over */
-         tiles = "Leik lokið";
+         tiles = "Viðureign lokið";
          wrdclass = "gameover";
          gameOver = true;
       }
@@ -1335,16 +1335,16 @@ function updateButtonState() {
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
       showMove = (tilesPlaced !== 0);
-      showExchange = true;
+      showExchange = (tilesPlaced === 0);
       showPass = (tilesPlaced === 0);
-      showResign = true;
+      showResign = (tilesPlaced === 0);
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
-         (tilesPlaced === 0 || showingDialog));
+         tilesPlaced === 0 || showingDialog);
       $("div.submitexchange").toggleClass("disabled",
-         (tilesPlaced !== 0 || showingDialog || !exchangeAllowed));
+         tilesPlaced !== 0 || showingDialog || !exchangeAllowed);
       $("div.submitpass").toggleClass("disabled",
-         (tilesPlaced !== 0 || showingDialog));
+         tilesPlaced !== 0 || showingDialog);
       $("div.submitresign").toggleClass("disabled", showingDialog);
       $("div.recallbtn").toggleClass("disabled", showingDialog);
       $("div.scramblebtn").toggleClass("disabled", showingDialog);
@@ -1393,12 +1393,12 @@ function updateButtonState() {
       }
       showRecall = true;
    }
-   $("div.submitmove").css("visibility", showMove ? "visible" : "hidden");
-   $("div.submitexchange").css("visibility", showExchange ? "visible" : "hidden");
-   $("div.submitpass").css("visibility", showPass ? "visible" : "hidden");
-   $("div.submitresign").css("visibility", showResign ? "visible" : "hidden");
-   $("div.recallbtn").css("visibility", showRecall ? "visible" : "hidden");
-   $("div.scramblebtn").css("visibility", showScramble ? "visible" : "hidden");
+   $("div.submitmove").css("display", showMove ? "block" : "none");
+   $("div.submitexchange").css("display", showExchange ? "block" : "none");
+   $("div.submitpass").css("display", showPass ? "block" : "none");
+   $("div.submitresign").css("display", showResign ? "block" : "none");
+   $("div.recallbtn").css("display", showRecall ? "block" : "none");
+   $("div.scramblebtn").css("display", showScramble ? "block" : "none");
 }
 
 function buttonOver(elem) {

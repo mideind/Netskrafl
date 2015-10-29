@@ -330,9 +330,10 @@ class Navigation:
         # Go along the edge as long as the navigator is accepting
         lenp = len(prefix)
         j = 0
-        while j < lenp and self._nav.accepting():
+        nav = self._nav
+        while j < lenp and nav.accepting():
             # See if the navigator is OK with accepting the current character
-            if not self._nav.accepts(prefix[j]):
+            if not nav.accepts(prefix[j]):
                 # Nope: we're done with this edge
                 return
             # So far, we have a match: add a letter to the matched path
@@ -340,10 +341,11 @@ class Navigation:
             j += 1
             # Check whether the next prefix character is a vertical bar, denoting finality
             final = False
-            if j < lenp and prefix[j] == u'|':
-                final = True
-                j += 1
-            elif (j >= lenp) and ((nextnode is None) or nextnode.final):
+            if j < lenp:
+                if prefix[j] == u'|':
+                    final = True
+                    j += 1
+            elif (nextnode is None) or nextnode.final:
                 # If we're at the final char of the prefix and the next node is final,
                 # set the final flag as well (there is no trailing vertical bar in this case)
                 final = True
@@ -351,17 +353,17 @@ class Navigation:
             if self._resumable:
                 # The navigator wants to know the position in the graph
                 # so that navigation can be resumed later from this spot
-                self._nav.accept_resumable(prefix[j:], nextnode, matched)
+                nav.accept_resumable(prefix[j:], nextnode, matched)
             else:
                 # Normal navigator: tell it about the match
-                self._nav.accept(matched, final)
+                nav.accept(matched, final)
         # We're done following the prefix for as long as it goes and
         # as long as the navigator was accepting
         if j < lenp:
             # We didn't complete the prefix, so the navigator must no longer
             # be interested (accepting): we're done
             return
-        if self._nav.accepting() and (nextnode is not None):
+        if nav.accepting() and (nextnode is not None):
             # Gone through the entire edge and still have rack letters left:
             # continue with the next node
             self._navigate_from_node(nextnode, matched)

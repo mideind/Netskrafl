@@ -446,19 +446,16 @@ class ExtendRightNavigator:
     def _check(self, ch):
         """ Check whether the letter ch could be placed at the
             current square, given the cross-checks and the rack """
-        if not self._axis.is_empty(self._index):
+        axis = self._axis
+        if not axis.is_empty(self._index):
             # There is a tile already in the square: we must match it exactly
-            return Match.BOARD_TILE if (ch == self._axis.letter_at(self._index)) else Match.NO
+            return Match.BOARD_TILE if ch == axis.letter_at(self._index) else Match.NO
+        # Does the current rack allow this letter?
+        if not (ch in self._rack or u'?' in self._rack):
+            return Match.NO
         # Open square: apply cross-check constraints to the rack
         # Would this character pass the cross-checks?
-        if not self._axis.is_open_for(self._index, ch):
-            return Match.NO
-        if u'?' in self._rack:
-            # We could always use the wildcard in the rack to cover this, so OK
-            return Match.RACK_TILE
-        # Filter the rack by the applicable cross checks, and see whether
-        # the candidate edge prefix matches that
-        return Match.RACK_TILE if ch in self._rack else Match.NO
+        return Match.RACK_TILE if axis.is_open_for(self._index, ch) else Match.NO
 
     def push_edge(self, firstchar):
         """ Returns True if the edge should be entered or False if not """
