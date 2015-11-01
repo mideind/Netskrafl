@@ -828,13 +828,20 @@ def userstats():
     if user is None:
         return jsonify(result = Error.WRONG_USER)
 
+    cuser = User.current()
     stats = user.statistics()
+
     # Include info on whether this user is a favorite of the current user
     fav = False
-    cuser = User.current()
     if uid != cuser.id():
         fav = cuser.has_favorite(uid)
     stats["favorite"] = fav
+
+    # Include info on whether the current user has challenged this user
+    chall = False
+    if uid != cuser.id():
+        chall = cuser.has_challenge(uid)
+    stats["challenge"] = chall
 
     return jsonify(stats)
 
