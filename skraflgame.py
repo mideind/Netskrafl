@@ -113,6 +113,8 @@ class User:
             um = UserModel.fetch(self._user_id)
             assert um != None
             um.nickname = self._nickname
+            um.nick_lc = self._nickname.lower()
+            um.name_lc = self.full_name().lower()
             um.inactive = self._inactive
             um.prefs = self._preferences
             um.ready = self._ready

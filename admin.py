@@ -23,6 +23,8 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
+from google.appengine.ext import ndb
+
 from languages import Alphabet
 from skraflgame import User, Game
 from skrafldb import Unique, UserModel, GameModel, MoveModel,\
@@ -40,6 +42,37 @@ def admin_usercount():
     """ Return a count of UserModel entities """
     count = UserModel.count()
     return jsonify(count = count)
+
+
+@app.route("/admin/userupdate", methods=['GET'])
+def admin_userupdate():
+    """ Update all users in the datastore with lowercase nick and full name """
+    CHUNK_SIZE = 200
+    count = 0
+    offset = 0
+    q = UserModel.query()
+    while True:
+        ulist = []
+        chunk = 0
+        for um in q.fetch(CHUNK_SIZE, offset = offset):
+            chunk += 1
+            if um.nick_lc == None:
+                try:
+                    um.nick_lc = um.nickname.lower()
+                    um.name_lc = um.prefs.get("full_name", "").lower() if um.prefs else ""
+                    ulist.append(um)
+                except Exception as e:
+                    logging.info("Exception in /admin/userupdate when setting nick_lc: {0}".format(e))
+        if ulist:
+            try:
+                ndb.put_multi(ulist)
+                count += len(ulist)
+            except Exception as e:
+                logging.info("Exception in /admin/userupdate when updating ndb: {0}".format(e))
+        if chunk < CHUNK_SIZE:
+            break
+        offset += CHUNK_SIZE
+    return "<html><body><p>Updated {0} user records</p></body></html>".format(count)
 
 
 @app.route("/admin/fetchgames", methods=['GET', 'POST'])

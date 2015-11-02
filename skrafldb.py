@@ -92,6 +92,10 @@ class UserModel(ndb.Model):
     """ Models an individual user """
 
     nickname = ndb.StringProperty(indexed = True)
+    # Lower case nickname and full name of user - used for search
+    nick_lc = ndb.StringProperty(required = False, indexed = True, default = None)
+    name_lc = ndb.StringProperty(required = False, indexed = True, default = None)
+
     inactive = ndb.BooleanProperty()
     prefs = ndb.JsonProperty()
     timestamp = ndb.DateTimeProperty(auto_now_add = True)
@@ -116,6 +120,7 @@ class UserModel(ndb.Model):
         """ Create a new user """
         user = cls(id = user_id)
         user.nickname = nickname # Default to the same nickname
+        user.nick_lc = nickname.lower()
         user.inactive = False # A new user is always active
         user.prefs = { } # No preferences
         user.ready = False # Not ready for new challenges unless explicitly set
@@ -209,6 +214,49 @@ class UserModel(ndb.Model):
                 else:
                     # Continue with the next chunk
                     offset += chunk
+
+    @classmethod
+    def list_prefix(cls, prefix, max_len = 50):
+        """ Query for a list of users having a name or nick with the given prefix """
+
+        if not prefix:
+            # No prefix means nothing is returned
+            return
+
+        # prefix = Alphabet.tolower(prefix)
+        counter = 0
+
+        q = cls.query(UserModel.nickname >= prefix).order(UserModel.nickname)
+
+        CHUNK_SIZE = 50
+        offset = 0
+        while True:
+            chunk = 0
+            for um in q.fetch(CHUNK_SIZE, offset = offset):
+                chunk += 1
+                if not um.nickname.startswith(prefix):
+                    # Iterated past the prefix
+                    return
+                if not um.inactive:
+                    # This entity matches: return a dict describing it
+                    yield dict(
+                        id = um.key.id(),
+                        nickname = um.nickname,
+                        prefs = um.prefs,
+                        timestamp = um.timestamp,
+                        ready = um.ready,
+                        ready_timed = um.ready_timed,
+                        human_elo = um.human_elo
+                    )
+                    counter += 1
+                    if max_len > 0 and counter >= max_len:
+                        # Hit limit on returned users: stop iterating
+                        return
+            if chunk < CHUNK_SIZE:
+                # Hit end of query: stop iterating
+                return
+            # Continue with the next chunk
+            offset += chunk
 
     @classmethod
     def list_similar_elo(cls, elo, max_len = 40):

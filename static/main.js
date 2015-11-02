@@ -1179,6 +1179,12 @@ function channelOnClose() {
    socket = null;
 }
 
+function updateUserSearch()
+{
+   /* Make sure that the user search list is updated when the search criteria are modified */
+   refreshUserList({ data: "search", delegateTarget: document.getElementById("search") });
+}
+
 function initMain() {
    /* Called when the page is displayed or refreshed */
 
@@ -1231,6 +1237,9 @@ function initMain() {
       var data = $(this).attr('id');
       $(this).click(data, refreshUserList);
    });
+
+   /* When starting to type in the user search box, focus on it */
+   $("#search-id").focus(updateUserSearch).change(updateUserSearch);
 
    /* Refresh the live user list periodically while it is being displayed */
    window.setInterval(periodicUserList, 5 * 60 * 1000); // Every five minutes
