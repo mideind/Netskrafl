@@ -184,7 +184,7 @@ def _process_move(game, movelist):
     return jsonify(game.client_state(player_index))
 
 
-def _userlist(range_from, range_to):
+def _userlist(query, spec):
     """ Return a list of users matching the filter criteria """
 
     result = []
@@ -197,7 +197,7 @@ def _userlist(range_from, range_to):
     cuser = User.current()
     cuid = None if cuser is None else cuser.id()
 
-    if range_from == u"robots" and not range_to:
+    if query == u"robots":
         # Return the list of available autoplayers
         for r in Game.AUTOPLAYERS:
             result.append({
@@ -231,7 +231,7 @@ def _userlist(range_from, range_to):
         # Store the result in the cache with a lifetime of 2 minutes
         memcache.set("live", online, time=2 * 60, namespace="userlist")
 
-    if range_from == u"live" and not range_to:
+    if query == u"live":
         # Return all online (live) users
 
         for uid in online:
@@ -254,7 +254,7 @@ def _userlist(range_from, range_to):
                     "ready_timed": lu.is_ready_timed() and not chall
                 })
 
-    elif range_from == u"fav" and not range_to:
+    elif query == u"fav":
         # Return favorites of the current user
         if cuid is not None:
             i = iter(FavoriteModel.list_favorites(cuid))
@@ -275,7 +275,7 @@ def _userlist(range_from, range_to):
                         "ready_timed": fu.is_ready_timed() and favid in online and not chall
                     })
 
-    elif range_from == u"alike" and not range_to:
+    elif query == u"alike":
         # Return users with similar Elo ratings
         if cuid is not None:
             i = iter(UserModel.list_similar_elo(cuser.human_elo(), max_len = 40))
@@ -299,19 +299,25 @@ def _userlist(range_from, range_to):
                         "ready_timed": au.is_ready_timed() and uid in online and not chall
                     })
 
-    else:
-        # Return users within a particular nickname range
+    elif query == u"search":
+        # Return users with nicknames matching a pattern
 
-        # The "N:" prefix is a version header
-        cache_range = "3:" + (range_from or "") + "-" + (range_to or "")
+        if not spec:
+            i = []
+        else:
+            # Limit the spec to 16 characters
+            spec = spec[0:16]
 
-        # Start by looking in the cache
-        i = memcache.get(cache_range, namespace = "userlist")
-        if i is None:
-            # Not found: do an unlimited query
-            i = list(UserModel.list(range_from, range_to, max_len = 0))
-            # Store the result in the cache with a lifetime of 5 minutes
-            memcache.set(cache_range, i, time = 5 * 60, namespace = "userlist")
+            # The "N:" prefix is a version header
+            cache_range = "4:" + spec
+
+            # Start by looking in the cache
+            i = memcache.get(cache_range, namespace = "userlist")
+            if i is None:
+                # Not found: do an query, returning max 50 users
+                i = list(UserModel.list_prefix(spec, max_len = 50))
+                # Store the result in the cache with a lifetime of 5 minutes
+                memcache.set(cache_range, i, time = 5 * 60, namespace = "userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
@@ -853,14 +859,14 @@ def userlist():
     if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    range_from = request.form.get('from', None)
-    range_to = request.form.get('to', None)
+    query = request.form.get('query', None)
+    spec = request.form.get('spec', None)
 
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for user lists anyway)
     Context.disable_cache()
 
-    return jsonify(result = Error.LEGAL, userlist = _userlist(range_from, range_to))
+    return jsonify(result = Error.LEGAL, userlist = _userlist(query, spec))
 
 
 @app.route("/gamelist", methods=['POST'])

@@ -161,35 +161,16 @@
    <div id="tabs-3">
       <div id="initials">
          <div class="user-cat" id="user-headings">
-         <span id="robots" class="shown"><span style='padding:0' class='glyphicon glyphicon-cog'></span> Þjarkar</span><br>
+         <span id="robots" class="shown"><span style='padding:0' class='glyphicon glyphicon-cog'></span> Þjarkar</span>
          <span id="fav"><span style='padding:0' class='glyphicon glyphicon-star'></span> Uppáhalds</span>
          <span id="live"><span style='padding:0' class='glyphicon glyphicon-flash'></span> Álínis</span>
          <span id="alike"><span style='padding:0' class='glyphicon glyphicon-resize-small'></span> Svipaðir</span>
          <span id="elo"><span style='padding:0' class='glyphicon glyphicon-crown'></span> Topp 100</span>
          </div>
-         <div class="user-cat" id="user-alphabet">
-         <span>a-á</span>
-         <span>b-c</span>
-         <span>d-ð</span>
-         <span>e-é</span>
-         <span>f</span>
-         <span>g</span>
-         <span>h</span>
-         <span>i-í</span>
-         <span>j</span>
-         <span>k</span>
-         <span>l</span><br>
-         <span>m</span>
-         <span>n</span>
-         <span>o-ó</span>
-         <span>p-q</span>
-         <span>r</span>
-         <span>s</span>
-         <span>t</span>
-         <span>u-ú</span>
-         <span>v-w</span>
-         <span>x-z</span>
-         <span>þ-ö</span>
+         <div class="user-cat" id="user-search">
+         <span class="glyphicon glyphicon-search" id="search"></span>
+         <input type="text" name="search-id" id="search-id" maxlength="16"
+            class="text userid" value="" placeholder="Einkenni"></input>
          </div>
       </div>
 
@@ -240,6 +221,11 @@
 
       <!-- Spinner that appears while the user list is being loaded -->
       <div id="user-load"></div>
+
+      <!-- Message indicating that no users match a search -->
+      <div id="user-no-match">
+         <span class='glyphicon glyphicon-search'></span> Enginn leikmaður hefur einkenni sem hefst á <span id="search-prefix"></span>
+      </div>
 
    </div>
 

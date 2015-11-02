@@ -193,6 +193,9 @@
 .glyphicon-address-book:before {
    content: "\E089";
 }
+.glyphicon-search:before {
+   content: "\E028";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -2165,8 +2168,8 @@ span.bold {
 }
 
 div#initials {
-   margin-top: 0;
-   margin-bottom: 6px;
+   margin-top: 8px;
+   margin-bottom: 14px;
    padding: 0;
 }
 
@@ -2176,13 +2179,16 @@ div.user-cat {
 }
 
 div.user-cat#user-headings {
-   margin-right: 20px;
    line-height: 32px;
 }
 
-div.user-cat#user-alphabet {
-   margin-left: 20px;
-   line-height: 32px;
+div.user-cat#user-search {
+   float: right;
+}
+
+div.user-cat#user-search span.glyphicon-search {
+   padding-top: 5px;
+   padding-bottom: 5px;
 }
 
 div.user-cat span {
@@ -2456,6 +2462,20 @@ div#user-load {
    z-index: 10;
    background-image: url('user-loader.gif');
    background-repeat: no-repeat;
+}
+
+div#user-no-match {
+   display: none;
+   position: absolute;
+   top: 320px;
+   left: 80px;
+   width: 652px;
+   z-index: 10;
+   text-align: center;
+}
+
+div#user-no-match span#search-prefix {
+   font-weight: bold;
 }
 
 div.hint {
@@ -3070,6 +3090,15 @@ input.fullname {
 
 input.email {
    width: 400px;
+}
+
+input.text#search-id {
+   font-weight: normal;
+   height: 28px;
+   font-size: 18px;
+   border-color: @double-letter;
+   margin-top: 0px;
+   margin-bottom: 0px;
 }
 
 button[type="submit"] {

@@ -513,12 +513,11 @@ function refreshUserList(ev) {
    /* Show the user load spinner */
    $("#user-load").css("display", "block");
    /* Establish the alphabet range that we want to display */
-   var range = ev.data + "";
-   var fromRange = null;
-   var toRange = null;
+   var rangeType = ev.data + "";
+   var rangeSpec = "";
    /* Note the last displayed range in case we need to redisplay */
-   displayedUserRange = range + "";
-   if (range == "elo") {
+   displayedUserRange = rangeType + "";
+   if (rangeType == "elo") {
       // Show the Elo list header
       $("#usr-hdr").css("display", "none");
       $("#elo-hdr").css("display", "block");
@@ -527,34 +526,34 @@ function refreshUserList(ev) {
       $("#elo-hdr").css("display", "none");
       $("#usr-hdr").css("display", "block");
    }
-   if (range == "fav" || range == "robots" ||
-      range == "live" || range == "elo" || range == "alike") {
-      /* Special requests: list of favorites, live users, robots or Elo ratings */
-      fromRange = range;
-   }
-   else {
-      fromRange = range ? range.charAt(0) : null;
-      toRange = fromRange;
-      if (range && (range.length == 3))
-         /* Range has x-y format */
-         toRange = range.charAt(2);
+   if (rangeType == "search") {
+      // Asking for a search
+      var idbox = $("#search-id");
+      idbox.focus();
+      rangeSpec = idbox.val().trim();
    }
    // Hide the Elo and user info button headers if listing the robots
-   $("#usr-list-info").css("visibility", (range == "robots") ? "hidden" : "visible");
-   $("#usr-list-elo").css("visibility", (range == "robots") ? "hidden" : "visible");
-   if (range == "elo")
+   $("#usr-list-info").css("visibility", (rangeType == "robots") ? "hidden" : "visible");
+   $("#usr-list-elo").css("visibility", (rangeType == "robots") ? "hidden" : "visible");
+   if (rangeType == "elo")
       serverQuery("/rating",
          {
             kind: "human"
          },
          populateEloList);
    else
+   if (rangeType != "search" || rangeSpec != "")
       serverQuery("/userlist",
          {
-            from: fromRange,
-            to: toRange
+            query: rangeType,
+            spec: rangeSpec
          },
          populateUserList);
+   else {
+      // Actually no processing going on
+      $("#user-load").css("display", "none");
+      ulRq = false;
+   }
 }
 
 function populateGameList(json) {
@@ -1227,12 +1226,9 @@ function initMain() {
    /* Initialize the challenge list after two seconds */
    ivalChallengeList = window.setInterval(refreshChallengeList, 2 * 1000);
 
-   /* Initialize alphabet categories in user list header */
+   /* Initialize categories (robots, favorites, similar...) in user list header */
    $("div.user-cat > span").each(function() {
       var data = $(this).attr('id');
-      if (data === undefined)
-         // Not a special category, i.e. favorites or robots
-         data = $(this).text();
       $(this).click(data, refreshUserList);
    });
 
