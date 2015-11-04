@@ -223,40 +223,61 @@ class UserModel(ndb.Model):
             # No prefix means nothing is returned
             return
 
-        # prefix = Alphabet.tolower(prefix)
+        prefix = prefix.lower()
+        id_set = set()
+
+        def list_q(q, f):
+            """ Yield the results of a user query """
+            CHUNK_SIZE = 50
+            offset = 0
+            while True:
+                chunk = 0
+                for um in q.fetch(CHUNK_SIZE, offset = offset):
+                    chunk += 1
+                    if not f(um).startswith(prefix):
+                        # Iterated past the prefix
+                        return
+                    if not um.inactive and not um.key.id() in id_set:
+                        # This entity matches and has not already been
+                        # returned: yield a dict describing it
+                        yield dict(
+                            id = um.key.id(),
+                            nickname = um.nickname,
+                            prefs = um.prefs,
+                            timestamp = um.timestamp,
+                            ready = um.ready,
+                            ready_timed = um.ready_timed,
+                            human_elo = um.human_elo
+                        )
+                        id_set.add(um.key.id())
+                if chunk < CHUNK_SIZE:
+                    # Hit end of query: stop iterating
+                    return
+                # Continue with the next chunk
+                offset += chunk
+
         counter = 0
 
-        q = cls.query(UserModel.nickname >= prefix).order(UserModel.nickname)
+        # Return users with nicknames matching the prefix
+        q = cls.query(UserModel.nick_lc >= prefix).order(UserModel.nick_lc)
 
-        CHUNK_SIZE = 50
-        offset = 0
-        while True:
-            chunk = 0
-            for um in q.fetch(CHUNK_SIZE, offset = offset):
-                chunk += 1
-                if not um.nickname.startswith(prefix):
-                    # Iterated past the prefix
-                    return
-                if not um.inactive:
-                    # This entity matches: return a dict describing it
-                    yield dict(
-                        id = um.key.id(),
-                        nickname = um.nickname,
-                        prefs = um.prefs,
-                        timestamp = um.timestamp,
-                        ready = um.ready,
-                        ready_timed = um.ready_timed,
-                        human_elo = um.human_elo
-                    )
-                    counter += 1
-                    if max_len > 0 and counter >= max_len:
-                        # Hit limit on returned users: stop iterating
-                        return
-            if chunk < CHUNK_SIZE:
-                # Hit end of query: stop iterating
+        for ud in list_q(q, lambda um: um.nick_lc or ""):
+            yield ud
+            counter += 1
+            if max_len > 0 and counter >= max_len:
+                # Hit limit on returned users: stop iterating
                 return
-            # Continue with the next chunk
-            offset += chunk
+
+        # Return users with full names matching the prefix
+        q = cls.query(UserModel.name_lc >= prefix).order(UserModel.name_lc)
+
+        for ud in list_q(q, lambda um: um.name_lc or ""):
+            yield ud
+            counter += 1
+            if max_len > 0 and counter >= max_len:
+                # Hit limit on returned users: stop iterating
+                return
+
 
     @classmethod
     def list_similar_elo(cls, elo, max_len = 40):

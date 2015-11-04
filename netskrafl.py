@@ -316,8 +316,8 @@ def _userlist(query, spec):
             if i is None:
                 # Not found: do an query, returning max 50 users
                 i = list(UserModel.list_prefix(spec, max_len = 50))
-                # Store the result in the cache with a lifetime of 5 minutes
-                memcache.set(cache_range, i, time = 5 * 60, namespace = "userlist")
+                # Store the result in the cache with a lifetime of 2 minutes
+                memcache.set(cache_range, i, time = 2 * 60, namespace = "userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
@@ -866,7 +866,7 @@ def userlist():
     # (it doesn't give any speed advantage for user lists anyway)
     Context.disable_cache()
 
-    return jsonify(result = Error.LEGAL, userlist = _userlist(query, spec))
+    return jsonify(result = Error.LEGAL, spec = spec, userlist = _userlist(query, spec))
 
 
 @app.route("/gamelist", methods=['POST'])

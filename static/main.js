@@ -375,6 +375,11 @@ function populateUserList(json) {
          markChallenge
       );
    }
+   // If unsuccessful search, say so
+   var noMatch = (json.spec !== null && json.spec !== "" && json.userlist.length === 0);
+   $("#user-no-match").css("display", noMatch ? "block" : "none");
+   if (noMatch)
+      $("#search-prefix").text(json.spec);
 }
 
 function rankStr(rank, ref) {
@@ -542,7 +547,7 @@ function refreshUserList(ev) {
          },
          populateEloList);
    else
-   if (rangeType != "search" || rangeSpec != "")
+   if (rangeType != "search" || rangeSpec !== "")
       serverQuery("/userlist",
          {
             query: rangeType,
@@ -1185,6 +1190,28 @@ function updateUserSearch()
    refreshUserList({ data: "search", delegateTarget: document.getElementById("search") });
 }
 
+var ivalUserSearch = null;
+
+function periodicUserSearch() {
+   // The waiting period has expired after a change of the search box
+   // Clear the interval timer, if still running
+   if (ivalUserSearch !== null) {
+      window.clearInterval(ivalUserSearch);
+      ivalUserSearch = null;
+   }
+   if (displayedUserRange == "search")
+      // Still showing search results: send a request to update'em
+      updateUserSearch();
+}
+
+function triggerUserSearch() {
+   // The user search box has changed: trigger a new waiting period
+   // before issuing a refresh of the user list
+   if (ivalUserSearch !== null)
+      window.clearInterval(ivalUserSearch);
+   ivalUserSearch = window.setInterval(periodicUserSearch, 800); // 0.8 seconds
+}
+
 function initMain() {
    /* Called when the page is displayed or refreshed */
 
@@ -1239,7 +1266,7 @@ function initMain() {
    });
 
    /* When starting to type in the user search box, focus on it */
-   $("#search-id").focus(updateUserSearch).change(updateUserSearch);
+   $("#search-id").focus(updateUserSearch).on("input", triggerUserSearch);
 
    /* Refresh the live user list periodically while it is being displayed */
    window.setInterval(periodicUserList, 5 * 60 * 1000); // Every five minutes
