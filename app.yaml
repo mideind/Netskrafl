@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: rebus
+version: rekindle
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -114,7 +114,7 @@ handlers:
   static_files: static/\1
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
-  expiration: "1d 0m"
+  expiration: 1d
 
 # Catchall for noncacheable JavaScript
 - url: /static/(.*\.min\.js)$

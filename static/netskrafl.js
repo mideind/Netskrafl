@@ -2530,10 +2530,6 @@ function _populateStats(prefix, json) {
       var favStar = $("#usr-info-fav-star");
       favStar.toggleClass("glyphicon-star-empty", !json.favorite);
       favStar.toggleClass("glyphicon-star", json.favorite);
-      // Show whether a challenge exists between the users
-      var chall = $("#usr-info-chall");
-      chall.toggleClass("chall", json.challenge);
-      chall.toggleClass("no-chall", !json.challenge);
    }
    // Populate the highest score/best word field
    var best = "";

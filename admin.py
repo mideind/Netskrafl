@@ -23,11 +23,11 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, session, url_for
 
-from google.appengine.ext import ndb
+from google.appengine.ext import ndb, deferred
 
 from languages import Alphabet
 from skraflgame import User, Game
-from skrafldb import Unique, UserModel, GameModel, MoveModel,\
+from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
     FavoriteModel, ChallengeModel, ChannelModel
 
 import netskrafl
@@ -44,35 +44,49 @@ def admin_usercount():
     return jsonify(count = count)
 
 
-@app.route("/admin/userupdate", methods=['GET'])
-def admin_userupdate():
+def deferred_update():
     """ Update all users in the datastore with lowercase nick and full name """
+    logging.info("Deferred user update starting")
     CHUNK_SIZE = 200
     count = 0
     offset = 0
-    q = UserModel.query()
-    while True:
-        ulist = []
-        chunk = 0
-        for um in q.fetch(CHUNK_SIZE, offset = offset):
-            chunk += 1
-            if um.nick_lc == None:
+    Context.disable_cache()
+    try:
+        q = UserModel.query()
+        while True:
+            ulist = []
+            chunk = 0
+            for um in q.fetch(CHUNK_SIZE, offset = offset):
+                chunk += 1
+                if um.nick_lc == None:
+                    try:
+                        um.nick_lc = um.nickname.lower()
+                        um.name_lc = um.prefs.get("full_name", "").lower() if um.prefs else ""
+                        ulist.append(um)
+                    except Exception as e:
+                        logging.info("Exception in deferred_update() when setting nick_lc: {0}".format(e))
+            if ulist:
                 try:
-                    um.nick_lc = um.nickname.lower()
-                    um.name_lc = um.prefs.get("full_name", "").lower() if um.prefs else ""
-                    ulist.append(um)
+                    ndb.put_multi(ulist)
+                    count += len(ulist)
                 except Exception as e:
-                    logging.info("Exception in /admin/userupdate when setting nick_lc: {0}".format(e))
-        if ulist:
-            try:
-                ndb.put_multi(ulist)
-                count += len(ulist)
-            except Exception as e:
-                logging.info("Exception in /admin/userupdate when updating ndb: {0}".format(e))
-        if chunk < CHUNK_SIZE:
-            break
-        offset += CHUNK_SIZE
-    return "<html><body><p>Updated {0} user records</p></body></html>".format(count)
+                    logging.info("Exception in deferred_update() when updating ndb: {0}".format(e))
+            if chunk < CHUNK_SIZE:
+                break
+            offset += CHUNK_SIZE
+    except Exception as e:
+        logging.info("Exception in deferred_update(): {0}, already updated {1} records".format(e, count))
+        # Do not retry the task
+        raise deferred.PermanentTaskFailure()
+    logging.info("Completed updating {0} user records".format(count))
+
+
+@app.route("/admin/userupdate", methods=['GET'])
+def admin_userupdate():
+    """ Start a user update background task """
+    logging.info("Starting user update")
+    deferred.defer(deferred_update)
+    return "<html><body><p>User update started</p></body></html>"
 
 
 @app.route("/admin/fetchgames", methods=['GET', 'POST'])

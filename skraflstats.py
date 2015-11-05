@@ -38,7 +38,7 @@ app = Flask(__name__)
 running_local = os.environ.get('SERVER_SOFTWARE','').startswith('Development')
 
 if running_local:
-    logging.info(u"Netskrafl app running with DEBUG set to True")
+    logging.info(u"Skraflstats module running with DEBUG set to True")
 
 app.config['DEBUG'] = running_local
 
