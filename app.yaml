@@ -12,8 +12,8 @@ instance_class: F2
 automatic_scaling:
   min_idle_instances: 2
   max_idle_instances: automatic
-  min_pending_latency: 220ms
-  max_pending_latency: 1250ms
+  min_pending_latency: 500ms
+  max_pending_latency: 2000ms
 
 inbound_services:
 - warmup
