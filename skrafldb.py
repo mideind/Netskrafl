@@ -464,34 +464,22 @@ class GameModel(ndb.Model):
                 human_elo_adj = human_elo_adj,
                 prefs = gm.prefs)
 
-
-        # Run the query in two parts as experience suggests that
-        # AppEngine is not efficient with ndb.OR between two distinct values
-        # This also means that the returned list may be twice max_len
-
         k = ndb.Key(UserModel, user_id)
-        v = ndb.Key(UserModel, versus) if versus else None
 
-        q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player0 == k)
-
-        if v:
+        if versus:
             # Add a filter on the opponent
-            q = q.filter(GameModel.player1 == v)
+            v = ndb.Key(UserModel, versus)
+            q = cls.query(
+                ndb.OR(
+                    ndb.AND(GameModel.player1 == k, GameModel.player0 == v),
+                    ndb.AND(GameModel.player0 == k, GameModel.player1 == v)
+                )
+            )
+        else:
+            # Plain filter on the player
+            q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
 
-        q = q.order(-GameModel.ts_last_move)
-
-        for gm in q.fetch(max_len):
-            yield game_callback(gm)
-
-        q = cls.query(GameModel.over == True) \
-            .filter(GameModel.player1 == k)
-
-        if v:
-            # Add a filter on the opponent
-            q = q.filter(GameModel.player0 == v)
-
-        q = q.order(-GameModel.ts_last_move)
+        q = q.filter(GameModel.over == True)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
@@ -505,8 +493,7 @@ class GameModel(ndb.Model):
             return
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
-            .filter(GameModel.over == False) \
-            .order(-GameModel.ts_last_move)
+            .filter(GameModel.over == False)
 
         def game_callback(gm):
             """ Map a game entity to a result tuple with useful info about the game """
