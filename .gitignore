@@ -14,8 +14,9 @@ __pycache__/
 # Secret session key
 resources/secret_key.bin
 
-# Temporary BIN word lists
-resources/ordalistimax15_*.txt
+# Unsorted BIN word lists
+resources/ordalistimax15.txt
+resources/ordalisti.algeng.txt
 
 # CSS files generated from Less
 static/skrafl-curry.css
