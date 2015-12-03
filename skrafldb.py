@@ -479,7 +479,8 @@ class GameModel(ndb.Model):
             # Plain filter on the player
             q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
 
-        q = q.filter(GameModel.over == True)
+        q = q.filter(GameModel.over == True) \
+            .order(-GameModel.ts_last_move)
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
@@ -493,7 +494,8 @@ class GameModel(ndb.Model):
             return
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
-            .filter(GameModel.over == False)
+            .filter(GameModel.over == False) \
+            .order(-GameModel.ts_last_move)
 
         def game_callback(gm):
             """ Map a game entity to a result tuple with useful info about the game """
