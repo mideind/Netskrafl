@@ -104,7 +104,7 @@ def _process_move(game, movelist):
                 # Pass move
                 m = PassMove()
                 break
-            if mstr[0:5] == u"exch=":
+            if mstr.startswith(u"exch="):
                 # Exchange move
                 m = ExchangeMove(mstr[5:])
                 break
@@ -122,7 +122,6 @@ def _process_move(game, movelist):
                 tile = tile[0]
             else:
                 letter = tile
-            # print(u"Cover: row {0} col {1}".format(row, col))
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info(u"Exception in _process_move(): {0}".format(e).encode("latin-1"))
@@ -309,13 +308,13 @@ def _userlist(query, spec):
             spec = spec[0:16]
 
             # The "N:" prefix is a version header
-            cache_range = "4:" + spec
+            cache_range = "4:" + spec.lower() # Case is not significant
 
             # Start by looking in the cache
             i = memcache.get(cache_range, namespace = "userlist")
             if i is None:
-                # Not found: do an query, returning max 50 users
-                i = list(UserModel.list_prefix(spec, max_len = 50))
+                # Not found: do an query, returning max 25 users
+                i = list(UserModel.list_prefix(spec, max_len = 25))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, i, time = 2 * 60, namespace = "userlist")
 
