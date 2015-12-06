@@ -67,13 +67,6 @@ class Alphabet:
         return u''.join([Alphabet.lowercase(c) if c in Alphabet.full_upper else c for c in s])
 
     @staticmethod
-    def sortkey(word):
-        """ Return a sort key with the proper lexicographic ordering
-            for the given word, which must be 'pure', i.e. alphabetic. """
-        # This assumes that Alphabet.full_order is correctly ordered in ascending order.
-        return [Alphabet.full_order.index(ch) for ch in word]
-
-    @staticmethod
     def sort(l):
         """ Sort a list in-place by lexicographic ordering according to this Alphabet """
         l.sort(key = Alphabet.sortkey)
