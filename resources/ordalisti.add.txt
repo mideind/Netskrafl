@@ -1,4 +1,13 @@
+es
+je
+lú
+oj
+pæ
+im
+ím
+nó
 álínis
+vegu
 bitla
 friðla
 fræla
@@ -8,12 +17,9 @@ hógla
 hretla
 hrumla
 hæfla
-im
-ím
 jagla
 mörla
 níðla
-nó
 ógjörla
 ragla
 rangla
@@ -46,8 +52,3 @@ rýðu
 rýjandi
 rúð
 rúðs
-es
-je
-lú
-oj
-pæ
