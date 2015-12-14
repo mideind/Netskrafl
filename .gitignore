@@ -22,6 +22,11 @@ resources/ordalisti.algeng.txt
 static/skrafl-curry.css
 static/skrafl-desat.css
 
+# Concatenated JS
+static/netskrafl.js
+static/main.js
+static/wait.js
+
 # Minified JavaScript
 static/netskrafl.min.js
 static/main.min.js
