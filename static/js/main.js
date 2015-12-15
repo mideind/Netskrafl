@@ -1,3 +1,12 @@
+/*
+
+   Main.js
+   Client-side script for main.html, the main page of Netskrafl
+
+   Author: Vilhjalmur Thorsteinsson, 2015
+
+*/
+
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);

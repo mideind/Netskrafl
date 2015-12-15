@@ -1,3 +1,12 @@
+/*
+
+   Netskrafl.js
+   Client-side script for board.html, the game board page
+
+   Author: Vilhjalmur Thorsteinsson, 2015
+
+*/
+
 // Constants
 
 var ROWIDS = "ABCDEFGHIJKLMNO";
