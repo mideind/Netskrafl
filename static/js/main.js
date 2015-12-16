@@ -1,7 +1,8 @@
 /*
 
    Main.js
-   Client-side script for main.html, the main page of Netskrafl
+
+   Client-side script functions for main.html, the main page of Netskrafl
 
    Author: Vilhjalmur Thorsteinsson, 2015
 
@@ -84,7 +85,6 @@ function markChallenge(ev) {
          }, updateChallenges
       );
 }
-////////////////////////////
 
 function populateOwnStats(json) {
    // Populate the user's own statistics
@@ -480,7 +480,6 @@ function populateRecentList(json) {
    /* Populate a list of recent games for the current user */
    _populateRecentList(json, "#recentlist");
 }
-
 
 function refreshRecentList() {
    /* Update list of recent games for the current user */

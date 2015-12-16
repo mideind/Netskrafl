@@ -104,27 +104,27 @@ module.exports = function (grunt) {
          },
          jshint: {
             files: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
-            tasks: 'jshint',
+            tasks: ['jshint'],
             options: { spawn: false }
          },
          uglify_netskrafl: {
             files: ['static/netskrafl.js'],
-            tasks: 'uglify:netskrafl_js',
+            tasks: ['uglify:netskrafl_js'],
             options: { spawn: false }
          },
          uglify_main: {
             files: ['static/main.js'],
-            tasks: 'uglify:main_js',
+            tasks: ['uglify:main_js'],
             options: { spawn: false }
          },
          uglify_wait: {
             files: ['static/wait.js'],
-            tasks: 'uglify:wait_js',
+            tasks: ['uglify:wait_js'],
             options: { spawn: false }
          },
          less: {
             files: ['static/*.less'],
-            tasks: 'less:development',
+            tasks: ['less:development'],
             options: { spawn: false }
          },
          configFiles: {

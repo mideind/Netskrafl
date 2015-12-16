@@ -1,6 +1,7 @@
 /*
 
    Wait.js
+
    Client-side script for wait.html,
    a page displated while waiting for a time-limited game to start
 
@@ -13,7 +14,6 @@ var finalClose = false;
 function channelOnMessage(msg) {
    /* The server has sent a notification message back on our channel */
    var json = jQuery.parseJSON(msg.data);
-   // alert("channelOnMessage: Json.kind is " + json.kind);
    if (json.kind == "ready")
       // The opponent is ready and a new game has been created:
       // navigate to it
@@ -22,7 +22,6 @@ function channelOnMessage(msg) {
 
 function channelOnClose() {
    /* Channel expired: Ask for a new channel from the server */
-   // alert("Channel closed: calling newchannel()");
    var chTok = channelToken;
    channelToken = null;
    channel = null;
@@ -68,7 +67,7 @@ function closeAndCleanUp(ev)
 }
 
 function initWait() {
-   /* Called when the page is displayed or refreshed */
+   /* Called when the wait.html page is displayed or refreshed */
 
    /* Enable the close button in the user info dialog */
    $("#wait-cancel").click(closeAndCleanUp);

@@ -1,3 +1,13 @@
+/*
+
+   Ajax.js
+
+   Utility functions for client-server communications via Ajax
+
+   Author: Vilhjalmur Thorsteinsson, 2015
+
+*/
+
 function nullFunc(json) {
    /* Null placeholder function to use for Ajax queries that don't need a success func */
 }

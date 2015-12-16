@@ -1,7 +1,7 @@
 /*
 
    Netskrafl.js
-   Client-side script for board.html, the game board page
+   Client-side script functions for board.html, the game board page
 
    Author: Vilhjalmur Thorsteinsson, 2015
 

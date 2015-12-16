@@ -1,3 +1,13 @@
+/*
+
+   Common.js
+
+   Common utility functions used by the Netskrafl HTML pages
+
+   Author: Vilhjalmur Thorsteinsson, 2015
+
+*/
+
 var entityMap = {
    "&": "&amp;",
    "<": "&lt;",

@@ -1,4 +1,13 @@
-/* Google Channel API stuff */
+/*
+
+   Channel.js
+
+   Client-side script for wait.html,
+   a page displated while waiting for a time-limited game to start
+
+   Author: Vilhjalmur Thorsteinsson, 2015
+
+*/
 
 var channel = null;
 var socket = null;
