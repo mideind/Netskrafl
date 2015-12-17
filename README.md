@@ -7,7 +7,7 @@ inspired by SCRABBLE(tm).
 The game, which is free-to-play, is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
 [http://netskrafl.appspot.com](http://netskrafl.appspot.com)
 
-The game backend is implemented in Python 2.7 for Google AppEngine but the core code is also
+The game backend is implemented in Python 2.7 for Google App Engine but the core code is also
 compatible with Python 3.x and PyPy.
 
 The frontend is a tablet- and smartphone-friendly web client in HTML5 and JavaScript connecting
@@ -104,7 +104,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 The full text of the GNU General Public License is available here:
-[http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
+[http://www.gnu.org/licenses/gpl.html](http://www.gnu.org/licenses/gpl.html).
 
 ### Trademarks
 
