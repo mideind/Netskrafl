@@ -52,22 +52,27 @@ The word database is in ```resources/ordalisti.text.dawg```.
 
 ### To build and run locally
 
-0. Install Python 2.7, possibly in a virtualenv.
+0. Install [Python 2.7](https://www.python.org/downloads/release/python-2711/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
-1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python
+1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) (GAE) for Python
 and follow the installation instructions.
 
-2. ```git clone https://github.com/vthorsteinsson/Netskrafl``` to your App Engine application directory.
+2. ```git clone https://github.com/vthorsteinsson/Netskrafl``` to your GAE application directory.
 
-3. Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use.
+3. Run ```pip install -t lib -r requirements.txt``` to install required Python packages so that they
+are accessible to GAE.
 
-4. Run ```python dawgbuilder.py``` to generate the DAWG ```*.pickle``` files.
+4. Run ```python dawgbuilder.py``` to generate the DAWG ```*.pickle``` files. This takes a couple of minutes.
 
-5. Run ```npm install``` to install node dependencies.
+5. Create a secret session key for Flask in `resources/secret_key.bin` (see
+[How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/), you need to scroll down
+to find the heading).
 
-6. Create a secret session key for Flask in `resources/secret_key.bin` (see [How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/), you need to scroll down to find the heading).
+6. Install ```npm``` if you haven't already, and run ```npm install``` to install node dependencies.
 
-7. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified.
+7. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when
+the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified. To trigger an initial build,
+you can```touch static/*.less static/js/*.js```
 
 8. Run either ```runserver.bat``` or ```runserver.sh```.
 
