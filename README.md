@@ -68,9 +68,11 @@ are accessible to GAE.
 [How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/), you need to scroll down
 to find the heading).
 
-6. Install ```npm``` if you haven't already, and run ```npm install``` to install node dependencies.
+6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already. Run ```npm install``` to install
+Node dependencies.
 
-7. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when
+7. In a separate terminal window, but in the Netskrafl directory, run ```grunt```.
+Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when
 the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified. To trigger an initial build,
 you can```touch static/*.less static/js/*.js```
 
@@ -82,7 +84,7 @@ Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
 Contact me via GitHub for queries or information regarding Netskrafl.
 
 Please contact me if you have plans for using Netskrafl as a basis for your
-own game website and prefer not to operate under the conditions of the GPL v3
+own game website and prefer not to operate under the conditions of the GNU GPL v3
 license (see below).
 
 ### License
