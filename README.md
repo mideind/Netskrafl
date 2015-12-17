@@ -4,7 +4,7 @@
 
 This repository contains the implementation of an Icelandic crossword game
 inspired by SCRABBLE(tm).
-The game is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
+The game, which is free-to-play, is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
 [http://netskrafl.appspot.com](http://netskrafl.appspot.com)
 
 The game backend is implemented in Python 2.7 for Google AppEngine but the core code is also
@@ -52,23 +52,48 @@ The word database is in ```resources/ordalisti.text.dawg```.
 
 ### To build and run locally
 
-1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python.
+0. Install Python 2.7, possibly in a virtualenv.
 
-2. Run ```npm install``` to install node dependencies.
+1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) for Python
+and follow the installation instructions.
 
-3. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified.
+2. ```git clone https://github.com/vthorsteinsson/Netskrafl``` to your App Engine application directory.
+
+3. Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use.
 
 4. Run ```python dawgbuilder.py``` to generate the DAWG ```*.pickle``` files.
 
-5. Run ```pip install -t lib -r requirements.txt``` to install Python packages for Google Apps to use.
+5. Run ```npm install``` to install node dependencies.
 
 6. Create a secret session key for Flask in `resources/secret_key.bin` (see [How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/), you need to scroll down to find the heading).
 
-7. Run either ```runserver.bat``` or ```runserver.sh```.
+7. Run ```grunt watch```. Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified.
 
-### Author
-Vilhjalmur Thorsteinsson
+8. Run either ```runserver.bat``` or ```runserver.sh```.
 
+### Original Author
+Vilhjalmur Thorsteinsson, Reykjavik, Iceland
+Contact me via Github for queries or information regarding Netskrafl.
+
+### License
+
+Netskrafl - an Icelandic crossword game website
+Copyright (C) 2015 Vilhjalmur Thorsteinsson
+
+This set of programs is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This set of programs is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+The full text of the GNU General Public License is available here:
+[http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
+
+### Trademarks
 
 *SCRABBLE is a registered trademark. This software or its author are in no way affiliated
 with or endorsed by the owners or licensees of the SCRABBLE trademark.*
