@@ -77,13 +77,19 @@ you can```touch static/*.less static/js/*.js```
 8. Run either ```runserver.bat``` or ```runserver.sh```.
 
 ### Original Author
-Vilhjalmur Thorsteinsson, Reykjavik, Iceland
-Contact me via Github for queries or information regarding Netskrafl.
+Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
+
+Contact me via GitHub for queries or information regarding Netskrafl.
+
+Please contact me if you have plans for using Netskrafl as a basis for your
+own game website and prefer not to operate under the conditions of the GPL v3
+license (see below).
 
 ### License
 
-Netskrafl - an Icelandic crossword game website
-Copyright (C) 2015 Vilhjalmur Thorsteinsson
+*Netskrafl - an Icelandic crossword game website*
+
+*Copyright (C) 2015 Vilhjálmur Þorsteinsson*
 
 This set of programs is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
