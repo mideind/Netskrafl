@@ -144,6 +144,7 @@ module.exports = function (grunt) {
    */
 
    grunt.registerTask('default', ['watch']);
+   grunt.registerTask('make', ['concat', 'uglify', 'less']);
 
    // On watch events configure jshint:all to only run on changed file
    grunt.event.on('watch', function(action, filepath) {
