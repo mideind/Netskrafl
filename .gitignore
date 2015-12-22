@@ -33,11 +33,7 @@ static/main.min.js
 static/wait.min.js
 
 # Python package folders required for AppEngine
-flask/
-werkzeug/
-jinja2/
-markupsafe/
-itsdangerous.py
+lib
 
 # Scratch work files
 templates/main-scratch.html

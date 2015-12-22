@@ -71,12 +71,14 @@ to find the heading).
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already. Run ```npm install``` to install
 Node dependencies.
 
-7. In a separate terminal window, but in the Netskrafl directory, run ```grunt```.
-Note that some release files, i.e. ```*.css``` and ```*.min.js``` are only created when
-the corresponding source files, i.e. ```*.less``` and ```*.js```, are modified. To trigger an initial build,
-you can```touch static/*.less static/js/*.js```
+7. In a separate terminal window, but in the Netskrafl directory, run ```grunt make```. Then run ```grunt```
+to start watching changes of js and css files.
 
 8. Run either ```runserver.bat``` or ```runserver.sh```.
+
+#### Alternatively
+Run ./setup-dev.sh (tested on Debian based Linux and OS X).
+
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
