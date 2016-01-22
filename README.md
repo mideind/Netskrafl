@@ -52,6 +52,8 @@ The word database is in ```resources/ordalisti.text.dawg```.
 
 ### To build and run locally
 
+#### Follow these steps:
+
 0. Install [Python 2.7](https://www.python.org/downloads/release/python-2711/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) (GAE) for Python
@@ -76,8 +78,9 @@ to start watching changes of js and css files.
 
 8. Run either ```runserver.bat``` or ```runserver.sh```.
 
-#### Alternatively
-Run ./setup-dev.sh (tested on Debian based Linux and OS X).
+#### Or, alternatively:
+
+Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 
 ### Original Author

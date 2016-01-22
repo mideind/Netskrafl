@@ -89,7 +89,8 @@ class User:
         um = UserModel.fetch(self._user_id)
         if um is None:
             # Use the default properties for a newly created user
-            UserModel.create(self._user_id, self.nickname()) # This updates the database
+            self.set_new_bag(True) # Fresh users get the new bag by default
+            UserModel.create(self._user_id, self.nickname(), self._preferences) # This updates the database
         else:
             # Obtain the properties from the database entity
             self._nickname = um.nickname

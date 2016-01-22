@@ -116,13 +116,13 @@ class UserModel(ndb.Model):
     best_word_game = ndb.StringProperty(required = False, default = None, indexed = False)
 
     @classmethod
-    def create(cls, user_id, nickname):
+    def create(cls, user_id, nickname, preferences = None):
         """ Create a new user """
         user = cls(id = user_id)
         user.nickname = nickname # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False # A new user is always active
-        user.prefs = { } # No preferences
+        user.prefs = preferences or { } # Default to no preferences
         user.ready = False # Not ready for new challenges unless explicitly set
         user.ready_timed = False # Not ready for timed games unless explicitly set
         return user.put().id()
