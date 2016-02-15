@@ -697,7 +697,7 @@ def submitmove():
         except:
             pass
 
-    game = None if uuid is None else Game.load(uuid)
+    game = None if uuid is None else Game.load(uuid, use_cache = False)
 
     if game is None:
         return jsonify(result = Error.GAME_NOT_FOUND)
@@ -744,7 +744,7 @@ def forceresign():
 
     uuid = request.form.get('game', None)
 
-    game = None if uuid is None else Game.load(uuid)
+    game = None if uuid is None else Game.load(uuid, use_cache = False)
 
     if game is None:
         return jsonify(result = Error.GAME_NOT_FOUND)
