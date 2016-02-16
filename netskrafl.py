@@ -535,11 +535,8 @@ def _recentlist(cuid, versus, max_len):
         return []
     result = []
     # Obtain a list of recently finished games where the indicated user was a player
-    temp = list(GameModel.list_finished_games(cuid, versus = versus, max_len = max_len))
-    # Temp may be up to 2 * max_len as it is composed of two queries
-    # Sort it and bring it down to size before processing it further
-    temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
-    for g in temp[0:max_len]:
+    rlist = GameModel.list_finished_games(cuid, versus = versus, max_len = max_len)
+    for g in rlist:
         opp = g["opp"]
         if opp is None:
             # Autoplayer opponent
@@ -893,8 +890,6 @@ def rating():
 def recentlist():
     """ Return a list of recently completed games for the indicated user """
 
-    # _recentlist() returns an empty list for a nonexistent user
-
     user_id = request.form.get('user', None)
     versus = request.form.get('versus', None)
     count = 14 # Default number of recent games to return
@@ -911,6 +906,8 @@ def recentlist():
 
     if user_id is None:
         user_id = User.current_id()
+
+    # _recentlist() returns an empty list for a nonexistent user
 
     return jsonify(result = Error.LEGAL,
         recentlist = _recentlist(user_id, versus = versus, max_len = count))
