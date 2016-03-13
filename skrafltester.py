@@ -17,20 +17,19 @@
 
 from __future__ import print_function
 
-import sys
 import getopt
+import sys
 import time
 
+from languages import NewTileSet
 from skraflmechanics import State, Board, Move, ExchangeMove, Error
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
-from languages import OldTileSet, NewTileSet
 
 
 def test_move(state, movestring):
     """ Test placing a simple tile move """
     coord, word = movestring.split(u' ')
     rowid = Board.ROWIDS
-    row, col = 0, 0
     xd, yd = 0, 0
     horiz = True
     if coord[0] in rowid:
@@ -252,8 +251,8 @@ def main(argv=None):
             elif o in ("-s", "--silent"):
                 silent = True
         # process arguments
-        for arg in args:
-            pass
+        # for arg in args:
+        #    pass
 
         print(u"Welcome to the Skrafl game tester")
         print(u"Running {0} games against {1}".format(num_games, opponent or u"autoplayer"))

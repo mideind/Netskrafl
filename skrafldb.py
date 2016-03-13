@@ -72,6 +72,9 @@ from languages import Alphabet
 class Context:
     """ Wrapper for NDB context operations """
 
+    def __init__(self):
+        pass
+
     @staticmethod
     def disable_cache():
         """ Disable the NDB in-context cache """
@@ -80,6 +83,9 @@ class Context:
 
 class Unique:
     """ Wrapper for generation of unique id strings for keys """
+
+    def __init__(self):
+        pass
 
     @staticmethod
     def id():
@@ -205,7 +211,7 @@ class UserModel(ndb.Model):
                             human_elo = um.human_elo
                         )
                         counter += 1
-                        if max_len > 0 and counter >= max_len:
+                        if 0 < max_len <= counter:
                             # Hit limit on returned users: stop iterating
                             return
                 if chunk < CHUNK_SIZE:
@@ -264,7 +270,7 @@ class UserModel(ndb.Model):
         for ud in list_q(q, lambda um: um.nick_lc or ""):
             yield ud
             counter += 1
-            if max_len > 0 and counter >= max_len:
+            if 0 < max_len <= counter:
                 # Hit limit on returned users: stop iterating
                 return
 
@@ -274,7 +280,7 @@ class UserModel(ndb.Model):
         for ud in list_q(q, lambda um: um.name_lc or ""):
             yield ud
             counter += 1
-            if max_len > 0 and counter >= max_len:
+            if 0 < max_len <= counter:
                 # Hit limit on returned users: stop iterating
                 return
 
@@ -571,7 +577,7 @@ class FavoriteModel(ndb.Model):
         ks = ndb.Key(UserModel, srcuser_id)
         kd = ndb.Key(UserModel, destuser_id)
         q = cls.query(ancestor = ks).filter(FavoriteModel.destuser == kd)
-        return q.get(keys_only = True) != None
+        return q.get(keys_only = True) is not None
 
     @classmethod
     def add_relation(cls, src_id, dest_id):
@@ -622,7 +628,7 @@ class ChallengeModel(ndb.Model):
         ks = ndb.Key(UserModel, srcuser_id)
         kd = ndb.Key(UserModel, destuser_id)
         q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
-        return q.get(keys_only = True) != None
+        return q.get(keys_only = True) is not None
 
     @classmethod
     def find_relation(cls, srcuser_id, destuser_id):
@@ -633,7 +639,7 @@ class ChallengeModel(ndb.Model):
         kd = ndb.Key(UserModel, destuser_id)
         q = cls.query(ancestor = ks).filter(ChallengeModel.destuser == kd)
         cm = q.get()
-        if cm == None:
+        if cm is None:
             # Not found
             return (False, None)
         # Found: return the preferences associated with the challenge (if any)
@@ -818,7 +824,7 @@ class ChannelModel(ndb.Model):
             .filter(ChannelModel.user == u_key) \
             .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
-        return q.get(keys_only = True) != None
+        return q.get(keys_only = True) is not None
 
     @classmethod
     def exists(cls, kind, entity, user_id):
@@ -834,7 +840,7 @@ class ChannelModel(ndb.Model):
             .filter(ChannelModel.entity == entity) \
             .filter(ChannelModel.expiry > now)
         # Return True if we find at least one entity fulfilling the criteria
-        return q.get(keys_only = True) != None
+        return q.get(keys_only = True) is not None
 
     @classmethod
     def _del_expired(cls, ts):

@@ -56,6 +56,7 @@ import codecs
 import threading
 import logging
 import time
+# noinspection PyPep8Naming
 import cPickle as pickle
 
 from languages import Alphabet
@@ -228,6 +229,9 @@ class Wordbase:
 
     _lock = threading.Lock()
     _lock_common = threading.Lock()
+
+    def __init__(self):
+        pass
 
     @staticmethod
     def _load_resource(resource):

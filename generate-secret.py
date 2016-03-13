@@ -3,11 +3,12 @@ from __future__ import print_function
 import os
 import sys
 
-file_path="resources/secret_key.bin"
+
+file_path = "resources/secret_key.bin"
 
 def generate():
     print("Generating session token, using os.urandom")
-    bytes=os.urandom(64)
+    bytes = os.urandom(64)
     with open(file_path, "wb") as f:
         f.write(bytes)
 

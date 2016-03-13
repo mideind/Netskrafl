@@ -10,7 +10,6 @@
 """
 
 import os
-import codecs
 import time
 
 from dawgdictionary import DawgDictionary
@@ -273,7 +272,6 @@ class DawgTester:
         mlist = self._dawg.find_matches(word)
 
         print(u"{0} two-letter words found; should be {1}".format(len(mlist), len(smallwords)))
-        cnt = 0
         for word in mlist:
             if word not in smallwords:
                 print (u"{0} in match result but not in smallwords".format(word))

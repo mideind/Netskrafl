@@ -13,24 +13,16 @@
 
 """
 
-import os
 import logging
-import json
 
-from datetime import datetime, timedelta
-
-from flask import Flask
-from flask import render_template, redirect, jsonify
-from flask import request, session, url_for
-
+from flask import render_template, jsonify
+from flask import request
 from google.appengine.ext import ndb, deferred
 
-from languages import Alphabet
-from skraflgame import User, Game
-from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
-    FavoriteModel, ChallengeModel, ChannelModel
-
 import netskrafl
+from languages import Alphabet
+from skrafldb import Context, UserModel, GameModel
+from skraflgame import Game
 
 
 # We're plugging in to the normal Netskrafl Flask app
@@ -58,7 +50,7 @@ def deferred_update():
             chunk = 0
             for um in q.fetch(CHUNK_SIZE, offset = offset):
                 chunk += 1
-                if um.nick_lc == None:
+                if um.nick_lc is None:
                     try:
                         um.nick_lc = um.nickname.lower()
                         um.name_lc = um.prefs.get("full_name", "").lower() if um.prefs else ""
@@ -92,6 +84,7 @@ def admin_userupdate():
 @app.route("/admin/fetchgames", methods=['GET', 'POST'])
 def admin_fetchgames():
     """ Return a JSON representation of all finished games """
+    # noinspection PyPep8
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     gamelist = []
     for gm in q.fetch():

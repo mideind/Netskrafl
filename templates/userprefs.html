@@ -52,7 +52,7 @@ function submitForm() {
 
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
-            maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"></input>
+            maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"/>
          &nbsp;<span style="color:red">*</span></div>
       <div class="explain">Verður að vera útfyllt</div>
 {% if err.get('nickname', None) %}
@@ -61,7 +61,7 @@ function submitForm() {
 
       <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
          <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
-            class="text fullname" value="{{ uf.full_name }}"></input></div>
+            class="text fullname" value="{{ uf.full_name }}"/></div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
 {% if err.get('full_name', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('full_name') }}</div>
@@ -69,7 +69,7 @@ function submitForm() {
 
       <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
          <input type="text" name="email" id="email" maxlength="32" tabindex="3"
-            class="text email" value="{{ uf.email }}"></input></div>
+            class="text email" value="{{ uf.email }}"/></div>
       <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
 {% if err.get('email', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
@@ -81,7 +81,7 @@ function submitForm() {
 {% if uf.audio %}
             checked
 {% endif %}
-         ></input>
+         />
          <div id="audio-toggler" class="toggler" tabindex="4">
             <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
@@ -91,7 +91,7 @@ function submitForm() {
 {% if uf.fanfare %}
             checked
 {% endif %}
-         ></input>
+         />
          <span class="subcaption">Lúðraþytur eftir sigur:</span>
          <div id="fanfare-toggler" class="toggler" tabindex="5">
             <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
@@ -106,7 +106,7 @@ function submitForm() {
 {% if uf.beginner %}
             checked
 {% endif %}
-         ></input>
+         />
          <div id="beginner-toggler" class="toggler" tabindex="6">
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-ok"></span></div>
@@ -120,13 +120,13 @@ function submitForm() {
 {% if uf.newbag %}
             checked
 {% endif %}
-         ></input>
+         />
          <div id="newbag-toggler" class="toggler" tabindex="7">
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-shopping-bag"></span></div>
          </div>
          <div class="subexplain">Gefur til kynna hvort þú sért reiðubúin(n) að
-         skrafla með <strong>nýja íslenska skraflpokanum</strong></span>
+         skrafla með <strong>nýja íslenska skraflpokanum</strong></div>
       </div>
 
       <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
@@ -135,14 +135,14 @@ function submitForm() {
 {% if uf.fairplay %}
             checked
 {% endif %}
-         ></input>
+         />
          <div id="fairplay-toggler" class="toggler" tabindex="8">
             <div class="option" id="opt1">&nbsp;</div><!--
          --><div class="option" id="opt2"><span class="glyphicon glyphicon-edit"></span></div>
          </div>
          <div class="subexplain">Með því að velja þessa merkingu lýsir þú því yfir að þú
          skraflir við aðra leikmenn <strong>án stafrænna hjálpartækja</strong>
-         af nokkru tagi</span>
+         af nokkru tagi</div>
       </div>
 
    </form>

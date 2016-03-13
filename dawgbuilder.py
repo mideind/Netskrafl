@@ -100,6 +100,7 @@ from __future__ import print_function
 import os
 import sys
 import codecs
+import time
 
 import binascii
 import struct
@@ -250,9 +251,10 @@ class _Dawg:
         """ Collapse and optimize the edges in the parent dict """
         # Iterate through the letter position and
         # attempt to collapse all "simple" branches from it
-        for letter, node in edges.items():
-            if node:
-                self._collapse_branch(edges, letter, node)
+        if edges:
+            for letter, node in edges.items():
+                if node:
+                    self._collapse_branch(edges, letter, node)
 
     def _collapse_to(self, divergence):
         """ Collapse the tree backwards from the point of divergence """
@@ -323,7 +325,7 @@ class _Dawg:
         for ch, nx in d.items():
             s = u' ' * level + ch
             if nx and nx.final:
-                s = s + u'|'
+                s += u'|'
             s += u' ' * (50 - len(s))
             s += nx.__str__()
             print(s)
@@ -392,6 +394,7 @@ class _Dawg:
         for node in self._unique_nodes.values():
             if node is not None:
                 stream.write(node.__str__() + u"\n")
+
 
 class _BinaryDawgPacker:
 
@@ -615,10 +618,6 @@ class DawgBuilder:
                 self._fin = None
             self._len = len(self._list)
             self._list.sort(key = Alphabet.sortkey)
-            # !!! DEBUG
-            #print(u"_InFileToBeSorted: content is:")
-            #for w in self._list:
-            #    print(u"" + w)
             self.read_word()
 
         def read_word(self):
@@ -703,7 +702,8 @@ class DawgBuilder:
                 # If it's a duplicate, we don't mind too much, but if it's out
                 # of order, display a warning
                 if lastkey > key:
-                    print(u"Warning: input files should be in ascending order, but \"{0}\" > \"{1}\"".format(lastword, word))
+                    print(u"Warning: input files should be in ascending order, but \"{0}\" > \"{1}\""
+                        .format(lastword, word))
                 else:
                     # Identical to previous word
                     duplicates += 1
@@ -734,7 +734,6 @@ class DawgBuilder:
         for f in infiles:
             assert not f.has_word()
             f.close()
-            f = None
         # Complete and clean up
         self._dawg.finish()
         print("Finished loading {0} words, output {1} words, {2} duplicates skipped, {3} removed"
@@ -790,6 +789,7 @@ class DawgBuilder:
 # The resulting DAWG will include all words for which filter() returns True, and exclude others.
 # Useful for excluding long words or words containing "foreign" characters.
 
+# noinspection PyUnusedLocal
 def nofilter(word):
     """ No filtering - include all input words in output graph """
     return True
@@ -811,9 +811,6 @@ def filter_common(word):
         never be used anyway)
     """
     return len(word) <= COMMON_MAXLEN
-
-
-import time
 
 
 def run_test():
