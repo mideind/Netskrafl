@@ -19,8 +19,10 @@
 """
 
 from random import SystemRandom
-from languages import Alphabet, OldTileSet, NewTileSet
+
 from dawgdictionary import Wordbase
+from languages import Alphabet
+
 
 class Board:
 
@@ -154,7 +156,8 @@ class Board:
                 if t != u' ':
                     yield (x, y, t, self.letter_at(x,y))
 
-    def adjacent(self, row, col, xd, yd, getter):
+    @staticmethod
+    def adjacent(row, col, xd, yd, getter):
         """ Return the letters or tiles adjacent to the given square, in the direction (xd, yd) """
         result = u''
         row += xd
@@ -605,6 +608,9 @@ class Cover:
 class Error:
 
     # Error return codes from Move.check_legality()
+    def __init__(self):
+        pass
+
     LEGAL = 0
     NULL_MOVE = 1
     FIRST_MOVE_NOT_IN_CENTER = 2
@@ -813,7 +819,6 @@ class Move:
             self._horizontal = len(board.letters_left(row, col)) + len(board.letters_right(row, col)) >= \
                 len(board.letters_above(row, col)) + len(board.letters_below(row, col))
             horiz = self._horizontal
-            vert = not horiz
         # The move is purely horizontal or vertical
         if horiz:
             self._covers.sort(key = lambda x: x.col) # Sort in ascending column order
@@ -843,7 +848,6 @@ class Move:
                             # Found gap: illegal play
                             return Error.HAS_GAP
                 else:
-                    # assert vert
                     # Vertical: check squares within column
                     for ix in range(row + 1, c.row):
                         if not board.is_covered(ix, c.col):
@@ -945,7 +949,6 @@ class Move:
         if self._score is not None:
             return self._score
         # Sum of letter scores
-        total = 0
         sc = 0
         # Word score multiplier
         wsc = 1
@@ -1032,19 +1035,23 @@ class ExchangeMove:
         # All checks pass: the play is legal
         return Error.LEGAL
 
+    # noinspection PyUnusedLocal
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"EXCH " + self._tiles, 0)
 
+    # noinspection PyUnusedLocal
     def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
         return [] # No tiles
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # An exchange move does not affect the score
         return 0
 
+    # noinspection PyMethodMayBeStatic,PyMethodMayBeStatic
     def num_covers(self):
         """ Return the number of tiles played in this move """
         return 0
@@ -1067,28 +1074,34 @@ class PassMove:
         """ Return the standard move notation of a coordinate followed by the word formed """
         return u"Pass"
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"PASS", 0)
 
+    # noinspection PyUnusedLocal
     def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
         return [] # No tiles
 
+    # noinspection PyUnusedLocal
     def check_legality(self, state):
         """ Check whether this move is legal on the board """
         # Always legal
         return Error.LEGAL
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # A pass move does not affect the score
         return 0
 
+    # noinspection PyMethodMayBeStatic
     def num_covers(self):
         """ Return the number of tiles played in this move """
         return 0
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
@@ -1124,10 +1137,12 @@ class ResignMove:
         # A resignation loses all points
         return - self._forfeited_points
 
+    # noinspection PyMethodMayBeStatic
     def num_covers(self):
         """ Return the number of tiles played in this move """
         return 0
 
+    # noinspection PyMethodMayBeStatic
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Resign the game, causing is_game_over() to become True

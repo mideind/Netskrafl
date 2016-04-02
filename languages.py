@@ -22,6 +22,9 @@ class Alphabet:
     """
 
     # Sort ordering of allowed Icelandic letters
+    def __init__(self):
+        pass
+
     order = u'aábdðeéfghiíjklmnoóprstuúvxyýþæö'
     # Upper case version of the order string
     upper = u'AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ'
@@ -39,7 +42,6 @@ class Alphabet:
     # Locale collation (sorting) map, initialized in _init()
     _lcmap = None # Case sensitive
     _lcmap_nocase = None # Case insensitive
-
 
     @staticmethod
     def bit_pattern(word):
@@ -84,6 +86,7 @@ class Alphabet:
         return u''.join([Alphabet.all_tiles[ix] * lcount[ix]
             for ix in range(len(lcount)) if lcount[ix] > 0])
 
+    # noinspection PyUnusedLocal
     @staticmethod
     def format_timestamp(ts, format = None):
         """ Return a timestamp formatted as a readable string """
@@ -93,7 +96,7 @@ class Alphabet:
     @staticmethod
     def _init():
         """ Create a collation (sort) mapping for the Icelandic language """
-        lcmap = [i for i in range(0,256)]
+        lcmap = [i for i in range(0, 256)]
 
         def rotate(letter, sort_after):
             """ Modifies the lcmap so that the letter is sorted after the indicated letter """
