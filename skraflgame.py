@@ -15,8 +15,6 @@
 
 """
 
-import logging
-import time
 import collections
 import threading
 
@@ -112,7 +110,7 @@ class User:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
             um = UserModel.fetch(self._user_id)
-            assert um != None
+            assert um is not None
             um.nickname = self._nickname
             um.nick_lc = self._nickname.lower()
             um.name_lc = self.full_name().lower()

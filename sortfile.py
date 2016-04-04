@@ -28,7 +28,7 @@ lexorder = u'\naábdðeéfghiíjklmnoóprstuúvxyýþæö'
 def keyfunc(line):
     try:
         return [lexorder.index(c) for c in line]
-    except ValueError as e:
+    except ValueError:
         print(u"Error: unknown character in word '{0}'".format(line))
         raise
 

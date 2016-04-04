@@ -35,7 +35,7 @@ from datetime import datetime, timedelta
 
 from flask import Flask
 from flask import render_template, redirect, jsonify
-from flask import request, session, url_for
+from flask import request, url_for
 
 from google.appengine.api import users, memcache
 from google.appengine.runtime import DeadlineExceededError
@@ -45,7 +45,7 @@ from dawgdictionary import Wordbase
 from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Context, Unique, UserModel, GameModel, MoveModel,\
+from skrafldb import Context, UserModel, GameModel,\
     FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel,\
     ZombieModel
 
@@ -386,7 +386,7 @@ def _gamelist():
             "zombie": True,
             "fairplay": fairplay,
             "newbag": newbag,
-            "tile_count" : 100 # All tiles (100%) accounted for
+            "tile_count": 100 # All tiles (100%) accounted for
         })
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
     result.sort(key = lambda x: x["ts"], reverse = True)
@@ -434,7 +434,7 @@ def _gamelist():
             "zombie": False,
             "fairplay": fairplay,
             "newbag": newbag,
-            "tile_count" : int(g["tile_count"] * 100 / tileset.num_tiles())
+            "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles())
         })
     return result
 
@@ -464,11 +464,8 @@ def _rating(kind):
         if not uid:
             # Hit the end of the list
             break
-        is_robot = False
-        usr = None
         inactive = False
         if uid.startswith(u"robot-"):
-            is_robot = True
             nick = Game.autoplayer_name(int(uid[6:]))
             fullname = nick
             chall = False
@@ -535,11 +532,8 @@ def _recentlist(cuid, versus, max_len):
         return []
     result = []
     # Obtain a list of recently finished games where the indicated user was a player
-    temp = list(GameModel.list_finished_games(cuid, versus = versus, max_len = max_len))
-    # Temp may be up to 2 * max_len as it is composed of two queries
-    # Sort it and bring it down to size before processing it further
-    temp.sort(key = lambda x: x["ts_last_move"], reverse = True)
-    for g in temp[0:max_len]:
+    rlist = GameModel.list_finished_games(cuid, versus = versus, max_len = max_len)
+    for g in rlist:
         opp = g["opp"]
         if opp is None:
             # Autoplayer opponent
@@ -697,7 +691,7 @@ def submitmove():
         except:
             pass
 
-    game = None if uuid is None else Game.load(uuid)
+    game = None if uuid is None else Game.load(uuid, use_cache = False)
 
     if game is None:
         return jsonify(result = Error.GAME_NOT_FOUND)
@@ -744,7 +738,7 @@ def forceresign():
 
     uuid = request.form.get('game', None)
 
-    game = None if uuid is None else Game.load(uuid)
+    game = None if uuid is None else Game.load(uuid, use_cache = False)
 
     if game is None:
         return jsonify(result = Error.GAME_NOT_FOUND)
@@ -893,8 +887,6 @@ def rating():
 def recentlist():
     """ Return a list of recently completed games for the indicated user """
 
-    # _recentlist() returns an empty list for a nonexistent user
-
     user_id = request.form.get('user', None)
     versus = request.form.get('versus', None)
     count = 14 # Default number of recent games to return
@@ -911,6 +903,8 @@ def recentlist():
 
     if user_id is None:
         user_id = User.current_id()
+
+    # _recentlist() returns an empty list for a nonexistent user
 
     return jsonify(result = Error.LEGAL,
         recentlist = _recentlist(user_id, versus = versus, max_len = count))
@@ -964,19 +958,11 @@ def challenge():
     except:
         pass
 
-    fairplay = False
-    try:
-        fp = request.form.get('fairplay', None)
-        fairplay = fp is not None and fp == u"true"
-    except:
-        fairplay = False
+    fp = request.form.get('fairplay', None)
+    fairplay = fp and fp == u"true"
 
-    newbag = False
-    try:
-        nb = request.form.get('newbag', None)
-        newbag = nb is not None and nb == u"true"
-    except:
-        newbag = False
+    nb = request.form.get('newbag', None)
+    newbag = nb and nb == u"true"
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -987,7 +973,7 @@ def challenge():
     if destuser is not None:
         if action == u"issue":
             user.issue_challenge(destuser,
-                { "duration" : duration, "fairplay" : fairplay, "newbag" : newbag })
+                { "duration": duration, "fairplay": fairplay, "newbag": newbag })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":
@@ -997,7 +983,7 @@ def challenge():
             # Accept a challenge previously made by the destuser (really srcuser)
             user.accept_challenge(destuser)
         # Notify the destination user, if he has one or more active channels
-        ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }');
+        ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }')
 
     return jsonify(result = Error.LEGAL)
 
@@ -1537,7 +1523,7 @@ def newchannel():
     if uuid is None:
         # This is probably a user channel request
         uuid = request.form.get("user", None)
-        if uuid == None:
+        if uuid is None:
             uuid = request.form.get("wait", None)
             if uuid is not None:
                 # logging.info(u"Renewing channel token for wait channel with opponent id {0}".format(uuid))
@@ -1651,6 +1637,7 @@ def newbag():
     return render_template("nshelp.html", user = user, tab = "newbag")
 
 
+# noinspection PyUnusedLocal
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
@@ -1661,10 +1648,6 @@ def page_not_found(e):
 def server_error(e):
     """ Return a custom 500 error """
     return u'Eftirfarandi villa kom upp: {}'.format(e), 500
-
-# Continue to add handlers for the admin web
-
-import admin
 
 # Run a default Flask web server for testing if invoked directly as a main program
 

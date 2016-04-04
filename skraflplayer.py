@@ -64,12 +64,11 @@
 
 """
 
-import logging
 from random import randint
 
-from dawgdictionary import DawgDictionary, Navigation, Wordbase
-from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
+from dawgdictionary import Navigation, Wordbase
 from languages import Alphabet
+from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
 
 
 class Square:
@@ -309,7 +308,7 @@ class LeftPermutationNavigator:
 
     def leftparts(self, length):
         """ Returns a list of leftparts of the length requested """
-        return self._leftparts[length - 1] if length > 0 and length <= self._maxleft else None
+        return self._leftparts[length - 1] if 0 < length <= self._maxleft else None
 
     def push_edge(self, firstchar):
         """ Returns True if the edge should be entered or False if not """
@@ -359,6 +358,7 @@ class LeftPermutationNavigator:
         # We need to visit all outgoing edges, so return True
         return True
 
+    # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
         pass
@@ -406,15 +406,18 @@ class LeftFindNavigator:
             # Found the left part: save the position (state)
             self._state = (matched, prefix, nextnode)
 
+    # noinspection PyMethodMayBeStatic
     def pop_edge(self):
         """ Called when leaving an edge that has been navigated """
         return False
 
+    # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
         pass
 
 
+# noinspection PyClassHasNoInit
 class Match:
 
     """ Return codes for the _check() function in ExtendRightNavigator """
@@ -546,6 +549,7 @@ class ExtendRightNavigator:
         # Once past the prefix, we need to visit all outgoing edges, so return True
         return True
 
+    # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
         pass
@@ -673,8 +677,6 @@ class AutoPlayer:
                 axis = self._axis_from_column(c)
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
-        # Delete the reference to LeftPermutationNavigator to save memory
-        lpn = None
 
     def _generate_move(self, depth):
         """ Finds and returns a Move object to be played, eventually weighted by countermoves """

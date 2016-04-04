@@ -10,26 +10,21 @@
 
 """
 
-import os
-import logging
-import json
-import time
 import calendar
-
+import logging
+import os
+import time
 from datetime import datetime, timedelta
 
+from flask import Flask
+from flask import render_template, jsonify
+from flask import request, url_for
 from google.appengine.api import users
 from google.appengine.ext import deferred
 from google.appengine.runtime import DeadlineExceededError
 
-from flask import Flask
-from flask import render_template, redirect, jsonify
-from flask import request, session, url_for
-
 from languages import Alphabet
-from skraflgame import User, Game
-from skrafldb import Context, UserModel, GameModel, MoveModel, StatsModel, RatingModel
-
+from skrafldb import Context, UserModel, GameModel, StatsModel, RatingModel
 
 # Standard Flask initialization
 
@@ -113,15 +108,15 @@ def _compute_elo(o_elo, sc0, sc1, est0, est1):
     adj1 = (act1 - exp1) * (ELO_K if est1 else BEGINNER_K)
 
     # Calculate the final adjustment tuple
-    adj = (int(round(adj0)), int(round(adj1)))
+    adj0, adj1 = int(round(adj0)), int(round(adj1))
 
     # Make sure we don't adjust to a negative number
-    if adj[0] + elo0 < 0:
-        adj[0] = -elo0
-    if adj[1] + elo1 < 0:
-        adj[1] = -elo1
+    if adj0 + elo0 < 0:
+        adj0 = -elo0
+    if adj1 + elo1 < 0:
+        adj1 = -elo1
 
-    return adj
+    return (adj0, adj1)
 
 
 def _write_stats(timestamp, urecs):
@@ -177,7 +172,6 @@ def _run_stats(from_time, to_time):
     try:
         # Use i as a progress counter
         for i, gm in enumerate(q):
-            uuid = gm.key.id()
             ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
@@ -197,7 +191,6 @@ def _run_stats(from_time, to_time):
                 # ignore such a game altogether in the statistics
                 continue
 
-            pr = gm.prefs
             if p0 is None:
                 k0 = "robot-" + str(rl)
             else:
