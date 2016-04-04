@@ -42,11 +42,12 @@ from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
-from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import Move, PassMove, ExchangeMove, \
+    ResignMove, ChallengeMove, ResponseMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Context, UserModel, GameModel,\
-    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel,\
+from skrafldb import Context, UserModel, GameModel, \
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel, \
     ZombieModel
 
 
@@ -101,7 +102,7 @@ def _process_move(game, movelist):
     try:
         for mstr in movelist:
             if mstr == u"pass":
-                # Pass move
+                # Pass move (or accepting the last move in the game without challenging it)
                 m = PassMove()
                 break
             if mstr.startswith(u"exch="):
@@ -111,6 +112,10 @@ def _process_move(game, movelist):
             if mstr == u"rsgn":
                 # Resign from game, forfeiting all points
                 m = ResignMove(game.state.scores()[game.state.player_to_move()])
+                break
+            if mstr == u"chall":
+                # Challenging the last move
+                m = ChallengeMove()
                 break
             sq, tile = mstr.split(u'=')
             row = u"ABCDEFGHIJKLMNO".index(sq[0])
@@ -129,7 +134,7 @@ def _process_move(game, movelist):
 
     # Process the move string here
     # Unpack the error code and message
-    err = game.state.check_legality(m)
+    err = game.check_legality(m)
     msg = ""
     if isinstance(err, tuple):
         err, msg = err
@@ -151,9 +156,16 @@ def _process_move(game, movelist):
 
         is_over = game.is_over()
 
-        if not is_over and opponent is None:
-            game.autoplayer_move()
-            is_over = game.is_over() # State may change during autoplayer_move()
+        if not is_over:
+
+            if opponent is None:
+                # Generate an autoplayer move in response
+                game.autoplayer_move()
+                is_over = game.is_over() # State may change during autoplayer_move()
+            elif isinstance(m, ChallengeMove):
+                # Challenge: generate a response move
+                game.response_move()
+                is_over = game.is_over() # State may change during response_move()
 
         if is_over:
             # If the game is now over, tally the final score

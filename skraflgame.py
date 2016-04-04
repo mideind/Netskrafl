@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from google.appengine.api import users, memcache
 
 from skraflmechanics import State, Board, Rack, Error, \
-    Move, PassMove, ExchangeMove, ResignMove
+    Move, PassMove, ExchangeMove, ChallengeMove, ResponseMove, ResignMove
 from skraflplayer import AutoPlayer
 from languages import Alphabet, OldTileSet, NewTileSet
 from skrafldb import Unique, UserModel, GameModel, MoveModel, \
@@ -275,6 +275,50 @@ class User:
         assert isinstance(state, bool)
         self.set_pref(u"newbag", state)
 
+    @staticmethod
+    def friend_from_prefs(prefs):
+        """ Returns True if the user is a friend of Netskrafl """
+        if prefs is None:
+            return False
+        friend = prefs.get(u"friend")
+        return False if friend is None else friend
+
+    def friend(self):
+        """ Returns True if the user is a friend of Netskrafl """
+        friend = self.get_pref(u"friend")
+        # False by default
+        return False if friend is None else friend
+
+    def set_friend(self, state):
+        """ Sets the friend status of a user to True or False """
+        assert isinstance(state, bool)
+        self.set_pref(u"friend", state)
+
+    @staticmethod
+    def has_paid_from_prefs(prefs):
+        """ Returns True if the user is a paying friend of Netskrafl """
+        if prefs is None:
+            return False
+        if not self.friend_from_prefs(prefs):
+            # Must be a friend before being a paying friend
+            return False
+        has_paid = prefs.get(u"haspaid")
+        return False if has_paid is None else has_paid
+
+    def has_paid(self):
+        """ Returns True if the user is a paying friend of Netskrafl """
+        if not self.friend():
+            # Must be a friend before being a paying friend
+            return False
+        has_paid = self.get_pref(u"haspaid")
+        # False by default
+        return False if has_paid is None else has_paid
+
+    def set_has_paid(self, state):
+        """ Sets the payment status of a user to True or False """
+        assert isinstance(state, bool)
+        self.set_pref(u"haspaid", state)
+
     def is_ready(self):
         """ Returns True if the user is ready to accept challenges """
         return self._ready
@@ -484,6 +528,8 @@ class Game:
         self.moves = []
         # Initial rack contents
         self.initial_racks = [None, None]
+        # Was the last move in the game challengeable?
+        self.challengeable = False
         # Preferences (such as time limit, alternative bag or board, etc.)
         self._preferences = None
         # Cache of game over state (becomes True when the game is definitely over)
@@ -569,6 +615,8 @@ class Game:
 
         # Process the moves
         player = 0
+        last_tilemove = None # The last normal tile move made
+
         # mx = 0 # Move counter for debugging/logging
         for mm in gm.moves:
 
@@ -590,9 +638,11 @@ class Game:
                     horiz = False
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
+                last_tilemove = None
                 if mm.tiles is not None:
                     m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
+                    last_tilemove = m
 
             elif mm.tiles[0:4] == u"EXCH":
 
@@ -609,18 +659,34 @@ class Game:
                 # Game resigned
                 m = ResignMove(- mm.score)
 
+            elif mm.tiles == u"CHALL":
+
+                # Last move challenged
+                m = ChallengeMove()
+
+            elif mm.tiles == u"RESP":
+
+                # Response to challenge
+                m = ResponseMove(mm.score, last_tilemove)
+
             assert m is not None
             if m:
                 # Do a "shallow apply" of the move, which updates
                 # the board and internal state variables but does
                 # not modify the bag or the racks
-                game.state.apply_move(m, True)
+                game.state.apply_move(m, shallow = True)
                 # Append to the move history
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 player = 1 - player
 
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
+
+        # Find out whether the last move is challengeable
+        # If the game doesn't use manual wordchecks, challenges are not available
+        if game.manual_wordcheck():
+            game.challengeable = game.moves and (game.moves[-1] is last_tilemove)
+        game.state.set_challengeable(game.challengeable)
 
         # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
@@ -753,6 +819,11 @@ class Game:
         """ Set the fairplay commitment of this game """
         self.set_pref(u"fairplay", state)
 
+    @staticmethod
+    def new_bag_from_prefs(prefs):
+        """ Returns true if the game preferences specify a new bag """
+        return prefs is not None and prefs.get(u"newbag", False)
+
     def new_bag(self):
         """ True if this game uses the new bag """
         return self.get_pref(u"newbag") or False
@@ -762,9 +833,20 @@ class Game:
         self.set_pref(u"newbag", state)
 
     @staticmethod
-    def new_bag_from_prefs(prefs):
-        """ Returns true if the game preferences specify a new bag """
-        return prefs is not None and prefs.get(u"newbag", False)
+    def manual_wordcheck_from_prefs(prefs):
+        """ Returns true if the game preferences specify a manual wordcheck """
+        return prefs is not None and prefs.get(u"manual", False)
+
+    def manual_wordcheck(self):
+        """ True if this game uses manual wordcheck """
+        if self.is_robot_game():
+            # A robot game always uses automatic wordcheck
+            return False
+        return self.get_pref(u"manual") or False
+
+    def set_manual_wordcheck(self, state):
+        """ Configures the game as using manual wordcheck """
+        self.set_pref(u"manual", state)
 
     @staticmethod
     def tileset_from_prefs(prefs):
@@ -894,13 +976,17 @@ class Game:
         # Never show best moves for games that are still being played
         return self.is_over()
 
+    def check_legality(self, move):
+        """ Check whether an incoming move from a client is legal and valid """
+        return self.state.check_legality(move, self.manual_wordcheck())
+
     def register_move(self, move):
         """ Register a new move, updating the score and appending to the move list """
         player_index = self.player_to_move()
         self.state.apply_move(move)
         self.ts_last_move = datetime.utcnow()
-        self.moves.append(MoveTuple(player_index, move,
-            self.state.rack(player_index), self.ts_last_move))
+        mt = MoveTuple(player_index, move, self.state.rack(player_index), self.ts_last_move)
+        self.moves.append(mt)
         self.last_move = None # No response move yet
 
     def autoplayer_move(self):
@@ -911,6 +997,26 @@ class Game:
         move = apl.generate_move()
         self.register_move(move)
         self.last_move = move # Store a response move
+
+    def response_move(self):
+        """ Generate a response to a challenge move and register it """
+        lm = len(self.moves)
+        assert lm >= 2
+        challenged_mt = self.moves[-2] # The challenged MoveTuple ([-1] is the ChallengeMove)
+        assert challenged_mt.player == self.player_to_move()
+        challenged_move = challenged_mt.move
+        assert isinstance(Move, challenged_move)
+        # Validate the words formed by the move, returning a list of invalid ones, if any
+        list_invalid = challenged_move.check_words(self.state.board())
+        score = - challenged_move.score() if list_invalid else ResponseMove.INCORRECT_CHALLENGE_BONUS
+        # Obtain the player's rack before the challenged move
+        if lm >= 4:
+            prev_rack = self.moves[-4].rack
+        else:
+            prev_rack = self.initial_racks[self.player_to_move()]
+        move = ResponseMove(score, challenged_move, prev_rack)
+        self.register_move(move)
+        self.last_move = move # Store the response move
 
     def enum_tiles(self, state = None):
         """ Enumerate all tiles on the board in a convenient form """
@@ -1116,6 +1222,8 @@ class Game:
         reply["scores"] = sc = self.final_scores()
         # New bag?
         reply["newbag"] = self.new_bag()
+        # Manual wordcheck?
+        reply["manual"] = self.manual_wordcheck()
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
