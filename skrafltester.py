@@ -22,11 +22,11 @@ import sys
 import time
 
 from languages import NewTileSet
-from skraflmechanics import State, Board, Move, ExchangeMove, Error
+from skraflmechanics import State, Board, Move, ExchangeMove, ChallengeMove, ResponseMove, Error
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
 
 
-def test_move(state, movestring):
+def test_move(state, movestring, manual_wordcheck = False):
     """ Test placing a simple tile move """
     coord, word = movestring.split(u' ')
     rowid = Board.ROWIDS
@@ -52,7 +52,7 @@ def test_move(state, movestring):
             next_is_blank = False
         row += xd
         col += yd
-    legal = state.check_legality(move)
+    legal = state.check_legality(move, manual_wordcheck)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -70,6 +70,22 @@ def test_exchange(state, numtiles):
     exch = state.player_rack().contents()[0:numtiles]
     move = ExchangeMove(exch)
     legal = state.check_legality(move)
+    msg = ""
+    if isinstance(legal, tuple):
+        legal, msg = legal
+    if legal != Error.LEGAL:
+        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        return False
+    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    state.apply_move(move)
+    print(state.__str__())
+    return True
+
+
+def test_challenge(state, manual_wordcheck = False):
+    """ Test challenge move """
+    move = ChallengeMove()
+    legal = state.check_legality(move, manual_wordcheck)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -124,11 +140,12 @@ def test_game(players, silent):
         move = apl.generate_move()
         g1 = time.time()
 
-        # legal = state.check_legality(move)
-        # if legal != Error.LEGAL:
-        #     # Oops: the autoplayer generated an illegal move
-        #     print(u"Play is not legal, code {0}".format(Error.errortext(legal)))
-        #     return
+        legal = state.check_legality(move)
+        if legal != Error.LEGAL:
+            # Oops: the autoplayer generated an illegal move
+            print(u"Play is not legal, code {0}".format(Error.errortext(legal)))
+            return
+
         if not silent:
             print(u"Play {0} scores {1} points ({2:.2f} seconds)".format(move, state.score(move), g1 - g0))
 
@@ -148,6 +165,48 @@ def test_game(players, silent):
             state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1)))
 
     return state.scores()
+
+
+def test_manual_game():
+    """ Manual game test """
+
+    # Initial, empty game state
+    state = State(tileset = NewTileSet, drawtiles = True)
+
+    state.set_challengeable(True)
+
+    print(u"Manual game")
+    print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print(u"Bag contents are:\n{0}".format(state.bag().contents()))
+    print(u"Rack 0 is {0}".format(state.rack(0)))
+    print(u"Rack 1 is {0}".format(state.rack(1)))
+
+    # Set player names
+    for ix in range(2):
+        state.set_player_name(ix, "Player " + ("A", "B")[ix])
+
+    print(state.__str__()) # This works in Python 2 and 3
+
+    state.player_rack().set_tiles(u"stuðinn")
+    test_move(state, u"H4 stuði")
+    state.player_rack().set_tiles(u"dettsfj")
+    test_move(state, u"5E detts")
+    test_exchange(state, 3)
+    state.player_rack().set_tiles(u"dýsturi")
+    test_move(state, u"I3 dýs")
+    state.player_rack().set_tiles(u"?xalmen")
+    test_move(state, u"6E ?óx") # The question mark indicates a blank tile for the subsequent cover
+    state.player_rack().set_tiles(u"eiðarps")
+    test_move(state, u"9F eipar", manual_wordcheck = True)
+
+    test_challenge(state, manual_wordcheck = True)
+
+    # Tally the tiles left and calculate the final score
+    state.finalize_score()
+    p0, p1 = state.scores()
+
+    print(u"Manual game over, final score {3} {0} : {4} {1} after {2} moves".format(p0, p1,
+        state.num_moves(), state.player_name(0), state.player_name(1)))
 
 
 def test(num_games, opponent, silent):
@@ -233,12 +292,13 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hn:o:s", ["help", "numgames", "opponent", "silent"])
+            opts, args = getopt.getopt(argv[1:], "hn:o:sm", ["help", "numgames", "opponent", "silent", "manual"])
         except getopt.error as msg:
              raise Usage(msg)
         num_games = 4
         opponent = None
         silent = False
+        manual = False
         # process options
         for o, a in opts:
             if o in ("-h", "--help"):
@@ -250,14 +310,19 @@ def main(argv=None):
                 opponent = str(a).lower()
             elif o in ("-s", "--silent"):
                 silent = True
+            elif o in ("-m", "--manual"):
+                manual = True
         # process arguments
         # for arg in args:
         #    pass
 
         print(u"Welcome to the Skrafl game tester")
-        print(u"Running {0} games against {1}".format(num_games, opponent or u"autoplayer"))
 
-        test(num_games, opponent, silent)
+        if manual:
+            test_manual_game()
+        else:
+            print(u"Running {0} games against {1}".format(num_games, opponent or u"autoplayer"))
+            test(num_games, opponent, silent)
 
     except Usage as err:
         print(err.msg, file=sys.stderr)

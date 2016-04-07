@@ -616,11 +616,10 @@ class Game:
         # Process the moves
         player = 0
         last_tilemove = None # The last normal tile move made
+        last_tilemove_ix = None
 
-        # mx = 0 # Move counter for debugging/logging
-        for mm in gm.moves:
+        for ix, mm in enumerate(gm.moves):
 
-            # mx += 1
             # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1], mm.tiles).encode("latin-1"))
 
             m = None
@@ -643,6 +642,7 @@ class Game:
                     m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
                     last_tilemove = m
+                    last_tilemove_ix = ix
 
             elif mm.tiles[0:4] == u"EXCH":
 
@@ -667,7 +667,12 @@ class Game:
             elif mm.tiles == u"RESP":
 
                 # Response to challenge
-                m = ResponseMove(mm.score, last_tilemove)
+                # Find out the previous rack, i.e. the rack as it was before
+                # the challenged move was made
+                assert last_tilemove_ix is not None
+                prev_rack = gm.moves[last_tilemove_ix - 2].rack if last_tilemove_ix >= 2 else \
+                    (gm.irack0, gm.irack1)[last_tilemove_ix]
+                m = ResponseMove(mm.score, last_tilemove, prev_rack)
 
             assert m is not None
             if m:
