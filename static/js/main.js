@@ -630,6 +630,11 @@ function populateChallengeList(json) {
       if (item.prefs.fairplay)
          fairplay = "<span class='fairplay-btn' title='Án hjálpartækja'></span> ";
 
+      // Manual challenge indicator
+      var manual = "";
+      if (item.prefs.manual)
+         manual = "<span class='manual-btn' title='Handvirk véfenging'></span> ";
+
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
          (item.prefs.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
@@ -641,7 +646,7 @@ function populateChallengeList(json) {
          (opp_ready ? ("<a href='#' id='" + readyId + "' class='opp-ready'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-nick' title='" + fullname + "'>" + opp + "</span>" +
-         "<span class='list-chall'>" + fairplay + prefs + "</span>" +
+         "<span class='list-chall'>" + fairplay + manual + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
          info +
@@ -722,6 +727,20 @@ function prepareChallenge() {
       $("div.chall-time").removeClass("selected");
       $(this).addClass("selected");
    });
+
+   // Enable the manual challenge toggle button
+
+   function doManualToggle() {
+      // Toggle from one state to the other
+      $("#manual-toggler #opt1").toggleClass("selected");
+      $("#manual-toggler #opt2").toggleClass("selected");
+   }
+
+   $("#manual-toggler").click(doManualToggle);
+   $("#manual-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doManualToggle();
+   });
 }
 
 function markOnline(json) {
@@ -738,14 +757,20 @@ function showChallenge(elemid, userid, nick, fullname, fairplayOpp, newbagOpp) {
    $("#chall-fullname").text(fullname);
    $("#chall-online").removeClass("online");
    $("#chall-online").attr("title", "Er ekki álínis");
+   $("#manual-toggler #opt1").toggleClass("selected", true);
+   $("#manual-toggler #opt2").toggleClass("selected", false);
    // This is a fair play challenge if the issuing user and the
    // opponent are both marked as consenting to fair play
    var fairplayChallenge = fairplayOpp && fairPlay();
    // This is a new bag challenge if the issuing user and the
    // opponent both want the new bag
    var newbagChallenge = newbagOpp && newBag();
+   // This may be a manual challenge if the issuing user is
+   // a friend of Netskrafl
+   var manualChallenge = true; // userIsFriend(); // !!! TBD: TESTING
    $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
    $("#chall-newbag").toggleClass("hidden", !newbagChallenge);
+   $("#chall-manual").toggleClass("hidden", !manualChallenge);
    $("#chall-dialog")
       .data("param", { elemid: elemid, userid: userid,
          fairplay: fairplayChallenge, newbag: newbagChallenge })
@@ -774,6 +799,8 @@ function okChallenge(ev) {
       duration = 0;
    else
       duration = parseInt(duration);
+   /* Get the status of the manual challenge toggle */
+   var manualChallenge = $("#manual-toggler #opt2").hasClass("selected");
    /* Inform the server */
    serverQuery("/challenge",
       {
@@ -782,7 +809,8 @@ function okChallenge(ev) {
          action: "issue",
          duration: duration,
          fairplay: param.fairplay,
-         newbag: param.newbag
+         newbag: param.newbag,
+         manual: manualChallenge
       },
       updateChallenges
    );

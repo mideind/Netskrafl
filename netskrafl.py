@@ -976,6 +976,9 @@ def challenge():
     nb = request.form.get('newbag', None)
     newbag = nb and nb == u"true"
 
+    mc = request.form.get('manual', None)
+    manual = mc and mc == u"true"
+
     # Ensure that the duration is reasonable
     if duration < 0:
         duration = 0
@@ -985,7 +988,8 @@ def challenge():
     if destuser is not None:
         if action == u"issue":
             user.issue_challenge(destuser,
-                { "duration": duration, "fairplay": fairplay, "newbag": newbag })
+                { "duration": duration, "fairplay": fairplay,
+                    "newbag": newbag, "manual": manual })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":

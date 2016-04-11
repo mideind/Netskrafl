@@ -26,7 +26,7 @@ from skraflmechanics import State, Board, Move, ExchangeMove, ChallengeMove, Res
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
 
 
-def test_move(state, movestring, manual_wordcheck = False):
+def test_move(state, movestring):
     """ Test placing a simple tile move """
     coord, word = movestring.split(u' ')
     rowid = Board.ROWIDS
@@ -52,7 +52,7 @@ def test_move(state, movestring, manual_wordcheck = False):
             next_is_blank = False
         row += xd
         col += yd
-    legal = state.check_legality(move, manual_wordcheck)
+    legal = state.check_legality(move)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -82,10 +82,26 @@ def test_exchange(state, numtiles):
     return True
 
 
-def test_challenge(state, manual_wordcheck = False):
+def test_challenge(state):
     """ Test challenge move """
     move = ChallengeMove()
-    legal = state.check_legality(move, manual_wordcheck)
+    legal = state.check_legality(move)
+    msg = ""
+    if isinstance(legal, tuple):
+        legal, msg = legal
+    if legal != Error.LEGAL:
+        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        return False
+    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    state.apply_move(move)
+    print(state.__str__())
+    return True
+
+
+def test_response(state):
+    """ Test response move """
+    move = ResponseMove()
+    legal = state.check_legality(move)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -119,13 +135,6 @@ def test_game(players, silent):
 
     if not silent:
         print(state.__str__()) # This works in Python 2 and 3
-
-    # test_move(state, u"H4 stuði")
-    # test_move(state, u"5E detts")
-    # test_exchange(state, 3)
-    # test_move(state, u"I3 dýs")
-    # test_move(state, u"6E ?óx") # The question mark indicates a blank tile for the subsequent cover
-    # state.player_rack().set_tiles(u"ðhknnmn")
 
     # Generate a sequence of moves, switching player sides automatically
 
@@ -171,9 +180,7 @@ def test_manual_game():
     """ Manual game test """
 
     # Initial, empty game state
-    state = State(tileset = NewTileSet, drawtiles = True)
-
-    state.set_challengeable(True)
+    state = State(tileset = NewTileSet, manual_wordcheck = True, drawtiles = True)
 
     print(u"Manual game")
     print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
@@ -185,7 +192,7 @@ def test_manual_game():
     for ix in range(2):
         state.set_player_name(ix, "Player " + ("A", "B")[ix])
 
-    print(state.__str__()) # This works in Python 2 and 3
+    # print(state.__str__()) # This works in Python 2 and 3
 
     state.player_rack().set_tiles(u"stuðinn")
     test_move(state, u"H4 stuði")
@@ -197,9 +204,17 @@ def test_manual_game():
     state.player_rack().set_tiles(u"?xalmen")
     test_move(state, u"6E ?óx") # The question mark indicates a blank tile for the subsequent cover
     state.player_rack().set_tiles(u"eiðarps")
-    test_move(state, u"9F eipar", manual_wordcheck = True)
 
-    test_challenge(state, manual_wordcheck = True)
+    test_move(state, u"9F eipar")
+    test_challenge(state)
+    test_response(state)
+
+    state.player_rack().set_tiles(u"sóbetis")
+    test_move(state, u"J3 ós")
+
+    test_move(state, u"9F eiðar")
+    test_challenge(state)
+    test_response(state)
 
     # Tally the tiles left and calculate the final score
     state.finalize_score()

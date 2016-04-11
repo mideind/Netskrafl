@@ -540,7 +540,9 @@ class Game:
         self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
         self.player_ids = [player0_id, player1_id]
-        self.state = State(drawtiles = True, tileset = self.tileset)
+        self.state = State(drawtiles = True,
+            tileset = self.tileset,
+            manual_wordcheck = self.manual_wordcheck())
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
@@ -596,14 +598,16 @@ class Game:
         # Initialize the preferences
         game._preferences = gm.prefs
 
-        # Initialize a fresh, empty state with no tiles drawn into the racks
-        game.state = State(drawtiles = False, tileset = game.tileset)
-
         # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
         game.player_ids[1] = None if gm.player1 is None else gm.player1.id()
 
         game.robot_level = gm.robot_level
+
+        # Initialize a fresh, empty state with no tiles drawn into the racks
+        game.state = State(drawtiles = False,
+            manual_wordcheck = game.manual_wordcheck(),
+            tileset = game.tileset)
 
         # Load the initial racks
         game.initial_racks[0] = gm.irack0
@@ -615,10 +619,8 @@ class Game:
 
         # Process the moves
         player = 0
-        last_tilemove = None # The last normal tile move made
-        last_tilemove_ix = None
 
-        for ix, mm in enumerate(gm.moves):
+        for mm in gm.moves:
 
             # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1], mm.tiles).encode("latin-1"))
 
@@ -637,12 +639,9 @@ class Game:
                     horiz = False
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
-                last_tilemove = None
                 if mm.tiles is not None:
                     m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
-                    last_tilemove = m
-                    last_tilemove_ix = ix
 
             elif mm.tiles[0:4] == u"EXCH":
 
@@ -667,12 +666,7 @@ class Game:
             elif mm.tiles == u"RESP":
 
                 # Response to challenge
-                # Find out the previous rack, i.e. the rack as it was before
-                # the challenged move was made
-                assert last_tilemove_ix is not None
-                prev_rack = gm.moves[last_tilemove_ix - 2].rack if last_tilemove_ix >= 2 else \
-                    (gm.irack0, gm.irack1)[last_tilemove_ix]
-                m = ResponseMove(mm.score, last_tilemove, prev_rack)
+                m = ResponseMove()
 
             assert m is not None
             if m:
@@ -686,12 +680,6 @@ class Game:
 
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
-
-        # Find out whether the last move is challengeable
-        # If the game doesn't use manual wordchecks, challenges are not available
-        if game.manual_wordcheck():
-            game.challengeable = game.moves and (game.moves[-1] is last_tilemove)
-        game.state.set_challengeable(game.challengeable)
 
         # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
@@ -983,7 +971,7 @@ class Game:
 
     def check_legality(self, move):
         """ Check whether an incoming move from a client is legal and valid """
-        return self.state.check_legality(move, self.manual_wordcheck())
+        return self.state.check_legality(move)
 
     def register_move(self, move):
         """ Register a new move, updating the score and appending to the move list """
@@ -1005,21 +993,7 @@ class Game:
 
     def response_move(self):
         """ Generate a response to a challenge move and register it """
-        lm = len(self.moves)
-        assert lm >= 2
-        challenged_mt = self.moves[-2] # The challenged MoveTuple ([-1] is the ChallengeMove)
-        assert challenged_mt.player == self.player_to_move()
-        challenged_move = challenged_mt.move
-        assert isinstance(Move, challenged_move)
-        # Validate the words formed by the move, returning a list of invalid ones, if any
-        list_invalid = challenged_move.check_words(self.state.board())
-        score = - challenged_move.score() if list_invalid else ResponseMove.INCORRECT_CHALLENGE_BONUS
-        # Obtain the player's rack before the challenged move
-        if lm >= 4:
-            prev_rack = self.moves[-4].rack
-        else:
-            prev_rack = self.initial_racks[self.player_to_move()]
-        move = ResponseMove(score, challenged_move, prev_rack)
+        move = ResponseMove()
         self.register_move(move)
         self.last_move = move # Store the response move
 
@@ -1033,7 +1007,9 @@ class Game:
     def state_after_move(self, move_number):
         """ Return a game state after the indicated move, 0=beginning state """
         # Initialize a fresh state object
-        s = State(drawtiles = False, tileset = self.tileset)
+        s = State(drawtiles = False,
+            manual_wordcheck = self.manual_wordcheck(),
+            tileset = self.tileset)
         # Set up the initial state
         for ix in range(2):
             s.set_player_name(ix, self.state.player_name(ix))
@@ -1174,7 +1150,7 @@ class Game:
         reply = dict()
         num_moves = 1
         if self.last_move is not None:
-            # Show the autoplayer move that was made in response
+            # Show the autoplayer or response move that was made
             reply["lastmove"] = self.last_move.details(self.state)
             num_moves = 2 # One new move to be added to move list
         elif lastmove is not None:
@@ -1188,11 +1164,13 @@ class Game:
             self._append_final_adjustments(newmoves)
             reply["result"] = Error.GAME_OVER # Not really an error
             reply["xchg"] = False # Exchange move not allowed
+            reply["chall"] = False # Challenge not allowed
             reply["bag"] = self.state.bag().contents()
         else:
             # Game is still in progress
             reply["result"] = 0 # Indicate no error
             reply["xchg"] = self.state.is_exchange_allowed()
+            reply["chall"] = self.state.is_challengeable()
             reply["bag"] = self.display_bag(player_index)
 
         reply["rack"] = self.state.rack_details(player_index)

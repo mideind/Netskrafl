@@ -196,6 +196,9 @@
 .glyphicon-search:before {
    content: "\E028";
 }
+.glyphicon-lightbulb:before {
+   content: "\E065";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -2296,6 +2299,24 @@ span.fairplay-btn.large {
    border-style: solid;
 }
 
+span.manual-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @alert;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.manual-btn:before {
+   content: "\E065"; /* lightbulb */
+}
+
 span.elo-btn {
    position: relative;
    display: inline-block;
@@ -2747,10 +2768,10 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 51px;
+   top: 48px;
    right: 300px;
    width: 428px;
-   height: 628px;
+   height: 634px;
    padding-top: 12px; /* Override */
 }
 
@@ -2806,9 +2827,9 @@ div.chall-time {
    display: inline-block;
    width: 300px;
    left: 66px;
-   height: 38px;
-   padding-top: 12px;
-   padding-bottom: 0px;
+   height: 32px;
+   padding-top: 8px;
+   padding-bottom: 1px;
    padding-left: 12px;
    padding-right: 12px;
    margin-top: 7px;
@@ -2859,7 +2880,7 @@ span#chall-online.online {
 }
 
 div#chall-fairplay {
-   margin-top: 9px;
+   margin-top: 15px;
    padding-left: 52px;
    padding-right: 52px;
    font-size: 14px;
@@ -2867,7 +2888,7 @@ div#chall-fairplay {
 }
 
 div#chall-newbag {
-   margin-top: 28px;
+   margin-top: 24px;
    padding-left: 6px;
    padding-right: 152px;
    font-size: 14px;
@@ -2877,6 +2898,16 @@ div#chall-newbag {
 div#chall-newbag td {
    vertical-align: middle;
    padding-right: 12px;
+}
+
+div#chall-manual {
+   margin-top: 4px;
+   font-size: 14px;
+}
+
+div#manual-toggler {
+   margin-top: 12px;
+   margin-bottom: 0px;
 }
 
 div.hidden {
@@ -3018,6 +3049,10 @@ span.caption {
    margin-right: 12px;
    overflow: hidden;
    text-align: right;
+}
+
+span.caption.wide {
+   width: 264px;
 }
 
 span.subcaption {

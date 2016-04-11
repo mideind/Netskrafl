@@ -392,7 +392,7 @@ class State:
         Contains the current board, the racks, scores, etc.
     """
 
-    def __init__(self, tileset, drawtiles = True, copy = None):
+    def __init__(self, tileset, manual_wordcheck = False, drawtiles = True, copy = None):
 
         if copy is None:
             self._board = Board()
@@ -403,8 +403,11 @@ class State:
             self._num_passes = 0 # Number of consecutive Pass moves
             self._num_moves = 0 # Number of moves made
             self._game_resigned = False
-            self._challengeable = False
             self._racks = [Rack(), Rack()]
+            self._manual_wordcheck = manual_wordcheck
+            self._challenge_score = 0 # The score a challenge would get if made (0 if not challengeable)
+            self._last_rack = None # The rack before the last challengeable move
+            self._last_covers = None # The covers laid down in the last challengeable move
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
             self._bag = Bag(tileset)
@@ -422,8 +425,11 @@ class State:
             self._num_passes = copy._num_passes
             self._num_moves = copy._num_moves
             self._game_resigned = copy._game_resigned
-            self._challengeable = copy._challengeable
             self._racks = [Rack(copy._racks[0]), Rack(copy._racks[1])]
+            self._manual_wordcheck = copy._manual_wordcheck
+            self._challenge_score = copy._challenge_score
+            self._last_rack = copy._last_rack
+            self._last_covers = copy._last_covers
             self._tileset = copy._tileset
             self._bag = Bag(tileset = None, copy = copy._bag)
 
@@ -431,11 +437,11 @@ class State:
         """ Load a Board into this state """
         self._board = board
 
-    def check_legality(self, move, manual_wordcheck = False):
+    def check_legality(self, move):
         """ Is the move legal in this state? """
         if move is None:
             return Error.NULL_MOVE
-        return move.check_legality(self, manual_wordcheck)
+        return move.check_legality(self)
 
     def apply_move(self, move, shallow = False):
         """ Apply the given move, assumed to be legal, to this state """
@@ -453,7 +459,7 @@ class State:
         if not (self._game_resigned or self._num_passes >= 6):
             # Game is still ongoing:
             # Draw new tiles if required
-            if not shallow:
+            if (not shallow) and move.replenish():
                 self.player_rack().replenish(self._bag)
         # It's the other player's move (i.e. if the game is not over by now)
         self._player_to_move = 1 - self._player_to_move
@@ -464,6 +470,11 @@ class State:
         """ Return the tileset for this game state """
         return self._tileset
 
+    @property
+    def manual_wordcheck(self):
+        """ Using manual wordcheck instead of automatic? """
+        return self._manual_wordcheck
+    
     def score(self, move):
         """ Calculate the score of the move """
         return move.score(self)
@@ -505,18 +516,43 @@ class State:
     def resign_game(self):
         """ Cause the game to end by resigning from it """
         self._game_resigned = True
+        self.clear_challengeable()
 
     def is_resigned(self):
         """ Returns True if the game has been ended by resignation """
         return self._game_resigned
 
+    @property
+    def last_rack(self):
+        """ Return the rack as it was before the last/challengeable move """
+        return self._last_rack
+
+    @property
+    def last_covers(self):
+        """ Return the covers of the last/challengeable move """
+        return self._last_covers
+
+    @property
+    def challenge_score(self):
+        """ The score of a challenge move, if made """
+        return self._challenge_score
+
     def is_challengeable(self):
         """ Is the last move made in the game challengeable? """
-        return self._challengeable
+        return self._challenge_score != 0
 
-    def set_challengeable(self, state):
-        """ Set the challengeable state """
-        self._challengeable = state
+    def clear_challengeable(self):
+        """ Last move is not challengeable """
+        self._last_rack = None
+        self._last_covers = None
+        self._challenge_score = 0
+
+    def set_challengeable(self, score, covers, last_rack):
+        """ Set the challengeable state, with the given covers being laid down """
+        assert score != 0
+        self._challenge_score = score
+        self._last_rack = last_rack
+        self._last_covers = covers
 
     def rack(self, index):
         """ Return the contents of the rack (indexed by 0 or 1) """
@@ -554,7 +590,7 @@ class State:
         """ The game is over if either rack is empty or if both players have made zero-score moves 3 times in a row """
         if self._num_passes >= 6 or self._game_resigned:
             return True
-        if self._challengeable:
+        if self.is_challengeable():
             # If the last move is challengeable, the game is not over,
             # even if one of the racks is empty
             return False
@@ -604,15 +640,19 @@ class State:
     def add_pass(self):
         """ Add a pass to the count of consecutive pass moves """
         self._num_passes += 1
+        self.clear_challengeable()
 
     def reset_passes(self):
         """ Reset the count of consecutive passes """
         self._num_passes = 0
 
     def __str__(self):
+        tomove0 = "-->" if self._player_to_move == 0 else ""
+        tomove1 = "-->" if self._player_to_move == 1 else ""
         return self._board.__str__() + \
-            u"\n{0} {1} vs {2} {3}".format(self._player_names[0], self._scores[0],
-                self._player_names[1], self._scores[1]) + \
+            u"\n{4}{0} {1} vs {5}{2} {3}".format(self._player_names[0], self._scores[0],
+                self._player_names[1], self._scores[1], \
+                tomove0, tomove1) + \
             u"\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
 
 
@@ -697,7 +737,7 @@ class MoveBase(object):
         return [] # No tiles
 
     # noinspection PyUnusedLocal
-    def check_legality(self, state, manual_wordcheck = False):
+    def check_legality(self, state):
         """ Check whether this move is legal on the board """
         # Always legal
         return Error.LEGAL
@@ -713,6 +753,14 @@ class MoveBase(object):
         """ Return the number of tiles played in this move """
         return 0
 
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
+
+    def apply(self, state, shallow = False):
+        """ Should be overridden in derived classes """
+        raise NotImplementedError
+
 
 class Move(MoveBase):
 
@@ -720,6 +768,8 @@ class Move(MoveBase):
 
     # Bonus score for playing all 7 tiles in one move
     BINGO_BONUS = 50
+    # If an opponent challenges a valid move, the player gets a bonus
+    INCORRECT_CHALLENGE_BONUS = 10
 
     def __init__(self, word, row, col, horiz=True):
         # A list of squares covered by the play, i.e. actual tiles
@@ -742,6 +792,10 @@ class Move(MoveBase):
     def set_tiles(self, tiles):
         """ Set the tiles string once it is known """
         self._tiles = tiles
+
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return True
 
     def num_covers(self):
         """ Number of empty squares covered by this move """
@@ -835,7 +889,7 @@ class Move(MoveBase):
         # assert row - self._row == self._numletters * xd
         # assert col - self._col == self._numletters * yd
 
-    def check_legality(self, state, manual_wordcheck = False):
+    def check_legality(self, state):
         """ Check whether this move is legal on the board """
 
         # Must cover at least one square
@@ -970,11 +1024,10 @@ class Move(MoveBase):
 
         def is_valid_word(word):
             """ Check whether a word is in the dictionary, unless this is a manual game """
-            return True if manual_wordcheck else word in Wordbase.dawg()
+            return True if state.manual_wordcheck else word in Wordbase.dawg()
 
         # Check whether the word is in the dictionary
         if not is_valid_word(self._word):
-            # print(u"Word '{0}' not found in dictionary".format(self._word))
             return (Error.WORD_NOT_IN_DICTIONARY, self._word)
 
         # Check that the play is adjacent to some previously placed tile
@@ -1090,12 +1143,28 @@ class Move(MoveBase):
         """ Apply this move, assumed to be legal, to the board """
         board = state.board()
         rack = state.player_rack()
+        last_rack = rack.contents() # The rack as it stood before this move
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
             if not shallow:
                 rack.remove_tile(c.tile)
         state.reset_passes()
+        if state.manual_wordcheck:
+            # A normal tile-play move is challengeable
+            invalid = self.check_words(board)
+            if invalid:
+                # The move contains one or more invalid words:
+                # a challenge would give a negative score for the player
+                chall_score = -self.score(state)
+            else:
+                # Nothing wrong with the move: a challenge would give
+                # the player a bonus
+                chall_score = self.INCORRECT_CHALLENGE_BONUS
+            state.set_challengeable(chall_score, self._covers, last_rack)
+        else:
+            # Automatic wordcheck: not challengeable
+            state.clear_challengeable()
 
 
 class ExchangeMove(MoveBase):
@@ -1110,7 +1179,11 @@ class ExchangeMove(MoveBase):
         """ Return a readable description of the move """
         return u"Exchanged {0}".format(len(self._tiles))
 
-    def check_legality(self, state, manual_wordcheck = False):
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
+
+    def check_legality(self, state):
         """ Check whether this move is legal on the board """
         if state.bag().num_tiles() < Rack.MAX_TILES:
             return Error.EXCHANGE_NOT_ALLOWED
@@ -1129,6 +1202,8 @@ class ExchangeMove(MoveBase):
         if not shallow:
             state.player_rack().exchange(state.bag(), self._tiles)
         state.add_pass() # An exchange counts towards the pass count
+        # An exchange move is not challengeable
+        state.clear_challengeable()
 
 
 class ChallengeMove(MoveBase):
@@ -1161,9 +1236,13 @@ class ChallengeMove(MoveBase):
         """ Return a readable description of the move """
         return u"Challenge"
 
-    def check_legality(self, state, manual_wordcheck = False):
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
+
+    def check_legality(self, state):
         """ Check whether a challenge is allowed """
-        if not manual_wordcheck:
+        if not state.manual_wordcheck:
             # Challenges are only allowed in manual wordcheck games
             return Error.NOT_MANUAL_WORDCHECK
         # Check whether a word was laid down in the last move
@@ -1179,6 +1258,7 @@ class ChallengeMove(MoveBase):
 
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
+        # We do not change the challengeable state here
         pass
 
 
@@ -1186,67 +1266,69 @@ class ResponseMove(MoveBase):
 
     """ Represents a response to a challenge move """
 
-    # Penalty points given for an incorrect challenge
-    INCORRECT_CHALLENGE_BONUS = 10
-
-    def __init__(self, score = 0, last_tilemove = None, prev_rack = None):
-        self._score = score
-        self._covers = None
+    def __init__(self):
+        self._score = None
         self._num_covers = 0
-        self._prev_rack = prev_rack
-        if score < 0 and last_tilemove is not None:
-            # Successful challenge: store the tile covers affected
-            self._covers = last_tilemove.covers()
-            self._num_covers = -last_tilemove.num_covers()
 
     def __str__(self):
         """ Return a readable description of the move """
         return u"Response"
 
-    def check_legality(self, state, manual_wordcheck = False):
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
+
+    def check_legality(self, state):
         """ Check whether a challenge is allowed """
-        if not manual_wordcheck:
+        if not state.manual_wordcheck:
             # Challenges are only allowed in manual wordcheck games
             return Error.NOT_MANUAL_WORDCHECK
+        if not state.is_challengeable():
+            # The challengeable state should still be set from the ChallengeMove
+            return Error.MOVE_NOT_CHALLENGEABLE
         # All checks pass: the play is legal
         return Error.LEGAL
 
     # noinspection PyUnusedLocal
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
+        assert self._score is not None
         return (u"", u"RESP", self._score)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
+        if self._score is None:
+            self._score = state.challenge_score
+            assert self._score != 0
         return self._score
 
-    # noinspection PyMethodMayBeStatic,PyMethodMayBeStatic
+    # noinspection PyMethodMayBeStatic
     def num_covers(self):
         """ Return the number of tiles played in this move """
-        # Note that this is a negative number for a successful challenge
         return self._num_covers
 
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
-        if self._score >= 0:
-            # Unsuccessful challenge: no action taken
-            return
-        # Successful challenge
-        board = state.board()
-        # Remove the last move from the board
-        for c in self._covers:
-            board.set_letter(c.row, c.col, u' ')
-            board.set_tile(c.row, c.col, u' ')
-        if not shallow:
-            # Reset the opponent's rack to what it was before the move
-            bag = state.bag()
-            rack = state.player_rack()
-            # Return all the current tiles to the bag
-            bag.return_tiles(rack.contents())
-            # Draw all the previous tiles from the bag
-            rack.set_tiles(self._prev_rack)
-            bag.subtract_rack(rack.contents())
+        if self.score(state) < 0:
+            # Successful challenge
+            board = state.board()
+            # Remove the last move from the board
+            last_covers = state.last_covers
+            self._num_covers = - len(last_covers) # Negative cover count
+            for c in last_covers:
+                board.set_letter(c.row, c.col, u' ')
+                board.set_tile(c.row, c.col, u' ')
+            if not shallow:
+                # Reset the opponent's rack to what it was before the move
+                bag = state.bag()
+                rack = state.player_rack()
+                # Return all the current tiles to the bag
+                bag.return_tiles(rack.contents())
+                # Draw all the previous tiles from the bag
+                rack.set_tiles(state.last_rack)
+                bag.subtract_rack(rack.contents())
+        state.clear_challengeable()
 
 
 class PassMove(MoveBase):
@@ -1260,6 +1342,10 @@ class PassMove(MoveBase):
         """ Return a readable string describing the move """
         return u"Pass"
 
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
+
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
@@ -1269,7 +1355,7 @@ class PassMove(MoveBase):
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
-        state.add_pass()
+        state.add_pass() # Clears the challengeable flag
 
 
 class ResignMove(MoveBase):
@@ -1282,6 +1368,10 @@ class ResignMove(MoveBase):
     def __str__(self):
         """ Return the standard move notation of a coordinate followed by the word formed """
         return u"Resign"
+
+    def replenish(self):
+        """ Return True if the player's rack should be replenished after the move """
+        return False
 
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
@@ -1296,5 +1386,5 @@ class ResignMove(MoveBase):
     def apply(self, state, shallow = False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Resign the game, causing is_game_over() to become True
-        state.resign_game()
+        state.resign_game() # Clears the challengeable flag
 

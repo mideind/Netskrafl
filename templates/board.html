@@ -530,6 +530,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       return {{ "true" if game.new_bag() else "false" }};
    }
 
+   function gameIsManual() {
+      /* Return true if the game uses manual wordcheck */
+      return {{ "true" if game.manual_wordcheck() else "false" }};
+   }
+
    /* Array of supported emoticons in chat */
    // Remember to change faq.html if this changes
    var emoticons = Array(

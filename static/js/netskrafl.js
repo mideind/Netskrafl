@@ -1327,7 +1327,8 @@ function updateButtonState() {
             word laid down and all cross words */
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
-         serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
+         if (!gameIsManual())
+            serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
       }
       showRecall = true;
    }
