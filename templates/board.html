@@ -211,6 +211,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <!-- Word check -->
 <div class="word-check"></div>
 
+<!-- Challenge last move -->
+<div class="challenge" title="Véfenging (röng kostar 10 stig)"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitChallenge(this)"></div>
+
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
@@ -327,6 +332,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    &nbsp;Smelltu á flísarnar sem þú vilt skipta&nbsp;
    <span class="yesnobutton" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
    <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
+</div>
+
+<!-- Confirm challenge -->
+<div class="chall"><span class="glyphicon glyphicon-ban-circle"></span>
+   &nbsp;Véfengja lögn? <span class="pass-explain">Röng véfenging kostar 10 stig</span>&nbsp;
+   <span class="yesnobutton" onclick="confirmChallenge(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmChallenge(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
 
 <!-- A dialog to show info about a particular user -->
@@ -484,7 +496,10 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% endif %}
 {% if not game.state.is_exchange_allowed() %}
       exchangeAllowed = false;
-{%- endif -%}      
+{%- endif -%}
+{% if game.is_challengeable() %}
+      challengeAllowed = true;
+{%- endif -%}
    }
 
    function localPlayer() {

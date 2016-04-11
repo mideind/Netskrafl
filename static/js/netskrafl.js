@@ -962,6 +962,7 @@ var elementDragged = null; /* The element being dragged with the mouse */
 var tileSelected = null; /* The selected (single-clicked) tile */
 var showingDialog = false; /* Is a modal dialog banner being shown? */
 var exchangeAllowed = true; /* Is an exchange move allowed? */
+var challengeAllowed = false; /* Is a challenge allowed? */
 
 function moveSelectedTile(sq) {
    // Move the tileSelected to the target square
@@ -1270,12 +1271,14 @@ function updateButtonState() {
    var showRecall = false;
    var showScramble = false;
    var showMove = false;
+   var showChallenge = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
       showMove = (tilesPlaced !== 0);
       showExchange = (tilesPlaced === 0);
       showPass = (tilesPlaced === 0);
       showResign = (tilesPlaced === 0);
+      showChallenge = (tilesPlaced === 0) && gameIsManual() && challengeAllowed;
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
          tilesPlaced === 0 || showingDialog);
@@ -1336,6 +1339,7 @@ function updateButtonState() {
    $("div.submitexchange").css("display", showExchange ? "block" : "none");
    $("div.submitpass").css("display", showPass ? "block" : "none");
    $("div.submitresign").css("display", showResign ? "block" : "none");
+   $("div.challenge").css("display", showChallenge ? "block" : "none");
    $("div.recallbtn").css("display", showRecall ? "block" : "none");
    $("div.scramblebtn").css("display", showScramble ? "block" : "none");
 }
@@ -1673,6 +1677,9 @@ function _updateState(json, preserveTiles) {
       /* See if an exchange move is still allowed */
       if (json.xchg !== undefined)
          exchangeAllowed = json.xchg;
+      /* See if a challenge is allowed */
+      if (json.chall !== undefined)
+         challengeAllowed = json.chall;
       /* Save the new tile state */
       saveTiles();
       /* Enable and disable buttons as required */
@@ -1793,6 +1800,25 @@ function submitResign(btn) {
       /* Disable all other actions while panel is shown */
       updateButtonState();
    }
+}
+
+function confirmChallenge(yes) {
+   /* The user has either confirmed or cancelled a challenge */
+   $("div.chall").css("visibility", "hidden");
+   showingDialog = false;
+   initRackDraggable(true);
+   updateButtonState();
+   if (yes)
+      sendMove('chall');
+}
+
+function submitChallenge(btn) {
+   /* The user has clicked the challenge button */
+   $("div.chall").css("visibility", "visible");
+   showingDialog = true;
+   initRackDraggable(false);
+   /* Disable all other actions while panel is shown */
+   updateButtonState();
 }
 
 function confirmPass(yes) {
@@ -1924,8 +1950,15 @@ function sendMove(movetype) {
       /* Resigning from game */
       moves.push("rsgn");
    }
+   else
+   if (movetype == 'chall') {
+      /* Challenging last move */
+      moves.push("chall");
+   }
+
    /* Be sure to remove the halo from the submit button */
    $("div.submitmove").removeClass("over");
+   $("div.challenge").removeClass("over");
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Freshly laid tiles are no longer fresh */

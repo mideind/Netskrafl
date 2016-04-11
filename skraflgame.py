@@ -528,8 +528,6 @@ class Game:
         self.moves = []
         # Initial rack contents
         self.initial_racks = [None, None]
-        # Was the last move in the game challengeable?
-        self.challengeable = False
         # Preferences (such as time limit, alternative bag or board, etc.)
         self._preferences = None
         # Cache of game over state (becomes True when the game is definitely over)
@@ -721,9 +719,9 @@ class Game:
         for m in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state)
+            # Count the tiles actually laid down
+            tile_count += m.move.num_covers() # Can be negative for a successful challenge
             if coord:
-                # Regular move: count the tiles actually laid down
-                tile_count += m.move.num_covers()
                 # Keep track of best words laid down by each player
                 if score > best_word_score[player]:
                     best_word_score[player] = score
@@ -1143,6 +1141,10 @@ class Game:
         movelist = []
         self._append_final_adjustments(movelist)
         return movelist
+
+    def is_challengeable(self):
+        """ Return True if the last move in the game is challengeable """
+        return self.state.is_challengeable()
 
     def client_state(self, player_index, lastmove = None):
         """ Create a package of information for the client about the current state """

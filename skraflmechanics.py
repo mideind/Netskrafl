@@ -550,6 +550,7 @@ class State:
     def set_challengeable(self, score, covers, last_rack):
         """ Set the challengeable state, with the given covers being laid down """
         assert score != 0
+        logging.info(u"set_challengeable score {0}".format(score))
         self._challenge_score = score
         self._last_rack = last_rack
         self._last_covers = covers
@@ -1300,6 +1301,7 @@ class ResponseMove(MoveBase):
         """ Calculate the score of this move, which is assumed to be legal """
         if self._score is None:
             self._score = state.challenge_score
+            logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
             assert self._score != 0
         return self._score
 

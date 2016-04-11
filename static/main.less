@@ -1372,6 +1372,23 @@ span.yesnobutton {
    cursor: pointer;
 }
 
+div.chall {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @alert;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 div.resign span.yesnobutton {
    color: @alert;
 }
@@ -1382,6 +1399,10 @@ div.pass span.yesnobutton {
 
 div.exchange span.yesnobutton {
    color: darken(@freshtile, 10%);
+}
+
+div.chall span.yesnobutton {
+   color: @alert;
 }
 
 div.exchange {
@@ -1631,6 +1652,33 @@ div.word-check.word-bad {
 }
 
 div.word-check.word-bad:before {
+   content: "\E200"; /* glyphicon-ban-circle */
+}
+
+div.challenge {
+   position: absolute;
+   width: 48px;
+   height: 48px;
+   text-align: center;
+   vertical-align: middle;
+   bottom: 204px;
+   left: 644px;
+   color: white;
+   background-color: @alert;
+   font-family: 'Glyphicons Regular';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 26px;
+   line-height: 45px;
+   display: none;
+   border-style: solid;
+   border-color: @alert;
+   border-width: 2px;
+   border-radius: 5px;
+   cursor: pointer;
+}
+
+div.challenge:before {
    content: "\E200"; /* glyphicon-ban-circle */
 }
 
