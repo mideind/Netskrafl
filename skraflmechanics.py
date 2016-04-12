@@ -552,8 +552,9 @@ class State:
     def set_challengeable(self, score, covers, last_rack):
         """ Set the challengeable state, with the given covers being laid down """
         assert score != 0
-        logging.info(u"set_challengeable score {0}".format(score))
+        #logging.info(u"set_challengeable score {0}".format(score))
         self._challenge_score = score
+        logging.info(u"State.set_challengeable: last_rack is {0}".format(last_rack).encode("latin-1"))
         self._last_rack = last_rack
         self._last_covers = covers
 
@@ -1147,6 +1148,7 @@ class Move(MoveBase):
         board = state.board()
         rack = state.player_rack()
         last_rack = rack.contents() # The rack as it stood before this move
+        logging.info(u"Move.apply: last_rack set to {0}".format(last_rack).encode("latin-1"))
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
@@ -1303,7 +1305,7 @@ class ResponseMove(MoveBase):
         """ Calculate the score of this move, which is assumed to be legal """
         if self._score is None:
             self._score = state.challenge_score
-            logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
+            #logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
             assert self._score != 0
         return self._score
 
@@ -1330,6 +1332,7 @@ class ResponseMove(MoveBase):
                 # Return all the current tiles to the bag
                 bag.return_tiles(rack.contents())
                 # Draw all the previous tiles from the bag
+                logging.info(u"ResponseMove.apply: setting rack to {0}".format(state.last_rack).encode("latin-1"))
                 rack.set_tiles(state.last_rack)
                 bag.subtract_rack(rack.contents())
         state.clear_challengeable()

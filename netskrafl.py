@@ -111,7 +111,7 @@ def _process_move(game, movelist):
                 break
             if mstr == u"rsgn":
                 # Resign from game, forfeiting all points
-                m = ResignMove(game.state.scores()[game.state.player_to_move()])
+                m = ResignMove(game.state.scores()[player_index])
                 break
             if mstr == u"chall":
                 # Challenging the last move

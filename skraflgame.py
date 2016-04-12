@@ -611,9 +611,8 @@ class Game:
         game.initial_racks[0] = gm.irack0
         game.initial_racks[1] = gm.irack1
 
-        # Load the current racks
-        game.state.set_rack(0, gm.rack0)
-        game.state.set_rack(1, gm.rack1)
+        game.state.set_rack(0, gm.irack0)
+        game.state.set_rack(1, gm.irack1)
 
         # Process the moves
         player = 0
@@ -674,7 +673,12 @@ class Game:
                 game.state.apply_move(m, shallow = True)
                 # Append to the move history
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
+                game.state.set_rack(player, mm.rack)
                 player = 1 - player
+
+        # Load the current racks
+        game.state.set_rack(0, gm.rack0)
+        game.state.set_rack(1, gm.rack1)
 
         # Find out what tiles are now in the bag
         game.state.recalc_bag()
@@ -1151,14 +1155,19 @@ class Game:
 
         reply = dict()
         num_moves = 1
+        lm = None
         if self.last_move is not None:
             # Show the autoplayer or response move that was made
-            reply["lastmove"] = self.last_move.details(self.state)
+            lm = self.last_move
             num_moves = 2 # One new move to be added to move list
         elif lastmove is not None:
             # The indicated move should be included in the client state
             # (used when notifying an opponent of a new move through a channel)
-            reply["lastmove"] = lastmove.details(self.state)
+            lm = lastmove
+        if lm is not None:
+            reply["lastmove"] = lm.details(self.state)
+        # Successful challenge?
+        succ_chall = isinstance(lm, ResponseMove) and lm.score(self.state) < 0
         newmoves = [(m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]]
 
         if self.is_over():
@@ -1178,6 +1187,7 @@ class Game:
         reply["rack"] = self.state.rack_details(player_index)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
+        reply["succ_chall"] = succ_chall
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()

@@ -1291,7 +1291,12 @@ function wordGoodOrBad(flagGood, flagBad) {
    /* Flag whether the word being laid down is good or bad (or neither when we don't know) */
    $("div.word-check").toggleClass("word-good", flagGood);
    $("div.word-check").toggleClass("word-bad", flagBad);
-   $("div.score").toggleClass("word-good", flagGood);
+   if (gameIsManual())
+      // For a manual wordcheck game, always use a neutral blue color for the score
+      $("div.score").toggleClass("manual", true);
+   else
+      // Otherwise, show a green score if the word is good
+      $("div.score").toggleClass("word-good", flagGood);
    if (flagGood) {
       // Show a 50+ point word with a special color
       if (parseInt($("div.score").text()) >= 50)
@@ -1641,7 +1646,8 @@ function _updateState(json, preserveTiles) {
          resetRack();
          initRackDraggable(false);
       }
-      if (!preserveTiles) {
+      if (!preserveTiles || json.succ_chall) {
+         // Destructive fetch or successful challenge: reset the rack
          for (; i < json.rack.length; i++)
             placeTile("R" + (i + 1).toString(), /* Coordinate */
                json.rack[i][0], /* Tile */
@@ -1653,6 +1659,8 @@ function _updateState(json, preserveTiles) {
          if (json.result === 0)
             /* The rack is only draggable if the game is still ongoing */
             initRackDraggable(true);
+      }
+      if (!preserveTiles) {
          /* Glue the laid-down tiles to the board */
          $("div.tile").each(function() {
             var sq = $(this).parent().attr("id");
