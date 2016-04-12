@@ -45,6 +45,7 @@ static/NetskraflFacebookCover.jpg
 
 # Distribution / packaging
 .Python
+google/
 env/
 bin/
 build/

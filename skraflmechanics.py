@@ -18,6 +18,8 @@
 
 """
 
+import logging
+
 from random import SystemRandom
 
 from dawgdictionary import Wordbase

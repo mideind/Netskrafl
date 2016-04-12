@@ -78,7 +78,8 @@ var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game
 
 var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
-var newestMove = null; // The tiles placed in the newest move (used in move review)
+var newestMove = { }; // The last move made in the game (empty dict if not tile move)
+var newestTileMove = { }; // The last tile move made in the game
 var gameTime = null, gameTimeBase = null; // Game timing info, i.e. duration and elapsed time
 var clockIval = null; // Clock interval timer
 var scoreLeft = 0, scoreRight = 0;
@@ -451,34 +452,46 @@ function placeTile(sq, tile, letter, score) {
    }
 }
 
-function placeMove(player, co, tiles) {
+function placeMove(player, co, tiles, score) {
    /* Place an entire move on the board, returning a dictionary of the tiles actually added */
-   var vec = toVector(co);
-   var col = vec.col;
-   var row = vec.row;
-   var nextBlank = false;
    var placed = { };
-   for (var i = 0; i < tiles.length; i++) {
-      var tile = tiles.charAt(i);
-      if (tile == '?') {
-         nextBlank = true;
-         continue;
+   if (co != "") {
+      var vec = toVector(co);
+      var col = vec.col;
+      var row = vec.row;
+      var nextBlank = false;
+      for (var i = 0; i < tiles.length; i++) {
+         var tile = tiles.charAt(i);
+         if (tile == '?') {
+            nextBlank = true;
+            continue;
+         }
+         var sq = coord(row, col);
+         if (tileAt(row, col) === null) {
+            /* No tile already in the square: place the new one */
+            var letter = tile;
+            if (nextBlank)
+               tile = '?';
+            var score = TILESCORE[tile];
+            placeTile(sq, tile, letter, score);
+            placed[sq] = { tile: tile, letter: letter, score:score };
+         }
+         col += vec.dx;
+         row += vec.dy;
+         nextBlank = false;
       }
-      var sq = coord(row, col);
-      if (tileAt(row, col) === null) {
-         /* No tile already in the square: place the new one */
-         var letter = tile;
-         if (nextBlank)
-            tile = '?';
-         var score = TILESCORE[tile];
-         placeTile(sq, tile, letter, score);
-         placed[sq] = { tile: tile, letter: letter, score:score };
-      }
-      col += vec.dx;
-      row += vec.dy;
-      nextBlank = false;
+      // Remember the last tile move
+      newestTileMove = placed;
    }
-   return placed;
+   else
+   if (tiles == "RESP" && score < 0) {
+      // Successful challenge: retract the tiles placed in the last tile move
+      for (var nsq in newestTileMove)
+         if (newestTileMove.hasOwnProperty(nsq))
+            placeTile(nsq, "", "", 0); // Erase tile
+   }
+   // Remember the last move
+   newestMove = placed;
 }
 
 function colorOf(player) {
@@ -621,23 +634,42 @@ function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
    var rawCoord = co;
-   var tileMove = false;
+   var tileMoveIncrement = 0; // +1 for tile moves, -1 for successful challenges
    if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
-      if (tiles == "PASS")
+      if (tiles == "PASS") {
          /* Pass move */
-         tiles = "Pass";
+         tiles = " Pass ";
+         score = "";
+      }
       else
       if (tiles.indexOf("EXCH") === 0) {
          /* Exchange move - we don't show the actual tiles exchanged, only their count */
          var numtiles = tiles.slice(5).length;
          tiles = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+         score = "";
       }
       else
       if (tiles == "RSGN")
          /* Resigned from game */
-         tiles = " Gaf viðureign"; // Extra space intentional
+         tiles = " Gaf viðureign "; // Extra space intentional
+      else
+      if (tiles == "CHALL") {
+         /* Challenge issued */
+         tiles = " Véfengdi lögn "; // Extra space intentional
+         score = "";
+      }
+      else
+      if (tiles == "RESP") {
+         /* Challenge response */
+         if (score < 0) {
+            tiles = " Óleyfileg lögn "; // Extra space intentional
+            tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
+         }
+         else
+            tiles = " Röng véfenging "; // Extra space intentional
+      }
       else
       if (tiles == "TIME") {
          /* Overtime adjustment */
@@ -657,10 +689,11 @@ function appendMove(player, co, tiles, score) {
       }
    }
    else {
+      // Normal tile move
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
       tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
-      tileMove = true;
+      tileMoveIncrement = 1;
    }
    /* Update the scores */
    if (player === 0)
@@ -668,7 +701,7 @@ function appendMove(player, co, tiles, score) {
    else
       rightTotal = Math.max(rightTotal + score, 0);
    var str;
-   var title = tileMove ? 'title="Smelltu til að fletta upp" ' : "";
+   var title = (tileMoveIncrement > 0) ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
       str = '<div class="move gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
@@ -700,7 +733,7 @@ function appendMove(player, co, tiles, score) {
       /* Left side player */
       str = '<div ' + title + 'class="move leftmove">' +
          '<span class="total">' + leftTotal + '</span>' +
-         '<span class="score">' + score + '</span>' +
+         '<span class="score">' + score + '</span>' + 
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
          co + '</span>' +
          '</div>';
@@ -726,8 +759,8 @@ function appendMove(player, co, tiles, score) {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
          playerColor = "1";
       }
-      if (tileMove) {
-         /* Register a hover event handler to highlight this move */
+      if (tileMoveIncrement > 0) {
+         /* Tile move: Register a hover event handler to highlight it on the board */
          m.on("mouseover",
             { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: true },
             highlightMove
@@ -754,8 +787,7 @@ function appendMove(player, co, tiles, score) {
       movelist.scrollTop(topoffset - height);
    /* Count the moves */
    numMoves += 1;
-   if (tileMove)
-      numTileMoves += 1;
+   numTileMoves += tileMoveIncrement; // Can be -1 for successful challenges
 }
 
 function appendBestMove(player, co, tiles, score) {
@@ -827,7 +859,19 @@ function appendBestHeader(moveNumber, co, tiles, score) {
       else
       if (tiles == "RSGN")
          /* Resigned from game */
-         dispText = "Gaf leikinn";
+         dispText = "Gaf viðureign";
+      else
+      if (tiles == "CHALL")
+         /* Challenge issued */
+         dispText = "Véfengdi lögn";
+      else
+      if (tiles == "RESP") {
+         /* Challenge response */
+         if (score < 0)
+            dispText = "Lögn óleyfileg";
+         else
+            dispText = "Röng véfenging";
+      }
       else
       if (tiles == "OVER") {
          /* Game over */

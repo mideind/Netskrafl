@@ -456,7 +456,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       /* Initialize the board tiles */
 {% for m in game.moves %}
 {%- set coord, tiles, score = m.move.summary(game.state) %}
-      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
+      placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 
 {% if user and game.my_turn(user.id()) %}
