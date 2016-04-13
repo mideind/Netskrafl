@@ -452,10 +452,17 @@ function placeTile(sq, tile, letter, score) {
    }
 }
 
+function removeNewestTileMove() {
+   // Successful challenge: retract the tiles placed in the last tile move
+   for (var nsq in newestTileMove)
+      if (newestTileMove.hasOwnProperty(nsq))
+         placeTile(nsq, "", "", 0); // Erase tile
+}
+
 function placeMove(player, co, tiles, score) {
    /* Place an entire move on the board, returning a dictionary of the tiles actually added */
    var placed = { };
-   if (co != "") {
+   if (co !== "") {
       var vec = toVector(co);
       var col = vec.col;
       var row = vec.row;
@@ -472,9 +479,9 @@ function placeMove(player, co, tiles, score) {
             var letter = tile;
             if (nextBlank)
                tile = '?';
-            var score = TILESCORE[tile];
-            placeTile(sq, tile, letter, score);
-            placed[sq] = { tile: tile, letter: letter, score:score };
+            var tscore = TILESCORE[tile];
+            placeTile(sq, tile, letter, tscore);
+            placed[sq] = { tile: tile, letter: letter, score: tscore };
          }
          col += vec.dx;
          row += vec.dy;
@@ -484,12 +491,8 @@ function placeMove(player, co, tiles, score) {
       newestTileMove = placed;
    }
    else
-   if (tiles == "RESP" && score < 0) {
-      // Successful challenge: retract the tiles placed in the last tile move
-      for (var nsq in newestTileMove)
-         if (newestTileMove.hasOwnProperty(nsq))
-            placeTile(nsq, "", "", 0); // Erase tile
-   }
+   if (tiles == "RESP" && score < 0)
+      removeNewestTileMove();
    // Remember the last move
    newestMove = placed;
 }
@@ -1640,6 +1643,8 @@ function _updateState(json, preserveTiles) {
       /* Reinitialize the rack - we show it even if the game is over */
       var i = 0;
       var score;
+      var placed;
+      var anyPlaced;
       if (preserveTiles && json.result == GAME_OVER) {
          // The user may have placed tiles on the board: force them back
          // into the rack and make the rack non-draggable
@@ -1662,6 +1667,8 @@ function _updateState(json, preserveTiles) {
       }
       if (!preserveTiles) {
          /* Glue the laid-down tiles to the board */
+         placed = { };
+         anyPlaced = false;
          $("div.tile").each(function() {
             var sq = $(this).parent().attr("id");
             var t = $(this).data("tile");
@@ -1675,8 +1682,12 @@ function _updateState(json, preserveTiles) {
                      letter = t;
                }
                placeTile(sq, t, letter, score);
+               placed[sq] = { tile: t, letter: letter, score: score };
+               anyPlaced = true;
             }
          });
+         if (anyPlaced)
+            newestTileMove = placed;
       }
       /* Remove highlight from previous move, if any */
       $("div.highlight1").removeClass("highlight1");
@@ -1684,6 +1695,8 @@ function _updateState(json, preserveTiles) {
       /* Add the new tiles laid down in response */
       if (json.lastmove !== undefined) {
          var delay = 0;
+         placed = { };
+         anyPlaced = false;
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
             if (preserveTiles && document.getElementById(sq).firstChild) {
@@ -1700,15 +1713,19 @@ function _updateState(json, preserveTiles) {
                   initDraggable(document.getElementById(rsq).firstChild);
                }
             }
-            placeTile(sq, /* Coordinate */
-               json.lastmove[i][1], /* Tile */
-               json.lastmove[i][2], /* Letter */
-               json.lastmove[i][3]); /* Score */
+            var tile = json.lastmove[i][1];
+            var letter = json.lastmove[i][2];
+            score = json.lastmove[i][3];
+            placeTile(sq, tile, letter, score);
+            placed[sq] = { tile: tile, letter: letter, score: score };
+            anyPlaced = true;
             // Show the new tiles with a progressive fade-in effect
             $("#"+sq).children().eq(0).addClass("freshtile")
                .hide().delay(delay).fadeIn();
             delay += 200; // 200 ms between tiles
          }
+         if (anyPlaced)
+            newestTileMove = placed;
       }
       /* Update the scores */
       scoreLeft = json.scores[0];
@@ -1721,6 +1738,9 @@ function _updateState(json, preserveTiles) {
             var tiles = json.newmoves[i][1][1];
             score = json.newmoves[i][1][2];
             appendMove(player, co, tiles, score);
+            if (co == "" && tiles == "RESP" && score < 0)
+               // Successful challenge: remove the tiles originally placed
+               removeNewestTileMove();
          }
       }
       /* Update the bag */
