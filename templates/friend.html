@@ -20,6 +20,22 @@
 </div>
 </div>
 
+<!-- A dialog to display thanks -->
+<div id="thanks-dialog" class="modal-dialog">
+<div id="thanks-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="thanks-content">
+      <h3>Frábært!</h3>
+      <p>Bestu þakkir fyrir að gerast <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>.</p>
+
+      <div class="btn-thanks" title="Áfram"
+         onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+         onclick="window.location.href='{{ url_for("main") | safe }}'">
+         <span class="glyphicon glyphicon-ok"></span></div>
+
+   </div>
+</div>
+</div>
+
 <!-- Display user identifier in upper right corner -->
 
 <div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
@@ -71,6 +87,17 @@
       return "{{ user.id() }}";
    }
 
+   function buttonOver(elem) {
+      /* Show a hover effect on a button */
+      if (!$(elem).hasClass("disabled"))
+         $(elem).toggleClass("over", true);
+   }
+
+   function buttonOut(elem) {
+      /* Hide a hover effect on a button */
+      $(elem).toggleClass("over", false);
+   }
+
    function openPromoDialog(key) {
       /* Show a modal promotion dialog */
       $("#promo-dialog")
@@ -92,6 +119,9 @@
    function init(jQuery) {
 {% if show_dialog %}
       openPromoDialog("friend");
+{% else %}
+      // !!! Temporary: show thanks
+      $("#thanks-dialog").css("visibility", "visible");
 {% endif %}
    }
 

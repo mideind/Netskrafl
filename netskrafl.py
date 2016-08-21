@@ -1597,6 +1597,13 @@ def friend():
     if user is None:
         return redirect(url_for("login"))
     show_dialog = bool(request.args.get("dialog", False))
+    if not show_dialog:
+        # Launch the actual payment procedure
+        # !!! TBD
+        # !!! For now, we simply mark the user as a paying friend
+        user.set_friend(True)
+        user.set_has_paid(True)
+        user.update()
     return render_template("friend.html", user = user, show_dialog = show_dialog)
 
 
