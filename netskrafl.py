@@ -245,12 +245,11 @@ def _userlist(query, spec):
     if query == u"live":
         # Return all online (live) users
 
-        for uid in online:
-            if uid == cuid:
-                # Do not include the current user, if any, in the list
-                continue
-            lu = User.load(uid)
-            if lu and lu.is_displayable():
+        ousers = User.load_multi(online)
+        for lu in ousers:
+            if lu and lu.is_displayable() and lu.id() != cuid:
+                # Don't display the current user in the online list
+                uid = lu.id()
                 chall = uid in challenges
                 result.append({
                     "userid": uid,
@@ -269,9 +268,11 @@ def _userlist(query, spec):
         # Return favorites of the current user
         if cuid is not None:
             i = iter(FavoriteModel.list_favorites(cuid))
-            for favid in i:
-                fu = User.load(favid)
+            # Do a multi-get of the entire favorites list
+            fusers = User.load_multi(i)
+            for fu in fusers:
                 if fu and fu.is_displayable():
+                    favid = fu.id()
                     chall = favid in challenges
                     result.append({
                         "userid": favid,
@@ -290,12 +291,10 @@ def _userlist(query, spec):
         # Return users with similar Elo ratings
         if cuid is not None:
             i = iter(UserModel.list_similar_elo(cuser.human_elo(), max_len = 40))
-            for uid in i:
-                if uid == cuid:
-                    # Do not include the current user in the list
-                    continue
-                au = User.load(uid)
-                if au and au.is_displayable():
+            ausers = User.load_multi(i)
+            for au in ausers:
+                if au and au.is_displayable() and au.id() != cuid:
+                    uid = au.id()
                     chall = uid in challenges
                     result.append({
                         "userid": uid,
@@ -1149,7 +1148,15 @@ def chatload():
 def review():
     """ Show game review page """
 
-    # This page does not require - and should not require - a logged-in user
+    # Only logged-in users who are paying friends can view this page
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(url_for('login'))
+
+    if not user.has_paid():
+        # Only paying users can see game reviews
+        return redirect(url_for('friend', dialog = 1))
 
     game = None
     uuid = request.args.get("game", None)
@@ -1185,8 +1192,7 @@ def review():
             best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
 
     player_index = state.player_to_move()
-    user = User.current()
-    if user and game.has_player(user.id()):
+    if game.has_player(user.id()):
         # Look at the game from the point of view of this player
         user_index = game.player_index(user.id())
     else:
@@ -1221,6 +1227,7 @@ def userprefs():
             self.beginner = True
             self.fairplay = False # Defaults to False, must be explicitly set to True
             self.newbag = False # Defaults to False, must be explicitly set to True
+            self.friend = False
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -1256,6 +1263,7 @@ def userprefs():
             self.beginner = usr.beginner()
             self.fairplay = usr.fairplay()
             self.newbag = usr.new_bag()
+            self.friend = usr.friend()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -1580,6 +1588,27 @@ def newchannel():
             game.id() + u":" + str(player_index), user.id())
 
     return jsonify(result = Error.LEGAL, token = channel_token)
+
+
+@app.route("/friend")
+def friend():
+    """ Page for users to register themselves as friends of Netskrafl """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    show_dialog = bool(request.args.get("dialog", False))
+    return render_template("friend.html", user = user, show_dialog = show_dialog)
+
+
+@app.route("/promo", methods=['POST'])
+def promo():
+    """ Return promotional HTML corresponding to a given key (category) """
+    user = User.current()
+    key = request.form.get("key", "")
+    VALID_PROMOS = { "friend" }
+    if key not in VALID_PROMOS:
+        key = "error"
+    return render_template("promo-" + key + ".html", user = user)
 
 
 @app.route("/")

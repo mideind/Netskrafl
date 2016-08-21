@@ -297,3 +297,20 @@ function toggleStats(ev) {
    $("#usr-stats-all").css("display", state ? "inline-block" : "none");
 }
 
+function openPromoDialog(key) {
+   /* Show a modal promotion dialog */
+   $("#promo-dialog")
+      .data("param", { key: key })
+      .css("visibility", "visible");
+   // Obtain the promo content from the server and put it into the #promo-content div
+   serverQueryHtml("/promo", { key: key }, "#promo-content");
+}
+
+function closePromoDialog() {
+   // Hide the dialog
+   $("#promo-dialog")
+      .data("param", null)
+      .css("visibility", "hidden");
+   $("#promo-content").html("");
+}
+

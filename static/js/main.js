@@ -67,6 +67,12 @@ function markChallenge(ev) {
       action = "retract";
    }
    if (action == "issue") {
+      if (!moreGamesAllowed()) {
+         // User is now past his concurrent game limit:
+         // promote becoming a friend
+         openPromoDialog('friend');
+         return;
+      }
       if (ev.data.userid.indexOf("robot-") === 0) {
          /* Challenging a robot: Create a new game and display it right away */
          window.location.href = newgameUrl(ev.data.userid, false);
@@ -372,14 +378,20 @@ function refreshUserList(ev) {
    }
 }
 
+// Number of games by this user
+var numGames = undefined;
+// Maximum number of concurrent games unless user is a paying friend
+var MAX_GAME_LIMIT = 8;
+
 function populateGameList(json) {
+   numGames = undefined;
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   var numGames = json.gamelist.length;
+   numGames = json.gamelist.length;
    var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
@@ -466,6 +478,11 @@ function populateGameList(json) {
    }
 }
 
+function moreGamesAllowed() {
+   // Is the user allowed to issue or accept more challenges?
+   return userHasPaid() || (numGames !== undefined && numGames < MAX_GAME_LIMIT);
+}
+
 function refreshGameList() {
    /* Update list of active games for the current user */
    $("#gamelist").html("");
@@ -502,6 +519,10 @@ function refreshRecentList() {
 function acceptChallenge(ev) {
    /* Accept a previously issued challenge from the user in question */
    ev.preventDefault();
+   if (!moreGamesAllowed()) {
+      openPromoDialog('friend');
+      return;
+   }
    var param = ev.data;
    var prefs = param.prefs;
    if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
@@ -766,8 +787,8 @@ function showChallenge(elemid, userid, nick, fullname, fairplayOpp, newbagOpp) {
    // opponent both want the new bag
    var newbagChallenge = newbagOpp && newBag();
    // This may be a manual challenge if the issuing user is
-   // a friend of Netskrafl
-   var manualChallenge = true; // userIsFriend(); // !!! TBD: TESTING
+   // a paying friend of Netskrafl
+   var manualChallenge = userHasPaid();
    $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
    $("#chall-newbag").toggleClass("hidden", !newbagChallenge);
    $("#chall-manual").toggleClass("hidden", !manualChallenge);

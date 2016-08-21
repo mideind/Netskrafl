@@ -26,6 +26,10 @@ from dawgdictionary import Wordbase
 from languages import Alphabet
 
 
+# !!! DEBUG ONLY: Set to True to use an extra small bag for testing
+_DEBUG_MANUAL_WORDCHECK = False
+
+
 class Board:
 
     """ Represents the characteristics and the contents of a Scrabble board.
@@ -245,11 +249,15 @@ class Bag:
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
-    def __init__(self, tileset, copy = None):
+    def __init__(self, tileset, copy = None, debug = False):
 
         if copy is None:
             # Get a full bag from the requested tile set
-            self._tiles = tileset.full_bag()
+            if debug:
+                # Small bag for debugging endgame cases
+                self._tiles = u"aaábdðefgiiíklmnnóprrsstuuúæ"
+            else:
+                self._tiles = tileset.full_bag()
             self._size = len(self._tiles)
         else:
             # Copy constructor: initialize from another Bag
@@ -412,7 +420,10 @@ class State:
             self._last_covers = None # The covers laid down in the last challengeable move
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
-            self._bag = Bag(tileset)
+            if manual_wordcheck and _DEBUG_MANUAL_WORDCHECK:
+                self._bag = Bag(tileset, debug = True)
+            else:
+                self._bag = Bag(tileset)
             if drawtiles:
                 # Draw the racks from the bag
                 for rack in self._racks:
@@ -551,12 +562,11 @@ class State:
 
     def set_challengeable(self, score, covers, last_rack):
         """ Set the challengeable state, with the given covers being laid down """
-        assert score != 0
-        #logging.info(u"set_challengeable score {0}".format(score))
-        self._challenge_score = score
-        logging.info(u"State.set_challengeable: last_rack is {0}".format(last_rack).encode("latin-1"))
-        self._last_rack = last_rack
-        self._last_covers = covers
+        if score and self.manual_wordcheck:
+            self._challenge_score = score
+            # logging.info(u"State.set_challengeable: last_rack is {0}".format(last_rack).encode("latin-1"))
+            self._last_rack = last_rack
+            self._last_covers = covers
 
     def rack(self, index):
         """ Return the contents of the rack (indexed by 0 or 1) """
@@ -599,6 +609,10 @@ class State:
             # even if one of the racks is empty
             return False
         return self._racks[0].is_empty() or self._racks[1].is_empty()
+
+    def is_last_challenge(self):
+        """ Is the game waiting for a potential challenge of the last move? """
+        return self.is_challengeable() and any(r.is_empty() for r in self._racks)
 
     def finalize_score(self, lost_on_overtime = None, overtime_adjustment = None):
         """ When game is completed, calculate the final score adjustments """
@@ -698,6 +712,7 @@ class Error:
     SERVER_ERROR = 18
     NOT_MANUAL_WORDCHECK = 19
     MOVE_NOT_CHALLENGEABLE = 20
+    ONLY_PASS_OR_CHALLENGE = 21
     # Insert new error codes above this line
     # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
     GAME_OVER = 99
@@ -707,7 +722,8 @@ class Error:
         if errcode == Error.GAME_OVER:
             # Special case
             return u"GAME_OVER"
-        return [u"LEGAL",
+        return [
+            u"LEGAL",
             u"NULL_MOVE", 
             u"FIRST_MOVE_NOT_IN_CENTER", 
             u"DISJOINT", 
@@ -727,7 +743,9 @@ class Error:
             u"GAME_NOT_OVERDUE",
             u"SERVER_ERROR",
             u"NOT_MANUAL_WORDCHECK",
-            u"MOVE_NOT_CHALLENGEABLE"][errcode]
+            u"MOVE_NOT_CHALLENGEABLE",
+            u"ONLY_PASS_OR_CHALLENGE"
+            ][errcode]
 
 
 class MoveBase(object):
@@ -903,6 +921,9 @@ class Move(MoveBase):
             return Error.TOO_MANY_TILES_PLAYED
         if state.is_game_over():
             return Error.GAME_OVER
+        if state.is_last_challenge():
+            # Last tile move on the board: the player can only pass or challenge
+            return Error.ONLY_PASS_OR_CHALLENGE
 
         rack = state.player_rack()
         board = state.board()
@@ -1148,7 +1169,7 @@ class Move(MoveBase):
         board = state.board()
         rack = state.player_rack()
         last_rack = rack.contents() # The rack as it stood before this move
-        logging.info(u"Move.apply: last_rack set to {0}".format(last_rack).encode("latin-1"))
+        # logging.info(u"Move.apply: last_rack set to {0}".format(last_rack).encode("latin-1"))
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
@@ -1194,6 +1215,9 @@ class ExchangeMove(MoveBase):
             return Error.EXCHANGE_NOT_ALLOWED
         if len(self._tiles) > Rack.MAX_TILES:
             return Error.TOO_MANY_TILES_EXCHANGED
+        if state.is_last_challenge():
+            # Last tile move on the board: the player can only pass or challenge
+            return Error.ONLY_PASS_OR_CHALLENGE
         # All checks pass: the play is legal
         return Error.LEGAL
 
@@ -1305,7 +1329,7 @@ class ResponseMove(MoveBase):
         """ Calculate the score of this move, which is assumed to be legal """
         if self._score is None:
             self._score = state.challenge_score
-            #logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
+            # logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
             assert self._score != 0
         return self._score
 
@@ -1332,7 +1356,7 @@ class ResponseMove(MoveBase):
                 # Return all the current tiles to the bag
                 bag.return_tiles(rack.contents())
                 # Draw all the previous tiles from the bag
-                logging.info(u"ResponseMove.apply: setting rack to {0}".format(state.last_rack).encode("latin-1"))
+                # logging.info(u"ResponseMove.apply: setting rack to {0}".format(state.last_rack).encode("latin-1"))
                 rack.set_tiles(state.last_rack)
                 bag.subtract_rack(rack.contents())
         state.clear_challengeable()

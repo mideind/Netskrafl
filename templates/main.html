@@ -251,6 +251,13 @@
 --><div class="option small" id="opt2"><span class="glyphicon glyphicon-time"></span></div>
 </div>
 
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
+</div>
+</div>
+
 <!-- A dialog to show info about a particular user -->
 <div id="usr-info-dialog" class="modal-dialog">
 <div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
@@ -346,7 +353,7 @@
    </div>
 
    <div class="hidden" id="chall-fairplay">Báðir leikmenn lýsa því yfir að
-   þeir skrafla <strong>án stafrænna hjálpartækja</strong> af nokkru tagi.</div>
+      þeir skrafla <strong>án stafrænna hjálpartækja</strong> af nokkru tagi.</div>
 
    <div class="hidden" id="chall-newbag">
    <table>
@@ -440,6 +447,11 @@ function fairPlay() {
 function newBag() {
    /* The new bag preference of the logged in user */
    return {{ "true" if user.new_bag() else "false" }};
+}
+
+function userHasPaid() {
+   /* Is the logged in user a paying friend of Netskrafl? */
+   return {{ "true" if user.has_paid() else "false" }};
 }
 
 function newgameUrl(opp, reversed) {

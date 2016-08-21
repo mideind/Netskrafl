@@ -170,6 +170,14 @@ function submitForm() {
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
 
+{% if not uf.friend %}
+   <!-- Become friend button -->
+   <div class="modal-close" id="user-friend" title="Gerast vinur" tabindex="11"
+      onclick="location.href='{{ url_for('friend', dialog=1) }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Gerast vinur</div>
+{% endif %}
+
 </div> <!-- user-form -->
 </div> <!-- user-dialog -->
 

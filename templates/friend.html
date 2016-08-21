@@ -1,0 +1,103 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
+</div>
+</div>
+
+<!-- Display user identifier in upper right corner -->
+
+<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+   function errFunc(xhr, status, errorThrown) {
+      /* Error handling function for Ajax communications */
+      // alert("Villa í netsamskiptum");
+      console.log("Error: " + errorThrown);
+      console.log("Status: " + status);
+      console.dir(xhr);
+   }
+
+   function serverQueryHtml(requestUrl, jsonData, selector, errorFunc) {
+      /* Wraps a simple, standard Ajax request to the server */
+      $.ajax({
+         // The URL for the request
+         url: requestUrl,
+
+         // The data to send
+         data: jsonData,
+
+         // Whether this is a POST or GET request
+         type: "POST",
+
+         cache: false,
+
+         // Code to run if the request succeeds;
+         // the response is passed to the function
+         success: function(result) { $(selector).html(result); },
+
+         // Code to run if the request fails; the raw request and
+         // status codes are passed to the function
+         // Code to run if the request fails; the raw request and
+         // status codes are passed to the function
+         error: (!errorFunc) ? errFunc : errorFunc
+
+      });
+   }
+
+   function userId() {
+      return "{{ user.id() }}";
+   }
+
+   function openPromoDialog(key) {
+      /* Show a modal promotion dialog */
+      $("#promo-dialog")
+         .data("param", { key: key })
+         .css("visibility", "visible");
+      // Obtain the promo content from the server and put it into the #promo-content div
+      serverQueryHtml("/promo", { key: key, user: userId() }, "#promo-content");
+   }
+
+   function closePromoDialog() {
+      // Hide the dialog
+      $("#promo-dialog")
+         .data("param", null)
+         .css("visibility", "hidden");
+      $("#promo-content").html("");
+      window.location.href = "{{ url_for('main') | safe }}";
+   }
+
+   function init(jQuery) {
+{% if show_dialog %}
+      openPromoDialog("friend");
+{% endif %}
+   }
+
+   $(document).ready(init);
+
+</script>
+
+{% endblock %}
+

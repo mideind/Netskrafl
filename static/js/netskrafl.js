@@ -1010,6 +1010,7 @@ var tileSelected = null; /* The selected (single-clicked) tile */
 var showingDialog = false; /* Is a modal dialog banner being shown? */
 var exchangeAllowed = true; /* Is an exchange move allowed? */
 var challengeAllowed = false; /* Is a challenge allowed? */
+var lastChallenge = false; /* Last tile move on the board, pending challenge or pass? */
 
 function moveSelectedTile(sq) {
    // Move the tileSelected to the target square
@@ -1326,18 +1327,27 @@ function updateButtonState() {
    var showChallenge = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
-      showMove = (tilesPlaced !== 0);
-      showExchange = (tilesPlaced === 0);
-      showPass = (tilesPlaced === 0);
-      showResign = (tilesPlaced === 0);
-      showChallenge = (tilesPlaced === 0) && gameIsManual() && challengeAllowed;
+      if (lastChallenge) {
+         // The last tile move is on the board. It can only be passed or challenged.
+         showChallenge = true;
+         showPass = true;
+      }
+      else {
+         showMove = (tilesPlaced !== 0);
+         showExchange = (tilesPlaced === 0);
+         showPass = (tilesPlaced === 0);
+         showResign = (tilesPlaced === 0);
+         showChallenge = (tilesPlaced === 0) && gameIsManual() && challengeAllowed;
+      }
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
          tilesPlaced === 0 || showingDialog);
       $("div.submitexchange").toggleClass("disabled",
          tilesPlaced !== 0 || showingDialog || !exchangeAllowed);
       $("div.submitpass").toggleClass("disabled",
-         tilesPlaced !== 0 || showingDialog);
+         (tilesPlaced !== 0 && !lastChallenge) || showingDialog);
+      $("div.challenge").toggleClass("disabled",
+         (tilesPlaced !== 0 && !lastChallenge) || showingDialog);
       $("div.submitresign").toggleClass("disabled", showingDialog);
       $("div.recallbtn").toggleClass("disabled", showingDialog);
       $("div.scramblebtn").toggleClass("disabled", showingDialog);
@@ -1362,7 +1372,7 @@ function updateButtonState() {
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
    $("div.score").removeClass("word-good").removeClass("word-great");
-   if (tilesPlaced === 0) {
+   if (tilesPlaced === 0 || lastChallenge) {
       $("div.score").text("").css("visibility", "hidden");
       wordToCheck = "";
       wordGoodOrBad(false, false);
@@ -1738,7 +1748,7 @@ function _updateState(json, preserveTiles) {
             var tiles = json.newmoves[i][1][1];
             score = json.newmoves[i][1][2];
             appendMove(player, co, tiles, score);
-            if (co == "" && tiles == "RESP" && score < 0)
+            if (co === "" && tiles == "RESP" && score < 0)
                // Successful challenge: remove the tiles originally placed
                removeNewestTileMove();
          }
@@ -1752,6 +1762,9 @@ function _updateState(json, preserveTiles) {
       /* See if a challenge is allowed */
       if (json.chall !== undefined)
          challengeAllowed = json.chall;
+      /* Are we in a last challenge state? */
+      if (json.last_chall !== undefined)
+         lastChallenge = json.last_chall;
       /* Save the new tile state */
       saveTiles();
       /* Enable and disable buttons as required */
@@ -1886,16 +1899,19 @@ function confirmChallenge(yes) {
 
 function submitChallenge(btn) {
    /* The user has clicked the challenge button */
-   $("div.chall").css("visibility", "visible");
-   showingDialog = true;
-   initRackDraggable(false);
-   /* Disable all other actions while panel is shown */
-   updateButtonState();
+   if (!$(btn).hasClass("disabled")) {
+      $("div.chall").css("visibility", "visible");
+      showingDialog = true;
+      initRackDraggable(false);
+      /* Disable all other actions while panel is shown */
+      updateButtonState();
+   }
 }
 
 function confirmPass(yes) {
    /* The user has either confirmed or cancelled the pass move */
    $("div.pass").css("visibility", "hidden");
+   $("div.pass-last").css("visibility", "hidden");
    showingDialog = false;
    initRackDraggable(true);
    updateButtonState();
@@ -1906,7 +1922,7 @@ function confirmPass(yes) {
 function submitPass(btn) {
    /* The user has clicked the pass button: show confirmation banner */
    if (!$(btn).hasClass("disabled")) {
-      $("div.pass").css("visibility", "visible");
+      $(lastChallenge ? "div.pass-last" : "div.pass").css("visibility", "visible");
       showingDialog = true;
       initRackDraggable(false);
       /* Disable all other actions while panel is shown */

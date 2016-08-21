@@ -234,6 +234,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 </div>
 </div>
 
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
+</div>
+</div>
+
 <!-- A button to recall all tiles back into the rack -->
 <div class="recallbtn" title="Færa stafi aftur í rekka"
    onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
@@ -310,6 +317,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <p id="err_18">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- SERVER_ERROR = 18 -->
    <p id="err_19">Véfenging er ekki möguleg í þessari viðureign</p> <!-- NOT_MANUAL_WORDCHECK = 19 -->
    <p id="err_20">Síðasti leikur er ekki véfengjanlegur</p> <!-- MOVE_NOT_CHALLENGEABLE = 20 -->
+   <p id="err_21">Aðeins véfenging eða pass leyfileg</p> <!-- ONLY_PASS_OR_CHALLENGE = 21 -->
    <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
 </div>
 
@@ -323,6 +331,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <!-- Confirm pass move -->
 <div class="pass"><span class="glyphicon glyphicon-forward"></span>
    &nbsp;Segja pass? <span class="pass-explain">2x3 pöss í röð ljúka viðureign</span>&nbsp;
+   <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+<!-- Confirm last pass move -->
+<div class="pass-last"><span class="glyphicon glyphicon-forward"></span>
+   &nbsp;Segja pass? <span class="pass-explain">Viðureign lýkur þar með</span>&nbsp;
    <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
    <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
@@ -494,11 +509,14 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% else %}
       updateBag("{{ game.display_bag(player_index) }}");
 {% endif %}
-{% if not game.state.is_exchange_allowed() %}
-      exchangeAllowed = false;
-{%- endif -%}
 {% if game.is_challengeable() %}
       challengeAllowed = true;
+{%- endif -%}
+{% if game.is_last_challenge() %}
+      lastChallenge = true;
+      exchangeAllowed = false;
+{% elif not game.state.is_exchange_allowed() %}
+      exchangeAllowed = false;
 {%- endif -%}
    }
 
@@ -597,7 +615,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
    function navToReview() {
       /* Show the game review page */
+{% if user and user.has_paid() %}
+      // Paying friend of Netskrafl: show the game review
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+{% else %}
+      // Not a paying friend: show a promotion overlay
+      openPromoDialog("friend");
+{% endif %}
    }
 
    function navToUserprefs() {

@@ -199,6 +199,9 @@
 .glyphicon-lightbulb:before {
    content: "\E065";
 }
+.glyphicon-coffee-cup:before {
+   content: "\E295";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1349,6 +1352,23 @@ div.pass {
    visibility: hidden;
 }
 
+div.pass-last {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @pass-btn;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 span.pass-explain {
    font-weight: normal;
    font-style: italic;
@@ -1393,7 +1413,8 @@ div.resign span.yesnobutton {
    color: @alert;
 }
 
-div.pass span.yesnobutton {
+div.pass span.yesnobutton,
+div.pass-last span.yesnobutton {
    color: @pass-btn;
 }
 
@@ -1576,8 +1597,8 @@ div.score.word-good {
 }
 
 div.score.manual {
-   color: @triple-letter;
-   border-color: @triple-letter;
+   color: @score-manual;
+   border-color: @score-manual;
 }
 
 @keyframes colorPulse {
@@ -1669,15 +1690,15 @@ div.challenge {
    bottom: 204px;
    left: 644px;
    color: white;
-   background-color: @alert;
+   background-color: @chall-btn;
    font-family: 'Glyphicons Regular';
    font-style: normal;
    font-weight: normal;
    font-size: 26px;
-   line-height: 45px;
+   line-height: 46px;
    display: none;
    border-style: solid;
-   border-color: @alert;
+   border-color: @chall-btn;
    border-width: 2px;
    border-radius: 5px;
    cursor: pointer;
@@ -1685,6 +1706,10 @@ div.challenge {
 
 div.challenge:before {
    content: "\E200"; /* glyphicon-ban-circle */
+}
+
+div.challenge.disabled {
+   border-color: @background;
 }
 
 div.board-help {
@@ -1837,6 +1862,30 @@ span#total0, span#total1 {
    font-size: 28px;
    margin-left: 8px;
    margin-right: 8px;
+}
+
+div#promo-content {
+   margin-top: 48px;
+   margin-left: 48px;
+   margin-right: 48px;
+}
+
+div.btn-promo-yes {
+   .standard-button;
+   width: 200px;
+   height: 28px;
+   bottom: 48px;
+   right: 232px;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.btn-promo-no {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 48px;
+   right: 48px;
+   background-color: @board-background;
 }
 
 div.tabbed-page {
@@ -2616,7 +2665,8 @@ div#accept-cancel {
    background-color: @alert;
 }
 
-div#blank-close {
+div#blank-close,
+div#promo-close {
    background-color: @alert;
 }
 
@@ -2637,6 +2687,15 @@ div#blank-form {
    right: 12px;
    width: 274px;
    height: 400px;
+}
+
+div#promo-form {
+   .std-form;
+   top: 16px;
+   right: 12px;
+   width: 884px;
+   height: 644px;
+   line-height: 1.62em;
 }
 
 div#usr-info-form {
@@ -3000,6 +3059,12 @@ div#user-logout {
    background-color: @pass-btn;
 }
 
+div#user-friend {
+   left: 180px;
+   width: 160px; /* Override */
+   background-color: darken(@freshtile, 10%);
+}
+
 div#user-cancel {
    right: 108px; /* 12 + 72 + 12 + 12 */
    width: 72px; /* Override */
@@ -3009,7 +3074,7 @@ div#user-cancel {
 div#user-ok {
    right: 12px; /* 12 */
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
 }
 
 div#accept-form {

@@ -82,6 +82,21 @@ class User:
         else:
             self._user_id = uid
 
+    def _init(self, um):
+        """ Obtain the properties from the database entity """
+        self._nickname = um.nickname
+        self._inactive = um.inactive
+        self._preferences = um.prefs
+        self._ready = um.ready
+        self._ready_timed = um.ready_timed
+        self._elo = um.elo
+        self._human_elo = um.human_elo
+        self._highest_score = um.highest_score
+        self._highest_score_game = um.highest_score_game
+        self._best_word = um.best_word
+        self._best_word_score = um.best_word_score
+        self._best_word_game = um.best_word_game
+
     def _fetch(self):
         """ Fetch the user's record from the database """
         um = UserModel.fetch(self._user_id)
@@ -90,19 +105,8 @@ class User:
             self.set_new_bag(True) # Fresh users get the new bag by default
             UserModel.create(self._user_id, self.nickname(), self._preferences) # This updates the database
         else:
-            # Obtain the properties from the database entity
-            self._nickname = um.nickname
-            self._inactive = um.inactive
-            self._preferences = um.prefs
-            self._ready = um.ready
-            self._ready_timed = um.ready_timed
-            self._elo = um.elo
-            self._human_elo = um.human_elo
-            self._highest_score = um.highest_score
-            self._highest_score_game = um.highest_score_game
-            self._best_word = um.best_word
-            self._best_word_score = um.best_word_score
-            self._best_word_game = um.best_word_game
+            # Initialize from the database
+            self._init(um)
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
@@ -427,6 +431,29 @@ class User:
                 u._fetch()
                 memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
+
+    @classmethod
+    def load_multi(cls, uids):
+        """ Load multiple users from persistent storage given their user id """
+        users = []
+        with User._lock:
+            to_get = []
+            # First, get the users that we already have in memcache
+            for uid in uids:
+                u = memcache.get(uid, namespace=User._NAMESPACE)
+                if u is not None:
+                    # Found: add to result
+                    users.append(u)
+                else:
+                    # Not found in the memcache: save for later subsequent DB fetch
+                    to_get.append(uid)
+            if to_get:
+                for um in UserModel.fetch_multi(to_get):
+                    u = cls(um.key.id())
+                    u._init(um)
+                    memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+                    users.append(u)
+        return users
 
     @classmethod
     def current(cls):
@@ -927,7 +954,7 @@ class Game:
         if self.get_duration() == 0:
             # Not a timed game: it's not over
             return False
-        # Timed game: might now be lost on overtime
+        # Timed game: might now be lost on overtime (even if waiting on a challenge)
         overtime = self.overtime()
         if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)):
             # The game has been lost on overtime
@@ -1150,6 +1177,10 @@ class Game:
         """ Return True if the last move in the game is challengeable """
         return self.state.is_challengeable()
 
+    def is_last_challenge(self):
+        """ Return True if the last tile move has been made and is pending a challenge or pass """
+        return self.state.is_last_challenge()
+
     def client_state(self, player_index, lastmove = None):
         """ Create a package of information for the client about the current state """
 
@@ -1176,12 +1207,15 @@ class Game:
             reply["result"] = Error.GAME_OVER # Not really an error
             reply["xchg"] = False # Exchange move not allowed
             reply["chall"] = False # Challenge not allowed
+            reply["last_chall"] = False # Not in last challenge state
             reply["bag"] = self.state.bag().contents()
         else:
             # Game is still in progress
+            last_chall = self.state.is_last_challenge() # ...but in a last-challenge state
             reply["result"] = 0 # Indicate no error
-            reply["xchg"] = self.state.is_exchange_allowed()
+            reply["xchg"] = False if last_chall else self.state.is_exchange_allowed()
             reply["chall"] = self.state.is_challengeable()
+            reply["last_chall"] = last_chall
             reply["bag"] = self.display_bag(player_index)
 
         reply["rack"] = self.state.rack_details(player_index)
