@@ -196,7 +196,12 @@ class _Dawg:
         self._dicts = [None] * MAXLEN
         self._dicts[0] = self._root
         # Initialize the result list of unique nodes
+
+        # Keep a list of the values inserted too. Note that using
+        # OrderedDict raises an exception while enumerating the values
+        # (presumably because the dictionary has been altered).
         self._unique_nodes = dict()
+        self._unique_nodes_values = list()
 
     def _collapse_branch(self, parent, prefix, node):
         """ Attempt to collapse a single branch of the tree """
@@ -246,6 +251,7 @@ class _Dawg:
         else:
             # This is a new, unique signature: store it in the dictionary of unique nodes
             self._unique_nodes[node] = node
+            self._unique_nodes_values.append(node)
 
     def _collapse(self, edges):
         """ Collapse and optimize the edges in the parent dict """
@@ -315,7 +321,7 @@ class _Dawg:
         # Renumber the nodes for a tidier graph and more compact output
         # 1 is the line number of the root in text output files, so we start with 2
         ix = 2
-        for n in self._unique_nodes.values():
+        for n in self._unique_nodes_values:
             if n is not None:
                 n.reset_id(ix)
                 ix += 1
@@ -337,7 +343,7 @@ class _Dawg:
         self._dump_level(0, self._root)
         print("Total of {0} nodes and {1} edges with {2} prefix characters".format(self.num_unique_nodes(),
             self.num_edges(), self.num_edge_chars()))
-        for ix, n in enumerate(self._unique_nodes.values()):
+        for ix, n in enumerate(self._unique_nodes_values):
             if n is not None:
                 # We don't use ix for the time being
                 print(u"Node {0}{1}".format(n.id, u"|" if n.final else u""))
@@ -351,7 +357,7 @@ class _Dawg:
     def num_edges(self):
         """ Count the total number of edges between unique nodes in the graph """
         edges = 0
-        for n in self._unique_nodes.values():
+        for n in self._unique_nodes_values:
             if n is not None:
                 edges += len(n.edges)
         return edges
@@ -359,7 +365,7 @@ class _Dawg:
     def num_edge_chars(self):
         """ Count the total number of edge prefix letters in the graph """
         chars = 0
-        for n in self._unique_nodes.values():
+        for n in self._unique_nodes_values:
             if n is not None:
                 for prefix in n.edges:
                     # Add the length of all prefixes to the edge, minus the vertical bar
@@ -373,7 +379,7 @@ class _Dawg:
         # Start with the root edges
         for prefix, nd in self._root.items():
             packer.edge(nd.id, prefix)
-        for node in self._unique_nodes.values():
+        for node in self._unique_nodes_values:
             if node is not None:
                 packer.node_start(node.id, node.final, len(node.edges))
                 for prefix, nd in node.edges.items():
@@ -391,7 +397,7 @@ class _Dawg:
         # The root is always in the first line and the first node after the root has id 2.
         # Start with the root edges
         stream.write(_DawgNode.stringify_edges(self._root) + u"\n")
-        for node in self._unique_nodes.values():
+        for node in self._unique_nodes_values:
             if node is not None:
                 stream.write(node.__str__() + u"\n")
 
