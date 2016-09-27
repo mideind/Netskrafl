@@ -775,6 +775,11 @@ class MoveBase(object):
         """ Return the number of tiles played in this move """
         return 0
 
+    @property
+    def is_bingo(self):
+        """ Return True if bingo move (all tiles laid down) """
+        return False
+
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
         return False
@@ -822,6 +827,11 @@ class Move(MoveBase):
     def num_covers(self):
         """ Number of empty squares covered by this move """
         return len(self._covers)
+
+    @property
+    def is_bingo(self):
+        """ Return True if bingo move (all tiles laid down) """
+        return self.num_covers() == Rack.MAX_TILES
 
     def covers(self):
         """ Return the list of covered squares """

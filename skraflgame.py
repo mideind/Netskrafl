@@ -881,6 +881,25 @@ class Game:
         """ Return the tile set used in this game """
         return NewTileSet if self.new_bag() else OldTileSet
 
+    @property
+    def net_moves(self):
+        """ Return a list of net moves, i.e. those that weren't successfully challenged """
+        if not self.manual_wordcheck():
+            # No challenges possible: just return the complete move list
+            return self.moves
+        net_m = []
+        for m in self.moves:
+            if isinstance(m, ResponseMove) and m.score(self.state) < 0:
+                # Successful challenge: Erase the two previous moves
+                # (the challenge and the illegal move)
+                assert len(net_m) >= 2
+                del net_m[-1]
+                del net_m[-1]
+            else:
+                # Not a successful challenge response: add to the net move list
+                net_m.append(m)
+        return net_m
+
     @staticmethod
     def get_duration_from_prefs(prefs):
         """ Return the duration given a dict of game preferences """
@@ -1151,9 +1170,13 @@ class Game:
                 last_rack = self.state.rack(lastplayer)
                 last_score = self.tileset.score(last_rack)
                 if not last_rack:
-                    # Won with an empty rack: Add double the score of the losing rack
+                    # Finished with an empty rack: Add double the score of the opponent rack
                     movelist.append((1 - lastplayer, (u"", u"--", 0)))
                     movelist.append((lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score)))
+                elif not opp_rack:
+                    # A manual check game that ended with no challenge to a winning final move
+                    movelist.append((1 - lastplayer, (u"", u"2 * " + last_rack, 2 * last_score)))
+                    movelist.append((lastplayer, (u"", u"--", 0)))
                 else:
                     # The game has ended by passes: each player gets her own rack subtracted
                     movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
@@ -1230,7 +1253,8 @@ class Game:
     def bingoes(self):
         """ Returns a tuple of lists of bingoes for both players """
         # List all bingoes in the game
-        bingoes = [(m.player, m.move.summary(self.state)) for m in self.moves if m.move.num_covers() == Rack.MAX_TILES]
+        bingoes = [(m.player, m.move.summary(self.state))
+            for m in self.net_moves if m.move.is_bingo]
         def _stripq(s):
             return s.replace(u'?', u'')
         # Populate (word, score) tuples for each bingo for each player
@@ -1256,21 +1280,27 @@ class Game:
         # Number of moves made
         reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
         reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
-        ncovers = [(m.player, m.move.num_covers()) for m in self.moves]
+        # Count bingoes and covers for moves that were not successfully challenged
+        net_moves = self.net_moves
+        ncovers = [(m.player, m.move.num_covers()) for m in net_moves]
         bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
-        # Number of bingoes
+        # Number of bingoes (net of successful challenges)
         reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
         reply["bingoes1"] = sum([1 if p == 1 and bingo else 0 for p, bingo in bingoes])
-        # Number of tiles laid down
+        # Number of tiles laid down (net of successful challenges)
         reply["tiles0"] = t0 = sum([nc if p == 0 else 0 for p, nc in ncovers])
         reply["tiles1"] = t1 = sum([nc if p == 1 else 0 for p, nc in ncovers])
         blanks = [0, 0]
         letterscore = [0, 0]
         cleanscore = [0, 0]
+        wrong_chall = [0, 0] # Points gained by wrong challenges from opponent
         # Loop through the moves, collecting stats
-        for m in self.moves:
+        for m in net_moves: # Omit successfully challenged moves
             coord, wrd, msc = m.move.summary(self.state)
-            if wrd != u'RSGN':
+            if wrd == u'RESP':
+                assert msc > 0
+                wrong_chall[m.player] += msc
+            elif wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score
                 cleanscore[m.player] += msc
             if m.move.num_covers() == 0:
@@ -1298,21 +1328,24 @@ class Game:
         # Plain sum of move scores
         reply["cleantotal0"] = cleanscore[0]
         reply["cleantotal1"] = cleanscore[1]
+        # Score from wrong challenges by opponent
+        reply["wrongchall0"] = wrong_chall[0]
+        reply["wrongchall1"] = wrong_chall[1]
         # Contribution of overtime at the end of the game
         ov = self.overtime()
         if any(ov[ix] >= Game.MAX_OVERTIME for ix in range(2)):
             # Game was lost on overtime
             reply["remaining0"] = 0
             reply["remaining1"] = 0
-            reply["overtime0"] = sc[0] - cleanscore[0]
-            reply["overtime1"] = sc[1] - cleanscore[1]
+            reply["overtime0"] = sc[0] - cleanscore[0] - wrong_chall[0]
+            reply["overtime1"] = sc[1] - cleanscore[1] - wrong_chall[0]
         else:
             oa = self.overtime_adjustment()
             reply["overtime0"] = oa[0]
             reply["overtime1"] = oa[1]
             # Contribution of remaining tiles at the end of the game
-            reply["remaining0"] = sc[0] - cleanscore[0] - oa[0]
-            reply["remaining1"] = sc[1] - cleanscore[1] - oa[1]
+            reply["remaining0"] = sc[0] - cleanscore[0] - oa[0] - wrong_chall[0]
+            reply["remaining1"] = sc[1] - cleanscore[1] - oa[1] - wrong_chall[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
         reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
