@@ -230,7 +230,7 @@ def _userlist(query, spec):
     challenges = set()
     if cuid:
         challenges.update([ch[0] # Identifier of challenged user
-            for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
+            for ch in ChallengeModel.list_issued(cuid, max_len = 20)])
 
     # Get the list of online users
 
@@ -238,7 +238,7 @@ def _userlist(query, spec):
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
-        online = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+        online = set(ChannelModel.list_connected()) # Eliminate duplicates by using a set
         # Store the result in the cache with a lifetime of 2 minutes
         memcache.set("live", online, time=2 * 60, namespace="userlist")
 
@@ -267,7 +267,7 @@ def _userlist(query, spec):
     elif query == u"fav":
         # Return favorites of the current user
         if cuid is not None:
-            i = iter(FavoriteModel.list_favorites(cuid))
+            i = FavoriteModel.list_favorites(cuid)
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
             for fu in fusers:
@@ -290,7 +290,7 @@ def _userlist(query, spec):
     elif query == u"alike":
         # Return users with similar Elo ratings
         if cuid is not None:
-            i = iter(UserModel.list_similar_elo(cuser.human_elo(), max_len = 40))
+            i = UserModel.list_similar_elo(cuser.human_elo(), max_len = 40)
             ausers = User.load_multi(i)
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:

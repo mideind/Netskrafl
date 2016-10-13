@@ -437,22 +437,10 @@ class User:
         """ Load multiple users from persistent storage given their user id """
         users = []
         with User._lock:
-            to_get = []
-            # First, get the users that we already have in memcache
-            for uid in uids:
-                u = memcache.get(uid, namespace=User._NAMESPACE)
-                if u is not None:
-                    # Found: add to result
-                    users.append(u)
-                else:
-                    # Not found in the memcache: save for later subsequent DB fetch
-                    to_get.append(uid)
-            if to_get:
-                for um in UserModel.fetch_multi(to_get):
-                    u = cls(um.key.id())
-                    u._init(um)
-                    memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
-                    users.append(u)
+            for um in UserModel.fetch_multi(uids):
+                u = cls(um.key.id())
+                u._init(um)
+                users.append(u)
         return users
 
     @classmethod
@@ -481,9 +469,7 @@ class User:
     def current_nickname(cls):
         """ Return the nickname of the current user """
         u = cls.current()
-        if u is None:
-            return None
-        return u.nickname()
+        return None if u is None else u.nickname()
 
     def statistics(self):
         """ Return a set of key statistics on the user """

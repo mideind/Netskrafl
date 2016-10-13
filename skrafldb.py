@@ -834,7 +834,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def _del_expired(cls, ts):
         """ Delete all expired channels """
-        logging.info(u"ChannelModel._del_expired(), ts is {0}".format(ts))
+        # logging.info(u"ChannelModel._del_expired(), ts is {0}".format(ts))
         CHUNK_SIZE = 500
         while True:
             q = cls.query(ChannelModel.expiry < ts)
@@ -864,8 +864,8 @@ class ChannelModel(ndb.Model):
                     # The scheduled next cleanup is due: defer it for execution
                     deferred.defer(cls._del_expired, ts = now)
                 # Schedule the next one
-                logging.info("ChannelModel.send_message() scheduling cleanup in {0} minutes"
-                    .format(ChannelModel._CLEANUP_INTERVAL))
+                # logging.info("ChannelModel.send_message() scheduling cleanup in {0} minutes"
+                #     .format(ChannelModel._CLEANUP_INTERVAL))
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
             CHUNK_SIZE = 50 # There are never going to be many matches for this query
@@ -1057,7 +1057,7 @@ class StatsModel(ndb.Model):
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
-            logging.info(u"False positives caused ratings list to be truncated")
+            logging.error(u"False positives caused ratings list to be truncated")
             max_len -= (false_pos - max_len)
             if max_len < 0:
                 max_len = 0
