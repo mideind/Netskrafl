@@ -1,5 +1,7 @@
 ## Netskrafl - an Icelandic crossword game website
 
+[![Join the chat at https://gitter.im/Netskrafl/Lobby](https://badges.gitter.im/Netskrafl/Lobby.svg)](https://gitter.im/Netskrafl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ### English summary
 
 This repository contains the implementation of an Icelandic crossword game
