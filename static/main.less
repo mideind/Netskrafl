@@ -1870,6 +1870,14 @@ div#promo-content {
    margin-right: 48px;
 }
 
+div#promo-content h2 {
+   color: darken(@freshtile, 10%);
+}
+
+div#promo-content h2 span.glyphicon-coffee-cup {
+   color: @pass-btn;
+}
+
 div.btn-promo-yes {
    .standard-button;
    width: 200px;
@@ -1895,6 +1903,24 @@ div.btn-thanks {
    bottom: 24px;
    right: 24px;
    background-color: darken(@freshtile, 10%);
+}
+
+div.btn-cancel-yes {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 24px;
+   right: 24px;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.btn-cancel-no {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 24px;
+   right: 208px;
+   background-color: @alert;
 }
 
 div.tabbed-page {
@@ -2716,6 +2742,35 @@ div#thanks-form {
    line-height: 1.62em;
 }
 
+div#cancel-form {
+   .std-form;
+   top: 236px;
+   right: 224px;
+   width: 460px;
+   height: 200px;
+   line-height: 1.62em;
+}
+
+div#confirm-form {
+   .std-form;
+   top: 236px;
+   right: 224px;
+   width: 460px;
+   height: 200px;
+   line-height: 1.62em;
+}
+
+div#conditions-form {
+   .std-form;
+   top: 108px;
+   right: 124px;
+   width: 660px;
+   height: 460px;
+   line-height: 1.62em;
+   padding-left: 24px;
+   padding-right: 24px;
+}
+
 div#usr-info-form {
    .std-form;
    top: 16px;
@@ -2724,7 +2779,9 @@ div#usr-info-form {
    height: 644px;
 }
 
-div#thanks-content {
+div#thanks-content,
+div#cancel-content,
+div#confirm-content {
    margin-top: 24px;
    margin-left: 24px;
    margin-right: 24px;
@@ -3071,10 +3128,10 @@ div#user-dialog {
 
 div#user-form {
    .std-form;
-   top: 28px;
+   top: 20px;
    right: 64px;
    width: 736px;
-   height: 660px;
+   height: 676px;
 }
 
 div#user-logout {
@@ -3085,8 +3142,23 @@ div#user-logout {
 
 div#user-friend {
    left: 180px;
-   width: 160px; /* Override */
+   width: 280px; /* Override */
    background-color: darken(@freshtile, 10%);
+}
+
+div#user-unfriend {
+   left: 180px;
+   width: 280px; /* Override */
+   padding-top: 6px;
+   border-style: solid;
+   border-width: 2px;
+   border-color: darken(@freshtile, 10%);
+   background-color: white;
+   color: darken(@freshtile, 10%);
+}
+
+div#user-unfriend span.glyphicon-coffee-cup {
+   color: @pass-btn;
 }
 
 div#user-cancel {
@@ -3526,3 +3598,20 @@ img#villi {
    margin-top: 18px;
    margin-bottom: 12px;
 }
+
+div.signup-header {
+   position: absolute;
+   top: 12px;
+   left: 110px;
+   width: 900px;
+}
+
+div.salescloud-wrapper {
+   position: absolute;
+   top: 72px;
+   left: 110px;
+   width: 900px;
+   height: 664px; /* Status bar is 20 pixels on iPhone/iPad */
+   overflow-y: auto;
+}
+

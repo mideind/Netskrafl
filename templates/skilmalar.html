@@ -1,0 +1,75 @@
+
+{% extends "container.html" %}
+
+{% block scripts %}
+
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<!-- A dialog to display conditions -->
+<div id="conditions-dialog" class="modal-dialog">
+<div id="conditions-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div>
+      <h2>Skilmálar</h2>
+      <p><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>Vinir Netskrafls</b> velja að
+      greiða frjáls framlög til rekstrar vefjarins að upphæð 490 kr. á mánuði.
+      Framlag er skuldfært af greiðslukorti (kredit- eða debetkorti) til eins mánaðar í senn.
+      <b>Skuldfært framlag fæst ekki endurgreitt.</b></p>
+      <p>Segja má upp áskrift að
+      framlagi hvenær sem er með því að smella á hnapp í notandaupplýsingum.
+      Áskriftin rennur þá út þegar mánuður er liðinn frá síðustu greiðslu.</p>
+      <p>Engin ábyrgð er tekin á virkni vefjarins eða uppitíma hans.</p>
+      <p>Verði Netskrafl lagt niður renna áskriftir að framlögum
+      sjálfkrafa út um næstu mánaðamót.</p>
+      <p>Rekstraraðili vefjarins er Miðeind ehf., Hellusundi 6, 101 R.</p>
+      <p>Ef spurningar vakna má senda tölvupóst á <b>netskrafl@netskrafl.is</b>.</p>
+
+      <div class="btn-thanks" title="Til baka"
+         onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+         onclick="window.history.back()">
+         <span class="glyphicon glyphicon-ok"></span></div>
+
+   </div>
+</div>
+</div>
+
+<!-- Display user identifier in upper right corner -->
+
+<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+   function buttonOver(elem) {
+      /* Show a hover effect on a button */
+      if (!$(elem).hasClass("disabled"))
+         $(elem).toggleClass("over", true);
+   }
+
+   function buttonOut(elem) {
+      /* Hide a hover effect on a button */
+      $(elem).toggleClass("over", false);
+   }
+
+   function init(jQuery) {
+      $("#conditions-dialog").css("visibility", "visible");
+   }
+
+   $(document).ready(init);
+
+</script>
+
+{% endblock %}
+

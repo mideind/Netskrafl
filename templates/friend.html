@@ -36,6 +36,44 @@
 </div>
 </div>
 
+<!-- A dialog to confirm a cancellation -->
+<div id="cancel-dialog" class="modal-dialog">
+<div id="cancel-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="cancel-content">
+      <h3>Hætta sem vinur Netskrafls?</h3>
+      <p>Viltu hætta sem <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>
+      og missa þar með þau fríðindi sem því tengjast?</p>
+
+      <div class="btn-cancel-no" title="Nei"
+         onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+         onclick="window.location.href='{{ url_for("userprefs") | safe }}'">
+         <span class="glyphicon glyphicon-remove"></span> Nei</div>
+
+      <div class="btn-cancel-yes" title="Já"
+         onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+         onclick="window.location.href='{{ url_for("friend", action=3) | safe }}'">
+         <span class="glyphicon glyphicon-ok"></span> Já</div>
+
+   </div>
+</div>
+</div>
+
+<!-- A dialog to finalize a cancellation -->
+<div id="confirm-dialog" class="modal-dialog">
+<div id="confirm-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="confirm-content">
+      <h3>Staðfesting</h3>
+      <p>Þú ert ekki lengur skráð(ur) sem <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>.</p>
+
+      <div class="btn-thanks" title="Áfram"
+         onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+         onclick="window.location.href='{{ url_for("userprefs") | safe }}'">
+         <span class="glyphicon glyphicon-ok"></span></div>
+
+   </div>
+</div>
+</div>
+
 <!-- Display user identifier in upper right corner -->
 
 <div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
@@ -56,7 +94,7 @@
       console.dir(xhr);
    }
 
-   function serverQueryHtml(requestUrl, jsonData, selector, errorFunc) {
+   function serverQueryHtml(requestUrl, jsonData, selector, completeFunc, errorFunc) {
       /* Wraps a simple, standard Ajax request to the server */
       $.ajax({
          // The URL for the request
@@ -72,7 +110,7 @@
 
          // Code to run if the request succeeds;
          // the response is passed to the function
-         success: function(result) { $(selector).html(result); },
+         success: function(result) { $(selector).html(result); if (!!completeFunc) completeFunc(); },
 
          // Code to run if the request fails; the raw request and
          // status codes are passed to the function
@@ -98,13 +136,13 @@
       $(elem).toggleClass("over", false);
    }
 
-   function openPromoDialog(key) {
+   function openPromoDialog(key, completeFunc) {
       /* Show a modal promotion dialog */
       $("#promo-dialog")
          .data("param", { key: key })
          .css("visibility", "visible");
       // Obtain the promo content from the server and put it into the #promo-content div
-      serverQueryHtml("/promo", { key: key, user: userId() }, "#promo-content");
+      serverQueryHtml("/promo", { key: key, user: userId() }, "#promo-content", completeFunc);
    }
 
    function closePromoDialog() {
@@ -116,9 +154,27 @@
       window.location.href = "{{ url_for('main') | safe }}";
    }
 
+   function doRegisterSalesCloud(i,s,o,g,r,a,m) {
+      i['SalesCloudObject']=r;
+      i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},
+      i[r].l=1*new Date();
+      a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];
+      a.src=g;
+      m.parentNode.insertBefore(a,m)
+   }
+
+   function registerSalesCloud() {
+      doRegisterSalesCloud(window,document,'script','https://salescloud.is/js/salescloud.js','salescloud');
+   }
+
    function init(jQuery) {
-{% if show_dialog %}
-      openPromoDialog("friend");
+{% if action == 1 %}
+      openPromoDialog("friend", registerSalesCloud);
+{% elif action == 2 %}
+      $("#cancel-dialog").css("visibility", "visible");
+{% elif action == 3 %}
+      $("#confirm-dialog").css("visibility", "visible");
 {% else %}
       // !!! Temporary: show thanks
       $("#thanks-dialog").css("visibility", "visible");

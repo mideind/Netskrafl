@@ -1156,7 +1156,7 @@ def review():
 
     if not user.has_paid():
         # Only paying users can see game reviews
-        return redirect(url_for('friend', dialog = 1))
+        return redirect(url_for('friend', action = 1))
 
     game = None
     uuid = request.args.get("game", None)
@@ -1592,30 +1592,72 @@ def newchannel():
 
 @app.route("/friend")
 def friend():
-    """ Page for users to register themselves as friends of Netskrafl """
+    """ Page for users to register or unregister themselves as friends of Netskrafl """
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
-    show_dialog = bool(request.args.get("dialog", False))
-    if not show_dialog:
+    try:
+        action = int(request.args.get("action", "0"))
+    except:
+        action =  0
+    if action == 0:
         # Launch the actual payment procedure
         # !!! TBD
         # !!! For now, we simply mark the user as a paying friend
         user.set_friend(True)
         user.set_has_paid(True)
         user.update()
-    return render_template("friend.html", user = user, show_dialog = show_dialog)
+        # render_template displays a thank-you note in this case
+    elif action == 1:
+        # Display a friendship promotion
+        pass
+    elif action == 2:
+        # Request to cancel a friendship
+        pass
+    elif action == 3:
+        # Actually cancel a friendship
+        user.set_friend(False)
+        user.set_has_paid(False)
+        user.update()
+    return render_template("friend.html", user = user, action = action)
 
 
 @app.route("/promo", methods=['POST'])
 def promo():
     """ Return promotional HTML corresponding to a given key (category) """
     user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
     key = request.form.get("key", "")
     VALID_PROMOS = { "friend" }
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user = user)
+
+
+@app.route("/signup", methods=['GET'])
+def signup():
+    """ Sign up as a friend, enter card info, etc. """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    return render_template("signup.html", user = user)
+
+
+@app.route("/skilmalar", methods=['GET'])
+def skilmalar():
+    """ Conditions """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    return render_template("skilmalar.html", user = user)
+
+
+@app.route("/billing", methods=['GET', 'POST'])
+def billing():
+    """ Receive signup and billing confirmations """
+    logging.info("/billing got {0}".format(request))
+    return jsonify(ok = True)
 
 
 @app.route("/")
