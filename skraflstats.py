@@ -399,9 +399,24 @@ def deferred_ratings(timestamp):
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for this processing)
     Context.disable_cache()
-
     t0 = time.time()
-    _create_ratings(timestamp)
+
+    try:
+
+        _create_ratings(timestamp)
+
+    except DeadlineExceededError as ex:
+        # Hit deadline: save the stuff we already have and
+        # defer a new task to continue where we left off
+        logging.error(u"Deadline exceeded in ratings, failing permamently")
+        # Normal return prevents this task from being run again
+        raise deferred.PermanentTaskFailure()
+
+    except Exception as ex:
+        logging.error(u"Exception in ratings, failing permanently: {0}".format(ex))
+        # Avoid having the task retried
+        raise deferred.PermanentTaskFailure()
+
     t1 = time.time()
 
     logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
@@ -450,7 +465,9 @@ def stats_run():
         to_time = from_time + timedelta(days = 1)
         deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
     except Exception as ex:
-        return u"Stats calculation failed with exception {0}".format(ex), 200
+        err = u"Stats calculation failed with exception {0}".format(ex)
+        logging.error(err)
+        return err, 200
 
     # All is well so far and the calculation has been submitted to a task queue
     return u"Stats calculation has been started", 200

@@ -5,5 +5,5 @@ cron:
   target: skraflstats
 - description: Generate Elo ratings
   url: /stats/ratings
-  schedule: every day 02:10
+  schedule: every day 02:20
   target: skraflstats
