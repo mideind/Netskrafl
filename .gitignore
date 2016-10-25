@@ -13,6 +13,7 @@ __pycache__/
 
 # Secret session key
 resources/secret_key.bin
+resources/salescloud_key.bin
 
 # Unsorted BIN word lists
 resources/ordalistimax15.txt

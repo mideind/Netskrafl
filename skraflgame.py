@@ -444,13 +444,28 @@ class User:
         return users
 
     @classmethod
+    def load_if_exists(cls, uid):
+        """ Load a user by id if she exists, otherwise return None """
+        with User._lock:
+            u = memcache.get(uid, namespace=User._NAMESPACE)
+            if u is not None:
+                return u
+            um = UserModel.fetch(uid)
+            if um is None:
+                return None
+            u = cls(uid = uid)
+            u._init(um)
+            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+            return u
+
+    @classmethod
     def current(cls):
         """ Return the currently logged in user """
         with User._lock:
-            user = users.get_current_user()
-            if user is None or user.user_id() is None:
+            cuid = cls.current_id()
+            if cuid is None:
                 return None
-            u = memcache.get(user.user_id(), namespace=User._NAMESPACE)
+            u = memcache.get(cuid, namespace=User._NAMESPACE)
             if u is not None:
                 return u
             # This might be a user that is not yet in the database
