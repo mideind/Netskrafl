@@ -1298,7 +1298,6 @@ def userprefs():
             usr.set_new_bag(self.newbag)
             usr.update()
 
-    print("Userprefs for user {0}".format(user.id()))
     uf = UserForm()
     err = dict()
 
