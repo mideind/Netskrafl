@@ -1,10 +1,32 @@
 
 {% extends "container.html" %}
 
-{% block scripts %}
-
+{% block styles %}
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 
+<style>
+
+/* Override container to allow scrolling of registration form */
+
+div.container {
+   overflow-y: visible;
+   height: auto;
+}
+
+div.salescloud-wrapper {
+   position: relative;
+   top: 72px;
+   left: 110px;
+   width: 900px;
+   /* Status bar is 20 pixels on iPhone/iPad */
+   overflow-y: auto;
+}
+
+</style>
+
+{% endblock %}
+
+{% block scripts %}
 {% endblock %}
 
 {% block logo %}

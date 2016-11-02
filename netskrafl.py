@@ -42,6 +42,7 @@ from flask import request, url_for
 
 from google.appengine.api import users, memcache
 from google.appengine.runtime import DeadlineExceededError
+import google.appengine.api.urlfetch as urlfetch
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -52,7 +53,7 @@ from skraflgame import User, Game
 from skrafldb import Context, UserModel, GameModel, \
     FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel, \
     ZombieModel
-
+import billing
 
 # Standard Flask initialization
 
@@ -1297,6 +1298,7 @@ def userprefs():
             usr.set_new_bag(self.newbag)
             usr.update()
 
+    print("Userprefs for user {0}".format(user.id()))
     uf = UserForm()
     err = dict()
 
@@ -1612,10 +1614,16 @@ def friend():
         pass
     elif action == 2:
         # Request to cancel a friendship
-        pass
+        if not user.friend():
+            # Not a friend: nothing to cancel
+            return redirect(url_for("main"))
     elif action == 3:
         # Actually cancel a friendship
-        pass
+        if not user.friend():
+            # Not a friend: nothing to cancel
+            return redirect(url_for("main"))
+        billing.cancel_friend(user)
+
     return render_template("friend.html", user = user, action = action)
 
 
@@ -1650,109 +1658,10 @@ def skilmalar():
     return render_template("skilmalar.html", user = user)
 
 
-_SC_SECRET_KEY = None
-
-def request_valid(method, url, xsc_date, xsc_key, xsc_digest):
-    """ Validate an incoming request against our secret key """
-    global _SC_SECRET_KEY
-
-    # Sanity check
-    if not method or not url or not xsc_date or not xsc_key or not xsc_digest:
-        return False
-
-    # Ensure that we have the secret key in memory
-    if not _SC_SECRET_KEY:
-        try:
-            with open("resources/salescloud_key.bin", "r") as f:
-                _SC_SECRET_KEY = f.readline().strip()
-        except:
-            logging.error(u"Unable to read file resources/salescloud_key.bin")
-            _SC_SECRET_KEY = ""
-
-    # Check the time stamp
-    try:
-        dt = datetime.strptime(xsc_date, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        # Invalid date/time
-        return False
-    delta = (datetime.utcnow() - dt).total_seconds()
-    if not (-2.0 < delta < 60.0):
-        # The request must be made in a time window ranging from 2 seconds in
-        # the future (allowing for a slightly wrong clock) to 60 seconds in
-        # the past (allowing time for the HTTP request to arrive and be
-        # processed). Anything outside this will be rejected. This makes a
-        # brute force attack on the SHA256 hash harder.
-        return False
-    # Reconstruct the signature
-    xsc_signature = xsc_date + xsc_key + method + url
-    # Hash it using the secret key
-    my_digest = hmac.new(_SC_SECRET_KEY, xsc_signature, hashlib.sha256).hexdigest()
-    # Compare with the signature from the client and return True if they match
-    return hmac.compare_digest(xsc_digest, my_digest)
-
-
-_FRIEND_OF_NETSKRAFL = u"479" # Product id for friend subscription
-
 @app.route("/billing", methods=['GET', 'POST'])
-def billing():
+def handle_billing():
     """ Receive signup and billing confirmations """
-    global _FRIEND_OF_NETSKRAFL
-
-    if request.method != 'POST':
-        # This is probably an incoming redirect from the SalesCloud IFRAME
-        # after completing a payment form
-        xsc_date = request.args.get("salescloud_date", "")[0:256]
-        xsc_key = request.args.get("salescloud_access_key", "")[0:256]
-        xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode('utf-8')
-        if not request_valid(request.method, request.base_url, xsc_date, xsc_key, xsc_digest):
-            # This is not coming from SalesCloud
-            return "<html><body>Invalid signature</body></html>", 403 # Forbidden
-        return redirect(url_for("friend", action=0)) # Redirect to a thank-you page
-
-    # Begin by validating the request by checking its signature
-    xsc_date = request.headers.get("X-SalesCloud-Date", "")[0:256]
-    xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]
-    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256].encode('utf-8')
-    if not request_valid(request.method, request.url, xsc_date, xsc_key, xsc_digest):
-        return jsonify(ok = False, reason = "Invalid signature"), 403 # Forbidden
-
-    # The request looks legit
-    j = request.get_json(silent = True)
-    logging.info("/billing json is {0}".format(j))
-    # Example billing POST:
-    # {u'customer_label': u'', u'subscription_status': u'true', u'customer_id': u'34724', u'after_renewal': u'2017-01-14T18:34:42+00:00',
-    # u'before_renewal': u'2016-12-14T18:34:42+00:00', u'product_id': u'479', u'type': u'subscription_updated'}
-    if j is None:
-        return jsonify(ok = False, reason = u"Empty or illegal JSON")
-    handled = False
-    if j.get(u"type") in (u"subscription_updated", u"subscription_created") \
-        and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL:
-        # Updating the subscription status of a user
-        uid = j.get(u"customer_label")
-        if uid and not isinstance(uid, basestring):
-            uid = None
-        if uid:
-            uid = uid[0:32] # Sanity cut-off
-        user = User.load_if_exists(uid) if uid else None
-        if user is None:
-            return jsonify(ok = False, reason = u"Unknown or illegal user id")
-        if j.get(u"subscription_status") == u"true":
-            # Enable subscription, mark as friend
-            user.set_friend(True)
-            user.set_has_paid(True)
-            user.update()
-            logging.info("Set user {0} as friend".format(uid))
-            handled = True
-        elif j.get(u"subscription_status") == u"false":
-            # Disable subscription, remove friend status
-            user.set_friend(False)
-            user.set_has_paid(False)
-            user.update()
-            logging.info("Removed user {0} as friend".format(uid))
-            handled = True
-    if not handled:
-        logging.warning("/billing unknown request, did not handle")
-    return jsonify(ok = True, handled = handled)
+    return billing.handle(request)
 
 
 @app.route("/")

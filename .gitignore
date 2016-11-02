@@ -59,6 +59,7 @@ parts/
 sdist/
 var/
 *.egg-info/
+.config/
 .installed.cfg
 *.egg
 log/

@@ -1,10 +1,8 @@
 
 {% extends "container.html" %}
 
-{% block scripts %}
-
+{% block styles %}
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
-
 {% endblock %}
 
 {% block logo %}
@@ -26,7 +24,7 @@
    <div id="thanks-content">
       <h3>Frábært!</h3>
       <p>Bestu þakkir fyrir að gerast <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>.</p>
-      <p>Fríðindi þín virkjast um leið og greiðsla hefur verið staðfest. Það getur tekið nokkrar mínútur.
+      <p>Fríðindi þín virkjast um leið og greiðsla hefur verið staðfest. <b>Það getur tekið nokkrar mínútur.</b>
       Þú færð staðfestingu og kvittun í tölvupósti.</p>
 
       <div class="btn-thanks" title="Áfram"
@@ -45,6 +43,12 @@
       <h3>Hætta sem vinur Netskrafls?</h3>
       <p>Viltu hætta sem <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>
       og missa þar með þau fríðindi sem því tengjast?</p>
+      <p>Fríðindin eru:</p>
+      <ul>
+         <li><b>Ótakmarkaður fjöldi viðureigna</b> í gangi samtímis<br>(í stað 8 að hámarki)</li>
+         <li>Aðgangur að <b>yfirliti</b> í lok viðureignar</li>
+         <li><b>Keppnishamur</b> án "græna þumalsins"</li>
+      </ul>
 
       <div class="btn-cancel-no" title="Nei"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
@@ -54,7 +58,7 @@
       <div class="btn-cancel-yes" title="Já"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
          onclick="window.location.href='{{ url_for("friend", action=3) | safe }}'">
-         <span class="glyphicon glyphicon-ok"></span> Já</div>
+         <span class="glyphicon glyphicon-ok"></span> Já, vil hætta</div>
 
    </div>
 </div>
