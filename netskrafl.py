@@ -33,9 +33,6 @@ import re
 
 from datetime import datetime, timedelta
 
-import hashlib
-import hmac
-
 from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, url_for

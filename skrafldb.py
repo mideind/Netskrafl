@@ -1281,6 +1281,12 @@ class RatingModel(ndb.Model):
             yield v
 
 
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple ratings records """
+        ndb.put_multi(recs)
+
+
 class ChatModel(ndb.Model):
     """ Models chat communications between users """
 

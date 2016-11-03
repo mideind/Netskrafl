@@ -112,13 +112,11 @@ indexes:
 
 - kind: StatsModel
   properties:
-  - name: timestamp
   - name: elo
     direction: desc
 
 - kind: StatsModel
   properties:
-  - name: timestamp
   - name: human_elo
     direction: desc
 

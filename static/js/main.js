@@ -783,14 +783,14 @@ function showChallenge(elemid, userid, nick, fullname, fairplayOpp, newbagOpp) {
    // This is a fair play challenge if the issuing user and the
    // opponent are both marked as consenting to fair play
    var fairplayChallenge = fairplayOpp && fairPlay();
-   // This is a new bag challenge if the issuing user and the
-   // opponent both want the new bag
-   var newbagChallenge = newbagOpp && newBag();
+   // This is a new bag challenge unless the issuing user and
+   // the challenged user both prefer the old bag
+   var newbagChallenge = newbagOpp || newBag();
    // This may be a manual challenge if the issuing user is
    // a paying friend of Netskrafl
    var manualChallenge = userHasPaid();
    $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
-   $("#chall-newbag").toggleClass("hidden", !newbagChallenge);
+   $("#chall-oldbag").toggleClass("hidden", newbagChallenge);
    $("#chall-manual").toggleClass("hidden", !manualChallenge);
    $("#chall-dialog")
       .data("param", { elemid: elemid, userid: userid,

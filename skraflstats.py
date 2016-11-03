@@ -19,12 +19,15 @@ from datetime import datetime, timedelta
 from flask import Flask
 from flask import render_template, jsonify
 from flask import request, url_for
+
 from google.appengine.api import users
 from google.appengine.ext import deferred
+from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
 from skrafldb import Context, UserModel, GameModel, StatsModel, RatingModel
+from skrafldb import iter_q
 
 # Standard Flask initialization
 
@@ -155,9 +158,9 @@ def _run_stats(from_time, to_time):
         return
 
     # Iterate over all finished games within the time span in temporal order
-    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move) \
-        .filter(GameModel.ts_last_move > from_time) \
-        .filter(GameModel.ts_last_move <= to_time)
+    q = GameModel.query(ndb.AND(GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time)) \
+        .order(GameModel.ts_last_move) \
+        .filter(GameModel.over == True)
 
     # The accumulated user statistics
     users = dict()
@@ -171,7 +174,9 @@ def _run_stats(from_time, to_time):
 
     try:
         # Use i as a progress counter
-        for i, gm in enumerate(q):
+        i = 0
+        for gm in iter_q(q, chunk_size = 250):
+            i += 1
             ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
@@ -277,8 +282,8 @@ def _run_stats(from_time, to_time):
             ts_last_processed = lm
             cnt += 1
             # Report on our progress
-            if (i + 1) % 1000 == 0:
-                logging.info(u"Processed {0} games".format(i + 1))
+            if i % 1000 == 0:
+                logging.info(u"Processed {0} games".format(i))
 
     except DeadlineExceededError as ex:
         # Hit deadline: save the stuff we already have and
@@ -354,6 +359,8 @@ def _create_ratings(timestamp):
     logging.info(u"Writing top 100 tables to the database")
 
     # Write the Top 100 tables to the database
+    rlist = []
+
     for rank in range(0, 100):
 
         # All players including robots
@@ -365,7 +372,7 @@ def _create_ratings(timestamp):
             rm.user = None
             rm.robot_level = -1
             rm.games = -1
-        rm.put()
+        rlist.append(rm)
 
         # Humans only
         rm = RatingModel.get_or_create("human", rank + 1)
@@ -376,7 +383,10 @@ def _create_ratings(timestamp):
             rm.user = None
             rm.robot_level = -1
             rm.games = -1
-        rm.put()
+        rlist.append(rm)
+
+    # Put the entire top 100 table in one RPC call
+    RatingModel.put_multi(rlist)
 
     logging.info(u"Finishing _create_ratings")
 

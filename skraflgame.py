@@ -266,13 +266,14 @@ class User:
         if prefs is None:
             return False
         newbag = prefs.get(u"newbag")
-        return False if newbag is None else newbag
+        # True by default
+        return True if newbag is None else newbag
 
     def new_bag(self):
         """ Returns True if the user would like to play with the new bag """
         newbag = self.get_pref(u"newbag")
-        # False by default
-        return False if newbag is None else newbag
+        # True by default
+        return True if newbag is None else newbag
 
     def set_new_bag(self, state):
         """ Sets the new bag preference of a user to True or False """
