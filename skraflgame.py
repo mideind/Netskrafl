@@ -891,7 +891,7 @@ class Game:
             return self.moves
         net_m = []
         for m in self.moves:
-            if isinstance(m, ResponseMove) and m.score(self.state) < 0:
+            if isinstance(m.move, ResponseMove) and m.move.score(self.state) < 0:
                 # Successful challenge: Erase the two previous moves
                 # (the challenge and the illegal move)
                 assert len(net_m) >= 2
@@ -1301,6 +1301,7 @@ class Game:
             coord, wrd, msc = m.move.summary(self.state)
             if wrd == u'RESP':
                 assert msc > 0
+                # Wrong challenge by opponent: add 10 points
                 wrong_chall[m.player] += msc
             elif wrd != u'RSGN':
                 # Don't include a resignation penalty in the clean score

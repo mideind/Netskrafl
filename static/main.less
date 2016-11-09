@@ -1085,14 +1085,14 @@ div.rightmove {
 }
 
 div.reviewhdr {
-   height: 18px;
+   height: 19px;
    text-align: left;
    padding: 11px;
    background-color: @pass-btn;
    color: white;
    font-weight: 400;
    font-size: 18px;
-   line-height: 18px;
+   line-height: 19px;
 }
 
 span.movenumber {
@@ -1163,6 +1163,11 @@ div.statscol {
    float: left;
    width: 50%;
    padding-top: 24px;
+}
+
+div.statscol p {
+   margin-top: 0.85em;
+   margin-bottom: 0.8em;
 }
 
 div.gamestats p span {
@@ -1256,6 +1261,7 @@ span.wordmove {
 
 span.othermove {
    text-transform: none;
+   padding-left: 3px;
 }
 
 div.error {
@@ -1579,7 +1585,7 @@ div.score {
    text-align: center;
    vertical-align: middle;
    bottom: 204px;
-   left: 644px;
+   left: 645px;
    background-color: transparent;
    font-size: 24px;
    font-weight: 700;
@@ -1619,6 +1625,18 @@ div.score.word-great {
    animation: colorPulse 1.5s infinite;
    -webkit-animation: colorPulse 1.5s infinite;
    border-color: darken(@freshtile, 10%);
+}
+
+div.score.green {
+   color: black;
+   border-color: black;
+   background-color: @freshtile;
+}
+
+div.score.yellow {
+   color: black;
+   border-color: black;
+   background-color: @racktile;
 }
 
 div.channel {
@@ -3216,8 +3234,8 @@ div.blank-rack {
 
 div.loginform {
    position: absolute;
-   left: 120px;
-   top: 80px;
+   left: 220px;
+   top: 36px;
 }
 
 div.loginhdr {
@@ -3234,9 +3252,9 @@ div.blurb {
 }
 
 div.welcome {
-   font-size: 16px;
+   font-size: 15px;
    font-weight: normal;
-   padding-bottom: 20px;
+   padding-bottom: 16px;
 }
 
 .welcome a:link, .welcome a:visited {

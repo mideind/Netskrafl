@@ -309,12 +309,17 @@ def _run_stats(from_time, to_time):
     _write_stats(to_time, users)
 
 
-def _create_ratings(timestamp):
+def _create_ratings():
     """ Create the Top 100 ratings tables """
 
     logging.info(u"Starting _create_ratings")
 
     _key = StatsModel.dict_key
+
+    timestamp = datetime.utcnow()
+    yesterday = timestamp - timedelta(days = 1)
+    week_ago = timestamp - timedelta(days = 7)
+    month_ago = monthdelta(timestamp, -1)
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
         """ Go through a table of top scoring users and augment it with data from previous time points """
@@ -338,20 +343,20 @@ def _create_ratings(timestamp):
 
     # All players including robot games
 
-    top100_all = [ sm for sm in StatsModel.list_elo(timestamp, 100) ]
-    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 1), 100) }
-    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 7), 100) }
-    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(monthdelta(timestamp, -1), 100) }
+    top100_all = StatsModel.list_elo(None, 100)
+    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(yesterday, 100) }
+    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(week_ago, 100) }
+    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(month_ago, 100) }
 
     # Augment the table for all games
     _augment_table(top100_all, top100_all_yesterday, top100_all_week_ago, top100_all_month_ago)
 
     # Human only games
 
-    top100_human = [ sm for sm in StatsModel.list_human_elo(timestamp, 100) ]
-    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 1), 100) }
-    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 7), 100) }
-    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(monthdelta(timestamp, -1), 100) }
+    top100_human = StatsModel.list_human_elo(None, 100)
+    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(yesterday, 100) }
+    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(week_ago, 100) }
+    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(month_ago, 100) }
 
     # Augment the table for human only games
     _augment_table(top100_human, top100_human_yesterday, top100_human_week_ago, top100_human_month_ago)
@@ -404,7 +409,7 @@ def deferred_stats(from_time, to_time):
     logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
 
-def deferred_ratings(timestamp):
+def deferred_ratings():
     """ This is the deferred ratings table calculation process """
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for this processing)
@@ -413,7 +418,7 @@ def deferred_ratings(timestamp):
 
     try:
 
-        _create_ratings(timestamp)
+        _create_ratings()
 
     except DeadlineExceededError as ex:
         # Hit deadline: save the stuff we already have and
@@ -430,6 +435,8 @@ def deferred_ratings(timestamp):
     t1 = time.time()
 
     logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+    StatsModel.log_cache_stats()
+    StatsModel.clear_cache() # Do not maintain the cache in memory between runs
 
 
 @app.route("/_ah/start")
@@ -488,10 +495,7 @@ def stats_ratings():
     """ Calculate new ratings tables """
 
     logging.info(u"Starting ratings calculation")
-    # A normal ratings calculation is based on the present point in time
-    timestamp = datetime.utcnow()
-    deferred.defer(deferred_ratings, timestamp = timestamp)
-
+    deferred.defer(deferred_ratings)
     return u"Ratings calculation has been started", 200
 
 

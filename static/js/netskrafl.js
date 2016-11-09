@@ -1962,6 +1962,7 @@ function updateStats(json) {
    setStat("cleantotal0", json);
    setStat("remaining0", json);
    setStat("overtime0", json);
+   setStat("wrongchall0", json);
    setStat("bingopoints0", json, 0, json.bingoes0 * 50);
    setStat("avgmove0", json, 2);
    setStat("total0", json, 0, json.scores[0]);
@@ -1977,6 +1978,7 @@ function updateStats(json) {
    setStat("cleantotal1", json);
    setStat("remaining1", json);
    setStat("overtime1", json);
+   setStat("wrongchall1", json);
    setStat("bingopoints1", json, 0, json.bingoes1 * 50);
    setStat("avgmove1", json, 2);
    setStat("total1", json, 0, json.scores[1]);

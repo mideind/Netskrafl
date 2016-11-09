@@ -992,13 +992,25 @@ class StatsModel(ndb.Model):
             return "robot-" + str(d["robot_level"])
         return d["user"]
 
+    @staticmethod
+    def user_id_from_key(k):
+        """ Decompose a dictionary key into a (user_id, robot_level) tuple """
+        if k is not None and k.startswith("robot-"):
+            return (None, int(k[6:]))
+        return (k, 0)
 
     @classmethod
     def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
         """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
 
+        max_fetch = max_len * 2
+        check_false_positives = True
+
         if timestamp is None:
             timestamp = datetime.utcnow()
+            max_fetch = max_len
+            # No need to check false positives if querying newest records
+            check_false_positives = False
 
         # Use descending Elo order
         # Ndb doesn't allow us to put an inequality filter on the timestamp here
@@ -1030,29 +1042,30 @@ class StatsModel(ndb.Model):
                     result[ukey] = d
                     if (lowest_elo is None) or (d["elo"] < lowest_elo):
                         lowest_elo = d["elo"]
-                    if len(result) >= max_len * 2:
+                    if len(result) >= max_fetch:
                         # We have double the number of entries requested: done
                         break # From for loop
 
-        # Do another loop through the result to check for false positives
         false_pos = 0
-        for ukey, d in result.items():
-            sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
-            assert sm is not None # We should always have an entity here
-            nd = makedict(sm)
-            nd_ts = nd["timestamp"] # This may be None if a default record was created
-            if (nd_ts is not None) and nd_ts > d["timestamp"]:
-                # This is a newer one than we have already
-                # It must be a lower Elo score, or we would already have it
-                assert nd["elo"] <= d["elo"]
-                assert lowest_elo is not None
-                if nd["elo"] < lowest_elo:
-                    # The entry didn't belong on the list at all
-                    false_pos += 1
-                # Replace the entry with the newer one (which will lower it)
-                result[ukey] = nd
+        # Do another loop through the result to check for false positives
+        if check_false_positives:
+            for ukey, d in result.items():
+                sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
+                assert sm is not None # We should always have an entity here
+                nd = makedict(sm)
+                nd_ts = nd["timestamp"] # This may be None if a default record was created
+                if (nd_ts is not None) and nd_ts > d["timestamp"]:
+                    # This is a newer one than we have already
+                    # It must be a lower Elo score, or we would already have it
+                    assert nd["elo"] <= d["elo"]
+                    assert lowest_elo is not None
+                    if nd["elo"] < lowest_elo:
+                        # The entry didn't belong on the list at all
+                        false_pos += 1
+                    # Replace the entry with the newer one (which will lower it)
+                    result[ukey] = nd
+            logging.info(u"False positives are {0}".format(false_pos))
 
-        logging.info(u"False positives are {0}".format(false_pos))
         if false_pos > max_len:
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
@@ -1110,9 +1123,43 @@ class StatsModel(ndb.Model):
         return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
 
 
+    _NB_CACHE = dict()
+    _NB_CACHE_STATS = dict(hits = 0, misses = 0)
+
+
+    @classmethod
+    def clear_cache(cls):
+        """ Reset the cache """
+        cls._NB_CACHE = dict()
+        cls._NB_CACHE_STATS = dict(hits = 0, misses = 0)
+
+
+    @classmethod
+    def log_cache_stats(cls):
+        """ Show cache statistics in the log """
+        hits = cls._NB_CACHE_STATS["hits"]
+        misses = cls._NB_CACHE_STATS["misses"]
+        total = hits + misses
+        logging.info("Cache hits {0} or {1:.2f}%".format(hits, 100.0 * hits / total if total != 0 else 0.0))
+        logging.info("Cache misses {0} or {1:.2f}%".format(misses, 100.0 * misses / total if total != 0 else 0.0))
+
+
     @classmethod
     def newest_before(cls, ts, user_id, robot_level = 0):
         """ Returns the newest available stats record for the user at or before the given time """
+        cache = cls._NB_CACHE
+        key = (user_id, robot_level)
+        if ts:
+            if key in cache:
+                for c_ts, c_val in cache[key].items():
+                    if c_ts >= ts >= c_val.timestamp:
+                        cls._NB_CACHE_STATS["hits"] += 1
+                        sm = cls.create(user_id, robot_level)
+                        sm.copy_from(c_val)
+                        return sm
+            else:
+                cache[key] = dict()
+        cls._NB_CACHE_STATS["misses"] += 1
         sm = cls.create(user_id, robot_level)
         if ts:
             # Try to query using the timestamp
@@ -1127,6 +1174,7 @@ class StatsModel(ndb.Model):
             if sm_before is not None:
                 # Found: copy the stats
                 sm.copy_from(sm_before)
+            cache[key][ts] = sm
         return sm
 
 
