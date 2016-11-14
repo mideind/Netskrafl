@@ -1,6 +1,10 @@
 
 {% extends "container.html" %}
 
+{% block styles %}
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
 {% block scripts %}
 
 <!-- Netskrafl client script -->
@@ -14,12 +18,11 @@
 {%- endfor -%}
 
 {% if move_number > 0 %}
-{% for m in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.move.summary(state) -%}
-      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
+{% set m = game.moves[move_number-1] %}
+{% set coord, tiles, score = m.move.summary(state) %}
+      placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
       highlightNewestMove(colorOf({{ m.player }}));
       $("div.score").text("{{ score }}");
-{% endfor %}
 {% endif %}
 
 {% for tile, score in state.rack_details(state.player_to_move()) %}
@@ -30,10 +33,8 @@
    function initMoveList() {
       /* Show the most recent move in the player's color */
 {% if move_number > 0 %}
-{% for m in game.moves[move_number-1:move_number] %}
-{%- set coord, tiles, score = m.move.summary(state) -%}
+{% set coord, tiles, score = game.moves[move_number-1].move.summary(state) %}
       appendBestHeader({{ move_number }}, "{{ coord }}", "{{ tiles }}", {{ score }});
-{% endfor %}
 {% endif %}
       /* Show the list of best moves */
 {% if best_moves != None %}
@@ -75,17 +76,17 @@
    <div class="heading">
       <h3 class="playerleft">
       <div class="robot-btn left">
-{% if game.is_autoplayer(0) %}
+{%- if game.is_autoplayer(0) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-      {{ game.player_nickname(0) }}
+      {{- game.player_nickname(0) -}}
       </div></h3>
       <h3 class="playerright">
       <div class="robot-btn right">
-{% if game.is_autoplayer(1) %}
+{%- if game.is_autoplayer(1) -%}
 <span class="glyphicon glyphicon-cog"></span>&nbsp;
 {%- endif -%}
-      {{ game.player_nickname(1) }}
+      {{- game.player_nickname(1) -}}
       </div></h3>
       <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
       <h3 class="scoreright">{{ state.scores()[1] }}</h3>
@@ -141,9 +142,17 @@
 <div id="gamestarted">
 <p>Viðureignin hófst <span id="gamestart"></span><br>og henni lauk <span id="gameend"></span></p>
 {% if game.new_bag() %}
-<p>Leikið var með <b>nýja</b> skraflpokanum.</p>
+<p>Leikið var
+{% if game.manual_wordcheck() %}
+<b>í keppnisham</b>
+{% endif %}
+með <b>nýja</b> skraflpokanum.</p>
 {% else %}
-<p>Leikið var með <b>eldri</b> (upphaflega) skraflpokanum.</p>
+<p>Leikið var
+{% if game.manual_wordcheck() %}
+<b>í keppnisham</b>
+{% endif %}
+með <b>eldri</b> (upphaflega) skraflpokanum.</p>
 {% endif %}
 </div>
 <div class="statscol" style="clear:left">
@@ -155,6 +164,9 @@
 <p>Margföldun stafastiga: <span id="multiple0"></span></p>
 <p>Stig án stafaleifar í lok: <span id="cleantotal0"></span></p>
 <p>Meðalstig hvers leiks: <span id="avgmove0"></span></p>
+{% if game.manual_wordcheck() %}
+<p>Rangar véfengingar andstæðings x 10: <span id="wrongchall0"></span></p>
+{% endif %}
 <p>Stafaleif og frádráttur í lok: <span id="remaining0"></span></p>
 <p>Umframtími: <span id="overtime0"></span></p>
 <p>Stig: <span id="total0"></span> (<span id="ratio0"></span>%)</p>
@@ -168,6 +180,9 @@
 <p>Margföldun stafastiga: <span id="multiple1"></span></p>
 <p>Stig án stafaleifar í lok: <span id="cleantotal1"></span></p>
 <p>Meðalstig hvers leiks: <span id="avgmove1"></span></p>
+{% if game.manual_wordcheck() %}
+<p>Rangar véfengingar andstæðings x 10: <span id="wrongchall1"></span></p>
+{% endif %}
 <p>Stafaleif og frádráttur í lok: <span id="remaining1"></span></p>
 <p>Umframtími: <span id="overtime1"></span></p>
 <p>Stig: <span id="total1"></span> (<span id="ratio1"></span>%)</p>
@@ -256,8 +271,11 @@ function initReview(jQuery) {
       $("h3.playerleft").addClass("autoplayercolor");
    }
 {% if state.player_to_move() == 1 - user_index %}
-   /* Show the racks in the players' colors */
+   /* Show the racks and the scores in the players' colors */
    $("div.racktile").addClass("freshtile").removeClass("racktile");
+   $("div.score").addClass("green");
+{% else %}
+   $("div.score").addClass("yellow");
 {% endif %}
 {% if move_number == 0 %}
    $("#navprev").addClass("disabled");

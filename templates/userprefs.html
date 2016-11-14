@@ -2,9 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
-
 {% endblock %}
 
 {% block scripts %}
@@ -169,6 +167,20 @@ function submitForm() {
       onclick="location.href='{{ uf.logout_url | safe }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
+
+{% if uf.friend %}
+   <!-- Friend badge -->
+   <div class="modal-close" id="user-unfriend" title="Hætta sem vinur" tabindex="11"
+      onclick="location.href='{{ url_for('friend', action=2) }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Þú ert vinur Netskrafls!</div>
+{% else %}
+   <!-- Become friend button -->
+   <div class="modal-close" id="user-friend" title="Gerast vinur" tabindex="11"
+      onclick="location.href='{{ url_for('friend', action=1) }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Gerast vinur Netskrafls</div>
+{% endif %}
 
 </div> <!-- user-form -->
 </div> <!-- user-dialog -->

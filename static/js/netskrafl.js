@@ -78,7 +78,8 @@ var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game
 
 var numMoves = 0, numTileMoves = 0; // Moves in total, vs. moves with tiles actually laid down
 var leftTotal = 0, rightTotal = 0; // Accumulated scores - incremented in appendMove()
-var newestMove = null; // The tiles placed in the newest move (used in move review)
+var newestMove = { }; // The last move made in the game (empty dict if not tile move)
+var newestTileMove = { }; // The last tile move made in the game
 var gameTime = null, gameTimeBase = null; // Game timing info, i.e. duration and elapsed time
 var clockIval = null; // Clock interval timer
 var scoreLeft = 0, scoreRight = 0;
@@ -451,34 +452,49 @@ function placeTile(sq, tile, letter, score) {
    }
 }
 
-function placeMove(player, co, tiles) {
+function removeNewestTileMove() {
+   // Successful challenge: retract the tiles placed in the last tile move
+   for (var nsq in newestTileMove)
+      if (newestTileMove.hasOwnProperty(nsq))
+         placeTile(nsq, "", "", 0); // Erase tile
+}
+
+function placeMove(player, co, tiles, score) {
    /* Place an entire move on the board, returning a dictionary of the tiles actually added */
-   var vec = toVector(co);
-   var col = vec.col;
-   var row = vec.row;
-   var nextBlank = false;
    var placed = { };
-   for (var i = 0; i < tiles.length; i++) {
-      var tile = tiles.charAt(i);
-      if (tile == '?') {
-         nextBlank = true;
-         continue;
+   if (co !== "") {
+      var vec = toVector(co);
+      var col = vec.col;
+      var row = vec.row;
+      var nextBlank = false;
+      for (var i = 0; i < tiles.length; i++) {
+         var tile = tiles.charAt(i);
+         if (tile == '?') {
+            nextBlank = true;
+            continue;
+         }
+         var sq = coord(row, col);
+         if (tileAt(row, col) === null) {
+            /* No tile already in the square: place the new one */
+            var letter = tile;
+            if (nextBlank)
+               tile = '?';
+            var tscore = TILESCORE[tile];
+            placeTile(sq, tile, letter, tscore);
+            placed[sq] = { tile: tile, letter: letter, score: tscore };
+         }
+         col += vec.dx;
+         row += vec.dy;
+         nextBlank = false;
       }
-      var sq = coord(row, col);
-      if (tileAt(row, col) === null) {
-         /* No tile already in the square: place the new one */
-         var letter = tile;
-         if (nextBlank)
-            tile = '?';
-         var score = TILESCORE[tile];
-         placeTile(sq, tile, letter, score);
-         placed[sq] = { tile: tile, letter: letter, score:score };
-      }
-      col += vec.dx;
-      row += vec.dy;
-      nextBlank = false;
+      // Remember the last tile move
+      newestTileMove = placed;
    }
-   return placed;
+   else
+   if (tiles == "RESP" && score < 0)
+      removeNewestTileMove();
+   // Remember the last move
+   newestMove = placed;
 }
 
 function colorOf(player) {
@@ -621,23 +637,42 @@ function appendMove(player, co, tiles, score) {
    /* Add a move to the move history list */
    var wrdclass = "wordmove";
    var rawCoord = co;
-   var tileMove = false;
+   var tileMoveIncrement = 0; // +1 for tile moves, -1 for successful challenges
    if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
-      if (tiles == "PASS")
+      if (tiles == "PASS") {
          /* Pass move */
-         tiles = "Pass";
+         tiles = " Pass ";
+         score = "";
+      }
       else
       if (tiles.indexOf("EXCH") === 0) {
          /* Exchange move - we don't show the actual tiles exchanged, only their count */
          var numtiles = tiles.slice(5).length;
          tiles = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+         score = "";
       }
       else
       if (tiles == "RSGN")
          /* Resigned from game */
-         tiles = " Gaf viðureign"; // Extra space intentional
+         tiles = " Gaf viðureign "; // Extra space intentional
+      else
+      if (tiles == "CHALL") {
+         /* Challenge issued */
+         tiles = " Véfengdi lögn "; // Extra space intentional
+         score = "";
+      }
+      else
+      if (tiles == "RESP") {
+         /* Challenge response */
+         if (score < 0) {
+            tiles = " Óleyfileg lögn "; // Extra space intentional
+            tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
+         }
+         else
+            tiles = " Röng véfenging "; // Extra space intentional
+      }
       else
       if (tiles == "TIME") {
          /* Overtime adjustment */
@@ -657,10 +692,11 @@ function appendMove(player, co, tiles, score) {
       }
    }
    else {
+      // Normal tile move
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
       tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
-      tileMove = true;
+      tileMoveIncrement = 1;
    }
    /* Update the scores */
    if (player === 0)
@@ -668,7 +704,7 @@ function appendMove(player, co, tiles, score) {
    else
       rightTotal = Math.max(rightTotal + score, 0);
    var str;
-   var title = tileMove ? 'title="Smelltu til að fletta upp" ' : "";
+   var title = (tileMoveIncrement > 0) ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
       str = '<div class="move gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';
@@ -700,7 +736,7 @@ function appendMove(player, co, tiles, score) {
       /* Left side player */
       str = '<div ' + title + 'class="move leftmove">' +
          '<span class="total">' + leftTotal + '</span>' +
-         '<span class="score">' + score + '</span>' +
+         '<span class="score">' + score + '</span>' + 
          '<span class="' + wrdclass + '"><i>' + tiles + '</i> ' +
          co + '</span>' +
          '</div>';
@@ -726,8 +762,8 @@ function appendMove(player, co, tiles, score) {
          m.addClass("autoplayergrad" + (player === 0 ? "_left" : "_right")); /* Remote player */
          playerColor = "1";
       }
-      if (tileMove) {
-         /* Register a hover event handler to highlight this move */
+      if (tileMoveIncrement > 0) {
+         /* Tile move: Register a hover event handler to highlight it on the board */
          m.on("mouseover",
             { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: true },
             highlightMove
@@ -754,8 +790,7 @@ function appendMove(player, co, tiles, score) {
       movelist.scrollTop(topoffset - height);
    /* Count the moves */
    numMoves += 1;
-   if (tileMove)
-      numTileMoves += 1;
+   numTileMoves += tileMoveIncrement; // Can be -1 for successful challenges
 }
 
 function appendBestMove(player, co, tiles, score) {
@@ -827,7 +862,19 @@ function appendBestHeader(moveNumber, co, tiles, score) {
       else
       if (tiles == "RSGN")
          /* Resigned from game */
-         dispText = "Gaf leikinn";
+         dispText = "Gaf viðureign";
+      else
+      if (tiles == "CHALL")
+         /* Challenge issued */
+         dispText = "Véfengdi lögn";
+      else
+      if (tiles == "RESP") {
+         /* Challenge response */
+         if (score < 0)
+            dispText = "Lögn óleyfileg";
+         else
+            dispText = "Röng véfenging";
+      }
       else
       if (tiles == "OVER") {
          /* Game over */
@@ -962,6 +1009,8 @@ var elementDragged = null; /* The element being dragged with the mouse */
 var tileSelected = null; /* The selected (single-clicked) tile */
 var showingDialog = false; /* Is a modal dialog banner being shown? */
 var exchangeAllowed = true; /* Is an exchange move allowed? */
+var challengeAllowed = false; /* Is a challenge allowed? */
+var lastChallenge = false; /* Last tile move on the board, pending challenge or pass? */
 
 function moveSelectedTile(sq) {
    // Move the tileSelected to the target square
@@ -1246,7 +1295,12 @@ function wordGoodOrBad(flagGood, flagBad) {
    /* Flag whether the word being laid down is good or bad (or neither when we don't know) */
    $("div.word-check").toggleClass("word-good", flagGood);
    $("div.word-check").toggleClass("word-bad", flagBad);
-   $("div.score").toggleClass("word-good", flagGood);
+   if (gameIsManual())
+      // For a manual wordcheck game, always use a neutral blue color for the score
+      $("div.score").toggleClass("manual", true);
+   else
+      // Otherwise, show a green score if the word is good
+      $("div.score").toggleClass("word-good", flagGood);
    if (flagGood) {
       // Show a 50+ point word with a special color
       if (parseInt($("div.score").text()) >= 50)
@@ -1270,19 +1324,30 @@ function updateButtonState() {
    var showRecall = false;
    var showScramble = false;
    var showMove = false;
+   var showChallenge = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
-      showMove = (tilesPlaced !== 0);
-      showExchange = (tilesPlaced === 0);
-      showPass = (tilesPlaced === 0);
-      showResign = (tilesPlaced === 0);
+      if (lastChallenge) {
+         // The last tile move is on the board. It can only be passed or challenged.
+         showChallenge = true;
+         showPass = true;
+      }
+      else {
+         showMove = (tilesPlaced !== 0);
+         showExchange = (tilesPlaced === 0);
+         showPass = (tilesPlaced === 0);
+         showResign = (tilesPlaced === 0);
+         showChallenge = (tilesPlaced === 0) && gameIsManual() && challengeAllowed;
+      }
       /* Disable or enable buttons according to current state */
       $("div.submitmove").toggleClass("disabled",
          tilesPlaced === 0 || showingDialog);
       $("div.submitexchange").toggleClass("disabled",
          tilesPlaced !== 0 || showingDialog || !exchangeAllowed);
       $("div.submitpass").toggleClass("disabled",
-         tilesPlaced !== 0 || showingDialog);
+         (tilesPlaced !== 0 && !lastChallenge) || showingDialog);
+      $("div.challenge").toggleClass("disabled",
+         (tilesPlaced !== 0 && !lastChallenge) || showingDialog);
       $("div.submitresign").toggleClass("disabled", showingDialog);
       $("div.recallbtn").toggleClass("disabled", showingDialog);
       $("div.scramblebtn").toggleClass("disabled", showingDialog);
@@ -1307,7 +1372,7 @@ function updateButtonState() {
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */
    $("div.score").removeClass("word-good").removeClass("word-great");
-   if (tilesPlaced === 0) {
+   if (tilesPlaced === 0 || lastChallenge) {
       $("div.score").text("").css("visibility", "hidden");
       wordToCheck = "";
       wordGoodOrBad(false, false);
@@ -1327,7 +1392,8 @@ function updateButtonState() {
             word laid down and all cross words */
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
-         serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
+         if (!gameIsManual())
+            serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
       }
       showRecall = true;
    }
@@ -1335,6 +1401,7 @@ function updateButtonState() {
    $("div.submitexchange").css("display", showExchange ? "block" : "none");
    $("div.submitpass").css("display", showPass ? "block" : "none");
    $("div.submitresign").css("display", showResign ? "block" : "none");
+   $("div.challenge").css("display", showChallenge ? "block" : "none");
    $("div.recallbtn").css("display", showRecall ? "block" : "none");
    $("div.scramblebtn").css("display", showScramble ? "block" : "none");
 }
@@ -1586,13 +1653,16 @@ function _updateState(json, preserveTiles) {
       /* Reinitialize the rack - we show it even if the game is over */
       var i = 0;
       var score;
+      var placed;
+      var anyPlaced;
       if (preserveTiles && json.result == GAME_OVER) {
          // The user may have placed tiles on the board: force them back
          // into the rack and make the rack non-draggable
          resetRack();
          initRackDraggable(false);
       }
-      if (!preserveTiles) {
+      if (!preserveTiles || json.succ_chall) {
+         // Destructive fetch or successful challenge: reset the rack
          for (; i < json.rack.length; i++)
             placeTile("R" + (i + 1).toString(), /* Coordinate */
                json.rack[i][0], /* Tile */
@@ -1604,7 +1674,11 @@ function _updateState(json, preserveTiles) {
          if (json.result === 0)
             /* The rack is only draggable if the game is still ongoing */
             initRackDraggable(true);
+      }
+      if (!preserveTiles) {
          /* Glue the laid-down tiles to the board */
+         placed = { };
+         anyPlaced = false;
          $("div.tile").each(function() {
             var sq = $(this).parent().attr("id");
             var t = $(this).data("tile");
@@ -1618,8 +1692,12 @@ function _updateState(json, preserveTiles) {
                      letter = t;
                }
                placeTile(sq, t, letter, score);
+               placed[sq] = { tile: t, letter: letter, score: score };
+               anyPlaced = true;
             }
          });
+         if (anyPlaced)
+            newestTileMove = placed;
       }
       /* Remove highlight from previous move, if any */
       $("div.highlight1").removeClass("highlight1");
@@ -1627,6 +1705,8 @@ function _updateState(json, preserveTiles) {
       /* Add the new tiles laid down in response */
       if (json.lastmove !== undefined) {
          var delay = 0;
+         placed = { };
+         anyPlaced = false;
          for (i = 0; i < json.lastmove.length; i++) {
             var sq = json.lastmove[i][0];
             if (preserveTiles && document.getElementById(sq).firstChild) {
@@ -1643,15 +1723,19 @@ function _updateState(json, preserveTiles) {
                   initDraggable(document.getElementById(rsq).firstChild);
                }
             }
-            placeTile(sq, /* Coordinate */
-               json.lastmove[i][1], /* Tile */
-               json.lastmove[i][2], /* Letter */
-               json.lastmove[i][3]); /* Score */
+            var tile = json.lastmove[i][1];
+            var letter = json.lastmove[i][2];
+            score = json.lastmove[i][3];
+            placeTile(sq, tile, letter, score);
+            placed[sq] = { tile: tile, letter: letter, score: score };
+            anyPlaced = true;
             // Show the new tiles with a progressive fade-in effect
             $("#"+sq).children().eq(0).addClass("freshtile")
                .hide().delay(delay).fadeIn();
             delay += 200; // 200 ms between tiles
          }
+         if (anyPlaced)
+            newestTileMove = placed;
       }
       /* Update the scores */
       scoreLeft = json.scores[0];
@@ -1664,6 +1748,9 @@ function _updateState(json, preserveTiles) {
             var tiles = json.newmoves[i][1][1];
             score = json.newmoves[i][1][2];
             appendMove(player, co, tiles, score);
+            if (co === "" && tiles == "RESP" && score < 0)
+               // Successful challenge: remove the tiles originally placed
+               removeNewestTileMove();
          }
       }
       /* Update the bag */
@@ -1672,6 +1759,12 @@ function _updateState(json, preserveTiles) {
       /* See if an exchange move is still allowed */
       if (json.xchg !== undefined)
          exchangeAllowed = json.xchg;
+      /* See if a challenge is allowed */
+      if (json.chall !== undefined)
+         challengeAllowed = json.chall;
+      /* Are we in a last challenge state? */
+      if (json.last_chall !== undefined)
+         lastChallenge = json.last_chall;
       /* Save the new tile state */
       saveTiles();
       /* Enable and disable buttons as required */
@@ -1794,9 +1887,31 @@ function submitResign(btn) {
    }
 }
 
+function confirmChallenge(yes) {
+   /* The user has either confirmed or cancelled a challenge */
+   $("div.chall").css("visibility", "hidden");
+   showingDialog = false;
+   initRackDraggable(true);
+   updateButtonState();
+   if (yes)
+      sendMove('chall');
+}
+
+function submitChallenge(btn) {
+   /* The user has clicked the challenge button */
+   if (!$(btn).hasClass("disabled")) {
+      $("div.chall").css("visibility", "visible");
+      showingDialog = true;
+      initRackDraggable(false);
+      /* Disable all other actions while panel is shown */
+      updateButtonState();
+   }
+}
+
 function confirmPass(yes) {
    /* The user has either confirmed or cancelled the pass move */
    $("div.pass").css("visibility", "hidden");
+   $("div.pass-last").css("visibility", "hidden");
    showingDialog = false;
    initRackDraggable(true);
    updateButtonState();
@@ -1807,7 +1922,7 @@ function confirmPass(yes) {
 function submitPass(btn) {
    /* The user has clicked the pass button: show confirmation banner */
    if (!$(btn).hasClass("disabled")) {
-      $("div.pass").css("visibility", "visible");
+      $(lastChallenge ? "div.pass-last" : "div.pass").css("visibility", "visible");
       showingDialog = true;
       initRackDraggable(false);
       /* Disable all other actions while panel is shown */
@@ -1847,6 +1962,7 @@ function updateStats(json) {
    setStat("cleantotal0", json);
    setStat("remaining0", json);
    setStat("overtime0", json);
+   setStat("wrongchall0", json);
    setStat("bingopoints0", json, 0, json.bingoes0 * 50);
    setStat("avgmove0", json, 2);
    setStat("total0", json, 0, json.scores[0]);
@@ -1862,6 +1978,7 @@ function updateStats(json) {
    setStat("cleantotal1", json);
    setStat("remaining1", json);
    setStat("overtime1", json);
+   setStat("wrongchall1", json);
    setStat("bingopoints1", json, 0, json.bingoes1 * 50);
    setStat("avgmove1", json, 2);
    setStat("total1", json, 0, json.scores[1]);
@@ -1923,8 +2040,15 @@ function sendMove(movetype) {
       /* Resigning from game */
       moves.push("rsgn");
    }
+   else
+   if (movetype == 'chall') {
+      /* Challenging last move */
+      moves.push("chall");
+   }
+
    /* Be sure to remove the halo from the submit button */
    $("div.submitmove").removeClass("over");
+   $("div.challenge").removeClass("over");
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Freshly laid tiles are no longer fresh */

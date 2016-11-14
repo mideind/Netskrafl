@@ -19,12 +19,15 @@ from datetime import datetime, timedelta
 from flask import Flask
 from flask import render_template, jsonify
 from flask import request, url_for
+
 from google.appengine.api import users
 from google.appengine.ext import deferred
+from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
 from skrafldb import Context, UserModel, GameModel, StatsModel, RatingModel
+from skrafldb import iter_q
 
 # Standard Flask initialization
 
@@ -155,9 +158,9 @@ def _run_stats(from_time, to_time):
         return
 
     # Iterate over all finished games within the time span in temporal order
-    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move) \
-        .filter(GameModel.ts_last_move > from_time) \
-        .filter(GameModel.ts_last_move <= to_time)
+    q = GameModel.query(ndb.AND(GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time)) \
+        .order(GameModel.ts_last_move) \
+        .filter(GameModel.over == True)
 
     # The accumulated user statistics
     users = dict()
@@ -171,7 +174,9 @@ def _run_stats(from_time, to_time):
 
     try:
         # Use i as a progress counter
-        for i, gm in enumerate(q):
+        i = 0
+        for gm in iter_q(q, chunk_size = 250):
+            i += 1
             ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
@@ -277,8 +282,8 @@ def _run_stats(from_time, to_time):
             ts_last_processed = lm
             cnt += 1
             # Report on our progress
-            if (i + 1) % 1000 == 0:
-                logging.info(u"Processed {0} games".format(i + 1))
+            if i % 1000 == 0:
+                logging.info(u"Processed {0} games".format(i))
 
     except DeadlineExceededError as ex:
         # Hit deadline: save the stuff we already have and
@@ -304,12 +309,17 @@ def _run_stats(from_time, to_time):
     _write_stats(to_time, users)
 
 
-def _create_ratings(timestamp):
+def _create_ratings():
     """ Create the Top 100 ratings tables """
 
     logging.info(u"Starting _create_ratings")
 
     _key = StatsModel.dict_key
+
+    timestamp = datetime.utcnow()
+    yesterday = timestamp - timedelta(days = 1)
+    week_ago = timestamp - timedelta(days = 7)
+    month_ago = monthdelta(timestamp, -1)
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
         """ Go through a table of top scoring users and augment it with data from previous time points """
@@ -333,20 +343,20 @@ def _create_ratings(timestamp):
 
     # All players including robot games
 
-    top100_all = [ sm for sm in StatsModel.list_elo(timestamp, 100) ]
-    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 1), 100) }
-    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(timestamp - timedelta(days = 7), 100) }
-    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(monthdelta(timestamp, -1), 100) }
+    top100_all = StatsModel.list_elo(None, 100)
+    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(yesterday, 100) }
+    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(week_ago, 100) }
+    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(month_ago, 100) }
 
     # Augment the table for all games
     _augment_table(top100_all, top100_all_yesterday, top100_all_week_ago, top100_all_month_ago)
 
     # Human only games
 
-    top100_human = [ sm for sm in StatsModel.list_human_elo(timestamp, 100) ]
-    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 1), 100) }
-    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(timestamp - timedelta(days = 7), 100) }
-    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(monthdelta(timestamp, -1), 100) }
+    top100_human = StatsModel.list_human_elo(None, 100)
+    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(yesterday, 100) }
+    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(week_ago, 100) }
+    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(month_ago, 100) }
 
     # Augment the table for human only games
     _augment_table(top100_human, top100_human_yesterday, top100_human_week_ago, top100_human_month_ago)
@@ -354,6 +364,8 @@ def _create_ratings(timestamp):
     logging.info(u"Writing top 100 tables to the database")
 
     # Write the Top 100 tables to the database
+    rlist = []
+
     for rank in range(0, 100):
 
         # All players including robots
@@ -365,7 +377,7 @@ def _create_ratings(timestamp):
             rm.user = None
             rm.robot_level = -1
             rm.games = -1
-        rm.put()
+        rlist.append(rm)
 
         # Humans only
         rm = RatingModel.get_or_create("human", rank + 1)
@@ -376,7 +388,10 @@ def _create_ratings(timestamp):
             rm.user = None
             rm.robot_level = -1
             rm.games = -1
-        rm.put()
+        rlist.append(rm)
+
+    # Put the entire top 100 table in one RPC call
+    RatingModel.put_multi(rlist)
 
     logging.info(u"Finishing _create_ratings")
 
@@ -394,17 +409,34 @@ def deferred_stats(from_time, to_time):
     logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
 
-def deferred_ratings(timestamp):
+def deferred_ratings():
     """ This is the deferred ratings table calculation process """
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for this processing)
     Context.disable_cache()
-
     t0 = time.time()
-    _create_ratings(timestamp)
+
+    try:
+
+        _create_ratings()
+
+    except DeadlineExceededError as ex:
+        # Hit deadline: save the stuff we already have and
+        # defer a new task to continue where we left off
+        logging.error(u"Deadline exceeded in ratings, failing permamently")
+        # Normal return prevents this task from being run again
+        raise deferred.PermanentTaskFailure()
+
+    except Exception as ex:
+        logging.error(u"Exception in ratings, failing permanently: {0}".format(ex))
+        # Avoid having the task retried
+        raise deferred.PermanentTaskFailure()
+
     t1 = time.time()
 
     logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+    StatsModel.log_cache_stats()
+    StatsModel.clear_cache() # Do not maintain the cache in memory between runs
 
 
 @app.route("/_ah/start")
@@ -450,7 +482,9 @@ def stats_run():
         to_time = from_time + timedelta(days = 1)
         deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
     except Exception as ex:
-        return u"Stats calculation failed with exception {0}".format(ex), 200
+        err = u"Stats calculation failed with exception {0}".format(ex)
+        logging.error(err)
+        return err, 200
 
     # All is well so far and the calculation has been submitted to a task queue
     return u"Stats calculation has been started", 200
@@ -461,10 +495,7 @@ def stats_ratings():
     """ Calculate new ratings tables """
 
     logging.info(u"Starting ratings calculation")
-    # A normal ratings calculation is based on the present point in time
-    timestamp = datetime.utcnow()
-    deferred.defer(deferred_ratings, timestamp = timestamp)
-
+    deferred.defer(deferred_ratings)
     return u"Ratings calculation has been started", 200
 
 
