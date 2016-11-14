@@ -125,7 +125,6 @@ def cancel_friend(user):
             'X-SalesCloud-Access-Key' : _SECRET.public_key,
             'X-SalesCloud-Signature' : digest
         }
-        print("cancel_friend: url {2}, headers {0}, payload {1}".format(headers, payload, url))
         result = urlfetch.fetch(
             url = url,
             follow_redirects = False,
@@ -134,13 +133,11 @@ def cancel_friend(user):
             method = urlfetch.POST,
             headers = headers,
             validate_certificate = True)
-        print("Result is {0}".format(result))
         if result.status_code != 200:
             # Not OK
             logging.error('Cancel friend request to SalesCloud failed with status {1} for user {0}'.format(user.id(), result.status_code))
             return False
         response = json.loads(result.content)
-        print("Response is {0}".format(response))
         if response.get("success") != True:
             logging.error('Cancel friend request to SalesCloud failed for user {0}'.format(user.id()))
             return False
