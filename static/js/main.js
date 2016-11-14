@@ -70,7 +70,7 @@ function markChallenge(ev) {
       if (!moreGamesAllowed()) {
          // User is now past his concurrent game limit:
          // promote becoming a friend
-         openPromoDialog('friend');
+         openPromoDialog('friend', registerSalesCloud);
          return;
       }
       if (ev.data.userid.indexOf("robot-") === 0) {
@@ -164,7 +164,7 @@ function populateUserList(json) {
          ready += "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> ";
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -247,7 +247,7 @@ function populateEloList(json) {
          nick = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + nick;
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -433,7 +433,7 @@ function populateGameList(json) {
       }
       // Is the game using the new bag?
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
@@ -520,7 +520,7 @@ function acceptChallenge(ev) {
    /* Accept a previously issued challenge from the user in question */
    ev.preventDefault();
    if (!moreGamesAllowed()) {
-      openPromoDialog('friend');
+      openPromoDialog('friend', registerSalesCloud);
       return;
    }
    var param = ev.data;
@@ -658,7 +658,7 @@ function populateChallengeList(json) {
 
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.prefs.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.prefs.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
 
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +

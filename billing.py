@@ -105,7 +105,10 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest):
     # Hash it using the secret key
     my_digest = hmac.new(_SECRET.key, xsc_signature, hashlib.sha256).hexdigest()
     # Compare with the signature from the client and return True if they match
-    return hmac.compare_digest(xsc_digest, my_digest)
+    if hasattr(hmac, "compare_digest"):
+        # Better to use the compare_digest function, if available
+        return hmac.compare_digest(xsc_digest, my_digest)
+    return xsc_digest == my_digest
 
 
 def cancel_friend(user):

@@ -54,7 +54,7 @@ function serverQuery(requestUrl, jsonData, successFunc, completeFunc, errorFunc)
    });
 }
 
-function serverQueryHtml(requestUrl, jsonData, selector, errorFunc) {
+function serverQueryHtml(requestUrl, jsonData, selector, completeFunc, errorFunc) {
    /* Wraps a simple, standard Ajax request to the server */
    $.ajax({
       // The URL for the request
@@ -70,7 +70,7 @@ function serverQueryHtml(requestUrl, jsonData, selector, errorFunc) {
 
       // Code to run if the request succeeds;
       // the response is passed to the function
-      success: function(result) { $(selector).html(result); },
+      success: function(result) { $(selector).html(result); if (!!completeFunc) completeFunc(); },
 
       // Code to run if the request fails; the raw request and
       // status codes are passed to the function

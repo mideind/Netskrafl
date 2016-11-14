@@ -620,7 +620,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
 {% else %}
       // Not a paying friend: show a promotion overlay
-      openPromoDialog("friend");
+      openPromoDialog("friend", registerSalesCloud);
 {% endif %}
    }
 
