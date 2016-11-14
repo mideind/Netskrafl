@@ -1,10 +1,8 @@
 
 {% extends "container.html" %}
 
-{% block scripts %}
-
+{% block styles %}
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
-
 {% endblock %}
 
 {% block logo %}
@@ -28,12 +26,10 @@
    <p><strong>Velkomin í Netskrafl!</strong><p>
    <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn.
    Leikreglurnar eru eins og í
-   hefðbundnu borðskrafli, en aðeins eru leyfð orð sem fyrirfinnast í
+   hefðbundnu borðskrafli, en einungis eru leyfð orð sem fyrirfinnast í
    <i><a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu
    íslensks nútímamáls</a></i> - og tveggja stafa orð samkvæmt
-   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.
-   Ekki er því unnt að véfengja orð sem lögð eru
-   niður, né er hægt að leggja niður önnur orð en þau sem eru í orðalistunum.</p>
+   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.</p>
    <p>Í upphafi leiks hefur þú sjö stafaflísar sem sýndar eru í rekkanum fyrir neðan
    borðið. Ef þú átt leik (sýnt með rauðu flaggi
    <span class="move-indicator"></span> við notandanafn þitt) getur þú lagt
@@ -126,10 +122,13 @@
    <p>Frumforrit Netskrafls eru <a href="https://github.com/vthorsteinsson/Netskrafl" target="_blank">opin á
    <img src="{{ url_for('static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a> skv.
    skilmálum <a href="http://www.gnu.org/licenses/gpl.html" target="_blank">GNU General Public License v3</a>.</p>
+   <hr style="margin-top: 48px">
    <p>Höfundarréttur að
    <i>Beygingarlýsingu íslensks nútímamáls</i> er á hendi <i>Stofnunar
    Árna Magnússonar í íslenskum fræðum</i>. BÍN er notuð í Netskrafli skv.
    <a href="http://bin.arnastofnun.is/gogn/skilmalar/" target="_blank">skilmálum SÁM</a>.</p>
+   <hr style="margin-top: 20px">
+   <p style="font-size: 14px">Rekstraraðili vefsins er <i>Miðeind ehf.</i> | kt. 591213-1480 | netskrafl@netskrafl.is</p>
    </div>
 
    <div id="tabs-2">

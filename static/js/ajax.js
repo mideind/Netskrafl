@@ -54,3 +54,30 @@ function serverQuery(requestUrl, jsonData, successFunc, completeFunc, errorFunc)
    });
 }
 
+function serverQueryHtml(requestUrl, jsonData, selector, completeFunc, errorFunc) {
+   /* Wraps a simple, standard Ajax request to the server */
+   $.ajax({
+      // The URL for the request
+      url: requestUrl,
+
+      // The data to send
+      data: jsonData,
+
+      // Whether this is a POST or GET request
+      type: "POST",
+
+      cache: false,
+
+      // Code to run if the request succeeds;
+      // the response is passed to the function
+      success: function(result) { $(selector).html(result); if (!!completeFunc) completeFunc(); },
+
+      // Code to run if the request fails; the raw request and
+      // status codes are passed to the function
+      // Code to run if the request fails; the raw request and
+      // status codes are passed to the function
+      error: (!errorFunc) ? errFunc : errorFunc
+
+   });
+}
+

@@ -1,0 +1,89 @@
+
+{% extends "container.html" %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+
+<style>
+
+/* Override container to allow scrolling of registration form */
+
+div.container {
+   overflow-y: visible;
+   height: auto;
+}
+
+div.salescloud-wrapper {
+   position: relative;
+   top: 100px;
+   left: 110px;
+   width: 900px;
+   /* Status bar is 20 pixels on iPhone/iPad */
+   overflow-y: auto;
+}
+
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block logo %}
+{% include 'logo.html' %}
+{% endblock %}
+
+{% block info %}
+   <!-- No info button -->
+{% endblock %}
+
+{% block content %}
+
+<div class="signup-header">
+   <p style="margin-bottom: 0"><span class="glyphicon glyphicon-play"></span>&nbsp;<b>Fylltu út greiðsluupplýsingar</b> hér að neðan. Eyðublöðin nota örugga, dulkóðaða tengingu (<i>https</i>).</p>
+   <p style="font-size: 14px; margin-top: 0.8em">Rekstraraðili vefsins er <i>Miðeind ehf.</i> | kt. 591213-1480 | netskrafl@netskrafl.is</p>
+</div>
+
+<div class="salescloud-wrapper">
+
+<!-- SalesCloud payment processing widget -->
+<div class="salescloud-widget"
+   data-components='{"skip_cart": "1", "label": "{{ user.id() }}"}'
+   data-widget="212" data-resize="true" data-language="is" data-spinner="true" data-follow="true" ></div>
+
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+   function userId() {
+      return "{{ user.id() }}";
+   }
+
+   function doRegisterSalesCloud(i,s,o,g,r,a,m) {
+      i['SalesCloudObject']=r;
+      i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},
+      i[r].l=1*new Date();
+      a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];
+      a.src=g;
+      m.parentNode.insertBefore(a,m)
+   }
+
+   function registerSalesCloud() {
+      doRegisterSalesCloud(window,document,'script','https://salescloud.is/js/salescloud.js','salescloud');
+   }
+
+   function init(jQuery) {
+      registerSalesCloud();
+   }
+
+   $(document).ready(init);
+
+</script>
+
+{% endblock %}
+

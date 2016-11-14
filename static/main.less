@@ -196,6 +196,12 @@
 .glyphicon-search:before {
    content: "\E028";
 }
+.glyphicon-lightbulb:before {
+   content: "\E065";
+}
+.glyphicon-coffee-cup:before {
+   content: "\E295";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -1079,14 +1085,14 @@ div.rightmove {
 }
 
 div.reviewhdr {
-   height: 18px;
+   height: 19px;
    text-align: left;
    padding: 11px;
    background-color: @pass-btn;
    color: white;
    font-weight: 400;
    font-size: 18px;
-   line-height: 18px;
+   line-height: 19px;
 }
 
 span.movenumber {
@@ -1157,6 +1163,11 @@ div.statscol {
    float: left;
    width: 50%;
    padding-top: 24px;
+}
+
+div.statscol p {
+   margin-top: 0.85em;
+   margin-bottom: 0.8em;
 }
 
 div.gamestats p span {
@@ -1250,6 +1261,7 @@ span.wordmove {
 
 span.othermove {
    text-transform: none;
+   padding-left: 3px;
 }
 
 div.error {
@@ -1346,6 +1358,23 @@ div.pass {
    visibility: hidden;
 }
 
+div.pass-last {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @pass-btn;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 span.pass-explain {
    font-weight: normal;
    font-style: italic;
@@ -1369,16 +1398,38 @@ span.yesnobutton {
    cursor: pointer;
 }
 
+div.chall {
+   position: absolute;
+   text-align: center;
+   display: block;
+   bottom: 68px;
+   left: 130px;
+   width: 512px;
+   height: 28px;
+   background-color: @alert;
+   font-size: 16px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
 div.resign span.yesnobutton {
    color: @alert;
 }
 
-div.pass span.yesnobutton {
+div.pass span.yesnobutton,
+div.pass-last span.yesnobutton {
    color: @pass-btn;
 }
 
 div.exchange span.yesnobutton {
    color: darken(@freshtile, 10%);
+}
+
+div.chall span.yesnobutton {
+   color: @alert;
 }
 
 div.exchange {
@@ -1534,7 +1585,7 @@ div.score {
    text-align: center;
    vertical-align: middle;
    bottom: 204px;
-   left: 644px;
+   left: 645px;
    background-color: transparent;
    font-size: 24px;
    font-weight: 700;
@@ -1549,6 +1600,11 @@ div.score {
 div.score.word-good {
    color: darken(@freshtile, 10%);
    border-color: darken(@freshtile, 10%);
+}
+
+div.score.manual {
+   color: @score-manual;
+   border-color: @score-manual;
 }
 
 @keyframes colorPulse {
@@ -1569,6 +1625,18 @@ div.score.word-great {
    animation: colorPulse 1.5s infinite;
    -webkit-animation: colorPulse 1.5s infinite;
    border-color: darken(@freshtile, 10%);
+}
+
+div.score.green {
+   color: black;
+   border-color: black;
+   background-color: @freshtile;
+}
+
+div.score.yellow {
+   color: black;
+   border-color: black;
+   background-color: @racktile;
 }
 
 div.channel {
@@ -1629,6 +1697,37 @@ div.word-check.word-bad {
 
 div.word-check.word-bad:before {
    content: "\E200"; /* glyphicon-ban-circle */
+}
+
+div.challenge {
+   position: absolute;
+   width: 48px;
+   height: 48px;
+   text-align: center;
+   vertical-align: middle;
+   bottom: 204px;
+   left: 644px;
+   color: white;
+   background-color: @chall-btn;
+   font-family: 'Glyphicons Regular';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 26px;
+   line-height: 46px;
+   display: none;
+   border-style: solid;
+   border-color: @chall-btn;
+   border-width: 2px;
+   border-radius: 5px;
+   cursor: pointer;
+}
+
+div.challenge:before {
+   content: "\E200"; /* glyphicon-ban-circle */
+}
+
+div.challenge.disabled {
+   border-color: @background;
 }
 
 div.board-help {
@@ -1781,6 +1880,65 @@ span#total0, span#total1 {
    font-size: 28px;
    margin-left: 8px;
    margin-right: 8px;
+}
+
+div#promo-content {
+   margin-top: 48px;
+   margin-left: 48px;
+   margin-right: 48px;
+}
+
+div#promo-content h2 {
+   color: darken(@freshtile, 10%);
+}
+
+div#promo-content h2 span.glyphicon-coffee-cup {
+   color: @pass-btn;
+}
+
+div.btn-promo-yes {
+   .standard-button;
+   width: 200px;
+   height: 28px;
+   bottom: 48px;
+   right: 232px;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.btn-promo-no {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 48px;
+   right: 48px;
+   background-color: @board-background;
+}
+
+div.btn-thanks {
+   .standard-button;
+   width: 96px;
+   height: 28px;
+   bottom: 24px;
+   right: 24px;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.btn-cancel-yes {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 24px;
+   right: 24px;
+   background-color: @alert;
+}
+
+div.btn-cancel-no {
+   .standard-button;
+   width: 160px;
+   height: 28px;
+   bottom: 24px;
+   right: 208px;
+   background-color: darken(@freshtile, 10%);
 }
 
 div.tabbed-page {
@@ -2021,7 +2179,7 @@ span.list-overdue {
 span.list-newbag {
    display: inline-block;
    font-size: 18px;
-   color: @double-letter;
+   color: @triple-word;
    width: 26px;
    max-width: 26px;
    margin-left: 14px;
@@ -2296,6 +2454,24 @@ span.fairplay-btn.large {
    border-style: solid;
 }
 
+span.manual-btn {
+   .glyphicon;
+   font-size: 15px;
+   line-height: 15px;
+   top: 0px;
+   cursor: default;
+   color: white;
+   background-color: @alert;
+   border-radius: 5px;
+   padding: 4px;
+   margin: 0px;
+   margin-right: 4px;
+}
+
+span.manual-btn:before {
+   content: "\E065"; /* lightbulb */
+}
+
 span.elo-btn {
    position: relative;
    display: inline-block;
@@ -2542,7 +2718,8 @@ div#accept-cancel {
    background-color: @alert;
 }
 
-div#blank-close {
+div#blank-close,
+div#promo-close {
    background-color: @alert;
 }
 
@@ -2565,12 +2742,67 @@ div#blank-form {
    height: 400px;
 }
 
+div#promo-form {
+   .std-form;
+   top: 16px;
+   right: 12px;
+   width: 884px;
+   height: 644px;
+   line-height: 1.62em;
+}
+
+div#thanks-form {
+   .std-form;
+   top: 212px;
+   right: 224px;
+   width: 460px;
+   height: 248px;
+   line-height: 1.62em;
+}
+
+div#cancel-form {
+   .std-form;
+   top: 150px;
+   right: 200px;
+   width: 508px;
+   height: 372px;
+   line-height: 1.62em;
+}
+
+div#confirm-form {
+   .std-form;
+   top: 236px;
+   right: 224px;
+   width: 460px;
+   height: 200px;
+   line-height: 1.62em;
+}
+
+div#conditions-form {
+   .std-form;
+   top: 80px;
+   right: 124px;
+   width: 660px;
+   height: 536px;
+   line-height: 1.62em;
+   padding-left: 24px;
+   padding-right: 24px;
+}
+
 div#usr-info-form {
    .std-form;
    top: 16px;
    right: 12px;
    width: 884px;
    height: 644px;
+}
+
+div#thanks-content,
+div#cancel-content,
+div#confirm-content {
+   margin-top: 24px;
+   margin-left: 24px;
+   margin-right: 24px;
 }
 
 div.usr-info-hdr {
@@ -2747,10 +2979,10 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 51px;
+   top: 48px;
    right: 300px;
    width: 428px;
-   height: 628px;
+   height: 634px;
    padding-top: 12px; /* Override */
 }
 
@@ -2806,9 +3038,9 @@ div.chall-time {
    display: inline-block;
    width: 300px;
    left: 66px;
-   height: 38px;
-   padding-top: 12px;
-   padding-bottom: 0px;
+   height: 32px;
+   padding-top: 8px;
+   padding-bottom: 1px;
    padding-left: 12px;
    padding-right: 12px;
    margin-top: 7px;
@@ -2859,7 +3091,7 @@ span#chall-online.online {
 }
 
 div#chall-fairplay {
-   margin-top: 9px;
+   margin-top: 15px;
    padding-left: 52px;
    padding-right: 52px;
    font-size: 14px;
@@ -2867,7 +3099,7 @@ div#chall-fairplay {
 }
 
 div#chall-newbag {
-   margin-top: 28px;
+   margin-top: 24px;
    padding-left: 6px;
    padding-right: 152px;
    font-size: 14px;
@@ -2877,6 +3109,16 @@ div#chall-newbag {
 div#chall-newbag td {
    vertical-align: middle;
    padding-right: 12px;
+}
+
+div#chall-manual {
+   margin-top: 4px;
+   font-size: 14px;
+}
+
+div#manual-toggler {
+   margin-top: 12px;
+   margin-bottom: 0px;
 }
 
 div.hidden {
@@ -2904,16 +3146,37 @@ div#user-dialog {
 
 div#user-form {
    .std-form;
-   top: 28px;
+   top: 20px;
    right: 64px;
    width: 736px;
-   height: 660px;
+   height: 676px;
 }
 
 div#user-logout {
    left: 12px;
    width: 144px; /* Override */
    background-color: @pass-btn;
+}
+
+div#user-friend {
+   left: 180px;
+   width: 280px; /* Override */
+   background-color: darken(@freshtile, 10%);
+}
+
+div#user-unfriend {
+   left: 180px;
+   width: 280px; /* Override */
+   padding-top: 6px;
+   border-style: solid;
+   border-width: 2px;
+   border-color: darken(@freshtile, 10%);
+   background-color: white;
+   color: darken(@freshtile, 10%);
+}
+
+div#user-unfriend span.glyphicon-coffee-cup {
+   color: @pass-btn;
 }
 
 div#user-cancel {
@@ -2925,7 +3188,7 @@ div#user-cancel {
 div#user-ok {
    right: 12px; /* 12 */
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: darken(@freshtile, 10%);
 }
 
 div#accept-form {
@@ -2971,8 +3234,8 @@ div.blank-rack {
 
 div.loginform {
    position: absolute;
-   left: 120px;
-   top: 80px;
+   left: 220px;
+   top: 36px;
 }
 
 div.loginhdr {
@@ -2989,9 +3252,9 @@ div.blurb {
 }
 
 div.welcome {
-   font-size: 16px;
+   font-size: 15px;
    font-weight: normal;
-   padding-bottom: 20px;
+   padding-bottom: 16px;
 }
 
 .welcome a:link, .welcome a:visited {
@@ -3018,6 +3281,10 @@ span.caption {
    margin-right: 12px;
    overflow: hidden;
    text-align: right;
+}
+
+span.caption.wide {
+   width: 264px;
 }
 
 span.subcaption {
@@ -3349,3 +3616,11 @@ img#villi {
    margin-top: 18px;
    margin-bottom: 12px;
 }
+
+div.signup-header {
+   position: absolute;
+   top: 12px;
+   left: 110px;
+   width: 900px;
+}
+

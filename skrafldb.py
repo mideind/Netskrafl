@@ -93,6 +93,24 @@ class Unique:
         return str(uuid.uuid1()) # Random UUID
 
 
+def iter_q(q, chunk_size = 50, limit = 0, projection = None):
+    """ Generator for iterating through a query using a cursor """
+    items, next_cursor, more = q.fetch_page(chunk_size, projection = projection)
+    count = 0
+    while items:
+        for item in items:
+            yield item
+            count += 1
+            if limit and count >= limit:
+                # A limit was set and we'we reached it: stop
+                return
+        if not more or not next_cursor:
+            # The query is exhausted: stop
+            return
+        # Get the next chunk
+        items, next_cursor, more = q.fetch_page(chunk_size, start_cursor = next_cursor, projection = projection)
+
+
 class UserModel(ndb.Model):
 
     """ Models an individual user """
@@ -137,6 +155,11 @@ class UserModel(ndb.Model):
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
+
+    @classmethod
+    def fetch_multi(cls, user_ids):
+        """ Fetch multiple user entities by id list """
+        return ndb.get_multi((ndb.Key(UserModel, uid) for uid in user_ids))
 
     @staticmethod
     def put_multi(recs):
@@ -184,6 +207,7 @@ class UserModel(ndb.Model):
         # For aesthetic cleanliness, sort the query letters (in Unicode order)
         q_letters.sort()
 
+        count = 0
         for q_from in q_letters:
 
             q_to = unichr(ord(q_from) + 1)
@@ -192,34 +216,24 @@ class UserModel(ndb.Model):
             q = cls.query(ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to))
 
             CHUNK_SIZE = 1000 # Individual letters contain >600 users as of 2015-02-12
-            offset = 0
-            go = True
-            while go:
-                chunk = 0
-                # logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
-                for um in q.fetch(CHUNK_SIZE, offset = offset):
-                    chunk += 1
-                    if not um.inactive:
-                        # This entity matches: return a dict describing it
-                        yield dict(
-                            id = um.key.id(),
-                            nickname = um.nickname,
-                            prefs = um.prefs,
-                            timestamp = um.timestamp,
-                            ready = um.ready,
-                            ready_timed = um.ready_timed,
-                            human_elo = um.human_elo
-                        )
-                        counter += 1
-                        if 0 < max_len <= counter:
-                            # Hit limit on returned users: stop iterating
-                            return
-                if chunk < CHUNK_SIZE:
-                    # Hit end of query: stop iterating
-                    go = False
-                else:
-                    # Continue with the next chunk
-                    offset += chunk
+            # logging.info(u"Fetching chunk of {0} users".format(CHUNK_SIZE).encode('latin-1'))
+            for um in iter_q(q, chunk_size = CHUNK_SIZE):
+                if not um.inactive:
+                    # This entity matches: return a dict describing it
+                    yield dict(
+                        id = um.key.id(),
+                        nickname = um.nickname,
+                        prefs = um.prefs,
+                        timestamp = um.timestamp,
+                        ready = um.ready,
+                        ready_timed = um.ready_timed,
+                        human_elo = um.human_elo
+                    )
+                    count += 1
+                    if max_len and count >= max_len:
+                        # Reached limit: done
+                        return
+
 
     @classmethod
     def list_prefix(cls, prefix, max_len = 50):
@@ -235,32 +249,23 @@ class UserModel(ndb.Model):
         def list_q(q, f):
             """ Yield the results of a user query """
             CHUNK_SIZE = 50
-            offset = 0
-            while True:
-                chunk = 0
-                for um in q.fetch(CHUNK_SIZE, offset = offset):
-                    chunk += 1
-                    if not f(um).startswith(prefix):
-                        # Iterated past the prefix
-                        return
-                    if not um.inactive and not um.key.id() in id_set:
-                        # This entity matches and has not already been
-                        # returned: yield a dict describing it
-                        yield dict(
-                            id = um.key.id(),
-                            nickname = um.nickname,
-                            prefs = um.prefs,
-                            timestamp = um.timestamp,
-                            ready = um.ready,
-                            ready_timed = um.ready_timed,
-                            human_elo = um.human_elo
-                        )
-                        id_set.add(um.key.id())
-                if chunk < CHUNK_SIZE:
-                    # Hit end of query: stop iterating
+            for um in iter_q(q, chunk_size = CHUNK_SIZE):
+                if not f(um).startswith(prefix):
+                    # Iterated past the prefix
                     return
-                # Continue with the next chunk
-                offset += chunk
+                if not um.inactive and not um.key.id() in id_set:
+                    # This entity matches and has not already been
+                    # returned: yield a dict describing it
+                    yield dict(
+                        id = um.key.id(),
+                        nickname = um.nickname,
+                        prefs = um.prefs,
+                        timestamp = um.timestamp,
+                        ready = um.ready,
+                        ready_timed = um.ready_timed,
+                        human_elo = um.human_elo
+                    )
+                    id_set.add(um.key.id())
 
         counter = 0
 
@@ -294,23 +299,14 @@ class UserModel(ndb.Model):
             """ Generator for returning query result keys """
             assert max_len > 0
             counter = 0 # Number of results already returned
-            offset = 0 # Current chunk offset
-            while True:
-                chunk = 0 # Index within current chunk
-                for k in q.fetch(max_len, offset = offset, projection=[UserModel.highest_score]):
-                    chunk += 1
-                    if k.highest_score > 0:
-                        # Has played at least one game: Yield the key value
-                        yield k.key.id()
-                        counter += 1
-                        if counter >= max_len:
-                            # Returned the requested number of records: done
-                            return
-                if chunk < max_len:
-                    # Hit the end: done
-                    return
-                # Advance our offset
-                offset += chunk
+            for k in iter_q(q, chunk_size = max_len, projection=[UserModel.highest_score]):
+                if k.highest_score > 0:
+                    # Has played at least one game: Yield the key value
+                    yield k.key.id()
+                    counter += 1
+                    if counter >= max_len:
+                        # Returned the requested number of records: done
+                        return
 
         q = cls.query(UserModel.human_elo < elo).order(- UserModel.human_elo) # Descending order
         lower = list(fetch(q, max_len))
@@ -800,17 +796,10 @@ class ChannelModel(ndb.Model):
         now = datetime.utcnow()
         # Obtain all connected channels that have not expired
         q = cls.query(ChannelModel.connected == True).filter(ChannelModel.expiry > now)
-        offset = 0
-        while q is not None:
-            count = 0
-            for cm in q.fetch(CHUNK_SIZE, offset = offset, projection=[ChannelModel.user]):
-                if cm.user is not None:
-                    # Connected channel associated with a user: return the user id
-                    yield cm.user.id()
-                count += 1
-            if count < CHUNK_SIZE:
-                break
-            offset += CHUNK_SIZE
+        for cm in iter_q(q, CHUNK_SIZE, projection=[ChannelModel.user]):
+            if cm.user is not None:
+                # Connected channel associated with a user: return the user id
+                yield cm.user.id()
 
     @classmethod
     def is_connected(cls, user_id):
@@ -845,7 +834,7 @@ class ChannelModel(ndb.Model):
     @classmethod
     def _del_expired(cls, ts):
         """ Delete all expired channels """
-        logging.info(u"ChannelModel._del_expired(), ts is {0}".format(ts))
+        # logging.info(u"ChannelModel._del_expired(), ts is {0}".format(ts))
         CHUNK_SIZE = 500
         while True:
             q = cls.query(ChannelModel.expiry < ts)
@@ -875,35 +864,30 @@ class ChannelModel(ndb.Model):
                     # The scheduled next cleanup is due: defer it for execution
                     deferred.defer(cls._del_expired, ts = now)
                 # Schedule the next one
-                logging.info("ChannelModel.send_message() scheduling cleanup in {0} minutes"
-                    .format(ChannelModel._CLEANUP_INTERVAL))
+                # logging.info("ChannelModel.send_message() scheduling cleanup in {0} minutes"
+                #     .format(ChannelModel._CLEANUP_INTERVAL))
                 cls._next_cleanup = now + timedelta(minutes = ChannelModel._CLEANUP_INTERVAL)
 
             CHUNK_SIZE = 50 # There are never going to be many matches for this query
             q = cls.query(ChannelModel.kind == kind) \
                 .filter(ChannelModel.entity == entity) \
                 .filter(ChannelModel.expiry > now)
-            offset = 0
-            while True:
-                # Query and send message in chunks
-                count = 0
-                list_stale = []
-                for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                    if cm.connected:
-                        # Connected and listening: send the message
-                        # logging.info(u"Send_message kind {0} entity {1} chid {2} msg {3}".format(kind, entity, cm.chid, msg))
-                        channel.send_message(cm.chid, msg)
-                    else:
-                        # Channel appears to be disconnected: mark it as stale
-                        cm.stale = True
-                        list_stale.append(cm)
-                    count += 1
-                if list_stale:
-                    ndb.put_multi(list_stale)
-                if count < CHUNK_SIZE:
-                    # Hit end of query: We're done
-                    break
-                offset += count
+            list_stale = []
+            # Query and send message in chunks
+            for cm in iter_q(q, CHUNK_SIZE):
+                if cm.connected:
+                    # Connected and listening: send the message
+                    # logging.info(u"Send_message kind {0} entity {1} chid {2} msg {3}".format(kind, entity, cm.chid, msg))
+                    channel.send_message(cm.chid, msg)
+                else:
+                    # Channel appears to be disconnected: mark it as stale
+                    cm.stale = True
+                    list_stale.append(cm)
+                    if len(list_stale) >= CHUNK_SIZE:
+                        ndb.put_multi(list_stale)
+                        list_stale = []
+            if list_stale:
+                ndb.put_multi(list_stale)
 
 
 class StatsModel(ndb.Model):
@@ -1008,13 +992,25 @@ class StatsModel(ndb.Model):
             return "robot-" + str(d["robot_level"])
         return d["user"]
 
+    @staticmethod
+    def user_id_from_key(k):
+        """ Decompose a dictionary key into a (user_id, robot_level) tuple """
+        if k is not None and k.startswith("robot-"):
+            return (None, int(k[6:]))
+        return (k, 0)
 
     @classmethod
     def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
         """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
 
+        max_fetch = max_len * 2
+        check_false_positives = True
+
         if timestamp is None:
             timestamp = datetime.utcnow()
+            max_fetch = max_len
+            # No need to check false positives if querying newest records
+            check_false_positives = False
 
         # Use descending Elo order
         # Ndb doesn't allow us to put an inequality filter on the timestamp here
@@ -1036,54 +1032,45 @@ class StatsModel(ndb.Model):
         # false positives. If we have too many false positives, we don't return
         # the full requested number of result records.
 
-        go_on = True
-        while go_on:
-            # Query in chunks
-            count = 0
-            for sm in q.fetch(CHUNK_SIZE, offset = offset):
-                if sm.timestamp <= timestamp:
-                    # Within our time range
-                    d = makedict(sm)
-                    ukey = cls.dict_key(d)
-                    if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
-                        # Fresh entry or newer (and also lower) than the previous one
-                        result[ukey] = d
-                        if (lowest_elo is None) or (d["elo"] < lowest_elo):
-                            lowest_elo = d["elo"]
-                        if len(result) >= max_len * 2:
-                            # We have double the number of entries requested: done
-                            go_on = False
-                            break # From for loop
-                count += 1
-            if go_on and count < CHUNK_SIZE:
-                # Hit end of query: We're done
-                go_on = False
-            offset += count
+        for sm in iter_q(q, CHUNK_SIZE):
+            if sm.timestamp <= timestamp:
+                # Within our time range
+                d = makedict(sm)
+                ukey = cls.dict_key(d)
+                if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
+                    # Fresh entry or newer (and also lower) than the previous one
+                    result[ukey] = d
+                    if (lowest_elo is None) or (d["elo"] < lowest_elo):
+                        lowest_elo = d["elo"]
+                    if len(result) >= max_fetch:
+                        # We have double the number of entries requested: done
+                        break # From for loop
 
-        # Do another loop through the result to check for false positives
         false_pos = 0
-        for ukey, d in result.items():
-            sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
-            assert sm is not None # We should always have an entity here
-            nd = makedict(sm)
-            nd_ts = nd["timestamp"] # This may be None if a default record was created
-            if (nd_ts is not None) and nd_ts > d["timestamp"]:
-                # This is a newer one than we have already
-                # It must be a lower Elo score, or we would already have it
-                assert nd["elo"] <= d["elo"]
-                assert lowest_elo is not None
-                if nd["elo"] < lowest_elo:
-                    # The entry didn't belong on the list at all
-                    false_pos += 1
-                # Replace the entry with the newer one (which will lower it)
-                result[ukey] = nd
+        # Do another loop through the result to check for false positives
+        if check_false_positives:
+            for ukey, d in result.items():
+                sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
+                assert sm is not None # We should always have an entity here
+                nd = makedict(sm)
+                nd_ts = nd["timestamp"] # This may be None if a default record was created
+                if (nd_ts is not None) and nd_ts > d["timestamp"]:
+                    # This is a newer one than we have already
+                    # It must be a lower Elo score, or we would already have it
+                    assert nd["elo"] <= d["elo"]
+                    assert lowest_elo is not None
+                    if nd["elo"] < lowest_elo:
+                        # The entry didn't belong on the list at all
+                        false_pos += 1
+                    # Replace the entry with the newer one (which will lower it)
+                    result[ukey] = nd
+            logging.info(u"False positives are {0}".format(false_pos))
 
-        logging.info(u"False positives are {0}".format(false_pos))
         if false_pos > max_len:
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
-            logging.info(u"False positives caused ratings list to be truncated")
+            logging.error(u"False positives caused ratings list to be truncated")
             max_len -= (false_pos - max_len)
             if max_len < 0:
                 max_len = 0
@@ -1136,9 +1123,43 @@ class StatsModel(ndb.Model):
         return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
 
 
+    _NB_CACHE = dict()
+    _NB_CACHE_STATS = dict(hits = 0, misses = 0)
+
+
+    @classmethod
+    def clear_cache(cls):
+        """ Reset the cache """
+        cls._NB_CACHE = dict()
+        cls._NB_CACHE_STATS = dict(hits = 0, misses = 0)
+
+
+    @classmethod
+    def log_cache_stats(cls):
+        """ Show cache statistics in the log """
+        hits = cls._NB_CACHE_STATS["hits"]
+        misses = cls._NB_CACHE_STATS["misses"]
+        total = hits + misses
+        logging.info("Cache hits {0} or {1:.2f}%".format(hits, 100.0 * hits / total if total != 0 else 0.0))
+        logging.info("Cache misses {0} or {1:.2f}%".format(misses, 100.0 * misses / total if total != 0 else 0.0))
+
+
     @classmethod
     def newest_before(cls, ts, user_id, robot_level = 0):
         """ Returns the newest available stats record for the user at or before the given time """
+        cache = cls._NB_CACHE
+        key = (user_id, robot_level)
+        if ts:
+            if key in cache:
+                for c_ts, c_val in cache[key].items():
+                    if c_ts >= ts >= c_val.timestamp:
+                        cls._NB_CACHE_STATS["hits"] += 1
+                        sm = cls.create(user_id, robot_level)
+                        sm.copy_from(c_val)
+                        return sm
+            else:
+                cache[key] = dict()
+        cls._NB_CACHE_STATS["misses"] += 1
         sm = cls.create(user_id, robot_level)
         if ts:
             # Try to query using the timestamp
@@ -1153,6 +1174,7 @@ class StatsModel(ndb.Model):
             if sm_before is not None:
                 # Found: copy the stats
                 sm.copy_from(sm_before)
+            cache[key][ts] = sm
         return sm
 
 
@@ -1259,63 +1281,58 @@ class RatingModel(ndb.Model):
         """ Iterate through the rating table of a given kind, in ascending order by rank """
         CHUNK_SIZE = 100
         q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
-        offset = 0
-        while True:
-            count = 0
-            for rm in q.fetch(CHUNK_SIZE, offset = offset):
-                v = dict(
-                    rank = rm.rank,
+        for rm in iter_q(q, CHUNK_SIZE, limit = 100):
+            v = dict(
+                rank = rm.rank,
 
-                    games = rm.games,
-                    elo = rm.elo,
-                    score = rm.score,
-                    score_against = rm.score_against,
-                    wins = rm.wins,
-                    losses = rm.losses,
+                games = rm.games,
+                elo = rm.elo,
+                score = rm.score,
+                score_against = rm.score_against,
+                wins = rm.wins,
+                losses = rm.losses,
 
-                    rank_yesterday = rm.rank_yesterday,
-                    games_yesterday = rm.games_yesterday,
-                    elo_yesterday = rm.elo_yesterday,
-                    score_yesterday = rm.score_yesterday,
-                    score_against_yesterday = rm.score_against_yesterday,
-                    wins_yesterday = rm.wins_yesterday,
-                    losses_yesterday = rm.losses_yesterday,
+                rank_yesterday = rm.rank_yesterday,
+                games_yesterday = rm.games_yesterday,
+                elo_yesterday = rm.elo_yesterday,
+                score_yesterday = rm.score_yesterday,
+                score_against_yesterday = rm.score_against_yesterday,
+                wins_yesterday = rm.wins_yesterday,
+                losses_yesterday = rm.losses_yesterday,
 
-                    rank_week_ago = rm.rank_week_ago,
-                    games_week_ago = rm.games_week_ago,
-                    elo_week_ago = rm.elo_week_ago,
-                    score_week_ago = rm.score_week_ago,
-                    score_against_week_ago = rm.score_against_week_ago,
-                    wins_week_ago = rm.wins_week_ago,
-                    losses_week_ago = rm.losses_week_ago,
+                rank_week_ago = rm.rank_week_ago,
+                games_week_ago = rm.games_week_ago,
+                elo_week_ago = rm.elo_week_ago,
+                score_week_ago = rm.score_week_ago,
+                score_against_week_ago = rm.score_against_week_ago,
+                wins_week_ago = rm.wins_week_ago,
+                losses_week_ago = rm.losses_week_ago,
 
-                    rank_month_ago = rm.rank_month_ago,
-                    games_month_ago = rm.games_month_ago,
-                    elo_month_ago = rm.elo_month_ago,
-                    score_month_ago = rm.score_month_ago,
-                    score_against_month_ago = rm.score_against_month_ago,
-                    wins_month_ago = rm.wins_month_ago,
-                    losses_month_ago = rm.losses_month_ago
-                )
+                rank_month_ago = rm.rank_month_ago,
+                games_month_ago = rm.games_month_ago,
+                elo_month_ago = rm.elo_month_ago,
+                score_month_ago = rm.score_month_ago,
+                score_against_month_ago = rm.score_against_month_ago,
+                wins_month_ago = rm.wins_month_ago,
+                losses_month_ago = rm.losses_month_ago
+            )
 
-                # Stringify a user id
-                if rm.user is None:
-                    if rm.robot_level < 0:
-                        v["userid"] = ""
-                    else:
-                        v["userid"] = "robot-" + str(rm.robot_level)
+            # Stringify a user id
+            if rm.user is None:
+                if rm.robot_level < 0:
+                    v["userid"] = ""
                 else:
-                    v["userid"] = rm.user.id()
+                    v["userid"] = "robot-" + str(rm.robot_level)
+            else:
+                v["userid"] = rm.user.id()
 
-                yield v
-                count += 1
+            yield v
 
-            if count < CHUNK_SIZE:
-                break
-            if count == 100:
-                # The rating lists normally contain 100 entities
-                break
-            offset += CHUNK_SIZE
+
+    @staticmethod
+    def put_multi(recs):
+        """ Insert or update multiple ratings records """
+        ndb.put_multi(recs)
 
 
 class ChatModel(ndb.Model):
@@ -1339,44 +1356,33 @@ class ChatModel(ndb.Model):
         """ Return the newest items in a conversation """
         CHUNK_SIZE = 100
         q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
-        offset = 0
-        while True:
-            count = 0
-            for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                if cm.msg:
-                    # Don't return empty messages (read markers)
-                    yield dict(
-                        user = cm.user.id(),
-                        ts = cm.timestamp,
-                        msg = cm.msg
-                    )
+        count = 0
+        for cm in iter_q(q, CHUNK_SIZE):
+            if cm.msg:
+                # Don't return empty messages (read markers)
+                yield dict(
+                    user = cm.user.id(),
+                    ts = cm.timestamp,
+                    msg = cm.msg
+                )
                 count += 1
-                if maxlen and offset + count >= maxlen:
-                    return
-            if count < CHUNK_SIZE:
-                break
-            offset += CHUNK_SIZE
+                if count >= maxlen:
+                    break
 
     @classmethod
     def check_conversation(cls, channel, userid):
         """ Returns True if there are unseen messages in the conversation """
         CHUNK_SIZE = 20
         q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
-        offset = 0
-        while True:
-            count = 0
-            for cm in q.fetch(CHUNK_SIZE, offset = offset):
-                if (cm.user.id() != userid) and cm.msg:
-                    # Found a message originated by the other user
-                    return True
-                if (cm.user.id() == userid) and not cm.msg:
-                    # Found an 'already seen' indicator (empty message) from the querying user
-                    return False
-                count += 1
-            if count < CHUNK_SIZE:
-                # We've come to the beginning of the conversation with no unseen messages
+        for cm in iter_q(q, CHUNK_SIZE):
+            if (cm.user.id() != userid) and cm.msg:
+                # Found a message originated by the other user
+                return True
+            if (cm.user.id() == userid) and not cm.msg:
+                # Found an 'already seen' indicator (empty message) from the querying user
                 return False
-            offset += CHUNK_SIZE
+        # Gone through the whole thread without finding an unseen message
+        return False
 
     @classmethod
     def add_msg(cls, channel, userid, msg, timestamp = None):

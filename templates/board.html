@@ -211,6 +211,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <!-- Word check -->
 <div class="word-check"></div>
 
+<!-- Challenge last move -->
+<div class="challenge" title="Véfenging (röng kostar 10 stig)"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitChallenge(this)"></div>
+
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
 
@@ -226,6 +231,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <!-- Close button -->
    <div class="modal-close" id="blank-close" title="Hætta við" onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+</div>
+</div>
+
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
 </div>
 </div>
 
@@ -303,6 +315,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <p id="err_16">Viðureign finnst ekki</p> <!-- GAME_NOT_FOUND = 16 -->
    <p id="err_17">Viðureign er ekki utan tímamarka</p> <!-- GAME_NOT_OVERDUE = 17 -->
    <p id="err_18">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- SERVER_ERROR = 18 -->
+   <p id="err_19">Véfenging er ekki möguleg í þessari viðureign</p> <!-- NOT_MANUAL_WORDCHECK = 19 -->
+   <p id="err_20">Síðasti leikur er ekki véfengjanlegur</p> <!-- MOVE_NOT_CHALLENGEABLE = 20 -->
+   <p id="err_21">Aðeins véfenging eða pass leyfileg</p> <!-- ONLY_PASS_OR_CHALLENGE = 21 -->
    <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
 </div>
 
@@ -320,11 +335,25 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
 
+<!-- Confirm last pass move -->
+<div class="pass-last"><span class="glyphicon glyphicon-forward"></span>
+   &nbsp;Segja pass? <span class="pass-explain">Viðureign lýkur þar með</span>&nbsp;
+   <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
 <!-- Exchange tiles -->
 <div class="exchange"><span class="glyphicon glyphicon-refresh"></span>
    &nbsp;Smelltu á flísarnar sem þú vilt skipta&nbsp;
    <span class="yesnobutton" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
    <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
+</div>
+
+<!-- Confirm challenge -->
+<div class="chall"><span class="glyphicon glyphicon-ban-circle"></span>
+   &nbsp;Véfengja lögn? <span class="pass-explain">Röng véfenging kostar 10 stig</span>&nbsp;
+   <span class="yesnobutton" onclick="confirmChallenge(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="yesnobutton" onclick="confirmChallenge(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
 </div>
 
 <!-- A dialog to show info about a particular user -->
@@ -442,7 +471,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       /* Initialize the board tiles */
 {% for m in game.moves %}
 {%- set coord, tiles, score = m.move.summary(game.state) %}
-      newestMove = placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}");
+      placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
 {% endfor %}
 
 {% if user and game.my_turn(user.id()) %}
@@ -480,9 +509,15 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% else %}
       updateBag("{{ game.display_bag(player_index) }}");
 {% endif %}
-{% if not game.state.is_exchange_allowed() %}
+{% if game.is_challengeable() %}
+      challengeAllowed = true;
+{%- endif -%}
+{% if game.is_last_challenge() %}
+      lastChallenge = true;
       exchangeAllowed = false;
-{%- endif -%}      
+{% elif not game.state.is_exchange_allowed() %}
+      exchangeAllowed = false;
+{%- endif -%}
    }
 
    function localPlayer() {
@@ -526,6 +561,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    function gameUsesNewBag() {
       /* Return true if the game uses the new bag */
       return {{ "true" if game.new_bag() else "false" }};
+   }
+
+   function gameIsManual() {
+      /* Return true if the game uses manual wordcheck */
+      return {{ "true" if game.manual_wordcheck() else "false" }};
    }
 
    /* Array of supported emoticons in chat */
@@ -575,7 +615,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
    function navToReview() {
       /* Show the game review page */
+{% if user and user.has_paid() %}
+      // Paying friend of Netskrafl: show the game review
       window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+{% else %}
+      // Not a paying friend: show a promotion overlay
+      openPromoDialog("friend", registerSalesCloud);
+{% endif %}
    }
 
    function navToUserprefs() {

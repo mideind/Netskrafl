@@ -67,6 +67,12 @@ function markChallenge(ev) {
       action = "retract";
    }
    if (action == "issue") {
+      if (!moreGamesAllowed()) {
+         // User is now past his concurrent game limit:
+         // promote becoming a friend
+         openPromoDialog('friend', registerSalesCloud);
+         return;
+      }
       if (ev.data.userid.indexOf("robot-") === 0) {
          /* Challenging a robot: Create a new game and display it right away */
          window.location.href = newgameUrl(ev.data.userid, false);
@@ -158,7 +164,7 @@ function populateUserList(json) {
          ready += "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> ";
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -241,7 +247,7 @@ function populateEloList(json) {
          nick = "<span class='fairplay-btn' title='Skraflar án hjálpartækja'></span> " + nick;
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
       // Assemble the entire line
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
@@ -372,14 +378,20 @@ function refreshUserList(ev) {
    }
 }
 
+// Number of games by this user
+var numGames = undefined;
+// Maximum number of concurrent games unless user is a paying friend
+var MAX_GAME_LIMIT = 8;
+
 function populateGameList(json) {
+   numGames = undefined;
    if (!json || json.result === undefined)
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
       /* !!! TBD: Add error reporting here */
       return;
-   var numGames = json.gamelist.length;
+   numGames = json.gamelist.length;
    var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
@@ -421,7 +433,7 @@ function populateGameList(json) {
       }
       // Is the game using the new bag?
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
@@ -466,6 +478,11 @@ function populateGameList(json) {
    }
 }
 
+function moreGamesAllowed() {
+   // Is the user allowed to issue or accept more challenges?
+   return userHasPaid() || (numGames !== undefined && numGames < MAX_GAME_LIMIT);
+}
+
 function refreshGameList() {
    /* Update list of active games for the current user */
    $("#gamelist").html("");
@@ -502,6 +519,10 @@ function refreshRecentList() {
 function acceptChallenge(ev) {
    /* Accept a previously issued challenge from the user in question */
    ev.preventDefault();
+   if (!moreGamesAllowed()) {
+      openPromoDialog('friend', registerSalesCloud);
+      return;
+   }
    var param = ev.data;
    var prefs = param.prefs;
    if (prefs !== undefined && prefs.duration !== undefined && prefs.duration > 0)
@@ -630,9 +651,14 @@ function populateChallengeList(json) {
       if (item.prefs.fairplay)
          fairplay = "<span class='fairplay-btn' title='Án hjálpartækja'></span> ";
 
+      // Manual challenge indicator
+      var manual = "";
+      if (item.prefs.manual)
+         manual = "<span class='manual-btn' title='Handvirk véfenging'></span> ";
+
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.prefs.newbag ? "" : " grayed") + "' title='Nýi pokinn'></span>";
+         (item.prefs.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
       newbag = "<span class='list-newbag'>" + newbag + "</span>";
 
       var str = "<div class='listitem " + (odd ? "oddlist" : "evenlist") + "'>" +
@@ -641,7 +667,7 @@ function populateChallengeList(json) {
          (opp_ready ? ("<a href='#' id='" + readyId + "' class='opp-ready'>") : "") +
          "<span class='list-ts'>" + item.ts + "</span>" +
          "<span class='list-nick' title='" + fullname + "'>" + opp + "</span>" +
-         "<span class='list-chall'>" + fairplay + prefs + "</span>" +
+         "<span class='list-chall'>" + fairplay + manual + prefs + "</span>" +
          (item.received ? "</a>" : "") +
          (opp_ready ? "</a>" : "") +
          info +
@@ -722,6 +748,20 @@ function prepareChallenge() {
       $("div.chall-time").removeClass("selected");
       $(this).addClass("selected");
    });
+
+   // Enable the manual challenge toggle button
+
+   function doManualToggle() {
+      // Toggle from one state to the other
+      $("#manual-toggler #opt1").toggleClass("selected");
+      $("#manual-toggler #opt2").toggleClass("selected");
+   }
+
+   $("#manual-toggler").click(doManualToggle);
+   $("#manual-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doManualToggle();
+   });
 }
 
 function markOnline(json) {
@@ -738,14 +778,20 @@ function showChallenge(elemid, userid, nick, fullname, fairplayOpp, newbagOpp) {
    $("#chall-fullname").text(fullname);
    $("#chall-online").removeClass("online");
    $("#chall-online").attr("title", "Er ekki álínis");
+   $("#manual-toggler #opt1").toggleClass("selected", true);
+   $("#manual-toggler #opt2").toggleClass("selected", false);
    // This is a fair play challenge if the issuing user and the
    // opponent are both marked as consenting to fair play
    var fairplayChallenge = fairplayOpp && fairPlay();
-   // This is a new bag challenge if the issuing user and the
-   // opponent both want the new bag
-   var newbagChallenge = newbagOpp && newBag();
+   // This is a new bag challenge unless the issuing user and
+   // the challenged user both prefer the old bag
+   var newbagChallenge = newbagOpp || newBag();
+   // This may be a manual challenge if the issuing user is
+   // a paying friend of Netskrafl
+   var manualChallenge = userHasPaid();
    $("#chall-fairplay").toggleClass("hidden", !fairplayChallenge);
-   $("#chall-newbag").toggleClass("hidden", !newbagChallenge);
+   $("#chall-oldbag").toggleClass("hidden", newbagChallenge);
+   $("#chall-manual").toggleClass("hidden", !manualChallenge);
    $("#chall-dialog")
       .data("param", { elemid: elemid, userid: userid,
          fairplay: fairplayChallenge, newbag: newbagChallenge })
@@ -774,6 +820,8 @@ function okChallenge(ev) {
       duration = 0;
    else
       duration = parseInt(duration);
+   /* Get the status of the manual challenge toggle */
+   var manualChallenge = $("#manual-toggler #opt2").hasClass("selected");
    /* Inform the server */
    serverQuery("/challenge",
       {
@@ -782,7 +830,8 @@ function okChallenge(ev) {
          action: "issue",
          duration: duration,
          fairplay: param.fairplay,
-         newbag: param.newbag
+         newbag: param.newbag,
+         manual: manualChallenge
       },
       updateChallenges
    );

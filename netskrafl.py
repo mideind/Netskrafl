@@ -39,16 +39,18 @@ from flask import request, url_for
 
 from google.appengine.api import users, memcache
 from google.appengine.runtime import DeadlineExceededError
+import google.appengine.api.urlfetch as urlfetch
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
-from skraflmechanics import Move, PassMove, ExchangeMove, ResignMove, Error
+from skraflmechanics import Move, PassMove, ExchangeMove, \
+    ResignMove, ChallengeMove, ResponseMove, Error
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Context, UserModel, GameModel,\
-    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel,\
+from skrafldb import Context, UserModel, GameModel, \
+    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel, \
     ZombieModel
-
+import billing
 
 # Standard Flask initialization
 
@@ -101,7 +103,7 @@ def _process_move(game, movelist):
     try:
         for mstr in movelist:
             if mstr == u"pass":
-                # Pass move
+                # Pass move (or accepting the last move in the game without challenging it)
                 m = PassMove()
                 break
             if mstr.startswith(u"exch="):
@@ -110,7 +112,11 @@ def _process_move(game, movelist):
                 break
             if mstr == u"rsgn":
                 # Resign from game, forfeiting all points
-                m = ResignMove(game.state.scores()[game.state.player_to_move()])
+                m = ResignMove(game.state.scores()[player_index])
+                break
+            if mstr == u"chall":
+                # Challenging the last move
+                m = ChallengeMove()
                 break
             sq, tile = mstr.split(u'=')
             row = u"ABCDEFGHIJKLMNO".index(sq[0])
@@ -129,7 +135,7 @@ def _process_move(game, movelist):
 
     # Process the move string here
     # Unpack the error code and message
-    err = game.state.check_legality(m)
+    err = game.check_legality(m)
     msg = ""
     if isinstance(err, tuple):
         err, msg = err
@@ -151,9 +157,16 @@ def _process_move(game, movelist):
 
         is_over = game.is_over()
 
-        if not is_over and opponent is None:
-            game.autoplayer_move()
-            is_over = game.is_over() # State may change during autoplayer_move()
+        if not is_over:
+
+            if opponent is None:
+                # Generate an autoplayer move in response
+                game.autoplayer_move()
+                is_over = game.is_over() # State may change during autoplayer_move()
+            elif isinstance(m, ChallengeMove):
+                # Challenge: generate a response move
+                game.response_move()
+                is_over = game.is_over() # State may change during response_move()
 
         if is_over:
             # If the game is now over, tally the final score
@@ -218,7 +231,7 @@ def _userlist(query, spec):
     challenges = set()
     if cuid:
         challenges.update([ch[0] # Identifier of challenged user
-            for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
+            for ch in ChallengeModel.list_issued(cuid, max_len = 20)])
 
     # Get the list of online users
 
@@ -226,19 +239,18 @@ def _userlist(query, spec):
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
-        online = set(iter(ChannelModel.list_connected())) # Eliminate duplicates by using a set
+        online = set(ChannelModel.list_connected()) # Eliminate duplicates by using a set
         # Store the result in the cache with a lifetime of 2 minutes
         memcache.set("live", online, time=2 * 60, namespace="userlist")
 
     if query == u"live":
         # Return all online (live) users
 
-        for uid in online:
-            if uid == cuid:
-                # Do not include the current user, if any, in the list
-                continue
-            lu = User.load(uid)
-            if lu and lu.is_displayable():
+        ousers = User.load_multi(online)
+        for lu in ousers:
+            if lu and lu.is_displayable() and lu.id() != cuid:
+                # Don't display the current user in the online list
+                uid = lu.id()
                 chall = uid in challenges
                 result.append({
                     "userid": uid,
@@ -256,10 +268,12 @@ def _userlist(query, spec):
     elif query == u"fav":
         # Return favorites of the current user
         if cuid is not None:
-            i = iter(FavoriteModel.list_favorites(cuid))
-            for favid in i:
-                fu = User.load(favid)
+            i = FavoriteModel.list_favorites(cuid)
+            # Do a multi-get of the entire favorites list
+            fusers = User.load_multi(i)
+            for fu in fusers:
                 if fu and fu.is_displayable():
+                    favid = fu.id()
                     chall = favid in challenges
                     result.append({
                         "userid": favid,
@@ -277,13 +291,11 @@ def _userlist(query, spec):
     elif query == u"alike":
         # Return users with similar Elo ratings
         if cuid is not None:
-            i = iter(UserModel.list_similar_elo(cuser.human_elo(), max_len = 40))
-            for uid in i:
-                if uid == cuid:
-                    # Do not include the current user in the list
-                    continue
-                au = User.load(uid)
-                if au and au.is_displayable():
+            i = UserModel.list_similar_elo(cuser.human_elo(), max_len = 40)
+            ausers = User.load_multi(i)
+            for au in ausers:
+                if au and au.is_displayable() and au.id() != cuid:
+                    uid = au.id()
                     chall = uid in challenges
                     result.append({
                         "userid": uid,
@@ -964,6 +976,9 @@ def challenge():
     nb = request.form.get('newbag', None)
     newbag = nb and nb == u"true"
 
+    mc = request.form.get('manual', None)
+    manual = mc and mc == u"true"
+
     # Ensure that the duration is reasonable
     if duration < 0:
         duration = 0
@@ -973,7 +988,8 @@ def challenge():
     if destuser is not None:
         if action == u"issue":
             user.issue_challenge(destuser,
-                { "duration": duration, "fairplay": fairplay, "newbag": newbag })
+                { "duration": duration, "fairplay": fairplay,
+                    "newbag": newbag, "manual": manual })
         elif action == u"retract":
             user.retract_challenge(destuser)
         elif action == u"decline":
@@ -1133,7 +1149,15 @@ def chatload():
 def review():
     """ Show game review page """
 
-    # This page does not require - and should not require - a logged-in user
+    # Only logged-in users who are paying friends can view this page
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(url_for('login'))
+
+    if not user.has_paid():
+        # Only paying users can see game reviews
+        return redirect(url_for('friend', action = 1))
 
     game = None
     uuid = request.args.get("game", None)
@@ -1169,8 +1193,7 @@ def review():
             best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
 
     player_index = state.player_to_move()
-    user = User.current()
-    if user and game.has_player(user.id()):
+    if game.has_player(user.id()):
         # Look at the game from the point of view of this player
         user_index = game.player_index(user.id())
     else:
@@ -1205,6 +1228,7 @@ def userprefs():
             self.beginner = True
             self.fairplay = False # Defaults to False, must be explicitly set to True
             self.newbag = False # Defaults to False, must be explicitly set to True
+            self.friend = False
             self.logout_url = User.logout_url()
 
         def init_from_form(self, form):
@@ -1240,6 +1264,7 @@ def userprefs():
             self.beginner = usr.beginner()
             self.fairplay = usr.fairplay()
             self.newbag = usr.new_bag()
+            self.friend = usr.friend()
 
         def validate(self):
             """ Check the current form data for validity and return a dict of errors, if any """
@@ -1564,6 +1589,75 @@ def newchannel():
             game.id() + u":" + str(player_index), user.id())
 
     return jsonify(result = Error.LEGAL, token = channel_token)
+
+
+@app.route("/friend")
+def friend():
+    """ Page for users to register or unregister themselves as friends of Netskrafl """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    try:
+        action = int(request.args.get("action", "0"))
+    except:
+        action =  0
+    if action == 0:
+        # Launch the actual payment procedure
+        # render_template displays a thank-you note in this case
+        pass
+    elif action == 1:
+        # Display a friendship promotion
+        pass
+    elif action == 2:
+        # Request to cancel a friendship
+        if not user.friend():
+            # Not a friend: nothing to cancel
+            return redirect(url_for("main"))
+    elif action == 3:
+        # Actually cancel a friendship
+        if not user.friend():
+            # Not a friend: nothing to cancel
+            return redirect(url_for("main"))
+        billing.cancel_friend(user)
+
+    return render_template("friend.html", user = user, action = action)
+
+
+@app.route("/promo", methods=['POST'])
+def promo():
+    """ Return promotional HTML corresponding to a given key (category) """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    key = request.form.get("key", "")
+    VALID_PROMOS = { "friend" }
+    if key not in VALID_PROMOS:
+        key = "error"
+    return render_template("promo-" + key + ".html", user = user)
+
+
+@app.route("/signup", methods=['GET'])
+def signup():
+    """ Sign up as a friend, enter card info, etc. """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    return render_template("signup.html", user = user)
+
+
+@app.route("/skilmalar", methods=['GET'])
+def skilmalar():
+    """ Conditions """
+    user = User.current()
+    if user is None:
+        return redirect(url_for("login"))
+    return render_template("skilmalar.html", user = user)
+
+
+@app.route("/billing", methods=['GET', 'POST'])
+def handle_billing():
+    """ Receive signup and billing confirmations """
+    return billing.handle(request)
 
 
 @app.route("/")
