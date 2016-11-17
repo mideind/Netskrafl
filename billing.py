@@ -92,9 +92,9 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest):
         # Invalid date/time
         return False
     delta = (datetime.utcnow() - dt).total_seconds()
-    if not (-2.0 < delta < 60.0):
+    if not (-2.0 < delta < 100.0):
         # The request must be made in a time window ranging from 2 seconds in
-        # the future (allowing for a slightly wrong clock) to 60 seconds in
+        # the future (allowing for a slightly wrong clock) to 100 seconds in
         # the past (allowing time for the HTTP request to arrive and be
         # processed). Anything outside this will be rejected. This makes a
         # brute force attack on the SHA256 hash harder.
