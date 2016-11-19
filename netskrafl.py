@@ -1641,10 +1641,10 @@ def signup():
     """ Sign up as a friend, enter card info, etc. """
 
     # Force to https protocol
-    if not running_local and request.url.startswith('http://'):
-        url = request.url.replace('http://', 'https://', 1)
-        code = 301
-        return redirect(url, code=code)
+    #if not running_local and request.url.startswith('http://'):
+    #    url = request.url.replace('http://', 'https://', 1)
+    #    code = 301
+    #    return redirect(url, code=code)
 
     user = User.current()
     if user is None:
@@ -1672,10 +1672,10 @@ def main():
     """ Handler for the main (index) page """
 
     # Force to https protocol
-    if not running_local and request.url.startswith('http://'):
-        url = request.url.replace('http://', 'https://', 1)
-        code = 301
-        return redirect(url, code=code)
+    #if not running_local and request.url.startswith('http://'):
+    #    url = request.url.replace('http://', 'https://', 1)
+    #    code = 301
+    #    return redirect(url, code=code)
 
     user = User.current()
     if user is None:

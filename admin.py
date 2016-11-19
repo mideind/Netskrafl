@@ -81,6 +81,26 @@ def admin_userupdate():
     return "<html><body><p>User update started</p></body></html>"
 
 
+@app.route("/admin/setfriend", methods=['GET'])
+def admin_setfriend():
+    """ Start a user update background task """
+    uid = request.args.get("uid", "")
+    state = request.args.get("state", "1") # Default: set as friend
+    try:
+        state = bool(int(state))
+    except:
+        return "<html><body><p>Invalid state string: '{0}'</p></body></html>".format(state)
+    u = User.load_if_exists(uid) if uid else None
+    if u is None:
+        return "<html><body><p>Unknown user id '{0}'</p></body></html>".format(uid)
+    was_friend = u.friend()
+    u.set_friend(state)
+    u.set_has_paid(state)
+    u.update()
+    logging.info("Friend state of user {0} manually set to {1}".format(uid, state))
+    return "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>".format(uid, state, was_friend)
+
+
 @app.route("/admin/fetchgames", methods=['GET', 'POST'])
 def admin_fetchgames():
     """ Return a JSON representation of all finished games """
