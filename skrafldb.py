@@ -108,7 +108,8 @@ def iter_q(q, chunk_size = 50, limit = 0, projection = None):
             # The query is exhausted: stop
             return
         # Get the next chunk
-        items, next_cursor, more = q.fetch_page(chunk_size, start_cursor = next_cursor, projection = projection)
+        items, next_cursor, more = q.fetch_page(chunk_size,
+            start_cursor = next_cursor, projection = projection)
 
 
 class UserModel(ndb.Model):

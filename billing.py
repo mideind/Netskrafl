@@ -70,7 +70,7 @@ class _Secret:
 _SECRET = _Secret()
 
 
-def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest):
+def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time = 100.0):
     """ Validate an incoming request against our secret key """
 
     # Sanity check
@@ -92,13 +92,13 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest):
         # Invalid date/time
         return False
     delta = (datetime.utcnow() - dt).total_seconds()
-    if not (-2.0 < delta < 100.0):
+    if not (-2.0 < delta < max_time):
         # The request must be made in a time window ranging from 2 seconds in
         # the future (allowing for a slightly wrong clock) to 100 seconds in
         # the past (allowing time for the HTTP request to arrive and be
         # processed). Anything outside this will be rejected. This makes a
         # brute force attack on the SHA256 hash harder.
-        logging.warning("Billing request outside timestamp window")
+        logging.warning("Billing request outside timestamp window, delta is {0:.1f}".format(delta))
         return False
     # Reconstruct the signature
     xsc_signature = xsc_date + xsc_key + method + url + payload
@@ -166,7 +166,8 @@ def handle(request):
         xsc_date = request.args.get("salescloud_date", "")[0:256]
         xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode('utf-8') # Required
         uid = User.current_id() or ""
-        if not request_valid(request.method, request.base_url, uid, xsc_date, xsc_key, xsc_digest):
+        if not request_valid(request.method, request.base_url, uid,
+            xsc_date, xsc_key, xsc_digest, max_time = 300.0):
             # Wrong signature: probably not coming from SalesCloud
             return "<html><body>Invalid signature</body></html>", 403 # Forbidden
         return redirect(url_for("friend", action=0)) # Redirect to a thank-you page

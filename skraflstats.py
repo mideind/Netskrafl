@@ -343,7 +343,8 @@ def _create_ratings():
 
     # All players including robot games
 
-    top100_all = StatsModel.list_elo(None, 100)
+    #top100_all = StatsModel.list_elo(None, 100)
+    top100_all = [ sm for sm in StatsModel.list_elo(timestamp, 100) ]
     top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(yesterday, 100) }
     top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(week_ago, 100) }
     top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(month_ago, 100) }
@@ -353,7 +354,8 @@ def _create_ratings():
 
     # Human only games
 
-    top100_human = StatsModel.list_human_elo(None, 100)
+    #top100_human = StatsModel.list_human_elo(None, 100)
+    top100_human = [ sm for sm in StatsModel.list_human_elo(timestamp, 100) ]
     top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(yesterday, 100) }
     top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(week_ago, 100) }
     top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(month_ago, 100) }
