@@ -52,10 +52,10 @@ Ef spurningu þinni er ekki svarað hér er um að gera að leggja hana fram í
 <li>Orðmyndir sem finna má í
 <i><a href="http://bin.arnastofnun.is/forsida/" target="_blank">Beygingarlýsingu íslensks nútímamáls</a></i>
 (BÍN) (sjá næstu spurningu).</li>
-<li>Óbeygjanleg orð (m.a. atviksorð, forsetningar og smáorð) af orðalista sem ekki
-er í BÍN sjálfri en má nálgast sérstaklega á vef BÍN.</li>
-<li>Spurnarmyndir sagna í nútíð (“<i>Borðiði</i> kvöldmatinn snemma?”)  sem ekki
-eru í BÍN sjálfri en nálgast má sérstaklega á vef BÍN.</li>
+<li>Óbeygjanleg orð (m.a. atviksorð, forsetningar og smáorð) af orðalista sem <b>ekki
+er í BÍN sjálfri</b> en má nálgast sérstaklega á vef BÍN.</li>
+<li>Spurnarmyndir sagna í <b>nútíð</b> (“<i>Borðiði</i> kvöldmatinn snemma?”) sem <b>ekki
+eru í BÍN sjálfri</b> en nálgast má sérstaklega á vef BÍN.</li>
 <li>Orð sem eru á <a href="{{ url_for('twoletter') }}">tveggja stafa orðalista
 Skraflfélags Íslands</a>, eins og hann var ákveðinn af Orðanefnd þess í
 september 2015.</li>
@@ -70,7 +70,7 @@ vegna þess að þau vantar augljóslega í BÍN.</li>
 <li>Erlend orð og slettur.</li>
 <li>Fornt og úrelt mál.</li>
 <li>Samsett orð sem ekki eru í BÍN.</li>
-<li>Spurnarmyndir sagna í þátíð (“<i>Borðuðuði</i> kvöldmatinn snemma?”).</li>
+<li>Spurnarmyndir sagna í <b>þátíð</b> (“<i>Borðuðuði</i> kvöldmatinn snemma?”).</li>
 <li>Tveggja stafa orð önnur en þau sem eru á
 <a href="{{ url_for('twoletter') }}">orðalista Skraflfélags Íslands</a>.</li>
 <li>Örfáar orðmyndir sem hafa verið felldar niður handvirkt úr orðagrunni
@@ -383,12 +383,10 @@ ritmál.</p>
 <a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>.</p>
 
 <li id="faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?</li>
-<p>Ef leikmaður er tilbúinn í nýja pokann, hefur merkt sig þannig í
-<a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>,
-og skorar á andstæðing sem er einnig tilbúinn, kemur eftirfarandi fram í áskorunarglugganum:</p>
-<p style="text-align:center"><img src="{{ url_for('static', filename='NewBagChallenge.png') }}"></p>
+<p><i>Gamli (upphaflegi) pokinn er nú einungis notaður ef báðir leikmenn eru merktir honum.</i></p>
 <p>Nýi pokinn þekkist á því að hann er <strong>fölblár</strong> á litinn, neðst í hægra horni leikborðsins:</p>
 <p style="text-align:center"><img src="{{ url_for('static', filename='NewBagExample.png') }}"></p>
+<p>Gamli pokinn er aftur á móti <b>ljósbrúnn</b>.</p>
 
 <li id="faq-26">Hvernig setur maður inn broskalla í spjallinu?</li>
 <p>Í spjallflipa Netskrafls er hægt að slá inn tákn sem birtast sem mismunandi „broskallar“.</p>

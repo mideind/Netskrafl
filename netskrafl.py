@@ -1639,6 +1639,13 @@ def promo():
 @app.route("/signup", methods=['GET'])
 def signup():
     """ Sign up as a friend, enter card info, etc. """
+
+    # Force to https protocol
+    if not running_local and request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301
+        return redirect(url, code=code)
+
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
@@ -1664,6 +1671,12 @@ def handle_billing():
 def main():
     """ Handler for the main (index) page """
 
+    # Force to https protocol
+    if not running_local and request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301
+        return redirect(url, code=code)
+
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
@@ -1685,6 +1698,12 @@ def main():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
+
+    # Force to https protocol
+    if request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301
+        return redirect(url, code=code)
 
     login_url = users.create_login_url("/")
 

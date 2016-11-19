@@ -124,7 +124,7 @@ module.exports = function (grunt) {
          },
          less: {
             files: ['static/*.less'],
-            tasks: ['less:development'],
+            tasks: ['less:development', 'less:production'],
             options: { spawn: false }
          },
          configFiles: {
