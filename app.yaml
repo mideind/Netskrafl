@@ -123,7 +123,7 @@ handlers:
 
 # Admin web URLs, requiring admin authorization
 - url: /admin/.*
-  script: netskrafl.app
+  script: admin.app
   login: admin
   auth_fail_action: unauthorized
 

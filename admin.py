@@ -22,7 +22,7 @@ from google.appengine.ext import ndb, deferred
 import netskrafl
 from languages import Alphabet
 from skrafldb import Context, UserModel, GameModel
-from skraflgame import Game
+from skraflgame import User, Game
 
 
 # We're plugging in to the normal Netskrafl Flask app

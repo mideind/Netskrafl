@@ -73,6 +73,15 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
 _autoplayer_lock = threading.Lock()
 
 
+@app.before_request
+def before_request():
+    """ Redirect http requests to https, returning a Moved Permanently code """
+    if not running_local and request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301 # Moved Permanently
+        return redirect(url, code=code)
+
+
 @app.context_processor
 def inject_into_context():
     """ Inject variables and functions into all Flask contexts """
@@ -1640,12 +1649,6 @@ def promo():
 def signup():
     """ Sign up as a friend, enter card info, etc. """
 
-    # Force to https protocol
-    #if not running_local and request.url.startswith('http://'):
-    #    url = request.url.replace('http://', 'https://', 1)
-    #    code = 301
-    #    return redirect(url, code=code)
-
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
@@ -1671,12 +1674,6 @@ def handle_billing():
 def main():
     """ Handler for the main (index) page """
 
-    # Force to https protocol
-    #if not running_local and request.url.startswith('http://'):
-    #    url = request.url.replace('http://', 'https://', 1)
-    #    code = 301
-    #    return redirect(url, code=code)
-
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
@@ -1698,12 +1695,6 @@ def main():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-
-    # Force to https protocol
-    if request.url.startswith('http://'):
-        url = request.url.replace('http://', 'https://', 1)
-        code = 301
-        return redirect(url, code=code)
 
     login_url = users.create_login_url("/")
 
