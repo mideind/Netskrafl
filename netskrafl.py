@@ -240,8 +240,8 @@ def _userlist(query, spec):
     if online is None:
         # Not found: do a query
         online = set(ChannelModel.list_connected()) # Eliminate duplicates by using a set
-        # Store the result in the cache with a lifetime of 2 minutes
-        memcache.set("live", online, time=2 * 60, namespace="userlist")
+        # Store the result in the cache with a lifetime of 3 minutes
+        memcache.set("live", online, time=3 * 60, namespace="userlist")
 
     if query == u"live":
         # Return all online (live) users
@@ -1640,12 +1640,6 @@ def promo():
 def signup():
     """ Sign up as a friend, enter card info, etc. """
 
-    # Force to https protocol
-    #if not running_local and request.url.startswith('http://'):
-    #    url = request.url.replace('http://', 'https://', 1)
-    #    code = 301
-    #    return redirect(url, code=code)
-
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
@@ -1671,12 +1665,6 @@ def handle_billing():
 def main():
     """ Handler for the main (index) page """
 
-    # Force to https protocol
-    #if not running_local and request.url.startswith('http://'):
-    #    url = request.url.replace('http://', 'https://', 1)
-    #    code = 301
-    #    return redirect(url, code=code)
-
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
@@ -1698,12 +1686,6 @@ def main():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-
-    # Force to https protocol
-    if request.url.startswith('http://'):
-        url = request.url.replace('http://', 'https://', 1)
-        code = 301
-        return redirect(url, code=code)
 
     login_url = users.create_login_url("/")
 

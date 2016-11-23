@@ -160,7 +160,7 @@ class UserModel(ndb.Model):
     @classmethod
     def fetch_multi(cls, user_ids):
         """ Fetch multiple user entities by id list """
-        return ndb.get_multi((ndb.Key(UserModel, uid) for uid in user_ids))
+        return ndb.get_multi([ndb.Key(UserModel, uid) for uid in user_ids])
 
     @staticmethod
     def put_multi(recs):
