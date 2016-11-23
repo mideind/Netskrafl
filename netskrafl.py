@@ -73,6 +73,15 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
 _autoplayer_lock = threading.Lock()
 
 
+@app.before_request
+def before_request():
+    """ Redirect http requests to https, returning a Moved Permanently code """
+    if not running_local and request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301 # Moved Permanently
+        return redirect(url, code=code)
+
+
 @app.context_processor
 def inject_into_context():
     """ Inject variables and functions into all Flask contexts """

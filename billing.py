@@ -169,7 +169,8 @@ def handle(request):
         if not request_valid(request.method, request.base_url, uid,
             xsc_date, xsc_key, xsc_digest, max_time = 300.0):
             # Wrong signature: probably not coming from SalesCloud
-            return "<html><body>Invalid signature</body></html>", 403 # Forbidden
+            logging.warning("Invalid signature in incoming redirect GET - url {0}".format(request.base_url))
+            # return "<html><body>Invalid signature</body></html>", 403 # Forbidden
         return redirect(url_for("friend", action=0)) # Redirect to a thank-you page
 
     # Begin by validating the request by checking its signature
