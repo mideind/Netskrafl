@@ -772,11 +772,13 @@ function appendMove(player, co, tiles, score) {
             { coord: rawCoord, tiles: tiles, score: score, player: playerColor, show: false },
             highlightMove
          );
-         // Clicking on a word in the word list looks up the word on the official word list website
-         m.on("click",
-            { tiles: tiles },
-            lookupWord
-         );
+         if (!gameIsManual())
+            // Clicking on a word in the word list looks up the word on the official word list website
+            // (This is not available in a manual challenge game)
+            m.on("click",
+               { tiles: tiles },
+               lookupWord
+            );
       }
    }
    /* Manage the scrolling of the move list */
