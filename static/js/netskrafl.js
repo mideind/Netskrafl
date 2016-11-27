@@ -612,9 +612,8 @@ function highlightMove(ev) {
 }
 
 function lookupWord(ev) {
-   /* Look up the word on the official word list website */
-   window.open('http://bin.arnastofnun.is/leit/?q=' + ev.data.tiles +
-      '&ordmyndir=on', 'bin');
+   /* Look up the word on official word list website */
+   window.open('http://malid.is/leit/' + ev.data.tiles, 'malid');
 }
 
 function appendMove(player, co, tiles, score) {
