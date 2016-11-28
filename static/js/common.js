@@ -54,6 +54,9 @@ function showUserInfo(nick, fullname, userid) {
    $("#usr-stats-all").css("display", "none");
    $("#versus-all").toggleClass("shown", true);
    $("#versus-you").toggleClass("shown", false);
+   // By default, not a friend of Netskrafl (modified later if friend)
+   $("#usr-info-icon-user").css("display", "inline-block");
+   $("#usr-info-icon-friend").css("display", "none");
    $("#usr-info-dialog")
       .data("userid", userid)
       .css("visibility", "visible");
@@ -187,11 +190,16 @@ function _populateRecentList(json, listId) {
       eloAdjHuman = "<span class='elo-btn left " + eloAdjHumanClass +
          (eloAdjHuman.length ? "" : " invisible") +
          "'>" + eloAdjHuman + "</span>";
+
+      // Was this a manual game?
+      var manual = "<span class='glyphicon glyphicon-lightbulb" +
+         (item.manual ? "' title='Keppnishamur'" : " grayed'") + "></span>";
+
       // Assemble the table row
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-win'>" + myWin + "</span>" +
-         "<span class='list-ts'>" + item.ts_last_move + "</span>" +
+         "<span class='list-ts-short'>" + item.ts_last_move + "</span>" +
          "<span class='list-nick'>" + opp + "</span>" +
          "<span class='list-s0'>" + item.sc0 + "</span>" +
          "<span class='list-colon'>:</span>" +
@@ -199,6 +207,7 @@ function _populateRecentList(json, listId) {
          "<span class='list-elo-adj'>" + eloAdjHuman + "</span>" +
          "<span class='list-elo-adj'>" + eloAdj + "</span>" +
          "<span class='list-duration'>" + duration + "</span>" +
+         "<span class='list-manual'>" + manual + "</span>" +
          "</a></div>";
       $(listId).append(str);
    }
@@ -271,6 +280,8 @@ function _populateStats(prefix, json) {
 
 function populateUserStats(json) {
    // Populate the statistics for a particular user
+   $("#usr-info-icon-user").css("display", json.friend ? "none" : "inline-block");
+   $("#usr-info-icon-friend").css("display", json.friend ? "inline-block" : "none");
    _populateStats("usr", json);
 }
 

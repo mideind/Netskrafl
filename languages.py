@@ -93,6 +93,13 @@ class Alphabet:
         # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
         return u"" + ts.isoformat(' ')[0:19]
  
+    # noinspection PyUnusedLocal
+    @staticmethod
+    def format_timestamp_short(ts, format = None):
+        """ Return a timestamp formatted as a readable string """
+        # Returns a short ISO format: YYYY-MM-DD HH:MM
+        return u"" + ts.isoformat(' ')[0:16]
+ 
     @staticmethod
     def _init():
         """ Create a collation (sort) mapping for the Icelandic language """

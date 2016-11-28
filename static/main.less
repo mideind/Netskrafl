@@ -2072,6 +2072,13 @@ span.list-ts {
    overflow: hidden;
 }
 
+span.list-ts-short {
+   display: inline-block;
+   width: 140px;
+   max-width: 140px;
+   overflow: hidden;
+}
+
 span.list-chall {
    display: inline-block;
    width: 315px;
@@ -2134,6 +2141,7 @@ span.list-tc {
    max-width: 100px;
    text-align: left;
    overflow: hidden;
+   padding-right: 6px;
 }
 
 div.tilecount {
@@ -2177,6 +2185,16 @@ span.list-overdue {
 }
 
 span.list-newbag {
+   display: inline-block;
+   font-size: 18px;
+   color: @triple-word;
+   width: 22px;
+   max-width: 22px;
+   margin-left: 14px;
+   overflow: hidden;
+}
+
+span.list-manual {
    display: inline-block;
    font-size: 18px;
    color: @triple-word;
@@ -2240,8 +2258,8 @@ span.list-human-elo {
 
 span.list-duration {
    display: inline-block;
-   width: 196px;
-   max-width: 196px;
+   width: 192px;
+   max-width: 192px;
    text-align: right;
    overflow: hidden;
 }
@@ -2604,6 +2622,10 @@ p span.glyphicon.glyphicon-flag,
    color: @freshtile;
 }
 
+span.glyphicon.glyphicon-lightbulb.grayed {
+   color: fade(black, 20%);
+}
+
 .listheader span.glyphicon.glyphicon-star-empty,
 .listheader span.glyphicon.glyphicon-hand-right.grayed,
 .listheader span.glyphicon.glyphicon-thumbs-down.grayed,
@@ -2614,9 +2636,12 @@ p span.glyphicon.glyphicon-flag,
    color: fade(black, 15%);
 }
 
-span.glyphicon.glyphicon-shopping-bag.grayed,
+span.glyphicon.glyphicon-hourglass.grayed,
+span.glyphicon.glyphicon-shopping-bag.grayed {
+   color: fade(black, 10%);
+}
+
 .listheader span.glyphicon.glyphicon-bookmark.grayed,
-.listheader span.glyphicon.glyphicon-hourglass.grayed,
 #recentlist span.glyphicon.glyphicon-bookmark.grayed,
 #usr-recent span.glyphicon.glyphicon-bookmark.grayed,
 #gamelist span.glyphicon.glyphicon-bookmark.grayed,
@@ -2827,6 +2852,10 @@ span.vbar {
 h1.usr-info-icon {
    display: inline;
    color: @background;
+}
+
+h1.usr-info-icon span.glyphicon-coffee-cup {
+   color: @freshtile;
 }
 
 div.usr-info-fav {

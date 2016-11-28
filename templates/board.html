@@ -361,7 +361,10 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
 
    <div class="usr-info-hdr">
-      <h1 class="usr-info-icon"><span class='glyphicon glyphicon-user'></span>&nbsp;</h1>
+      <h1 class="usr-info-icon"><!--
+         --><span id="usr-info-icon-user" class='glyphicon glyphicon-user'></span><!--
+         --><span id="usr-info-icon-friend" class='glyphicon glyphicon-coffee-cup' title="Vinur Netskrafls"></span><!--
+         -->&nbsp;</h1>
       <h1 id="usr-info-nick"></h1>
       <span class="vbar">|</span>
       <h2 id="usr-info-fullname"></h2>
@@ -376,13 +379,17 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <div class="listitem listheader"><span
    class="list-win"><span
    title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
-   class="list-ts">Viðureign lauk</span><span
+   class="list-ts-short">Viðureign lauk</span><span
    class="list-nick">Andstæðingur</span><span
    class="list-scorehdr">Úrslit</span><span
    class="list-elo-hdr"><span
       title="Mennskir andstæðingar" class='glyphicon glyphicon-user elo-hdr-left'></span>Elo<span
       title="Allir andstæðingar" class='glyphicon glyphicon-cog elo-hdr-right'></span></span><span
-   class="list-duration">Lengd</span></div>
+      class="list-duration">Lengd</span><!--
+      --><span class="list-manual"><!--
+         --><span title="Keppnishamur" class='glyphicon glyphicon-lightbulb grayed'></span><!--
+      --></span><!--
+   --></div>
 
    <!-- Recent game lists will be populated by populateRecentList() -->
    <div id="usr-recent"></div>

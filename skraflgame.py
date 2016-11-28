@@ -494,6 +494,7 @@ class User:
         reply["result"] = Error.LEGAL
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
+        reply["friend"] = self.friend()
         sm.populate_dict(reply)
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score

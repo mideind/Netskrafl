@@ -393,6 +393,7 @@ def _gamelist():
         prefs = g.get("prefs", None)
         fairplay = Game.fairplay_from_prefs(prefs)
         newbag = Game.new_bag_from_prefs(prefs)
+        manual = Game.manual_wordcheck_from_prefs(prefs)
         result.append({
             "uuid": g["uuid"],
             "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
@@ -401,12 +402,13 @@ def _gamelist():
             "fullname": u.full_name(),
             "sc0": g["sc0"],
             "sc1": g["sc1"],
-            "ts": Alphabet.format_timestamp(g["ts"]),
+            "ts": Alphabet.format_timestamp_short(g["ts"]),
             "my_turn": False,
             "overdue": False,
             "zombie": True,
             "fairplay": fairplay,
             "newbag": newbag,
+            "manual": manual,
             "tile_count": 100 # All tiles (100%) accounted for
         })
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
@@ -425,6 +427,7 @@ def _gamelist():
         tileset = Game.tileset_from_prefs(prefs)
         fairplay = Game.fairplay_from_prefs(prefs)
         newbag = Game.new_bag_from_prefs(prefs)
+        manual = Game.manual_wordcheck_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -449,12 +452,13 @@ def _gamelist():
             "fullname": fullname,
             "sc0": g["sc0"],
             "sc1": g["sc1"],
-            "ts": Alphabet.format_timestamp(ts),
+            "ts": Alphabet.format_timestamp_short(ts),
             "my_turn": g["my_turn"],
             "overdue": overdue,
             "zombie": False,
             "fairplay": fairplay,
             "newbag": newbag,
+            "manual": manual,
             "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles())
         })
     return result
@@ -568,6 +572,8 @@ def _recentlist(cuid, versus, max_len):
         ts_start = g["ts"]
         ts_end = g["ts_last_move"]
 
+        prefs = g["prefs"]
+
         if (ts_start is None) or (ts_end is None):
             days, hours, minutes = (0, 0, 0)
         else:
@@ -585,11 +591,12 @@ def _recentlist(cuid, versus, max_len):
             "sc1": g["sc1"],
             "elo_adj": g["elo_adj"],
             "human_elo_adj": g["human_elo_adj"],
-            "ts_last_move": Alphabet.format_timestamp(ts_end),
+            "ts_last_move": Alphabet.format_timestamp_short(ts_end),
             "days": int(days),
             "hours": int(hours),
             "minutes": int(minutes),
-            "duration": Game.get_duration_from_prefs(g["prefs"])
+            "duration": Game.get_duration_from_prefs(prefs),
+            "manual": Game.manual_wordcheck_from_prefs(prefs)
         })
     return result
 
@@ -632,7 +639,7 @@ def _challengelist():
                 "opp": nick,
                 "fullname": u.full_name(),
                 "prefs": c[1],
-                "ts": Alphabet.format_timestamp(c[2]),
+                "ts": Alphabet.format_timestamp_short(c[2]),
                 "opp_ready" : False
             })
         # List issued challenges
@@ -646,7 +653,7 @@ def _challengelist():
                 "opp": nick,
                 "fullname": u.full_name(),
                 "prefs": c[1],
-                "ts": Alphabet.format_timestamp(c[2]),
+                "ts": Alphabet.format_timestamp_short(c[2]),
                 "opp_ready" : opp_ready(c)
             })
     return result

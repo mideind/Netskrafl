@@ -431,15 +431,15 @@ function populateGameList(json) {
       if (item.oppid !== null) {
          info = "<span id='gmusr" + i + "' class='usr-info' title='Skoða feril'></span>";
       }
-      // Is the game using the new bag?
-      var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
-         (item.newbag ? " grayed" : "") + "' title='Gamli pokinn'></span>";
+      // Is this a manual game?
+      var manual = "<span class='glyphicon glyphicon-lightbulb" +
+         (item.manual ? "' title='Keppnishamur'" : " grayed'") + "></span>";
 
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<a href='" + item.url + "'>" +
          "<span class='list-myturn'>" + myTurn + "</span>" +
          "<span class='list-overdue'>" + overdue + "</span>" +
-         "<span class='list-ts'>" + item.ts + "</span>" +
+         "<span class='list-ts-short'>" + item.ts + "</span>" +
          "<span class='list-opp' title='" + fullname + "'>" + opp + "</span>" +
          "</a>" +
          "<span class='list-info' title='Skoða feril'>" + info + "</span>" +
@@ -447,7 +447,7 @@ function populateGameList(json) {
          "<span class='list-colon'>:</span>" +
          "<span class='list-s1'>" + item.sc1 + "</span>" +
          "<span class='list-tc'>" + tileCount + "</span>" +
-         "<span class='list-newbag'>" + newbag + "</span>" +
+         "<span class='list-manual'>" + manual + "</span>" +
          "</div>";
       $("#gamelist").append(str);
       // Enable user track record button
@@ -654,7 +654,7 @@ function populateChallengeList(json) {
       // Manual challenge indicator
       var manual = "";
       if (item.prefs.manual)
-         manual = "<span class='manual-btn' title='Handvirk véfenging'></span> ";
+         manual = "<span class='manual-btn' title='Keppnishamur'></span> ";
 
       // New bag preference
       var newbag = "<span class='glyphicon glyphicon-shopping-bag" +
