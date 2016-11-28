@@ -146,10 +146,15 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
+    def _sorted(l):
+        """ Return a list of (prefix, node) tuples sorted by prefix """
+        return sorted(l, key = lambda x: Alphabet.sortkey(x[0]))
+
+    @staticmethod
     def stringify_edges(edges):
         """ Utility function to create a compact descriptor string and hashable key for node edges """
         edges = [ prefix + u':' + (u'0' if node is None else str(node.id))
-            for prefix, node in edges.items() ]
+            for prefix, node in _DawgNode._sorted(edges.items()) ]
         return "_".join(edges)
 
     def __init__(self):

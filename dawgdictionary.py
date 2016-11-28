@@ -275,16 +275,14 @@ class Wordbase:
     def _load():
         """ Load a main dictionary """
         with Wordbase._lock:
-            if Wordbase._dawg is not None:
-                # Already loaded: nothing to do
-                return Wordbase._dawg
-            return Wordbase._load_resource("ordalisti") # Main dictionary
+            if Wordbase._dawg is None:
+                Wordbase._dawg = Wordbase._load_resource("ordalisti") # Main dictionary
 
     @staticmethod
     def dawg():
         """ Return the main dictionary DAWG object, loading it if required """
         if Wordbase._dawg is None:
-            Wordbase._dawg = Wordbase._load()
+            Wordbase._load()
         assert Wordbase._dawg is not None
         return Wordbase._dawg
 
@@ -292,16 +290,14 @@ class Wordbase:
     def _load_common():
         """ Load a dictionary of common words """
         with Wordbase._lock_common:
-            if Wordbase._dawg_common is not None:
-                # Already loaded: nothing to do
-                return Wordbase._dawg_common
-            return Wordbase._load_resource("algeng") # Common words
+            if Wordbase._dawg_common is None:
+                Wordbase._dawg_common = Wordbase._load_resource("algeng") # Common words
 
     @staticmethod
     def dawg_common():
         """ Return the common words DAWG object, loading it if required """
         if Wordbase._dawg_common is None:
-            Wordbase._dawg_common = Wordbase._load_common()
+            Wordbase._load_common()
         assert Wordbase._dawg_common is not None
         return Wordbase._dawg_common
 
@@ -321,11 +317,12 @@ class Navigation:
         """ Starting from a given node, navigate outgoing edges """
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
+        nav = self._nav
         for prefix, nextnode in node.edges.items():
-            if self._nav.push_edge(prefix[0]):
+            if nav.push_edge(prefix[0]):
                 # This edge is a candidate: navigate through it
                 self._navigate_from_edge(prefix, nextnode, matched)
-                if not self._nav.pop_edge():
+                if not nav.pop_edge():
                     # Short-circuit and finish the loop if pop_edge() returns False
                     break
 
@@ -423,7 +420,7 @@ class FindNavigator:
         """ Called to inform the navigator of a match and whether it is a final word """
         if final and self._index == self._len:
             # Yes, this is what we were looking for
-            assert matched == self._word
+            # assert matched == self._word
             self._found = True
 
     def pop_edge(self):
@@ -455,10 +452,11 @@ class PermutationNavigator:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
-        if not ((firstchar in self._rack) or (u'?' in self._rack)):
+        rack = self._rack
+        if not ((firstchar in rack) or (u'?' in rack)):
             return False
         # Fit: save our rack and move into the edge
-        self._stack.append(self._rack)
+        self._stack.append(rack)
         return True
 
     def accepting(self):
@@ -468,15 +466,16 @@ class PermutationNavigator:
 
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
-        exactmatch = newchar in self._rack
-        if (not exactmatch) and (u'?' not in self._rack):
+        rack = self._rack
+        exactmatch = newchar in rack
+        if (not exactmatch) and (u'?' not in rack):
             # Can't continue with this prefix - we no longer have rack letters matching it
             return False
         # We're fine with this: accept the character and remove from the rack
         if exactmatch:
-            self._rack = self._rack.replace(newchar, u'', 1)
+            self._rack = rack.replace(newchar, u'', 1)
         else:
-            self._rack = self._rack.replace(u'?', u'', 1)
+            self._rack = rack.replace(u'?', u'', 1)
         return True
 
     def accept(self, matched, final):
