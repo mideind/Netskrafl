@@ -282,7 +282,9 @@ class User:
 
     @staticmethod
     def friend_from_prefs(prefs):
-        """ Returns True if the user is a friend of Netskrafl """
+        """ Returns True if the user is a friend of Netskrafl 
+        :rtype: bool
+        """
         if prefs is None:
             return False
         friend = prefs.get(u"friend")
@@ -304,7 +306,7 @@ class User:
         """ Returns True if the user is a paying friend of Netskrafl """
         if prefs is None:
             return False
-        if not self.friend_from_prefs(prefs):
+        if not User.friend_from_prefs(prefs):
             # Must be a friend before being a paying friend
             return False
         has_paid = prefs.get(u"haspaid")
@@ -1263,6 +1265,7 @@ class Game:
         # Populate (word, score) tuples for each bingo for each player
         bingo0 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 0]
         bingo1 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 1]
+        # noinspection PyRedundantParentheses
         return (bingo0, bingo1)
 
     def statistics(self):

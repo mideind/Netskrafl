@@ -458,24 +458,24 @@ class _BinaryDawgPacker:
         # number of root edges
         self._stream.write(self._byte_struct.pack(num_root_edges))
 
-    def node_start(self, id, final, num_edges):
+    def node_start(self, ident, final, num_edges):
         pos = self._stream.tell()
-        if id in self._fixups:
+        if ident in self._fixups:
             # We have previously output references to this node without
             # knowing its location: fix'em now
-            for fix in self._fixups[id]:
+            for fix in self._fixups[ident]:
                 self._stream.seek(fix)
                 self._stream.write(self._loc_struct.pack(pos))
             self._stream.seek(pos)
-            del self._fixups[id]
+            del self._fixups[ident]
         # Remember where we put this node
-        self._locs[id] = pos
+        self._locs[ident] = pos
         self._stream.write(self._byte_struct.pack((0x80 if final else 0x00) | (num_edges & 0x7F)))
 
-    def node_end(self, id):
+    def node_end(self, ident):
         pass
 
-    def edge(self, id, prefix):
+    def edge(self, ident, prefix):
         b = []
         last = None
         for c in prefix:
@@ -497,19 +497,19 @@ class _BinaryDawgPacker:
             self._stream.write(self._byte_struct.pack(len(b) & 0x3F))
             for by in b:
                 self._stream.write(self._byte_struct.pack(by))
-        if id == 0:
+        if ident == 0:
             self._stream.write(self._loc_struct.pack(0))
-        elif id in self._locs:
+        elif ident in self._locs:
             # We've already written the node and know where it is: write its location
-            self._stream.write(self._loc_struct.pack(self._locs[id]))
+            self._stream.write(self._loc_struct.pack(self._locs[ident]))
         else:
             # This is a forward reference to a node we haven't written yet:
             # reserve space for the node location and add a fixup
             pos = self._stream.tell()
             self._stream.write(self._loc_struct.pack(0xFFFFFFFF)) # Temporary - will be overwritten
-            if id not in self._fixups:
-                self._fixups[id] = []
-            self._fixups[id].append(pos)
+            if ident not in self._fixups:
+                self._fixups[ident] = []
+            self._fixups[ident].append(pos)
 
     def finish(self):
         # Clear the temporary fixup stuff from memory
@@ -644,7 +644,7 @@ class DawgBuilder:
             """ Close the associated file, if it is still open """
             pass
 
-    def _load(self, relpath, inputs, removals, filter):
+    def _load(self, relpath, inputs, removals, word_filter):
         """ Load word lists into the DAWG from one or more static text files,
             assumed to be located in the relpath subdirectory.
             The text files should contain one word per line,
@@ -718,7 +718,7 @@ class DawgBuilder:
                 else:
                     # Identical to previous word
                     duplicates += 1
-            elif filter is None or filter(word):
+            elif word_filter is None or word_filter(word):
                 # This word passes the filter: check the removal list, if any
                 while remove_key is not None and remove_key < key:
                     # Skip past words in the removal file as needed
@@ -773,7 +773,7 @@ class DawgBuilder:
         with codecs.open(fname, mode='w', encoding='utf-8') as fout:
             self._dawg.write_text(fout)
 
-    def build(self, inputs, output, relpath="resources", filter=None, removals=None):
+    def build(self, inputs, output, relpath="resources", word_filter=None, removals=None):
         """ Build a DAWG from input file(s) and write it to the output file(s) (potentially in multiple formats).
             The input files are assumed to be individually sorted in correct ascending alphabetical
             order. They will be merged in parallel into a single sorted stream and added to the DAWG.
@@ -787,7 +787,7 @@ class DawgBuilder:
             # Nothing to do
             print("No inputs or no output: Nothing to do")
             return
-        self._load(relpath, inputs, removals, filter)
+        self._load(relpath, inputs, removals, word_filter)
         # print("Dumping...")
         # self._dawg.dump()
         print("Outputting...")

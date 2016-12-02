@@ -631,6 +631,7 @@ class ChallengeModel(ndb.Model):
     def find_relation(cls, srcuser_id, destuser_id):
         """ Return (found, prefs) where found is True if srcuser has challenged destuser """
         if srcuser_id is None or destuser_id is None:
+            # noinspection PyRedundantParentheses
             return (False, None)
         ks = ndb.Key(UserModel, srcuser_id)
         kd = ndb.Key(UserModel, destuser_id)
@@ -638,6 +639,7 @@ class ChallengeModel(ndb.Model):
         cm = q.get()
         if cm is None:
             # Not found
+            # noinspection PyRedundantParentheses
             return (False, None)
         # Found: return the preferences associated with the challenge (if any)
         return (True, cm.prefs)
