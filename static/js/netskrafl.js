@@ -1326,12 +1326,14 @@ function updateButtonState() {
    var showScramble = false;
    var showMove = false;
    var showChallenge = false;
+   var showChallengeInfo = false;
    if ((!gameOver) && localTurn()) {
       /* The local player's turn */
       if (lastChallenge) {
          // The last tile move is on the board. It can only be passed or challenged.
          showChallenge = true;
          showPass = true;
+         showChallengeInfo = true;
       }
       else {
          showMove = (tilesPlaced !== 0);
@@ -1369,6 +1371,8 @@ function updateButtonState() {
       // Reset to normal window/tab title
       document.title = "Netskrafl";
    }
+   /* Show the last challenge reminder as appropriate */
+   $("div.chall-info").css("visibility", showChallengeInfo ? "visible" : "hidden");
    /* Erase previous error message, if any */
    $("div.error").css("visibility", "hidden");
    /* Calculate tentative score */

@@ -321,6 +321,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
 </div>
 
+<!-- Reminder when only challenge or pass are possible.
+   Note: this should occur before the chall, pass and pass-last divs as we
+   want this div to stay behind them. -->
+<div class="chall-info"><span class="glyphicon glyphicon-info-sign"></span>
+   &nbsp;<span class="pass-explain">Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass</span>
+</div>
+
 <!-- Confirm resignation of game -->
 <div class="resign"><span class="glyphicon glyphicon-exclamation-sign"></span>
    &nbsp;Viltu gefa leikinn?&nbsp;

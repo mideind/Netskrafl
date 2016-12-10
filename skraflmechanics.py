@@ -28,6 +28,7 @@ from languages import Alphabet
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
 _DEBUG_MANUAL_WORDCHECK = False
+#_DEBUG_MANUAL_WORDCHECK = True
 
 
 class Board:

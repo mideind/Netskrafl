@@ -2,18 +2,22 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: fresh
+version: manual
 runtime: python27
 api_version: 1
 threadsafe: true
 
+instance_class: B2
+manual_scaling:
+  instances: 4
+
 # Running on frontend instances of class 2 (256 MB RAM)
-instance_class: F2
-automatic_scaling:
-  min_idle_instances: 2
-  max_idle_instances: automatic
-  min_pending_latency: 500ms
-  max_pending_latency: 2000ms
+#instance_class: F2
+#automatic_scaling:
+#  min_idle_instances: 4
+#  max_idle_instances: 6
+#  min_pending_latency: 2000ms
+#  max_pending_latency: 5000ms
 
 inbound_services:
 - warmup
