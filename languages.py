@@ -154,6 +154,7 @@ class Alphabet:
 Alphabet._init()
 
 
+# noinspection PyUnresolvedReferences
 class TileSet(object):
 
     """ Abstract base class for tile sets. Concrete classes are found below. """
