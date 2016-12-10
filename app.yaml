@@ -29,6 +29,10 @@ builtins:
 handlers:
 
 # Predefined App Engine task queue deferral URL, admin only
+- url: /_ah/start
+  script: netskrafl.app
+
+# Predefined App Engine task queue deferral URL, admin only
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin

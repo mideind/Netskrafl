@@ -667,7 +667,7 @@ def start():
     ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
     logging.info(u"Start/warmup, instance {0}, ok is {1}".format(
         os.environ.get("INSTANCE_ID", ""), ok))
-    return jsonify(ok = ok)
+    return "", 200 # jsonify(ok = ok)
 
 
 @app.route("/_ah/warmup")
@@ -683,7 +683,7 @@ def channel_connected():
     # logging.info(u"Channel connect from id {0}".format(chid).encode('latin-1'))
     # Mark the entity as being connected
     ChannelModel.connect(chid)
-    return jsonify(ok = True)
+    return "", 200 # jsonify(ok = True)
 
 
 @app.route("/_ah/channel/disconnected/", methods=['POST'])
@@ -694,7 +694,7 @@ def channel_disconnected():
     # logging.info(u"Channel disconnect from id {0}".format(chid).encode('latin-1'))
     # Mark the entity as being disconnected
     ChannelModel.disconnect(chid)
-    return jsonify(ok = True)
+    return "", 200 # jsonify(ok = True)
 
 
 @app.route("/submitmove", methods=['POST'])
