@@ -20,7 +20,7 @@ manual_scaling:
 #  max_pending_latency: 5000ms
 
 inbound_services:
-- warmup
+#- warmup
 - channel_presence
 
 builtins:

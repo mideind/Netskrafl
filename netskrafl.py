@@ -76,7 +76,8 @@ _autoplayer_lock = threading.Lock()
 @app.before_request
 def before_request():
     """ Redirect http requests to https, returning a Moved Permanently code """
-    if not running_local and request.url.startswith('http://'):
+    if not running_local and request.url.startswith('http://') \
+        and not request.path.startswith('/_ah/'):
         url = request.url.replace('http://', 'https://', 1)
         code = 301 # Moved Permanently
         return redirect(url, code=code)
