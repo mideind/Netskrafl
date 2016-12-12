@@ -206,6 +206,20 @@ def _process_move(game, movelist):
     return jsonify(game.client_state(player_index))
 
 
+def fetch_users(ulist, uid_func):
+    """ Return a dictionary of users found in the ulist """
+    # Make a list of user ids by applying the uid_func to ulist entries (!= None)
+    uids = []
+    for u in ulist:
+        uid = None if u is None else uid_func(u)
+        if uid:
+            uids.append(uid)
+    # No need for a special case for an empty list
+    users = User.load_multi(uids)
+    # Return a dictionary mapping user ids to users
+    return { uid : user for uid, user in zip(uids, users) }
+
+
 def _userlist(query, spec):
     """ Return a list of users matching the filter criteria """
 
@@ -419,6 +433,8 @@ def _gamelist():
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
+    # Multi-fetch the opponents in the game list
+    opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
         opp = g["opp"] # User id of opponent
@@ -435,7 +451,7 @@ def _gamelist():
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = User.load(opp)
+            u = opponents[opp] # Was User.load(opp)
             nick = u.nickname()
             fullname = u.full_name()
             delta = now - ts
@@ -558,7 +574,9 @@ def _recentlist(cuid, versus, max_len):
         return []
     result = []
     # Obtain a list of recently finished games where the indicated user was a player
-    rlist = GameModel.list_finished_games(cuid, versus = versus, max_len = max_len)
+    rlist = list(GameModel.list_finished_games(cuid, versus = versus, max_len = max_len))
+    # Multi-fetch the opponents in the list into a dictionary
+    opponents = fetch_users(rlist, lambda g: g["opp"])
     for g in rlist:
         opp = g["opp"]
         if opp is None:
@@ -566,7 +584,7 @@ def _recentlist(cuid, versus, max_len):
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = User.load(opp)
+            u = opponents[opp] # Was User.load(opp)
             nick = u.nickname()
 
         # Calculate the duration of the game in days, hours, minutes
@@ -585,7 +603,7 @@ def _recentlist(cuid, versus, max_len):
             minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
 
         result.append({
-            "url": url_for('board', game = g["uuid"]), # Was 'review'
+            "url": url_for('board', game = g["uuid"]),
             "opp": nick,
             "opp_is_robot": opp is None,
             "sc0": g["sc0"],
@@ -630,9 +648,14 @@ def _challengelist():
     if cuid is not None:
 
         # List received challenges
-        i = iter(ChallengeModel.list_received(cuid, max_len = 20))
-        for c in i:
-            u = User.load(c[0]) # User id
+        received = list(ChallengeModel.list_received(cuid, max_len = 20))
+        # List issued challenges
+        issued = list(ChallengeModel.list_issued(cuid, max_len = 20))
+        # Multi-fetch all opponents involved
+        opponents = fetch_users(received + issued, lambda c: c[0])
+        # List the received challenges
+        for c in received:
+            u = opponents[c[0]] # User.load(c[0]) # User id
             nick = u.nickname()
             result.append({
                 "received": True,
@@ -643,10 +666,9 @@ def _challengelist():
                 "ts": Alphabet.format_timestamp_short(c[2]),
                 "opp_ready" : False
             })
-        # List issued challenges
-        i = iter(ChallengeModel.list_issued(cuid, max_len = 20))
-        for c in i:
-            u = User.load(c[0]) # User id
+        # List the issued challenges
+        for c in issued:
+            u = opponents[c[0]] # User.load(c[0]) # User id
             nick = u.nickname()
             result.append({
                 "received": False,

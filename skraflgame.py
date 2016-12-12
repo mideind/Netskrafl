@@ -437,7 +437,7 @@ class User:
 
     @classmethod
     def load_multi(cls, uids):
-        """ Load multiple users from persistent storage given their user id """
+        """ Load multiple users from persistent storage, given their user id """
         users = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
