@@ -1443,7 +1443,6 @@ class ZombieModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        # List issued challenges in ascending order by timestamp (oldest first)
         q = cls.query(ZombieModel.player == k)
 
         def z_callback(zm):
@@ -1472,4 +1471,40 @@ class ZombieModel(ndb.Model):
 
         for zm in q.fetch():
             yield z_callback(zm)
+
+
+class PromoModel(ndb.Model):
+    """ Models promotions displayed to players """
+
+    # The player that saw the promotion
+    player = ndb.KeyProperty(kind = UserModel)
+    # The promotion id
+    promotion = ndb.StringProperty(indexed = True, required = True)
+    # The timestamp
+    timestamp = ndb.DateTimeProperty(auto_now_add = True)
+
+    def set_player(self, user_id):
+        """ Set the player's user id """
+        assert user_id is not None
+        self.player = ndb.Key(UserModel, user_id)
+
+    @classmethod
+    def add_promotion(cls, user_id, promotion):
+        """ Add a zombie game that has not been seen by the player in question """
+        pm = cls()
+        pm.set_player(user_id)
+        pm.promotion = promotion
+        pm.put()
+
+    @classmethod
+    def list_promotions(cls, user_id, promotion):
+        """ Return a list of timestamps for when the given promotion has been displayed """
+        assert user_id is not None
+        if user_id is None:
+            return
+        k = ndb.Key(UserModel, user_id)
+        q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
+
+        for pm in q.fetch(projection = [PromoModel.timestamp]):
+            yield pm.timestamp
 

@@ -98,6 +98,12 @@ indexes:
   - name: over
   - name: ts_last_move
 
+- kind: PromoModel
+  properties:
+  - name: player
+  - name: promotion
+  - name: timestamp
+
 - kind: RatingModel
   properties:
   - name: kind

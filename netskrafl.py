@@ -30,6 +30,7 @@ import logging
 import json
 import threading
 import re
+import random
 
 from datetime import datetime, timedelta
 
@@ -49,7 +50,7 @@ from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Context, UserModel, GameModel, \
     FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel, \
-    ZombieModel
+    ZombieModel, PromoModel
 import billing
 
 # Standard Flask initialization
@@ -72,6 +73,10 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
 # within an instance
 _autoplayer_lock = threading.Lock()
 
+# Promotion parameters
+_PROMO_FREQUENCY = 8 # A promo check is done randomly, but on average every 1 out of N times
+_PROMO_COUNT = 2 # Max number of times that the same promo is displayed
+_PROMO_INTERVAL = timedelta(days = 4) # Min interval between promo displays
 
 @app.before_request
 def before_request():
@@ -1669,7 +1674,7 @@ def promo():
     if user is None:
         return redirect(url_for("login"))
     key = request.form.get("key", "")
-    VALID_PROMOS = { "friend" }
+    VALID_PROMOS = { "friend", "krafla" }
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user = user)
@@ -1712,14 +1717,39 @@ def main():
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
 
+    uid = user.id()
+
     # Create a Google App Engine Channel API token
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
-    channel_token = ChannelModel.create_new(u"user", user.id(), user.id())
+    channel_token = ChannelModel.create_new(u"user", uid, uid)
+
+    # Promotion display logic
+    promo = None
+    if random.randint(1, _PROMO_FREQUENCY) == 1:
+        # Once every N times, check whether this user may be due for
+        # a promotion display
+        promo = 'krafla'
+        # The list_promotions call yields a list of timestamps
+        promos = sorted(list(PromoModel.list_promotions(uid, promo)))
+        now = datetime.utcnow()
+        if len(promos) >= _PROMO_COUNT:
+            # Already seen too many of these
+            promo = None
+        elif promos and (now - promos[-1] < _PROMO_INTERVAL):
+            # Less than one interval since last promo was displayed: don't display this one
+            promo = None
+
+    if promo:
+        # Note the fact that we have displayed this promotion to this user
+        logging.info("Displaying promo {1} to user {0} who has already seen it {2} times"
+            .format(uid, promo, len(promos)))
+        PromoModel.add_promotion(uid, promo)
 
     return render_template("main.html", user = user,
-        channel_token = channel_token, tab = tab)
+        channel_token = channel_token, tab = tab,
+        promo = promo)
 
 
 @app.route("/login")

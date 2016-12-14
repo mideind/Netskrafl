@@ -327,15 +327,20 @@ function openPromoDialog(key, completeFunc) {
    $("#promo-dialog")
       .data("param", { key: key })
       .css("visibility", "visible");
+   $("#promo-form")
+      .toggleClass("promo-" + key, true);
    // Obtain the promo content from the server and put it into the #promo-content div
    serverQueryHtml("/promo", { key: key }, "#promo-content", completeFunc);
 }
 
 function closePromoDialog() {
    // Hide the dialog
+   var key = $("#promo-dialog").data("param").key;
    $("#promo-dialog")
       .data("param", null)
       .css("visibility", "hidden");
+   $("#promo-form")
+      .toggleClass("promo-" + key, false);
    $("#promo-content").html("");
 }
 

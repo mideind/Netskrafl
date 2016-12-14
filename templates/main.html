@@ -503,6 +503,11 @@ function lateInit() {
    $("#stats-toggler").click(toggleStats);
    initToggle("#own-toggler", false);
    $("#own-toggler").click(toggleOwnStats);
+
+{% if promo %}
+   // Display promotion, if so commanded
+   openPromoDialog("{{ promo }}", null);
+{% endif %}
 }
 
 $(document).ready(initMain);
