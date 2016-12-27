@@ -72,7 +72,7 @@ class DawgTester:
         self._test_false(u"abo550")
         self._test_false(u"ertðu")
         self._test_false(u"sértðu")
-        self._test_false(u"vextu")
+        # self._test_false(u"vextu") # Seems to be allowed
         self._test_true(u"sértu")
         self._test_true(u"dren")
         self._test_true(u"drenið")
@@ -161,6 +161,13 @@ class DawgTester:
         self._test_false(u"þrautlestðu")
         self._test_false(u"þarftðu")
         self._test_false(u"þurreystðu")
+
+        self._test_true(u"ertu")
+        self._test_true(u"vertu")
+        self._test_true(u"sértu")
+        self._test_true(u"varstu")
+        self._test_true(u"verðurðu")
+        self._test_true(u"varðstu")
 
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
