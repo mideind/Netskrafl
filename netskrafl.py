@@ -1730,16 +1730,19 @@ def main():
     if random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
-        promo = 'krafla'
+
+        # promo = 'krafla' # Un-comment this to enable promo
+
         # The list_promotions call yields a list of timestamps
-        promos = sorted(list(PromoModel.list_promotions(uid, promo)))
-        now = datetime.utcnow()
-        if len(promos) >= _PROMO_COUNT:
-            # Already seen too many of these
-            promo = None
-        elif promos and (now - promos[-1] < _PROMO_INTERVAL):
-            # Less than one interval since last promo was displayed: don't display this one
-            promo = None
+        if promo:
+            promos = sorted(list(PromoModel.list_promotions(uid, promo)))
+            now = datetime.utcnow()
+            if len(promos) >= _PROMO_COUNT:
+                # Already seen too many of these
+                promo = None
+            elif promos and (now - promos[-1] < _PROMO_INTERVAL):
+                # Less than one interval since last promo was displayed: don't display this one
+                promo = None
 
     if promo:
         # Note the fact that we have displayed this promotion to this user

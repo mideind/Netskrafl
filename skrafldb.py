@@ -1375,7 +1375,7 @@ class ChatModel(ndb.Model):
     @classmethod
     def check_conversation(cls, channel, userid):
         """ Returns True if there are unseen messages in the conversation """
-        CHUNK_SIZE = 20
+        CHUNK_SIZE = 40
         q = cls.query(ChatModel.channel == channel).order(- ChatModel.timestamp)
         for cm in iter_q(q, CHUNK_SIZE):
             if (cm.user.id() != userid) and cm.msg:
