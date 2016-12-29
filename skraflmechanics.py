@@ -31,6 +31,45 @@ _DEBUG_MANUAL_WORDCHECK = False
 #_DEBUG_MANUAL_WORDCHECK = True
 
 
+# Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
+_RAW_WORDSCORE = [
+    "311111131111113",
+    "121111111111121",
+    "112111111111211",
+    "111211111112111",
+    "111121111121111",
+    "111111111111111",
+    "111111111111111",
+    "311111121111113",
+    "111111111111111",
+    "111111111111111",
+    "111121111121111",
+    "111211111112111",
+    "112111111111211",
+    "121111111111121",
+    "311111131111113"
+]
+
+# Board squares with letter scores (1=normal/single, 2=double, 3=triple letter score)
+_RAW_LETTERSCORE = [
+    "111211111112111",
+    "111113111311111",
+    "111111212111111",
+    "211111121111112",
+    "111111111111111",
+    "131113111311131",
+    "112111212111211",
+    "111211111112111",
+    "112111212111211",
+    "131113111311131",
+    "111111111111111",
+    "211111121111112",
+    "111111212111111",
+    "111113111311111",
+    "111211111112111"
+]
+
+
 class Board:
 
     """ Represents the characteristics and the contents of a Scrabble board.
@@ -42,41 +81,8 @@ class Board:
     # The rows are identified by letter
     ROWIDS = u"ABCDEFGHIJKLMNO"
 
-    # Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
-    _wordscore = [
-        "311111131111113",
-        "121111111111121",
-        "112111111111211",
-        "111211111112111",
-        "111121111121111",
-        "111111111111111",
-        "111111111111111",
-        "311111121111113",
-        "111111111111111",
-        "111111111111111",
-        "111121111121111",
-        "111211111112111",
-        "112111111111211",
-        "121111111111121",
-        "311111131111113"]
-
-    # Board squares with letter scores (1=normal/single, 2=double, 3=triple letter score)
-    _letterscore = [
-        "111211111112111",
-        "111113111311111",
-        "111111212111111",
-        "211111121111112",
-        "111111111111111",
-        "131113111311131",
-        "112111212111211",
-        "111211111112111",
-        "112111212111211",
-        "131113111311131",
-        "111111111111111",
-        "211111121111112",
-        "111111212111111",
-        "111113111311111",
-        "111211111112111"]
+    _wordscore = [ [ int(c) for c in row ] for row in _RAW_WORDSCORE ]
+    _letterscore = [ [ int(c) for c in row ] for row in _RAW_LETTERSCORE ]
 
     @staticmethod
     def short_coordinate(horiz, row, col):
@@ -107,7 +113,7 @@ class Board:
 
     def is_covered(self, row, col):
         """ Is the specified square already covered (taken)? """
-        return self.letter_at(row, col) != u' '
+        return self._letters[row][col] != u' '
 
     def has_adjacent(self, row, col):
         """ Check whether there are any tiles on the board adjacent to this square """
@@ -133,7 +139,7 @@ class Board:
         """ Set the letter at the specified co-ordinate """
         # assert letter is not None
         # assert len(letter) == 1
-        prev = self.letter_at(row, col)
+        prev = self._letters[row][col]
         if prev == letter:
             # Unchanged square: we're done
             return
@@ -143,13 +149,14 @@ class Board:
         elif prev != u' ' and letter == u' ':
             # Removing a letter from a previously filled square
             self._numletters -= 1
-        self._letters[row] = self._letters[row][0:col] + letter + self._letters[row][col + 1:]
+        r = self._letters[row]
+        self._letters[row] = r[0:col] + letter + r[col + 1:]
 
     def set_tile(self, row, col, tile):
         """ Set the tile at the specified co-ordinate """
         # assert tile is not None
         # assert len(tile) == 1
-        prev = self.tile_at(row, col)
+        prev = self._tiles[row][col]
         if prev == tile:
             # Unchanged square: we're done
             return
@@ -159,7 +166,8 @@ class Board:
         elif prev != u' ' and tile == u' ':
             # Removing a tile from a previously filled square
             self._numtiles -= 1
-        self._tiles[row] = self._tiles[row][0:col] + tile + self._tiles[row][col + 1:]
+        r = self._tiles[row]
+        self._tiles[row] = r[0:col] + tile + r[col + 1:]
 
     def enum_tiles(self):
         """ Enumerate the tiles on the board with their coordinates """
@@ -233,12 +241,12 @@ class Board:
     @staticmethod
     def wordscore(row, col):
         """ Returns the word score factor of the indicated square, 1, 2 or 3 """
-        return int(Board._wordscore[row][col])
+        return Board._wordscore[row][col]
 
     @staticmethod
     def letterscore(row, col):
         """ Returns the letter score factor of the indicated square, 1, 2 or 3 """
-        return int(Board._letterscore[row][col])
+        return Board._letterscore[row][col]
 
         
 class Bag:
@@ -800,6 +808,7 @@ class Move(MoveBase):
     INCORRECT_CHALLENGE_BONUS = 10
 
     def __init__(self, word, row, col, horiz=True):
+        super(Move, self).__init__()
         # A list of squares covered by the play, i.e. actual tiles
         # laid down on the board
         self._covers = []
@@ -1210,6 +1219,7 @@ class ExchangeMove(MoveBase):
         and new tiles drawn instead """
 
     def __init__(self, tiles):
+        super(ExchangeMove, self).__init__()
         self._tiles = tiles
 
     def __str__(self):
@@ -1270,7 +1280,7 @@ class ChallengeMove(MoveBase):
     """
 
     def __init__(self):
-        pass
+        super(ChallengeMove, self).__init__()
 
     def __str__(self):
         """ Return a readable description of the move """
@@ -1307,6 +1317,7 @@ class ResponseMove(MoveBase):
     """ Represents a response to a challenge move """
 
     def __init__(self):
+        super(ResponseMove, self).__init__()
         self._score = None
         self._num_covers = 0
 
@@ -1378,7 +1389,7 @@ class PassMove(MoveBase):
     """ Represents a pass move, where the player does nothing """
 
     def __init__(self):
-        pass
+        super(PassMove, self).__init__()
 
     def __str__(self):
         """ Return a readable string describing the move """
@@ -1405,6 +1416,7 @@ class ResignMove(MoveBase):
     """ Represents a resign move, where the player forfeits the game """
 
     def __init__(self, forfeited_points):
+        super(ResignMove, self).__init__()
         self._forfeited_points = forfeited_points
 
     def __str__(self):

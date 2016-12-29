@@ -66,6 +66,7 @@ log/
 console/
 venv/
 node_modules/
+.idea/
 
 # Installer logs
 pip-log.txt
