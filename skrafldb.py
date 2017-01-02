@@ -95,6 +95,9 @@ class Unique:
 
 def iter_q(q, chunk_size = 50, limit = 0, projection = None):
     """ Generator for iterating through a query using a cursor """
+    if 0 < limit < chunk_size:
+        # Don't fetch more than we want
+        chunk_size = limit
     items, next_cursor, more = q.fetch_page(chunk_size, projection = projection)
     count = 0
     while items:
@@ -435,7 +438,7 @@ class GameModel(ndb.Model):
         """ Query for a list of recently finished games for the given user """
         assert user_id is not None
         if user_id is None:
-            return
+            return []
 
         def game_callback(gm):
             """ Map a game entity to a result dictionary with useful info about the game """
@@ -472,25 +475,32 @@ class GameModel(ndb.Model):
         if versus:
             # Add a filter on the opponent
             v = ndb.Key(UserModel, versus)
-            q = cls.query(
-                ndb.OR(
-                    ndb.AND(GameModel.player1 == k, GameModel.player0 == v),
-                    ndb.AND(GameModel.player0 == k, GameModel.player1 == v)
-                )
-            )
+            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
+            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
         else:
             # Plain filter on the player
-            q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)) \
+            q0 = cls.query(GameModel.player0 == k)
+            q1 = cls.query(GameModel.player1 == k)
 
-        q = q.filter(GameModel.over == True) \
+        q0 = q0.filter(GameModel.over == True) \
+            .order(-GameModel.ts_last_move)
+        q1 = q1.filter(GameModel.over == True) \
             .order(-GameModel.ts_last_move)
 
-        for gm in q.fetch(max_len):
-            yield game_callback(gm)
+        # Issue two asynchronous queries in parallel
+        qf = ( q0.fetch_async(max_len), q1.fetch_async(max_len) )
+        # Wait for both of them to finish
+        ndb.Future.wait_all(qf)
+
+        # Combine the two query result lists and call game_callback() on each item
+        rlist = map(game_callback, qf[0].get_result() + qf[1].get_result())
+
+        # Return the newest max_len games
+        return sorted(rlist, key = lambda x: x["ts_last_move"], reverse = True)[0:max_len]
 
 
     @classmethod
-    def list_live_games(cls, user_id, max_len = 10):
+    def iter_live_games(cls, user_id, max_len = 10):
         """ Query for a list of active games for the given user """
         assert user_id is not None
         if user_id is None:

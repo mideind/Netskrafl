@@ -434,7 +434,7 @@ def _gamelist():
     # Sort zombies in decreasing order by last move, i.e. most recently completed games first
     result.sort(key = lambda x: x["ts"], reverse = True)
     # Obtain up to 50 live games where this user is a player
-    i = list(GameModel.list_live_games(cuid, max_len = 50))
+    i = list(GameModel.iter_live_games(cuid, max_len = 50))
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
@@ -579,7 +579,7 @@ def _recentlist(cuid, versus, max_len):
         return []
     result = []
     # Obtain a list of recently finished games where the indicated user was a player
-    rlist = list(GameModel.list_finished_games(cuid, versus = versus, max_len = max_len))
+    rlist = GameModel.list_finished_games(cuid, versus = versus, max_len = max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
     for g in rlist:
