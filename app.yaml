@@ -2,14 +2,14 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: singular
+version: idefix
 runtime: python27
 api_version: 1
 threadsafe: true
 
 instance_class: B2
 manual_scaling:
-  instances: 4
+  instances: 3
 
 # Running on frontend instances of class 2 (256 MB RAM)
 #instance_class: F2
