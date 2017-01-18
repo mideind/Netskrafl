@@ -703,7 +703,7 @@ function appendMove(player, co, tiles, score) {
    else
       rightTotal = Math.max(rightTotal + score, 0);
    var str;
-   var title = (tileMoveIncrement > 0) ? 'title="Smelltu til að fletta upp" ' : "";
+   var title = (tileMoveIncrement > 0 && !gameIsManual()) ? 'title="Smelltu til að fletta upp" ' : "";
    if (wrdclass == "gameover") {
       str = '<div class="move gameover"><span class="gameovermsg">' + tiles + '</span>' +
          '<span class="statsbutton" onclick="navToReview()">Skoða yfirlit</span></div>';

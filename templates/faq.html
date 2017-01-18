@@ -7,7 +7,7 @@
 
 -->
 
-<p>Hér fyrir neðan er svarað yfir 20 algengum spurningum um Netskrafl og virkni þess.
+<p>Hér fyrir neðan er svarað næstum 30 algengum spurningum um Netskrafl og virkni þess.
 Ef spurningu þinni er ekki svarað hér er um að gera að leggja hana fram í
 <a href="https://www.facebook.com/groups/828426797220211/" target="_blank">Facebook-hópi Netskrafls</a>.</p>
 
@@ -41,6 +41,8 @@ Ef spurningu þinni er ekki svarað hér er um að gera að leggja hana fram í
 <li><a href="#faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?</a></li>
 <li><a href="#faq-26">Hvernig setur maður inn broskalla í spjallinu?</a></li>
 <li><a href="#faq-27">Hvað er „vinur Netskrafls“?</a></li>
+<li><a href="#faq-28">Hvað er „keppnishamur“?</a></li>
+<li><a href="#faq-29">Hvernig skora ég á andstæðing í keppnisham?</a></li>
 </ol>
 
 <p><b>Svör:</b></p>
@@ -437,6 +439,30 @@ að gerast <b>vinir Netskrafls</b> og leggja lága upphæð, 490 kr. - andvirði
 með því að <a href="{{ url_for('friend', action=1) }}">smella hér</a>.</p>
 {% endif %}
 {% endif %}
+
+<li id="faq-28">Hvað er „keppnishamur“?</li>
+<p>Vinir Netskrafls geta skorað á aðra leikmenn í <b>keppnisham</b>.
+Í keppnisham er enginn grænn þumall sem segir til um hvort orð eru gild eða ekki. Leggja má niður
+hvaða orð sem er. Það er andstæðingsins að véfengja lögn sem hann telur ranga.</p>
+<p style="float:right;margin-top:0;padding-top:0;margin-right:0;padding-right:0;padding-left:6px;"><img src="{{ url_for('static', filename='ChallengeButton.png') }}"></p>
+<p>Lögn andstæðings er véfengd með því að smella á dökkbláan hnapp með hvítu bannmerki.
+<span class="glyphicon glyphicon-play"></span></p>
+<p>Ef lögn andstæðings er ógild, þ.e. eitthvert orð sem hún myndar er ekki í orðagrunni Netskrafls, er hún
+fjarlægð af borðinu og stig sem andstæðingurinn fékk fyrir hana eru dregin af honum.
+Þú átt þá leik en andstæðingurinn hefur fyrirgert umferðinni og fær engin stig fyrir hana.</p>
+<p>Ef lögn andstæðings er hins vegar gild, og véfengingin þar af leiðandi óréttmæt, fær
+andstæðingurinn 10 stig aukalega í sárabætur. Þú átt hins vegar áfram leik.</p>
+<p>Keppnishamnum er ætlað að líkja eftir hefðbundnu borðskrafli. Reglur um véfengingu
+eru í samræmi við reglur Skraflfélags Íslands.</p>
+
+<li id="faq-29">Hvernig skora ég á andstæðing í keppnisham?</li>
+<p>Ef þú ert <a href="#faq-27">Vinur Netskrafls</a> getur þú skorað á aðra leikmenn
+í <a href="#faq-28">keppnisham</a>, hvort sem þeir eru einnig Vinir Netskrafls eður ei.</p>
+<p>Keppnishamur er valinn með rofa í glugganum sem kemur upp þegar þú gefur út áskorun. Á myndinni
+sést hvernig rofinn á að vera stilltur fyrir keppnisham:</p>
+<p style="text-align:center;"><img src="{{ url_for('static', filename='ManualChallenge.png') }}"></p>
+<p>Áskorun í keppnisham er merkt með áberandi merki, ljósaperu á rauðum grunni:</p>
+<p style="text-align:center;"><img src="{{ url_for('static', filename='ManualLightbulb.png') }}"></p>
 
 </ol>
 
