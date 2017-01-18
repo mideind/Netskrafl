@@ -5,6 +5,7 @@ module.exports = function (grunt) {
 
       // See: http://www.jshint.com/docs/
       jshint: {
+         /*
          all: {
             src: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
             options: {
@@ -34,6 +35,7 @@ module.exports = function (grunt) {
                   'gameUrl', 'gameUsesNewBag', 'newBag', 'gameIsManual']
             }
          }
+         */
       },
 
       concat: {
