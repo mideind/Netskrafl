@@ -26,6 +26,9 @@ from skraflmechanics import State, Board, Move, ExchangeMove, ChallengeMove, Res
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
 
 
+_PROFILING = False
+
+
 def test_move(state, movestring):
     """ Test placing a simple tile move """
     coord, word = movestring.split(u' ')
@@ -233,12 +236,12 @@ def test(num_games, opponent, silent):
         return AutoPlayer_MiniMax(state)
 
     players = [None, None]
-    if opponent and opponent == u'autoplayer':
-        players[0] = (u"AutoPlayer A", autoplayer_creator)
-        players[1] = (u"AutoPlayer B", autoplayer_creator)
-    else:
+    if opponent == u'minimax':
         players[0] = (u"AutoPlayer", autoplayer_creator)
         players[1] = (u"MiniMax", minimax_creator)
+    else:
+        players[0] = (u"AutoPlayer A", autoplayer_creator)
+        players[1] = (u"AutoPlayer B", autoplayer_creator)
 
     gameswon = [0, 0]
     totalpoints = [0, 0]
@@ -311,7 +314,7 @@ def main(argv=None):
         except getopt.error as msg:
              raise Usage(msg)
         num_games = 4
-        opponent = None
+        opponent = "autoplayer"
         silent = False
         manual = False
         # process options
@@ -345,5 +348,33 @@ def main(argv=None):
         return 2
 
 
+def profile_main():
+
+    """ Main function to invoke for profiling """
+
+    import cProfile as profile
+    import pstats
+
+    global _PROFILING
+
+    _PROFILING = True
+
+    filename = 'skrafltester.profile'
+
+    profile.run('main()', filename)
+
+    stats = pstats.Stats(filename)
+
+    # Clean up filenames for the report
+    stats.strip_dirs()
+
+    # Sort the statistics by the total time spent in the function itself
+    stats.sort_stats('tottime')
+
+    stats.print_stats(100) # Print 100 most significant lines
+
+
 if __name__ == "__main__":
     sys.exit(main())
+    #sys.exit(profile_main())
+

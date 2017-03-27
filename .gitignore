@@ -11,6 +11,9 @@ __pycache__/
 # Pickled DAWG trees
 *.pickle
 
+# Profile data
+*.profile
+
 # Secret session key
 resources/secret_key.bin
 resources/salescloud_key.bin

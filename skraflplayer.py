@@ -66,7 +66,7 @@
 
 from random import randint
 
-from dawgdictionary import Navigation, Wordbase
+from dawgdictionary import Wordbase
 from languages import Alphabet
 from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
 
@@ -133,6 +133,8 @@ class Axis:
         horizontal or vertical. This is used to find legal moves
         for an AutoPlayer.
     """
+
+    DAWG = Wordbase.dawg()
 
     def __init__(self, autoplayer, index, horizontal):
 
@@ -213,7 +215,7 @@ class Axis:
                     query += below
                 if len(query) > 1:
                     # Nontrivial cross-check: Query the word database for words that fit this pattern
-                    matches = Wordbase.dawg().find_matches(query, sort = False) # Don't need a sorted result
+                    matches = self.DAWG.find_matches(query, sort = False) # Don't need a sorted result
                     bits = 0
                     if matches:
                         cix = 0 if not above else len(above)
@@ -244,21 +246,21 @@ class Axis:
                 ix -= 1
             # Use the ExtendRightNavigator to find valid words with this left part
             nav = LeftFindNavigator(leftpart)
-            Wordbase.dawg().navigate(nav)
+            self.DAWG.navigate(nav)
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
                 matched, prefix, nextnode = ns
                 # assert matched == leftpart
                 nav = ExtendRightNavigator(self, index, self._rack)
-                Navigation(nav).resume(prefix, nextnode, leftpart)
+                self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
             return
 
         # We are not completing an existing left part
         # Begin by extending an empty prefix to the right, i.e. placing
         # tiles on the anchor square itself and to its right
         nav = ExtendRightNavigator(self, index, self._rack)
-        Wordbase.dawg().navigate(nav)
+        self.DAWG.navigate(nav)
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
@@ -268,7 +270,7 @@ class Axis:
                 if lplist is not None:
                     for leftpart, rackleave, prefix, nextnode in lplist:
                         nav = ExtendRightNavigator(self, index, rackleave)
-                        Navigation(nav).resume(prefix, nextnode, leftpart)
+                        self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
 
     def generate_moves(self, lpn):
         """ Find all valid moves on this axis by attempting to place tiles
@@ -443,6 +445,7 @@ class ExtendRightNavigator:
         # The tile we are placing next
         self._index = anchor
         self._stack = []
+        self._wildcard_in_rack = u'?' in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
 
@@ -450,11 +453,12 @@ class ExtendRightNavigator:
         """ Check whether the letter ch could be placed at the
             current square, given the cross-checks and the rack """
         axis = self._axis
-        if not axis.is_empty(self._index):
+        l_at_sq = axis.letter_at(self._index)
+        if l_at_sq != u' ':
             # There is a tile already in the square: we must match it exactly
-            return Match.BOARD_TILE if ch == axis.letter_at(self._index) else Match.NO
+            return Match.BOARD_TILE if ch == l_at_sq else Match.NO
         # Does the current rack allow this letter?
-        if not (ch in self._rack or u'?' in self._rack):
+        if not (self._wildcard_in_rack or ch in self._rack):
             return Match.NO
         # Open square: apply cross-check constraints to the rack
         # Would this character pass the cross-checks?
@@ -467,7 +471,7 @@ class ExtendRightNavigator:
         if self._last_check == Match.NO:
             return False
         # Match: save our rack and our index and move into the edge
-        self._stack.append((self._rack, self._index))
+        self._stack.append((self._rack, self._index, self._wildcard_in_rack))
         return True
 
     def accepting(self):
@@ -478,7 +482,7 @@ class ExtendRightNavigator:
             return False
         # Otherwise, continue while we have something on the rack
         # or we're at an occupied square
-        return self._rack or (not self._axis.is_empty(self._index))
+        return bool(self._rack) or (not self._axis.is_empty(self._index))
 
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
@@ -499,6 +503,7 @@ class ExtendRightNavigator:
                 # Must be wildcard: remove it
                 # assert u'?' in self._rack
                 self._rack = self._rack.replace(u'?', u'', 1)
+            self._wildcard_in_rack = u'?' in self._rack
         return True
 
     def accept(self, matched, final):
@@ -545,7 +550,7 @@ class ExtendRightNavigator:
 
     def pop_edge(self):
         """ Called when leaving an edge that has been navigated """
-        self._rack, self._index = self._stack.pop()
+        self._rack, self._index, self._wildcard_in_rack = self._stack.pop()
         # Once past the prefix, we need to visit all outgoing edges, so return True
         return True
 

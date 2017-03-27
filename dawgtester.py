@@ -12,7 +12,7 @@
 import os
 import time
 
-from dawgdictionary import DawgDictionary
+from dawgdictionary import DawgDictionary, PackedDawgDictionary
 from languages import Alphabet
 
 
@@ -37,13 +37,15 @@ class DawgTester:
         """ Load a DawgDictionary and test its functionality """
 
         print("DawgDictionary tester")
-        print("Author: Vilhjalmur Thorsteinsson")
-        print
+        print("Author: Vilhjalmur Thorsteinsson\n")
 
-        self._dawg = DawgDictionary()
-        fpath = os.path.abspath(os.path.join(relpath, fname + ".dawg.pickle"))
         t0 = time.time()
-        self._dawg.load_pickle(fpath)
+        #self._dawg = DawgDictionary()
+        #fpath = os.path.abspath(os.path.join(relpath, fname + ".dawg.pickle"))
+        #self._dawg.load_pickle(fpath)
+        self._dawg = PackedDawgDictionary()
+        fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
+        self._dawg.load(fpath)
         t1 = time.time()
 
         print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))

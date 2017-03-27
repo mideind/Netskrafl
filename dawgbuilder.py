@@ -382,12 +382,13 @@ class _Dawg:
         """ Write the optimized DAWG to a packer """
         packer.start(len(self._root))
         # Start with the root edges
-        for prefix, nd in self._root.items():
+        sortfunc = _DawgNode._sorted
+        for prefix, nd in sortfunc(self._root.items()):
             packer.edge(nd.id, prefix)
         for node in self._unique_nodes_values:
             if node is not None:
                 packer.node_start(node.id, node.final, len(node.edges))
-                for prefix, nd in node.edges.items():
+                for prefix, nd in sortfunc(node.edges.items()):
                     if nd is None:
                         packer.edge(0, prefix)
                     else:
@@ -439,13 +440,12 @@ class _BinaryDawgPacker:
 
     """
 
-    CODING_UCASE = Alphabet.upper
-    CODING_LCASE = Alphabet.order
+    ENCODING = Alphabet.order
+    BYTE = struct.Struct("<B")
+    UINT32 = struct.Struct("<L")
 
     def __init__(self, stream):
         self._stream = stream
-        self._byte_struct = struct.Struct("<B")
-        self._loc_struct = struct.Struct("<L")
         # _locs is a dict of already written nodes and their stream locations
         self._locs = dict()
         # _fixups is a dict of node ids and file positions where the
@@ -456,57 +456,57 @@ class _BinaryDawgPacker:
     def start(self, num_root_edges):
         # The stream starts off with a single byte containing the
         # number of root edges
-        self._stream.write(self._byte_struct.pack(num_root_edges))
+        self._stream.write(self.BYTE.pack(num_root_edges))
 
     def node_start(self, ident, final, num_edges):
-        pos = self._stream.tell()
+        stream = self._stream
+        pos = stream.tell()
         if ident in self._fixups:
             # We have previously output references to this node without
             # knowing its location: fix'em now
             for fix in self._fixups[ident]:
-                self._stream.seek(fix)
-                self._stream.write(self._loc_struct.pack(pos))
-            self._stream.seek(pos)
+                stream.seek(fix)
+                stream.write(self.UINT32.pack(pos))
+            stream.seek(pos)
             del self._fixups[ident]
         # Remember where we put this node
         self._locs[ident] = pos
-        self._stream.write(self._byte_struct.pack((0x80 if final else 0x00) | (num_edges & 0x7F)))
+        stream.write(self.BYTE.pack((0x80 if final else 0x00) | (num_edges & 0x7F)))
 
     def node_end(self, ident):
         pass
 
     def edge(self, ident, prefix):
-        b = []
-        last = None
+        b = bytearray()
+        stream = self._stream
         for c in prefix:
             if c == u'|':
-                last |= 0x80
+                b[-1] |= 0x80
             else:
-                if last is not None:
-                    b.append(last)
-                try:
-                    last = _BinaryDawgPacker.CODING_LCASE.index(c)
-                except ValueError:
-                    last = _BinaryDawgPacker.CODING_UCASE.index(c)
-        b.append(last)
+                b.append(self.ENCODING.index(c))
+
+        if ident == 0:
+            # The next pointer is 0: mark the last character in the prefix
+            assert b[-1] & 0x80 == 0
+            b[-1] |= 0x80
 
         if len(b) == 1:
             # Save space on single-letter prefixes
-            self._stream.write(self._byte_struct.pack(b[0] | 0x40))
+            stream.write(self.BYTE.pack(b[0] | 0x40))
         else:
-            self._stream.write(self._byte_struct.pack(len(b) & 0x3F))
-            for by in b:
-                self._stream.write(self._byte_struct.pack(by))
+            stream.write(self.BYTE.pack(len(b) & 0x3F))
+            stream.write(b)
         if ident == 0:
-            self._stream.write(self._loc_struct.pack(0))
+            # We've already written a null pointer marker
+            pass
         elif ident in self._locs:
             # We've already written the node and know where it is: write its location
-            self._stream.write(self._loc_struct.pack(self._locs[ident]))
+            stream.write(self.UINT32.pack(self._locs[ident]))
         else:
             # This is a forward reference to a node we haven't written yet:
             # reserve space for the node location and add a fixup
-            pos = self._stream.tell()
-            self._stream.write(self._loc_struct.pack(0xFFFFFFFF)) # Temporary - will be overwritten
+            pos = stream.tell()
+            stream.write(self.UINT32.pack(0xFFFFFFFF)) # Temporary - will be overwritten
             if ident not in self._fixups:
                 self._fixups[ident] = []
             self._fixups[ident].append(pos)
@@ -760,9 +760,9 @@ class DawgBuilder:
         # Write the tree using the packer
         self._dawg.write_packed(p)
         # Dump the packer contents to stdout for debugging
-        p.dump()
+        # p.dump()
         # Write packed DAWG to binary file
-        with open(os.path.abspath(os.path.join(relpath, output + u".dawg")), "wb") as of:
+        with open(os.path.abspath(os.path.join(relpath, output + u".bin.dawg")), "wb") as of:
             of.write(f.getvalue())
         f.close()
 
@@ -791,8 +791,8 @@ class DawgBuilder:
         # print("Dumping...")
         # self._dawg.dump()
         print("Outputting...")
-        # self._output_binary(relpath, output) # Not used for now
-        self._output_text(relpath, output)
+        #self._output_text(relpath, output)
+        self._output_binary(relpath, output)
         print("DawgBuilder done")
 
 
