@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: asterix
+version: obelix
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -142,7 +142,8 @@ handlers:
 # Files that should not be uploaded to App Engine
 skip_files:
 - ^resources/.*\.txt$   # Raw text resources, such as word lists
-- ^resources/.*\.dawg$  # Compiled but not pickled DAWG trees
+- ^resources/.*\.text\.dawg$   # DAWG trees in text form
+- ^resources/.*\.dawg\.pickle$ # DAWG trees in pickled form
 - ^(.*/)?.*\.psd$       # Photoshop files
 - ^(.*/)?.*\.ai$        # Illustrator files
 - ^(.*/)?.*\.log$       # Local log files

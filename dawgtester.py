@@ -80,9 +80,13 @@ class DawgTester:
         self._test_true(u"drenið")
         self._test_true(u"drensins")
         self._test_true(u"álínis")
+        self._test_true(u"hán")
+        self._test_true(u"háni")
+        self._test_true(u"háns")
         self._test_false(u"réttleganna")
         self._test_false(u"meistarleganna")
         self._test_false(u"hjálpsamligana")
+        self._test_false(u"ennig")
 
         self._test_true(u"bitla")
         self._test_true(u"friðla")
@@ -164,12 +168,29 @@ class DawgTester:
         self._test_false(u"þarftðu")
         self._test_false(u"þurreystðu")
 
+        # Spurnarmyndir (question forms)
+        # Allowed in singular (present and past tense),
+        # disallowed in plural (present and past tense)
         self._test_true(u"ertu")
         self._test_true(u"vertu")
         self._test_true(u"sértu")
         self._test_true(u"varstu")
         self._test_true(u"verðurðu")
         self._test_true(u"varðstu")
+        self._test_true(u"fórstu")
+        self._test_true(u"ferðu")
+        self._test_true(u"komstu")
+        self._test_true(u"kemurðu")
+        self._test_true(u"borðarðu")
+        self._test_true(u"borðaðirðu")
+        self._test_false(u"voruði")
+        self._test_false(u"eruði")
+        self._test_false(u"fóruði")
+        self._test_false(u"fariði")
+        self._test_false(u"borðiði")
+        self._test_false(u"borðuðuði")
+        self._test_false(u"komiði")
+        self._test_false(u"komuði")
 
         # All two-letter words on the official list of the
         # Icelandic Skrafl society

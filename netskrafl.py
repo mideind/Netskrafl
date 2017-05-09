@@ -698,6 +698,12 @@ def start():
     return "", 200 # jsonify(ok = ok)
 
 
+@app.route("/_ah/stop")
+def stop():
+    """ App Engine is stopping an instance """
+    return "", 200
+
+
 @app.route("/_ah/warmup")
 def warmup():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
