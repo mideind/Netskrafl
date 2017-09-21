@@ -3,7 +3,11 @@
    Netskrafl.js
    Client-side script functions for board.html, the game board page
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
 
@@ -88,6 +92,8 @@ var gameOver = false;
 var initializing = true; // True while loading initial move list and setting up
 var _hasLocal = null; // Is HTML5 local storage supported by the browser?
 var _localPrefix = null; // Prefix of local storage for this game
+var uiFullscreen = true; // Displaying the full screen UI?
+
 
 function hasLocalStorage() {
    /* Return true if HTML5 local storage is supported by the browser */
@@ -294,8 +300,11 @@ function tileAt(row, col) {
    return el.firstChild;
 }
 
+var reloadInterval = null;
+
 function reloadPage() {
-   /* Reload this page from the server */
+   window.clearInterval(reloadInterval);
+   reloadInterval = null;
    window.location.reload(true); // Bypass cache
 }
 
@@ -310,7 +319,7 @@ function calcTimeToGo(player) {
          // 10 minutes overtime has passed:
          // The player has lost - do this the brute force way and refresh the page
          // to get the server's final verdict
-         window.setInterval(reloadPage, 500); // Do this in half a sec
+         reloadInterval = window.setInterval(reloadPage, 500);  // Do this in half a sec
       }
    }
    // The overtime is max 10 minutes - at that point you lose
@@ -600,6 +609,11 @@ function showBestMove(ev) {
 
 function highlightMove(ev) {
    /* Highlight a move's tiles when hovering over it in the move list */
+   if (!uiFullscreen)
+      // No need to do this if not on a fullscreen UI,
+      // since the board is not visible while hovering on
+      // the move list
+      return;
    var co = ev.data.coord;
    var tiles = ev.data.tiles;
    var playerColor = ev.data.player;
@@ -629,7 +643,10 @@ function highlightMove(ev) {
 
 function lookupWord(ev) {
    /* Look up the word on official word list website */
-   window.open('http://malid.is/leit/' + ev.data.tiles, 'malid');
+   if (uiFullscreen)
+      // We only do this if displaying the full UI
+      // (not the mobile one)
+      window.open('http://malid.is/leit/' + ev.data.tiles, 'malid');
 }
 
 function appendMove(player, co, tiles, score) {
@@ -2192,9 +2209,11 @@ function loadGames() {
    );
 }
 
-function selectTab(ev) {
-   /* A right-side tab has been selected: bring it to the foreground */
-   var tabSel = $(this).attr("id");
+function _selectTab(tabSel) {
+   // The tab-board button is only visible and clickable when on a
+   // small-format (mobile) screen
+   $("div.board-area").css("z-index", tabSel == "tab-board" ? "4" : "1");
+   $("#tab-board").toggleClass("selected", tabSel == "tab-board");
    $("div.movelist").css("z-index", tabSel == "tab-movelist" ? "4" : "1");
    $("#tab-movelist").toggleClass("selected", tabSel == "tab-movelist");
    $("div.twoletter").css("z-index", tabSel == "tab-twoletter" ? "4" : "1");
@@ -2223,6 +2242,22 @@ function selectTab(ev) {
       // Selecting the games tab: load the pending games
       loadGames();
    }
+}
+
+function selectTab(ev) {
+   /* A right-side tab has been selected: bring it to the foreground */
+   var tabSel = $(this).attr("id");
+   _selectTab(tabSel);
+}
+
+function selectBoardTab() {
+   /* Select the board tab, bringing it to the foreground */
+   _selectTab("tab-board");
+}
+
+function selectMovelistTab() {
+   /* Select the move list tab, bringing it to the foreground */
+   _selectTab("tab-movelist");
 }
 
 function sendChatSeenMarker() {
@@ -2258,7 +2293,7 @@ function handleChatEnter(ev) {
 }
 
 function decodeTimestamp(ts) {
-   // Parse and split a timestamp string from the format YYYY-MM-DD HH:MM:SS
+   // Parse and split an ISO timestamp string, formatted as YYYY-MM-DD HH:MM:SS
    return {
       year: parseInt(ts.substr(0, 4)),
       month: parseInt(ts.substr(5, 2)),
@@ -2267,6 +2302,13 @@ function decodeTimestamp(ts) {
       minute: parseInt(ts.substr(14, 2)),
       second: parseInt(ts.substr(17, 2))
    };
+}
+
+function dateFromTimestamp(ts) {
+   // Create a JavaScript millisecond-based representation of an ISO timestamp
+   var dcTs = decodeTimestamp(ts);
+   return Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
+      dcTs.hour, dcTs.minute, dcTs.second);
 }
 
 function timeDiff(dtFrom, dtTo) {
@@ -2285,10 +2327,7 @@ function showChatMsg(player_index, msg, ts) {
       (player_index == localPlayer() ? "local" : "remote") +
       "'>" + escMsg + "</div>";
    // Decode the ISO format timestamp we got from the server
-   var dcTs = decodeTimestamp(ts);
-   // Create a JavaScript millisecond-based representation of the time stamp
-   var dtTs = Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
-      dcTs.hour, dcTs.minute, dcTs.second);
+   var dtTs = dateFromTimestamp(ts);
    if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
       // If 5 minutes or longer interval between messages,
       // insert a time
@@ -2351,53 +2390,42 @@ function switchTwoLetter() {
    $("#two-2").css("visibility", switchFrom == "two-2" ? "hidden" : "visible");
 }
 
-function channelOnMessage(msg) {
-   /* The server has sent a notification message back on our channel */
-   var json = jQuery.parseJSON(msg.data);
-   if ((json.stale !== undefined) && json.stale)
-      // We missed updates on our channel: reload the board
-      window.location.reload(true);
-   else
-   if (json.msg !== undefined) {
-      // This is a chat message
-      var player_index = localPlayer();
-      if (json.from_userid != userId()) {
-         // The message is from the remote user
-         player_index = 1 - player_index;
-         // Put an alert on the chat tab if it is not selected
-         if (markChatMsg()) {
-            // The message was seen: inform the server
-            sendChatSeenMarker();
-         }
+function handleChatMessage(json) {
+   // Handle an incoming chat message
+   var player_index = localPlayer();
+   if (json.from_userid != userId()) {
+      // The message is from the remote user
+      player_index = 1 - player_index;
+      // Put an alert on the chat tab if it is not selected
+      if (markChatMsg()) {
+         // The message was seen: inform the server
+         sendChatSeenMarker();
       }
-      if (chatLoaded)
-         showChatMsg(player_index, json.msg, json.ts);
    }
-   else {
-      // json now contains an entire client state update, as a after submitMove()
-      updateStateGently(json); // Try to preserve tiles that the user may have placed on the board
-      // Play audio, if present
-      var yourTurn = document.getElementById("your-turn");
-      if (yourTurn)
-         // Note that playing media outside user-invoked event handlers does not work on iOS.
-         // That is a 'feature' introduced and documented by Apple.
-         yourTurn.play();
-      if (gameOver) {
-         // The game is now over and the player has seen it happen:
-         // let the server know so it can remove the game from the zombie list
-         serverQuery("gameover", { game: gameId(), player: userId() });
-      }
+   if (chatLoaded)
+      showChatMsg(player_index, json.msg, json.ts);
+}
+
+function handleMoveMessage(json) {
+   // Handle an incoming opponent move
+   // json contains an entire client state update, as a after submitMove()
+   updateStateGently(json); // Try to preserve tiles that the user may have placed on the board
+   // Play audio, if present
+   var yourTurn = document.getElementById("your-turn");
+   if (yourTurn)
+      // Note that playing media outside user-invoked event handlers does not work on iOS.
+      // That is a 'feature' introduced and documented by Apple.
+      yourTurn.play();
+   if (gameOver) {
+      // The game is now over and the player has seen it happen:
+      // let the server know so it can remove the game from the zombie list
+      serverQuery("gameover", { game: gameId(), player: userId() });
    }
 }
 
-function channelOnClose() {
-   /* The channel has expired or is being closed for other reasons: request a new one */
-   serverQuery("newchannel",
-      { game: gameId(), oldch: channelToken },
-      newChannel);
-   channelToken = null;
-   channel = null;
-   socket = null;
+function handleUserMessage(json) {
+   // Handle an incoming user update
+   // Presently not used
 }
 
 function _showUserInfo(oppInfo) {
@@ -2415,6 +2443,57 @@ function lookAtPlayer() {
       // Show information about the opponent
       _showUserInfo(opponentInfo());
    }
+}
+
+function mediaMinWidth667(mql) {
+   if (mql.matches) {
+      // Take action when min-width exceeds 667
+      // The board tab is not visible, so the movelist is default
+      selectMovelistTab();
+   }
+   else {
+      // min-width is below 667
+      // Make sure the board tab is selected
+      selectBoardTab();
+   }
+}
+
+function mediaMinWidth768(mql) {
+   if (mql.matches) {
+      // Take action when min-width exceeds 768
+      uiFullscreen = true;
+   }
+   else {
+      uiFullscreen = false;
+   }
+}
+
+function initMediaListener() {
+   // Install listener functions for media changes
+   var mql;
+   mql = window.matchMedia("(min-width: 667px)");
+   if (mql) {
+      mediaMinWidth667(mql);
+      mql.addListener(mediaMinWidth667);
+   }
+   mql = window.matchMedia("(min-width: 768px)");
+   if (mql) {
+      mediaMinWidth768(mql);
+      mql.addListener(mediaMinWidth768);
+   }
+}
+
+function initFirebaseListener(token) {
+   // Sign into Firebase with the token passed from the server
+   loginFirebase(token);
+   // Listen to Firebase events on the /game/[gameId]/[userId] path
+   var basepath = 'game/' + gameId() + "/" + userId() + "/";
+   // New moves
+   attachFirebaseListener(basepath + "move", handleMoveMessage);
+   // New chat messages
+   attachFirebaseListener(basepath + "chat", handleChatMessage);
+   // Listen to Firebase events on the /user/[userId] path
+   // attachFirebaseListener('user/' + userId(), handleUserMessage);
 }
 
 function initSkrafl(jQuery) {
@@ -2499,6 +2578,8 @@ function initSkrafl(jQuery) {
 
    // Facebook share button
    $("div.fb-share").click(fbShare);
+
+   initMediaListener(); // Initiate listening to media change events
 
    lateInit();
 

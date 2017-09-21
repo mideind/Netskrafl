@@ -36,8 +36,8 @@ class Alphabet:
     # Upper case version of the full order string
     full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
 
-    # Letter bit pattern
-    bit = [1 << n for n in range(len(order))]
+    # Map letters to bits
+    letter_bit = { letter : 1 << ix for ix, letter in enumerate(order) }
 
     # Locale collation (sorting) map, initialized in _init()
     _lcmap = None # Case sensitive
@@ -46,12 +46,12 @@ class Alphabet:
     @staticmethod
     def bit_pattern(word):
         """ Return a pattern of bits indicating which letters are present in the word """
-        return reduce(lambda x, y: x | y, [Alphabet.bit_of(c) for c in word], 0)
+        return reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
 
     @staticmethod
     def bit_of(c):
         """ Returns the bit corresponding to a character in the alphabet """
-        return Alphabet.bit[Alphabet.order.index(c)]
+        return Alphabet.letter_bit[c]
 
     @staticmethod
     def all_bits_set():

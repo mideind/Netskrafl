@@ -5,29 +5,18 @@
    Client-side script for wait.html,
    a page displated while waiting for a time-limited game to start
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
 
-var finalClose = false;
-
-function channelOnMessage(msg) {
-   /* The server has sent a notification message back on our channel */
-   var json = jQuery.parseJSON(msg.data);
-   if (json.kind == "ready")
-      // The opponent is ready and a new game has been created:
-      // navigate to it
+function handleWaitMessage(json) {
+   // The server has sent a notification on the /user/[user_id]/wait/[opponent_id] path
+   if (json !== true && json.game)
       goToGame(json.game);
-}
-
-function channelOnClose() {
-   /* Channel expired: Ask for a new channel from the server */
-   var chTok = channelToken;
-   channelToken = null;
-   channel = null;
-   socket = null;
-   if (!finalClose)
-      serverQuery("newchannel", { wait: opponentId(), oldch: chTok }, newChannel);
 }
 
 function markOnline(json) {
@@ -57,13 +46,22 @@ function initForm(userid, nick, fullname, duration) {
 
 function closeAndCleanUp(ev)
 {
-   /* Attempt to be tidy by explicitly closing the channel socket,
-      thereby speeding up the channel disconnect */
-   finalClose = true;
-   if (socket)
-      socket.close();
-   /* Navigate back to the main page */
+   // Cancel the wait status and navigate back to the main page
+   serverQuery("/cancelwait",
+      {
+         user: userId(),
+         opp : opponentId()
+      }
+   );
    cancelWait();
+}
+
+function initFirebaseListener(token) {
+   // Sign into Firebase with the token passed from the server
+   loginFirebase(token);
+   // Listen to Firebase events on the /user/[userId]/[messageType] path
+   var path = 'user/' + userId() + "/wait/" + opponentId();
+   attachFirebaseListener(path, handleWaitMessage);
 }
 
 function initWait() {
@@ -71,9 +69,7 @@ function initWait() {
 
    /* Enable the close button in the user info dialog */
    $("#wait-cancel").click(closeAndCleanUp);
-
    /* Call initialization that requires variables coming from the server */
    lateInit();
-
 }
 

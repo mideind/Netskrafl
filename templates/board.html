@@ -43,7 +43,8 @@
 {% endblock %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('static', filename='jquery-ui.css') }}"
+   rel="stylesheet" type="text/css" media="all">
 {% endblock %}
 
 {% block scripts %}
@@ -55,137 +56,10 @@
 
 {% block content %}
 
+<div class="board-area">
+
 <!-- The board -->
 {% include 'boardlayout.html' %}
-
-<!-- Player names, scores and move history -->
-<div class="rightcol">
-   <div class="heading">
-      <h3 class="playerleft">
-{%- if game.is_autoplayer(0) -%}
-      <div class="robot-btn left"><!--
-      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
-      {{- game.player_nickname(0) -}}
-      </div>
-{%- else -%}
-{% if player_index != None %}
-      <div class="player-btn left" id="player-0">
-{%- else -%}
-      <div class="robot-btn left" id="player-0">
-{%- endif -%}
-      <span id="left-to-move" class="glyphicon-flag"></span><!--
-      -->{{- game.player_nickname(0) -}}
-      </div>
-{%- endif -%}
-      </h3>
-      <h3 class="playerright">
-{%- if game.is_autoplayer(1) -%}
-      <div class="robot-btn right"><!--
-      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
-      {{- game.player_nickname(1) -}}
-      </div>
-{%- else -%}
-{% if player_index != None %}
-      <div class="player-btn right" id="player-1">
-{%- else -%}
-      <div class="robot-btn right" id="player-1">
-{%- endif -%}
-      {{- game.player_nickname(1) -}}<!--
-      --><span id="right-to-move" class="glyphicon-flag-after"></span>
-      </div>
-{%- endif -%}
-      </h3>
-      <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
-      <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
-      <h3 class="clockleft"></h3>
-      <h3 class="clockright"></h3>
-      <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
-      <div class="fairplay"><span class="fairplay-btn large" title="Skraflað án hjálpartækja"></span></div>
-   </div>
-   <div class="right-area">
-      <div class="right-tab selected" id="tab-movelist" title="Leikir"><span class="glyphicon glyphicon-show-lines"></span></div>
-      <div class="movelist">
-      </div>
-      <div class="right-tab" id="tab-twoletter" title="Tveggja stafa orð"><span class="glyphicon glyphicon-life-preserver"></span></div>
-      <div class="twoletter">
-         <div class="twoletter-area" id="two-1" title="Smelltu til að raða eftir seinni staf">
-<span>
-<b>a</b>ð af ak al an ar as at ax<br>
-<b>á</b>a áð ái ál ám án ár ás át<br>
-<b>b</b>í bú bý bæ&nbsp;&nbsp;
-<b>d</b>á do dó dý<br>
-<b>e</b>ð ef eg ei ek el em en er es et ex ey<br>
-<b>é</b>g él ét&nbsp;&nbsp;
-<b>f</b>a fá fé fæ&nbsp;&nbsp;
-<b>g</b>á<br>
-<b>h</b>a há hí hó hý hæ&nbsp;&nbsp;
-<b>i</b>ð il im&nbsp;&nbsp;
-<b>í</b>ð íl ím ís<br>
-<b>j</b>á je jó jú&nbsp;&nbsp;
-<b>k</b>á ku kú&nbsp;&nbsp;
-<b>l</b>a lá lé ló lú lý læ<br>
-<b>m</b>á mi mó mý&nbsp;&nbsp;
-<b>n</b>á né nó nú ný næ<br>
-<b>o</b>f og oj ok op or<br>
-<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>
-<b>p</b>í pu pú pæ&nbsp;&nbsp;
-<b>r</b>á re ré rí ró rú rý ræ<br>
-<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp;
-<b>t</b>á te té ti tí tó tý<br>
-<b>u</b>m un&nbsp;&nbsp;
-<b>ú</b>a úð úf úi úr út<br>
-<b>v</b>á vé ví vó&nbsp;&nbsp;
-<b>y</b>l ym yr ys<br>
-<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp;
-<b>þ</b>á þó þú þý<br>
-<b>æ</b>ð æf æg æi æl æp ær æs æt<br>
-<b>ö</b>l ör ös öt öx
-</span>
-         </div>
-         <div class="twoletter-area" id="two-2" title="Smelltu til að raða eftir fyrri staf">
-<span>
-á<b>a</b> fa ha la óa úa&nbsp;&nbsp;
-d<b>á</b> fá gá há<br>já ká lá má ná rá sá tá vá þá<br>
-a<b>ð</b> áð eð ið íð óð úð æð&nbsp;&nbsp;
-j<b>e</b> re te<br>
-f<b>é</b> lé né ré sé té vé&nbsp;
-a<b>f</b> ef of óf úf ýf æf<br>
-e<b>g</b> ég og ýg æg&nbsp;&nbsp;
-á<b>i</b> ei mi ói ti úi ýi æi<br>
-b<b>í</b> hí pí rí sí tí ví&nbsp;&nbsp;
-o<b>j</b>&nbsp;&nbsp;
-a<b>k</b> ek ok ók ýk<br>
-a<b>l</b> ál el él il íl ól yl ýl æl öl<br>
-á<b>m</b> em im ím óm um ym<br>
-a<b>n</b> án en ón un&nbsp;&nbsp;
-d<b>o</b> so<br>
-d<b>ó</b> hó jó ló mó nó ró tó vó þó<br>
-o<b>p</b> óp æp&nbsp;&nbsp;
-a<b>r</b> ár er or úr yr ýr ær ör<br>
-a<b>s</b> ás es ís ós ys ýs æs ös<br>
-a<b>t</b> át et ét út ýt æt öt<br>
-k<b>u</b> pu&nbsp;&nbsp;
-b<b>ú</b> jú kú lú nú pú rú sú þú<br>
-a<b>x</b> ex óx öx&nbsp;&nbsp;
-e<b>y</b><br>
-b<b>ý</b> dý hý lý mý ný rý sý tý þý<br>
-b<b>æ</b> fæ hæ læ næ pæ ræ sæ
-</span>
-         </div>
-      </div>
-      <div class="right-tab" id="tab-chat" title="Spjall"><span class="glyphicon glyphicon-conversation"></span></div>
-      <div class="chat">
-         <div class="chat-area" id="chat-area"></div>
-         <div class="chat-input">
-            <input type="text" name="msg" id="msg" maxlength="254" class="chat-txt"/><!--
-         --><div class="modal-close" id="chat-send" title="Senda"><span class="glyphicon glyphicon-chat"></span></div>
-         </div>
-      </div>
-      <div class="right-tab" id="tab-games" title="Viðureignir"><span class="glyphicon glyphicon-flag"></span></div>
-      <div class="games">
-      </div>
-   </div>
-</div>
 
 <!-- The rack -->
 <div class="rack">
@@ -202,12 +76,6 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    </table>
 </div>
 
-<!-- The bag -->
-<div class="bag" title="Flísar sem eftir eru í pokanum">
-<table id="bag">
-</table>
-</div>
-
 <!-- Word check -->
 <div class="word-check"></div>
 
@@ -218,28 +86,6 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
 <!-- The score of the word currently laid down -->
 <div class="score"></div>
-
-<!-- A dialog to ask for the meaning of a blank tile -->
-<div id="blank-dialog" class="modal-dialog">
-<div id="blank-form" class="ui-widget ui-widget-content ui-corner-all">
-   <p>Hvaða staf táknar auða flísin?</p>
-   <div class="rack blank-rack">
-      <table class="board" id="blank-meaning">
-         <!-- Tile rows and cells will be inserted here -->
-      </table>
-   </div>
-   <!-- Close button -->
-   <div class="modal-close" id="blank-close" title="Hætta við" onmouseover="buttonOver(this)"
-      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
-</div>
-</div>
-
-<!-- A dialog to display promotions -->
-<div id="promo-dialog" class="modal-dialog">
-<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
-   <div id="promo-content"></div>
-</div>
-</div>
 
 <!-- A button to recall all tiles back into the rack -->
 <div class="recallbtn" title="Færa stafi aftur í rekka"
@@ -260,12 +106,6 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <!-- Wait placeholder -->
 <div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border="0" width="16" height="16"/></div>
 
-<!-- New game button -->
-<div class="submitnewgame" title="Nýr leikur"
-   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-   onclick="window.location.href='{{ url_for('newgame') }}'">Nýr
-   <span class="glyphicon glyphicon-play"></span></div>
-
 <!-- Pass button -->
 <div class="submitpass" title="Pass"
    onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
@@ -280,6 +120,12 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <div class="submitresign" title="Gefa leik"
    onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
    onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
+
+<!-- New game button -->
+<div class="submitnewgame" title="Nýr leikur"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="window.location.href='{{ url_for('newgame') }}'">Nýr
+   <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Notification that it's the opponent's turn -->
 {% if not game.is_over() %}
@@ -361,6 +207,159 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
    &nbsp;Véfengja lögn? <span class="pass-explain">Röng véfenging kostar 10 stig</span>&nbsp;
    <span class="yesnobutton" onclick="confirmChallenge(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
    <span class="yesnobutton" onclick="confirmChallenge(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+</div> <!-- board-area -->
+
+<!-- Player names, scores and move history -->
+<div class="rightcol">
+   <div class="heading">
+      <h3 class="playerleft">
+{%- if game.is_autoplayer(0) -%}
+      <div class="robot-btn left"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(0) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn left" id="player-0">
+{%- else -%}
+      <div class="robot-btn left" id="player-0">
+{%- endif -%}
+      <span id="left-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(0) -}}
+      </div>
+{%- endif -%}
+      </h3>
+      <h3 class="playerright">
+{%- if game.is_autoplayer(1) -%}
+      <div class="robot-btn right"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(1) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn right" id="player-1">
+{%- else -%}
+      <div class="robot-btn right" id="player-1">
+{%- endif -%}
+      {{- game.player_nickname(1) -}}<!--
+      --><span id="right-to-move" class="glyphicon-flag-after"></span>
+      </div>
+{%- endif -%}
+      </h3>
+      <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
+      <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
+      <h3 class="clockleft"></h3>
+      <h3 class="clockright"></h3>
+      <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
+      <div class="fairplay"><span class="fairplay-btn large" title="Skraflað án hjálpartækja"></span></div>
+   </div>
+   <div class="right-area">
+      <div class="right-tab" id="tab-board" title="Borðið"><span class="glyphicon glyphicon-grid"></span></div>
+      <div class="right-tab selected" id="tab-movelist" title="Leikir"><span class="glyphicon glyphicon-show-lines"></span></div>
+      <div class="right-tab" id="tab-twoletter" title="Tveggja stafa orð"><span class="glyphicon glyphicon-life-preserver"></span></div>
+      <div class="right-tab" id="tab-chat" title="Spjall"><span class="glyphicon glyphicon-conversation"></span></div>
+      <div class="right-tab" id="tab-games" title="Viðureignir"><span class="glyphicon glyphicon-flag"></span></div>
+      <div class="movelist">
+      </div>
+      <div class="twoletter">
+         <div class="twoletter-area" id="two-1" title="Smelltu til að raða eftir seinni staf">
+<span>
+<b>a</b>ð af ak al an ar as at ax<br>
+<b>á</b>a áð ái ál ám án ár ás át<br>
+<b>b</b>í bú bý bæ&nbsp;&nbsp;
+<b>d</b>á do dó dý<br>
+<b>e</b>ð ef eg ei ek el em en er es et ex ey<br>
+<b>é</b>g él ét&nbsp;&nbsp;
+<b>f</b>a fá fé fæ&nbsp;&nbsp;
+<b>g</b>á<br>
+<b>h</b>a há hí hó hý hæ&nbsp;&nbsp;
+<b>i</b>ð il im&nbsp;&nbsp;
+<b>í</b>ð íl ím ís<br>
+<b>j</b>á je jó jú&nbsp;&nbsp;
+<b>k</b>á ku kú&nbsp;&nbsp;
+<b>l</b>a lá lé ló lú lý læ<br>
+<b>m</b>á mi mó mý&nbsp;&nbsp;
+<b>n</b>á né nó nú ný næ<br>
+<b>o</b>f og oj ok op or<br>
+<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>
+<b>p</b>í pu pú pæ&nbsp;&nbsp;
+<b>r</b>á re ré rí ró rú rý ræ<br>
+<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp;
+<b>t</b>á te té ti tí tó tý<br>
+<b>u</b>m un&nbsp;&nbsp;
+<b>ú</b>a úð úf úi úr út<br>
+<b>v</b>á vé ví vó&nbsp;&nbsp;
+<b>y</b>l ym yr ys<br>
+<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp;
+<b>þ</b>á þó þú þý<br>
+<b>æ</b>ð æf æg æi æl æp ær æs æt<br>
+<b>ö</b>l ör ös öt öx
+</span>
+         </div>
+         <div class="twoletter-area" id="two-2" title="Smelltu til að raða eftir fyrri staf">
+<span>
+á<b>a</b> fa ha la óa úa&nbsp;&nbsp;
+d<b>á</b> fá gá há<br>já ká lá má ná rá sá tá vá þá<br>
+a<b>ð</b> áð eð ið íð óð úð æð&nbsp;&nbsp;
+j<b>e</b> re te<br>
+f<b>é</b> lé né ré sé té vé&nbsp;
+a<b>f</b> ef of óf úf ýf æf<br>
+e<b>g</b> ég og ýg æg&nbsp;&nbsp;
+á<b>i</b> ei mi ói ti úi ýi æi<br>
+b<b>í</b> hí pí rí sí tí ví&nbsp;&nbsp;
+o<b>j</b>&nbsp;&nbsp;
+a<b>k</b> ek ok ók ýk<br>
+a<b>l</b> ál el él il íl ól yl ýl æl öl<br>
+á<b>m</b> em im ím óm um ym<br>
+a<b>n</b> án en ón un&nbsp;&nbsp;
+d<b>o</b> so<br>
+d<b>ó</b> hó jó ló mó nó ró tó vó þó<br>
+o<b>p</b> óp æp&nbsp;&nbsp;
+a<b>r</b> ár er or úr yr ýr ær ör<br>
+a<b>s</b> ás es ís ós ys ýs æs ös<br>
+a<b>t</b> át et ét út ýt æt öt<br>
+k<b>u</b> pu&nbsp;&nbsp;
+b<b>ú</b> jú kú lú nú pú rú sú þú<br>
+a<b>x</b> ex óx öx&nbsp;&nbsp;
+e<b>y</b><br>
+b<b>ý</b> dý hý lý mý ný rý sý tý þý<br>
+b<b>æ</b> fæ hæ læ næ pæ ræ sæ
+</span>
+         </div>
+      </div>
+      <div class="chat">
+         <div class="chat-area" id="chat-area"></div>
+         <div class="chat-input">
+            <input type="text" name="msg" id="msg" maxlength="254" class="chat-txt"/><!--
+         --><div class="modal-close" id="chat-send" title="Senda"><span class="glyphicon glyphicon-chat"></span></div>
+         </div>
+      </div>
+      <div class="games">
+      </div>
+   </div>
+</div>
+
+<!-- The bag -->
+<div class="bag" title="Flísar sem eftir eru í pokanum">
+<table id="bag">
+</table>
+</div>
+
+<!-- A dialog to ask for the meaning of a blank tile -->
+<div id="blank-dialog" class="modal-dialog">
+<div id="blank-form" class="ui-widget ui-widget-content ui-corner-all">
+   <p>Hvaða staf táknar auða flísin?</p>
+   <div class="rack blank-rack">
+      <table class="board" id="blank-meaning">
+         <!-- Tile rows and cells will be inserted here -->
+      </table>
+   </div>
+   <!-- Close button -->
+   <div class="modal-close" id="blank-close" title="Hætta við" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+</div>
 </div>
 
 <!-- A dialog to show info about a particular user -->
@@ -449,6 +448,13 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 <div class="fb-share" title="Deila á Facebook"><img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}"
    width="29" height="29"><br>Deila</div>
 
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
+</div>
+</div>
+
 {%- endblock -%}
 
 {%- block media -%}
@@ -470,9 +476,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
 {%- endblock -%}
 
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
+
 {%- block endscripts -%}
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
 <!-- Netskrafl client script -->
 {%- if dev_server %}
 <script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
@@ -659,8 +667,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
    function lateInit() {
       /* Execute late initialization - called from initSkrafl() */
-{% if channel_token %}      
-      openChannel("{{ channel_token }}");
+{% if firebase_token and user %}
+      initFirebaseListener("{{ firebase_token }}");
+      initPresence(userId());
 {% endif %}
       scoreLeft = {{ game.final_scores()[0] }};
       scoreRight = {{ game.final_scores()[1] }};

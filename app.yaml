@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: obelix
+version: firebase
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -19,9 +19,9 @@ manual_scaling:
 #  min_pending_latency: 2000ms
 #  max_pending_latency: 5000ms
 
-inbound_services:
+#inbound_services:
 #- warmup
-- channel_presence
+#- channel_presence
 
 builtins:
 - deferred: on
@@ -41,80 +41,78 @@ handlers:
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
-  expiration: 1d
+  expiration: "1d 0h"
 
 # Favorite icon URL, cacheable
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico
-  expiration: 1d
+  expiration: "1d 0h"
 
 # Internet Explorer & Windows 8 resource file, can be cached  
 - url: /browserconfig.xml
   static_files: static/browserconfig.xml
   upload: static/browserconfig.xml
-  expiration: 1d
+  expiration: "1d 0h"
 
 # Special Apple iOS URLs for image resources, all cacheable
 - url: /apple-touch-icon.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
-  expiration: 1d
+  expiration: "1d 0h"
 - url: /touch-icon-ipad.png
   static_files: static/touch-icon-ipad.png
   upload: static/touch-icon-ipad.png
-  expiration: 1d
+  expiration: "1d 0h"
 - url: /touch-icon-ipad-retina.png
   static_files: static/touch-icon-ipad-retina.png
   upload: static/touch-icon-ipad-retina.png
-  expiration: 1d
+  expiration: "1d 0h"
 - url: /touch-icon-iphone-retina.png
   static_files: static/touch-icon-iphone-retina.png
   upload: static/touch-icon-iphone-retina.png
-  expiration: 1d
+  expiration: "1d 0h"
 
 # Image files that can be cached
-- url: /static/(.*\.(gif|png|jpg))$
+- url: /static/(.*\.(gif|png|jpg))(\?.*)?$
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$
-  mime_type: image/\1
-  expiration: 1d
+  expiration: "1d 0h"
 
-# CSS files, not to be cached
-- url: /static/skrafl-curry.css
-  static_files: static/skrafl-curry.css
-  upload: static/skrafl-curry.css
+# CSS files that can be cached
+- url: /static/(.*\.css)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.css$
+  mime_type: text/css
+  expiration: "1d 0h"
 
-# Third party JavaScript files that can be cached
-- url: /static/jquery.ui.touch-punch.min.js
-  static_files: static/jquery.ui.touch-punch.min.js
-  upload: static/jquery.ui.touch-punch.min.js
-  expiration: 1d
-- url: /static/mousetrap.min.js
-  static_files: static/mousetrap.min.js
-  upload: static/mousetrap.min.js
-  expiration: 1d
+# Catchall for JavaScript
+- url: /static/(.*\.min\.js)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.min\.js$
+  mime_type: application/javascript
+  expiration: "1d 0h"
 
 # Font files that can be cached
 - url: /static/glyphicons-regular.ttf
   static_files: static/glyphicons-regular.ttf
   upload: static/glyphicons-regular.ttf
-  expiration: 1d
+  expiration: "1d 0h"
   mime_type: application/font-sfnt
 - url: /static/glyphicons-regular.eot
   static_files: static/glyphicons-regular.eot
   upload: static/glyphicons-regular.eot
-  expiration: 1d
+  expiration: "1d 0h"
   mime_type: application/vnd.ms-fontobject
 - url: /static/glyphicons-regular.svg
   static_files: static/glyphicons-regular.svg
   upload: static/glyphicons-regular.svg
-  expiration: 1d
+  expiration: "1d 0h"
   mime_type: image/svg+xml
 - url: /static/glyphicons-regular.woff
   static_files: static/glyphicons-regular.woff
   upload: static/glyphicons-regular.woff
-  expiration: 1d
+  expiration: "1d 0h"
   mime_type: application/font-woff
 
 # MP3 sound files that can be cached  
@@ -122,12 +120,7 @@ handlers:
   static_files: static/\1
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
-  expiration: 1d
-
-# Catchall for noncacheable JavaScript
-- url: /static/(.*\.min\.js)$
-  static_files: static/\1
-  upload: static/.*\.min\.js$
+  expiration: "1d 0h"
 
 # Admin web URLs, requiring admin authorization
 - url: /admin/.*

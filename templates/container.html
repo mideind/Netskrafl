@@ -8,6 +8,7 @@
 <meta name="application-name" content="Netskrafl">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#fff1dc">
 
 <!-- OpenGraph properties -->
 {% block opengraph %}
@@ -17,12 +18,15 @@
 <link rel="apple-touch-icon" sizes="76x76" href="/touch-icon-ipad.png">
 <link rel="apple-touch-icon" sizes="120x120" href="/touch-icon-iphone-retina.png">
 <link rel="apple-touch-icon" sizes="152x152" href="/touch-icon-ipad-retina.png">
+<link rel="icon" sizes="192x192" href="{{ url_for('static', filename='icon.png') }}">
 
 <title>Netskrafl</title>
 
-<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,700italic' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,700italic'
+  rel='stylesheet' type='text/css' media="all">
 
-<link href="{{ url_for('static', filename='skrafl-curry.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('static', filename='skrafl-curry.css') }}"
+  rel="stylesheet" type="text/css" media="all">
 
 <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
  <!--[if lt IE 9]>
@@ -56,6 +60,8 @@
 {% endblock -%}
    </div> <!-- container -->
 {%- block media -%}
+{%- endblock -%}
+{%- block startscripts -%}
 {%- endblock -%}
 <!-- jQuery -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>

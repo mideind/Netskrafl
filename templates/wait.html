@@ -47,10 +47,11 @@
 
 {%- endblock -%}
 
-{% block endscripts %}
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
 
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+{% block endscripts %}
 
 <!-- Wait page script -->
 {% if dev_server %}
@@ -82,7 +83,8 @@ function cancelWait() {
 
 function lateInit() {
    /* Called from initWait() */
-   openChannel("{{ channel_token }}");
+   initFirebaseListener("{{ firebase_token }}");
+   initPresence(userId());
    initForm(opponentId(), "{{ opp.nickname() | safe }}",
       "{{ opp.full_name() | safe }}",
       {{ prefs.duration }});

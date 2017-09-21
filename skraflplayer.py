@@ -2,7 +2,11 @@
 
 """ Skraflplayer - an automatic SCRABBLE(tm) player
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2015-2017 Miðeind ehf.
+    Author: Vilhjalmur Thorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
     This module finds and ranks all legal moves on
     a SCRABBLE(tm)-like board.
@@ -112,7 +116,7 @@ class Square:
 
     def is_open_for(self, c):
         """ Can this letter be placed here? """
-        return bool(self._cc & (1 << Alphabet.order.index(c)))
+        return bool(self._cc & Alphabet.letter_bit[c])
 
     def letter(self):
         """ Return the letter at this square """
@@ -209,7 +213,7 @@ class Axis:
                 else:
                     above = board.letters_left(x, y)
                     below = board.letters_right(x, y)
-                query = u'' if not above else above
+                query = above or u''
                 query += u'?'
                 if below:
                     query += below
@@ -218,7 +222,7 @@ class Axis:
                     matches = self.DAWG.find_matches(query, sort = False) # Don't need a sorted result
                     bits = 0
                     if matches:
-                        cix = 0 if not above else len(above)
+                        cix = len(above) if above else 0
                         # Note the set of allowed letters here
                         bits = Alphabet.bit_pattern([wrd[cix] for wrd in matches])
                     # Reduce the cross-check set by intersecting it with the allowed set.
@@ -236,7 +240,6 @@ class Axis:
 
     def _gen_moves_from_anchor(self, index, maxleft, lpn):
         """ Find valid moves emanating (on the left and right) from this anchor """
-
         if maxleft == 0 and index > 0 and not self.is_empty(index - 1):
             # We have a left part already on the board: try to complete it
             leftpart = u''
@@ -482,7 +485,7 @@ class ExtendRightNavigator:
             return False
         # Otherwise, continue while we have something on the rack
         # or we're at an occupied square
-        return bool(self._rack) or (not self._axis.is_empty(self._index))
+        return bool(self._rack) or not self._axis.is_empty(self._index)
 
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
@@ -744,7 +747,8 @@ class AutoPlayer:
         top_equal = 0
         # Move the selection window down the list as long as the top moves have the same score
         if picklist > 1:
-            while picklist + top_equal < num_candidates and scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]:
+            while (picklist + top_equal < num_candidates and
+                scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]):
                 top_equal += 1
         # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top".format(picklist,
         #    top_equal, num_candidates).encode("latin-1"))
@@ -936,7 +940,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # the lowest countermove score found
         weighted_candidates.sort(key = lambda x: float(x[1]) - (x[2] - min_score), reverse = True)
 
-        print(u"AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:".format(self._rack, len(scored_candidates)))
+        print(u"AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:"
+            .format(self._rack, len(scored_candidates)))
         # Show top 20 candidates
         for m, sc, wsc in weighted_candidates:
             print(u"Move {0} score {1} weighted {2:.2f}".format(m, sc, float(sc) - (wsc - min_score)))

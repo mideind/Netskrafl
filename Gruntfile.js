@@ -105,7 +105,7 @@ module.exports = function (grunt) {
             tasks: ['concat']
          },
          jshint: {
-            files: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
+            files: ['static/js/*.js'],
             tasks: ['jshint'],
             options: { spawn: false }
          },

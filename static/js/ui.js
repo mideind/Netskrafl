@@ -4,7 +4,11 @@
 
    User interface utility functions
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
 

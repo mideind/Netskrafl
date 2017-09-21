@@ -18,6 +18,9 @@ __pycache__/
 resources/secret_key.bin
 resources/salescloud_key.bin
 
+# Private GAE services key
+resources/netskrafl-0dd9fbdf9ab3.json
+
 # Unsorted BIN word lists
 resources/ordalistimax15.txt
 resources/ordalisti.algeng.txt

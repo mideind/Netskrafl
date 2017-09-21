@@ -4,7 +4,11 @@
 
    Common utility functions used by the Netskrafl HTML pages
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
 
@@ -309,13 +313,13 @@ function toggleStats(ev) {
 }
 
 function doRegisterSalesCloud(i,s,o,g,r,a,m) {
-   i['SalesCloudObject']=r;
-   i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},
+   i.SalesCloudObject=r;
+   i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments);};
    i[r].l=1*new Date();
-   a=s.createElement(o),
+   a=s.createElement(o);
    m=s.getElementsByTagName(o)[0];
    a.src=g;
-   m.parentNode.insertBefore(a,m)
+   m.parentNode.insertBefore(a,m);
 }
 
 function registerSalesCloud() {

@@ -441,9 +441,10 @@ class User:
         users = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
-                u = cls(um.key.id())
-                u._init(um)
-                users.append(u)
+                if um is not None:
+                    u = cls(um.key.id())
+                    u._init(um)
+                    users.append(u)
         return users
 
     @classmethod
@@ -749,26 +750,17 @@ class Game:
         gm.prefs = self._preferences
         tile_count = 0
         movelist = []
-        best_word = [None, None]
-        best_word_score = [0, 0]
-        player = 0
         for m in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state)
             # Count the tiles actually laid down
             tile_count += m.move.num_covers() # Can be negative for a successful challenge
-            if coord:
-                # Keep track of best words laid down by each player
-                if score > best_word_score[player]:
-                    best_word_score[player] = score
-                    best_word[player] = tiles
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
             mm.rack = m.rack
             mm.timestamp = m.ts
             movelist.append(mm)
-            player = 1 - player
         gm.moves = movelist
         gm.tile_count = tile_count
         # Update the database entity
@@ -776,6 +768,18 @@ class Game:
 
         # Storing a game that is now over: update the player statistics as well
         if self.is_over():
+            # Accumulate best word statistics
+            best_word = [None, None]
+            best_word_score = [0, 0]
+            player = 0
+            for m in self.net_moves: # Excludes successfully challenged moves
+                coord, tiles, score = m.move.summary(self.state)
+                if coord:
+                    # Keep track of best words laid down by each player
+                    if score > best_word_score[player]:
+                        best_word_score[player] = score
+                        best_word[player] = tiles
+                player = 1 - player
             pid_0 = self.player_ids[0]
             pid_1 = self.player_ids[1]
             u0 = User.load(pid_0) if pid_0 else None
@@ -1247,6 +1251,7 @@ class Game:
             reply["bag"] = self.display_bag(player_index)
 
         reply["rack"] = self.state.rack_details(player_index)
+        reply["num_moves"] = len(self.moves)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
         reply["succ_chall"] = succ_chall

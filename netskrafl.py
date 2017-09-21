@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
-""" Web server for netskrafl.appspot.com
+""" Web server for netskrafl.is
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2015-2017 Miðeind ehf.
+    Author: Vilhjalmur Thorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
     This web server module uses the Flask framework to implement
     a crossword game similar to SCRABBLE(tm).
@@ -15,9 +19,6 @@
     The web client code is found in netskrafl.js.
 
     The server is compatible with Python 2.7 and 3.x, CPython and PyPy.
-    (To get it to run under PyPy 2.7.6 the author had to patch
-    \pypy\lib-python\2.7\mimetypes.py to fix a bug that was not
-    present in the CPython 2.7 distribution of the same file.)
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
@@ -49,9 +50,10 @@ from skraflmechanics import Move, PassMove, ExchangeMove, \
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import Context, UserModel, GameModel, \
-    FavoriteModel, ChallengeModel, ChannelModel, RatingModel, ChatModel, \
+    FavoriteModel, ChallengeModel, RatingModel, ChatModel, \
     ZombieModel, PromoModel
 import billing
+import firebase
 
 # Standard Flask initialization
 
@@ -77,6 +79,7 @@ _autoplayer_lock = threading.Lock()
 _PROMO_FREQUENCY = 8 # A promo check is done randomly, but on average every 1 out of N times
 _PROMO_COUNT = 2 # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days = 4) # Min interval between promo displays
+
 
 @app.before_request
 def before_request():
@@ -196,16 +199,17 @@ def _process_move(game, movelist):
         if is_over and opponent is not None:
             ZombieModel.add_game(game.id(), opponent)
 
-    # Notify the opponent, if he is not a robot and has one or more active channels
     if opponent is not None:
-        # Send a game update to the opponent channel, if any, including
-        # the full client state. board.html listens to this.
-        ChannelModel.send_message(u"game", game.id() + u":" + str(1 - player_index),
-            json.dumps(game.client_state(1 - player_index, m)))
-        # Notify the opponent that it's his turn to move. main.html listens to this.
-        # !!! TODO: Figure out a way to have board.html listen to these
-        # !!! notifications as well, since we now have a gamelist there
-        ChannelModel.send_message(u"user", opponent, u'{ "kind": "game" }')
+        # Send Firebase notifications
+        # Send a game update to the opponent, if human, including
+        # the full client state
+        game_state = json.dumps(game.client_state(1 - player_index, m))
+        # Send the game state to /game/[game_id]/[opponent_id]/move
+        # board.html listens to this
+        firebase.send_message(game_state, "game", game.id(), opponent, "move")
+        # Send an update to /user/[opponent_id]/move
+        # main.html listens to this
+        firebase.send_update("user", opponent, "move")
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
@@ -268,7 +272,7 @@ def _userlist(query, spec):
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
-        online = set(ChannelModel.list_connected()) # Eliminate duplicates by using a set
+        online = firebase.get_connected_users() # Returns a set
         # Store the result in the cache with a lifetime of 3 minutes
         memcache.set("live", online, time=3 * 60, namespace="userlist")
 
@@ -627,7 +631,7 @@ def _recentlist(cuid, versus, max_len):
 
 def _opponent_waiting(user_id, opp_id):
     """ Return True if the given opponent is waiting on this user's challenge """
-    return ChannelModel.exists(u"wait", user_id, opp_id)
+    return firebase.check_wait(opp_id, user_id)
 
 
 def _challengelist():
@@ -646,8 +650,8 @@ def _challengelist():
         """ Returns True if this is a timed challenge and the opponent is ready to play """
         if not is_timed(c[1]):
             return False
-        # Timed challenge: see if there is a valid wait channel connection
-        # where the opponent is waiting for this user
+        # Timed challenge: see if there is a Firebase path indicating
+        # that the opponent is waiting for this user
         return _opponent_waiting(cuid, c[0])
 
     if cuid is not None:
@@ -708,27 +712,6 @@ def stop():
 def warmup():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
     return start()
-
-
-@app.route("/_ah/channel/connected/", methods=['POST'])
-def channel_connected():
-    """ A client channel has been connected """
-    chid = request.form.get('from', None)
-    # logging.info(u"Channel connect from id {0}".format(chid).encode('latin-1'))
-    # Mark the entity as being connected
-    ChannelModel.connect(chid)
-    return "", 200 # jsonify(ok = True)
-
-
-@app.route("/_ah/channel/disconnected/", methods=['POST'])
-def channel_disconnected():
-    """ A client channel has been disconnected """
-
-    chid = request.form.get('from', None)
-    # logging.info(u"Channel disconnect from id {0}".format(chid).encode('latin-1'))
-    # Mark the entity as being disconnected
-    ChannelModel.disconnect(chid)
-    return "", 200 # jsonify(ok = True)
 
 
 @app.route("/submitmove", methods=['POST'])
@@ -975,9 +958,7 @@ def recentlist():
 @app.route("/challengelist", methods=['POST'])
 def challengelist():
     """ Return a list of challenges issued or received by the current user """
-
     # _challengelist() returns an empty list if no user is logged in
-
     return jsonify(result = Error.LEGAL, challengelist = _challengelist())
 
 
@@ -1048,8 +1029,10 @@ def challenge():
         elif action == u"accept":
             # Accept a challenge previously made by the destuser (really srcuser)
             user.accept_challenge(destuser)
-        # Notify the destination user, if he has one or more active channels
-        ChannelModel.send_message(u"user", destuser, u'{ "kind": "challenge" }')
+        # Notify the destination user via a
+        # Firebase notification to /user/[user_id]/challenge
+        # main.html listens to this
+        firebase.send_update("user", destuser, "challenge")
 
     return jsonify(result = Error.LEGAL)
 
@@ -1116,7 +1099,7 @@ def onlinecheck():
     online = False
 
     if user_id is not None:
-        online = ChannelModel.is_connected(user_id)
+        online = firebase.check_presence(user_id)
 
     return jsonify(online = online)
 
@@ -1138,6 +1121,28 @@ def waitcheck():
     return jsonify(userid = opp_id, waiting = waiting)
 
 
+@app.route("/cancelwait", methods=['POST'])
+def cancelwait():
+    """ A wait on a challenge has been cancelled """
+
+    if not User.current_id():
+        # We must have a logged-in user
+        return jsonify(ok = False)
+
+    user_id = request.form.get('user', None)
+    opp_id = request.form.get('opp', None)
+
+    if not user_id or not opp_id:
+        return jsonify(ok = False)
+
+    # Delete the current wait
+    firebase.send_message(None, "user", user_id, "wait", opp_id)
+    # Force update of the opponent's challenge list
+    firebase.send_update("user", opp_id, "challenge")
+
+    return jsonify(ok = True)
+
+
 @app.route("/chatmsg", methods=['POST'])
 def chatmsg():
     """ Send a chat message on a conversation channel """
@@ -1145,25 +1150,34 @@ def chatmsg():
     channel = request.form.get('channel', u"")
     msg = request.form.get('msg', u"")
 
-    if not User.current_id() or not channel:
+    user_id = User.current_id()
+    if not user_id or not channel:
         # We must have a logged-in user and a valid channel
         return jsonify(ok = False)
 
-    # Add a message entity to the data store and remember its timestamp
-    ts = ChatModel.add_msg(channel, User.current_id(), msg)
-
-    if channel.startswith(u"game:") and msg:
+    game = None
+    if channel.startswith(u"game:"):
         # Send notifications to both players on the game channel
+        uuid = channel[5:][:36] # The game id
+        if uuid:
+            game = Game.load(uuid)
+
+    if game is None or not game.has_player(user_id):
+        # The logged-in user must be a player in the game
+        return jsonify(ok = False)
+
+    # Add a message entity to the data store and remember its timestamp
+    ts = ChatModel.add_msg(channel, user_id, msg)
+
+    if msg:
         # No need to send empty messages, which are to be interpreted
         # as read confirmations
-        uuid = channel[5:] # The game id
         # The message to be sent in JSON form on the channel
-        md = dict(from_userid = User.current_id(), msg = msg, ts = Alphabet.format_timestamp(ts))
+        md = dict(from_userid = user_id, msg = msg, ts = Alphabet.format_timestamp(ts))
+        j = json.dumps(md)
         for p in range(0, 2):
-            ChannelModel.send_message(u"game",
-                uuid + u":" + str(p),
-                json.dumps(md)
-            )
+            # Send a Firebase notification to /game/[gameid]/[userid]/chat
+            firebase.send_message(j, "game", uuid, game.player_id(p), "chat")
 
     return jsonify(ok = True)
 
@@ -1172,25 +1186,34 @@ def chatmsg():
 def chatload():
     """ Load all chat messages on a conversation channel """
 
-    if not User.current_id():
-        # We must have a logged-in user
+    channel = request.form.get('channel', u"")
+
+    user_id = User.current_id()
+    if not user_id or not channel:
+        # We must have a logged-in user and a valid channel
         return jsonify(ok = False)
 
-    channel = request.form.get('channel', u"")
-    messages = []
+    game = None
+    if channel.startswith(u"game:"):
+        uuid = channel[5:][:36] # The game id
+        if uuid:
+            game = Game.load(uuid)
 
-    if channel:
-        # Return the messages sorted in ascending timestamp order.
-        # ChatModel.list_conversations returns them in descending
-        # order since its maxlen limit cuts off the oldest messages.
-        messages = [
-            dict(
-                from_userid = cm["user"],
-                msg = cm["msg"],
-                ts = Alphabet.format_timestamp(cm["ts"])
-            )
-            for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
-        ]
+    if game is None or not game.has_player(user_id):
+        # The logged-in user must be a player in the game
+        return jsonify(ok = False)
+
+    # Return the messages sorted in ascending timestamp order.
+    # ChatModel.list_conversations returns them in descending
+    # order since its maxlen limit cuts off the oldest messages.
+    messages = [
+        dict(
+            from_userid = cm["user"],
+            msg = cm["msg"],
+            ts = Alphabet.format_timestamp(cm["ts"])
+        )
+        for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
+    ]
 
     return jsonify(ok = True, messages = messages)
 
@@ -1393,18 +1416,21 @@ def wait():
         return redirect(url_for("main"))
 
     # Notify the opponent of a change in the challenge list
-    ChannelModel.send_message(u"user", opp, u'{ "kind": "challenge" }')
+    # via a Firebase notification to /user/[user_id]/challenge
+    firebase.send_update("user", opp, "challenge")
+    # Set the path that wait.html will wait on
+    firebase.send_message(json.dumps({ opp : True }), "user", user.id(), "wait")
 
-    # Create a Google App Engine Channel API token
-    # to enable notification when the original challenger
-    # is ready and we can start the game. The channel has
-    # a short lifetime to reduce the risk of false positives.
-    channel_token = ChannelModel.create_new(u"wait", opp, user.id(),
-        timedelta(minutes = 1))
+    # Create a Firebase token for the logged-0in user
+    # to enable refreshing of the client page when
+    # the user state changes (game moves made, challenges
+    # issued or accepted, etc.)
+    firebase_token = firebase.create_custom_token(user.id())
 
     # Go to the wait page
-    return render_template("wait.html", user = user, opp = opp_user,
-        prefs = prefs, channel_token = channel_token)
+    return render_template("wait.html",
+        user = user, opp = opp_user, prefs = prefs,
+        firebase_token = firebase_token)
 
 
 @app.route("/newgame")
@@ -1455,11 +1481,12 @@ def newgame():
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    ChannelModel.send_message(u"user", opp, u'{ "kind": "game" }')
+    firebase.send_update("user", opp, "move")
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
-        ChannelModel.send_message(u"wait", user.id(), u'{ "kind": "ready", "game": "' + game.id() + u'" }')
+        firebase.send_message(json.dumps({ "game" : game.id() }),
+            "user", opp, "wait", user.id())
 
     # Go to the game page
     return redirect(url_for("board", game = game.id()))
@@ -1513,19 +1540,11 @@ def board():
     # user can be None if the game is over - we do not require a login in that case
     player_index = None if user is None else game.player_index(user.id())
 
-    # Create a Google App Engine Channel API token
-    # to enable refreshing of the board when the
-    # opponent makes a move. We do this even if the
-    # opponent is an autoplayer as we do want the
-    # presence detection functionality for the human
-    # user.
-    channel_token = None
+    # If a logged-in user is looking at the board, we create a Firebase
+    # token in order to maintain presence info
+    firebase_token = None if user is None else firebase.create_custom_token(user.id())
+
     if player_index is not None and not game.is_autoplayer(1 - player_index):
-        # If one of the players is looking at the game, we create a channel
-        # even if the game is over - as the players can continue chatting
-        # in that case.
-        channel_token = ChannelModel.create_new(u"game",
-            game.id() + u":" + str(player_index), user.id())
         # Load information about the opponent
         opp = User.load(game.player_id(1 - player_index))
 
@@ -1555,11 +1574,19 @@ def board():
             bingo1 = bingoes[1 - pix]
         )
 
+    # Delete the Firebase subtree for this game,
+    # to get earlier move and chat notifications out of the way
+    if firebase_token is not None:
+        firebase.send_message(None, "game", game.id(), user.id())
+        firebase.send_message(None, "user", user.id(), "wait")
+        # No need to clear other stuff on the /user/[user_id]/ path,
+        # since we're not listening to it in board.html
+
     return render_template("board.html",
         game = game, user = user, opp = opp,
         player_index = player_index, zombie = bool(zombie),
         time_info = game.time_info(), og = ogd, # OpenGraph data
-        channel_token = channel_token)
+        firebase_token = firebase_token)
 
 
 @app.route("/gameover", methods=['POST'])
@@ -1581,64 +1608,6 @@ def gameover():
     ZombieModel.del_game(game_id, user_id)
 
     return jsonify(result = Error.LEGAL)
-
-
-@app.route("/newchannel", methods=['POST'])
-def newchannel():
-    """ Issue a new channel token for an expired client session """
-
-    user = User.current()
-    if user is None:
-        # No user: no channel token
-        return jsonify(result = Error.LOGIN_REQUIRED)
-
-    channel_token = None
-    uuid = request.form.get("game", None)
-
-    if uuid is None:
-        # This is probably a user channel request
-        uuid = request.form.get("user", None)
-        if uuid is None:
-            uuid = request.form.get("wait", None)
-            if uuid is not None:
-                # logging.info(u"Renewing channel token for wait channel with opponent id {0}".format(uuid))
-                channel_token = ChannelModel.create_new(u"wait", uuid,
-                    user.id(), timedelta(minutes = 1))
-
-        elif uuid == user.id():
-            # Create a Google App Engine Channel API token
-            # for user notification
-            channel_token = ChannelModel.create_new(u"user", uuid, uuid)
-        if channel_token is None:
-            # logging.info(u"newchannel() returning Error.WRONG_USER")
-            return jsonify(result = Error.WRONG_USER)
-
-    else:
-        # Game channel request
-        # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid)
-
-        if game is not None:
-            # !!! Strictly speaking the users may continue to chat after
-            # the game is over, so the game.is_over() check below may
-            # be too stringent
-            if game.is_over() or not game.has_player(user.id()):
-                game = None
-
-        if game is None:
-            # No associated game: return error
-            # logging.info(u"newchannel() returning Error.WRONG_USER")
-            return jsonify(result = Error.WRONG_USER)
-
-        player_index = game.player_index(user.id())
-
-        # Create a Google App Engine Channel API token
-        # to enable refreshing of the board when the
-        # opponent makes a move
-        channel_token = ChannelModel.create_new(u"game",
-            game.id() + u":" + str(player_index), user.id())
-
-    return jsonify(result = Error.LEGAL, token = channel_token)
 
 
 @app.route("/friend")
@@ -1725,11 +1694,11 @@ def main():
 
     uid = user.id()
 
-    # Create a Google App Engine Channel API token
+    # Create a Firebase token for the logged-0in user
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
-    channel_token = ChannelModel.create_new(u"user", uid, uid)
+    firebase_token = firebase.create_custom_token(uid)
 
     # Promotion display logic
     promo = None
@@ -1756,57 +1725,53 @@ def main():
             .format(uid, promo, len(promos)))
         PromoModel.add_promotion(uid, promo)
 
-    return render_template("main.html", user = user,
-        channel_token = channel_token, tab = tab,
+    # Get earlier challenge, move and wait notifications out of the way
+    firebase.send_message(None, "user", uid, "challenge")
+    firebase.send_message(None, "user", uid, "move")
+    firebase.send_message(None, "user", uid, "wait")
+
+    return render_template("main.html",
+        user = user, tab = tab,
+        firebase_token = firebase_token,
         promo = promo)
 
 
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-
     login_url = users.create_login_url("/")
-
     return render_template("login.html", login_url = login_url)
 
 
 @app.route("/help")
 def help():
     """ Show help page """
-
     user = User.current()
     # We tolerate a null (not logged in) user here
-
     return render_template("nshelp.html", user = user, tab = None)
 
 
 @app.route("/twoletter")
 def twoletter():
     """ Show help page """
-
     user = User.current()
     # We tolerate a null (not logged in) user here
-
     return render_template("nshelp.html", user = user, tab = "twoletter")
 
 
 @app.route("/faq")
 def faq():
     """ Show help page """
-
     user = User.current()
     # We tolerate a null (not logged in) user here
-
     return render_template("nshelp.html", user = user, tab = "faq")
 
 
 @app.route("/newbag")
 def newbag():
     """ Show help page """
-
     user = User.current()
     # We tolerate a null (not logged in) user here
-
     return render_template("nshelp.html", user = user, tab = "newbag")
 
 

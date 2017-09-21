@@ -23,14 +23,15 @@
 
 {% block content %}
 
-<div class="loginform">
+<div class="loginform-large">
+   <!-- Large UI form -->
    <div class="loginhdr">
       Velkomin í Netskrafl!
    </div>
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
-   <div id="board-pic" style="float:left; padding-right:24px"><img src="{{ url_for('static', filename='Board.png') }}" width="310" height="300"></div>
+   <div id="board-pic"><img src="{{ url_for('static', filename='Board.png') }}" width="310" height="300"></div>
    <div class="welcome">
       Netskrafl er vettvangur <b>yfir 16.000 íslenskra skraflara</b> á netinu.
    </div>
@@ -48,7 +49,20 @@
       hér til vinstri.
    </div>
    <div style="float:right">
-      <button type="submit" id="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
+      <button type="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
+   </div>
+</div>
+
+<div class="loginform-small">
+   <!-- Small UI form -->
+   <div id="logo-pic">
+      <img src="{{ url_for('static', filename='LoginLogo600.png') }}" width="300" height="300">
+   </div>
+   <div class="blurb">
+      Skemmtilegt | skerpandi | ókeypis
+   </div>
+   <div style="text-align: center">
+      <button type="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
    </div>
 </div>
 
@@ -58,7 +72,7 @@
 
 <script>
 
-$("#submit").click(function() {
+$("button.login").click(function() {
    window.location.href = "{{ login_url | safe }}";
 });
 

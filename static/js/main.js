@@ -4,39 +4,13 @@
 
    Client-side script functions for main.html, the main page of Netskrafl
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
-
-function channelOnMessage(msg) {
-   /* The server has sent a notification message back on our channel */
-   var json = jQuery.parseJSON(msg.data);
-   if (json.stale || json.kind == "challenge") {
-      // A challenge to this user has been issued or retracted
-      refreshChallengeList();
-      redisplayUserList();
-   }
-   if (json.stale || json.kind == "game") {
-      // A move has been made in a game for this user
-      refreshGameList();
-   }
-   if (json.kind && json.kind == "game") {
-      // Play audio, if present
-      var yourTurn = document.getElementById("your-turn");
-      if (yourTurn)
-         // Note that playing media outside user-invoked event handlers does not work on iOS.
-         // That is a 'feature' introduced and documented by Apple.
-         yourTurn.play();
-   }
-}
-
-function channelOnClose() {
-   /* Channel expired: Ask for a new channel from the server */
-   serverQuery("newchannel", { user: userId(), oldch: channelToken }, newChannel);
-   channelToken = null;
-   channel = null;
-   socket = null;
-}
 
 function _showUserInfo(ev) {
     showUserInfo(ev.data.nick, ev.data.fullname, ev.data.userid);
@@ -109,8 +83,6 @@ var ulRq = false;
 
 function populateUserList(json) {
    /* Display a user list that has been returned from the server */
-   // Hide the user load spinner
-   $("#user-load").css("display", "none");
    ulRq = false; // Allow another user list request to proceed
    if (!json || json.result === undefined)
       return;
@@ -370,7 +342,12 @@ function refreshUserList(ev) {
             query: rangeType,
             spec: rangeSpec
          },
-         populateUserList);
+         populateUserList,
+         function() {
+            // Hide the user load spinner
+            $("#user-load").css("display", "none");
+         }
+      );
    else {
       // Actually no processing going on
       $("#user-load").css("display", "none");
@@ -379,7 +356,7 @@ function refreshUserList(ev) {
 }
 
 // Number of games by this user
-var numGames = undefined;
+var numGames;
 // Maximum number of concurrent games unless user is a paying friend
 var MAX_GAME_LIMIT = 8;
 
@@ -887,6 +864,32 @@ function triggerUserSearch() {
    if (ivalUserSearch !== null)
       window.clearInterval(ivalUserSearch);
    ivalUserSearch = window.setInterval(periodicUserSearch, 800); // 0.8 seconds
+}
+
+function handleChallengeMessage(json) {
+   // A challenge to this user has been issued or retracted
+   refreshChallengeList();
+   redisplayUserList();
+}
+
+function handleMoveMessage(json) {
+   // A move has been made in a game for this user
+   refreshGameList();
+   // Play audio, if present
+   var yourTurn = document.getElementById("your-turn");
+   if (yourTurn)
+      // Note that playing media outside user-invoked event handlers does not work on iOS.
+      // That is a 'feature' introduced and documented by Apple.
+      yourTurn.play();
+}
+
+function initFirebaseListener(token) {
+   // Sign into Firebase with the token passed from the server
+   loginFirebase(token);
+   // Listen to Firebase events on the /user/[userId]/[messageType] path
+   var basepath = 'user/' + userId() + "/";
+   attachFirebaseListener(basepath + "challenge", handleChallengeMessage);
+   attachFirebaseListener(basepath + "move", handleMoveMessage);
 }
 
 function initMain() {

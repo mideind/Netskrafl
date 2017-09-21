@@ -429,10 +429,11 @@
 
 {% endblock %}
 
-{% block endscripts %}
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
 
-<!-- Google App Engine Channel API -->
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+{% block endscripts %}
 
 <!-- Main page script -->
 {% if dev_server %}
@@ -482,12 +483,15 @@ function gameUrl(uuid) {
 function lateInit() {
    /* Initialization that needs server-side info. Called from initMain() */
 
+{% if firebase_token %}
+   initFirebaseListener("{{ firebase_token }}");
+   initPresence(userId());
+{% endif %}
+
 {% if tab %}
    /* Select default tab when opening page */
    $("#tabs").tabs("option", "active", {{ tab }});
 {% endif %}
-
-   openChannel("{{ channel_token }}");
 
    // Initialize the ready state togglers
    initToggle("#ready-toggler", {{ "true" if user.is_ready() else "false" }});

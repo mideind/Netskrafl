@@ -2,41 +2,55 @@
 
    Channel.js
 
-   Client-side script for wait.html,
-   a page displated while waiting for a time-limited game to start
+   Utility functions for working with Firebase
 
-   Author: Vilhjalmur Thorsteinsson, 2015
+   Copyright (C) 2015-2017 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
 
-var channel = null;
-var socket = null;
-var channelToken = null;
+function loginFirebase(token) {
+   // Log in to Firebase using the provided custom token
+   firebase.auth()
+      .signInWithCustomToken(token)
+      .catch(function(error) {
+         console.log('Login failed!', error.code);
+         console.log('Error message: ', error.message);
+      });
+}
 
-function openChannel(token) {
-   /* Open a new channel using the token stored in channelToken */
-   channelToken = token;
-   channel = new goog.appengine.Channel(token);
-   socket = channel.open({
-      onopen : channelOnOpen,
-      onmessage : channelOnMessage,
-      onerror : channelOnError,
-      onclose : channelOnClose
+function initPresence(userId) {
+   // Ensure that this user connection is recorded in Firebase
+   var connectedRef = firebase.database().ref('.info/connected');
+   var connectionPath = 'connection/' + userId;
+   connectedRef.on('value', function(snap) {
+      if (snap.val() === true) {
+         // We're connected (or reconnected)
+         // Create a global connection entry
+         var ref = firebase.database().ref(connectionPath);
+         // Create a fresh entry under the user id
+         var con = ref.push();
+         // When I disconnect, remove this entry
+         con.onDisconnect().remove();
+         // Set presence
+         con.set(true);
+      }
    });
 }
 
-function channelOnOpen() {
-}
-
-function channelOnError(err) {
-   /* Act on err.code and err.description here */
-}
-
-function newChannel(json) {
-   /* Ajax callback, called when the server has issued a new channel token */
-   if (json && json.result === 0) {
-      // No error: get the new token and reopen the channel
-      openChannel(json.token);
-   }
+function attachFirebaseListener(path, func) {
+   // Attach a message listener to a Firebase path
+   firebase.database()
+      .ref(path)
+      .on('value', function(data) {
+         if (!data)
+            return;
+         var json = data.val();
+         if (json)
+            func(json);
+      });
 }
 

@@ -6,6 +6,36 @@
 
 */
 
+@board-cell-big: 32px;
+@board-cell-small: 22px;
+
+@rack-cell-big: 32px;
+@rack-cell-small: 26px;
+
+@btn-height-big: 30px;
+@btn-width-big: 40px;
+
+@btn-height-small: 26px;
+@btn-width-small: 33px;
+
+@wide-btn-width-big: 82px;
+@wide-btn-width-small: 96px;
+
+@margin-small: 8px;
+
+@btn-left-small: @margin-small;
+@btn-spacing-small: 32px;
+
+@board-top: 72px + 1 * @margin-small;
+@board-size: 360px;
+
+@vertical-space: 20px;
+@rack-top: @board-top + @board-size + @vertical-space;
+@rack-height: 48px;
+@btn-top: @rack-top + @rack-height + @vertical-space;
+
+@navbar-height: 83px;
+
 @font-face {
    font-family: 'Glyphicons Regular';
    src: url('glyphicons-regular.eot');
@@ -202,6 +232,9 @@
 .glyphicon-coffee-cup:before {
    content: "\E295";
 }
+.glyphicon-grid:before {
+   content: "\E157";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -218,17 +251,8 @@ body {
    background-color: @container;
 }
 
-div.container {
-   position: relative;
-   top: 0;
-   left: 0;
-   width: 1024px;
-   height: 748px; /* Status bar is 20 pixels on iPhone/iPad */
-   overflow-y: hidden;
-   margin: 0 auto;
-}
-
 div.logo {
+   display: none;
    position: absolute;
    top: 28px;
    left: 28px;
@@ -236,59 +260,20 @@ div.logo {
    height: 400px;
 }
 
-div.logo-back {
-   position: absolute;
-   top: 38px;
-   left: 28px;
-   width: 46px;
-   height: 46px;
-   font-size: 46px;
-   line-height: 46px;
-   -ms-transform: rotate(90deg);
-   -webkit-transform: rotate(90deg);
-   transform: rotate(90deg);
-}
-
-div.info {
-   position: absolute;
-   top: 456px;
-   left: 26px;
-   width: 50px;
-   height: 50px;
-   text-align: center;
-   font-size: 40px;
-}
-
-div.board {
-   position: absolute;
-   top: 8px;
-   left: 88px;
-}
-
 div.rightcol {
+   display: block;
    position: absolute;
-   width: 302px;
-   right: 12px;
-   top: 38px;
-}
-
-div.rack {
-   position: absolute;
-   text-align: center;
-   bottom: 125px;
-   left: 236px;
-   background-color: @board-background;
-   padding: 6px;
-   border-width: 0;
-   border-radius: 5px;
-   margin: 0;
+   width: 375px - 2 * @margin-small;
+   left: @margin-small;
+   top: @margin-small;
+   height: 72px;
 }
 
 div.bag {
    position: absolute;
    bottom: 32px;
-   right: 14px;
-   width: 302px;
+   right: 12px;
+   width: 304px;
    height: 160px;
    font-size: 11px;
    font-weight: 700;
@@ -318,33 +303,6 @@ table#bag.empty td {
    background-color: @freshtile;
 }
 
-table.board {
-   margin: 0;
-   padding: 0;
-   border-spacing: 0;
-   border-collapse: separate;
-   table-layout: fixed;
-   .noselect;
-}
-
-.board td {
-   height: 32px;
-   width: 32px;
-   overflow: hidden;
-   text-align: center;
-   font-size: 24px;
-   background-color: @board-background;
-   border-style: solid;
-   border-color: #f2f2f2;
-   border-width: 1px;
-   margin: 0;
-   padding: 0;
-}
-
-.rack table.board {
-   border-spacing: 4px;
-}
-
 td.over {
    outline: yellow solid 3px;
 }
@@ -353,7 +311,7 @@ td.highlight {
    outline: yellow solid 2px;
 }
 
-.colid td {
+tr.colid td {
    height: 24px;
    width: 32px;
    overflow: hidden;
@@ -366,21 +324,6 @@ td.highlight {
    border-color: transparent;
    margin: 0;
    padding: 0;
-}
-
-td.rowid {
-   width: 16px;
-   height: 32px;
-   min-width: 16px;
-   max-width: 16px;
-   overflow: hidden;
-   background-color: transparent;
-   text-align: center;
-   font-size: 14px;
-   line-height: 14px;
-   font-weight: 400;
-   border-width: 1px;
-   border-color: transparent;
 }
 
 /* Board layout */
@@ -410,23 +353,1294 @@ td.rowid {
    background-color: @triple-letter;
 }
 
+table.board {
+   margin: 0;
+   padding: 0;
+   border-spacing: 0;
+   border-collapse: separate;
+   table-layout: fixed;
+   .noselect;
+}
+
+.rack table.board {
+   border-spacing: 4px;
+}
+
+/* Default media: small screen, i.e. mobile */
+
+div.container {
+   position: relative;
+   /* position: fixed; */
+   top: 0;
+   left: 0;
+   width: 375px; /* Reference width */
+   height: 667px - @navbar-height; /* Full height is 667px - we subtract 83px for browser navbar */
+   overflow: hidden;
+   margin: 0 auto; /* Horizontal align center */
+}
+
+div.logo-back {
+   display: none;
+}
+
+div.info {
+   display: none;
+}
+
+div.bag {
+   display: none;
+}
+
+div.board-area {
+   position: absolute;
+   z-index: 5;
+   height: 100%;
+}
+
+div.board {
+   position: absolute;
+   top: @board-top;
+   left: @margin-small;
+   height: 100%;
+   padding-top: 8px;
+   background-color: @container;
+}
+
 div.tile {
    background-color: @tile;
-   font-size: 25px;
-   line-height: 26px;
+   font-size: 18px;
+   line-height: 7px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
-   height: 30px;
-   width: 30px;
+   height: @board-cell-small - 6px;
+   width: @board-cell-small;
    overflow: hidden;
    margin: 0px;
-   padding-top: 2px;
+   padding-top: 6px;
    padding-bottom: 0px;
    padding-left: 0px;
-   padding-right: 2px;
+   padding-right: 0;
    cursor: default;
 }
+
+/* On small form factors, we have bigger tiles in the rack than on the board */
+
+.rack div.tile {
+   font-size: 22px;
+   line-height: 11px;
+   height: @rack-cell-small - 6px;
+   width: @rack-cell-small;
+}
+
+/* While dragging a tile, show it in the rack form factor */
+
+div.tile.ui-draggable-dragging {
+   font-size: 22px;
+   line-height: 11px;
+   height: @rack-cell-small - 6px;
+   width: @rack-cell-small;
+}
+
+.board td {
+   min-height: @board-cell-small;
+   min-width: @board-cell-small;
+   max-height: @board-cell-small;
+   max-width: @board-cell-small;
+   height: @board-cell-small;
+   width: @board-cell-small;
+   overflow: hidden;
+   background-color: @board-background;
+   border-style: solid;
+   border-color: #f2f2f2;
+   border-width: 1px;
+   padding: 0;
+}
+
+.rack td {
+   min-height: @rack-cell-small;
+   min-width: @rack-cell-small;
+   max-height: @rack-cell-small;
+   max-width: @rack-cell-small;
+   height: @rack-cell-small;
+   width: @rack-cell-small;
+}
+
+tr.colid {
+   display: none;
+}
+
+td.rowid {
+   display: none;
+}
+
+div.board-help {
+   display: none;
+}
+
+div.rack {
+   position: absolute;
+   text-align: center;
+   top: @board-top + @board-size + @vertical-space;
+   left: @margin-small;
+   background-color: @board-background;
+   padding: 6px;
+   border-width: 0;
+   border-radius: 5px;
+   margin: 0;
+}
+
+div.letterscore {
+   position: relative;
+   bottom: 2px;
+   left: 12px;
+   height: 9px;
+   width: 9px;
+   font-size: 6px;
+   line-height: 9px;
+   text-align: right;
+   font-weight: 400;
+   padding: 0;
+   background-color: transparent;
+}
+
+.rack div.letterscore {
+   left: 16px;
+   font-size: 9px;
+   line-height: 9px;
+}
+
+div.word-check {
+   position: absolute;
+   width: 44px;
+   height: 44px;
+   text-align: center;
+   vertical-align: middle;
+   top: @rack-top;
+   left: 259px;
+   background-color: transparent;
+   font-family: 'Glyphicons Regular';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 22px;
+   line-height: 42px;
+   visibility: hidden;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 4px;
+}
+
+div.score {
+   position: absolute;
+   width: 44px;
+   height: 44px;
+   text-align: center;
+   vertical-align: middle;
+   top: @rack-top;
+   left: 318px;
+   background-color: transparent;
+   font-size: 20px;
+   font-weight: 700;
+   line-height: 42px;
+   color: @board-background;
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 4px;
+   border-color: @board-background;
+}
+
+.standard-button {
+   position: absolute;
+   top: @btn-top;
+   text-align: center;
+   font-size: 19px;
+   font-weight: 700;
+   color: white;
+   margin: 0;
+   padding: 6px;
+   padding-top: 9px;
+   border-radius: 5px;
+   vertical-align: middle;
+   cursor: pointer;
+   .noselect;
+}
+
+.submitbutton {
+   .standard-button;
+   width: @wide-btn-width-small;
+   height: @btn-height-small;
+   left: 259px;
+   background-color: darken(@freshtile, 10%);
+   font-size: 16px;
+   font-weight: 700;
+}
+
+div.submitnewgame {
+   .submitbutton;
+   display: none;
+   top: 464px;
+}
+
+div.fb-share {
+   .submitbutton;
+   display: none; /* Don't display on mobile */
+}
+
+div.fb-share:hover {
+   outline: yellow solid 3px;
+}
+
+div.waitmove {
+   .submitbutton;
+   display: none;
+   z-index: 10;
+}
+
+div.recallbtn {
+   .standard-button;
+   width: @btn-width-small;
+   height: @btn-height-small;
+   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
+   background-color: darken(@racktile, 10%);
+}
+
+div.scramblebtn {
+   .standard-button;
+   width: @btn-width-small;
+   height: @btn-height-small;
+   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
+   background-color: darken(@double-letter, 10%);
+}
+
+div.submitexchange {
+   .standard-button;
+   width: @btn-width-small;
+   height: @btn-height-small;
+   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 1;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.submitpass {
+   .standard-button;
+   width: @btn-width-small;
+   height: @btn-height-small;
+   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 2;
+   background-color: @pass-btn;
+}
+
+div.submitresign {
+   .standard-button;
+   width: @btn-width-small;
+   height: @btn-height-small;
+   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 3;
+   background-color: @alert;
+}
+
+div.submitmove {
+   .submitbutton;
+   display: block;
+}
+
+h3.playerleft {
+   display: inline-block;
+   position: absolute;
+   top: 0; left: 0;
+   margin: 0;
+   padding-left: 48px;
+   width: 132px;
+   height: 32px;
+   min-height: 32px;
+   font-size: 14px;
+   line-height: 16px;
+   font-weight: 700;
+   text-align: left;
+   color: @neutral;
+}
+
+h3.playerright {
+   display: inline-block;
+   position: absolute;
+   top: 0; right: 0;
+   margin: 0;
+   padding-right: 48px;
+   width: 132px;
+   height: 32px;
+   min-height: 32px;
+   font-size: 14px;
+   line-height: 16px;
+   font-weight: 700;
+   text-align: right;
+   color: @neutral;
+}
+
+h3.scoreleft {
+   display: inline-block;
+   position: absolute;
+   top: 0px;
+   left: 0;
+   width: 145px;
+   font-size: 22px;
+   line-height: 22px;
+   font-weight: 700;
+   text-align: left;
+   color: white;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 6px;
+   padding-left: 5px;
+}
+
+h3.scoreright {
+   display: inline-block;
+   position: absolute;
+   top: 0px;
+   right: 0;
+   width: 145px;
+   font-size: 22px;
+   line-height: 22px;
+   font-weight: 700;
+   text-align: right;
+   color: white;
+   overflow: hidden;
+   margin-top: 4px;
+   margin-bottom: 6px;
+   padding-right: 5px;
+}
+
+div.robot-btn {
+   display: inline-block;
+   position: relative;
+   top: 0; left: 0;
+   margin: 2px;
+   padding: 2px;
+   padding-top: 6px;
+   width: 126px;
+   height: 28px;
+   min-height: 28px;
+   border-width: 0px;
+   overflow: hidden;
+   background-color: transparent;
+}
+
+div.robot-btn.left {
+   padding-left: 4px;
+}
+
+div.robot-btn.right {
+   padding-right: 4px;
+}
+
+div.player-btn {
+   display: inline-block;
+   position: relative;
+   top: 0; left: 0;
+   margin: 2px;
+   padding: 2px;
+   padding-top: 6px;
+   width: 126px;
+   height: 28px;
+   min-height: 28px;
+   border-radius: 5px;
+   border-width: 0px;
+   overflow: hidden;
+   background-color: transparent;
+   color: @neutral;
+   cursor: pointer;
+}
+
+div.player-btn.left {
+   padding-left: 4px;
+}
+
+div.player-btn.right {
+   padding-right: 4px;
+}
+
+div.player-btn:hover {
+   background-color: white;
+   color: @neutral;
+}
+
+div.loginform-small {
+   display: block;
+   position: absolute;
+   width: 375px - 2 * @margin-small;
+   padding-top: @margin-small;
+   padding-left: @margin-small;
+   padding-right: @margin-small;
+}
+
+div.loginform-large {
+   display: none;
+   position: absolute;
+   left: 220px;
+   top: 36px;
+   width: auto;
+   padding: 0;
+}
+
+div#logo-pic {
+   text-align: center;
+   padding-top: 32px;
+   padding-bottom: 16px;
+}
+
+div.blurb {
+   font-size: 16px;
+   font-weight: bold;
+   padding-bottom: 24px;
+   text-align: center;
+}
+
+div.heading {
+   position: relative;
+   width: 100%;
+   height: 72px;
+   background-color: @board-background;
+   top: 0; left: 0;
+   padding-left: 0px;
+   padding-right: 0px;
+}
+
+div.right-tab {
+   position: absolute;
+   top: -32px;
+   height: 34px;
+   min-height: 34px;
+   width: 64px;
+   min-width: 64px;
+   overflow: visible;
+   visibility: visible;
+   text-align: center;
+   vertical-align: middle;
+   padding-top: 6px;
+   font-size: 18px;
+   line-height: 18px;
+   border-radius: 5px;
+   opacity: 0.6;
+   z-index: 0;
+}
+
+div.right-tab#tab-board {
+   left: 8px;
+   background-color: @container;
+}
+
+div.right-tab#tab-movelist {
+   left: 80px;
+   background-color: @background;
+}
+
+div.right-tab#tab-twoletter {
+   left: 152px;
+   background-color: @theme4;
+}
+
+div.right-tab#tab-games {
+   left: 224px;
+   background-color: @theme6;
+}
+
+div.right-tab#tab-chat {
+   left: 295px;
+   background-color: @theme5;
+}
+
+div.right-tab.selected {
+   opacity: 1.0;
+}
+
+div.right-tab:hover {
+   opacity: 1.0;
+}
+
+div.right-tab.alert {
+   color: @alert;
+   animation: redBlink 1.0s infinite;
+   -webkit-animation: redBlink 1.0s infinite;
+}
+
+div.right-area {
+   position: relative;
+   left: 0px;
+   height: 667px - @navbar-height - @board-top - @margin-small;
+   width: 100%;
+   font-size: 16px;
+   line-height: 16px;
+   font-weight: 400;
+   color: black;
+   cursor: default;
+}
+
+div.right-area.with-clock {
+   height: 380px;
+   margin-top: 48px;
+}
+
+div.movelist {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 667px - @navbar-height - @board-top - 3 * @margin-small;
+   background-color: @background;
+   margin-top: @margin-small;
+   margin-bottom: 0;
+   overflow: auto;
+   z-index: 5;
+}
+
+div.modal-dialog {
+   visibility: hidden;
+   position: fixed;
+   left: 0px;
+   top: 0px;
+   width: 100%;
+   height: 100%;
+   z-index: 10;
+   background-color: rgba(32, 32, 32, 0.2);
+}
+
+.std-form {
+   position: absolute;
+   padding-left: 12px;
+   padding-right: 12px;
+   padding-top: 6px;
+   padding-bottom: 6px;
+   box-shadow: 3px 3px 5px 2px #333333;
+   font-size: 1em;
+   z-index: 20;
+}
+
+div#blank-form {
+   .std-form;
+   top: 124px;
+   right: (375px - 274px - 24px) / 2;
+   width: 274px;
+   height: 400px;
+}
+
+.bottom-message {
+   position: absolute;
+   text-align: right;
+   display: block;
+   bottom: 18px;
+   left: 375px - @margin-small - 300px;
+   width: 300px;
+   height: 28px;
+   font-size: 14px;
+   margin: 0;
+   padding-top: 4px;
+   visibility: hidden;
+}
+
+.bold-bottom-message {
+   .bottom-message;
+   text-align: center;
+   font-weight: 700;
+   bottom: 19px;
+   color: white;
+}
+
+div.error {
+   .bold-bottom-message;
+   background-color: @alert;
+}
+
+div.opp-turn {
+   .bottom-message;
+}
+
+div#congrats {
+   .bottom-message;
+}
+
+div#congrats span.glyphicon-bookmark {
+   color: @freshtile;
+}
+
+div.resign {
+   .bold-bottom-message;
+   background-color: @alert;
+}
+
+div.pass {
+   .bold-bottom-message;
+   background-color: @pass-btn;
+}
+
+div.pass-last {
+   .bold-bottom-message;
+   background-color: @pass-btn;
+}
+
+div.chall {
+   .bold-bottom-message;
+   background-color: @alert;
+}
+
+div.chall-info {
+   .bold-bottom-message;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.exchange {
+   .bold-bottom-message;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.gameinfo {
+   .bottom-message;
+   bottom: 56px;
+   height: 34px;
+   background-color: @background;
+   font-weight: normal;
+   color: white;
+   padding-top: 10px;
+}
+
+input.chat-txt {
+   font-family: @font1, @font2, @font3, @font4;
+   width: 276px;
+   font-size: 18px;
+   height: 24px;
+   font-weight: normal;
+   border-style: solid;
+   border-color: @freshtile;
+   border-width: 1px;
+   border-radius: 3px;
+   margin-top: 1px;
+   padding-top: 4px;
+   padding-bottom: 3px;
+   padding-left: 6px;
+   padding-right: 6px;
+}
+
+div.chat-area {
+   position: absolute;
+   top: 6px;
+   left: 6px;
+   height: 420px;
+   width: 368px - @btn-spacing-small;
+   padding: 6px;
+   overflow: auto;
+}
+
+div.modal-close#chat-send {
+   display: inline-block;
+   position: relative;
+   font-size: 18px;
+   line-height: 18px;
+   height: 28px;
+   bottom: 2px;
+   right: 0px;
+   margin-left: 8px;
+   margin-bottom: 2px;
+   margin-right: 0;
+   margin-top: 0;
+   padding-top: 4px;
+   padding-bottom: 0px;
+   background-color: darken(@double-letter, 10%);
+   color: white;
+}
+
+span.statsbutton {
+   display: none;
+}
+
+/* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
+
+@media all and (min-width: 667px) {
+
+/* Mobile screen, landscape mode */
+
+div.container {
+   width: 667px; /* Reference width */
+   height: 375px; /* Reference height */
+}
+
+div.board {
+   top: @margin-small;
+   padding-top: 0;
+   background-color: transparent;
+}
+
+@rightcol-width: 667px - @board-size - 3 * @margin-small;
+@rightcol-left: @board-size + 2 * @margin-small;
+@rack-top: 70px + 3 * @margin-small;
+@button-top: @rack-top + 48px + 2 * @margin-small;
+@submit-left: 259px + 667px - 375px;
+
+div.rightcol {
+   width: @rightcol-width;
+   top: @margin-small;
+   left: @rightcol-left;
+   height: 70px;
+}
+
+div.rack {
+   left: @rightcol-left;
+   top: @rack-top;
+}
+
+div.recallbtn {
+   left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
+   top: @button-top;
+}
+
+div.scramblebtn {
+   left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
+   top: @button-top;
+}
+
+div.submitexchange {
+   left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 1;
+   top: @button-top;
+}
+
+div.submitpass {
+   left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 2;
+   top: @button-top;
+}
+
+div.submitresign {
+   left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 3;
+   top: @button-top;
+}
+
+div.submitmove {
+   left: @submit-left;
+   top: @button-top;
+}
+
+div.waitmove {
+   left: @submit-left;
+   top: @button-top;
+}
+
+div.submitnewgame {
+   left: @submit-left;
+   top: @button-top;
+}
+
+h3.playerleft {
+   width: 50%;
+   padding: 0;
+   height: 36px;
+   min-height: 36px;
+   font-size: 14px;
+   line-height: 22px;
+}
+
+h3.playerright {
+   width: 50%;
+   padding: 0;
+   height: 36px;
+   min-height: 36px;
+   font-size: 14px;
+   line-height: 22px;
+}
+
+h3.scoreleft {
+   top: 36px;
+   left: 0;
+   width: @rightcol-width - 6px;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-left: 6px;
+   font-size: 22px;
+   line-height: 22px;
+}
+
+h3.scoreright {
+   top: 36px;
+   right: 0;
+   width: @rightcol-width - 6px;
+   margin-top: 4px;
+   margin-bottom: 4px;
+   padding-right: 6px;
+   font-size: 22px;
+   line-height: 22px;
+}
+
+div.right-tab#tab-board {
+   display: none;
+}
+
+}
+
+@media all and (min-width: 768px) {
+
+/* Large screen (iPad and larger) */
+
+div.container {
+   width: 1024px;
+   height: 768px; /* Was 748 */
+}
+
+div.logo {
+   display: block;
+}
+
+div.logo-back {
+   display: block;
+   position: absolute;
+   top: 38px;
+   left: 28px;
+   width: 46px;
+   height: 46px;
+   font-size: 46px;
+   line-height: 46px;
+   -ms-transform: rotate(90deg);
+   -webkit-transform: rotate(90deg);
+   transform: rotate(90deg);
+}
+
+div.info {
+   display: block;
+   position: absolute;
+   top: 456px;
+   left: 26px;
+   width: 50px;
+   height: 50px;
+   text-align: center;
+   font-size: 40px;
+}
+
+div.rightcol {
+   width: 302px;
+   top: 38px;
+   right: 12px;
+   height: auto;
+   left: auto;
+}
+
+div.right-area {
+   margin-top: 8px;
+   height: 421px;
+}
+
+div.heading {
+   height: 78px;
+}
+
+div.board-area {
+   height: 750px;
+}
+
+div.board {
+   top: 8px;
+   left: 88px;
+   height: auto;
+}
+
+.board td {
+   min-height: @board-cell-big;
+   min-width: @board-cell-big;
+   max-height: @board-cell-big;
+   max-width: @board-cell-big;
+   height: @board-cell-big;
+   width: @board-cell-big;
+}
+
+div.tile {
+   font-size: 25px;
+   line-height: 26px;
+   height: (@board-cell-big - 2px);
+   width: (@board-cell-big - 2px);
+   padding-top: 2px;
+   padding-right: 2px;
+}
+
+/* On large UIs, tile size doesn't change while dragging */
+
+div.tile.ui-draggable-dragging {
+   font-size: 25px;
+   line-height: 26px;
+   height: (@board-cell-big - 2px);
+   width: (@board-cell-big - 2px);
+}
+
+div.letterscore {
+   bottom: 8px;
+   left: 22px;
+   height: 9px;
+   width: 9px;
+   font-size: 9px;
+   line-height: 9px;
+}
+
+tr.colid {
+   display: table-row;
+}
+
+td.rowid {
+   display: table-cell;
+   width: 16px;
+   height: 32px;
+   min-width: 16px;
+   max-width: 16px;
+   overflow: hidden;
+   background-color: transparent;
+   text-align: center;
+   font-size: 14px;
+   line-height: 14px;
+   font-weight: 400;
+   border-width: 1px;
+   border-color: transparent;
+}
+
+div.board-help {
+   display: block;
+}
+
+div.bag {
+   display: block;
+   bottom: 54px;
+}
+
+div.rack {
+   top: auto;
+   bottom: 125px;
+   left: 236px;
+}
+
+.rack td {
+   min-height: @board-cell-big;
+   min-width: @board-cell-big;
+   max-height: @board-cell-big;
+   max-width: @board-cell-big;
+   height: @board-cell-big;
+   width: @board-cell-big;
+}
+
+.rack div.tile {
+   font-size: 25px;
+   line-height: 26px;
+   height: (@board-cell-big - 2px);
+   width: (@board-cell-big - 2px);
+}
+
+.rack div.letterscore {
+   left: 22px;
+   font-size: 9px;
+   line-height: 9px;
+}
+
+div.word-check {
+   width: 48px;
+   height: 48px;
+   font-size: 26px;
+   line-height: 45px;
+   top: auto;
+   bottom: 268px;
+   left: 645px;
+   border-radius: 5px;
+}
+
+div.score {
+   width: 48px;
+   height: 48px;
+   font-size: 24px;
+   line-height: 46px;
+   top: auto;
+   bottom: 204px;
+   left: 645px;
+   border-radius: 5px;
+}
+
+.submitbutton {
+   width: @wide-btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 600px;
+   background-color: darken(@freshtile, 10%);
+   font-size: 18px;
+   font-weight: 700;
+}
+
+div.submitnewgame {
+   .submitbutton;
+}
+
+div.fb-share {
+   .submitbutton;
+   left: 122px;
+   height: 60px;
+   /* bottom: 104px; */
+}
+
+div.waitmove {
+   .submitbutton;
+}
+
+div.submitmove {
+   .submitbutton;
+}
+
+/* To the left of the rack */
+
+div.submitresign {
+   width: @btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 101px;
+}
+
+div.submitexchange {
+   width: @btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 167px;
+}
+
+div.recallbtn {
+   width: @btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 167px;
+}
+
+/* To the right of the rack */
+
+div.scramblebtn {
+   width: @btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 534px;
+}
+
+div.submitpass {
+   width: @btn-width-big;
+   height: @btn-height-big;
+   top: auto;
+   bottom: 130px;
+   left: 600px;
+}
+
+div.fb-share {
+   .submitbutton;
+   display: block;
+   left: 122px;
+   height: 60px;
+   /* bottom: 104px; */
+   color: white;
+   background-color: @double-letter; /* #3b579d;  Facebook blue */
+   visibility: hidden;
+}
+
+h3.playerleft {
+   height: 40px;
+   min-height: 40px;
+   font-size: 16px;
+   line-height: 24px;
+}
+
+h3.playerright {
+   height: 40px;
+   min-height: 40px;
+   font-size: 16px;
+   line-height: 24px;
+}
+
+h3.scoreleft {
+   top: 42px;
+   width: 145px;
+   font-size: 24px;
+   line-height: 24px;
+}
+
+h3.scoreright {
+   top: 42px;
+   width: 145px;
+   font-size: 24px;
+   line-height: 24px;
+}
+
+div.player-btn {
+   width: 141px;
+}
+
+div.robot-btn {
+   width: 141px;
+}
+
+div.loginform-large {
+   display: block;
+}
+
+div.loginform-small {
+   display: none;
+}
+
+div.loginhdr {
+   font-size: 34px;
+   font-weight: 700;
+   padding-top: 12px;
+   padding-bottom: 24px;
+   text-align: left;
+}
+
+div#board-pic {
+   text-align: left;
+   float: left;
+   padding-right: 24px;
+   padding-top: 0;
+   padding-bottom: 0;
+}
+
+div.blurb {
+   font-size: 22px;
+   font-weight: bold;
+   padding-bottom: 22px;
+   text-align: left;
+}
+
+div.right-tab {
+   height: 38px;
+   min-height: 38px;
+   width: 38px;
+   min-width: 38px;
+   top: auto;
+   text-align: left;
+   vertical-align: middle;
+   padding-top: 14px;
+   padding-left: 10px;
+   font-size: 20px;
+   line-height: 20px;
+}
+
+div.right-tab#tab-movelist {
+   top: 0px;
+   left: -40px;
+}
+
+div.right-tab#tab-twoletter {
+   top: 58px;
+   left: -40px;
+}
+
+div.right-tab#tab-games {
+   top: 116px;
+   left: -40px;
+}
+
+div.right-tab#tab-chat {
+   top: 174px;
+   left: -40px;
+}
+
+div.movelist {
+   margin-top: 0;
+   height: 100%;
+}
+
+div#blank-form {
+   right: 12px;
+}
+
+div.modal-dialog {
+   position: absolute;
+}
+
+.bottom-message {
+   text-align: center;
+   bottom: 70px;
+   left: 122px;
+   width: 512px;
+   height: 28px;
+   font-size: 16px;
+   padding-top: 4px;
+}
+
+.bold-bottom-message {
+   .bottom-message;
+}
+
+div.error {
+   .bold-bottom-message;
+}
+
+div.opp-turn {
+   .bottom-message;
+}
+
+div#congrats {
+   .bottom-message;
+}
+
+div.resign {
+   .bold-bottom-message;
+}
+
+div.pass {
+   .bold-bottom-message;
+}
+
+div.pass-last {
+   .bold-bottom-message;
+}
+
+div.chall {
+   .bold-bottom-message;
+}
+
+div.chall-info {
+   .bold-bottom-message;
+}
+
+div.exchange {
+   .bold-bottom-message;
+}
+
+div.gameinfo {
+   .bottom-message;
+}
+
+input.chat-txt {
+   width: 218px;
+   height: 22px;
+   font-size: 15px;
+}
+
+div.chat-area {
+   height: 350px;
+   width: 278px;
+}
+
+div.modal-close#chat-send {
+   height: 25px;
+   bottom: 0px;
+}
+
+span.statsbutton {
+   display: inline;
+   height: 20px;
+   text-align: center;
+   background-color: white;
+   font-size: 16px;
+   font-weight: 700;
+   color: @pass-btn;
+   margin-top: 0;
+   margin-bottom: 0;
+   margin-left: 4px;
+   margin-right: 4px;
+   padding-top: 2px;
+   padding-bottom: 2px;
+   padding-left: 12px;
+   padding-right: 12px;
+   border-radius: 5px;
+   cursor: pointer;
+}
+
+} /* media min-width: 768px */
+
+/* ================= END OF MEDIA-SPECIFIC STYLE ADJUSTMENTS =================== */
 
 div.racktile {
    cursor: pointer;
@@ -512,116 +1726,6 @@ div.highlight1 {
    background-color: @freshtile;
 }
 
-div.letterscore {
-   position: relative;
-   bottom: 8px;
-   left: 22px;
-   height: 9px;
-   width: 9px;
-   font-size: 9px;
-   line-height: 9px;
-   text-align: right;
-   font-weight: 400;
-   padding: 0;
-   background-color: transparent;
-}
-
-div.heading {
-   position: relative;
-   width: 100%;
-   height: 78px;
-   background-color: @board-background;
-   top: 0; left: 0;
-   padding-left: 0px;
-   padding-right: 0px;
-}
-
-h3.playerleft {
-   display: inline-block;
-   position: absolute;
-   top: 0; left: 0;
-   width: 151px;
-   height: 40px;
-   min-height: 40px;
-   font-size: 16px;
-   line-height: 24px;
-   font-weight: 700;
-   text-align: left;
-   color: @neutral;
-   margin: 0;
-   padding: 0;
-}
-
-h3.playerright {
-   display: inline-block;
-   position: absolute;
-   top: 0; right: 0;
-   width: 151px;
-   height: 40px;
-   min-height: 40px;
-   font-size: 16px;
-   line-height: 24px;
-   font-weight: 700;
-   text-align: right;
-   color: @neutral;
-   margin: 0;
-   padding: 0;
-}
-
-div.robot-btn {
-   display: inline-block;
-   position: relative;
-   top: 0; left: 0;
-   margin: 2px;
-   padding: 2px;
-   padding-top: 6px;
-   width: 141px;
-   height: 28px;
-   min-height: 28px;
-   border-width: 0px;
-   overflow: hidden;
-   background-color: transparent;
-}
-
-div.robot-btn.left {
-   padding-left: 4px;
-}
-
-div.robot-btn.right {
-   padding-right: 4px;
-}
-
-div.player-btn {
-   display: inline-block;
-   position: relative;
-   top: 0; left: 0;
-   margin: 2px;
-   padding: 2px;
-   padding-top: 6px;
-   width: 141px;
-   height: 28px;
-   min-height: 28px;
-   border-radius: 5px;
-   border-width: 0px;
-   overflow: hidden;
-   background-color: transparent;
-   color: @neutral;
-   cursor: pointer;
-}
-
-div.player-btn.left {
-   padding-left: 4px;
-}
-
-div.player-btn.right {
-   padding-right: 4px;
-}
-
-div.player-btn:hover {
-   background-color: white;
-   color: @neutral;
-}
-
 .move-indicator {
    .glyphicon;
    color: @alert;
@@ -637,40 +1741,6 @@ span#left-to-move.glyphicon-flag {
 
 span#right-to-move.glyphicon-flag-after {
    .move-indicator;
-}
-
-h3.scoreleft {
-   display: inline-block;
-   position: absolute;
-   top: 42px;
-   left: 0;
-   width: 145px;
-   font-size: 24px;
-   line-height: 24px;
-   font-weight: 700;
-   text-align: left;
-   color: white;
-   overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 4px;
-   padding-left: 6px;
-}
-
-h3.scoreright {
-   display: inline-block;
-   position: absolute;
-   top: 42px;
-   right: 0;
-   width: 145px;
-   font-size: 24px;
-   line-height: 24px;
-   font-weight: 700;
-   text-align: right;
-   color: white;
-   overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 4px;
-   padding-right: 6px;
 }
 
 .clock {
@@ -727,35 +1797,6 @@ div.fairplay {
    font-size: 28px;
    line-height: 28px;
    color: @freshtile;
-}
-
-div.right-area {
-   position: relative;
-   margin-top: 8px;
-   left: 0px;
-   height: 420px;
-   width: 100%;
-   font-size: 16px;
-   line-height: 16px;
-   font-weight: 400;
-   color: black;
-   cursor: default;
-}
-
-div.right-area.with-clock {
-   height: 380px;
-   margin-top: 48px;
-}
-
-div.movelist {
-   position: absolute;
-   top: 0px;
-   left: 0px;
-   width: 100%;
-   height: 100%;
-   background-color: @background;
-   overflow: auto;
-   z-index: 4;
 }
 
 div.twoletter {
@@ -909,16 +1950,6 @@ div.chat {
    z-index: 1;
 }
 
-div.chat-area {
-   position: absolute;
-   top: 6px;
-   left: 6px;
-   height: 350px;
-   width: 278px;
-   padding: 6px;
-   overflow: auto;
-}
-
 div.chat-area.with-clock {
    height: 310px;
 }
@@ -982,94 +2013,6 @@ div.chat-input {
    vertical-align: bottom;
 }
 
-input.chat-txt {
-   font-family: @font1, @font2, @font3, @font4;
-   width: 218px;
-   font-size: 15px;
-   height: 22px;
-   font-weight: normal;
-   border-style: solid;
-   border-color: @freshtile;
-   border-width: 1px;
-   border-radius: 3px;
-   margin-top: 1px;
-   padding-top: 4px;
-   padding-bottom: 3px;
-   padding-left: 6px;
-   padding-right: 6px;
-}
-
-div.modal-close#chat-send {
-   display: inline-block;
-   position: relative;
-   font-size: 18px;
-   line-height: 18px;
-   height: 25px;
-   bottom: 0px;
-   right: 0px;
-   margin-left: 8px;
-   margin-bottom: 2px;
-   margin-right: 0;
-   margin-top: 0;
-   padding-top: 4px;
-   padding-bottom: 0px;
-   background-color: darken(@double-letter, 10%);
-   color: white;
-}
-
-div.right-tab {
-   position: absolute;
-   left: -40px;
-   height: 38px;
-   min-height: 38px;
-   width: 38px;
-   min-width: 38px;
-   overflow: visible;
-   visibility: visible;
-   text-align: left;
-   vertical-align: middle;
-   padding-top: 14px;
-   padding-left: 10px;
-   font-size: 20px;
-   line-height: 20px;
-   border-radius: 5px;
-   opacity: 0.6;
-}
-
-div.right-tab#tab-movelist {
-   top: 0px;
-   background-color: @background;
-}
-
-div.right-tab#tab-twoletter {
-   top: 58px;
-   background-color: @theme4;
-}
-
-div.right-tab#tab-games {
-   top: 116px;
-   background-color: @theme6;
-}
-
-div.right-tab#tab-chat {
-   top: 174px;
-   background-color: @theme5;
-}
-
-div.right-tab.selected {
-   opacity: 1.0;
-}
-
-div.right-tab:hover {
-   opacity: 1.0;
-}
-
-div.right-tab.alert {
-   color: @alert;
-   animation: redBlink 1.0s infinite;
-   -webkit-animation: redBlink 1.0s infinite;
-}
-
 div.movelist.noscroll {
    overflow-y: hidden;
 }
@@ -1121,25 +2064,6 @@ div.gameover {
 
 span.gameovermsg {
    margin-right: 6px;
-}
-
-span.statsbutton {
-   height: 20px;
-   text-align: center;
-   background-color: white;
-   font-size: 16px;
-   font-weight: 700;
-   color: @pass-btn;
-   margin-top: 0;
-   margin-bottom: 0;
-   margin-left: 4px;
-   margin-right: 4px;
-   padding-top: 2px;
-   padding-bottom: 2px;
-   padding-left: 12px;
-   padding-right: 12px;
-   border-radius: 5px;
-   cursor: pointer;
 }
 
 div.gamestats {
@@ -1264,27 +2188,6 @@ span.othermove {
    padding-left: 3px;
 }
 
-.bottom-message {
-   position: absolute;
-   text-align: center;
-   display: block;
-   bottom: 70px;
-   left: 122px;
-   width: 512px;
-   height: 28px;
-   font-size: 16px;
-   margin: 0;
-   padding-top: 4px;
-   visibility: hidden;
-}
-
-div.error {
-   .bottom-message;
-   background-color: @alert;
-   font-weight: 700;
-   color: white;
-}
-
 div.error p {
    display: inline;
    position: relative;
@@ -1294,39 +2197,6 @@ div.error p {
    height: auto;
    margin: 0;
    padding: 0;
-}
-
-div.opp-turn {
-   .bottom-message;
-}
-
-div#congrats {
-   .bottom-message;
-}
-
-div#congrats span.glyphicon-bookmark {
-   color: @freshtile;
-}
-
-div.resign {
-   .bottom-message;
-   font-weight: 700;
-   background-color: @alert;
-   color: white;
-}
-
-div.pass {
-   .bottom-message;
-   font-weight: 700;
-   background-color: @pass-btn;
-   color: white;
-}
-
-div.pass-last {
-   .bottom-message;
-   font-weight: 700;
-   background-color: @pass-btn;
-   color: white;
 }
 
 span.pass-explain {
@@ -1352,20 +2222,6 @@ span.yesnobutton {
    cursor: pointer;
 }
 
-div.chall {
-   .bottom-message;
-   font-weight: 700;
-   background-color: @alert;
-   color: white;
-}
-
-div.chall-info {
-   .bottom-message;
-   font-weight: 700;
-   background-color: darken(@freshtile, 10%);
-   color: white;
-}
-
 div.resign span.yesnobutton {
    color: @alert;
 }
@@ -1383,13 +2239,6 @@ div.chall span.yesnobutton {
    color: @alert;
 }
 
-div.exchange {
-   .bottom-message;
-   font-weight: 700;
-   background-color: darken(@freshtile, 10%);
-   color: white;
-}
-
 span.closebtn {
    color: @pass-btn;
 }
@@ -1398,138 +2247,6 @@ span.yesnobutton#force-resign {
    display: none;
    background-color: @alert;
    color: white;
-}
-
-div.gameinfo {
-   .bottom-message;
-   bottom: 56px;
-   height: 34px;
-   background-color: @background;
-   font-weight: normal;
-   color: white;
-   padding-top: 10px;
-}
-
-.standard-button {
-   position: absolute;
-   text-align: center;
-   font-size: 19px;
-   font-weight: 700;
-   color: white;
-   margin: 0;
-   padding: 6px;
-   padding-top: 9px;
-   border-radius: 5px;
-   vertical-align: middle;
-   cursor: pointer;
-   .noselect;
-}
-
-.submitbutton {
-   .standard-button;
-   width: 82px;
-   height: 30px;
-   bottom: 130px;
-   left: 600px;
-   background-color: darken(@freshtile, 10%);
-   font-size: 18px;
-   font-weight: 700;
-}
-
-div.submitnewgame {
-   .submitbutton;
-   display: none;
-}
-
-div.fb-share {
-   .submitbutton;
-   display: block;
-   left: 122px;
-   height: 60px;
-   bottom: 104px;
-   color: white;
-   background-color: @double-letter; /* #3b579d;  Facebook blue */
-   visibility: hidden;
-}
-
-div.fb-share:hover {
-   outline: yellow solid 3px;
-}
-
-div.waitmove {
-   .submitbutton;
-   display: none;
-   z-index: 10;
-}
-
-div.submitmove {
-   .submitbutton;
-   display: block;
-}
-
-div.submitpass {
-   .standard-button;
-   width: 40px;
-   height: 30px;
-   bottom: 130px;
-   left: 600px;
-   background-color: @pass-btn;
-}
-
-div.submitresign {
-   .standard-button;
-   width: 40px;
-   height: 30px;
-   bottom: 130px;
-   left: 101px;
-   background-color: @alert;
-}
-
-div.submitexchange {
-   .standard-button;
-   width: 40px;
-   height: 30px;
-   bottom: 130px;
-   left: 167px;
-   background-color: darken(@freshtile, 10%);
-}
-
-div.recallbtn {
-   .standard-button;
-   width: 40px;
-   height: 30px;
-   bottom: 130px;
-   /* left: 534px; */
-   left: 167px;
-   background-color: darken(@racktile, 10%);
-}
-
-div.scramblebtn {
-   .standard-button;
-   width: 40px;
-   height: 30px;
-   bottom: 130px;
-   left: 534px;
-   background-color: darken(@double-letter, 10%);
-}
-
-div.score {
-   position: absolute;
-   width: 48px;
-   height: 48px;
-   text-align: center;
-   vertical-align: middle;
-   bottom: 204px;
-   left: 645px;
-   background-color: transparent;
-   font-size: 24px;
-   font-weight: 700;
-   line-height: 46px;
-   color: @board-background;
-   border-style: solid;
-   border-width: 2px;
-   border-radius: 5px;
-   border-color: @board-background;
 }
 
 div.score.word-good {
@@ -1592,26 +2309,6 @@ div.channel {
 
 div.channel:before {
    content: "\E051"; /* glyphicon-link */
-}
-
-div.word-check {
-   position: absolute;
-   width: 48px;
-   height: 48px;
-   text-align: center;
-   vertical-align: middle;
-   bottom: 268px;
-   left: 644px;
-   background-color: transparent;
-   font-family: 'Glyphicons Regular';
-   font-style: normal;
-   font-weight: normal;
-   font-size: 26px;
-   line-height: 45px;
-   visibility: hidden;
-   border-style: solid;
-   border-width: 2px;
-   border-radius: 5px;
 }
 
 div.word-check.word-good {
@@ -1845,6 +2542,7 @@ div.btn-krafla-yes {
    height: 28px;
    bottom: 48px;
    right: 48px;
+   top: auto;
    background-color: darken(@freshtile, 10%);
 }
 
@@ -1854,6 +2552,7 @@ div.btn-promo-yes {
    height: 28px;
    bottom: 48px;
    right: 232px;
+   top: auto;
    background-color: darken(@freshtile, 10%);
 }
 
@@ -1863,6 +2562,7 @@ div.btn-promo-no {
    height: 28px;
    bottom: 48px;
    right: 48px;
+   top: auto;
    background-color: @board-background;
 }
 
@@ -1872,6 +2572,7 @@ div.btn-thanks {
    height: 28px;
    bottom: 24px;
    right: 24px;
+   top: auto;
    background-color: darken(@freshtile, 10%);
 }
 
@@ -1881,6 +2582,7 @@ div.btn-cancel-yes {
    height: 28px;
    bottom: 24px;
    right: 24px;
+   top: auto;
    background-color: @alert;
 }
 
@@ -1890,6 +2592,7 @@ div.btn-cancel-no {
    height: 28px;
    bottom: 24px;
    right: 208px;
+   top: auto;
    background-color: darken(@freshtile, 10%);
 }
 
@@ -2643,23 +3346,13 @@ div.hint {
    margin-right: 160px;
 }
 
-div.modal-dialog {
-   visibility: hidden;
-   position: absolute;
-   left: 0px;
-   top: 0px;
-   width: 100%;
-   height: 100%;
-   z-index: 10;
-   background-color: rgba(32, 32, 32, 0.2);
-}
-
 div.modal-close {
    .standard-button;
    width: 36px;
    height: 28px;
    bottom: 12px;
    right: 12px;
+   top: auto;
 }
 
 div#usr-info-close {
@@ -2699,25 +3392,6 @@ div#accept-cancel {
 div#blank-close,
 div#promo-close {
    background-color: @alert;
-}
-
-.std-form {
-   position: absolute;
-   padding-left: 12px;
-   padding-right: 12px;
-   padding-top: 6px;
-   padding-bottom: 6px;
-   z-index: 20;
-   box-shadow: 3px 3px 5px 2px #333333;
-   font-size: 1em;
-}
-
-div#blank-form {
-   .std-form;
-   top: 124px;
-   right: 12px;
-   width: 274px;
-   height: 400px;
 }
 
 div#promo-form {
@@ -3212,25 +3886,6 @@ div.blank-rack {
 
 .blank-rack table.board {
    border-spacing: 8px;
-}
-
-div.loginform {
-   position: absolute;
-   left: 220px;
-   top: 36px;
-}
-
-div.loginhdr {
-   font-size: 34px;
-   font-weight: 700;
-   padding-top: 12px;
-   padding-bottom: 24px;
-}
-
-div.blurb {
-   font-size: 22px;
-   font-weight: bold;
-   padding-bottom: 22px;
 }
 
 div.welcome {
