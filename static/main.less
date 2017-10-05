@@ -36,6 +36,9 @@
 
 @navbar-height: 83px;
 
+@mobile-width: 375px;
+@mobile-height: 667px;
+
 @font-face {
    font-family: 'Glyphicons Regular';
    src: url('glyphicons-regular.eot');
@@ -263,7 +266,7 @@ div.logo {
 div.rightcol {
    display: block;
    position: absolute;
-   width: 375px - 2 * @margin-small;
+   width: @mobile-width - 2 * @margin-small;
    left: @margin-small;
    top: @margin-small;
    height: 72px;
@@ -373,8 +376,8 @@ div.container {
    /* position: fixed; */
    top: 0;
    left: 0;
-   width: 375px; /* Reference width */
-   height: 667px - @navbar-height; /* Full height is 667px - we subtract 83px for browser navbar */
+   width: @mobile-width; /* Reference width */
+   height: @mobile-height - @navbar-height; /* Full height is 667px - we subtract 83px for browser navbar */
    overflow: hidden;
    margin: 0 auto; /* Horizontal align center */
 }
@@ -641,6 +644,14 @@ div.submitmove {
    display: block;
 }
 
+div.submitmove.error-shown {
+   display: none;
+}
+
+div.submitmove.hidden {
+   display: none;
+}
+
 h3.playerleft {
    display: inline-block;
    position: absolute;
@@ -750,9 +761,11 @@ div.player-btn {
 
 div.player-btn.left {
    padding-left: 4px;
+   padding-right: 4px;
 }
 
 div.player-btn.right {
+   padding-left: 4px;
    padding-right: 4px;
 }
 
@@ -764,7 +777,7 @@ div.player-btn:hover {
 div.loginform-small {
    display: block;
    position: absolute;
-   width: 375px - 2 * @margin-small;
+   width: @mobile-width - 2 * @margin-small;
    padding-top: @margin-small;
    padding-left: @margin-small;
    padding-right: @margin-small;
@@ -863,7 +876,7 @@ div.right-tab.alert {
 div.right-area {
    position: relative;
    left: 0px;
-   height: 667px - @navbar-height - @board-top - @margin-small;
+   height: @mobile-height - @navbar-height - @board-top - @margin-small;
    width: 100%;
    font-size: 16px;
    line-height: 16px;
@@ -882,12 +895,19 @@ div.movelist {
    top: 0px;
    left: 0px;
    width: 100%;
-   height: 667px - @navbar-height - @board-top - 3 * @margin-small;
+   height: @mobile-height - @navbar-height - @board-top - 3 * @margin-small;
    background-color: @background;
    margin-top: @margin-small;
    margin-bottom: 0;
    overflow: auto;
    z-index: 5;
+}
+
+div.game-item {
+}
+
+div.game-timed {
+   display: none;
 }
 
 div.modal-dialog {
@@ -1048,6 +1068,66 @@ span.statsbutton {
    display: none;
 }
 
+div.toggler {
+   display: none;
+}
+
+div.tabbed-page {
+   position: absolute;
+   left: 0px;
+   top: 0px;
+   width: @mobile-width;
+   height: @mobile-height - @navbar-height;
+   overflow: hidden;
+   font-size: 13px;
+   line-height: 23px;
+}
+
+div#tabs {
+   border-width: 0;
+   padding: 0;
+}
+
+div.userid {
+   display: none;
+}
+
+.no-mobile-block {
+   display: none;
+}
+
+.no-mobile-inline {
+   display: none;
+}
+
+.no-mobile-list {
+   display: none;
+}
+
+.tab-legend {
+   font-size: 14px;
+   font-weight: normal;
+   padding-left: 4px;
+}
+
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+   padding-left: 4px;
+   padding-right: 4px;
+}
+
+.ui-tabs .ui-tabs-panel {
+   padding-left: 4px;
+   padding-right: 4px;
+   padding-top: 4px;
+   padding-bottom: 4px;
+}
+
+div.fairplay {
+   top: 3px;
+   font-size: 24px;
+   line-height: 24px;
+}
+
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
 @media all and (min-width: 667px) {
@@ -1055,8 +1135,8 @@ span.statsbutton {
 /* Mobile screen, landscape mode */
 
 div.container {
-   width: 667px; /* Reference width */
-   height: 375px; /* Reference height */
+   width: @mobile-height; /* Reference width */
+   height: @mobile-width; /* Reference height */
 }
 
 div.board {
@@ -1065,11 +1145,11 @@ div.board {
    background-color: transparent;
 }
 
-@rightcol-width: 667px - @board-size - 3 * @margin-small;
+@rightcol-width: @mobile-height - @board-size - 3 * @margin-small;
 @rightcol-left: @board-size + 2 * @margin-small;
 @rack-top: 70px + 3 * @margin-small;
 @button-top: @rack-top + 48px + 2 * @margin-small;
-@submit-left: 259px + 667px - 375px;
+@submit-left: 259px + @mobile-height - @mobile-width;
 
 div.rightcol {
    width: @rightcol-width;
@@ -1168,6 +1248,8 @@ div.right-tab#tab-board {
 }
 
 }
+
+/* ==================== FULL-SCREEN (NON-MOBILE) UI ====================== */
 
 @media all and (min-width: 768px) {
 
@@ -1379,6 +1461,14 @@ div.submitmove {
    .submitbutton;
 }
 
+div.submitmove.error-shown {
+   display: block;
+}
+
+div.submitmove.hidden {
+   display: none;
+}
+
 /* To the left of the rack */
 
 div.submitresign {
@@ -1466,6 +1556,14 @@ div.player-btn {
    width: 141px;
 }
 
+div.player-btn.left {
+   padding-right: 2px;
+}
+
+div.player-btn.right {
+   padding-left: 2px;
+}
+
 div.robot-btn {
    width: 141px;
 }
@@ -1538,6 +1636,10 @@ div.right-tab#tab-chat {
 div.movelist {
    margin-top: 0;
    height: 100%;
+}
+
+div.game-timed {
+   display: block;
 }
 
 div#blank-form {
@@ -1636,6 +1738,61 @@ span.statsbutton {
    padding-right: 12px;
    border-radius: 5px;
    cursor: pointer;
+}
+
+div.toggler {
+   display: inline-block;
+}
+
+div.tabbed-page {
+   left: 110px;
+   top: 12px;
+   width: 900px;
+   height: 744px;
+   font-size: 13px;
+   line-height: 23px;
+}
+
+div#tabs {
+   padding: .2em;
+   border: 2px solid #fcfdfd;
+}
+
+div.userid {
+   display: block;
+}
+
+.no-mobile-block {
+   display: block;
+}
+
+.no-mobile-inline {
+   display: inline;
+}
+
+.no-mobile-list {
+   display: list-item;
+}
+
+.tab-legend {
+   font-size: inherit;
+   font-weight: inherit;
+   padding-left: 12px;
+}
+
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+   padding-left: 1em;
+   padding-right: 1em;
+}
+
+.ui-tabs .ui-tabs-panel {
+   padding: 1em 1.4em;
+}
+
+div.fairplay {
+   top: 44px;
+   font-size: 28px;
+   line-height: 28px;
 }
 
 } /* media min-width: 768px */
@@ -1791,11 +1948,8 @@ div.clockface {
 div.fairplay {
    display: none;
    position: absolute;
-   top: 44px;
    width: 100%;
    text-align: center;
-   font-size: 28px;
-   line-height: 28px;
    color: @freshtile;
 }
 
@@ -2594,17 +2748,6 @@ div.btn-cancel-no {
    right: 208px;
    top: auto;
    background-color: darken(@freshtile, 10%);
-}
-
-div.tabbed-page {
-   position: absolute;
-   left: 110px;
-   top: 12px;
-   width: 900px;
-   height: 744px;
-   overflow: hidden;
-   font-size: 13px;
-   line-height: 23px;
 }
 
 .tabbed-page a:link, .tabbed-page a:visited {
@@ -4045,7 +4188,6 @@ input[type="checkbox"] {
 }
 
 div.toggler {
-   display: inline-block;
    background-color: fade(@board-background, 50%);
    color: white;
    margin-top: 9px;

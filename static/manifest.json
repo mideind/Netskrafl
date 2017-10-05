@@ -1,0 +1,31 @@
+
+{
+  "short_name": "Netskrafl",
+  "name": "Netskrafl",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/touch-icon-ipad.png",
+      "type": "image/png",
+      "sizes": "76x76"
+    },
+    {
+      "src": "/touch-icon-iphone-retina.png",
+      "type": "image/png",
+      "sizes": "120x120"
+    },
+    {
+      "src": "/touch-icon-ipad-retina.png",
+      "type": "image/png",
+      "sizes": "152x152"
+    }
+  ],
+  "background_color": "#fff1dc",
+  "theme_color": "#fff1dc",
+  "display": "standalone",
+  "start_url": "/?utm_source=homescreen"
+}

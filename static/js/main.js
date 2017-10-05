@@ -12,6 +12,8 @@
 
 */
 
+var uiFullscreen = false;
+
 function _showUserInfo(ev) {
     showUserInfo(ev.data.nick, ev.data.fullname, ev.data.userid);
 }
@@ -892,6 +894,40 @@ function initFirebaseListener(token) {
    attachFirebaseListener(basepath + "move", handleMoveMessage);
 }
 
+function mediaMinWidth667(mql) {
+   if (mql.matches) {
+      // Take action when min-width exceeds 667
+   }
+   else {
+      // min-width is below 667
+   }
+}
+
+function mediaMinWidth768(mql) {
+   if (mql.matches) {
+      // Take action when min-width exceeds 768
+      uiFullscreen = true;
+   }
+   else {
+      uiFullscreen = false;
+   }
+}
+
+function initMediaListener() {
+   // Install listener functions for media changes
+   var mql;
+   mql = window.matchMedia("(min-width: 667px)");
+   if (mql) {
+      mediaMinWidth667(mql);
+      mql.addListener(mediaMinWidth667);
+   }
+   mql = window.matchMedia("(min-width: 768px)");
+   if (mql) {
+      mediaMinWidth768(mql);
+      mql.addListener(mediaMinWidth768);
+   }
+}
+
 function initMain() {
    /* Called when the page is displayed or refreshed */
 
@@ -968,6 +1004,9 @@ function initMain() {
 
    /* Enable the cancel button in the acceptance dialog */
    $("#accept-cancel").click(cancelAccept);
+
+   /* Listen to media events, such as orientation changes */
+   initMediaListener();
 
    /* Call initialization that requires variables coming from the server */
    lateInit();

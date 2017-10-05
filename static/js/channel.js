@@ -24,20 +24,22 @@ function loginFirebase(token) {
 
 function initPresence(userId) {
    // Ensure that this user connection is recorded in Firebase
-   var connectedRef = firebase.database().ref('.info/connected');
+   var db = firebase.database()
+   var connectedRef = db.ref('.info/connected');
+   // Create a unique connection entry for this user
    var connectionPath = 'connection/' + userId;
+   var userRef = db.ref(connectionPath).push();
    connectedRef.on('value', function(snap) {
-      if (snap.val() === true) {
+      if (snap.val()) {
          // We're connected (or reconnected)
-         // Create a global connection entry
-         var ref = firebase.database().ref(connectionPath);
-         // Create a fresh entry under the user id
-         var con = ref.push();
          // When I disconnect, remove this entry
-         con.onDisconnect().remove();
+         userRef.onDisconnect().remove();
          // Set presence
-         con.set(true);
+         userRef.set(true);
       }
+      else
+         // Unset presence
+         userRef.set(false);
    });
 }
 

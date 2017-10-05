@@ -401,42 +401,45 @@ def _userlist(query, spec):
     return result
 
 
-def _gamelist():
+def _gamelist(cuid, include_zombies = True):
     """ Return a list of active and zombie games for the current user """
     result = []
-    cuid = User.current_id()
     if not cuid:
         return result
     now = datetime.utcnow()
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
-    for g in ZombieModel.list_games(cuid):
-        opp = g["opp"] # User id of opponent
-        u = User.load(opp)
-        nick = u.nickname()
-        prefs = g.get("prefs", None)
-        fairplay = Game.fairplay_from_prefs(prefs)
-        newbag = Game.new_bag_from_prefs(prefs)
-        manual = Game.manual_wordcheck_from_prefs(prefs)
-        result.append({
-            "uuid": g["uuid"],
-            "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
-            "oppid": opp,
-            "opp": nick,
-            "fullname": u.full_name(),
-            "sc0": g["sc0"],
-            "sc1": g["sc1"],
-            "ts": Alphabet.format_timestamp_short(g["ts"]),
-            "my_turn": False,
-            "overdue": False,
-            "zombie": True,
-            "fairplay": fairplay,
-            "newbag": newbag,
-            "manual": manual,
-            "tile_count": 100 # All tiles (100%) accounted for
-        })
-    # Sort zombies in decreasing order by last move, i.e. most recently completed games first
-    result.sort(key = lambda x: x["ts"], reverse = True)
+    if include_zombies:
+        for g in ZombieModel.list_games(cuid):
+            opp = g["opp"] # User id of opponent
+            u = User.load(opp)
+            nick = u.nickname()
+            prefs = g.get("prefs", None)
+            fairplay = Game.fairplay_from_prefs(prefs)
+            newbag = Game.new_bag_from_prefs(prefs)
+            manual = Game.manual_wordcheck_from_prefs(prefs)
+            timed = Game.get_duration_from_prefs(prefs) # Time per player in minutes
+            result.append({
+                "uuid": g["uuid"],
+                "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
+                "oppid": opp,
+                "opp": nick,
+                "fullname": u.full_name(),
+                "sc0": g["sc0"],
+                "sc1": g["sc1"],
+                "ts": Alphabet.format_timestamp_short(g["ts"]),
+                "my_turn": False,
+                "overdue": False,
+                "zombie": True,
+                "fairplay": fairplay,
+                "newbag": newbag,
+                "manual": manual,
+                "timed": timed,
+                "tile_count": 100 # All tiles (100%) accounted for
+            })
+        # Sort zombies in decreasing order by last move, i.e. most recently completed games first
+        result.sort(key = lambda x: x["ts"], reverse = True)
+
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len = 50))
     # Sort in reverse order by turn and then by timestamp of the last move,
@@ -454,6 +457,7 @@ def _gamelist():
         fairplay = Game.fairplay_from_prefs(prefs)
         newbag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
+        timed = Game.get_duration_from_prefs(prefs) # Time per player in minutes
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -485,6 +489,7 @@ def _gamelist():
             "fairplay": fairplay,
             "newbag": newbag,
             "manual": manual,
+            "timed": timed,
             "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles())
         })
     return result
@@ -911,9 +916,13 @@ def userlist():
 def gamelist():
     """ Return a list of active games for the current user """
 
+    # Specify "zombies":false to omit zombie games from the returned list
+    include_zombies = bool(request.form.get('zombies', True))
     # _gamelist() returns an empty list if no user is logged in
+    cuid = User.current_id()
 
-    return jsonify(result = Error.LEGAL, gamelist = _gamelist())
+    return jsonify(result = Error.LEGAL,
+        gamelist = _gamelist(cuid, include_zombies))
 
 
 @app.route("/rating", methods=['POST'])

@@ -18,15 +18,21 @@
 
    <div id="tabs">
    <ul>
-      <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Viðureignir<span id="numgames">0</span></a></li>
-      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span>&nbsp;&nbsp;Áskoranir<span id="numchallenges" class="opp-ready">0</span></a></li>
-      <li><a href="#tabs-3"><span class='glyphicon glyphicon-user'></span>&nbsp;&nbsp;Andstæðingar</a></li>
-      <li><a href="#tabs-4"><span class='glyphicon glyphicon-bookmark'></span>&nbsp;&nbsp;Ferill</a></li>
+      <li><a href="#tabs-1"><span class='glyphicon glyphicon-th'></span><span
+         class="tab-legend">Viðureignir</span><span id="numgames">0</span></a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span><span
+         class="tab-legend">Áskoranir</span><span
+         id="numchallenges" class="opp-ready">0</span></a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-user'></span><span
+         class="tab-legend">Andstæðingar</span></a></li>
+      <li class="no-mobile-list"><a href="#tabs-4"><span
+         class='glyphicon glyphicon-bookmark'></span><span
+         class="tab-legend">Ferill</span></a></li>
    </ul>
 
    <div id="tabs-1">
 
-      <p><strong>Viðureignir sem standa yfir</strong> - smelltu á viðureign til að
+      <p class="no-mobile-block"><strong>Viðureignir sem standa yfir</strong> - smelltu á viðureign til að
       skoða stöðuna og leika ef
       <span class='glyphicon glyphicon-flag'></span> þú átt leik</p>
 
@@ -71,7 +77,7 @@
 
    <div id="tabs-2">
 
-      <p><strong>Skorað á þig</strong> - smelltu á áskorun til að taka henni og hefja viðureign,
+      <p class="no-mobile-block"><strong>Skorað á þig</strong> - smelltu á áskorun til að taka henni og hefja viðureign,
       eða á <span class="glyphicon glyphicon-thumbs-down" style="margin-left:6px;margin-right:6px;"></span>
       til að hafna henni</p>
 
@@ -91,7 +97,7 @@
       <!-- Challenge lists will be populated by populateChallengeList() below -->
       <div id="chall-received"></div>
 
-      <p><strong>Þú skorar á aðra</strong> - smelltu á
+      <p class="no-mobile-block"><strong>Þú skorar á aðra</strong> - smelltu á
       <span class="glyphicon glyphicon-hand-right" style="margin-left:6px;margin-right:6px;"></span>
       til að afturkalla áskorun</p>
 

@@ -1391,7 +1391,7 @@ function updateButtonState() {
    /* Show the last challenge reminder as appropriate */
    $("div.chall-info").css("visibility", showChallengeInfo ? "visible" : "hidden");
    /* Erase previous error message, if any */
-   $("div.error").css("visibility", "hidden");
+   clearError();
    /* Calculate tentative score */
    $("div.score").removeClass("word-good").removeClass("word-great");
    if (tilesPlaced === 0 || lastChallenge) {
@@ -1415,11 +1415,14 @@ function updateButtonState() {
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
          if (!gameIsManual())
-            serverQuery("/wordcheck", { word: wordToCheck, words: scoreResult.words }, showWordCheck);
+            serverQuery("/wordcheck",
+               { word: wordToCheck, words: scoreResult.words },
+               showWordCheck
+            );
       }
       showRecall = true;
    }
-   $("div.submitmove").css("display", showMove ? "block" : "none");
+   $("div.submitmove").toggleClass("hidden", !showMove);
    $("div.submitexchange").css("display", showExchange ? "block" : "none");
    $("div.submitpass").css("display", showPass ? "block" : "none");
    $("div.submitresign").css("display", showResign ? "block" : "none");
@@ -1667,6 +1670,23 @@ function updateBag(bag) {
    }
 }
 
+function showError(msgId, msg) {
+   /* Display error in error bar */
+   $("div.error").css("visibility", "visible").find("p").css("display", "none");
+   var errorP = $("div.error").find("#err_" + msgId);
+   errorP.css("display", "inline");
+   if (msg !== undefined)
+      // Fill in word if provided in error message
+      errorP.find("span.errword").text(msg);
+   $("div.submitmove").toggleClass("error-shown", true);
+}
+
+function clearError() {
+   /* Clear error from error bar */
+   $("div.error").css("visibility", "hidden");
+   $("div.submitmove").toggleClass("error-shown", false);
+}
+
 function _updateState(json, preserveTiles) {
    /* Work through the returned JSON object to update the
       board, the rack, the scores and the move history */
@@ -1797,20 +1817,13 @@ function _updateState(json, preserveTiles) {
          $("div.submitresign").toggleClass("disabled", true);
          $("div.submitexchange").toggleClass("disabled", true);
          /* Hide Move button and display New Game button */
-         $("div.submitmove").css("display", "none");
+         $("div.submitmove").toggleClass("hidden", true);
          $("div.submitnewgame").css("display", "inline");
          gameOver = true;
       }
    }
-   else {
-      /* Genuine error: display in error bar */
-      $("div.error").css("visibility", "visible").find("p").css("display", "none");
-      var errorP = $("div.error").find("#err_" + json.result.toString());
-      errorP.css("display", "inline");
-      if (json.msg !== undefined)
-         // Fill in word if provided in error message
-         errorP.find("span.errword").text(json.msg);
-   }
+   else
+      showError(json.result.toString(), json.msg);
    if (json.time_info !== undefined)
       // New timing information from the server: reset and update the clock
       resetClock(json.time_info);
@@ -2027,8 +2040,7 @@ function moveComplete(xhr, status) {
 
 function serverError(xhr, status, errorThrown) {
    /* The server threw an error back at us (probably 5XX): inform the user */
-   $("div.error").css("visibility", "visible").find("p").css("display", "none");
-   $("div.error").find("#err_server").css("display", "inline");
+   showError("server");
 }
 
 function sendMove(movetype) {
@@ -2072,7 +2084,7 @@ function sendMove(movetype) {
    $("div.submitmove").removeClass("over");
    $("div.challenge").removeClass("over");
    /* Erase previous error message, if any */
-   $("div.error").css("visibility", "hidden");
+   clearError();
    /* Freshly laid tiles are no longer fresh */
    $("div.freshtile").removeClass("freshtile");
    if (moves.length === 0)
@@ -2091,7 +2103,8 @@ function sendMove(movetype) {
          // Send the game's UUID
          uuid: gameId()
       },
-      updateState, moveComplete, serverError);
+      updateState, moveComplete, serverError
+   );
 }
 
 function closeHelpPanel() {
@@ -2181,9 +2194,13 @@ function populateGames(json) {
          opp = "<span class='glyphicon glyphicon-cog'></span>&nbsp;" + opp;
       var winLose = item.sc0 < item.sc1 ? " losing" : "";
       var title = "Staðan er " + item.sc0 + ":" + item.sc1;
-      var tileCount = "<div class='tilecount trans'><div class='tc" + winLose + "' style='width:" +
+      var tileCount = "<div class='tilecount trans'><div class='tc" +
+         winLose + "' style='width:" +
          item.tile_count.toString() + "%'>" + opp + "</div></div>";
-      var str = "<div class='games-item' title='" + title + "'>" +
+      // Add the game-timed class if the game is a timed game.
+      // These will not be displayed in the mobile UI.
+      var cls = "games-item" + (item.timed ? " game-timed" : "");
+      var str = "<div class='" + cls + "' title='" + title + "'>" +
          "<a href='" + item.url + "'>" +
          "<div class='at-top-left'>" +
          "<div class='tilecount'><div class='oc'>" + opp + "</div></div>" +
@@ -2204,7 +2221,7 @@ function loadGames() {
       return; // Avoid race conditions
    gamesLoading = true;
    serverQuery("/gamelist",
-      { }, // No parameter data required
+      { zombie : false }, // We don't need zombie games, so omit them
       populateGames
    );
 }
@@ -2450,11 +2467,18 @@ function mediaMinWidth667(mql) {
       // Take action when min-width exceeds 667
       // The board tab is not visible, so the movelist is default
       selectMovelistTab();
+      $("div.heading").off("click");
+      // Enable clicking on player identifier buttons
+      $("div.player-btn").click(lookAtPlayer);
    }
    else {
       // min-width is below 667
       // Make sure the board tab is selected
       selectBoardTab();
+      // Make header a click target
+      $("div.heading").click(function(e) { window.location.href = "/"; });
+      // Disable clicking on player identifier buttons
+      $("div.player-btn").off("click");
    }
 }
 
@@ -2543,9 +2567,6 @@ function initSkrafl(jQuery) {
    Mousetrap.bind('backspace', rescrambleRack);
    /* Bind pinch gesture to a function to reset the rack */
    /* $('body').bind('pinchclose', resetRack); */
-
-   // Clicking on player identifier buttons
-   $("div.player-btn").click(lookAtPlayer);
 
    // Bind a handler to the close icon on the board color help panel
    $("div.board-help-close span").click(closeHelpPanel);
