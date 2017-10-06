@@ -1092,6 +1092,273 @@ div.userid {
    display: none;
 }
 
+span.list-ts {
+   display: none;
+   width: 164px;
+   max-width: 164px;
+   overflow: hidden;
+}
+
+span.list-ts-short {
+   display: none;
+   padding-left: 4px;
+   width: 144px;
+   max-width: 144px;
+   overflow: hidden;
+}
+
+span.list-chall {
+   display: inline-block;
+   width: 315px;
+   max-width: 315px;
+   overflow: hidden;
+}
+
+span.list-s0 {
+   display: inline-block;
+   width: 38px;
+   max-width: 38px;
+   text-align: right;
+   overflow: hidden;
+}
+
+span.list-s1 {
+   display: inline-block;
+   width: 38px;
+   max-width: 38px;
+   text-align: left;
+   overflow: hidden;
+}
+
+span.list-colon {
+   display: inline-block;
+   text-align: center;
+   width: 8px;
+   max-width: 8px;
+   overflow: hidden;
+}
+
+span.list-scorehdr {
+   display: inline-block;
+   width: 84px; /* list-s0 + list-colon + list-s1 */
+   max-width: 84px;
+   text-align: center;
+   overflow: hidden;
+}
+
+span.list-elo-adj {
+   display: inline-block;
+   width: 52px;
+   max-width: 52px;
+   text-align: center;
+   overflow: hidden;
+   margin-bottom: 2px;
+}
+
+span.list-elo-hdr {
+   display: inline-block;
+   width: 104px; /* list-elo-adj * 2 */
+   max-width: 104px;
+   text-align: center;
+   overflow: hidden;
+}
+
+span.list-tc {
+   display: inline-block;
+   width: 84px;
+   max-width: 84px;
+   text-align: left;
+   overflow: hidden;
+   padding-right: 0px;
+}
+
+div.tilecount {
+   display: inline-block;
+   vertical-align: middle;
+   font-size: 12px;
+   line-height: 12px;
+   margin-bottom: 2px;
+   width: 100px;
+   min-width: 100px;
+   text-align: left;
+   background-color: lighten(@board-background, 10%);
+}
+
+div.tc {
+   display: inline-block;
+   text-align: left;
+   background-color: @freshtile;
+}
+
+div.tc.losing {
+   background-color: @alert;
+}
+
+div.tc:before {
+   content: "\A0"; /* Invisible space */
+}
+
+span.list-ch,
+span.list-fav,
+span.list-icon,
+span.list-myturn,
+span.list-overdue {
+   display: inline-block;
+   font-size: 18px;
+   width: 26px;
+   max-width: 26px;
+   margin-left: 2px;
+   cursor: pointer;
+   overflow: hidden;
+}
+
+span.list-overdue {
+   display: none;
+}
+
+span.list-newbag {
+   display: none;
+   font-size: 18px;
+   color: @triple-word;
+   width: 22px;
+   max-width: 22px;
+   margin-left: 14px;
+   overflow: hidden;
+}
+
+span.list-manual {
+   display: none;
+   font-size: 18px;
+   color: @triple-word;
+   width: 26px;
+   max-width: 26px;
+   margin-left: 14px;
+   overflow: hidden;
+}
+
+span.list-win {
+   display: inline-block;
+   font-size: 18px;
+   width: 32px;
+   max-width: 32px;
+   margin-left: 2px;
+   cursor: pointer;
+   overflow: hidden;
+}
+
+span.list-nick {
+   display: inline-block;
+   width: 150px;
+   max-width: 150px;
+   overflow: hidden;
+   font-weight: 700;
+   cursor: default;
+}
+
+span.list-opp {
+   display: inline-block;
+   width: 150px;
+   max-width: 150px;
+   font-weight: 700;
+   overflow: hidden;
+}
+
+span.list-fullname {
+   display: inline-block;
+   width: 400px;
+   max-width: 400px;
+   overflow: hidden;
+}
+
+span.list-fullname-robot {
+   display: inline-block;
+   width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
+   max-width: 486px;
+   overflow: hidden;
+   font-style: italic;
+}
+
+span.list-human-elo {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: center;
+   font-weight: bold;
+   overflow: hidden;
+   margin-right: 6px;
+}
+
+span.list-duration {
+   display: inline-block;
+   width: 192px;
+   max-width: 192px;
+   text-align: right;
+   overflow: hidden;
+}
+
+span.list-info-hdr {
+   display: none;
+   width: 40px;
+   max-width: 40px;
+   text-align: center;
+   overflow: hidden;
+}
+
+span.list-info {
+   display: none;
+   width: 40px;
+   top: -3px;
+   text-align: center;
+   height: 24px;
+   line-height: 20px;
+   overflow: hidden;
+}
+
+span.list-rank {
+   display: inline-block;
+   width: 32px;
+   max-width: 32px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-elo {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-games {
+   display: inline-block;
+   width: 48px;
+   max-width: 48px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-ratio {
+   display: inline-block;
+   width: 40px;
+   max-width: 40px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
+span.list-avgpts {
+   display: inline-block;
+   width: 36px;
+   max-width: 36px;
+   text-align: right;
+   overflow: hidden;
+   margin-right: 16px;
+}
+
 .no-mobile-block {
    display: none;
 }
@@ -1100,24 +1367,28 @@ div.userid {
    display: none;
 }
 
+.no-mobile-inline-block {
+   display: none;
+}
+
 .no-mobile-list {
    display: none;
 }
 
 .tab-legend {
-   font-size: 14px;
-   font-weight: normal;
-   padding-left: 4px;
+   display: none;
 }
 
 .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
-   padding-left: 4px;
-   padding-right: 4px;
+   min-width: 91px;
+   padding-left: 12px;
+   padding-right: 12px;
+   text-align: center;
 }
 
 .ui-tabs .ui-tabs-panel {
-   padding-left: 4px;
-   padding-right: 4px;
+   padding-left: 6px;
+   padding-right: 6px;
    padding-top: 4px;
    padding-bottom: 4px;
 }
@@ -1126,6 +1397,25 @@ div.fairplay {
    top: 3px;
    font-size: 24px;
    line-height: 24px;
+}
+
+div.user-cat span#break {
+   display: inline;
+}
+
+div.user-cat#user-headings {
+   line-height: 15px;
+}
+
+div.user-cat#user-search {
+   display: none;
+}
+
+div#chall-form {
+   left: 12px;
+   right: auto;
+   top: 12px;
+   width: 360px;
 }
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
@@ -1770,19 +2060,24 @@ div.userid {
    display: inline;
 }
 
+.no-mobile-inline-block {
+   display: inline-block;
+}
+
 .no-mobile-list {
    display: list-item;
 }
 
 .tab-legend {
-   font-size: inherit;
-   font-weight: inherit;
+   display: inline;
    padding-left: 12px;
 }
 
 .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+   min-width: auto;
    padding-left: 1em;
    padding-right: 1em;
+   text-align: left;
 }
 
 .ui-tabs .ui-tabs-panel {
@@ -1793,6 +2088,94 @@ div.fairplay {
    top: 44px;
    font-size: 28px;
    line-height: 28px;
+}
+
+span.list-ts {
+   display: inline-block;
+}
+
+span.list-ts-short {
+   display: inline-block;
+}
+
+span.list-overdue {
+   display: inline-block;
+}
+
+span.list-opp {
+   width: 290px;
+   max-width: 290px;
+}
+
+span.list-nick {
+   width: 220px;
+   max-width: 220px;
+}
+
+span.list-info-hdr {
+   display: inline-block;
+}
+
+span.list-info {
+   display: inline-block;
+}
+
+span.list-tc {
+   width: 100px;
+   max-width: 100px;
+   padding-right: 6px;
+}
+
+span.list-manual {
+   display: inline-block;
+}
+
+span.list-ch,
+span.list-fav,
+span.list-icon,
+span.list-myturn,
+span.list-overdue {
+   font-size: 20px;
+   width: 32px;
+   max-width: 32px;
+}
+
+span.list-s0 {
+   width: 40px;
+   max-width: 40px;
+}
+
+span.list-s1 {
+   width: 40px;
+   max-width: 40px;
+}
+
+span.list-scorehdr {
+   width: 88px; /* list-s0 + list-colon + list-s1 */
+   max-width: 88px;
+}
+
+span.list-newbag {
+   display: inline-block;
+}
+
+div.user-cat span#break {
+   display: none;
+}
+
+div.user-cat#user-headings {
+   line-height: 32px;
+}
+
+div.user-cat#user-search {
+   display: block;
+}
+
+div#chall-form {
+   left: auto;
+   right: 300px;
+   top: 48px;
+   width: 428px;
 }
 
 } /* media min-width: 768px */
@@ -2863,269 +3246,6 @@ div.listheader {
    border-bottom-style: solid;
 }
 
-span.list-ts {
-   display: inline-block;
-   width: 164px;
-   max-width: 164px;
-   overflow: hidden;
-}
-
-span.list-ts-short {
-   padding-left: 4px;
-   display: inline-block;
-   width: 144px;
-   max-width: 144px;
-   overflow: hidden;
-}
-
-span.list-chall {
-   display: inline-block;
-   width: 315px;
-   max-width: 315px;
-   overflow: hidden;
-}
-
-span.list-s0 {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: right;
-   overflow: hidden;
-}
-
-span.list-s1 {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: left;
-   overflow: hidden;
-}
-
-span.list-colon {
-   display: inline-block;
-   text-align: center;
-   width: 8px;
-   max-width: 8px;
-   overflow: hidden;
-}
-
-span.list-scorehdr {
-   display: inline-block;
-   width: 88px; /* list-s0 + list-colon + list-s1 */
-   max-width: 88px;
-   text-align: center;
-   overflow: hidden;
-}
-
-span.list-elo-adj {
-   display: inline-block;
-   width: 52px;
-   max-width: 52px;
-   text-align: center;
-   overflow: hidden;
-   margin-bottom: 2px;
-}
-
-span.list-elo-hdr {
-   display: inline-block;
-   width: 104px; /* list-elo-adj * 2 */
-   max-width: 104px;
-   text-align: center;
-   overflow: hidden;
-}
-
-span.list-tc {
-   display: inline-block;
-   width: 100px;
-   max-width: 100px;
-   text-align: left;
-   overflow: hidden;
-   padding-right: 6px;
-}
-
-div.tilecount {
-   display: inline-block;
-   vertical-align: middle;
-   font-size: 12px;
-   line-height: 12px;
-   margin-bottom: 2px;
-   width: 100px;
-   min-width: 100px;
-   text-align: left;
-   background-color: lighten(@board-background, 10%);
-}
-
-div.tc {
-   display: inline-block;
-   text-align: left;
-   background-color: @freshtile;
-}
-
-div.tc.losing {
-   background-color: @alert;
-}
-
-div.tc:before {
-   content: "\A0"; /* Invisible space */
-}
-
-span.list-ch,
-span.list-fav,
-span.list-icon,
-span.list-myturn,
-span.list-overdue {
-   display: inline-block;
-   font-size: 20px;
-   width: 32px;
-   max-width: 32px;
-   margin-left: 2px;
-   cursor: pointer;
-   overflow: hidden;
-}
-
-span.list-newbag {
-   display: inline-block;
-   font-size: 18px;
-   color: @triple-word;
-   width: 22px;
-   max-width: 22px;
-   margin-left: 14px;
-   overflow: hidden;
-}
-
-span.list-manual {
-   display: inline-block;
-   font-size: 18px;
-   color: @triple-word;
-   width: 26px;
-   max-width: 26px;
-   margin-left: 14px;
-   overflow: hidden;
-}
-
-span.list-win {
-   display: inline-block;
-   font-size: 18px;
-   width: 32px;
-   max-width: 32px;
-   margin-left: 2px;
-   cursor: pointer;
-   overflow: hidden;
-}
-
-span.list-nick {
-   display: inline-block;
-   width: 220px;
-   max-width: 220px;
-   overflow: hidden;
-   font-weight: 700;
-   cursor: default;
-}
-
-span.list-opp {
-   display: inline-block;
-   width: 290px;
-   max-width: 290px;
-   font-weight: 700;
-   overflow: hidden;
-}
-
-span.list-fullname {
-   display: inline-block;
-   width: 400px;
-   max-width: 400px;
-   overflow: hidden;
-}
-
-span.list-fullname-robot {
-   display: inline-block;
-   width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
-   max-width: 486px;
-   overflow: hidden;
-   font-style: italic;
-}
-
-span.list-human-elo {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: center;
-   font-weight: bold;
-   overflow: hidden;
-   margin-right: 6px;
-}
-
-span.list-duration {
-   display: inline-block;
-   width: 192px;
-   max-width: 192px;
-   text-align: right;
-   overflow: hidden;
-}
-
-span.list-info-hdr {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: center;
-   overflow: hidden;
-}
-
-span.list-info {
-   display: inline-block;
-   width: 40px;
-   top: -3px;
-   text-align: center;
-   height: 24px;
-   line-height: 20px;
-   overflow: hidden;
-}
-
-span.list-rank {
-   display: inline-block;
-   width: 32px;
-   max-width: 32px;
-   text-align: center;
-   overflow: hidden;
-   margin-right: 10px;
-}
-
-span.list-elo {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: center;
-   overflow: hidden;
-   margin-right: 10px;
-}
-
-span.list-games {
-   display: inline-block;
-   width: 48px;
-   max-width: 48px;
-   text-align: right;
-   overflow: hidden;
-   margin-right: 10px;
-}
-
-span.list-ratio {
-   display: inline-block;
-   width: 40px;
-   max-width: 40px;
-   text-align: right;
-   overflow: hidden;
-   margin-right: 10px;
-}
-
-span.list-avgpts {
-   display: inline-block;
-   width: 36px;
-   max-width: 36px;
-   text-align: right;
-   overflow: hidden;
-   margin-right: 16px;
-}
-
 div#elo-hdr span {
    cursor: default;
 }
@@ -3151,10 +3271,6 @@ div#initials {
 div.user-cat {
    display: inline-block;
    vertical-align: middle;
-}
-
-div.user-cat#user-headings {
-   line-height: 32px;
 }
 
 div.user-cat#user-search {
@@ -3778,9 +3894,6 @@ div.stats-avg-score {
 
 div#chall-form {
    .std-form;
-   top: 48px;
-   right: 300px;
-   width: 428px;
    height: 634px;
    padding-top: 12px; /* Override */
 }
