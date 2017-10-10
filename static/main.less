@@ -260,7 +260,8 @@ body {
    height: 100%;
    width: 100%;
    position: fixed;
-   overflow: auto;
+   overflow-y: hidden;
+   overflow-x: auto;
 }
 
 div.logo {
@@ -1506,6 +1507,19 @@ div.user-cat#user-headings span {
    white-space: nowrap;
 }
 
+div#user-load {
+   display: none;
+   position: absolute;
+   top: @mobile-height / 2 - 12px;
+   left: @mobile-width / 2 - 12px;
+   width: 24px;
+   height: 24px;
+   z-index: 10;
+   background-image: url('user-loader.gif');
+   background-repeat: no-repeat;
+   background-size: 24px 24px;
+}
+
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
 @media all and (min-width: 667px) {
@@ -2320,6 +2334,14 @@ div#chall-cancel {
 span.mobile-break,
 span.mobile-space {
    display: none;
+}
+
+div#user-load {
+   top: 320px;
+   left: 406px;
+   width: 48px;
+   height: 48px;
+   background-size: 48px 48px;
 }
 
 } /* media min-width: 768px */
@@ -3710,18 +3732,6 @@ span.glyphicon.glyphicon-shopping-bag.grayed {
 
 #gamelist span.glyphicon.glyphicon-flag.zombie {
    color: @double-letter;
-}
-
-div#user-load {
-   display: none;
-   position: absolute;
-   top: 320px;
-   left: 406px;
-   width: 48px;
-   height: 48px;
-   z-index: 10;
-   background-image: url('user-loader.gif');
-   background-repeat: no-repeat;
 }
 
 div#user-no-match {
