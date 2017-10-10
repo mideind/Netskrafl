@@ -227,13 +227,13 @@ function populateEloList(json) {
       var str = "<div class='listitem " + ((i % 2 === 0) ? "oddlist" : "evenlist") + "'>" +
          "<span class='list-ch'>" + ch + "</span>" +
          "<span class='list-rank bold'>" + rankStr(item.rank) + "</span>" +
-         "<span class='list-rank'>" + rankStr(item.rank_yesterday) + "</span>" +
-         "<span class='list-rank'>" + rankStr(item.rank_week_ago) + "</span>" +
-         "<span class='list-nick' title='" + fullname + "'>" + nick + "</span>" +
+         "<span class='list-rank-no-mobile'>" + rankStr(item.rank_yesterday) + "</span>" +
+         "<span class='list-rank-no-mobile'>" + rankStr(item.rank_week_ago) + "</span>" +
+         "<span class='list-nick-elo' title='" + fullname + "'>" + nick + "</span>" +
          "<span class='list-elo bold'>" + item.elo + "</span>" +
-         "<span class='list-elo'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
-         "<span class='list-elo'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
-         "<span class='list-elo'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
+         "<span class='list-elo-no-mobile'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
+         "<span class='list-elo-no-mobile'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
+         "<span class='list-elo-no-mobile'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
          "<span class='list-games bold'>" + item.games + "</span>" +
          "<span class='list-ratio'>" + item.ratio + "%</span>" +
          "<span class='list-avgpts'>" + item.avgpts + "</span>" +

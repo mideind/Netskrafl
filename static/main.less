@@ -247,11 +247,20 @@
    user-select: none;
 }
 
+html {
+   height: 100%;
+   overflow: hidden;
+}
+
 body {
    font-family: @font1, @font2, @font3, @font4;
    padding: 0;
    margin: 0;
    background-color: @container;
+   height: 100%;
+   width: 100%;
+   position: fixed;
+   overflow: auto;
 }
 
 div.logo {
@@ -769,11 +778,6 @@ div.player-btn.right {
    padding-right: 4px;
 }
 
-div.player-btn:hover {
-   background-color: white;
-   color: @neutral;
-}
-
 div.loginform-small {
    display: block;
    position: absolute;
@@ -944,13 +948,15 @@ div#blank-form {
    position: absolute;
    text-align: right;
    display: block;
-   bottom: 18px;
-   left: 375px - @margin-small - 300px;
-   width: 300px;
-   height: 28px;
+   bottom: @margin-small;
+   left: @margin-small;
+   width: @mobile-width - 2 * @margin-small - 8px;
+   height: 52px;
    font-size: 14px;
-   margin: 0;
-   padding-top: 4px;
+   line-height: 26px;
+   margin: 0px;
+   padding: 4px;
+   padding-top: 0px;
    visibility: hidden;
 }
 
@@ -958,7 +964,7 @@ div#blank-form {
    .bottom-message;
    text-align: center;
    font-weight: 700;
-   bottom: 19px;
+   bottom: @margin-small;
    color: white;
 }
 
@@ -969,6 +975,8 @@ div.error {
 
 div.opp-turn {
    .bottom-message;
+   left: @margin-small * 2 + @btn-width-small + 8px;
+   width: @mobile-width - 4 * @margin-small - @btn-width-small - 8px;
 }
 
 div#congrats {
@@ -1068,7 +1076,11 @@ span.statsbutton {
    display: none;
 }
 
-div.toggler {
+div#ready-toggler {
+   display: none;
+}
+
+div#timed-toggler {
    display: none;
 }
 
@@ -1212,7 +1224,8 @@ span.list-overdue {
    overflow: hidden;
 }
 
-span.list-overdue {
+span.list-overdue,
+span.list-fav {
    display: none;
 }
 
@@ -1248,6 +1261,15 @@ span.list-win {
 
 span.list-nick {
    display: inline-block;
+   width: 140px;
+   max-width: 140px;
+   overflow: hidden;
+   font-weight: 700;
+   cursor: default;
+}
+
+span.list-nick-elo {
+   display: inline-block;
    width: 150px;
    max-width: 150px;
    overflow: hidden;
@@ -1259,8 +1281,8 @@ span.list-opp {
    display: inline-block;
    width: 150px;
    max-width: 150px;
-   font-weight: 700;
    overflow: hidden;
+   font-weight: 700;
 }
 
 span.list-fullname {
@@ -1323,6 +1345,15 @@ span.list-rank {
    margin-right: 10px;
 }
 
+span.list-rank-no-mobile {
+   display: none;
+   width: 32px;
+   max-width: 32px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
 span.list-elo {
    display: inline-block;
    width: 40px;
@@ -1332,8 +1363,17 @@ span.list-elo {
    margin-right: 10px;
 }
 
+span.list-elo-no-mobile {
+   display: none;
+   width: 40px;
+   max-width: 40px;
+   text-align: center;
+   overflow: hidden;
+   margin-right: 10px;
+}
+
 span.list-games {
-   display: inline-block;
+   display: none;
    width: 48px;
    max-width: 48px;
    text-align: right;
@@ -1342,7 +1382,7 @@ span.list-games {
 }
 
 span.list-ratio {
-   display: inline-block;
+   display: none;
    width: 40px;
    max-width: 40px;
    text-align: right;
@@ -1351,12 +1391,22 @@ span.list-ratio {
 }
 
 span.list-avgpts {
-   display: inline-block;
+   display: none;
    width: 36px;
    max-width: 36px;
    text-align: right;
    overflow: hidden;
    margin-right: 16px;
+}
+
+span.mobile-break {
+   display: inline;
+}
+
+span.mobile-space {
+   display: inline;
+   padding-left: 32px;
+   padding-right: 32px;
 }
 
 .no-mobile-block {
@@ -1404,7 +1454,7 @@ div.user-cat span#break {
 }
 
 div.user-cat#user-headings {
-   line-height: 15px;
+   line-height: 32px;
 }
 
 div.user-cat#user-search {
@@ -1416,6 +1466,44 @@ div#chall-form {
    right: auto;
    top: 12px;
    width: 360px;
+}
+
+div#chall-fairplay {
+   margin-top: 10px;
+   padding-left: 26px;
+   padding-right: 26px;
+   font-size: 14px;
+   text-align: right;
+}
+
+div#chall-oldbag {
+   position: absolute;
+   bottom: 16px;
+   font-size: 14px;
+}
+
+span.caption.wide {
+   width: 218px;
+}
+
+div#manual-toggler {
+   display: inline-block;
+}
+
+div#chall-ok {
+   right: 12px;
+   width: 72px; /* Override */
+   background-color: @freshtile;
+}
+
+div#chall-cancel {
+   right: 108px; /* 12 + 72 + 12 + 12 */
+   width: 72px; /* Override */
+   background-color: @alert;
+}
+
+div.user-cat#user-headings span {
+   white-space: nowrap;
 }
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
@@ -1533,7 +1621,21 @@ h3.scoreright {
    line-height: 22px;
 }
 
-div.right-tab#tab-board {
+div.right-tab {
+   display: none;
+}
+
+div.opp-turn {
+   display: none;
+}
+
+div.movelist {
+   height: 280px;
+}
+
+div.games,
+div.twoletter,
+div.chat {
    display: none;
 }
 
@@ -1594,6 +1696,12 @@ div.right-area {
 
 div.heading {
    height: 78px;
+}
+
+div.games,
+div.twoletter,
+div.chat {
+   display: block;
 }
 
 div.board-area {
@@ -1846,6 +1954,11 @@ div.player-btn {
    width: 141px;
 }
 
+div.player-btn:hover {
+   background-color: white;
+   color: @neutral;
+}
+
 div.player-btn.left {
    padding-right: 2px;
 }
@@ -1890,6 +2003,7 @@ div.blurb {
 }
 
 div.right-tab {
+   display: block;
    height: 38px;
    min-height: 38px;
    width: 38px;
@@ -1947,7 +2061,10 @@ div.modal-dialog {
    width: 512px;
    height: 28px;
    font-size: 16px;
+   line-height: normal;
+   padding: 0px;
    padding-top: 4px;
+   margin: 0;
 }
 
 .bold-bottom-message {
@@ -1960,6 +2077,7 @@ div.error {
 
 div.opp-turn {
    .bottom-message;
+   display: block;
 }
 
 div#congrats {
@@ -2090,33 +2208,29 @@ div.fairplay {
    line-height: 28px;
 }
 
-span.list-ts {
-   display: inline-block;
-}
-
-span.list-ts-short {
-   display: inline-block;
-}
-
-span.list-overdue {
-   display: inline-block;
-}
-
 span.list-opp {
    width: 290px;
    max-width: 290px;
 }
 
-span.list-nick {
+span.list-nick,
+span.list-nick-elo {
    width: 220px;
    max-width: 220px;
 }
 
-span.list-info-hdr {
-   display: inline-block;
-}
-
-span.list-info {
+span.list-ts,
+span.list-ts-short,
+span.list-info-hdr,
+span.list-info,
+span.list-games,
+span.list-ratio,
+span.list-avgpts,
+span.list-manual,
+span.list-fav,
+span.list-overdue,
+span.list-rank-no-mobile,
+span.list-elo-no-mobile {
    display: inline-block;
 }
 
@@ -2126,15 +2240,12 @@ span.list-tc {
    padding-right: 6px;
 }
 
-span.list-manual {
-   display: inline-block;
-}
-
 span.list-ch,
 span.list-fav,
 span.list-icon,
 span.list-myturn,
-span.list-overdue {
+span.list-overdue,
+span.list-newbag {
    font-size: 20px;
    width: 32px;
    max-width: 32px;
@@ -2155,10 +2266,6 @@ span.list-scorehdr {
    max-width: 88px;
 }
 
-span.list-newbag {
-   display: inline-block;
-}
-
 div.user-cat span#break {
    display: none;
 }
@@ -2176,6 +2283,43 @@ div#chall-form {
    right: 300px;
    top: 48px;
    width: 428px;
+}
+
+div#chall-fairplay {
+   margin-top: 15px;
+   padding-left: 52px;
+   padding-right: 52px;
+}
+
+div#ready-toggler {
+   display: block;
+   position: absolute;
+   left: 10px;
+   top: 538px;
+}
+
+div#timed-toggler {
+   display: block;
+   position: absolute;
+   left: 10px;
+   top: 590px;
+}
+
+span.caption.wide {
+   width: 264px;
+}
+
+div#chall-ok {
+   right: 66px; /* 12 + 54 */
+}
+
+div#chall-cancel {
+   right: 162px; /* 12 + 72 + 12 + 12 + 54 */
+}
+
+span.mobile-break,
+span.mobile-space {
+   display: none;
 }
 
 } /* media min-width: 768px */
@@ -3624,18 +3768,6 @@ div#load-game {
    background-color: @freshtile;
 }
 
-div#chall-cancel {
-   right: 162px; /* 12 + 72 + 12 + 12 + 54 */
-   width: 72px; /* Override */
-   background-color: @alert;
-}
-
-div#chall-ok {
-   right: 66px; /* 12 + 54 */
-   width: 72px; /* Override */
-   background-color: @freshtile;
-}
-
 div#wait-cancel {
    right: 12px;
    width: 72px; /* Override */
@@ -4002,14 +4134,6 @@ span#chall-online.online {
    background-color: @freshtile;
 }
 
-div#chall-fairplay {
-   margin-top: 15px;
-   padding-left: 52px;
-   padding-right: 52px;
-   font-size: 14px;
-   text-align: right;
-}
-
 div#chall-newbag {
    margin-top: 24px;
    padding-left: 6px;
@@ -4174,10 +4298,6 @@ span.caption {
    margin-right: 12px;
    overflow: hidden;
    text-align: right;
-}
-
-span.caption.wide {
-   width: 264px;
 }
 
 span.subcaption {
@@ -4347,18 +4467,6 @@ div.toggler div.option.x-small {
 
 div.toggler div.option.selected {
    background-color: @triple-letter;
-}
-
-div#ready-toggler {
-   position: absolute;
-   left: 10px;
-   top: 538px;
-}
-
-div#timed-toggler {
-   position: absolute;
-   left: 10px;
-   top: 590px;
 }
 
 div#fairplay-toggler div.option.selected {

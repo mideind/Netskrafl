@@ -24,7 +24,7 @@ function loginFirebase(token) {
 
 function initPresence(userId) {
    // Ensure that this user connection is recorded in Firebase
-   var db = firebase.database()
+   var db = firebase.database();
    var connectedRef = db.ref('.info/connected');
    // Create a unique connection entry for this user
    var connectionPath = 'connection/' + userId;

@@ -1901,6 +1901,18 @@ function submitExchange(btn) {
    }
 }
 
+function clearDialog() {
+   /* Erase any dialogs that may be showing */
+   $("div.resign").css("visibility", "hidden");
+   $("div.exchange").css("visibility", "hidden");
+   $("div.chall").css("visibility", "hidden");
+   $("div.pass").css("visibility", "hidden");
+   $("div.pass-last").css("visibility", "hidden");
+   showingDialog = false;
+   initRackDraggable(true);
+   updateButtonState();
+}
+
 function confirmResign(yes) {
    /* The user has either confirmed or cancelled the resignation */
    $("div.resign").css("visibility", "hidden");
@@ -2465,20 +2477,22 @@ function lookAtPlayer() {
 function mediaMinWidth667(mql) {
    if (mql.matches) {
       // Take action when min-width exceeds 667
+      // (usually because of rotation from portrait to landscape)
       // The board tab is not visible, so the movelist is default
       selectMovelistTab();
-      $("div.heading").off("click");
-      // Enable clicking on player identifier buttons
-      $("div.player-btn").click(lookAtPlayer);
+      // Cancel any pending dialog
+      if (showingDialog)
+         clearDialog();
+      else
+         // Recall any tiles from the board into the rack
+         // Note: if a dialog is showing, we know that no tiles are on the board
+         resetRack();
    }
    else {
       // min-width is below 667
+      // (usually because of rotation from landscape to portrait)
       // Make sure the board tab is selected
       selectBoardTab();
-      // Make header a click target
-      $("div.heading").click(function(e) { window.location.href = "/"; });
-      // Disable clicking on player identifier buttons
-      $("div.player-btn").off("click");
    }
 }
 
@@ -2486,9 +2500,16 @@ function mediaMinWidth768(mql) {
    if (mql.matches) {
       // Take action when min-width exceeds 768
       uiFullscreen = true;
+      $("div.heading").off("click");
+      // Enable clicking on player identifier buttons
+      $("div.player-btn").click(lookAtPlayer);
    }
    else {
       uiFullscreen = false;
+      // Make header a click target
+      $("div.heading").click(function(e) { window.location.href = "/"; });
+      // Disable clicking on player identifier buttons
+      $("div.player-btn").off("click");
    }
 }
 
