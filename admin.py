@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
-""" Admin web server for netskrafl.appspot.com
+""" Admin web server for netskrafl.is
 
-    Author: Vilhjalmur Thorsteinsson, 2015
+    Copyright (C) 2015-2017 Miðeind ehf.
+    Author: Vilhjalmur Thorsteinsson
 
-    This web server module uses the Flask framework to implement
-    an admin web area for Netskrafl.
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
@@ -73,12 +74,12 @@ def deferred_update():
     logging.info("Completed updating {0} user records".format(count))
 
 
-@app.route("/admin/userupdate", methods=['GET'])
-def admin_userupdate():
-    """ Start a user update background task """
-    logging.info("Starting user update")
-    deferred.defer(deferred_update)
-    return "<html><body><p>User update started</p></body></html>"
+#@app.route("/admin/userupdate", methods=['GET'])
+#def admin_userupdate():
+#    """ Start a user update background task """
+#    logging.info("Starting user update")
+#    deferred.defer(deferred_update)
+#    return "<html><body><p>User update started</p></body></html>"
 
 
 @app.route("/admin/setfriend", methods=['GET'])

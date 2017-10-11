@@ -1463,16 +1463,20 @@ div.user-cat#user-search {
 }
 
 div#chall-form {
-   left: 12px;
+   .std-form;
+   padding-top: 8px;
+   left: @margin-small;
    right: auto;
-   top: 12px;
-   width: 360px;
+   top: 48px;
+   width: @mobile-width - 6 * @margin-small;
+   height: 352px;
+   font-size: 0.85em;
 }
 
 div#chall-fairplay {
    margin-top: 10px;
-   padding-left: 26px;
-   padding-right: 26px;
+   padding-left: 0px;
+   padding-right: 0px;
    font-size: 14px;
    text-align: right;
 }
@@ -1484,7 +1488,7 @@ div#chall-oldbag {
 }
 
 span.caption.wide {
-   width: 218px;
+   width: 200px;
 }
 
 div#manual-toggler {
@@ -1518,6 +1522,86 @@ div#user-load {
    background-image: url('user-loader.gif');
    background-repeat: no-repeat;
    background-size: 24px 24px;
+}
+
+div#promo-form {
+   .std-form;
+   top: 64px;
+   left: @margin-small * 3 / 2;
+   width: @mobile-width - 2 * @margin-small;
+   height: 364px;
+   line-height: 1.5em;
+}
+
+div#promo-content {
+   margin-top: @margin-small * 2;
+   margin-left: @margin-small * 2;
+   margin-right: @margin-small * 2;
+}
+
+div.promo-fullscreen {
+   display: none;
+}
+
+div.promo-mobile {
+   display: block;
+}
+
+div.btn-promo-yes {
+   .standard-button;
+   width: 200px;
+   height: 28px;
+   bottom: 48px;
+   right: 232px;
+   top: auto;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.btn-promo-no {
+   .standard-button;
+   width: 80px;
+   height: 28px;
+   bottom: 3 * @margin-small;
+   right: 3 * @margin-small;
+   top: auto;
+   background-color: darken(@freshtile, 10%);
+}
+
+div.challenge {
+   position: absolute;
+   width: @wide-btn-width-small - 1;
+   height: 37px;
+   text-align: center;
+   vertical-align: middle;
+   top: @btn-top;
+   bottom: auto;
+   left: 268px;
+   color: white;
+   background-color: @chall-btn;
+   font-family: 'Glyphicons Regular';
+   font-style: normal;
+   font-weight: normal;
+   font-size: 22px;
+   line-height: 37px;
+   display: none;
+   border-style: solid;
+   border-color: @chall-btn;
+   border-width: 2px;
+   border-radius: 5px;
+   cursor: pointer;
+}
+
+div.challenge:before {
+   content: "\E200"; /* glyphicon-ban-circle */
+}
+
+div.challenge.disabled {
+   border-color: @background;
+}
+
+div.over,
+span.over {
+   /* Overridden for fullscreen media */
 }
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
@@ -2293,10 +2377,13 @@ div.user-cat#user-search {
 }
 
 div#chall-form {
+   padding-top: 12px;
    left: auto;
    right: 300px;
    top: 48px;
    width: 428px;
+   height: 634px;
+   font-size: 1em;
 }
 
 div#chall-fairplay {
@@ -2342,6 +2429,56 @@ div#user-load {
    width: 48px;
    height: 48px;
    background-size: 48px 48px;
+}
+
+div#promo-form {
+   left: auto;
+   top: 16px;
+   right: 12px;
+   width: 884px;
+   height: 644px;
+   line-height: 1.62em;
+}
+
+div#promo-content {
+   margin-top: 48px;
+   margin-left: 48px;
+   margin-right: 48px;
+}
+
+div.promo-fullscreen {
+   display: block;
+}
+
+div.promo-mobile {
+   display: none;
+}
+
+div.btn-promo-no {
+   width: 160px;
+   height: 28px;
+   bottom: 48px;
+   right: 48px;
+   top: auto;
+   background-color: @board-background;
+}
+
+div.challenge {
+   width: 48px;
+   height: 48px;
+   top: auto;
+   bottom: 204px;
+   left: 644px;
+   font-size: 26px;
+   line-height: 46px;
+}
+
+div.over {
+   outline: yellow solid 3px;
+}
+
+span.over {
+   outline: yellow solid 3px;
 }
 
 } /* media min-width: 768px */
@@ -3034,37 +3171,6 @@ div.word-check.word-bad:before {
    content: "\E200"; /* glyphicon-ban-circle */
 }
 
-div.challenge {
-   position: absolute;
-   width: 48px;
-   height: 48px;
-   text-align: center;
-   vertical-align: middle;
-   bottom: 204px;
-   left: 644px;
-   color: white;
-   background-color: @chall-btn;
-   font-family: 'Glyphicons Regular';
-   font-style: normal;
-   font-weight: normal;
-   font-size: 26px;
-   line-height: 46px;
-   display: none;
-   border-style: solid;
-   border-color: @chall-btn;
-   border-width: 2px;
-   border-radius: 5px;
-   cursor: pointer;
-}
-
-div.challenge:before {
-   content: "\E200"; /* glyphicon-ban-circle */
-}
-
-div.challenge.disabled {
-   border-color: @background;
-}
-
 div.board-help {
    position: absolute;
    left: 22px;
@@ -3217,12 +3323,6 @@ span#total0, span#total1 {
    margin-right: 8px;
 }
 
-div#promo-content {
-   margin-top: 48px;
-   margin-left: 48px;
-   margin-right: 48px;
-}
-
 div#promo-content h2 {
    color: darken(@freshtile, 10%);
 }
@@ -3247,26 +3347,6 @@ div.btn-krafla-yes {
    right: 48px;
    top: auto;
    background-color: darken(@freshtile, 10%);
-}
-
-div.btn-promo-yes {
-   .standard-button;
-   width: 200px;
-   height: 28px;
-   bottom: 48px;
-   right: 232px;
-   top: auto;
-   background-color: darken(@freshtile, 10%);
-}
-
-div.btn-promo-no {
-   .standard-button;
-   width: 160px;
-   height: 28px;
-   bottom: 48px;
-   right: 48px;
-   top: auto;
-   background-color: @board-background;
 }
 
 div.btn-thanks {
@@ -3795,15 +3875,6 @@ div#promo-close {
    background-color: @alert;
 }
 
-div#promo-form {
-   .std-form;
-   top: 16px;
-   right: 12px;
-   width: 884px;
-   height: 644px;
-   line-height: 1.62em;
-}
-
 div#thanks-form {
    .std-form;
    top: 212px;
@@ -4032,12 +4103,6 @@ div.stats-win-ratio {
 div.stats-avg-score {
    color: darken(@triple-word, 10%);
    border-color: darken(@triple-word, 10%);
-}
-
-div#chall-form {
-   .std-form;
-   height: 634px;
-   padding-top: 12px; /* Override */
 }
 
 div.chall-hdr {
@@ -4486,14 +4551,6 @@ div#fairplay-toggler div.option.selected {
 div #radioset {
    padding-top: 6px;
    padding-bottom: 24px;
-}
-
-div.over {
-   outline: yellow solid 3px;
-}
-
-span.over {
-   outline: yellow solid 3px;
 }
 
 div.disabled {

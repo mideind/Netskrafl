@@ -2623,6 +2623,8 @@ function initSkrafl(jQuery) {
 
    initMediaListener(); // Initiate listening to media change events
 
+   preventPullToRefresh(); // Disable mobile behavior
+
    lateInit();
 
    if (igt.duration > 0)
