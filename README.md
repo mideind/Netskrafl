@@ -9,6 +9,8 @@ inspired by SCRABBLE(tm).
 The game, which is free-to-play, is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
 [http://netskrafl.appspot.com](http://netskrafl.appspot.com)
 
+![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
+
 The game backend is implemented in Python 2.7 for Google App Engine but the core code is also
 compatible with Python 3.x and PyPy.
 
