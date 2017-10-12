@@ -348,13 +348,13 @@ function closePromoDialog() {
    $("#promo-content").html("");
 }
 
+var maybePreventPullToRefresh = false;
+var lastTouchY = 0;
+
 function preventPullToRefresh()
 {
    /* Prevent the mobile (touch) behavior where pulling/scrolling the
       page down, if already at the top, causes a refresh of the web page */
-   var maybePreventPullToRefresh = false;
-   var lastTouchY = 0;
-
    var touchstartHandler = function(e) {
       if (e.touches.length != 1)
          return;
@@ -367,7 +367,7 @@ function preventPullToRefresh()
    var touchmoveHandler = function(e) {
       var touchY = e.touches[0].clientY;
       var touchYDelta = touchY - lastTouchY;
-      lastTouchY = touchY;
+      /* lastTouchY = touchY; */
       if (maybePreventPullToRefresh) {
          // To suppress pull-to-refresh it is sufficient to preventDefault the
          // first overscrolling touchmove.

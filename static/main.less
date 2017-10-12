@@ -48,6 +48,7 @@
 
 @mobile-width: 375px;
 @mobile-height: 667px;
+@mobile-height-net: (@mobile-height - @navbar-height);
 
 @font-face {
    font-family: 'Glyphicons Regular';
@@ -259,7 +260,7 @@
 /* Default media: small screen, i.e. mobile */
 
 html {
-   height: 100%;
+   height: auto; /* 100%; */
    overflow: hidden;
 }
 
@@ -270,9 +271,9 @@ body {
    background-color: @container;
    height: 100%;
    width: 100%;
-   position: fixed;
-   overflow-y: hidden;
    overflow-x: auto;
+   /* position: absolute;
+   overflow: auto; */
 }
 
 div.container {
@@ -280,8 +281,9 @@ div.container {
    top: 0;
    left: 0;
    width: @mobile-width; /* Reference width */
-   height: @mobile-height - @navbar-height; /* Full height is 667px - we subtract 83px for browser navbar */
-   overflow: hidden;
+   height: @mobile-height-net; /* Full height is 667px - we subtract 83px for browser navbar */
+   overflow-x: hidden;
+   overflow-y: auto;
    margin: 0 auto; /* Horizontal align center */
 }
 
@@ -889,7 +891,7 @@ div.right-tab.alert {
 div.right-area {
    position: relative;
    left: 0px;
-   height: @mobile-height - @navbar-height - @board-top - @margin-small;
+   height: @mobile-height-net - @board-top - @margin-small;
    width: 100%;
    font-size: 16px;
    line-height: 16px;
@@ -908,7 +910,7 @@ div.movelist {
    top: 0px;
    left: 0px;
    width: 100%;
-   height: @mobile-height - @navbar-height - @board-top - 3 * @margin-small;
+   height: @mobile-height-net - @board-top - 3 * @margin-small;
    background-color: @background;
    margin-top: @margin-small;
    margin-bottom: 0;
@@ -1098,7 +1100,7 @@ div.tabbed-page {
    left: 0px;
    top: 0px;
    width: @mobile-width;
-   height: @mobile-height - @navbar-height;
+   height: @mobile-height-net;
    overflow: hidden;
    font-size: 13px;
    line-height: 23px;
@@ -1614,7 +1616,21 @@ span.over {
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
-@media all and (min-width: 667px) {
+@media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
+
+   /* On sufficiently large mobile screens, keep the body fixed (unscrollable) */
+   body {
+      position: fixed;
+      overflow: hidden;
+   }
+
+   div.container {
+      /* position: fixed; */
+      overflow: hidden;
+   }
+}
+
+@media all and (min-width: @mobile-height) {
 
 /* Mobile screen, landscape mode */
 
@@ -1752,6 +1768,16 @@ div.chat {
 @media all and (min-width: 768px) {
 
 /* Large screen (iPad and larger) */
+
+html {
+   height: auto;
+   overflow: hidden;
+}
+
+body {
+   position: absolute;
+   overflow: auto;
+}
 
 div.container {
    width: 1024px;
@@ -2487,16 +2513,6 @@ div.over {
 
 span.over {
    outline: yellow solid 3px;
-}
-
-html {
-   height: auto;
-   overflow: auto;
-}
-
-body {
-   position: absolute;
-   overflow: auto;
 }
 
 } /* media min-width: 768px */

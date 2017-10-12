@@ -27,5 +27,6 @@
   "background_color": "#fff1dc",
   "theme_color": "#fff1dc",
   "display": "standalone",
+  "orientation": "portrait",
   "start_url": "/?utm_source=homescreen"
 }
