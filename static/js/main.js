@@ -907,9 +907,12 @@ function mediaMinWidth768(mql) {
    if (mql.matches) {
       // Take action when min-width exceeds 768
       uiFullscreen = true;
+      preventPullToRefresh(false);
    }
    else {
       uiFullscreen = false;
+      /* Prevent mobile behavior where pull down (scroll) causes a page refresh */
+      preventPullToRefresh(true);
    }
 }
 
@@ -1007,9 +1010,6 @@ function initMain() {
 
    /* Listen to media events, such as orientation changes */
    initMediaListener();
-
-   /* Prevent mobile behavior where pull down (scroll) causes a page refresh */
-   preventPullToRefresh();
 
    /* Call initialization that requires variables coming from the server */
    lateInit();

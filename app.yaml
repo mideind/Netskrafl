@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: firebase2
+version: firefix
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -84,14 +84,14 @@ handlers:
   static_files: static/\1
   upload: static/.*\.css$
   mime_type: text/css
-  expiration: "1d 0h"
+  expiration: "0d 1h" # Was "1d 0h"
 
 # Catchall for JavaScript
 - url: /static/(.*\.min\.js)(\?.*)?$
   static_files: static/\1
   upload: static/.*\.min\.js$
   mime_type: application/javascript
-  expiration: "1d 0h"
+  expiration: "0d 1h" # Was "1d 0h"
 
 # Font files that can be cached
 - url: /static/glyphicons-regular.ttf

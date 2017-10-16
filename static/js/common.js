@@ -350,35 +350,47 @@ function closePromoDialog() {
 
 var maybePreventPullToRefresh = false;
 var lastTouchY = 0;
+var pullToRefreshDisabled = false;
 
-function preventPullToRefresh()
+function _touchstartHandler(e) {
+   if (e.touches.length != 1)
+      return;
+   lastTouchY = e.touches[0].clientY;
+   // Pull-to-refresh will only trigger if the scroll begins when the
+   // document's Y offset is zero.
+   maybePreventPullToRefresh = (window.pageYOffset === 0);
+}
+
+function _touchmoveHandler(e) {
+   var touchY = e.touches[0].clientY;
+   var touchYDelta = touchY - lastTouchY;
+   /* lastTouchY = touchY; */
+   if (maybePreventPullToRefresh) {
+      // To suppress pull-to-refresh it is sufficient to preventDefault the
+      // first overscrolling touchmove.
+      maybePreventPullToRefresh = false;
+      if (touchYDelta > 0)
+         e.preventDefault();
+   }
+}
+
+function preventPullToRefresh(enable)
 {
    /* Prevent the mobile (touch) behavior where pulling/scrolling the
       page down, if already at the top, causes a refresh of the web page */
-   var touchstartHandler = function(e) {
-      if (e.touches.length != 1)
-         return;
-      lastTouchY = e.touches[0].clientY;
-      // Pull-to-refresh will only trigger if the scroll begins when the
-      // document's Y offset is zero.
-      maybePreventPullToRefresh = (window.pageYOffset === 0);
-   };
-
-   var touchmoveHandler = function(e) {
-      var touchY = e.touches[0].clientY;
-      var touchYDelta = touchY - lastTouchY;
-      /* lastTouchY = touchY; */
-      if (maybePreventPullToRefresh) {
-         // To suppress pull-to-refresh it is sufficient to preventDefault the
-         // first overscrolling touchmove.
-         maybePreventPullToRefresh = false;
-         if (touchYDelta > 0) {
-            e.preventDefault();
-            return;
-         }
+   if (enable) {
+      if (!pullToRefreshDisabled) {
+         document.addEventListener('touchstart', _touchstartHandler, false);
+         document.addEventListener('touchmove', _touchmoveHandler, { passive: false });
+         pullToRefreshDisabled = true;
       }
-   };
-   document.addEventListener('touchstart', touchstartHandler, false);
-   document.addEventListener('touchmove', touchmoveHandler, { passive: false });
+   }
+   else {
+      if (pullToRefreshDisabled) {
+         document.removeEventListener('touchstart', _touchstartHandler, false);
+         document.removeEventListener('touchmove', _touchmoveHandler, { passive: false });
+         pullToRefreshDisabled = false;
+      }
+   }
 }
 

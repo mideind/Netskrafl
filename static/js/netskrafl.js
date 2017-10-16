@@ -1422,6 +1422,8 @@ function updateButtonState() {
       }
       showRecall = true;
    }
+   if (showChallengeInfo)
+      showScramble = false;
    $("div.submitmove").toggleClass("hidden", !showMove);
    $("div.submitexchange").css("display", showExchange ? "block" : "none");
    $("div.submitpass").css("display", showPass ? "block" : "none");
@@ -1639,20 +1641,20 @@ function rescrambleRack(ev) {
 
 function updateBag(bag) {
    /* Update the bag display in the lower right corner */
-   $("#bag").html("");
+   var bagC = $(".bag-content");
+   bagC.html("");
    var lenbag = bag.length;
    var ix = 0;
    // If 7 or fewer unseen tiles, the bag is empty and they're all in the opponent's
    // rack; display the tiles in the opponent's color
-   if (lenbag <= RACK_SIZE) {
-      $("#bag").toggleClass("new", false);
-      $("#bag").toggleClass("empty", true);
-   }
+   if (lenbag <= RACK_SIZE)
+      bagC
+         .toggleClass("new", false)
+         .toggleClass("empty", true);
    else
-   if (gameUsesNewBag()) {
+   if (gameUsesNewBag())
       // Indicate visually that we're using the new bag
-      $("#bag").toggleClass("new", true);
-   }
+      bagC.toggleClass("new", true);
    while (lenbag > 0) {
       /* Rows */
       var str = "<tr>";
@@ -1666,7 +1668,7 @@ function updateBag(bag) {
          lenbag--;
       }
       str += "</tr>";
-      $("#bag").append(str);
+      bagC.append(str);
    }
 }
 
@@ -2503,6 +2505,8 @@ function mediaMinWidth768(mql) {
       $("div.heading").off("click");
       // Enable clicking on player identifier buttons
       $("div.player-btn").click(lookAtPlayer);
+      // Remove pull-to-refresh disabling hack, if present
+      preventPullToRefresh(false);
    }
    else {
       uiFullscreen = false;
@@ -2510,6 +2514,8 @@ function mediaMinWidth768(mql) {
       $("div.heading").click(function(e) { window.location.href = "/"; });
       // Disable clicking on player identifier buttons
       $("div.player-btn").off("click");
+      // Disable pull-to-refresh on mobile
+      preventPullToRefresh(true);
    }
 }
 
@@ -2622,8 +2628,6 @@ function initSkrafl(jQuery) {
    $("div.fb-share").click(fbShare);
 
    initMediaListener(); // Initiate listening to media change events
-
-   preventPullToRefresh(); // Disable mobile behavior
 
    lateInit();
 

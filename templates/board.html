@@ -348,7 +348,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 
 <!-- The bag -->
 <div class="bag" title="Flísar sem eftir eru í pokanum">
-<table id="bag">
+<table class="bag-content">
 </table>
 </div>
 
@@ -490,7 +490,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {%- if dev_server %}
 <script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
+<script src="{{ url_for('static', filename='netskrafl.min.js', v=2) }}"></script>
 {% endif -%}
 <script>
 
