@@ -68,33 +68,10 @@
 
 {% block content %}
 
+<div class="board-area">
+
 <!-- The board -->
 {% include 'boardlayout.html' %}
-
-<!-- Player names, scores and move history -->
-<div class="rightcol">
-   <div class="heading">
-      <h3 class="playerleft">
-      <div class="robot-btn left">
-{%- if game.is_autoplayer(0) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{- game.player_nickname(0) -}}
-      </div></h3>
-      <h3 class="playerright">
-      <div class="robot-btn right">
-{%- if game.is_autoplayer(1) -%}
-<span class="glyphicon glyphicon-cog"></span>&nbsp;
-{%- endif -%}
-      {{- game.player_nickname(1) -}}
-      </div></h3>
-      <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
-      <h3 class="scoreright">{{ state.scores()[1] }}</h3>
-   </div>
-   <div class="right-area">
-      <div class="movelist noscroll"></div>
-   </div>
-</div>
 
 <!-- The rack -->
 <div class="rack">
@@ -122,6 +99,55 @@
 
 <!-- The score difference between the shown move and the actual move -->
 <div class="scorediff"></div>
+
+<!-- Previous move button -->
+<div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="navPrev(this)">
+   <span id="nav-prev-visible"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</span>
+   <span id="nav-prev-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+</div>
+
+<!-- Next move button -->
+<div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
+   onmouseout="buttonOut(this)" onclick="navNext(this)">
+   <span id="nav-next-visible">Næsti <span class="glyphicon glyphicon-chevron-right"></span></span>
+   <span id="nav-next-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+</div>
+
+{% if move_number > 0 %}
+<!-- Game info bar -->
+<div class="gameinfo">
+   Viðureign hófst {{ game.start_time() }}&nbsp;&nbsp;&nbsp;<span class="yesnobutton closebtn"
+   title="Loka yfirliti" onclick="closeReview()"><span class="glyphicon glyphicon-remove"></span> Loka yfirliti</span>
+</div>
+{% endif %}
+
+</div> <!-- board-area -->
+
+<!-- Player names, scores and move history -->
+<div class="rightcol">
+   <div class="heading">
+      <h3 class="playerleft">
+      <div class="robot-btn left">
+{%- if game.is_autoplayer(0) -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+      {{- game.player_nickname(0) -}}
+      </div></h3>
+      <h3 class="playerright">
+      <div class="robot-btn right">
+{%- if game.is_autoplayer(1) -%}
+<span class="glyphicon glyphicon-cog"></span>&nbsp;
+{%- endif -%}
+      {{- game.player_nickname(1) -}}
+      </div></h3>
+      <h3 class="scoreleft">{{ state.scores()[0] }}</h3>
+      <h3 class="scoreright">{{ state.scores()[1] }}</h3>
+   </div>
+   <div class="right-area">
+      <div class="movelist noscroll"></div>
+   </div>
+</div>
 
 <!-- Game statistics -->
 <div class="gamestats" onclick="navFirst()">
@@ -192,28 +218,6 @@ með <b>eldri</b> (upphaflega) skraflpokanum.</p>
    onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-play"></span> Rekja</div>
 
 </div>
-
-<!-- Previous move button -->
-<div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navPrev(this)">
-   <span id="nav-prev-visible"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</span>
-   <span id="nav-prev-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
-</div>
-
-<!-- Next move button -->
-<div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
-   onmouseout="buttonOut(this)" onclick="navNext(this)">
-   <span id="nav-next-visible">Næsti <span class="glyphicon glyphicon-chevron-right"></span></span>
-   <span id="nav-next-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
-</div>
-
-{% if move_number > 0 %}
-<!-- Game info bar -->
-<div class="gameinfo">
-   Viðureign hófst {{ game.start_time() }}&nbsp;&nbsp;&nbsp;<span class="yesnobutton closebtn"
-   title="Loka yfirliti" onclick="closeReview()"><span class="glyphicon glyphicon-remove"></span> Loka yfirliti</span>
-</div>
-{% endif %}
 
 {% endblock %}
 

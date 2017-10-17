@@ -16,6 +16,12 @@
 
 */
 
+@mobile-width: 375px;
+@mobile-height: 667px;
+
+@navbar-height: 83px;
+@mobile-height-net: (@mobile-height - @navbar-height);
+
 @board-cell-big: 32px;
 @board-cell-small: 22px;
 
@@ -43,12 +49,6 @@
 @rack-top: @board-top + @board-size + @vertical-space;
 @rack-height: 48px;
 @btn-top: @rack-top + @rack-height + @vertical-space;
-
-@navbar-height: 83px;
-
-@mobile-width: 375px;
-@mobile-height: 667px;
-@mobile-height-net: (@mobile-height - @navbar-height);
 
 @font-face {
    font-family: 'Glyphicons Regular';
@@ -269,7 +269,7 @@ body {
    padding: 0;
    margin: 0;
    background-color: @container;
-   height: 100%;
+   height: @mobile-height-net;
    width: 100%;
    overflow-x: auto;
    /* position: absolute;
@@ -904,7 +904,7 @@ div.right-area.with-clock {
    margin-top: 48px;
 }
 
-div.movelist {
+div.movelist-container {
    position: absolute;
    top: 0px;
    left: 0px;
@@ -913,8 +913,28 @@ div.movelist {
    background-color: @background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
-   overflow: auto;
    z-index: 5;
+}
+
+div.movelist {
+   margin: 0;
+   padding: 0;
+   overflow: auto;
+   width: 100%;
+   height: @mobile-height-net - @board-top - 3 * @margin-small - 100px;
+}
+
+div.movelist-container div.bag {
+   display: block;
+   background-color: @container;
+   position: relative;
+   left: 0;
+   margin: 0;
+   padding: 0;
+   padding-top: 4px;
+   padding-left: 27px;
+   padding-right: 28px;
+   height: 104px;
 }
 
 div.game-item {
@@ -1802,8 +1822,16 @@ div.opp-turn {
    display: none;
 }
 
+div.movelist-container {
+   height: 272px;
+}
+
 div.movelist {
    height: 272px;
+}
+
+div.movelist-container div.bag {
+   display: none;
 }
 
 div.games,
@@ -2227,10 +2255,18 @@ div.right-tab#tab-chat {
    left: -40px;
 }
 
-div.movelist {
+div.movelist-container {
    padding-top: 0;
    padding-bottom: 0;
    height: 100%;
+}
+
+div.movelist {
+   height: 100%;
+}
+
+div.movelist-container div.bag {
+   display: none;
 }
 
 div.game-timed {
@@ -3023,7 +3059,7 @@ div.gamestats {
    width: 724px;
    height: 580px;
    left: 150px;
-   top: 80px;
+   top: 64px;
    cursor: pointer;
    padding: 12px;
    border-radius: 5px;
@@ -3380,6 +3416,7 @@ div.posdiff {
 
 div.navbtn {
    .standard-button;
+   top: auto;
    width: 100px;
    height: 30px;
    bottom: 130px;

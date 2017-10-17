@@ -2245,7 +2245,7 @@ function _selectTab(tabSel) {
    // small-format (mobile) screen
    $("div.board-area").css("z-index", tabSel == "tab-board" ? "4" : "1");
    $("#tab-board").toggleClass("selected", tabSel == "tab-board");
-   $("div.movelist").css("z-index", tabSel == "tab-movelist" ? "4" : "1");
+   $("div.movelist-container").css("z-index", tabSel == "tab-movelist" ? "4" : "1");
    $("#tab-movelist").toggleClass("selected", tabSel == "tab-movelist");
    $("div.twoletter").css("z-index", tabSel == "tab-twoletter" ? "4" : "1");
    $("#tab-twoletter").toggleClass("selected", tabSel == "tab-twoletter");

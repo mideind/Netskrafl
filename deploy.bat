@@ -17,11 +17,13 @@ IF /i "%1" EQU "C" GOTO CRON
 IF /i "%1" EQU "DEFAULT" GOTO DEFAULT
 IF /i "%1" EQU "D" GOTO DEFAULT
 ECHO Full deployment starting
+grunt make
 %APPCFG% update app.yaml skraflstats.yaml --noauth_local_webserver
 ECHO Full deployment completed
 GOTO :EOF
 :DEFAULT
 ECHO Default module deployment starting
+grunt make
 %APPCFG% update app.yaml --noauth_local_webserver
 ECHO Default module deployment completed
 GOTO :EOF
