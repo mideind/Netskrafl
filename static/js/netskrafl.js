@@ -2482,6 +2482,9 @@ function mediaMinWidth667(mql) {
       // (usually because of rotation from portrait to landscape)
       // The board tab is not visible, so the movelist is default
       selectMovelistTab();
+      if (initializing)
+         // No need to do more on the initial call to this function
+         return;
       // Cancel any pending dialog
       if (showingDialog)
          clearDialog();
