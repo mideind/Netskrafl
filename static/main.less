@@ -435,14 +435,13 @@ div.tile {
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
-   height: @board-cell-small - 6px;
-   width: @board-cell-small;
+   height: (@board-cell-small - 8px);
+   width: (@board-cell-small + 3px);
    overflow: hidden;
-   margin: 0px;
-   padding-top: 6px;
-   padding-bottom: 0px;
-   padding-left: 0px;
-   padding-right: 0;
+   margin: 0;
+   margin-left: -3px;
+   padding: 0;
+   padding-top: 8px;
    cursor: default;
 }
 
@@ -452,7 +451,9 @@ div.tile {
    font-size: 22px;
    line-height: 11px;
    height: @rack-cell-small - 6px;
-   width: @rack-cell-small;
+   width: @rack-cell-small + 3px;
+   padding-top: 6px;
+   margin-left: -3px;
 }
 
 /* While dragging a tile, show it in the rack form factor */
@@ -515,7 +516,7 @@ div.rack {
 div.letterscore {
    position: relative;
    bottom: 2px;
-   left: 12px;
+   left: 15px;
    height: 9px;
    width: 9px;
    font-size: 6px;
@@ -527,7 +528,7 @@ div.letterscore {
 }
 
 .rack div.letterscore {
-   left: 16px;
+   left: 19px;
    font-size: 9px;
    line-height: 9px;
 }
@@ -1946,6 +1947,7 @@ div.tile {
    line-height: 26px;
    height: (@board-cell-big - 2px);
    width: (@board-cell-big - 2px);
+   margin: 0;
    padding-top: 2px;
    padding-right: 2px;
 }
@@ -2017,6 +2019,8 @@ div.rack {
    line-height: 26px;
    height: (@board-cell-big - 2px);
    width: (@board-cell-big - 2px);
+   padding-top: 2px;
+   margin-left: 0;
 }
 
 .rack div.letterscore {
