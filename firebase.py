@@ -35,22 +35,26 @@ _FIREBASE_SCOPES = [
     'https://www.googleapis.com/auth/firebase.database',
     'https://www.googleapis.com/auth/userinfo.email'
 ]
+_HEADERS = {
+    "Connection": "keep-alive"
+}
+_TIMEOUT = 15 # Seconds
 
-_HTTP = None
+# Initialize thread-local storage
+_tls = threading.local()
 
 
 def _get_http():
-    """ Provides an authorized HTTP object """
-    global _HTTP
-    if _HTTP is None:
-        http = httplib2.Http()
+    """ Provides an authorized HTTP object, one per thread """
+    if not hasattr(_tls, "_HTTP"):
+        http = httplib2.Http(timeout = _TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
         creds = GoogleCredentials.get_application_default() \
             .create_scoped(_FIREBASE_SCOPES)
         creds.authorize(http)
-        _HTTP = http
-    return _HTTP
+        _tls._HTTP = http
+    return _tls._HTTP
 
 
 def _firebase_put(path, message=None):
@@ -63,7 +67,7 @@ def _firebase_put(path, message=None):
         path - the url to the Firebase object to write.
         value - a json string.
     """
-    return _get_http().request(path, method='PUT', body=message)
+    return _get_http().request(path, method='PUT', body=message, headers=_HEADERS)
 
 
 def _firebase_get(path):
@@ -76,7 +80,7 @@ def _firebase_get(path):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _get_http().request(path, method='GET')
+    return _get_http().request(path, method='GET', headers=_HEADERS)
 
 
 def _firebase_patch(path, message):
@@ -89,7 +93,7 @@ def _firebase_patch(path, message):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _get_http().request(path, method='PATCH', body=message)
+    return _get_http().request(path, method='PATCH', body=message, headers=_HEADERS)
 
 
 def _firebase_delete(path):
@@ -101,25 +105,29 @@ def _firebase_delete(path):
     Args:
         path - the url to the Firebase object to delete.
     """
-    return _get_http().request(path, method='DELETE')
+    return _get_http().request(path, method='DELETE', headers=_HEADERS)
 
 
 def send_message(message, *args):
-    """ Updates data in Firebase. If a message is provided, then it updates
-        the data at /channels/<channel_id> with the message using the PATCH
-        http method. If no message is provided, then the data at this location
-        is deleted using the DELETE http method. """
-    assert args, "Firebase path cannot be empty"
+    """ Updates data in Firebase. If a message object is provided, then it updates
+        the data at the given location (whose path is built as a concatenation
+        of the *args list) with the message using the PATCH http method.
+        If no message is provided, the data at this location is deleted
+        using the DELETE http method.
+    """
     try:
-        url = '/'.join(( _FIREBASE_DB_URL, ) + args) + ".json"
+        if args:
+            url = '/'.join(( _FIREBASE_DB_URL, ) + args) + ".json"
+        else:
+            url = _FIREBASE_DB_URL + "/.json"
         if message is None:
             response, _ = _firebase_delete(path=url)
         else:
-            response, _ = _firebase_patch(path=url, message=message)
-        # If all is well and good, "200" (OK) is returned in the status field
-        return response["status"] == "200"
-    except HTTPException as e:
-        logging.warning("Exception {} in firebase.send_message()".format(e))
+            response, _ = _firebase_patch(path=url + "?print=silent", message=json.dumps(message))
+        # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
+        return response["status"] in { "200", "204" }
+    except (HTTPException, httplib2.HttpLib2Error) as e:
+        logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
         return False
 
 
@@ -128,7 +136,7 @@ def send_update(*args):
     assert args, "Firebase path cannot be empty"
     endpoint = args[-1]
     value = { endpoint : datetime.utcnow().isoformat() }
-    return send_message(json.dumps(value), *args[:-1])
+    return send_message(value, *args[:-1])
 
 
 def check_wait(user_id, opp_id):
@@ -140,8 +148,8 @@ def check_wait(user_id, opp_id):
             return False
         msg = json.loads(body) if body else None
         return msg is True # Return False if msg is dict, None or False
-    except HTTPException as e:
-        logging.warning("Exception {} raised in firebase.check_wait()".format(e))
+    except (HTTPException, httplib2.HttpLib2Error) as e:
+        logging.warning("Exception [{}] raised in firebase.check_wait()".format(repr(e)))
         return False
 
 
@@ -154,8 +162,8 @@ def check_presence(user_id):
             return False
         msg = json.loads(body) if body else None
         return len(msg) > 0 if msg else False
-    except HTTPException as e:
-        logging.warning("Exception {} raised in firebase.check_presence()".format(e))
+    except (HTTPException, httplib2.HttpLib2Error) as e:
+        logging.warning("Exception [{}] raised in firebase.check_presence()".format(repr(e)))
         return False
 
 
@@ -168,8 +176,8 @@ def get_connected_users():
         url = '{}/connection.json?shallow=true'.format(_FIREBASE_DB_URL)
         try:
             response, body = _firebase_get(path=url)
-        except HTTPException as e:
-            logging.warning("Exception {} raised in firebase.get_connected_users()".format(e))
+        except (HTTPException, httplib2.HttpLib2Error) as e:
+            logging.warning("Exception [{}] raised in firebase.get_connected_users()".format(repr(e)))
             return set()
         if response["status"] != "200":
             return set()

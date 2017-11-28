@@ -259,6 +259,28 @@
 
 /* Default media: small screen, i.e. mobile */
 
+span.mobile-space {
+   display: inline;
+   padding-left: 32px;
+   padding-right: 32px;
+}
+
+.no-mobile-block {
+   display: none;
+}
+
+.no-mobile-inline {
+   display: none;
+}
+
+.no-mobile-inline-block {
+   display: none;
+}
+
+.no-mobile-list {
+   display: none;
+}
+
 html {
    height: auto; /* 100%; */
    overflow: hidden;
@@ -768,25 +790,26 @@ div.player-btn {
    margin: 2px;
    padding: 2px;
    padding-top: 6px;
-   width: 126px;
+   width: 118px;
    height: 28px;
    min-height: 28px;
    border-radius: 5px;
    border-width: 0px;
    overflow: hidden;
    background-color: transparent;
-   color: @neutral;
    cursor: pointer;
 }
 
-div.player-btn.left {
-   padding-left: 4px;
-   padding-right: 4px;
-}
-
+div.player-btn.left,
 div.player-btn.right {
    padding-left: 4px;
    padding-right: 4px;
+   color: @neutral;
+}
+
+div.player-btn.left.tomove,
+div.player-btn.right.tomove {
+   color: @alert;
 }
 
 div.loginform-small {
@@ -1440,28 +1463,6 @@ span.mobile-break {
    display: inline;
 }
 
-span.mobile-space {
-   display: inline;
-   padding-left: 32px;
-   padding-right: 32px;
-}
-
-.no-mobile-block {
-   display: none;
-}
-
-.no-mobile-inline {
-   display: none;
-}
-
-.no-mobile-inline-block {
-   display: none;
-}
-
-.no-mobile-list {
-   display: none;
-}
-
 .tab-legend {
    display: none;
 }
@@ -1683,6 +1684,23 @@ div.games-item {
    /* Defined further below */
    margin-left: 32px;
    margin-right: 32px;
+}
+
+div#wait-form {
+   .std-form;
+   top: @margin-small;
+   left: @margin-small / 2;
+   width: @mobile-width - 5 * @margin-small;
+   height: @mobile-height-net - 8 * @margin-small;
+}
+
+span.move-indicator {
+   .glyphicon;
+   color: @alert;
+}
+
+span.move-indicator:before {
+   content: "\E267";
 }
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
@@ -2174,6 +2192,8 @@ h3.scoreright {
 
 div.player-btn {
    width: 141px;
+   padding-top: 4px;
+   color: @neutral;
 }
 
 div.player-btn:hover {
@@ -2187,6 +2207,11 @@ div.player-btn.left {
 
 div.player-btn.right {
    padding-left: 2px;
+}
+
+div.player-btn.left.tomove,
+div.player-btn.right.tomove {
+   color: @neutral;
 }
 
 div.robot-btn {
@@ -2642,6 +2667,35 @@ div.games-item {
    margin-right: 4px;
 }
 
+div#wait-form {
+   .std-form;
+   top: 56px;
+   left: auto;
+   right: 202px;
+   width: 504px;
+   height: 544px;
+}
+
+span.left-to-move,
+span.right-to-move {
+   position: relative;
+   top: 2px;
+   font-family: 'Glyphicons Regular';
+   font-style: normal;
+   font-weight: normal;
+   color: @alert;
+   padding-right: 2px;
+}
+
+/* Show red flag by the id of the player whose move it is */
+div.player-btn.tomove span.left-to-move:before {
+   content: "\E267";
+}
+
+div.player-btn.tomove span.right-to-move:before {
+   content: "\E267";
+}
+
 } /* media min-width: 768px */
 
 /* ================= END OF MEDIA-SPECIFIC STYLE ADJUSTMENTS =================== */
@@ -2728,23 +2782,6 @@ div.highlight0 {
 div.highlight1 {
    /* Computer (remote) player */
    background-color: @freshtile;
-}
-
-.move-indicator {
-   .glyphicon;
-   color: @alert;
-}
-
-span.move-indicator:before {
-   content: "\E267";
-}
-
-span#left-to-move.glyphicon-flag {
-   .move-indicator;
-}
-
-span#right-to-move.glyphicon-flag-after {
-   .move-indicator;
 }
 
 .clock {
@@ -4357,14 +4394,6 @@ div#manual-toggler {
 
 div.hidden {
    visibility: hidden;
-}
-
-div#wait-form {
-   .std-form;
-   top: 56px;
-   right: 202px;
-   width: 504px;
-   height: 544px;
 }
 
 div.wait-explain {

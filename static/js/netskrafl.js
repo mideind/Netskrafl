@@ -1371,16 +1371,20 @@ function updateButtonState() {
       $("div.submitresign").toggleClass("disabled", showingDialog);
       $("div.recallbtn").toggleClass("disabled", showingDialog);
       $("div.scramblebtn").toggleClass("disabled", showingDialog);
-      $("#left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
-      $("#right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      // $("span.left-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      // $("span.right-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      $("div.player-btn.left").toggleClass("tomove", localPlayer() === 0);
+      $("div.player-btn.right").toggleClass("tomove", localPlayer() === 1);
       $("div.opp-turn").css("visibility", "hidden");
       // Indicate that it's this player's turn in the window/tab title
       document.title = "\u25B6 Netskrafl";
    }
    else {
       /* The other player's turn */
-      $("#left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
-      $("#right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      // $("span.left-to-move").css("display", localPlayer() === 1 ? "inline" : "none");
+      // $("span.right-to-move").css("display", localPlayer() === 0 ? "inline" : "none");
+      $("div.player-btn.left").toggleClass("tomove", localPlayer() === 1);
+      $("div.player-btn.right").toggleClass("tomove", localPlayer() === 0);
       if (gameOver)
          $("div.opp-turn").css("visibility", "hidden");
       else

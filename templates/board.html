@@ -231,7 +231,7 @@
 {%- else -%}
       <div class="robot-btn left" id="player-0">
 {%- endif -%}
-      <span id="left-to-move" class="glyphicon-flag"></span><!--
+      <span class="left-to-move" class="glyphicon-flag"></span><!--
       -->{{- game.player_nickname(0) -}}
       </div>
 {%- endif -%}
@@ -248,8 +248,8 @@
 {%- else -%}
       <div class="robot-btn right" id="player-1">
 {%- endif -%}
-      {{- game.player_nickname(1) -}}<!--
-      --><span id="right-to-move" class="glyphicon-flag-after"></span>
+      <span class="right-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(1) -}}
       </div>
 {%- endif -%}
       </h3>
@@ -495,9 +495,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {%- block endscripts -%}
 <!-- Netskrafl client script -->
 {%- if dev_server %}
-<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+<script src="{{ url_for('static', filename='netskrafl.js', v=5) }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='netskrafl.min.js', v=4) }}"></script>
+<script src="{{ url_for('static', filename='netskrafl.min.js', v=5) }}"></script>
 {% endif -%}
 <script>
 
@@ -533,6 +533,7 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% for m in game.get_final_adjustments() %}
       appendMove({{ m[0] }}, "{{ m[1][0] }}", "{{ m[1][1] }}", {{ m[1][2] }});
 {% endfor %}
+      gameOver = true; // Make sure that the gameOver variable is set no matter what
 {% endif %}
    }
 

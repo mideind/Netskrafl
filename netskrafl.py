@@ -202,14 +202,14 @@ def _process_move(game, movelist):
     if opponent is not None:
         # Send Firebase notifications
         # Send a game update to the opponent, if human, including
-        # the full client state
-        game_state = json.dumps(game.client_state(1 - player_index, m))
-        # Send the game state to /game/[game_id]/[opponent_id]/move
-        # board.html listens to this
-        firebase.send_message(game_state, "game", game.id(), opponent, "move")
-        # Send an update to /user/[opponent_id]/move
-        # main.html listens to this
-        firebase.send_update("user", opponent, "move")
+        # the full client state. board.html and main.html listen to this.
+        # Also update the user/[opp_id]/move branch with the current timestamp.
+        client_state = game.client_state(1 - player_index, m)
+        msg = {
+            "game/" + game.id() + "/" + opponent + "/move" : client_state,
+            "user/" + opponent : { "move" : datetime.utcnow().isoformat() }
+        }
+        firebase.send_message(msg)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
@@ -1144,10 +1144,12 @@ def cancelwait():
     if not user_id or not opp_id:
         return jsonify(ok = False)
 
-    # Delete the current wait
-    firebase.send_message(None, "user", user_id, "wait", opp_id)
-    # Force update of the opponent's challenge list
-    firebase.send_update("user", opp_id, "challenge")
+    # Delete the current wait and force update of the opponent's challenge list
+    msg = {
+        "user/" + user_id + "/wait/" + opp_id : None,
+        "user/" + opp_id : { "challenge" : datetime.utcnow().isoformat() }
+    }
+    firebase.send_message(msg)
 
     return jsonify(ok = True)
 
@@ -1181,12 +1183,13 @@ def chatmsg():
     if msg:
         # No need to send empty messages, which are to be interpreted
         # as read confirmations
-        # The message to be sent in JSON form on the channel
+        # The message to be sent in JSON form via Firebase
         md = dict(from_userid = user_id, msg = msg, ts = Alphabet.format_timestamp(ts))
-        j = json.dumps(md)
+        msg = { }
         for p in range(0, 2):
             # Send a Firebase notification to /game/[gameid]/[userid]/chat
-            firebase.send_message(j, "game", uuid, game.player_id(p), "chat")
+            msg["game/" + uuid + "/" + game.player_id(p) + "/chat"] = md
+        firebase.send_message(msg)
 
     return jsonify(ok = True)
 
@@ -1426,9 +1429,11 @@ def wait():
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
-    firebase.send_update("user", opp, "challenge")
-    # Set the path that wait.html will wait on
-    firebase.send_message(json.dumps({ opp : True }), "user", user.id(), "wait")
+    msg = {
+        "user/" + opp : { "challenge" : datetime.utcnow().isoformat() },
+        "user/" + user.id() + "/wait/" + opp : True
+    }
+    firebase.send_message(msg)
 
     # Create a Firebase token for the logged-0in user
     # to enable refreshing of the client page when
@@ -1490,12 +1495,15 @@ def newgame():
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    firebase.send_update("user", opp, "move")
+    msg = {
+        "user/" + opp + "/move" : datetime.utcnow().isoformat()
+    }
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
-        firebase.send_message(json.dumps({ "game" : game.id() }),
-            "user", opp, "wait", user.id())
+        msg["user/" + opp + "/wait/" + user.id()] = { "game" : game.id() }
+
+    firebase.send_message(msg)
 
     # Go to the game page
     return redirect(url_for("board", game = game.id()))
@@ -1586,8 +1594,11 @@ def board():
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
     if firebase_token is not None:
-        firebase.send_message(None, "game", game.id(), user.id())
-        firebase.send_message(None, "user", user.id(), "wait")
+        msg = {
+            "game/" + game.id() + "/" + user.id() : None,
+            "user/" + user.id() + "/wait" : None
+        }
+        firebase.send_message(msg)
         # No need to clear other stuff on the /user/[user_id]/ path,
         # since we're not listening to it in board.html
 
@@ -1735,9 +1746,12 @@ def main():
         PromoModel.add_promotion(uid, promo)
 
     # Get earlier challenge, move and wait notifications out of the way
-    firebase.send_message(None, "user", uid, "challenge")
-    firebase.send_message(None, "user", uid, "move")
-    firebase.send_message(None, "user", uid, "wait")
+    msg = {
+        "challenge" : None,
+        "move" : None,
+        "wait" : None
+    }
+    firebase.send_message(msg, "user", uid)
 
     return render_template("main.html",
         user = user, tab = tab,

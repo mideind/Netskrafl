@@ -59,7 +59,7 @@ function closeAndCleanUp(ev)
 function initFirebaseListener(token) {
    // Sign into Firebase with the token passed from the server
    loginFirebase(token);
-   // Listen to Firebase events on the /user/[userId]/[messageType] path
+   // Listen to Firebase events on the /user/[userId]/wait/[oppId]/game path
    var path = 'user/' + userId() + "/wait/" + opponentId();
    attachFirebaseListener(path, handleWaitMessage);
 }
