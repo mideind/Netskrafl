@@ -35,10 +35,14 @@ _FIREBASE_SCOPES = [
     'https://www.googleapis.com/auth/firebase.database',
     'https://www.googleapis.com/auth/userinfo.email'
 ]
+_TIMEOUT = 15 # Seconds
+# Use the app_identity service from google.appengine.api to get the
+# project's service account email automatically
+_CLIENT_EMAIL = app_identity.get_service_account_name(deadline = _TIMEOUT)
+
 _HEADERS = {
     "Connection": "keep-alive"
 }
-_TIMEOUT = 15 # Seconds
 
 # Initialize thread-local storage
 _tls = threading.local()
@@ -53,6 +57,7 @@ def _get_http():
         creds = GoogleCredentials.get_application_default() \
             .create_scoped(_FIREBASE_SCOPES)
         creds.authorize(http)
+        creds.refresh(http)
         _tls._HTTP = http
     return _tls._HTTP
 
@@ -121,9 +126,9 @@ def send_message(message, *args):
         else:
             url = _FIREBASE_DB_URL + "/.json"
         if message is None:
-            response, _ = _firebase_delete(path=url)
+            response, _ = _firebase_delete(path = url)
         else:
-            response, _ = _firebase_patch(path=url + "?print=silent", message=json.dumps(message))
+            response, _ = _firebase_patch(path = url + "?print=silent", message = json.dumps(message))
         # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
         return response["status"] in { "200", "204" }
     except (HTTPException, httplib2.HttpLib2Error) as e:
@@ -143,7 +148,7 @@ def check_wait(user_id, opp_id):
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
         url = "{}/user/{}/wait/{}.json".format(_FIREBASE_DB_URL, user_id, opp_id)
-        response, body = _firebase_get(path=url)
+        response, body = _firebase_get(path = url)
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
@@ -157,7 +162,7 @@ def check_presence(user_id):
     """ Check whether the given user has at least one active connection """
     try:
         url = "{}/connection/{}.json".format(_FIREBASE_DB_URL, user_id)
-        response, body = _firebase_get(path=url)
+        response, body = _firebase_get(path = url)
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
@@ -175,7 +180,7 @@ def get_connected_users():
         # Serialize access to the connected user list
         url = '{}/connection.json?shallow=true'.format(_FIREBASE_DB_URL)
         try:
-            response, body = _firebase_get(path=url)
+            response, body = _firebase_get(path = url)
         except (HTTPException, httplib2.HttpLib2Error) as e:
             logging.warning("Exception [{}] raised in firebase.get_connected_users()".format(repr(e)))
             return set()
@@ -195,26 +200,21 @@ def create_custom_token(uid, valid_minutes=60):
         security rules to prevent unauthorized access. In this case, the uid will
         be the channel id which is a combination of a user id and a game id.
     """
-
-    # Use the app_identity service from google.appengine.api to get the
-    # project's service account email automatically
-    client_email = app_identity.get_service_account_name()
-
     now = int(time.time())
-    # encode the required claims
+    # Encode the required claims
     # per https://firebase.google.com/docs/auth/server/create-custom-tokens
     payload = base64.b64encode(json.dumps({
-        'iss': client_email,
-        'sub': client_email,
+        'iss': _CLIENT_EMAIL,
+        'sub': _CLIENT_EMAIL,
         'aud': _IDENTITY_ENDPOINT,
         'uid': uid, # The field that will be used in Firebase rule enforcement
         'iat': now,
         'exp': now + (valid_minutes * 60),
     }))
-    # add standard header to identify this as a JWT
+    # Add standard header to identify this as a JWT
     header = base64.b64encode(json.dumps({'typ': 'JWT', 'alg': 'RS256'}))
     to_sign = '{}.{}'.format(header, payload)
     # Sign the jwt using the built in app_identity service
     return '{}.{}'.format(to_sign,
-        base64.b64encode(app_identity.sign_blob(to_sign)[1]))
+        base64.b64encode(app_identity.sign_blob(to_sign, deadline = _TIMEOUT)[1]))
 
