@@ -87,6 +87,30 @@ to start watching changes of js and css files.
 Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 
+### Generating a new vocabulary file
+
+To generate a new vocabulary file (```ordalistimax15.sorted.txt```), assuming you already
+have the BÍN database in PostgreSQL (here in table ```ord```), invoke ```psql```, log in
+to your database and create the following views:
+
+```
+create or replace view isl as
+	select stofn, utg, ordfl, fl, ordmynd, beyging from ord
+  	where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]+$';
+
+create or replace view disl as
+	select distinct ordmynd from isl
+	where fl not in ('fyr','örn','ffl','bibl') and length(ordmynd) > 2 and length(ordmynd) <= 15
+	order by ordmynd;
+```
+
+Then, to generate the vocabulary file from the ```psql``` command line:
+
+```
+\copy (select * from disl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt'
+```
+
+
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
 
