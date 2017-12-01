@@ -107,7 +107,7 @@ create or replace view disl as
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```
-\copy (select * from disl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt'
+\copy (select * from disl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt';
 ```
 
 
