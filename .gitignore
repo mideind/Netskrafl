@@ -40,7 +40,8 @@ static/main.min.js
 static/wait.min.js
 
 # Python package folders required for AppEngine
-lib
+lib/
+lib64/
 
 # Scratch work files
 templates/main-scratch.html
@@ -59,8 +60,6 @@ build/
 develop-eggs/
 dist/
 eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -73,6 +72,10 @@ console/
 venv/
 node_modules/
 .idea/
+
+# Node dependency descriptions
+package.json
+package-lock.json
 
 # Installer logs
 pip-log.txt
