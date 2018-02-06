@@ -74,8 +74,7 @@ node_modules/
 .idea/
 
 # Node dependency descriptions
-package.json
-package-lock.json
+package*.json
 
 # Installer logs
 pip-log.txt
