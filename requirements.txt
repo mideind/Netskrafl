@@ -1,1 +1,4 @@
 flask>=0.10
+httplib2
+oauth2client
+

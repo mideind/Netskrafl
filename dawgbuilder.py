@@ -106,7 +106,7 @@ import binascii
 import struct
 import io
 
-from dawgdictionary import DawgDictionary
+from dawgdictionary import PackedDawgDictionary
 
 # The DAWG builder uses the collation (sorting) given by Alphabet.sortkey
 # This is by default the Icelandic sorting order
@@ -753,14 +753,11 @@ class DawgBuilder:
     def _output_binary(self, relpath, output):
         """ Write the DAWG to a flattened binary output file with extension '.dawg' """
         assert self._dawg is not None
-        # !!! Experimental / debugging...
         f = io.BytesIO()
         # Create a packer to flatten the tree onto a binary stream
         p = _BinaryDawgPacker(f)
         # Write the tree using the packer
         self._dawg.write_packed(p)
-        # Dump the packer contents to stdout for debugging
-        # p.dump()
         # Write packed DAWG to binary file
         with open(os.path.abspath(os.path.join(relpath, output + u".bin.dawg")), "wb") as of:
             of.write(f.getvalue())
@@ -876,20 +873,13 @@ def run_skrafl():
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of DAWG
-    dawg = DawgDictionary()
-    fpath = os.path.abspath(os.path.join("resources", "ordalisti.text.dawg"))
+    dawg = PackedDawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
 
-    print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
-
-    # Store DAWG as a Python cPickle file
-    t0 = time.time()
-    dawg.store_pickle(os.path.abspath(os.path.join("resources", "ordalisti.dawg.pickle")))
-    t1 = time.time()
-
-    print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
 
     # Process list of common words
 
@@ -907,20 +897,13 @@ def run_skrafl():
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of DAWG for common words
-    dawg = DawgDictionary()
-    fpath = os.path.abspath(os.path.join("resources", "algeng.text.dawg"))
+    dawg = PackedDawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "algeng.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
 
-    print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
-
-    # Store common words DAWG in a Python cPickle file
-    t0 = time.time()
-    dawg.store_pickle(os.path.abspath(os.path.join("resources", "algeng.dawg.pickle")))
-    t1 = time.time()
-
-    print("DAWG pickle file stored in {0:.2f} seconds".format(t1 - t0))
+    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
 
     print("DAWG builder run complete")
 
