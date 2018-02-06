@@ -5,9 +5,7 @@ module.exports = function (grunt) {
 
       // See: http://www.jshint.com/docs/
       jshint: {
-         /*
          all: {
-            src: ['static/netskrafl.js', 'static/main.js', 'static/wait.js'],
             options: {
                bitwise: true,
                camelcase: false,
@@ -26,40 +24,47 @@ module.exports = function (grunt) {
                undef: true,
                unused: false,
                maxlen: 120,
-               predef: ['$', 'document', 'window', 'alert', 'console', 'Mousetrap',
+               predef: ['$', 'm', 'document', 'window', 'alert', 'console', 'Mousetrap',
                   'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
                   'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
                   'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog',
                   'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage',
                   'gameIsFairplay', 'fairPlay', 'navToUserprefs', 'opponentInfo',
-                  'gameUrl', 'gameUsesNewBag', 'newBag', 'gameIsManual']
+                  'gameUrl', 'gameUsesNewBag', 'newBag', 'gameIsManual', '$state',
+                  'firebase'
+               ]
             }
          }
-         */
       },
 
       concat: {
         netskrafl_js: {
-            src: ['static/js/common.js',
-                  'static/js/channel.js',
-                  'static/js/ajax.js',
-                  'static/js/ui.js',
-                  'static/js/netskrafl.js'],
+            src: [
+               'static/js/common.js',
+               'static/js/channel.js',
+               'static/js/ajax.js',
+               'static/js/ui.js',
+               'static/js/netskrafl.js'
+            ],
             dest: 'static/netskrafl.js',
         },
         main_js: {
-            src: ['static/js/common.js',
-                  'static/js/channel.js',
-                  'static/js/ajax.js',
-                  'static/js/ui.js',
-                  'static/js/main.js'],
+            src: [
+               'static/js/common.js',
+               'static/js/channel.js',
+               'static/js/ajax.js',
+               'static/js/ui.js',
+               'static/js/main.js'
+            ],
             dest: 'static/main.js',
         },
         wait_js: {
-            src: ['static/js/channel.js',
-                  'static/js/ajax.js',
-                  'static/js/ui.js',
-                  'static/js/wait.js'],
+            src: [
+               'static/js/channel.js',
+               'static/js/ajax.js',
+               'static/js/ui.js',
+               'static/js/wait.js'
+            ],
             dest: 'static/wait.js',
         }
       },
@@ -138,19 +143,19 @@ module.exports = function (grunt) {
 
    // Load Grunt tasks declared in the package.json file
    require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
-   /*
-   grunt.loadNpmTasks('grunt-contrib-jshint');
-   grunt.loadNpmTasks('grunt-contrib-watch');
-   grunt.loadNpmTasks('grunt-contrib-uglify');
-   grunt.loadNpmTasks('grunt-contrib-less');
-   */
 
    grunt.registerTask('default', ['watch']);
    grunt.registerTask('make', ['concat', 'uglify', 'less']);
 
+   function startsWith(s, t) {
+      return s.lastIndexOf(t, 0) === 0;
+   }
+
    // On watch events configure jshint:all to only run on changed file
    grunt.event.on('watch', function(action, filepath) {
-     grunt.config('jshint.all.src', filepath);
+      console.log("watch: " + filepath);
+      if (startsWith(filepath, "static/js/") || startsWith(filepath, "static\\js\\"))
+         grunt.config('jshint.all.src', [ filepath ]);
    });
 
 };

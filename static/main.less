@@ -1703,6 +1703,18 @@ span.move-indicator:before {
    content: "\E267";
 }
 
+div.hint {
+   display: none;
+   position: absolute;
+   top: 136px;
+   font-style: italic;
+   font-size: 1.0em;
+   z-index: 10;
+   color: #666666;
+   margin-left: 12px;
+   margin-right: 12px;
+}
+
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
 @media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
@@ -2696,6 +2708,13 @@ div.player-btn.tomove span.right-to-move:before {
    content: "\E267";
 }
 
+div.hint {
+   top: 220px;
+   margin-left: 60px;
+   margin-right: 160px;
+   font-size: inherit;
+}
+
 } /* media min-width: 768px */
 
 /* ================= END OF MEDIA-SPECIFIC STYLE ADJUSTMENTS =================== */
@@ -2782,6 +2801,14 @@ div.highlight0 {
 div.highlight1 {
    /* Computer (remote) player */
    background-color: @freshtile;
+}
+
+div.highlight0.dim {
+   background-color: (@racktile * 0.3 + @tile * 0.7);
+}
+
+div.highlight1.dim {
+   background-color: (@freshtile * 0.4 + @tile * 0.6);
 }
 
 .clock {
@@ -3224,9 +3251,15 @@ div.error p {
    padding: 0;
 }
 
+div.error span.glyphicon {
+   padding-right: 6px;
+}
+
 span.pass-explain {
    font-weight: normal;
    font-style: italic;
+   padding-left: 3px;
+   padding-right: 3px;
 }
 
 span.yesnobutton {
@@ -3986,17 +4019,6 @@ div#user-no-match {
 
 div#user-no-match span#search-prefix {
    font-weight: bold;
-}
-
-div.hint {
-   display: none;
-   position: absolute;
-   top: 220px;
-   font-style: italic;
-   z-index: 10;
-   color: #666666;
-   margin-left: 60px;
-   margin-right: 160px;
 }
 
 div.modal-close {

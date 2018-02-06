@@ -723,7 +723,7 @@ def warmup():
 def submitmove():
     """ Handle a move that is being submitted from the client """
 
-    if User.current_id() is None:
+    if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)
 
     movelist = []
@@ -731,13 +731,17 @@ def submitmove():
     uuid = None
     if request.method == 'POST':
         # This URL should only receive Ajax POSTs from the client
+        j = request.get_json(silent = True)
         try:
             # The new move (as a list of covers)
-            movelist = request.form.getlist('moves[]')
-            # The client's move count, to verify synchronization
-            movecount = int(request.form.get('mcount', 0))
-            # The game's UUID
-            uuid = request.form.get('uuid', None)
+            try:
+                movelist = j["moves"]
+                movecount = j["mcount"]
+                uuid = j["uuid"]
+            except TypeError, KeyError:
+                movelist = request.form.getlist('moves[]')
+                movecount = int(request.form.get('mcount', 0))
+                uuid = request.form.get('uuid', None)
         except:
             pass
 
@@ -775,6 +779,35 @@ def submitmove():
             # No exception: done
             break
     return result
+
+
+@app.route("/gamestate", methods=['POST'])
+def gamestate():
+    """ Returns the current state of a game """
+
+    j = request.get_json(silent=True)
+    try:
+        uuid = j["game"]
+    except TypeError, KeyError:
+        # Fall back to form encoding
+        uuid = request.form.get("game", None)
+    except:
+        logging.warning("Unable to parse incoming request in /gamestate")
+        uuid = None
+
+    user_id = User.current_id()
+    game = Game.load(uuid) if uuid and user_id else None
+
+    if not user_id or not game:
+        # We must have a logged-in user and a valid game
+        return jsonify(ok = False)
+
+    player_index = game.player_index(user_id)
+    if player_index is None:
+        # The current user is not a player in this game
+        return jsonify(ok = False)
+
+    return jsonify(ok = True, game = game.client_state(player_index, deep = True))
 
 
 @app.route("/forceresign", methods=['POST'])
@@ -818,21 +851,26 @@ def forceresign():
 def wordcheck():
     """ Check a list of words for validity """
 
+    if not User.current_id():
+        # If no user is logged in, we always return False
+        return jsonify(ok = False)
+
     words = []
     word = u""
     if request.method == 'POST':
         # This URL should only receive Ajax POSTs from the client
+        j = request.get_json(silent = True)
         try:
-            # The words to check
-            words = request.form.getlist('words[]')
-            # The original word laid down (used as a sync token)
-            word = request.form.get('word', u"")
+            try:
+                # The words to check
+                words = j["words"]
+                # The original word laid down (used as a sync token)
+                word = j["word"]
+            except TypeError, KeyError:
+                words = request.form.getlist('words[]')
+                word = request.form.get('word', u"")
         except:
             pass
-
-    if not User.current_id():
-        # If no user is logged in, we always return False
-        return jsonify(word = word, ok = False)
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -1055,8 +1093,13 @@ def setuserpref():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
+    j = request.get_json(silent=True)
+    if j is None:
+        # Fall back to form encoding
+        j = request.form.get("game", None)
+
     # Check for the beginner preference and convert it to bool if we can
-    beginner = request.form.get('beginner', None)
+    beginner = j.get('beginner', None)
     if beginner is not None:
         if beginner == u"false":
             beginner = False
@@ -1068,7 +1111,7 @@ def setuserpref():
         user.set_beginner(beginner)
 
     # Check for the ready state and convert it to bool if we can
-    ready = request.form.get('ready', None)
+    ready = j.get('ready', None)
     if ready is not None:
         if ready == u"false":
             ready = False
@@ -1080,7 +1123,7 @@ def setuserpref():
         user.set_ready(ready)
 
     # Check for the ready_timed state and convert it to bool if we can
-    ready_timed = request.form.get('ready_timed', None)
+    ready_timed = j.get('ready_timed', None)
     if ready_timed is not None:
         if ready_timed == u"false":
             ready_timed = False
@@ -1158,8 +1201,15 @@ def cancelwait():
 def chatmsg():
     """ Send a chat message on a conversation channel """
 
-    channel = request.form.get('channel', u"")
-    msg = request.form.get('msg', u"")
+    j = request.get_json(silent=True)
+    try:
+        channel = j["channel"]
+        msg = j["msg"]
+    except TypeError, KeyError:
+        channel = request.form.get("channel", u"")
+        msg = request.form.get('msg', u"")
+    except:
+        logging.warning("Unable to parse incoming request in /chatmsg")
 
     user_id = User.current_id()
     if not user_id or not channel:
@@ -1198,7 +1248,13 @@ def chatmsg():
 def chatload():
     """ Load all chat messages on a conversation channel """
 
-    channel = request.form.get('channel', u"")
+    j = request.get_json(silent=True)
+    try:
+        channel = j["channel"]
+    except TypeError, KeyError:
+        channel = request.form.get("channel", u"")
+    except:
+        logging.warning("Unable to parse incoming request in /chatload")
 
     user_id = User.current_id()
     if not user_id or not channel:
@@ -1292,6 +1348,116 @@ def review():
         move_number = move_number, best_moves = best_moves)
 
 
+class UserForm:
+    """ Encapsulates the data in the user preferences form """
+
+    def __init__(self, usr = None):
+        self.logout_url = User.logout_url()
+        if usr:
+            self.init_from_user(usr)
+        else:
+            self.nickname = u''
+            self.full_name = u''
+            self.email = u''
+            self.audio = True
+            self.fanfare = True
+            self.beginner = True
+            self.fairplay = False # Defaults to False, must be explicitly set to True
+            self.newbag = False # Defaults to False, must be explicitly set to True
+            self.friend = False
+
+    def init_from_form(self, form):
+        """ The form has been submitted after editing: retrieve the entered data """
+        try:
+            self.nickname = u'' + form['nickname'].strip()
+        except:
+            pass
+        try:
+            self.full_name = u'' + form['full_name'].strip()
+        except:
+            pass
+        try:
+            self.email = u'' + form['email'].strip()
+        except:
+            pass
+        try:
+            self.audio = 'audio' in form # State of the checkbox
+            self.fanfare = 'fanfare' in form
+            self.beginner = 'beginner' in form
+            self.fairplay = 'fairplay' in form
+            self.newbag = 'newbag' in form
+        except:
+            pass
+
+    def init_from_dict(self, d):
+        """ The form has been submitted after editing: retrieve the entered data """
+        try:
+            self.nickname = u'' + d.get("nickname", "").strip()
+        except:
+            pass
+        try:
+            self.full_name = u'' + d.get("full_name", "").strip()
+        except:
+            pass
+        try:
+            self.email = u'' + d.get("email", "").strip()
+        except:
+            pass
+        try:
+            self.audio = bool(d.get("audio", False))
+            self.fanfare = bool(d.get("fanfare", False))
+            self.beginner = bool(d.get("beginner", False))
+            self.fairplay = bool(d.get("fairplay", False))
+            self.newbag = bool(d.get("newbag", False))
+        except:
+            pass
+
+    def init_from_user(self, usr):
+        """ Load the data to be edited upon initial display of the form """
+        self.nickname = usr.nickname()
+        self.full_name = usr.full_name()
+        self.email = usr.email()
+        self.audio = usr.audio()
+        self.fanfare = usr.fanfare()
+        self.beginner = usr.beginner()
+        self.fairplay = usr.fairplay()
+        self.newbag = usr.new_bag()
+        self.friend = usr.friend()
+
+    def validate(self):
+        """ Check the current form data for validity and return a dict of errors, if any """
+        errors = dict()
+        if not self.nickname:
+            errors['nickname'] = u"Notandi verður að hafa einkenni"
+        elif (self.nickname[0] not in Alphabet.full_order) and (self.nickname[0] not in Alphabet.full_upper):
+            errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
+        elif len(self.nickname) > 15:
+            errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
+        elif u'"' in self.nickname:
+            errors['nickname'] = u"Einkenni má ekki innihalda gæsalappir"
+        if u'"' in self.full_name:
+            errors['full_name'] = u"Nafn má ekki innihalda gæsalappir"
+        if self.email and u'@' not in self.email:
+            errors['email'] = u"Tölvupóstfang verður að innihalda @-merki"
+        return errors
+
+    def store(self, usr):
+        """ Store validated form data back into the user entity """
+        usr.set_nickname(self.nickname)
+        usr.set_full_name(self.full_name)
+        usr.set_email(self.email)
+        usr.set_audio(self.audio)
+        usr.set_fanfare(self.fanfare)
+        usr.set_beginner(self.beginner)
+        usr.set_fairplay(self.fairplay)
+        usr.set_new_bag(self.newbag)
+        usr.update()
+
+    def as_dict(self):
+        """ Return the user preferences as a dictionary """
+        return self.__dict__
+
+
 @app.route("/userprefs", methods=['GET', 'POST'])
 def userprefs():
     """ Handler for the user preferences page """
@@ -1300,85 +1466,6 @@ def userprefs():
     if user is None:
         # User hasn't logged in yet: redirect to login page
         return redirect(users.create_login_url(url_for("userprefs")))
-
-    class UserForm:
-        """ Encapsulates the data in the user preferences form """
-
-        def __init__(self):
-            self.full_name = u''
-            self.nickname = u''
-            self.email = u''
-            self.audio = True
-            self.fanfare = True
-            self.beginner = True
-            self.fairplay = False # Defaults to False, must be explicitly set to True
-            self.newbag = False # Defaults to False, must be explicitly set to True
-            self.friend = False
-            self.logout_url = User.logout_url()
-
-        def init_from_form(self, form):
-            """ The form has been submitted after editing: retrieve the entered data """
-            try:
-                self.nickname = u'' + form['nickname'].strip()
-            except:
-                pass
-            try:
-                self.full_name = u'' + form['full_name'].strip()
-            except:
-                pass
-            try:
-                self.email = u'' + form['email'].strip()
-            except:
-                pass
-            try:
-                self.audio = 'audio' in form # State of the checkbox
-                self.fanfare = 'fanfare' in form
-                self.beginner = 'beginner' in form
-                self.fairplay = 'fairplay' in form
-                self.newbag = 'newbag' in form
-            except:
-                pass
-
-        def init_from_user(self, usr):
-            """ Load the data to be edited upon initial display of the form """
-            self.nickname = usr.nickname()
-            self.full_name = usr.full_name()
-            self.email = usr.email()
-            self.audio = usr.audio()
-            self.fanfare = usr.fanfare()
-            self.beginner = usr.beginner()
-            self.fairplay = usr.fairplay()
-            self.newbag = usr.new_bag()
-            self.friend = usr.friend()
-
-        def validate(self):
-            """ Check the current form data for validity and return a dict of errors, if any """
-            errors = dict()
-            if not self.nickname:
-                errors['nickname'] = u"Notandi verður að hafa einkenni"
-            elif (self.nickname[0] not in Alphabet.full_order) and (self.nickname[0] not in Alphabet.full_upper):
-                errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
-            elif len(self.nickname) > 15:
-                errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
-            elif u'"' in self.nickname:
-                errors['nickname'] = u"Einkenni má ekki innihalda gæsalappir"
-            if u'"' in self.full_name:
-                errors['full_name'] = u"Nafn má ekki innihalda gæsalappir"
-            if self.email and u'@' not in self.email:
-                errors['email'] = u"Tölvupóstfang verður að innihalda @-merki"
-            return errors
-
-        def store(self, usr):
-            """ Store validated form data back into the user entity """
-            usr.set_nickname(self.nickname)
-            usr.set_full_name(self.full_name)
-            usr.set_email(self.email)
-            usr.set_audio(self.audio)
-            usr.set_fanfare(self.fanfare)
-            usr.set_beginner(self.beginner)
-            usr.set_fairplay(self.fairplay)
-            usr.set_new_bag(self.newbag)
-            usr.update()
 
     uf = UserForm()
     err = dict()
@@ -1400,6 +1487,41 @@ def userprefs():
 
     # Render the form with the current data and error messages, if any
     return render_template("userprefs.html", uf = uf, err = err, from_url = from_url)
+
+
+@app.route("/loaduserprefs", methods=['POST'])
+def loaduserprefs():
+    """ Fetch the preferences of the current user in JSON form """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in
+        return jsonify(ok = False)
+
+    # Return the user preferences in JSON form
+    uf = UserForm(user)
+    return jsonify(ok = True, userprefs = uf.as_dict())
+
+
+@app.route("/saveuserprefs", methods=['POST'])
+def saveuserprefs():
+    """ Fetch the preferences of the current user in JSON form """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in
+        return jsonify(ok = False)
+
+    j = request.get_json(silent=True)
+
+    # Return the user preferences in JSON form
+    uf = UserForm()
+    uf.init_from_dict(j)
+    err = uf.validate()
+    if not err:
+        uf.store(user)
+        return jsonify(ok = True)
+    return jsonify(ok = False, err = err)
 
 
 @app.route("/wait")
@@ -1774,6 +1896,12 @@ def help():
     return render_template("nshelp.html", user = user, tab = None)
 
 
+@app.route("/rawhelp")
+def rawhelp():
+    """ Return raw help page HTML """
+    return render_template("rawhelp.html")
+
+
 @app.route("/twoletter")
 def twoletter():
     """ Show help page """
@@ -1788,6 +1916,20 @@ def faq():
     user = User.current()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user = user, tab = "faq")
+
+
+@app.route("/page")
+def page():
+    """ Show single-page UI test """
+    user = User.current()
+    if user is None:
+        # User hasn't logged in yet: redirect to login page
+        return redirect(url_for('login'))
+    # If a logged-in user is looking at the board, we create a Firebase
+    # token in order to maintain presence info
+    firebase_token = "" if user is None else firebase.create_custom_token(user.id())
+    return render_template("page.html",
+        user = user, firebase_token = firebase_token)
 
 
 @app.route("/newbag")

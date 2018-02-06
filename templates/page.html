@@ -1,0 +1,114 @@
+
+{% extends "container-base.html" %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='jquery-ui.css') }}"
+   rel="stylesheet" type="text/css" media="all">
+{% endblock %}
+
+{% block style_overrides %}
+
+<style>
+
+   @keyframes fresh-appear {
+      0% { opacity: 0.0; }
+      100% { opacity: 1.0; }
+   }
+   @-webkit-keyframes fresh-appear {
+      0% { opacity: 0.0; }
+      100% { opacity: 1.0; }
+   }
+
+   .freshtile {
+      opacity: 0.0;
+      animation-name: fresh-appear;
+      animation-duration: 100ms;
+      animation-delay: 0s;
+      animation-fill-mode: forwards;
+      -webkit-animation-name: fresh-appear;
+      -webkit-animation-duration: 100ms;
+      -webkit-animation-delay: 0s;
+      -webkit-animation-fill-mode: forwards;
+   }
+
+</style>
+
+{% endblock %}
+
+{% block content %}
+{%- endblock -%}
+
+{% block libscripts %}
+
+<!-- Include the Mithril UI library -->
+<script src="https://unpkg.com/mithril/mithril.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/1.1.6/mithril.min.js"></script> -->
+
+{% endblock %}
+
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
+
+{% block endscripts %}
+
+<!-- Audio resources -->
+<audio id="your-turn" preload="auto">
+   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="you-win" preload="auto">
+   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
+</audio>
+
+<script>
+
+// Global state, filled in by the server
+
+var $state = {
+   userId: "{{ '' if user == None else user.id() }}",
+   userNick: "{{ '' if user == None else user.nickname() }}",
+   beginner: {{ 'false' if user and not user.beginner() else 'true' }},
+   uiFullscreen: true, // !!! TBD
+   firebaseToken: "{{ firebase_token }}",
+   // Array of supported emoticons in chat
+   // Remember to change faq.html if this changes
+   emoticons: [
+      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":-D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":-P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
+   ]
+};
+
+</script>
+
+<script src="{{ url_for('static', filename='js/channel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+<script src="{{ url_for('static', filename='js/page.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/DragDropTouch.js') }}"></script>
+
+<script>
+
+window.addEventListener("DOMContentLoaded", main); // main() is located in page.js
+
+</script>
+
+{% endblock %}
+
+

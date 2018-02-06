@@ -1217,7 +1217,7 @@ class Game:
         """ Return True if the last tile move has been made and is pending a challenge or pass """
         return self.state.is_last_challenge()
 
-    def client_state(self, player_index, lastmove = None):
+    def client_state(self, player_index, lastmove = None, deep = False):
         """ Create a package of information for the client about the current state """
 
         reply = dict()
@@ -1259,9 +1259,19 @@ class Game:
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
         reply["succ_chall"] = succ_chall
+        reply["player"] = player_index
+        reply["newbag"] = self.new_bag()
+        reply["manual"] = self.manual_wordcheck()
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()
+        if deep:
+            # Send all moves
+            reply["moves"] = [(m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]]
+            reply["fairplay"] = self.get_fairplay()
+            reply["autoplayer"] = [ self.is_autoplayer(0), self.is_autoplayer(1) ]
+            reply["nickname"] = [ self.player_nickname(0), self.player_nickname(1) ]
+
         return reply
 
     def bingoes(self):

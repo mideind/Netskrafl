@@ -90,9 +90,9 @@ var scoreLeft = 0, scoreRight = 0;
 var penaltyLeft = 0, penaltyRight = 0; // Current overtime penalty score
 var gameOver = false;
 var initializing = true; // True while loading initial move list and setting up
+var uiFullscreen = true; // Displaying the full screen UI?
 var _hasLocal = null; // Is HTML5 local storage supported by the browser?
 var _localPrefix = null; // Prefix of local storage for this game
-var uiFullscreen = true; // Displaying the full screen UI?
 
 
 function hasLocalStorage() {
@@ -1648,7 +1648,6 @@ function updateBag(bag) {
    var bagC = $(".bag-content");
    bagC.html("");
    var lenbag = bag.length;
-   var ix = 0;
    // If 7 or fewer unseen tiles, the bag is empty and they're all in the opponent's
    // rack; display the tiles in the opponent's color
    if (lenbag <= RACK_SIZE)
@@ -1659,6 +1658,7 @@ function updateBag(bag) {
    if (gameUsesNewBag())
       // Indicate visually that we're using the new bag
       bagC.toggleClass("new", true);
+   var ix = 0;
    while (lenbag > 0) {
       /* Rows */
       var str = "<tr>";
