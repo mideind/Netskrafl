@@ -385,6 +385,84 @@ function createView() {
     return m("a", { href: "/main", oncreate: m.route.link }, "Go to main page!");
   }
 
+  // A control that rigs up a tabbed view of raw HTML
+
+  function vwTabsFromHtml(html, id) {
+
+    function updateVisibility(vnode) {
+      // Shows the tab that is currently selected,
+      // i.e. the one whose index is in vnode.state.selected
+      var selected = vnode.state.selected;
+      var lis = vnode.state.lis;
+      vnode.state.ids.map(function(id, i) {
+          document.getElementById(id).setAttribute("style", "display: " +
+            (i == selected ? "block" : "none"));
+          lis[i].classList.toggle("ui-tabs-active", i == selected);
+          lis[i].classList.toggle("ui-state-active", i == selected);
+        }
+      );
+    }
+
+    function selectTab(vnode, i) {
+      // Selects the tab with the given index under the tab control vnode
+      vnode.state.selected = i;
+      updateVisibility(vnode);
+    }
+
+    function makeTabs(vnode) {
+      // When the tabs are displayed for the first time, wire'em up
+      var tabdiv = document.getElementById(id);
+      if (!tabdiv)
+        return;
+      // Add bunch of jQueryUI compatible classes
+      tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
+      var tabul = document.querySelector("#" + id + " > ul");
+      tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
+      tabul.setAttribute("role", "tablist");
+      var tablist = document.querySelectorAll("#" + id + " > ul > li > a");
+      var tabitems = document.querySelectorAll("#" + id + " > ul > li");
+      var ids = [];
+      var lis = []; // The <li> elements
+      var i;
+      // Iterate over the <a> elements inside the <li> elements inside the <ul>
+      for (i = 0; i < tablist.length; i++) {
+        ids.push(tablist[i].getAttribute("href").slice(1));
+        // Decorate the <a> elements
+        tablist[i].onclick = function(i, ev) {
+            // When this tab header is clicked, select the associated tab
+            selectTab(this, i);
+            ev.preventDefault();
+          }
+          .bind(vnode, i);
+        tablist[i].setAttribute("href", null);
+        tablist[i].setAttribute("class", "ui-tabs-anchor");
+        tablist[i].setAttribute("role", "presentation");
+        // Also decorate the <li> elements
+        lis.push(tabitems[i]);
+        tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
+        tabitems[i].setAttribute("role", "tab");
+        tabitems[i].onmouseover = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", true); };
+        tabitems[i].onmouseout = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", false); };
+        // Find the tab's content <div>
+        var tabcontent = document.getElementById(ids[i]);
+        // Decorate it
+        tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
+        tabcontent.setAttribute("role", "tabpanel");
+      }
+      // Save the list of tab identifiers
+      vnode.state.ids = ids;
+      // Save the list of <li> elements
+      vnode.state.lis = lis;
+      // Select the first tab by default
+      vnode.state.selected = 0;
+      updateVisibility(vnode);
+    }
+
+    if (!html)
+      return "";
+    return m("div", { oncreate: makeTabs }, m.trust(html));
+  }
+
   // Help screen
 
   function vwHelp(model, actions) {
@@ -392,7 +470,7 @@ function createView() {
     return [
       vwLogo(),
       vwUserId(),
-      m("div", m.trust(model.helpHTML || ""))
+      vwTabsFromHtml(model.helpHTML, "tabs")
     ];
   }
 
