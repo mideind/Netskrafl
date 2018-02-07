@@ -328,7 +328,9 @@ function createView() {
       case "game":
         return vwGame(model, actions);
       case "help":
-        return vwHelp(model, actions);
+        // A route parameter of ?q=N goes directly to the FAQ number N
+        // A route parameter of ?tab=N goes directly to tab N (0-based)
+        return vwHelp(model, actions, m.route.param("tab"), m.route.param("q"));
       case "userprefs":
         return vwUserPrefs(model, actions, m.route.param("f"));
       default:
@@ -387,7 +389,7 @@ function createView() {
 
   // A control that rigs up a tabbed view of raw HTML
 
-  function vwTabsFromHtml(html, id) {
+  function vwTabsFromHtml(html, id, createFunc) {
 
     function updateVisibility(vnode) {
       // Shows the tab that is currently selected,
@@ -455,6 +457,10 @@ function createView() {
       vnode.state.lis = lis;
       // Select the first tab by default
       vnode.state.selected = 0;
+      // If a createFunc was specified, run it now
+      if (createFunc)
+        createFunc(vnode);
+      // Finally, make the default tab visible and hide the others
       updateVisibility(vnode);
     }
 
@@ -465,12 +471,37 @@ function createView() {
 
   // Help screen
 
-  function vwHelp(model, actions) {
+  function vwHelp(model, actions, tabNumber, faqNumber) {
+
+    function wireQuestions(vnode) {
+      // Clicking on a question brings the corresponding answer into view
+      var questions = document.querySelectorAll("ol.questions > li > a");
+      for (var i = 0; i < questions.length; i++) {
+        var qid = questions[i].getAttribute("href").slice(1);
+        questions[i].onclick = function(qid, ev) {
+          document.querySelector("ol.answers > li#" + qid).scrollIntoView();
+          ev.preventDefault();
+        }.bind(null, qid);
+        questions[i].setAttribute("href", null);
+      }
+      if (faqNumber !== undefined) {
+        // Go to the FAQ tab and scroll the requested question into view
+        vnode.state.selected = 1; // FAQ tab
+        document.querySelector("ol.answers > li#faq-" +
+          faqNumber.toString()).scrollIntoView();
+      }
+      else
+      if (tabNumber !== undefined) {
+        // Go to the requested tab
+        vnode.state.selected = tabNumber;
+      }
+    }
+
     // Output literal HTML obtained from rawhelp.html on the server
     return [
       vwLogo(),
       vwUserId(),
-      vwTabsFromHtml(model.helpHTML, "tabs")
+      vwTabsFromHtml(model.helpHTML, "tabs", wireQuestions)
     ];
   }
 

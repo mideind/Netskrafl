@@ -1899,7 +1899,18 @@ def help():
 @app.route("/rawhelp")
 def rawhelp():
     """ Return raw help page HTML """
-    return render_template("rawhelp.html")
+
+    def override_url_for(endpoint, **values):
+        """ Convert URLs from old-format plain to single-page fancy """
+        if endpoint == 'twoletter':
+            return "/page#!/help?tab=2"
+        if endpoint == 'newbag':
+            return "/page#!/help?tab=3"
+        if endpoint == 'userprefs':
+            return "/page#!/userprefs"
+        return url_for(endpoint, **values)
+
+    return render_template("rawhelp.html", url_for = override_url_for)
 
 
 @app.route("/twoletter")
