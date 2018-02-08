@@ -32,6 +32,7 @@ import json
 import threading
 import re
 import random
+import urllib
 
 from datetime import datetime, timedelta
 
@@ -1901,13 +1902,19 @@ def rawhelp():
     """ Return raw help page HTML """
 
     def override_url_for(endpoint, **values):
-        """ Convert URLs from old-format plain to single-page fancy """
+        """ Convert URLs from old-format plain ones to single-page fancy ones """
         if endpoint == 'twoletter':
             return "/page#!/help?tab=2"
         if endpoint == 'newbag':
             return "/page#!/help?tab=3"
         if endpoint == 'userprefs':
-            return "/page#!/userprefs"
+            from_url = "/help"
+            tab = values.get("tab")
+            # Also specify a return-to URL that we navigate back to
+            # after the userprefs dialog is closed
+            if tab is not None:
+                from_url += "?tab=" + str(tab)
+            return "/page#!/userprefs?" + urllib.urlencode(dict(f = from_url))
         return url_for(endpoint, **values)
 
     return render_template("rawhelp.html", url_for = override_url_for)

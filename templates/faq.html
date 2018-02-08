@@ -80,7 +80,7 @@ vegna þess að þau vantar augljóslega í BÍN.</li>
 Netskrafls vegna þess að þær eru augljóslega villur í BÍN.</li>
 </ul>
 <p>Uppfærsla á orðalista Netskrafls er sótt til BÍN á nokkurra mánaða fresti.</p>
-<p>Á vegum <a href="https://www.facebook.com/skraflfelagid">Skraflfélags Íslands</a>
+<p>Á vegum <a href="https://www.facebook.com/skraflfelagid" target="_blank">Skraflfélags Íslands</a>
 er starfandi Orðanefnd. Hlutverk hennar er að leggja meginlínur um leyfileg orð í
 íslensku skrafli, halda við orðalistum, taka við ábendingum og úrskurða í álitamálum.
 Orðagrunnur Netskrafls er og verður uppfærður í samræmi við niðurstöður Orðanefndar
@@ -100,7 +100,7 @@ fræðum</i>. BÍN er notað í Netskrafli skv. skilmálum stofnunarinnar þar u
 <li id="faq-3">Orðið X er í BÍN en er ekki leyft í Netskrafli. Af hverju?</li>
 <p>Það gætu verið nokkrar ástæður fyrir því. Orðið gæti verið sérnafn eða upphrópun,
 það gæti verið eitt af tveggja stafa orðunum sem ekki eru á
-lista Orðanefndar <a href="https://www.facebook.com/skraflfelagid">Skraflfélags Íslands</a>,
+lista Orðanefndar <a href="https://www.facebook.com/skraflfelagid" target="_blank">Skraflfélags Íslands</a>,
 eða það gæti verið nýkomið inn í BÍN. Þá kemur það inn í Netskraflið í næstu uppfærslu
 þess. Um tiltekin orð má alltaf spyrja í
 <a href="https://www.facebook.com/groups/828426797220211/" target="_blank">Facebook-hópi
@@ -187,7 +187,7 @@ stafræn hjálpartæki í þessu sambandi.</p>
 <p style="text-align: center;"><img src="{{ url_for('static', filename='Faq-2.png') }}"></p>
 <p>Hægt er að gangast undir heiðursmannasamkomulagið og virkja teiknið með því að
 smella á nafnið sitt í hægra horninu, opna með því
-<a href="{{ url_for('userprefs') }}">upplýsingar um notanda</a> og velja þar
+<a href="{{ url_for('userprefs', tab=1) }}">upplýsingar um notanda</a> og velja þar
 til gerðan rofa (sjá mynd).</p>
 
 <li id="faq-11">Hvar get ég séð tveggja stafa orðalistann?</li>
@@ -201,7 +201,7 @@ eftir síðari stafnum og þeim fyrri.</p>
 
 <li id="faq-12">Get ég losnað við lúðraþytinn sem heyrist þegar ég sigra í viðureign?</li>
 <p>Já, þú getur slökkt á honum í stillingum.
-(Hægt er að <a href="{{ url_for('userprefs') }}">opna stillingarnar</a> með því
+(Hægt er að <a href="{{ url_for('userprefs', tab=1) }}">opna stillingarnar</a> með því
 að smella á nafnið sitt efst í hægra horni síðunnar.)</p>
 <p style="text-align: center;"><img src="{{ url_for('static', filename='Faq-4.png') }}"></p>
 <p>Myndin sýnir hvernig rofinn á að vera stilltur til að slökkva á lúðraþytinum.</p>
@@ -209,7 +209,7 @@ að smella á nafnið sitt efst í hægra horni síðunnar.)</p>
 <li id="faq-13">Ég lokaði óvart minnismiðanum sem útskýrir hvað litirnir á borðinu þýða.
 Hvernig fæ ég hann aftur upp?</li>
 <p>Hann er opnaður í stillingunum. (Hægt er að
-<a href="{{ url_for('userprefs') }}">opna stillingarnar</a> með því að smella
+<a href="{{ url_for('userprefs', tab=1) }}">opna stillingarnar</a> með því að smella
 á nafnið sitt efst í hægra horni síðunnar.)</p>
 <p style="text-align: center;"><img src="{{ url_for('static', filename='Faq-5.png') }}"></p>
 <p>Myndin sýnir hvernig rofinn á að vera stilltur til að minnismiðinn sjáist.</p>

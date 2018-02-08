@@ -64,7 +64,7 @@
    sem búinn var til á vegum Skraflfélags Íslands, til viðbótar þeim eldri og upprunalega.</p>
 
    <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
-   velja rofa í <a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>. (Allir nýskráðir
+   velja rofa í <a href="{{ url_for('userprefs', tab=3) }}">notandaupplýsingum</a>. (Allir nýskráðir
    leikmenn í Netskrafli eru sjálfkrafa merktir sem tilbúnir í nýja pokann.)
    Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
    <p style='text-align:center'><img src="{{ url_for('static', filename='NewBagPreference.png') }}" width=695 height=69></p>
@@ -103,7 +103,7 @@
    Páll Hilmarsson, Sigrún Helga Lund, Steinar Sturlaugsson</i>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur.<br>Þú getur
-   <a href="{{ url_for('userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
+   <a href="{{ url_for('userprefs', tab=4) }}">breytt notandaupplýsingum þínum hér</a> eða
    með því að smella á notandanafnið efst hægra megin í glugganum.
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
    <p>Fylgstu með og taktu þátt með því að
@@ -123,8 +123,7 @@
 
    <div id="tabs-2">
    <p>Netskrafl leyfir <strong>tveggja stafa orð</strong> sem eru á
-   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
-   samkvæmt ákvörðun Orðanefndar þess í september 2015.</p>
+   lista Skraflfélags Íslands samkvæmt ákvörðun Orðanefndar þess í september 2015.</p>
    <p>Þú getur flett upp í listanum meðan á viðureign stendur með því að smella á
    flipann sem merktur er með björgunarhring
    <span class="glyphicon glyphicon-life-preserver"></span>.</p>
