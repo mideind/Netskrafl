@@ -107,6 +107,8 @@ function createModel(settings) {
   }
 
   function loadHelp() {
+    // Load the help screen HTML from the server
+    // (this is done the first time the help is displayed)
     if (this.helpHTML !== null)
       return; // Already loaded
     m.request({
@@ -301,10 +303,10 @@ function createActions(model) {
 }
 
 function createRouteResolver(model, actions, view) {
-  return model.paths.reduce(function(acc, itm) {
-    acc[itm.route] = {
+  return model.paths.reduce(function(acc, item) {
+    acc[item.route] = {
       onmatch: function(params, route) {
-        actions.onNavigateTo(itm.name, params);
+        actions.onNavigateTo(item.name, params);
       },
       render: function() {
         return view(model, actions);
@@ -357,9 +359,10 @@ function createView() {
     return m(".userid",
       {
         title: "Upplýsingar um leikmann",
-        onclick: function()
+        onclick: function(ev)
           {
             m.route.set('/userprefs', { f: this });
+            ev.preventDefault();
           }.bind(from_url)
       },
       [ glyph("address-book"), nbsp(), $state.userNick ]
@@ -635,10 +638,10 @@ function createView() {
                       {
                         autofocus: '',
                         id: 'nickname',
-                        maxlength: '15',
+                        maxlength: 15,
                         name: 'nickname',
                         required: '',
-                        tabindex: '1',
+                        tabindex: 1,
                         type: 'text',
                         value: user.nickname || ""
                       }
@@ -655,9 +658,9 @@ function createView() {
                     m("input.text.fullname",
                       {
                         id: 'full_name',
-                        maxlength: '32',
+                        maxlength: 32,
                         name: 'full_name',
-                        tabindex: '2',
+                        tabindex: 2,
                         type: 'text',
                         value: user.full_name || ""
                       }
@@ -672,9 +675,9 @@ function createView() {
                     m("input.text.email",
                       {
                         id: 'email',
-                        maxlength: '32',
+                        maxlength: 32,
                         name: 'email',
-                        tabindex: '3',
+                        tabindex: 3,
                         type: 'text',
                         value: user.email || ""
                       }
@@ -687,11 +690,11 @@ function createView() {
                 m(".dialog-spacer",
                   [
                     m("span.caption", "Hljóðmerki:"),
-                    vwToggler("audio", user.audio, "4",
+                    vwToggler("audio", user.audio, 4,
                       glyph("volume-off"), glyph("volume-up"),
                       function() { playAudio("your-turn"); }),
                     m("span.subcaption", "Lúðraþytur eftir sigur:"),
-                    vwToggler("fanfare", user.fanfare, "5",
+                    vwToggler("fanfare", user.fanfare, 5,
                       glyph("volume-off"), glyph("volume-up"),
                       function() { playAudio("you-win"); })
                   ]
@@ -718,7 +721,7 @@ function createView() {
                   [
                     m("span.caption", "Nýi skraflpokinn:"),
                     vwToggler("newbag",
-                      user.newbag, "7",
+                      user.newbag, 7,
                       nbsp(), glyph("shopping-bag")),
                     m(".subexplain",
                       [
@@ -732,7 +735,7 @@ function createView() {
                   [
                     m("span.caption", "Án hjálpartækja:"),
                     vwToggler("fairplay",
-                      user.fairplay, "8",
+                      user.fairplay, 8,
                       nbsp(), glyph("edit")),
                     m(".subexplain",
                       [
@@ -753,7 +756,7 @@ function createView() {
               onclick: validate,
               onmouseout: buttonOut,
               onmouseover: buttonOver,
-              tabindex: '9',
+              tabindex: 9,
               title: 'Vista'
             },
             glyph("ok")
@@ -761,10 +764,10 @@ function createView() {
           m(".modal-close",
             {
               id: 'user-cancel',
-              onclick: function() { m.route.set(from_url || "/main"); },
+              onclick: function(ev) { m.route.set(from_url || "/main"); ev.preventDefault(); },
               onmouseout: buttonOut,
               onmouseover: buttonOver,
-              tabindex: '10',
+              tabindex: 10,
               title: 'Hætta við'
             },
             glyph("remove")
@@ -772,10 +775,10 @@ function createView() {
           m(".modal-close",
             {
               id: 'user-logout',
-              onclick: function() { location.href = user.logout_url; },
+              onclick: function(ev) { location.href = user.logout_url; ev.preventDefault(); },
               onmouseout: buttonOut,
               onmouseover: buttonOver,
-              tabindex: '11',
+              tabindex: 11,
               title: 'Skrá mig út'
             },
             [ glyph("log-out"), nbsp(), "Skrá mig út" ]
@@ -784,10 +787,10 @@ function createView() {
             m(".modal-close",
               {
                 id: 'user-unfriend',
-                onclick: function() { },
+                onclick: function() { /* !!! TBD */ },
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
-                tabindex: '11',
+                tabindex: 11,
                 title: 'Hætta sem vinur'
               },
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ]
@@ -795,10 +798,10 @@ function createView() {
             m(".modal-close",
               {
                 id: 'user-friend',
-                onclick: function() { },
+                onclick: function() { /* !!! TBD */ },
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
-                tabindex: '11',
+                tabindex: 11,
                 title: 'Gerast vinur',
               },
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ]
