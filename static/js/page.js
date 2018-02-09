@@ -29,6 +29,8 @@ var EMPTY_RACK = "       "; // RACK_SIZE spaces
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
+var ROUTE_PREFIX = "/page#!";
+var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 
 function main() {
   // The main UI entry point, called from page.html
@@ -199,6 +201,7 @@ function createActions(model) {
     }
     else
     if (routeName == "help") {
+      // Make sure that the help HTML is loaded upon first use
       model.loadHelp();
     }
     else {
@@ -457,6 +460,26 @@ function createView() {
       vnode.state.lis = lis;
       // Select the first tab by default
       vnode.state.selected = 0;
+      // Wire all hrefs that point to single-page URLs
+      var anchors = tabdiv.querySelectorAll("a");
+      for (i = 0; i < anchors.length; i++) {
+        var a = anchors[i];
+        var href = a.getAttribute("href");
+        if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
+          // Single-page URL: wire it up (as if it had had an m.route.link on it)
+          a.onclick = function(href, ev) {
+            var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+            var qix = uri.indexOf("?");
+            var route = (qix >= 0) ? uri.slice(0, qix) : uri;
+            var qparams = uri.slice(route.length + 1);
+            var params = qparams.length ? getUrlVars(qparams) : { };
+            m.route.set(route, params);
+            if (window.history)
+              window.history.pushState({}, "", href); // Enable the back button
+            ev.preventDefault();
+          }.bind(null, href);
+        }
+      }
       // If a createFunc was specified, run it now
       if (createFunc)
         createFunc(vnode);
@@ -464,9 +487,13 @@ function createView() {
       updateVisibility(vnode);
     }
 
+    function updateSelection(vnode) {
+      selectTab(vnode, m.route.param("tab"));
+    }
+
     if (!html)
       return "";
-    return m("div", { oncreate: makeTabs }, m.trust(html));
+    return m("div", { oncreate: makeTabs, onupdate: updateSelection }, m.trust(html));
   }
 
   // Help screen
@@ -475,19 +502,23 @@ function createView() {
 
     function wireQuestions(vnode) {
       // Clicking on a question brings the corresponding answer into view
-      var questions = document.querySelectorAll("ol.questions > li > a");
-      for (var i = 0; i < questions.length; i++) {
-        var qid = questions[i].getAttribute("href").slice(1);
-        questions[i].onclick = function(qid, ev) {
-          document.querySelector("ol.answers > li#" + qid).scrollIntoView();
-          ev.preventDefault();
-        }.bind(null, qid);
-        questions[i].setAttribute("href", null);
+      // This is achieved by wiring up all contained a[href="#faq-*"] links
+      var anchors = vnode.dom.querySelectorAll("a");
+      for (var i = 0; i < anchors.length; i++) {
+        var href = anchors[i].getAttribute("href");
+        if (href.slice(0, 5) == "#faq-") {
+          // This is a direct link to a question: wire it up
+          anchors[i].onclick = function(href, ev) {
+            vnode.state.selected = 1; // FAQ tab
+            vnode.dom.querySelector(href).scrollIntoView();
+            ev.preventDefault();
+          }.bind(null, href);
+        }
       }
       if (faqNumber !== undefined) {
         // Go to the FAQ tab and scroll the requested question into view
         vnode.state.selected = 1; // FAQ tab
-        document.querySelector("ol.answers > li#faq-" +
+        vnode.dom.querySelector("#faq-" +
           faqNumber.toString()).scrollIntoView();
       }
       else
@@ -2020,6 +2051,18 @@ function getInput(id) {
 function setInput(id, val) {
   // Set the current value of a text input field
   document.getElementById(id).value = val;
+}
+
+// Get values from a URL query string
+function getUrlVars(url) {
+   var hashes = url.split('&');
+   var vars = { };
+   for (var i = 0; i < hashes.length; i++) {
+      var hash = hashes[i].split('=');
+      if (hash.length == 2)
+        vars[hash[0]] = decodeURIComponent(hash[1]);
+   }
+   return vars;
 }
 
 function buttonOver(ev) {
