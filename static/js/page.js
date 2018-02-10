@@ -624,7 +624,17 @@ function createView() {
       model.saveUser(from_url);
     }
 
-    return m(".modal-dialog", { id: 'user-dialog' },
+    function initFocus(vnode) {
+      // Set the focus on the nickname field when the dialog is displayed
+      vnode.dom.querySelector("#nickname").focus();
+    }
+
+    return m(".modal-dialog",
+      {
+        id: 'user-dialog',
+        oncreate: initFocus,
+        onupdate: initFocus
+      },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'user-form' },
         [
           m(".loginhdr", [ glyph("address-book"), " Upplýsingar um leikmann" ]),
@@ -636,11 +646,11 @@ function createView() {
                     m("span.caption", "Einkenni:"),
                     m("input.text.username",
                       {
-                        autofocus: '',
+                        // autofocus: '',
                         id: 'nickname',
                         maxlength: 15,
                         name: 'nickname',
-                        required: '',
+                        required: true,
                         tabindex: 1,
                         type: 'text',
                         value: user.nickname || ""
@@ -750,61 +760,22 @@ function createView() {
               ]
             )
           ),
-          m(".modal-close",
-            {
-              id: 'user-ok',
-              onclick: validate,
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
-              tabindex: 9,
-              title: 'Vista'
-            },
-            glyph("ok")
-          ),
-          m(".modal-close",
-            {
-              id: 'user-cancel',
-              onclick: function(ev) { m.route.set(from_url || "/main"); ev.preventDefault(); },
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
-              tabindex: 10,
-              title: 'Hætta við'
-            },
-            glyph("remove")
-          ),
-          m(".modal-close",
-            {
-              id: 'user-logout',
-              onclick: function(ev) { location.href = user.logout_url; ev.preventDefault(); },
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
-              tabindex: 11,
-              title: 'Skrá mig út'
-            },
-            [ glyph("log-out"), nbsp(), "Skrá mig út" ]
-          ),
+          vwDialogButton("user-ok", "Vista", validate, glyph("ok"), 9),
+          vwDialogButton("user-cancel", "Hætta við",
+            function(ev) { m.route.set(from_url || "/main"); ev.preventDefault(); },
+            glyph("remove"), 10),
+          vwDialogButton("user-logout", "Skrá mig út",
+            function(ev) { location.href = user.logout_url; ev.preventDefault(); },
+            [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
-            m(".modal-close",
-              {
-                id: 'user-unfriend',
-                onclick: function() { /* !!! TBD */ },
-                onmouseout: buttonOut,
-                onmouseover: buttonOver,
-                tabindex: 11,
-                title: 'Hætta sem vinur'
-              },
-              [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ]
-            ) :
-            m(".modal-close",
-              {
-                id: 'user-friend',
-                onclick: function() { /* !!! TBD */ },
-                onmouseout: buttonOut,
-                onmouseover: buttonOver,
-                tabindex: 11,
-                title: 'Gerast vinur',
-              },
-              [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ]
+            vwDialogButton("user-unfriend", "Hætta sem vinur",
+              function(ev) { /* !!! TBD */ },
+              [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ], 12
+            )
+          :
+            vwDialogButton("user-friend", "Gerast vinur",
+              function(ev) { /* !!! TBD */ },
+              [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
         ]
       )
@@ -2003,6 +1974,20 @@ function createView() {
         )
       ]
     );
+  }
+
+  function vwDialogButton(id, title, func, content, tabindex) {
+    // Create a .modal-close dialog button
+    var attr = {
+      id: id,
+      onclick: func,
+      onmouseover: buttonOver,
+      onmouseout: buttonOut,
+      title: title
+    };
+    if (tabindex !== undefined)
+      attr.tabindex = tabindex;
+    return m(".modal-close", attr, content);
   }
 
   function blinker() {
