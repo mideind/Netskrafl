@@ -92,6 +92,15 @@ def before_request():
         return redirect(url, code=code)
 
 
+@app.after_request
+def add_headers(response):
+    """ Inject additional headers into responses """
+    if not running_local:
+        # Add HSTS to enforce HTTPS
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
 @app.context_processor
 def inject_into_context():
     """ Inject variables and functions into all Flask contexts """

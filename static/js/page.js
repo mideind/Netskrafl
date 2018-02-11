@@ -31,6 +31,8 @@ var BLANK_TILES_PER_LINE = 6;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 var ROUTE_PREFIX = "/page#!";
 var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
+var BOARD_PREFIX = "/board?game=";
+var BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 
 function main() {
   // The main UI entry point, called from page.html
@@ -75,6 +77,8 @@ function createModel(settings) {
     params: undefined,
     // The current game being displayed, if any
     game: null,
+    // The current game list
+    gameList: null,
     // The current user information being edited, if any
     user: null,
     userErrors: null,
@@ -82,6 +86,7 @@ function createModel(settings) {
     helpHTML: null,
     // Model methods
     loadGame: loadGame,
+    loadGameList: loadGameList,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -103,6 +108,22 @@ function createModel(settings) {
       }
       else
         this.game = new Game(uuid, result.game);
+    }.bind(this));
+  }
+
+  function loadGameList() {
+    // Load the list of currently active games for this user
+    m.request({
+      method: "POST",
+      url: "/gamelist"
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        // An error occurred
+        this.gameList = null;
+        return;
+      }
+      this.gameList = json.gamelist;
     }.bind(this));
   }
 
@@ -213,19 +234,6 @@ function createActions(model) {
     }
   }
 
-  function onFullScreen() {
-    // Take action when min-width exceeds 768
-    $state.uiFullscreen = true;
-    // !!! TBD
-    m.redraw();
-  }
-
-  function onMobileScreen () {
-    $state.uiFullscreen = false;
-    // !!! TBD
-    m.redraw();
-  }
-
   function onMoveMessage(json) {
 
   }
@@ -245,17 +253,32 @@ function createActions(model) {
     model.addChatMessage(json.from_userid, json.msg, json.ts);
   }
 
+  function onFullScreen() {
+    // Take action when min-width exceeds 768
+    $state.uiFullscreen = true;
+    // !!! TBD
+    m.redraw();
+  }
+
+  function onMobileScreen () {
+    $state.uiFullscreen = false;
+    // !!! TBD
+    m.redraw();
+  }
+
   function mediaMinWidth667(mql) {
      if (mql.matches) {
         // Take action when min-width exceeds 667
         // (usually because of rotation from portrait to landscape)
         // The board tab is not visible, so the movelist is default
+        $state.uiLandscape = true;
         // !!! TBD
      }
      else {
         // min-width is below 667
         // (usually because of rotation from landscape to portrait)
         // Make sure the board tab is selected
+        $state.uiLandscape = false;
         // !!! TBD
      }
   }
@@ -397,106 +420,15 @@ function createView() {
 
   function vwTabsFromHtml(html, id, createFunc) {
 
-    function updateVisibility(vnode) {
-      // Shows the tab that is currently selected,
-      // i.e. the one whose index is in vnode.state.selected
-      var selected = vnode.state.selected;
-      var lis = vnode.state.lis;
-      vnode.state.ids.map(function(id, i) {
-          document.getElementById(id).setAttribute("style", "display: " +
-            (i == selected ? "block" : "none"));
-          lis[i].classList.toggle("ui-tabs-active", i == selected);
-          lis[i].classList.toggle("ui-state-active", i == selected);
-        }
-      );
-    }
-
-    function selectTab(vnode, i) {
-      // Selects the tab with the given index under the tab control vnode
-      vnode.state.selected = i;
-      updateVisibility(vnode);
-    }
-
-    function makeTabs(vnode) {
-      // When the tabs are displayed for the first time, wire'em up
-      var tabdiv = document.getElementById(id);
-      if (!tabdiv)
-        return;
-      // Add bunch of jQueryUI compatible classes
-      tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
-      var tabul = document.querySelector("#" + id + " > ul");
-      tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
-      tabul.setAttribute("role", "tablist");
-      var tablist = document.querySelectorAll("#" + id + " > ul > li > a");
-      var tabitems = document.querySelectorAll("#" + id + " > ul > li");
-      var ids = [];
-      var lis = []; // The <li> elements
-      var i;
-      // Iterate over the <a> elements inside the <li> elements inside the <ul>
-      for (i = 0; i < tablist.length; i++) {
-        ids.push(tablist[i].getAttribute("href").slice(1));
-        // Decorate the <a> elements
-        tablist[i].onclick = function(i, ev) {
-            // When this tab header is clicked, select the associated tab
-            selectTab(this, i);
-            ev.preventDefault();
-          }
-          .bind(vnode, i);
-        tablist[i].setAttribute("href", null);
-        tablist[i].setAttribute("class", "ui-tabs-anchor");
-        tablist[i].setAttribute("role", "presentation");
-        // Also decorate the <li> elements
-        lis.push(tabitems[i]);
-        tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
-        tabitems[i].setAttribute("role", "tab");
-        tabitems[i].onmouseover = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", true); };
-        tabitems[i].onmouseout = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", false); };
-        // Find the tab's content <div>
-        var tabcontent = document.getElementById(ids[i]);
-        // Decorate it
-        tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
-        tabcontent.setAttribute("role", "tabpanel");
-      }
-      // Save the list of tab identifiers
-      vnode.state.ids = ids;
-      // Save the list of <li> elements
-      vnode.state.lis = lis;
-      // Select the first tab by default
-      vnode.state.selected = 0;
-      // Wire all hrefs that point to single-page URLs
-      var anchors = tabdiv.querySelectorAll("a");
-      for (i = 0; i < anchors.length; i++) {
-        var a = anchors[i];
-        var href = a.getAttribute("href");
-        if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
-          // Single-page URL: wire it up (as if it had had an m.route.link on it)
-          a.onclick = function(href, ev) {
-            var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-            var qix = uri.indexOf("?");
-            var route = (qix >= 0) ? uri.slice(0, qix) : uri;
-            var qparams = uri.slice(route.length + 1);
-            var params = qparams.length ? getUrlVars(qparams) : { };
-            m.route.set(route, params);
-            if (window.history)
-              window.history.pushState({}, "", href); // Enable the back button
-            ev.preventDefault();
-          }.bind(null, href);
-        }
-      }
-      // If a createFunc was specified, run it now
-      if (createFunc)
-        createFunc(vnode);
-      // Finally, make the default tab visible and hide the others
-      updateVisibility(vnode);
-    }
-
-    function updateSelection(vnode) {
-      selectTab(vnode, m.route.param("tab"));
-    }
-
     if (!html)
       return "";
-    return m("div", { oncreate: makeTabs, onupdate: updateSelection }, m.trust(html));
+    return m("div",
+      {
+        oncreate: makeTabs.bind(null, id, createFunc, true),
+        onupdate: updateSelection
+      },
+      m.trust(html)
+    );
   }
 
   // Help screen
@@ -792,13 +724,458 @@ function createView() {
 
   function vwMain(model, actions) {
     // Main screen with tabs
-    // !!! TBD
+
+    function vwMainTabs() {
+
+      function vwMainTabHeader() {
+        return m("ul",
+          [
+            m("li", 
+              m("a[href='#tabs-1']",
+                [
+                  glyph("th"), m("span.tab-legend", "Viðureignir"),
+                  m("span[id='numgames']", "0")
+                ]
+              )
+            ),
+            m("li", 
+              m("a[href='#tabs-2']",
+                [
+                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
+                  m("span.opp-ready[id='numchallenges']", "0")
+                ]
+              )
+            ),
+            m("li", 
+              m("a[href='#tabs-3']",
+                [
+                  glyph("user"), m("span.tab-legend", "Andstæðingar")
+                ]
+              )
+            ),
+            m("li.no-mobile-list", 
+              m("a[href='#tabs-4']",
+                [
+                  glyph("bookmark"), m("span.tab-legend", "Ferill")
+                ]
+              )
+            )
+          ]
+        );
+      }
+
+      function vwGamelist() {
+
+        function vwList() {
+
+          function viewGamelist() {
+
+            if (!model.gameList)
+              return "";
+            return model.gameList.map(function(item, i) {
+
+              // Show a list item about a game in progress (or recently finished)
+
+              function vwOpp() {
+                var arg = item.oppid === null ? [ glyph("cog"), m.trust("&nbsp;"), item.opp ] : item.opp;
+                return m("span.list-opp", { title: item.fullname }, arg);
+              }
+
+              function vwTurn() {
+                var turnText;
+                var flagClass;
+                if (item.my_turn) {
+                  turnText = "Þú átt leik";
+                  flagClass = "";
+                }
+                else
+                if (item.zombie) {
+                  turnText = "Viðureign lokið";
+                  flagClass = ".zombie";
+                }
+                else {
+                  turnText = item.opp + " á leik";
+                  flagClass = ".grayed";
+                }
+                return m("span.list-myturn", m("span.glyphicon.glyphicon-flag" + flagClass, { title: turnText }));
+              }
+
+              function vwOverdue() {
+                if (item.overdue)
+                  return glyph("hourglass",
+                    { title: item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf" }
+                  );
+                return glyphGrayed("hourglass");
+              }
+
+              function vwTileCount() {
+                var winLose = item.sc0 < item.sc1 ? ".losing" : "";
+                return m(".tilecount",
+                  m(".tc" + winLose, { style: { width: item.tile_count.toString() + "%" } })
+                );
+              }
+
+              function gameUUID() {
+                // Convert old-style /board?game=UUID URL to UUID
+                if (item.url.slice(0, BOARD_PREFIX_LEN) == BOARD_PREFIX)
+                  return item.url.slice(BOARD_PREFIX_LEN);
+                // Otherwise, assume that item.url contains the UUID
+                return item.url;
+              }
+
+              return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+                [
+                  m("a", { href: "/game/" + gameUUID(), oncreate: m.route.link },
+                    [
+                      vwTurn(),
+                      m("span.list-overdue", vwOverdue()),
+                      m("span.list-ts-short", item.ts),
+                      vwOpp()
+                    ]
+                  ),
+                  m("span.list-info",
+                    item.oppid === null ?
+                      m.trust("&nbsp;") :
+                      m("span.usr-info",
+                        {
+                          title: "Skoða feril",
+                          onclick: function(ev) { ev.preventDefault(); } // !!! TBD: show user track record
+                        },
+                        ""
+                      )
+                  ),
+                  m("span.list-s0", item.sc0),
+                  m("span.list-colon", ":"),
+                  m("span.list-s1", item.sc1),
+                  m("span.list-tc", vwTileCount()),
+                  m("span.list-manual",
+                    item.manual ? glyph("lightbulb", { title: "Keppnishamur" }) : glyphGrayed("lightbulb")
+                  )
+                ]
+              );
+            });
+          }
+
+          return m("div",
+            {
+              id: 'gamelist',
+              oninit: function() { if (model.gameList === null) model.loadGameList(); }
+            },
+            viewGamelist()
+          );
+        }
+
+        function vwHint() {
+          // Show some help if the user has no games in progress
+          if (model.gameList)
+            return "";
+          return m(".hint", { style: "display: block" },
+            [
+              m("p",
+                [
+                  "Ef þig vantar einhvern til að skrafla við, veldu ",
+                  m("a[href='#'][id='opponents']", "flipann \"Andstæðingar\""),
+                  "og skoraðu á tölvuþjarka -",
+                  glyph("cog"), m.trust("&nbsp;"), m("b", "Amlóða"),
+                  ", ",
+                  glyph("cog"), m.trust("&nbsp;"), m("b", "Miðlung"),
+                  " eða ",
+                  glyph("cog"), m.trust("&nbsp;"), m("b", "Fullsterkan"),
+                  " - eða veldu þér annan leikmann úr stafrófs",
+                  m.trust("&shy;"),
+                  "listunum sem þar er að finna til að skora á."
+                ]
+              ),
+              m("p",
+                [
+                  "Þú stofnar áskorun með því að smella á bendi-teiknið ",
+                  glyph("hand-right", { style: { "margin-left": "6px", "margin-right": "6px" } }),
+                  " vinstra megin við nafn andstæðingsins."
+                ]
+              ),
+              m("p", 
+                "Tölvuþjarkarnir eru ætíð reiðubúnir að skrafla og viðureign við þá " +
+                " hefst strax. Aðrir leikmenn þurfa að samþykkja áskorun áður en viðureign hefst."
+              ),
+              m("p.no-mobile-block",
+                [
+                  m("a", { href: "/help", oncreate: m.route.link }, "Hjálp"),
+                  " má fá með því að smella á bláa ",
+                  glyph("info-sign"),
+                  m.trust("&nbsp;"), "-", m.trust("&nbsp;"),
+                  "teiknið hér til vinstri."
+                ]
+              ),
+              m("p.no-mobile-block", 
+                "Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á " +
+                "örvarmerkið efst vinstra megin við skraflborðið."
+              )
+            ]
+          );
+        }
+
+        return [
+          m(".listitem.listheader",
+            [
+              m("span.list-myturn", glyphGrayed("flag", { title: 'Átt þú leik?' } )),
+              m("span.list-overdue", 
+                glyphGrayed("hourglass", { title: 'Langt frá síðasta leik?' })
+              ),
+              m("span.list-ts-short", "Síðasti leikur"),
+              m("span.list-opp", "Andstæðingur"),
+              m("span.list-info-hdr", "Ferill"),
+              m("span.list-scorehdr", "Staða"),
+              m("span.list-tc", "Framvinda"),
+              m("span.list-manual", glyphGrayed("lightbulb", { title: 'Keppnishamur' }))
+            ]
+          ),
+          vwList(),
+          vwHint()
+        ];
+      }
+
+      function vwChallReceived() {
+        return [
+          m(".listitem.listheader",
+            [
+              m("span.list-icon", glyphGrayed("thumbs-down", { title: 'Hafna' })),
+              m("span.list-ts", "Hvenær"),
+              m("span.list-nick", "Áskorandi"),
+              m("span.list-chall", "Hvernig"),
+              m("span.list-info-hdr", "Ferill"),
+              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+            ]
+          ),
+          m("div", { id: 'chall-received' })
+        ];
+      }
+
+      function vwChallSent() {
+        return [
+          m(".listitem.listheader",
+            [
+              m("span.list-icon", glyphGrayed("hand-right", { title: 'Afturkalla' })),
+              m("span.list-ts", "Hvenær"),
+              m("span.list-nick", "Andstæðingur"),
+              m("span.list-chall", "Hvernig"),
+              m("span.list-info-hdr", "Ferill"),
+              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+            ]
+          ),
+          m("div", { id: 'chall-sent' })
+        ];
+      }
+
+      function vwRecentList() {
+        return [
+          m(".listitem.listheader",
+            [
+              m("span.list-win", glyphGrayed("bookmark", { title: 'Sigur' })),
+              m("span.list-ts-short", "Viðureign lauk"),
+              m("span.list-nick", "Andstæðingur"),
+              m("span.list-scorehdr", "Úrslit"),
+              m("span.list-elo-hdr",
+                [
+                  m("span.glyphicon.glyphicon-user.elo-hdr-left[title='Mennskir andstæðingar']"),
+                  " Elo ",
+                  m("span.glyphicon.glyphicon-cog.elo-hdr-right[title='Allir andstæðingar']")
+                ]
+              ),
+              m("span.list-duration", "Lengd"),
+              m("span.list-manual", glyphGrayed("lightbulb", { title: 'Keppnishamur' }))
+            ]
+          ),
+          m("div", { id: 'recentlist' })
+        ];
+      }
+
+      return m(".tabbed-page",
+        m("[id='tabs']",
+          [
+            vwMainTabHeader(),
+            m("[id='tabs-1']",
+              [
+                m("p.no-mobile-block",
+                  [
+                    m("strong", "Viðureignir sem standa yfir"),
+                    " - smelltu á viðureign til að skoða stöðuna og leika ef ",
+                    glyph("flag"), " þú átt leik"
+                  ]
+                ),
+                vwGamelist()
+              ]
+            ),
+            m("[id='tabs-2']",
+              [
+                m("p.no-mobile-block",
+                  [
+                    m("strong", "Skorað á þig"),
+                    " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ",
+                    glyph("thumbs-down", { style: { "margin-left": "6px", "margin-right": "6px" } }),
+                    " til að hafna henni"
+                  ]
+                ),
+                vwChallReceived(),
+                m("p.no-mobile-block",
+                  [
+                    m("strong", "Þú skorar á aðra"),
+                    " - smelltu á ",
+                    glyph("hand-right", { style: { "margin-left": "6px", "margin-right": "6px" } }),
+                    " til að afturkalla áskorun"
+                  ]
+                ),
+                vwChallSent()
+              ]
+            ),
+            m("[id='tabs-4']",
+              [
+                m("[id='own-stats']",
+                  [
+                    m(".toggler[id='own-toggler'][title='Með þjörkum eða án']",
+                      [
+                        m(".option.small[id='opt1']", glyph("user")),
+                        m(".option.small[id='opt2']", glyph("cog"))
+                      ]
+                    ),
+                    m("[id='own-stats-human']",
+                      [
+                        m(".stats-fig[id='own-stats-human-elo'][title='Elo-stig']"),
+                        m(".stats-fig.stats-games[id='own-stats-human-games'][title='Fjöldi viðureigna']"),
+                        m(".stats-fig.stats-win-ratio[id='own-stats-human-win-ratio'][title='Vinningshlutfall']"),
+                        m(".stats-fig.stats-avg-score[id='own-stats-human-avg-score'][title='Meðalstigafjöldi']")
+                      ]
+                    ),
+                    m("[id='own-stats-all']",
+                      [
+                        m(".stats-fig[id='own-stats-elo'][title='Elo-stig']"),
+                        m(".stats-fig.stats-games[id='own-stats-games'][title='Fjöldi viðureigna']"),
+                        m(".stats-fig.stats-win-ratio[id='own-stats-win-ratio'][title='Vinningshlutfall']"),
+                        m(".stats-fig.stats-avg-score[id='own-stats-avg-score'][title='Meðalstigafjöldi']")
+                      ]
+                    )
+                  ]
+                ),
+                m("p[id='own-best']"),
+                m("p",
+                  [
+                    m("strong", "Nýlegar viðureignir þínar"),
+                    "- smelltu á viðureign til að skoða hana og rifja upp"
+                  ]
+                ),
+                vwRecentList()
+              ]
+            ),
+            m("[id='tabs-3']",
+              [
+                m("[id='initials']",
+                  [
+                    m(".user-cat[id='user-headings']",
+                      [
+                        m("span.shown[id='robots']",
+                          [
+                            glyph("cog", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Þjarkar"
+                          ]
+                        ),
+                        m("span[id='fav']",
+                          [
+                            glyph("star", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Uppáhalds"
+                          ]
+                        ),
+                        m("span[id='live']",
+                          [
+                            glyph("flash", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Álínis"
+                          ]
+                        ),
+                        m("span[id='alike']",
+                          [
+                            glyph("resize-small", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Svipaðir"
+                          ]
+                        ),
+                        m("span[id='elo']",
+                          [
+                            glyph("crown", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Topp 100"
+                          ]
+                        )
+                      ]
+                    ),
+                    m(".user-cat[id='user-search']",
+                      [
+                        glyph("search", { id: 'search' }),
+                        m("input.text.userid",
+                          {
+                            id: 'search-id',
+                            maxlength: 16,
+                            name: 'search-id',
+                            placeholder: 'Einkenni eða nafn',
+                            type: 'text',
+                            value: ''
+                          }
+                        )
+                      ]
+                    )
+                  ]
+                ),
+                m(".listitem.listheader[id='usr-hdr']",
+                  [
+                    m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+                    m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
+                    m("span.list-nick", "Einkenni"),
+                    m("span.list-fullname", "Nafn og merki"),
+                    m("span.list-human-elo[id='usr-list-elo']", "Elo"),
+                    m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
+                    m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+                  ]
+                ),
+                m(".listitem.listheader[id='elo-hdr']",
+                  [
+                    m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+                    m("span.list-rank", "Röð"),
+                    m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
+                    m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
+                    m("span.list-nick-elo", "Einkenni"),
+                    m("span.list-elo[title='Elo-stig']", "Elo"),
+                    m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
+                    m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
+                    m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
+                    m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
+                    m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
+                    m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
+                    m("span.list-info-hdr", "Ferill"),
+                    m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
+                    m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+                      [
+                        m(".option.x-small[id='opt1']", glyph("user")),
+                        m(".option.x-small[id='opt2']", glyph("cog"))
+                      ]
+                    )
+                  ]
+                ),
+                m("[id='userlist']"),
+                m("[id='user-load']"),
+                m("[id='user-no-match']",
+                  [
+                    glyph("search"), m("span[id='search-prefix']"), " finnst ekki"
+                  ]
+                )
+              ]
+            )
+          ]
+        )
+      );
+    }
+
     return m("main",
       [
-        m("h1", { class: "title" }, "The main screen"),
-        m("div", m("a", { href: "/" }, "Old main screen")),
-        m("div", m("a", { href: "/game/cb23b9a1-e132-11e7-bbfd-34028601001c", oncreate: m.route.link }, "Open game 1")),
-        vwInfo()
+        vwLogo(),
+        vwUserId(),
+        vwInfo(),
+        m("div",
+          {
+            oncreate: makeTabs.bind(null, "tabs", undefined, false),
+            onupdate: updateSelection
+          },
+          vwMainTabs()
+        )
       ]
     );
   }
@@ -2041,6 +2418,109 @@ function setInput(id, val) {
   document.getElementById(id).value = val;
 }
 
+// Utility functions to set up tabbed views
+
+function updateTabVisibility(vnode) {
+  // Shows the tab that is currently selected,
+  // i.e. the one whose index is in vnode.state.selected
+  var selected = vnode.state.selected;
+  var lis = vnode.state.lis;
+  vnode.state.ids.map(function(id, i) {
+      document.getElementById(id).setAttribute("style", "display: " +
+        (i == selected ? "block" : "none"));
+      lis[i].classList.toggle("ui-tabs-active", i == selected);
+      lis[i].classList.toggle("ui-state-active", i == selected);
+    }
+  );
+}
+
+function selectTab(vnode, i) {
+  // Selects the tab with the given index under the tab control vnode
+  vnode.state.selected = i;
+  updateTabVisibility(vnode);
+}
+
+function makeTabs(id, createFunc, wireHrefs, vnode) {
+  // When the tabs are displayed for the first time, wire'em up
+  var tabdiv = document.getElementById(id);
+  if (!tabdiv)
+    return;
+  // Add bunch of jQueryUI compatible classes
+  tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
+  var tabul = document.querySelector("#" + id + " > ul");
+  tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
+  tabul.setAttribute("role", "tablist");
+  var tablist = document.querySelectorAll("#" + id + " > ul > li > a");
+  var tabitems = document.querySelectorAll("#" + id + " > ul > li");
+  var ids = [];
+  var lis = []; // The <li> elements
+  var i;
+  // Iterate over the <a> elements inside the <li> elements inside the <ul>
+  for (i = 0; i < tablist.length; i++) {
+    ids.push(tablist[i].getAttribute("href").slice(1));
+    // Decorate the <a> elements
+    tablist[i].onclick = function(i, ev) {
+        // When this tab header is clicked, select the associated tab
+        selectTab(this, i);
+        ev.preventDefault();
+      }
+      .bind(vnode, i);
+    tablist[i].setAttribute("href", null);
+    tablist[i].setAttribute("class", "ui-tabs-anchor");
+    tablist[i].setAttribute("role", "presentation");
+    // Also decorate the <li> elements
+    lis.push(tabitems[i]);
+    tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
+    tabitems[i].setAttribute("role", "tab");
+    tabitems[i].onmouseover = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", true); };
+    tabitems[i].onmouseout = function(ev) { ev.currentTarget.classList.toggle("ui-state-hover", false); };
+    // Find the tab's content <div>
+    var tabcontent = document.getElementById(ids[i]);
+    // Decorate it
+    tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
+    tabcontent.setAttribute("role", "tabpanel");
+  }
+  // Save the list of tab identifiers
+  vnode.state.ids = ids;
+  // Save the list of <li> elements
+  vnode.state.lis = lis;
+  // Select the first tab by default
+  vnode.state.selected = 0;
+  if (wireHrefs) {
+    // Wire all hrefs that point to single-page URLs
+    var anchors = tabdiv.querySelectorAll("a");
+    for (i = 0; i < anchors.length; i++) {
+      var a = anchors[i];
+      var href = a.getAttribute("href");
+      if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
+        // Single-page URL: wire it up (as if it had had an m.route.link on it)
+        a.onclick = function(href, ev) {
+          var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+          var qix = uri.indexOf("?");
+          var route = (qix >= 0) ? uri.slice(0, qix) : uri;
+          var qparams = uri.slice(route.length + 1);
+          var params = qparams.length ? getUrlVars(qparams) : { };
+          m.route.set(route, params);
+          if (window.history)
+            window.history.pushState({}, "", href); // Enable the back button
+          ev.preventDefault();
+        }.bind(null, href);
+      }
+    }
+  }
+  // If a createFunc was specified, run it now
+  if (createFunc)
+    createFunc(vnode);
+  // Finally, make the default tab visible and hide the others
+  updateTabVisibility(vnode);
+}
+
+function updateSelection(vnode) {
+  var tab = m.route.param("tab");
+  if (tab !== undefined)
+    selectTab(vnode, tab);
+}
+
 // Get values from a URL query string
 function getUrlVars(url) {
    var hashes = url.split('&');
@@ -2069,6 +2549,7 @@ function buttonOut(ev) {
 
 // Glyphicon utility function: inserts a glyphicon span
 function glyph(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon, attrs); }
+function glyphGrayed(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs); }
 
 // Utility function: inserts non-breaking space
 function nbsp(n) {
