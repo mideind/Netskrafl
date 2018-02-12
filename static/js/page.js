@@ -79,6 +79,8 @@ function createModel(settings) {
     game: null,
     // The current game list
     gameList: null,
+    // The current challenge list
+    challengeList: null,
     // The current user information being edited, if any
     user: null,
     userErrors: null,
@@ -87,6 +89,7 @@ function createModel(settings) {
     // Model methods
     loadGame: loadGame,
     loadGameList: loadGameList,
+    loadChallengeList: loadChallengeList,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -124,6 +127,23 @@ function createModel(settings) {
         return;
       }
       this.gameList = json.gamelist;
+    }.bind(this));
+  }
+
+  function loadChallengeList() {
+    // Load the list of current challenges (received and issued)
+    this.challengeList = []; // Prevent concurrent loading
+    m.request({
+      method: "POST",
+      url: "/challengelist"
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        // An error occurred
+        this.challengeList = null;
+        return;
+      }
+      this.challengeList = json.challengelist;
     }.bind(this));
   }
 
@@ -226,6 +246,11 @@ function createActions(model) {
     if (routeName == "help") {
       // Make sure that the help HTML is loaded upon first use
       model.loadHelp();
+    }
+    else
+    if (routeName == "main") {
+      if (model.challengeList === null)
+        model.loadChallengeList();
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -768,7 +793,7 @@ function createView() {
 
         function vwList() {
 
-          function viewGamelist() {
+          function viewGameList() {
 
             if (!model.gameList)
               return "";
@@ -861,7 +886,7 @@ function createView() {
               id: 'gamelist',
               oninit: function() { if (model.gameList === null) model.loadGameList(); }
             },
-            viewGamelist()
+            viewGameList()
           );
         }
 
@@ -934,36 +959,101 @@ function createView() {
         ];
       }
 
-      function vwChallReceived() {
-        return [
-          m(".listitem.listheader",
-            [
-              m("span.list-icon", glyphGrayed("thumbs-down", { title: 'Hafna' })),
-              m("span.list-ts", "Hvenær"),
-              m("span.list-nick", "Áskorandi"),
-              m("span.list-chall", "Hvernig"),
-              m("span.list-info-hdr", "Ferill"),
-              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
-            ]
-          ),
-          m("div", { id: 'chall-received' })
-        ];
-      }
+      function vwChallenges(showReceived) {
 
-      function vwChallSent() {
-        return [
-          m(".listitem.listheader",
-            [
-              m("span.list-icon", glyphGrayed("hand-right", { title: 'Afturkalla' })),
-              m("span.list-ts", "Hvenær"),
-              m("span.list-nick", "Andstæðingur"),
-              m("span.list-chall", "Hvernig"),
-              m("span.list-info-hdr", "Ferill"),
-              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
-            ]
-          ),
-          m("div", { id: 'chall-sent' })
-        ];
+        function vwList() {
+
+          function itemize(item, i) {
+
+            // Generate a list item about a pending challenge (issued or received)
+
+            function challengeDescription(json) {
+               /* Return a human-readable string describing a challenge
+                  according to the enclosed preferences */
+               if (!json || json.duration === undefined || json.duration === 0)
+                  /* Normal unbounded (untimed) game */
+                  return "Venjuleg ótímabundin viðureign";
+               return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
+            }
+
+            var oppReady = !item.received && item.opp_ready;
+            var descr = challengeDescription(item.prefs);
+
+            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+              [
+                m("span.list-icon",
+                  item.received ?
+                    glyph("thumbs-down", { title: "Hafna" })
+                    :
+                    glyph("hand-right", { title: "Afturkalla" })
+                ),
+                m("span.list-ts", item.ts),
+                m("span.list-nick", { title: item.fullname }, item.opp),
+                m("span.list-chall",
+                  [
+                    item.prefs.fairplay ? m("span.fairplay-btn", { title: "Án hjálpartækja" }) : "",
+                    item.prefs.manual ? m("span.manual-btn", { title: "Keppnishamur" }) : "",
+                    descr
+                  ]
+                ),
+                m("span.list-info", { title: "Skoða feril" },
+                  m("span.usr-info", "")),
+                m("span.list-newbag",
+                  item.prefs.newbag ?
+                    glyphGrayed("shopping-bag", { title: "Gamli pokinn" })
+                    :
+                    glyph("shopping-bag", { title: "Gamli pokinn" })
+                )
+              ]
+            );
+          }
+
+          var cList;
+          if (!model.challengeList)
+            cList = [];
+          else
+            cList = showReceived ?
+              model.challengeList.filter(function(item) { return item.received; }) :
+              model.challengeList.filter(function(item) { return !item.received; });
+
+          return m("div",
+            {
+              id: showReceived ? 'chall-received' : 'chall-sent'
+            },
+            cList.map(itemize)
+          );
+        }
+
+        if (showReceived)
+          // Challenges received
+          return [
+            m(".listitem.listheader",
+              [
+                m("span.list-icon", glyphGrayed("thumbs-down", { title: 'Hafna' })),
+                m("span.list-ts", "Hvenær"),
+                m("span.list-nick", "Áskorandi"),
+                m("span.list-chall", "Hvernig"),
+                m("span.list-info-hdr", "Ferill"),
+                m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+              ]
+            ),
+            vwList()
+          ];
+        else
+          // Challenges sent
+          return [
+            m(".listitem.listheader",
+              [
+                m("span.list-icon", glyphGrayed("hand-right", { title: 'Afturkalla' })),
+                m("span.list-ts", "Hvenær"),
+                m("span.list-nick", "Andstæðingur"),
+                m("span.list-chall", "Hvernig"),
+                m("span.list-info-hdr", "Ferill"),
+                m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+              ]
+            ),
+            vwList()
+          ];
       }
 
       function vwRecentList() {
@@ -1015,7 +1105,7 @@ function createView() {
                     " til að hafna henni"
                   ]
                 ),
-                vwChallReceived(),
+                vwChallenges(true),
                 m("p.no-mobile-block",
                   [
                     m("strong", "Þú skorar á aðra"),
@@ -1024,7 +1114,7 @@ function createView() {
                     " til að afturkalla áskorun"
                   ]
                 ),
-                vwChallSent()
+                vwChallenges(false)
               ]
             ),
             m("[id='tabs-4']",
