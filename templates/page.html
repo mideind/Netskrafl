@@ -69,7 +69,8 @@ var $state = {
    userId: "{{ '' if user == None else user.id() }}",
    userNick: "{{ '' if user == None else user.nickname() }}",
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},
-   uiFullscreen: true, // !!! TBD
+   uiFullscreen: true,
+   uiLandscape: true,
    firebaseToken: "{{ firebase_token }}",
    // Array of supported emoticons in chat
    // Remember to change faq.html if this changes
