@@ -99,6 +99,7 @@ function createModel(settings) {
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
+    modifyChallenge: modifyChallenge,
     addChatMessage: addChatMessage
   };
 
@@ -244,6 +245,19 @@ function createModel(settings) {
         // Error saving user prefs: show details, if available
         this.userErrors = result.err || null;
       }
+    }.bind(this));
+  }
+
+  function modifyChallenge(userid, action) {
+    // Reject or retract a challenge
+    m.request({
+      method: "POST",
+      url: "/challenge",
+      data: { destuser: userid, action: action }
+    })
+    .then(function(json) {
+      if (json.result === 0)
+        this.loadChallengeList();
     }.bind(this));
   }
 
@@ -575,10 +589,10 @@ function createView() {
       return [
         m("input.checkbox." + id,
           {
-            checked: state,
+            type: 'checkbox',
             id: id,
             name: id,
-            type: 'checkbox',
+            checked: state,
             value: 'True'
           }
         ),
@@ -654,7 +668,7 @@ function createView() {
                       }
                     ),
                     nbsp(),
-                    m("span", { style: { "color": "red" } }, "*")
+                    m("span", { style: { color: "red" } }, "*")
                   ]
                 ),
                 m(".explain", "Verður að vera útfyllt"),
@@ -846,7 +860,7 @@ function createView() {
               // Show a list item about a game in progress (or recently finished)
 
               function vwOpp() {
-                var arg = item.oppid === null ? [ glyph("cog"), m.trust("&nbsp;"), item.opp ] : item.opp;
+                var arg = item.oppid === null ? [ glyph("cog"), nbsp(), item.opp ] : item.opp;
                 return m("span.list-opp", { title: item.fullname }, arg);
               }
 
@@ -906,7 +920,7 @@ function createView() {
                   ),
                   m("span.list-info",
                     item.oppid === null ?
-                      m.trust("&nbsp;") :
+                      nbsp() :
                       m("span.usr-info",
                         {
                           title: "Skoða feril",
@@ -940,18 +954,18 @@ function createView() {
           // Show some help if the user has no games in progress
           if (model.gameList)
             return "";
-          return m(".hint", { style: "display: block" },
+          return m(".hint", { style: { display: "block" } },
             [
               m("p",
                 [
                   "Ef þig vantar einhvern til að skrafla við, veldu ",
                   m("a[href='#'][id='opponents']", "flipann \"Andstæðingar\""),
                   "og skoraðu á tölvuþjarka -",
-                  glyph("cog"), m.trust("&nbsp;"), m("b", "Amlóða"),
+                  glyph("cog"), nbsp(), m("b", "Amlóða"),
                   ", ",
-                  glyph("cog"), m.trust("&nbsp;"), m("b", "Miðlung"),
+                  glyph("cog"), nbsp(), m("b", "Miðlung"),
                   " eða ",
-                  glyph("cog"), m.trust("&nbsp;"), m("b", "Fullsterkan"),
+                  glyph("cog"), nbsp(), m("b", "Fullsterkan"),
                   " - eða veldu þér annan leikmann úr stafrófs",
                   m.trust("&shy;"),
                   "listunum sem þar er að finna til að skora á."
@@ -973,7 +987,7 @@ function createView() {
                   m("a", { href: "/help", oncreate: m.route.link }, "Hjálp"),
                   " má fá með því að smella á bláa ",
                   glyph("info-sign"),
-                  m.trust("&nbsp;"), "-", m.trust("&nbsp;"),
+                  nbsp(), "-", nbsp(),
                   "teiknið hér til vinstri."
                 ]
               ),
@@ -1022,12 +1036,19 @@ function createView() {
                return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
             }
 
+            function markChallenge(ev) {
+              var action = item.received ? "decline" : "retract";
+              model.modifyChallenge(item.userid, action);
+              ev.preventDefault();
+            }
+
             var oppReady = !item.received && item.opp_ready;
             var descr = challengeDescription(item.prefs);
 
             return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
               [
                 m("span.list-icon",
+                  { onclick: markChallenge },
                   item.received ?
                     glyph("thumbs-down", { title: "Hafna" })
                     :
@@ -1125,6 +1146,12 @@ function createView() {
         ];
       }
 
+      function vwUserButton(id, icon, text, cls) {
+        return m("span" + (cls ? "." + cls : ""),  { id: id },
+          [ glyph(icon, { style: { padding: 0 } }), nbsp(), text ]
+        );
+      }
+
       return m(".tabbed-page",
         m("[id='tabs']",
           [
@@ -1207,31 +1234,11 @@ function createView() {
                   [
                     m(".user-cat[id='user-headings']",
                       [
-                        m("span.shown[id='robots']",
-                          [
-                            glyph("cog", { style: { padding: 0 } }), m.trust("&nbsp;"), "Þjarkar"
-                          ]
-                        ),
-                        m("span[id='fav']",
-                          [
-                            glyph("star", { style: { padding: 0 } }), m.trust("&nbsp;"), "Uppáhalds"
-                          ]
-                        ),
-                        m("span[id='live']",
-                          [
-                            glyph("flash", { style: { padding: 0 } }), m.trust("&nbsp;"), "Álínis"
-                          ]
-                        ),
-                        m("span[id='alike']",
-                          [
-                            glyph("resize-small", { style: { padding: 0 } }), m.trust("&nbsp;"), "Svipaðir"
-                          ]
-                        ),
-                        m("span[id='elo']",
-                          [
-                            glyph("crown", { style: { padding: 0 } }), m.trust("&nbsp;"), "Topp 100"
-                          ]
-                        )
+                        vwUserButton("robots", "cog", "Þjarkar", "shown"),
+                        vwUserButton("fav", "star", "Uppáhalds"),
+                        vwUserButton("live", "flash", "Álínis"),
+                        vwUserButton("alike", "resize-small", "Svipaðir"),
+                        vwUserButton("elo", "crown", "Topp 100")
                       ]
                     ),
                     m(".user-cat[id='user-search']",
@@ -1239,11 +1246,11 @@ function createView() {
                         glyph("search", { id: 'search' }),
                         m("input.text.userid",
                           {
-                            id: 'search-id',
-                            maxlength: 16,
-                            name: 'search-id',
-                            placeholder: 'Einkenni eða nafn',
                             type: 'text',
+                            id: 'search-id',
+                            name: 'search-id',
+                            maxlength: 16,
+                            placeholder: 'Einkenni eða nafn',
                             value: ''
                           }
                         )
@@ -1367,7 +1374,7 @@ function createView() {
         m("h3.clockright"),
         m(".clockface", glyph("time")),
         m(".fairplay",
-          fairplay ? { style: "display:block" } : { },
+          fairplay ? { style: { display: "block" } } : { },
           m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
       ]
     );
@@ -1571,11 +1578,19 @@ function createView() {
         m(".chat-area", { id: 'chat-area' }, chatMessages()),
         m(".chat-input",
           [
-            m("input.chat-txt[id='msg'][maxlength='254'][name='msg'][type='text']",
-              { oncreate: focus, onupdate: focus }),
+            m("input.chat-txt",
+              {
+                type: "text",
+                id: "msg",
+                name: "msg",
+                maxlength: 254,
+                oncreate: focus,
+                onupdate: focus
+              }
+            ),
             m(".modal-close[id='chat-send'][title='Senda']",
-              { onclick:
-                function() {
+              {
+                onclick: function(ev) {
                   if (game) {
                     game.sendMessage("game:" + game.uuid, getInput("msg"));
                     setInput("msg", "");
@@ -1774,7 +1789,7 @@ function createView() {
         [
           m("span.total", leftTotal),
           m("span.score" + (move.highlighted ? ".highlight" : ""), score),
-          m("span." + wrdclass, [ m("i", tiles), co ])
+          m("span." + wrdclass, [ m("i", tiles), nbsp(), co ])
         ]
       );
     }
@@ -1782,7 +1797,7 @@ function createView() {
       // Move by right side player
       return m(".move.rightmove." + cls, attribs,
         [
-          m("span." + wrdclass, [ co, m("i", tiles) ]),
+          m("span." + wrdclass, [ co, nbsp(), m("i", tiles) ]),
           m("span.score" + (move.highlighted ? ".highlight" : ""), score),
           m("span.total", rightTotal)
         ]
@@ -1832,7 +1847,7 @@ function createView() {
                   m(".at-top-left", m(".tilecount", m(".oc", opp))),
                   m(".at-top-left",
                     m(".tilecount.trans",
-                      m(".tc" + winLose, { style: "width:" + item.tile_count.toString() + "%" }, opp)
+                      m(".tc" + winLose, { style: { width: item.tile_count.toString() + "%" } }, opp)
                     )
                   )
                 ]
@@ -1921,7 +1936,7 @@ function createView() {
     return m(".modal-dialog",
       {
         id: 'blank-dialog',
-        style: "visibility: visible"
+        style: { visibility: visible }
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
         [
@@ -2242,7 +2257,7 @@ function createView() {
       r.push(vwScore(game));
     // Is the server processing a move?
     if (game.moveInProgress)
-      r.push(m(".waitmove", { style: "display:block" }));
+      r.push(m(".waitmove", { style: { display: "block" } }));
     return r;
   }
 
@@ -2275,7 +2290,7 @@ function createView() {
     };
 
     if (game.currentError in errorMessages) {
-      return m(".error", { style: "visibility: visible" },
+      return m(".error", { style: { visibility: "visible" } },
         [
           glyph("exclamation-sign"),
           errorMessages[game.currentError]
@@ -2291,14 +2306,14 @@ function createView() {
     if (game.showingDialog === null)
       return r;
     if (game.showingDialog == "chall-info")
-      r.push(m(".chall-info", { style: "visibility: visible" },
+      r.push(m(".chall-info", { style: { visibility: "visible" } },
         [
           glyph("info-sign"), nbsp(),
           m("span.pass-explain", "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass")
         ]
       ));
     if (game.showingDialog == "resign")
-      r.push(m(".resign", { style: "visibility: visible" },
+      r.push(m(".resign", { style: { visibility: "visible" } },
         [
           glyph("exclamation-sign"), nbsp(), "Viltu gefa leikinn?", nbsp(),
           m("span.mobile-break", m("br")),
@@ -2312,7 +2327,7 @@ function createView() {
         ]
       ));
     if (game.showingDialog == "pass")
-      r.push(m(".pass", { style: "visibility: visible" },
+      r.push(m(".pass", { style: { visibility: "visible" } },
         [
           glyph("forward"), nbsp(), "Segja pass?",
           m("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
@@ -2327,7 +2342,7 @@ function createView() {
         ]
       ));
     if (game.showingDialog == "pass-last")
-      r.push(m(".pass-last", { style: "visibility: visible" },
+      r.push(m(".pass-last", { style: { visibility: "visible" } },
         [
           glyph("forward"), nbsp(), "Segja pass?",
           m("span.pass-explain", "Viðureign lýkur þar með"),
@@ -2343,7 +2358,7 @@ function createView() {
         ]
       ));
     if (game.showingDialog == "exchange")
-      r.push(m(".exchange", { style: "visibility: visible" },
+      r.push(m(".exchange", { style: { visibility: "visible" } },
         [
           glyph("refresh"), nbsp(),
           "Smelltu á flísarnar sem þú vilt skipta", nbsp(),
@@ -2356,7 +2371,7 @@ function createView() {
         ]
       ));
     if (game.showingDialog == "chall")
-      r.push(m(".chall", { style: "visibility: visible" },
+      r.push(m(".chall", { style: { visibility: "visible" } },
         [
           glyph("ban-circle"), nbsp(), "Véfengja lögn?",
           m("span.pass-explain", "Röng véfenging kostar 10 stig"), nbsp(),
@@ -2687,13 +2702,15 @@ function buttonOut(ev) {
 function glyph(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon, attrs); }
 function glyphGrayed(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs); }
 
+var _NBSP = m.trust("&nbsp;");
+
 // Utility function: inserts non-breaking space
 function nbsp(n) {
   if (!n || n == 1)
-    return m.trust("&nbsp;");
+    return _NBSP;
   var r = [];
   for (var i = 0; i < n; i++)
-    r.push(m.trust("&nbsp;"));
+    r.push(_NBSP);
   return r;
 }
 

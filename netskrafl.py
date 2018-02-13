@@ -116,6 +116,68 @@ def stripwhite(s):
     return re.sub(r'\s+', ' ', s)
 
 
+class RequestData:
+
+    """ Wraps the Flask request object to allow error-checked retrieval of query
+        parameters either from JSON or from form-encoded POST data """
+
+    _TRUE_SET = frozenset(("true", "True", u"true", u"True", "1", 1, True))
+    _FALSE_SET = frozenset(("false", "False", u"false", u"False", "0", 0, False))
+
+    def __init__(self, request):
+        # If JSON data is present, assume this is a JSON request
+        self.q = request.get_json(silent = True)
+        self.using_json = True
+        if not self.q:
+            # No JSON data: assume this is a form-encoded request
+            self.q = request.form
+            self.using_json = False
+            if not self.q:
+                self.q = dict()
+
+    def get(self, key, default = None):
+        """ Obtain an arbitrary data item from the request """
+        return self.q.get(key, default)
+
+    def get_int(self, key, default = 0):
+        """ Obtain an integer data item from the request """
+        try:
+            return int(self.q.get(key, default))
+        except TypeError, ValueError:
+            return default
+
+    def get_bool(self, key, default = False):
+        """ Obtain a boolean data item from the request """
+        try:
+            val = self.q.get(key, default)
+            if val in self._TRUE_SET:
+                # This is a truthy value
+                return True
+            if val in self._FALSE_SET:
+                # This is a falsy value
+                return False
+        except TypeError, ValueError:
+            pass
+        # Something else, i.e. neither truthy nor falsy: return the default
+        return default
+
+    def get_list(self, key, default = []):
+        """ Obtain a list data item from the request """
+        if self.using_json:
+            # Normal get from a JSON dictionary
+            r = self.q.get(key, default)
+        else:
+            # Use special getlist() call on request.form object
+            r = self.q.getlist(key + "[]")
+        if not isinstance(r, list):
+            return default
+        return r
+
+    def __getitem__(self, key):
+        """ Shortcut: allow indexing syntax with an empty (Unicode) string default """
+        return self.q.get(key, u"")
+
+
 def _process_move(game, movelist):
     """ Process a move coming in from the client """
 
@@ -736,24 +798,11 @@ def submitmove():
     if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    movelist = []
-    movecount = 0
-    uuid = None
-    if request.method == 'POST':
-        # This URL should only receive Ajax POSTs from the client
-        j = request.get_json(silent = True)
-        try:
-            # The new move (as a list of covers)
-            try:
-                movelist = j["moves"]
-                movecount = j["mcount"]
-                uuid = j["uuid"]
-            except TypeError, KeyError:
-                movelist = request.form.getlist('moves[]')
-                movecount = int(request.form.get('mcount', 0))
-                uuid = request.form.get('uuid', None)
-        except:
-            pass
+    # This URL should only receive Ajax POSTs from the client
+    rq = RequestData(request)
+    movelist = rq.get_list("moves")
+    movecount = rq.get_int("mcount")
+    uuid = rq.get("uuid")
 
     game = None if uuid is None else Game.load(uuid, use_cache = False)
 
@@ -795,15 +844,8 @@ def submitmove():
 def gamestate():
     """ Returns the current state of a game """
 
-    j = request.get_json(silent=True)
-    try:
-        uuid = j["game"]
-    except TypeError, KeyError:
-        # Fall back to form encoding
-        uuid = request.form.get("game", None)
-    except:
-        logging.warning("Unable to parse incoming request in /gamestate")
-        uuid = None
+    rq = RequestData(request)
+    uuid = rq.get("game")
 
     user_id = User.current_id()
     game = Game.load(uuid) if uuid and user_id else None
@@ -829,7 +871,9 @@ def forceresign():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    uuid = request.form.get('game', None)
+    rq = RequestData(request)
+    uuid = rq.get("game")
+    movecount = rq.get_int("mcount", -1)
 
     game = None if uuid is None else Game.load(uuid, use_cache = False)
 
@@ -839,11 +883,6 @@ def forceresign():
     # Only the user who is the opponent of the tardy user can force a resign
     if game.player_id(1 - game.player_to_move()) != User.current_id():
         return jsonify(result = Error.WRONG_USER)
-
-    try:
-        movecount = int(request.form.get('mcount', "0"))
-    except:
-        movecount = -1
 
     # Make sure the client is in sync with the server:
     # check the move count
@@ -865,22 +904,9 @@ def wordcheck():
         # If no user is logged in, we always return False
         return jsonify(ok = False)
 
-    words = []
-    word = u""
-    if request.method == 'POST':
-        # This URL should only receive Ajax POSTs from the client
-        j = request.get_json(silent = True)
-        try:
-            try:
-                # The words to check
-                words = j["words"]
-                # The original word laid down (used as a sync token)
-                word = j["word"]
-            except TypeError, KeyError:
-                words = request.form.getlist('words[]')
-                word = request.form.get('word', u"")
-        except:
-            pass
+    rq = RequestData(request)
+    words = rq.get_list("words")
+    word = rq["word"]
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -892,7 +918,8 @@ def wordcheck():
 def gamestats():
     """ Calculate and return statistics on a given finished game """
 
-    uuid = request.form.get('game', None)
+    rq = RequestData(request)
+    uuid = rq.get('game')
     game = None
 
     if uuid is not None:
@@ -916,7 +943,8 @@ def userstats():
     if not cid:
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    uid = request.form.get('user', cid) # Current user is implicit
+    rq = RequestData(request)
+    uid = rq.get('user', cid) # Current user is implicit
     user = None
 
     if uid is not None:
@@ -950,8 +978,9 @@ def userlist():
     if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    query = request.form.get('query', None)
-    spec = request.form.get('spec', None)
+    rq = RequestData(request)
+    query = rq.get('query')
+    spec = rq.get('spec')
 
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for user lists anyway)
@@ -965,10 +994,10 @@ def gamelist():
     """ Return a list of active games for the current user """
 
     # Specify "zombies":false to omit zombie games from the returned list
-    include_zombies = bool(request.form.get('zombies', True))
+    rq = RequestData(request)
+    include_zombies = rq.get_bool('zombies', True)
     # _gamelist() returns an empty list if no user is logged in
     cuid = User.current_id()
-
     return jsonify(result = Error.LEGAL,
         gamelist = _gamelist(cuid, include_zombies))
 
@@ -980,7 +1009,8 @@ def rating():
     if not User.current_id():
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    kind = request.form.get('kind', 'all')
+    rq = RequestData(request)
+    kind = rq.get('kind', 'all')
 
     return jsonify(result = Error.LEGAL, rating = _rating(kind))
 
@@ -989,13 +1019,10 @@ def rating():
 def recentlist():
     """ Return a list of recently completed games for the indicated user """
 
-    user_id = request.form.get('user', None)
-    versus = request.form.get('versus', None)
-    count = 14 # Default number of recent games to return
-    try:
-        count = int(request.form.get('count', str(count)))
-    except:
-        pass
+    rq = RequestData(request)
+    user_id = rq.get('user')
+    versus = rq.get('versus')
+    count = rq.get_int("count", 14) # Default number of recent games to return
 
     # Limit count to 50 games
     if count > 50:
@@ -1028,8 +1055,9 @@ def favorite():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    destuser = request.form.get('destuser', None)
-    action = request.form.get('action', u"add")
+    rq = RequestData(request)
+    destuser = rq.get('destuser')
+    action = rq.get('action', u"add")
 
     if destuser is not None:
         if action == u"add":
@@ -1049,23 +1077,15 @@ def challenge():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    destuser = request.form.get('destuser', None)
-    action = request.form.get('action', u"issue")
-
-    duration = 0
-    try:
-        duration = int(request.form.get('duration', "0"))
-    except:
-        pass
-
-    fp = request.form.get('fairplay', None)
-    fairplay = fp and fp == u"true"
-
-    nb = request.form.get('newbag', None)
-    newbag = nb and nb == u"true"
-
-    mc = request.form.get('manual', None)
-    manual = mc and mc == u"true"
+    rq = RequestData(request)
+    destuser = rq.get('destuser')
+    if not destuser:
+        return jsonify(result = Error.WRONG_USER)
+    action = rq.get('action', u"issue")
+    duration = rq.get_int("duration")
+    fairplay = rq.get_bool('fairplay')
+    newbag = rq.get_bool('newbag')
+    manual = rq.get_bool('manual')
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -1073,23 +1093,22 @@ def challenge():
     elif duration > 90:
         duration = 90
 
-    if destuser is not None:
-        if action == u"issue":
-            user.issue_challenge(destuser,
-                { "duration": duration, "fairplay": fairplay,
-                    "newbag": newbag, "manual": manual })
-        elif action == u"retract":
-            user.retract_challenge(destuser)
-        elif action == u"decline":
-            # Decline challenge previously made by the destuser (really srcuser)
-            user.decline_challenge(destuser)
-        elif action == u"accept":
-            # Accept a challenge previously made by the destuser (really srcuser)
-            user.accept_challenge(destuser)
-        # Notify the destination user via a
-        # Firebase notification to /user/[user_id]/challenge
-        # main.html listens to this
-        firebase.send_update("user", destuser, "challenge")
+    if action == u"issue":
+        user.issue_challenge(destuser,
+            { "duration": duration, "fairplay": fairplay,
+                "newbag": newbag, "manual": manual })
+    elif action == u"retract":
+        user.retract_challenge(destuser)
+    elif action == u"decline":
+        # Decline challenge previously made by the destuser (really srcuser)
+        user.decline_challenge(destuser)
+    elif action == u"accept":
+        # Accept a challenge previously made by the destuser (really srcuser)
+        user.accept_challenge(destuser)
+    # Notify the destination user via a
+    # Firebase notification to /user/[user_id]/challenge
+    # main.html listens to this
+    firebase.send_update("user", destuser, "challenge")
 
     return jsonify(result = Error.LEGAL)
 
@@ -1103,45 +1122,24 @@ def setuserpref():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    j = request.get_json(silent=True)
-    if j is None:
-        # Fall back to form encoding
-        j = request.form.get("game", None)
+    rq = RequestData(request)
 
     # Check for the beginner preference and convert it to bool if we can
-    beginner = j.get('beginner', None)
+    beginner = rq.get_bool('beginner', None)
+    # Setting a new state for the beginner preference
     if beginner is not None:
-        if beginner == u"false":
-            beginner = False
-        elif beginner == u"true":
-            beginner = True
-
-    if beginner is not None and isinstance(beginner, bool):
-        # Setting a new state for the beginner preference
         user.set_beginner(beginner)
 
     # Check for the ready state and convert it to bool if we can
-    ready = j.get('ready', None)
+    ready = rq.get_bool('ready', None)
+    # Setting a new state for the ready preference
     if ready is not None:
-        if ready == u"false":
-            ready = False
-        elif ready == u"true":
-            ready = True
-
-    if ready is not None and isinstance(ready, bool):
-        # Setting a new state for the ready preference
         user.set_ready(ready)
 
     # Check for the ready_timed state and convert it to bool if we can
-    ready_timed = j.get('ready_timed', None)
+    ready_timed = rq.get_bool('ready_timed', None)
+    # Setting a new state for the ready_timed preference
     if ready_timed is not None:
-        if ready_timed == u"false":
-            ready_timed = False
-        elif ready_timed == u"true":
-            ready_timed = True
-
-    if ready_timed is not None and isinstance(ready_timed, bool):
-        # Setting a new state for the ready_timed preference
         user.set_ready_timed(ready_timed)
 
     user.update()
@@ -1157,12 +1155,11 @@ def onlinecheck():
         # We must have a logged-in user
         return jsonify(online = False)
 
-    user_id = request.form.get('user', None)
+    rq = RequestData(request)
+    user_id = rq.get('user')
     online = False
-
     if user_id is not None:
         online = firebase.check_presence(user_id)
-
     return jsonify(online = online)
 
 
@@ -1174,12 +1171,11 @@ def waitcheck():
         # We must have a logged-in user
         return jsonify(waiting = False)
 
-    opp_id = request.form.get('user', None)
+    rq = RequestData(request)
+    opp_id = rq.get('user')
     waiting = False
-
     if opp_id is not None:
         waiting = _opponent_waiting(User.current_id(), opp_id)
-
     return jsonify(userid = opp_id, waiting = waiting)
 
 
@@ -1191,8 +1187,9 @@ def cancelwait():
         # We must have a logged-in user
         return jsonify(ok = False)
 
-    user_id = request.form.get('user', None)
-    opp_id = request.form.get('opp', None)
+    rq = RequestData(request)
+    user_id = rq.get('user')
+    opp_id = rq.get('opp')
 
     if not user_id or not opp_id:
         return jsonify(ok = False)
@@ -1211,15 +1208,9 @@ def cancelwait():
 def chatmsg():
     """ Send a chat message on a conversation channel """
 
-    j = request.get_json(silent=True)
-    try:
-        channel = j["channel"]
-        msg = j["msg"]
-    except TypeError, KeyError:
-        channel = request.form.get("channel", u"")
-        msg = request.form.get('msg', u"")
-    except:
-        logging.warning("Unable to parse incoming request in /chatmsg")
+    rq = RequestData(request)
+    channel = rq["channel"]
+    msg = rq["msg"]
 
     user_id = User.current_id()
     if not user_id or not channel:
@@ -1258,13 +1249,8 @@ def chatmsg():
 def chatload():
     """ Load all chat messages on a conversation channel """
 
-    j = request.get_json(silent=True)
-    try:
-        channel = j["channel"]
-    except TypeError, KeyError:
-        channel = request.form.get("channel", u"")
-    except:
-        logging.warning("Unable to parse incoming request in /chatload")
+    rq = RequestData(request)
+    channel = rq["channel"]
 
     user_id = User.current_id()
     if not user_id or not channel:
@@ -1750,8 +1736,9 @@ def gameover():
         # We must have a logged-in user
         return jsonify(result = Error.LOGIN_REQUIRED)
 
-    game_id = request.form.get('game', None)
-    user_id = request.form.get('player', None)
+    rq = RequestData(request)
+    game_id = rq.get('game')
+    user_id = rq.get('player')
 
     if not game_id or cuid != user_id:
         # A user can only remove her own games from the zombie list
@@ -1800,7 +1787,8 @@ def promo():
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
-    key = request.form.get("key", "")
+    rq = RequestData(request)
+    key = rq.get("key", "")
     VALID_PROMOS = { "friend", "krafla" }
     if key not in VALID_PROMOS:
         key = "error"
@@ -1810,7 +1798,6 @@ def promo():
 @app.route("/signup", methods=['GET'])
 def signup():
     """ Sign up as a friend, enter card info, etc. """
-
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
