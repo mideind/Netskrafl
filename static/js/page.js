@@ -81,6 +81,10 @@ function createModel(settings) {
     gameList: null,
     // The current challenge list
     challengeList: null,
+    // Recent games
+    recentList: null,
+    // The user's own statistics
+    ownStats: null,
     // The current user information being edited, if any
     user: null,
     userErrors: null,
@@ -90,6 +94,8 @@ function createModel(settings) {
     loadGame: loadGame,
     loadGameList: loadGameList,
     loadChallengeList: loadChallengeList,
+    loadRecentList: loadRecentList,
+    loadOwnStats: loadOwnStats,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -144,6 +150,40 @@ function createModel(settings) {
         return;
       }
       this.challengeList = json.challengelist;
+    }.bind(this));
+  }
+
+  function loadRecentList() {
+    // Load the list of recent games for this user
+    this.recentList = []; // Prevent concurrent loading
+    m.request({
+      method: "POST",
+      url: "/recentlist",
+      data: { versus: null, count: 40 }
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        // An error occurred
+        this.recentList = null;
+        return;
+      }
+      this.recentList = json.recentlist;
+    }.bind(this));
+  }
+
+  function loadOwnStats() {
+    // Load the list of recent games for this user
+    m.request({
+      method: "POST",
+      url: "/recentlist"
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        // An error occurred
+        this.ownStats = null;
+        return;
+      }
+      this.ownStats = json;
     }.bind(this));
   }
 
@@ -753,13 +793,17 @@ function createView() {
     function vwMainTabs() {
 
       function vwMainTabHeader() {
+        var numGames = !model.gameList ? 0 : model.gameList.length;
         return m("ul",
           [
             m("li", 
               m("a[href='#tabs-1']",
                 [
                   glyph("th"), m("span.tab-legend", "Viðureignir"),
-                  m("span[id='numgames']", "0")
+                  m("span",
+                    { id: 'numgames', style: numGames ? 'display: inline-block' : '' },
+                    numGames
+                  )
                 ]
               )
             ),
@@ -822,7 +866,9 @@ function createView() {
                   turnText = item.opp + " á leik";
                   flagClass = ".grayed";
                 }
-                return m("span.list-myturn", m("span.glyphicon.glyphicon-flag" + flagClass, { title: turnText }));
+                return m("span.list-myturn",
+                  m("span.glyphicon.glyphicon-flag" + flagClass, { title: turnText })
+                );
               }
 
               function vwOverdue() {
@@ -1163,27 +1209,27 @@ function createView() {
                       [
                         m("span.shown[id='robots']",
                           [
-                            glyph("cog", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Þjarkar"
+                            glyph("cog", { style: { padding: 0 } }), m.trust("&nbsp;"), "Þjarkar"
                           ]
                         ),
                         m("span[id='fav']",
                           [
-                            glyph("star", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Uppáhalds"
+                            glyph("star", { style: { padding: 0 } }), m.trust("&nbsp;"), "Uppáhalds"
                           ]
                         ),
                         m("span[id='live']",
                           [
-                            glyph("flash", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Álínis"
+                            glyph("flash", { style: { padding: 0 } }), m.trust("&nbsp;"), "Álínis"
                           ]
                         ),
                         m("span[id='alike']",
                           [
-                            glyph("resize-small", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Svipaðir"
+                            glyph("resize-small", { style: { padding: 0 } }), m.trust("&nbsp;"), "Svipaðir"
                           ]
                         ),
                         m("span[id='elo']",
                           [
-                            glyph("crown", { style: { "padding": "0" } }), m.trust("&nbsp;"), "Topp 100"
+                            glyph("crown", { style: { padding: 0 } }), m.trust("&nbsp;"), "Topp 100"
                           ]
                         )
                       ]
