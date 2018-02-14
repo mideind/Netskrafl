@@ -83,6 +83,9 @@ function createModel(settings) {
     challengeList: null,
     // Recent games
     recentList: null,
+    // The currently displayed user list
+    userListCriteria: null,
+    userList: null,
     // The user's own statistics
     ownStats: null,
     // The current user information being edited, if any
@@ -100,7 +103,7 @@ function createModel(settings) {
     loadUser: loadUser,
     saveUser: saveUser,
     modifyChallenge: modifyChallenge,
-    addChatMessage: addChatMessage
+    addChatMessage: addChatMessage,
   };
 
   function loadGame(uuid) {
@@ -172,6 +175,26 @@ function createModel(settings) {
     }.bind(this));
   }
 
+  function loadUserList(criteria) {
+    // Load a list of users according to the given criteria
+    this.userListCriteria = undefined; // Marker to prevent concurrent loading
+    m.request({
+      method: "POST",
+      url: "/userlist",
+      data: criteria
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        // An error occurred
+        this.userList = null;
+        this.userListCriteria = null;
+        return;
+      }
+      this.userList = json.userlist;
+      this.userListCriteria = criteria;
+    }.bind(this));
+  }
+
   function loadOwnStats() {
     // Load the list of recent games for this user
     m.request({
@@ -223,7 +246,7 @@ function createModel(settings) {
     }.bind(this));
   }
 
-  function saveUser(from_url) {
+  function saveUser(successFunc) {
     // Update the preferences of the currently logged in user, if any
     m.request({
       method: "POST",
@@ -236,10 +259,13 @@ function createModel(settings) {
         // update the state variables that we're caching
         $state.userNick = this.user.nickname;
         $state.beginner = this.user.beginner;
+        // Complete: call success function
+        if (successFunc !== undefined)
+          successFunc();
         // Reset errors
         this.userErrors = null;
-        // Dismiss the user dialog and go back to original route
-        m.route.set(from_url);
+        // Ensure that a fresh instance is loaded next time
+        this.user = null;
       }
       else {
         // Error saving user prefs: show details, if available
@@ -269,181 +295,79 @@ function createModel(settings) {
 
 }
 
-function createActions(model) {
-
-  initMediaListener();
-  initFirebaseListener();
-  return {
-    onNavigateTo: onNavigateTo,
-    onFullScreen: onFullScreen,
-    onMobileScreen: onMobileScreen,
-    onMoveMessage: onMoveMessage,
-    onChatMessage: onChatMessage
-  };
-
-  function onNavigateTo(routeName, params) {
-    // We have navigated to a new route
-    model.routeName = routeName;
-    model.params = params;
-    if (routeName == "game") {
-      // New game route: load the game into the model
-      model.loadGame(params.uuid);
-      if (model.game !== null)
-        attachListenerToGame(params.uuid);
-    }
-    else
-    if (routeName == "userprefs") {
-      // Make sure that the current user's preferences are loaded
-      model.loadUser();
-    }
-    else
-    if (routeName == "help") {
-      // Make sure that the help HTML is loaded upon first use
-      model.loadHelp();
-    }
-    else
-    if (routeName == "main") {
-      if (model.challengeList === null)
-        model.loadChallengeList();
-    }
-    else {
-      // Not a game route: delete the previously loaded game, if any
-      model.game = null;
-      // !!! TBD: Disconnect Firebase listeners
-    }
-  }
-
-  function onMoveMessage(json) {
-
-  }
-
-  function onChatMessage(json) {
-    // Handle an incoming chat message
-    if (json.from_userid != $state.userId) {
-      // The message is from the remote user
-      // Put an alert on the chat tab if it is not selected
-      /*
-      if (markChatMsg()) {
-         // The message was seen: inform the server
-         sendChatSeenMarker();
-      }
-      */
-    }
-    model.addChatMessage(json.from_userid, json.msg, json.ts);
-  }
-
-  function onFullScreen() {
-    // Take action when min-width exceeds 768
-    $state.uiFullscreen = true;
-    // !!! TBD
-    m.redraw();
-  }
-
-  function onMobileScreen () {
-    $state.uiFullscreen = false;
-    // !!! TBD
-    m.redraw();
-  }
-
-  function mediaMinWidth667(mql) {
-     if (mql.matches) {
-        // Take action when min-width exceeds 667
-        // (usually because of rotation from portrait to landscape)
-        // The board tab is not visible, so the movelist is default
-        $state.uiLandscape = true;
-        // !!! TBD
-     }
-     else {
-        // min-width is below 667
-        // (usually because of rotation from landscape to portrait)
-        // Make sure the board tab is selected
-        $state.uiLandscape = false;
-        // !!! TBD
-     }
-  }
-
-  function mediaMinWidth768(mql) {
-    if (mql.matches) {
-      onFullScreen();
-    }
-    else {
-      onMobileScreen();
-    }
-  }
-
-  function initMediaListener() {
-     // Install listener functions for media changes
-     var mql;
-     mql = window.matchMedia("(min-width: 667px)");
-     if (mql) {
-        mediaMinWidth667(mql);
-        mql.addListener(mediaMinWidth667);
-     }
-     mql = window.matchMedia("(min-width: 768px)");
-     if (mql) {
-        mediaMinWidth768(mql);
-        mql.addListener(mediaMinWidth768);
-     }
-  }
-
-  function initFirebaseListener() {
-    // Sign into Firebase with the token passed from the server
-    loginFirebase($state.firebaseToken);
-  }
-
-  function attachListenerToGame(uuid) {
-    // Listen to Firebase events on the /game/[gameId]/[userId] path
-    var basepath = 'game/' + uuid + "/" + $state.userId + "/";
-    // New moves
-    attachFirebaseListener(basepath + "move", onMoveMessage);
-    // New chat messages
-    attachFirebaseListener(basepath + "chat", onChatMessage);
-    // Listen to Firebase events on the /user/[userId] path
-    // attachFirebaseListener('user/' + userId(), handleUserMessage);
-  }
-
-}
-
-function createRouteResolver(model, actions, view) {
-  return model.paths.reduce(function(acc, item) {
-    acc[item.route] = {
-      onmatch: function(params, route) {
-        actions.onNavigateTo(item.name, params);
-      },
-      render: function() {
-        return view(model, actions);
-      }
-    };
-    return acc;
-  }, {});
-}
-
 function createView() {
 
   // Start a blinker interval function
   window.setInterval(blinker, 500);
-  // Return a single view function for the app
-  return vwApp;
+
+  // The view interface exposes only the vwApp view function.
+  // Additionally, a view instance has a current dialog window stack.
+  return {
+    appView: vwApp,
+    dialogStack: [],
+    pushDialog: pushDialog,
+    popDialog: popDialog,
+    isDialogShown: isDialogShown
+  };
 
   function vwApp(model, actions) {
     // Select the view based on the current route
+    // Map of available dialogs
+    var dialogViews = {
+      userprefs : function(model, actions) { return vwUserPrefs.call(this, model, actions); }
+    };
+    // Display the appropriate content for the route,
+    // also considering active dialogs
+    var views = [];
     switch (model.routeName) {
       case "login":
-        return vwLogin(model, actions);
+        views.push(vwLogin.call(this, model, actions));
+        break;
       case "main":
-        return vwMain(model, actions);
+        views.push(vwMain.call(this, model, actions));
+        break;
       case "game":
-        return vwGame(model, actions);
+        views.push(vwGame.call(this, model, actions));
+        break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
         // A route parameter of ?tab=N goes directly to tab N (0-based)
-        return vwHelp(model, actions, m.route.param("tab"), m.route.param("q"));
+        views.push(vwHelp.call(this, model, actions, m.route.param("tab"), m.route.param("q")));
+        break;
       case "userprefs":
-        return vwUserPrefs(model, actions, m.route.param("f"));
+        views.push(vwUserPrefs.call(this, model, actions, m.route.param("f")));
+        break;
       default:
         console.log("Unknown route name: " + model.routeName);
         return m("div", "Þessi vefslóð er ekki rétt");
     }
+    // Push any open dialogs
+    for (var i = 0; i < this.dialogStack.length; i++) {
+      var dialog = this.dialogStack[i];
+      if (dialogViews[dialog] === undefined)
+        console.log("Unknown dialog name: " + dialog);
+      else
+        views.push(dialogViews[dialog].call(this, model, actions));
+    }
+    return views;
+  }
+
+  // Dialog support
+
+  function pushDialog(dialogName) {
+    this.dialogStack.push(dialogName);
+    m.redraw(); // Ensure that the dialog is shown
+  }
+
+  function popDialog() {
+    if (this.dialogStack.length > 0) {
+      this.dialogStack.pop();
+      m.redraw();
+    }
+  }
+
+  function isDialogShown() {
+    return this.dialogStack.length > 0;
   }
 
   // Globally available controls
@@ -455,17 +379,17 @@ function createView() {
     );
   }
 
-  function vwUserId() {
+  function vwUserId(model) {
     // User identifier at top right, opens user preferences
     var from_url = m.route.get();
     return m(".userid",
       {
         title: "Upplýsingar um leikmann",
-        onclick: function(ev)
-          {
-            m.route.set('/userprefs', { f: this });
-            ev.preventDefault();
-          }.bind(from_url)
+        onclick: function(ev) {
+          // Overlay the userprefs dialog
+          this.pushDialog("userprefs");
+          ev.preventDefault();
+        }.bind(this)
       },
       [ glyph("address-book"), nbsp(), $state.userNick ]
     );
@@ -498,12 +422,13 @@ function createView() {
   // A control that rigs up a tabbed view of raw HTML
 
   function vwTabsFromHtml(html, id, createFunc) {
-
+    // The function assumes that 'this' is the current view object
     if (!html)
       return "";
+    var view = this;
     return m("div",
       {
-        oncreate: makeTabs.bind(null, id, createFunc, true),
+        oncreate: makeTabs.bind(view, id, createFunc, true),
         onupdate: updateSelection
       },
       m.trust(html)
@@ -545,8 +470,8 @@ function createView() {
     // Output literal HTML obtained from rawhelp.html on the server
     return [
       vwLogo(),
-      vwUserId(),
-      vwTabsFromHtml(model.helpHTML, "tabs", wireQuestions)
+      vwUserId.call(this, model),
+      vwTabsFromHtml.call(this, model.helpHTML, "tabs", wireQuestions)
     ];
   }
 
@@ -556,6 +481,7 @@ function createView() {
 
     var user = model.user;
     var err = model.userErrors || { };
+    var view = this;
 
     function vwErrMsg(propname) {
       // Show a validation error message returned from the server
@@ -632,7 +558,12 @@ function createView() {
       user.beginner = getToggle("beginner");
       user.newbag = getToggle("newbag");
       user.fairplay = getToggle("fairplay");
-      model.saveUser(from_url);
+      if (from_url)
+        // When done, navigate back to the from_url path
+        model.saveUser(function() { m.route.set(this); }.bind(from_url));
+      else
+        // When done, pop the current dialog
+        model.saveUser(function() { this.popDialog(); }.bind(view));
     }
 
     function initFocus(vnode) {
@@ -643,8 +574,8 @@ function createView() {
     return m(".modal-dialog",
       {
         id: 'user-dialog',
-        oncreate: initFocus,
-        onupdate: initFocus
+        oncreate: initFocus
+        // onupdate: initFocus
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'user-form' },
         [
@@ -655,16 +586,12 @@ function createView() {
                 m(".dialog-spacer",
                   [
                     m("span.caption", "Einkenni:"),
-                    m("input.text.username",
+                    m(TextInput,
                       {
-                        // autofocus: '',
-                        id: 'nickname',
+                        initialValue: user.nickname || "",
+                        class: "username",
                         maxlength: 15,
-                        name: 'nickname',
-                        required: true,
-                        tabindex: 1,
-                        type: 'text',
-                        value: user.nickname || ""
+                        id: "nickname"
                       }
                     ),
                     nbsp(),
@@ -676,14 +603,12 @@ function createView() {
                 m(".dialog-spacer",
                   [
                     m("span.caption", "Fullt nafn:"),
-                    m("input.text.fullname",
+                    m(TextInput,
                       {
-                        id: 'full_name',
+                        initialValue: user.full_name || "",
+                        class: "fullname",
                         maxlength: 32,
-                        name: 'full_name',
-                        tabindex: 2,
-                        type: 'text',
-                        value: user.full_name || ""
+                        id: "full_name"
                       }
                     )
                   ]
@@ -693,14 +618,12 @@ function createView() {
                 m(".dialog-spacer",
                   [
                     m("span.caption", "Tölvupóstfang:"),
-                    m("input.text.email",
+                    m(TextInput,
                       {
-                        id: 'email',
+                        initialValue: user.email || "",
+                        class: "email",
                         maxlength: 32,
-                        name: 'email',
-                        tabindex: 3,
-                        type: 'text',
-                        value: user.email || ""
+                        id: "email"
                       }
                     )
                   ]
@@ -773,7 +696,15 @@ function createView() {
           ),
           vwDialogButton("user-ok", "Vista", validate, glyph("ok"), 9),
           vwDialogButton("user-cancel", "Hætta við",
-            function(ev) { m.route.set(from_url || "/main"); ev.preventDefault(); },
+            function(from_url, ev) {
+              if (from_url === undefined)
+                // No from_url: assume this is a dialog on the view stack; pop it
+                this.popDialog();
+              else
+                // A from_url path is given: navigate to it
+                m.route.set(from_url || "/main");
+              ev.preventDefault();
+            }.bind(view, from_url),
             glyph("remove"), 10),
           vwDialogButton("user-logout", "Skrá mig út",
             function(ev) { location.href = user.logout_url; ev.preventDefault(); },
@@ -795,8 +726,8 @@ function createView() {
 
   function vwUserPrefs(model, actions, from_url) {
     if (model.user)
-      return vwUserPrefsDialog(model, from_url);
-    return m("span", "Sæki upplýsingar um notanda...");
+      return vwUserPrefsDialog.call(this, model, from_url);
+    return m("span", { oninit: function(vnode) { model.loadUser(); } }, "Sæki upplýsingar um notanda...");
   }
 
   // Main screen
@@ -1124,6 +1055,86 @@ function createView() {
       }
 
       function vwRecentList() {
+
+        function vwList() {
+
+          function itemize(item, i) {
+
+            // Generate a list item about a recently completed game
+
+            function durationDescription() {
+              // Format the game duration
+              var duration = "";
+              if (item.duration === 0) {
+                 if (item.days || item.hours || item.minutes) {
+                    if (item.days > 1)
+                       duration = item.days.toString() + " dagar";
+                    else
+                    if (item.days == 1)
+                       duration = "1 dagur";
+                    if (item.hours > 0) {
+                       if (duration.length)
+                          duration += " og ";
+                       duration += item.hours.toString() + " klst";
+                    }
+                    if (item.days === 0) {
+                       if (duration.length)
+                          duration += " og ";
+                       if (item.minutes == 1)
+                          duration += "1 mínúta";
+                       else
+                          duration += item.minutes.toString() + " mínútur";
+                    }
+                 }
+              }
+              else
+                 // This was a timed game
+                 duration = m("span.timed-btn",
+                    { title: 'Viðureign með klukku' },
+                    " 2 x " + item.duration + " mínútur"
+                  );
+              return duration;
+            }
+
+            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+              m("a",
+                // Clicking on the link opens up the game
+                { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
+                [
+                  m("span.list-win",
+                    (item.sc0 >= item.sc1) ? glyph("bookmark") : glyphGrayed("bookmark")
+                  ),
+                  m("span.list-ts-short", item.ts_last_move),
+                  m("span.list-nick",
+                    item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
+                  ),
+                  m("span.list-s0", item.sc0),
+                  m("span.list-colon", ":"),
+                  m("span.list-s1", item.sc1),
+                  m("span.list-elo-adj", ""),
+                  m("span.list-elo-adj", ""),
+                  m("span.list-duration", durationDescription()),
+                  m("span.list-manual",
+                    item.manual ? { title: "Keppnishamur" } : { },
+                    item.manual ? glyph("lightbulb") : glyphGrayed("lightbulb")
+                  )
+                ]
+              )
+            );
+          }
+
+          return m("div",
+            {
+              id: "recentlist",
+              oninit: function(vnode) {
+                if (model.recentList === null)
+                  model.loadRecentList();
+              }
+            },
+            model.recentList ? model.recentList.map(itemize) : ""
+          );
+        }
+
         return [
           m(".listitem.listheader",
             [
@@ -1142,7 +1153,7 @@ function createView() {
               m("span.list-manual", glyphGrayed("lightbulb", { title: 'Keppnishamur' }))
             ]
           ),
-          m("div", { id: 'recentlist' })
+          vwList()
         ];
       }
 
@@ -1150,6 +1161,47 @@ function createView() {
         return m("span" + (cls ? "." + cls : ""),  { id: id },
           [ glyph(icon, { style: { padding: 0 } }), nbsp(), text ]
         );
+      }
+
+      function vwUserList() {
+        return [
+          m(".listitem.listheader[id='usr-hdr']",
+            [
+              m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+              m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
+              m("span.list-nick", "Einkenni"),
+              m("span.list-fullname", "Nafn og merki"),
+              m("span.list-human-elo[id='usr-list-elo']", "Elo"),
+              m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
+              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+            ]
+          ),
+          m(".listitem.listheader[id='elo-hdr']",
+            [
+              m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+              m("span.list-rank", "Röð"),
+              m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
+              m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
+              m("span.list-nick-elo", "Einkenni"),
+              m("span.list-elo[title='Elo-stig']", "Elo"),
+              m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
+              m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
+              m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
+              m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
+              m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
+              m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
+              m("span.list-info-hdr", "Ferill"),
+              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
+              m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+                [
+                  m(".option.x-small[id='opt1']", glyph("user")),
+                  m(".option.x-small[id='opt2']", glyph("cog"))
+                ]
+              )
+            ]
+          ),
+          m("div", { id: 'userlist' })
+        ];
       }
 
       return m(".tabbed-page",
@@ -1258,42 +1310,7 @@ function createView() {
                     )
                   ]
                 ),
-                m(".listitem.listheader[id='usr-hdr']",
-                  [
-                    m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-                    m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
-                    m("span.list-nick", "Einkenni"),
-                    m("span.list-fullname", "Nafn og merki"),
-                    m("span.list-human-elo[id='usr-list-elo']", "Elo"),
-                    m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
-                    m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
-                  ]
-                ),
-                m(".listitem.listheader[id='elo-hdr']",
-                  [
-                    m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-                    m("span.list-rank", "Röð"),
-                    m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
-                    m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
-                    m("span.list-nick-elo", "Einkenni"),
-                    m("span.list-elo[title='Elo-stig']", "Elo"),
-                    m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
-                    m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
-                    m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
-                    m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
-                    m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
-                    m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
-                    m("span.list-info-hdr", "Ferill"),
-                    m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
-                    m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
-                      [
-                        m(".option.x-small[id='opt1']", glyph("user")),
-                        m(".option.x-small[id='opt2']", glyph("cog"))
-                      ]
-                    )
-                  ]
-                ),
-                m("[id='userlist']"),
+                vwUserList(),
                 m("[id='user-load']"),
                 m("[id='user-no-match']",
                   [
@@ -1310,11 +1327,11 @@ function createView() {
     return m("main",
       [
         vwLogo(),
-        vwUserId(),
+        vwUserId.call(this, model),
         vwInfo(),
         m("div",
           {
-            oncreate: makeTabs.bind(null, "tabs", undefined, false),
+            oncreate: makeTabs.bind(this, "tabs", undefined, false),
             onupdate: updateSelection
           },
           vwMainTabs()
@@ -1327,7 +1344,117 @@ function createView() {
 
   function vwGame(model, actions) {
     // A view of a game, in-progress or finished
+
     var game = model.game;
+    var view = this;
+
+    function vwRightColumn() {
+      // A container for the right-side header and area components
+
+      function vwRightHeading() {
+        // The right-side heading on the game screen
+
+        function vwPlayerName(side) {
+          // Displays a player name, handling both human and robot players
+          // as well as left and right side, and local and remote colors
+          var apl0 = game && game.autoplayer[0];
+          var apl1 = game && game.autoplayer[1];
+          var nick0 = game ? game.nickname[0] : "";
+          var nick1 = game ? game.nickname[1] : "";
+          var player = game ? game.player : 0;
+          var localturn = game ? game.localturn : false;
+          var tomove;
+
+          function lookAtPlayer(player, side, ev) {
+            if (player === 0 || player === 1) {
+              if (player == side) {
+                // The player is clicking on himself:
+                // overlay a user preference dialog
+                view.pushDialog("userprefs");
+              }
+              else {
+                // The player is clicking on the opponent:
+                // show the opponent's track record
+                // !!! TBD
+              }
+            }
+            ev.preventDefault();
+          }
+
+          if (side == "left") {
+            // Left side player
+            if (apl0)
+              // Player 0 is a robot (autoplayer)
+              return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
+            tomove = (localturn ^ (player === 0)) ? "" : ".tomove";
+            return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
+              { id: "player-0", onclick: lookAtPlayer.bind(null, player, 0) },
+              [ m("span.left-to-move"), nick0 ]
+            );
+          }
+          else {
+            // Right side player
+            if (apl1)
+              // Player 1 is a robot (autoplayer)
+              return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
+            tomove = (localturn ^ (player === 1)) ? "" : ".tomove";
+            return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
+              { id: "player-1", onclick: lookAtPlayer.bind(null, player, 1) },
+              [ m("span.right-to-move"), nick1 ]
+            );
+          }
+        }
+
+        var fairplay = game ? game.fairplay : false;
+        var player = game ? game.player : 0;
+        var sc0 = game ? game.scores[0].toString() : "";
+        var sc1 = game ? game.scores[1].toString() : "";
+        return m(".heading",
+          [
+            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
+              vwPlayerName("left")),
+            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
+              vwPlayerName("right")),
+            m("h3.scoreleft", sc0),
+            m("h3.scoreright", sc1),
+            m("h3.clockleft"),
+            m("h3.clockright"),
+            m(".clockface", glyph("time")),
+            m(".fairplay",
+              fairplay ? { style: { display: "block" } } : { },
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+          ]
+        );
+      }
+
+      function vwRightArea() {
+        // A container for the tabbed right-side area components
+        var sel = (game && game.sel) ? game.sel : "movelist";
+        // Show the chat tab unless the opponent is an autoplayer
+        var component = null;
+        if (sel == "movelist")
+          component = vwMovelist(game);
+        else
+        if (sel == "twoletter")
+          component = m(vwTwoLetter);
+        else
+        if (sel == "chat")
+          component = vwChat(game);
+        else
+        if (sel == "games")
+          component = vwGames(game);
+        var tabgrp = vwTabGroup(game);
+        return m(".right-area", component ? [ tabgrp, component ] : [ tabgrp ]);
+      }
+
+      return m(".rightcol",
+        [
+          vwRightHeading(),
+          vwRightArea()
+        ]
+      );
+    }
+
     if (!game)
       // No associated game
       return m(".game-container", "");
@@ -1336,7 +1463,7 @@ function createView() {
     return m(".game-container",
       [
         vwBoardArea(game),
-        vwRightColumn(game),
+        vwRightColumn(),
         vwBag(bag, newbag),
         game.askingForBlank ? vwBlankDialog(game) : "",
         vwBack(),
@@ -1344,112 +1471,6 @@ function createView() {
         vwInfo()
       ]
     );
-  }
-
-  function vwRightColumn(game) {
-    // A container for the right-side header and area components
-    return m(".rightcol",
-      [
-        vwRightHeading(game),
-        vwRightArea(game)
-      ]
-    );
-  }
-
-  function vwRightHeading(game) {
-    // The right-side heading on the game screen
-    var fairplay = game ? game.fairplay : false;
-    var player = game ? game.player : 0;
-    var sc0 = game ? game.scores[0].toString() : "";
-    var sc1 = game ? game.scores[1].toString() : "";
-    return m(".heading",
-      [
-        m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-          vwPlayerName(game, "left")),
-        m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-          vwPlayerName(game, "right")),
-        m("h3.scoreleft", sc0),
-        m("h3.scoreright", sc1),
-        m("h3.clockleft"),
-        m("h3.clockright"),
-        m(".clockface", glyph("time")),
-        m(".fairplay",
-          fairplay ? { style: { display: "block" } } : { },
-          m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
-      ]
-    );
-  }
-
-  function vwPlayerName(game, side) {
-    // Displays a player name, handling both human and robot players
-    // as well as left and right side, and local and remote colors
-    var apl0 = game && game.autoplayer[0];
-    var apl1 = game && game.autoplayer[1];
-    var nick0 = game ? game.nickname[0] : "";
-    var nick1 = game ? game.nickname[1] : "";
-    var player = game ? game.player : 0;
-    var localturn = game ? game.localturn : false;
-    var tomove;
-
-    function lookAtPlayer(player, side, fromUrl) {
-      if (player === 0 || player === 1) {
-        if (player == side)
-          // The player is clicking on himself
-          m.route.set('/userprefs', { f: fromUrl });
-        else {
-          // The player is clicking on the opponent:
-          // show the opponent's track record
-          // !!! TBD
-        }
-      }
-    }
-
-    var fromUrl = m.route.get();
-
-    if (side == "left") {
-      // Left side player
-      if (apl0)
-        // Player 0 is a robot (autoplayer)
-        return m(".robot-btn.left",
-          [ glyph("cog"), nbsp(), nick0 ]);
-      tomove = (localturn ^ (player === 0)) ? "" : ".tomove";
-      return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
-        { id: "player-0", onclick: lookAtPlayer.bind(null, player, 0, fromUrl) },
-        [ m("span.left-to-move"), nick0 ]
-      );
-    }
-    else {
-      // Right side player
-      if (apl1)
-        // Player 1 is a robot (autoplayer)
-        return m(".robot-btn.right",
-          [ glyph("cog"), nbsp(), nick1 ]);
-      tomove = (localturn ^ (player === 1)) ? "" : ".tomove";
-      return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
-        { id: "player-1", onclick: lookAtPlayer.bind(null, player, 1, fromUrl) },
-        [ m("span.right-to-move"), nick1 ]
-      );
-    }
-  }
-
-  function vwRightArea(game) {
-    // A container for the tabbed right-side area components
-    var sel = (game && game.sel) ? game.sel : "movelist";
-    // Show the chat tab unless the opponent is an autoplayer
-    var component = null;
-    if (sel == "movelist")
-      component = vwMovelist(game);
-    else
-    if (sel == "twoletter")
-      component = m(vwTwoLetter);
-    else
-    if (sel == "chat")
-      component = vwChat(game);
-    else
-    if (sel == "games")
-      component = vwGames(game);
-    var tabgrp = vwTabGroup(game);
-    return m(".right-area", component ? [ tabgrp, component ] : [ tabgrp ]);
   }
 
   function vwTabGroup(game) {
@@ -2525,7 +2546,179 @@ function createView() {
       blinkers[i].classList.toggle("over");
   }
 
+} // createView
+
+function createActions(model) {
+
+  initMediaListener();
+  initFirebaseListener();
+  return {
+    onNavigateTo: onNavigateTo,
+    onFullScreen: onFullScreen,
+    onMobileScreen: onMobileScreen,
+    onMoveMessage: onMoveMessage,
+    onChatMessage: onChatMessage
+  };
+
+  function onNavigateTo(routeName, params) {
+    // We have navigated to a new route
+    model.routeName = routeName;
+    model.params = params;
+    if (routeName == "game") {
+      // New game route: load the game into the model
+      model.loadGame(params.uuid);
+      if (model.game !== null)
+        attachListenerToGame(params.uuid);
+    }
+    else
+    if (routeName == "help") {
+      // Make sure that the help HTML is loaded upon first use
+      model.loadHelp();
+    }
+    else
+    if (routeName == "main") {
+      if (model.challengeList === null)
+        model.loadChallengeList();
+    }
+    else {
+      // Not a game route: delete the previously loaded game, if any
+      model.game = null;
+      // !!! TBD: Disconnect Firebase listeners
+    }
+  }
+
+  function onMoveMessage(json) {
+
+  }
+
+  function onChatMessage(json) {
+    // Handle an incoming chat message
+    if (json.from_userid != $state.userId) {
+      // The message is from the remote user
+      // Put an alert on the chat tab if it is not selected
+      /*
+      if (markChatMsg()) {
+         // The message was seen: inform the server
+         sendChatSeenMarker();
+      }
+      */
+    }
+    model.addChatMessage(json.from_userid, json.msg, json.ts);
+  }
+
+  function onFullScreen() {
+    // Take action when min-width exceeds 768
+    $state.uiFullscreen = true;
+    // !!! TBD
+    m.redraw();
+  }
+
+  function onMobileScreen () {
+    $state.uiFullscreen = false;
+    // !!! TBD
+    m.redraw();
+  }
+
+  function mediaMinWidth667(mql) {
+     if (mql.matches) {
+        // Take action when min-width exceeds 667
+        // (usually because of rotation from portrait to landscape)
+        // The board tab is not visible, so the movelist is default
+        $state.uiLandscape = true;
+        // !!! TBD
+     }
+     else {
+        // min-width is below 667
+        // (usually because of rotation from landscape to portrait)
+        // Make sure the board tab is selected
+        $state.uiLandscape = false;
+        // !!! TBD
+     }
+  }
+
+  function mediaMinWidth768(mql) {
+    if (mql.matches) {
+      onFullScreen();
+    }
+    else {
+      onMobileScreen();
+    }
+  }
+
+  function initMediaListener() {
+     // Install listener functions for media changes
+     var mql;
+     mql = window.matchMedia("(min-width: 667px)");
+     if (mql) {
+        mediaMinWidth667(mql);
+        mql.addListener(mediaMinWidth667);
+     }
+     mql = window.matchMedia("(min-width: 768px)");
+     if (mql) {
+        mediaMinWidth768(mql);
+        mql.addListener(mediaMinWidth768);
+     }
+  }
+
+  function initFirebaseListener() {
+    // Sign into Firebase with the token passed from the server
+    loginFirebase($state.firebaseToken);
+  }
+
+  function attachListenerToGame(uuid) {
+    // Listen to Firebase events on the /game/[gameId]/[userId] path
+    var basepath = 'game/' + uuid + "/" + $state.userId + "/";
+    // New moves
+    attachFirebaseListener(basepath + "move", onMoveMessage);
+    // New chat messages
+    attachFirebaseListener(basepath + "chat", onChatMessage);
+    // Listen to Firebase events on the /user/[userId] path
+    // attachFirebaseListener('user/' + userId(), handleUserMessage);
+  }
+
+} // createActions
+
+function createRouteResolver(model, actions, view) {
+  return model.paths.reduce(function(acc, item) {
+    acc[item.route] = {
+      onmatch: function(params, route) {
+        actions.onNavigateTo(item.name, params);
+      },
+      render: function() {
+        return view.appView(model, actions);
+      }
+    };
+    return acc;
+  }, {});
 }
+
+// General-purpose Mithril components
+
+var TextInput = {
+
+    oninit: function(vnode) {
+      this.text = vnode.attrs.initialValue;
+    },
+
+    view: function(vnode) {
+      var cls = vnode.attrs.class;
+      if (cls)
+        cls = "." + cls.split().join(".");
+      else
+        cls = "";
+      return m("input.text" + cls,
+        {
+          id: vnode.attrs.id,
+          name: vnode.attrs.id,
+          maxlength: vnode.attrs.maxlength,
+          tabindex: vnode.attrs.tabindex,
+          value: this.text,
+          oninput: m.withAttr("value", function(v) { this.text = v; }.bind(this))
+        }
+      );
+    }
+
+};
 
 // Utility functions
 
@@ -2596,6 +2789,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   var tabdiv = document.getElementById(id);
   if (!tabdiv)
     return;
+  var view = this;
   // Add bunch of jQueryUI compatible classes
   tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
   var tabul = document.querySelector("#" + id + " > ul");
@@ -2656,6 +2850,15 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
             window.history.pushState({}, "", href); // Enable the back button
           ev.preventDefault();
         }.bind(null, href);
+      }
+      else
+      if (href && href == "$$userprefs$$") {
+        // Special marker indicating that this link invokes
+        // a user preference dialog
+        a.onclick = function(ev) {
+          this.pushDialog("userprefs");
+          ev.preventDefault();
+        }.bind(view);
       }
     }
   }
