@@ -994,13 +994,8 @@ function createView() {
                     descr
                   ]
                 ),
-                m("span.list-info", { title: "Skoða feril" },
-                  m("span.usr-info", "")),
-                m("span.list-newbag",
-                  item.prefs.newbag ?
-                    glyphGrayed("shopping-bag", { title: "Gamli pokinn" })
-                    :
-                    glyph("shopping-bag", { title: "Gamli pokinn" })
+                m("span.list-info", { title: "Skoða feril" }, m("span.usr-info", "")),
+                m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, item.prefs.newbag)
                 )
               ]
             );
@@ -1101,9 +1096,7 @@ function createView() {
                 // Clicking on the link opens up the game
                 { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
                 [
-                  m("span.list-win",
-                    (item.sc0 >= item.sc1) ? glyph("bookmark") : glyphGrayed("bookmark")
-                  ),
+                  m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
                   m("span.list-ts-short", item.ts_last_move),
                   m("span.list-nick",
                     item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
@@ -1116,7 +1109,7 @@ function createView() {
                   m("span.list-duration", durationDescription()),
                   m("span.list-manual",
                     item.manual ? { title: "Keppnishamur" } : { },
-                    item.manual ? glyph("lightbulb") : glyphGrayed("lightbulb")
+                    glyph("lightbulb", undefined, !item.manual)
                   )
                 ]
               )
@@ -2504,13 +2497,14 @@ function createView() {
       [
         m(".board-help-close[title='Loka þessari hjálp']",
           {
-            onclick: function () {
+            onclick: function (ev) {
               // Close the guide and set a preference not to see it again
               $state.beginner = false;
               game.setUserPref({ beginner: false });
+              ev.preventDefault();
             }
           },
-          m("span.glyphicon.glyphicon-remove")
+          glyph("remove")
         ),
         m(".board-colors",
           [
@@ -2902,7 +2896,7 @@ function buttonOut(ev) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon, attrs); }
+function glyph(icon, attrs, grayed) { return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs); }
 function glyphGrayed(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs); }
 
 var _NBSP = m.trust("&nbsp;");

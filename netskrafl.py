@@ -1907,13 +1907,6 @@ def rawhelp():
             # Insert special token that will be caught by client-side
             # code and converted to a dialog invocation in the single-page UI
             return "$$userprefs$$"
-            #from_url = "/help"
-            #tab = values.get("tab")
-            # Also specify a return-to URL that we navigate back to
-            # after the userprefs dialog is closed
-            #if tab is not None:
-            #    from_url += "?tab=" + str(tab)
-            #return "/page#!/userprefs?" + urllib.urlencode(dict(f = from_url))
         return url_for(endpoint, **values)
 
     return render_template("rawhelp.html", url_for = override_url_for)
