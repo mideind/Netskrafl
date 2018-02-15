@@ -1627,6 +1627,68 @@ def newgame():
     return redirect(url_for("board", game = game.id()))
 
 
+@app.route("/initgame", methods=['POST'])
+def initgame():
+    """ Create a new game and return its UUID """
+
+    user = User.current()
+    if user is None:
+        # Must have logged-in user
+        return jsonify(ok = False)
+
+    rq = RequestData(request)
+    # Get the opponent id
+    opp = rq.get("opp")
+    if opp is None:
+        return jsonify(ok = False)
+
+    # Is this a reverse action, i.e. the challenger initiating a timed game,
+    # instead of the challenged player initiating a normal one?
+    rev = rq.get_bool("rev")
+
+    if opp.startswith(u"robot-"):
+        # Start a new game against an autoplayer (robot)
+        robot_level = int(opp[6:])
+        # Play the game with the new bag if the user prefers it
+        prefs = { "newbag" : True } if user.new_bag() else None
+        game = Game.new(user.id(), None, robot_level, prefs = prefs)
+        return jsonify(ok = True, uuid = game.id())
+
+    # Start a new game between two human users
+    if rev:
+        # Timed game: load the opponent
+        opp_user = User.load(opp)
+        if opp_user is None:
+            return jsonify(ok = False)
+        # In this case, the opponent accepts the challenge
+        found, prefs = opp_user.accept_challenge(user.id())
+    else:
+        # The current user accepts the challenge
+        found, prefs = user.accept_challenge(opp)
+
+    if not found:
+        # No challenge existed between the users
+        return redirect(ok = False)
+
+    # Create a fresh game object
+    game = Game.new(user.id(), opp, 0, prefs)
+
+    # Notify the opponent's main.html that there is a new game
+    # !!! board.html eventually needs to listen to this as well
+    msg = {
+        "user/" + opp + "/move" : datetime.utcnow().isoformat()
+    }
+
+    # If this is a timed game, notify the waiting party
+    if prefs and prefs.get("duration", 0) > 0:
+        msg["user/" + opp + "/wait/" + user.id()] = { "game" : game.id() }
+
+    firebase.send_message(msg)
+
+    # Go to the game page
+    return jsonify(ok = True, uuid = game.id())
+
+
 @app.route("/board")
 def board():
     """ The main game page """
@@ -1899,14 +1961,10 @@ def rawhelp():
 
     def override_url_for(endpoint, **values):
         """ Convert URLs from old-format plain ones to single-page fancy ones """
-        if endpoint == 'twoletter':
-            return "/page#!/help?tab=2"
-        if endpoint == 'newbag':
-            return "/page#!/help?tab=3"
-        if endpoint == 'userprefs':
+        if endpoint in { 'twoletter', 'newbag', 'userprefs' }:
             # Insert special token that will be caught by client-side
-            # code and converted to a dialog invocation in the single-page UI
-            return "$$userprefs$$"
+            # code and converted to an action in the single-page UI
+            return "$$" + endpoint + "$$"
         return url_for(endpoint, **values)
 
     return render_template("rawhelp.html", url_for = override_url_for)

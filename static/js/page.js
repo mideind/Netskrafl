@@ -98,10 +98,12 @@ function createModel(settings) {
     loadGameList: loadGameList,
     loadChallengeList: loadChallengeList,
     loadRecentList: loadRecentList,
+    loadUserList: loadUserList,
     loadOwnStats: loadOwnStats,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
+    newGame: newGame,
     modifyChallenge: modifyChallenge,
     addChatMessage: addChatMessage,
   };
@@ -126,6 +128,7 @@ function createModel(settings) {
 
   function loadGameList() {
     // Load the list of currently active games for this user
+    this.gameList = [];
     m.request({
       method: "POST",
       url: "/gamelist"
@@ -274,6 +277,21 @@ function createModel(settings) {
     }.bind(this));
   }
 
+  function newGame(oppid, reverse) {
+    // Ask the server to initiate a new game against the given opponent
+    m.request({
+      method: "POST",
+      url: "/initgame",
+      data: { opp: oppid, rev: reverse }
+    })
+    .then(function(json) {
+      if (json.ok) {
+        // Go to the newly created game
+        m.route.set("/game/" + json.uuid);
+      }
+    }.bind(this));
+  }
+
   function modifyChallenge(userid, action) {
     // Reject or retract a challenge
     m.request({
@@ -332,7 +350,7 @@ function createView() {
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
         // A route parameter of ?tab=N goes directly to tab N (0-based)
-        views.push(vwHelp.call(this, model, actions, m.route.param("tab"), m.route.param("q")));
+        views.push(vwHelp.call(this, model, actions, m.route.param("tab"), m.route.param("faq")));
         break;
       case "userprefs":
         views.push(vwUserPrefs.call(this, model, actions, m.route.param("f")));
@@ -421,15 +439,16 @@ function createView() {
 
   // A control that rigs up a tabbed view of raw HTML
 
-  function vwTabsFromHtml(html, id, createFunc) {
+  function vwTabsFromHtml(html, id, tabNumber, createFunc) {
     // The function assumes that 'this' is the current view object
     if (!html)
       return "";
     var view = this;
     return m("div",
       {
-        oncreate: makeTabs.bind(view, id, createFunc, true),
-        onupdate: updateSelection
+        oninit: function(vnode) { vnode.state.selected = tabNumber || 1; },
+        oncreate: makeTabs.bind(view, id, createFunc, true)
+        /* onupdate: updateSelection */
       },
       m.trust(html)
     );
@@ -456,14 +475,10 @@ function createView() {
       }
       if (faqNumber !== undefined) {
         // Go to the FAQ tab and scroll the requested question into view
+        selectTab(vnode, 1);
         vnode.state.selected = 1; // FAQ tab
         vnode.dom.querySelector("#faq-" +
           faqNumber.toString()).scrollIntoView();
-      }
-      else
-      if (tabNumber !== undefined) {
-        // Go to the requested tab
-        vnode.state.selected = tabNumber;
       }
     }
 
@@ -471,7 +486,7 @@ function createView() {
     return [
       vwLogo(),
       vwUserId.call(this, model),
-      vwTabsFromHtml.call(this, model.helpHTML, "tabs", wireQuestions)
+      vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
     ];
   }
 
@@ -1150,13 +1165,185 @@ function createView() {
         ];
       }
 
-      function vwUserButton(id, icon, text, cls) {
-        return m("span" + (cls ? "." + cls : ""),  { id: id },
+      function vwUserButton(id, icon, text) {
+        var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
+        return m("span" + (id == sel ? ".shown" : ""),
+          {
+            id: id,
+            onclick: function(ev) {
+              model.loadUserList({ query: id, spec: "" });
+              ev.preventDefault();
+            }
+          },
           [ glyph(icon, { style: { padding: 0 } }), nbsp(), text ]
         );
       }
 
       function vwUserList() {
+
+        function vwUserList() {
+
+          function itemize(item, i) {
+
+            // Generate a list item about a user
+
+            var isRobot = item.userid.indexOf("robot-") === 0;
+            var fullname = [];
+
+            if (item.ready && !isRobot)
+              fullname.push(m("span.ready-btn", { title: "Álínis og tekur við áskorunum" }));
+            if (item.ready_timed)
+              fullname.push(m("span.timed-btn", { title: "Til í viðureign með klukku" }));
+            fullname.push(item.fullname);
+
+            function fav() {
+              if (isRobot)
+                return glyph("star-empty");
+              return glyph(item.fav ? "star" : "star-empty",
+                {
+                  title: "Uppáhald",
+                  onclick: function(ev) {
+                    markFavorite(this);
+                    ev.preventDefault();
+                  }.bind(item)
+                }
+              );
+            }
+
+            function issueChallenge() {
+              if (item.chall) {
+                // Retracting challenge
+                model.modifyChallenge(item.userid, "retract");
+              }
+              else
+              if (isRobot) {
+                // Challenging a robot: game starts immediately
+                model.newGame(item.userid, false);
+              }
+              else {
+                // Challenging a user: show a challenge dialog
+                view.pushDialog("challenge");
+              }
+            }
+
+            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+              [
+                m("span.list-ch",
+                  {
+                    title: "Skora á",
+                    onclick: function(ev) {
+                      issueChallenge();
+                      ev.preventDefault();
+                    }
+                  },
+                  glyph("hand-right", undefined, !item.chall)
+                ),
+                m("span.list-fav", fav()),
+                m("span.list-nick",
+                  isRobot ? [ glyph("cog"), nbsp(), item.nick ] : item.nick
+                ),
+                m(isRobot ? "span.list-fullname-robot" : "span.list-fullname", fullname),
+                m("span.list-human-elo", ""),
+                m("span.list-list-info",
+                  {
+                    title: "Skoða feril",
+                    onclick: function(ev) {
+                      showUserInfo(this.userid, this.nick, this.fullname);
+                      ev.preventDefault();
+                    }.bind(item)
+                  },
+                  isRobot ? "" : m("span.usr-info")
+                ),
+                m("span.list-newbag", { title: "Gamli pokinn" }, glyph("shopping-bag", undefined, item.newbag))
+              ]
+            );
+          }
+
+          return m("div",
+            {
+              id: "userlist",
+              oninit: function(vnode) {
+                if (model.userList === null)
+                  model.loadUserList({ query: "robots", spec: "" });
+              }
+            },
+            model.userList ? model.userList.map(itemize) : ""
+          );
+        }
+
+        function vwEloList() {
+
+          function itemize(item, i) {
+
+            // Generate a list item about a user
+
+            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+              m("a",
+                // Clicking on the link opens up the game
+                { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
+                [
+                  m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
+                  m("span.list-ts-short", item.ts_last_move),
+                  m("span.list-nick",
+                    item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
+                  ),
+                  m("span.list-s0", item.sc0),
+                  m("span.list-colon", ":"),
+                  m("span.list-s1", item.sc1),
+                  m("span.list-elo-adj", ""),
+                  m("span.list-elo-adj", ""),
+                  m("span.list-duration", durationDescription()),
+                  m("span.list-manual",
+                    item.manual ? { title: "Keppnishamur" } : { },
+                    glyph("lightbulb", undefined, !item.manual)
+                  )
+                ]
+              )
+            );
+          }
+
+          return m("div",
+            {
+              id: "userlist",
+              oninit: function(vnode) {
+                if (model.userList === null)
+                  model.loadUserList({ query: "elo", spec: "" });
+              }
+            },
+            model.userList ? model.userList.map(itemize) : ""
+          );
+        }
+
+        if (model.userListCriteria && model.userListCriteria.query == "elo")
+          // Show Elo list
+          return [
+            m(".listitem.listheader[id='elo-hdr']",
+              [
+                m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+                m("span.list-rank", "Röð"),
+                m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
+                m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
+                m("span.list-nick-elo", "Einkenni"),
+                m("span.list-elo[title='Elo-stig']", "Elo"),
+                m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
+                m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
+                m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
+                m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
+                m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
+                m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
+                m("span.list-info-hdr", "Ferill"),
+                m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
+                m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+                  [
+                    m(".option.x-small[id='opt1']", glyph("user")),
+                    m(".option.x-small[id='opt2']", glyph("cog"))
+                  ]
+                )
+              ]
+            ),
+            vwEloList()
+          ];
+        // Show normal user list
         return [
           m(".listitem.listheader[id='usr-hdr']",
             [
@@ -1169,31 +1356,7 @@ function createView() {
               m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
             ]
           ),
-          m(".listitem.listheader[id='elo-hdr']",
-            [
-              m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-              m("span.list-rank", "Röð"),
-              m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
-              m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
-              m("span.list-nick-elo", "Einkenni"),
-              m("span.list-elo[title='Elo-stig']", "Elo"),
-              m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
-              m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
-              m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
-              m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
-              m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
-              m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
-              m("span.list-info-hdr", "Ferill"),
-              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
-              m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
-                [
-                  m(".option.x-small[id='opt1']", glyph("user")),
-                  m(".option.x-small[id='opt2']", glyph("cog"))
-                ]
-              )
-            ]
-          ),
-          m("div", { id: 'userlist' })
+          vwUserList()
         ];
       }
 
@@ -1279,7 +1442,7 @@ function createView() {
                   [
                     m(".user-cat[id='user-headings']",
                       [
-                        vwUserButton("robots", "cog", "Þjarkar", "shown"),
+                        vwUserButton("robots", "cog", "Þjarkar"),
                         vwUserButton("fav", "star", "Uppáhalds"),
                         vwUserButton("live", "flash", "Álínis"),
                         vwUserButton("alike", "resize-small", "Svipaðir"),
@@ -1950,7 +2113,7 @@ function createView() {
     return m(".modal-dialog",
       {
         id: 'blank-dialog',
-        style: { visibility: visible }
+        style: { visibility: "visible" }
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
         [
@@ -2571,6 +2734,9 @@ function createActions(model) {
     }
     else
     if (routeName == "main") {
+      model.gameList = null;
+      model.userListCriteria = null; // Force reload of user lists
+      model.userList = null;
       if (model.challengeList === null)
         model.loadChallengeList();
     }
@@ -2854,6 +3020,26 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
           ev.preventDefault();
         }.bind(view);
       }
+      else
+      if (href && href == "$$twoletter$$") {
+        // Special marker indicating that this link invokes
+        // the two-letter word list
+        a.onclick = function(ev) {
+          selectTab(this, 2); // Select tab number 2
+          m.redraw();
+          ev.preventDefault();
+        }.bind(vnode);
+      }
+      else
+      if (href && href == "$$newbag$$") {
+        // Special marker indicating that this link invokes
+        // the explanation of the new bag
+        a.onclick = function(ev) {
+          selectTab(this, 3); // Select tab number 3
+          m.redraw();
+          ev.preventDefault();
+        }.bind(vnode);
+      }
     }
   }
   // If a createFunc was specified, run it now
@@ -2864,6 +3050,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
 }
 
 function updateSelection(vnode) {
+  // Select a tab according to the ?tab= query parameter in the current route
   var tab = m.route.param("tab");
   if (tab !== undefined)
     selectTab(vnode, tab);
