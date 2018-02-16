@@ -332,7 +332,8 @@ function createView() {
     // Select the view based on the current route
     // Map of available dialogs
     var dialogViews = {
-      userprefs : function(model, actions) { return vwUserPrefs.call(this, model, actions); }
+      "userprefs" : function(model, actions, args) { return vwUserPrefs.call(this, model, actions); },
+      "challenge": function(model, actions, args) { return vwChallenge.call(this, model, actions, args); }
     };
     // Display the appropriate content for the route,
     // also considering active dialogs
@@ -362,18 +363,18 @@ function createView() {
     // Push any open dialogs
     for (var i = 0; i < this.dialogStack.length; i++) {
       var dialog = this.dialogStack[i];
-      if (dialogViews[dialog] === undefined)
-        console.log("Unknown dialog name: " + dialog);
+      if (dialogViews[dialog.name] === undefined)
+        console.log("Unknown dialog name: " + dialog.name);
       else
-        views.push(dialogViews[dialog].call(this, model, actions));
+        views.push(dialogViews[dialog.name].call(this, model, actions, dialog.args));
     }
     return views;
   }
 
   // Dialog support
 
-  function pushDialog(dialogName) {
-    this.dialogStack.push(dialogName);
+  function pushDialog(dialogName, dialogArgs) {
+    this.dialogStack.push({ name: dialogName, args : dialogArgs });
     m.redraw(); // Ensure that the dialog is shown
   }
 
@@ -745,10 +746,134 @@ function createView() {
     return m("span", { oninit: function(vnode) { model.loadUser(); } }, "Sæki upplýsingar um notanda...");
   }
 
+  function vwChallenge(model, actions, item) {
+    // Show a dialog box for a new challenge being issued
+    return m(".modal-dialog", { id: 'chall-dialog', style: { visibility: 'visible' } }, 
+      m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
+        [
+          m(".chall-hdr", 
+            m("table", 
+              m("tbody", 
+                m("tr",
+                  [
+                    m("td", m("h1.chall-icon", glyph("hand-right"))),
+                    m("td.l-border",
+                      [
+                        m("span[id='chall-online'][title='Álínis?']"),
+                        m("h1[id='chall-nick']", item.nick),
+                        m("h2[id='chall-fullname']", item.fullname)
+                      ]
+                    )
+                  ]
+                )
+              )
+            )
+          ),
+          m("div", { style: {"text-align": "center"} },
+            [
+              m(".promo-fullscreen",
+                [
+                  m("p", [ m("strong", "Ný áskorun"), "- veldu lengd viðureignar:" ]),
+                  m(".chall-time.selected[id='chall-none'][tabindex='1']", 
+                    "Viðureign án klukku"
+                  ),
+                  m(".chall-time[id='chall-10'][tabindex='2']",
+                    [ glyph("time"), "2 x 10 mínútur" ]
+                  ),
+                  m(".chall-time[id='chall-15'][tabindex='3']",
+                    [ glyph("time"), "2 x 15 mínútur" ]
+                  ),
+                  m(".chall-time[id='chall-20'][tabindex='4']",
+                    [ glyph("time"), "2 x 20 mínútur" ]
+                  ),
+                  m(".chall-time[id='chall-25'][tabindex='5']",
+                    [ glyph("time"), "2 x 25 mínútur" ]
+                  ),
+                  m(".chall-time[id='chall-30'][tabindex='6']",
+                    [ glyph("time"), "2 x 30 mínútur" ]
+                  )
+                ]
+              ),
+              m(".promo-mobile",
+                [
+                  m("p", m("strong", "Ný áskorun")),
+                  m(".chall-time.selected[id='extra-none'][tabindex='1']", 
+                    "Viðureign án klukku"
+                  )
+                ]
+              )
+            ]
+          ),
+          m(".hidden[id='chall-manual']",
+            [
+              m("span.caption.wide",
+                [
+                  "Nota", m("strong", "handvirka véfengingu"),
+                  m("br"), "(\"keppnishamur\")"
+                ]
+              ),
+              m(".toggler[id='manual-toggler'][tabindex='7']",
+                [
+                  m(".option.selected[id='opt1']", m("span", nbsp())),
+                  m(".option[id='opt2']", glyph("lightbulb"))
+                ]
+              )
+            ]
+          ),
+          m(".hidden[id='chall-fairplay']",
+            [
+              "Báðir leikmenn lýsa því yfir að þeir skrafla",
+              m("strong", "án stafrænna hjálpartækja"),
+              "af nokkru tagi."
+            ]
+          ),
+          m(".hidden[id='chall-oldbag']", 
+            m("table", 
+              m("tbody", 
+                m("tr",
+                  [
+                    m("td", glyph("exclamation-sign")),
+                    m("td",
+                      [ "Viðureign með", m("br"), m("strong", "gamla skraflpokanum") ]
+                    )
+                  ]
+                )
+              )
+            )
+          ),
+          m(".modal-close",
+            {
+              id:'chall-cancel',
+              onmouseout: buttonOut,
+              onmouseover: buttonOver,
+              onclick: function(ev) { this.popDialog(); ev.preventDefault(); }.bind(this),
+              tabindex: '8',
+              title: 'Hætta við'
+            },
+            glyph("remove")
+          ),
+          m(".modal-close",
+            {
+              id:'chall-ok',
+              onmouseout: buttonOut,
+              onmouseover: buttonOver,
+              onclick: function(ev) { this.popDialog(); ev.preventDefault(); }.bind(this), // !!! TBD
+              tabindex: '9',
+              title: 'Skora á'
+            },
+            glyph("ok")
+          )
+        ]
+      )
+    );
+  }
+
   // Main screen
 
   function vwMain(model, actions) {
     // Main screen with tabs
+
+    var view = this;
 
     function vwMainTabs() {
 
@@ -905,16 +1030,15 @@ function createView() {
               m("p",
                 [
                   "Ef þig vantar einhvern til að skrafla við, veldu ",
-                  m("a[href='#'][id='opponents']", "flipann \"Andstæðingar\""),
-                  "og skoraðu á tölvuþjarka -",
+                  m("a", { href: "/main?tab=2", oncreate: m.route.link }, "flipann \"Andstæðingar\""),
+                  " og skoraðu á tölvuþjarka - ",
                   glyph("cog"), nbsp(), m("b", "Amlóða"),
                   ", ",
                   glyph("cog"), nbsp(), m("b", "Miðlung"),
                   " eða ",
                   glyph("cog"), nbsp(), m("b", "Fullsterkan"),
-                  " - eða veldu þér annan leikmann úr stafrófs",
-                  m.trust("&shy;"),
-                  "listunum sem þar er að finna til að skora á."
+                  " - eða veldu þér annan leikmann úr stafrófs\u00ADlistunum " + // Soft hyphen
+                  " sem þar er að finna til að skora á."
                 ]
               ),
               m("p",
@@ -1026,7 +1150,11 @@ function createView() {
 
           return m("div",
             {
-              id: showReceived ? 'chall-received' : 'chall-sent'
+              id: showReceived ? 'chall-received' : 'chall-sent',
+              oninit: function(vnode) {
+                if (model.challengeList === null)
+                  model.loadChallengeList();
+              }
             },
             cList.map(itemize)
           );
@@ -1181,7 +1309,7 @@ function createView() {
 
       function vwUserList() {
 
-        function vwUserList() {
+        function vwUserList(listType) {
 
           function itemize(item, i) {
 
@@ -1222,7 +1350,7 @@ function createView() {
               }
               else {
                 // Challenging a user: show a challenge dialog
-                view.pushDialog("challenge");
+                view.pushDialog("challenge", item);
               }
             }
 
@@ -1243,8 +1371,8 @@ function createView() {
                   isRobot ? [ glyph("cog"), nbsp(), item.nick ] : item.nick
                 ),
                 m(isRobot ? "span.list-fullname-robot" : "span.list-fullname", fullname),
-                m("span.list-human-elo", ""),
-                m("span.list-list-info",
+                isRobot ? "" : m("span.list-human-elo", item.human_elo),
+                m("span.list-info",
                   {
                     title: "Skoða feril",
                     onclick: function(ev) {
@@ -1254,7 +1382,8 @@ function createView() {
                   },
                   isRobot ? "" : m("span.usr-info")
                 ),
-                m("span.list-newbag", { title: "Gamli pokinn" }, glyph("shopping-bag", undefined, item.newbag))
+                isRobot ? "" : m("span.list-newbag", { title: "Gamli pokinn" },
+                  glyph("shopping-bag", undefined, item.newbag))
               ]
             );
           }
@@ -1262,9 +1391,10 @@ function createView() {
           return m("div",
             {
               id: "userlist",
+              key: listType,
               oninit: function(vnode) {
                 if (model.userList === null)
-                  model.loadUserList({ query: "robots", spec: "" });
+                  model.loadUserList({ query: listType, spec: "" });
               }
             },
             model.userList ? model.userList.map(itemize) : ""
@@ -1304,7 +1434,7 @@ function createView() {
 
           return m("div",
             {
-              id: "userlist",
+              id: "elolist",
               oninit: function(vnode) {
                 if (model.userList === null)
                   model.loadUserList({ query: "elo", spec: "" });
@@ -1314,10 +1444,11 @@ function createView() {
           );
         }
 
-        if (model.userListCriteria && model.userListCriteria.query == "elo")
+        var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
+        if (listType == "elo")
           // Show Elo list
           return [
-            m(".listitem.listheader[id='elo-hdr']",
+            m(".listitem.listheader", { key: listType },
               [
                 m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
                 m("span.list-rank", "Röð"),
@@ -1345,18 +1476,18 @@ function createView() {
           ];
         // Show normal user list
         return [
-          m(".listitem.listheader[id='usr-hdr']",
+          m(".listitem.listheader", { key: listType },
             [
               m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
               m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
               m("span.list-nick", "Einkenni"),
               m("span.list-fullname", "Nafn og merki"),
-              m("span.list-human-elo[id='usr-list-elo']", "Elo"),
-              m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
-              m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+              listType == "robots" ? "" : m("span.list-human-elo[id='usr-list-elo']", "Elo"),
+              listType == "robots" ? "" : m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
+              listType == "robots" ? "" : m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
             ]
           ),
-          vwUserList()
+          vwUserList(listType)
         ];
       }
 
@@ -2734,11 +2865,11 @@ function createActions(model) {
     }
     else
     if (routeName == "main") {
+      // Force reload of lists
       model.gameList = null;
-      model.userListCriteria = null; // Force reload of user lists
+      model.userListCriteria = null;
       model.userList = null;
-      if (model.challengeList === null)
-        model.loadChallengeList();
+      model.challengeList = null;
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -3023,7 +3154,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
       else
       if (href && href == "$$twoletter$$") {
         // Special marker indicating that this link invokes
-        // the two-letter word list
+        // the two-letter word list or the opponents tab
         a.onclick = function(ev) {
           selectTab(this, 2); // Select tab number 2
           m.redraw();
