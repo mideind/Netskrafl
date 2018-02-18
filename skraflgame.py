@@ -1271,6 +1271,7 @@ class Game:
             reply["fairplay"] = self.get_fairplay()
             reply["autoplayer"] = [ self.is_autoplayer(0), self.is_autoplayer(1) ]
             reply["nickname"] = [ self.player_nickname(0), self.player_nickname(1) ]
+            reply["overdue"] = self.is_overdue()
 
         return reply
 

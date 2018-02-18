@@ -1107,8 +1107,19 @@ function createView() {
             }
 
             function markChallenge(ev) {
+              // Clicked the icon at the beginning of the line,
+              // to decline a received challenge or retract an issued challenge
               var action = item.received ? "decline" : "retract";
               model.modifyChallenge(item.userid, action);
+              ev.preventDefault();
+            }
+
+            function clickReceived(ev) {
+              // Clicked the hotspot area to accept a received challenge
+              if (item.received) {
+                // Ask the server to create a new game and route to it
+                model.newGame(item.userid, false);
+              }
               ev.preventDefault();
             }
 
@@ -1124,13 +1135,21 @@ function createView() {
                     :
                     glyph("hand-right", { title: "Afturkalla" })
                 ),
-                m("span.list-ts", item.ts),
-                m("span.list-nick", { title: item.fullname }, item.opp),
-                m("span.list-chall",
+                m(item.received ? "a" : "span",
+                  {
+                    href: "#",
+                    onclick: clickReceived
+                  },
                   [
-                    item.prefs.fairplay ? m("span.fairplay-btn", { title: "Án hjálpartækja" }) : "",
-                    item.prefs.manual ? m("span.manual-btn", { title: "Keppnishamur" }) : "",
-                    descr
+                    m("span.list-ts", item.ts),
+                    m("span.list-nick", { title: item.fullname }, item.opp),
+                    m("span.list-chall",
+                      [
+                        item.prefs.fairplay ? m("span.fairplay-btn", { title: "Án hjálpartækja" }) : "",
+                        item.prefs.manual ? m("span.manual-btn", { title: "Keppnishamur" }) : "",
+                        descr
+                      ]
+                    )
                   ]
                 ),
                 m("span.list-info", { title: "Skoða feril" }, m("span.usr-info", "")),
@@ -2453,6 +2472,7 @@ function createView() {
     var lastChallenge = game.last_chall;
     var showingDialog = game.showingDialog !== null;
     var exchangeAllowed = game.xchg;
+    var tardyOpponent = !localTurn && !gameOver && game.overdue;
     var showResign = false;
     var showExchange = false;
     var showPass = false;
@@ -2560,7 +2580,24 @@ function createView() {
         },
         glyph("fire")
       ));
-    // !!! Add opp-turn and force-resign
+    if (!gameOver && !localTurn)
+      // Indicate that it is the opponent's turn; offer to force a resignation
+      // if the opponent hasn't moved for 14 days
+      r.push(m(".opp-turn", { style: { visibility: "visible" } },
+        [
+          m("span.move-indicator"), m("strong", game.nickname[1 - game.player]), " á leik",
+          tardyOpponent ? m("span.yesnobutton",
+            {
+              id: 'force-resign',
+              onclick: function(ev) { ev.preventDefault() }, // !!! TBD !!!
+              onmouseout: buttonOut,
+              onmouseover: buttonOver,
+              title: '14 dagar liðnir án leiks'
+            },
+            "Þvinga til uppgjafar"
+          ) : ""
+        ]
+      ));
     if (tilesPlaced)
       r.push(vwScore(game));
     // Is the server processing a move?
