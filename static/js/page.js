@@ -107,6 +107,7 @@ function createModel(settings) {
     saveUser: saveUser,
     newGame: newGame,
     modifyChallenge: modifyChallenge,
+    markFavorite: markFavorite,
     addChatMessage: addChatMessage,
   };
 
@@ -182,6 +183,7 @@ function createModel(settings) {
 
   function loadUserList(criteria, activateSpinner) {
     // Load a list of users according to the given criteria
+    this.userList = undefined;
     this.userListCriteria = undefined; // Marker to prevent concurrent loading
     if (activateSpinner)
       // This will show a spinner overlay, disabling clicks on
@@ -208,10 +210,12 @@ function createModel(settings) {
   }
 
   function loadOwnStats() {
-    // Load the list of recent games for this user
+    // Load statistics for the current user
+    this.ownStats = { };
     m.request({
       method: "POST",
-      url: "/recentlist"
+      url: "/userstats",
+      data: { } // Current user is implicit
     })
     .then(function(json) {
       if (!json || json.result !== 0) {
@@ -314,6 +318,16 @@ function createModel(settings) {
       if (json.result === 0)
         this.loadChallengeList();
     }.bind(this));
+  }
+
+  function markFavorite(userId, status) {
+    // Mark or de-mark a user as a favorite
+    m.request({
+      method: "POST",
+      url: "/favorite",
+      data: { destuser: userId, action: status ? "add" : "delete" }
+    })
+    .then(function() {});
   }
 
   function addChatMessage(from_userid, msg, ts) {
@@ -893,6 +907,7 @@ function createView() {
                   duration = 0;
                 else
                   duration = parseInt(duration);
+                item.chall = true;
                 model.modifyChallenge(
                   {
                     destuser: item.userid,
@@ -1393,22 +1408,26 @@ function createView() {
 
             function fav() {
               if (isRobot)
-                return glyph("star-empty");
-              return glyph(item.fav ? "star" : "star-empty",
+                return m("span.list-fav", { style: { cursor: "default" } }, glyph("star-empty"));
+              return m("span.list-fav",
                 {
                   title: "Uppáhald",
                   onclick: function(ev) {
-                    markFavorite(this);
+                    this.fav = !this.fav;
+                    model.markFavorite(this.userid, this.fav);
                     ev.preventDefault();
                   }.bind(item)
-                }
+                },
+                glyph(item.fav ? "star" : "star-empty")
               );
             }
 
             function issueChallenge() {
-              if (item.chall)
+              if (item.chall) {
                 // Retracting challenge
+                item.chall = false;
                 model.modifyChallenge({ destuser: item.userid, action: "retract" });
+              }
               else
               if (isRobot)
                 // Challenging a robot: game starts immediately
@@ -1430,7 +1449,7 @@ function createView() {
                   },
                   glyph("hand-right", undefined, !item.chall)
                 ),
-                m("span.list-fav", fav()),
+                fav(),
                 m("span.list-nick",
                   isRobot ? [ glyph("cog"), nbsp(), item.nick ] : item.nick
                 ),
@@ -1452,17 +1471,17 @@ function createView() {
             );
           }
 
-          return m("div",
-            {
-              id: "userlist",
-              key: listType,
-              oninit: function(vnode) {
-                if (model.userList === null)
-                  model.loadUserList({ query: listType, spec: "" }, true);
-              }
-            },
-            model.userList ? model.userList.map(itemize) : ""
-          );
+          var list = [];
+          if (model.userList === undefined)
+            // We are loading a fresh user list
+            ;
+          else
+          if (model.userList === null || model.userListCriteria.query != listType)
+            model.loadUserList({ query: listType, spec: "" }, true);
+          else
+            list = model.userList;
+
+          return m("div", { id: "userlist", key: listType }, list.map(itemize));
         }
 
         function vwEloList() {
@@ -1496,16 +1515,16 @@ function createView() {
             );
           }
 
-          return m("div",
-            {
-              id: "elolist",
-              oninit: function(vnode) {
-                if (model.userList === null)
-                  model.loadUserList({ query: "elo", spec: "" }, true);
-              }
-            },
-            model.userList ? model.userList.map(itemize) : ""
-          );
+          var list = [];
+          if (model.userList === undefined)
+            ;
+          else
+          if (model.userList === null || model.userListCriteria.query != "elo")
+            model.loadUserList({ query: "elo", spec: "" }, true);
+          else
+            list = model.userList;
+
+          return m("div", { id: "elolist", key: "elo" }, list.map(itemize));
         }
 
         var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
@@ -1555,8 +1574,16 @@ function createView() {
         ];
       }
 
+      function vwStats() {
+        // View the user's own statistics summary
+        var ownStats = model.ownStats;
+        if (model.ownStats == null)
+          model.loadOwnStats();
+        return m(StatsDisplay, { id: 'own-stats', ownStats: ownStats });
+      }
+
       return m(".tabbed-page",
-        m("[id='main-tabs']",
+        m("div", { id: 'main-tabs' },
           [
             vwMainTabHeader(),
             m("[id='tabs-1']",
@@ -1595,32 +1622,7 @@ function createView() {
             ),
             m("[id='tabs-4']",
               [
-                m("[id='own-stats']",
-                  [
-                    m(".toggler[id='own-toggler'][title='Með þjörkum eða án']",
-                      [
-                        m(".option.small[id='opt1']", glyph("user")),
-                        m(".option.small[id='opt2']", glyph("cog"))
-                      ]
-                    ),
-                    m("[id='own-stats-human']",
-                      [
-                        m(".stats-fig[id='own-stats-human-elo'][title='Elo-stig']"),
-                        m(".stats-fig.stats-games[id='own-stats-human-games'][title='Fjöldi viðureigna']"),
-                        m(".stats-fig.stats-win-ratio[id='own-stats-human-win-ratio'][title='Vinningshlutfall']"),
-                        m(".stats-fig.stats-avg-score[id='own-stats-human-avg-score'][title='Meðalstigafjöldi']")
-                      ]
-                    ),
-                    m("[id='own-stats-all']",
-                      [
-                        m(".stats-fig[id='own-stats-elo'][title='Elo-stig']"),
-                        m(".stats-fig.stats-games[id='own-stats-games'][title='Fjöldi viðureigna']"),
-                        m(".stats-fig.stats-win-ratio[id='own-stats-win-ratio'][title='Vinningshlutfall']"),
-                        m(".stats-fig.stats-avg-score[id='own-stats-avg-score'][title='Meðalstigafjöldi']")
-                      ]
-                    )
-                  ]
-                ),
+                vwStats(),
                 m("p[id='own-best']"),
                 m("p",
                   [
@@ -1633,7 +1635,7 @@ function createView() {
             ),
             m("[id='tabs-3']",
               [
-                m("[id='initials']",
+                m("div", { id: 'initials' },
                   [
                     m(".user-cat[id='user-headings']",
                       [
@@ -3186,6 +3188,85 @@ var OnlinePresence = {
   }
 
 };
+
+var StatsDisplay = {
+
+  // Display key statistics, provided via the ownStats attribute
+
+  oninit: function(vnode) {
+    this.sel = 1;
+  },
+
+  view: function(vnode) {
+
+    function vwStat(val, icon, suffix) {
+      // Display a user statistics figure, eventually with an icon
+      var txt = (val === undefined) ? "" : val.toString();
+      if (suffix !== undefined)
+        txt += suffix;
+      return icon ? [ glyph(icon), nbsp(), txt ] : txt;
+    }
+
+    // Display statistics about this user
+    var s = vnode.attrs.ownStats;
+    var winRatio = 0, winRatioHuman = 0;
+    if (s !== undefined && s !== null) {
+      if (s.games > 0)
+        winRatio = Math.round(100.0 * s.wins / s.games);
+      if (s.human_games > 0)
+        winRatioHuman = Math.round(100.0 * s.human_wins / s.human_games);
+    }
+    var avgScore = 0, avgScoreHuman = 0;
+    if (s !== undefined && s !== null) {
+      if (s.games > 0)
+        avgScore = Math.round(s.score / s.games);
+      if (s.human_games > 0)
+        avgScoreHuman = Math.round(s.human_score / s.human_games);
+    }
+
+    return m("div", { id: vnode.attrs.id },
+      [
+        m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
+          [
+            m(".option.small" + (this.sel == 1 ? ".selected" : ""),
+              { id: 'opt1', onclick: function(ev) { this.sel = 1; m.redraw(); }.bind(this) },
+              glyph("user")
+            ),
+            m(".option.small" + (this.sel == 2 ? ".selected" : ""),
+              { id: 'opt2', onclick: function(ev) { this.sel = 2; m.redraw(); }.bind(this) },
+              glyph("cog")
+            )
+          ]
+        ),
+        this.sel == 1 ? m("div", { id: 'own-stats-human', style: { display: "inline-block"} },
+          [
+            m(".stats-fig", { title: 'Elo-stig' },
+              s ? vwStat(s.human_elo, "crown") : ""),
+            m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+              s ? vwStat(s.human_games, "th") : ""),
+            m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+              vwStat(winRatioHuman, "bookmark", "%")),
+            m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+              vwStat(avgScoreHuman, "dashboard"))
+          ]
+        ) : "",
+        this.sel == 2 ? m("div", { id: 'own-stats-all', style: { display: "inline-block"} },
+          [
+            m(".stats-fig", { title: 'Elo-stig' },
+              s ? vwStat(s.elo, "crown") : ""),
+            m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+              s ? vwStat(s.games, "th") : ""),
+            m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+              vwStat(winRatio, "bookmark", "%")),
+            m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+              vwStat(avgScore, "dashboard"))
+          ]
+        ) : ""
+      ]
+    );
+  }
+
+}
 
 // Utility functions
 
