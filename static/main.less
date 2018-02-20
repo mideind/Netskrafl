@@ -979,6 +979,10 @@ div.modal-dialog {
    background-color: rgba(32, 32, 32, 0.2);
 }
 
+div.modal-dialog#spinner-dialog {
+   background-color: rgba(0, 0, 0, 0.0);
+}
+
 .std-form {
    position: absolute;
    padding-left: 12px;
@@ -1526,6 +1530,11 @@ div#chall-oldbag {
    position: absolute;
    bottom: 16px;
    font-size: 14px;
+}
+
+div#chall-oldbag td span.glyphicon-exclamation-sign {
+   color: @alert;
+   padding-right: 8px;
 }
 
 span.caption.wide {
@@ -2602,6 +2611,14 @@ span.mobile-space {
 div#user-load {
    top: 320px;
    left: 406px;
+   width: 48px;
+   height: 48px;
+   background-size: 48px 48px;
+}
+
+div#spinner-dialog div#user-load {
+   top: (768px - 48px) / 2;
+   left: (1024px - 48px) / 2;
    width: 48px;
    height: 48px;
    background-size: 48px 48px;
@@ -4315,7 +4332,7 @@ td.l-border {
    white-space: nowrap;
 }
 
-h1#chall-nick {
+div.chall-hdr h1 {
    display: inline-block;
    font-size: 28px;
    line-height: 30px;
@@ -4324,7 +4341,7 @@ h1#chall-nick {
    margin-bottom: 8px;
 }
 
-h2#chall-fullname {
+div.chall-hdr h2 {
    display: block;
    font-size: 22px;
    line-height: 24px;
