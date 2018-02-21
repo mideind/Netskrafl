@@ -1553,7 +1553,7 @@ def wait():
     }
     firebase.send_message(msg)
 
-    # Create a Firebase token for the logged-0in user
+    # Create a Firebase token for the logged-in user
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
@@ -1993,9 +1993,7 @@ def page():
     if user is None:
         # User hasn't logged in yet: redirect to login page
         return redirect(url_for('login'))
-    # If a logged-in user is looking at the board, we create a Firebase
-    # token in order to maintain presence info
-    firebase_token = "" if user is None else firebase.create_custom_token(user.id())
+    firebase_token = firebase.create_custom_token(user.id())
     return render_template("page.html",
         user = user, firebase_token = firebase_token)
 
