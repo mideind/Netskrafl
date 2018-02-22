@@ -9,24 +9,24 @@
       "sizes": "192x192"
     },
     {
-      "src": "/touch-icon-ipad.png",
+      "src": "/static/icon-256.png",
       "type": "image/png",
-      "sizes": "76x76"
+      "sizes": "256x256"
     },
     {
-      "src": "/touch-icon-iphone-retina.png",
+      "src": "/static/icon-384.png",
       "type": "image/png",
-      "sizes": "120x120"
+      "sizes": "384x384"
     },
     {
-      "src": "/touch-icon-ipad-retina.png",
+      "src": "/static/icon-512.png",
       "type": "image/png",
-      "sizes": "152x152"
+      "sizes": "512x512"
     }
   ],
   "background_color": "#fff1dc",
   "theme_color": "#fff1dc",
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/?utm_source=homescreen"
+  "start_url": "/page#!/main?utm_source=homescreen"
 }

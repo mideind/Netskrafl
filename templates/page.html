@@ -41,8 +41,11 @@
 {% block libscripts %}
 
 <!-- Include the Mithril UI library -->
+{% if dev_server %}
 <script src="https://unpkg.com/mithril/mithril.js"></script>
-<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/1.1.6/mithril.min.js"></script> -->
+{% else %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/1.1.6/mithril.min.js"></script>
+{% endif %}
 
 {% endblock %}
 
@@ -101,6 +104,7 @@ var $state = {
 
 </script>
 
+<!-- !!! TBD: Concatenate and minify the following scripts (plus mousetrap.min.js) -->
 <script src="{{ url_for('static', filename='js/channel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 <script src="{{ url_for('static', filename='js/page.js') }}"></script>
@@ -108,6 +112,16 @@ var $state = {
 <script src="{{ url_for('static', filename='js/DragDropTouch.js') }}"></script>
 
 <script>
+
+// Register a Progressive Web App service worker
+if ('serviceWorker' in navigator) {
+   navigator.serviceWorker.register('service-worker.js')
+      .then(function(reg) {
+         // Successfully registered
+      }).catch(function(err) {
+         // Service worker not available
+      });
+}
 
 window.addEventListener("DOMContentLoaded", main); // main() is located in page.js
 
