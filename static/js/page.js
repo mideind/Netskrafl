@@ -100,8 +100,10 @@ function createModel(settings) {
     loadGameList: loadGameList,
     loadChallengeList: loadChallengeList,
     loadRecentList: loadRecentList,
+    loadUserRecentList: loadUserRecentList,
     loadUserList: loadUserList,
     loadOwnStats: loadOwnStats,
+    loadUserStats: loadUserStats,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -181,6 +183,16 @@ function createModel(settings) {
     }.bind(this));
   }
 
+  function loadUserRecentList(userid, readyFunc) {
+    // Load the list of recent games for the given user
+    m.request({
+      method: "POST",
+      url: "/recentlist",
+      data: { user: userid, versus: null, count: 40 }
+    })
+    .then(readyFunc);
+  }
+
   function loadUserList(criteria, activateSpinner) {
     // Load a list of users according to the given criteria
     this.userList = undefined;
@@ -225,6 +237,16 @@ function createModel(settings) {
       }
       this.ownStats = json;
     }.bind(this));
+  }
+
+  function loadUserStats(userid, readyFunc) {
+    // Load statistics for the given user
+    m.request({
+      method: "POST",
+      url: "/userstats",
+      data: { user: userid }
+    })
+    .then(readyFunc);
   }
 
   function loadHelp() {
@@ -350,6 +372,7 @@ function createView() {
     dialogStack: [],
     pushDialog: pushDialog,
     popDialog: popDialog,
+    popAllDialogs: popAllDialogs,
     startSpinner: startSpinner,
     stopSpinner: stopSpinner,
     isDialogShown: isDialogShown
@@ -360,6 +383,7 @@ function createView() {
     // Map of available dialogs
     var dialogViews = {
       "userprefs" : function(model, actions, args) { return vwUserPrefs.call(this, model, actions); },
+      "userinfo": function(model, actions, args) { return vwUserInfo.call(this, model, actions, args); },
       "challenge": function(model, actions, args) { return vwChallenge.call(this, model, actions, args); },
       "spinner": function(model, actions, args) { return vwSpinner.call(this, model, actions); }
     };
@@ -381,11 +405,6 @@ function createView() {
         // A route parameter of ?tab=N goes directly to tab N (0-based)
         views.push(vwHelp.call(this, model, actions, m.route.param("tab"), m.route.param("faq")));
         break;
-      /*
-      case "userprefs":
-        views.push(vwUserPrefs.call(this, model, actions, m.route.param("f")));
-        break;
-      */
       default:
         console.log("Unknown route name: " + model.routeName);
         return m("div", "Þessi vefslóð er ekki rétt");
@@ -418,6 +437,13 @@ function createView() {
     }
   }
 
+  function popAllDialogs() {
+    if (this.dialogStack.length > 0) {
+      this.dialogStack = [];
+      m.redraw();
+    }
+  }
+
   function isDialogShown() {
     return this.dialogStack.length > 0;
   }
@@ -433,7 +459,6 @@ function createView() {
 
   function vwUserId(model) {
     // User identifier at top right, opens user preferences
-    var from_url = m.route.get();
     return m(".userid",
       {
         title: "Upplýsingar um leikmann",
@@ -528,7 +553,7 @@ function createView() {
 
   // User preferences screen
 
-  function vwUserPrefsDialog(model, from_url) {
+  function vwUserPrefsDialog(model) {
 
     var user = model.user;
     var err = model.userErrors || { };
@@ -609,12 +634,8 @@ function createView() {
       user.beginner = getToggle("beginner");
       user.newbag = getToggle("newbag");
       user.fairplay = getToggle("fairplay");
-      if (from_url)
-        // When done, navigate back to the from_url path
-        model.saveUser(function() { m.route.set(this); }.bind(from_url));
-      else
-        // When done, pop the current dialog
-        model.saveUser(function() { this.popDialog(); }.bind(view));
+      // When done, pop the current dialog
+      model.saveUser(function() { this.popDialog(); }.bind(view));
     }
 
     function initFocus(vnode) {
@@ -742,15 +763,10 @@ function createView() {
           ),
           vwDialogButton("user-ok", "Vista", validate, glyph("ok"), 9),
           vwDialogButton("user-cancel", "Hætta við",
-            function(from_url, ev) {
-              if (from_url === undefined)
-                // No from_url: assume this is a dialog on the view stack; pop it
-                this.popDialog();
-              else
-                // A from_url path is given: navigate to it
-                m.route.set(from_url || "/main");
+            function(ev) {
+              this.popDialog();
               ev.preventDefault();
-            }.bind(view, from_url),
+            }.bind(view),
             glyph("remove"), 10),
           vwDialogButton("user-logout", "Skrá mig út",
             function(ev) { location.href = user.logout_url; ev.preventDefault(); },
@@ -770,12 +786,24 @@ function createView() {
     );
   }
 
-  function vwUserPrefs(model, actions, from_url) {
+  function vwUserPrefs(model, actions) {
     if (model.user)
-      return vwUserPrefsDialog.call(this, model, from_url);
+      return vwUserPrefsDialog.call(this, model);
     return m("span",
       { oninit: function(vnode) { model.loadUser(); } },
       "Sæki upplýsingar um notanda..."
+    );
+  }
+
+  function vwUserInfo(model, actions, args) {
+    return m(UserInfoDialog,
+      {
+        model: model,
+        view: this,
+        userid: args.userid,
+        nick: args.nick,
+        fullname: args.fullname
+      }
     );
   }
 
@@ -981,6 +1009,10 @@ function createView() {
         );
       }
 
+      function showUserInfo(userid, nick, fullname) {
+        view.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
+      }
+
       function vwGamelist() {
 
         function vwList() {
@@ -1058,7 +1090,10 @@ function createView() {
                       m("span.usr-info",
                         {
                           title: "Skoða feril",
-                          onclick: function(ev) { ev.preventDefault(); } // !!! TBD: show user track record
+                          onclick: function(ev) {
+                            // Show opponent track record
+                            showUserInfo(item.oppid, item.nick, item.fullname);
+                          }
                         },
                         ""
                       )
@@ -1215,7 +1250,14 @@ function createView() {
                     )
                   ]
                 ),
-                m("span.list-info", { title: "Skoða feril" }, m("span.usr-info", "")),
+                m("span.list-info",
+                  {
+                    title: "Skoða feril",
+                    // Show opponent track record
+                    onclick: function(ev) { showUserInfo(item.userid, item.opp, item.fullname); }
+                  },
+                  m("span.usr-info", "")
+                ),
                 m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, item.prefs.newbag)
                 )
               ]
@@ -1277,79 +1319,13 @@ function createView() {
       function vwRecentList() {
 
         function vwList() {
-
-          function itemize(item, i) {
-
-            // Generate a list item about a recently completed game
-
-            function durationDescription() {
-              // Format the game duration
-              var duration = "";
-              if (item.duration === 0) {
-                 if (item.days || item.hours || item.minutes) {
-                    if (item.days > 1)
-                       duration = item.days.toString() + " dagar";
-                    else
-                    if (item.days == 1)
-                       duration = "1 dagur";
-                    if (item.hours > 0) {
-                       if (duration.length)
-                          duration += " og ";
-                       duration += item.hours.toString() + " klst";
-                    }
-                    if (item.days === 0) {
-                       if (duration.length)
-                          duration += " og ";
-                       if (item.minutes == 1)
-                          duration += "1 mínúta";
-                       else
-                          duration += item.minutes.toString() + " mínútur";
-                    }
-                 }
-              }
-              else
-                 // This was a timed game
-                 duration = m("span.timed-btn",
-                    { title: 'Viðureign með klukku' },
-                    " 2 x " + item.duration + " mínútur"
-                  );
-              return duration;
-            }
-
-            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
-              m("a",
-                // Clicking on the link opens up the game
-                { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
-                [
-                  m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
-                  m("span.list-ts-short", item.ts_last_move),
-                  m("span.list-nick",
-                    item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
-                  ),
-                  m("span.list-s0", item.sc0),
-                  m("span.list-colon", ":"),
-                  m("span.list-s1", item.sc1),
-                  m("span.list-elo-adj", ""),
-                  m("span.list-elo-adj", ""),
-                  m("span.list-duration", durationDescription()),
-                  m("span.list-manual",
-                    item.manual ? { title: "Keppnishamur" } : { },
-                    glyph("lightbulb", undefined, !item.manual)
-                  )
-                ]
-              )
-            );
-          }
-
-          return m("div",
+          if (model.recentList === null)
+            model.loadRecentList();
+          return m(RecentList,
             {
               id: "recentlist",
-              oninit: function(vnode) {
-                if (model.recentList === null)
-                  model.loadRecentList();
-              }
-            },
-            model.recentList ? model.recentList.map(itemize) : ""
+              recentList: model.recentList
+            }
           );
         }
 
@@ -3077,6 +3053,8 @@ function createRouteResolver(model, actions, view) {
   return model.paths.reduce(function(acc, item) {
     acc[item.route] = {
       onmatch: function(params, route) {
+        // Automatically close all dialogs when navigating to a new route
+        view.popAllDialogs();
         actions.onNavigateTo(item.name, params);
       },
       render: function() {
@@ -3185,6 +3163,182 @@ var OnlinePresence = {
         class: this.online ? "online" : ""
       }
     );
+  }
+
+};
+
+var RecentList = {
+
+  // Shows a list of recent games, stored in vnode.attrs.recentList
+
+  view: function(vnode) {
+
+    function itemize(item, i) {
+
+      // Generate a list item about a recently completed game
+
+      function durationDescription() {
+        // Format the game duration
+        var duration = "";
+        if (item.duration === 0) {
+           if (item.days || item.hours || item.minutes) {
+              if (item.days > 1)
+                 duration = item.days.toString() + " dagar";
+              else
+              if (item.days == 1)
+                 duration = "1 dagur";
+              if (item.hours > 0) {
+                 if (duration.length)
+                    duration += " og ";
+                 duration += item.hours.toString() + " klst";
+              }
+              if (item.days === 0) {
+                 if (duration.length)
+                    duration += " og ";
+                 if (item.minutes == 1)
+                    duration += "1 mínúta";
+                 else
+                    duration += item.minutes.toString() + " mínútur";
+              }
+           }
+        }
+        else
+           // This was a timed game
+           duration = m("span.timed-btn",
+              { title: 'Viðureign með klukku' },
+              " 2 x " + item.duration + " mínútur"
+            );
+        return duration;
+      }
+
+      return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+        m("a",
+          // Clicking on the link opens up the game
+          { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
+          [
+            m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
+            m("span.list-ts-short", item.ts_last_move),
+            m("span.list-nick",
+              item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
+            ),
+            m("span.list-s0", item.sc0),
+            m("span.list-colon", ":"),
+            m("span.list-s1", item.sc1),
+            m("span.list-elo-adj", ""),
+            m("span.list-elo-adj", ""),
+            m("span.list-duration", durationDescription()),
+            m("span.list-manual",
+              item.manual ? { title: "Keppnishamur" } : { },
+              glyph("lightbulb", undefined, !item.manual)
+            )
+          ]
+        )
+      );
+    }
+
+    var list = vnode.attrs.recentList;
+    return m("div", { id: vnode.attrs.id }, !list ? "" : list.map(itemize));
+  }
+
+};
+
+var UserInfoDialog = {
+
+  // A dialog showing the track record of a given user, including
+  // recent games and total statistics
+
+  _update: function(vnode) {
+    // Fetch the statistics of the given user
+    vnode.attrs.model.loadUserStats(vnode.attrs.userid,
+      function(json) {
+        if (json && json.result === 0)
+          this.stats = json;
+        else
+          this.stats = { };
+      }.bind(this)
+    );
+    // Fetch the recent game list of the given user
+    vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
+      function(json) {
+        if (json && json.result === 0)
+          this.recentList = json.recentlist;
+        else
+          this.recentList = [];
+      }.bind(this)
+    );
+  },
+
+  oninit: function(vnode) {
+    this.stats = { };
+    this.recentList = [];
+    this._update(vnode);
+  },
+
+  view: function(vnode) {
+    return m(".modal-dialog",
+      { id: 'usr-info-dialog', style: { visibility: "visible" } },
+      m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'usr-info-form' },
+        [
+          m(".usr-info-hdr",
+            [
+              m("h1.usr-info-icon",
+                [
+                  glyph("user", { id: 'usr-info-icon-user' }),
+                  glyph("coffee-cup", { id: 'usr-info-icon-friend', title: 'Vinur Netskrafls' }),
+                  nbsp()
+                ]
+              ),
+              m("h1[id='usr-info-nick']", vnode.attrs.nick),
+              m("span.vbar", " | "),
+              m("h2[id='usr-info-fullname']", vnode.attrs.fullname),
+              m(".usr-info-fav", { title: 'Uppáhald' }, glyph("star", { id: 'usr-info-fav-star' }))
+            ]
+          ),
+          m("p",
+            [
+              m("strong", "Nýjustu viðureignir"),
+              nbsp(),
+              m("span.versus-cat",
+                [
+                  m("span.shown[id='versus-all']", " gegn öllum "),
+                  m("span[id='versus-you']", " gegn þér ")
+                ]
+              )
+            ]
+          ),
+          m(".listitem.listheader",
+            [
+              m("span.list-win", glyphGrayed("bookmark", { title: 'Sigur' })),
+              m("span.list-ts-short", "Viðureign lauk"),
+              m("span.list-nick", "Andstæðingur"),
+              m("span.list-scorehdr", "Úrslit"),
+              m("span.list-elo-hdr",
+                [
+                  m("span.glyphicon.glyphicon-user.elo-hdr-left[title='Mennskir andstæðingar']"),
+                  "Elo",
+                  m("span.glyphicon.glyphicon-cog.elo-hdr-right[title='Allir andstæðingar']")
+                ]
+              ),
+              m("span.list-duration", "Lengd"),
+              m("span.list-manual", glyphGrayed("lightbulb", { title: 'Keppnishamur' }))
+            ]
+          ),
+          m(RecentList, { id: 'usr-recent', recentList: this.recentList }), // Recent game list
+          m(StatsDisplay, { id: 'usr-stats', ownStats: this.stats }),
+          m("p", { id: 'usr-best' }), // Highest word and game scores
+          m(".modal-close",
+            {
+              id: 'usr-info-close',
+              onclick: function(ev) { vnode.attrs.view.popDialog(); },
+              onmouseout: buttonOut,
+              onmouseover: buttonOver,
+              title: 'Loka'
+            },
+            glyph("ok")
+          )
+        ]
+      )
+    )
   }
 
 };
