@@ -183,12 +183,12 @@ function createModel(settings) {
     }.bind(this));
   }
 
-  function loadUserRecentList(userid, readyFunc) {
+  function loadUserRecentList(userid, versus, readyFunc) {
     // Load the list of recent games for the given user
     m.request({
       method: "POST",
       url: "/recentlist",
-      data: { user: userid, versus: null, count: 40 }
+      data: { user: userid, versus: versus, count: 40 }
     })
     .then(readyFunc);
   }
@@ -264,13 +264,20 @@ function createModel(settings) {
     }.bind(this));
   }
 
-  function loadUser() {
+  function loadUser(activateSpinner) {
     // Fetch the preferences of the currently logged in user, if any
+    this.user = undefined;
+    if (activateSpinner)
+      // This will show a spinner overlay, disabling clicks on
+      // all underlying controls
+      this.spinners++;
     m.request({
       method: "POST",
       url: "/loaduserprefs"
     })
     .then(function(result) {
+      if (activateSpinner)
+        this.spinners--;
       if (!result.ok) {
         console.log("Unable to load user preferences");
         this.user = null;
@@ -787,12 +794,12 @@ function createView() {
   }
 
   function vwUserPrefs(model, actions) {
-    if (model.user)
-      return vwUserPrefsDialog.call(this, model);
-    return m("span",
-      { oninit: function(vnode) { model.loadUser(); } },
-      "Sæki upplýsingar um notanda..."
-    );
+    if (model.user === null)
+      model.loadUser(true); // Activate spinner while loading
+    if (!model.user)
+      // Nothing to edit (the spinner should be showing in this case)
+      return "";
+    return vwUserPrefsDialog.call(this, model);
   }
 
   function vwUserInfo(model, actions, args) {
@@ -909,25 +916,23 @@ function createView() {
               )
             )
           ) : "",
-          m(".modal-close",
+          m(DialogButton,
             {
-              id:'chall-cancel',
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
+              id: 'chall-cancel',
+              title: "Hætta við",
+              tabindex: 8,
               onclick: function(ev) {
                 this.popDialog();
                 ev.preventDefault();
-              }.bind(this),
-              tabindex: 8,
-              title: 'Hætta við'
+              }.bind(this)
             },
             glyph("remove")
           ),
-          m(".modal-close",
+          m(DialogButton,
             {
               id:'chall-ok',
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
+              title: 'Skora á',
+              tabindex: 9,
               onclick: function(ev) {
                 // Issue a new challenge
                 var duration = document.querySelector("div.chall-time.selected").id.slice(6);
@@ -948,9 +953,7 @@ function createView() {
                 );
                 this.popDialog();
                 ev.preventDefault();
-              }.bind(this),
-              tabindex: 9,
-              title: 'Skora á'
+              }.bind(this)
             },
             glyph("ok")
           )
@@ -1092,7 +1095,7 @@ function createView() {
                           title: "Skoða feril",
                           onclick: function(ev) {
                             // Show opponent track record
-                            showUserInfo(item.oppid, item.nick, item.fullname);
+                            showUserInfo(item.oppid, item.opp, item.fullname);
                           }
                         },
                         ""
@@ -1214,10 +1217,9 @@ function createView() {
 
             function clickReceived(ev) {
               // Clicked the hotspot area to accept a received challenge
-              if (item.received) {
+              if (item.received)
                 // Ask the server to create a new game and route to it
                 model.newGame(item.userid, false);
-              }
               ev.preventDefault();
             }
 
@@ -1413,6 +1415,26 @@ function createView() {
                 view.pushDialog("challenge", item);
             }
 
+            function userLink() {
+              if (isRobot)
+                return m("a",
+                  {
+                    href: "",
+                    onclick: function(ev) { model.newGame(item.userid, false); ev.preventDefault(); }
+                  },
+                  [
+                    m("span.list-nick", [ glyph("cog"), nbsp(), item.nick ]),
+                    m("span.list-fullname-robot", fullname)
+                  ]
+                );
+              else
+                return [
+                  m("span.list-nick", item.nick),
+                  m("span.list-fullname", fullname),
+                  m("span.list-human-elo", item.human_elo)
+                ];
+            }
+
             return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
               [
                 m("span.list-ch",
@@ -1426,11 +1448,7 @@ function createView() {
                   glyph("hand-right", undefined, !item.chall)
                 ),
                 fav(),
-                m("span.list-nick",
-                  isRobot ? [ glyph("cog"), nbsp(), item.nick ] : item.nick
-                ),
-                m(isRobot ? "span.list-fullname-robot" : "span.list-fullname", fullname),
-                isRobot ? "" : m("span.list-human-elo", item.human_elo),
+                userLink(),
                 m("span.list-info",
                   {
                     title: "Skoða feril",
@@ -1558,6 +1576,14 @@ function createView() {
         return m(StatsDisplay, { id: 'own-stats', ownStats: ownStats });
       }
 
+      function vwBest() {
+        // View the user's own best game and word scores
+        var ownStats = model.ownStats;
+        if (model.ownStats == null)
+          model.loadOwnStats();
+        return m(BestDisplay, { id: 'own-best', ownStats: ownStats, myself: true });
+      }
+
       return m(".tabbed-page",
         m("div", { id: 'main-tabs' },
           [
@@ -1599,11 +1625,11 @@ function createView() {
             m("[id='tabs-4']",
               [
                 vwStats(),
-                m("p[id='own-best']"),
+                vwBest(),
                 m("p",
                   [
                     m("strong", "Nýlegar viðureignir þínar"),
-                    "- smelltu á viðureign til að skoða hana og rifja upp"
+                    " - smelltu á viðureign til að skoða hana og rifja upp"
                   ]
                 ),
                 vwRecentList()
@@ -1774,12 +1800,7 @@ function createView() {
         return m(".right-area", component ? [ tabgrp, component ] : [ tabgrp ]);
       }
 
-      return m(".rightcol",
-        [
-          vwRightHeading(),
-          vwRightArea()
-        ]
-      );
+      return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
     }
 
     if (game === undefined || game === null)
@@ -1942,8 +1963,10 @@ function createView() {
                 onupdate: focus
               }
             ),
-            m(".modal-close[id='chat-send'][title='Senda']",
+            m(DialogButton,
               {
+                id: "chat-send",
+                title: "Senda",
                 onclick: function(ev) {
                   if (game) {
                     game.sendMessage("game:" + game.uuid, getInput("msg"));
@@ -2296,16 +2319,14 @@ function createView() {
         [
           m("p", "Hvaða staf táknar auða flísin?"),
           m(".rack.blank-rack", m("table.board", { id: 'blank-meaning' }, blankLetters())),
-          m(".modal-close",
+          m(DialogButton,
             {
               id: 'blank-close',
+              title: 'Hætta við',
               onclick: function(ev) {
                 ev.preventDefault();
                 game.cancelBlankDialog();
-              },
-              onmouseover: buttonOver,
-              onmouseout: buttonOut,
-              title: 'Hætta við'
+              }
             },
             glyph("remove")
           )
@@ -2880,16 +2901,14 @@ function createView() {
 
   function vwDialogButton(id, title, func, content, tabindex) {
     // Create a .modal-close dialog button
-    var attr = {
+    var attrs = {
       id: id,
       onclick: func,
-      onmouseover: buttonOver,
-      onmouseout: buttonOut,
       title: title
     };
     if (tabindex !== undefined)
-      attr.tabindex = tabindex;
-    return m(".modal-close", attr, content);
+      attrs.tabindex = tabindex;
+    return m(DialogButton, attrs, content);
   }
 
   function blinker() {
@@ -3211,12 +3230,54 @@ var RecentList = {
         return duration;
       }
 
+      // Show the Elo point adjustments resulting from the game
+      var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
+      var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
+      var eloAdjClass, eloAdjHumanClass;
+      // Find out the appropriate class to use depending on the adjustment sign
+      if (item.elo_adj !== null)
+         if (item.elo_adj > 0) {
+            eloAdj = "+" + eloAdj;
+            eloAdjClass = "elo-win";
+         }
+         else
+         if (item.elo_adj < 0)
+            eloAdjClass = "elo-loss";
+         else {
+            eloAdjClass = "elo-neutral";
+            eloAdj = glyph("stroller", { title: 'Byrjandi' });
+         }
+      if (item.human_elo_adj !== null)
+         if (item.human_elo_adj > 0) {
+            eloAdjHuman = "+" + eloAdjHuman;
+            eloAdjHumanClass = "elo-win";
+         }
+         else
+         if (item.human_elo_adj < 0)
+            eloAdjHumanClass = "elo-loss";
+         else {
+            eloAdjHumanClass = "elo-neutral";
+            eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
+         }
+      eloAdj = m("span",
+        { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
+        eloAdj
+      );
+      eloAdjHuman = m("span",
+        { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman == "" ? " invisible" : "") },
+        eloAdjHuman
+      );
+
       return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
         m("a",
           // Clicking on the link opens up the game
           { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
           [
-            m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
+            m("span.list-win",
+              item.sc0 >= item.sc1 ?
+                glyph("bookmark", { title: item.sc0 == item.sc1 ? "Jafntefli" : "Sigur" }) :
+                glyphGrayed("bookmark", { title: "Tap" })
+            ),
             m("span.list-ts-short", item.ts_last_move),
             m("span.list-nick",
               item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
@@ -3224,8 +3285,8 @@ var RecentList = {
             m("span.list-s0", item.sc0),
             m("span.list-colon", ":"),
             m("span.list-s1", item.sc1),
-            m("span.list-elo-adj", ""),
-            m("span.list-elo-adj", ""),
+            m("span.list-elo-adj", eloAdjHuman),
+            m("span.list-elo-adj", eloAdj),
             m("span.list-duration", durationDescription()),
             m("span.list-manual",
               item.manual ? { title: "Keppnishamur" } : { },
@@ -3247,7 +3308,7 @@ var UserInfoDialog = {
   // A dialog showing the track record of a given user, including
   // recent games and total statistics
 
-  _update: function(vnode) {
+  _updateStats: function(vnode) {
     // Fetch the statistics of the given user
     vnode.attrs.model.loadUserStats(vnode.attrs.userid,
       function(json) {
@@ -3257,8 +3318,12 @@ var UserInfoDialog = {
           this.stats = { };
       }.bind(this)
     );
+  },
+
+  _updateRecentList: function(vnode) {
     // Fetch the recent game list of the given user
     vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
+      this.versusAll ? null : $state.userId,
       function(json) {
         if (json && json.result === 0)
           this.recentList = json.recentlist;
@@ -3268,10 +3333,19 @@ var UserInfoDialog = {
     );
   },
 
+  _setVersus: function(vnode, state, ev) {
+    if (this.versusAll != state) {
+      this.versusAll = state;
+      this._updateRecentList(vnode);
+    }
+  },
+
   oninit: function(vnode) {
     this.stats = { };
     this.recentList = [];
-    this._update(vnode);
+    this.versusAll = true; // Show games against all opponents or just the current user?
+    this._updateRecentList(vnode);
+    this._updateStats(vnode);
   },
 
   view: function(vnode) {
@@ -3282,16 +3356,24 @@ var UserInfoDialog = {
           m(".usr-info-hdr",
             [
               m("h1.usr-info-icon",
-                [
-                  glyph("user", { id: 'usr-info-icon-user' }),
-                  glyph("coffee-cup", { id: 'usr-info-icon-friend', title: 'Vinur Netskrafls' }),
-                  nbsp()
-                ]
+                this.stats.friend ? glyph("coffee-cup", { title: 'Vinur Netskrafls' }) : glyph("user")
               ),
+              nbsp(),
               m("h1[id='usr-info-nick']", vnode.attrs.nick),
-              m("span.vbar", " | "),
+              m("span.vbar", "|"),
               m("h2[id='usr-info-fullname']", vnode.attrs.fullname),
-              m(".usr-info-fav", { title: 'Uppáhald' }, glyph("star", { id: 'usr-info-fav-star' }))
+              m(".usr-info-fav",
+                {
+                  title: 'Uppáhald',
+                  onclick: function(ev) {
+                    // Toggle the favorite setting
+                    this.favorite = !this.favorite;
+                    vnode.attrs.model.markFavorite(vnode.attrs.userid, this.favorite);
+                    ev.preventDefault();
+                  }.bind(this.stats)
+                },
+                this.stats.favorite ? glyph("star") : glyph("star-empty")
+              )
             ]
           ),
           m("p",
@@ -3300,8 +3382,20 @@ var UserInfoDialog = {
               nbsp(),
               m("span.versus-cat",
                 [
-                  m("span.shown[id='versus-all']", " gegn öllum "),
-                  m("span[id='versus-you']", " gegn þér ")
+                  m("span",
+                    {
+                      class: this.versusAll ? "shown" : "",
+                      onclick: this._setVersus.bind(this, vnode, true) // Set this.versusAll to true
+                    },
+                    " gegn öllum "
+                  ),
+                  m("span",
+                    {
+                      class: this.versusAll ? "" : "shown",
+                      onclick: this._setVersus.bind(this, vnode, false) // Set this.versusAll to false
+                    },
+                    " gegn þér "
+                  )
                 ]
               )
             ]
@@ -3325,20 +3419,68 @@ var UserInfoDialog = {
           ),
           m(RecentList, { id: 'usr-recent', recentList: this.recentList }), // Recent game list
           m(StatsDisplay, { id: 'usr-stats', ownStats: this.stats }),
-          m("p", { id: 'usr-best' }), // Highest word and game scores
-          m(".modal-close",
+          m(BestDisplay, { id: 'usr-best', ownStats: this.stats, myself: false }), // Highest word and game scores
+          m(DialogButton,
             {
               id: 'usr-info-close',
-              onclick: function(ev) { vnode.attrs.view.popDialog(); },
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
-              title: 'Loka'
+              title: 'Loka',
+              onclick: function(ev) { vnode.attrs.view.popDialog(); }
             },
             glyph("ok")
           )
         ]
       )
     )
+  }
+
+};
+
+var BestDisplay = {
+
+  // Display the best words and best games played for a given user
+
+  view: function(vnode) {
+    // Populate the highest score/best word field
+    var json = vnode.attrs.ownStats || { };
+    var own = true;
+    var best = [];
+    if (json.highest_score) {
+      best.push("Hæsta skor ");
+      best.push(m("b",
+        m("a",
+          { href: "/game/" + json.highest_score_game, oncreate: m.route.link },
+          json.highest_score
+        )
+      ));
+    }
+    if (json.best_word) {
+      if (best.length)
+        if (vnode.attrs.myself)
+          best.push(m("br")); // Own stats: Line break between parts
+        else
+          best.push(" | "); // Opponent stats: Divider bar between parts
+      var bw = json.best_word;
+      var s = [];
+      // Make sure blank tiles get a different color
+      for (var i = 0; i < bw.length; i++)
+        if (bw[i] == '?') {
+          s.push(m("span.blanktile", bw[i+1]));
+          i += 1;
+        }
+        else
+          s.push(bw[i]);
+      best.push("Besta orð ");
+      best.push(m("span.best-word", s));
+      best.push(", ");
+      best.push(m("b",
+        m("a",
+          { href: "/game/" + json.best_word_game, oncreate: m.route.link },
+          json.best_word_score
+        )
+      ));
+      best.push(" stig");
+    }
+    return m("p", { id: vnode.attrs.id }, best);
   }
 
 };
@@ -3420,7 +3562,21 @@ var StatsDisplay = {
     );
   }
 
-}
+};
+
+var DialogButton = {
+
+  view: function(vnode) {
+    var attrs = {
+      onmouseout: buttonOut,
+      onmouseover: buttonOver
+    };
+    for (var a in vnode.attrs)
+      attrs[a] = vnode.attrs[a];
+    return m(".modal-close", attrs, vnode.children);
+  }
+
+};
 
 // Utility functions
 

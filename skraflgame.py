@@ -1247,6 +1247,7 @@ class Game:
             reply["bag"] = self.state.bag().contents()
         else:
             # Game is still in progress
+            assert player_index is not None
             last_chall = self.state.is_last_challenge() # ...but in a last-challenge state
             reply["result"] = 0 # Indicate no error
             reply["xchg"] = False if last_chall else self.state.is_exchange_allowed()
@@ -1254,12 +1255,15 @@ class Game:
             reply["last_chall"] = last_chall
             reply["bag"] = self.display_bag(player_index)
 
-        reply["rack"] = self.state.rack_details(player_index)
+        if player_index is None:
+            reply["rack"] = ""
+        else:
+            reply["rack"] = self.state.rack_details(player_index)
         reply["num_moves"] = len(self.moves)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
         reply["succ_chall"] = succ_chall
-        reply["player"] = player_index
+        reply["player"] = player_index # Can be None if the game is over
         reply["newbag"] = self.new_bag()
         reply["manual"] = self.manual_wordcheck()
         if self.get_duration():
