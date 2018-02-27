@@ -201,10 +201,18 @@ function createModel(settings) {
       // This will show a spinner overlay, disabling clicks on
       // all underlying controls
       this.spinners++;
+    var url = "/userlist";
+    var data = criteria;
+    if (criteria.query == "elo") {
+      // Kludge to make the Elo rating list appear as
+      // just another type of user list
+      url = "/rating";
+      data = { kind: criteria.spec };
+    }
     m.request({
       method: "POST",
-      url: "/userlist",
-      data: criteria
+      url: url,
+      data: data
     })
     .then(function(json) {
       if (activateSpinner)
@@ -216,7 +224,7 @@ function createModel(settings) {
         this.userListCriteria = null;
         return;
       }
-      this.userList = json.userlist;
+      this.userList = json.userlist || json.rating;
       this.userListCriteria = criteria;
     }.bind(this));
   }
@@ -382,7 +390,8 @@ function createView() {
     popAllDialogs: popAllDialogs,
     startSpinner: startSpinner,
     stopSpinner: stopSpinner,
-    isDialogShown: isDialogShown
+    isDialogShown: isDialogShown,
+    showUserInfo: showUserInfo
   };
 
   function vwApp(model, actions) {
@@ -453,6 +462,11 @@ function createView() {
 
   function isDialogShown() {
     return this.dialogStack.length > 0;
+  }
+
+  function showUserInfo(userid, nick, fullname) {
+    // Show a user info dialog
+    this.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
   }
 
   // Globally available controls
@@ -1354,12 +1368,15 @@ function createView() {
       }
 
       function vwUserButton(id, icon, text) {
+        // Select the type of user list (robots, fav, alike, elo)
         var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-        return m("span" + (id == sel ? ".shown" : ""),
+        var spec = (id == "elo") ? "human" : "";
+        return m("span",
           {
+            className: (id == sel ? "shown" : ""),
             id: id,
             onclick: function(ev) {
-              model.loadUserList({ query: id, spec: "" }, true);
+              model.loadUserList({ query: id, spec: spec }, true);
               ev.preventDefault();
             }
           },
@@ -1478,79 +1495,10 @@ function createView() {
           return m("div", { id: "userlist", key: listType }, list.map(itemize));
         }
 
-        function vwEloList() {
-
-          function itemize(item, i) {
-
-            // Generate a list item about a user
-
-            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
-              m("a",
-                // Clicking on the link opens up the game
-                { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
-                [
-                  m("span.list-win", glyph("bookmark", undefined, item.sc0 < item.sc1)),
-                  m("span.list-ts-short", item.ts_last_move),
-                  m("span.list-nick",
-                    item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
-                  ),
-                  m("span.list-s0", item.sc0),
-                  m("span.list-colon", ":"),
-                  m("span.list-s1", item.sc1),
-                  m("span.list-elo-adj", ""),
-                  m("span.list-elo-adj", ""),
-                  m("span.list-duration", durationDescription()),
-                  m("span.list-manual",
-                    item.manual ? { title: "Keppnishamur" } : { },
-                    glyph("lightbulb", undefined, !item.manual)
-                  )
-                ]
-              )
-            );
-          }
-
-          var list = [];
-          if (model.userList === undefined)
-            ;
-          else
-          if (model.userList === null || model.userListCriteria.query != "elo")
-            model.loadUserList({ query: "elo", spec: "" }, true);
-          else
-            list = model.userList;
-
-          return m("div", { id: "elolist", key: "elo" }, list.map(itemize));
-        }
-
         var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return [
-            m(".listitem.listheader", { key: listType },
-              [
-                m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-                m("span.list-rank", "Röð"),
-                m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
-                m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
-                m("span.list-nick-elo", "Einkenni"),
-                m("span.list-elo[title='Elo-stig']", "Elo"),
-                m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
-                m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
-                m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
-                m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
-                m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
-                m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
-                m("span.list-info-hdr", "Ferill"),
-                m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
-                m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
-                  [
-                    m(".option.x-small[id='opt1']", glyph("user")),
-                    m(".option.x-small[id='opt2']", glyph("cog"))
-                  ]
-                )
-              ]
-            ),
-            vwEloList()
-          ];
+          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view })
         // Show normal user list
         return [
           m(".listitem.listheader", { key: listType },
@@ -3182,6 +3130,148 @@ var OnlinePresence = {
         class: this.online ? "online" : ""
       }
     );
+  }
+
+};
+
+var EloPage = {
+
+  // Show the header of an Elo ranking list and then the list itself
+
+  oninit: function(vnode) {
+    this.sel = "human"; // Default: show ranking for human games only
+  },
+
+  view: function(vnode) {
+    return [
+      m(".listitem.listheader", { key: vnode.attrs.key },
+        [
+          m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+          m("span.list-rank", "Röð"),
+          m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
+          m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
+          m("span.list-nick-elo", "Einkenni"),
+          m("span.list-elo[title='Elo-stig']", "Elo"),
+          m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
+          m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
+          m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
+          m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
+          m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
+          m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
+          m("span.list-info-hdr", "Ferill"),
+          m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
+          m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+            [
+              m(".option.x-small",
+                {
+                  // Show ranking for human games only
+                  className: (this.sel == "human" ? "selected" : ""),
+                  onclick: function(ev) { this.sel = "human"; }.bind(this)
+                },
+                glyph("user")
+              ),
+              m(".option.x-small",
+                {
+                  // Show ranking for all games, including robots
+                  className: (this.sel == "all" ? "selected" : ""),
+                  onclick: function(ev) { this.sel = "all"; }.bind(this)
+                },
+                glyph("cog")
+              )
+            ]
+          )
+        ]
+      ),
+      m(EloList,
+        {
+          id: vnode.attrs.id,
+          sel: this.sel,
+          model: vnode.attrs.model,
+          view: vnode.attrs.view
+        }
+      )
+    ];
+  }
+
+};
+
+var EloList = {
+
+  view: function(vnode) {
+
+    function itemize(item, i) {
+
+      // Generate a list item about a user in an Elo ranking table
+
+      function rankStr(rank, ref) {
+         // Return a rank string or dash if no rank or not meaningful
+         // (i.e. if the reference, such as the number of games, is zero)
+         if (rank === 0 || (ref !== undefined && ref === 0))
+            return "--";
+         return rank.toString();
+      }
+
+      var isRobot = item.userid.indexOf("robot-") === 0;
+      var nick = item.nick;
+      var ch = "";
+      var info = nbsp();
+      var newbag = item.newbag;
+      if (item.userid != $state.userId && !item.inactive)
+        ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
+      if (isRobot) {
+        nick = m("span", { key: "robot" }, [ glyph("cog"), nbsp(), nick ]);
+        newbag = $state.newBag; // Imitates the logged-in user
+      }
+      else
+      if (item.userid != $state.userId)
+        info = m("span.usr-info",
+          {
+            key: "usrinfo",
+            onclick: function(ev) {
+              vnode.attrs.view.showUserInfo(this.userid, this.nick, this.fullname);
+            }.bind(item)
+          }
+        );
+      if (item.fairplay && !isRobot)
+        nick = m("span", { key: "fairplay" },
+          [ m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick ]);
+
+      return m(".listitem",
+        {
+          key: vnode.attrs.sel + i,
+          className : (i % 2 == 0 ? "oddlist" : "evenlist")
+        },
+        [
+          m("span.list-ch", ch),
+          m("span.list-rank.bold", rankStr(item.rank)),
+          m("span.list-rank-no-mobile", rankStr(item.rank_yesterday)),
+          m("span.list-rank-no-mobile", rankStr(item.rank_week_ago)),
+          m("span.list-nick-elo", { title: item.fullname }, nick),
+          m("span.list-elo.bold", item.elo),
+          m("span.list-elo-no-mobile", rankStr(item.elo_yesterday, item.games_yesterday)),
+          m("span.list-elo-no-mobile", rankStr(item.elo_week_ago, item.games_week_ago)),
+          m("span.list-elo-no-mobile", rankStr(item.elo_month_ago, item.games_month_ago)),
+          m("span.list-games.bold", item.games),
+          m("span.list-ratio", item.ratio),
+          m("span.list-avgpts", item.avgpts),
+          m("span.list-info", { title: "Skoða feril" }, info),
+          m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, newbag))
+        ]
+      );
+    }
+
+    var model = vnode.attrs.model;
+    var list = [];
+    if (model.userList === undefined)
+      ; // Loading in progress
+    else
+    if (model.userList === null || model.userListCriteria.query != "elo" ||
+      model.userListCriteria.spec != vnode.attrs.sel)
+      // We're not showing the correct list: request a new one
+      model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
+    else
+      list = model.userList;
+    return m("div", { id: vnode.attrs.id }, list.map(itemize));
   }
 
 };

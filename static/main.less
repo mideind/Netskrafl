@@ -1654,7 +1654,8 @@ span.over {
    /* Overridden for fullscreen media */
 }
 
-div #userlist {
+div #userlist,
+div #elolist {
    height: 396px; /* 11 lines @ 36px each */
    overflow-y: auto;
    overflow-x: hidden;
@@ -2675,7 +2676,8 @@ span.over {
 }
 
 div #userlist,
-div #gamelist {
+div #gamelist,
+div #elolist {
    height: 540px; /* 15 lines @ 36px each */
 }
 
@@ -3990,6 +3992,7 @@ span.usr-info:hover {
 }
 
 #userlist span.glyphicon.glyphicon-hand-right,
+#elolist span.glyphicon.glyphicon-hand-right,
 #chall-sent span.glyphicon.glyphicon-hand-right,
 #chall-received span.glyphicon.glyphicon-thumbs-down,
 p span.glyphicon.glyphicon-flag,
@@ -4014,7 +4017,8 @@ span.glyphicon.glyphicon-lightbulb.grayed {
 .listheader span.glyphicon.glyphicon-flag.grayed,
 #gamelist span.glyphicon.glyphicon-flag.grayed,
 #userlist span.glyphicon.glyphicon-star-empty,
-#userlist span.glyphicon.glyphicon-hand-right.grayed {
+#userlist span.glyphicon.glyphicon-hand-right.grayed,
+#elolist span.glyphicon.glyphicon-hand-right.grayed {
    color: fade(black, 15%);
 }
 
