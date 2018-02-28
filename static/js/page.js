@@ -195,6 +195,14 @@ function createModel(settings) {
 
   function loadUserList(criteria, activateSpinner) {
     // Load a list of users according to the given criteria
+    if (criteria.query == "search" && criteria.spec == "") {
+      // Optimize by not sending an empty search query to the server,
+      // since it always returns an empty list
+      this.userList = [];
+      this.userListCriteria = criteria;
+      m.redraw(); // Call this explicitly as we're not calling m.request()
+      return;
+    }
     this.userList = undefined;
     this.userListCriteria = undefined; // Marker to prevent concurrent loading
     if (activateSpinner)
@@ -1386,7 +1394,7 @@ function createView() {
 
       function vwUserList() {
 
-        function vwUserList(listType) {
+        function vwUserList(listType, list) {
 
           function itemize(item, i) {
 
@@ -1482,16 +1490,6 @@ function createView() {
             );
           }
 
-          var list = [];
-          if (model.userList === undefined)
-            // We are loading a fresh user list
-            ;
-          else
-          if (model.userList === null || model.userListCriteria.query != listType)
-            model.loadUserList({ query: listType, spec: "" }, true);
-          else
-            list = model.userList;
-
           return m("div", { id: "userlist", key: listType }, list.map(itemize));
         }
 
@@ -1500,6 +1498,17 @@ function createView() {
           // Show Elo list
           return m(EloPage, { id: "elolist", key: "elo", model: model, view: view })
         // Show normal user list
+        var list = [];
+        if (model.userList === undefined)
+          // We are loading a fresh user list
+          ;
+        else
+        if (model.userList === null || model.userListCriteria.query != listType)
+          model.loadUserList({ query: listType, spec: "" }, true);
+        else
+          list = model.userList;
+        var nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
+          listType == "search" && model.userListCriteria.spec !== "";
         return [
           m(".listitem.listheader", { key: listType },
             [
@@ -1512,7 +1521,14 @@ function createView() {
               listType == "robots" ? "" : m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
             ]
           ),
-          vwUserList(listType)
+          vwUserList(listType, list),
+          // Show indicator if search didn't find any users matching the criteria
+          nothingFound
+            ? m("div",
+                { id: "user-no-match", style: { display: "block" } },
+                [ glyph("search"), " ", m("span", { id: "search-prefix" }, model.userListCriteria.spec), " finnst ekki" ]
+              )
+            : ""
         ];
       }
 
@@ -1596,27 +1612,10 @@ function createView() {
                         vwUserButton("elo", "crown", "Topp 100")
                       ]
                     ),
-                    m(".user-cat[id='user-search']",
-                      [
-                        glyph("search", { id: 'search' }),
-                        m("input.text.userid",
-                          {
-                            type: 'text',
-                            id: 'search-id',
-                            name: 'search-id',
-                            maxlength: 16,
-                            placeholder: 'Einkenni eða nafn',
-                            value: ''
-                          }
-                        )
-                      ]
-                    )
+                    m(SearchButton, { model: model })
                   ]
                 ),
-                vwUserList(),
-                m("div", { id: "user-no-match" },
-                  [ glyph("search"), m("span", { id: 'search-prefix' }), " finnst ekki" ]
-                )
+                vwUserList()
               ]
             )
           ]
@@ -3653,6 +3652,103 @@ var StatsDisplay = {
   }
 
 };
+
+function SearchButton(vnode) {
+
+  // A combination of a button and pattern entry field
+  // for user search
+
+  var spec = ""; // The current search pattern
+  var model = vnode.attrs.model;
+  var promise;
+
+  function newSearch() {
+    // There may have been a change of search parameters: react
+    if (promise !== undefined) {
+      // There was a previous promise, now obsolete: make it
+      // resolve without action
+      promise.result = false;
+      promise = undefined;
+    }
+    var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
+    if (sel != "search") {
+      // Not already in a search: load the user list immediately
+      model.loadUserList({ query: "search", spec: spec }, true);
+      return;
+    }
+    if (spec == model.userListCriteria.spec)
+      // We're already looking at the same search spec: done
+      return;
+    // We're changing the search spec.
+    // In order to limit the number of search queries sent to
+    // the server while typing a new criteria, we keep an
+    // outstanding promise that resolves in 0.8 seconds,
+    // unless cancelled by a new keystroke/promise.
+    // Note: since a promise can't be directly cancelled, we use a
+    // convoluted route to associate a boolean result with it.
+    var newP = {
+      result: true,
+      p: new Promise(function(resolve, reject) {
+        // After 800 milliseconds, resolve to whatever value the
+        // result property has at that time. It will be true
+        // unless the promise has been "cancelled" by setting
+        // its result property to false.
+        setTimeout(function() { resolve(newP.result); }, 800);
+      })
+    };
+    promise = newP;
+    promise.p.then(function(value) {
+      if (value) {
+        // Successfully resolved, without cancellation:
+        // issue the search query to the server as it now stands
+        model.loadUserList({ query: "search", spec: spec }, true);
+        promise = undefined;
+      }
+    });
+  }
+
+  return {
+    view: function() {
+      var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
+      return m(".user-cat[id='user-search']",
+        [
+          glyph("search",
+            {
+              id: 'search',
+              className: (sel == "search" ? "shown" : ""),
+              onclick: function(ev) {
+                // Reset the search pattern when clicking the search icon
+                spec = "";
+                newSearch();
+                document.getElementById("search-id").focus();
+              }
+            }
+          ),
+          nbsp(),
+          m("input.text.userid",
+            {
+              type: 'text',
+              id: 'search-id',
+              name: 'search-id',
+              maxlength: 16,
+              placeholder: 'Einkenni eða nafn',
+              value: spec,
+              onfocus: function(ev) {
+                newSearch();
+              },
+              oninput: m.withAttr("value", function(value) {
+                  spec = value;
+                  newSearch();
+                }
+              )
+            }
+          )
+        ]
+      );
+    }
+  }
+}
+
 
 var DialogButton = {
 
