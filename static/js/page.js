@@ -543,11 +543,13 @@ function createView() {
 
   function vwLogin(model, actions) {
     // Login dialog
-    // !!! TBD
 
     function vwLoginLarge() {
       // Full screen version of login page
-      return m(".loginform-large",
+      return [
+        vwLogo(),
+        vwInfo(),
+        m(".loginform-large",
         [
           m(".loginhdr", "Velkomin í Netskrafl!"),
           m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
@@ -576,17 +578,11 @@ function createView() {
           m(".welcome",
             [
               "Þú getur alltaf fengið ",
-              m("a",
-                { href: '/help', oncreate: m.route.link },
-                "hjálp"
-              ),
+              m("a", { href: '/help', oncreate: m.route.link }, "hjálp"),
               " með því að smella á ",
               m("a",
                 { href: '/help', oncreate: m.route.link },
-                [
-                  "bláa", nbsp(), nbsp(), glyph("info-sign"),
-                  " - merkið"
-                ]
+                [ "bláa", nbsp(), nbsp(), glyph("info-sign"), " - merkið" ]
               ),
               " hér til vinstri."
             ]
@@ -603,7 +599,7 @@ function createView() {
             )
           )
         ]
-      );
+      )];
     }
 
     function vwLoginSmall() {
@@ -614,8 +610,8 @@ function createView() {
             { id: 'logo-pic' }, 
             m("img",
               {
-                height: 300, width: 300,
-                src: '/static/LoginLogo600.png'
+                height: 375, width: 375,
+                src: '/static/LoginLogo750.png'
               }
             )
           ),
@@ -635,7 +631,7 @@ function createView() {
       );
     }
 
-    return vwLoginLarge(); // !!! TBD
+    return $state.uiFullscreen ? vwLoginLarge() : vwLoginSmall();
   }
 
   // A control that rigs up a tabbed view of raw HTML
@@ -1820,6 +1816,10 @@ function createView() {
         var sc0 = game ? game.scores[0].toString() : "";
         var sc1 = game ? game.scores[1].toString() : "";
         return m(".heading",
+          {
+            // On mobile only: If the header is clicked, go to the main screen
+            onclick: function(ev) { if (!$state.uiFullscreen) m.route.set("/main"); }
+          },
           [
             m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
               vwPlayerName("left")),
@@ -1906,7 +1906,7 @@ function createView() {
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
       {
         title: title,
-        onclick: function() { if (game) game.sel = tabid; },
+        onclick: function(ev) { if (game) game.sel = tabid; },
         id: "tab-" + tabid
       },
       glyph(icon)
@@ -2000,6 +2000,14 @@ function createView() {
       vnode.dom.focus();
     }
 
+    function sendMessage() {
+      var msg = getInput("msg");
+      if (game && msg) {
+        game.sendMessage("game:" + game.uuid, msg);
+        setInput("msg", "");
+      }
+    }
+
     if (game && game.messages === null)
       // No messages loaded yet: kick off async message loading
       // for the current game
@@ -2017,19 +2025,15 @@ function createView() {
                 name: "msg",
                 maxlength: 254,
                 oncreate: focus,
-                onupdate: focus
+                onupdate: focus,
+                onkeypress: function(ev) { if (ev.key == "Enter") sendMessage(); }
               }
             ),
             m(DialogButton,
               {
                 id: "chat-send",
                 title: "Senda",
-                onclick: function(ev) {
-                  if (game) {
-                    game.sendMessage("game:" + game.uuid, getInput("msg"));
-                    setInput("msg", "");
-                  }
-                }
+                onclick: function(ev) { sendMessage(); }
               },
               glyph("chat")
             )
@@ -3973,7 +3977,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
       }
       .bind(vnode, i);
     tablist[i].setAttribute("href", null);
-    tablist[i].setAttribute("class", "ui-tabs-anchor");
+    tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
     tablist[i].setAttribute("role", "presentation");
     // Also decorate the <li> elements
     lis.push(tabitems[i]);

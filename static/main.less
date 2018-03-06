@@ -815,10 +815,15 @@ div.player-btn.right.tomove {
 div.loginform-small {
    display: block;
    position: absolute;
-   width: @mobile-width - 2 * @margin-small;
+   width: @mobile-width; /* - 2 * @margin-small; */
+   /*
    padding-top: @margin-small;
    padding-left: @margin-small;
    padding-right: @margin-small;
+   */
+   padding-top: 0;
+   padding-left: 0;
+   padding-right: 0;
 }
 
 div.loginform-large {
@@ -834,6 +839,10 @@ div#logo-pic {
    text-align: center;
    padding-top: 32px;
    padding-bottom: 16px;
+}
+
+div.loginform-small div#logo-pic {
+   padding-top: 0px;
 }
 
 div.blurb {
@@ -878,22 +887,22 @@ div.right-tab#tab-board {
 }
 
 div.right-tab#tab-movelist {
-   left: 80px;
+   left: 78px;
    background-color: @background;
 }
 
 div.right-tab#tab-twoletter {
-   left: 152px;
+   left: 148px;
    background-color: @theme4;
 }
 
 div.right-tab#tab-games {
-   left: 224px;
+   left: 218px;
    background-color: @theme6;
 }
 
 div.right-tab#tab-chat {
-   left: 295px;
+   left: 288px;
    background-color: @theme5;
 }
 
@@ -1159,12 +1168,14 @@ div.tabbed-page {
    line-height: 23px;
 }
 
-div#tabs {
+div#tabs,
+div#main-tabs {
    border-width: 0;
    padding: 0;
 }
 
-div#tabs > div[role=tabpanel] {
+div#tabs > div[role=tabpanel],
+div#main-tabs > div[role=tabpanel] {
    height: 657px;
 }
 
@@ -1480,6 +1491,11 @@ span.mobile-break {
    padding-left: 12px;
    padding-right: 12px;
    text-align: center;
+}
+
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor.sp {
+   /* Single page version */
+   min-width: 58px;
 }
 
 .ui-tabs .ui-tabs-panel {
@@ -2444,7 +2460,8 @@ div.tabbed-page {
    line-height: 23px;
 }
 
-div#tabs {
+div#tabs,
+div#main-tabs {
    padding: .2em;
    border: 2px solid #fcfdfd;
 }
