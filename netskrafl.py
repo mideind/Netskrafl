@@ -81,6 +81,8 @@ _PROMO_FREQUENCY = 8 # A promo check is done randomly, but on average every 1 ou
 _PROMO_COUNT = 2 # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days = 4) # Min interval between promo displays
 
+# URL to navigate to after logout
+_LOGOUT_URL = "/page#!/login"
 
 @app.before_request
 def before_request():
@@ -1349,7 +1351,7 @@ class UserForm:
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr = None):
-        self.logout_url = User.logout_url()
+        self.logout_url = User.logout_url(_LOGOUT_URL)
         if usr:
             self.init_from_user(usr)
         else:
@@ -1991,12 +1993,14 @@ def faq():
 def page():
     """ Show single-page UI test """
     user = User.current()
+    login_url = users.create_login_url("/page")
     if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
-    firebase_token = firebase.create_custom_token(user.id())
+        firebase_token = ""
+    else:
+        firebase_token = firebase.create_custom_token(user.id())
     return render_template("page.html",
-        user = user, firebase_token = firebase_token)
+        user = user, firebase_token = firebase_token,
+        login_url = login_url)
 
 
 @app.route("/newbag")

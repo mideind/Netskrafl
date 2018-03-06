@@ -54,11 +54,10 @@ function getSettings() {
   // Returns an app-wide settings object
   var
     paths = [
-      { name: "main", route: "/main" },
-      { name: "login", route: "/login" },
-      { name: "help", route: "/help" },
-      // { name: "userprefs", route: "/userprefs" },
-      { name: "game", route: "/game/:uuid" }
+      { name: "main", route: "/main", mustLogin: true },
+      { name: "login", route: "/login", mustLogin: false },
+      { name: "help", route: "/help", mustLogin: false },
+      { name: "game", route: "/game/:uuid", mustLogin: true }
     ],
     settings = {
       paths: paths,
@@ -133,7 +132,7 @@ function createModel(settings) {
 
   function loadGameList() {
     // Load the list of currently active games for this user
-    this.gameList = [];
+    this.gameList = undefined; // Loading in progress
     m.request({
       method: "POST",
       url: "/gamelist"
@@ -144,7 +143,7 @@ function createModel(settings) {
         this.gameList = null;
         return;
       }
-      this.gameList = json.gamelist;
+      this.gameList = json.gamelist || [];
     }.bind(this));
   }
 
@@ -390,9 +389,31 @@ function createView() {
 
   // The view interface exposes only the vwApp view function.
   // Additionally, a view instance has a current dialog window stack.
+
+  // Map of available dialogs
+  var dialogViews = {
+    "userprefs":
+      function(model, actions, args) {
+        return vwUserPrefs.call(this, model, actions);
+      },
+    "userinfo":
+      function(model, actions, args) {
+        return vwUserInfo.call(this, model, actions, args);
+      },
+    "challenge":
+      function(model, actions, args) {
+        return vwChallenge.call(this, model, actions, args);
+      },
+    "spinner":
+      function(model, actions, args) {
+        return vwSpinner.call(this, model, actions);
+      }
+  };
+
   return {
     appView: vwApp,
     dialogStack: [],
+    dialogViews: dialogViews,
     pushDialog: pushDialog,
     popDialog: popDialog,
     popAllDialogs: popAllDialogs,
@@ -404,13 +425,6 @@ function createView() {
 
   function vwApp(model, actions) {
     // Select the view based on the current route
-    // Map of available dialogs
-    var dialogViews = {
-      "userprefs" : function(model, actions, args) { return vwUserPrefs.call(this, model, actions); },
-      "userinfo": function(model, actions, args) { return vwUserInfo.call(this, model, actions, args); },
-      "challenge": function(model, actions, args) { return vwChallenge.call(this, model, actions, args); },
-      "spinner": function(model, actions, args) { return vwSpinner.call(this, model, actions); }
-    };
     // Display the appropriate content for the route,
     // also considering active dialogs
     var views = [];
@@ -436,10 +450,11 @@ function createView() {
     // Push any open dialogs
     for (var i = 0; i < this.dialogStack.length; i++) {
       var dialog = this.dialogStack[i];
-      if (dialogViews[dialog.name] === undefined)
+      var v = this.dialogViews[dialog.name];
+      if (v === undefined)
         console.log("Unknown dialog name: " + dialog.name);
       else
-        views.push(dialogViews[dialog.name].call(this, model, actions, dialog.args));
+        views.push(v.call(this, model, actions, dialog.args));
     }
     // Overlay a spinner, if active
     if (model.spinners > 0)
@@ -481,13 +496,20 @@ function createView() {
 
   function vwInfo() {
     // Info icon, invoking the help screen
-    return m(".info", { title: "Upplýsingar og hjálp" },
-      m("a.iconlink", { href: "/help", oncreate: m.route.link }, glyph("info-sign"))
+    return m(".info",
+      { title: "Upplýsingar og hjálp" },
+      m("a.iconlink",
+        { href: "/help", oncreate: m.route.link },
+        glyph("info-sign")
+      )
     );
   }
 
-  function vwUserId(model) {
+  function vwUserId() {
     // User identifier at top right, opens user preferences
+    if ($state.userId == "")
+      // Don't show the button if there is no logged-in user
+      return "";
     return m(".userid",
       {
         title: "Upplýsingar um leikmann",
@@ -522,7 +544,98 @@ function createView() {
   function vwLogin(model, actions) {
     // Login dialog
     // !!! TBD
-    return m("a", { href: "/main", oncreate: m.route.link }, "Go to main page!");
+
+    function vwLoginLarge() {
+      // Full screen version of login page
+      return m(".loginform-large",
+        [
+          m(".loginhdr", "Velkomin í Netskrafl!"),
+          m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
+          m("div", { id: 'board-pic' }, 
+            m("img",
+              {
+                width: 310, height: 300,
+                src: '/static/Board.png'
+              }
+            )
+          ),
+          m(".welcome",
+            [
+              "Netskrafl er vettvangur ",
+              m("b", "yfir 16.000 íslenskra skraflara"),
+              " á netinu."
+            ]
+          ),
+          m(".welcome", 
+            "Netskrafl notar Google Accounts innskráningu, þá " +
+            "sömu og er notuð m.a. í Gmail."
+          ),
+          m(".welcome", 
+            "Netskrafl safnar hvorki persónuupplýsingum né geymir þær."
+          ),
+          m(".welcome",
+            [
+              "Þú getur alltaf fengið ",
+              m("a",
+                { href: '/help', oncreate: m.route.link },
+                "hjálp"
+              ),
+              " með því að smella á ",
+              m("a",
+                { href: '/help', oncreate: m.route.link },
+                [
+                  "bláa", nbsp(), nbsp(), glyph("info-sign"),
+                  " - merkið"
+                ]
+              ),
+              " hér til vinstri."
+            ]
+          ),
+          m("div", { style: { float: "right" } },
+            m("button.login",
+              {
+                type: 'submit',
+                onclick: function(ev) {
+                  window.location.href = $state.loginUrl;
+                }
+              },
+              [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
+            )
+          )
+        ]
+      );
+    }
+
+    function vwLoginSmall() {
+      // Mobile version of login page
+      return m(".loginform-small",
+        [
+          m("div", 
+            { id: 'logo-pic' }, 
+            m("img",
+              {
+                height: 300, width: 300,
+                src: '/static/LoginLogo600.png'
+              }
+            )
+          ),
+          m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
+          m("div", { style: { "text-align": "center" } }, 
+            m("button.login",
+              {
+                type: 'submit',
+                onclick: function(ev) {
+                  window.location.href = $state.loginUrl;
+                }
+              },
+              [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
+            )
+          )
+        ]
+      );
+    }
+
+    return vwLoginLarge(); // !!! TBD
   }
 
   // A control that rigs up a tabbed view of raw HTML
@@ -573,7 +686,7 @@ function createView() {
     // Output literal HTML obtained from rawhelp.html on the server
     return [
       vwLogo(),
-      vwUserId.call(this, model),
+      vwUserId.call(this),
       m("main", { key: "help" },
         vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
       )
@@ -798,7 +911,10 @@ function createView() {
             }.bind(view),
             glyph("remove"), 10),
           vwDialogButton("user-logout", "Skrá mig út",
-            function(ev) { location.href = user.logout_url; ev.preventDefault(); },
+            function(ev) {
+              window.location.href = user.logout_url;
+              ev.preventDefault();
+            },
             [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
             vwDialogButton("user-unfriend", "Hætta sem vinur",
@@ -1018,16 +1134,12 @@ function createView() {
             ),
             m("li", 
               m("a[href='#tabs-3']",
-                [
-                  glyph("user"), m("span.tab-legend", "Andstæðingar")
-                ]
+                [ glyph("user"), m("span.tab-legend", "Andstæðingar") ]
               )
             ),
             m("li.no-mobile-list", 
               m("a[href='#tabs-4']",
-                [
-                  glyph("bookmark"), m("span.tab-legend", "Ferill")
-                ]
+                [ glyph("bookmark"), m("span.tab-legend", "Ferill") ]
               )
             )
           ]
@@ -1135,18 +1247,16 @@ function createView() {
             });
           }
 
-          return m("div",
-            {
-              id: 'gamelist',
-              oninit: function() { if (model.gameList === null) model.loadGameList(); }
-            },
-            viewGameList()
-          );
+          if (model.gameList === null)
+            model.loadGameList();
+          return m("div", { id: 'gamelist' }, viewGameList());
         }
 
         function vwHint() {
           // Show some help if the user has no games in progress
-          if (model.gameList)
+          if (model.gameList || model.gameList === undefined)
+            // Either we have games in progress or the game list
+            // is being loaded
             return "";
           return m(".hint", { style: { display: "block" } },
             [
@@ -1625,7 +1735,7 @@ function createView() {
 
     return [
       vwLogo(),
-      vwUserId.call(this, model),
+      vwUserId.call(this),
       vwInfo(),
       m("main", { key: "main" },
         m("div",
@@ -2318,7 +2428,7 @@ function createView() {
     if (t.freshtile) {
       classes.push("freshtile");
       // Make fresh tiles appear sequentally by animation
-      var ANIMATION_STEP = 80; // Milliseconds
+      var ANIMATION_STEP = 100; // Milliseconds
       var delay = (t.index * ANIMATION_STEP).toString() + "ms";
       attrs.style = "animation-delay: " + delay + "; " +
         "-webkit-animation-delay: " + delay + ";";
@@ -2335,7 +2445,8 @@ function createView() {
       // Make the tile draggable, unless we're showing a dialog
       attrs.draggable = "true";
       attrs.ondragstart = function(ev) {
-        ev.dataTransfer.effectAllowed = "copyMove";
+        // ev.dataTransfer.effectAllowed = "copyMove";
+        ev.dataTransfer.effectAllowed = "move";
         ev.dataTransfer.setData("text", coord);
         ev.redraw = false;
       };
@@ -2896,31 +3007,32 @@ function createActions(model) {
 
   function onNavigateTo(routeName, params) {
     // We have navigated to a new route
+    // If navigating to something other than help,
+    // we need to have a logged-in user
     model.routeName = routeName;
     model.params = params;
     if (routeName == "game") {
       // New game route: load the game into the model
       model.loadGame(params.uuid);
       if (model.game !== null)
+        // !!! TBD: To this in loadGame()?
         attachListenerToGame(params.uuid);
-    }
-    else
-    if (routeName == "help") {
-      // Make sure that the help HTML is loaded upon first use
-      model.loadHelp();
-    }
-    else
-    if (routeName == "main") {
-      // Force reload of lists
-      model.gameList = null;
-      model.userListCriteria = null;
-      model.userList = null;
-      model.challengeList = null;
     }
     else {
       // Not a game route: delete the previously loaded game, if any
       model.game = null;
-      // !!! TBD: Disconnect Firebase listeners
+      if (routeName == "help") {
+        // Make sure that the help HTML is loaded upon first use
+        model.loadHelp();
+      }
+      else
+      if (routeName == "main") {
+        // Force reload of lists
+        model.gameList = null;
+        model.userListCriteria = null;
+        model.userList = null;
+        model.challengeList = null;
+      }
     }
   }
 
@@ -3021,7 +3133,13 @@ function createRouteResolver(model, actions, view) {
       onmatch: function(params, route) {
         // Automatically close all dialogs when navigating to a new route
         view.popAllDialogs();
-        actions.onNavigateTo(item.name, params);
+        if ($state.userId == "" && item.mustLogin)
+          // Attempting to navigate to a new path that
+          // requires a login, but the user hasn't logged
+          // in: go to the login route
+          m.route.set("/login");
+        else
+          actions.onNavigateTo(item.name, params);
       },
       render: function() {
         return view.appView(model, actions);
@@ -3900,7 +4018,9 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
         // Special marker indicating that this link invokes
         // a user preference dialog
         a.onclick = function(ev) {
-          this.pushDialog("userprefs");
+          if ($state.userId != "")
+            // Don't show the userprefs if no user logged in
+            this.pushDialog("userprefs");
           ev.preventDefault();
         }.bind(view);
       }

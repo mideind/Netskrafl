@@ -422,8 +422,8 @@ class User:
         return True
 
     @staticmethod
-    def logout_url():
-        return users.create_logout_url("/")
+    def logout_url(navigate_to = "/"):
+        return users.create_logout_url(navigate_to)
 
     @classmethod
     def load(cls, uid):
