@@ -1250,16 +1250,17 @@ function createView() {
 
         function vwHint() {
           // Show some help if the user has no games in progress
-          if (model.gameList || model.gameList === undefined)
-            // Either we have games in progress or the game list
-            // is being loaded
+          if (model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
+            // Either we have games in progress or the game list is being loaded
             return "";
           return m(".hint", { style: { display: "block" } },
             [
               m("p",
                 [
-                  "Ef þig vantar einhvern til að skrafla við, veldu ",
-                  m("a", { href: "/main?tab=2", oncreate: m.route.link }, "flipann \"Andstæðingar\""),
+                  "Ef þig vantar einhvern til að skrafla við, veldu flipann ",
+                  m("a", { href: "/main?tab=2", oncreate: m.route.link },
+                    [ glyph("user"), nbsp(), "Andstæðingar" ]
+                  ),
                   " og skoraðu á tölvuþjarka - ",
                   glyph("cog"), nbsp(), m("b", "Amlóða"),
                   ", ",
@@ -1712,9 +1713,13 @@ function createView() {
                     m(".user-cat[id='user-headings']",
                       [
                         vwUserButton("robots", "cog", "Þjarkar"),
+                        " ",
                         vwUserButton("fav", "star", "Uppáhalds"),
+                        " ",
                         vwUserButton("live", "flash", "Álínis"),
+                        " ",
                         vwUserButton("alike", "resize-small", "Svipaðir"),
+                        " ",
                         vwUserButton("elo", "crown", "Topp 100")
                       ]
                     ),
