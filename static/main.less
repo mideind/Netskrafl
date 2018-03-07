@@ -1200,9 +1200,10 @@ span.list-ts-short {
 
 span.list-chall {
    display: inline-block;
-   width: 315px;
-   max-width: 315px;
+   width: 188px;
+   max-width: 188px;
    overflow: hidden;
+   text-overflow: ellipsis;
 }
 
 span.list-s0 {
@@ -1373,10 +1374,12 @@ span.list-fullname {
 
 span.list-fullname-robot {
    display: inline-block;
-   width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
-   max-width: 486px;
+   width: 188px;
+   max-width: 188px;
    overflow: hidden;
    font-style: italic;
+   /* Robot description doesn't fit into the column on mobile */
+   text-overflow: ellipsis;
 }
 
 span.list-human-elo {
@@ -2517,6 +2520,16 @@ span.list-nick,
 span.list-nick-elo {
    width: 220px;
    max-width: 220px;
+}
+
+span.list-fullname-robot {
+   width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
+   max-width: 486px;
+}
+
+span.list-chall {
+   width: 315px;
+   max-width: 315px;
 }
 
 span.list-ts,
@@ -3729,7 +3742,8 @@ div.listitem {
 }
 
 .listitem a,
-.listitem a span {
+.listitem a span,
+.listitem span {
    vertical-align: top;
 }
 

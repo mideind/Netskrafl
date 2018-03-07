@@ -40,8 +40,8 @@ function main() {
   var
     settings = getSettings(),
     model = createModel(settings),
-    actions = createActions(model),
     view = createView(),
+    actions = createActions(model, view),
     routeResolver = createRouteResolver(model, actions, view),
     defaultRoute = settings.defaultRoute,
     root = document.getElementById("container");
@@ -109,7 +109,7 @@ function createModel(settings) {
     newGame: newGame,
     modifyChallenge: modifyChallenge,
     markFavorite: markFavorite,
-    addChatMessage: addChatMessage,
+    addChatMessage: addChatMessage
   };
 
   function loadGame(uuid) {
@@ -417,6 +417,7 @@ function createView() {
     pushDialog: pushDialog,
     popDialog: popDialog,
     popAllDialogs: popAllDialogs,
+    notifyMediaChange: notifyMediaChange,
     startSpinner: startSpinner,
     stopSpinner: stopSpinner,
     isDialogShown: isDialogShown,
@@ -485,6 +486,26 @@ function createView() {
 
   function isDialogShown() {
     return this.dialogStack.length > 0;
+  }
+
+  function notifyMediaChange(model) {
+    // The view is changing, between mobile and fullscreen
+    // and/or between portrait and landscape: ensure that
+    // we don't end up with a selected game tab that is not visible
+    if (model.game) {
+      if ($state.uiFullscreen || $state.uiLandscape) {
+        // In this case, there is no board tab:
+        // show the movelist
+        model.game.sel = "movelist";
+      }
+      else {
+        // Mobile: we default to the board tab
+        model.game.sel = "board";
+      }
+    }
+    // When switching between landscape and portrait,
+    // close all current dialogs
+    this.popAllDialogs();
   }
 
   function showUserInfo(userid, nick, fullname) {
@@ -1106,13 +1127,24 @@ function createView() {
     function vwMainTabs() {
 
       function vwMainTabHeader() {
-        var numGames = !model.gameList ? 0 : model.gameList.length;
+        var numGames = 0;
+        var numChallenges = 0;
+        if (model.gameList)
+          // Sum up games where it's the player's turn, as well as zombie games
+          numGames = model.gameList.reduce(function(acc, item) {
+            return acc + (item.my_turn || item.zombie ? 1 : 0);
+          }, 0);
+        if (model.challengeList)
+          // Sum up received challenges
+          numChallenges = model.challengeList.reduce(function(acc, item) {
+            return acc + (item.received ? 1 : 0);
+          }, 0);
         return m("ul",
           [
             m("li", 
               m("a[href='#tabs-1']",
                 [
-                  glyph("th"), m("span.tab-legend", "Viðureignir"),
+                  glyph("th"), m("span.tab-legend", "Viðureignir"), nbsp(),
                   m("span",
                     { id: 'numgames', style: numGames ? 'display: inline-block' : '' },
                     numGames
@@ -1123,8 +1155,11 @@ function createView() {
             m("li", 
               m("a[href='#tabs-2']",
                 [
-                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
-                  m("span.opp-ready[id='numchallenges']", "0")
+                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"), nbsp(),
+                  m("span.opp-ready",
+                    { id: 'numchallenges', style: numChallenges ? 'display: inline-block' : '' },
+                    numChallenges
+                  )
                 ]
               )
             ),
@@ -3002,7 +3037,7 @@ function createView() {
 
 } // createView
 
-function createActions(model) {
+function createActions(model, view) {
 
   initMediaListener();
   initFirebaseListener();
@@ -3066,15 +3101,35 @@ function createActions(model) {
 
   function onFullScreen() {
     // Take action when min-width exceeds 768
-    $state.uiFullscreen = true;
-    // !!! TBD
-    m.redraw();
+    if (!$state.uiFullscreen) {
+      $state.uiFullscreen = true;
+      view.notifyMediaChange(model);
+      m.redraw();
+    }
   }
 
   function onMobileScreen () {
-    $state.uiFullscreen = false;
-    // !!! TBD
-    m.redraw();
+    if ($state.uiFullscreen) {
+      $state.uiFullscreen = false;
+      view.notifyMediaChange(model);
+      m.redraw();
+    }
+  }
+
+  function onLandscapeScreen() {
+    if (!$state.uiLandscape) {
+      $state.uiLandscape = true;
+      view.notifyMediaChange(model);
+      m.redraw();
+    }
+  }
+
+  function onPortraitScreen() {
+    if ($state.uiLandscape) {
+      $state.uiLandscape = false;
+      view.notifyMediaChange(model);
+      m.redraw();
+    }
   }
 
   function mediaMinWidth667(mql) {
@@ -3082,15 +3137,13 @@ function createActions(model) {
         // Take action when min-width exceeds 667
         // (usually because of rotation from portrait to landscape)
         // The board tab is not visible, so the movelist is default
-        $state.uiLandscape = true;
-        // !!! TBD
+        onLandscapeScreen();
      }
      else {
         // min-width is below 667
         // (usually because of rotation from landscape to portrait)
         // Make sure the board tab is selected
-        $state.uiLandscape = false;
-        // !!! TBD
+        onPortraitScreen();
      }
   }
 
