@@ -1244,6 +1244,7 @@ span.list-elo-adj {
    max-width: 52px;
    text-align: center;
    overflow: hidden;
+   text-overflow: clip;
    margin-bottom: 2px;
 }
 
@@ -1332,9 +1333,9 @@ span.list-manual {
 span.list-win {
    display: inline-block;
    font-size: 18px;
-   width: 32px;
-   max-width: 32px;
-   margin-left: 2px;
+   width: 26px;
+   max-width: 26px;
+   margin-left: 0px;
    cursor: pointer;
    overflow: hidden;
 }
@@ -1379,6 +1380,7 @@ span.list-fullname-robot {
    overflow: hidden;
    font-style: italic;
    /* Robot description doesn't fit into the column on mobile */
+   font-size: 14px;
    text-overflow: ellipsis;
 }
 
@@ -1393,7 +1395,7 @@ span.list-human-elo {
 }
 
 span.list-duration {
-   display: inline-block;
+   display: none;
    width: 192px;
    max-width: 192px;
    text-align: right;
@@ -1680,9 +1682,14 @@ div #elolist {
    overflow-x: hidden;
 }
 
-div #gamelist,
-div #recentlist {
+div #gamelist {
    height: 468px; /* 13 lines @ 36px each */
+   overflow-y: auto;
+   overflow-x: hidden;
+}
+
+div #recentlist {
+   height: 396px; /* 11 lines @ 36px each */
    overflow-y: auto;
    overflow-x: hidden;
 }
@@ -1752,7 +1759,7 @@ div.hint {
 div.stats-box {
    width: 224px;
    position: relative;
-   top: -52px;
+   top: -44px;
    left: 198px;
 }
 
@@ -1776,6 +1783,29 @@ div.stats-fig {
    margin-left: 2px;
    cursor: default;
    .noselect;
+}
+
+div#own-toggler {
+   width: 80px; /* Two small toggle buttons of 40px each */
+   margin-top: 0px;
+   margin-right: 8px;
+}
+
+p#own-best {
+   display: inline-block;
+   position: absolute;
+   left: 32px;
+   top: 68px;
+   text-align: right;
+   font-size: 0.85em;
+}
+
+div#own-stats {
+   margin-top: 8px;
+   margin-bottom: 32px;
+   height: 48px;
+   width: 100%;
+   vertical-align: top;
 }
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
@@ -2554,6 +2584,7 @@ span.list-nick-elo {
 span.list-fullname-robot {
    width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
    max-width: 486px;
+   font-size: 1.0em;
 }
 
 span.list-chall {
@@ -2572,6 +2603,7 @@ span.list-manual,
 span.list-fav,
 span.list-overdue,
 span.list-newbag,
+span.list-duration,
 span.list-rank-no-mobile,
 span.list-elo-no-mobile {
    display: inline-block;
@@ -2753,6 +2785,12 @@ div #chall-received {
    height: 216px; /* 6 lines @ 36px each */
 }
 
+span.list-win {
+   width: 32px;
+   max-width: 32px;
+   margin-left: 2px;
+}
+
 div.games {
    height: 100%;
    padding: 0px;
@@ -2817,6 +2855,23 @@ div.stats-fig {
    margin-top: 4px;
    margin-right: 8px;
    margin-left: 8px;
+}
+
+div#own-toggler {
+   margin-top: 7px;
+   margin-right: 8px;
+}
+
+p#own-best {
+   left: auto;
+   right: 30px;
+   top: 66px;
+   font-size: 1.0em;
+}
+
+div#own-stats {
+   margin-top: 16px;
+   margin-bottom: 24px;
 }
 
 } /* media min-width: 768px */
@@ -3790,10 +3845,16 @@ div.listitem {
    white-space: nowrap;
 }
 
+/*
 .listitem a,
 .listitem a span,
 .listitem span {
    vertical-align: top;
+}
+*/
+
+.listheader > span {
+   top: 0px;
 }
 
 .listitem a:link, .listitem a:visited {
@@ -4306,21 +4367,7 @@ p#usr-best a:hover {
    color: @hover-link;
 }
 
-p#own-best {
-   display: inline-block;
-   position: absolute;
-   right: 30px;
-   top: 66px;
-   text-align: right;
-}
-
 div#stats-toggler {
-   margin-top: 7px;
-   margin-right: 8px;
-}
-
-div#own-toggler {
-   width: 80px; /* Two small toggle buttons of 40px each */
    margin-top: 7px;
    margin-right: 8px;
 }
@@ -4331,14 +4378,6 @@ div#usr-stats {
    width: 680px;
    bottom: 12px;
    left: 12px;
-   vertical-align: top;
-}
-
-div#own-stats {
-   margin-top: 16px;
-   margin-bottom: 24px;
-   height: 48px;
-   width: 600px;
    vertical-align: top;
 }
 

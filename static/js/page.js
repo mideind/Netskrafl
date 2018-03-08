@@ -125,8 +125,15 @@ function createModel(settings) {
         this.game = null;
         console.log("Game " + uuid + " could not be loaded");
       }
-      else
+      else {
         this.game = new Game(uuid, result.game);
+        if ($state.uiFullscreen)
+          // Fullscreen UI: show movelist tab
+          this.game.sel = "movelist";
+        else
+          // Mobile UI: show board tab
+          this.game.sel = "board";
+      }
     }.bind(this));
   }
 
@@ -1818,12 +1825,14 @@ function createView() {
                 // overlay a user preference dialog
                 view.pushDialog("userprefs");
               }
-              else {
+              else
+              if (!game.autoplayer[side]) {
                 // The player is clicking on the opponent:
-                // show the opponent's track record
-                // !!! TBD
+                // show the opponent's track record, if not an autoplayer
+                view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
               }
             }
+            ev.stopPropagation();
             ev.preventDefault();
           }
 
@@ -3056,11 +3065,10 @@ function createActions(model, view) {
     model.routeName = routeName;
     model.params = params;
     if (routeName == "game") {
-      // New game route: load the game into the model
+      // New game route: initiate loading of the game into the model
       model.loadGame(params.uuid);
-      if (model.game !== null)
-        // !!! TBD: To this in loadGame()?
-        attachListenerToGame(params.uuid);
+      // Attach Firebase listener
+      attachListenerToGame(params.uuid);
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -4151,8 +4159,13 @@ function buttonOut(ev) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon, attrs, grayed) { return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs); }
-function glyphGrayed(icon, attrs) { return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs); }
+function glyph(icon, attrs, grayed) {
+  return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs);
+}
+
+function glyphGrayed(icon, attrs) {
+  return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
+}
 
 var _NBSP = m.trust("&nbsp;");
 

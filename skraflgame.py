@@ -829,6 +829,22 @@ class Game:
                 nick = Game.UNDEFINED_NAME
         return nick
 
+    def player_fullname(self, index):
+        """ Returns the full name of a player """
+        u = None if self.player_ids[index] is None else User.load(self.player_ids[index])
+        if u is None:
+            # This is an autoplayer
+            name = Game.autoplayer_name(self.robot_level)
+        else:
+            # This is a human user
+            name = u.full_name().strip()
+            if not name:
+                name = u.nickname();
+                if name[0:8] == u"https://":
+                    # Raw name (path) from Google Accounts: use a more readable version
+                    name = Game.UNDEFINED_NAME
+        return name
+
     def get_pref(self, pref):
         """ Retrieve a preference, or None if not found """
         if self._preferences is None:
@@ -1275,6 +1291,8 @@ class Game:
             reply["fairplay"] = self.get_fairplay()
             reply["autoplayer"] = [ self.is_autoplayer(0), self.is_autoplayer(1) ]
             reply["nickname"] = [ self.player_nickname(0), self.player_nickname(1) ]
+            reply["userid"] = [ self.player_id(0), self.player_id(1) ]
+            reply["fullname"] = [ self.player_fullname(0), self.player_fullname(1) ]
             reply["overdue"] = self.is_overdue()
 
         return reply
