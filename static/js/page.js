@@ -1732,7 +1732,7 @@ function createView() {
               [
                 vwStats(),
                 vwBest(),
-                m("p",
+                m("p.no-mobile-block",
                   [
                     m("strong", "Nýlegar viðureignir þínar"),
                     " - smelltu á viðureign til að skoða hana og rifja upp"
@@ -3803,7 +3803,8 @@ var StatsDisplay = {
             )
           ]
         ),
-        this.sel == 1 ? m("div", { id: 'own-stats-human', style: { display: "inline-block"} },
+        this.sel == 1 ? m("div",
+          { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block"} },
           [
             m(".stats-fig", { title: 'Elo-stig' },
               s ? vwStat(s.human_elo, "crown") : ""),
@@ -3815,7 +3816,8 @@ var StatsDisplay = {
               vwStat(avgScoreHuman, "dashboard"))
           ]
         ) : "",
-        this.sel == 2 ? m("div", { id: 'own-stats-all', style: { display: "inline-block"} },
+        this.sel == 2 ? m("div",
+          { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block"} },
           [
             m(".stats-fig", { title: 'Elo-stig' },
               s ? vwStat(s.elo, "crown") : ""),

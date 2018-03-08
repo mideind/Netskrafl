@@ -1749,6 +1749,35 @@ div.hint {
    margin-right: 12px;
 }
 
+div.stats-box {
+   width: 224px;
+   position: relative;
+   top: -52px;
+   left: 198px;
+}
+
+div.stats-fig {
+   display: inline-block;
+   width: 68px;
+   height: 24px;
+   padding: 3px;
+   background-color: transparent;
+   color: darken(@triple-letter, 10%);
+   border-style: solid;
+   border-width: 2px;
+   border-radius: 4px;
+   border-color: darken(@triple-letter, 10%);
+   text-align: center;
+   font-weight: 700;
+   font-size: 16px;
+   vertical-align: middle;
+   margin-top: 4px;
+   margin-right: 2px;
+   margin-left: 2px;
+   cursor: default;
+   .noselect;
+}
+
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
 @media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
@@ -2768,6 +2797,26 @@ div.hint {
    margin-left: 60px;
    margin-right: 160px;
    font-size: inherit;
+}
+
+div.stats-box {
+   width: auto;
+   position: static;
+   top: auto;
+   left: auto;
+}
+
+div.stats-fig {
+   width: 80px;
+   height: 27px;
+   padding: 6px;
+   border-radius: 5px;
+   border-width: 2px;
+   border-radius: 5px;
+   font-size: 20px;
+   margin-top: 4px;
+   margin-right: 8px;
+   margin-left: 8px;
 }
 
 } /* media min-width: 768px */
@@ -4271,6 +4320,7 @@ div#stats-toggler {
 }
 
 div#own-toggler {
+   width: 80px; /* Two small toggle buttons of 40px each */
    margin-top: 7px;
    margin-right: 8px;
 }
@@ -4310,29 +4360,6 @@ div#own-stats-human {
 div#own-stats-all {
    display: none;
    vertical-align: top;
-}
-
-div.stats-fig {
-   display: inline-block;
-   width: 80px;
-   height: 27px;
-   padding: 6px;
-   border-radius: 5px;
-   background-color: transparent;
-   color: darken(@triple-letter, 10%);
-   border-style: solid;
-   border-width: 2px;
-   border-radius: 5px;
-   border-color: darken(@triple-letter, 10%);
-   text-align: center;
-   font-weight: 700;
-   font-size: 20px;
-   vertical-align: middle;
-   margin-top: 4px;
-   margin-right: 8px;
-   margin-left: 8px;
-   cursor: default;
-   .noselect;
 }
 
 div.stats-games {
