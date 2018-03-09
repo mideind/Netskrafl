@@ -33,6 +33,7 @@ var ROUTE_PREFIX = "/page#!";
 var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 var BOARD_PREFIX = "/board?game=";
 var BOARD_PREFIX_LEN = BOARD_PREFIX.length;
+var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 
 function main() {
   // The main UI entry point, called from page.html
@@ -381,10 +382,13 @@ function createModel(settings) {
     .then(function() {});
   }
 
-  function addChatMessage(from_userid, msg, ts) {
+  function addChatMessage(game, from_userid, msg, ts) {
     // Add a chat message to the game's chat message list
-    if (this.game)
+    if (this.game && this.game.uuid == game) {
       this.game.addChatMessage(from_userid, msg, ts);
+      return true;
+    }
+    return false;
   }
 
 }
@@ -425,6 +429,7 @@ function createView() {
     popDialog: popDialog,
     popAllDialogs: popAllDialogs,
     notifyMediaChange: notifyMediaChange,
+    notifyChatMessage: notifyChatMessage,
     startSpinner: startSpinner,
     stopSpinner: stopSpinner,
     isDialogShown: isDialogShown,
@@ -513,6 +518,11 @@ function createView() {
     // When switching between landscape and portrait,
     // close all current dialogs
     this.popAllDialogs();
+  }
+
+  function notifyChatMessage() {
+    // A fresh chat message has arrived
+    m.redraw();
   }
 
   function showUserInfo(userid, nick, fullname) {
@@ -702,8 +712,7 @@ function createView() {
         // Go to the FAQ tab and scroll the requested question into view
         selectTab(vnode, 1);
         vnode.state.selected = 1; // FAQ tab
-        vnode.dom.querySelector("#faq-" +
-          faqNumber.toString()).scrollIntoView();
+        vnode.dom.querySelector("#faq-" + faqNumber.toString()).scrollIntoView();
       }
     }
 
@@ -1945,18 +1954,32 @@ function createView() {
     ];
     if (showchat)
       // Add chat tab
-      r.push(vwTab(game, "chat", "Spjall", "conversation"));
+      r.push(vwTab(game, "chat", "Spjall", "conversation",
+        function() {
+          // The tab has been clicked
+          if (game.markChatShown())
+            m.redraw();
+        },
+        !game.chatShown) // Show chat icon in red if chat messages are unseen
+      );
     return m.fragment({}, r);
   }
 
-  function vwTab(game, tabid, title, icon) {
+  function vwTab(game, tabid, title, icon, func, alert) {
     // A clickable tab for the right-side area content
     var sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
       {
+        id: "tab-" + tabid,
+        className: alert ? "alert" : "",
         title: title,
-        onclick: function(ev) { if (game) game.sel = tabid; },
-        id: "tab-" + tabid
+        onclick: function(ev) {
+          if (game && game.sel != tabid) {
+            game.sel = tabid;
+            if (func !== undefined)
+              func();
+          }
+        }
       },
       glyph(icon)
     );
@@ -2037,6 +2060,10 @@ function createView() {
           r.push(m(".chat-msg" +
             (p === 0 ? ".left" : ".right") +
             (p === player ? ".local" : ".remote"),
+            {
+              key: i,
+              oncreate: function(vnode) { vnode.dom.scrollIntoView(); }
+            },
             m.trust(escMsg))
           );
         }
@@ -2050,19 +2077,28 @@ function createView() {
     }
 
     function sendMessage() {
-      var msg = getInput("msg");
-      if (game && msg) {
-        game.sendMessage("game:" + game.uuid, msg);
+      var msg = getInput("msg").trim();
+      if (game && msg.length > 0) {
+        game.sendMessage(msg);
         setInput("msg", "");
       }
     }
 
-    if (game && game.messages === null)
+    var numMessages = (game && game.messages) ? game.messages.length : 0;
+    var uuid = game ? game.uuid : "";
+
+    if (game && game.messages == null)
       // No messages loaded yet: kick off async message loading
       // for the current game
-      game.loadMessages("game:" + game.uuid);
+      game.loadMessages();
+    else
+      game.markChatShown();
 
-    return m(".chat", { style: "z-index: 6" }, // Appear on top of board on mobile
+    return m(".chat",
+      {
+        style: "z-index: 6", // Appear on top of board on mobile
+        key: uuid
+      },
       [
         m(".chat-area", { id: 'chat-area' }, chatMessages()),
         m(".chat-input",
@@ -2073,6 +2109,7 @@ function createView() {
                 id: "msg",
                 name: "msg",
                 maxlength: 254,
+                disabled: (numMessages >= MAX_CHAT_MESSAGES),
                 oncreate: focus,
                 onupdate: focus,
                 onkeypress: function(ev) { if (ev.key == "Enter") sendMessage(); }
@@ -3072,7 +3109,10 @@ function createActions(model, view) {
     }
     else {
       // Not a game route: delete the previously loaded game, if any
-      model.game = null;
+      if (model.game !== null) {
+        detachListenerFromGame(model.game.uuid);
+        model.game = null;
+      }
       if (routeName == "help") {
         // Make sure that the help HTML is loaded upon first use
         model.loadHelp();
@@ -3104,7 +3144,10 @@ function createActions(model, view) {
       }
       */
     }
-    model.addChatMessage(json.from_userid, json.msg, json.ts);
+    if (model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
+      // A chat message was successfully added
+      view.notifyChatMessage();
+    }
   }
 
   function onFullScreen() {
@@ -3193,6 +3236,13 @@ function createActions(model, view) {
     attachFirebaseListener(basepath + "chat", onChatMessage);
     // Listen to Firebase events on the /user/[userId] path
     // attachFirebaseListener('user/' + userId(), handleUserMessage);
+  }
+
+  function detachListenerFromGame(uuid) {
+    // Stop listening to Firebase events on the /game/[gameId]/[userId] path
+    var basepath = 'game/' + uuid + "/" + $state.userId + "/";
+    detachFirebaseListener(basepath + "move");
+    detachFirebaseListener(basepath + "chat");
   }
 
 } // createActions

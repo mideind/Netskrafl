@@ -4,7 +4,7 @@
 
    Utility functions for working with Firebase
 
-   Copyright (C) 2015-2017 Miðeind ehf.
+   Copyright (C) 2015-2018 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
@@ -17,7 +17,7 @@ function loginFirebase(token) {
    firebase.auth()
       .signInWithCustomToken(token)
       .catch(function(error) {
-         console.log('Login failed!', error.code);
+         console.log('Firebase login failed, error code: ', error.code);
          console.log('Error message: ', error.message);
       });
 }
@@ -54,5 +54,10 @@ function attachFirebaseListener(path, func) {
          if (json)
             func(json);
       });
+}
+
+function detachFirebaseListener(path) {
+   // Detach a message listener from a Firebase path
+   firebase.database().ref(path).off();
 }
 

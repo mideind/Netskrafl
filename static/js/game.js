@@ -120,6 +120,7 @@ function Game(uuid, game) {
   this.currentMessage = null;
   this.isFresh = false;
   this.numTileMoves = 0;
+  this.chatShown = false;
   this.update(game);
 }
 
@@ -175,39 +176,62 @@ Game.prototype.loadGames = function() {
   }.bind(this));
 };
 
-Game.prototype.loadMessages = function(channel) {
-  // Load chat messages on the given channel
+Game.prototype.loadMessages = function() {
+  // Load chat messages for this game
+  this.messages = []; // Prevent double loading
   return m.request({
     method: "POST",
     url: "/chatload",
-    data: { channel: channel }
+    data: { channel: "game:" + this.uuid }
   })
   .then(function(result) {
-    this.messages = result.messages || [];
+    if (result.ok)
+      this.messages = result.messages || [];
+    else
+      this.messages = [];
+    this.chatShown = result.messages.length == 0;
   }.bind(this));
 };
 
-Game.prototype.sendMessage = function(channel, msg) {
+Game.prototype.sendMessage = function(msg) {
   // Send a chat message
-  msg = msg.trim();
-  if (!msg.length)
-    // Nothing to send
-    return;
   return m.request({
     method: "POST",
     url: "/chatmsg",
-    data: { channel: channel, msg: msg }
+    data: { channel: "game:" + this.uuid, msg: msg }
   })
   .then(function(result) {
     // The updated chat comes in via a Firebase notification
   });
 };
 
+Game.prototype.sendChatSeenMarker = function() {
+  // Send a 'chat message seen' marker to the server
+  this.sendMessage("");
+  this.chatShown = true;
+};
+
 Game.prototype.addChatMessage = function(from_userid, msg, ts) {
   // Add a new chat message to the message list
-  if (!this.messages)
-    this.messages = [];
-  this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
+  if (this.messages !== null) {
+    // Do not add messages unless the message list has been
+    // properly initialized from the server. This means that
+    // we skip the initial chat message update that happens
+    // immediately as we add a listener to the chat path.
+    this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
+    if (this.sel !== "chat")
+      // We have a new chat message that the user hasn't seen yet
+      this.chatShown = false;
+  }
+};
+
+Game.prototype.markChatShown = function() {
+  // Note that the user has seen all pending chat messages
+  if (!this.chatShown) {
+    this.chatShown = true;
+    return true;
+  }
+  return false;
 };
 
 Game.prototype.setUserPref = function(pref) {

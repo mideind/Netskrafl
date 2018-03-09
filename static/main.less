@@ -914,7 +914,7 @@ div.right-tab:hover {
    opacity: 1.0;
 }
 
-div.right-tab.alert {
+div.right-tab.alert > span.glyphicon {
    color: @alert;
    animation: redBlink 1.0s infinite;
    -webkit-animation: redBlink 1.0s infinite;
@@ -2913,6 +2913,22 @@ div.racktile {
    50% { color: #777777; background-color: @racktile; }
    95% { color: #777777; background-color: @racktile; }
    100% { color: white; background-color: @alert; }
+}
+
+@keyframes redBlink {
+   0% { opacity: 1.0; }
+   30% { opacity: 1.0; }
+   50% { opacity: 0.0; }
+   70% { opacity: 1.0; }
+   100% { opacity: 1.0; }
+}
+
+@-webkit-keyframes redBlink {
+   0% { opacity: 1.0; }
+   30% { opacity: 1.0; }
+   50% { opacity: 0.0; }
+   70% { opacity: 1.0; }
+   100% { opacity: 1.0; }
 }
 
 div.sel {

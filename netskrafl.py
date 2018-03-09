@@ -1238,7 +1238,8 @@ def chatmsg():
         # No need to send empty messages, which are to be interpreted
         # as read confirmations
         # The message to be sent in JSON form via Firebase
-        md = dict(from_userid = user_id, msg = msg, ts = Alphabet.format_timestamp(ts))
+        md = dict(game = uuid, from_userid = user_id,
+            msg = msg, ts = Alphabet.format_timestamp(ts))
         msg = { }
         for p in range(0, 2):
             # Send a Firebase notification to /game/[gameid]/[userid]/chat
