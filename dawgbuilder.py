@@ -412,9 +412,6 @@ class _BinaryDawgPacker:
 
     """ _BinaryDawgPacker packs the DAWG data to a byte stream.
 
-        !!! This is not fully implemented and not currently used by the
-        !!! DawgDictionary class in dawgdictionary.py
-
         The stream format is as follows:
 
         For each node:
