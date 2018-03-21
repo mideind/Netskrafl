@@ -1852,7 +1852,7 @@ def promo():
     """ Return promotional HTML corresponding to a given key (category) """
     user = User.current()
     if user is None:
-        return redirect(url_for("login"))
+        return u"<p>Notandi er ekki innskráður</p>", 401 # Unauthorized
     rq = RequestData(request)
     key = rq.get("key", "")
     VALID_PROMOS = { "friend", "krafla" }

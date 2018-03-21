@@ -104,6 +104,7 @@ function createModel(settings) {
     loadUserList: loadUserList,
     loadOwnStats: loadOwnStats,
     loadUserStats: loadUserStats,
+    loadPromoContent: loadPromoContent,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -272,6 +273,17 @@ function createModel(settings) {
     .then(readyFunc);
   }
 
+  function loadPromoContent(key, readyFunc) {
+    // Load HTML content for promo dialog
+    m.request({
+      method: "POST",
+      url: "/promo",
+      data: { key: key },
+      deserialize: function(str) { return str; }
+    })
+    .then(readyFunc);
+  }
+
   function loadHelp() {
     // Load the help screen HTML from the server
     // (this is done the first time the help is displayed)
@@ -414,6 +426,10 @@ function createView() {
     "challenge":
       function(model, actions, args) {
         return vwChallenge.call(this, model, actions, args);
+      },
+    "promo":
+      function(model, actions, args) {
+        return vwPromo.call(this, model, actions, args);
       },
     "spinner":
       function(model, actions, args) {
@@ -956,7 +972,10 @@ function createView() {
             )
           :
             vwDialogButton("user-friend", "Gerast vinur",
-              function(ev) { /* !!! TBD */ },
+              function(ev) {
+                // Invoke the friend promo dialog
+                this.pushDialog("promo", { key: "friend" });
+              }.bind(view),
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
         ]
@@ -981,6 +1000,16 @@ function createView() {
         userid: args.userid,
         nick: args.nick,
         fullname: args.fullname
+      }
+    );
+  }
+
+  function vwPromo(model, actions, args) {
+    return m(PromoDialog,
+      {
+        model: model,
+        view: this,
+        key: args.key
       }
     );
   }
@@ -3889,6 +3918,56 @@ var StatsDisplay = {
         ) : ""
       ]
     );
+  }
+
+};
+
+var PromoDialog = {
+
+  // A dialog showing promotional content fetched from the server
+
+  _fetchContent: function(vnode) {
+    // Fetch the content
+    vnode.attrs.model.loadPromoContent(vnode.attrs.key,
+      function(html) {
+        this.html = html;
+      }.bind(this)
+    );
+  },
+
+  oninit: function(vnode) {
+    this.html = "";
+    this._fetchContent(vnode);
+  },
+
+  view: function(vnode) {
+    var appView = vnode.attrs.view;
+    return m(".modal-dialog",
+      { id: "promo-dialog", style: { visibility: "visible" } },
+      m(".ui-widget.ui-widget-content.ui-corner-all",
+        { id: "promo-form", className: "promo-" + vnode.attrs.key },
+        m("div",
+          {
+            id: "promo-content",
+            onupdate: function(vnode) {
+              var i, noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
+              // Override onclick, onmouseover and onmouseout for No buttons
+              for (i = 0; i < noButtons.length; i++) {
+                noButtons[i].onclick = function(ev) { this.popDialog(); }.bind(appView);
+                noButtons[i].onmouseover = buttonOver;
+                noButtons[i].onmouseout = buttonOut;
+              }
+              // Override onmouseover and onmouseout for Yes buttons
+              var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
+              for (i = 0; i < yesButtons.length; i++) {
+                yesButtons[i].onmouseover = buttonOver;
+                yesButtons[i].onmouseout = buttonOut;
+              }
+            }
+          },
+          m.trust(this.html))
+      )
+    )
   }
 
 };
