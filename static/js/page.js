@@ -1118,7 +1118,7 @@ function createView() {
           ) : "",
           m(DialogButton,
             {
-              id: 'chall-cancel',
+              id: "chall-cancel",
               title: "Hætta við",
               tabindex: 8,
               onclick: function(ev) {
@@ -1130,8 +1130,8 @@ function createView() {
           ),
           m(DialogButton,
             {
-              id:'chall-ok',
-              title: 'Skora á',
+              id: "chall-ok",
+              title: "Skora á",
               tabindex: 9,
               onclick: function(ev) {
                 // Issue a new challenge
@@ -1837,6 +1837,7 @@ function createView() {
     // A view of a game, in-progress or finished
 
     var game = model.game;
+    var user = model.user;
     var view = this;
 
     function vwRightColumn() {
@@ -1930,7 +1931,7 @@ function createView() {
         // Show the chat tab unless the opponent is an autoplayer
         var component = null;
         if (sel == "movelist")
-          component = vwMovelist(game);
+          component = vwMovelist.call(view, game);
         else
         if (sel == "twoletter")
           component = m(vwTwoLetter);
@@ -1950,9 +1951,34 @@ function createView() {
     if (game === undefined || game === null)
       // No associated game
       return m("div", [ vwBack(), m("main", { key: "game-empty" }, m(".game-container")) ]);
+
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
     return m("div", // Removing this div messes up Mithril
+      {
+        // Allow tiles to be dropped on the background,
+        // thereby transferring them back to the rack
+        ondragenter: function(ev) {
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = 'move';
+          ev.redraw = false;
+          return false;
+        },
+        ondragover: function(ev) {
+          // This is necessary to allow a drop
+          ev.preventDefault();
+          ev.redraw = false;
+          return false;
+        },
+        ondrop: function(ev) {
+          ev.stopPropagation();
+          // Move the tile from the source to the destination
+          var from = ev.dataTransfer.getData("text");
+          // Move to the first available slot in the rack
+          game.attemptMove(from, "R1");
+          return false;
+        }
+      },
       [
         vwBack(),
         $state.beginner ? vwBeginner(game) : "",
@@ -2161,6 +2187,8 @@ function createView() {
   function vwMovelist(game) {
     // The move list tab
 
+    var view = this;
+
     function movelist() {
       var mlist = game ? game.moves : []; // All moves made so far in the game
       var r = [];
@@ -2176,7 +2204,7 @@ function createView() {
         else
           rightTotal = Math.max(rightTotal + score, 0);
         r.push(
-          vwMove(game, mlist[i],
+          vwMove.call(view, game, mlist[i],
             {
               key: i.toString(),
               leftTotal: leftTotal, rightTotal: rightTotal,
@@ -2216,6 +2244,8 @@ function createView() {
   function vwMove(game, move, info) {
     // Displays a single move
 
+    var view = this;
+
     function highlightMove(co, tiles, playerColor, show) {
        /* Highlight a move's tiles when hovering over it in the move list */
        var vec = toVector(co);
@@ -2238,6 +2268,28 @@ function createView() {
     var score = info.score;
     var leftTotal = info.leftTotal;
     var rightTotal = info.rightTotal;
+
+    function gameOverMove(tiles) {
+      return m(".move.gameover",
+        [
+          m("span.gameovermsg", tiles),
+          m("span.statsbutton",
+            {
+              onclick: function(ev) {
+                if ($state.hasPaid)
+                  // Show the game review
+                  ; // !!! TODO
+                else
+                  // Show a friend promotion dialog
+                  this.pushDialog("promo", { key: "friend" });
+                ev.preventDefault();
+              }.bind(view)
+            },
+            "Skoða yfirlit"
+          )
+        ]
+      );
+    }
 
     // Add a single move to the move list
     var wrdclass = "wordmove";
@@ -2304,12 +2356,7 @@ function createView() {
     }
     if (wrdclass == "gameover")
       // Game over message at bottom of move list
-      return m(".move.gameover",
-        [
-          m("span.gameovermsg", tiles),
-          m("span.statsbutton", { onclick: "navToReview()" }, "Skoða yfirlit")
-        ]
-      );
+      return gameOverMove(tiles);
     // Normal game move
     var title = (tileMoveIncrement > 0 && !game.manual) ? "Smelltu til að fletta upp" : "";
     var playerColor = "0";
@@ -2529,6 +2576,7 @@ function createView() {
         vwRack(game),
         vwButtons(game),
         vwErrors(game),
+        vwCongrats(game)
       ];
       r = r.concat(vwDialogs(game));
     }
@@ -2552,6 +2600,8 @@ function createView() {
       attrs.style = "animation-delay: " + delay + "; " +
         "-webkit-animation-delay: " + delay + ";";
     }
+    if (coord == game.selectedSq)
+      classes.push("sel"); // Blinks red
     if (t.highlight !== undefined) {
       // highlight0 is the local player color (yellow/orange)
       // highlight1 is the remote player color (green)
@@ -2560,15 +2610,27 @@ function createView() {
         // This tile was originally laid down by the other player
         classes.push("dim");
     }
-    if (t.draggable && game.showingDialog === null && !game.over) {
-      // Make the tile draggable, unless we're showing a dialog
-      attrs.draggable = "true";
-      attrs.ondragstart = function(ev) {
-        // ev.dataTransfer.effectAllowed = "copyMove";
-        ev.dataTransfer.effectAllowed = "move";
-        ev.dataTransfer.setData("text", coord);
-        ev.redraw = false;
-      };
+    if (game.showingDialog === null && !game.over) {
+      if (t.draggable) {
+        // Make the tile draggable, unless we're showing a dialog
+        attrs.draggable = "true";
+        attrs.ondragstart = function(ev) {
+          // ev.dataTransfer.effectAllowed = "copyMove";
+          game.selectedSq = null;
+          ev.dataTransfer.effectAllowed = "move";
+          ev.dataTransfer.setData("text", coord);
+          ev.redraw = false;
+        };
+        attrs.onclick = function(ev) {
+          // When clicking a tile, make it selected (blinking)
+          if (coord == game.selectedSq)
+            // Clicking again: deselect
+            game.selectedSq = null;
+          else
+            game.selectedSq = coord;
+          ev.stopPropagation();
+        };
+      }
     }
     return m(classes.join("."), attrs,
       [ t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score) ]
@@ -2581,7 +2643,7 @@ function createView() {
     // Mark the cell with the 'blinking' class if it is the drop
     // target of a pending blank tile dialog
     if (game.askingForBlank !== null && game.askingForBlank.to == coord)
-      cls = ".blinking";
+      cls += ".blinking";
     return m("td" + cls,
       {
         id: coord,
@@ -2600,6 +2662,7 @@ function createView() {
           return false;
         },
         ondragover: function(ev) {
+          // This is necessary to allow a drop
           ev.preventDefault();
           ev.redraw = false;
           return false;
@@ -2611,7 +2674,28 @@ function createView() {
           var from = ev.dataTransfer.getData("text");
           game.attemptMove(from, to);
           return false;
-        }.bind(null, coord)
+        }.bind(null, coord),
+        onclick: function(to, ev) {
+          // If a square is selected (blinking red) and
+          // we click on an empty square, move the selected tile
+          // to the clicked square
+          if (game.selectedSq !== null) {
+            ev.stopPropagation();
+            game.attemptMove(game.selectedSq, to);
+            game.selectedSq = null;
+            ev.currentTarget.classList.remove("sel");
+            return false;
+          }
+        }.bind(null, coord),
+        onmouseover: function(ev) {
+          // If a tile is selected, show a red selection square
+          // around this square when the mouse is over it
+          if (game.selectedSq !== null)
+            ev.currentTarget.classList.add("sel");
+        },
+        onmouseout: function(ev) {
+          ev.currentTarget.classList.remove("sel");
+        }
       },
       child || ""
     );
@@ -2637,7 +2721,15 @@ function createView() {
         var coord = rowid + col.toString();
         if (game && (coord in game.tiles))
           // There is a tile in this square: render it
-          r.push(m("td", { id: coord, key: coord }, vwTile(game, coord)));
+          r.push(m("td",
+            {
+              id: coord,
+              key: coord,
+              ondragover: function(ev) { ev.stopPropagation(); },
+              ondrop: function(ev) { ev.stopPropagation(); }
+            },
+            vwTile(game, coord))
+          );
         else
           // Empty square which is a drop target
           r.push(vwDropTarget(game, coord));
@@ -2868,6 +2960,18 @@ function createView() {
       );
     }
     return "";
+  }
+
+  function vwCongrats(game) {
+    return game.congratulate ?
+      m("div", { id: "congrats", style: { visibility: "visible" } },
+        [
+          glyph("bookmark"),
+          " ",
+          m("strong", "Til hamingju með sigurinn!")
+        ]
+      )
+      : "";
   }
 
   function vwDialogs(game) {
@@ -4067,7 +4171,6 @@ function SearchButton(vnode) {
     }
   }
 }
-
 
 var DialogButton = {
 

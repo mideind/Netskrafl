@@ -104,7 +104,7 @@ var LETTERSCORE = new Array(
 function Game(uuid, game) {
   // Add extra data and methods to our game model object
   this.uuid = uuid;
-  console.log("Game " + uuid + " loaded");
+  // console.log("Game " + uuid + " loaded");
   this.zombie = false; // !!! TBD
   // Create a local storage object for this game
   this.localStorage = new LocalStorage(uuid);
@@ -121,6 +121,8 @@ function Game(uuid, game) {
   this.isFresh = false;
   this.numTileMoves = 0;
   this.chatShown = false;
+  this.congratulate = false; // Show congratulation message if true
+  this.selectedSq = null; // Currently selected (blinking) square
   this.update(game);
 }
 
@@ -143,6 +145,8 @@ Game.prototype.update = function(game) {
   this.newmoves = undefined;
   this.localturn = !this.over && ((this.moves.length % 2) == this.player);
   this.isFresh = true;
+  this.congratulate = this.over && this.player !== undefined &&
+    (this.scores[this.player] > this.scores[1 - this.player]);
   if (this.currentError === null) {
     // Generate a dictionary of tiles currently on the board,
     // from the moves already made
@@ -437,6 +441,7 @@ Game.prototype.submitMove = function() {
   // Send a tile move to the server
   var t = this.tilesPlaced();
   var moves = [];
+  this.selectedSq = null; // Currently selected (blinking) square
   for (var i = 0; i < t.length; i++) {
     var sq = t[i];
     var tile = this.tiles[sq];
@@ -449,21 +454,25 @@ Game.prototype.submitMove = function() {
 Game.prototype.submitPass = function() {
   // Show a pass confirmation prompt
   this.showingDialog = "pass";
+  this.selectedSq = null; // Currently selected (blinking) square
 };
 
 Game.prototype.submitChallenge = function() {
   // Show a challenge confirmation prompt
   this.showingDialog = "chall";
+  this.selectedSq = null; // Currently selected (blinking) square
 };
 
 Game.prototype.submitExchange = function() {
   // Show an exchange prompt
   this.showingDialog = "exchange";
+  this.selectedSq = null; // Currently selected (blinking) square
 };
 
 Game.prototype.submitResign = function() {
   // Show a resign prompt
   this.showingDialog = "resign";
+  this.selectedSq = null; // Currently selected (blinking) square
 };
 
 Game.prototype.confirmPass = function(yes) {
@@ -494,6 +503,7 @@ Game.prototype.confirmResign = function(yes) {
 
 Game.prototype.rescrambleRack = function() {
   // Reorder the rack randomly. Bound to the Backspace key.
+  this.selectedSq = null; // Currently selected (blinking) square
   if (this.showingDialog !== null)
      return;
   this._resetRack();
@@ -554,6 +564,7 @@ Game.prototype._resetRack = function() {
 
 Game.prototype.resetRack = function() {
   // Recall all unglued tiles into the rack
+  this.selectedSq = null; // Currently selected (blinking) square
   this._resetRack();
   this.saveTiles();
 };
