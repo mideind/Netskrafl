@@ -1124,7 +1124,7 @@ function createView() {
               onclick: function(ev) {
                 this.popDialog();
                 ev.preventDefault();
-              }.bind(this)
+              }.bind(this),
             },
             glyph("remove")
           ),
@@ -1153,7 +1153,7 @@ function createView() {
                 );
                 this.popDialog();
                 ev.preventDefault();
-              }.bind(this)
+              }.bind(this),
             },
             glyph("ok")
           )
@@ -1306,7 +1306,7 @@ function createView() {
                           onclick: function(ev) {
                             // Show opponent track record
                             showUserInfo(item.oppid, item.opp, item.fullname);
-                          }
+                          },
                         },
                         ""
                       )
@@ -1606,7 +1606,7 @@ function createView() {
                     this.fav = !this.fav;
                     model.markFavorite(this.userid, this.fav);
                     ev.preventDefault();
-                  }.bind(item)
+                  }.bind(item),
                 },
                 glyph(item.fav ? "star" : "star-empty")
               );
@@ -1667,7 +1667,7 @@ function createView() {
                     onclick: function(ev) {
                       showUserInfo(this.userid, this.nick, this.fullname);
                       ev.preventDefault();
-                    }.bind(item)
+                    }.bind(item),
                   },
                   isRobot ? "" : m("span.usr-info")
                 ),
@@ -1858,6 +1858,10 @@ function createView() {
           var tomove;
 
           function lookAtPlayer(player, side, ev) {
+            if (!$state.uiFullscreen)
+              // Don't do anything on mobile, and allow the click
+              // to propagate to the parent
+              return;
             if (player === 0 || player === 1) {
               if (player == side) {
                 // The player is clicking on himself:
@@ -2219,9 +2223,11 @@ function createView() {
     function scrollMovelistToBottom() {
       // If we're displaying a 'fresh' game (just updated),
       // scroll the last move into view
+      /*
       if (!game || !game.isFresh)
         return;
       game.isFresh = false;
+      */
       var movelist = document.querySelectorAll("div.movelist .move");
       if (movelist.length)
         movelist[movelist.length - 1].scrollIntoView();
@@ -2233,7 +2239,11 @@ function createView() {
       { style: "z-index: 6" }, // Appear on top of board on mobile
       [
         m(".movelist",
-          { oninit: scrollMovelistToBottom, onupdate: scrollMovelistToBottom },
+          {
+            key: "movelist",
+            oninit: scrollMovelistToBottom,
+            onupdate: scrollMovelistToBottom
+          },
           movelist()
         ),
         vwBag(bag, newbag) // Visible on mobile
@@ -2283,7 +2293,7 @@ function createView() {
                   // Show a friend promotion dialog
                   this.pushDialog("promo", { key: "friend" });
                 ev.preventDefault();
-              }.bind(view)
+              }.bind(view),
             },
             "Skoða yfirlit"
           )
@@ -2590,8 +2600,22 @@ function createView() {
     var attrs = {};
     if (t.tile == '?')
       classes.push("blanktile");
-    if (coord[0] == 'R' || t.draggable)
+    if (coord[0] == 'R' || t.draggable) {
       classes.push("racktile");
+      if (coord[0] == 'R' && game.showingDialog == "exchange") {
+        // Rack tile, and we're showing the exchange dialog
+        if (t.xchg)
+          // Chosen as an exchange tile
+          classes.push("xchgsel");
+        // Exchange dialog is live: add a click handler for the
+        // exchange state
+        attrs.onclick = function(tile, ev) {
+          // Toggle the exchange status
+          tile.xchg = tile.xchg ? false : true;
+          ev.preventDefault();
+        }.bind(null, t);
+      }
+    }
     if (t.freshtile) {
       classes.push("freshtile");
       // Make fresh tiles appear sequentally by animation
@@ -2781,6 +2805,27 @@ function createView() {
 
   function vwButtons(game) {
     // The set of buttons below the game board, alongside the rack
+
+    function makeButton(cls, disabled, func, title, children) {
+      // Create a button element, wrapping the disabling logic
+      // and other boilerplate
+      var attr = {
+        onmouseout: buttonOut,
+        onmouseover: buttonOver,
+        title: title
+      };
+      if (disabled)
+        attr.onclick = function(ev) { ev.preventDefault(); }
+      else
+        attr.onclick = function(func, ev) {
+          func();
+          ev.preventDefault();
+        }.bind(null, func);
+      return m("." + cls + (disabled ? ".disabled" : ""),
+        attr, children // children may be omitted
+      );
+    }
+
     var tilesPlaced = game.tilesPlaced().length > 0;
     var gameOver = game.over;
     var localTurn = game.localturn;
@@ -2822,81 +2867,62 @@ function createView() {
       (game.wordGood ? ".word-good" : "") +
       (game.wordBad ? ".word-bad" : "")));
     if (showChallenge)
-      r.push(m(".challenge" +
-        (((tilesPlaced && !lastChallenge) || showingDialog) ? ".disabled" : ""),
-        {
-          onclick: function() { game.submitChallenge(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Véfenging (röng kostar 10 stig)'
-        }
-      ));
+      r.push(
+        makeButton(
+          "challenge", (tilesPlaced && !lastChallenge) || showingDialog,
+          function() { game.submitChallenge(); },
+          'Véfenging (röng kostar 10 stig)'
+        )
+      )
     if (showChallengeInfo)
       r.push(m(".chall-info"));
     if (showRecall)
-      r.push(m(".recallbtn",
-        {
-          onclick: function() { game.resetRack(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Færa stafi aftur í rekka'
-        },
-        glyph("down-arrow")
-      ));
+      r.push(
+        makeButton(
+          "recallbtn", false,
+          function() { game.resetRack(); },
+          "Færa stafi aftur í rekka", glyph("down-arrow")
+        )
+      );
     if (showScramble)
-      r.push(m(".scramblebtn",
-        {
-          onclick: function() { game.rescrambleRack(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Stokka upp rekka'
-        },
-        glyph("random")
-      ));
+      r.push(
+        makeButton("scramblebtn", showingDialog,
+          function() { game.rescrambleRack(); },
+          "Stokka upp rekka", glyph("random")
+        )
+      );
     if (showMove)
-      r.push(m(".submitmove" +
-        ((!tilesPlaced || showingDialog) ? ".disabled" : ""),
-        {
-          onclick: function() { game.submitMove(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Leika'
-        },
-        [ "Leika", glyph("play") ]
-      ));
+      r.push(
+        makeButton(
+          "submitmove", !tilesPlaced || showingDialog,
+          function() { game.submitMove(); },
+          "Leika", [ "Leika", nbsp(), glyph("play") ]
+        )
+      );
     if (showPass)
-      r.push(m(".submitpass" +
-        (((tilesPlaced && !lastChallenge) || showingDialog) ? ".disabled" : ""),
-        {
-          onclick: function() { game.submitPass(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Pass'
-        },
-        glyph("forward")
-      ));
+      r.push(
+        makeButton(
+          "submitpass", (tilesPlaced && !lastChallenge) || showingDialog,
+          function() { game.submitPass(); },
+          "Pass", glyph("forward")
+        )
+      );
     if (showExchange)
-      r.push(m(".submitexchange" +
-        ((tilesPlaced || showingDialog || !exchangeAllowed) ? ".disabled" : ""),
-        {
-          onclick: function() { game.submitExchange(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Skipta stöfum'
-        },
-        glyph("refresh")
-      ));
+      r.push(
+        makeButton(
+          "submitexchange", tilesPlaced || showingDialog || !exchangeAllowed,
+          function() { game.submitExchange(); },
+          "Skipta stöfum", glyph("refresh")
+        )
+      );
     if (showResign)
-      r.push(m(".submitresign" +
-        (showingDialog ? ".disabled" : ""),
-        {
-          onclick: function() { game.submitResign(); },
-          onmouseout: buttonOut,
-          onmouseover: buttonOver,
-          title: 'Gefa viðureign'
-        },
-        glyph("fire")
-      ));
+      r.push(
+        makeButton(
+          "submitresign", showingDialog,
+          function() { game.submitResign(); },
+          "Gefa viðureign", glyph("fire")
+        )
+      );
     if (!gameOver && !localTurn)
       // Indicate that it is the opponent's turn; offer to force a resignation
       // if the opponent hasn't moved for 14 days
@@ -2992,11 +3018,11 @@ function createView() {
           glyph("exclamation-sign"), nbsp(), "Viltu gefa leikinn?", nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: function() { game.confirmResign(true); } },
-            [ glyph("ok"), "Já" ]
+            [ glyph("ok"), " Já" ]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: function() { game.confirmResign(false); } },
-            [ glyph("remove"), "Nei" ]
+            [ glyph("remove"), " Nei" ]
           )
         ]
       ));
@@ -3007,11 +3033,11 @@ function createView() {
           m("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
           nbsp(), m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: function() { game.confirmPass(true); } },
-            [ glyph("ok"), "Já" ]
+            [ glyph("ok"), " Já" ]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: function() { game.confirmPass(false); } },
-            [ glyph("remove"), "Nei" ]
+            [ glyph("remove"), " Nei" ]
           )
         ]
       ));
@@ -3023,11 +3049,11 @@ function createView() {
           nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: function() { game.confirmPass(true); } },
-            [ glyph("ok"), "Já" ]
+            [ glyph("ok"), " Já" ]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: function() { game.confirmPass(false); } },
-            [ glyph("remove"), "Nei" ]
+            [ glyph("remove"), " Nei" ]
           )
         ]
       ));
@@ -3037,10 +3063,12 @@ function createView() {
           glyph("refresh"), nbsp(),
           "Smelltu á flísarnar sem þú vilt skipta", nbsp(),
           m("span.mobile-break", m("br")),
-          m("span.yesnobutton[title='Skipta']", { onclick: function() { game.confirmExchange(true); } },
+          m("span.yesnobutton[title='Skipta']",
+            { onclick: function() { game.confirmExchange(true); } },
             glyph("ok")),
           m("span.mobile-space"),
-          m("span.yesnobutton[title='Hætta við']", { onclick: function() { game.confirmExchange(false); } },
+          m("span.yesnobutton[title='Hætta við']",
+            { onclick: function() { game.confirmExchange(false); } },
             glyph("remove"))
         ]
       ));
@@ -3050,12 +3078,14 @@ function createView() {
           glyph("ban-circle"), nbsp(), "Véfengja lögn?",
           m("span.pass-explain", "Röng véfenging kostar 10 stig"), nbsp(),
           m("span.mobile-break", m("br")),
-          m("span.yesnobutton", { onclick: function() { game.confirmChallenge(true); } },
-            [ glyph("ok"), "Já" ]
+          m("span.yesnobutton",
+            { onclick: function() { game.confirmChallenge(true); } },
+            [ glyph("ok"), " Já" ]
           ),
           m("span.mobile-space"),
-          m("span.yesnobutton", { onclick: function() { game.confirmChallenge(false); } },
-            [ glyph("remove"), "Nei" ]
+          m("span.yesnobutton",
+            { onclick: function() { game.confirmChallenge(false); } },
+            [ glyph("remove"), " Nei" ]
           )
         ]
       ));
@@ -3262,7 +3292,8 @@ function createActions(model, view) {
   }
 
   function onMoveMessage(json) {
-
+    // !!! TODO
+    console.log("Move message received: " + JSON.stringify(json));
   }
 
   function onChatMessage(json) {
@@ -3456,7 +3487,7 @@ var MultiSelection = {
             if (this.dom.childNodes[i].contains(ev.target))
               this.state.sel = i;
           ev.stopPropagation();
-        }.bind(vnode)
+        }.bind(vnode),
       },
       vnode.children.map(function(item, i) {
         // A pretty gross approach, but it works: clobber the childrens' className
@@ -3536,7 +3567,7 @@ var EloPage = {
                 {
                   // Show ranking for human games only
                   className: (this.sel == "human" ? "selected" : ""),
-                  onclick: function(ev) { this.sel = "human"; }.bind(this)
+                  onclick: function(ev) { this.sel = "human"; }.bind(this),
                 },
                 glyph("user")
               ),
@@ -3544,7 +3575,7 @@ var EloPage = {
                 {
                   // Show ranking for all games, including robots
                   className: (this.sel == "all" ? "selected" : ""),
-                  onclick: function(ev) { this.sel = "all"; }.bind(this)
+                  onclick: function(ev) { this.sel = "all"; }.bind(this),
                 },
                 glyph("cog")
               )
@@ -3660,33 +3691,33 @@ var RecentList = {
         // Format the game duration
         var duration = "";
         if (item.duration === 0) {
-           if (item.days || item.hours || item.minutes) {
-              if (item.days > 1)
-                 duration = item.days.toString() + " dagar";
+          if (item.days || item.hours || item.minutes) {
+            if (item.days > 1)
+              duration = item.days.toString() + " dagar";
+            else
+            if (item.days == 1)
+              duration = "1 dagur";
+            if (item.hours > 0) {
+              if (duration.length)
+                duration += " og ";
+              duration += item.hours.toString() + " klst";
+            }
+            if (item.days === 0) {
+              if (duration.length)
+                duration += " og ";
+              if (item.minutes == 1)
+                duration += "1 mínúta";
               else
-              if (item.days == 1)
-                 duration = "1 dagur";
-              if (item.hours > 0) {
-                 if (duration.length)
-                    duration += " og ";
-                 duration += item.hours.toString() + " klst";
-              }
-              if (item.days === 0) {
-                 if (duration.length)
-                    duration += " og ";
-                 if (item.minutes == 1)
-                    duration += "1 mínúta";
-                 else
-                    duration += item.minutes.toString() + " mínútur";
-              }
-           }
+                duration += item.minutes.toString() + " mínútur";
+            }
+          }
         }
         else
-           // This was a timed game
-           duration = m("span.timed-btn",
-              { title: 'Viðureign með klukku' },
-              " 2 x " + item.duration + " mínútur"
-            );
+          // This was a timed game
+          duration = [
+            m("span.timed-btn", { title: 'Viðureign með klukku' }),
+            " 2 x " + item.duration + " mínútur"
+          ];
         return duration;
       }
 
@@ -3696,29 +3727,29 @@ var RecentList = {
       var eloAdjClass, eloAdjHumanClass;
       // Find out the appropriate class to use depending on the adjustment sign
       if (item.elo_adj !== null)
-         if (item.elo_adj > 0) {
-            eloAdj = "+" + eloAdj;
-            eloAdjClass = "elo-win";
-         }
-         else
-         if (item.elo_adj < 0)
-            eloAdjClass = "elo-loss";
-         else {
-            eloAdjClass = "elo-neutral";
-            eloAdj = glyph("stroller", { title: 'Byrjandi' });
-         }
+        if (item.elo_adj > 0) {
+          eloAdj = "+" + eloAdj;
+          eloAdjClass = "elo-win";
+        }
+        else
+        if (item.elo_adj < 0)
+          eloAdjClass = "elo-loss";
+        else {
+          eloAdjClass = "elo-neutral";
+          eloAdj = glyph("stroller", { title: 'Byrjandi' });
+        }
       if (item.human_elo_adj !== null)
-         if (item.human_elo_adj > 0) {
-            eloAdjHuman = "+" + eloAdjHuman;
-            eloAdjHumanClass = "elo-win";
-         }
-         else
-         if (item.human_elo_adj < 0)
-            eloAdjHumanClass = "elo-loss";
-         else {
-            eloAdjHumanClass = "elo-neutral";
-            eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
-         }
+        if (item.human_elo_adj > 0) {
+          eloAdjHuman = "+" + eloAdjHuman;
+          eloAdjHumanClass = "elo-win";
+        }
+        else
+        if (item.human_elo_adj < 0)
+          eloAdjHumanClass = "elo-loss";
+        else {
+          eloAdjHumanClass = "elo-neutral";
+          eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
+        }
       eloAdj = m("span",
         { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
         eloAdj
@@ -3740,7 +3771,7 @@ var RecentList = {
             ),
             m("span.list-ts-short", item.ts_last_move),
             m("span.list-nick",
-              item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : opp
+              item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : item.opp
             ),
             m("span.list-s0", item.sc0),
             m("span.list-colon", ":"),
@@ -3830,7 +3861,7 @@ var UserInfoDialog = {
                     this.favorite = !this.favorite;
                     vnode.attrs.model.markFavorite(vnode.attrs.userid, this.favorite);
                     ev.preventDefault();
-                  }.bind(this.stats)
+                  }.bind(this.stats),
                 },
                 this.stats.favorite ? glyph("star") : glyph("star-empty")
               )
@@ -3985,11 +4016,11 @@ var StatsDisplay = {
         m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
           [
             m(".option.small" + (this.sel == 1 ? ".selected" : ""),
-              { id: 'opt1', onclick: function(ev) { this.sel = 1; m.redraw(); }.bind(this) },
+              { id: 'opt1', onclick: function(ev) { this.sel = 1; m.redraw(); }.bind(this), },
               glyph("user")
             ),
             m(".option.small" + (this.sel == 2 ? ".selected" : ""),
-              { id: 'opt2', onclick: function(ev) { this.sel = 2; m.redraw(); }.bind(this) },
+              { id: 'opt2', onclick: function(ev) { this.sel = 2; m.redraw(); }.bind(this), },
               glyph("cog")
             )
           ]

@@ -120,7 +120,7 @@ function Game(uuid, game) {
   this.currentMessage = null;
   this.isFresh = false;
   this.numTileMoves = 0;
-  this.chatShown = false;
+  this.chatShown = true; // False if the user has not seen all chat messages
   this.congratulate = false; // Show congratulation message if true
   this.selectedSq = null; // Currently selected (blinking) square
   this.update(game);
@@ -193,7 +193,11 @@ Game.prototype.loadMessages = function() {
       this.messages = result.messages || [];
     else
       this.messages = [];
-    this.chatShown = result.messages.length == 0;
+    // !!! TODO: The following is too simplistic;
+    // !!! we should check for a new message from the
+    // !!! opponent that comes after the last message-seen
+    // !!! marker
+    this.chatShown = this.messages.length == 0;
   }.bind(this));
 };
 
@@ -212,6 +216,7 @@ Game.prototype.sendMessage = function(msg) {
 Game.prototype.sendChatSeenMarker = function() {
   // Send a 'chat message seen' marker to the server
   this.sendMessage("");
+  // The user has now seen all chat messages
   this.chatShown = true;
 };
 
@@ -223,7 +228,7 @@ Game.prototype.addChatMessage = function(from_userid, msg, ts) {
     // we skip the initial chat message update that happens
     // immediately as we add a listener to the chat path.
     this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
-    if (this.sel !== "chat")
+    if (this.sel != "chat" && msg != "")
       // We have a new chat message that the user hasn't seen yet
       this.chatShown = false;
   }
@@ -277,7 +282,8 @@ Game.prototype.placeMove = function(player, co, tiles) {
         score: tscore,
         draggable: false,
         freshtile: false,
-        index: 0
+        index: 0,
+        xchg: false
       };
     col += vec.dx;
     row += vec.dy;
@@ -325,7 +331,8 @@ Game.prototype.placeTiles = function() {
       score: tscore,
       draggable: true,
       freshtile: false,
-      index: 0
+      index: 0,
+      xchg: false
     };
   }
 };
@@ -405,7 +412,7 @@ Game.prototype.placeBlank = function(letter) {
   this.tiles[from].letter = letter;
   this.moveTile(from, to);
   this.askingForBlank = null;
-}
+};
 
 Game.prototype.tilesPlaced = function() {
   // Return a list of coordinates of tiles that the user has
@@ -465,8 +472,15 @@ Game.prototype.submitChallenge = function() {
 
 Game.prototype.submitExchange = function() {
   // Show an exchange prompt
+  var i, sq;
   this.showingDialog = "exchange";
   this.selectedSq = null; // Currently selected (blinking) square
+  // Remove the xchg flag from all tiles in the rack
+  for (i = 1; i <= RACK_SIZE; i++) {
+    sq = "R" + i;
+    if (sq in this.tiles)
+      this.tiles[sq].xchg = false;
+  }
 };
 
 Game.prototype.submitResign = function() {
@@ -491,7 +505,19 @@ Game.prototype.confirmChallenge = function(yes) {
 
 Game.prototype.confirmExchange = function(yes) {
   // Handle reply to exchange confirmation prompt
+  var i, sq, exch = "";
   this.showingDialog = null;
+  for (i = 1; i <= RACK_SIZE; i++) {
+    sq = "R" + i;
+    if (sq in this.tiles && this.tiles[sq].xchg) {
+      // This tile is marked for exchange
+      exch += this.tiles[sq].tile;
+      this.tiles[sq].xchg = false;
+    }
+  }
+  if (yes && exch.length > 0)
+    // Send the exchange move to the server
+    this.sendMove([ "exch=" + exch ]);
 };
 
 Game.prototype.confirmResign = function(yes) {
@@ -537,6 +563,7 @@ Game.prototype.rescrambleRack = function() {
 
 Game.prototype.saveTiles = function() {
   // Save the current unglued tile configuration to local storage
+  // !!! TODO
 };
 
 Game.prototype._resetRack = function() {
@@ -593,19 +620,19 @@ Game.prototype.updateScore = function() {
       }.bind(this));
     }
   }
-}
+};
 
 Game.prototype.wordScore = function(row, col) {
   return parseInt(WORDSCORE[row].charAt(col));
-}
+};
 
 Game.prototype.letterScore = function(row, col) {
   return parseInt(LETTERSCORE[row].charAt(col));
-}
+};
 
 Game.prototype.tileAt = function(row, col) {
   return this.tiles[coord(row, col)] || null;
-}
+};
 
 Game.prototype.calcScore = function() {
   // Calculate the score for the tiles that have been laid on the board in the current move
@@ -694,7 +721,7 @@ Game.prototype.calcScore = function() {
   words.push(word);
   return { word: word, words: words,
     score: score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0) };
-}
+};
 
 Game.prototype.calcCrossScore = function(oy, ox, dy, dx) {
   // Calculate the score contribution of a cross word
@@ -723,7 +750,7 @@ Game.prototype.calcCrossScore = function(oy, ox, dy, dx) {
   if (!hascross)
     return { score: -1, word: "" };
   return { score: score * this.wordScore(oy, ox), word: word };
-}
+};
 
 var _hasLocal = null; // Is HTML5 local storage supported by the browser?
 

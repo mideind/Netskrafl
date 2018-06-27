@@ -310,8 +310,13 @@ div.container {
 }
 
 div.game-container {
+   position: absolute;
+   top: 0;
+   left: 0;
    width: 100%;
    height: @mobile-height-net;
+   overflow-x: hidden;
+   overflow-y: hidden;
 }
 
 div.logo {
@@ -436,6 +441,10 @@ div.info {
    display: none;
 }
 
+div.board-help {
+   display: none;
+}
+
 div.bag {
    display: none;
 }
@@ -521,10 +530,6 @@ tr.colid {
 }
 
 td.rowid {
-   display: none;
-}
-
-div.board-help {
    display: none;
 }
 
@@ -802,7 +807,6 @@ div.player-btn {
    border-width: 0px;
    overflow: hidden;
    background-color: transparent;
-   cursor: pointer;
 }
 
 div.player-btn.left,
@@ -1535,9 +1539,13 @@ div.user-cat#user-search {
 
 div#chall-form {
    .std-form;
+   position: relative;
    padding-top: 8px;
-   left: @margin-small;
+   /* left: @margin-small; */
+   left: auto;
    right: auto;
+   margin-left: auto;
+   margin-right: auto;
    top: 48px;
    width: @mobile-width - 6 * @margin-small;
    height: 352px;
@@ -2014,6 +2022,7 @@ div.logo {
 div.logo-back {
    display: block;
    position: absolute;
+   z-index: 2;
    top: 38px;
    left: 28px;
    width: 46px;
@@ -2028,12 +2037,18 @@ div.logo-back {
 div.info {
    display: block;
    position: absolute;
+   z-index: 2;
    top: 456px;
    left: 26px;
    width: 50px;
    height: 50px;
    text-align: center;
    font-size: 40px;
+}
+
+div.board-help {
+   display: block;
+   z-index: 2;
 }
 
 div.rightcol {
@@ -2124,10 +2139,6 @@ td.rowid {
    font-weight: 400;
    border-width: 1px;
    border-color: transparent;
-}
-
-div.board-help {
-   display: block;
 }
 
 div.bag {
@@ -2312,6 +2323,7 @@ div.player-btn {
    width: 141px;
    padding-top: 4px;
    color: @neutral;
+   cursor: pointer;
 }
 
 div.player-btn:hover {
@@ -2667,6 +2679,7 @@ div.user-cat#user-search {
 }
 
 div#chall-form {
+   position: absolute;
    padding-top: 12px;
    left: auto;
    right: 300px;
@@ -3579,6 +3592,7 @@ div.word-check.word-bad:before {
 
 div.board-help {
    position: absolute;
+   z-index: 2;
    left: 22px;
    top: 160px;
    width: 54px;
