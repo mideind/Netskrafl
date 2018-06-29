@@ -49,6 +49,18 @@ handlers:
   upload: static/favicon.ico
   expiration: "1d 0h"
 
+# Favorite icon URL, 32x32
+- url: /favicon-32x32.png
+  static_files: static/favicon-32x32.png
+  upload: static/favicon-32x32.png
+  expiration: "1d 0h"
+
+# Favorite icon URL, 16x16
+- url: /favicon-16x16.png
+  static_files: static/favicon-16x16.png
+  upload: static/favicon-16x16.png
+  expiration: "1d 0h"
+
 # Service worker
 - url: /service-worker.js
   static_files: static/service-worker.js
@@ -60,6 +72,24 @@ handlers:
 - url: /browserconfig.xml
   static_files: static/browserconfig.xml
   upload: static/browserconfig.xml
+  expiration: "1d 0h"
+
+# Microsoft Windows tile
+- url: /mstile-150x150.png
+  static_files: static/mstile-150x150.png
+  upload: static/mstile-150x150.png
+  expiration: "1d 0h"
+
+# Web manifest
+- url: /site.webmanifest
+  static_files: static/site.webmanifest
+  upload: static/site.webmanifest
+  expiration: "1d 0h"
+
+# Safari pinned tab
+- url: /safari-pinned-tab.svg
+  static_files: static/safari-pinned-tab.svg
+  upload: static/safari-pinned-tab.svg
   expiration: "1d 0h"
 
 # Special Apple iOS URLs for image resources, all cacheable

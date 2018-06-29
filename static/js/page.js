@@ -712,17 +712,20 @@ function createView() {
     function wireQuestions(vnode) {
       // Clicking on a question brings the corresponding answer into view
       // This is achieved by wiring up all contained a[href="#faq-*"] links
-      var anchors = vnode.dom.querySelectorAll("a");
-      for (var i = 0; i < anchors.length; i++) {
+
+      function showAnswer(href, ev) {
+        // this points to the vnode
+        this.state.selected = 1; // FAQ tab
+        this.dom.querySelector(href).scrollIntoView();
+        ev.preventDefault();
+      }
+
+      var i, anchors = vnode.dom.querySelectorAll("a");
+      for (i = 0; i < anchors.length; i++) {
         var href = anchors[i].getAttribute("href");
-        if (href.slice(0, 5) == "#faq-") {
+        if (href.slice(0, 5) == "#faq-")
           // This is a direct link to a question: wire it up
-          anchors[i].onclick = function(href, ev) {
-            vnode.state.selected = 1; // FAQ tab
-            vnode.dom.querySelector(href).scrollIntoView();
-            ev.preventDefault();
-          }.bind(null, href);
-        }
+          anchors[i].onclick = showAnswer.bind(vnode, href);
       }
       if (faqNumber !== undefined) {
         // Go to the FAQ tab and scroll the requested question into view
