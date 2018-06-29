@@ -66,7 +66,7 @@ var NEW_TILESCORE = {
    'y': 6, 'ý': 5, 'þ': 7, 'æ': 4, 'ö': 6, '?': 0
 };
 
-var WORDSCORE = new Array(
+var WORDSCORE = [
    "311111131111113",
    "121111111111121",
    "112111111111211",
@@ -81,9 +81,10 @@ var WORDSCORE = new Array(
    "111211111112111",
    "112111111111211",
    "121111111111121",
-   "311111131111113");
+   "311111131111113"
+];
 
-var LETTERSCORE = new Array(
+var LETTERSCORE = [
    "111211111112111",
    "111113111311111",
    "111111212111111",
@@ -98,7 +99,8 @@ var LETTERSCORE = new Array(
    "211111121111112",
    "111111212111111",
    "111113111311111",
-   "111211111112111");
+   "111211111112111"
+];
 
 
 function Game(uuid, game) {
@@ -123,11 +125,18 @@ function Game(uuid, game) {
   this.chatShown = true; // False if the user has not seen all chat messages
   this.congratulate = false; // Show congratulation message if true
   this.selectedSq = null; // Currently selected (blinking) square
+  this.sel = "movelist"; // By default, show the movelist tab
+  this.moves = [];
   this.update(game);
 }
 
 Game.prototype.update = function(game) {
   // Update the game state with new data from the server
+  if (game.num_moves <= this.moves.length)
+    // This is probably a starting notification from Firebase,
+    // not adding a new move but repeating the last move made: ignore it
+    // !!! TODO: If the last move was by the opponent, highlight it
+    return;
   this.over = game.result == GAME_OVER;
   if (this.over || !game.result)
     this.currentError = this.currentMessage = null;
@@ -160,6 +169,11 @@ Game.prototype.update = function(game) {
       this.updateScore();
   }
 };
+
+Game.prototype.setSelectedTab = function(sel) {
+  // Set the currently selected tab
+  this.sel = sel;
+}
 
 Game.prototype.tilescore = function(tile) {
   return this.newbag ? NEW_TILESCORE[tile] : OLD_TILESCORE[tile];
@@ -441,7 +455,7 @@ Game.prototype.sendMove = function(moves) {
     this.moveInProgress = false;
     this.currentError = "server";
     this.currentMessage = e;
-  });
+  }.bind(this));
 };
 
 Game.prototype.submitMove = function() {

@@ -111,7 +111,9 @@ function createModel(settings) {
     newGame: newGame,
     modifyChallenge: modifyChallenge,
     markFavorite: markFavorite,
-    addChatMessage: addChatMessage
+    addChatMessage: addChatMessage,
+    handleUserMessage: handleUserMessage,
+    handleMoveMessage: handleMoveMessage
   };
 
   function loadGame(uuid) {
@@ -129,12 +131,9 @@ function createModel(settings) {
       }
       else {
         this.game = new Game(uuid, result.game);
-        if ($state.uiFullscreen)
-          // Fullscreen UI: show movelist tab
-          this.game.sel = "movelist";
-        else
+        if (!$state.uiFullscreen)
           // Mobile UI: show board tab
-          this.game.sel = "board";
+          this.game.setSelectedTab("board");
       }
     }.bind(this));
   }
@@ -401,6 +400,21 @@ function createModel(settings) {
       return true;
     }
     return false;
+  }
+
+  function handleUserMessage(json) {
+    // Handle an incoming Firebase user message
+    this.challengeList = null; // Reload challenge list
+    this.gameList = null; // Reload game list
+    m.redraw();
+  }
+
+  function handleMoveMessage(json) {
+    // Handle an incoming Firebase move message
+    if (this.game) {
+      this.game.update(json);
+      m.redraw();
+    }
   }
 
 }
@@ -3295,12 +3309,20 @@ function createActions(model, view) {
   }
 
   function onMoveMessage(json) {
-    // !!! TODO
+    // Handle a move message from Firebase
     console.log("Move message received: " + JSON.stringify(json));
+    model.handleMoveMessage(json);
+  }
+
+  function onUserMessage(json) {
+    // Handle a user message from Firebase
+    console.log("User message received: " + JSON.stringify(json));
+    model.handleUserMessage(json);
   }
 
   function onChatMessage(json) {
     // Handle an incoming chat message
+    console.log("Chat message received: " + JSON.stringify(json));
     if (json.from_userid != $state.userId) {
       // The message is from the remote user
       // Put an alert on the chat tab if it is not selected
@@ -3402,7 +3424,8 @@ function createActions(model, view) {
     // New chat messages
     attachFirebaseListener(basepath + "chat", onChatMessage);
     // Listen to Firebase events on the /user/[userId] path
-    // attachFirebaseListener('user/' + userId(), handleUserMessage);
+    // !!! TODO: This should be a separate attachListenerToUser() function
+    attachFirebaseListener('user/' + $state.userId, onUserMessage);
   }
 
   function detachListenerFromGame(uuid) {
@@ -3410,6 +3433,8 @@ function createActions(model, view) {
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     detachFirebaseListener(basepath + "move");
     detachFirebaseListener(basepath + "chat");
+    // !!! TODO: This should be a separate detachListenerFromUser() function
+    detachFirebaseListener('user/' + $state.userId);
   }
 
 } // createActions
@@ -4019,11 +4044,11 @@ var StatsDisplay = {
         m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
           [
             m(".option.small" + (this.sel == 1 ? ".selected" : ""),
-              { id: 'opt1', onclick: function(ev) { this.sel = 1; m.redraw(); }.bind(this), },
+              { id: 'opt1', onclick: function(ev) { this.sel = 1; /* m.redraw(); */ ev.preventDefault(); }.bind(this), },
               glyph("user")
             ),
             m(".option.small" + (this.sel == 2 ? ".selected" : ""),
-              { id: 'opt2', onclick: function(ev) { this.sel = 2; m.redraw(); }.bind(this), },
+              { id: 'opt2', onclick: function(ev) { this.sel = 2; /* m.redraw(); */ ev.preventDefault(); }.bind(this), },
               glyph("cog")
             )
           ]
@@ -4368,7 +4393,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
         // the two-letter word list or the opponents tab
         a.onclick = function(ev) {
           selectTab(this, 2); // Select tab number 2
-          m.redraw();
+          /* m.redraw(); */
           ev.preventDefault();
         }.bind(vnode);
       }
@@ -4378,7 +4403,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
         // the explanation of the new bag
         a.onclick = function(ev) {
           selectTab(this, 3); // Select tab number 3
-          m.redraw();
+          /* m.redraw(); */
           ev.preventDefault();
         }.bind(vnode);
       }
@@ -4433,15 +4458,15 @@ function glyphGrayed(icon, attrs) {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 
-var _NBSP = m.trust("&nbsp;");
+// var _NBSP = m.trust("&nbsp;");
 
 // Utility function: inserts non-breaking space
 function nbsp(n) {
   if (!n || n == 1)
-    return _NBSP;
+    return m.trust("&nbsp;"); // _NBSP;
   var r = [];
   for (var i = 0; i < n; i++)
-    r.push(_NBSP);
+    r.push(m.trust("&nbsp;"));
   return r;
 }
 

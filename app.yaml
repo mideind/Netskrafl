@@ -23,6 +23,10 @@ manual_scaling:
 #- warmup
 #- channel_presence
 
+libraries:
+- name: ssl
+  version: latest
+
 builtins:
 - deferred: on
 
