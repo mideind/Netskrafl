@@ -114,7 +114,7 @@ function createModel(settings) {
     handleMoveMessage: handleMoveMessage
   };
 
-  function loadGame(uuid) {
+  function loadGame(uuid, funcComplete) {
     // Fetch a game state from the server, given a uuid
     console.log("Initiating load of game " + uuid);
     m.request({
@@ -129,6 +129,10 @@ function createModel(settings) {
       }
       else {
         this.game = new Game(uuid, result.game);
+        // Successfully loaded: call the completion function, if given
+        // (this usually attaches the Firebase event listener)
+        if (funcComplete !== undefined)
+          funcComplete();
         if (!$state.uiFullscreen)
           // Mobile UI: show board tab
           this.game.setSelectedTab("board");
@@ -3265,6 +3269,8 @@ function createActions(model, view) {
 
   initMediaListener();
   initFirebaseListener();
+  attachListenerToUser();
+
   return {
     onNavigateTo: onNavigateTo,
     onFullScreen: onFullScreen,
@@ -3281,9 +3287,12 @@ function createActions(model, view) {
     model.params = params;
     if (routeName == "game") {
       // New game route: initiate loading of the game into the model
-      model.loadGame(params.uuid);
-      // Attach Firebase listener
-      attachListenerToGame(params.uuid);
+      if (model.game !== null) {
+        detachListenerFromGame(model.game.uuid);
+        model.game = null;
+      }
+      // Load the game, and attach it to the Firebase listener once it's loaded
+      model.loadGame(params.uuid, attachListenerToGame.bind(this, params.uuid));
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -3414,6 +3423,17 @@ function createActions(model, view) {
     loginFirebase($state.firebaseToken);
   }
 
+  function attachListenerToUser() {
+    if ($state.userId)
+      attachFirebaseListener('user/' + $state.userId, onUserMessage);
+  }
+
+  function detachListenerFromUser() {
+    // Stop listening to Firebase notifications for the current user
+    if ($state.userId)
+      detachFirebaseListener('user/' + $state.userId);
+  }
+
   function attachListenerToGame(uuid) {
     // Listen to Firebase events on the /game/[gameId]/[userId] path
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
@@ -3421,9 +3441,6 @@ function createActions(model, view) {
     attachFirebaseListener(basepath + "move", onMoveMessage);
     // New chat messages
     attachFirebaseListener(basepath + "chat", onChatMessage);
-    // Listen to Firebase events on the /user/[userId] path
-    // !!! TODO: This should be a separate attachListenerToUser() function
-    attachFirebaseListener('user/' + $state.userId, onUserMessage);
   }
 
   function detachListenerFromGame(uuid) {
@@ -3431,8 +3448,6 @@ function createActions(model, view) {
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     detachFirebaseListener(basepath + "move");
     detachFirebaseListener(basepath + "chat");
-    // !!! TODO: This should be a separate detachListenerFromUser() function
-    detachFirebaseListener('user/' + $state.userId);
   }
 
 } // createActions
