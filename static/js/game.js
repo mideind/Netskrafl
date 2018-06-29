@@ -107,7 +107,7 @@ function Game(uuid, game) {
   // Add extra data and methods to our game model object
   this.uuid = uuid;
   // console.log("Game " + uuid + " loaded");
-  this.zombie = false; // !!! TBD
+  this.zombie = false; // !!! TODO
   // Create a local storage object for this game
   this.localStorage = new LocalStorage(uuid);
   this.gamelist = null; // No gamelist loaded yet
@@ -173,7 +173,7 @@ Game.prototype.update = function(game) {
 Game.prototype.setSelectedTab = function(sel) {
   // Set the currently selected tab
   this.sel = sel;
-}
+};
 
 Game.prototype.tilescore = function(tile) {
   return this.newbag ? NEW_TILESCORE[tile] : OLD_TILESCORE[tile];
@@ -315,8 +315,8 @@ Game.prototype.placeTiles = function() {
     var player = mlist[i][0];
     var co = mlist[i][1][0];
     var tiles = mlist[i][1][1];
-    var score = mlist[i][1][2];
-    // !!! TBD: handle successful challenges
+    // var score = mlist[i][1][2];
+    // !!! TODO: handle successful challenges
     if (co != "") {
       this.placeMove(player, co, tiles);
       this.numTileMoves++;

@@ -25,7 +25,6 @@ var main = (function() {
 // Constants
 
 var RACK_SIZE = 7;
-var EMPTY_RACK = "       "; // RACK_SIZE spaces
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
 var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
@@ -59,12 +58,11 @@ function getSettings() {
       { name: "login", route: "/login", mustLogin: false },
       { name: "help", route: "/help", mustLogin: false },
       { name: "game", route: "/game/:uuid", mustLogin: true }
-    ],
-    settings = {
-      paths: paths,
-      defaultRoute: paths[0].route
-    };
-  return settings;
+    ];
+  return {
+    paths: paths,
+    defaultRoute: paths[0].route
+  };
 }
 
 function createModel(settings) {
@@ -4044,11 +4042,11 @@ var StatsDisplay = {
         m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
           [
             m(".option.small" + (this.sel == 1 ? ".selected" : ""),
-              { id: 'opt1', onclick: function(ev) { this.sel = 1; /* m.redraw(); */ ev.preventDefault(); }.bind(this), },
+              { id: 'opt1', onclick: function(ev) { this.sel = 1; ev.preventDefault(); }.bind(this), },
               glyph("user")
             ),
             m(".option.small" + (this.sel == 2 ? ".selected" : ""),
-              { id: 'opt2', onclick: function(ev) { this.sel = 2; /* m.redraw(); */ ev.preventDefault(); }.bind(this), },
+              { id: 'opt2', onclick: function(ev) { this.sel = 2; ev.preventDefault(); }.bind(this), },
               glyph("cog")
             )
           ]
@@ -4393,7 +4391,6 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
         // the two-letter word list or the opponents tab
         a.onclick = function(ev) {
           selectTab(this, 2); // Select tab number 2
-          /* m.redraw(); */
           ev.preventDefault();
         }.bind(vnode);
       }
@@ -4403,7 +4400,6 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
         // the explanation of the new bag
         a.onclick = function(ev) {
           selectTab(this, 3); // Select tab number 3
-          /* m.redraw(); */
           ev.preventDefault();
         }.bind(vnode);
       }
