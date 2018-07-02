@@ -127,16 +127,24 @@ function Game(uuid, game) {
   this.selectedSq = null; // Currently selected (blinking) square
   this.sel = "movelist"; // By default, show the movelist tab
   this.moves = [];
+  this.lastmove = undefined;
   this.update(game);
 }
 
 Game.prototype.update = function(game) {
-  // Update the game state with new data from the server
+  // Update the game state with new data from the server,
+  // either after submitting a move to the server or
+  // after receiving a move notification via the Firebase listener
+  var sq, key;
   if (game.num_moves <= this.moves.length)
     // This is probably a starting notification from Firebase,
     // not adding a new move but repeating the last move made: ignore it
     // !!! TODO: If the last move was by the opponent, highlight it
     return;
+  // Stop highlighting the previous opponent move, if any
+  for (sq in this.tiles)
+    this.tiles[sq].freshtile = false;
+  // Check whether the game is over, or whether there was an error
   this.over = game.result == GAME_OVER;
   if (this.over || !game.result)
     this.currentError = this.currentMessage = null;
@@ -145,7 +153,7 @@ Game.prototype.update = function(game) {
     this.currentMessage = game.msg;
   }
   // Copy game JSON properties over to this object
-  for (var key in game)
+  for (key in game)
     if (game.hasOwnProperty(key))
       this[key] = game[key];
   if (game.newmoves !== undefined && game.newmoves.length > 0)
@@ -158,7 +166,8 @@ Game.prototype.update = function(game) {
     (this.scores[this.player] > this.scores[1 - this.player]);
   if (this.currentError === null) {
     // Generate a dictionary of tiles currently on the board,
-    // from the moves already made
+    // from the moves already made. Also highlights the most recent
+    // opponent move (contained in this.lastmove)
     this.placeTiles();
     if (this.succ_chall) {
       // Successful challenge: reset the rack
@@ -286,8 +295,7 @@ Game.prototype.placeMove = function(player, co, tiles) {
     if (nextBlank)
       tile = '?';
     var tscore = this.tilescore(tile);
-    // Place the tile, if it wasn't there already (moves may duplicate tiles that
-    // were previously on the board)
+    // Place the tile, if it isn't there already
     if (!(sq in this.tiles))
       this.tiles[sq] = {
         player: player,
@@ -322,9 +330,9 @@ Game.prototype.placeTiles = function() {
       this.numTileMoves++;
     }
   }
-  // Mark the opponent's last move
+  // If it's our turn, mark the opponent's last move
   mlist = this.lastmove;
-  if (mlist !== undefined && mlist.length)
+  if (mlist !== undefined && mlist.length && this.localturn)
     for (i = 0; i < mlist.length; i++) {
       sq = mlist[i][0];
       if (this.tiles[sq] === undefined)

@@ -541,6 +541,7 @@ function createView() {
         // In this case, there is no board tab:
         // show the movelist
         model.game.sel = "movelist";
+        scrollMovelistToBottom();
       }
       else {
         // Mobile: we default to the board tab
@@ -1875,6 +1876,7 @@ function createView() {
           var player = game ? game.player : 0;
           var localturn = game ? game.localturn : false;
           var tomove;
+          var gameover = game ? game.over : true;
 
           function lookAtPlayer(player, side, ev) {
             if (!$state.uiFullscreen)
@@ -1903,7 +1905,7 @@ function createView() {
             if (apl0)
               // Player 0 is a robot (autoplayer)
               return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
-            tomove = (localturn ^ (player === 0)) ? "" : ".tomove";
+            tomove = gameover || (localturn ^ (player === 0)) ? "" : ".tomove";
             return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
               { id: "player-0", onclick: lookAtPlayer.bind(null, player, 0) },
               [ m("span.left-to-move"), nick0 ]
@@ -1914,7 +1916,7 @@ function createView() {
             if (apl1)
               // Player 1 is a robot (autoplayer)
               return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
-            tomove = (localturn ^ (player === 1)) ? "" : ".tomove";
+            tomove = gameover || (localturn ^ (player === 1)) ? "" : ".tomove";
             return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
               { id: "player-1", onclick: lookAtPlayer.bind(null, player, 1) },
               [ m("span.right-to-move"), nick1 ]
@@ -2022,11 +2024,10 @@ function createView() {
 
   function vwTabGroup(game) {
     // A group of clickable tabs for the right-side area content
-    var sel = (game && game.sel) ? game.sel : "movelist";
     var showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     var r = [
       vwTab(game, "board", "Borðið", "grid"),
-      vwTab(game, "movelist", "Leikir", "show-lines"),
+      vwTab(game, "movelist", "Leikir", "show-lines", scrollMovelistToBottom),
       vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
       vwTab(game, "games", "Viðureignir", "flag")
     ];
@@ -2052,6 +2053,7 @@ function createView() {
         className: alert ? "alert" : "",
         title: title,
         onclick: function(ev) {
+          // Select this tab
           if (game && game.sel != tabid) {
             game.sel = tabid;
             if (func !== undefined)
@@ -2239,19 +2241,6 @@ function createView() {
       return r;
     }
 
-    function scrollMovelistToBottom() {
-      // If we're displaying a 'fresh' game (just updated),
-      // scroll the last move into view
-      /*
-      if (!game || !game.isFresh)
-        return;
-      game.isFresh = false;
-      */
-      var movelist = document.querySelectorAll("div.movelist .move");
-      if (movelist.length)
-        movelist[movelist.length - 1].scrollIntoView();
-    }
-
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
     return m(".movelist-container",
@@ -2260,7 +2249,7 @@ function createView() {
         m(".movelist",
           {
             key: "movelist",
-            oninit: scrollMovelistToBottom,
+            oncreate: scrollMovelistToBottom,
             onupdate: scrollMovelistToBottom
           },
           movelist()
@@ -2268,6 +2257,16 @@ function createView() {
         vwBag(bag, newbag) // Visible on mobile
       ]
     );
+  }
+
+  function scrollMovelistToBottom() {
+    // Scroll the last move into view
+    var movelist = document.querySelectorAll("div.movelist .move");
+    var target;
+    if (movelist.length) {
+      target = movelist[movelist.length - 1];
+      target.parentNode.scrollTop = target.offsetTop;
+    }
   }
 
   function vwMove(game, move, info) {
