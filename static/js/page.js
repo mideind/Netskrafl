@@ -2027,7 +2027,7 @@ function createView() {
     var showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     var r = [
       vwTab(game, "board", "Borðið", "grid"),
-      vwTab(game, "movelist", "Leikir", "show-lines", scrollMovelistToBottom),
+      vwTab(game, "movelist", "Leikir", "show-lines"),
       vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
       vwTab(game, "games", "Viðureignir", "flag")
     ];
@@ -2140,15 +2140,22 @@ function createView() {
           r.push(m(".chat-msg" +
             (p === 0 ? ".left" : ".right") +
             (p === player ? ".local" : ".remote"),
-            {
-              key: i,
-              oncreate: function(vnode) { vnode.dom.scrollIntoView(); }
-            },
+            { key: i },
             m.trust(escMsg))
           );
         }
       }
       return r;
+    }
+
+    function scrollChatToBottom() {
+      // Scroll the last chat message into view
+      var chatlist = document.querySelectorAll("#chat-area .chat-msg");
+      var target;
+      if (chatlist.length) {
+        target = chatlist[chatlist.length - 1];
+        target.parentNode.scrollTop = target.offsetTop;
+      }
     }
 
     function focus(vnode) {
@@ -2180,7 +2187,14 @@ function createView() {
         key: uuid
       },
       [
-        m(".chat-area", { id: 'chat-area' }, chatMessages()),
+        m(".chat-area",
+          {
+            id: 'chat-area',
+            // Make sure that we see the bottom-most chat message
+            oncreate: scrollChatToBottom,
+            onupdate: scrollChatToBottom
+          },
+          chatMessages()),
         m(".chat-input",
           [
             m("input.chat-txt",
