@@ -88,18 +88,18 @@ class Alphabet:
 
     # noinspection PyUnusedLocal
     @staticmethod
-    def format_timestamp(ts, format = None):
+    def format_timestamp(ts):
         """ Return a timestamp formatted as a readable string """
         # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
         return u"" + ts.isoformat(' ')[0:19]
- 
+
     # noinspection PyUnusedLocal
     @staticmethod
-    def format_timestamp_short(ts, format = None):
+    def format_timestamp_short(ts):
         """ Return a timestamp formatted as a readable string """
         # Returns a short ISO format: YYYY-MM-DD HH:MM
         return u"" + ts.isoformat(' ')[0:16]
- 
+
     @staticmethod
     def _init():
         """ Create a collation (sort) mapping for the Icelandic language """
@@ -159,6 +159,10 @@ class TileSet(object):
 
     """ Abstract base class for tile sets. Concrete classes are found below. """
 
+    # The following will be overridden in derived classes
+    scores = dict()
+    bag_tiles = []
+
     @classmethod
     def score(cls, tiles):
         """ Return the net (plain) score of the given tiles """
@@ -176,6 +180,7 @@ class TileSet(object):
 
     @classmethod
     def num_tiles(cls):
+        """ Return the total number of tiles in this tile set """
         return sum(n for letter, n in cls.bag_tiles)
 
 

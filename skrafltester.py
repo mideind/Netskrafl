@@ -159,7 +159,10 @@ def test_game(players, silent):
             return
 
         if not silent:
-            print(u"Play {0} scores {1} points ({2:.2f} seconds)".format(move, state.score(move), g1 - g0))
+            print(
+                u"Play {0} scores {1} points ({2:.2f} seconds)"
+                .format(move, state.score(move), g1 - g0)
+            )
 
         # Apply the move to the state and switch players
         state.apply_move(move)
@@ -173,8 +176,10 @@ def test_game(players, silent):
     t1 = time.time()
 
     if not silent:
-        print(u"Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)".format(p0, p1,
-            state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1)))
+        print(
+            u"Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)"
+            .format(p0, p1, state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1))
+        )
 
     return state.scores()
 
@@ -223,8 +228,10 @@ def test_manual_game():
     state.finalize_score()
     p0, p1 = state.scores()
 
-    print(u"Manual game over, final score {3} {0} : {4} {1} after {2} moves".format(p0, p1,
-        state.num_moves(), state.player_name(0), state.player_name(1)))
+    print(
+        u"Manual game over, final score {3} {0} : {4} {1} after {2} moves"
+        .format(p0, p1, state.num_moves(), state.player_name(0), state.player_name(1))
+    )
 
 
 def test(num_games, opponent, silent):
@@ -273,24 +280,31 @@ def test(num_games, opponent, silent):
 
     t1 = time.time()
 
-    print(u"Test completed, {0} games played in {1:.2f} seconds, {2:.2f} seconds per game"
-        .format(num_games,
-            t1 - t0, (t1 - t0) / num_games)
+    print(u"Test completed, {0} games played in {1:.2f} seconds, "
+        "{2:.2f} seconds per game"
+        .format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player):
         if gameswon[player] == 0:
-            print(u"{2} won {0} games and scored an average of {1:.1f} points per game"
-                .format(gameswon[player],
+            print(
+                u"{2} won {0} games and scored an average of {1:.1f} points per game"
+                .format(
+                    gameswon[player],
                     float(totalpoints[player]) / num_games,
-                    players[player][0])
+                    players[player][0]
+                )
             )
         else:
-            print(u"{3} won {0} games with an average margin of {2:.1f} and scored an average of {1:.1f} points per game"
-                .format(gameswon[player],
+            print(
+                u"{3} won {0} games with an average margin of {2:.1f} and "
+                "scored an average of {1:.1f} points per game"
+                .format(
+                    gameswon[player],
                     float(totalpoints[player]) / num_games,
                     float(sumofmargin[player]) / gameswon[player],
-                    players[player][0])
+                    players[player][0]
+                )
             )
 
     reportscore(0)
@@ -300,6 +314,7 @@ def test(num_games, opponent, silent):
 class Usage(Exception):
 
     def __init__(self, msg):
+        super(Usage, self).__init__(msg)
         self.msg = msg
 
 
@@ -310,9 +325,13 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hn:o:sm", ["help", "numgames", "opponent", "silent", "manual"])
+            opts, _ = getopt.getopt(
+                argv[1:],
+                "hn:o:sm",
+                ["help", "numgames", "opponent", "silent", "manual"]
+            )
         except getopt.error as msg:
-             raise Usage(msg)
+            raise Usage(msg)
         num_games = 4
         opponent = "autoplayer"
         silent = False
@@ -330,9 +349,6 @@ def main(argv=None):
                 silent = True
             elif o in ("-m", "--manual"):
                 manual = True
-        # process arguments
-        # for arg in args:
-        #    pass
 
         print(u"Welcome to the Skrafl game tester")
 

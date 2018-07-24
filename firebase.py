@@ -18,12 +18,13 @@ import base64
 import json
 import threading
 import logging
-import httplib2
 from httplib import HTTPException
 from datetime import datetime
 
-from google.appengine.api import app_identity
+import httplib2
+
 from oauth2client.client import GoogleCredentials
+from google.appengine.api import app_identity  # pylint: disable=E0611
 
 
 _FIREBASE_DB_URL = 'https://netskrafl.firebaseio.com'
@@ -54,8 +55,11 @@ def _get_http():
         http = httplib2.Http(timeout = _TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
-        creds = GoogleCredentials.get_application_default() \
+        creds = (
+            GoogleCredentials
+            .get_application_default()
             .create_scoped(_FIREBASE_SCOPES)
+        )
         creds.authorize(http)
         creds.refresh(http)
         _tls._HTTP = http
@@ -128,11 +132,17 @@ def send_message(message, *args):
         if message is None:
             response, _ = _firebase_delete(path = url)
         else:
-            response, _ = _firebase_patch(path = url + "?print=silent", message = json.dumps(message))
+            response, _ = _firebase_patch(
+                path = url + "?print=silent",
+                message = json.dumps(message)
+            )
         # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
         return response["status"] in { "200", "204" }
     except (HTTPException, httplib2.HttpLib2Error) as e:
-        logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
+        logging.warning(
+            "Exception [{}] in firebase.send_message()"
+            .format(repr(e))
+        )
         return False
 
 
@@ -154,7 +164,10 @@ def check_wait(user_id, opp_id):
         msg = json.loads(body) if body else None
         return msg is True # Return False if msg is dict, None or False
     except (HTTPException, httplib2.HttpLib2Error) as e:
-        logging.warning("Exception [{}] raised in firebase.check_wait()".format(repr(e)))
+        logging.warning(
+            "Exception [{}] raised in firebase.check_wait()"
+            .format(repr(e))
+        )
         return False
 
 
@@ -166,23 +179,29 @@ def check_presence(user_id):
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
-        return len(msg) > 0 if msg else False
+        return bool(msg)
     except (HTTPException, httplib2.HttpLib2Error) as e:
-        logging.warning("Exception [{}] raised in firebase.check_presence()".format(repr(e)))
+        logging.warning(
+            "Exception [{}] raised in firebase.check_presence()"
+            .format(repr(e))
+        )
         return False
 
 
-_userlist_lock = threading.Lock()
+_USERLIST_LOCK = threading.Lock()
 
 def get_connected_users():
     """ Return a set of all presently connected users """
-    with _userlist_lock:
+    with _USERLIST_LOCK:
         # Serialize access to the connected user list
         url = '{}/connection.json?shallow=true'.format(_FIREBASE_DB_URL)
         try:
             response, body = _firebase_get(path = url)
         except (HTTPException, httplib2.HttpLib2Error) as e:
-            logging.warning("Exception [{}] raised in firebase.get_connected_users()".format(repr(e)))
+            logging.warning(
+                "Exception [{}] raised in firebase.get_connected_users()"
+                .format(repr(e))
+            )
             return set()
         if response["status"] != "200":
             return set()
@@ -215,6 +234,8 @@ def create_custom_token(uid, valid_minutes=60):
     header = base64.b64encode(json.dumps({'typ': 'JWT', 'alg': 'RS256'}))
     to_sign = '{}.{}'.format(header, payload)
     # Sign the jwt using the built in app_identity service
-    return '{}.{}'.format(to_sign,
-        base64.b64encode(app_identity.sign_blob(to_sign, deadline = _TIMEOUT)[1]))
+    return '{}.{}'.format(
+        to_sign,
+        base64.b64encode(app_identity.sign_blob(to_sign, deadline = _TIMEOUT)[1])
+    )
 

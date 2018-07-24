@@ -68,7 +68,11 @@ if running_local:
 app.config['DEBUG'] = running_local
 
 # Read secret session key from file
-with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
+with open(
+    os.path.abspath(os.path.join("resources", "secret_key.bin")),
+    "rb"
+) as f:
+
     app.secret_key = f.read()
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
@@ -87,8 +91,11 @@ _LOGOUT_URL = "/page#!/login"
 @app.before_request
 def before_request():
     """ Redirect http requests to https, returning a Moved Permanently code """
-    if not running_local and request.url.startswith('http://') \
-        and not request.path.startswith('/_ah/'):
+    if (
+        not running_local and
+        request.url.startswith('http://') and
+        not request.path.startswith('/_ah/')
+    ):
         url = request.url.replace('http://', 'https://', 1)
         code = 301 # Moved Permanently
         return redirect(url, code=code)
@@ -107,7 +114,8 @@ def add_headers(response):
 def inject_into_context():
     """ Inject variables and functions into all Flask contexts """
     return dict(
-        dev_server = running_local # Variable dev_server is True if running on the GAE development server
+        # Variable dev_server is True if running on the GAE development server
+        dev_server = running_local
     )
 
 
@@ -222,7 +230,10 @@ def _process_move(game, movelist):
                 letter = tile
             m.add_cover(row, col, tile, letter)
     except Exception as e:
-        logging.info(u"Exception in _process_move(): {0}".format(e).encode("latin-1"))
+        logging.info(
+            u"Exception in _process_move(): {0}"
+            .format(e).encode("latin-1")
+        )
         m = None
 
     # Process the move string here
@@ -337,8 +348,10 @@ def _userlist(query, spec):
     # Generate a list of challenges issued by this user
     challenges = set()
     if cuid:
-        challenges.update([ch[0] # Identifier of challenged user
-            for ch in ChallengeModel.list_issued(cuid, max_len = 20)])
+        challenges.update(
+            # ch[0] is the identifier of the challenged user
+            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len = 20)]
+        )
 
     # Get the list of online users
 
@@ -465,11 +478,12 @@ def _userlist(query, spec):
     # ready for any kind of challenge come first, then users who are ready for
     # a timed game, and finally all other users. Each category is sorted
     # by nickname, case-insensitive.
-    result.sort(key = lambda x: (
-        # First by readiness
-        0 if x["ready"] else 1 if x["ready_timed"] else 2,
-        # Then by nickname
-        Alphabet.sortkey_nocase(x["nick"])
+    result.sort(
+        key = lambda x: (
+            # First by readiness
+            0 if x["ready"] else 1 if x["ready_timed"] else 2,
+            # Then by nickname
+            Alphabet.sortkey_nocase(x["nick"])
         )
     )
     return result
@@ -578,8 +592,10 @@ def _rating(kind):
     # Generate a list of challenges issued by this user
     challenges = set()
     if cuid:
-        challenges.update([ch[0] # Identifier of challenged user
-            for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))])
+        challenges.update(
+            # ch[0] is the identifier of the challenged user
+            [ch[0] for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))]
+        )
 
     rating = memcache.get(kind, namespace="rating")
     if rating is None:
@@ -1097,9 +1113,15 @@ def challenge():
         duration = 90
 
     if action == u"issue":
-        user.issue_challenge(destuser,
-            { "duration": duration, "fairplay": fairplay,
-                "newbag": newbag, "manual": manual })
+        user.issue_challenge(
+            destuser,
+            {
+                "duration": duration,
+                "fairplay": fairplay,
+                "newbag": newbag,
+                "manual": manual
+            }
+        )
     elif action == u"retract":
         user.retract_challenge(destuser)
     elif action == u"decline":
@@ -1238,8 +1260,12 @@ def chatmsg():
         # No need to send empty messages, which are to be interpreted
         # as read confirmations
         # The message to be sent in JSON form via Firebase
-        md = dict(game = uuid, from_userid = user_id,
-            msg = msg, ts = Alphabet.format_timestamp(ts))
+        md = dict(
+            game = uuid,
+            from_userid = user_id,
+            msg = msg,
+            ts = Alphabet.format_timestamp(ts)
+        )
         msg = { }
         for p in range(0, 2):
             # Send a Firebase notification to /game/[gameid]/[userid]/chat
@@ -1429,7 +1455,10 @@ class UserForm:
         errors = dict()
         if not self.nickname:
             errors['nickname'] = u"Notandi verður að hafa einkenni"
-        elif (self.nickname[0] not in Alphabet.full_order) and (self.nickname[0] not in Alphabet.full_upper):
+        elif (
+            (self.nickname[0] not in Alphabet.full_order) and
+            (self.nickname[0] not in Alphabet.full_upper)
+        ):
             errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
             errors['nickname'] = u"Einkenni má ekki vera lengra en 15 stafir"
@@ -1790,7 +1819,8 @@ def board():
         game = game, user = user, opp = opp,
         player_index = player_index, zombie = bool(zombie),
         time_info = game.time_info(), og = ogd, # OpenGraph data
-        firebase_token = firebase_token)
+        firebase_token = firebase_token
+    )
 
 
 @app.route("/gameover", methods=['POST'])

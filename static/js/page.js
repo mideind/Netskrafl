@@ -4482,12 +4482,10 @@ function glyphGrayed(icon, attrs) {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 
-// var _NBSP = m.trust("&nbsp;");
-
 // Utility function: inserts non-breaking space
 function nbsp(n) {
   if (!n || n == 1)
-    return m.trust("&nbsp;"); // _NBSP;
+    return m.trust("&nbsp;");
   var r = [];
   for (var i = 0; i < n; i++)
     r.push(m.trust("&nbsp;"));

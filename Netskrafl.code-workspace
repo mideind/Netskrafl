@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.html": "jinja-html"
+		},
+		"files.exclude": {
+			"__pycache__/": true,
+			".idea/": true,
+			"google/": true,
+			"lib/": true,
+			"node_modules/": true,
+			"**/*.pyc": true,
+			"**/*.min.js": true,
+			"**/*.profile": true,
+		},
+		"files.eol": "\n",
+		"[javascript]": {
+			"editor.tabSize": 2,
+		},
+		"python.pythonPath": "C:\\Python27\\python.exe",
+	}
+}

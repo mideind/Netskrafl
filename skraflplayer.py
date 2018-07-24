@@ -253,7 +253,7 @@ class Axis:
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
-                matched, prefix, nextnode = ns
+                _, prefix, nextnode = ns
                 # assert matched == leftpart
                 nav = ExtendRightNavigator(self, index, self._rack)
                 self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
@@ -293,7 +293,7 @@ class Axis:
                 self._gen_moves_from_anchor(i, min(opensq, lenrack - 1), lpn)
                 last_anchor = i
 
-    
+
 class LeftPermutationNavigator:
 
     """ A navigation class to be used with DawgDictionary.navigate()
@@ -511,8 +511,10 @@ class ExtendRightNavigator:
 
     def accept(self, matched, final):
         """ Called to inform the navigator of a match and whether it is a final word """
-        if final and len(matched) > 1 and (self._index >= Board.SIZE or
-            self._axis.is_empty(self._index)):
+        if (
+            final and len(matched) > 1 and
+            (self._index >= Board.SIZE or self._axis.is_empty(self._index))
+        ):
 
             # Solution found - make a Move object for it and add it to the AutoPlayer's list
             ix = self._index - len(matched) # The word's starting index within the axis
@@ -639,7 +641,7 @@ class AutoPlayer:
     def generate_best_moves(self, max_number = 0):
         """ Returns a list in descending order of the n best moves, or all moves if n <= 0 """
         self._generate_candidates()
-        if len(self._candidates) == 0:
+        if not self._candidates:
             # No candidates: no best move
             return []
         sorted_candidates = self._score_candidates()
@@ -652,7 +654,7 @@ class AutoPlayer:
     def _generate_candidates(self):
         """ Generate a fresh candidate list """
 
-        self.candidates = []
+        self._candidates = []
         # Start by generating all possible permutations of the
         # rack that form left parts of words, ordering them by length
         if len(self._rack) > 1:
@@ -747,8 +749,10 @@ class AutoPlayer:
         top_equal = 0
         # Move the selection window down the list as long as the top moves have the same score
         if picklist > 1:
-            while (picklist + top_equal < num_candidates and
-                scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]):
+            while (
+                picklist + top_equal < num_candidates and
+                scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]
+            ):
                 top_equal += 1
         # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top".format(picklist,
         #    top_equal, num_candidates).encode("latin-1"))
@@ -917,7 +921,10 @@ class AutoPlayer_MiniMax(AutoPlayer):
                         # but do not apply it to the teststate
                         sc = teststate.score(move)
                         if sc > 100:
-                            print(u"Countermove rack '{0}' generated move {1} scoring {2}".format(rack, move, sc))
+                            print(
+                                u"Countermove rack '{0}' generated move {1} scoring {2}"
+                                .format(rack, move, sc)
+                            )
                         # Cache the score
                         rackscores[rack] = sc
                     sum_score += sc
@@ -926,7 +933,10 @@ class AutoPlayer_MiniMax(AutoPlayer):
                 # !!! TODO: Maybe a median score is better than average?
                 avg_score = float(sum_score) / NUM_TEST_RACKS
 
-            print(u"Average score of {0} countermove racks is {1:.2f}".format(NUM_TEST_RACKS, avg_score))
+            print(
+                u"Average score of {0} countermove racks is {1:.2f}"
+                .format(NUM_TEST_RACKS, avg_score)
+            )
             print(countermoves)
 
             # Keep track of the lowest countermove score across all candidates as a baseline
@@ -934,17 +944,28 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # Keep track of the weighted candidate moves
             weighted_candidates.append((m, score, avg_score))
 
-        print(u"Lowest score of countermove to all evaluated candidates is {0:.2f}".format(min_score))
+        print(
+            u"Lowest score of countermove to all evaluated candidates is {0:.2f}"
+            .format(min_score)
+        )
         # Sort the candidates by the plain score after subtracting the effect of
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found
-        weighted_candidates.sort(key = lambda x: float(x[1]) - (x[2] - min_score), reverse = True)
+        weighted_candidates.sort(
+            key = lambda x: float(x[1]) - (x[2] - min_score),
+            reverse = True
+        )
 
-        print(u"AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:"
-            .format(self._rack, len(scored_candidates)))
+        print(
+            u"AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:"
+            .format(self._rack, len(scored_candidates))
+        )
         # Show top 20 candidates
         for m, sc, wsc in weighted_candidates:
-            print(u"Move {0} score {1} weighted {2:.2f}".format(m, sc, float(sc) - (wsc - min_score)))
+            print(
+                u"Move {0} score {1} weighted {2:.2f}"
+                .format(m, sc, float(sc) - (wsc - min_score))
+            )
         # Return the highest-scoring candidate
         return weighted_candidates[0][0]
 

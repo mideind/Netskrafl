@@ -111,8 +111,11 @@ def iter_q(q, chunk_size = 50, limit = 0, projection = None):
             # The query is exhausted: stop
             return
         # Get the next chunk
-        items, next_cursor, more = q.fetch_page(chunk_size,
-            start_cursor = next_cursor, projection = projection)
+        items, next_cursor, more = q.fetch_page(
+            chunk_size,
+            start_cursor = next_cursor,
+            projection = projection
+        )
 
 
 class UserModel(ndb.Model):
@@ -181,7 +184,6 @@ class UserModel(ndb.Model):
 
         nick_from = u"a" if nick_from is None else Alphabet.tolower(nick_from)
         nick_to = u"ö" if nick_to is None else Alphabet.tolower(nick_to)
-        counter = 0
 
         try:
             o_from = Alphabet.full_order.index(nick_from[0])

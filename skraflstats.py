@@ -33,7 +33,7 @@ from skrafldb import iter_q
 
 app = Flask(__name__)
 
-running_local = os.environ.get('SERVER_SOFTWARE','').startswith('Development')
+running_local = os.environ.get('SERVER_SOFTWARE', '').startswith('Development')
 
 if running_local:
     logging.info(u"Skraflstats module running with DEBUG set to True")
@@ -158,9 +158,17 @@ def _run_stats(from_time, to_time):
         return
 
     # Iterate over all finished games within the time span in temporal order
-    q = GameModel.query(ndb.AND(GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time)) \
-        .order(GameModel.ts_last_move) \
+    q = (
+        GameModel
+        .query(
+            ndb.AND(
+                GameModel.ts_last_move > from_time,
+                GameModel.ts_last_move <= to_time
+            )
+        )
+        .order(GameModel.ts_last_move)
         .filter(GameModel.over == True)
+    )
 
     # The accumulated user statistics
     users = dict()
@@ -177,7 +185,7 @@ def _run_stats(from_time, to_time):
         i = 0
         for gm in iter_q(q, chunk_size = 250):
             i += 1
-            ts = Alphabet.format_timestamp(gm.timestamp)
+            # ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
             p1 = None if gm.player1 is None else gm.player1.id()
@@ -288,13 +296,21 @@ def _run_stats(from_time, to_time):
     except DeadlineExceededError as ex:
         # Hit deadline: save the stuff we already have and
         # defer a new task to continue where we left off
-        logging.info(u"Deadline exceeded in stats loop after {0} games and {1} users"
-            .format(cnt, len(users)))
-        logging.info(u"Resuming from timestamp {0}".format(ts_last_processed))
+        logging.info(
+            u"Deadline exceeded in stats loop after {0} games and {1} users"
+            .format(cnt, len(users))
+        )
+        logging.info(
+            u"Resuming from timestamp {0}"
+            .format(ts_last_processed)
+        )
         if ts_last_processed is not None:
             _write_stats(ts_last_processed, users)
-        deferred.defer(deferred_stats,
-            from_time = ts_last_processed or from_time, to_time = to_time)
+        deferred.defer(
+            deferred_stats,
+            from_time = ts_last_processed or from_time,
+            to_time = to_time
+        )
         # Normal return prevents this task from being run again
         return
 
@@ -304,7 +320,10 @@ def _run_stats(from_time, to_time):
         raise deferred.PermanentTaskFailure()
 
     # Completed without incident
-    logging.info(u"Normal completion of stats for {1} games and {0} users".format(len(users), cnt))
+    logging.info(
+        u"Normal completion of stats for {1} games and {0} users"
+        .format(len(users), cnt)
+    )
 
     _write_stats(to_time, users)
 
@@ -322,7 +341,8 @@ def _create_ratings():
     month_ago = monthdelta(timestamp, -1)
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
-        """ Go through a table of top scoring users and augment it with data from previous time points """
+        """ Go through a table of top scoring users and augment it
+            with data from previous time points """
 
         for sm in t:
             # Augment the rating with info about progress
@@ -361,7 +381,10 @@ def _create_ratings():
     top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(month_ago, 100) }
 
     # Augment the table for human only games
-    _augment_table(top100_human, top100_human_yesterday, top100_human_week_ago, top100_human_month_ago)
+    _augment_table(
+        top100_human, top100_human_yesterday,
+        top100_human_week_ago, top100_human_month_ago
+    )
 
     logging.info(u"Writing top 100 tables to the database")
 

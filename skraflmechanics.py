@@ -85,13 +85,17 @@ class Board:
     # The rows are identified by letter
     ROWIDS = u"ABCDEFGHIJKLMNO"
 
-    _wordscore = [ [ int(c) for c in row ] for row in _RAW_WORDSCORE ]
-    _letterscore = [ [ int(c) for c in row ] for row in _RAW_LETTERSCORE ]
+    _wordscore = [[int(c) for c in row] for row in _RAW_WORDSCORE]
+    _letterscore = [[int(c) for c in row] for row in _RAW_LETTERSCORE]
 
     @staticmethod
     def short_coordinate(horiz, row, col):
-        # RC if horizontal move, or CR if vertical. R is A,B,C... C is 1,2,3...
-        return Board.ROWIDS[row] + str(col + 1) if horiz else str(col + 1) + Board.ROWIDS[row]
+        """ RC if horizontal move, or CR if vertical.
+            R is A,B,C... C is 1,2,3... """
+        return (
+            Board.ROWIDS[row] + str(col + 1) if horiz
+            else str(col + 1) + Board.ROWIDS[row]
+        )
 
     def __init__(self, copy = None):
 
@@ -179,7 +183,7 @@ class Board:
             for y in range(Board.SIZE):
                 t = self.tile_at(x, y)
                 if t != u' ':
-                    yield (x, y, t, self.letter_at(x,y))
+                    yield (x, y, t, self.letter_at(x, y))
 
     @staticmethod
     def adjacent(row, col, xd, yd, getter):
@@ -252,7 +256,7 @@ class Board:
         """ Returns the letter score factor of the indicated square, 1, 2 or 3 """
         return Board._letterscore[row][col]
 
-        
+
 class Bag:
 
     """ Represents a bag of tiles """
@@ -420,17 +424,20 @@ class State:
         if copy is None:
             self._board = Board()
             self._player_to_move = 0
-            self._scores = [0, 0] # "Pure" scores from moves on the board
-            self._adj_scores = [0, 0] # Adjustments (deltas) made at the end of the game
+            self._scores = [0, 0]  # "Pure" scores from moves on the board
+            self._adj_scores = [0, 0]  # Adjustments (deltas) made at the end of the game
             self._player_names = [u"", u""]
-            self._num_passes = 0 # Number of consecutive Pass moves
-            self._num_moves = 0 # Number of moves made
+            self._num_passes = 0  # Number of consecutive Pass moves
+            self._num_moves = 0  # Number of moves made
             self._game_resigned = False
             self._racks = [Rack(), Rack()]
             self._manual_wordcheck = manual_wordcheck
-            self._challenge_score = 0 # The score a challenge would get if made (0 if not challengeable)
-            self._last_rack = None # The rack before the last challengeable move
-            self._last_covers = None # The covers laid down in the last challengeable move
+            # The score a challenge would get if made (0 if not challengeable)
+            self._challenge_score = 0
+            # The rack before the last challengeable move
+            self._last_rack = None
+            # The covers laid down in the last challengeable move
+            self._last_covers = None
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
             if manual_wordcheck and _DEBUG_MANUAL_WORDCHECK:
@@ -500,7 +507,7 @@ class State:
     def manual_wordcheck(self):
         """ Using manual wordcheck instead of automatic? """
         return self._manual_wordcheck
-    
+
     def score(self, move):
         """ Calculate the score of the move """
         return move.score(self)
@@ -577,7 +584,8 @@ class State:
         """ Set the challengeable state, with the given covers being laid down """
         if score and self.manual_wordcheck:
             self._challenge_score = score
-            # logging.info(u"State.set_challengeable: last_rack is {0}".format(last_rack).encode("latin-1"))
+            # logging.info(u"State.set_challengeable: last_rack is {0}"
+            # .format(last_rack).encode("latin-1"))
             self._last_rack = last_rack
             self._last_covers = covers
 
@@ -602,7 +610,8 @@ class State:
         return self._bag
 
     def recalc_bag(self):
-        """ Recalculate the bag by subtracting from it the tiles on the board and in the racks """
+        """ Recalculate the bag by subtracting from it the tiles on the board
+            and in the racks """
         # assert self._bag.is_full()
         self._bag.subtract_board(self._board)
         self._bag.subtract_rack(self.rack(0))
@@ -614,7 +623,8 @@ class State:
         return u''.join(sorted(displaybag, key=lambda ch: Bag.SORT_ORDER.index(ch)))
 
     def is_game_over(self):
-        """ The game is over if either rack is empty or if both players have made zero-score moves 3 times in a row """
+        """ The game is over if either rack is empty or if both players
+            have made zero-score moves 3 times in a row """
         if self._num_passes >= 6 or self._game_resigned:
             return True
         if self.is_challengeable():
@@ -680,11 +690,19 @@ class State:
     def __str__(self):
         tomove0 = "-->" if self._player_to_move == 0 else ""
         tomove1 = "-->" if self._player_to_move == 1 else ""
-        return self._board.__str__() + \
-            u"\n{4}{0} {1} vs {5}{2} {3}".format(self._player_names[0], self._scores[0],
-                self._player_names[1], self._scores[1], \
-                tomove0, tomove1) + \
-            u"\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
+        return (
+            self._board.__str__() +
+            u"\n{4}{0} {1} vs {5}{2} {3}"
+            .format(
+                self._player_names[0], self._scores[0],
+                self._player_names[1], self._scores[1],
+                tomove0, tomove1
+            ) +
+            u"\n'{0}' vs '{1}'"
+            .format(
+                self.rack(0), self.rack(1)
+            )
+        )
 
 
 class Cover:
@@ -737,11 +755,11 @@ class Error:
             return u"GAME_OVER"
         return [
             u"LEGAL",
-            u"NULL_MOVE", 
-            u"FIRST_MOVE_NOT_IN_CENTER", 
-            u"DISJOINT", 
-            u"NOT_ADJACENT", 
-            u"SQUARE_ALREADY_OCCUPIED", 
+            u"NULL_MOVE",
+            u"FIRST_MOVE_NOT_IN_CENTER",
+            u"DISJOINT",
+            u"NOT_ADJACENT",
+            u"SQUARE_ALREADY_OCCUPIED",
             u"HAS_GAP",
             u"WORD_NOT_IN_DICTIONARY",
             u"CROSS_WORD_NOT_IN_DICTIONARY",
@@ -859,10 +877,14 @@ class Move(MoveBase):
         """ Return a list of tuples describing this move """
         assert isinstance(state, State)
         scores = state.tileset.scores
-        return [(Board.ROWIDS[c.row] + str(c.col + 1), # Coordinate
-            c.tile, c.letter, # Tile and letter
-            scores[c.tile]) # Score
-            for c in self._covers]
+        return [
+            (
+                Board.ROWIDS[c.row] + str(c.col + 1),  # Coordinate
+                c.tile, c.letter,  # Tile and letter
+                scores[c.tile]  # Score
+            )
+            for c in self._covers
+        ]
 
     def summary(self, state):
         """ Return a summary of the move, as a tuple: (coordinate, tiles, score) """
@@ -977,8 +999,13 @@ class Move(MoveBase):
         # If only one cover, use the orientation of the longest word formed
         if len(self._covers) == 1:
             # In the case of a tied length, we use horizontal
-            self._horizontal = len(board.letters_left(row, col)) + len(board.letters_right(row, col)) >= \
-                len(board.letters_above(row, col)) + len(board.letters_below(row, col))
+            self._horizontal = (
+                len(board.letters_left(row, col)) +
+                len(board.letters_right(row, col))
+                >=
+                len(board.letters_above(row, col)) +
+                len(board.letters_below(row, col))
+            )
             horiz = self._horizontal
         # The move is purely horizontal or vertical
         if horiz:
@@ -1097,9 +1124,17 @@ class Move(MoveBase):
             # Check all cross words formed by the new tiles
             for c in self._covers:
                 if self._horizontal:
-                    cross = board.letters_above(c.row, c.col) + c.letter + board.letters_below(c.row, c.col)
+                    cross = (
+                        board.letters_above(c.row, c.col) +
+                        c.letter +
+                        board.letters_below(c.row, c.col)
+                    )
                 else:
-                    cross = board.letters_left(c.row, c.col) + c.letter + board.letters_right(c.row, c.col)
+                    cross = (
+                        board.letters_left(c.row, c.col) +
+                        c.letter +
+                        board.letters_right(c.row, c.col)
+                    )
                 if len(cross) > 1 and not is_valid_word(cross):
                     return (Error.CROSS_WORD_NOT_IN_DICTIONARY, cross)
 
@@ -1118,9 +1153,17 @@ class Move(MoveBase):
         # Check all cross words formed by the new tiles
         for c in self._covers:
             if self._horizontal:
-                cross = board.letters_above(c.row, c.col) + c.letter + board.letters_below(c.row, c.col)
+                cross = (
+                    board.letters_above(c.row, c.col) +
+                    c.letter +
+                    board.letters_below(c.row, c.col)
+                )
             else:
-                cross = board.letters_left(c.row, c.col) + c.letter + board.letters_right(c.row, c.col)
+                cross = (
+                    board.letters_left(c.row, c.col) +
+                    c.letter +
+                    board.letters_right(c.row, c.col)
+                )
             if len(cross) > 1 and cross not in Wordbase.dawg():
                 invalid.append(cross)
 
@@ -1150,7 +1193,7 @@ class Move(MoveBase):
         board = state.board()
 
         # Tally the score of the primary word
-        for ix in range(self._numletters):
+        for _ in range(self._numletters):
             c = self._covers[cix] if cix < numcovers else None
             if c and (c.col == col) and (c.row == row):
                 # This is one of the new tiles
@@ -1382,7 +1425,8 @@ class ResponseMove(MoveBase):
                 # Return all the current tiles to the bag
                 bag.return_tiles(rack.contents())
                 # Draw all the previous tiles from the bag
-                # logging.info(u"ResponseMove.apply: setting rack to {0}".format(state.last_rack).encode("latin-1"))
+                # logging.info(u"ResponseMove.apply: setting rack to {0}"
+                # .format(state.last_rack).encode("latin-1"))
                 rack.set_tiles(state.last_rack)
                 bag.subtract_rack(rack.contents())
         state.clear_challengeable()
