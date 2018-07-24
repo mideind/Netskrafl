@@ -65,15 +65,18 @@
     t|s:0_r|s:0
     |_g|s:0_ne:0
 
-    The root node in line 1 has three outgoing edges, "do" to node 3, "ca" to node 2, and "ea" to node 2.
+    The root node in line 1 has three outgoing edges, "do" to node 3,
+    "ca" to node 2, and "ea" to node 2.
 
-    Node 2 (in line 2) has two edges, "t|s" to node 0 and "r|s" to node 0. This means that "cat" and
-    "cats", "eat" and "eats" are valid words (on the first edge), as well as "car" and "cars",
-    "ear" and "ears" (on the second edge).
+    Node 2 (in line 2) has two edges, "t|s" to node 0 and "r|s" to node 0.
+    This means that "cat" and "cats", "eat" and "eats" are valid words
+    (on the first edge), as well as "car" and "cars", "ear" and "ears"
+    (on the second edge).
 
-    Node 3 (in line 3) is itself a final node, denoted by the vertical bar at the start of the line.
-    Thus, "do" (coming in from the root) is a valid word, but so are "dog" and "dogs" (on the first edge)
-    as well as "done" (on the second edge).
+    Node 3 (in line 3) is itself a final node, denoted by the vertical bar
+    at the start of the line. Thus, "do" (coming in from the root) is a
+    valid word, but so are "dog" and "dogs" (on the first edge) as well as
+    "done" (on the second edge).
 
     Dictionary structure:
 
@@ -152,9 +155,12 @@ class _DawgNode:
 
     @staticmethod
     def stringify_edges(edges):
-        """ Utility function to create a compact descriptor string and hashable key for node edges """
-        edges = [ prefix + u':' + (u'0' if node is None else str(node.id))
-            for prefix, node in _DawgNode._sorted(edges.items()) ]
+        """ Utility function to create a compact descriptor string and
+            hashable key for node edges """
+        edges = [
+            prefix + u':' + (u'0' if node is None else str(node.id))
+            for prefix, node in _DawgNode._sorted(edges.items())
+        ]
         return "_".join(edges)
 
     def __init__(self):
@@ -218,9 +224,10 @@ class _Dawg:
         # Optimize and reduce graph clutter by making the parent
         # point to None instead.
 
-        if len(di) == 0:
+        if not di:
             assert node.final
-            # We don't need to put a vertical bar (final marker) at the end of the prefix; it's implicit
+            # We don't need to put a vertical bar (final marker) at
+            # the end of the prefix; it's implicit
             parent[prefix] = None
             return
 
@@ -346,14 +353,22 @@ class _Dawg:
     def dump(self):
         """ Write a human-readable text representation of the DAWG to the standard output """
         self._dump_level(0, self._root)
-        print("Total of {0} nodes and {1} edges with {2} prefix characters".format(self.num_unique_nodes(),
-            self.num_edges(), self.num_edge_chars()))
-        for ix, n in enumerate(self._unique_nodes_values):
+        print(
+            "Total of {0} nodes and {1} edges with {2} prefix characters"
+            .format(
+                self.num_unique_nodes(),
+                self.num_edges(),
+                self.num_edge_chars()
+            )
+        )
+        for n in self._unique_nodes_values:
             if n is not None:
-                # We don't use ix for the time being
                 print(u"Node {0}{1}".format(n.id, u"|" if n.final else u""))
                 for prefix, nd in n.edges.items():
-                    print(u"   Edge {0} to node {1}".format(prefix, 0 if nd is None else nd.id))
+                    print(
+                        u"   Edge {0} to node {1}"
+                        .format(prefix, 0 if nd is None else nd.id)
+                    )
 
     def num_unique_nodes(self):
         """ Count the total number of unique nodes in the graph """
@@ -398,7 +413,7 @@ class _Dawg:
 
     def write_text(self, stream):
         """ Write the optimized DAWG to a text stream """
-        print("Output graph has {0} nodes".format(len(self._unique_nodes))) # +1 to include the root in the node count
+        print("Output graph has {0} nodes".format(len(self._unique_nodes)))
         # We don't have to write node ids since they correspond to line numbers.
         # The root is always in the first line and the first node after the root has id 2.
         # Start with the root edges
@@ -451,11 +466,11 @@ class _BinaryDawgPacker:
         self._fixups = dict()
 
     def start(self, num_root_edges):
-        # The stream starts off with a single byte containing the
-        # number of root edges
+        """ Write a starting byte with the number of root edges """
         self._stream.write(self.BYTE.pack(num_root_edges))
 
     def node_start(self, ident, final, num_edges):
+        """ Start a new node in the binary buffer """
         stream = self._stream
         pos = stream.tell()
         if ident in self._fixups:
@@ -471,9 +486,11 @@ class _BinaryDawgPacker:
         stream.write(self.BYTE.pack((0x80 if final else 0x00) | (num_edges & 0x7F)))
 
     def node_end(self, ident):
+        """ End a node in the binary buffer """
         pass
 
     def edge(self, ident, prefix):
+        """ Write an edge into the binary buffer """
         b = bytearray()
         stream = self._stream
         for c in prefix:
@@ -509,11 +526,12 @@ class _BinaryDawgPacker:
             self._fixups[ident].append(pos)
 
     def finish(self):
-        # Clear the temporary fixup stuff from memory
+        """ Clear the temporary fixup stuff from memory """
         self._locs = dict()
         self._fixups = dict()
 
     def dump(self):
+        """ Print the stream buffer in hexadecimal format """
         buf = self._stream.getvalue()
         print("Total of {0} bytes".format(len(buf)))
         s = binascii.hexlify(buf)
@@ -524,7 +542,15 @@ class _BinaryDawgPacker:
         lens = len(s)
         while i < lens:
             line = s[i : i + CHARS_PER_LINE]
-            print("{0:08x}: {1}".format(addr, u" ".join([line[j : j + 2] for j in range(0, len(line) - 1, 2)])))
+            print(
+                "{0:08x}: {1}"
+                .format(
+                    addr,
+                    u" ".join(
+                        [line[j : j + 2] for j in range(0, len(line) - 1, 2)]
+                    )
+                )
+            )
             i += CHARS_PER_LINE
             addr += BYTES_PER_LINE
 
@@ -600,10 +626,6 @@ class DawgBuilder:
     class _InFileToBeSorted(_InFile):
         """ InFileToBeSorted represents an input file that should be pre-sorted in memory """
 
-        def __init__(self, relpath, fname):
-            # Call base class constructor
-            super(DawgBuilder._InFileToBeSorted, self).__init__(relpath, fname)
-
         def _init(self):
             """ Read the entire file and pre-sort it """
             self._list = []
@@ -668,9 +690,11 @@ class DawgBuilder:
         # Open the input files. The first (main) input file is assumed
         # to be pre-sorted. Other input files are sorted in memory before
         # being used.
-        infiles = [DawgBuilder._InFile(relpath, f) if ix == 0 else
-            DawgBuilder._InFileToBeSorted(relpath, f)
-            for ix, f in enumerate(inputs)]
+        infiles = [
+            DawgBuilder._InFile(relpath, f) if ix == 0
+            else DawgBuilder._InFileToBeSorted(relpath, f)
+            for ix, f in enumerate(inputs)
+        ]
         # Open the removal file, if any
         if removals is None:
             removal = None
@@ -710,8 +734,10 @@ class DawgBuilder:
                 # If it's a duplicate, we don't mind too much, but if it's out
                 # of order, display a warning
                 if lastkey > key:
-                    print(u"Warning: input files should be in ascending order, but \"{0}\" > \"{1}\""
-                        .format(lastword, word))
+                    print(
+                        u"Warning: input files should be in ascending order, but \"{0}\" > \"{1}\""
+                        .format(lastword, word)
+                    )
                 else:
                     # Identical to previous word
                     duplicates += 1
@@ -744,8 +770,10 @@ class DawgBuilder:
             f.close()
         # Complete and clean up
         self._dawg.finish()
-        print("Finished loading {0} words, output {1} words, {2} duplicates skipped, {3} removed"
-            .format(incount, outcount, duplicates, removed))
+        print(
+            "Finished loading {0} words, output {1} words, {2} duplicates skipped, {3} removed"
+            .format(incount, outcount, duplicates, removed)
+        )
 
     def _output_binary(self, relpath, output):
         """ Write the DAWG to a flattened binary output file with extension '.dawg' """
@@ -768,9 +796,11 @@ class DawgBuilder:
             self._dawg.write_text(fout)
 
     def build(self, inputs, output, relpath="resources", word_filter=None, removals=None):
-        """ Build a DAWG from input file(s) and write it to the output file(s) (potentially in multiple formats).
-            The input files are assumed to be individually sorted in correct ascending alphabetical
-            order. They will be merged in parallel into a single sorted stream and added to the DAWG.
+        """ Build a DAWG from input file(s) and write it to the output file(s)
+            (potentially in multiple formats).
+            The input files are assumed to be individually sorted in correct
+            ascending alphabetical order. They will be merged in parallel into
+            a single sorted stream and added to the DAWG.
         """
         # inputs is a list of input file names
         # output is an output file name without file type suffix (extension);
