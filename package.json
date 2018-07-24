@@ -18,5 +18,9 @@
   },
   "dependencies": {
     "matchdep": "^2.0.0"
+  },
+  "jshintConfig": {
+    "validthis": true,
+    "loopfunc": true
   }
 }

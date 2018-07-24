@@ -1703,7 +1703,7 @@ function createView() {
         var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view })
+          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view });
         // Show normal user list
         var list = [];
         if (model.userList === undefined)
@@ -1730,8 +1730,8 @@ function createView() {
           ),
           vwUserList(listType, list),
           // Show indicator if search didn't find any users matching the criteria
-          nothingFound
-            ? m("div",
+          nothingFound ?
+            m("div",
                 { id: "user-no-match", style: { display: "block" } },
                 [ glyph("search"), " ", m("span", { id: "search-prefix" }, model.userListCriteria.spec), " finnst ekki" ]
               )
@@ -2847,7 +2847,7 @@ function createView() {
         title: title
       };
       if (disabled)
-        attr.onclick = function(ev) { ev.preventDefault(); }
+        attr.onclick = function(ev) { ev.preventDefault(); };
       else
         attr.onclick = function(func, ev) {
           func();
@@ -2905,7 +2905,7 @@ function createView() {
           function() { game.submitChallenge(); },
           'Véfenging (röng kostar 10 stig)'
         )
-      )
+      );
     if (showChallengeInfo)
       r.push(m(".chall-info"));
     if (showRecall)
@@ -3975,7 +3975,7 @@ var UserInfoDialog = {
           )
         ]
       )
-    )
+    );
   }
 
 };
@@ -4154,9 +4154,10 @@ var PromoDialog = {
               }
             }
           },
-          m.trust(this.html))
+          m.trust(this.html)
+        )
       )
-    )
+    );
   }
 
 };
@@ -4254,7 +4255,7 @@ function SearchButton(vnode) {
         ]
       );
     }
-  }
+  };
 }
 
 var DialogButton = {
