@@ -148,3 +148,5 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+.env
+.vscode/settings.json
