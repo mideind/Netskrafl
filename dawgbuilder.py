@@ -149,7 +149,7 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
-    def _sorted(l):
+    def sort_by_prefix(l):
         """ Return a list of (prefix, node) tuples sorted by prefix """
         return sorted(l, key = lambda x: Alphabet.sortkey(x[0]))
 
@@ -159,7 +159,7 @@ class _DawgNode:
             hashable key for node edges """
         edges = [
             prefix + u':' + (u'0' if node is None else str(node.id))
-            for prefix, node in _DawgNode._sorted(edges.items())
+            for prefix, node in _DawgNode.sort_by_prefix(edges.items())
         ]
         return "_".join(edges)
 
@@ -313,7 +313,7 @@ class _Dawg:
             nd = _DawgNode()
             # Add a new starting letter to the working dictionary,
             # with a fresh node containing an empty dictionary of subsequent letters
-            d[wrd[i]] = nd
+            d[wrd[i]] = nd  # pylint: disable=E1137
             d = nd.edges
             i += 1
             self._dicts[i] = d
@@ -397,7 +397,7 @@ class _Dawg:
         """ Write the optimized DAWG to a packer """
         packer.start(len(self._root))
         # Start with the root edges
-        sortfunc = _DawgNode._sorted
+        sortfunc = _DawgNode.sort_by_prefix
         for prefix, nd in sortfunc(self._root.items()):
             packer.edge(nd.id, prefix)
         for node in self._unique_nodes_values:
@@ -825,7 +825,7 @@ class DawgBuilder:
 # Useful for excluding long words or words containing "foreign" characters.
 
 # noinspection PyUnusedLocal
-def nofilter(word):
+def nofilter(word):  # pylint: disable=W0613
     """ No filtering - include all input words in output graph """
     return True
 
@@ -855,9 +855,10 @@ def run_test():
     db = DawgBuilder()
     t0 = time.time()
     db.build(
-        ["testwords.txt"], # Input files to be merged
-        "testwords", # Output file - full name will be testwords.text.dawg
-        "resources") # Subfolder of input and output files
+        ["testwords.txt"],  # Input files to be merged
+        "testwords",  # Output file - full name will be testwords.text.dawg
+        "resources"  # Subfolder of input and output files
+    )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
@@ -870,9 +871,9 @@ def run_twl06():
     db = DawgBuilder()
     t0 = time.time()
     db.build(
-        ["TWL06.txt"], # Input files to be merged
-        "TWL06", # Output file - full name will be TWL06.text.dawg
-        "resources" # Subfolder of input and output files
+        ["TWL06.txt"],  # Input files to be merged
+        "TWL06",  # Output file - full name will be TWL06.text.dawg
+        "resources"  # Subfolder of input and output files
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -890,11 +891,11 @@ def run_skrafl():
     db = DawgBuilder()
     t0 = time.time()
     db.build(
-        ["ordalistimax15.sorted.txt", "ordalisti.add.txt"], # Input files to be merged
-        "ordalisti", # Output file - full name will be ordalisti.text.dawg
-        "resources", # Subfolder of input and output files
-        filter_skrafl, # Word filter function to apply
-        "ordalisti.remove.txt" # Words to remove
+        ["ordalistimax15.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
+        "ordalisti",  # Output file - full name will be ordalisti.text.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+        "ordalisti.remove.txt"  # Words to remove
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -915,10 +916,10 @@ def run_skrafl():
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
-        ["ordalisti.algeng.sorted.txt"], # Input files to be merged
-        "algeng", # Output file - full name will be algeng.text.dawg
-        "resources", # Subfolder of input and output files
-        filter_common # Word filter function to apply
+        ["ordalisti.algeng.sorted.txt"],  # Input files to be merged
+        "algeng",  # Output file - full name will be algeng.text.dawg
+        "resources",  # Subfolder of input and output files
+        filter_common  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))

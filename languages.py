@@ -12,7 +12,7 @@
 
 """
 
-from functools import reduce
+import functools
 
 
 class Alphabet:
@@ -46,7 +46,7 @@ class Alphabet:
     @staticmethod
     def bit_pattern(word):
         """ Return a pattern of bits indicating which letters are present in the word """
-        return reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
+        return functools.reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
 
     @staticmethod
     def bit_of(c):
@@ -83,8 +83,13 @@ class Alphabet:
         """ Subtract all letters in b from a, counting each instance separately """
         # Note that this cannot be done with sets, as they fold multiple letter instances into one
         lcount = [a.count(c) - b.count(c) for c in Alphabet.all_tiles]
-        return u''.join([Alphabet.all_tiles[ix] * lcount[ix]
-            for ix in range(len(lcount)) if lcount[ix] > 0])
+        return u''.join(
+            [
+                Alphabet.all_tiles[ix] * lcount[ix]
+                for ix in range(len(lcount))
+                if lcount[ix] > 0
+            ]
+        )
 
     # noinspection PyUnusedLocal
     @staticmethod
@@ -151,7 +156,7 @@ class Alphabet:
 
 
 # Initialize the locale collation (sorting) map
-Alphabet._init()
+Alphabet._init()  # pylint: disable=W0212
 
 
 # noinspection PyUnresolvedReferences
@@ -185,6 +190,8 @@ class TileSet(object):
 
 
 class OldTileSet(TileSet):
+
+    """ The old (original) Icelandic tile set """
 
     # Letter scores in the old (original) Icelandic tile set
 
@@ -266,6 +273,8 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 
 class NewTileSet(TileSet):
+
+    """ The new Icelandic tile set, created by Skraflfélag Íslands """
 
     # Scores in new Icelandic tile set
 
