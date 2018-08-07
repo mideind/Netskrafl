@@ -151,7 +151,7 @@ class _DawgNode:
     @staticmethod
     def sort_by_prefix(l):
         """ Return a list of (prefix, node) tuples sorted by prefix """
-        return sorted(l, key = lambda x: Alphabet.sortkey(x[0]))
+        return sorted(l, key=lambda x: Alphabet.sortkey(x[0]))
 
     @staticmethod
     def stringify_edges(edges):
@@ -647,7 +647,7 @@ class DawgBuilder:
                 self._fin.close()
                 self._fin = None
             self._len = len(self._list)
-            self._list.sort(key = Alphabet.sortkey)
+            self._list.sort(key=Alphabet.sortkey)
             self.read_word()
 
         def read_word(self):

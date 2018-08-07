@@ -37,7 +37,7 @@ class Alphabet:
     full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
 
     # Map letters to bits
-    letter_bit = { letter : 1 << ix for ix, letter in enumerate(order) }
+    letter_bit = {letter : 1 << ix for ix, letter in enumerate(order)}
 
     # Locale collation (sorting) map, initialized in _init()
     _lcmap = None # Case sensitive
@@ -71,12 +71,12 @@ class Alphabet:
     @staticmethod
     def sort(l):
         """ Sort a list in-place by lexicographic ordering according to this Alphabet """
-        l.sort(key = Alphabet.sortkey)
+        l.sort(key=Alphabet.sortkey)
 
     @staticmethod
     def sorted(l):
         """ Return a list sorted by lexicographic ordering according to this Alphabet """
-        return sorted(l, key = Alphabet.sortkey)
+        return sorted(l, key=Alphabet.sortkey)
 
     @staticmethod
     def string_subtract(a, b):
