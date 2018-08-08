@@ -23,5 +23,6 @@
 			"editor.tabSize": 2,
 		},
 		"python.pythonPath": "C:\\Python27\\python.exe",
+		"javascript.suggestionActions.enabled": false,
 	}
 }
