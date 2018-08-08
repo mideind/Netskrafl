@@ -1,5 +1,5 @@
 {
-  "name": "Netskrafl",
+  "name": "netskrafl",
   "description": "Build Netskrafl web components",
   "version": "1.0.0",
   "private": true,
@@ -15,10 +15,10 @@
     "grunt-contrib-less": "^1.4.1",
     "grunt-contrib-uglify": "^3.3.0",
     "grunt-contrib-watch": "^1.0.0",
-    "eslint": "^5.3.0"
+    "eslint": "^5.3.0",
+    "matchdep": "^2.0.0"
   },
   "dependencies": {
-    "matchdep": "^2.0.0"
   },
   "jshintConfig": {
     "validthis": true,

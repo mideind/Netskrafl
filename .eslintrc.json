@@ -9,19 +9,31 @@
     "rules": {
         "indent": [
             "error",
-            2
+            3
         ],
         "linebreak-style": [
             "error",
             "unix"
         ],
         "quotes": [
-            "error",
+            "off",
             "double"
         ],
         "semi": [
             "error",
             "always"
-        ]
-    }
+        ],
+        "no-empty" : "off"
+    },
+    "overrides": [
+        {
+            "files": ["page.js", "game.js"],
+            "rules": {
+                "indent": [
+                    "error",
+                    2
+                ]
+            }
+        }
+    ]
 }

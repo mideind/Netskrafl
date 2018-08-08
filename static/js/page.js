@@ -18,6 +18,16 @@
 
 */
 
+/*
+  global m:false, Promise:false, $state:false, Game:false,
+  loginFirebase, attachFirebaseListener, detachFirebaseListener,
+  toVector, coord
+*/
+
+/* eslint-disable indent */
+/* eslint-disable no-console */
+/* eslint-disable no-unused-vars */
+
 var main = (function() {
 
 "use strict";
@@ -2452,7 +2462,7 @@ function createView() {
 
     function games() {
       var r = [];
-      var numMyTurns = 0;
+      // var numMyTurns = 0;
       if (game.gamelist == null)
         // No games to show now, but we'll load them
         // and they will be automatically refreshed when ready
@@ -2496,7 +2506,7 @@ function createView() {
               )
             )
           );
-          numMyTurns++;
+          // numMyTurns++;
         }
       }
       return r;
@@ -4284,7 +4294,7 @@ function escapeHtml(string) {
     "'": '&#39;',
     "/": '&#x2F;'
   };
-  return String(string).replace(/[&<>"'\/]/g, function (s) {
+  return String(string).replace(/[&<>"'/]/g, function (s) {
     return entityMap[s];
   });
 }

@@ -12,6 +12,13 @@
 
 */
 
+/*
+   global $:false
+*/
+
+/* eslint-disable no-console */
+/* eslint-disable no-unused-vars */
+
 function nullFunc(json) {
    /* Null placeholder function to use for Ajax queries that don't need a success func */
 }
@@ -74,7 +81,11 @@ function serverQueryHtml(requestUrl, jsonData, selector, completeFunc, errorFunc
 
       // Code to run if the request succeeds;
       // the response is passed to the function
-      success: function(result) { $(selector).html(result); if (!!completeFunc) completeFunc(); },
+      success: function(result) {
+         $(selector).html(result);
+         if (completeFunc)
+            completeFunc();
+      },
 
       // Code to run if the request fails; the raw request and
       // status codes are passed to the function
