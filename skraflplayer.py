@@ -218,8 +218,12 @@ class Axis:
                 if below:
                     query += below
                 if len(query) > 1:
-                    # Nontrivial cross-check: Query the word database for words that fit this pattern
-                    matches = self.DAWG.find_matches(query, sort = False) # Don't need a sorted result
+                    # Nontrivial cross-check: Query the word database
+                    # for words that fit this pattern
+                    matches = self.DAWG.find_matches(
+                        query,
+                        sort=False  # Don't need a sorted result
+                    )
                     bits = 0
                     if matches:
                         cix = len(above) if above else 0
@@ -385,6 +389,7 @@ class LeftFindNavigator:
         self._state = None
 
     def state(self):
+        """ Returns the current state of the navigator """
         return self._state
 
     def push_edge(self, firstchar):
@@ -422,10 +427,12 @@ class LeftFindNavigator:
         pass
 
 
-# noinspection PyClassHasNoInit
 class Match:
 
     """ Return codes for the _check() function in ExtendRightNavigator """
+
+    def __init__(self):
+        pass
 
     NO = 0
     BOARD_TILE = 1
@@ -580,7 +587,7 @@ class AutoPlayer:
     AUTOPLAYER_COMMON = 15
 
     @staticmethod
-    def create(state, robot_level = 0):
+    def create(state, robot_level=0):
         """ Create an Autoplayer instance of the desired ability level """
         if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
             # Create an AutoPlayer that only plays common words
@@ -588,7 +595,7 @@ class AutoPlayer:
         # Create a normal AutoPlayer using the entire vocabulary
         return AutoPlayer(state, robot_level)
 
-    def __init__(self, state, robot_level = 0):
+    def __init__(self, state, robot_level=0):
 
         # List of valid, candidate moves
         self._candidates = []
@@ -636,9 +643,9 @@ class AutoPlayer:
 
     def generate_move(self):
         """ Finds and returns a Move object to be played """
-        return self._generate_move(depth = 1)
+        return self._generate_move(depth=1)
 
-    def generate_best_moves(self, max_number = 0):
+    def generate_best_moves(self, max_number=0):
         """ Returns a list in descending order of the n best moves, or all moves if n <= 0 """
         self._generate_candidates()
         if not self._candidates:
@@ -754,7 +761,8 @@ class AutoPlayer:
                 scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]
             ):
                 top_equal += 1
-        # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top".format(picklist,
+        # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top"
+        #    .format(picklist,
         #    top_equal, num_candidates).encode("latin-1"))
         # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
         #    logging.info(u"Move {0} score {1}".format(m, sc).encode("latin-1"))
@@ -844,8 +852,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
-            # Sort moves first by descending score;
-            # in case of ties prefer shorter words
+            """ Sort moves first by descending score;
+                in case of ties prefer shorter words """
             # !!! TODO: Insert more sophisticated logic here,
             # including whether triple-word-score opportunities
             # are being opened for the opponent, minimal use
@@ -854,9 +862,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
             return (- x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            # Special case for first move:
-            # Sort moves first by descending score, and in case of ties,
-            # try to go to the upper half of the board for a more open game
+            """ Special case for first move:
+                Sort moves first by descending score, and in case of ties,
+                try to go to the upper half of the board for a more open game """
             return (- x[1], x[0]._row)
 
         # Sort the candidate moves using the appropriate key function
@@ -891,7 +899,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print(u"Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
-            teststate = State(tileset = None, copy = self._state) # Copy constructor
+            teststate = State(tileset=None, copy=self._state) # Copy constructor
             teststate.apply_move(m)
 
             countermoves = list()
@@ -916,7 +924,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
                         # New rack: see how well it would score
                         apl = AutoPlayer_MiniMax(teststate)
                         # Go one level deeper into move generation
-                        move = apl._generate_move(depth = depth - 1)
+                        move = apl._generate_move(depth=depth - 1)
                         # Calculate the score of this random rack based move
                         # but do not apply it to the teststate
                         sc = teststate.score(move)
@@ -952,8 +960,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found
         weighted_candidates.sort(
-            key = lambda x: float(x[1]) - (x[2] - min_score),
-            reverse = True
+            key=lambda x: float(x[1]) - (x[2] - min_score),
+            reverse=True
         )
 
         print(

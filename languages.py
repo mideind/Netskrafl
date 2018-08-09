@@ -37,7 +37,7 @@ class Alphabet:
     full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
 
     # Map letters to bits
-    letter_bit = { letter : 1 << ix for ix, letter in enumerate(order) }
+    letter_bit = {letter : 1 << ix for ix, letter in enumerate(order)}
 
     # Locale collation (sorting) map, initialized in _init()
     _lcmap = None # Case sensitive
@@ -71,20 +71,25 @@ class Alphabet:
     @staticmethod
     def sort(l):
         """ Sort a list in-place by lexicographic ordering according to this Alphabet """
-        l.sort(key = Alphabet.sortkey)
+        l.sort(key=Alphabet.sortkey)
 
     @staticmethod
     def sorted(l):
         """ Return a list sorted by lexicographic ordering according to this Alphabet """
-        return sorted(l, key = Alphabet.sortkey)
+        return sorted(l, key=Alphabet.sortkey)
 
     @staticmethod
     def string_subtract(a, b):
         """ Subtract all letters in b from a, counting each instance separately """
         # Note that this cannot be done with sets, as they fold multiple letter instances into one
         lcount = [a.count(c) - b.count(c) for c in Alphabet.all_tiles]
-        return u''.join([Alphabet.all_tiles[ix] * lcount[ix]
-            for ix in range(len(lcount)) if lcount[ix] > 0])
+        return u''.join(
+            [
+                Alphabet.all_tiles[ix] * lcount[ix]
+                for ix in range(len(lcount))
+                if lcount[ix] > 0
+            ]
+        )
 
     # noinspection PyUnusedLocal
     @staticmethod
@@ -186,7 +191,7 @@ class TileSet(object):
 
 class OldTileSet(TileSet):
 
-    # Letter scores in the old (original) Icelandic tile set
+    """ Letter scores in the old (original) Icelandic tile set """
 
     scores = {
         u'a': 1,
@@ -259,7 +264,8 @@ class OldTileSet(TileSet):
         (u"þ", 1),
         (u"æ", 1),
         (u"ö", 1),
-        (u"?", 2)] # Blank tiles
+        (u"?", 2)  # Blank tiles
+    ]
 
 # Number of tiles in bag
 OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
@@ -267,7 +273,7 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 class NewTileSet(TileSet):
 
-    # Scores in new Icelandic tile set
+    """ Scores in new Icelandic tile set """
 
     scores = {
         u'a': 1,
@@ -340,7 +346,8 @@ class NewTileSet(TileSet):
         (u"þ", 1),
         (u"æ", 2),
         (u"ö", 1),
-        (u"?", 2)] # Blank tiles
+        (u"?", 2)  # Blank tiles
+    ]
 
 # Number of tiles in bag
 NewTileSet.BAG_SIZE = NewTileSet.num_tiles()

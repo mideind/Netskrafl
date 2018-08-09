@@ -26,13 +26,13 @@
 
 """
 
+# pylint: disable=too-many-lines
+
 import os
 import logging
-import json
 import threading
 import re
 import random
-import urllib
 
 from datetime import datetime, timedelta
 
@@ -42,17 +42,30 @@ from flask import request, url_for
 
 from google.appengine.api import users, memcache
 from google.appengine.runtime import DeadlineExceededError
-import google.appengine.api.urlfetch as urlfetch
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
-from skraflmechanics import Move, PassMove, ExchangeMove, \
-    ResignMove, ChallengeMove, ResponseMove, Error
+from skraflmechanics import (
+    Move,
+    PassMove,
+    ExchangeMove,
+    ResignMove,
+    ChallengeMove,
+    Error
+)
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
-from skrafldb import Context, UserModel, GameModel, \
-    FavoriteModel, ChallengeModel, RatingModel, ChatModel, \
-    ZombieModel, PromoModel
+from skrafldb import (
+    Context,
+    UserModel,
+    GameModel,
+    FavoriteModel,
+    ChallengeModel,
+    RatingModel,
+    ChatModel,
+    ZombieModel,
+    PromoModel
+)
 import billing
 import firebase
 
@@ -68,10 +81,7 @@ if running_local:
 app.config['DEBUG'] = running_local
 
 # Read secret session key from file
-with open(
-    os.path.abspath(os.path.join("resources", "secret_key.bin")),
-    "rb"
-) as f:
+with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
 
     app.secret_key = f.read()
 
@@ -81,23 +91,24 @@ with open(
 _autoplayer_lock = threading.Lock()
 
 # Promotion parameters
-_PROMO_FREQUENCY = 8 # A promo check is done randomly, but on average every 1 out of N times
-_PROMO_COUNT = 2 # Max number of times that the same promo is displayed
-_PROMO_INTERVAL = timedelta(days = 4) # Min interval between promo displays
+_PROMO_FREQUENCY = 8  # A promo check is done randomly, but on average every 1 out of N times
+_PROMO_COUNT = 2  # Max number of times that the same promo is displayed
+_PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # URL to navigate to after logout
 _LOGOUT_URL = "/page#!/login"
+
 
 @app.before_request
 def before_request():
     """ Redirect http requests to https, returning a Moved Permanently code """
     if (
-        not running_local and
-        request.url.startswith('http://') and
-        not request.path.startswith('/_ah/')
+        not running_local
+        and request.url.startswith('http://')
+        and not request.path.startswith('/_ah/')
     ):
         url = request.url.replace('http://', 'https://', 1)
-        code = 301 # Moved Permanently
+        code = 301  # Moved Permanently
         return redirect(url, code=code)
 
 
@@ -106,7 +117,9 @@ def add_headers(response):
     """ Inject additional headers into responses """
     if not running_local:
         # Add HSTS to enforce HTTPS
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers[
+            "Strict-Transport-Security"
+        ] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -115,7 +128,7 @@ def inject_into_context():
     """ Inject variables and functions into all Flask contexts """
     return dict(
         # Variable dev_server is True if running on the GAE development server
-        dev_server = running_local
+        dev_server=running_local
     )
 
 
@@ -134,29 +147,29 @@ class RequestData:
     _TRUE_SET = frozenset(("true", "True", u"true", u"True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", u"false", u"False", "0", 0, False))
 
-    def __init__(self, request):
+    def __init__(self, rq):
         # If JSON data is present, assume this is a JSON request
-        self.q = request.get_json(silent = True)
+        self.q = rq.get_json(silent=True)
         self.using_json = True
         if not self.q:
             # No JSON data: assume this is a form-encoded request
-            self.q = request.form
+            self.q = rq.form
             self.using_json = False
             if not self.q:
                 self.q = dict()
 
-    def get(self, key, default = None):
+    def get(self, key, default=None):
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
-    def get_int(self, key, default = 0):
+    def get_int(self, key, default=0):
         """ Obtain an integer data item from the request """
         try:
             return int(self.q.get(key, default))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return default
 
-    def get_bool(self, key, default = False):
+    def get_bool(self, key, default=False):
         """ Obtain a boolean data item from the request """
         try:
             val = self.q.get(key, default)
@@ -166,22 +179,20 @@ class RequestData:
             if val in self._FALSE_SET:
                 # This is a falsy value
                 return False
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             pass
         # Something else, i.e. neither truthy nor falsy: return the default
         return default
 
-    def get_list(self, key, default = []):
+    def get_list(self, key):
         """ Obtain a list data item from the request """
         if self.using_json:
             # Normal get from a JSON dictionary
-            r = self.q.get(key, default)
+            r = self.q.get(key, [])
         else:
             # Use special getlist() call on request.form object
             r = self.q.getlist(key + "[]")
-        if not isinstance(r, list):
-            return default
-        return r
+        return r if isinstance(r, list) else []
 
     def __getitem__(self, key):
         """ Shortcut: allow indexing syntax with an empty (Unicode) string default """
@@ -194,12 +205,13 @@ def _process_move(game, movelist):
     assert game is not None
 
     if game.is_over():
-        return jsonify(result = Error.GAME_NOT_FOUND)
+        return jsonify(result=Error.GAME_NOT_FOUND)
 
     player_index = game.player_to_move()
 
     # Parse the move from the movestring we got back
     m = Move(u'', 0, 0)
+    # pylint: disable=broad-except
     try:
         for mstr in movelist:
             if mstr == u"pass":
@@ -232,7 +244,8 @@ def _process_move(game, movelist):
     except Exception as e:
         logging.info(
             u"Exception in _process_move(): {0}"
-            .format(e).encode("latin-1")
+            .format(e)
+            .encode("latin-1")
         )
         m = None
 
@@ -246,7 +259,7 @@ def _process_move(game, movelist):
     if err != Error.LEGAL:
         # Something was wrong with the move:
         # show the user a corresponding error message
-        return jsonify(result = err, msg = msg)
+        return jsonify(result=err, msg=msg)
 
     # Serialize access to the following code section
     with _autoplayer_lock:
@@ -265,11 +278,11 @@ def _process_move(game, movelist):
             if opponent is None:
                 # Generate an autoplayer move in response
                 game.autoplayer_move()
-                is_over = game.is_over() # State may change during autoplayer_move()
+                is_over = game.is_over()  # State may change during autoplayer_move()
             elif isinstance(m, ChallengeMove):
                 # Challenge: generate a response move
                 game.response_move()
-                is_over = game.is_over() # State may change during response_move()
+                is_over = game.is_over()  # State may change during response_move()
 
         if is_over:
             # If the game is now over, tally the final score
@@ -291,8 +304,8 @@ def _process_move(game, movelist):
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(1 - player_index, m)
         msg = {
-            "game/" + game.id() + "/" + opponent + "/move" : client_state,
-            "user/" + opponent : { "move" : datetime.utcnow().isoformat() }
+            "game/" + game.id() + "/" + opponent + "/move": client_state,
+            "user/" + opponent: {"move": datetime.utcnow().isoformat()},
         }
         firebase.send_message(msg)
 
@@ -309,9 +322,9 @@ def fetch_users(ulist, uid_func):
         if uid:
             uids.append(uid)
     # No need for a special case for an empty list
-    users = User.load_multi(uids)
+    user_objects = User.load_multi(uids)
     # Return a dictionary mapping user ids to users
-    return { uid : user for uid, user in zip(uids, users) }
+    return {uid: user for uid, user in zip(uids, user_objects)}
 
 
 def _userlist(query, spec):
@@ -330,18 +343,20 @@ def _userlist(query, spec):
     if query == u"robots":
         # Return the list of available autoplayers
         for r in Game.AUTOPLAYERS:
-            result.append({
-                "userid": u"robot-" + str(r[2]),
-                "nick": r[0],
-                "fullname": r[1],
-                "human_elo": elo_str(None),
-                "fav": False,
-                "chall": False,
-                "fairplay": False, # The robots don't play fair ;-)
-                "newbag": cuser is not None and cuser.new_bag(),
-                "ready": True, # The robots are always ready for a challenge
-                "ready_timed": False # Timed games are not available for robots
-            })
+            result.append(
+                {
+                    "userid": u"robot-" + str(r[2]),
+                    "nick": r[0],
+                    "fullname": r[1],
+                    "human_elo": elo_str(None),
+                    "fav": False,
+                    "chall": False,
+                    "fairplay": False,  # The robots don't play fair ;-)
+                    "newbag": cuser is not None and cuser.new_bag(),
+                    "ready": True,  # The robots are always ready for a challenge
+                    "ready_timed": False  # Timed games are not available for robots
+                }
+            )
         # That's it; we're done (no sorting required)
         return result
 
@@ -350,7 +365,7 @@ def _userlist(query, spec):
     if cuid:
         challenges.update(
             # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len = 20)]
+            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
         )
 
     # Get the list of online users
@@ -359,7 +374,7 @@ def _userlist(query, spec):
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
-        online = firebase.get_connected_users() # Returns a set
+        online = firebase.get_connected_users()  # Returns a set
         # Store the result in the cache with a lifetime of 3 minutes
         memcache.set("live", online, time=3 * 60, namespace="userlist")
 
@@ -372,18 +387,20 @@ def _userlist(query, spec):
                 # Don't display the current user in the online list
                 uid = lu.id()
                 chall = uid in challenges
-                result.append({
-                    "userid": uid,
-                    "nick": lu.nickname(),
-                    "fullname": lu.full_name(),
-                    "human_elo": elo_str(lu.human_elo()),
-                    "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": chall,
-                    "fairplay": lu.fairplay(),
-                    "newbag": lu.new_bag(),
-                    "ready": lu.is_ready() and not chall,
-                    "ready_timed": lu.is_ready_timed() and not chall
-                })
+                result.append(
+                    {
+                        "userid": uid,
+                        "nick": lu.nickname(),
+                        "fullname": lu.full_name(),
+                        "human_elo": elo_str(lu.human_elo()),
+                        "fav": False if cuser is None else cuser.has_favorite(uid),
+                        "chall": chall,
+                        "fairplay": lu.fairplay(),
+                        "newbag": lu.new_bag(),
+                        "ready": lu.is_ready() and not chall,
+                        "ready_timed": lu.is_ready_timed() and not chall
+                    }
+                )
 
     elif query == u"fav":
         # Return favorites of the current user
@@ -395,40 +412,60 @@ def _userlist(query, spec):
                 if fu and fu.is_displayable():
                     favid = fu.id()
                     chall = favid in challenges
-                    result.append({
-                        "userid": favid,
-                        "nick": fu.nickname(),
-                        "fullname": fu.full_name(),
-                        "human_elo": elo_str(fu.human_elo()),
-                        "fav": True,
-                        "chall": chall,
-                        "fairplay": fu.fairplay(),
-                        "newbag": fu.new_bag(),
-                        "ready": fu.is_ready() and favid in online and not chall,
-                        "ready_timed": fu.is_ready_timed() and favid in online and not chall
-                    })
+                    result.append(
+                        {
+                            "userid": favid,
+                            "nick": fu.nickname(),
+                            "fullname": fu.full_name(),
+                            "human_elo": elo_str(fu.human_elo()),
+                            "fav": True,
+                            "chall": chall,
+                            "fairplay": fu.fairplay(),
+                            "newbag": fu.new_bag(),
+                            "ready": (
+                                fu.is_ready()
+                                and favid in online
+                                and not chall
+                            ),
+                            "ready_timed": (
+                                fu.is_ready_timed()
+                                and favid in online
+                                and not chall
+                            )
+                        }
+                    )
 
     elif query == u"alike":
         # Return users with similar Elo ratings
         if cuid is not None:
-            i = UserModel.list_similar_elo(cuser.human_elo(), max_len = 40)
+            i = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
             ausers = User.load_multi(i)
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
                     uid = au.id()
                     chall = uid in challenges
-                    result.append({
-                        "userid": uid,
-                        "nick": au.nickname(),
-                        "fullname": au.full_name(),
-                        "human_elo": elo_str(au.human_elo()),
-                        "fav": False if cuser is None else cuser.has_favorite(uid),
-                        "chall": chall,
-                        "fairplay": au.fairplay(),
-                        "newbag": au.new_bag(),
-                        "ready": au.is_ready() and uid in online and not chall,
-                        "ready_timed": au.is_ready_timed() and uid in online and not chall
-                    })
+                    result.append(
+                        {
+                            "userid": uid,
+                            "nick": au.nickname(),
+                            "fullname": au.full_name(),
+                            "human_elo": elo_str(au.human_elo()),
+                            "fav": False if cuser is None else cuser.has_favorite(uid),
+                            "chall": chall,
+                            "fairplay": au.fairplay(),
+                            "newbag": au.new_bag(),
+                            "ready": (
+                                au.is_ready()
+                                and uid in online
+                                and not chall
+                            ),
+                            "ready_timed": (
+                                au.is_ready_timed()
+                                and uid in online
+                                and not chall
+                            )
+                        }
+                    )
 
     elif query == u"search":
         # Return users with nicknames matching a pattern
@@ -440,15 +477,15 @@ def _userlist(query, spec):
             spec = spec[0:16]
 
             # The "N:" prefix is a version header
-            cache_range = "4:" + spec.lower() # Case is not significant
+            cache_range = "4:" + spec.lower()  # Case is not significant
 
             # Start by looking in the cache
-            i = memcache.get(cache_range, namespace = "userlist")
+            i = memcache.get(cache_range, namespace="userlist")
             if i is None:
                 # Not found: do an query, returning max 25 users
-                i = list(UserModel.list_prefix(spec, max_len = 25))
+                i = list(UserModel.list_prefix(spec, max_len=25))
                 # Store the result in the cache with a lifetime of 2 minutes
-                memcache.set(cache_range, i, time = 2 * 60, namespace = "userlist")
+                memcache.set(cache_range, i, time=2 * 60, namespace="userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
@@ -461,25 +498,35 @@ def _userlist(query, spec):
                 continue
             if displayable(ud):
                 chall = uid in challenges
-                result.append({
-                    "userid": uid,
-                    "nick": ud["nickname"],
-                    "fullname": User.full_name_from_prefs(ud["prefs"]),
-                    "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
-                    "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": chall,
-                    "fairplay": User.fairplay_from_prefs(ud["prefs"]),
-                    "newbag": User.new_bag_from_prefs(ud["prefs"]),
-                    "ready": ud["ready"] and uid in online and not chall,
-                    "ready_timed": ud["ready_timed"] and uid in online and not chall
-                })
+                result.append(
+                    {
+                        "userid": uid,
+                        "nick": ud["nickname"],
+                        "fullname": User.full_name_from_prefs(ud["prefs"]),
+                        "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
+                        "fav": False if cuser is None else cuser.has_favorite(uid),
+                        "chall": chall,
+                        "fairplay": User.fairplay_from_prefs(ud["prefs"]),
+                        "newbag": User.new_bag_from_prefs(ud["prefs"]),
+                        "ready": (
+                            ud["ready"]
+                            and uid in online
+                            and not chall
+                        ),
+                        "ready_timed": (
+                            ud["ready_timed"]
+                            and uid in online
+                            and not chall
+                        )
+                    }
+                )
 
     # Sort the user list. The list is ordered so that users who are
     # ready for any kind of challenge come first, then users who are ready for
     # a timed game, and finally all other users. Each category is sorted
     # by nickname, case-insensitive.
     result.sort(
-        key = lambda x: (
+        key=lambda x: (
             # First by readiness
             0 if x["ready"] else 1 if x["ready_timed"] else 2,
             # Then by nickname
@@ -489,7 +536,7 @@ def _userlist(query, spec):
     return result
 
 
-def _gamelist(cuid, include_zombies = True):
+def _gamelist(cuid, include_zombies=True):
     """ Return a list of active and zombie games for the current user """
     result = []
     if not cuid:
@@ -499,87 +546,92 @@ def _gamelist(cuid, include_zombies = True):
     # has not seen) at the top of the list
     if include_zombies:
         for g in ZombieModel.list_games(cuid):
-            opp = g["opp"] # User id of opponent
+            opp = g["opp"]  # User id of opponent
             u = User.load(opp)
             nick = u.nickname()
             prefs = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
-            newbag = Game.new_bag_from_prefs(prefs)
+            new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
-            timed = Game.get_duration_from_prefs(prefs) # Time per player in minutes
-            result.append({
-                "uuid": g["uuid"],
-                "url": url_for('board', game = g["uuid"], zombie = "1"), # Mark zombie state
-                "oppid": opp,
-                "opp": nick,
-                "fullname": u.full_name(),
-                "sc0": g["sc0"],
-                "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp_short(g["ts"]),
-                "my_turn": False,
-                "overdue": False,
-                "zombie": True,
-                "fairplay": fairplay,
-                "newbag": newbag,
-                "manual": manual,
-                "timed": timed,
-                "tile_count": 100 # All tiles (100%) accounted for
-            })
+            timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
+            result.append(
+                {
+                    "uuid": g["uuid"],
+                    # Mark zombie state
+                    "url": url_for('board', game=g["uuid"], zombie="1"),
+                    "oppid": opp,
+                    "opp": nick,
+                    "fullname": u.full_name(),
+                    "sc0": g["sc0"],
+                    "sc1": g["sc1"],
+                    "ts": Alphabet.format_timestamp_short(g["ts"]),
+                    "my_turn": False,
+                    "overdue": False,
+                    "zombie": True,
+                    "fairplay": fairplay,
+                    "newbag": new_bag,
+                    "manual": manual,
+                    "timed": timed,
+                    "tile_count": 100  # All tiles (100%) accounted for
+                }
+            )
         # Sort zombies in decreasing order by last move, i.e. most recently completed games first
-        result.sort(key = lambda x: x["ts"], reverse = True)
+        result.sort(key=lambda x: x["ts"], reverse=True)
 
     # Obtain up to 50 live games where this user is a player
-    i = list(GameModel.iter_live_games(cuid, max_len = 50))
+    i = list(GameModel.iter_live_games(cuid, max_len=50))
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
-    i.sort(key = lambda x: (x["my_turn"], x["ts"]), reverse = True)
+    i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
     # Multi-fetch the opponents in the game list
     opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
-        opp = g["opp"] # User id of opponent
+        opp = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
         prefs = g.get("prefs", None)
         tileset = Game.tileset_from_prefs(prefs)
         fairplay = Game.fairplay_from_prefs(prefs)
-        newbag = Game.new_bag_from_prefs(prefs)
+        new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
-        timed = Game.get_duration_from_prefs(prefs) # Time per player in minutes
+        timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
         fullname = ""
         if opp is None:
             # Autoplayer opponent
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = opponents[opp] # Was User.load(opp)
+            u = opponents[opp]  # Was User.load(opp)
             nick = u.nickname()
             fullname = u.full_name()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
-                overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS - 2))
+                overdue = delta >= timedelta(days=Game.OVERDUE_DAYS - 2)
             else:
                 # Show mark after 14 days
-                overdue = (delta >= timedelta(days = Game.OVERDUE_DAYS))
-        result.append({
-            "uuid": g["uuid"],
-            "url": url_for('board', game = g["uuid"]),
-            "oppid": opp,
-            "opp": nick,
-            "fullname": fullname,
-            "sc0": g["sc0"],
-            "sc1": g["sc1"],
-            "ts": Alphabet.format_timestamp_short(ts),
-            "my_turn": g["my_turn"],
-            "overdue": overdue,
-            "zombie": False,
-            "fairplay": fairplay,
-            "newbag": newbag,
-            "manual": manual,
-            "timed": timed,
-            "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles())
-        })
+                overdue = delta >= timedelta(days=Game.OVERDUE_DAYS)
+        result.append(
+            {
+                "uuid": g["uuid"],
+                "url": url_for('board', game=g["uuid"]),
+                "oppid": opp,
+                "opp": nick,
+                "fullname": fullname,
+                "sc0": g["sc0"],
+                "sc1": g["sc1"],
+                "ts": Alphabet.format_timestamp_short(ts),
+                "my_turn": g["my_turn"],
+                "overdue": overdue,
+                "zombie": False,
+                "fairplay": fairplay,
+                "newbag": new_bag,
+                "manual": manual,
+                "timed": timed,
+                "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles())
+            }
+        )
     return result
 
 
@@ -594,17 +646,17 @@ def _rating(kind):
     if cuid:
         challenges.update(
             # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in iter(ChallengeModel.list_issued(cuid, max_len = 20))]
+            [ch[0] for ch in iter(ChallengeModel.list_issued(cuid, max_len=20))]
         )
 
-    rating = memcache.get(kind, namespace="rating")
-    if rating is None:
+    rating_list = memcache.get(kind, namespace="rating")
+    if rating_list is None:
         # Not found: do a query
-        rating = list(RatingModel.list_rating(kind))
+        rating_list = list(RatingModel.list_rating(kind))
         # Store the result in the cache with a lifetime of 1 hour
-        memcache.set(kind, rating, time=1 * 60 * 60, namespace="rating")
+        memcache.set(kind, rating_list, time=1 * 60 * 60, namespace="rating")
 
-    for ru in rating:
+    for ru in rating_list:
 
         uid = ru["userid"]
         if not uid:
@@ -617,7 +669,7 @@ def _rating(kind):
             chall = False
             fairplay = False
             # Robots have the same new bag preference as the user
-            newbag = cuser and cuser.new_bag()
+            new_bag = cuser and cuser.new_bag()
         else:
             usr = User.load(uid)
             if usr is None:
@@ -629,7 +681,7 @@ def _rating(kind):
             fullname = usr.full_name()
             chall = uid in challenges
             fairplay = usr.fairplay()
-            newbag = usr.new_bag()
+            new_bag = usr.new_bag()
             inactive = usr.is_inactive()
 
         games = ru["games"]
@@ -640,33 +692,31 @@ def _rating(kind):
             ratio = int(round(100.0 * float(ru["wins"]) / games))
             avgpts = int(round(float(ru["score"]) / games))
 
-        result.append({
-            "rank": ru["rank"],
-            "rank_yesterday": ru["rank_yesterday"],
-            "rank_week_ago": ru["rank_week_ago"],
-            "rank_month_ago": ru["rank_month_ago"],
-
-            "userid": uid,
-            "nick": nick,
-            "fullname": fullname,
-            "chall": chall,
-            "fairplay": fairplay,
-            "newbag": newbag,
-            "inactive": inactive,
-
-            "elo": ru["elo"],
-            "elo_yesterday": ru["elo_yesterday"],
-            "elo_week_ago": ru["elo_week_ago"],
-            "elo_month_ago": ru["elo_month_ago"],
-
-            "games": games,
-            "games_yesterday": ru["games_yesterday"],
-            "games_week_ago": ru["games_week_ago"],
-            "games_month_ago": ru["games_month_ago"],
-
-            "ratio": ratio,
-            "avgpts": avgpts
-        })
+        result.append(
+            {
+                "rank": ru["rank"],
+                "rank_yesterday": ru["rank_yesterday"],
+                "rank_week_ago": ru["rank_week_ago"],
+                "rank_month_ago": ru["rank_month_ago"],
+                "userid": uid,
+                "nick": nick,
+                "fullname": fullname,
+                "chall": chall,
+                "fairplay": fairplay,
+                "newbag": new_bag,
+                "inactive": inactive,
+                "elo": ru["elo"],
+                "elo_yesterday": ru["elo_yesterday"],
+                "elo_week_ago": ru["elo_week_ago"],
+                "elo_month_ago": ru["elo_month_ago"],
+                "games": games,
+                "games_yesterday": ru["games_yesterday"],
+                "games_week_ago": ru["games_week_ago"],
+                "games_month_ago": ru["games_month_ago"],
+                "ratio": ratio,
+                "avgpts": avgpts
+            }
+        )
 
     return result
 
@@ -678,7 +728,7 @@ def _recentlist(cuid, versus, max_len):
         return []
     result = []
     # Obtain a list of recently finished games where the indicated user was a player
-    rlist = GameModel.list_finished_games(cuid, versus = versus, max_len = max_len)
+    rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
     for g in rlist:
@@ -688,7 +738,7 @@ def _recentlist(cuid, versus, max_len):
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = opponents[opp] # Was User.load(opp)
+            u = opponents[opp]  # Was User.load(opp)
             nick = u.nickname()
 
         # Calculate the duration of the game in days, hours, minutes
@@ -700,27 +750,29 @@ def _recentlist(cuid, versus, max_len):
         if (ts_start is None) or (ts_end is None):
             days, hours, minutes = (0, 0, 0)
         else:
-            td = ts_end - ts_start # Timedelta
+            td = ts_end - ts_start  # Timedelta
             tsec = td.total_seconds()
             days, tsec = divmod(tsec, 24 * 60 * 60)
             hours, tsec = divmod(tsec, 60 * 60)
-            minutes, tsec = divmod(tsec, 60) # Ignore the remaining seconds
+            minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
 
-        result.append({
-            "url": url_for('board', game = g["uuid"]),
-            "opp": nick,
-            "opp_is_robot": opp is None,
-            "sc0": g["sc0"],
-            "sc1": g["sc1"],
-            "elo_adj": g["elo_adj"],
-            "human_elo_adj": g["human_elo_adj"],
-            "ts_last_move": Alphabet.format_timestamp_short(ts_end),
-            "days": int(days),
-            "hours": int(hours),
-            "minutes": int(minutes),
-            "duration": Game.get_duration_from_prefs(prefs),
-            "manual": Game.manual_wordcheck_from_prefs(prefs)
-        })
+        result.append(
+            {
+                "url": url_for('board', game=g["uuid"]),
+                "opp": nick,
+                "opp_is_robot": opp is None,
+                "sc0": g["sc0"],
+                "sc1": g["sc1"],
+                "elo_adj": g["elo_adj"],
+                "human_elo_adj": g["human_elo_adj"],
+                "ts_last_move": Alphabet.format_timestamp_short(ts_end),
+                "days": int(days),
+                "hours": int(hours),
+                "minutes": int(minutes),
+                "duration": Game.get_duration_from_prefs(prefs),
+                "manual": Game.manual_wordcheck_from_prefs(prefs)
+            }
+        )
     return result
 
 
@@ -752,49 +804,54 @@ def _challengelist():
     if cuid is not None:
 
         # List received challenges
-        received = list(ChallengeModel.list_received(cuid, max_len = 20))
+        received = list(ChallengeModel.list_received(cuid, max_len=20))
         # List issued challenges
-        issued = list(ChallengeModel.list_issued(cuid, max_len = 20))
+        issued = list(ChallengeModel.list_issued(cuid, max_len=20))
         # Multi-fetch all opponents involved
         opponents = fetch_users(received + issued, lambda c: c[0])
         # List the received challenges
         for c in received:
-            u = opponents[c[0]] # User.load(c[0]) # User id
+            u = opponents[c[0]]  # User id
             nick = u.nickname()
-            result.append({
-                "received": True,
-                "userid": c[0],
-                "opp": nick,
-                "fullname": u.full_name(),
-                "prefs": c[1],
-                "ts": Alphabet.format_timestamp_short(c[2]),
-                "opp_ready" : False
-            })
+            result.append(
+                {
+                    "received": True,
+                    "userid": c[0],
+                    "opp": nick,
+                    "fullname": u.full_name(),
+                    "prefs": c[1],
+                    "ts": Alphabet.format_timestamp_short(c[2]),
+                    "opp_ready": False
+                }
+            )
         # List the issued challenges
         for c in issued:
-            u = opponents[c[0]] # User.load(c[0]) # User id
+            u = opponents[c[0]]  # User id
             nick = u.nickname()
-            result.append({
-                "received": False,
-                "userid": c[0],
-                "opp": nick,
-                "fullname": u.full_name(),
-                "prefs": c[1],
-                "ts": Alphabet.format_timestamp_short(c[2]),
-                "opp_ready" : opp_ready(c)
-            })
+            result.append(
+                {
+                    "received": False,
+                    "userid": c[0],
+                    "opp": nick,
+                    "fullname": u.full_name(),
+                    "prefs": c[1],
+                    "ts": Alphabet.format_timestamp_short(c[2]),
+                    "opp_ready": opp_ready(c)
+                }
+            )
     return result
 
 
 @app.route("/_ah/start")
 def start():
     """ App Engine is starting a fresh instance - warm it up by loading word database """
-
     wdb = Wordbase.dawg()
-    ok = u"upphitun" in wdb # Use a random word to check ('upphitun' means warm-up)
-    logging.info(u"Start/warmup, instance {0}, ok is {1}".format(
-        os.environ.get("INSTANCE_ID", ""), ok))
-    return "", 200 # jsonify(ok = ok)
+    ok = u"upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
+    logging.info(
+        u"Start/warmup, instance {0}, ok is {1}"
+        .format(os.environ.get("INSTANCE_ID", ""), ok)
+    )
+    return "", 200
 
 
 @app.route("/_ah/stop")
@@ -814,7 +871,7 @@ def submitmove():
     """ Handle a move that is being submitted from the client """
 
     if not User.current_id():
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
@@ -822,36 +879,40 @@ def submitmove():
     movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
 
-    game = None if uuid is None else Game.load(uuid, use_cache = False)
+    game = None if uuid is None else Game.load(uuid, use_cache=False)
 
     if game is None:
-        return jsonify(result = Error.GAME_NOT_FOUND)
+        return jsonify(result=Error.GAME_NOT_FOUND)
 
     # Make sure the client is in sync with the server:
     # check the move count
     if movecount != game.num_moves():
-        return jsonify(result = Error.OUT_OF_SYNC)
+        return jsonify(result=Error.OUT_OF_SYNC)
 
     if game.player_id_to_move() != User.current_id():
-        return jsonify(result = Error.WRONG_USER)
+        return jsonify(result=Error.WRONG_USER)
 
     # Process the movestring
     # Try twice in case of timeout or other exception
     result = None
     for attempt in reversed(range(2)):
+        # pylint: disable=broad-except
         try:
             result = _process_move(game, movelist)
         except DeadlineExceededError:
             logging.info("Deadline exceeded in submitmove()")
-            result = jsonify(result = Error.SERVER_ERROR)
+            result = jsonify(result=Error.SERVER_ERROR)
             # No use attempting to retry if deadline exceeded: get out
             break
         except Exception as e:
-            logging.info("Exception in submitmove(): {0} {1}"
-                .format(e, "- retrying" if attempt > 0 else "").encode("latin-1"))
+            logging.info(
+                "Exception in submitmove(): {0} {1}"
+                .format(e, "- retrying" if attempt > 0 else "")
+                .encode("latin-1")
+            )
             if attempt == 0:
                 # Final attempt failed
-                result = jsonify(result = Error.SERVER_ERROR)
+                result = jsonify(result=Error.SERVER_ERROR)
         else:
             # No exception: done
             break
@@ -870,15 +931,15 @@ def gamestate():
 
     if not user_id or not game:
         # We must have a logged-in user and a valid game
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     player_index = game.player_index(user_id)
     if player_index is None and not game.is_over:
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
-    return jsonify(ok = True, game = game.client_state(player_index, deep = True))
+    return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
 
 @app.route("/forceresign", methods=['POST'])
@@ -888,28 +949,28 @@ def forceresign():
     user_id = User.current_id()
     if user_id is None:
         # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     uuid = rq.get("game")
     movecount = rq.get_int("mcount", -1)
 
-    game = None if uuid is None else Game.load(uuid, use_cache = False)
+    game = None if uuid is None else Game.load(uuid, use_cache=False)
 
     if game is None:
-        return jsonify(result = Error.GAME_NOT_FOUND)
+        return jsonify(result=Error.GAME_NOT_FOUND)
 
     # Only the user who is the opponent of the tardy user can force a resign
     if game.player_id(1 - game.player_to_move()) != User.current_id():
-        return jsonify(result = Error.WRONG_USER)
+        return jsonify(result=Error.WRONG_USER)
 
     # Make sure the client is in sync with the server:
     # check the move count
     if movecount != game.num_moves():
-        return jsonify(result = Error.OUT_OF_SYNC)
+        return jsonify(result=Error.OUT_OF_SYNC)
 
     if not game.is_overdue():
-        return jsonify(result = Error.GAME_NOT_OVERDUE)
+        return jsonify(result=Error.GAME_NOT_OVERDUE)
 
     # Send in a resign move on behalf of the opponent
     return _process_move(game, [u"rsgn"])
@@ -921,7 +982,7 @@ def wordcheck():
 
     if not User.current_id():
         # If no user is logged in, we always return False
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     rq = RequestData(request)
     words = rq.get_list("words")
@@ -930,7 +991,7 @@ def wordcheck():
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
     ok = all([w in wdb for w in words])
-    return jsonify(word = word, ok = ok)
+    return jsonify(word=word, ok=ok)
 
 
 @app.route("/gamestats", methods=['POST'])
@@ -949,7 +1010,7 @@ def gamestats():
             game = None
 
     if game is None:
-        return jsonify(result = Error.GAME_NOT_FOUND)
+        return jsonify(result=Error.GAME_NOT_FOUND)
 
     return jsonify(game.statistics())
 
@@ -960,17 +1021,17 @@ def userstats():
 
     cid = User.current_id()
     if not cid:
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
-    uid = rq.get('user', cid) # Current user is implicit
+    uid = rq.get('user', cid)  # Current user is implicit
     user = None
 
     if uid is not None:
         user = User.load(uid)
 
     if user is None:
-        return jsonify(result = Error.WRONG_USER)
+        return jsonify(result=Error.WRONG_USER)
 
     cuser = User.current()
     stats = user.statistics()
@@ -995,7 +1056,7 @@ def userlist():
     """ Return user lists with particular criteria """
 
     if not User.current_id():
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     query = rq.get('query')
@@ -1005,7 +1066,7 @@ def userlist():
     # (it doesn't give any speed advantage for user lists anyway)
     Context.disable_cache()
 
-    return jsonify(result = Error.LEGAL, spec = spec, userlist = _userlist(query, spec))
+    return jsonify(result=Error.LEGAL, spec=spec, userlist=_userlist(query, spec))
 
 
 @app.route("/gamelist", methods=['POST'])
@@ -1017,8 +1078,7 @@ def gamelist():
     include_zombies = rq.get_bool('zombies', True)
     # _gamelist() returns an empty list if no user is logged in
     cuid = User.current_id()
-    return jsonify(result = Error.LEGAL,
-        gamelist = _gamelist(cuid, include_zombies))
+    return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
 
 
 @app.route("/rating", methods=['POST'])
@@ -1026,12 +1086,12 @@ def rating():
     """ Return the newest Elo ratings table (top 100) of a given kind ('all' or 'human') """
 
     if not User.current_id():
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     kind = rq.get('kind', 'all')
 
-    return jsonify(result = Error.LEGAL, rating = _rating(kind))
+    return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @app.route("/recentlist", methods=['POST'])
@@ -1041,7 +1101,7 @@ def recentlist():
     rq = RequestData(request)
     user_id = rq.get('user')
     versus = rq.get('versus')
-    count = rq.get_int("count", 14) # Default number of recent games to return
+    count = rq.get_int("count", 14)  # Default number of recent games to return
 
     # Limit count to 50 games
     if count > 50:
@@ -1054,15 +1114,17 @@ def recentlist():
 
     # _recentlist() returns an empty list for a nonexistent user
 
-    return jsonify(result = Error.LEGAL,
-        recentlist = _recentlist(user_id, versus = versus, max_len = count))
+    return jsonify(
+        result=Error.LEGAL,
+        recentlist=_recentlist(user_id, versus=versus, max_len=count),
+    )
 
 
 @app.route("/challengelist", methods=['POST'])
 def challengelist():
     """ Return a list of challenges issued or received by the current user """
     # _challengelist() returns an empty list if no user is logged in
-    return jsonify(result = Error.LEGAL, challengelist = _challengelist())
+    return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @app.route("/favorite", methods=['POST'])
@@ -1072,7 +1134,7 @@ def favorite():
     user = User.current()
     if user is None:
         # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     destuser = rq.get('destuser')
@@ -1084,7 +1146,7 @@ def favorite():
         elif action == u"delete":
             user.del_favorite(destuser)
 
-    return jsonify(result = Error.LEGAL)
+    return jsonify(result=Error.LEGAL)
 
 
 @app.route("/challenge", methods=['POST'])
@@ -1094,16 +1156,16 @@ def challenge():
     user = User.current()
     if user is None:
         # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     destuser = rq.get('destuser')
     if not destuser:
-        return jsonify(result = Error.WRONG_USER)
+        return jsonify(result=Error.WRONG_USER)
     action = rq.get('action', u"issue")
     duration = rq.get_int("duration")
     fairplay = rq.get_bool('fairplay')
-    newbag = rq.get_bool('newbag')
+    new_bag = rq.get_bool('newbag')
     manual = rq.get_bool('manual')
 
     # Ensure that the duration is reasonable
@@ -1118,9 +1180,9 @@ def challenge():
             {
                 "duration": duration,
                 "fairplay": fairplay,
-                "newbag": newbag,
+                "newbag": new_bag,
                 "manual": manual
-            }
+            },
         )
     elif action == u"retract":
         user.retract_challenge(destuser)
@@ -1135,7 +1197,7 @@ def challenge():
     # main.html listens to this
     firebase.send_update("user", destuser, "challenge")
 
-    return jsonify(result = Error.LEGAL)
+    return jsonify(result=Error.LEGAL)
 
 
 @app.route("/setuserpref", methods=['POST'])
@@ -1145,7 +1207,7 @@ def setuserpref():
     user = User.current()
     if user is None:
         # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
 
@@ -1169,7 +1231,7 @@ def setuserpref():
 
     user.update()
 
-    return jsonify(result = Error.LEGAL)
+    return jsonify(result=Error.LEGAL)
 
 
 @app.route("/onlinecheck", methods=['POST'])
@@ -1178,14 +1240,14 @@ def onlinecheck():
 
     if not User.current_id():
         # We must have a logged-in user
-        return jsonify(online = False)
+        return jsonify(online=False)
 
     rq = RequestData(request)
     user_id = rq.get('user')
     online = False
     if user_id is not None:
         online = firebase.check_presence(user_id)
-    return jsonify(online = online)
+    return jsonify(online=online)
 
 
 @app.route("/waitcheck", methods=['POST'])
@@ -1194,14 +1256,14 @@ def waitcheck():
 
     if not User.current_id():
         # We must have a logged-in user
-        return jsonify(waiting = False)
+        return jsonify(waiting=False)
 
     rq = RequestData(request)
     opp_id = rq.get('user')
     waiting = False
     if opp_id is not None:
         waiting = _opponent_waiting(User.current_id(), opp_id)
-    return jsonify(userid = opp_id, waiting = waiting)
+    return jsonify(userid=opp_id, waiting=waiting)
 
 
 @app.route("/cancelwait", methods=['POST'])
@@ -1210,23 +1272,23 @@ def cancelwait():
 
     if not User.current_id():
         # We must have a logged-in user
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     rq = RequestData(request)
     user_id = rq.get('user')
     opp_id = rq.get('opp')
 
     if not user_id or not opp_id:
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     # Delete the current wait and force update of the opponent's challenge list
     msg = {
-        "user/" + user_id + "/wait/" + opp_id : None,
-        "user/" + opp_id : { "challenge" : datetime.utcnow().isoformat() }
+        "user/" + user_id + "/wait/" + opp_id: None,
+        "user/" + opp_id: {"challenge": datetime.utcnow().isoformat()},
     }
     firebase.send_message(msg)
 
-    return jsonify(ok = True)
+    return jsonify(ok=True)
 
 
 @app.route("/chatmsg", methods=['POST'])
@@ -1240,18 +1302,18 @@ def chatmsg():
     user_id = User.current_id()
     if not user_id or not channel:
         # We must have a logged-in user and a valid channel
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     game = None
     if channel.startswith(u"game:"):
         # Send notifications to both players on the game channel
-        uuid = channel[5:][:36] # The game id
+        uuid = channel[5:][:36]  # The game id
         if uuid:
             game = Game.load(uuid)
 
     if game is None or not game.has_player(user_id):
         # The logged-in user must be a player in the game
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     # Add a message entity to the data store and remember its timestamp
     ts = ChatModel.add_msg(channel, user_id, msg)
@@ -1261,18 +1323,18 @@ def chatmsg():
         # as read confirmations
         # The message to be sent in JSON form via Firebase
         md = dict(
-            game = uuid,
-            from_userid = user_id,
-            msg = msg,
-            ts = Alphabet.format_timestamp(ts)
+            game=uuid,
+            from_userid=user_id,
+            msg=msg,
+            ts=Alphabet.format_timestamp(ts)
         )
-        msg = { }
+        msg = {}
         for p in range(0, 2):
             # Send a Firebase notification to /game/[gameid]/[userid]/chat
             msg["game/" + uuid + "/" + game.player_id(p) + "/chat"] = md
         firebase.send_message(msg)
 
-    return jsonify(ok = True)
+    return jsonify(ok=True)
 
 
 @app.route("/chatload", methods=['POST'])
@@ -1285,31 +1347,31 @@ def chatload():
     user_id = User.current_id()
     if not user_id or not channel:
         # We must have a logged-in user and a valid channel
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     game = None
     if channel.startswith(u"game:"):
-        uuid = channel[5:][:36] # The game id
+        uuid = channel[5:][:36]  # The game id
         if uuid:
             game = Game.load(uuid)
 
     if game is None or not game.has_player(user_id):
         # The logged-in user must be a player in the game
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     # Return the messages sorted in ascending timestamp order.
     # ChatModel.list_conversations returns them in descending
     # order since its maxlen limit cuts off the oldest messages.
     messages = [
         dict(
-            from_userid = cm["user"],
-            msg = cm["msg"],
-            ts = Alphabet.format_timestamp(cm["ts"])
+            from_userid=cm["user"],
+            msg=cm["msg"],
+            ts=Alphabet.format_timestamp(cm["ts"])
         )
         for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
     ]
 
-    return jsonify(ok = True, messages = messages)
+    return jsonify(ok=True, messages=messages)
 
 
 @app.route("/review")
@@ -1324,7 +1386,7 @@ def review():
 
     if not user.has_paid():
         # Only paying users can see game reviews
-        return redirect(url_for('friend', action = 1))
+        return redirect(url_for('friend', action=1))
 
     game = None
     uuid = request.args.get("game", None)
@@ -1339,7 +1401,7 @@ def review():
 
     try:
         move_number = int(request.args.get("move", "0"))
-    except:
+    except (TypeError, ValueError):
         move_number = 0
 
     if move_number > game.num_moves():
@@ -1357,7 +1419,7 @@ def review():
 
             # Show best moves if available and it is proper to do so (i.e. the game is finished)
             apl = AutoPlayer(state)
-            best_moves = apl.generate_best_moves(19) # 19 is what fits on screen
+            best_moves = apl.generate_best_moves(19)  # 19 is what fits on screen
 
     player_index = state.player_to_move()
     if game.has_player(user.id()):
@@ -1368,16 +1430,21 @@ def review():
         # player 0, or the human player if player 0 is an autoplayer
         user_index = 1 if game.is_autoplayer(0) else 0
 
-    return render_template("review.html",
-        game = game, state = state,
-        player_index = player_index, user_index = user_index,
-        move_number = move_number, best_moves = best_moves)
+    return render_template(
+        "review.html",
+        game=game,
+        state=state,
+        player_index=player_index,
+        user_index=user_index,
+        move_number=move_number,
+        best_moves=best_moves
+    )
 
 
 class UserForm:
     """ Encapsulates the data in the user preferences form """
 
-    def __init__(self, usr = None):
+    def __init__(self, usr=None):
         self.logout_url = User.logout_url(_LOGOUT_URL)
         if usr:
             self.init_from_user(usr)
@@ -1388,46 +1455,46 @@ class UserForm:
             self.audio = True
             self.fanfare = True
             self.beginner = True
-            self.fairplay = False # Defaults to False, must be explicitly set to True
-            self.newbag = False # Defaults to False, must be explicitly set to True
+            self.fairplay = False  # Defaults to False, must be explicitly set to True
+            self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
 
     def init_from_form(self, form):
         """ The form has been submitted after editing: retrieve the entered data """
         try:
             self.nickname = u'' + form['nickname'].strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
             self.full_name = u'' + form['full_name'].strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
             self.email = u'' + form['email'].strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
-            self.audio = 'audio' in form # State of the checkbox
+            self.audio = 'audio' in form  # State of the checkbox
             self.fanfare = 'fanfare' in form
             self.beginner = 'beginner' in form
             self.fairplay = 'fairplay' in form
             self.newbag = 'newbag' in form
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
 
     def init_from_dict(self, d):
         """ The form has been submitted after editing: retrieve the entered data """
         try:
             self.nickname = u'' + d.get("nickname", "").strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
             self.full_name = u'' + d.get("full_name", "").strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
             self.email = u'' + d.get("email", "").strip()
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
         try:
             self.audio = bool(d.get("audio", False))
@@ -1435,7 +1502,7 @@ class UserForm:
             self.beginner = bool(d.get("beginner", False))
             self.fairplay = bool(d.get("fairplay", False))
             self.newbag = bool(d.get("newbag", False))
-        except:
+        except (TypeError, ValueError, KeyError):
             pass
 
     def init_from_user(self, usr):
@@ -1455,9 +1522,8 @@ class UserForm:
         errors = dict()
         if not self.nickname:
             errors['nickname'] = u"Notandi verður að hafa einkenni"
-        elif (
-            (self.nickname[0] not in Alphabet.full_order) and
-            (self.nickname[0] not in Alphabet.full_upper)
+        elif (self.nickname[0] not in Alphabet.full_order) and (
+            self.nickname[0] not in Alphabet.full_upper
         ):
             errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
@@ -1515,7 +1581,7 @@ def userprefs():
             return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return render_template("userprefs.html", uf = uf, err = err, from_url = from_url)
+    return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
 
 
 @app.route("/loaduserprefs", methods=['POST'])
@@ -1525,11 +1591,11 @@ def loaduserprefs():
     user = User.current()
     if user is None:
         # User hasn't logged in
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     # Return the user preferences in JSON form
     uf = UserForm(user)
-    return jsonify(ok = True, userprefs = uf.as_dict())
+    return jsonify(ok=True, userprefs=uf.as_dict())
 
 
 @app.route("/saveuserprefs", methods=['POST'])
@@ -1539,7 +1605,7 @@ def saveuserprefs():
     user = User.current()
     if user is None:
         # User hasn't logged in
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     j = request.get_json(silent=True)
 
@@ -1549,8 +1615,8 @@ def saveuserprefs():
     err = uf.validate()
     if not err:
         uf.store(user)
-        return jsonify(ok = True)
-    return jsonify(ok = False, err = err)
+        return jsonify(ok=True)
+    return jsonify(ok=False, err=err)
 
 
 @app.route("/wait")
@@ -1565,7 +1631,7 @@ def wait():
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith(u"robot-"):
-        return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
+        return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
@@ -1581,8 +1647,8 @@ def wait():
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
     msg = {
-        "user/" + opp : { "challenge" : datetime.utcnow().isoformat() },
-        "user/" + user.id() + "/wait/" + opp : True
+        "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
+        "user/" + user.id() + "/wait/" + opp: True
     }
     firebase.send_message(msg)
 
@@ -1593,9 +1659,9 @@ def wait():
     firebase_token = firebase.create_custom_token(user.id())
 
     # Go to the wait page
-    return render_template("wait.html",
-        user = user, opp = opp_user, prefs = prefs,
-        firebase_token = firebase_token)
+    return render_template(
+        "wait.html", user=user, opp=opp_user, prefs=prefs, firebase_token=firebase_token
+    )
 
 
 @app.route("/newgame")
@@ -1615,15 +1681,15 @@ def newgame():
     rev = request.args.get("rev", None) is not None
 
     if opp is None:
-        return redirect(url_for("main", tab = "2")) # Go directly to opponents tab
+        return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     if opp.startswith(u"robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = { "newbag" : True } if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs = prefs)
-        return redirect(url_for("board", game = game.id()))
+        prefs = {"newbag": True} if user.new_bag() else None
+        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        return redirect(url_for("board", game=game.id()))
 
     # Start a new game between two human users
     if rev:
@@ -1646,18 +1712,16 @@ def newgame():
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {
-        "user/" + opp + "/move" : datetime.utcnow().isoformat()
-    }
+    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = { "game" : game.id() }
+        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
 
     firebase.send_message(msg)
 
     # Go to the game page
-    return redirect(url_for("board", game = game.id()))
+    return redirect(url_for("board", game=game.id()))
 
 
 @app.route("/initgame", methods=['POST'])
@@ -1667,13 +1731,13 @@ def initgame():
     user = User.current()
     if user is None:
         # Must have logged-in user
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     rq = RequestData(request)
     # Get the opponent id
     opp = rq.get("opp")
     if opp is None:
-        return jsonify(ok = False)
+        return jsonify(ok=False)
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -1683,16 +1747,16 @@ def initgame():
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = { "newbag" : True } if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs = prefs)
-        return jsonify(ok = True, uuid = game.id())
+        prefs = {"newbag": True} if user.new_bag() else None
+        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        return jsonify(ok=True, uuid=game.id())
 
     # Start a new game between two human users
     if rev:
         # Timed game: load the opponent
         opp_user = User.load(opp)
         if opp_user is None:
-            return jsonify(ok = False)
+            return jsonify(ok=False)
         # In this case, the opponent accepts the challenge
         found, prefs = opp_user.accept_challenge(user.id())
     else:
@@ -1701,25 +1765,23 @@ def initgame():
 
     if not found:
         # No challenge existed between the users
-        return redirect(ok = False)
+        return jsonify(ok=False)
 
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {
-        "user/" + opp + "/move" : datetime.utcnow().isoformat()
-    }
+    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = { "game" : game.id() }
+        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
 
     firebase.send_message(msg)
 
     # Go to the game page
-    return jsonify(ok = True, uuid = game.id())
+    return jsonify(ok=True, uuid=game.id())
 
 
 @app.route("/board")
@@ -1727,7 +1789,8 @@ def board():
     """ The main game page """
 
     uuid = request.args.get("game", None)
-    zombie = request.args.get("zombie", None) # Requesting a look at a newly finished game
+    # Requesting a look at a newly finished game
+    zombie = request.args.get("zombie", None)
     try:
         # If the og argument is present, it indicates that OpenGraph data
         # should be included in the page header, from the point of view of
@@ -1737,18 +1800,18 @@ def board():
         og = request.args.get("og", None)
         if og is not None:
             # This should be a player index: -1 (third party), 0 or 1
-            og = int(og) # May throw an exception
+            og = int(og)  # May throw an exception
             if og < -1:
                 og = -1
             elif og > 1:
                 og = 1
-    except:
+    except (TypeError, ValueError):
         og = None
 
     game = None
     if uuid:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid, use_cache = False)
+        game = Game.load(uuid, use_cache=False)
 
     if game is None:
         # No active game to display: go back to main screen
@@ -1756,7 +1819,7 @@ def board():
 
     user = User.current()
     is_over = game.is_over()
-    opp = None # The opponent
+    opp = None  # The opponent
 
     if not is_over:
         # Game still in progress
@@ -1783,43 +1846,48 @@ def board():
         # on it from a zombie list: remove it from the list
         ZombieModel.del_game(game.id(), user.id())
 
-    ogd = None # OpenGraph data
+    ogd = None  # OpenGraph data
     if og is not None and is_over:
         # This game is a valid and visible OpenGraph object
         # Calculate the OpenGraph stuff to be included in the page header
-        pix = 0 if og < 0 else og # Player indexing
+        pix = 0 if og < 0 else og  # Player indexing
         sc = game.final_scores()
-        winner = game.winning_player() # -1 if draw
+        winner = game.winning_player()  # -1 if draw
         bingoes = game.bingoes()
         ogd = dict(
-            og = og,
-            player0 = game.player_nickname(pix),
-            player1 = game.player_nickname(1 - pix),
-            winner = winner,
-            win = False if og == -1 else (og == winner),
-            draw = (winner == -1),
-            score0 = str(sc[pix]),
-            score1 = str(sc[1 - pix]),
-            bingo0 = bingoes[pix],
-            bingo1 = bingoes[1 - pix]
+            og=og,
+            player0=game.player_nickname(pix),
+            player1=game.player_nickname(1 - pix),
+            winner=winner,
+            win=False if og == -1 else (og == winner),
+            draw=(winner == -1),
+            score0=str(sc[pix]),
+            score1=str(sc[1 - pix]),
+            bingo0=bingoes[pix],
+            bingo1=bingoes[1 - pix]
         )
 
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
     if firebase_token is not None:
         msg = {
-            "game/" + game.id() + "/" + user.id() : None,
-            "user/" + user.id() + "/wait" : None
+            "game/" + game.id() + "/" + user.id(): None,
+            "user/" + user.id() + "/wait": None
         }
         firebase.send_message(msg)
         # No need to clear other stuff on the /user/[user_id]/ path,
         # since we're not listening to it in board.html
 
-    return render_template("board.html",
-        game = game, user = user, opp = opp,
-        player_index = player_index, zombie = bool(zombie),
-        time_info = game.time_info(), og = ogd, # OpenGraph data
-        firebase_token = firebase_token
+    return render_template(
+        "board.html",
+        game=game,
+        user=user,
+        opp=opp,
+        player_index=player_index,
+        zombie=bool(zombie),
+        time_info=game.time_info(),
+        og=ogd,  # OpenGraph data
+        firebase_token=firebase_token
     )
 
 
@@ -1830,7 +1898,7 @@ def gameover():
     cuid = User.current_id()
     if not cuid:
         # We must have a logged-in user
-        return jsonify(result = Error.LOGIN_REQUIRED)
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     game_id = rq.get('game')
@@ -1838,11 +1906,11 @@ def gameover():
 
     if not game_id or cuid != user_id:
         # A user can only remove her own games from the zombie list
-        return jsonify(result = Error.GAME_NOT_FOUND)
+        return jsonify(result=Error.GAME_NOT_FOUND)
 
     ZombieModel.del_game(game_id, user_id)
 
-    return jsonify(result = Error.LEGAL)
+    return jsonify(result=Error.LEGAL)
 
 
 @app.route("/friend")
@@ -1853,8 +1921,8 @@ def friend():
         return redirect(url_for("login"))
     try:
         action = int(request.args.get("action", "0"))
-    except:
-        action =  0
+    except (TypeError, ValueError):
+        action = 0
     if action == 0:
         # Launch the actual payment procedure
         # render_template displays a thank-you note in this case
@@ -1874,7 +1942,7 @@ def friend():
             return redirect(url_for("main"))
         billing.cancel_friend(user)
 
-    return render_template("friend.html", user = user, action = action)
+    return render_template("friend.html", user=user, action=action)
 
 
 @app.route("/promo", methods=['POST'])
@@ -1882,13 +1950,13 @@ def promo():
     """ Return promotional HTML corresponding to a given key (category) """
     user = User.current()
     if user is None:
-        return u"<p>Notandi er ekki innskráður</p>", 401 # Unauthorized
+        return u"<p>Notandi er ekki innskráður</p>", 401  # Unauthorized
     rq = RequestData(request)
     key = rq.get("key", "")
-    VALID_PROMOS = { "friend", "krafla" }
+    VALID_PROMOS = {"friend", "krafla"}
     if key not in VALID_PROMOS:
         key = "error"
-    return render_template("promo-" + key + ".html", user = user)
+    return render_template("promo-" + key + ".html", user=user)
 
 
 @app.route("/signup", methods=['GET'])
@@ -1897,7 +1965,7 @@ def signup():
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
-    return render_template("signup.html", user = user)
+    return render_template("signup.html", user=user)
 
 
 @app.route("/skilmalar", methods=['GET'])
@@ -1906,7 +1974,7 @@ def skilmalar():
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
-    return render_template("skilmalar.html", user = user)
+    return render_template("skilmalar.html", user=user)
 
 
 @app.route("/billing", methods=['GET', 'POST'])
@@ -1936,7 +2004,7 @@ def main():
     firebase_token = firebase.create_custom_token(uid)
 
     # Promotion display logic
-    promo = None
+    promo_to_show = None
     if random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
@@ -1944,41 +2012,42 @@ def main():
         # promo = 'krafla' # Un-comment this to enable promo
 
         # The list_promotions call yields a list of timestamps
-        if promo:
-            promos = sorted(list(PromoModel.list_promotions(uid, promo)))
+        if promo_to_show:
+            promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
             now = datetime.utcnow()
             if len(promos) >= _PROMO_COUNT:
                 # Already seen too many of these
-                promo = None
+                promo_to_show = None
             elif promos and (now - promos[-1] < _PROMO_INTERVAL):
                 # Less than one interval since last promo was displayed: don't display this one
-                promo = None
+                promo_to_show = None
 
-    if promo:
+    if promo_to_show:
         # Note the fact that we have displayed this promotion to this user
-        logging.info("Displaying promo {1} to user {0} who has already seen it {2} times"
-            .format(uid, promo, len(promos)))
-        PromoModel.add_promotion(uid, promo)
+        logging.info(
+            "Displaying promo {1} to user {0} who has already seen it {2} times"
+            .format(uid, promo_to_show, len(promos))
+        )
+        PromoModel.add_promotion(uid, promo_to_show)
 
     # Get earlier challenge, move and wait notifications out of the way
-    msg = {
-        "challenge" : None,
-        "move" : None,
-        "wait" : None
-    }
+    msg = {"challenge": None, "move": None, "wait": None}
     firebase.send_message(msg, "user", uid)
 
-    return render_template("main.html",
-        user = user, tab = tab,
-        firebase_token = firebase_token,
-        promo = promo)
+    return render_template(
+        "main.html",
+        user=user,
+        tab=tab,
+        firebase_token=firebase_token,
+        promo=promo_to_show
+    )
 
 
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
     login_url = users.create_login_url("/")
-    return render_template("login.html", login_url = login_url)
+    return render_template("login.html", login_url=login_url)
 
 
 @app.route("/help")
@@ -1986,7 +2055,7 @@ def help():
     """ Show help page """
     user = User.current()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user = user, tab = None)
+    return render_template("nshelp.html", user=user, tab=None)
 
 
 @app.route("/rawhelp")
@@ -1995,13 +2064,13 @@ def rawhelp():
 
     def override_url_for(endpoint, **values):
         """ Convert URLs from old-format plain ones to single-page fancy ones """
-        if endpoint in { 'twoletter', 'newbag', 'userprefs' }:
+        if endpoint in {'twoletter', 'newbag', 'userprefs'}:
             # Insert special token that will be caught by client-side
             # code and converted to an action in the single-page UI
             return "$$" + endpoint + "$$"
         return url_for(endpoint, **values)
 
-    return render_template("rawhelp.html", url_for = override_url_for)
+    return render_template("rawhelp.html", url_for=override_url_for)
 
 
 @app.route("/twoletter")
@@ -2009,7 +2078,7 @@ def twoletter():
     """ Show help page """
     user = User.current()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user = user, tab = "twoletter")
+    return render_template("nshelp.html", user=user, tab="twoletter")
 
 
 @app.route("/faq")
@@ -2017,7 +2086,7 @@ def faq():
     """ Show help page """
     user = User.current()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user = user, tab = "faq")
+    return render_template("nshelp.html", user=user, tab="faq")
 
 
 @app.route("/page")
@@ -2029,9 +2098,12 @@ def page():
         firebase_token = ""
     else:
         firebase_token = firebase.create_custom_token(user.id())
-    return render_template("page.html",
-        user = user, firebase_token = firebase_token,
-        login_url = login_url)
+    return render_template(
+        "page.html",
+        user=user,
+        firebase_token=firebase_token,
+        login_url=login_url
+    )
 
 
 @app.route("/newbag")
@@ -2039,10 +2111,11 @@ def newbag():
     """ Show help page """
     user = User.current()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user = user, tab = "newbag")
+    return render_template("nshelp.html", user=user, tab="newbag")
 
 
 # noinspection PyUnusedLocal
+# pylint: disable=unused-argument
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
@@ -2053,6 +2126,7 @@ def page_not_found(e):
 def server_error(e):
     """ Return a custom 500 error """
     return u'Eftirfarandi villa kom upp: {}'.format(e), 500
+
 
 # Run a default Flask web server for testing if invoked directly as a main program
 

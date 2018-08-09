@@ -22,7 +22,7 @@
 
 """
 
-import logging
+# pylint: disable=too-many-lines
 
 from random import SystemRandom
 
@@ -32,7 +32,7 @@ from languages import Alphabet
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
 _DEBUG_MANUAL_WORDCHECK = False
-#_DEBUG_MANUAL_WORDCHECK = True
+# _DEBUG_MANUAL_WORDCHECK = True
 
 
 # Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
@@ -99,6 +99,7 @@ class Board:
 
     def __init__(self, copy=None):
 
+        # pylint: disable=protected-access
         if copy is None:
             # Store letters on the board in list of strings
             self._letters = [u' ' * Board.SIZE for _ in range(Board.SIZE)]
@@ -109,7 +110,6 @@ class Board:
             self._numtiles = 0
         else:
             # Copy constructor: initialize from another Board
-            # pylint: disable=protected-access
             self._letters = copy._letters[:]
             self._tiles = copy._tiles[:]
             self._numletters = copy._numletters
@@ -269,6 +269,7 @@ class Bag:
 
     def __init__(self, tileset, copy=None, debug=False):
 
+        # pylint: disable=protected-access
         if copy is None:
             # Get a full bag from the requested tile set
             if debug:
@@ -279,7 +280,6 @@ class Bag:
             self._size = len(self._tiles)
         else:
             # Copy constructor: initialize from another Bag
-            # pylint: disable=W0212
             self._tiles = copy._tiles
             self._size = copy._size
 
@@ -335,8 +335,9 @@ class Rack:
 
     MAX_TILES = 7
 
-    def __init__(self, copy = None):
+    def __init__(self, copy=None):
 
+        # pylint: disable=protected-access
         if copy is None:
             self._tiles = u''
         else:
@@ -408,11 +409,7 @@ class Rack:
         while len(tiles) < n and not bag.is_empty():
             tiles.append(bag.draw_tile())
         # Return the tiles sorted in alphabetical order
-        all_tiles = Alphabet.all_tiles
-        def keyfunc(x):
-            """ Return an alphabetic sort key for a tile """
-            return all_tiles.index(x)
-        tiles.sort(key = keyfunc)
+        tiles.sort(key=Alphabet.all_tiles.index)
         self._tiles = u''.join(tiles)
 
 
@@ -422,8 +419,9 @@ class State:
         Contains the current board, the racks, scores, etc.
     """
 
-    def __init__(self, tileset, manual_wordcheck = False, drawtiles = True, copy = None):
+    def __init__(self, tileset, manual_wordcheck=False, drawtiles=True, copy=None):
 
+        # pylint: disable=protected-access
         if copy is None:
             self._board = Board()
             self._player_to_move = 0
@@ -444,7 +442,7 @@ class State:
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
             if manual_wordcheck and _DEBUG_MANUAL_WORDCHECK:
-                self._bag = Bag(tileset, debug = True)
+                self._bag = Bag(tileset, debug=True)
             else:
                 self._bag = Bag(tileset)
             if drawtiles:
@@ -467,7 +465,7 @@ class State:
             self._last_rack = copy._last_rack
             self._last_covers = copy._last_covers
             self._tileset = copy._tileset
-            self._bag = Bag(tileset = None, copy = copy._bag)
+            self._bag = Bag(tileset=None, copy=copy._bag)
 
     def load_board(self, board):
         """ Load a Board into this state """
@@ -479,7 +477,7 @@ class State:
             return Error.NULL_MOVE
         return move.check_legality(self)
 
-    def apply_move(self, move, shallow = False):
+    def apply_move(self, move, shallow=False):
         """ Apply the given move, assumed to be legal, to this state """
         # A shallow apply is one that does not modify the racks or the bag.
         # It is used when loading game state from persistent storage.
@@ -640,7 +638,7 @@ class State:
         """ Is the game waiting for a potential challenge of the last move? """
         return self.is_challengeable() and any(r.is_empty() for r in self._racks)
 
-    def finalize_score(self, lost_on_overtime = None, overtime_adjustment = None):
+    def finalize_score(self, lost_on_overtime=None, overtime_adjustment=None):
         """ When game is completed, calculate the final score adjustments """
 
         if self._game_resigned:
@@ -707,11 +705,11 @@ class State:
             )
         )
 
-# pylint: disable=too-few-public-methods
-
 class Cover:
 
     """ Represents a covering of a square by a tile """
+
+    # pylint: disable=too-few-public-methods
 
     def __init__(self, row, col, tile, letter):
         self.row = row
@@ -723,6 +721,8 @@ class Cover:
 class Error:
 
     """ Error return codes from Move.check_legality() """
+
+    # pylint: disable=too-few-public-methods
 
     def __init__(self):
         pass
@@ -782,13 +782,17 @@ class Error:
             u"NOT_MANUAL_WORDCHECK",
             u"MOVE_NOT_CHALLENGEABLE",
             u"ONLY_PASS_OR_CHALLENGE"
-            ][errcode]
+        ][errcode]
 
 
 class MoveBase(object):
 
+    """ Base class for the various types of moves """
+
     def __init__(self):
         pass
+
+    # pylint: disable=unused-argument
 
     # noinspection PyUnusedLocal
     def details(self, state):
@@ -821,7 +825,7 @@ class MoveBase(object):
         """ Return True if the player's rack should be replenished after the move """
         return False
 
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Should be overridden in derived classes """
         raise NotImplementedError
 
@@ -1015,10 +1019,10 @@ class Move(MoveBase):
             horiz = self._horizontal
         # The move is purely horizontal or vertical
         if horiz:
-            self._covers.sort(key = lambda x: x.col) # Sort in ascending column order
+            self._covers.sort(key=lambda x: x.col) # Sort in ascending column order
             self._horizontal = True
         else:
-            self._covers.sort(key = lambda x: x.row) # Sort in ascending row order
+            self._covers.sort(key=lambda x: x.row) # Sort in ascending row order
             self._horizontal = False
         # Check whether eventual missing squares in the move sequence are already covered
         row = 0
@@ -1073,15 +1077,17 @@ class Move(MoveBase):
         # Assemble the resulting word
         self._word = u''
         self._tiles = u''
+
+        def add(cix):
+            """ Add a cover's letter and tile to the word and tiles strings """
+            ltr = self._covers[cix].letter
+            tile = self._covers[cix].tile
+            self._word += ltr
+            self._tiles += tile + (ltr if tile == u'?' else u'')
+
         cix = 0
 
         for ix in range(self._numletters):
-
-            def add(cix):
-                ltr = self._covers[cix].letter
-                tile = self._covers[cix].tile
-                self._word += ltr
-                self._tiles += tile + (ltr if tile == u'?' else u'')
 
             if horiz:
                 if cix < len(self._covers) and self._col + ix == self._covers[cix].col:
@@ -1237,7 +1243,7 @@ class Move(MoveBase):
         self._score = total
         return total
 
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the board """
         board = state.board()
         rack = state.player_rack()
@@ -1255,7 +1261,7 @@ class Move(MoveBase):
             if invalid:
                 # The move contains one or more invalid words:
                 # a challenge would give a negative score for the player
-                chall_score = -self.score(state)
+                chall_score = -int(self.score(state))
             else:
                 # Nothing wrong with the move: a challenge would give
                 # the player a bonus
@@ -1296,11 +1302,12 @@ class ExchangeMove(MoveBase):
         return Error.LEGAL
 
     # noinspection PyUnusedLocal
+    # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"EXCH " + self._tiles, 0)
 
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         if not shallow:
             state.player_rack().exchange(state.bag(), self._tiles)
@@ -1332,9 +1339,6 @@ class ChallengeMove(MoveBase):
 
     """
 
-    def __init__(self):
-        super(ChallengeMove, self).__init__()
-
     def __str__(self):
         """ Return a readable description of the move """
         return u"Challenge"
@@ -1355,11 +1359,12 @@ class ChallengeMove(MoveBase):
         return Error.LEGAL
 
     # noinspection PyUnusedLocal
+    # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"CHALL", 0)
 
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         # We do not change the challengeable state here
         pass
@@ -1394,6 +1399,7 @@ class ResponseMove(MoveBase):
         return Error.LEGAL
 
     # noinspection PyUnusedLocal
+    # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         assert self._score is not None
@@ -1413,14 +1419,14 @@ class ResponseMove(MoveBase):
         """ Return the number of tiles played in this move """
         return self._num_covers
 
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         if self.score(state) < 0:
             # Successful challenge
             board = state.board()
             # Remove the last move from the board
             last_covers = state.last_covers
-            self._num_covers = - len(last_covers) # Negative cover count
+            self._num_covers = - len(last_covers)  # Negative cover count
             for c in last_covers:
                 board.set_letter(c.row, c.col, u' ')
                 board.set_tile(c.row, c.col, u' ')
@@ -1442,9 +1448,6 @@ class PassMove(MoveBase):
 
     """ Represents a pass move, where the player does nothing """
 
-    def __init__(self):
-        super(PassMove, self).__init__()
-
     def __str__(self):
         """ Return a readable string describing the move """
         return u"Pass"
@@ -1454,12 +1457,13 @@ class PassMove(MoveBase):
         return False
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
+    # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"PASS", 0)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
         state.add_pass() # Clears the challengeable flag
@@ -1481,6 +1485,7 @@ class ResignMove(MoveBase):
         """ Return True if the player's rack should be replenished after the move """
         return False
 
+    # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"RSGN", - self._forfeited_points)
@@ -1491,7 +1496,7 @@ class ResignMove(MoveBase):
         return - self._forfeited_points
 
     # noinspection PyMethodMayBeStatic
-    def apply(self, state, shallow = False):
+    def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Resign the game, causing is_game_over() to become True
         state.resign_game() # Clears the challengeable flag
