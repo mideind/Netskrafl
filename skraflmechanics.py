@@ -97,7 +97,7 @@ class Board:
             else str(col + 1) + Board.ROWIDS[row]
         )
 
-    def __init__(self, copy = None):
+    def __init__(self, copy=None):
 
         if copy is None:
             # Store letters on the board in list of strings
@@ -109,6 +109,7 @@ class Board:
             self._numtiles = 0
         else:
             # Copy constructor: initialize from another Board
+            # pylint: disable=protected-access
             self._letters = copy._letters[:]
             self._tiles = copy._tiles[:]
             self._numletters = copy._numletters
@@ -266,7 +267,7 @@ class Bag:
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
-    def __init__(self, tileset, copy = None, debug = False):
+    def __init__(self, tileset, copy=None, debug=False):
 
         if copy is None:
             # Get a full bag from the requested tile set
@@ -278,6 +279,7 @@ class Bag:
             self._size = len(self._tiles)
         else:
             # Copy constructor: initialize from another Bag
+            # pylint: disable=W0212
             self._tiles = copy._tiles
             self._size = copy._size
 
@@ -408,6 +410,7 @@ class Rack:
         # Return the tiles sorted in alphabetical order
         all_tiles = Alphabet.all_tiles
         def keyfunc(x):
+            """ Return an alphabetic sort key for a tile """
             return all_tiles.index(x)
         tiles.sort(key = keyfunc)
         self._tiles = u''.join(tiles)
@@ -620,7 +623,7 @@ class State:
     def display_bag(self, player):
         """ Returns the current bag plus the rack of the opponent """
         displaybag = self._bag.contents() + self.rack(1 - player)
-        return u''.join(sorted(displaybag, key=lambda ch: Bag.SORT_ORDER.index(ch)))
+        return u''.join(sorted(displaybag, key=Bag.SORT_ORDER.index))
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players
@@ -704,6 +707,7 @@ class State:
             )
         )
 
+# pylint: disable=too-few-public-methods
 
 class Cover:
 
@@ -718,7 +722,8 @@ class Cover:
 
 class Error:
 
-    # Error return codes from Move.check_legality()
+    """ Error return codes from Move.check_legality() """
+
     def __init__(self):
         pass
 
@@ -750,6 +755,7 @@ class Error:
 
     @staticmethod
     def errortext(errcode):
+        """ Return a string identifier corresponding to an error code """
         if errcode == Error.GAME_OVER:
             # Special case
             return u"GAME_OVER"
