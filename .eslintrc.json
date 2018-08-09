@@ -1,0 +1,39 @@
+{
+    "env": {
+        "browser": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 5
+    },
+    "rules": {
+        "indent": [
+            "error",
+            3
+        ],
+        "linebreak-style": [
+            "error",
+            "unix"
+        ],
+        "quotes": [
+            "off",
+            "double"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-empty" : "off"
+    },
+    "overrides": [
+        {
+            "files": ["page.js", "game.js"],
+            "rules": {
+                "indent": [
+                    "error",
+                    2
+                ]
+            }
+        }
+    ]
+}

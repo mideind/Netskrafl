@@ -11,6 +11,17 @@
 
 */
 
+/*
+   global $:false, Mousetrap:false, serverQuery, gameId, localPlayer,
+   gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag,
+   userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
+   opponentInfo, preventPullToRefresh, initFirebaseListener, loginFirebase, attachFirebaseListener,
+   initSkrafl, lateInit, initialGameTime, initBag, initMoveList, placeTiles,
+   favUserInfo, toggleVersus, initToggle, toggleStats, fbShare
+*/
+
+/* eslint-disable no-unused-vars */
+
 // Constants
 
 var ROWIDS = "ABCDEFGHIJKLMNO";
@@ -1101,8 +1112,8 @@ function handleDragend(e, ui) {
 
 function handleDropover(e, ui) {
    if (e.target.id.charAt(0) == 'R' || e.target.firstChild === null)
-     /* Rack square or empty square: can drop. Add yellow outline highlight to square */
-     this.classList.add("over");
+      /* Rack square or empty square: can drop. Add yellow outline highlight to square */
+      this.classList.add("over");
 }
 
 function handleDropleave(e, ui) {
@@ -2198,14 +2209,13 @@ function populateGames(json) {
       /* !!! TBD: Add error reporting here */
       return;
    var numGames = json.gamelist.length;
-   var numMyTurns = 0;
+   // var numMyTurns = 0;
    for (var i = 0; i < numGames; i++) {
       var item = json.gamelist[i];
       if (item.uuid == gameId())
          continue; // Don't show this game
       if (!item.my_turn && !item.zombie)
          continue; // Only show pending games
-      var fullname = escapeHtml(item.fullname);
       var opp = escapeHtml(item.opp);
       if (item.oppid === null)
          // Mark robots with a cog icon
@@ -2226,7 +2236,7 @@ function populateGames(json) {
          "<div class='at-top-left'>" + tileCount + "</div>" +
          "</a></div>";
       $("div.games").append(str);
-      numMyTurns++;
+      // numMyTurns++;
    }
    // Show a red flag if there are pending games
    // !!! TODO: implement this properly with a listening channel
@@ -2464,7 +2474,7 @@ function handleUserMessage(json) {
 }
 
 function _showUserInfo(oppInfo) {
-    showUserInfo(oppInfo.nick, oppInfo.fullname, oppInfo.userid);
+   showUserInfo(oppInfo.nick, oppInfo.fullname, oppInfo.userid);
 }
 
 function lookAtPlayer() {

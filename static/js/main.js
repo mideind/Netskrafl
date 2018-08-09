@@ -12,10 +12,20 @@
 
 */
 
+/*
+   global $:false,
+   showUserInfo, openPromoDialog, registerSalesCloud, newgameUrl, serverQuery,
+   _populateStats, _populateRecentList, toggle, escapeHtml, userId, userHasPaid,
+   waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener, initFirebaseListener,
+   preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus, lateInit
+*/
+
+/* eslint-disable no-unused-vars */
+
 var uiFullscreen = false;
 
 function _showUserInfo(ev) {
-    showUserInfo(ev.data.nick, ev.data.fullname, ev.data.userid);
+   showUserInfo(ev.data.nick, ev.data.fullname, ev.data.userid);
 }
 
 function updateChallenges(json) {
@@ -269,10 +279,11 @@ function toggleElo(ev) {
    $("#user-load").css("display", "block");
    ulRq = true; // Set to false again in populateEloList()
    serverQuery("/rating",
-   {
-      kind: eloState ? "all" : "human"
-   },
-   populateEloList);
+      {
+         kind: eloState ? "all" : "human"
+      },
+      populateEloList
+   );
 }
 
 // What range of users was last displayed, in case we need to refresh?

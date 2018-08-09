@@ -12,6 +12,13 @@
 
 */
 
+/*
+   global firebase:false
+*/
+
+/* eslint-disable no-console */
+/* eslint-disable no-unused-vars */
+
 function loginFirebase(token) {
    // Log in to Firebase using the provided custom token
    firebase.auth()

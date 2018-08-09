@@ -12,7 +12,7 @@
 
 """
 
-from functools import reduce
+import functools
 
 
 class Alphabet:
@@ -46,7 +46,7 @@ class Alphabet:
     @staticmethod
     def bit_pattern(word):
         """ Return a pattern of bits indicating which letters are present in the word """
-        return reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
+        return functools.reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
 
     @staticmethod
     def bit_of(c):
@@ -156,7 +156,7 @@ class Alphabet:
 
 
 # Initialize the locale collation (sorting) map
-Alphabet._init()
+Alphabet._init()  # pylint: disable=W0212
 
 
 # noinspection PyUnresolvedReferences
@@ -191,7 +191,9 @@ class TileSet(object):
 
 class OldTileSet(TileSet):
 
-    """ Letter scores in the old (original) Icelandic tile set """
+    """ The old (original) Icelandic tile set """
+
+    # Letter scores in the old (original) Icelandic tile set
 
     scores = {
         u'a': 1,
@@ -273,7 +275,9 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 class NewTileSet(TileSet):
 
-    """ Scores in new Icelandic tile set """
+    """ The new Icelandic tile set, created by Skraflfélag Íslands """
+
+    # Scores in new Icelandic tile set
 
     scores = {
         u'a': 1,

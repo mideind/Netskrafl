@@ -12,6 +12,12 @@
 
 */
 
+/*
+   global $:false, serverQuery, gameUrl, userId, serverQueryHtml
+*/
+
+/* eslint-disable no-unused-vars */
+
 var entityMap = {
    "&": "&amp;",
    "<": "&lt;",
@@ -23,7 +29,7 @@ var entityMap = {
 
 function escapeHtml(string) {
    /* Utility function to properly encode a string into HTML */
-   return String(string).replace(/[&<>"'\/]/g, function (s) {
+   return String(string).replace(/[&<>"'/]/g, function (s) {
       return entityMap[s];
    });
 }

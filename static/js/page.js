@@ -18,6 +18,16 @@
 
 */
 
+/*
+  global m:false, Promise:false, $state:false, Game:false,
+  loginFirebase, attachFirebaseListener, detachFirebaseListener,
+  toVector, coord
+*/
+
+/* eslint-disable indent */
+/* eslint-disable no-console */
+/* eslint-disable no-unused-vars */
+
 var main = (function() {
 
 "use strict";
@@ -1703,7 +1713,7 @@ function createView() {
         var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view })
+          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view });
         // Show normal user list
         var list = [];
         if (model.userList === undefined)
@@ -1730,8 +1740,8 @@ function createView() {
           ),
           vwUserList(listType, list),
           // Show indicator if search didn't find any users matching the criteria
-          nothingFound
-            ? m("div",
+          nothingFound ?
+            m("div",
                 { id: "user-no-match", style: { display: "block" } },
                 [ glyph("search"), " ", m("span", { id: "search-prefix" }, model.userListCriteria.spec), " finnst ekki" ]
               )
@@ -2452,7 +2462,7 @@ function createView() {
 
     function games() {
       var r = [];
-      var numMyTurns = 0;
+      // var numMyTurns = 0;
       if (game.gamelist == null)
         // No games to show now, but we'll load them
         // and they will be automatically refreshed when ready
@@ -2496,7 +2506,7 @@ function createView() {
               )
             )
           );
-          numMyTurns++;
+          // numMyTurns++;
         }
       }
       return r;
@@ -2847,7 +2857,7 @@ function createView() {
         title: title
       };
       if (disabled)
-        attr.onclick = function(ev) { ev.preventDefault(); }
+        attr.onclick = function(ev) { ev.preventDefault(); };
       else
         attr.onclick = function(func, ev) {
           func();
@@ -2905,7 +2915,7 @@ function createView() {
           function() { game.submitChallenge(); },
           'Véfenging (röng kostar 10 stig)'
         )
-      )
+      );
     if (showChallengeInfo)
       r.push(m(".chall-info"));
     if (showRecall)
@@ -3975,7 +3985,7 @@ var UserInfoDialog = {
           )
         ]
       )
-    )
+    );
   }
 
 };
@@ -4154,9 +4164,10 @@ var PromoDialog = {
               }
             }
           },
-          m.trust(this.html))
+          m.trust(this.html)
+        )
       )
-    )
+    );
   }
 
 };
@@ -4254,7 +4265,7 @@ function SearchButton(vnode) {
         ]
       );
     }
-  }
+  };
 }
 
 var DialogButton = {
@@ -4283,7 +4294,7 @@ function escapeHtml(string) {
     "'": '&#39;',
     "/": '&#x2F;'
   };
-  return String(string).replace(/[&<>"'\/]/g, function (s) {
+  return String(string).replace(/[&<>"'/]/g, function (s) {
     return entityMap[s];
   });
 }

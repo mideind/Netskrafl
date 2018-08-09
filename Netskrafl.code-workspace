@@ -24,5 +24,6 @@
 		},
 		"python.pythonPath": "C:\\Python27\\python.exe",
 		"python.formatting.blackArgs": ["-S"],
+		"javascript.suggestionActions.enabled": false,
 	}
 }
