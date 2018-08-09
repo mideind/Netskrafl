@@ -848,7 +848,6 @@ class StatsModel(ndb.Model):
 
         result = dict()
         CHUNK_SIZE = 100
-        offset = 0
         lowest_elo = None
 
         # The following loop may yield an incorrect result since there may
