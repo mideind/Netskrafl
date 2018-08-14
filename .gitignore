@@ -50,6 +50,7 @@ profile.bin
 *.sublime-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
+.vscode/
 
 # Distribution / packaging
 .Python
@@ -149,4 +150,3 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 .env
-.vscode/settings.json

@@ -875,6 +875,11 @@ class Move(MoveBase):
         """ Return True if bingo move (all tiles laid down) """
         return self.num_covers() == Rack.MAX_TILES
 
+    @property
+    def row(self):
+        """ Return the starting row of this move """
+        return self._row
+
     def covers(self):
         """ Return the list of covered squares """
         return self._covers

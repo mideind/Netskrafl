@@ -184,6 +184,11 @@ class Axis:
         """ Is the square at the index empty? """
         return bool(self._empty_bits & (1 << index))
 
+    @property
+    def autoplayer(self):
+        """ Return the associated Autoplayer instance """
+        return self._autoplayer
+
     def mark_anchor(self, index):
         """ Force the indicated square to be an anchor. Used in first move
             to mark the center square. """
@@ -249,7 +254,7 @@ class Axis:
             leftpart = u''
             ix = index
             while ix > 0 and not self.is_empty(ix - 1):
-                leftpart = self._sq[ix - 1]._letter + leftpart
+                leftpart = self._sq[ix - 1].letter + leftpart
                 ix -= 1
             # Use the ExtendRightNavigator to find valid words with this left part
             nav = LeftFindNavigator(leftpart)
@@ -518,6 +523,7 @@ class ExtendRightNavigator:
 
     def accept(self, matched, final):
         """ Called to inform the navigator of a match and whether it is a final word """
+        # pylint: disable=bad-continuation
         if (
             final and len(matched) > 1 and
             (self._index >= Board.SIZE or self._axis.is_empty(self._index))
@@ -529,7 +535,7 @@ class ExtendRightNavigator:
             xd, yd = self._axis.coordinate_step()
             move = Move(matched, row, col, self._axis.is_horizontal())
             # Fetch the rack as it was at the beginning of move generation
-            autoplayer = self._axis._autoplayer
+            autoplayer = self._axis.autoplayer
             rack = autoplayer.rack()
             tiles = u''
             for c in matched:
@@ -635,11 +641,11 @@ class AutoPlayer:
 
     def _axis_from_row(self, row):
         """ Create and initialize an Axis from a board row """
-        return Axis(self, row, True) # Horizontal
+        return Axis(self, row, True)  # Horizontal
 
     def _axis_from_column(self, col):
         """ Create and initialize an Axis from a board column """
-        return Axis(self, col, False) # Vertical
+        return Axis(self, col, False)  # Vertical
 
     def generate_move(self):
         """ Finds and returns a Move object to be played """
@@ -733,7 +739,7 @@ class AutoPlayer:
                 Sort moves first by descending score, and in case of ties,
                 try to go to the upper half of the board for a more open game
             """
-            return (- x[1], x[0]._row)
+            return (- x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():
@@ -756,9 +762,10 @@ class AutoPlayer:
         top_equal = 0
         # Move the selection window down the list as long as the top moves have the same score
         if picklist > 1:
+            # pylint: disable=bad-continuation
             while (
-                picklist + top_equal < num_candidates and
-                scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]
+                picklist + top_equal < num_candidates
+                and scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]
             ):
                 top_equal += 1
         # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top"
@@ -768,6 +775,7 @@ class AutoPlayer:
         #    logging.info(u"Move {0} score {1}".format(m, sc).encode("latin-1"))
         return scored_candidates[top_equal + randint(0, picklist - 1)][0]
 
+    # pylint: disable=unused-argument
     def _find_best_move(self, depth):
         """ Analyze the list of candidate moves and pick the highest-scoring one """
 
@@ -865,7 +873,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             """ Special case for first move:
                 Sort moves first by descending score, and in case of ties,
                 try to go to the upper half of the board for a more open game """
-            return (- x[1], x[0]._row)
+            return (- x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():
@@ -891,6 +899,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
 
         weighted_candidates = []
         min_score = None
+
+        # pylint: disable=superfluous-parens
 
         print(u"Looking at {0} top scoring candidate moves".format(NUM_CANDIDATES))
         # Look at the top scoring candidates
@@ -924,6 +934,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
                         # New rack: see how well it would score
                         apl = AutoPlayer_MiniMax(teststate)
                         # Go one level deeper into move generation
+                        # pylint: disable=protected-access
                         move = apl._generate_move(depth=depth - 1)
                         # Calculate the score of this random rack based move
                         # but do not apply it to the teststate

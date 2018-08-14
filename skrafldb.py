@@ -55,6 +55,8 @@
 
 """
 
+# pylint: disable=too-many-lines
+
 import logging
 import uuid
 
@@ -297,6 +299,7 @@ class UserModel(ndb.Model):
         def fetch(q, max_len):
             """ Generator for returning query result keys """
             assert max_len > 0
+            # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
             for k in iter_q(
                 q, chunk_size=max_len, projection=[UserModel.highest_score]
@@ -410,7 +413,8 @@ class GameModel(ndb.Model):
     # Adjustment of Elo points of both players as a result of this game
     elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
     elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    # Human-only Elo points of both players when game finished (not defined if robot game)
+    # Human-only Elo points of both players when game finished
+    # (not defined if robot game)
     human_elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
     human_elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
     # Human-only Elo point adjustment as a result of this game
@@ -426,12 +430,12 @@ class GameModel(ndb.Model):
             self.player1 = k
 
     @classmethod
-    def fetch(cls, uuid, use_cache=True):
+    def fetch(cls, game_uuid, use_cache=True):
         """ Fetch a game entity given its uuid """
         if not use_cache:
-            return cls.get_by_id(uuid, use_cache=False, use_memcache=False)
+            return cls.get_by_id(game_uuid, use_cache=False, use_memcache=False)
         # Default caching policy if caching is not explictly prohibited
-        return cls.get_by_id(uuid)
+        return cls.get_by_id(game_uuid)
 
     @classmethod
     def list_finished_games(cls, user_id, versus=None, max_len=10):
@@ -442,7 +446,7 @@ class GameModel(ndb.Model):
 
         def game_callback(gm):
             """ Map a game entity to a result dictionary with useful info about the game """
-            uuid = gm.key.id()
+            game_uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
@@ -459,7 +463,7 @@ class GameModel(ndb.Model):
                 elo_adj = gm.elo1_adj
                 human_elo_adj = gm.human_elo1_adj
             return dict(
-                uuid=uuid,
+                uuid=game_uuid,
                 ts=gm.timestamp,
                 ts_last_move=gm.ts_last_move or gm.timestamp,
                 opp=opp,
@@ -483,6 +487,7 @@ class GameModel(ndb.Model):
             q0 = cls.query(GameModel.player0 == k)
             q1 = cls.query(GameModel.player1 == k)
 
+        # pylint: disable=singleton-comparison
         q0 = q0.filter(GameModel.over == True).order(-GameModel.ts_last_move)
         q1 = q1.filter(GameModel.over == True).order(-GameModel.ts_last_move)
 
@@ -504,6 +509,7 @@ class GameModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
+        # pylint: disable=singleton-comparison
         q = (
             cls
             .query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k))
@@ -513,7 +519,7 @@ class GameModel(ndb.Model):
 
         def game_callback(gm):
             """ Map a game entity to a result tuple with useful info about the game """
-            uuid = gm.key.id()
+            game_uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
@@ -539,7 +545,7 @@ class GameModel(ndb.Model):
                         # Normal tile move
                         tc += len(m.tiles.replace(u'?', u''))
             return dict(
-                uuid=uuid,
+                uuid=game_uuid,
                 ts=gm.ts_last_move or gm.timestamp,
                 opp=opp,
                 robot_level=gm.robot_level,

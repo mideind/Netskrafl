@@ -102,6 +102,7 @@ _LOGOUT_URL = "/page#!/login"
 @app.before_request
 def before_request():
     """ Redirect http requests to https, returning a Moved Permanently code """
+    # pylint: disable=bad-continuation
     if (
         not running_local
         and request.url.startswith('http://')
@@ -1520,10 +1521,12 @@ class UserForm:
     def validate(self):
         """ Check the current form data for validity and return a dict of errors, if any """
         errors = dict()
+        # pylint: disable=bad-continuation
         if not self.nickname:
             errors['nickname'] = u"Notandi verður að hafa einkenni"
-        elif (self.nickname[0] not in Alphabet.full_order) and (
-            self.nickname[0] not in Alphabet.full_upper
+        elif (
+            self.nickname[0] not in Alphabet.full_order
+            and self.nickname[0] not in Alphabet.full_upper
         ):
             errors['nickname'] = u"Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
@@ -2050,6 +2053,7 @@ def login():
     return render_template("login.html", login_url=login_url)
 
 
+# pylint: disable=redefined-builtin
 @app.route("/help")
 def help():
     """ Show help page """
