@@ -22,7 +22,15 @@ import sys
 import time
 
 from languages import NewTileSet
-from skraflmechanics import State, Board, Move, ExchangeMove, ChallengeMove, ResponseMove, Error
+from skraflmechanics import (
+    State,
+    Board,
+    Move,
+    ExchangeMove,
+    ChallengeMove,
+    ResponseMove,
+    Error,
+)
 from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
 
 
@@ -31,7 +39,7 @@ _PROFILING = False
 
 def test_move(state, movestring):
     """ Test placing a simple tile move """
-    coord, word = movestring.split(u' ')
+    coord, word = movestring.split(u" ")
     rowid = Board.ROWIDS
     xd, yd = 0, 0
     horiz = True
@@ -47,11 +55,11 @@ def test_move(state, movestring):
     move = Move(word, row, col, horiz)
     next_is_blank = False
     for c in word:
-        if c == u'?':
+        if c == u"?":
             next_is_blank = True
             continue
         if not state.board().is_covered(row, col):
-            move.add_cover(row, col, u'?' if next_is_blank else c, c)
+            move.add_cover(row, col, u"?" if next_is_blank else c, c)
             next_is_blank = False
         row += xd
         col += yd
@@ -125,7 +133,7 @@ def test_game(players, silent):
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(tileset = NewTileSet, drawtiles = True)
+    state = State(tileset=NewTileSet, drawtiles=True)
 
     print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
     print(u"Bag contents are:\n{0}".format(state.bag().contents()))
@@ -137,7 +145,7 @@ def test_game(players, silent):
         state.set_player_name(ix, players[ix][0])
 
     if not silent:
-        print(state.__str__()) # This works in Python 2 and 3
+        print(state.__str__())  # This works in Python 2 and 3
 
     # Generate a sequence of moves, switching player sides automatically
 
@@ -178,7 +186,14 @@ def test_game(players, silent):
     if not silent:
         print(
             u"Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)"
-            .format(p0, p1, state.num_moves(), t1 - t0, state.player_name(0), state.player_name(1))
+            .format(
+                p0,
+                p1,
+                state.num_moves(),
+                t1 - t0,
+                state.player_name(0),
+                state.player_name(1)
+            )
         )
 
     return state.scores()
@@ -188,7 +203,7 @@ def test_manual_game():
     """ Manual game test """
 
     # Initial, empty game state
-    state = State(tileset = NewTileSet, manual_wordcheck = True, drawtiles = True)
+    state = State(tileset=NewTileSet, manual_wordcheck=True, drawtiles=True)
 
     print(u"Manual game")
     print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
@@ -210,7 +225,8 @@ def test_manual_game():
     state.player_rack().set_tiles(u"dýsturi")
     test_move(state, u"I3 dýs")
     state.player_rack().set_tiles(u"?xalmen")
-    test_move(state, u"6E ?óx") # The question mark indicates a blank tile for the subsequent cover
+    # The question mark indicates a blank tile for the subsequent cover
+    test_move(state, u"6E ?óx")
     state.player_rack().set_tiles(u"eiðarps")
 
     test_move(state, u"9F eipar")
@@ -230,12 +246,13 @@ def test_manual_game():
 
     print(
         u"Manual game over, final score {3} {0} : {4} {1} after {2} moves"
-        .format(p0, p1, state.num_moves(), state.player_name(0), state.player_name(1))
+        .format(
+            p0, p1, state.num_moves(), state.player_name(0), state.player_name(1)
+        )
     )
 
 
 def test(num_games, opponent, silent):
-
     def autoplayer_creator(state):
         return AutoPlayer(state)
 
@@ -243,7 +260,7 @@ def test(num_games, opponent, silent):
         return AutoPlayer_MiniMax(state)
 
     players = [None, None]
-    if opponent == u'minimax':
+    if opponent == u"minimax":
         players[0] = (u"AutoPlayer", autoplayer_creator)
         players[1] = (u"MiniMax", minimax_creator)
     else:
@@ -271,18 +288,18 @@ def test(num_games, opponent, silent):
             p0, p1 = test_game(players, silent)
         if p0 > p1:
             gameswon[0] += 1
-            sumofmargin[0] += (p0 - p1)
+            sumofmargin[0] += p0 - p1
         elif p1 > p0:
             gameswon[1] += 1
-            sumofmargin[1] += (p1 - p0)
+            sumofmargin[1] += p1 - p0
         totalpoints[0] += p0
         totalpoints[1] += p1
 
     t1 = time.time()
 
-    print(u"Test completed, {0} games played in {1:.2f} seconds, "
-        "{2:.2f} seconds per game"
-        .format(num_games, t1 - t0, (t1 - t0) / num_games)
+    print(
+        u"Test completed, {0} games played in {1:.2f} seconds, "
+        u"{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player):
@@ -292,18 +309,18 @@ def test(num_games, opponent, silent):
                 .format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
-                    players[player][0]
+                    players[player][0],
                 )
             )
         else:
             print(
                 u"{3} won {0} games with an average margin of {2:.1f} and "
-                "scored an average of {1:.1f} points per game"
+                u"scored an average of {1:.1f} points per game"
                 .format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
                     float(sumofmargin[player]) / gameswon[player],
-                    players[player][0]
+                    players[player][0],
                 )
             )
 
@@ -312,7 +329,6 @@ def test(num_games, opponent, silent):
 
 
 class Usage(Exception):
-
     def __init__(self, msg):
         super(Usage, self).__init__(msg)
         self.msg = msg
@@ -328,7 +344,7 @@ def main(argv=None):
             opts, _ = getopt.getopt(
                 argv[1:],
                 "hn:o:sm",
-                ["help", "numgames", "opponent", "silent", "manual"]
+                ["help", "numgames", "opponent", "silent", "manual"],
             )
         except getopt.error as msg:
             raise Usage(msg)
@@ -355,7 +371,10 @@ def main(argv=None):
         if manual:
             test_manual_game()
         else:
-            print(u"Running {0} games against {1}".format(num_games, opponent or u"autoplayer"))
+            print(
+                u"Running {0} games against {1}"
+                .format(num_games, opponent or u"autoplayer")
+            )
             test(num_games, opponent, silent)
 
     except Usage as err:
@@ -375,9 +394,9 @@ def profile_main():
 
     _PROFILING = True
 
-    filename = 'skrafltester.profile'
+    filename = "skrafltester.profile"
 
-    profile.run('main()', filename)
+    profile.run("main()", filename)
 
     stats = pstats.Stats(filename)
 
@@ -385,12 +404,11 @@ def profile_main():
     stats.strip_dirs()
 
     # Sort the statistics by the total time spent in the function itself
-    stats.sort_stats('tottime')
+    stats.sort_stats("tottime")
 
-    stats.print_stats(100) # Print 100 most significant lines
+    stats.print_stats(100)  # Print 100 most significant lines
 
 
 if __name__ == "__main__":
     sys.exit(main())
-    #sys.exit(profile_main())
-
+    # sys.exit(profile_main())

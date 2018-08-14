@@ -29,24 +29,25 @@ from languages import Alphabet
 from skrafldb import Context, UserModel, GameModel, StatsModel, RatingModel
 from skrafldb import iter_q
 
+
 # Standard Flask initialization
 
 app = Flask(__name__)
 
-running_local = os.environ.get('SERVER_SOFTWARE', '').startswith('Development')
+running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
 if running_local:
     logging.info(u"Skraflstats module running with DEBUG set to True")
 
-app.config['DEBUG'] = running_local
+app.config["DEBUG"] = running_local
 
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
     app.secret_key = f.read()
 
 # The K constant used in the Elo calculation
-ELO_K = 20.0 # For established players
-BEGINNER_K = 32.0 # For beginning players
+ELO_K = 20.0  # For established players
+BEGINNER_K = 32.0  # For beginning players
 
 # How many games a player plays as a provisional player
 # before becoming an established one
@@ -56,14 +57,14 @@ ESTABLISHED_MARK = 10
 def monthdelta(date, delta):
     """ Calculate a date x months from now, in the past or in the future """
     m, y = (date.month + delta) % 12, date.year + (date.month + delta - 1) // 12
-    if not m: m = 12
+    if not m:
+        m = 12
     d = min(date.day, calendar.monthrange(y, m)[1])
-    return date.replace(day = d, month = m, year = y)
+    return date.replace(day=d, month=m, year=y)
 
 
 def _compute_elo(o_elo, sc0, sc1, est0, est1):
     """ Computes the Elo points of the two users after their game """
-
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
     assert sc1 >= 0
@@ -125,7 +126,7 @@ def _compute_elo(o_elo, sc0, sc1, est0, est1):
 def _write_stats(timestamp, urecs):
     """ Writes the freshly calculated statistics records to the database """
     # Delete all previous stats with the same timestamp, if any
-    StatsModel.delete_ts(timestamp = timestamp)
+    StatsModel.delete_ts(timestamp=timestamp)
     um_list = []
     for sm in urecs.values():
         # Set the reference timestamp for the entire stats series
@@ -146,7 +147,6 @@ def _write_stats(timestamp, urecs):
 
 def _run_stats(from_time, to_time):
     """ Runs a process to update user statistics and Elo ratings """
-
     logging.info(u"Generating stats from {0} to {1}".format(from_time, to_time))
 
     if from_time is None or to_time is None:
@@ -159,11 +159,9 @@ def _run_stats(from_time, to_time):
 
     # Iterate over all finished games within the time span in temporal order
     q = (
-        GameModel
-        .query(
+        GameModel.query(
             ndb.AND(
-                GameModel.ts_last_move > from_time,
-                GameModel.ts_last_move <= to_time
+                GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time
             )
         )
         .order(GameModel.ts_last_move)
@@ -183,7 +181,7 @@ def _run_stats(from_time, to_time):
     try:
         # Use i as a progress counter
         i = 0
-        for gm in iter_q(q, chunk_size = 250):
+        for gm in iter_q(q, chunk_size=250):
             i += 1
             # ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
@@ -273,7 +271,9 @@ def _run_stats(from_time, to_time):
             # If not a robot game, compute the human-only Elo
             if not robot_game:
                 gm.human_elo0, gm.human_elo1 = urec0.human_elo, urec1.human_elo
-                adj = _compute_elo((urec0.human_elo, urec1.human_elo), s0, s1, est0, est1)
+                adj = _compute_elo(
+                    (urec0.human_elo, urec1.human_elo), s0, s1, est0, est1
+                )
                 # Adjust player 0
                 if est0 and not est1:
                     adj = (0, adj[1])
@@ -293,23 +293,18 @@ def _run_stats(from_time, to_time):
             if i % 1000 == 0:
                 logging.info(u"Processed {0} games".format(i))
 
-    except DeadlineExceededError as ex:
+    except DeadlineExceededError:
         # Hit deadline: save the stuff we already have and
         # defer a new task to continue where we left off
         logging.info(
             u"Deadline exceeded in stats loop after {0} games and {1} users"
             .format(cnt, len(users))
         )
-        logging.info(
-            u"Resuming from timestamp {0}"
-            .format(ts_last_processed)
-        )
+        logging.info(u"Resuming from timestamp {0}".format(ts_last_processed))
         if ts_last_processed is not None:
             _write_stats(ts_last_processed, users)
         deferred.defer(
-            deferred_stats,
-            from_time = ts_last_processed or from_time,
-            to_time = to_time
+            deferred_stats, from_time=ts_last_processed or from_time, to_time=to_time
         )
         # Normal return prevents this task from being run again
         return
@@ -330,14 +325,13 @@ def _run_stats(from_time, to_time):
 
 def _create_ratings():
     """ Create the Top 100 ratings tables """
-
     logging.info(u"Starting _create_ratings")
 
     _key = StatsModel.dict_key
 
     timestamp = datetime.utcnow()
-    yesterday = timestamp - timedelta(days = 1)
-    week_ago = timestamp - timedelta(days = 7)
+    yesterday = timestamp - timedelta(days=1)
+    week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
@@ -349,9 +343,15 @@ def _create_ratings():
             key = _key(sm)
 
             def _augment(prop):
-                sm[prop + "_yesterday"] = t_yesterday[key][prop] if key in t_yesterday else 0
-                sm[prop + "_week_ago"] = t_week_ago[key][prop] if key in t_week_ago else 0
-                sm[prop + "_month_ago"] = t_month_ago[key][prop] if key in t_month_ago else 0
+                sm[prop + "_yesterday"] = (
+                    t_yesterday[key][prop] if key in t_yesterday else 0
+                )
+                sm[prop + "_week_ago"] = (
+                    t_week_ago[key][prop] if key in t_week_ago else 0
+                )
+                sm[prop + "_month_ago"] = (
+                    t_month_ago[key][prop] if key in t_month_ago else 0
+                )
 
             _augment("rank")
             _augment("games")
@@ -363,27 +363,37 @@ def _create_ratings():
 
     # All players including robot games
 
-    #top100_all = StatsModel.list_elo(None, 100)
-    top100_all = [ sm for sm in StatsModel.list_elo(timestamp, 100) ]
-    top100_all_yesterday = { _key(sm) : sm for sm in StatsModel.list_elo(yesterday, 100) }
-    top100_all_week_ago = { _key(sm) : sm for sm in StatsModel.list_elo(week_ago, 100) }
-    top100_all_month_ago = { _key(sm) : sm for sm in StatsModel.list_elo(month_ago, 100) }
+    # top100_all = StatsModel.list_elo(None, 100)
+    top100_all = [sm for sm in StatsModel.list_elo(timestamp, 100)]
+    top100_all_yesterday = {_key(sm): sm for sm in StatsModel.list_elo(yesterday, 100)}
+    top100_all_week_ago = {_key(sm): sm for sm in StatsModel.list_elo(week_ago, 100)}
+    top100_all_month_ago = {_key(sm): sm for sm in StatsModel.list_elo(month_ago, 100)}
 
     # Augment the table for all games
-    _augment_table(top100_all, top100_all_yesterday, top100_all_week_ago, top100_all_month_ago)
+    _augment_table(
+        top100_all, top100_all_yesterday, top100_all_week_ago, top100_all_month_ago
+    )
 
     # Human only games
 
-    #top100_human = StatsModel.list_human_elo(None, 100)
-    top100_human = [ sm for sm in StatsModel.list_human_elo(timestamp, 100) ]
-    top100_human_yesterday = { _key(sm) : sm for sm in StatsModel.list_human_elo(yesterday, 100) }
-    top100_human_week_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(week_ago, 100) }
-    top100_human_month_ago = { _key(sm) : sm for sm in StatsModel.list_human_elo(month_ago, 100) }
+    # top100_human = StatsModel.list_human_elo(None, 100)
+    top100_human = [sm for sm in StatsModel.list_human_elo(timestamp, 100)]
+    top100_human_yesterday = {
+        _key(sm): sm for sm in StatsModel.list_human_elo(yesterday, 100)
+    }
+    top100_human_week_ago = {
+        _key(sm): sm for sm in StatsModel.list_human_elo(week_ago, 100)
+    }
+    top100_human_month_ago = {
+        _key(sm): sm for sm in StatsModel.list_human_elo(month_ago, 100)
+    }
 
     # Augment the table for human only games
     _augment_table(
-        top100_human, top100_human_yesterday,
-        top100_human_week_ago, top100_human_month_ago
+        top100_human,
+        top100_human_yesterday,
+        top100_human_week_ago,
+        top100_human_month_ago
     )
 
     logging.info(u"Writing top 100 tables to the database")
@@ -445,7 +455,7 @@ def deferred_ratings():
 
         _create_ratings()
 
-    except DeadlineExceededError as ex:
+    except DeadlineExceededError:
         # Hit deadline: save the stuff we already have and
         # defer a new task to continue where we left off
         logging.error(u"Deadline exceeded in ratings, failing permamently")
@@ -461,51 +471,48 @@ def deferred_ratings():
 
     logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
     StatsModel.log_cache_stats()
-    StatsModel.clear_cache() # Do not maintain the cache in memory between runs
+    StatsModel.clear_cache()  # Do not maintain the cache in memory between runs
 
 
 @app.route("/_ah/start")
 def start():
     """ App Engine is starting a fresh instance """
-
     logging.info(u"Start instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok = True)
+    return jsonify(ok=True)
 
 
 @app.route("/_ah/stop")
 def stop():
     """ App Engine is stopping this instance """
-
     logging.info(u"Stop instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok = True)
+    return jsonify(ok=True)
 
 
 @app.route("/_ah/warmup")
 def warmup():
     """ App Engine is warming up this instance """
     logging.info(u"Warmup instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok = True)
+    return jsonify(ok=True)
 
 
 @app.route("/stats/run")
 def stats_run():
     """ Calculate a new set of statistics """
-
     logging.info(u"Starting stats calculation")
 
     # If invoked without parameters (such as from a cron job),
     # this will calculate yesterday's statistics
     now = datetime.utcnow()
-    yesterday = now - timedelta(days = 1)
+    yesterday = now - timedelta(days=1)
 
     year = int(request.args.get("year", str(yesterday.year)))
     month = int(request.args.get("month", str(yesterday.month)))
     day = int(request.args.get("day", str(yesterday.day)))
 
     try:
-        from_time = datetime(year = year, month = month, day = day)
-        to_time = from_time + timedelta(days = 1)
-        deferred.defer(deferred_stats, from_time = from_time, to_time = to_time)
+        from_time = datetime(year=year, month=month, day=day)
+        to_time = from_time + timedelta(days=1)
+        deferred.defer(deferred_stats, from_time=from_time, to_time=to_time)
     except Exception as ex:
         err = u"Stats calculation failed with exception {0}".format(ex)
         logging.error(err)
@@ -518,7 +525,6 @@ def stats_run():
 @app.route("/stats/ratings")
 def stats_ratings():
     """ Calculate new ratings tables """
-
     logging.info(u"Starting ratings calculation")
     deferred.defer(deferred_ratings)
     return u"Ratings calculation has been started", 200
@@ -527,10 +533,8 @@ def stats_ratings():
 @app.route("/stats/login")
 def stats_login():
     """ Handler for the login & greeting page """
-
     login_url = users.create_login_url(url_for("stats_ping"))
-
-    return render_template("statslogin.html", login_url = login_url)
+    return render_template("statslogin.html", login_url=login_url)
 
 
 @app.route("/stats/ping")
@@ -542,13 +546,13 @@ def stats_ping():
 @app.errorhandler(404)
 def page_not_found(e):
     """ Return a custom 404 error """
-    return u'Incorrect URL path', 404
+    return u"Incorrect URL path", 404
 
 
 @app.errorhandler(500)
 def server_error(e):
     """ Return a custom 500 error """
-    return u'Server error: {}'.format(e), 500
+    return u"Server error: {}".format(e), 500
 
 
 # Run a default Flask web server for testing if invoked directly as a main program

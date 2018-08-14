@@ -144,9 +144,7 @@ class Axis:
     def __init__(self, autoplayer, index, horizontal):
 
         self._autoplayer = autoplayer
-        self._sq = [None] * Board.SIZE
-        for i in range(Board.SIZE):
-            self._sq[i] = Square()
+        self._sq = [Square() for _ in range(Board.SIZE)]
         self._index = index
         self._horizontal = horizontal
         self._rack = autoplayer.rack()
@@ -320,7 +318,7 @@ class LeftPermutationNavigator:
         self._stack = []
         self._maxleft = len(rack) - 1  # One tile on the anchor itself
         # assert self._maxleft > 0
-        self._leftparts = [None] * self._maxleft
+        self._leftparts = [None for _ in range(self._maxleft)]
         self._index = 0
 
     def leftparts(self, length):

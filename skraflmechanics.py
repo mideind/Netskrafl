@@ -51,7 +51,7 @@ _RAW_WORDSCORE = [
     "111211111112111",
     "112111111111211",
     "121111111111121",
-    "311111131111113"
+    "311111131111113",
 ]
 
 # Board squares with letter scores (1=normal/single, 2=double, 3=triple letter score)
@@ -70,7 +70,7 @@ _RAW_LETTERSCORE = [
     "211111121111112",
     "111111212111111",
     "111113111311111",
-    "111211111112111"
+    "111211111112111",
 ]
 
 
@@ -93,18 +93,20 @@ class Board:
         """ RC if horizontal move, or CR if vertical.
             R is A,B,C... C is 1,2,3... """
         return (
-            Board.ROWIDS[row] + str(col + 1) if horiz
+            Board.ROWIDS[row] + str(col + 1)
+            if horiz
             else str(col + 1) + Board.ROWIDS[row]
         )
 
     def __init__(self, copy=None):
 
         # pylint: disable=protected-access
+        # noinspection PyProtectedMember
         if copy is None:
             # Store letters on the board in list of strings
-            self._letters = [u' ' * Board.SIZE for _ in range(Board.SIZE)]
+            self._letters = [u" " * Board.SIZE for _ in range(Board.SIZE)]
             # Store tiles on the board in list of strings
-            self._tiles = [u' ' * Board.SIZE for _ in range(Board.SIZE)]
+            self._tiles = [u" " * Board.SIZE for _ in range(Board.SIZE)]
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
@@ -122,7 +124,7 @@ class Board:
 
     def is_covered(self, row, col):
         """ Is the specified square already covered (taken)? """
-        return self._letters[row][col] != u' '
+        return self._letters[row][col] != u" "
 
     def has_adjacent(self, row, col):
         """ Check whether there are any tiles on the board adjacent to this square """
@@ -152,10 +154,10 @@ class Board:
         if prev == letter:
             # Unchanged square: we're done
             return
-        if prev == u' ' and letter != u' ':
+        if prev == u" " and letter != u" ":
             # Putting a letter into a previously empty square
             self._numletters += 1
-        elif prev != u' ' and letter == u' ':
+        elif prev != u" " and letter == u" ":
             # Removing a letter from a previously filled square
             self._numletters -= 1
         r = self._letters[row]
@@ -169,10 +171,10 @@ class Board:
         if prev == tile:
             # Unchanged square: we're done
             return
-        if prev == u' ' and tile != u' ':
+        if prev == u" " and tile != u" ":
             # Putting a tile into a previously empty square
             self._numtiles += 1
-        elif prev != u' ' and tile == u' ':
+        elif prev != u" " and tile == u" ":
             # Removing a tile from a previously filled square
             self._numtiles -= 1
         r = self._tiles[row]
@@ -183,18 +185,18 @@ class Board:
         for x in range(Board.SIZE):
             for y in range(Board.SIZE):
                 t = self.tile_at(x, y)
-                if t != u' ':
+                if t != u" ":
                     yield (x, y, t, self.letter_at(x, y))
 
     @staticmethod
     def adjacent(row, col, xd, yd, getter):
         """ Return the letters or tiles adjacent to the given square, in the direction (xd, yd) """
-        result = u''
+        result = u""
         row += xd
         col += yd
         while row in range(Board.SIZE) and col in range(Board.SIZE):
             ltr = getter(row, col)
-            if ltr == u' ':
+            if ltr == u" ":
                 # Empty square: we're done
                 break
             if xd + yd < 0:
@@ -241,11 +243,14 @@ class Board:
 
     def __str__(self):
         """ Simple text dump of the contents of the board """
-        l = [u"   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5"]
+        board = [u"   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5"]
         for y, row in enumerate(self._letters):
-            l.append(Board.ROWIDS[y] + u': ' + \
-                u' '.join([u'.' if c == u' ' else c for c in row]))
-        return u'\n'.join(l)
+            board.append(
+                Board.ROWIDS[y]
+                + u": "
+                + u" ".join([u"." if c == u" " else c for c in row])
+            )
+        return u"\n".join(board)
 
     @staticmethod
     def wordscore(row, col):
@@ -263,13 +268,14 @@ class Bag:
     """ Represents a bag of tiles """
 
     # The sort order for displaying the bag, with blank tiles last
-    SORT_ORDER = Alphabet.order + u'?'
+    SORT_ORDER = Alphabet.order + u"?"
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
     def __init__(self, tileset, copy=None, debug=False):
 
         # pylint: disable=protected-access
+        # noinspection PyProtectedMember
         if copy is None:
             # Get a full bag from the requested tile set
             if debug:
@@ -288,7 +294,7 @@ class Bag:
         if self.is_empty():
             return None
         tile = self._tiles[Bag.RNG.randint(0, len(self._tiles) - 1)]
-        self._tiles = self._tiles.replace(tile, u'', 1)
+        self._tiles = self._tiles.replace(tile, u"", 1)
         return tile
 
     def return_tiles(self, tiles):
@@ -321,7 +327,7 @@ class Bag:
 
     def subtract_board(self, board):
         """ Subtract all tiles on the board from the bag """
-        board_tiles = u''.join(tile for row, col, tile, letter in board.enum_tiles())
+        board_tiles = u"".join(tile for row, col, tile, letter in board.enum_tiles())
         self._tiles = Alphabet.string_subtract(self._tiles, board_tiles)
 
     def subtract_rack(self, rack):
@@ -339,14 +345,14 @@ class Rack:
 
         # pylint: disable=protected-access
         if copy is None:
-            self._tiles = u''
+            self._tiles = u""
         else:
             # Copy constructor: initialize from another Rack
             self._tiles = copy._tiles
 
     def remove_tile(self, tile):
         """ Remove a tile from the rack """
-        self._tiles = self._tiles.replace(tile, u'', 1)
+        self._tiles = self._tiles.replace(tile, u"", 1)
 
     def replenish(self, bag):
         """ Draw tiles from the bag until we have 7 tiles or the bag is empty """
@@ -378,7 +384,7 @@ class Rack:
         # (Quick and dirty, not time-critical)
         temp = self._tiles
         for c in tiles:
-            temp = temp.replace(c, u'', 1)
+            temp = temp.replace(c, u"", 1)
         return len(self._tiles) - len(temp) == len(tiles)
 
     def exchange(self, bag, tiles):
@@ -387,7 +393,7 @@ class Rack:
             # Need seven tiles in the bag to be allowed to exchange
             return False
         # First remove the tiles from the rack and replenish it
-        removed = u''
+        removed = u""
         for c in tiles:
             if c in self._tiles:
                 # Be careful and only remove tiles that actually were there
@@ -410,7 +416,7 @@ class Rack:
             tiles.append(bag.draw_tile())
         # Return the tiles sorted in alphabetical order
         tiles.sort(key=Alphabet.all_tiles.index)
-        self._tiles = u''.join(tiles)
+        self._tiles = u"".join(tiles)
 
 
 class State:
@@ -426,7 +432,8 @@ class State:
             self._board = Board()
             self._player_to_move = 0
             self._scores = [0, 0]  # "Pure" scores from moves on the board
-            self._adj_scores = [0, 0]  # Adjustments (deltas) made at the end of the game
+            # Adjustments (deltas) made at the end of the game
+            self._adj_scores = [0, 0]
             self._player_names = [u"", u""]
             self._num_passes = 0  # Number of consecutive Pass moves
             self._num_moves = 0  # Number of moves made
@@ -621,7 +628,7 @@ class State:
     def display_bag(self, player):
         """ Returns the current bag plus the rack of the opponent """
         displaybag = self._bag.contents() + self.rack(1 - player)
-        return u''.join(sorted(displaybag, key=Bag.SORT_ORDER.index))
+        return u"".join(sorted(displaybag, key=Bag.SORT_ORDER.index))
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players
@@ -652,7 +659,7 @@ class State:
             # One of the players lost on overtime
             player = lost_on_overtime
             # Subtract 100 points from the player
-            adj[player] = - min(100, sc[player])
+            adj[player] = -min(100, sc[player])
             # If not enough to make the other player win, add to the other player
             if sc[player] + adj[player] >= sc[1 - player]:
                 adj[1 - player] = sc[player] + adj[player] + 1 - sc[1 - player]
@@ -668,7 +675,7 @@ class State:
             # Game expired by passes
             for ix in range(2):
                 # Subtract the score of the player's own tiles
-                adj[ix] = - self._tileset.score(self.rack(ix))
+                adj[ix] = -self._tileset.score(self.rack(ix))
 
         # Apply overtime adjustment, if any
         if overtime_adjustment is not None:
@@ -692,18 +699,18 @@ class State:
         tomove0 = "-->" if self._player_to_move == 0 else ""
         tomove1 = "-->" if self._player_to_move == 1 else ""
         return (
-            self._board.__str__() +
-            u"\n{4}{0} {1} vs {5}{2} {3}"
-            .format(
-                self._player_names[0], self._scores[0],
-                self._player_names[1], self._scores[1],
-                tomove0, tomove1
-            ) +
-            u"\n'{0}' vs '{1}'"
-            .format(
-                self.rack(0), self.rack(1)
+            self._board.__str__()
+            + u"\n{4}{0} {1} vs {5}{2} {3}".format(
+                self._player_names[0],
+                self._scores[0],
+                self._player_names[1],
+                self._scores[1],
+                tomove0,
+                tomove1
             )
+            + u"\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
         )
+
 
 class Cover:
 
@@ -797,7 +804,7 @@ class MoveBase(object):
     # noinspection PyUnusedLocal
     def details(self, state):
         """ Return a tuple list describing tiles committed to the board by this move """
-        return [] # No tiles
+        return []  # No tiles
 
     # noinspection PyUnusedLocal
     def check_legality(self, state):
@@ -895,7 +902,8 @@ class Move(MoveBase):
         return [
             (
                 Board.ROWIDS[c.row] + str(c.col + 1),  # Coordinate
-                c.tile, c.letter,  # Tile and letter
+                c.tile,
+                c.letter,  # Tile and letter
                 scores[c.tile]  # Score
             )
             for c in self._covers
@@ -927,7 +935,7 @@ class Move(MoveBase):
             return False
         if (letter is None) or len(letter) != 1 or (letter not in Alphabet.order):
             return False
-        if tile != u'?' and tile != letter:
+        if tile != u"?" and tile != letter:
             return False
         if len(self._covers) >= Rack.MAX_TILES:
             # Already have 7 tiles being played
@@ -951,10 +959,10 @@ class Move(MoveBase):
             """ Generator to enumerate through a tiles string, yielding (tile, letter) tuples """
             ix = 0
             while ix < len(tiles):
-                if tiles[ix] == u'?':
+                if tiles[ix] == u"?":
                     # Wildcard tile: must be followed by its meaning
                     ix += 1
-                    yield (u'?', tiles[ix])
+                    yield (u"?", tiles[ix])
                 else:
                     # Normal letter tile
                     yield (tiles[ix], tiles[ix])
@@ -994,7 +1002,7 @@ class Move(MoveBase):
         vert = True
         first = True
         # All tiles played must be in the rack
-        played = u''.join([c.tile for c in self._covers])
+        played = u"".join([c.tile for c in self._covers])
         if not rack.contains(played):
             return Error.TILE_NOT_IN_RACK
         # The tiles covered by the move must be purely horizontal or purely vertical
@@ -1015,19 +1023,19 @@ class Move(MoveBase):
         if len(self._covers) == 1:
             # In the case of a tied length, we use horizontal
             self._horizontal = (
-                len(board.letters_left(row, col)) +
-                len(board.letters_right(row, col))
-                >=
-                len(board.letters_above(row, col)) +
-                len(board.letters_below(row, col))
+                len(board.letters_left(row, col))
+                + len(board.letters_right(row, col))
+            ) >= (
+                len(board.letters_above(row, col))
+                + len(board.letters_below(row, col))
             )
             horiz = self._horizontal
         # The move is purely horizontal or vertical
         if horiz:
-            self._covers.sort(key=lambda x: x.col) # Sort in ascending column order
+            self._covers.sort(key=lambda x: x.col)  # Sort in ascending column order
             self._horizontal = True
         else:
-            self._covers.sort(key=lambda x: x.row) # Sort in ascending row order
+            self._covers.sort(key=lambda x: x.row)  # Sort in ascending row order
             self._horizontal = False
         # Check whether eventual missing squares in the move sequence are already covered
         row = 0
@@ -1080,15 +1088,15 @@ class Move(MoveBase):
             self._numletters = row - self._row + 1
 
         # Assemble the resulting word
-        self._word = u''
-        self._tiles = u''
+        self._word = u""
+        self._tiles = u""
 
         def add(cix):
             """ Add a cover's letter and tile to the word and tiles strings """
             ltr = self._covers[cix].letter
             tile = self._covers[cix].tile
             self._word += ltr
-            self._tiles += tile + (ltr if tile == u'?' else u'')
+            self._tiles += tile + (ltr if tile == u"?" else u"")
 
         cix = 0
 
@@ -1142,15 +1150,15 @@ class Move(MoveBase):
             for c in self._covers:
                 if self._horizontal:
                     cross = (
-                        board.letters_above(c.row, c.col) +
-                        c.letter +
-                        board.letters_below(c.row, c.col)
+                        board.letters_above(c.row, c.col)
+                        + c.letter
+                        + board.letters_below(c.row, c.col)
                     )
                 else:
                     cross = (
-                        board.letters_left(c.row, c.col) +
-                        c.letter +
-                        board.letters_right(c.row, c.col)
+                        board.letters_left(c.row, c.col)
+                        + c.letter
+                        + board.letters_right(c.row, c.col)
                     )
                 if len(cross) > 1 and not is_valid_word(cross):
                     return (Error.CROSS_WORD_NOT_IN_DICTIONARY, cross)
@@ -1171,20 +1179,20 @@ class Move(MoveBase):
         for c in self._covers:
             if self._horizontal:
                 cross = (
-                    board.letters_above(c.row, c.col) +
-                    c.letter +
-                    board.letters_below(c.row, c.col)
+                    board.letters_above(c.row, c.col)
+                    + c.letter
+                    + board.letters_below(c.row, c.col)
                 )
             else:
                 cross = (
-                    board.letters_left(c.row, c.col) +
-                    c.letter +
-                    board.letters_right(c.row, c.col)
+                    board.letters_left(c.row, c.col)
+                    + c.letter
+                    + board.letters_right(c.row, c.col)
                 )
             if len(cross) > 1 and cross not in Wordbase.dawg():
                 invalid.append(cross)
 
-        return invalid # Returns an empty list if all words are valid
+        return invalid  # Returns an empty list if all words are valid
 
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
@@ -1232,9 +1240,15 @@ class Move(MoveBase):
         # Tally the scores of words formed across the primary word
         for c in self._covers:
             if self._horizontal:
-                cross = board.tiles_above(c.row, c.col) + board.tiles_below(c.row, c.col)
+                cross = (
+                    board.tiles_above(c.row, c.col)
+                    + board.tiles_below(c.row, c.col)
+                )
             else:
-                cross = board.tiles_left(c.row, c.col) + board.tiles_right(c.row, c.col)
+                cross = (
+                    board.tiles_left(c.row, c.col)
+                    + board.tiles_right(c.row, c.col)
+                )
             if cross:
                 sc = scores[c.tile]
                 sc *= Board.letterscore(c.row, c.col)
@@ -1252,7 +1266,7 @@ class Move(MoveBase):
         """ Apply this move, assumed to be legal, to the board """
         board = state.board()
         rack = state.player_rack()
-        last_rack = rack.contents() # The rack as it stood before this move
+        last_rack = rack.contents()  # The rack as it stood before this move
         # logging.info(u"Move.apply: last_rack set to {0}".format(last_rack).encode("latin-1"))
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
@@ -1316,7 +1330,7 @@ class ExchangeMove(MoveBase):
         """ Apply this move, assumed to be legal, to the current game state """
         if not shallow:
             state.player_rack().exchange(state.bag(), self._tiles)
-        state.add_pass() # An exchange counts towards the pass count
+        state.add_pass()  # An exchange counts towards the pass count
         # An exchange move is not challengeable
         state.clear_challengeable()
 
@@ -1365,6 +1379,7 @@ class ChallengeMove(MoveBase):
 
     # noinspection PyUnusedLocal
     # pylint: disable=unused-argument
+    # noinspection PyMethodMayBeStatic
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return (u"", u"CHALL", 0)
@@ -1431,10 +1446,10 @@ class ResponseMove(MoveBase):
             board = state.board()
             # Remove the last move from the board
             last_covers = state.last_covers
-            self._num_covers = - len(last_covers)  # Negative cover count
+            self._num_covers = -len(last_covers)  # Negative cover count
             for c in last_covers:
-                board.set_letter(c.row, c.col, u' ')
-                board.set_tile(c.row, c.col, u' ')
+                board.set_letter(c.row, c.col, u" ")
+                board.set_tile(c.row, c.col, u" ")
             if not shallow:
                 # Reset the opponent's rack to what it was before the move
                 bag = state.bag()
@@ -1471,7 +1486,7 @@ class PassMove(MoveBase):
     def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
-        state.add_pass() # Clears the challengeable flag
+        state.add_pass()  # Clears the challengeable flag
 
 
 class ResignMove(MoveBase):
@@ -1493,16 +1508,15 @@ class ResignMove(MoveBase):
     # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
-        return (u"", u"RSGN", - self._forfeited_points)
+        return (u"", u"RSGN", -self._forfeited_points)
 
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         # A resignation loses all points
-        return - self._forfeited_points
+        return -self._forfeited_points
 
     # noinspection PyMethodMayBeStatic
     def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
         # Resign the game, causing is_game_over() to become True
-        state.resign_game() # Clears the challengeable flag
-
+        state.resign_game()  # Clears the challengeable flag

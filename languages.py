@@ -37,11 +37,11 @@ class Alphabet:
     full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
 
     # Map letters to bits
-    letter_bit = {letter : 1 << ix for ix, letter in enumerate(order)}
+    letter_bit = {letter: 1 << ix for ix, letter in enumerate(order)}
 
     # Locale collation (sorting) map, initialized in _init()
-    _lcmap = None # Case sensitive
-    _lcmap_nocase = None # Case insensitive
+    _lcmap = None  # Case sensitive
+    _lcmap_nocase = None  # Case insensitive
 
     @staticmethod
     def bit_pattern(word):
@@ -128,8 +128,8 @@ class Alphabet:
             for i in range(1, len(s) - 1):
                 rotate(ord(s[i]), ord(s[i-1]))
 
-        adjust(Alphabet.full_upper) # Uppercase adjustment
-        adjust(Alphabet.full_order) # Lowercase adjustment
+        adjust(Alphabet.full_upper)  # Uppercase adjustment
+        adjust(Alphabet.full_order)  # Lowercase adjustment
 
         # Now we have a case-sensitive sorting map: copy it
         Alphabet._lcmap = lcmap[:]
@@ -269,6 +269,7 @@ class OldTileSet(TileSet):
         (u"?", 2)  # Blank tiles
     ]
 
+
 # Number of tiles in bag
 OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
@@ -352,6 +353,7 @@ class NewTileSet(TileSet):
         (u"ö", 1),
         (u"?", 2)  # Blank tiles
     ]
+
 
 # Number of tiles in bag
 NewTileSet.BAG_SIZE = NewTileSet.num_tiles()

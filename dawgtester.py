@@ -12,7 +12,7 @@
 import os
 import time
 
-from dawgdictionary import DawgDictionary, PackedDawgDictionary
+from dawgdictionary import PackedDawgDictionary
 from languages import Alphabet
 
 
@@ -40,9 +40,6 @@ class DawgTester:
         print("Author: Vilhjalmur Thorsteinsson\n")
 
         t0 = time.time()
-        #self._dawg = DawgDictionary()
-        #fpath = os.path.abspath(os.path.join(relpath, fname + ".dawg.pickle"))
-        #self._dawg.load_pickle(fpath)
         self._dawg = PackedDawgDictionary()
         fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
         self._dawg.load(fpath)

@@ -51,7 +51,7 @@ var NEW_TILESCORE = {
 // Default to the old bag
 var TILESCORE = OLD_TILESCORE;
 
-var WORDSCORE = new Array(
+var WORDSCORE = [
    "311111131111113",
    "121111111111121",
    "112111111111211",
@@ -66,9 +66,10 @@ var WORDSCORE = new Array(
    "111211111112111",
    "112111111111211",
    "121111111111121",
-   "311111131111113");
+   "311111131111113"
+];
 
-var LETTERSCORE = new Array(
+var LETTERSCORE = [
    "111211111112111",
    "111113111311111",
    "111111212111111",
@@ -83,7 +84,8 @@ var LETTERSCORE = new Array(
    "211111121111112",
    "111111212111111",
    "111113111311111",
-   "111211111112111");
+   "111211111112111"
+];
 
 var GAME_OVER = 99; /* Error code corresponding to the Error class in skraflmechanics.py */
 
@@ -1263,7 +1265,6 @@ function handleDrop(e, ui) {
       /* Dropping into an already occupied rack slot: shuffle the rack tiles to make room */
       var ix = parseInt(e.target.id.slice(1));
       rslot = null;
-      i = 0;
       /* Try to find an empty slot to the right */
       for (i = ix + 1; i <= RACK_SIZE; i++) {
          rslot = document.getElementById("R" + i.toString());
@@ -1520,7 +1521,7 @@ function calcScore() {
       x -= dx;
       y -= dy;
    }
-   var t = null;
+   var t;
    /* Find the end of the word */
    while ((t = tileAt(y, x)) !== null) {
       if ($(t).hasClass("racktile")) {
@@ -1574,7 +1575,7 @@ function calcCrossScore(oy, ox, dy, dx) {
       x -= dx;
       y -= dy;
    }
-   var t = null;
+   var t;
    /* Find the end of the word */
    while ((t = tileAt(y, x)) !== null) {
       var sc = $(t).data("score");

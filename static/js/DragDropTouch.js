@@ -346,13 +346,14 @@ var DragDropTouch;
             }
             // copy style
             var cs = getComputedStyle(src);
-            for (var i = 0; i < cs.length; i++) {
+            var i;
+            for (i = 0; i < cs.length; i++) {
                 var key = cs[i];
                 dst.style[key] = cs[key];
             }
             dst.style.pointerEvents = 'none';
             // and repeat for all children
-            for (var i = 0; i < src.children.length; i++) {
+            for (i = 0; i < src.children.length; i++) {
                 this._copyStyle(src.children[i], dst.children[i]);
             }
         };

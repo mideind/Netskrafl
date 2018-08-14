@@ -13,13 +13,12 @@
 import logging
 import json
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import hashlib
 import hmac
 
-from flask import render_template, redirect, jsonify
-from flask import request, url_for
+from flask import redirect, jsonify, url_for
 
 import google.appengine.api.urlfetch as urlfetch
 
@@ -45,7 +44,7 @@ class _Secret:
             with open("resources/salescloud_key.bin", "r") as f:
                 cls._SC_SECRET_KEY = f.readline().strip()
                 cls._SC_CLIENT_UUID = f.readline().strip()
-        except:
+        except Exception:
             logging.error(u"Unable to read file resources/salescloud_key.bin")
             cls._SC_SECRET_KEY = ""
             cls._SC_CLIENT_UUID = ""
@@ -70,7 +69,7 @@ class _Secret:
 _SECRET = _Secret()
 
 
-def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time = 100.0):
+def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=100.0):
     """ Validate an incoming request against our secret key """
 
     # Sanity check
@@ -98,7 +97,9 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time 
         # the past (allowing time for the HTTP request to arrive and be
         # processed). Anything outside this will be rejected. This makes a
         # brute force attack on the SHA256 hash harder.
-        logging.warning("Billing request outside timestamp window, delta is {0:.1f}".format(delta))
+        logging.warning(
+            "Billing request outside timestamp window, delta is {0:.1f}".format(delta)
+        )
         return False
     # Reconstruct the signature
     xsc_signature = xsc_date + xsc_key + method + url + payload
@@ -114,35 +115,43 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time 
 def cancel_friend(user):
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
     try:
-        url = 'https://api.salescloud.is/webhooks/messenger/pull/' + _SECRET.uuid
-        payload = json.dumps(dict(label = user.id()))
+        url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
+        payload = json.dumps(dict(label=user.id()))
         ts = datetime.utcnow().isoformat()
-        ts = ts[0:10] + " " + ts[11:19] # Example: '2016-10-26 16:10:84'
+        ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
-        signature = ts + _SECRET.public_key + method + url # + payload
+        signature = ts + _SECRET.public_key + method + url  # + payload
         # Hash the signature using the secret key
         digest = hmac.new(_SECRET.key, signature, hashlib.sha256).hexdigest()
         headers = {
-            'Content-Type': 'application/json',
-            'X-SalesCloud-Date' : ts,
-            'X-SalesCloud-Access-Key' : _SECRET.public_key,
-            'X-SalesCloud-Signature' : digest
+            "Content-Type": "application/json",
+            "X-SalesCloud-Date": ts,
+            "X-SalesCloud-Access-Key": _SECRET.public_key,
+            "X-SalesCloud-Signature": digest
         }
         result = urlfetch.fetch(
-            url = url,
-            follow_redirects = False,
-            deadline = 30,
-            payload = payload,
-            method = urlfetch.POST,
-            headers = headers,
-            validate_certificate = True)
+            url=url,
+            follow_redirects=False,
+            deadline=30,
+            payload=payload,
+            method=urlfetch.POST,
+            headers=headers,
+            validate_certificate=True
+        )
         if result.status_code != 200:
             # Not OK
-            logging.error('Cancel friend request to SalesCloud failed with status {1} for user {0}'.format(user.id(), result.status_code))
+            logging.error(
+                "Cancel friend request to SalesCloud failed with status {1} for user {0}"
+                .format(user.id(), result.status_code)
+            )
             return False
         response = json.loads(result.content)
+        # noinspection PySimplifyBooleanCheck,PyPep8
         if response.get("success") != True:
-            logging.error('Cancel friend request to SalesCloud failed for user {0}'.format(user.id()))
+            logging.error(
+                "Cancel friend request to SalesCloud failed for user {0}"
+                .format(user.id())
+            )
             return False
         # Disable subscription, remove friend status
         user.set_friend(False)
@@ -150,7 +159,9 @@ def cancel_friend(user):
         user.update()
         logging.info("Removed user {0} as friend".format(user.id()))
     except urlfetch.Error as ex:
-        logging.error('Exception when cancelling friend for user {1}: {0}'.format(ex, user.id()))
+        logging.error(
+            "Exception when cancelling friend for user {1}: {0}".format(ex, user.id())
+        )
         return False
     # Success
     return True
@@ -159,24 +170,38 @@ def cancel_friend(user):
 def handle(request):
     """ Handle an incoming request to the /billing URL path """
 
-    if request.method != 'POST':
+    if request.method != "POST":
         # This is probably an incoming redirect from the SalesCloud IFRAME
         # after completing a payment form
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
         xsc_date = request.args.get("salescloud_date", "")[0:256]
-        xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode('utf-8') # Required
+        xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode(
+            "utf-8"
+        )
         uid = User.current_id() or ""
-        if not request_valid(request.method, request.base_url, uid,
-            xsc_date, xsc_key, xsc_digest, max_time = 300.0):
+        if not request_valid(
+            request.method,
+            request.base_url,
+            uid,
+            xsc_date,
+            xsc_key,
+            xsc_digest,
+            max_time=300.0
+        ):
             # Wrong signature: probably not coming from SalesCloud
-            logging.warning("Invalid signature in incoming redirect GET - url {0}".format(request.base_url))
+            logging.warning(
+                "Invalid signature in incoming redirect GET - url {0}"
+                .format(request.base_url)
+            )
             # return "<html><body>Invalid signature</body></html>", 403 # Forbidden
-        return redirect(url_for("friend", action=0)) # Redirect to a thank-you page
+        return redirect(url_for("friend", action=0))  # Redirect to a thank-you page
 
     # Begin by validating the request by checking its signature
     xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]
     xsc_date = request.headers.get("X-SalesCloud-Date", "")[0:256]
-    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256].encode('utf-8') # Required
+    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256].encode(
+        "utf-8"
+    )
     payload = ""
     try:
         # Do not accept request bodies larger than 2K
@@ -185,33 +210,39 @@ def handle(request):
     except Exception as ex:
         # Something wrong with the Content-length header or the request body
         logging.error("Exception when obtaining payload: {0}".format(ex))
-    if not request_valid(request.method, request.url, payload, xsc_date, xsc_key, xsc_digest):
+    if not request_valid(
+        request.method, request.url, payload, xsc_date, xsc_key, xsc_digest
+    ):
         logging.error("Invalid signature received")
-        return jsonify(ok = False, reason = "Invalid signature"), 403 # Forbidden
+        return jsonify(ok=False, reason="Invalid signature"), 403  # Forbidden
 
     # The request looks legit
     # Note: We can't use request.get_json() because we already read the data stream
     # using get_data() above
-    j = json.loads(payload.decode('utf-8')) if payload else None
+    j = json.loads(payload.decode("utf-8")) if payload else None
     # logging.info("/billing json is {0}".format(j))
     # Example billing POST:
-    # {u'customer_label': u'', u'subscription_status': u'true', u'customer_id': u'34724', u'after_renewal': u'2017-01-14T18:34:42+00:00',
-    # u'before_renewal': u'2016-12-14T18:34:42+00:00', u'product_id': u'479', u'type': u'subscription_updated'}
+    # {u'customer_label': u'', u'subscription_status': u'true', u'customer_id': u'34724',
+    # u'after_renewal': u'2017-01-14T18:34:42+00:00',
+    # u'before_renewal': u'2016-12-14T18:34:42+00:00',
+    # u'product_id': u'479', u'type': u'subscription_updated'}
     if j is None:
-        return jsonify(ok = False, reason = u"Empty or illegal JSON")
+        return jsonify(ok=False, reason=u"Empty or illegal JSON")
     handled = False
-    _FRIEND_OF_NETSKRAFL = u"479" # Product id for friend subscription
-    if j.get(u"type") in (u"subscription_updated", u"subscription_created") \
-        and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL:
+    _FRIEND_OF_NETSKRAFL = u"479"  # Product id for friend subscription
+    if (
+        j.get(u"type") in (u"subscription_updated", u"subscription_created")
+        and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL
+    ):
         # Updating the subscription status of a user
         uid = j.get(u"customer_label")
         if uid and not isinstance(uid, basestring):
             uid = None
         if uid:
-            uid = uid[0:32] # Sanity cut-off
+            uid = uid[0:32]  # Sanity cut-off
         user = User.load_if_exists(uid) if uid else None
         if user is None:
-            return jsonify(ok = False, reason = u"Unknown or illegal user id")
+            return jsonify(ok=False, reason=u"Unknown or illegal user id")
         if j.get(u"subscription_status") == u"true":
             # Enable subscription, mark as friend
             user.set_friend(True)
@@ -227,8 +258,7 @@ def handle(request):
             logging.info("Removed user {0} as friend".format(uid))
             handled = True
     if not handled:
-        logging.warning("/billing unknown request '{0}', did not handle".format(j.get(u"type")))
-    return jsonify(ok = True, handled = handled)
-
-
-
+        logging.warning(
+            "/billing unknown request '{0}', did not handle".format(j.get(u"type"))
+        )
+    return jsonify(ok=True, handled=handled)

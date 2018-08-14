@@ -1317,7 +1317,7 @@ function createView() {
                 return item.url;
               }
 
-              return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+              return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
                 [
                   m("a", { href: "/game/" + gameUUID(), oncreate: m.route.link },
                     [
@@ -1462,10 +1462,10 @@ function createView() {
               ev.preventDefault();
             }
 
-            var oppReady = !item.received && item.opp_ready;
+            // var oppReady = !item.received && item.opp_ready;
             var descr = challengeDescription(item.prefs);
 
-            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+            return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
               [
                 m("span.list-icon",
                   { onclick: markChallenge },
@@ -1677,7 +1677,7 @@ function createView() {
                 ];
             }
 
-            return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+            return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
               [
                 m("span.list-ch",
                   {
@@ -1752,7 +1752,7 @@ function createView() {
       function vwStats() {
         // View the user's own statistics summary
         var ownStats = model.ownStats;
-        if (model.ownStats == null)
+        if (model.ownStats === null)
           model.loadOwnStats();
         return m(StatsDisplay, { id: 'own-stats', ownStats: ownStats });
       }
@@ -1760,7 +1760,7 @@ function createView() {
       function vwBest() {
         // View the user's own best game and word scores
         var ownStats = model.ownStats;
-        if (model.ownStats == null)
+        if (model.ownStats === null)
           model.loadOwnStats();
         return m(BestDisplay, { id: 'own-best', ownStats: ownStats, myself: true });
       }
@@ -1867,7 +1867,6 @@ function createView() {
     // A view of a game, in-progress or finished
 
     var game = model.game;
-    var user = model.user;
     var view = this;
 
     function vwRightColumn() {
@@ -2184,7 +2183,7 @@ function createView() {
     var numMessages = (game && game.messages) ? game.messages.length : 0;
     var uuid = game ? game.uuid : "";
 
-    if (game && game.messages == null)
+    if (game && game.messages === null)
       // No messages loaded yet: kick off async message loading
       // for the current game
       game.loadMessages();
@@ -2248,7 +2247,7 @@ function createView() {
         var co = mlist[i][1][0];
         var tiles = mlist[i][1][1];
         var score = mlist[i][1][2];
-        if (player == 0)
+        if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
           rightTotal = Math.max(rightTotal + score, 0);
@@ -2435,7 +2434,7 @@ function createView() {
         highlightMove(rawCoord, tiles, playerColor, true);
       };
     }
-    if (player == 0) {
+    if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
@@ -2463,7 +2462,7 @@ function createView() {
     function games() {
       var r = [];
       // var numMyTurns = 0;
-      if (game.gamelist == null)
+      if (game.gamelist === null)
         // No games to show now, but we'll load them
         // and they will be automatically refreshed when ready
         game.loadGames();
@@ -2653,7 +2652,7 @@ function createView() {
         // exchange state
         attrs.onclick = function(tile, ev) {
           // Toggle the exchange status
-          tile.xchg = tile.xchg ? false : true;
+          tile.xchg = !tile.xchg;
           ev.preventDefault();
         }.bind(null, t);
       }
@@ -3217,7 +3216,7 @@ function createView() {
             style: "z-index: 6" // Appear on top of board on mobile
           },
           // Show the requested page
-          this.page == 0 ? page0 : page1
+          this.page === 0 ? page0 : page1
         );
       }
     };
@@ -3704,7 +3703,7 @@ var EloList = {
       return m(".listitem",
         {
           key: vnode.attrs.sel + i,
-          className : (i % 2 == 0 ? "oddlist" : "evenlist")
+          className : (i % 2 === 0 ? "oddlist" : "evenlist")
         },
         [
           m("span.list-ch", ch),
@@ -3823,7 +3822,7 @@ var RecentList = {
         eloAdjHuman
       );
 
-      return m(".listitem" + (i % 2 == 0 ? ".oddlist" : ".evenlist"),
+      return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
         m("a",
           // Clicking on the link opens up the game
           { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
@@ -3997,7 +3996,6 @@ var BestDisplay = {
   view: function(vnode) {
     // Populate the highest score/best word field
     var json = vnode.attrs.ownStats || { };
-    var own = true;
     var best = [];
     if (json.highest_score) {
       best.push("Hæsta skor ");

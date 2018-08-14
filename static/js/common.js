@@ -344,14 +344,15 @@ function openPromoDialog(key, completeFunc) {
 }
 
 function closePromoDialog() {
-   // Hide the dialog
-   var key = $("#promo-dialog").data("param").key;
-   $("#promo-dialog")
-      .data("param", null)
-      .css("visibility", "hidden");
-   $("#promo-form")
-      .toggleClass("promo-" + key, false);
-   $("#promo-content").html("");
+  // Hide the dialog
+  var promoDialog = $("#promo-dialog");
+  var key = promoDialog.data("param").key;
+  promoDialog
+    .data("param", null)
+    .css("visibility", "hidden");
+  $("#promo-form")
+    .toggleClass("promo-" + key, false);
+  $("#promo-content").html("");
 }
 
 var maybePreventPullToRefresh = false;

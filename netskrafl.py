@@ -1298,6 +1298,7 @@ def chatmsg():
     rq = RequestData(request)
     channel = rq["channel"]
     msg = rq["msg"]
+    uuid = u""
 
     user_id = User.current_id()
     if not user_id or not channel:
@@ -2007,6 +2008,7 @@ def main():
 
     # Promotion display logic
     promo_to_show = None
+    promos = []
     if random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display

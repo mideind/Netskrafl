@@ -237,7 +237,7 @@ var Game = (function() {
       // !!! we should check for a new message from the
       // !!! opponent that comes after the last message-seen
       // !!! marker
-      this.chatShown = this.messages.length == 0;
+      this.chatShown = this.messages.length === 0;
     }.bind(this));
   };
 
@@ -708,7 +708,7 @@ var Game = (function() {
       if (col > maxcol)
         maxcol = col;
     }.bind(this));
-    if (numtiles == 0)
+    if (!numtiles)
       return undefined;
     if (minrow != maxrow && mincol != maxcol)
       // Not a pure horizontal or vertical move
@@ -850,26 +850,27 @@ var Game = (function() {
       },
       saveTiles: function() {
         /* Save tile locations in local storage */
+        var self = this;
         try {
           var i = 1;
           forEachElement("div.racktile", function(el) {
             // Ignore the clone created during dragging
             if (!el.classList.contains("ui-draggable-dragging")) {
               var sq = el.parentElement.id;
-              var t = $(this).data("tile");
+              var t = $(this).data("tile"); // !!! TODO
               if (t !== null && t !== undefined) {
                 if (t == '?' && sq[0] != 'R')
-                  /* Blank tile on the board: add its meaning */
-                  t += $(this).data("letter");
-                this.setLocalTileSq(i, sq);
-                this.setLocalTile(i, t);
+                  // Blank tile on the board: add its meaning
+                  t += $(this).data("letter"); // !!! TODO
+                self.setLocalTileSq(i, sq);
+                self.setLocalTile(i, t);
                 i++;
               }
             }
           });
           while (i <= RACK_SIZE) {
-            this.setLocalTileSq(i, "");
-            this.setLocalTile(i, "");
+            self.setLocalTileSq(i, "");
+            self.setLocalTile(i, "");
             i++;
           }
         }

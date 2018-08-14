@@ -348,7 +348,7 @@ class UserModel(ndb.Model):
                     ix = 0
         # Concatenate the two slices into one result and return it
         assert max_len >= (len_lower - ix)
-        result = lower[ix:] + higher[0 : max_len - (len_lower - ix)]
+        result = lower[ix:] + higher[0:max_len - (len_lower - ix)]
         return result
 
 
