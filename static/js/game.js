@@ -18,14 +18,16 @@
 
 /* eslint-disable no-unused-vars */
 
+// Global constants
 var ROWIDS = "ABCDEFGHIJKLMNO";
 var BOARD_SIZE = ROWIDS.length;
+var RACK_SIZE = 7;
 
 function coord(row, col) {
   // Return the co-ordinate string for the given 0-based row and col
-  if (row < 0 || row >= 15 || col < 0 || col >= 15)
+  if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE)
     return null;
-  return ROWIDS[row] + (col + 1).toString();
+  return ROWIDS[row] + (col + 1);
 }
 
 function toVector(co) {
@@ -56,13 +58,91 @@ function forEachElement(selector, func) {
       func(elems[i]);
 }
 
+var LocalStorage = (function() {
+
+  var _hasLocal = null; // Is HTML5 local storage supported by the browser?
+
+  function hasLocalStorage() {
+    // Return true if HTML5 local storage is supported by the browser
+    if (_hasLocal === null)
+      try {
+        _hasLocal = ('localStorage' in window) &&
+          (window.localStorage !== null) &&
+          (window.localStorage !== undefined);
+      } catch (e) {
+        _hasLocal = false;
+      }
+    return _hasLocal;
+  }
+
+  function LocalStorage(uuid) {
+
+    return {
+      getLocalTile: function(ix) {
+        return window.localStorage[uuid + ".tile." + ix + ".t"];
+      },
+      getLocalTileSq: function(ix) {
+        return window.localStorage[uuid + ".tile." + ix + ".sq"];
+      },
+      setLocalTile: function(ix, t) {
+        window.localStorage[uuid + ".tile." + ix + ".t"] = t;
+      },
+      setLocalTileSq: function(ix, sq) {
+        window.localStorage[uuid + ".tile." + ix + ".sq"] = sq;
+      },
+      clearTiles: function() {
+        // Clean up local storage when game is over
+        try {
+          for (var i = 1; i <= RACK_SIZE; i++) {
+            window.localStorage.removeItem(uuid + ".tile." + i + ".sq");
+            window.localStorage.removeItem(uuid + ".tile." + i + ".t");
+          }
+        }
+        catch (e) {
+        }
+      },
+      saveTiles: function(tilesPlaced) {
+        // Save tile locations in local storage
+        for (var i = 0; i < RACK_SIZE; i++) {
+          if (i < tilesPlaced.length) {
+            // Store this placed tile in local storage
+            var tile = tilesPlaced[i];
+            // Set the placed tile's square
+            // !!! TODO
+            this.setLocalTileSq(i + 1, "");
+            // Set the letter (or ?+letter if undefined)
+            this.setLocalTile(i + 1, "");
+          }
+          else {
+            // Erase this tile position from local storage
+            this.setLocalTileSq(i + 1, "");
+            this.setLocalTile(i + 1, "");
+          }
+        }
+      }
+    };
+  }
+
+  function NoLocalStorage(uuid) {
+    // No local storage available: return an object with null functions
+    return {
+      clearTiles: function () {
+      },
+      saveTiles: function (tilesPlaced) {
+      }
+    };
+  }
+
+  return hasLocalStorage() ? LocalStorage : NoLocalStorage;
+
+} ());
+
 var Game = (function() {
 
   "use strict";
 
   // Constants
 
-  var RACK_SIZE = 7;
   var GAME_OVER = 99; /* Error code corresponding to the Error class in skraflmechanics.py */
 
   // Original Icelandic bag
@@ -119,6 +199,7 @@ var Game = (function() {
 
 
   function Game(uuid, game) {
+    // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
     // console.log("Game " + uuid + " loaded");
@@ -142,6 +223,7 @@ var Game = (function() {
     this.selectedSq = null; // Currently selected (blinking) square
     this.sel = "movelist"; // By default, show the movelist tab
     this.moves = [];
+    this.tiles = {};
     this.lastmove = undefined;
     this.update(game);
   }
@@ -151,7 +233,7 @@ var Game = (function() {
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
     var sq, key;
-    if (game.num_moves <= this.moves.length)
+    if (this.moves.length && game.num_moves <= this.moves.length)
       // This is probably a starting notification from Firebase,
       // not adding a new move but repeating the last move made: ignore it
       // !!! TODO: If the last move was by the opponent, highlight it
@@ -334,7 +416,7 @@ var Game = (function() {
 
   Game.prototype.placeTiles = function() {
     // Make a tile dictionary for the game
-    this.tiles = { };
+    this.tiles = {};
     this.numTileMoves = 0;
     var mlist = this.moves;
     var i, sq;
@@ -361,7 +443,7 @@ var Game = (function() {
       }
     // Also put the rack tiles into this.tiles
     for (i = 0; i < this.rack.length; i++) {
-      sq = 'R' + (i + 1).toString();
+      sq = 'R' + (i + 1);
       var tile = this.rack[i][0];
       var letter = (tile == '?') ? ' ' : tile;
       var tscore = this.rack[i][1];
@@ -389,23 +471,23 @@ var Game = (function() {
       var empty = dest + 1;
       var j;
       // Try to find an empty slot to the right of the drop destination
-      while (('R' + empty.toString()) in this.tiles)
+      while (('R' + empty) in this.tiles)
         empty++;
       if (empty <= RACK_SIZE) {
         // Found empty slot after the tile:
         // move the intervening tiles to the right
         for (j = empty; j > dest; j--)
-          this.tiles['R' + j.toString()] = this.tiles['R' + (j-1).toString()];
+          this.tiles['R' + j] = this.tiles['R' + (j-1)];
       }
       else {
         // No empty slots after the tile: try to find one to the left
         empty = dest - 1;
-        while (('R' + empty.toString()) in this.tiles)
+        while (('R' + empty) in this.tiles)
           empty--;
         if (empty < 1)
           throw "No place in rack to drop tile";
         for (j = empty; j < dest; j++)
-          this.tiles['R' + j.toString()] = this.tiles['R' + (j+1).toString()];
+          this.tiles['R' + j] = this.tiles['R' + (j+1)];
       }
     }
     if (to[0] == 'R' && fromTile.tile == '?')
@@ -581,7 +663,7 @@ var Game = (function() {
     var array = [];
     var i, rackTileId;
     for (i = 1; i <= RACK_SIZE; i++) {
-      rackTileId = "R" + i.toString();
+      rackTileId = "R" + i;
       if (rackTileId in this.tiles)
         array.push(this.tiles[rackTileId]);
       else
@@ -597,7 +679,7 @@ var Game = (function() {
       array[randomIndex] = temporaryValue;
     }
     for (i = 1; i <= RACK_SIZE; i++) {
-      rackTileId = "R" + i.toString();
+      rackTileId = "R" + i;
       if (array[i-1] === null)
         delete this.tiles[rackTileId];
       else
@@ -608,7 +690,7 @@ var Game = (function() {
 
   Game.prototype.saveTiles = function() {
     // Save the current unglued tile configuration to local storage
-    // !!! TODO
+    this.localStorage.saveTiles(this.tilesPlaced());
   };
 
   Game.prototype._resetRack = function() {
@@ -617,9 +699,9 @@ var Game = (function() {
     if (t.length) {
       var i = 1;
       for (var j = 0; j < t.length; j++) {
-        while (("R" + i.toString()) in this.tiles)
+        while (("R" + i) in this.tiles)
           i++;
-        var sq = "R" + i.toString();
+        var sq = "R" + i;
         this.tiles[sq] = this.tiles[t[j]];
         delete this.tiles[t[j]];
         if (this.tiles[sq].tile == '?')
@@ -728,7 +810,7 @@ var Game = (function() {
       x -= dx;
       y -= dy;
     }
-    var t = null;
+    var t;
     // Find the end of the word
     while ((t = this.tileAt(y, x)) !== null) {
       if (t.draggable) {
@@ -782,7 +864,7 @@ var Game = (function() {
       x -= dx;
       y -= dy;
     }
-    var t = null;
+    var t;
     // Find the end of the word
     while ((t = this.tileAt(y, x)) !== null) {
       var sc = t.score;
@@ -799,86 +881,6 @@ var Game = (function() {
       return { score: -1, word: "" };
     return { score: score * this.wordScore(oy, ox), word: word };
   };
-
-  var _hasLocal = null; // Is HTML5 local storage supported by the browser?
-
-  function LocalStorage(uuid) {
-
-    function hasLocalStorage() {
-      // Return true if HTML5 local storage is supported by the browser
-      if (_hasLocal === null)
-        try {
-          _hasLocal = ('localStorage' in window) &&
-            (window.localStorage !== null) &&
-            (window.localStorage !== undefined);
-        } catch (e) {
-          _hasLocal = false;
-        }
-      return _hasLocal;
-    }
-
-    if (!hasLocalStorage())
-      // No local storage available: return an object with null functions
-      return {
-        clearTiles: function() { },
-        saveTiles: function() { }
-      };
-
-    return {
-      getLocalTile: function(ix) {
-        return localStorage[uuid + ".tile." + ix + ".t"];
-      },
-      getLocalTileSq: function(ix) {
-        return localStorage[uuid + ".tile." + ix + ".sq"];
-      },
-      setLocalTile: function(ix, t) {
-        localStorage[uuid + ".tile." + ix + ".t"] = t;
-      },
-      setLocalTileSq: function(ix, sq) {
-        localStorage[uuid + ".tile." + ix + ".sq"] = sq;
-      },
-      clearTiles: function() {
-        // Clean up local storage when game is over
-        try {
-          for (var i = 1; i <= RACK_SIZE; i++) {
-            localStorage.removeItem(uuid + ".tile." + i + ".sq");
-            localStorage.removeItem(uuid + ".tile." + i + ".t");
-          }
-        }
-        catch (e) {
-        }
-      },
-      saveTiles: function() {
-        /* Save tile locations in local storage */
-        var self = this;
-        try {
-          var i = 1;
-          forEachElement("div.racktile", function(el) {
-            // Ignore the clone created during dragging
-            if (!el.classList.contains("ui-draggable-dragging")) {
-              var sq = el.parentElement.id;
-              var t = $(this).data("tile"); // !!! TODO
-              if (t !== null && t !== undefined) {
-                if (t == '?' && sq[0] != 'R')
-                  // Blank tile on the board: add its meaning
-                  t += $(this).data("letter"); // !!! TODO
-                self.setLocalTileSq(i, sq);
-                self.setLocalTile(i, t);
-                i++;
-              }
-            }
-          });
-          while (i <= RACK_SIZE) {
-            self.setLocalTileSq(i, "");
-            self.setLocalTile(i, "");
-            i++;
-          }
-        }
-        catch (e) {
-        }
-      }
-    };
-  }
 
   return Game;
 
