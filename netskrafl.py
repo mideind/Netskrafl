@@ -82,7 +82,6 @@ app.config['DEBUG'] = running_local
 
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
-
     app.secret_key = f.read()
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded

@@ -108,7 +108,7 @@ class Square:
 
     def is_empty(self):
         """ Is this square empty? """
-        return self._letter == u' '
+        return self._letter == u" "
 
     def is_open(self):
         """ Can a new tile from the rack be placed here? """
@@ -118,6 +118,7 @@ class Square:
         """ Can this letter be placed here? """
         return bool(self._cc & Alphabet.letter_bit[c])
 
+    @property
     def letter(self):
         """ Return the letter at this square """
         return self._letter
@@ -170,7 +171,7 @@ class Axis:
 
     def letter_at(self, index):
         """ Return the letter at the index """
-        return self._sq[index].letter()
+        return self._sq[index].letter
 
     def is_open(self, index):
         """ Is the square at the index open (i.e. can a tile be placed there?) """
@@ -210,7 +211,7 @@ class Axis:
         all_cc = self._autoplayer.rack_bit_pattern()
         # Go through the open squares and calculate their cross-checks
         for ix in range(Board.SIZE):
-            cc = all_cc # Start with the default cross-check set
+            cc = all_cc  # Start with the default cross-check set
             if not board.is_covered(x, y):
                 if self.is_horizontal():
                     above = board.letters_above(x, y)
@@ -218,17 +219,15 @@ class Axis:
                 else:
                     above = board.letters_left(x, y)
                     below = board.letters_right(x, y)
-                query = above or u''
-                query += u'?'
+                query = above or u""
+                query += u"?"
                 if below:
                     query += below
                 if len(query) > 1:
                     # Nontrivial cross-check: Query the word database
                     # for words that fit this pattern
-                    matches = self.DAWG.find_matches(
-                        query,
-                        sort=False  # Don't need a sorted result
-                    )
+                    # Don't need a sorted result
+                    matches = self.DAWG.find_matches(query, sort=False)
                     bits = 0
                     if matches:
                         cix = len(above) if above else 0
@@ -243,7 +242,7 @@ class Axis:
             self._sq[ix].init(self._autoplayer, x, y, cc)
             # Keep track of empty squares within the axis in a bit pattern for speed
             if self._sq[ix].is_empty():
-                self._empty_bits |= (1 << ix)
+                self._empty_bits |= 1 << ix
             x += xd
             y += yd
 
@@ -251,7 +250,7 @@ class Axis:
         """ Find valid moves emanating (on the left and right) from this anchor """
         if maxleft == 0 and index > 0 and not self.is_empty(index - 1):
             # We have a left part already on the board: try to complete it
-            leftpart = u''
+            leftpart = u""
             ix = index
             while ix > 0 and not self.is_empty(ix - 1):
                 leftpart = self._sq[ix - 1].letter + leftpart
@@ -262,10 +261,10 @@ class Axis:
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
-                _, prefix, nextnode = ns
+                _, prefix, next_node = ns
                 # assert matched == leftpart
                 nav = ExtendRightNavigator(self, index, self._rack)
-                self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
+                self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
             return
 
         # We are not completing an existing left part
@@ -277,29 +276,33 @@ class Axis:
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
             # to the left of the anchor square
-            for leftlen in range(1, maxleft + 1):
-                lplist = lpn.leftparts(leftlen)
-                if lplist is not None:
-                    for leftpart, rackleave, prefix, nextnode in lplist:
-                        nav = ExtendRightNavigator(self, index, rackleave)
-                        self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
+            for left_len in range(1, maxleft + 1):
+                lp_list = lpn.leftparts(left_len)
+                if lp_list is not None:
+                    for leftpart, rack_leave, prefix, next_node in lp_list:
+                        nav = ExtendRightNavigator(self, index, rack_leave)
+                        self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
 
     def generate_moves(self, lpn):
         """ Find all valid moves on this axis by attempting to place tiles
             at and around all anchor squares """
         last_anchor = -1
-        lenrack = len(self._rack)
+        len_rack = len(self._rack)
         for i in range(Board.SIZE):
             if self._sq[i].is_anchor():
                 # Count the consecutive open, non-anchor squares on the left of the anchor
-                opensq = 0
+                open_sq = 0
                 left = i
-                while left > 0 and left > (last_anchor + 1) and self._sq[left - 1].is_open():
-                    opensq += 1
+                while (
+                    left > 0
+                    and left > (last_anchor + 1)
+                    and self._sq[left - 1].is_open()
+                ):
+                    open_sq += 1
                     left -= 1
-                # We have a maximum left part length of min(opensq, lenrack-1) as the anchor
+                # We have a maximum left part length of min(open_sq, len_rack-1) as the anchor
                 # square itself must always be filled from the rack
-                self._gen_moves_from_anchor(i, min(opensq, lenrack - 1), lpn)
+                self._gen_moves_from_anchor(i, min(open_sq, len_rack - 1), lpn)
                 last_anchor = i
 
 
@@ -315,7 +318,7 @@ class LeftPermutationNavigator:
     def __init__(self, rack):
         self._rack = rack
         self._stack = []
-        self._maxleft = len(rack) - 1 # One tile on the anchor itself
+        self._maxleft = len(rack) - 1  # One tile on the anchor itself
         # assert self._maxleft > 0
         self._leftparts = [None] * self._maxleft
         self._index = 0
@@ -328,7 +331,7 @@ class LeftPermutationNavigator:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
-        if not ((firstchar in self._rack) or (u'?' in self._rack)):
+        if not ((firstchar in self._rack) or (u"?" in self._rack)):
             return False
         # Fit: save our rack and move into the edge
         self._stack.append((self._rack, self._index))
@@ -342,16 +345,16 @@ class LeftPermutationNavigator:
 
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
-        exactmatch = newchar in self._rack
-        if (not exactmatch) and (u'?' not in self._rack):
+        exact_match = newchar in self._rack
+        if (not exact_match) and (u"?" not in self._rack):
             # Can't continue with this prefix - we no longer have rack letters matching it
             return False
         # We're fine with this: accept the character and remove from the rack
         self._index += 1
-        if exactmatch:
-            self._rack = self._rack.replace(newchar, u'', 1)
+        if exact_match:
+            self._rack = self._rack.replace(newchar, u"", 1)
         else:
-            self._rack = self._rack.replace(u'?', u'', 1)
+            self._rack = self._rack.replace(u"?", u"", 1)
         return True
 
     def accept_resumable(self, prefix, nextnode, matched):
@@ -410,7 +413,7 @@ class LeftFindNavigator:
         """ Returns True if the navigator will accept the new character """
         if self._prefix[self._pix] != newchar:
             # assert False
-            return False # Should not happen - all prefixes should exist in the graph
+            return False  # Should not happen - all prefixes should exist in the graph
         # So far, so good: move on
         self._pix += 1
         return True
@@ -460,7 +463,7 @@ class ExtendRightNavigator:
         # The tile we are placing next
         self._index = anchor
         self._stack = []
-        self._wildcard_in_rack = u'?' in rack
+        self._wildcard_in_rack = u"?" in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
 
@@ -469,7 +472,7 @@ class ExtendRightNavigator:
             current square, given the cross-checks and the rack """
         axis = self._axis
         l_at_sq = axis.letter_at(self._index)
-        if l_at_sq != u' ':
+        if l_at_sq != u" ":
             # There is a tile already in the square: we must match it exactly
             return Match.BOARD_TILE if ch == l_at_sq else Match.NO
         # Does the current rack allow this letter?
@@ -513,43 +516,44 @@ class ExtendRightNavigator:
         if match == Match.RACK_TILE:
             # We used a rack tile: remove it from the rack before continuing
             if newchar in self._rack:
-                self._rack = self._rack.replace(newchar, u'', 1)
+                self._rack = self._rack.replace(newchar, u"", 1)
             else:
                 # Must be wildcard: remove it
                 # assert u'?' in self._rack
-                self._rack = self._rack.replace(u'?', u'', 1)
-            self._wildcard_in_rack = u'?' in self._rack
+                self._rack = self._rack.replace(u"?", u"", 1)
+            self._wildcard_in_rack = u"?" in self._rack
         return True
 
     def accept(self, matched, final):
         """ Called to inform the navigator of a match and whether it is a final word """
         # pylint: disable=bad-continuation
         if (
-            final and len(matched) > 1 and
-            (self._index >= Board.SIZE or self._axis.is_empty(self._index))
+            final
+            and len(matched) > 1
+            and (self._index >= Board.SIZE or self._axis.is_empty(self._index))
         ):
 
             # Solution found - make a Move object for it and add it to the AutoPlayer's list
-            ix = self._index - len(matched) # The word's starting index within the axis
+            ix = self._index - len(matched)  # The word's starting index within the axis
             row, col = self._axis.coordinate_of(ix)
             xd, yd = self._axis.coordinate_step()
             move = Move(matched, row, col, self._axis.is_horizontal())
             # Fetch the rack as it was at the beginning of move generation
             autoplayer = self._axis.autoplayer
             rack = autoplayer.rack()
-            tiles = u''
+            tiles = u""
             for c in matched:
                 if self._axis.is_empty(ix):
                     # Empty square that is being covered by this move
                     # Find out whether it is a blank or normal letter tile
                     if c in rack:
-                        rack = rack.replace(c, u'', 1)
+                        rack = rack.replace(c, u"", 1)
                         tile = c
                         tiles += c
                     else:
                         # Must be a wildcard match
-                        rack = rack.replace(u'?', u'', 1)
-                        tile = u'?'
+                        rack = rack.replace(u"?", u"", 1)
+                        tile = u"?"
                         tiles += tile + c
                     # assert row in range(Board.SIZE)
                     # assert col in range(Board.SIZE)
@@ -612,7 +616,7 @@ class AutoPlayer:
         self._robot_level = robot_level
 
         # Calculate a bit pattern representation of the rack
-        if u'?' in self._rack:
+        if u"?" in self._rack:
             # Wildcard in rack: all letters allowed
             self._rack_bit_pattern = Alphabet.all_bits_set()
         else:
@@ -662,7 +666,7 @@ class AutoPlayer:
             # Return entire list if max_number <= 0
             return sorted_candidates
         # Return the top candidates
-        return sorted_candidates[0 : max_number]
+        return sorted_candidates[0:max_number]
 
     def _generate_candidates(self):
         """ Generate a fresh candidate list """
@@ -728,18 +732,18 @@ class AutoPlayer:
             """ Sort moves first by descending score;
                 in case of ties prefer shorter words """
             # !!! TODO: Insert more sophisticated logic here,
-            # including whether triple-word-score opportunities
-            # are being opened for the opponent, minimal use
-            # of blank tiles, leaving a good vowel/consonant
-            # balance on the rack, etc.
-            return (- x[1], x[0].num_covers())
+            # !!! including whether triple-word-score opportunities
+            # !!! are being opened for the opponent, minimal use
+            # !!! of blank tiles, leaving a good vowel/consonant
+            # !!! balance on the rack, etc.
+            return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
             """ Special case for first move:
                 Sort moves first by descending score, and in case of ties,
                 try to go to the upper half of the board for a more open game
             """
-            return (- x[1], x[0].row)
+            return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():
@@ -765,7 +769,8 @@ class AutoPlayer:
             # pylint: disable=bad-continuation
             while (
                 picklist + top_equal < num_candidates
-                and scored_candidates[top_equal][1] == scored_candidates[top_equal + 1][1]
+                and scored_candidates[top_equal][1]
+                == scored_candidates[top_equal + 1][1]
             ):
                 top_equal += 1
         # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top"
@@ -798,21 +803,21 @@ class AutoPlayer_Common(AutoPlayer):
 
     def __init__(self, state, robot_level):
         AutoPlayer.__init__(self, state, robot_level)
-        self._play_one_of = 20 # Plays one of the 20 top candidates
+        self._play_one_of = 20  # Plays one of the 20 top candidates
 
     def _pick_candidate(self, scored_candidates):
         """ From a sorted list of >1 scored candidates, pick a move to make """
 
         num_candidates = len(scored_candidates)
-        common = Wordbase.dawg_common() # List of playable common words
+        common = Wordbase.dawg_common()  # List of playable common words
         playable_candidates = []
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
-        i = 0 # Candidate index
-        p = 0 # Playable index
+        i = 0  # Candidate index
+        p = 0  # Playable index
         while p < self._play_one_of and i < num_candidates:
-            m = scored_candidates[i][0] # Candidate move
-            w = m.word() # The principal word being played
+            m = scored_candidates[i][0]  # Candidate move
+            w = m.word()  # The principal word being played
             if len(w) == 2 or w in common:
                 # This one is playable - but we still won't put it on
                 # the candidate list if has the same score as the
@@ -854,7 +859,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             return self._candidates[0]
 
         # !!! TODO: Consider looking at exchange moves if there are
-        # few and weak candidates
+        # !!! few and weak candidates
 
         # Calculate the score of each candidate
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
@@ -863,17 +868,17 @@ class AutoPlayer_MiniMax(AutoPlayer):
             """ Sort moves first by descending score;
                 in case of ties prefer shorter words """
             # !!! TODO: Insert more sophisticated logic here,
-            # including whether triple-word-score opportunities
-            # are being opened for the opponent, minimal use
-            # of blank tiles, leaving a good vowel/consonant
-            # balance on the rack, etc.
-            return (- x[1], x[0].num_covers())
+            # !!! including whether triple-word-score opportunities
+            # !!! are being opened for the opponent, minimal use
+            # !!! of blank tiles, leaving a good vowel/consonant
+            # !!! balance on the rack, etc.
+            return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
             """ Special case for first move:
                 Sort moves first by descending score, and in case of ties,
                 try to go to the upper half of the board for a more open game """
-            return (- x[1], x[0].row)
+            return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():
@@ -891,11 +896,11 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # Weigh top candidates by alpha-beta testing of potential
         # moves and counter-moves
 
-        # !!! TODO: In endgame, if we have moves that complete the game (use all rack tiles)
-        # we need not consider opponent countermoves
+        # !!! TODO: In endgame, if we have moves that complete the game
+        # !!! (use all rack tiles) we need not consider opponent countermoves
 
-        NUM_TEST_RACKS = 20 # How many random test racks to try for statistical average
-        NUM_CANDIDATES = 12 # How many top candidates do we look at with MiniMax?
+        NUM_TEST_RACKS = 20  # How many random test racks to try for statistical average
+        NUM_CANDIDATES = 12  # How many top candidates do we look at with MiniMax?
 
         weighted_candidates = []
         min_score = None
@@ -909,7 +914,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print(u"Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
-            teststate = State(tileset=None, copy=self._state) # Copy constructor
+            teststate = State(tileset=None, copy=self._state)  # Copy constructor
             teststate.apply_move(m)
 
             countermoves = list()
@@ -920,7 +925,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
                 avg_score = 0.0
                 countermoves.append(0)
             else:
-                # Loop over NUM_TEST_RACKS random racks to find the average countermove score
+                # Loop over NUM_TEST_RACKS random racks to find
+                # the average countermove score
                 sum_score = 0
                 rackscores = dict()
                 for _ in range(NUM_TEST_RACKS):
@@ -959,7 +965,11 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print(countermoves)
 
             # Keep track of the lowest countermove score across all candidates as a baseline
-            min_score = avg_score if (min_score is None) or (avg_score < min_score) else min_score
+            min_score = (
+                avg_score
+                if (min_score is None) or (avg_score < min_score)
+                else min_score
+            )
             # Keep track of the weighted candidate moves
             weighted_candidates.append((m, score, avg_score))
 
@@ -971,8 +981,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found
         weighted_candidates.sort(
-            key=lambda x: float(x[1]) - (x[2] - min_score),
-            reverse=True
+            key=lambda x: float(x[1]) - (x[2] - min_score), reverse=True
         )
 
         print(
@@ -987,4 +996,3 @@ class AutoPlayer_MiniMax(AutoPlayer):
             )
         # Return the highest-scoring candidate
         return weighted_candidates[0][0]
-
