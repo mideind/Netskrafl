@@ -13,7 +13,7 @@
 */
 
 /*
-  global m:false
+  global m:false, $state:false
 */
 
 /* eslint-disable no-unused-vars */
@@ -120,21 +120,19 @@ var LocalStorage = (function() {
       saveTiles: function(tilesPlaced) {
         // Save tile locations in local storage
         var i, sq, tile;
-        for (i = 0; i < RACK_SIZE; i++) {
-          if (i < tilesPlaced.length) {
-            // Store this placed tile in local storage
-            sq = tilesPlaced[i].sq;
-            tile = tilesPlaced[i].tile;
-            // Set the placed tile's square
-            this.setLocalTileSq(i + 1, sq);
-            // Set the letter (or ?+letter if undefined)
-            this.setLocalTile(i + 1, tile);
-          }
-          else {
-            // Erase this tile position from local storage
+        for (i = 0; i < tilesPlaced.length; i++) {
+          // Store this placed tile in local storage
+          sq = tilesPlaced[i].sq;
+          tile = tilesPlaced[i].tile;
+          // Set the placed tile's square
+          this.setLocalTileSq(i + 1, sq);
+          // Set the letter (or ?+letter if undefined)
+          this.setLocalTile(i + 1, tile);
+        }
+        // Erase all remaining positions in local storage
+        for (; i < RACK_SIZE; i++) {
             this.setLocalTileSq(i + 1, "");
             this.setLocalTile(i + 1, "");
-          }
         }
       },
       loadTiles: function() {
@@ -328,6 +326,14 @@ var Game = (function() {
     this.saveTiles();
   };
 
+  Game.prototype.notifyUserChange = function() {
+    // The user information may have been changed:
+    // perform any updates that may be necessary
+    if (this.player !== undefined)
+      // The player nickname may have been changed
+      this.nickname[this.player] = $state.userNick;
+  };
+
   Game.prototype.setSelectedTab = function(sel) {
     // Set the currently selected tab
     this.sel = sel;
@@ -488,7 +494,7 @@ var Game = (function() {
     if (mlist !== undefined && mlist.length && this.localturn)
       for (i = 0; i < mlist.length; i++) {
         sq = mlist[i][0];
-        if (this.tiles[sq] === undefined)
+        if (!(sq in this.tiles))
           throw "Tile from lastmove not in square " + sq;
         this.tiles[sq].freshtile = true;
         this.tiles[sq].index = i;
@@ -514,6 +520,9 @@ var Game = (function() {
 
   Game.prototype._moveTile = function(from, to) {
     // Low-level function to move a tile between cells/slots
+    if (from == to)
+      // Nothing to do
+      return;
     var fromTile = this.tiles[from];
     if (fromTile === undefined)
       throw "Moving from an empty square";
@@ -756,9 +765,9 @@ var Game = (function() {
   Game.prototype.saveTiles = function() {
     // Save the current unglued tile configuration to local storage
     var tp = [];
-    var sq, t, tile;
+    var i, sq, t, tile;
     var tilesPlaced = this.tilesPlaced();
-    for (var i = 0; i < tilesPlaced.length; i++) {
+    for (i = 0; i < tilesPlaced.length; i++) {
       sq = tilesPlaced[i];
       t = this.tiles[sq];
       tile = t.tile;
@@ -766,6 +775,12 @@ var Game = (function() {
       if (tile == "?")
         tile += t.letter;
       tp.push({sq: sq, tile: tile});
+    }
+    // Also save tiles remaining in the rack
+    for (i = 1; i <= RACK_SIZE; i++) {
+      sq = "R" + i;
+      if (sq in this.tiles)
+        tp.push({sq: sq, tile: this.tiles[sq].tile});
     }
     this.localStorage.saveTiles(tp);
   };
@@ -779,6 +794,7 @@ var Game = (function() {
     var i, j, sq, saved_sq, tile;
     var savedLetters = [];
     var rackLetters = [];
+    var rackTiles = {};
     // First, check that the saved tiles match the current rack
     for (i = 0; i < savedTiles.length; i++)
       savedLetters.push(savedTiles[i].tile.charAt(0));
@@ -791,29 +807,56 @@ var Game = (function() {
       // We don't have the same rack as when the state was saved:
       // give up
       return;
-    // Attempt to move the saved tiles from the rack to
-    // their saved positions
+    // Save the original rack and delete the rack tiles
+    // from the board
+    for (j = 1; j <= RACK_SIZE; j++)
+      if (("R" + j) in this.tiles) {
+        rackTiles["R" + j] = this.tiles["R" + j];
+        delete this.tiles["R" + j];
+      }
+    // Attempt to move the saved tiles from the saved rack to
+    // their saved positions. Note that there are several corner
+    // cases, for instance multiple instances of the same letter tile,
+    // that make this code less than straightforward.
     for (i = 0; i < savedTiles.length; i++) {
       saved_sq = savedTiles[i].sq;
-      if (!saved_sq in this.tiles && saved_sq.charAt(0) != "R") {
+      if (!(saved_sq in this.tiles)) {
         // The saved destination square is empty:
-        // find the tile in the rack and move it there
+        // find the tile in the saved rack and move it there
         tile = savedTiles[i].tile;
-        for (j = 1; j <= RACK_SIZE; j++) {
-          sq = "R" + j;
-          if (sq in this.tiles && this.tiles[sq].tile == tile.charAt(0)) {
+        for (sq in rackTiles)
+          if (rackTiles.hasOwnProperty(sq)
+            && rackTiles[sq].tile == tile.charAt(0)) {
             // Found the tile (or its equivalent) in the rack: move it
             if (tile.charAt(0) == "?")
-              // Placing a blank tile: give it the meaning that was
-              // saved with it
-              this.tiles[sq].letter = tile.charAt(1);
-            // ...and move it
-            this._moveTile(sq, saved_sq);
+              if (saved_sq.charAt(0) == "R")
+                // Going to the rack: no associated letter
+                rackTiles[sq].letter = " ";
+              else
+                // Going to a board square: associate the originally
+                // chosen and saved letter
+                rackTiles[sq].letter = tile.charAt(1);
+            // ...and assign it
+            this.tiles[saved_sq] = rackTiles[sq];
+            delete rackTiles[sq];
             break;
           }
-        }
       }
     }
+    // Allocate any remaining tiles to free slots in the rack
+    j = 1;
+    for (sq in rackTiles)
+      if (rackTiles.hasOwnProperty(sq)) {
+        // Look for a free slot in the rack
+        while(("R" + j) in this.tiles)
+          j++;
+        if (j <= RACK_SIZE)
+          // Should always be true unless something is very wrong
+          this.tiles["R" + j] = rackTiles[sq];
+      }
+    // The local storage may have been cleared before calling
+    // restoreTiles() so we must ensure that it is updated
+    this.saveTiles();
     // Show an updated word status and score
     this.updateScore();
   };

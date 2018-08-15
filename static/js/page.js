@@ -352,6 +352,9 @@ function createModel(settings) {
         $state.beginner = this.user.beginner;
         $state.fairPlay = this.user.fairplay;
         $state.newBag = this.user.newbag;
+        // Give the game instance a chance to update its state
+        if (this.game !== null)
+          this.game.notifyUserChange();
         // Complete: call success function
         if (successFunc !== undefined)
           successFunc();
