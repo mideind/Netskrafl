@@ -58,6 +58,16 @@ function forEachElement(selector, func) {
       func(elems[i]);
 }
 
+function arrayEqual(a, b) {
+   // Return true if arrays a and b are equal
+   if (a.length != b.length)
+      return false;
+   for (var i = 0; i < a.length; i++)
+      if (a[i] != b[i])
+         return false;
+   return true;
+}
+
 // A wrapper class around HTML5 local storage, if available
 
 var LocalStorage = (function() {
@@ -230,8 +240,6 @@ var Game = (function() {
     this.uuid = uuid;
     // console.log("Game " + uuid + " loaded");
     this.zombie = false; // !!! TODO
-    // Create a local storage object for this game
-    this.localStorage = new LocalStorage(uuid);
     this.gamelist = null; // No gamelist loaded yet
     this.messages = null;
     this.wordBad = false;
@@ -251,22 +259,21 @@ var Game = (function() {
     this.moves = [];
     this.tiles = {};
     this.lastmove = undefined;
-    this.update(game);
+    // Create a local storage object for this game
+    this.localStorage = new LocalStorage(uuid);
+    // Load previously saved tile positions from
+    // local storage, if any
+    var savedTiles = this.localStorage.loadTiles();
+    this.init(game);
+    // Put tiles in the same position as they were
+    // when the player left the game
+    this.restoreTiles(savedTiles);
   }
 
-  Game.prototype.update = function(game) {
-    // Update the game state with new data from the server,
-    // either after submitting a move to the server or
-    // after receiving a move notification via the Firebase listener
-    var sq, key;
-    if (this.moves.length && game.num_moves <= this.moves.length)
-      // This is probably a starting notification from Firebase,
-      // not adding a new move but repeating the last move made: ignore it
-      // !!! TODO: If the last move was by the opponent, highlight it
-      return;
-    // Stop highlighting the previous opponent move, if any
-    for (sq in this.tiles)
-      this.tiles[sq].freshtile = false;
+  Game.prototype.init = function(game) {
+    // Initialize the game state with data from the server
+    var key;
+    // !!! TODO: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
     this.over = game.result == GAME_OVER;
     if (this.over || !game.result)
@@ -282,16 +289,34 @@ var Game = (function() {
     if (game.newmoves !== undefined && game.newmoves.length > 0)
       // Add the newmoves list, if any, to the list of moves
       this.moves = this.moves.concat(game.newmoves);
+    // Don't keep the new moves lying around
     this.newmoves = undefined;
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
-    if (this.currentError === null) {
+    if (this.currentError === null)
       // Generate a dictionary of tiles currently on the board,
       // from the moves already made. Also highlights the most recent
       // opponent move (contained in this.lastmove)
       this.placeTiles();
+  };
+
+  Game.prototype.update = function(game) {
+    // Update the game state with data from the server,
+    // either after submitting a move to the server or
+    // after receiving a move notification via the Firebase listener
+    var sq;
+    if (game.num_moves <= this.moves.length)
+      // This is probably a starting notification from Firebase,
+      // not adding a new move but repeating the last move made: ignore it
+      return;
+    // Stop highlighting the previous opponent move, if any
+    for (sq in this.tiles)
+      if (this.tiles.hasOwnProperty(sq))
+        this.tiles[sq].freshtile = false;
+    this.init(game);
+    if (this.currentError === null) {
       if (this.succ_chall) {
         // Successful challenge: reset the rack
         // (this updates the score as well)
@@ -487,11 +512,15 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.moveTile = function(from, to) {
-    // Move a tile between cells/slots
+  Game.prototype._moveTile = function(from, to) {
+    // Low-level function to move a tile between cells/slots
     var fromTile = this.tiles[from];
+    if (fromTile === undefined)
+      throw "Moving from an empty square";
     delete this.tiles[from];
     if (to in this.tiles) {
+      if (to.charAt(0) != "R")
+        throw "Dropping to an occupied square";
       // Dropping to an occupied slot in the rack:
       // create space in the rack
       var dest = parseInt(to.slice(1));
@@ -504,7 +533,7 @@ var Game = (function() {
         // Found empty slot after the tile:
         // move the intervening tiles to the right
         for (j = empty; j > dest; j--)
-          this.tiles['R' + j] = this.tiles['R' + (j-1)];
+          this.tiles['R' + j] = this.tiles['R' + (j - 1)];
       }
       else {
         // No empty slots after the tile: try to find one to the left
@@ -514,13 +543,18 @@ var Game = (function() {
         if (empty < 1)
           throw "No place in rack to drop tile";
         for (j = empty; j < dest; j++)
-          this.tiles['R' + j] = this.tiles['R' + (j+1)];
+          this.tiles['R' + j] = this.tiles['R' + (j + 1)];
       }
     }
     if (to[0] == 'R' && fromTile.tile == '?')
-      // Putting a blank tile back into the rack: erase its meaning
+    // Putting a blank tile back into the rack: erase its meaning
       fromTile.letter = ' ';
     this.tiles[to] = fromTile;
+  };
+
+  Game.prototype.moveTile = function(from, to) {
+    // High-level function to move a tile between cells/slots
+    this._moveTile(from, to);
     // Clear error message, if any
     this.currentError = this.currentMessage = null;
     // Update the current word score
@@ -736,17 +770,52 @@ var Game = (function() {
     this.localStorage.saveTiles(tp);
   };
 
-  Game.prototype.restoreTiles = function() {
+  Game.prototype.restoreTiles = function(savedTiles) {
     // Restore the tile positions that were previously stored
     // in local storage
-    var tp = this.localStorage.loadTiles();
-    // !!! TODO: If local storage does not match current rack, cancel
-    var i, sq, tile;
-    for (i = 0; i < tp.length; i++) {
-      sq = tp[i].sq;
-      tile = tp[i].tile;
-      // !!! TODO: find the tile in the rack and move it to sq
+    if (!savedTiles.length)
+      // Nothing to do
+      return;
+    var i, j, sq, saved_sq, tile;
+    var savedLetters = [];
+    var rackLetters = [];
+    // First, check that the saved tiles match the current rack
+    for (i = 0; i < savedTiles.length; i++)
+      savedLetters.push(savedTiles[i].tile.charAt(0));
+    for (i = 1; i <= RACK_SIZE; i++)
+      if (("R" + i) in this.tiles)
+        rackLetters.push(this.tiles["R" + i].tile.charAt(0));
+    savedLetters.sort();
+    rackLetters.sort();
+    if (!arrayEqual(savedLetters, rackLetters))
+      // We don't have the same rack as when the state was saved:
+      // give up
+      return;
+    // Attempt to move the saved tiles from the rack to
+    // their saved positions
+    for (i = 0; i < savedTiles.length; i++) {
+      saved_sq = savedTiles[i].sq;
+      if (!saved_sq in this.tiles && saved_sq.charAt(0) != "R") {
+        // The saved destination square is empty:
+        // find the tile in the rack and move it there
+        tile = savedTiles[i].tile;
+        for (j = 1; j <= RACK_SIZE; j++) {
+          sq = "R" + j;
+          if (sq in this.tiles && this.tiles[sq].tile == tile.charAt(0)) {
+            // Found the tile (or its equivalent) in the rack: move it
+            if (tile.charAt(0) == "?")
+              // Placing a blank tile: give it the meaning that was
+              // saved with it
+              this.tiles[sq].letter = tile.charAt(1);
+            // ...and move it
+            this._moveTile(sq, saved_sq);
+            break;
+          }
+        }
+      }
     }
+    // Show an updated word status and score
+    this.updateScore();
   };
 
   Game.prototype._resetRack = function() {
@@ -755,9 +824,11 @@ var Game = (function() {
     if (t.length) {
       var i = 1;
       for (var j = 0; j < t.length; j++) {
+        // Find a free slot in the rack
         while (("R" + i) in this.tiles)
           i++;
         var sq = "R" + i;
+        // Recall the tile
         this.tiles[sq] = this.tiles[t[j]];
         delete this.tiles[t[j]];
         if (this.tiles[sq].tile == '?')
