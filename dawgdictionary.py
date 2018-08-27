@@ -25,7 +25,8 @@
     DawgDictionary.find_permutations(rack)
         Returns a list of all permutations of the given rack, i.e. valid words
         consisting of one or more letters from the rack in various orders.
-        The rack may contain wildcards ('?'). For example, result = dawgdict.find_permutations("se?")
+        The rack may contain wildcards ('?'). For example,
+        result = dawgdict.find_permutations("se?")
         returns a list of all words from 1 to 3 characters that can be constructed from
         the letters "s" and "e" and any one additional letter.
 
@@ -221,6 +222,8 @@ class DawgDictionary:
 
     # noinspection PyMethodMayBeStatic
     def resume_navigation(self, nav, prefix, nextnode, leftpart):
+        """ Continue a previous navigation of the DAWG, using saved
+            state information """
         return Navigation(nav).resume(prefix, nextnode, leftpart)
 
 
@@ -441,6 +444,7 @@ class FindNavigator:
         self._index += 1
         return True
 
+    # pylint: disable=unused-argument
     def accept(self, matched, final):
         """ Called to inform the navigator of a match and whether it is a final word """
         if final and self._index == self._len:
@@ -458,6 +462,7 @@ class FindNavigator:
         pass
 
     def is_found(self):
+        """ Return True if the sought word was found in the DAWG """
         return self._found
 
 
@@ -519,6 +524,7 @@ class PermutationNavigator:
         self._result.sort(key=lambda x: (-len(x), Alphabet.sortkey(x)))
 
     def result(self):
+        """ Return the list of results accumulated during the navigation """
         return self._result
 
 
@@ -582,6 +588,7 @@ class MatchNavigator:
             self._result.sort(key=Alphabet.sortkey)
 
     def result(self):
+        """ Return the list of results accumulated during the navigation """
         return self._result
 
 
@@ -668,6 +675,8 @@ class PackedDawgDictionary:
             PackedNavigation(nav, self._b).go()
 
     def resume_navigation(self, nav, prefix, nextnode, leftpart):
+        """ Continue a previous navigation of the DAWG, using saved
+            state information """
         return PackedNavigation(nav, self._b).resume(prefix, nextnode, leftpart)
 
 

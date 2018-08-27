@@ -291,6 +291,7 @@ class Axis:
                 # Count the consecutive open, non-anchor squares on the left of the anchor
                 open_sq = 0
                 left = i
+                # pylint: disable=bad-continuation
                 while (
                     left > 0
                     and left > (last_anchor + 1)
