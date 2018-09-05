@@ -25,6 +25,10 @@ resources/netskrafl-*.json
 resources/ordalistimax15.txt
 resources/ordalisti.algeng.txt
 
+# TWL and SOWPODS word lists
+resources/TWL06.txt
+resources/sowpods.txt
+
 # CSS files generated from Less
 static/skrafl-curry.css
 static/skrafl-desat.css

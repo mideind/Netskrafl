@@ -449,11 +449,10 @@ class _BinaryDawgPacker:
 
     """
 
-    ENCODING = Alphabet.order
     BYTE = struct.Struct("<B")
     UINT32 = struct.Struct("<L")
 
-    def __init__(self, stream):
+    def __init__(self, stream, encoding):
         self._stream = stream
         # _locs is a dict of already written nodes and their stream locations
         self._locs = dict()
@@ -461,6 +460,7 @@ class _BinaryDawgPacker:
         # node id has been referenced without knowing where the node is
         # located
         self._fixups = dict()
+        self._encoding = encoding
 
     def start(self, num_root_edges):
         """ Write a starting byte with the number of root edges """
@@ -494,7 +494,7 @@ class _BinaryDawgPacker:
             if c == u"|":
                 b[-1] |= 0x80
             else:
-                b.append(self.ENCODING.index(c))
+                b.append(self._encoding.index(c))
 
         if ident == 0:
             # The next pointer is 0: mark the last character in the prefix
@@ -563,8 +563,9 @@ class DawgBuilder:
         processing to appear as one aggregated and sorted word list.
     """
 
-    def __init__(self):
+    def __init__(self, encoding):
         self._dawg = None
+        self._encoding = encoding
 
     class _InFile(object):
         """ InFile represents a single sorted input file. """
@@ -769,7 +770,7 @@ class DawgBuilder:
         assert self._dawg is not None
         f = io.BytesIO()
         # Create a packer to flatten the tree onto a binary stream
-        p = _BinaryDawgPacker(f)
+        p = _BinaryDawgPacker(f, self._encoding)
         # Write the tree using the packer
         self._dawg.write_packed(p)
         # Write packed DAWG to binary file
@@ -845,7 +846,7 @@ def run_test():
     """ Build a DAWG from the files listed """
     # This creates a DAWG from a single file named testwords.txt
     print(u"Starting DAWG build for testwords.txt")
-    db = DawgBuilder()
+    db = DawgBuilder(encoding=Alphabet.order)
     t0 = time.time()
     db.build(
         ["testwords.txt"],  # Input files to be merged
@@ -861,11 +862,27 @@ def run_twl06():
     # This creates a DAWG from a single file named TWL06.txt,
     # the Scrabble Tournament Word List version 6
     print(u"Starting DAWG build for TWL06.txt")
-    db = DawgBuilder()
+    db = DawgBuilder(encoding="abcdefghijklmnopqrstuvwxyz")
     t0 = time.time()
     db.build(
         ["TWL06.txt"],  # Input files to be merged
         "TWL06",  # Output file - full name will be TWL06.text.dawg
+        "resources",  # Subfolder of input and output files
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
+def run_sowpods():
+    """ Build a DAWG from the files listed """
+    # This creates a DAWG from a single file named sowpods.txt,
+    # the combined European & U.S. English word list
+    print(u"Starting DAWG build for sowpods.txt")
+    db = DawgBuilder(encoding="abcdefghijklmnopqrstuvwxyz")
+    t0 = time.time()
+    db.build(
+        ["sowpods.txt"],  # Input files to be merged
+        "sowpods",  # Output file - full name will be TWL06.text.dawg
         "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
@@ -881,7 +898,7 @@ def run_skrafl():
     # ordalisti.remove.txt (known errors) are removed.
     # The result is about 2.3 million words, generating >100,000 graph nodes
     print(u"Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
-    db = DawgBuilder()
+    db = DawgBuilder(encoding=Alphabet.order)
     t0 = time.time()
     db.build(
         ["ordalistimax15.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
@@ -905,7 +922,7 @@ def run_skrafl():
     # Process list of common words
 
     print(u"Starting DAWG build for list of common words")
-    db = DawgBuilder()
+    db = DawgBuilder(encoding=Alphabet.order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
@@ -933,3 +950,9 @@ if __name__ == "__main__":
 
     # Build the whole Icelandic Netskrafl word database by default
     run_skrafl()
+
+    # Build Tournament Word List v6 (TWL06)
+    # run_twl06()
+
+    # Build SOWPODS
+    # run_sowpods()
