@@ -38,7 +38,7 @@ module.exports = function (grunt) {
       },
 
       concat: {
-        netskrafl_js: {
+         netskrafl_js: {
             src: [
                'static/js/common.js',
                'static/js/channel.js',
@@ -47,8 +47,8 @@ module.exports = function (grunt) {
                'static/js/netskrafl.js'
             ],
             dest: 'static/netskrafl.js',
-        },
-        main_js: {
+         },
+         main_js: {
             src: [
                'static/js/common.js',
                'static/js/channel.js',
@@ -57,8 +57,8 @@ module.exports = function (grunt) {
                'static/js/main.js'
             ],
             dest: 'static/main.js',
-        },
-        wait_js: {
+         },
+         wait_js: {
             src: [
                'static/js/channel.js',
                'static/js/ajax.js',
@@ -66,7 +66,7 @@ module.exports = function (grunt) {
                'static/js/wait.js'
             ],
             dest: 'static/wait.js',
-        }
+         }
       },
 
       uglify: {
@@ -87,19 +87,19 @@ module.exports = function (grunt) {
       less: {
          development: {
             files: {
-                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
-                'static/skrafl-desat.css': ['static/skrafl-desat.less']
+               'static/skrafl-curry.css': ['static/skrafl-curry.less'],
+               'static/skrafl-desat.css': ['static/skrafl-desat.less']
             },
             options: {
             }
          },
          production: {
             files: {
-                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
-                'static/skrafl-desat.css': ['static/skrafl-desat.less']
+               'static/skrafl-curry.css': ['static/skrafl-curry.less'],
+               'static/skrafl-desat.css': ['static/skrafl-desat.less']
             },
             options: {
-                cleancss: true
+               cleancss: true
             }
          }
       },

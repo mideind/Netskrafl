@@ -2,7 +2,11 @@
 
 """ Language, locale and alphabet encapsulation module
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2014-2018 Miðeind ehf.
+    Author: Vilhjalmur Thorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
     The classes in this module encapsulate particulars of supported
     languages, including the character set, scores, tiles in the

@@ -1,9 +1,13 @@
-#!/usr/bin/env pypy
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """ Skrafltester
 
+    Copyright (C) 2015-2017 Miðeind ehf.
     Author: Vilhjalmur Thorsteinsson, 2014
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
     This program implements a testing function for the
     functionality in skraflmechanics.py and skraflplayer.py
@@ -381,6 +385,9 @@ def main(argv=None):
         print(err.msg, file=sys.stderr)
         print("for help use --help", file=sys.stderr)
         return 2
+
+    # Normal exit with no error
+    return 0
 
 
 def profile_main():

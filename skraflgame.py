@@ -309,9 +309,7 @@ class User:
 
     @staticmethod
     def friend_from_prefs(prefs):
-        """ Returns True if the user is a friend of Netskrafl 
-        :rtype: bool
-        """
+        """ Returns True if the user is a friend of Netskrafl """
         if prefs is None:
             return False
         friend = prefs.get(u"friend")
