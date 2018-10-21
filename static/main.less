@@ -251,7 +251,6 @@
 
 .noselect {
    -webkit-user-select: none;
-   -khtml-user-select: none;
    -moz-user-select: none;
    -ms-user-select: none;
    user-select: none;
@@ -578,8 +577,7 @@ div.word-check {
    font-size: 22px;
    line-height: 42px;
    visibility: hidden;
-   border-style: solid;
-   border-width: 2px;
+   border: 2px solid;
    border-radius: 4px;
 }
 
@@ -737,7 +735,7 @@ h3.playerright {
 h3.scoreleft {
    display: inline-block;
    position: absolute;
-   top: 0px;
+   top: 0;
    left: 0;
    width: 145px;
    font-size: 22px;
@@ -754,7 +752,7 @@ h3.scoreleft {
 h3.scoreright {
    display: inline-block;
    position: absolute;
-   top: 0px;
+   top: 0;
    right: 0;
    width: 145px;
    font-size: 22px;
@@ -773,8 +771,7 @@ div.robot-btn {
    position: relative;
    top: 0; left: 0;
    margin: 2px;
-   padding: 2px;
-   padding-top: 6px;
+   padding: 6px 2px 2px;
    width: 126px;
    height: 28px;
    min-height: 28px;
@@ -796,13 +793,12 @@ div.player-btn {
    position: relative;
    top: 0; left: 0;
    margin: 2px;
-   padding: 2px;
-   padding-top: 6px;
+   padding: 6px 2px 2px;
    width: 118px;
    height: 28px;
    min-height: 28px;
    border-radius: 5px;
-   border-width: 0px;
+   border-width: 0;
    overflow: hidden;
    background-color: transparent;
 }
@@ -849,7 +845,7 @@ div#logo-pic {
 }
 
 div.loginform-small div#logo-pic {
-   padding-top: 0px;
+   padding-top: 0;
 }
 
 div.blurb {
@@ -865,8 +861,8 @@ div.heading {
    height: 72px;
    background-color: @board-background;
    top: 0; left: 0;
-   padding-left: 0px;
-   padding-right: 0px;
+   padding-left: 0;
+   padding-right: 0;
 }
 
 div.right-tab {
@@ -929,7 +925,7 @@ div.right-tab.alert > span.glyphicon {
 
 div.right-area {
    position: relative;
-   left: 0px;
+   left: 0;
    height: @mobile-height-net - @board-top - @margin-small;
    width: 100%;
    font-size: 16px;
@@ -946,14 +942,14 @@ div.right-area.with-clock {
 
 div.movelist-container {
    position: absolute;
-   top: 0px;
-   left: 0px;
+   top: 0;
+   left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - 3 * @margin-small;
    background-color: @background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
-   z-index: 5;
+   z-index: 6;
 }
 
 div.movelist {
@@ -970,10 +966,7 @@ div.movelist-container div.bag {
    position: relative;
    left: 0;
    margin: 0;
-   padding: 0;
-   padding-top: 4px;
-   padding-left: 27px;
-   padding-right: 28px;
+   padding: 4px 28px 0 27px;
    height: 104px;
 }
 
@@ -987,8 +980,8 @@ div.game-timed {
 div.modal-dialog {
    visibility: hidden;
    position: fixed;
-   left: 0px;
-   top: 0px;
+   left: 0;
+   top: 0;
    width: 100%;
    height: 100%;
    z-index: 10;
@@ -1028,9 +1021,8 @@ div#blank-form {
    height: 52px;
    font-size: 14px;
    line-height: 26px;
-   margin: 0px;
-   padding: 4px;
-   padding-top: 0px;
+   margin: 0;
+   padding: 0 4px 4px;
    visibility: hidden;
 }
 
@@ -1086,10 +1078,7 @@ div.chall-info {
    background-color: darken(@freshtile, 10%);
    bottom: 70px;
    width: @mobile-width - 2 * @margin-small - 48px;
-   padding-left: 24px;
-   padding-right: 24px;
-   padding-top: 0px;
-   padding-bottom: 4px;
+   padding: 0 24px 4px;
 }
 
 div.exchange {
@@ -1141,13 +1130,10 @@ div.modal-close#chat-send {
    line-height: 18px;
    height: 28px;
    bottom: 2px;
-   right: 0px;
-   margin-left: 8px;
-   margin-bottom: 2px;
-   margin-right: 0;
-   margin-top: 0;
+   right: 0;
+   margin: 0 0 2px 8px;
    padding-top: 4px;
-   padding-bottom: 0px;
+   padding-bottom: 0;
    background-color: darken(@double-letter, 10%);
    color: white;
 }
@@ -1166,8 +1152,8 @@ div#timed-toggler {
 
 div.tabbed-page {
    position: absolute;
-   left: 0px;
-   top: 0px;
+   left: 0;
+   top: 0;
    width: @mobile-width;
    height: @mobile-height-net;
    overflow: hidden;
@@ -1269,7 +1255,7 @@ span.list-tc {
    max-width: 84px;
    text-align: left;
    overflow: hidden;
-   padding-right: 0px;
+   padding-right: 0;
 }
 
 div.tilecount {
@@ -1342,7 +1328,7 @@ span.list-win {
    font-size: 18px;
    width: 26px;
    max-width: 26px;
-   margin-left: 0px;
+   margin-left: 0;
    cursor: pointer;
    overflow: hidden;
 }
@@ -1552,8 +1538,8 @@ div#chall-form {
 
 div#chall-fairplay {
    margin-top: 10px;
-   padding-left: 0px;
-   padding-right: 0px;
+   padding-left: 0;
+   padding-right: 0;
    font-size: 14px;
    text-align: right;
 }
@@ -1666,9 +1652,7 @@ div.challenge {
    font-size: 22px;
    line-height: 37px;
    display: none;
-   border-style: solid;
-   border-color: @chall-btn;
-   border-width: 2px;
+   border: 2px solid @chall-btn;
    border-radius: 5px;
    cursor: pointer;
 }
@@ -1720,8 +1704,8 @@ div #chall-received {
 
 div.games {
    position: absolute;
-   top: 0px;
-   left: 0px;
+   top: 0;
+   left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - @margin-small - 24px;
    background-color: @theme6;
@@ -1798,7 +1782,7 @@ div.stats-fig {
 
 div#own-toggler {
    width: 80px; /* Two small toggle buttons of 40px each */
-   margin-top: 0px;
+   margin-top: 0;
    margin-right: 8px;
 }
 
@@ -1821,6 +1805,8 @@ div#own-stats {
 
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
+/* ================= MOBILE PORTRAIT UI, LARGE ENOUGH TO BE NON-SCROLLABLE =============== */
+
 @media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
 
    /* On sufficiently large mobile screens, keep the body fixed (unscrollable) */
@@ -1834,6 +1820,8 @@ div#own-stats {
       overflow: hidden;
    }
 }
+
+/* ================= MOBILE LANDSCAPE UI ====================== */
 
 @media all and (min-width: @mobile-height) {
 
@@ -1985,7 +1973,7 @@ div.right-area {
 
 }
 
-/* ==================== FULL-SCREEN (NON-MOBILE) UI ====================== */
+/* ================= FULL-SCREEN (NON-MOBILE) UI ====================== */
 
 @media all and (min-width: 768px) {
 
@@ -2393,7 +2381,7 @@ div.right-tab {
 }
 
 div.right-tab#tab-movelist {
-   top: 0px;
+   top: 0;
    left: -40px;
 }
 
@@ -2446,8 +2434,7 @@ div.modal-dialog {
    height: 28px;
    font-size: 16px;
    line-height: normal;
-   padding: 0px;
-   padding-top: 4px;
+   padding: 4px 0 0;
    margin: 0;
 }
 
@@ -2509,7 +2496,7 @@ div.chat-area {
 
 div.modal-close#chat-send {
    height: 25px;
-   bottom: 0px;
+   bottom: 0;
 }
 
 span.statsbutton {
@@ -2874,7 +2861,6 @@ div.stats-fig {
    padding: 6px;
    border-radius: 5px;
    border-width: 2px;
-   border-radius: 5px;
    font-size: 20px;
    margin-top: 4px;
    margin-right: 8px;
@@ -3076,7 +3062,7 @@ div.twoletter {
 
 div.twoletter-area {
    position: absolute;
-   top: 0px; right: 0px;
+   top: 0; right: 0;
    padding: 14px;
    text-align: right;
    height: 100%;
@@ -3167,7 +3153,7 @@ div.at-top-left div.tilecount.trans {
 div.at-top-left div.tilecount div.tc {
    color: #f4f4f4;
    padding-left: 4px;
-   margin-left: 0px;
+   margin-left: 0;
    overflow: hidden;
    border-radius: 10px;
    border-width: 0;
@@ -3181,7 +3167,7 @@ div.at-top-left div.tilecount div.tc {
 div.at-top-left div.tilecount div.oc {
    color: black;
    padding-left: 8px;
-   margin-left: 0px;
+   margin-left: 0;
    overflow: hidden;
    font-size: 16px;
    line-height: 20px;
@@ -3851,14 +3837,10 @@ div.userid {
    font-size: 16px;
    line-height: 16px;
    font-weight: 700;
-   color: white;
    text-overflow: ellipsis;
    white-space: nowrap;
    overflow: hidden;
-   padding-top: 6px;
-   padding-bottom: 4px;
-   padding-left: 6px;
-   padding-right: 10px;
+   padding: 6px 10px 4px 6px;
    margin: 0;
    z-index: 5;
    color: @board-background;
@@ -3895,7 +3877,7 @@ div.listitem {
 */
 
 .listheader > span {
-   top: 0px;
+   top: 0;
 }
 
 .listitem a:link, .listitem a:visited {
@@ -3930,7 +3912,7 @@ div#elo-hdr span {
 div#elo-toggler {
    display: inline-block;
    position: absolute;
-   bottom: 0px;
+   bottom: 0;
    left: 284px;
    z-index: 10;
 }
@@ -4007,14 +3989,13 @@ span.ready-btn {
    .glyphicon;
    font-size: 15px;
    line-height: 15px;
-   top: 0px;
+   top: 0;
    cursor: default;
    color: white;
    background-color: @double-letter;
    border-radius: 5px;
    padding: 4px;
-   margin: 0px;
-   margin-right: 4px;
+   margin: 0 4px 0 0;
 }
 
 span.ready-btn:before {
@@ -4031,8 +4012,7 @@ span.timed-btn {
    background-color: darken(@double-word, 10%);
    border-radius: 5px;
    padding: 4px;
-   margin: 0px;
-   margin-right: 4px;
+   margin: 0 4px 0 0;
 }
 
 span.timed-btn:before {
@@ -4049,8 +4029,7 @@ span.fairplay-btn {
    background-color: @freshtile;
    border-radius: 5px;
    padding: 4px;
-   margin: 0px;
-   margin-right: 4px;
+   margin: 0 4px 0 0;
 }
 
 span.fairplay-btn:before {
@@ -4074,8 +4053,7 @@ span.manual-btn {
    background-color: @alert;
    border-radius: 5px;
    padding: 4px;
-   margin: 0px;
-   margin-right: 4px;
+   margin: 0 4px 0 0;
 }
 
 span.manual-btn:before {
@@ -4094,10 +4072,8 @@ span.elo-btn {
    font-weight: bold;
    color: white;
    border-radius: 5px;
-   padding: 4px;
-   padding-left: 6px;
-   padding-right: 6px;
-   margin: 0px;
+   padding: 4px 6px;
+   margin: 0;
 }
 
 span.elo-btn.left {
@@ -4158,7 +4134,7 @@ span.usr-info {
    background-color: @freshtile;
    border-radius: 5px;
    padding: 4px;
-   margin: 0px;
+   margin: 0;
 }
 
 span.usr-info:before {
@@ -4550,7 +4526,7 @@ span#chall-online {
    background-color: fade(@board-background, 65%);
    border-radius: 5px;
    padding: 5px;
-   margin: 0px;
+   margin: 0;
 }
 
 span#chall-online:before {
@@ -4581,7 +4557,7 @@ div#chall-manual {
 
 div#manual-toggler {
    margin-top: 12px;
-   margin-bottom: 0px;
+   margin-bottom: 0;
 }
 
 div.hidden {
@@ -5028,7 +5004,7 @@ div#emoticons-div {
 }
 
 table#emoticons td {
-   font-family: 'Courier';
+   font-family: 'Courier', sans-serif;
    font-size: 20px;
    text-align: center;
 }

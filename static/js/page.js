@@ -2270,13 +2270,12 @@ function createView() {
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
     return m(".movelist-container",
-      { style: "z-index: 6" }, // Appear on top of board on mobile
       [
         m(".movelist",
           {
             key: "movelist",
-            oncreate: scrollMovelistToBottom,
-            onupdate: scrollMovelistToBottom
+            oncreate: scrollMovelistToBottom // ,
+            // onupdate: scrollMovelistToBottom
           },
           movelist()
         ),
@@ -2337,7 +2336,7 @@ function createView() {
                   // Show a friend promotion dialog
                   this.pushDialog("promo", { key: "friend" });
                 ev.preventDefault();
-              }.bind(view),
+              }.bind(view)
             },
             "Skoða yfirlit"
           )
