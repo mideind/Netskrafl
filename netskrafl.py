@@ -2,7 +2,7 @@
 
 """ Web server for netskrafl.is
 
-    Copyright (C) 2015-2017 Miðeind ehf.
+    Copyright (C) 2015-2018 Miðeind ehf.
     Author: Vilhjalmur Thorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
