@@ -67,7 +67,8 @@ function getSettings() {
       { name: "main", route: "/main", mustLogin: true },
       { name: "login", route: "/login", mustLogin: false },
       { name: "help", route: "/help", mustLogin: false },
-      { name: "game", route: "/game/:uuid", mustLogin: true }
+      { name: "game", route: "/game/:uuid", mustLogin: true },
+      { name: "review", route: "/review/:uuid", mustLogin: true }
     ];
   return {
     paths: paths,
@@ -486,6 +487,7 @@ function createView() {
     // Display the appropriate content for the route,
     // also considering active dialogs
     var views = [];
+    var move;
     switch (model.routeName) {
       case "login":
         views.push(vwLogin.call(this, model, actions));
@@ -496,10 +498,23 @@ function createView() {
       case "game":
         views.push(vwGame.call(this, model, actions));
         break;
+      case "review":
+        move = m.route.param("move");
+        // Start with move number 0 by default
+        move = (!move) ? 0 : parseInt(move);
+        if (isNaN(move) || move < 0)
+          move = 0;
+        views.push(vwReview.call(this, model, actions, move));
+        break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
         // A route parameter of ?tab=N goes directly to tab N (0-based)
-        views.push(vwHelp.call(this, model, actions, m.route.param("tab"), m.route.param("faq")));
+        views.push(
+          vwHelp.call(this, model, actions,
+            m.route.param("tab"),
+            m.route.param("faq")
+          )
+        );
         break;
       default:
         console.log("Unknown route name: " + model.routeName);
@@ -1639,7 +1654,7 @@ function createView() {
                     this.fav = !this.fav;
                     model.markFavorite(this.userid, this.fav);
                     ev.preventDefault();
-                  }.bind(item),
+                  }.bind(item)
                 },
                 glyph(item.fav ? "star" : "star-empty")
               );
@@ -1700,7 +1715,7 @@ function createView() {
                     onclick: function(ev) {
                       showUserInfo(this.userid, this.nick, this.fullname);
                       ev.preventDefault();
-                    }.bind(item),
+                    }.bind(item)
                   },
                   isRobot ? "" : m("span.usr-info")
                 ),
@@ -1864,6 +1879,64 @@ function createView() {
     ];
   }
 
+  function vwPlayerName(view, game, side) {
+    // Displays a player name, handling both human and robot players
+    // as well as left and right side, and local and remote colors
+    var apl0 = game && game.autoplayer[0];
+    var apl1 = game && game.autoplayer[1];
+    var nick0 = game ? game.nickname[0] : "";
+    var nick1 = game ? game.nickname[1] : "";
+    var player = game ? game.player : 0;
+    var localturn = game ? game.localturn : false;
+    var tomove;
+    var gameover = game ? game.over : true;
+
+    function lookAtPlayer(player, side, ev) {
+      if (!$state.uiFullscreen)
+        // Don't do anything on mobile, and allow the click
+        // to propagate to the parent
+        return;
+      if (player === 0 || player === 1) {
+        if (player == side) {
+          // The player is clicking on himself:
+          // overlay a user preference dialog
+          view.pushDialog("userprefs");
+        }
+        else
+        if (!game.autoplayer[side]) {
+          // The player is clicking on the opponent:
+          // show the opponent's track record, if not an autoplayer
+          view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
+        }
+      }
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+
+    if (side == "left") {
+      // Left side player
+      if (apl0)
+        // Player 0 is a robot (autoplayer)
+        return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
+      tomove = gameover || (localturn ^ (player === 0)) ? "" : ".tomove";
+      return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
+        { id: "player-0", onclick: lookAtPlayer.bind(null, player, 0) },
+        [ m("span.left-to-move"), nick0 ]
+      );
+    }
+    else {
+      // Right side player
+      if (apl1)
+        // Player 1 is a robot (autoplayer)
+        return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
+      tomove = gameover || (localturn ^ (player === 1)) ? "" : ".tomove";
+      return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
+        { id: "player-1", onclick: lookAtPlayer.bind(null, player, 1) },
+        [ m("span.right-to-move"), nick1 ]
+      );
+    }
+  }
+
   // Game screen
 
   function vwGame(model, actions) {
@@ -1878,64 +1951,6 @@ function createView() {
       function vwRightHeading() {
         // The right-side heading on the game screen
 
-        function vwPlayerName(side) {
-          // Displays a player name, handling both human and robot players
-          // as well as left and right side, and local and remote colors
-          var apl0 = game && game.autoplayer[0];
-          var apl1 = game && game.autoplayer[1];
-          var nick0 = game ? game.nickname[0] : "";
-          var nick1 = game ? game.nickname[1] : "";
-          var player = game ? game.player : 0;
-          var localturn = game ? game.localturn : false;
-          var tomove;
-          var gameover = game ? game.over : true;
-
-          function lookAtPlayer(player, side, ev) {
-            if (!$state.uiFullscreen)
-              // Don't do anything on mobile, and allow the click
-              // to propagate to the parent
-              return;
-            if (player === 0 || player === 1) {
-              if (player == side) {
-                // The player is clicking on himself:
-                // overlay a user preference dialog
-                view.pushDialog("userprefs");
-              }
-              else
-              if (!game.autoplayer[side]) {
-                // The player is clicking on the opponent:
-                // show the opponent's track record, if not an autoplayer
-                view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
-              }
-            }
-            ev.stopPropagation();
-            ev.preventDefault();
-          }
-
-          if (side == "left") {
-            // Left side player
-            if (apl0)
-              // Player 0 is a robot (autoplayer)
-              return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
-            tomove = gameover || (localturn ^ (player === 0)) ? "" : ".tomove";
-            return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
-              { id: "player-0", onclick: lookAtPlayer.bind(null, player, 0) },
-              [ m("span.left-to-move"), nick0 ]
-            );
-          }
-          else {
-            // Right side player
-            if (apl1)
-              // Player 1 is a robot (autoplayer)
-              return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
-            tomove = gameover || (localturn ^ (player === 1)) ? "" : ".tomove";
-            return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
-              { id: "player-1", onclick: lookAtPlayer.bind(null, player, 1) },
-              [ m("span.right-to-move"), nick1 ]
-            );
-          }
-        }
-
         var fairplay = game ? game.fairplay : false;
         var player = game ? game.player : 0;
         var sc0 = game ? game.scores[0].toString() : "";
@@ -1947,9 +1962,9 @@ function createView() {
           },
           [
             m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-              vwPlayerName("left")),
+              vwPlayerName(view, game, "left")),
             m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-              vwPlayerName("right")),
+              vwPlayerName(view, game, "right")),
             m("h3.scoreleft", sc0),
             m("h3.scoreright", sc1),
             m("h3.clockleft"),
@@ -2027,6 +2042,73 @@ function createView() {
               vwRightColumn(),
               vwBag(bag, newbag),
               game.askingForBlank ? vwBlankDialog(game) : ""
+            ]
+          )
+        )
+      ]
+    );
+  }
+
+  // Review screen
+
+  function vwReview(model, actions, move) {
+    // A review of a finished game
+
+    var game = model.game;
+    var view = this;
+
+    function vwRightColumn() {
+      // A container for the right-side header and area components
+
+      function vwRightHeading() {
+        // The right-side heading on the game screen
+
+        var fairplay = game ? game.fairplay : false;
+        var player = game ? game.player : 0;
+        var sc0 = game ? game.scores[0].toString() : "";
+        var sc1 = game ? game.scores[1].toString() : "";
+        return m(".heading",
+          {
+            // On mobile only: If the header is clicked, go to the main screen
+            onclick: function(ev) { if (!$state.uiFullscreen) m.route.set("/main"); }
+          },
+          [
+            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
+              vwPlayerName(view, game, "left")),
+            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
+              vwPlayerName(view, game, "right")),
+            m("h3.scoreleft", sc0),
+            m("h3.scoreright", sc1),
+            m(".fairplay",
+              fairplay ? { style: { display: "block" } } : { },
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+          ]
+        );
+      }
+
+      function vwRightArea() {
+        // A container for the list of best possible moves
+        return m(".right-area", vwMovelist.call(view, game));
+      }
+
+      return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
+    }
+
+    if (game === undefined || game === null)
+      // No associated game
+      return m("div", [ vwBack(), m("main", { key: "review-empty" }, m(".game-container")) ]);
+
+    var bag = game ? game.bag : "";
+    var newbag = game ? game.newbag : true;
+    return m("div", // Removing this div messes up Mithril
+      [
+        vwBack(), // Button to go back to main screen
+        vwInfo(), // Help button
+        m("main", { key: "review" },
+          m(".game-container",
+            [
+              vwBoardReview(game, move),
+              vwRightColumn()
             ]
           )
         )
@@ -2328,15 +2410,15 @@ function createView() {
           m("span.gameovermsg", tiles),
           m("span.statsbutton",
             {
-              onclick: function(ev) {
-                if ($state.hasPaid)
+              onclick: function(uuid, ev) {
+                if (true || $state.hasPaid) // !!! TODO
                   // Show the game review
-                  ; // !!! TODO
+                  m.route.set("/review/" + uuid);
                 else
                   // Show a friend promotion dialog
                   this.pushDialog("promo", { key: "friend" });
                 ev.preventDefault();
-              }.bind(view)
+              }.bind(view, game.uuid)
             },
             "Skoða yfirlit"
           )
@@ -2636,6 +2718,19 @@ function createView() {
     return m(".board-area", r);
   }
 
+  function vwBoardReview(game, move) {
+    // The board area within a game review screen
+    var r = [];
+    if (game) {
+      r = [
+        vwBoard(game),
+        vwRack(game),
+        vwButtonsReview(game, move)
+      ];
+    }
+    return m(".board-area", r);
+  }
+
   function vwTile(game, coord) {
     // A single tile, on the board or in the rack
     var t = game.tiles[coord];
@@ -2662,7 +2757,7 @@ function createView() {
     if (t.freshtile) {
       classes.push("freshtile");
       // Make fresh tiles appear sequentally by animation
-      var ANIMATION_STEP = 100; // Milliseconds
+      var ANIMATION_STEP = 150; // Milliseconds
       var delay = (t.index * ANIMATION_STEP).toString() + "ms";
       attrs.style = "animation-delay: " + delay + "; " +
         "-webkit-animation-delay: " + delay + ";";
@@ -2681,14 +2776,14 @@ function createView() {
       if (t.draggable) {
         // Make the tile draggable, unless we're showing a dialog
         attrs.draggable = "true";
-        attrs.ondragstart = function(ev) {
+        attrs.ondragstart = function(coord, ev) {
           // ev.dataTransfer.effectAllowed = "copyMove";
           game.selectedSq = null;
           ev.dataTransfer.effectAllowed = "move";
           ev.dataTransfer.setData("text", coord);
           ev.redraw = false;
-        };
-        attrs.onclick = function(ev) {
+        }.bind(null, coord);
+        attrs.onclick = function(coord, ev) {
           // When clicking a tile, make it selected (blinking)
           if (coord == game.selectedSq)
             // Clicking again: deselect
@@ -2696,7 +2791,7 @@ function createView() {
           else
             game.selectedSq = coord;
           ev.stopPropagation();
-        };
+        }.bind(null, coord);
       }
     }
     return m(classes.join("."), attrs,
@@ -2775,7 +2870,7 @@ function createView() {
       // The column identifier row
       var r = [];
       r.push(m("td"));
-      for (var col = 1; col < 16; col++)
+      for (var col = 1; col <= 15; col++)
         r.push(m("td", col.toString()));
       return m("tr.colid", r);
     }
@@ -2843,31 +2938,44 @@ function createView() {
       if (game.currentScore >= 50)
         sc.push("word-great");
     }
-    return m(sc.join("."), game.currentScore === undefined ? "?" : game.currentScore);
+    return m(
+      sc.join("."),
+      game.currentScore === undefined ? "?" : game.currentScore
+    );
+  }
+
+  function vwScoreReview(game, move) {
+    // Shows the score of the current move within a game review screen
+    var sc = [ ".score" ];
+    // TODO: Add logic to select class .green or .yellow depending
+    // TODO: on whose move it is
+    return m(sc.join("."), "?"); // TODO: Obtain score from move
+  }
+
+  function makeButton(cls, disabled, func, title, children, id) {
+    // Create a button element, wrapping the disabling logic
+    // and other boilerplate
+    var attr = {
+      onmouseout: buttonOut,
+      onmouseover: buttonOver,
+      title: title
+    };
+    if (id !== undefined)
+      attr.id = id;
+    if (disabled)
+      attr.onclick = function(ev) { ev.preventDefault(); };
+    else
+      attr.onclick = function(func, ev) {
+        func();
+        ev.preventDefault();
+      }.bind(null, func);
+    return m("." + cls + (disabled ? ".disabled" : ""),
+      attr, children // children may be omitted
+    );
   }
 
   function vwButtons(game) {
     // The set of buttons below the game board, alongside the rack
-
-    function makeButton(cls, disabled, func, title, children) {
-      // Create a button element, wrapping the disabling logic
-      // and other boilerplate
-      var attr = {
-        onmouseout: buttonOut,
-        onmouseover: buttonOver,
-        title: title
-      };
-      if (disabled)
-        attr.onclick = function(ev) { ev.preventDefault(); };
-      else
-        attr.onclick = function(func, ev) {
-          func();
-          ev.preventDefault();
-        }.bind(null, func);
-      return m("." + cls + (disabled ? ".disabled" : ""),
-        attr, children // children may be omitted
-      );
-    }
 
     var tilesPlaced = game.tilesPlaced().length > 0;
     var gameOver = game.over;
@@ -2989,6 +3097,53 @@ function createView() {
     // Is the server processing a move?
     if (game.moveInProgress)
       r.push(m(".waitmove", { style: { display: "block" } }));
+    return r;
+  }
+
+  function vwButtonsReview(game, move) {
+    // The navigation buttons below the board on the review screen
+    var r = [];
+    r.push(
+      makeButton(
+        "navbtn", false,
+        function(move) {
+          // Navigate to previous move
+          m.route.set(
+            "/review/" + game.uuid,
+            { move: Math.max(move - 1, 0) }
+          );
+        }.bind(null, move),
+        "Sjá fyrri leik",
+        [
+          m("span", { id: "nav-next-visible" }, [ glyph("chevron-left"), " Fyrri" ]),
+          m("span", { id: "nav-next-waiting" },
+            m("img", { src: "/static/ajax-loader-passbtn.gif" })
+          )
+        ],
+        "navprev"
+      )
+    );
+    r.push(
+      makeButton(
+        "navbtn", false,
+        function(move) {
+          // Navigate to next move
+          m.route.set(
+            "/review/" + game.uuid,
+            { move: move + 1 }
+          );
+        }.bind(null, move),
+        "Sjá næsta leik",
+        [
+          m("span", { id: "nav-prev-visible" }, [ "Næsti ", glyph("chevron-right") ]),
+          m("span", { id: "nav-prev-waiting" },
+            m("img", { src: "/static/ajax-loader-passbtn.gif" })
+          )
+        ],
+        "navnext"
+      )
+    );
+    r.push(vwScoreReview(game, move));
     return r;
   }
 
@@ -3317,6 +3472,16 @@ function createActions(model, view) {
       }
       // Load the game, and attach it to the Firebase listener once it's loaded
       model.loadGame(params.uuid, attachListenerToGame.bind(this, params.uuid));
+    }
+    else if (routeName == "review") {
+      // A game review: detach listener, if any, and load
+      // new game if necessary
+      if (model.game !== null)
+        // !!! This may cause an extra detach - we assume that's OK
+        detachListenerFromGame(model.game.uuid);
+      if (model.game === null || model.game.uuid != params.uuid)
+        // Different game than we had before: load it
+        model.loadGame(params.uuid, undefined); // No funcComplete
     }
     else {
       // Not a game route: delete the previously loaded game, if any
