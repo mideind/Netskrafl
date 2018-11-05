@@ -257,6 +257,9 @@ var Game = (function() {
     this.moves = [];
     this.tiles = {};
     this.lastmove = undefined;
+    this.autoplayer = [false, false];
+    this.scores = [0, 0];
+    this.bag = "";
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
     // Load previously saved tile positions from
