@@ -4,6 +4,7 @@
 """ DAWG dictionary builder
 
     Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2018 Miðeind ehf.
 
     DawgBuilder uses a Directed Acyclic Word Graph (DAWG)
     to store a large set of words in an efficient structure in terms
@@ -114,6 +115,15 @@ from dawgdictionary import PackedDawgDictionary
 # The DAWG builder uses the collation (sorting) given by Alphabet.sortkey
 # This is by default the Icelandic sorting order
 from languages import Alphabet
+
+# Mask away difference between Python 2 and 3
+if sys.version_info >= (3, 0):
+    pass
+else:
+    # noinspection PyPep8Naming
+    def next(iterator):
+        """ Map iterator.next() to a function, a la Python 3 """
+        return iterator.next()
 
 
 MAXLEN = 48  # Longest possible word to be processed
@@ -587,7 +597,7 @@ class DawgBuilder:
             """ Read lines until we have a legal word or EOF """
             while True:
                 try:
-                    line = self._fin.next().strip()
+                    line = next(self._fin).strip()
                 except StopIteration:
                     # We're done with this file
                     self._eof = True

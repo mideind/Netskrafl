@@ -58,9 +58,14 @@ import threading
 import logging
 import time
 import struct
+import sys
 
-# noinspection PyPep8Naming
-import cPickle as pickle
+# Mask away differences between Python 2 and 3
+if sys.version_info >= (3, 0):
+    import pickle
+else:
+    # noinspection PyPep8Naming
+    import cPickle as pickle
 
 from languages import Alphabet
 
