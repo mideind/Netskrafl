@@ -6,7 +6,7 @@
 	],
 	"settings": {
 		"files.associations": {
-			"*.html": "jinja-html"
+			"**/*.html": "jinja-html"
 		},
 		"files.exclude": {
 			"__pycache__/": true,

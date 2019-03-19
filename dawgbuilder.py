@@ -221,6 +221,10 @@ class _Dawg:
         # OrderedDict raises an exception while enumerating the values
         # (presumably because the dictionary has been altered).
         self._unique_nodes = dict()
+        # Don't mess with the following unless you know what you're
+        # doing - this is a hack to make sure dict enumeration and
+        # renumbering of ids work correctly even under Python 3 dict
+        # randomization
         self._unique_nodes_values = list()
 
     def _collapse_branch(self, parent, prefix, node):

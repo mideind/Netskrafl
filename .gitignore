@@ -14,6 +14,9 @@ __pycache__/
 # Profile data
 *.profile
 
+# Visual Studio Code tweaks
+pydev_startup.py
+
 # Secret session key
 resources/secret_key.bin
 resources/salescloud_key.bin

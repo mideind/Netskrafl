@@ -257,6 +257,7 @@ def test_manual_game():
 
 
 def test(num_games, opponent, silent):
+
     def autoplayer_creator(state):
         return AutoPlayer(state)
 
