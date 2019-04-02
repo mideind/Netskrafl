@@ -104,6 +104,10 @@ function createModel(settings) {
     helpHTML: null,
     // Outstanding requests
     spinners: 0,
+    // The index of the game move being reviewed, if any
+    reviewMove: null,
+    // The best moves available at this stage, if reviewing game
+    bestMoves: null,
     // Model methods
     loadGame: loadGame,
     loadGameList: loadGameList,
@@ -114,6 +118,7 @@ function createModel(settings) {
     loadOwnStats: loadOwnStats,
     loadUserStats: loadUserStats,
     loadPromoContent: loadPromoContent,
+    loadBestMoves: loadBestMoves,
     loadHelp: loadHelp,
     loadUser: loadUser,
     saveUser: saveUser,
@@ -134,8 +139,10 @@ function createModel(settings) {
       data: { game: uuid }
     })
     .then(function(result) {
+      this.game = null;
+      this.reviewMove = null;
+      this.bestMoves = null;
       if (!result.ok) {
-        this.game = null;
         console.log("Game " + uuid + " could not be loaded");
       }
       else {
@@ -294,6 +301,33 @@ function createModel(settings) {
       deserialize: function(str) { return str; }
     })
     .then(readyFunc);
+  }
+
+  function loadBestMoves(move) {
+    // Load the best moves available at a given state in a game
+    if (!this.game || !this.game.uuid)
+      return;
+    // Don't display navigation buttons while fetching
+    // best moves
+    this.reviewMove = null;
+    m.request({
+      method: "POST",
+      url: "/bestmoves",
+      data: { game: this.game.uuid, move: move }
+    })
+    .then(function(json) {
+      if (!json || json.result !== 0) {
+        this.reviewMove = null;
+        this.bestMoves = null;
+        return;
+      }
+      this.reviewMove = json.move_number;
+      this.bestMoves = json.best_moves;
+      this.game.setRack(json.player_rack);
+      // Populate the board cells with only the tiles
+      // laid down up and until the indicated move
+      this.game.placeTiles(this.reviewMove);
+    }.bind(this));
   }
 
   function loadHelp() {
@@ -499,12 +533,7 @@ function createView() {
         views.push(vwGame.call(this, model, actions));
         break;
       case "review":
-        move = m.route.param("move");
-        // Start with move number 0 by default
-        move = (!move) ? 0 : parseInt(move);
-        if (isNaN(move) || move < 0)
-          move = 0;
-        views.push(vwReview.call(this, model, actions, move));
+        views.push(vwReview.call(this, model, actions));
         break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
@@ -2051,10 +2080,12 @@ function createView() {
 
   // Review screen
 
-  function vwReview(model, actions, move) {
+  function vwReview(model, actions) {
     // A review of a finished game
 
     var game = model.game;
+    var move = model.reviewMove;
+    var bestMoves = model.bestMoves || [];
     var view = this;
 
     function vwRightColumn() {
@@ -2088,7 +2119,7 @@ function createView() {
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", vwMovelist.call(view, game));
+        return m(".right-area", vwBestMoves.call(view, game, move, bestMoves));
       }
 
       return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
@@ -2356,8 +2387,7 @@ function createView() {
         m(".movelist",
           {
             key: "movelist",
-            oncreate: scrollMovelistToBottom // ,
-            // onupdate: scrollMovelistToBottom
+            onupdate: scrollMovelistToBottom
           },
           movelist()
         ),
@@ -2366,14 +2396,134 @@ function createView() {
     );
   }
 
-  function scrollMovelistToBottom() {
-    // Scroll the last move into view
-    var movelist = document.querySelectorAll("div.movelist .move");
-    var target;
-    if (movelist.length) {
-      target = movelist[movelist.length - 1];
-      target.parentNode.scrollTop = target.offsetTop;
+  function vwBestMoves(game, move, bestMoves) {
+    // List of best moves, in a game review
+
+    var view = this;
+
+    function bestHeader(co, tiles, score) {
+      // Generate the header of the best move list
+      var wrdclass = "wordmove";
+      var dispText;
+      if (co.length > 0) {
+        // Regular move
+        dispText = [
+          m("i", tiles.split("?").join("")),
+          " (" + co + ")"
+        ];
+      }
+      else {
+        /* Not a regular tile move */
+        wrdclass = "othermove";
+        if (tiles == "PASS")
+          /* Pass move */
+          dispText = "Pass";
+        else
+        if (tiles.indexOf("EXCH") === 0) {
+          /* Exchange move - we don't show the actual tiles exchanged, only their count */
+          var numtiles = tiles.slice(5).length;
+          dispText = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+        }
+        else
+        if (tiles == "RSGN")
+          /* Resigned from game */
+          dispText = "Gaf viðureign";
+        else
+        if (tiles == "CHALL")
+          /* Challenge issued */
+          dispText = "Véfengdi lögn";
+        else
+        if (tiles == "RESP") {
+          /* Challenge response */
+          if (score < 0)
+             dispText = "Lögn óleyfileg";
+          else
+             dispText = "Röng véfenging";
+        }
+        else
+        if (tiles == "OVER") {
+          /* Game over */
+          dispText = "Leik lokið";
+          wrdclass = "gameover";
+        }
+        else {
+          // The rack leave at the end of the game (which is always in lowercase
+          // and thus cannot be confused with the above abbreviations)
+          wrdclass = "wordmove";
+          dispText = tiles;
+        }
+      }
+      return m(".reviewhdr",
+        [
+          m("span.movenumber", "#" + move),
+          m("span", { class: wrdclass }, dispText)
+        ]
+      );
     }
+
+    function bestMoveList() {
+      var r = [];
+      // Use a 1-based index into the move list
+      // (We show the review summary if move==0)
+      if (!move || move > game.moves.length)
+        return r;
+      // Prepend a header that describes the move being reviewed
+      var m = game.moves[move - 1];
+      var co = m[1][0];
+      var tiles = m[1][1];
+      var score = m[1][2];
+      r.push(bestHeader(co, tiles, score));
+      var mlist = bestMoves;
+      for (var i = 0; i < mlist.length; i++) {
+        var player = mlist[i][0];
+        co = mlist[i][1][0];
+        tiles = mlist[i][1][1];
+        score = mlist[i][1][2];
+        r.push(
+          vwBestMove.call(view, game, mlist[i],
+            {
+              key: i.toString(),
+              player: player, co: co, tiles: tiles, score: score
+            }
+          )
+        );
+      }
+      return r;
+    }
+
+    return m(".movelist-container",
+      [
+        m(".movelist",
+          {
+            key: "movelist"
+          },
+          bestMoveList()
+        )
+      ]
+    );
+  }
+
+  function scrollMovelistToBottom() {
+    // If the length of the move list has changed,
+    // scroll the last move into view
+    var movelist = document.querySelectorAll("div.movelist .move");
+    if (!movelist || !movelist.length)
+      return;
+    var target = movelist[movelist.length - 1];
+    var parent = target.parentNode;
+    var len = parent.getAttribute("data-len");
+    if (!len) {
+      len = 0;
+    }
+    else {
+      len = parseInt(len);
+    }
+    if (movelist.length > len) {
+      // The list has grown since we last updated it:
+      // scroll to the bottom and mark its length
+      parent.scrollTop = target.offsetTop;
+    }
+    parent.setAttribute("data-len", movelist.length);
   }
 
   function vwMove(game, move, info) {
@@ -2535,6 +2685,82 @@ function createView() {
           m("span." + wrdclass, [ co, nbsp(), m("i", tiles) ]),
           m("span.score" + (move.highlighted ? ".highlight" : ""), score),
           m("span.total", rightTotal)
+        ]
+      );
+    }
+  }
+
+  function vwBestMove(game, move, info) {
+    // Displays a move in a list of best available moves
+
+    var view = this;
+
+    function highlightMove(co, tiles, playerColor, show) {
+       /* Highlight a move's tiles when hovering over it in the move list */
+       var vec = toVector(co);
+       var col = vec.col;
+       var row = vec.row;
+       for (var i = 0; i < tiles.length; i++) {
+          var tile = tiles[i];
+          if (tile == '?')
+             continue;
+          var sq = coord(row, col);
+          if (game.tiles[sq] !== undefined)
+            game.tiles[sq].highlight = show ? playerColor : undefined;
+          col += vec.dx;
+          row += vec.dy;
+       }
+    }
+
+    var player = info.player;
+    var co = info.co;
+    var tiles = info.tiles;
+    var score = info.score;
+
+    // Add a single move to the move list
+    var rawCoord = co;
+    // Normal tile move
+    co = "(" + co + ")";
+    // Note: String.replace() will not work here since there may be two question marks in the string
+    tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+    // Normal game move
+    var title = "Smelltu til að fletta upp";
+    var playerColor = "0";
+    var lcp = game.player;
+    var cls;
+    if (player === lcp || (lcp == -1 && player === 0)) // !!! TBD: Check -1 case
+      cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
+    else {
+      cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
+      playerColor = "1";
+    }
+    var attribs = { title: title };
+    // Word lookup
+    attribs.onclick = function() { window.open('http://malid.is/leit/' + tiles, 'malid'); };
+    // Highlight the move on the board while hovering over it
+    attribs.onmouseout = function() {
+      move.highlighted = false;
+      highlightMove(rawCoord, tiles, playerColor, false);
+    };
+    attribs.onmouseover = function() {
+      move.highlighted = true;
+      highlightMove(rawCoord, tiles, playerColor, true);
+    };
+    if (player === 0) {
+      // Move by left side player
+      return m(".move.leftmove." + cls, attribs,
+        [
+          m("span.score" + (move.highlighted ? ".highlight" : ""), score),
+          m("span.wordmove", [ m("i", tiles), nbsp(), co ])
+        ]
+      );
+    }
+    else {
+      // Move by right side player
+      return m(".move.rightmove." + cls, attribs,
+        [
+          m("span.wordmove", [ co, nbsp(), m("i", tiles) ]),
+          m("span.score" + (move.highlighted ? ".highlight" : ""), score)
         ]
       );
     }
@@ -2947,9 +3173,14 @@ function createView() {
   function vwScoreReview(game, move) {
     // Shows the score of the current move within a game review screen
     var sc = [ ".score" ];
+    var mv = move ? game.moves[move - 1] : undefined;
+    var score = mv ? mv[1][2] : undefined;
     // TODO: Add logic to select class .green or .yellow depending
     // TODO: on whose move it is
-    return m(sc.join("."), "?"); // TODO: Obtain score from move
+    return m(
+      sc.join("."),
+      score === undefined ? "" : score.toString()
+    );
   }
 
   function makeButton(cls, disabled, func, title, children, id) {
@@ -2966,7 +3197,8 @@ function createView() {
       attr.onclick = function(ev) { ev.preventDefault(); };
     else
       attr.onclick = function(func, ev) {
-        func();
+        if (func)
+          func();
         ev.preventDefault();
       }.bind(null, func);
     return m("." + cls + (disabled ? ".disabled" : ""),
@@ -3105,7 +3337,7 @@ function createView() {
     var r = [];
     r.push(
       makeButton(
-        "navbtn", false,
+        "navbtn", !move,
         function(move) {
           // Navigate to previous move
           m.route.set(
@@ -3114,18 +3346,16 @@ function createView() {
           );
         }.bind(null, move),
         "Sjá fyrri leik",
-        [
-          m("span", { id: "nav-next-visible" }, [ glyph("chevron-left"), " Fyrri" ]),
-          m("span", { id: "nav-next-waiting" },
-            m("img", { src: "/static/ajax-loader-passbtn.gif" })
-          )
-        ],
+        m("span",
+          { id: "nav-next-visible" },
+          [ glyph("chevron-left"), " Fyrri" ]
+        ),
         "navprev"
       )
     );
     r.push(
       makeButton(
-        "navbtn", false,
+        "navbtn", (move === null) || (move >= game.moves.length),
         function(move) {
           // Navigate to next move
           m.route.set(
@@ -3134,12 +3364,10 @@ function createView() {
           );
         }.bind(null, move),
         "Sjá næsta leik",
-        [
-          m("span", { id: "nav-prev-visible" }, [ "Næsti ", glyph("chevron-right") ]),
-          m("span", { id: "nav-prev-waiting" },
-            m("img", { src: "/static/ajax-loader-passbtn.gif" })
-          )
-        ],
+        m("span",
+          { id: "nav-prev-visible" },
+          [ "Næsti ", glyph("chevron-right") ]
+        ),
         "navnext"
       )
     );
@@ -3473,7 +3701,8 @@ function createActions(model, view) {
       // Load the game, and attach it to the Firebase listener once it's loaded
       model.loadGame(params.uuid, attachListenerToGame.bind(this, params.uuid));
     }
-    else if (routeName == "review") {
+    else
+    if (routeName == "review") {
       // A game review: detach listener, if any, and load
       // new game if necessary
       if (model.game !== null)
@@ -3482,6 +3711,15 @@ function createActions(model, view) {
       if (model.game === null || model.game.uuid != params.uuid)
         // Different game than we had before: load it
         model.loadGame(params.uuid, undefined); // No funcComplete
+      if (model.game !== null) {
+        var move = params.move;
+        // Start with move number 0 by default
+        move = (!move) ? 0 : parseInt(move);
+        if (isNaN(move) || move < 0)
+          move = 0;
+        // Load the best moves and show them once they're available
+        model.loadBestMoves(move);
+      }
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -3686,7 +3924,7 @@ var TextInput = {
         maxlength: vnode.attrs.maxlength,
         tabindex: vnode.attrs.tabindex,
         value: this.text,
-        oninput: m.withAttr("value", function(v) { this.text = v; }.bind(this))
+        oninput: function(ev) { this.text = ev.target.value; }.bind(this)
       }
     );
   }
@@ -4420,11 +4658,10 @@ function SearchButton(vnode) {
               onfocus: function(ev) {
                 newSearch();
               },
-              oninput: m.withAttr("value", function(value) {
-                  spec = value;
-                  newSearch();
-                }
-              )
+              oninput: function(ev) {
+                spec = ev.target.value;
+                newSearch();
+              }
             }
           )
         ]

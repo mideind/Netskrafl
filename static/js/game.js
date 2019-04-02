@@ -4,7 +4,7 @@
 
 	The Game class, as used in the single-page UI
 
-  Copyright (C) 2015-2018 Miðeind ehf.
+  Copyright (C) 2015-2019 Miðeind ehf.
   Author: Vilhjalmur Thorsteinsson
 
   The GNU General Public License, version 3, applies to this software.
@@ -475,13 +475,22 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.placeTiles = function() {
-    // Make a tile dictionary for the game
+  Game.prototype.setRack = function(rack) {
+    // Set the current rack
+    this.rack = rack;
+  };
+
+  Game.prototype.placeTiles = function(move) {
+    // Make a tile dictionary for the game.
+    // If move is given, it is an index of the
+    // last move in the move list that should be
+    // shown on the board.
     this.tiles = {};
     this.numTileMoves = 0;
     var mlist = this.moves;
     var i, sq;
-    for (i = 0; i < mlist.length; i++) {
+
+    for (i = 0; i < (move !== undefined ? move : mlist.length); i++) {
       var player = mlist[i][0];
       var co = mlist[i][1][0];
       var tiles = mlist[i][1][1];

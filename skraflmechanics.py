@@ -756,6 +756,7 @@ class Error:
     NOT_MANUAL_WORDCHECK = 19
     MOVE_NOT_CHALLENGEABLE = 20
     ONLY_PASS_OR_CHALLENGE = 21
+    USER_MUST_BE_FRIEND = 22
     # Insert new error codes above this line
     # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
     GAME_OVER = 99
@@ -788,7 +789,8 @@ class Error:
             u"SERVER_ERROR",
             u"NOT_MANUAL_WORDCHECK",
             u"MOVE_NOT_CHALLENGEABLE",
-            u"ONLY_PASS_OR_CHALLENGE"
+            u"ONLY_PASS_OR_CHALLENGE",
+            u"USER_MUST_BE_FRIEND"
         ][errcode]
 
 

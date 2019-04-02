@@ -1066,7 +1066,11 @@ def userlist():
     # (it doesn't give any speed advantage for user lists anyway)
     Context.disable_cache()
 
-    return jsonify(result=Error.LEGAL, spec=spec, userlist=_userlist(query, spec))
+    return jsonify(
+        result=Error.LEGAL,
+        spec=spec,
+        userlist=_userlist(query, spec)
+    )
 
 
 @app.route("/gamelist", methods=['POST'])
@@ -1078,7 +1082,10 @@ def gamelist():
     include_zombies = rq.get_bool('zombies', True)
     # _gamelist() returns an empty list if no user is logged in
     cuid = User.current_id()
-    return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
+    return jsonify(
+        result=Error.LEGAL,
+        gamelist=_gamelist(cuid, include_zombies)
+    )
 
 
 @app.route("/rating", methods=['POST'])
@@ -1411,6 +1418,7 @@ def review():
         move_number = 0
 
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
+    player_index = state.player_to_move()
 
     best_moves = None
     if game.allows_best_moves():
@@ -1420,9 +1428,9 @@ def review():
 
             # Show best moves if available and it is proper to do so (i.e. the game is finished)
             apl = AutoPlayer(state)
-            best_moves = apl.generate_best_moves(19)  # 19 is what fits on screen
+            # 19 is what fits on screen
+            best_moves = apl.generate_best_moves(19)
 
-    player_index = state.player_to_move()
     if game.has_player(user.id()):
         # Look at the game from the point of view of this player
         user_index = game.player_index(user.id())
@@ -1438,6 +1446,73 @@ def review():
         player_index=player_index,
         user_index=user_index,
         move_number=move_number,
+        best_moves=best_moves
+    )
+
+
+@app.route("/bestmoves", methods=["POST"])
+def bestmoves():
+    """ Return a list of the best possible moves in a game
+        at a given point """
+
+    user = User.current()
+    if user is None:
+        # User hasn't logged in
+        return jsonify(result=Error.LOGIN_REQUIRED)
+    # !!! TODO
+    if False:  # not user.has_paid():
+        # User must be a paying friend
+        return jsonify(result=Error.USER_MUST_BE_FRIEND)
+
+    rq = RequestData(request)
+
+    uuid = rq.get("game")
+    # Attempt to load the game whose id is in the URL query string
+    game = None if uuid is None else Game.load(uuid)
+
+    if game is None or not game.is_over():
+        # The game is not found or still in progress: abort
+        return jsonify(result=Error.GAME_NOT_FOUND)
+
+    move_number = rq.get_int("move")
+    if move_number > game.num_moves():
+        move_number = game.num_moves()
+    elif move_number < 0:
+        move_number = 0
+
+    state = game.state_after_move(
+        move_number if move_number == 0 else move_number - 1
+    )
+    player_index = state.player_to_move()
+
+    best_moves = None
+    if game.allows_best_moves():
+
+        # Serialize access to the following section
+        with _autoplayer_lock:
+
+            # Show best moves if available and it is proper to do so (i.e. the game is finished)
+            apl = AutoPlayer(state)
+            # Ask for max 19 moves because that is what fits on screen
+            best_moves = [
+                (player_index, m.summary(state))
+                for m, _ in apl.generate_best_moves(19)
+            ]
+
+    if game.has_player(user.id()):
+        # Look at the game from the point of view of this player
+        user_index = game.player_index(user.id())
+    else:
+        # This is an outside spectator: look at it from the point of view of
+        # player 0, or the human player if player 0 is an autoplayer
+        user_index = 1 if game.is_autoplayer(0) else 0
+
+    return jsonify(
+        result=Error.LEGAL,
+        move_number=move_number,
+        player_index=player_index,
+        user_index=user_index,
+        player_rack=state.rack_details(player_index),
         best_moves=best_moves
     )
 
