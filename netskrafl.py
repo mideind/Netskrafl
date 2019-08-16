@@ -215,7 +215,8 @@ def _process_move(game, movelist):
     try:
         for mstr in movelist:
             if mstr == u"pass":
-                # Pass move (or accepting the last move in the game without challenging it)
+                # Pass move (or accepting the last move in the game
+                # without challenging it)
                 m = PassMove()
                 break
             if mstr.startswith(u"exch="):
@@ -575,7 +576,8 @@ def _gamelist(cuid, include_zombies=True):
                     "tile_count": 100  # All tiles (100%) accounted for
                 }
             )
-        # Sort zombies in decreasing order by last move, i.e. most recently completed games first
+        # Sort zombies in decreasing order by last move,
+        # i.e. most recently completed games first
         result.sort(key=lambda x: x["ts"], reverse=True)
 
     # Obtain up to 50 live games where this user is a player
@@ -794,7 +796,8 @@ def _challengelist():
         return prefs.get("duration", 0) > 0
 
     def opp_ready(c):
-        """ Returns True if this is a timed challenge and the opponent is ready to play """
+        """ Returns True if this is a timed challenge
+            and the opponent is ready to play """
         if not is_timed(c[1]):
             return False
         # Timed challenge: see if there is a Firebase path indicating
@@ -844,7 +847,8 @@ def _challengelist():
 
 @app.route("/_ah/start")
 def start():
-    """ App Engine is starting a fresh instance - warm it up by loading word database """
+    """ App Engine is starting a fresh instance - warm it up
+        by loading word database """
     wdb = Wordbase.dawg()
     ok = u"upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
     logging.info(
@@ -862,7 +866,8 @@ def stop():
 
 @app.route("/_ah/warmup")
 def warmup():
-    """ App Engine is starting a fresh instance - warm it up by loading word database """
+    """ App Engine is starting a fresh instance - warm it up
+        by loading word database """
     return start()
 
 
@@ -1090,7 +1095,8 @@ def gamelist():
 
 @app.route("/rating", methods=['POST'])
 def rating():
-    """ Return the newest Elo ratings table (top 100) of a given kind ('all' or 'human') """
+    """ Return the newest Elo ratings table (top 100)
+        of a given kind ('all' or 'human') """
 
     if not User.current_id():
         return jsonify(result=Error.LOGIN_REQUIRED)
@@ -1594,7 +1600,8 @@ class UserForm:
         self.friend = usr.friend()
 
     def validate(self):
-        """ Check the current form data for validity and return a dict of errors, if any """
+        """ Check the current form data for validity
+            and return a dict of errors, if any """
         errors = dict()
         # pylint: disable=bad-continuation
         if not self.nickname:
@@ -1971,7 +1978,8 @@ def board():
 
 @app.route("/gameover", methods=['POST'])
 def gameover():
-    """ A player has seen a game finish: remove it from the zombie list, if it is there """
+    """ A player has seen a game finish: remove it from
+        the zombie list, if it is there """
 
     cuid = User.current_id()
     if not cuid:
@@ -1993,7 +2001,8 @@ def gameover():
 
 @app.route("/friend")
 def friend():
-    """ Page for users to register or unregister themselves as friends of Netskrafl """
+    """ Page for users to register or unregister themselves
+        as friends of Netskrafl """
     user = User.current()
     if user is None:
         return redirect(url_for("login"))
@@ -2098,7 +2107,8 @@ def main():
                 # Already seen too many of these
                 promo_to_show = None
             elif promos and (now - promos[-1] < _PROMO_INTERVAL):
-                # Less than one interval since last promo was displayed: don't display this one
+                # Less than one interval since last promo was displayed:
+                # don't display this one
                 promo_to_show = None
 
     if promo_to_show:

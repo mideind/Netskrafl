@@ -706,7 +706,10 @@ function createView() {
           m(".welcome",
             [
               "Þú getur alltaf fengið ",
-              m("a", { href: '/help', oncreate: m.route.link }, "hjálp"),
+              m("a",
+                { href: '/help', oncreate: m.route.link },
+                "hjálp"
+              ),
               " með því að smella á ",
               m("a",
                 { href: '/help', oncreate: m.route.link },
@@ -1366,7 +1369,8 @@ function createView() {
 
               return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
                 [
-                  m("a", { href: "/game/" + gameUUID(), oncreate: m.route.link },
+                  m("a",
+                    { href: "/game/" + gameUUID(), oncreate: m.route.link },
                     [
                       vwTurn(),
                       m("span.list-overdue", vwOverdue()),
@@ -1415,7 +1419,8 @@ function createView() {
               m("p",
                 [
                   "Ef þig vantar einhvern til að skrafla við, veldu flipann ",
-                  m("a", { href: "/main?tab=2", oncreate: m.route.link },
+                  m("a",
+                    { href: "/main?tab=2", oncreate: m.route.link },
                     [ glyph("user"), nbsp(), "Andstæðingar" ]
                   ),
                   " og skoraðu á tölvuþjarka - ",
@@ -1441,10 +1446,12 @@ function createView() {
               ),
               m("p.no-mobile-block",
                 [
-                  m("a", { href: "/help", oncreate: m.route.link }, "Hjálp"),
+                  m("a",
+                    { href: "/help", oncreate: m.route.link },
+                    "Hjálp"
+                  ),
                   " má fá með því að smella á bláa ",
-                  glyph("info-sign"),
-                  nbsp(), "-", nbsp(),
+                  glyph("info-sign"), nbsp(), "-", nbsp(),
                   "teiknið hér til vinstri."
                 ]
               ),
@@ -1987,7 +1994,9 @@ function createView() {
         return m(".heading",
           {
             // On mobile only: If the header is clicked, go to the main screen
-            onclick: function(ev) { if (!$state.uiFullscreen) m.route.set("/main"); }
+            onclick: function(ev) {
+              if (!$state.uiFullscreen) m.route.set("/main");
+            }
           },
           [
             m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
@@ -2101,7 +2110,9 @@ function createView() {
         return m(".heading",
           {
             // On mobile only: If the header is clicked, go to the main screen
-            onclick: function(ev) { if (!$state.uiFullscreen) m.route.set("/main"); }
+            onclick: function(ev) {
+              if (!$state.uiFullscreen) m.route.set("/main");
+            }
           },
           [
             m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
@@ -2131,17 +2142,19 @@ function createView() {
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
+    // Create a list of major elements that we're showing
+    var r = [];
+    r.push(vwBoardReview(game, move));
+    r.push(vwRightColumn());
+    if (!move)
+      // Only show the stats overlay if move == 0
+      r.push(vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
         vwBack(), // Button to go back to main screen
         vwInfo(), // Help button
         m("main", { key: "review" },
-          m(".game-container",
-            [
-              vwBoardReview(game, move),
-              vwRightColumn()
-            ]
-          )
+          m(".game-container", r)
         )
       ]
     );
@@ -2922,7 +2935,8 @@ function createView() {
   function vwBack() {
     // Icon for going back to the main screen
     return m(".logo-back", 
-      m("a.backlink", { href: "/main", oncreate: m.route.link },
+      m("a.backlink",
+        { href: "/main", oncreate: m.route.link },
         glyph("download", { title: "Aftur í aðalskjá" })
       )
     );
@@ -3183,6 +3197,241 @@ function createView() {
     );
   }
 
+  function vwStatsReview(game) {
+    // Shows the game statistics overlay
+    if (game.stats === null)
+      // No stats yet loaded: do it now
+      game.loadStats();
+
+    function fmt(p, digits, value) {
+      var txt = value;
+      if (txt === undefined && game.stats)
+          txt = game.stats[p];
+      if (txt === undefined)
+        return "";
+      if (digits !== undefined && digits > 0)
+        txt = txt.toFixed(digits).replace(".", ","); // Convert decimal point to comma
+      return txt;
+    }
+
+    return m(
+      ".gamestats", { style: { visibility: "visible" } },
+      [
+        m("div", { style: { position: "relative", width: "100%" } },
+          [
+            m("h3.playerleft", { style: { width: "50%" } }, 
+              m(".robot-btn.left",
+                game.autoplayer[0] ?
+                  [ glyph("cog"), nbsp(), game.nickname[0] ]
+                :
+                  game.nickname[0]
+              )
+            ),
+            m("h3.playerright", { style: { width: "50%" } },
+              m(".robot-btn.right",
+                game.autoplayer[1] ?
+                  [ glyph("cog"), nbsp(), game.nickname[1] ]
+                :
+                  game.nickname[1]
+              )
+            )
+          ]
+        ),
+        m("div", { id: "gamestarted" },
+          [
+            m("p",
+              [
+                "Viðureignin hófst ",
+                m("span", fmt("gamestart")), m("br"),
+                "og henni lauk ",
+                m("span", fmt("gameend"))
+              ]
+            ),
+            game.newbag ?
+              m("p",
+                [
+                  "Leikið var", game.manual ? m("b", " í keppnisham") : "",
+                  " með", m("b", " nýja"), " skraflpokanum."
+                ]
+              )
+              :
+              m("p",
+                [
+                  "Leikið var", game.manual ? m("b", " í keppnisham") : "",
+                  " með", m("b", " eldri"), " (upphaflega) skraflpokanum."
+                ]
+              )
+          ]
+        ),
+        m(".statscol", { style: { clear: "left" } },
+          [
+            m("p",
+              [ "Fjöldi leikja: ", m("span", fmt("moves0")) ]
+            ),
+            m("p",
+              [
+                "Fjöldi bingóa: ", m("span", fmt("bingoes0")),
+                " (bónus ",
+                m(
+                  "span",
+                  fmt("bingopoints0", 0, !game.stats ? 0 : game.stats.bingoes0 * 50)
+                ),
+                " stig)"
+              ]
+            ),
+            m("p",
+              [
+                "Stafir lagðir niður: ", m("span", fmt("tiles0")),
+                " (þar af ", m("span", fmt("blanks0")), " auðir)"
+              ]
+            ),
+            m("p",
+              [
+                "Meðalstig stafa (án auðra): ", m("span", fmt("average0", 2))
+              ]
+            ),
+            m("p",
+              [
+                "Samanlögð stafastig: ", m("span", fmt("letterscore0"))
+              ]
+            ),
+            m("p",
+              [
+                "Margföldun stafastiga: ", m("span", fmt("multiple0", 2))
+              ]
+            ),
+            m("p",
+              [
+                "Stig án stafaleifar í lok: ", m("span", fmt("cleantotal0"))
+              ]
+            ),
+            m("p",
+              [
+                "Meðalstig hvers leiks: ", m("span", fmt("avgmove0", 2))
+              ]
+            ),
+            game.manual ?
+              m("p",
+                [
+                  "Rangar véfengingar andstæðings x 10: ", m("span", fmt("wrongchall0"))
+                ]
+              )
+              : "",
+            m("p",
+              [
+                "Stafaleif og frádráttur í lok: ", m("span", fmt("remaining0"))
+              ]
+            ),
+            m("p",
+              [
+                "Umframtími: ", m("span", fmt("overtime0"))
+              ]
+            ),
+            m("p",
+              [
+                "Stig: ",
+                m(
+                  "span",
+                  fmt("total0", 0, !game.stats ? 0 : game.stats.scores[0])
+                ),
+                " (", m("span", fmt("ratio0", 1)), "%)"
+              ]
+            )
+          ]
+        ),
+        m(".statscol",
+          [
+            m("p",
+              [ "Fjöldi leikja: ", m("span", fmt("moves1")) ]
+            ),
+            m("p",
+              [
+                "Fjöldi bingóa: ", m("span", fmt("bingoes1")),
+                " (bónus ",
+                m(
+                  "span",
+                  fmt("bingopoints0", 0, !game.stats ? 0 : game.stats.bingoes1 * 50)
+                ),
+                " stig)"
+              ]
+            ),
+            m("p",
+              [
+                "Stafir lagðir niður: ", m("span", fmt("tiles1")),
+                " (þar af ", m("span", fmt("blanks1")), " auðir)"
+              ]
+            ),
+            m("p",
+              [
+                "Meðalstig stafa (án auðra): ", m("span", fmt("average1", 2))
+              ]
+            ),
+            m("p",
+              [
+                "Samanlögð stafastig: ", m("span", fmt("letterscore1"))
+              ]
+            ),
+            m("p",
+              [
+                "Margföldun stafastiga: ", m("span", fmt("multiple1", 2))
+              ]
+            ),
+            m("p",
+              [
+                "Stig án stafaleifar í lok: ", m("span", fmt("cleantotal1"))
+              ]
+            ),
+            m("p",
+              [
+                "Meðalstig hvers leiks: ", m("span", fmt("avgmove1", 2))
+              ]
+            ),
+            game.manual ?
+              m("p",
+                [
+                  "Rangar véfengingar andstæðings x 10: ", m("span", fmt("wrongchall1"))
+                ]
+              )
+              : "",
+            m("p",
+              [
+                "Stafaleif og frádráttur í lok: ", m("span", fmt("remaining1"))
+              ]
+            ),
+            m("p",
+              [
+                "Umframtími: ", m("span", fmt("overtime1"))
+              ]
+            ),
+            m("p",
+              [
+                "Stig: ",
+                m(
+                  "span",
+                  fmt("total1", 0, !game.stats ? 0 : game.stats.scores[1])
+                ),
+                " (", m("span", fmt("ratio1", 1)), "%)"
+              ]
+            )
+          ]
+        ),
+        m(".closebtn",
+          {
+            id: "review-close",
+            onclick: function(ev) {
+              // Navigate to move #1
+              m.route.set("/review/" + game.uuid, { move: 1 });
+              ev.preventDefault();
+            },
+            onmouseover: buttonOver,
+            onmouseout: buttonOut
+          },
+          [ glyph("play"), " Rekja" ]
+        )
+      ]
+    );
+  }
+
   function makeButton(cls, disabled, func, title, children, id) {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
@@ -3427,7 +3676,7 @@ function createView() {
   }
 
   function vwDialogs(game) {
-    // Show prompt dialogs, if any
+    // Show prompt dialogs below game board, if any
     var r = [];
     if (game.showingDialog === null)
       return r;
@@ -3657,7 +3906,9 @@ function createView() {
 
   function vwSpinner(model, actions) {
     // Show a spinner wait box
-    return m(".modal-dialog", { id: 'spinner-dialog', style: { visibility: 'visible' } },
+    return m(
+      ".modal-dialog",
+      { id: 'spinner-dialog', style: { visibility: 'visible' } },
       m("div", { id: "user-load", style: { display: "block" } })
     );
   }

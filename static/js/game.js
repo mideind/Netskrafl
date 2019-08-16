@@ -59,13 +59,13 @@ function forEachElement(selector, func) {
 }
 
 function arrayEqual(a, b) {
-   // Return true if arrays a and b are equal
-   if (a.length != b.length)
+  // Return true if arrays a and b are equal
+  if (a.length != b.length)
+    return false;
+  for (var i = 0; i < a.length; i++)
+    if (a[i] != b[i])
       return false;
-   for (var i = 0; i < a.length; i++)
-      if (a[i] != b[i])
-         return false;
-   return true;
+  return true;
 }
 
 // A wrapper class around HTML5 local storage, if available
@@ -131,8 +131,8 @@ var LocalStorage = (function() {
         }
         // Erase all remaining positions in local storage
         for (; i < RACK_SIZE; i++) {
-            this.setLocalTileSq(i + 1, "");
-            this.setLocalTile(i + 1, "");
+          this.setLocalTileSq(i + 1, "");
+          this.setLocalTile(i + 1, "");
         }
       },
       loadTiles: function() {
@@ -260,6 +260,7 @@ var Game = (function() {
     this.autoplayer = [false, false];
     this.scores = [0, 0];
     this.bag = "";
+    this.stats = null; // Game review statistics
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
     // Load previously saved tile positions from
@@ -381,6 +382,26 @@ var Game = (function() {
       // !!! opponent that comes after the last message-seen
       // !!! marker
       this.chatShown = this.messages.length === 0;
+    }.bind(this));
+  };
+
+  Game.prototype.loadStats = function() {
+    // Load statistics about a game
+    this.stats = undefined; // Error/in-progress status
+    return m.request(
+      {
+        method: "POST",
+        url: "/gamestats",
+        data: { game: this.uuid }
+      }
+    ).then(function(json) {
+      // Save the incoming game statistics in the stats property
+      if (!json || json.result === undefined)
+        return;
+      if (json.result !== 0 && json.result !== GAME_OVER)
+        return;
+      // Success: assign the stats
+      this.stats = json;
     }.bind(this));
   };
 
@@ -837,8 +858,8 @@ var Game = (function() {
         // find the tile in the saved rack and move it there
         tile = savedTiles[i].tile;
         for (sq in rackTiles)
-          if (rackTiles.hasOwnProperty(sq)
-            && rackTiles[sq].tile == tile.charAt(0)) {
+          if (rackTiles.hasOwnProperty(sq) &&
+            rackTiles[sq].tile == tile.charAt(0)) {
             // Found the tile (or its equivalent) in the rack: move it
             if (tile.charAt(0) == "?")
               if (saved_sq.charAt(0) == "R")
