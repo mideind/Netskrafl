@@ -14,6 +14,9 @@ __pycache__/
 # Profile data
 *.profile
 
+# Debugger stuff
+pydev_startup.py
+
 # Secret session key
 resources/secret_key.bin
 resources/salescloud_key.bin
@@ -24,6 +27,10 @@ resources/netskrafl-*.json
 # Unsorted BIN word lists
 resources/ordalistimax15.txt
 resources/ordalisti.algeng.txt
+
+# Non-Icelandic word lists
+resources/TWL06.txt
+resources/sowpods.txt
 
 # CSS files generated from Less
 static/skrafl-curry.css
@@ -51,10 +58,11 @@ profile.bin
 static/NetskraflFacebookCover.jpg
 *.bak
 
-# Distribution / packaging
+# Distribution / packaging / IDEs
 .Python
 google/
 env/
+.env
 bin/
 build/
 develop-eggs/
@@ -72,6 +80,7 @@ console/
 venv/
 node_modules/
 .idea/
+.vscode/
 
 # Node dependency descriptions
 package*.json
