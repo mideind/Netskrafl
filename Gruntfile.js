@@ -130,7 +130,7 @@ module.exports = function (grunt) {
             options: { spawn: false }
          },
          less: {
-            files: ['static/*.less', 'static\\*.less', 'static/main.less', 'static\\main.less'],
+            files: ['static/*.less'],
             tasks: ['less:development', 'less:production'],
             options: { spawn: false }
          },

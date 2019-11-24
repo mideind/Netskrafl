@@ -136,7 +136,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/gamestate",
-      data: { game: uuid }
+      body: { game: uuid }
     })
     .then(function(result) {
       this.game = null;
@@ -198,7 +198,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/recentlist",
-      data: { versus: null, count: 40 }
+      body: { versus: null, count: 40 }
     })
     .then(function(json) {
       if (!json || json.result !== 0) {
@@ -215,7 +215,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/recentlist",
-      data: { user: userid, versus: versus, count: 40 }
+      body: { user: userid, versus: versus, count: 40 }
     })
     .then(readyFunc);
   }
@@ -247,7 +247,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: url,
-      data: data
+      body: data
     })
     .then(function(json) {
       if (activateSpinner)
@@ -270,7 +270,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/userstats",
-      data: { } // Current user is implicit
+      body: { } // Current user is implicit
     })
     .then(function(json) {
       if (!json || json.result !== 0) {
@@ -287,7 +287,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/userstats",
-      data: { user: userid }
+      body: { user: userid }
     })
     .then(readyFunc);
   }
@@ -297,7 +297,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/promo",
-      data: { key: key },
+      body: { key: key },
       deserialize: function(str) { return str; }
     })
     .then(readyFunc);
@@ -313,7 +313,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/bestmoves",
-      data: { game: this.game.uuid, move: move }
+      body: { game: this.game.uuid, move: move }
     })
     .then(function(json) {
       if (!json || json.result !== 0) {
@@ -377,7 +377,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/saveuserprefs",
-      data: this.user
+      body: this.user
     })
     .then(function(result) {
       if (result.ok) {
@@ -410,7 +410,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/initgame",
-      data: { opp: oppid, rev: reverse }
+      body: { opp: oppid, rev: reverse }
     })
     .then(function(json) {
       if (json.ok) {
@@ -425,7 +425,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/challenge",
-      data: parameters
+      body: parameters
     })
     .then(function(json) {
       if (json.result === 0)
@@ -438,7 +438,7 @@ function createModel(settings) {
     m.request({
       method: "POST",
       url: "/favorite",
-      data: { destuser: userId, action: status ? "add" : "delete" }
+      body: { destuser: userId, action: status ? "add" : "delete" }
     })
     .then(function() {});
   }
@@ -816,7 +816,7 @@ function createView() {
     return [
       vwLogo(),
       vwUserId.call(this),
-      m("main", { key: "help" },
+      m("main",
         vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
       )
     ];
@@ -1761,13 +1761,13 @@ function createView() {
             );
           }
 
-          return m("div", { id: "userlist", key: listType }, list.map(itemize));
+          return m("div", { id: "userlist" }, list.map(itemize));
         }
 
         var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return m(EloPage, { id: "elolist", key: "elo", model: model, view: view });
+          return m(EloPage, { id: "elolist", model: model, view: view });
         // Show normal user list
         var list = [];
         if (model.userList === undefined)
@@ -1781,7 +1781,7 @@ function createView() {
         var nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
           listType == "search" && model.userListCriteria.spec !== "";
         return [
-          m(".listitem.listheader", { key: listType },
+          m(".listitem.listheader",
             [
               m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
               m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
@@ -1823,7 +1823,7 @@ function createView() {
         m("div", { id: 'main-tabs' },
           [
             vwMainTabHeader(),
-            m("[id='tabs-1']",
+            m("div", { id: 'tabs-1' },
               [
                 m("p.no-mobile-block",
                   [
@@ -1835,7 +1835,7 @@ function createView() {
                 vwGamelist()
               ]
             ),
-            m("[id='tabs-2']",
+            m("div", { id: 'tabs-2' },
               [
                 m("p.no-mobile-block",
                   [
@@ -1857,7 +1857,7 @@ function createView() {
                 vwChallenges(false)
               ]
             ),
-            m("[id='tabs-4']",
+            m("div", { id: 'tabs-4' },
               [
                 vwStats(),
                 vwBest(),
@@ -1870,7 +1870,7 @@ function createView() {
                 vwRecentList()
               ]
             ),
-            m("[id='tabs-3']",
+            m("div", { id: 'tabs-3' },
               [
                 m("div", { id: 'initials' },
                   [
@@ -1902,10 +1902,9 @@ function createView() {
       vwLogo(),
       vwUserId.call(this),
       vwInfo(),
-      m("main", { key: "main" },
+      m("main",
         m("div",
           {
-            key: "main",
             oncreate: makeTabs.bind(this, "main-tabs", undefined, false),
             onupdate: updateSelection
           },
@@ -2040,7 +2039,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", { key: "game-empty" }, m(".game-container")) ]);
+      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2073,7 +2072,7 @@ function createView() {
         vwBack(),
         $state.beginner ? vwBeginner(game) : "",
         vwInfo(),
-        m("main", { key: "game" },
+        m("main",
           m(".game-container",
             [
               vwBoardArea(game),
@@ -2138,7 +2137,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", { key: "review-empty" }, m(".game-container")) ]);
+      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2153,7 +2152,7 @@ function createView() {
       [
         vwBack(), // Button to go back to main screen
         vwInfo(), // Help button
-        m("main", { key: "review" },
+        m("main",
           m(".game-container", r)
         )
       ]
@@ -2399,7 +2398,6 @@ function createView() {
       [
         m(".movelist",
           {
-            key: "movelist",
             onupdate: scrollMovelistToBottom
           },
           movelist()
@@ -2506,12 +2504,7 @@ function createView() {
 
     return m(".movelist-container",
       [
-        m(".movelist",
-          {
-            key: "movelist"
-          },
-          bestMoveList()
-        )
+        m(".movelist", bestMoveList())
       ]
     );
   }
@@ -3118,7 +3111,7 @@ function createView() {
     function row(rowid) {
       // Each row of the board
       var r = [];
-      r.push(m("td.rowid", rowid));
+      r.push(m("td.rowid", { key: "R" + rowid }, rowid));
       for (var col = 1; col <= 15; col++) {
         var coord = rowid + col.toString();
         if (game && (coord in game.tiles))
@@ -3859,7 +3852,7 @@ function createView() {
   function vwBeginner(game) {
     // Show the board color guide
     return m(".board-help",
-      { key: "beginner", title: 'Hvernig reitirnir margfalda stigin' },
+      { title: 'Hvernig reitirnir margfalda stigin' },
       [
         m(".board-help-close[title='Loka þessari hjálp']",
           {
@@ -4231,7 +4224,7 @@ var OnlinePresence = {
     m.request({
       method: "POST",
       url: "/onlinecheck",
-      data: { user: vnode.attrs.userId }
+      body: { user: vnode.attrs.userId }
     }).then(function(json) {
       this.online = json && json.online;
     }.bind(this));
@@ -4339,21 +4332,20 @@ var EloList = {
       if (item.userid != $state.userId && !item.inactive)
         ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
       if (isRobot) {
-        nick = m("span", { key: "robot" }, [ glyph("cog"), nbsp(), nick ]);
+        nick = m("span", [ glyph("cog"), nbsp(), nick ]);
         newbag = $state.newBag; // Imitates the logged-in user
       }
       else
       if (item.userid != $state.userId)
         info = m("span.usr-info",
           {
-            key: "usrinfo",
             onclick: function(ev) {
               vnode.attrs.view.showUserInfo(this.userid, this.nick, this.fullname);
             }.bind(item)
           }
         );
       if (item.fairplay && !isRobot)
-        nick = m("span", { key: "fairplay" },
+        nick = m("span",
           [ m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick ]);
 
       return m(".listitem",

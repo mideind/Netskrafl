@@ -353,7 +353,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/gamelist",
-        data: { zombie: false }
+        body: { zombie: false }
       }
     ).then(function(result) {
       if (!result || result.result !== 0)
@@ -370,7 +370,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/chatload",
-        data: { channel: "game:" + this.uuid }
+        body: { channel: "game:" + this.uuid }
       }
     ).then(function(result) {
       if (result.ok)
@@ -392,7 +392,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/gamestats",
-        data: { game: this.uuid }
+        body: { game: this.uuid }
       }
     ).then(function(json) {
       // Save the incoming game statistics in the stats property
@@ -411,7 +411,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/chatmsg",
-        data: { channel: "game:" + this.uuid, msg: msg }
+        body: { channel: "game:" + this.uuid, msg: msg }
       }
     ).then(function(result) {
       // The updated chat comes in via a Firebase notification
@@ -454,7 +454,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/setuserpref",
-        data: pref
+        body: pref
       }
     ).then(function(result) {
       // No response required
@@ -661,7 +661,7 @@ var Game = (function() {
       {
         method: "POST",
         url: "/submitmove",
-        data: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
+        body: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
       }
     ).then(
       function(result) {
@@ -941,7 +941,7 @@ var Game = (function() {
           {
             method: "POST",
             url: "/wordcheck",
-            data: { word: scoreResult.word, words: scoreResult.words }
+            body: { word: scoreResult.word, words: scoreResult.words }
           }
         ).then(
           function(result) {

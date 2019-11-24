@@ -9,17 +9,16 @@
     "email": "vt@extrada.com"
   },
   "devDependencies": {
-    "grunt": "^1.0.1",
+    "eslint": "^5.3.0",
+    "grunt": "^1.0.4",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-jshint": "^1.1.0",
     "grunt-contrib-less": "^1.4.1",
     "grunt-contrib-uglify": "^3.3.0",
     "grunt-contrib-watch": "^1.0.0",
-    "eslint": "^5.3.0",
     "matchdep": "^2.0.0"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "jshintConfig": {
     "validthis": true,
     "loopfunc": true
