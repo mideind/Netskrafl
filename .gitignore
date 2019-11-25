@@ -55,6 +55,7 @@ templates/main-scratch.html
 profile.bin
 *.sublime-project
 *.sublime-workspace
+*.code-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
 .vscode/
