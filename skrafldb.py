@@ -181,7 +181,6 @@ class UserModel(ndb.Model):
 
         nick_from = u"a" if nick_from is None else Alphabet.tolower(nick_from)
         nick_to = u"ö" if nick_to is None else Alphabet.tolower(nick_to)
-        counter = 0
 
         try:
             o_from = Alphabet.full_order.index(nick_from[0])
@@ -850,7 +849,6 @@ class StatsModel(ndb.Model):
 
         result = dict()
         CHUNK_SIZE = 100
-        offset = 0
         lowest_elo = None
 
         # The following loop may yield an incorrect result since there may

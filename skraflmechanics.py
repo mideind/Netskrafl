@@ -1150,7 +1150,7 @@ class Move(MoveBase):
         board = state.board()
 
         # Tally the score of the primary word
-        for ix in range(self._numletters):
+        for _ in range(self._numletters):
             c = self._covers[cix] if cix < numcovers else None
             if c and (c.col == col) and (c.row == row):
                 # This is one of the new tiles
@@ -1160,7 +1160,6 @@ class Move(MoveBase):
                 cix += 1
             else:
                 # This is a tile that was already on the board
-                # lscore = Alphabet.scores[self._word[ix]]
                 tile = board.tile_at(row, col)
                 lscore = scores[tile]
             sc += lscore

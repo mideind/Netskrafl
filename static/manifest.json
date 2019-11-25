@@ -28,5 +28,5 @@
   "theme_color": "#fff1dc",
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/page#!/main?utm_source=homescreen"
+  "start_url": "/?utm_source=homescreen"
 }

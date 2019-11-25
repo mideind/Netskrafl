@@ -310,7 +310,7 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hn:o:sm", ["help", "numgames", "opponent", "silent", "manual"])
+            opts, _ = getopt.getopt(argv[1:], "hn:o:sm", ["help", "numgames", "opponent", "silent", "manual"])
         except getopt.error as msg:
              raise Usage(msg)
         num_games = 4
@@ -330,9 +330,6 @@ def main(argv=None):
                 silent = True
             elif o in ("-m", "--manual"):
                 manual = True
-        # process arguments
-        # for arg in args:
-        #    pass
 
         print(u"Welcome to the Skrafl game tester")
 

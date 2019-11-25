@@ -348,7 +348,7 @@ class _Dawg:
         self._dump_level(0, self._root)
         print("Total of {0} nodes and {1} edges with {2} prefix characters".format(self.num_unique_nodes(),
             self.num_edges(), self.num_edge_chars()))
-        for ix, n in enumerate(self._unique_nodes_values):
+        for n in self._unique_nodes_values:
             if n is not None:
                 # We don't use ix for the time being
                 print(u"Node {0}{1}".format(n.id, u"|" if n.final else u""))
