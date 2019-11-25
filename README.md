@@ -6,8 +6,8 @@
 
 This repository contains the implementation of an Icelandic crossword game
 inspired by SCRABBLE(tm).
-The game, which is free-to-play, is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
-[http://netskrafl.appspot.com](http://netskrafl.appspot.com)
+The game, which is free-to-play, is accessible on the web at [https://netskrafl.is](https://netskrafl.is) and
+[https://netskrafl.appspot.com](https://netskrafl.appspot.com)
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
@@ -63,7 +63,7 @@ The word database is in ```resources/ordalisti.text.dawg```.
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) (GAE) for Python
 and follow the installation instructions.
 
-2. ```git clone https://github.com/vthorsteinsson/Netskrafl``` to your GAE application directory.
+2. ```git clone https://github.com/mideind/Netskrafl``` to your GAE application directory.
 
 3. Run ```pip install -t lib -r requirements.txt``` to install required Python packages so that they
 are accessible to GAE.
