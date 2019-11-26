@@ -444,6 +444,7 @@ class User:
 
     @staticmethod
     def logout_url(navigate_to="/"):
+        """ Return a URL to which the user will be redirected upon logout """
         return users.create_logout_url(navigate_to)
 
     @classmethod
@@ -463,14 +464,14 @@ class User:
     @classmethod
     def load_multi(cls, uids):
         """ Load multiple users from persistent storage, given their user id """
-        users = []
+        user_list = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
                 if um is not None:
                     u = cls(um.key.id())
                     u._init(um)
-                    users.append(u)
-        return users
+                    user_list.append(u)
+        return user_list
 
     @classmethod
     def load_if_exists(cls, uid):
@@ -1250,9 +1251,8 @@ class Game:
             adjustment = list(self.overtime_adjustment())
             sc = self.state.scores()
 
-            if any(
-                overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)
-            ):  # 10 minutes overtime
+            if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)):
+                # 10 minutes overtime
                 # Game ended with a loss on overtime
                 ix = 0 if overtime[0] >= Game.MAX_OVERTIME else 1
                 adjustment[1 - ix] = 0
