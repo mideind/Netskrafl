@@ -19,6 +19,8 @@
 
 """
 
+# pylint: disable=too-many-lines
+
 import collections
 import threading
 

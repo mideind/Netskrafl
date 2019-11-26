@@ -158,6 +158,7 @@ def _run_stats(from_time, to_time):
         return
 
     # Iterate over all finished games within the time span in temporal order
+    # pylint: disable=singleton-comparison
     q = (
         GameModel.query(
             ndb.AND(

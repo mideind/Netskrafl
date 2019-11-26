@@ -117,6 +117,7 @@ from dawgdictionary import PackedDawgDictionary
 from languages import Alphabet
 
 # Mask away difference between Python 2 and 3
+# pylint: disable=redefined-builtin
 if sys.version_info >= (3, 0):
     pass
 else:
@@ -801,6 +802,7 @@ class DawgBuilder:
         with codecs.open(fname, mode="w", encoding="utf-8") as fout:
             self._dawg.write_text(fout)
 
+    # pylint: disable=bad-continuation
     def build(
         self, inputs, output, relpath="resources", word_filter=None, removals=None
     ):

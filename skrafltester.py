@@ -334,6 +334,9 @@ def test(num_games, opponent, silent):
 
 
 class Usage(Exception):
+
+    """ Error reporting exception for wrong command line arguments """
+
     def __init__(self, msg):
         super(Usage, self).__init__(msg)
         self.msg = msg
