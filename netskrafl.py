@@ -95,7 +95,7 @@ _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # URL to navigate to after logout
-_LOGOUT_URL = "/page#!/login"
+_LOGOUT_URL = "/"
 
 
 @app.before_request

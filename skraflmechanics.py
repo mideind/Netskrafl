@@ -1230,7 +1230,6 @@ class Move(MoveBase):
                 cix += 1
             else:
                 # This is a tile that was already on the board
-                # lscore = Alphabet.scores[self._word[ix]]
                 tile = board.tile_at(row, col)
                 lscore = scores[tile]
             sc += lscore

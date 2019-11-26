@@ -183,7 +183,6 @@ def _run_stats(from_time, to_time):
         i = 0
         for gm in iter_q(q, chunk_size=250):
             i += 1
-            # ts = Alphabet.format_timestamp(gm.timestamp)
             lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
             p1 = None if gm.player1 is None else gm.player1.id()

@@ -28,7 +28,7 @@ resources/netskrafl-*.json
 resources/ordalistimax15.txt
 resources/ordalisti.algeng.txt
 
-# TWL and SOWPODS word lists
+# Non-Icelandic word lists
 resources/TWL06.txt
 resources/sowpods.txt
 
@@ -60,10 +60,11 @@ static/NetskraflFacebookCover.jpg
 *.bak
 .vscode/
 
-# Distribution / packaging
+# Distribution / packaging / IDEs
 .Python
 google/
 env/
+.env
 bin/
 build/
 develop-eggs/
@@ -81,6 +82,7 @@ console/
 venv/
 node_modules/
 .idea/
+.vscode/
 
 # Node dependency descriptions
 package*.json
