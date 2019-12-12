@@ -2077,7 +2077,10 @@ def main():
     user = User.current()
     if user is None:
         # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
+        return redirect(url_for("login"))
+
+    # Redirect to the single page UI
+    return redirect(url_for("page"))
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
@@ -2135,7 +2138,7 @@ def main():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-    login_url = users.create_login_url("/")
+    login_url = users.create_login_url("/page")
     return render_template("login.html", login_url=login_url)
 
 

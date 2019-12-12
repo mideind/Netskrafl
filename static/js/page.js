@@ -4,8 +4,8 @@
 
 	Single page UI for Netskrafl using the Mithril library
 
-  Copyright (C) 2015-2018 Miðeind ehf.
-  Author: Vilhjalmur Thorsteinsson
+  Copyright (C) 2015-2019 Miðeind ehf.
+  Author: Vilhjálmur Þorsteinsson
 
   The GNU General Public License, version 3, applies to this software.
   For further information, see https://github.com/vthorsteinsson/Netskrafl
@@ -626,8 +626,8 @@ function createView() {
     // Info icon, invoking the help screen
     return m(".info",
       { title: "Upplýsingar og hjálp" },
-      m("a.iconlink",
-        { href: "/help", oncreate: m.route.link },
+      m(m.route.Link,
+        { href: "/help", class: "iconlink" },
         glyph("info-sign")
       )
     );
@@ -654,8 +654,8 @@ function createView() {
   function vwLogo() {
     // The Netskrafl logo
     return m(".logo",
-      m("a.nodecorate",
-        { href: '/main', oncreate: m.route.link }, 
+      m(m.route.Link,
+        { href: '/main', class: "nodecorate" }, 
         m("img",
           {
             alt: 'Netskrafl',
@@ -706,13 +706,13 @@ function createView() {
           m(".welcome",
             [
               "Þú getur alltaf fengið ",
-              m("a",
-                { href: '/help', oncreate: m.route.link },
+              m(m.route.Link,
+                { href: '/help' },
                 "hjálp"
               ),
               " með því að smella á ",
-              m("a",
-                { href: '/help', oncreate: m.route.link },
+              m(m.route.Link,
+                { href: '/help' },
                 [ "bláa", nbsp(), nbsp(), glyph("info-sign"), " - merkið" ]
               ),
               " hér til vinstri."
@@ -1369,8 +1369,8 @@ function createView() {
 
               return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
                 [
-                  m("a",
-                    { href: "/game/" + gameUUID(), oncreate: m.route.link },
+                  m(m.route.Link,
+                    { href: "/game/" + gameUUID() },
                     [
                       vwTurn(),
                       m("span.list-overdue", vwOverdue()),
@@ -1419,8 +1419,8 @@ function createView() {
               m("p",
                 [
                   "Ef þig vantar einhvern til að skrafla við, veldu flipann ",
-                  m("a",
-                    { href: "/main?tab=2", oncreate: m.route.link },
+                  m(m.route.Link,
+                    { href: "/main?tab=2" },
                     [ glyph("user"), nbsp(), "Andstæðingar" ]
                   ),
                   " og skoraðu á tölvuþjarka - ",
@@ -1446,10 +1446,7 @@ function createView() {
               ),
               m("p.no-mobile-block",
                 [
-                  m("a",
-                    { href: "/help", oncreate: m.route.link },
-                    "Hjálp"
-                  ),
+                  m(m.route.Link, { href: "/help" }, "Hjálp"),
                   " má fá með því að smella á bláa ",
                   glyph("info-sign"), nbsp(), "-", nbsp(),
                   "teiknið hér til vinstri."
@@ -2804,12 +2801,8 @@ function createView() {
           r.push(
             m(".games-item" + (item.timed ? ".game-timed" : ""),
               { key: item.uuid, title: title },
-              m("a",
-                {
-                  href: "/game/" + item.url.slice(-36), // !!! TO BE FIXED
-                  oncreate: m.route.link,
-                  onupdate: m.route.link
-                },
+              m(m.route.Link,
+                { href: "/game/" + item.url.slice(-36), }, // !!! TO BE FIXED
                 [
                   m(".at-top-left", m(".tilecount", m(".oc", opp))),
                   m(".at-top-left",
@@ -2928,8 +2921,8 @@ function createView() {
   function vwBack() {
     // Icon for going back to the main screen
     return m(".logo-back", 
-      m("a.backlink",
-        { href: "/main", oncreate: m.route.link },
+      m(m.route.Link,
+        { href: "/main", class: "backlink" },
         glyph("download", { title: "Aftur í aðalskjá" })
       )
     );
@@ -4471,9 +4464,9 @@ var RecentList = {
       );
 
       return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
-        m("a",
+        m(m.route.Link,
           // Clicking on the link opens up the game
-          { href: "/game/" + item.url.slice(-36), oncreate: m.route.link },
+          { href: "/game/" + item.url.slice(-36) },
           [
             m("span.list-win",
               item.sc0 >= item.sc1 ?
@@ -4648,8 +4641,8 @@ var BestDisplay = {
     if (json.highest_score) {
       best.push("Hæsta skor ");
       best.push(m("b",
-        m("a",
-          { href: "/game/" + json.highest_score_game, oncreate: m.route.link },
+        m(m.route.Link,
+          { href: "/game/" + json.highest_score_game },
           json.highest_score
         )
       ));
@@ -4674,8 +4667,8 @@ var BestDisplay = {
       best.push(m("span.best-word", s));
       best.push(", ");
       best.push(m("b",
-        m("a",
-          { href: "/game/" + json.best_word_game, oncreate: m.route.link },
+        m(m.route.Link,
+          { href: "/game/" + json.best_word_game },
           json.best_word_score
         )
       ));
@@ -5045,7 +5038,7 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
       var a = anchors[i];
       var href = a.getAttribute("href");
       if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
-        // Single-page URL: wire it up (as if it had had an m.route.link on it)
+        // Single-page URL: wire it up (as if it had had an m.route.Link on it)
         a.onclick = function(href, ev) {
           var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
           var qix = uri.indexOf("?");
