@@ -298,6 +298,7 @@ function createModel(settings) {
       method: "POST",
       url: "/promo",
       body: { key: key },
+      responseType: "text",
       deserialize: function(str) { return str; }
     })
     .then(readyFunc);
@@ -307,9 +308,16 @@ function createModel(settings) {
     // Load the best moves available at a given state in a game
     if (!this.game || !this.game.uuid)
       return;
+    if (!move) {
+      this.reviewMove = null;
+      this.bestMoves = null;
+      this.game.setRack([]);
+      this.game.placeTiles(0);
+      return;
+    }
     // Don't display navigation buttons while fetching
     // best moves
-    this.reviewMove = null;
+    this.reviewMove = 0;
     m.request({
       method: "POST",
       url: "/bestmoves",
@@ -338,6 +346,7 @@ function createModel(settings) {
     m.request({
       method: "GET",
       url: "/rawhelp",
+      responseType: "text",
       deserialize: function(str) { return str; }
     })
     .then(function(result) {
@@ -2142,8 +2151,9 @@ function createView() {
     var r = [];
     r.push(vwBoardReview(game, move));
     r.push(vwRightColumn());
-    if (!move)
-      // Only show the stats overlay if move == 0
+    if (move === null)
+      // Only show the stats overlay if move is null.
+      // This means we don't show the overlay if move is 0.
       r.push(vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
@@ -2501,7 +2511,7 @@ function createView() {
 
     return m(".movelist-container",
       [
-        m(".movelist", bestMoveList())
+        m(".movelist.bestmoves", bestMoveList())
       ]
     );
   }
@@ -3579,7 +3589,7 @@ function createView() {
             "/review/" + game.uuid,
             { move: Math.max(move - 1, 0) }
           );
-        }.bind(null, move),
+        }.bind(null, move || 0),
         "Sjá fyrri leik",
         m("span",
           { id: "nav-next-visible" },
@@ -3597,7 +3607,7 @@ function createView() {
             "/review/" + game.uuid,
             { move: move + 1 }
           );
-        }.bind(null, move),
+        }.bind(null, move || 0),
         "Sjá næsta leik",
         m("span",
           { id: "nav-prev-visible" },
