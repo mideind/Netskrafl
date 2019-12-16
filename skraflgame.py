@@ -2,11 +2,11 @@
 
 """ Game and User classes for netskrafl.is
 
-    Copyright (C) 2015-2017 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson
+    Copyright (C) 2015-2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     This module implements the User and Game classes for the
     Netskrafl application. These classes form an intermediary

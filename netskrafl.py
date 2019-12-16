@@ -2,11 +2,11 @@
 
 """ Web server for netskrafl.is
 
-    Copyright (C) 2015-2018 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson
+    Copyright (C) 2015-2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     This web server module uses the Flask framework to implement
     a crossword game similar to SCRABBLE(tm).

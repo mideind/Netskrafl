@@ -3,11 +3,11 @@
 
 """ Skrafltester
 
-    Copyright (C) 2015-2017 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2015-2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     This program implements a testing function for the
     functionality in skraflmechanics.py and skraflplayer.py
@@ -258,10 +258,14 @@ def test_manual_game():
 
 def test(num_games, opponent, silent):
 
+    """ Test running a number of games """
+
     def autoplayer_creator(state):
+        """ Create a normal autoplayer instance """
         return AutoPlayer(state)
 
     def minimax_creator(state):
+        """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
     players = [None, None]
@@ -308,6 +312,7 @@ def test(num_games, opponent, silent):
     )
 
     def reportscore(player):
+        """ Report the result of a number of games """
         if gameswon[player] == 0:
             print(
                 u"{2} won {0} games and scored an average of {1:.1f} points per game"

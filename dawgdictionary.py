@@ -2,7 +2,11 @@
 
 """ Word dictionary implemented with a DAWG
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
     DawgDictionary uses a Directed Acyclic Word Graph (DAWG) internally
     to store a large set of words in an efficient structure in terms
@@ -60,14 +64,14 @@ import time
 import struct
 import sys
 
+from languages import Alphabet
+
 # Mask away differences between Python 2 and 3
 if sys.version_info >= (3, 0):
     import pickle
 else:
     # noinspection PyPep8Naming
     import cPickle as pickle
-
-from languages import Alphabet
 
 
 class _Node:

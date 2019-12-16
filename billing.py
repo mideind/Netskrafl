@@ -2,7 +2,11 @@
 
 """ Billing manager for netskrafl.appspot.com
 
-    Author: Vilhjalmur Thorsteinsson, 2016
+    Copyright (C) 2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
     This module interfaces with web commerce services
     from SalesCloud to manage subscriptions for
@@ -51,18 +55,21 @@ class _Secret:
 
     @property
     def key(self):
+        """ Return the secret key value """
         if not self._SC_SECRET_KEY:
             _Secret.load()
         return self._SC_SECRET_KEY
 
     @property
     def uuid(self):
+        """ Return the client UUID """
         if not self._SC_CLIENT_UUID:
             _Secret.load()
         return self._SC_CLIENT_UUID
 
     @property
     def public_key(self):
+        """ Return Netskrafl's public key """
         return self._SC_PUBLIC_KEY
 
 
@@ -91,7 +98,7 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=
         # Invalid date/time
         return False
     delta = (datetime.utcnow() - dt).total_seconds()
-    if not (-2.0 < delta < max_time):
+    if not -2.0 < delta < max_time:
         # The request must be made in a time window ranging from 2 seconds in
         # the future (allowing for a slightly wrong clock) to 100 seconds in
         # the past (allowing time for the HTTP request to arrive and be
@@ -179,6 +186,7 @@ def handle(request):
             "utf-8"
         )
         uid = User.current_id() or ""
+        # pylint: disable=bad-continuation
         if not request_valid(
             request.method,
             request.base_url,
@@ -210,6 +218,7 @@ def handle(request):
     except Exception as ex:
         # Something wrong with the Content-length header or the request body
         logging.error("Exception when obtaining payload: {0}".format(ex))
+    # pylint: disable=bad-continuation
     if not request_valid(
         request.method, request.url, payload, xsc_date, xsc_key, xsc_digest
     ):
@@ -230,6 +239,7 @@ def handle(request):
         return jsonify(ok=False, reason=u"Empty or illegal JSON")
     handled = False
     _FRIEND_OF_NETSKRAFL = u"479"  # Product id for friend subscription
+    # pylint: disable=bad-continuation
     if (
         j.get(u"type") in (u"subscription_updated", u"subscription_created")
         and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL

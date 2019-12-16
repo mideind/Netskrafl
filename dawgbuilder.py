@@ -3,8 +3,11 @@
 
 """ DAWG dictionary builder
 
-    Author: Vilhjalmur Thorsteinsson, 2014
-    Copyright (C) 2018 Miðeind ehf.
+    Copyright (C) 2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
     DawgBuilder uses a Directed Acyclic Word Graph (DAWG)
     to store a large set of words in an efficient structure in terms

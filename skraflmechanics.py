@@ -2,11 +2,11 @@
 
 """ Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
 
-    Copyright (C) 2015-2017 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson
+    Copyright (C) 2015-2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     This module contains classes that implement various
     mechanics for a SCRABBLE(tm)-like game, including the

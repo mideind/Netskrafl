@@ -2,11 +2,11 @@
 
 """ Admin web server for netskrafl.is
 
-    Copyright (C) 2015-2017 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson
+    Copyright (C) 2015-2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
@@ -123,6 +123,7 @@ def admin_setfriend():
 def admin_fetchgames():
     """ Return a JSON representation of all finished games """
     # noinspection PyPep8
+    # pylint: disable=singleton-comparison
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     gamelist = []
     for gm in q.fetch():

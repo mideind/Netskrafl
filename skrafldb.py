@@ -2,7 +2,11 @@
 
 """ Skrafldb - persistent data management for the Netskrafl application
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
     This module stores data in the Google App Engine NDB
     (see https://developers.google.com/appengine/docs/python/ndb/).

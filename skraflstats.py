@@ -2,7 +2,11 @@
 
 """ Server module for Netskrafl statistics and other background tasks
 
-    Author: Vilhjalmur Thorsteinsson, 2015
+    Copyright (C) 2019 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
+
+    The GNU General Public License, version 3, applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
@@ -342,6 +346,7 @@ def _create_ratings():
             # Augment the rating with info about progress
             key = _key(sm)
 
+            # pylint: disable=cell-var-from-loop
             def _augment(prop):
                 sm[prop + "_yesterday"] = (
                     t_yesterday[key][prop] if key in t_yesterday else 0
@@ -544,7 +549,7 @@ def stats_ping():
 
 
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(_):
     """ Return a custom 404 error """
     return u"Incorrect URL path", 404
 
