@@ -839,7 +839,7 @@ class Game:
             # This is a human user
             name = u.full_name().strip()
             if not name:
-                name = u.nickname();
+                name = u.nickname()
                 if name[0:8] == u"https://":
                     # Raw name (path) from Google Accounts: use a more readable version
                     name = Game.UNDEFINED_NAME
@@ -1344,7 +1344,7 @@ class Game:
         wrong_chall = [0, 0] # Points gained by wrong challenges from opponent
         # Loop through the moves, collecting stats
         for m in net_moves: # Omit successfully challenged moves
-            coord, wrd, msc = m.move.summary(self.state)
+            _, wrd, msc = m.move.summary(self.state)
             if wrd == u'RESP':
                 assert msc > 0
                 # Wrong challenge by opponent: add 10 points
@@ -1355,7 +1355,7 @@ class Game:
             if m.move.num_covers() == 0:
                 # Exchange, pass or resign move
                 continue
-            for coord, tile, letter, score in m.move.details(self.state):
+            for _, tile, _, score in m.move.details(self.state):
                 if tile == u'?':
                     blanks[m.player] += 1
                 letterscore[m.player] += score

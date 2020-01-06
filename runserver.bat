@@ -4,4 +4,5 @@ set PYTHON=C:\python27\python
 set CLOUD_SDK=%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk
 set PYTHONPATH=%CLOUD_SDK%\platform\google_appengine
 set DEV_APPSERVER=%CLOUD_SDK%\bin\dev_appserver.py
+set PYTHONIOENCODING=utf-8
 %PYTHON% "%DEV_APPSERVER%" --port=8080 --admin_port=8000 --host=0.0.0.0 --enable_host_checking=False app.yaml skraflstats.yaml

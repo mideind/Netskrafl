@@ -82,7 +82,7 @@ _PROMO_COUNT = 2 # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days = 4) # Min interval between promo displays
 
 # URL to navigate to after logout
-_LOGOUT_URL = "/page#!/login"
+_LOGOUT_URL = "/"
 
 @app.before_request
 def before_request():
@@ -145,7 +145,7 @@ class RequestData:
         """ Obtain an integer data item from the request """
         try:
             return int(self.q.get(key, default))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return default
 
     def get_bool(self, key, default = False):
@@ -158,7 +158,7 @@ class RequestData:
             if val in self._FALSE_SET:
                 # This is a falsy value
                 return False
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             pass
         # Something else, i.e. neither truthy nor falsy: return the default
         return default
@@ -1672,7 +1672,7 @@ def initgame():
 
     if not found:
         # No challenge existed between the users
-        return redirect(ok = False)
+        return jsonify(ok = False)
 
     # Create a fresh game object
     game = Game.new(user.id(), opp, 0, prefs)

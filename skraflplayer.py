@@ -253,7 +253,7 @@ class Axis:
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
-                matched, prefix, nextnode = ns
+                _, prefix, nextnode = ns
                 # assert matched == leftpart
                 nav = ExtendRightNavigator(self, index, self._rack)
                 self.DAWG.resume_navigation(nav, prefix, nextnode, leftpart)
@@ -652,7 +652,7 @@ class AutoPlayer:
     def _generate_candidates(self):
         """ Generate a fresh candidate list """
 
-        self.candidates = []
+        self._candidates = []
         # Start by generating all possible permutations of the
         # rack that form left parts of words, ordering them by length
         if len(self._rack) > 1:
