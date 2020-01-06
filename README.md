@@ -6,8 +6,8 @@
 
 This repository contains the implementation of an Icelandic crossword game
 inspired by SCRABBLE(tm).
-The game, which is free-to-play, is accessible on the web at [http://netskrafl.is](http://netskrafl.is) and
-[http://netskrafl.appspot.com](http://netskrafl.appspot.com)
+The game, which is free-to-play, is accessible on the web at [https://netskrafl.is](https://netskrafl.is) and
+[https://netskrafl.appspot.com](https://netskrafl.appspot.com)
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
@@ -63,7 +63,7 @@ The word database is in ```resources/ordalisti.text.dawg```.
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads) (GAE) for Python
 and follow the installation instructions.
 
-2. ```git clone https://github.com/vthorsteinsson/Netskrafl``` to your GAE application directory.
+2. ```git clone https://github.com/mideind/Netskrafl``` to your GAE application directory.
 
 3. Run ```pip install -t lib -r requirements.txt``` to install required Python packages so that they
 are accessible to GAE.
@@ -122,7 +122,7 @@ license (see below).
 
 *Netskrafl - an Icelandic crossword game website*
 
-*Copyright (C) 2017 Miðeind ehf.*
+*Copyright (C) 2019 Miðeind ehf.*
 
 This set of programs is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -136,6 +136,38 @@ GNU General Public License for more details.
 
 The full text of the GNU General Public License is available here:
 [http://www.gnu.org/licenses/gpl.html](http://www.gnu.org/licenses/gpl.html).
+
+### Included third party software
+
+Netskrafl contains the *DragDropTouch.js* module by Bernardo Castilho,
+which is licensed under the MIT license as follows:
+
+	Copyright (c) 2016 Bernardo Castilho
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+
+Netskrafl contains the *jQuery UI Touch Punch* library by David Furfero, which
+is licensed under the MIT license.
+
+	Copyright (c) 2011 David Furfero
+
+	The MIT license, as spelled out above, applies to this library.
 
 ### Trademarks
 
