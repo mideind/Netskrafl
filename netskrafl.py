@@ -2,7 +2,7 @@
 
 """ Web server for netskrafl.is
 
-    Copyright (C) 2015-2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -56,6 +56,7 @@ from skraflmechanics import (
 from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import (
+    Client,
     Context,
     UserModel,
     GameModel,
@@ -69,9 +70,23 @@ from skrafldb import (
 import billing
 import firebase
 
-# Standard Flask initialization
+# Flask initialization
+# The following shenanigans auto-insert an NDB client context into each WSGI context
+
+def ndb_wsgi_middleware(wsgi_app):
+    """ Returns a wrapper for the original WSGI app """
+
+    def middleware(environ, start_response):
+        """ Wraps the original WSGI app """
+        with Client.get.context():
+            return wsgi_app(environ, start_response)
+
+    return middleware
 
 app = Flask(__name__)
+
+# Wrap the WSGI app to insert the NDB client context into each request
+app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
 
 running_local = os.environ.get('SERVER_SOFTWARE', '').startswith('Development')
 
@@ -96,6 +111,9 @@ _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # URL to navigate to after logout
 _LOGOUT_URL = "/"
+
+# Set to True to make the single-page UI the default
+_SINGLE_PAGE_UI = False
 
 
 @app.before_request
@@ -2079,8 +2097,9 @@ def main():
         # User hasn't logged in yet: redirect to login page
         return redirect(url_for("login"))
 
-    # Redirect to the single page UI
-    return redirect(url_for("page"))
+    if _SINGLE_PAGE_UI:
+        # Redirect to the single page UI
+        return redirect(url_for("page"))
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
@@ -2138,7 +2157,8 @@ def main():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-    login_url = users.create_login_url("/page")
+    main_page = "/page" if _SINGLE_PAGE_UI else "/"
+    login_url = users.create_login_url(main_page)
     return render_template("login.html", login_url=login_url)
 
 

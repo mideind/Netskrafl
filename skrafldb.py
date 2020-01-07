@@ -2,7 +2,7 @@
 
 """ Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -66,9 +66,24 @@ import uuid
 
 from datetime import datetime
 
-from google.appengine.ext import ndb
+from google.cloud import ndb
 
 from languages import Alphabet
+
+
+class Client:
+
+    """ Wrapper for the ndb client instance singleton """
+
+    client = ndb.Client()
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get():
+        """ Return the ndb client instance singleton """
+        return Client.client
 
 
 class Context:
