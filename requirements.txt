@@ -1,5 +1,7 @@
 googleapis_common_protos
 google-cloud-ndb
+six
+protobuf
 flask>=0.10
 httplib2
 oauth2client

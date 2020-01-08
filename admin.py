@@ -18,11 +18,11 @@ import logging
 
 from flask import render_template, jsonify
 from flask import request
-from google.appengine.ext import ndb, deferred
+from google.appengine.ext import deferred
 
 import netskrafl
 from languages import Alphabet
-from skrafldb import Context, UserModel, GameModel
+from skrafldb import ndb, Context, UserModel, GameModel
 from skraflgame import User, Game
 
 

@@ -28,5 +28,8 @@
 			"C:\\Users\\Notandi\\AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
 		],
 		"javascript.suggestionActions.enabled": false,
+		"python.linting.pylintArgs": [
+			"--rcfile=${workspaceDir}/.pylintrc"
+		],
 	}
 }

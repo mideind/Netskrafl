@@ -78,7 +78,7 @@ def ndb_wsgi_middleware(wsgi_app):
 
     def middleware(environ, start_response):
         """ Wraps the original WSGI app """
-        with Client.get.context():
+        with Client.get_context():
             return wsgi_app(environ, start_response)
 
     return middleware

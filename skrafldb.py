@@ -66,6 +66,9 @@ import uuid
 
 from datetime import datetime
 
+# The following is a hack/workaround for a bug
+import six; reload(six)
+
 from google.cloud import ndb
 
 from languages import Alphabet
@@ -81,9 +84,9 @@ class Client:
         pass
 
     @staticmethod
-    def get():
+    def get_context():
         """ Return the ndb client instance singleton """
-        return Client.client
+        return Client.client.context()
 
 
 class Context:
@@ -137,10 +140,10 @@ class UserModel(ndb.Model):
 
     """ Models an individual user """
 
-    nickname = ndb.StringProperty(indexed=True)
+    nickname = ndb.StringProperty()
     # Lower case nickname and full name of user - used for search
-    nick_lc = ndb.StringProperty(required=False, indexed=True, default=None)
-    name_lc = ndb.StringProperty(required=False, indexed=True, default=None)
+    nick_lc = ndb.StringProperty(required=False, default=None)
+    name_lc = ndb.StringProperty(required=False, default=None)
 
     inactive = ndb.BooleanProperty()
     prefs = ndb.JsonProperty()
@@ -155,11 +158,11 @@ class UserModel(ndb.Model):
     human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    highest_score_game = ndb.StringProperty(required=False, default=None, indexed=False)
+    highest_score_game = ndb.StringProperty(required=False, default=None)
     # Best word laid down
-    best_word = ndb.StringProperty(required=False, default=None, indexed=False)
+    best_word = ndb.StringProperty(required=False, default=None)
     best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    best_word_game = ndb.StringProperty(required=False, default=None, indexed=False)
+    best_word_game = ndb.StringProperty(required=False, default=None)
 
     @classmethod
     def create(cls, user_id, nickname, preferences=None):
@@ -389,8 +392,8 @@ class GameModel(ndb.Model):
     player1 = ndb.KeyProperty(kind=UserModel)
 
     # The racks
-    rack0 = ndb.StringProperty(indexed=False)
-    rack1 = ndb.StringProperty(indexed=False)
+    rack0 = ndb.StringProperty()
+    rack1 = ndb.StringProperty()
 
     # The scores
     score0 = ndb.IntegerProperty()
@@ -416,8 +419,8 @@ class GameModel(ndb.Model):
     moves = ndb.LocalStructuredProperty(MoveModel, repeated=True)
 
     # The initial racks
-    irack0 = ndb.StringProperty(required=False, indexed=False, default=None)
-    irack1 = ndb.StringProperty(required=False, indexed=False, default=None)
+    irack0 = ndb.StringProperty(required=False, default=None)
+    irack1 = ndb.StringProperty(required=False, default=None)
 
     # Game preferences, such as duration, alternative bags or boards, etc.
     prefs = ndb.JsonProperty(required=False, default=None)
@@ -1191,7 +1194,7 @@ class ChatModel(ndb.Model):
     """ Models chat communications between users """
 
     # The channel (conversation) identifier
-    channel = ndb.StringProperty(indexed=True, required=True)
+    channel = ndb.StringProperty(required=True)
 
     # The user originating this chat message
     user = ndb.KeyProperty(kind=UserModel, indexed=True, required=True)
@@ -1201,7 +1204,7 @@ class ChatModel(ndb.Model):
 
     # The actual message - by convention, an empty msg from a user means that
     # the user has seen all older messages
-    msg = ndb.StringProperty(indexed=False)
+    msg = ndb.StringProperty()
 
     @classmethod
     def list_conversation(cls, channel, maxlen=250):
@@ -1325,7 +1328,7 @@ class PromoModel(ndb.Model):
     # The player that saw the promotion
     player = ndb.KeyProperty(kind=UserModel)
     # The promotion id
-    promotion = ndb.StringProperty(indexed=True, required=True)
+    promotion = ndb.StringProperty(required=True)
     # The timestamp
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
 

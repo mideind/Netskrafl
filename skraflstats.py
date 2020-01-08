@@ -26,17 +26,32 @@ from flask import request, url_for
 
 from google.appengine.api import users
 from google.appengine.ext import deferred
-from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
-from skrafldb import Context, UserModel, GameModel, StatsModel, RatingModel
+from skrafldb import ndb, Client, Context, UserModel, GameModel, StatsModel, RatingModel
 from skrafldb import iter_q
 
 
 # Standard Flask initialization
 
+# Flask initialization
+# The following shenanigans auto-insert an NDB client context into each WSGI context
+
+def ndb_wsgi_middleware(wsgi_app):
+    """ Returns a wrapper for the original WSGI app """
+
+    def middleware(environ, start_response):
+        """ Wraps the original WSGI app """
+        with Client.get_context():
+            return wsgi_app(environ, start_response)
+
+    return middleware
+
 app = Flask(__name__)
+
+# Wrap the WSGI app to insert the NDB client context into each request
+app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
 
 running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
