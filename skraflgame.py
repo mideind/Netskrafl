@@ -2,7 +2,7 @@
 
 """ Game and User classes for netskrafl.is
 
-    Copyright (C) 2015-2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.

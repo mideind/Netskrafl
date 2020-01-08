@@ -2,7 +2,7 @@
 
 """ Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -455,43 +455,49 @@ def deferred_stats(from_time, to_time):
     """ This is the deferred stats collection process """
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for this processing)
-    Context.disable_cache()
+    # !!! Removed for Cloud NDB migration
+    # Client.get_context().disable_cache()
 
-    t0 = time.time()
-    _run_stats(from_time, to_time)
-    t1 = time.time()
+    with Client.get_context() as context:
 
-    logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
+        t0 = time.time()
+        _run_stats(from_time, to_time)
+        t1 = time.time()
+
+        logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
 
 def deferred_ratings():
     """ This is the deferred ratings table calculation process """
     # Disable the in-context cache to save memory
     # (it doesn't give any speed advantage for this processing)
-    Context.disable_cache()
-    t0 = time.time()
+    # !!! Removed for Cloud NDB migration
+    # Client.get_context().disable_cache()
+    with Client.get_context() as context:
 
-    try:
+        t0 = time.time()
 
-        _create_ratings()
+        try:
 
-    except DeadlineExceededError:
-        # Hit deadline: save the stuff we already have and
-        # defer a new task to continue where we left off
-        logging.error(u"Deadline exceeded in ratings, failing permamently")
-        # Normal return prevents this task from being run again
-        raise deferred.PermanentTaskFailure()
+            _create_ratings()
 
-    except Exception as ex:
-        logging.error(u"Exception in ratings, failing permanently: {0}".format(ex))
-        # Avoid having the task retried
-        raise deferred.PermanentTaskFailure()
+        except DeadlineExceededError:
+            # Hit deadline: save the stuff we already have and
+            # defer a new task to continue where we left off
+            logging.error(u"Deadline exceeded in ratings, failing permamently")
+            # Normal return prevents this task from being run again
+            raise deferred.PermanentTaskFailure()
 
-    t1 = time.time()
+        except Exception as ex:
+            logging.error(u"Exception in ratings, failing permanently: {0}".format(ex))
+            # Avoid having the task retried
+            raise deferred.PermanentTaskFailure()
 
-    logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
-    StatsModel.log_cache_stats()
-    StatsModel.clear_cache()  # Do not maintain the cache in memory between runs
+        t1 = time.time()
+
+        logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+        StatsModel.log_cache_stats()
+        StatsModel.clear_cache()  # Do not maintain the cache in memory between runs
 
 
 @app.route("/_ah/start")

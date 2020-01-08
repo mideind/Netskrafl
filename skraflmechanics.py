@@ -2,7 +2,7 @@
 
 """ Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
 
-    Copyright (C) 2015-2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
