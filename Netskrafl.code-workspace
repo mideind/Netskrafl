@@ -25,7 +25,7 @@
 		"python.pythonPath": "C:\\Python27\\python.exe",
 		"python.formatting.blackArgs": ["-S"],
 		"python.autoComplete.extraPaths": [
-			"C:\\Users\\Notandi\\AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
+			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
 		],
 		"javascript.suggestionActions.enabled": false,
 		"python.linting.pylintArgs": [

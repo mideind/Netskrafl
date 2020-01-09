@@ -184,7 +184,22 @@ class UserModel(ndb.Model):
     @classmethod
     def fetch_multi(cls, user_ids):
         """ Fetch multiple user entities by id list """
-        return ndb.get_multi([ndb.Key(UserModel, uid) for uid in user_ids])
+        # Google NDB/RPC doesn't allow more than 1000 entities per get_multi() call
+        MAX_CHUNK = 1000
+        result = []
+        ix = 0
+        user_ids = list(user_ids)
+        end = len(user_ids)
+        while ix < end:
+            keys = [ndb.Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
+            len_keys = len(keys)
+            if ix == 0 and len_keys == end:
+                # Most common case: just a single, complete read
+                return ndb.get_multi(keys)
+            # Otherwise, accumulate chunks
+            result.extend(ndb.get_multi(keys))
+            ix += len_keys
+        return result
 
     @staticmethod
     def put_multi(recs):
@@ -324,7 +339,7 @@ class UserModel(ndb.Model):
             # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
             for k in iter_q(
-                q, chunk_size=max_len, projection=[UserModel.highest_score]
+                q, chunk_size=max_len, projection=['highest_score']
             ):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
@@ -603,7 +618,7 @@ class FavoriteModel(ndb.Model):
             return
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_policy=ndb.EVENTUAL_CONSISTENCY):
+        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
             yield None if fm.destuser is None else fm.destuser.id()
 
     @classmethod
@@ -1354,6 +1369,6 @@ class PromoModel(ndb.Model):
         k = ndb.Key(UserModel, user_id)
         q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
 
-        for pm in q.fetch(projection=[PromoModel.timestamp]):
+        for pm in q.fetch(projection=['timestamp']):
             yield pm.timestamp
 
