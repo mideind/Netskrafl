@@ -15,6 +15,7 @@ __pycache__/
 *.profile
 
 # Visual Studio Code tweaks
+ptvsd/
 pydev_startup.py
 
 # Secret session key
