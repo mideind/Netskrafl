@@ -23,6 +23,12 @@ manual_scaling:
 #- warmup
 #- channel_presence
 
+vpc_access_connector:
+  name: projects/netskrafl/locations/us-central1/connectors/vpc0c
+
+env_variables:
+  REDIS_CACHE_URL: redis://10.128.0.3:6379
+
 libraries:
 - name: ssl
   version: latest

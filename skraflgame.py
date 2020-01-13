@@ -602,6 +602,9 @@ class Game:
         self._preferences = None
         # Cache of game over state (becomes True when the game is definitely over)
         self._game_over = None
+        # Flag for erroneous games, i.e. ones that are incorrectly stored
+        # in the NDB datastore
+        self._erroneous = False
 
     def _make_new(self, player0_id, player1_id, robot_level=0, prefs=None):
         """ Initialize a new, fresh game """
@@ -716,6 +719,13 @@ class Game:
                     m = Move(mm.tiles.replace(u"?", u""), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
 
+            elif mm.tiles is None:
+
+                # Degenerate (error) case: this game is stored incorrectly
+                # in the NDB datastore. Probably an artifact of the move to
+                # Google Cloud NDB.
+                pass
+
             elif mm.tiles[0:4] == u"EXCH":
 
                 # Exchange move
@@ -741,8 +751,10 @@ class Game:
                 # Response to challenge
                 m = ResponseMove()
 
-            assert m is not None
-            if m:
+            if m is None:
+                # Something is wrong: mark the game as erroneous
+                game._erroneous = True
+            else:
                 # Do a "shallow apply" of the move, which updates
                 # the board and internal state variables but does
                 # not modify the bag or the racks
@@ -750,7 +762,8 @@ class Game:
                 # Append to the move history
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 game.state.set_rack(player, mm.rack)
-                player = 1 - player
+
+            player = 1 - player
 
         # Load the current racks
         game.state.set_rack(0, gm.rack0)
@@ -762,7 +775,7 @@ class Game:
         # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
             game.finalize_score()
-            if not gm.over:
+            if not gm.over and not game._erroneous:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
@@ -1175,6 +1188,10 @@ class Game:
     def num_moves(self):
         """ Returns the number of moves in the game so far """
         return len(self.moves)
+
+    def is_erroneous(self):
+        """ Return True if this game object is incorrectly serialized """
+        return self._erroneous
 
     def player_to_move(self):
         """ Returns the index (0 or 1) of the player whose move it is """

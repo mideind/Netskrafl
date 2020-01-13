@@ -222,7 +222,9 @@ def _process_move(game, movelist):
 
     assert game is not None
 
-    if game.is_over():
+    if game.is_over() or game.is_erroneous():
+        # This game is already completed, or cannot be correctly
+        # serialized from the datastore
         return jsonify(result=Error.GAME_NOT_FOUND)
 
     player_index = game.player_to_move()

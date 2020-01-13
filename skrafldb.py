@@ -78,15 +78,19 @@ class Client:
 
     """ Wrapper for the ndb client instance singleton """
 
-    client = ndb.Client()
+    _client = None
+    _global_cache = None
 
     def __init__(self):
         pass
 
-    @staticmethod
-    def get_context():
+    @classmethod
+    def get_context(cls):
         """ Return the ndb client instance singleton """
-        return Client.client.context()
+        if cls._client is None:
+            cls._client = ndb.Client()
+            cls._global_cache = ndb.RedisCache.from_environment()
+        return cls._client.context(global_cache=cls._global_cache)
 
 
 class Context:
