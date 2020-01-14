@@ -5,3 +5,4 @@ protobuf
 flask>=0.10
 httplib2
 oauth2client
+redis==3.3.11

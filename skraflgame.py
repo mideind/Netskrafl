@@ -27,7 +27,9 @@ import threading
 from random import randint
 from datetime import datetime, timedelta
 
-from google.appengine.api import users, memcache
+from google.appengine.api import users
+
+from cache import memcache
 
 from skraflmechanics import (
     State,
@@ -517,6 +519,20 @@ class User:
         """ Return the nickname of the current user """
         u = cls.current()
         return None if u is None else u.nickname()
+
+    def to_serializable(self):
+        """ Convert to JSON-serializable format """
+        d = dict(**self.__dict__)
+        del d["_favorites"]
+        return d
+
+    @classmethod
+    def from_serializable(cls, j):
+        """ Create a fresh instance from a JSON-serialized object """
+        u = cls(uid=j["_user_id"])
+        u.__dict__ = j
+        u._favorites = None
+        return u
 
     def statistics(self):
         """ Return a set of key statistics on the user """

@@ -66,20 +66,21 @@ import uuid
 
 from datetime import datetime
 
-# The following is a hack/workaround for a bug
+# The following is a hack/workaround for a Google bug
 import six; reload(six)
 
 from google.cloud import ndb
 
 from languages import Alphabet
+from cache import memcache
 
 
 class Client:
 
     """ Wrapper for the ndb client instance singleton """
 
-    _client = None
-    _global_cache = None
+    _client = ndb.Client()
+    _global_cache = ndb.RedisCache(memcache.get_redis_client())
 
     def __init__(self):
         pass
@@ -87,9 +88,6 @@ class Client:
     @classmethod
     def get_context(cls):
         """ Return the ndb client instance singleton """
-        if cls._client is None:
-            cls._client = ndb.Client()
-            cls._global_cache = ndb.RedisCache.from_environment()
         return cls._client.context(global_cache=cls._global_cache)
 
 
@@ -435,7 +433,7 @@ class GameModel(ndb.Model):
     ts_last_move = ndb.DateTimeProperty(required=False, default=None)
 
     # The moves so far
-    moves = ndb.LocalStructuredProperty(MoveModel, repeated=True)
+    moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
 
     # The initial racks
     irack0 = ndb.StringProperty(required=False, default=None)
@@ -474,7 +472,7 @@ class GameModel(ndb.Model):
     def fetch(cls, game_uuid, use_cache=True):
         """ Fetch a game entity given its uuid """
         if not use_cache:
-            return cls.get_by_id(game_uuid, use_cache=False, use_memcache=False)
+            return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
         # Default caching policy if caching is not explictly prohibited
         return cls.get_by_id(game_uuid)
 

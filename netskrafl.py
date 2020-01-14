@@ -40,7 +40,7 @@ from flask import Flask
 from flask import render_template, redirect, jsonify
 from flask import request, url_for
 
-from google.appengine.api import users, memcache
+from google.appengine.api import users
 from google.appengine.runtime import DeadlineExceededError
 
 from languages import Alphabet
@@ -69,6 +69,8 @@ from skrafldb import (
 )
 import billing
 import firebase
+from cache import memcache
+
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -396,8 +398,11 @@ def _userlist(query, spec):
     if online is None:
         # Not found: do a query
         online = firebase.get_connected_users()  # Returns a set
-        # Store the result in the cache with a lifetime of 3 minutes
-        memcache.set("live", online, time=3 * 60, namespace="userlist")
+        # Store the result as a list in the cache with a lifetime of 5 minutes
+        memcache.set("live", list(online), time=5 * 60, namespace="userlist")
+    else:
+        # Convert the cached list back into a set
+        online = set(online)
 
     if query == u"live":
         # Return all online (live) users

@@ -27,7 +27,10 @@ vpc_access_connector:
   name: projects/netskrafl/locations/us-central1/connectors/vpc0c
 
 env_variables:
-  REDIS_CACHE_URL: redis://10.128.0.3:6379
+  # When running on the local development server,
+  # REDISHOST is automatically set to 'localhost' (in cache.py)
+  REDISHOST: 10.128.0.3
+  REDISPORT: 6379
 
 libraries:
 - name: ssl
@@ -186,6 +189,7 @@ skip_files:
 - ^resources/.*\.txt$   # Raw text resources, such as word lists
 - ^resources/.*\.text\.dawg$   # DAWG trees in text form
 - ^resources/.*\.dawg\.pickle$ # DAWG trees in pickled form
+- ^resources/.*\.csv$   # CSV files
 - ^(.*/)?.*\.psd$       # Photoshop files
 - ^(.*/)?.*\.ai$        # Illustrator files
 - ^(.*/)?.*\.log$       # Local log files
@@ -201,6 +205,8 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$            # GitHub stuff
 - ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
+- ^ptvsd/.*$            # PTVSD debugger
+- ^log/.*$              # Log files
 - ^.vscode/.*$          # VSCode files
 - ^[gG]runtfile.js$     # Gruntfile
 - ^(.*/)?\..*$          # Files whose names start with a period
