@@ -2,7 +2,7 @@
 
 """ Firebase wrapper for Netskrafl
 
-    Copyright (C) 2015-2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -63,7 +63,7 @@ def _get_http():
 
 
 def _firebase_put(path, message=None):
-    """Writes data to Firebase.
+    """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
     fields cannot be performed without overwriting the entire object
@@ -76,7 +76,7 @@ def _firebase_put(path, message=None):
 
 
 def _firebase_get(path):
-    """Read the data at the given path.
+    """ Read the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
@@ -89,7 +89,7 @@ def _firebase_get(path):
 
 
 def _firebase_patch(path, message):
-    """Update the data at the given path.
+    """ Update the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
@@ -102,7 +102,7 @@ def _firebase_patch(path, message):
 
 
 def _firebase_delete(path):
-    """Delete the data at the given path.
+    """ Delete the data at the given path.
 
     An HTTP DELETE request allows deleting of the data at the given path.
     A successful request will be indicated by a 200 OK HTTP status code.
