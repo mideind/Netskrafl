@@ -14,6 +14,11 @@
 
 {% endblock %}
 
+{% block startscripts %}
+{% include 'firebase.html' %}
+{% include 'firebase-auth.html' %}
+{% endblock %}
+
 {% block scripts %}
 {% endblock %}
 
@@ -49,7 +54,7 @@
       hér til vinstri.
    </div>
    <div style="float:right">
-      <button type="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
+      <div id="firebaseui-auth-container" lang="is"></div>
    </div>
 </div>
 
@@ -62,7 +67,7 @@
       Skemmtilegt | skerpandi | ókeypis
    </div>
    <div style="text-align: center">
-      <button type="submit" class="login"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Skrá mig inn</button>
+      <div id="firebaseui-auth-container" lang="is"></div>
    </div>
 </div>
 
@@ -72,9 +77,37 @@
 
 <script>
 
-$("button.login").click(function() {
-   window.location.href = "{{ login_url | safe }}";
-});
+var userIdToken = null;
+
+function initMain() {
+
+   firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+         var name = user.displayName;
+
+         /* If the provider gives a display name, use the name for the
+            personal welcome message. Otherwise, use the user's email. */
+         var welcomeName = name ? name : user.email;
+
+         user.getIdToken().then(function(idToken) {
+            userIdToken = idToken;
+
+            /* Do something, now that the user is authenticated */
+            console.log(name + ", " + welcomeName + ", " + userIdToken);
+
+         });
+
+      }
+      else {
+         /* Logged out */
+         console.log("Logged out")
+      }
+   });
+
+   configureFirebaseLoginWidget();
+}
+
+$(document).ready(initMain);
 
 </script>
 
