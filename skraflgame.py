@@ -2,11 +2,11 @@
 
 """ Game and User classes for netskrafl.is
 
-    Copyright (C) 2015-2017 Miðeind ehf.
-    Author: Vilhjalmur Thorsteinsson
+    Copyright (C) 2020 Miðeind ehf.
+    Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
-    For further information, see https://github.com/vthorsteinsson/Netskrafl
+    For further information, see https://github.com/mideind/Netskrafl
 
     This module implements the User and Game classes for the
     Netskrafl application. These classes form an intermediary
@@ -19,6 +19,8 @@
 
 """
 
+# pylint: disable=too-many-lines
+
 import collections
 import threading
 
@@ -27,12 +29,30 @@ from datetime import datetime, timedelta
 
 from google.appengine.api import users, memcache
 
-from skraflmechanics import State, Board, Rack, Error, \
-    Move, PassMove, ExchangeMove, ChallengeMove, ResponseMove, ResignMove
+from skraflmechanics import (
+    State,
+    Board,
+    Rack,
+    Error,
+    Move,
+    PassMove,
+    ExchangeMove,
+    ChallengeMove,
+    ResponseMove,
+    ResignMove,
+)
 from skraflplayer import AutoPlayer
 from languages import Alphabet, OldTileSet, NewTileSet
-from skrafldb import Unique, UserModel, GameModel, MoveModel, \
-    FavoriteModel, ChallengeModel, StatsModel, ChatModel
+from skrafldb import (
+    Unique,
+    UserModel,
+    GameModel,
+    MoveModel,
+    FavoriteModel,
+    ChallengeModel,
+    StatsModel,
+    ChatModel,
+)
 
 
 class User:
@@ -43,7 +63,7 @@ class User:
     _lock = threading.Lock()
 
     # User object expiration in memcache
-    _CACHE_EXPIRY = 15 * 60 # 15 minutes
+    _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
     _NAMESPACE = "user:2"
@@ -51,11 +71,11 @@ class User:
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
 
-    def __init__(self, uid = None):
+    def __init__(self, uid=None):
         """ Initialize a fresh User instance """
         self._nickname = u""
         self._inactive = False
-        self._preferences = { }
+        self._preferences = {}
         self._ready = False
         self._ready_timed = False
         self._elo = 0
@@ -78,7 +98,7 @@ class User:
                 self._user_id = None
             else:
                 self._user_id = u.user_id()
-                self._nickname = u.nickname() # Default
+                self._nickname = u.nickname()  # Default
                 # Use the user's email address, if available
                 email = u.email()
                 if email:
@@ -106,8 +126,11 @@ class User:
         um = UserModel.fetch(self._user_id)
         if um is None:
             # Use the default properties for a newly created user
-            self.set_new_bag(True) # Fresh users get the new bag by default
-            UserModel.create(self._user_id, self.nickname(), self._preferences) # This updates the database
+            self.set_new_bag(True)  # Fresh users get the new bag by default
+            # This updates the database
+            UserModel.create(
+                self._user_id, self.nickname(), self._preferences
+            )
         else:
             # Initialize from the database
             self._init(um)
@@ -137,7 +160,9 @@ class User:
 
             # Note: the namespace version should be incremented each time
             # that the class properties change
-            memcache.set(self._user_id, self, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+            memcache.set(
+                self._user_id, self, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE
+            )
 
     def id(self):
         """ Returns the id (database key) of the user """
@@ -183,7 +208,7 @@ class User:
     def set_pref(self, pref, value):
         """ Set a preference to a value """
         if self._preferences is None:
-            self._preferences = { }
+            self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
@@ -286,9 +311,7 @@ class User:
 
     @staticmethod
     def friend_from_prefs(prefs):
-        """ Returns True if the user is a friend of Netskrafl 
-        :rtype: bool
-        """
+        """ Returns True if the user is a friend of Netskrafl """
         if prefs is None:
             return False
         friend = prefs.get(u"friend")
@@ -422,7 +445,8 @@ class User:
         return True
 
     @staticmethod
-    def logout_url(navigate_to = "/"):
+    def logout_url(navigate_to="/"):
+        """ Return a URL to which the user will be redirected upon logout """
         return users.create_logout_url(navigate_to)
 
     @classmethod
@@ -442,14 +466,14 @@ class User:
     @classmethod
     def load_multi(cls, uids):
         """ Load multiple users from persistent storage, given their user id """
-        users = []
+        user_list = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
                 if um is not None:
                     u = cls(um.key.id())
                     u._init(um)
-                    users.append(u)
-        return users
+                    user_list.append(u)
+        return user_list
 
     @classmethod
     def load_if_exists(cls, uid):
@@ -461,7 +485,7 @@ class User:
             um = UserModel.fetch(uid)
             if um is None:
                 return None
-            u = cls(uid = uid)
+            u = cls(uid=uid)
             u._init(um)
             memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
@@ -478,7 +502,7 @@ class User:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
-            u._fetch() # Creates a database entity if this is a fresh user
+            u._fetch()  # Creates a database entity if this is a fresh user
             memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
@@ -524,20 +548,29 @@ class Game:
 
     # The available autoplayers (robots)
     AUTOPLAYERS = [
-        (u"Fullsterkur",
-            u"Velur stigahæsta leik í hverri stöðu", 0),
-        (u"Miðlungur",
-            u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu", 8),
-        (u"Amlóði",
-            u"Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita", 15)
-        ]
+        (
+            u"Fullsterkur",
+            u"Velur stigahæsta leik í hverri stöðu",
+            0
+        ),
+        (
+            u"Miðlungur",
+            u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu",
+            8
+        ),
+        (
+            u"Amlóði",
+            u"Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
+            15
+        ),
+    ]
 
     # The default nickname to display if a player has an unreadable nick
     # (for instance a default Google nick with a https:// prefix)
     UNDEFINED_NAME = u"[Ónefndur]"
 
     # The maximum overtime in a game, after which a player automatically loses
-    MAX_OVERTIME = 10 * 60.0 # 10 minutes, in seconds
+    MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
 
     # After this number of days the game becomes overdue and the
     # waiting player can force the tardy opponent to resign
@@ -545,7 +578,7 @@ class Game:
 
     _lock = threading.Lock()
 
-    def __init__(self, uuid = None):
+    def __init__(self, uuid=None):
         # Unique id of the game
         self.uuid = uuid
         # The start time of the game
@@ -569,24 +602,29 @@ class Game:
         self._preferences = None
         # Cache of game over state (becomes True when the game is definitely over)
         self._game_over = None
+        # Flag for erroneous games, i.e. ones that are incorrectly stored
+        # in the NDB datastore
+        self._erroneous = False
 
-    def _make_new(self, player0_id, player1_id, robot_level = 0, prefs = None):
+    def _make_new(self, player0_id, player1_id, robot_level=0, prefs=None):
         """ Initialize a new, fresh game """
         self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
         self.player_ids = [player0_id, player1_id]
-        self.state = State(drawtiles = True,
-            tileset = self.tileset,
-            manual_wordcheck = self.manual_wordcheck())
+        self.state = State(
+            drawtiles=True,
+            tileset=self.tileset,
+            manual_wordcheck=self.manual_wordcheck(),
+        )
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.timestamp = self.ts_last_move = datetime.utcnow()
 
     @classmethod
-    def new(cls, player0_id, player1_id, robot_level = 0, prefs = None):
+    def new(cls, player0_id, player1_id, robot_level=0, prefs=None):
         """ Start and initialize a new game """
-        game = cls(Unique.id()) # Assign a new unique id to the game
+        game = cls(Unique.id())  # Assign a new unique id to the game
         if randint(0, 1) == 1:
             # Randomize which player starts the game
             player0_id, player1_id = player1_id, player0_id
@@ -599,7 +637,7 @@ class Game:
         return game
 
     @classmethod
-    def load(cls, uuid, use_cache = True):
+    def load(cls, uuid, use_cache=True):
         """ Load an already existing game from persistent storage """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
@@ -612,7 +650,7 @@ class Game:
             self._store_locked()
 
     @classmethod
-    def _load_locked(cls, uuid, use_cache = True):
+    def _load_locked(cls, uuid, use_cache=True):
         """ Load an existing game from cache or persistent storage under lock """
 
         gm = GameModel.fetch(uuid, use_cache)
@@ -640,9 +678,11 @@ class Game:
         game.robot_level = gm.robot_level
 
         # Initialize a fresh, empty state with no tiles drawn into the racks
-        game.state = State(drawtiles = False,
-            manual_wordcheck = game.manual_wordcheck(),
-            tileset = game.tileset)
+        game.state = State(
+            drawtiles=False,
+            manual_wordcheck=game.manual_wordcheck(),
+            tileset=game.tileset
+        )
 
         # Load the initial racks
         game.initial_racks[0] = gm.irack0
@@ -656,7 +696,9 @@ class Game:
 
         for mm in gm.moves:
 
-            # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}".format(mx, game.state._scores[0], game.state._scores[1], mm.tiles).encode("latin-1"))
+            # logging.info(u"Game move {0} tiles '{3}' score is {1}:{2}"
+            # .format(mx, game.state._scores[0], game.state._scores[1], mm.tiles)
+            # .encode("latin-1"))
 
             m = None
             if mm.coord:
@@ -674,8 +716,15 @@ class Game:
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
                 if mm.tiles is not None:
-                    m = Move(mm.tiles.replace(u'?', u''), row, col, horiz)
+                    m = Move(mm.tiles.replace(u"?", u""), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
+
+            elif mm.tiles is None:
+
+                # Degenerate (error) case: this game is stored incorrectly
+                # in the NDB datastore. Probably an artifact of the move to
+                # Google Cloud NDB.
+                pass
 
             elif mm.tiles[0:4] == u"EXCH":
 
@@ -690,7 +739,7 @@ class Game:
             elif mm.tiles == u"RSGN":
 
                 # Game resigned
-                m = ResignMove(- mm.score)
+                m = ResignMove(-mm.score)
 
             elif mm.tiles == u"CHALL":
 
@@ -702,16 +751,19 @@ class Game:
                 # Response to challenge
                 m = ResponseMove()
 
-            assert m is not None
-            if m:
+            if m is None:
+                # Something is wrong: mark the game as erroneous
+                game._erroneous = True
+            else:
                 # Do a "shallow apply" of the move, which updates
                 # the board and internal state variables but does
                 # not modify the bag or the racks
-                game.state.apply_move(m, shallow = True)
+                game.state.apply_move(m, shallow=True)
                 # Append to the move history
                 game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
                 game.state.set_rack(player, mm.rack)
-                player = 1 - player
+
+            player = 1 - player
 
         # Load the current racks
         game.state.set_rack(0, gm.rack0)
@@ -723,7 +775,7 @@ class Game:
         # Account for the final tiles in the rack and overtime, if any
         if game.is_over():
             game.finalize_score()
-            if not gm.over:
+            if not gm.over and not game._erroneous:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
@@ -736,7 +788,7 @@ class Game:
 
         assert self.uuid is not None
 
-        gm = GameModel(id = self.uuid)
+        gm = GameModel(id=self.uuid)
         gm.timestamp = self.timestamp
         gm.ts_last_move = self.ts_last_move
         gm.set_player(0, self.player_ids[0])
@@ -746,7 +798,7 @@ class Game:
         gm.rack0 = self.state.rack(0)
         gm.rack1 = self.state.rack(1)
         gm.over = self.is_over()
-        sc = self.final_scores() # Includes adjustments if game is over
+        sc = self.final_scores()  # Includes adjustments if game is over
         gm.score0 = sc[0]
         gm.score1 = sc[1]
         gm.to_move = len(self.moves) % 2
@@ -758,7 +810,8 @@ class Game:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state)
             # Count the tiles actually laid down
-            tile_count += m.move.num_covers() # Can be negative for a successful challenge
+            # Can be negative for a successful challenge
+            tile_count += m.move.num_covers()
             mm.coord = coord
             mm.tiles = tiles
             mm.score = score
@@ -776,7 +829,7 @@ class Game:
             best_word = [None, None]
             best_word_score = [0, 0]
             player = 0
-            for m in self.net_moves: # Excludes successfully challenged moves
+            for m in self.net_moves:  # Excludes successfully challenged moves
                 coord, tiles, score = m.move.summary(self.state)
                 if coord:
                     # Keep track of best words laid down by each player
@@ -790,13 +843,17 @@ class Game:
             u1 = User.load(pid_1) if pid_1 else None
             if u0:
                 mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
-                mod_0 |= u0.adjust_best_word(best_word[0], best_word_score[0], self.uuid)
+                mod_0 |= u0.adjust_best_word(
+                    best_word[0], best_word_score[0], self.uuid
+                )
                 if mod_0:
                     # Modified: store the updated user entity
                     u0.update()
             if u1:
                 mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
-                mod_1 |= u1.adjust_best_word(best_word[1], best_word_score[1], self.uuid)
+                mod_1 |= u1.adjust_best_word(
+                    best_word[1], best_word_score[1], self.uuid
+                )
                 if mod_1:
                     # Modified: store the updated user entity
                     u1.update()
@@ -813,11 +870,15 @@ class Game:
             i -= 1
             if level >= Game.AUTOPLAYERS[i][2]:
                 return Game.AUTOPLAYERS[i][0]
-        return Game.AUTOPLAYERS[0][0] # Strongest player by default
+        return Game.AUTOPLAYERS[0][0]  # Strongest player by default
 
     def player_nickname(self, index):
         """ Returns the nickname of a player """
-        u = None if self.player_ids[index] is None else User.load(self.player_ids[index])
+        u = (
+            None
+            if self.player_ids[index] is None
+            else User.load(self.player_ids[index])
+        )
         if u is None:
             # This is an autoplayer
             nick = Game.autoplayer_name(self.robot_level)
@@ -831,7 +892,11 @@ class Game:
 
     def player_fullname(self, index):
         """ Returns the full name of a player """
-        u = None if self.player_ids[index] is None else User.load(self.player_ids[index])
+        u = (
+            None
+            if self.player_ids[index] is None
+            else User.load(self.player_ids[index])
+        )
         if u is None:
             # This is an autoplayer
             name = Game.autoplayer_name(self.robot_level)
@@ -854,7 +919,7 @@ class Game:
     def set_pref(self, pref, value):
         """ Set a preference to a value """
         if self._preferences is None:
-            self._preferences = { }
+            self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
@@ -946,7 +1011,7 @@ class Game:
         """ Return True if no move has been made in the game for OVERDUE_DAYS days """
         ts_last_move = self.ts_last_move or self.timestamp
         delta = datetime.utcnow() - ts_last_move
-        return delta >= timedelta(days = Game.OVERDUE_DAYS)
+        return delta >= timedelta(days=Game.OVERDUE_DAYS)
 
     def get_elapsed(self):
         """ Return the elapsed time for both players, in seconds, as a tuple """
@@ -965,17 +1030,17 @@ class Game:
 
     def time_info(self):
         """ Returns a dict with timing information about this game """
-        return dict(duration = self.get_duration(), elapsed = self.get_elapsed())
+        return dict(duration=self.get_duration(), elapsed=self.get_elapsed())
 
     def overtime(self):
         """ Return overtime for both players, in seconds """
         overtime = [0, 0]
-        duration = self.get_duration() * 60.0 # In seconds
+        duration = self.get_duration() * 60.0  # In seconds
         if duration > 0.0:
             # Timed game: calculate the overtime
             el = self.get_elapsed()
             for player in range(2):
-                overtime[player] = max(0.0, el[player] - duration) # Never negative
+                overtime[player] = max(0.0, el[player] - duration)  # Never negative
         return tuple(overtime)
 
     def overtime_adjustment(self):
@@ -988,7 +1053,9 @@ class Game:
                 # The formula means that 0.1 second into a new minute
                 # a 10-point loss is incurred
                 # After 10 minutes, the game is lost and the adjustment maxes out at -100
-                adjustment[player] = max(-100, -10 * ((int(overtime[player] + 0.9) + 59) // 60))
+                adjustment[player] = max(
+                    -100, -10 * ((int(overtime[player] + 0.9) + 59) // 60)
+                )
         return tuple(adjustment)
 
     def is_over(self):
@@ -1055,9 +1122,11 @@ class Game:
         player_index = self.player_to_move()
         self.state.apply_move(move)
         self.ts_last_move = datetime.utcnow()
-        mt = MoveTuple(player_index, move, self.state.rack(player_index), self.ts_last_move)
+        mt = MoveTuple(
+            player_index, move, self.state.rack(player_index), self.ts_last_move
+        )
         self.moves.append(mt)
-        self.last_move = None # No response move yet
+        self.last_move = None  # No response move yet
 
     def autoplayer_move(self):
         """ Generate an AutoPlayer move and register it """
@@ -1066,27 +1135,34 @@ class Game:
         apl = AutoPlayer.create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
-        self.last_move = move # Store a response move
+        self.last_move = move  # Store a response move
 
     def response_move(self):
         """ Generate a response to a challenge move and register it """
         move = ResponseMove()
         self.register_move(move)
-        self.last_move = move # Store the response move
+        self.last_move = move  # Store the response move
 
-    def enum_tiles(self, state = None):
+    def enum_tiles(self, state=None):
         """ Enumerate all tiles on the board in a convenient form """
         if state is None:
             state = self.state
         for x, y, tile, letter in state.board().enum_tiles():
-            yield (Board.ROWIDS[x] + str(y + 1), tile, letter, self.tileset.scores[tile])
+            yield (
+                Board.ROWIDS[x] + str(y + 1),
+                tile,
+                letter,
+                self.tileset.scores[tile]
+            )
 
     def state_after_move(self, move_number):
         """ Return a game state after the indicated move, 0=beginning state """
         # Initialize a fresh state object
-        s = State(drawtiles = False,
-            manual_wordcheck = self.manual_wordcheck(),
-            tileset = self.tileset)
+        s = State(
+            drawtiles=False,
+            manual_wordcheck=self.manual_wordcheck(),
+            tileset=self.tileset
+        )
         # Set up the initial state
         for ix in range(2):
             s.set_player_name(ix, self.state.player_name(ix))
@@ -1097,8 +1173,8 @@ class Game:
                 # Load the initial rack
                 s.set_rack(ix, self.initial_racks[ix])
         # Apply the moves up to the state point
-        for m in self.moves[0 : move_number]:
-            s.apply_move(m.move, shallow = True) # Shallow apply
+        for m in self.moves[0:move_number]:
+            s.apply_move(m.move, shallow=True)  # Shallow apply
             if m.rack is not None:
                 s.set_rack(m.player, m.rack)
         s.recalc_bag()
@@ -1112,6 +1188,10 @@ class Game:
     def num_moves(self):
         """ Returns the number of moves in the game so far """
         return len(self.moves)
+
+    def is_erroneous(self):
+        """ Return True if this game object is incorrectly serialized """
+        return self._erroneous
 
     def player_to_move(self):
         """ Returns the index (0 or 1) of the player whose move it is """
@@ -1153,11 +1233,19 @@ class Game:
 
     def start_time(self):
         """ Returns the timestamp of the game in a readable format """
-        return u"" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
+        return (
+            u""
+            if self.timestamp is None
+            else Alphabet.format_timestamp(self.timestamp)
+        )
 
     def end_time(self):
         """ Returns the time of the last move in a readable format """
-        return u"" if self.ts_last_move is None else Alphabet.format_timestamp(self.ts_last_move)
+        return (
+            u""
+            if self.ts_last_move is None
+            else Alphabet.format_timestamp(self.ts_last_move)
+        )
 
     def has_new_chat_msg(self, user_id):
         """ Return True if there is a new chat message that the given user hasn't seen """
@@ -1182,12 +1270,13 @@ class Game:
             adjustment = list(self.overtime_adjustment())
             sc = self.state.scores()
 
-            if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)): # 10 minutes overtime
+            if any(overtime[ix] >= Game.MAX_OVERTIME for ix in range(2)):
+                # 10 minutes overtime
                 # Game ended with a loss on overtime
                 ix = 0 if overtime[0] >= Game.MAX_OVERTIME else 1
                 adjustment[1 - ix] = 0
                 # Adjust score of losing player down by 100 points
-                adjustment[ix] = - min(100, sc[ix])
+                adjustment[ix] = -min(100, sc[ix])
                 # If losing player is still winning on points, add points to the
                 # winning player so that she leads by one point
                 if sc[ix] + adjustment[ix] >= sc[1 - ix]:
@@ -1201,10 +1290,14 @@ class Game:
                 if not last_rack:
                     # Finished with an empty rack: Add double the score of the opponent rack
                     movelist.append((1 - lastplayer, (u"", u"--", 0)))
-                    movelist.append((lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score)))
+                    movelist.append(
+                        (lastplayer, (u"", u"2 * " + opp_rack, 2 * opp_score))
+                    )
                 elif not opp_rack:
                     # A manual check game that ended with no challenge to a winning final move
-                    movelist.append((1 - lastplayer, (u"", u"2 * " + last_rack, 2 * last_score)))
+                    movelist.append(
+                        (1 - lastplayer, (u"", u"2 * " + last_rack, 2 * last_score))
+                    )
                     movelist.append((lastplayer, (u"", u"--", 0)))
                 else:
                     # The game has ended by passes: each player gets her own rack subtracted
@@ -1213,7 +1306,9 @@ class Game:
 
             # If this is a timed game, add eventual overtime adjustment
             if tuple(adjustment) != (0, 0):
-                movelist.append((1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer])))
+                movelist.append(
+                    (1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer]))
+                )
                 movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
 
         # Add a synthetic "game over" move
@@ -1233,7 +1328,7 @@ class Game:
         """ Return True if the last tile move has been made and is pending a challenge or pass """
         return self.state.is_last_challenge()
 
-    def client_state(self, player_index, lastmove = None, deep = False):
+    def client_state(self, player_index, lastmove=None, deep=False):
         """ Create a package of information for the client about the current state """
 
         reply = dict()
@@ -1242,7 +1337,7 @@ class Game:
         if self.last_move is not None:
             # Show the autoplayer or response move that was made
             lm = self.last_move
-            num_moves = 2 # One new move to be added to move list
+            num_moves = 2  # One new move to be added to move list
         elif lastmove is not None:
             # The indicated move should be included in the client state
             # (used when notifying an opponent of a new move through a channel)
@@ -1251,21 +1346,24 @@ class Game:
             reply["lastmove"] = lm.details(self.state)
         # Successful challenge?
         succ_chall = isinstance(lm, ResponseMove) and lm.score(self.state) < 0
-        newmoves = [(m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]]
+        newmoves = [
+            (m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]
+        ]
 
         if self.is_over():
             # The game is now over - one of the players finished it
             self._append_final_adjustments(newmoves)
-            reply["result"] = Error.GAME_OVER # Not really an error
-            reply["xchg"] = False # Exchange move not allowed
-            reply["chall"] = False # Challenge not allowed
-            reply["last_chall"] = False # Not in last challenge state
+            reply["result"] = Error.GAME_OVER  # Not really an error
+            reply["xchg"] = False  # Exchange move not allowed
+            reply["chall"] = False  # Challenge not allowed
+            reply["last_chall"] = False  # Not in last challenge state
             reply["bag"] = self.state.bag().contents()
         else:
             # Game is still in progress
             assert player_index is not None
-            last_chall = self.state.is_last_challenge() # ...but in a last-challenge state
-            reply["result"] = 0 # Indicate no error
+            # ...but in a last-challenge state
+            last_chall = self.state.is_last_challenge()
+            reply["result"] = 0  # Indicate no error
             reply["xchg"] = False if last_chall else self.state.is_exchange_allowed()
             reply["chall"] = self.state.is_challengeable()
             reply["last_chall"] = last_chall
@@ -1279,7 +1377,7 @@ class Game:
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
         reply["succ_chall"] = succ_chall
-        reply["player"] = player_index # Can be None if the game is over
+        reply["player"] = player_index  # Can be None if the game is over
         reply["newbag"] = self.new_bag()
         reply["manual"] = self.manual_wordcheck()
         if self.get_duration():
@@ -1287,12 +1385,14 @@ class Game:
             reply["time_info"] = self.time_info()
         if deep:
             # Send all moves
-            reply["moves"] = [(m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]]
+            reply["moves"] = [
+                (m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]
+            ]
             reply["fairplay"] = self.get_fairplay()
-            reply["autoplayer"] = [ self.is_autoplayer(0), self.is_autoplayer(1) ]
-            reply["nickname"] = [ self.player_nickname(0), self.player_nickname(1) ]
-            reply["userid"] = [ self.player_id(0), self.player_id(1) ]
-            reply["fullname"] = [ self.player_fullname(0), self.player_fullname(1) ]
+            reply["autoplayer"] = [self.is_autoplayer(0), self.is_autoplayer(1)]
+            reply["nickname"] = [self.player_nickname(0), self.player_nickname(1)]
+            reply["userid"] = [self.player_id(0), self.player_id(1)]
+            reply["fullname"] = [self.player_fullname(0), self.player_fullname(1)]
             reply["overdue"] = self.is_overdue()
 
         return reply
@@ -1300,10 +1400,15 @@ class Game:
     def bingoes(self):
         """ Returns a tuple of lists of bingoes for both players """
         # List all bingoes in the game
-        bingoes = [(m.player, m.move.summary(self.state))
-            for m in self.net_moves if m.move.is_bingo]
+        bingoes = [
+            (m.player, m.move.summary(self.state))
+            for m in self.net_moves
+            if m.move.is_bingo
+        ]
+
         def _stripq(s):
-            return s.replace(u'?', u'')
+            return s.replace(u"?", u"")
+
         # Populate (word, score) tuples for each bingo for each player
         bingo0 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 0]
         bingo1 = [(_stripq(ms[1]), ms[2]) for p, ms in bingoes if p == 1]
@@ -1314,9 +1419,10 @@ class Game:
         """ Return a set of statistics on the game to be displayed by the client """
         reply = dict()
         if self.is_over():
-            reply["result"] = Error.GAME_OVER # Indicate that the game is over (not really an error)
+            # Indicate that the game is over (not really an error)
+            reply["result"] = Error.GAME_OVER
         else:
-            reply["result"] = 0 # Game still in progress
+            reply["result"] = 0  # Game still in progress
         reply["gamestart"] = self.start_time()
         reply["gameend"] = self.end_time()
         reply["duration"] = self.get_duration()
@@ -1326,8 +1432,8 @@ class Game:
         # Manual wordcheck?
         reply["manual"] = self.manual_wordcheck()
         # Number of moves made
-        reply["moves0"] = m0 = (len(self.moves) + 1) // 2 # Floor division
-        reply["moves1"] = m1 = (len(self.moves) + 0) // 2 # Floor division
+        reply["moves0"] = m0 = (len(self.moves) + 1) // 2  # Floor division
+        reply["moves1"] = m1 = (len(self.moves) + 0) // 2  # Floor division
         # Count bingoes and covers for moves that were not successfully challenged
         net_moves = self.net_moves
         ncovers = [(m.player, m.move.num_covers()) for m in net_moves]
@@ -1341,22 +1447,22 @@ class Game:
         blanks = [0, 0]
         letterscore = [0, 0]
         cleanscore = [0, 0]
-        wrong_chall = [0, 0] # Points gained by wrong challenges from opponent
+        wrong_chall = [0, 0]  # Points gained by wrong challenges from opponent
         # Loop through the moves, collecting stats
-        for m in net_moves: # Omit successfully challenged moves
+        for m in net_moves:  # Omit successfully challenged moves
             _, wrd, msc = m.move.summary(self.state)
-            if wrd == u'RESP':
+            if wrd == u"RESP":
                 assert msc > 0
                 # Wrong challenge by opponent: add 10 points
                 wrong_chall[m.player] += msc
-            elif wrd != u'RSGN':
+            elif wrd != u"RSGN":
                 # Don't include a resignation penalty in the clean score
                 cleanscore[m.player] += msc
             if m.move.num_covers() == 0:
                 # Exchange, pass or resign move
                 continue
             for _, tile, _, score in m.move.details(self.state):
-                if tile == u'?':
+                if tile == u"?":
                     blanks[m.player] += 1
                 letterscore[m.player] += score
         # Number of blanks laid down
@@ -1400,4 +1506,3 @@ class Game:
         reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
         reply["ratio1"] = (float(sc[1]) / totalsc * 100.0) if totalsc > 0 else 0.0
         return reply
-

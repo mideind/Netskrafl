@@ -82,6 +82,7 @@ venv/
 node_modules/
 .idea/
 .vscode/
+ptvsd/
 
 # Node dependency descriptions
 package*.json

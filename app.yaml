@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: punchfix
+version: bugfix
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -163,5 +163,7 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$            # GitHub stuff
 - ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
+- ^ptvsd/.*$            # PTVSD debugger
+- ^log/.*$              # Log files
 - ^[gG]runtfile.js$     # Gruntfile
 - ^(.*/)?\..*$          # Files whose names start with a period
