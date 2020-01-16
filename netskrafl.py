@@ -1552,7 +1552,7 @@ class UserForm:
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr=None):
-        self.logout_url = User.logout_url(_LOGOUT_URL)
+        self.logout_url = users.create_logout_url(_LOGOUT_URL)
         if usr:
             self.init_from_user(usr)
         else:

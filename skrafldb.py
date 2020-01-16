@@ -877,7 +877,8 @@ class StatsModel(ndb.Model):
         """ Returns the Elo ratings at the indicated time point (None = now),
             in descending order  """
 
-        max_fetch = max_len * 2
+        max_fetch = max_len * 10 // 4  # max_len * 2.5
+        safety_buffer = max_fetch - max_len
         check_false_positives = True
 
         if timestamp is None:
@@ -900,7 +901,7 @@ class StatsModel(ndb.Model):
         # than those scanned to create the list. In other words, there may
         # be false positives on the list (but not false negatives, i.e.
         # there can't be higher Elo scores somewhere that didn't make it
-        # to the list). We attempt to address this by fetching double the
+        # to the list). We attempt to address this by fetching 2.5 times the
         # number of requested users, then separately checking each of them for
         # false positives. If we have too many false positives, we don't return
         # the full requested number of result records.
@@ -916,7 +917,7 @@ class StatsModel(ndb.Model):
                     if (lowest_elo is None) or (d["elo"] < lowest_elo):
                         lowest_elo = d["elo"]
                     if len(result) >= max_fetch:
-                        # We have double the number of entries requested: done
+                        # We have all the requested entries: done
                         break  # From for loop
 
         false_pos = 0
@@ -926,8 +927,7 @@ class StatsModel(ndb.Model):
                 sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
                 assert sm is not None  # We should always have an entity here
                 nd = makedict(sm)
-                # This may be None if a default record was created
-                nd_ts = nd["timestamp"]
+                nd_ts = nd["timestamp"]  # This may be None if a default record was created
                 if (nd_ts is not None) and nd_ts > d["timestamp"]:
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
@@ -938,14 +938,17 @@ class StatsModel(ndb.Model):
                         false_pos += 1
                     # Replace the entry with the newer one (which will lower it)
                     result[ukey] = nd
-            logging.info(u"False positives are {0}".format(false_pos))
+            logging.info(
+                u"False positives are {0}, safety buffer is {1}"
+                .format(false_pos, safety_buffer)
+            )
 
-        if false_pos > max_len:
+        if false_pos > safety_buffer:
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
             logging.error(u"False positives caused ratings list to be truncated")
-            max_len -= false_pos - max_len
+            max_len -= (false_pos - safety_buffer)
             if max_len < 0:
                 max_len = 0
 

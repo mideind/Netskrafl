@@ -52,5 +52,6 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$
 - ^node_modules/.*$
-- ^[gG]runtfile.js$
+- ^ptvsd/.*$            # PTVSD debugger
+- ^log/.*$              # Log files- ^[gG]runtfile.js$
 - ^(.*/)?\..*$

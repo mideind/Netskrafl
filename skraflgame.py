@@ -446,11 +446,6 @@ class User:
         self._best_word_game = game_uuid
         return True
 
-    @staticmethod
-    def logout_url(navigate_to="/"):
-        """ Return a URL to which the user will be redirected upon logout """
-        return users.create_logout_url(navigate_to)
-
     @classmethod
     def load(cls, uid):
         """ Load a user from persistent storage given his/her user id """

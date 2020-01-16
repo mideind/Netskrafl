@@ -77,34 +77,72 @@
 
 <script>
 
-var userIdToken = null;
+function getCookie(name) {
+   var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+   return v ? v[2] : null;
+}
+
+var postIdTokenToSessionLogin = function(url, idToken, csrfToken) {
+  // POST to session login endpoint
+  return $.ajax({
+    type:'POST',
+    url: url,
+    data: {idToken: idToken, csrfToken: csrfToken},
+    contentType: 'application/x-www-form-urlencoded'
+  });
+};
+
+function handleSignedInUser(user, initialUrl) {
+   // Show redirection notice.
+   // document.getElementById('redirecting').classList.remove('hidden');
+   // Set session cookie
+   user.getIdToken().then(function(idToken) {
+      // Session login endpoint is queried and the session cookie is set.
+      // CSRF token should be sent along with request.
+      var csrfToken = getCookie('csrfToken')
+      return postIdTokenToSessionLogin('/sessionLogin', idToken, csrfToken)
+         .then(function() {
+         // Redirect to initial URL on success
+         window.location.assign(initialUrl);
+      }, function(error) {
+         // Refresh page on error.
+         // In all cases, client side state should be lost due to in-memory
+         // persistence.
+         window.location.assign('/');
+      });
+   });
+};
+
+function showFirebaseLoginWidget(initialUrl) {
+   var uiConfig = {
+      'callbacks': {
+         'signInSuccess': function(user, credential, redirectUrl) {
+            // Called when the user has been successfully signed in
+            // Handle signed in user
+            handleSignedInUser(user, initialUrl);
+            // Do not automatically redirect
+            return false;
+         },
+         'uiShown': function() {
+            // Remove progress bar when the UI is ready.
+            // document.getElementById('loading').classList.add('hidden');
+         }
+      },
+      // 'signInSuccessUrl': initialUrl,
+      'signInOptions': [
+         // Leave the lines as is for the providers you want to offer your users.
+         firebase.auth.GoogleAuthProvider.PROVIDER_ID
+      ],
+      // Terms of service url
+      // 'tosUrl': '<your-tos-url>',
+   };
+   var ui = new firebaseui.auth.AuthUI(firebase.auth());
+   ui.start('#firebaseui-auth-container', uiConfig);
+}
 
 function initMain() {
-
-   firebase.auth().onAuthStateChanged(function(user) {
-      if (user) {
-         var name = user.displayName;
-
-         /* If the provider gives a display name, use the name for the
-            personal welcome message. Otherwise, use the user's email. */
-         var welcomeName = name ? name : user.email;
-
-         user.getIdToken().then(function(idToken) {
-            userIdToken = idToken;
-
-            /* Do something, now that the user is authenticated */
-            console.log(name + ", " + welcomeName + ", " + userIdToken);
-
-         });
-
-      }
-      else {
-         /* Logged out */
-         console.log("Logged out")
-      }
-   });
-
-   configureFirebaseLoginWidget();
+   firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+   showFirebaseLoginWidget("{{ login_url }}");
 }
 
 $(document).ready(initMain);
