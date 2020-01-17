@@ -12,11 +12,14 @@
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
 
+<!-- Google OAuth sign-in -->
+<meta name="google-signin-client_id" content="62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com">
+
 {% endblock %}
 
 {% block startscripts %}
-{% include 'firebase.html' %}
-{% include 'firebase-auth.html' %}
+<!-- include 'firebase.html' -->
+<!-- include 'firebase-auth.html' -->
 {% endblock %}
 
 {% block scripts %}
@@ -54,7 +57,7 @@
       hér til vinstri.
    </div>
    <div style="float:right">
-      <div id="firebaseui-auth-container" lang="is"></div>
+      <div class="g-signin2" data-onsuccess="onSignIn"></div>
    </div>
 </div>
 
@@ -67,7 +70,7 @@
       Skemmtilegt | skerpandi | ókeypis
    </div>
    <div style="text-align: center">
-      <div id="firebaseui-auth-container" lang="is"></div>
+      <div class="g-signin2" data-onsuccess="onSignIn"></div>
    </div>
 </div>
 
@@ -82,67 +85,66 @@ function getCookie(name) {
    return v ? v[2] : null;
 }
 
-var postIdTokenToSessionLogin = function(url, idToken, csrfToken) {
-  // POST to session login endpoint
-  return $.ajax({
-    type:'POST',
-    url: url,
-    data: {idToken: idToken, csrfToken: csrfToken},
-    contentType: 'application/x-www-form-urlencoded'
-  });
-};
-
-function handleSignedInUser(user, initialUrl) {
-   // Show redirection notice.
-   // document.getElementById('redirecting').classList.remove('hidden');
-   // Set session cookie
-   user.getIdToken().then(function(idToken) {
-      // Session login endpoint is queried and the session cookie is set.
-      // CSRF token should be sent along with request.
-      var csrfToken = getCookie('csrfToken')
-      return postIdTokenToSessionLogin('/sessionLogin', idToken, csrfToken)
-         .then(function() {
-         // Redirect to initial URL on success
-         window.location.assign(initialUrl);
-      }, function(error) {
-         // Refresh page on error.
-         // In all cases, client side state should be lost due to in-memory
-         // persistence.
-         window.location.assign('/');
-      });
-   });
-};
-
-function showFirebaseLoginWidget(initialUrl) {
-   var uiConfig = {
-      'callbacks': {
-         'signInSuccess': function(user, credential, redirectUrl) {
-            // Called when the user has been successfully signed in
-            // Handle signed in user
-            handleSignedInUser(user, initialUrl);
-            // Do not automatically redirect
-            return false;
-         },
-         'uiShown': function() {
-            // Remove progress bar when the UI is ready.
-            // document.getElementById('loading').classList.add('hidden');
+function oauth2callback(idToken, csrfToken) {
+   // POST to oauth2 session login endpoint
+   return $.ajax(
+      {
+         type: 'POST',
+         url: "/oauth2callback",
+         data: {
+            idToken: idToken,
+            csrfToken: csrfToken
          }
-      },
-      // 'signInSuccessUrl': initialUrl,
-      'signInOptions': [
-         // Leave the lines as is for the providers you want to offer your users.
-         firebase.auth.GoogleAuthProvider.PROVIDER_ID
-      ],
-      // Terms of service url
-      // 'tosUrl': '<your-tos-url>',
-   };
-   var ui = new firebaseui.auth.AuthUI(firebase.auth());
-   ui.start('#firebaseui-auth-container', uiConfig);
+      }
+   );
+}
+
+function onSignIn(googleUser) {
+   var profile = googleUser.getBasicProfile();
+   console.log('ID: ' + profile.getId());
+   console.log('Name: ' + profile.getName());
+   console.log('Image URL: ' + profile.getImageUrl());
+   console.log('Email: ' + profile.getEmail());
+   var idToken = googleUser.getAuthResponse().id_token;
+   console.log("ID Token: " + idToken);
+   // Session login endpoint is queried and the session cookie is set.
+   // CSRF token should be sent along with request.
+   var csrfToken = getCookie('csrfToken');
+   oauth2callback(idToken, csrfToken)
+      .then(
+         function() {
+            // Redirect to initial URL on success
+            window.location.assign("{{ main_url | safe }}");
+         },
+         function(error) {
+            // Refresh page on error.
+            // In all cases, client side state should be lost due to in-memory
+            // persistence.
+            window.location.assign('/login');
+         }
+      );
 }
 
 function initMain() {
-   firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
-   showFirebaseLoginWidget("{{ login_url }}");
+/*
+   gapi.load('auth2',
+      function() {
+         auth2 = gapi.auth2.init(
+            {
+               client_id: 'CLIENT_ID.apps.googleusercontent.com',
+               fetch_basic_profile: false,
+               scope: 'profile'
+            }
+         );
+         // Sign the user in, and then retrieve their ID.
+         auth2.signIn().then(
+            function() {
+               console.log(auth2.currentUser.get().getId());
+            }
+         );
+      }
+   );
+*/
 }
 
 $(document).ready(initMain);

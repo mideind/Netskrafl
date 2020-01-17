@@ -87,6 +87,8 @@
 {%- endblock -%}
 {% block libscripts %}
 {% endblock %}
+<!-- Google OAuth sign-in script -->
+<script src="https://apis.google.com/js/platform.js" async defer></script>
 <!-- Mousetrap global keyboard handler -->
 <script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
 {% if not dev_server %}

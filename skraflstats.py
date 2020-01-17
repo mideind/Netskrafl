@@ -24,9 +24,11 @@ from flask import Flask
 from flask import render_template, jsonify
 from flask import request, url_for
 
-from google.appengine.api import users
 from google.appengine.ext import deferred
 from google.appengine.runtime import DeadlineExceededError
+# from google.appengine.api import users
+
+import users
 
 from languages import Alphabet
 from skrafldb import ndb, Client, Context, UserModel, GameModel, StatsModel, RatingModel

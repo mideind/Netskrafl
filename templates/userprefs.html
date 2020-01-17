@@ -164,7 +164,7 @@ function submitForm() {
 
    <!-- Logout button -->
    <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="11"
-      onclick="location.href='{{ uf.logout_url | safe }}'"
+      onclick="logOut()"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
 
@@ -199,6 +199,15 @@ function submitForm() {
 </audio>
 
 <script>
+
+   function logOut() {
+      var auth2 = gapi.auth2.getAuthInstance();
+      auth2.signOut().then(
+         function () {
+            location.href='{{ uf.logout_url | safe }}';
+         }
+      );
+   }
 
    function doAudioToggle() {
       // Toggle from one state to the other
