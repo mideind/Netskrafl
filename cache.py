@@ -25,33 +25,50 @@ import os
 import redis
 import json
 import importlib
+from datetime import datetime
 
 
 # A cache of imported modules, used to create fresh instances
 # when de-serializing JSON objects
 _modules = dict()
 
+# Custom serializers
+_serializers = {
+    ("datetime", "datetime"): (
+        lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
+        lambda args: datetime(*args)
+    )
+}
+
 
 def serialize(obj):
     """ Return a JSON-serializable representation of an object """
-    if hasattr(obj, "to_serializable"):
-        # Custom serialization
-        s = obj.to_serializable()
-    else:
-        # By default, use the object's __dict__
-        s = obj.__dict__
-    # TODO: Eventually, special cases for common primitive
-    # types such as timestamps may be added here
     cls = obj.__class__
+    cls_name = cls.__name__
+    module_name = cls.__module__
+    serializer = None
+    if hasattr(obj, "to_serializable"):
+        # The object implements its own serialization
+        s = obj.to_serializable()
+    elif hasattr(obj, "__dict__"):
+        # Use the object's __dict__ if it's there
+        s = obj.__dict__
+    else:
+        # Use a custom serializer
+        serializer = _serializers.get((module_name, cls_name))
+        # If we don't have one, that's a problem
+        assert serializer is not None
+        # Apply the serializer to the object
+        s = serializer[0](obj)
     # Do some sanity checks: we must be able to recreate
     # an instance of this class during de-serialization
-    assert cls.__module__ and cls.__module__ != "__main__"
-    assert hasattr(cls, "from_serializable")
+    assert module_name and module_name != "__main__"
+    assert serializer is not None or hasattr(cls, "from_serializable")
     # Return a serialization wrapper dict with enough info
     # for deserialization
     return dict(
-        __cls__=cls.__name__,
-        __module__=cls.__module__,
+        __cls__=cls_name,
+        __module__=module_name,
         __obj__=s
     )
 
@@ -66,19 +83,27 @@ def _dumps(obj):
 
 
 def _loads(j):
-    """ Return an instance of a serializable class, initialized from a JSON string """
+    """ Return an instance of a serializable class,
+        initialized from a JSON string """
     if j is None:
         return None
     d = json.loads(j)
     if not isinstance(d, dict):
-        # This is a primitive object (number, string)
+        # This is a primitive object (number, string, list)
         return d
     cls_name = d.get("__cls__")
     if cls_name is None:
-        # This is not a custom-serialized instance: return it as-is
+        # This is not a custom-serialized instance:
+        # return it as-is, i.e. as a plain dict
         return d
     # Obtain the module containing the object's class
     module_name = d["__module__"]
+    # Check whether we have a custom serializer for this (module, class) combo
+    serializer = _serializers.get((module_name, cls_name))
+    if serializer is not None:
+        # Yes, we do: apply it to recreate the object
+        return serializer[1](d["__obj__"])
+    # No custom serializer: we should have a from_serializable() class method
     m = _modules.get(module_name)
     if m is None:
         # Not already imported: do it now
@@ -132,7 +157,11 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return _loads(self._client.get(key))
+        try:
+            return _loads(self._client.get(key))
+        except ConnectionError as e:
+            logging.info("Unable to connect to Redis server")
+            return None
 
 
 # Create a global singleton wrapper instance with default parameters,

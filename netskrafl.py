@@ -99,6 +99,14 @@ if running_local:
 
 app.config['DEBUG'] = running_local
 
+# Make sure that the Flask session cookie is secure (i.e. only used
+# with HTTPS unless we're running on a development server) and
+# invisible from JavaScript (HTTPONLY)
+app.config.update(
+    SESSION_COOKIE_SECURE=not running_local,
+    SESSION_COOKIE_HTTPONLY=True,
+)
+
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
     app.secret_key = f.read()
@@ -118,6 +126,9 @@ _LOGOUT_URL = "/"
 
 # Set to True to make the single-page UI the default
 _SINGLE_PAGE_UI = False
+
+# Client_id for Google Sign-In
+_CLIENT_ID = os.environ.get("CLIENT_ID")
 
 
 @app.before_request
@@ -2163,49 +2174,6 @@ def main():
     )
 
 
-@app.route("/login")
-def login():
-    """ Handler for the login & greeting page """
-    main_page = "/page" if _SINGLE_PAGE_UI else "/"
-    main_url = users.create_login_url(main_page)
-    return render_template("login.html", main_url=main_url)
-
-
-@app.route("/oauth2callback", methods=["POST"])
-def oauth2callback():
-
-    CLIENT_ID = "62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com"
-
-    from google.oauth2 import id_token
-    from google.auth.transport import requests
-
-    # (Receive token by HTTPS POST)
-    # ...
-
-    token = request.form.get("idToken", "")
-    csrf_token = request.form.get("csrfToken", "")
-    try:
-        # Specify the CLIENT_ID of the app that accesses the backend:
-        idinfo = id_token.verify_oauth2_token(token, requests.Request(), CLIENT_ID)
-        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            raise ValueError('Wrong issuer.')
-        # ID token is valid. Get the user's Google Account ID from the decoded token.
-        userid = idinfo['sub']
-    except ValueError:
-        # Invalid token
-        response = jsonify({'status': 'invalid'})
-        # !!! Should probably be a 400-type response code
-        return response
-
-    # Set session expiration to 14 days
-    expires = datetime.now() + timedelta(days=14)
-    session["user"] = {
-        "id" : userid,
-        "expires" : expires
-    }
-    return jsonify({'status': 'success'})
-
-
 # pylint: disable=redefined-builtin
 @app.route("/help")
 def help():
@@ -2269,6 +2237,56 @@ def newbag():
     user = User.current()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="newbag")
+
+
+@app.route("/login")
+def login():
+    """ Handler for the login & greeting page """
+    main_page = "/page" if _SINGLE_PAGE_UI else "/"
+    main_url = users.create_login_url(main_page)
+    return render_template("login.html", main_url=main_url)
+
+
+@app.route("/oauth2callback", methods=["POST"])
+def oauth2callback():
+
+    if not _CLIENT_ID:
+        # 500 - Internal server error
+        return jsonify({'status': 'invalid'}), 500
+
+    token = request.form.get("idToken", "")
+    csrf_token = request.form.get("csrfToken", "")
+
+    if not token:
+        # 400 - Bad Request
+        return jsonify({"status:" "invalid"}), 400
+
+    # !!! TODO: Add CSRF verification
+
+    from google.oauth2 import id_token
+    from google.auth.transport import requests
+
+    userid = None
+    try:
+        # Specify the CLIENT_ID of the app that accesses the backend:
+        idinfo = id_token.verify_oauth2_token(token, requests.Request(), _CLIENT_ID)
+        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            raise ValueError('Wrong issuer.')
+        # ID token is valid. Get the user's Google Account ID from the decoded token.
+        userid = idinfo['sub']
+    except ValueError:
+        # Invalid token
+        response = jsonify({'status': 'invalid'})
+        # 401 - Unauthorized
+        return response, 401
+
+    # Set session expiration to 14 days
+    expires = datetime.now() + timedelta(days=14)
+    session["user"] = {
+        "id" : userid,
+        "expires" : expires
+    }
+    return jsonify({'status': 'success'})
 
 
 # noinspection PyUnusedLocal

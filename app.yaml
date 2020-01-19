@@ -31,6 +31,7 @@ env_variables:
   # REDISHOST is automatically set to 'localhost' (in cache.py)
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
+  CLIENT_ID: 62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
 
 libraries:
 - name: ssl
