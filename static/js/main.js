@@ -4,11 +4,11 @@
 
    Client-side script functions for main.html, the main page of Netskrafl
 
-   Copyright (C) 2015-2017 Miðeind ehf.
-   Author: Vilhjalmur Thorsteinsson
+   Copyright (C) 2020 Miðeind ehf.
+   Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
-   For further information, see https://github.com/vthorsteinsson/Netskrafl
+   For further information, see https://github.com/mideind/Netskrafl
 
 */
 
@@ -17,7 +17,7 @@
    showUserInfo, openPromoDialog, registerSalesCloud, newgameUrl, serverQuery,
    _populateStats, _populateRecentList, toggle, escapeHtml, userId, userHasPaid,
    waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener, initFirebaseListener,
-   preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus, lateInit
+   initPresence, preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus, lateInit
 */
 
 /* eslint-disable no-unused-vars */
@@ -898,11 +898,17 @@ function handleMoveMessage(json) {
 
 function initFirebaseListener(token) {
    // Sign into Firebase with the token passed from the server
-   loginFirebase(token);
-   // Listen to Firebase events on the /user/[userId]/[messageType] path
-   var basepath = 'user/' + userId() + "/";
-   attachFirebaseListener(basepath + "challenge", handleChallengeMessage);
-   attachFirebaseListener(basepath + "move", handleMoveMessage);
+   var uid = userId();
+   var basepath = 'user/' + uid + "/";
+   // Log in and attach listeners once the login succeeds
+   loginFirebase(token,
+      function() {
+         // Listen to Firebase events on the /user/[userId]/[messageType] path
+         attachFirebaseListener(basepath + "challenge", handleChallengeMessage);
+         attachFirebaseListener(basepath + "move", handleMoveMessage);
+         initPresence(uid);
+      }
+   );
 }
 
 function mediaMinWidth667(mql) {

@@ -498,8 +498,8 @@ function lateInit() {
    /* Initialization that needs server-side info. Called from initMain() */
 
 {% if firebase_token %}
+   // Log in to Firebase and activate listeners once the login succeeds
    initFirebaseListener("{{ firebase_token }}");
-   initPresence(userId());
 {% endif %}
 
 {% if tab %}

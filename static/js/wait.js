@@ -5,13 +5,20 @@
    Client-side script for wait.html,
    a page displated while waiting for a time-limited game to start
 
-   Copyright (C) 2015-2017 Miðeind ehf.
-   Author: Vilhjalmur Thorsteinsson
+   Copyright (C) 2020 Miðeind ehf.
+   Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
-   For further information, see https://github.com/vthorsteinsson/Netskrafl
+   For further information, see https://github.com/mideind/Netskrafl
 
 */
+
+/*
+   global $:false, serverQuery, goToGame, cancelWait, loginFirebase,
+   attachFirebaseListener, opponentId, userId, lateInit
+*/
+
+/* eslint-disable no-unused-vars */
 
 function handleWaitMessage(json) {
    // The server has sent a notification on the /user/[user_id]/wait/[opponent_id] path

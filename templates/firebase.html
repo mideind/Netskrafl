@@ -4,13 +4,13 @@
 <script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-database.js"></script>
 <script>
   // Initialize Firebase
-  var config = {
-    apiKey: "AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8",
-    authDomain: "netskrafl.firebaseapp.com",
-    databaseURL: "https://netskrafl.firebaseio.com",
-    projectId: "netskrafl",
-    storageBucket: "netskrafl.appspot.com",
-    messagingSenderId: "62474854399"
+  var firebaseConfig = {
+    apiKey: "{{ firebase_api_key }}",
+    authDomain: "{{ project_id }}.firebaseapp.com",
+    databaseURL: "https://{{ project_id }}.firebaseio.com",
+    projectId: "{{ project_id }}",
+    storageBucket: "{{ project_id }}.appspot.com",
+    messagingSenderId: "{{ firebase_sender_id }}"
   };
-  firebase.initializeApp(config);
+  firebase.initializeApp(firebaseConfig);
 </script>

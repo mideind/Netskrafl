@@ -4,11 +4,11 @@
 
    Utility functions for working with Firebase
 
-   Copyright (C) 2015-2018 Miðeind ehf.
-   Author: Vilhjalmur Thorsteinsson
+   Copyright (C) 2020 Miðeind ehf.
+   Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
-   For further information, see https://github.com/vthorsteinsson/Netskrafl
+   For further information, see https://github.com/mideind/Netskrafl
 
 */
 
@@ -19,8 +19,21 @@
 /* eslint-disable no-console */
 /* eslint-disable no-unused-vars */
 
-function loginFirebase(token) {
+function loginFirebase(token, onLoginFunc) {
    // Log in to Firebase using the provided custom token
+   if (onLoginFunc !== undefined) {
+      // Register our login function to execute once the user login is done
+      firebase.auth().onAuthStateChanged(
+         function(user) {
+            if (user) {
+               // User is signed in
+               onLoginFunc();
+            } else {
+               // No user is signed in.
+            }
+         }
+      );
+   }
    firebase.auth()
       .signInWithCustomToken(token)
       .catch(function(error) {

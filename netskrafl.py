@@ -127,8 +127,20 @@ _LOGOUT_URL = "/"
 # Set to True to make the single-page UI the default
 _SINGLE_PAGE_UI = False
 
+# App Engine (and Firebase) project id
+_PROJECT_ID = os.environ.get("PROJECT_ID", "")
+
 # Client_id for Google Sign-In
-_CLIENT_ID = os.environ.get("CLIENT_ID")
+_CLIENT_ID = os.environ.get("CLIENT_ID", "")
+
+# Firebase configuration
+_FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
+_FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
+
+assert _CLIENT_ID, "CLIENT_ID environment variable not set"
+assert _PROJECT_ID, "PROJECT_ID environment variable not set"
+assert _FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
+assert _FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
 
 
 @app.before_request
@@ -161,7 +173,10 @@ def inject_into_context():
     """ Inject variables and functions into all Flask contexts """
     return dict(
         # Variable dev_server is True if running on the GAE development server
-        dev_server=running_local
+        dev_server=running_local,
+        project_id=_PROJECT_ID,
+        firebase_api_key=_FIREBASE_API_KEY,
+        firebase_sender_id=_FIREBASE_SENDER_ID
     )
 
 
@@ -407,6 +422,8 @@ def _userlist(query, spec):
     # Get the list of online users
 
     # Start by looking in the cache
+    # !!! TODO: Cache the entire list including the user information,
+    # !!! only updating the favorite state (fav field) for the requesting user
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query

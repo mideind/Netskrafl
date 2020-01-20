@@ -4,11 +4,11 @@
 
 	Single page UI for Netskrafl using the Mithril library
 
-  Copyright (C) 2015-2019 Miðeind ehf.
+  Copyright (C) 2020 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The GNU General Public License, version 3, applies to this software.
-  For further information, see https://github.com/vthorsteinsson/Netskrafl
+  For further information, see https://github.com/mideind/Netskrafl
 
   This UI is built on top of Mithril (https://mithril.js.org), a lightweight,
   straightforward JavaScript single-page reactive UI library.

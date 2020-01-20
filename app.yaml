@@ -1,8 +1,12 @@
 #
 # App.yaml for the Netskrafl application on Google App Engine
 #
-#application: netskrafl
-#version: newdb
+# Copyright (C) 2020 by Miðeind ehf.
+# Original author: Vilhjálmur Þorsteinsson
+#
+# Deploy with 'gcloud beta app deploy --no-promote --version=newdb app.yaml'
+#
+
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -32,6 +36,9 @@ env_variables:
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
   CLIENT_ID: 62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
+  PROJECT_ID: netskrafl
+  FIREBASE_API_KEY: AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
+  FIREBASE_SENDER_ID: 62474854399
 
 libraries:
 - name: ssl

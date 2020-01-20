@@ -3,11 +3,11 @@
    Netskrafl.js
    Client-side script functions for board.html, the game board page
 
-   Copyright (C) 2015-2017 Miðeind ehf.
-   Author: Vilhjalmur Thorsteinsson
+   Copyright (C) 2020 Miðeind ehf.
+   Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
-   For further information, see https://github.com/vthorsteinsson/Netskrafl
+   For further information, see https://github.com/mideind/Netskrafl
 
 */
 
