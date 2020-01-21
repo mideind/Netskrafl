@@ -51,13 +51,12 @@ def deferred_update():
             chunk = 0
             for um in q.fetch(CHUNK_SIZE, offset = offset):
                 chunk += 1
-                if um.nick_lc is None:
+                if not um.email:
                     try:
-                        um.nick_lc = um.nickname.lower()
-                        um.name_lc = um.prefs.get("full_name", "").lower() if um.prefs else ""
+                        um.email = um.prefs.get(u"email", "") if um.prefs else ""
                         ulist.append(um)
                     except Exception as e:
-                        logging.info("Exception in deferred_update() when setting nick_lc: {0}".format(e))
+                        logging.info("Exception in deferred_update() when setting email: {0}".format(e))
             if ulist:
                 try:
                     ndb.put_multi(ulist)
@@ -74,12 +73,12 @@ def deferred_update():
     logging.info("Completed updating {0} user records".format(count))
 
 
-#@app.route("/admin/userupdate", methods=['GET'])
-#def admin_userupdate():
-#    """ Start a user update background task """
-#    logging.info("Starting user update")
-#    deferred.defer(deferred_update)
-#    return "<html><body><p>User update started</p></body></html>"
+@app.route("/admin/userupdate", methods=['GET'])
+def admin_userupdate():
+    """ Start a user update background task """
+    logging.info("Starting user update")
+    deferred.defer(deferred_update)
+    return "<html><body><p>User update started</p></body></html>"
 
 
 @app.route("/admin/setfriend", methods=['GET'])
