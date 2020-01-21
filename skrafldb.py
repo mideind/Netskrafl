@@ -143,6 +143,10 @@ class UserModel(ndb.Model):
     """ Models an individual user """
 
     nickname = ndb.StringProperty()
+    email = ndb.StringProperty(required=False, default=None)
+    # Google Account identifier (unfortunately different from GAE user id)
+    account = ndb.StringProperty(required=False, default=None)
+
     # Lower case nickname and full name of user - used for search
     nick_lc = ndb.StringProperty(required=False, default=None)
     name_lc = ndb.StringProperty(required=False, default=None)

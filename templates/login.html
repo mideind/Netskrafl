@@ -93,19 +93,21 @@ function oauth2callback(idToken, csrfToken) {
          url: "/oauth2callback",
          data: {
             idToken: idToken,
-            csrfToken: csrfToken
+            csrfToken: csrfToken,
          }
       }
    );
 }
 
 function onSignIn(googleUser) {
-   var profile = googleUser.getBasicProfile();
-   console.log('ID: ' + profile.getId());
-   console.log('Name: ' + profile.getName());
-   console.log('Image URL: ' + profile.getImageUrl());
-   console.log('Email: ' + profile.getEmail());
    var idToken = googleUser.getAuthResponse().id_token;
+   var profile = googleUser.getBasicProfile();
+   var id = profile.getId();
+   var name = profile.getName();
+   var email = profile.getEmail();
+   console.log('ID: ' + id);
+   console.log('Name: ' + name);
+   console.log('Email: ' + email);
    console.log("ID Token: " + idToken);
    // Session login endpoint is queried and the session cookie is set.
    // CSRF token should be sent along with request.
@@ -120,6 +122,7 @@ function onSignIn(googleUser) {
             // Refresh page on error.
             // In all cases, client side state should be lost due to in-memory
             // persistence.
+            console.log("Error from oauth2callback(): " + error);
             window.location.assign('/login');
          }
       );

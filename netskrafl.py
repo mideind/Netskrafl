@@ -43,6 +43,12 @@ from flask import request, url_for, session
 from google.appengine.runtime import DeadlineExceededError
 # from google.appengine.api import users
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+import requests
+import requests_toolbelt.adapters.appengine
+
 import users
 
 from languages import Alphabet
@@ -73,6 +79,9 @@ import billing
 import firebase
 from cache import memcache
 
+
+# Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
+requests_toolbelt.adapters.appengine.monkeypatch()
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -136,6 +145,9 @@ _CLIENT_ID = os.environ.get("CLIENT_ID", "")
 # Firebase configuration
 _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
+
+# Valid token issuers for OAuth2 login
+_VALID_ISSUERS = frozenset(('accounts.google.com', 'https://accounts.google.com'))
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _PROJECT_ID, "PROJECT_ID environment variable not set"
@@ -2280,17 +2292,16 @@ def oauth2callback():
 
     # !!! TODO: Add CSRF verification
 
-    from google.oauth2 import id_token
-    from google.auth.transport import requests
-
     userid = None
     try:
-        # Specify the CLIENT_ID of the app that accesses the backend:
-        idinfo = id_token.verify_oauth2_token(token, requests.Request(), _CLIENT_ID)
-        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            raise ValueError('Wrong issuer.')
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), _CLIENT_ID)
+        # idinfo = id_token.verify_oauth2_token(token, google_urllib3.Request(http), _CLIENT_ID)
+        if idinfo["iss"] not in _VALID_ISSUERS:
+            raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid. Get the user's Google Account ID from the decoded token.
-        userid = idinfo['sub']
+        userid = idinfo["sub"]
+        name = idinfo["name"]
+        email = idinfo["email"]
     except ValueError:
         # Invalid token
         response = jsonify({'status': 'invalid'})
@@ -2298,10 +2309,10 @@ def oauth2callback():
         return response, 401
 
     # Set session expiration to 14 days
-    expires = datetime.now() + timedelta(days=14)
+    expires = datetime.utcnow() + timedelta(days=14)
     session["user"] = {
-        "id" : userid,
-        "expires" : expires
+        "id": userid,
+        "expires": expires
     }
     return jsonify({'status': 'success'})
 

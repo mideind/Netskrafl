@@ -12,6 +12,7 @@
 
 """
 
+from datetime import datetime
 from flask import session
 
 
@@ -36,7 +37,12 @@ def get_current_user():
     user = session.get("user")
     if user is None:
         return None
-    # !!! Check the expiration
+    now = datetime.utcnow()
+    expires = user.get("expires")
+    if expires is None or expires < now:
+        # Session has expired: delete the user object from it
+        del session["user"]
+        return None
     return UserShim(user["id"])
 
 
