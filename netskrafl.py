@@ -703,7 +703,7 @@ def _rating(kind):
     if cuid:
         challenges.update(
             # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in iter(ChallengeModel.list_issued(cuid, max_len=20))]
+            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
         )
 
     rating_list = memcache.get(kind, namespace="rating")

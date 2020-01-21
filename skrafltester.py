@@ -3,8 +3,8 @@
 
 """ Skrafltester
 
-    Copyright (C) 2015-2019 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+    Copyright (C) 2020 Miðeind ehf.
+    Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl

@@ -66,12 +66,17 @@ import sys
 
 from languages import Alphabet
 
+
 # Mask away differences between Python 2 and 3
 if sys.version_info >= (3, 0):
+    # Python 3
     import pickle
+    items = lambda d: d.items()
 else:
+    # Python 2
     # noinspection PyPep8Naming
     import cPickle as pickle
+    items = lambda d: d.iteritems()
 
 
 class _Node:
@@ -355,7 +360,7 @@ class Navigation:
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
         nav = self._nav
-        for prefix, nextnode in node.edges.items():
+        for prefix, nextnode in items(node.edges):
             if nav.push_edge(prefix[0]):
                 # This edge is a candidate: navigate through it
                 self._navigate_from_edge(prefix, nextnode, matched)
@@ -756,7 +761,7 @@ class PackedNavigation:
         except KeyError:
             d = {prefix: nextnode for prefix, nextnode in self._iter_from_node(offset)}
             self._iter_cache[offset] = d
-        return d.iteritems()
+        return items(d)
 
     def _navigate_from_node(self, offset, matched):
         """ Starting from a given node, navigate outgoing edges """

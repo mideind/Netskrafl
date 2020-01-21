@@ -1,10 +1,10 @@
-#!/usr/bin/env pypy
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """ DAWG dictionary builder
 
-    Copyright (C) 2019 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+    Copyright (C) 2020 Miðeind ehf.
+    Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
@@ -119,15 +119,18 @@ from dawgdictionary import PackedDawgDictionary
 # This is by default the Icelandic sorting order
 from languages import Alphabet
 
+
 # Mask away difference between Python 2 and 3
 # pylint: disable=redefined-builtin
 if sys.version_info >= (3, 0):
-    pass
+    # Python 3
+    items = lambda d: d.items()
 else:
+    # Python 2
     # noinspection PyPep8Naming
-    def next(iterator):
-        """ Map iterator.next() to a function, a la Python 3 """
-        return iterator.next()
+    # Map iterator.next() to a function, a la Python 3
+    next = lambda iterator: iterator.next()
+    items = lambda d: d.iteritems()
 
 
 MAXLEN = 48  # Longest possible word to be processed
@@ -173,7 +176,7 @@ class _DawgNode:
             hashable key for node edges """
         edges = [
             prefix + u":" + (u"0" if node is None else str(node.id))
-            for prefix, node in _DawgNode.sort_by_prefix(edges.items())
+            for prefix, node in _DawgNode.sort_by_prefix(items(edges))
         ]
         return "_".join(edges)
 
@@ -257,7 +260,7 @@ class _Dawg:
             # Only one child: we can collapse
             lastd = None
             tail = None
-            for ch, nx in di.items():
+            for ch, nx in items(di):
                 # There will only be one iteration of this loop
                 tail = ch
                 lastd = nx
@@ -287,7 +290,9 @@ class _Dawg:
         # Iterate through the letter position and
         # attempt to collapse all "simple" branches from it
         if edges:
-            for letter, node in edges.items():
+            # We must iterate over a cloned list because
+            # the underlying dict may be modified in _collapse_branch()
+            for letter, node in list(items(edges)):
                 if node:
                     self._collapse_branch(edges, letter, node)
 
@@ -359,7 +364,7 @@ class _Dawg:
 
     def _dump_level(self, level, d):
         """ Dump a level of the tree and continue into sublevels by recursion """
-        for ch, nx in d.items():
+        for ch, nx in items(d):
             s = u" " * level + ch
             if nx and nx.final:
                 s += u"|"
@@ -379,7 +384,7 @@ class _Dawg:
         for n in self._unique_nodes_values:
             if n is not None:
                 print(u"Node {0}{1}".format(n.id, u"|" if n.final else u""))
-                for prefix, nd in n.edges.items():
+                for prefix, nd in items(n.edges):
                     print(
                         u"   Edge {0} to node {1}"
                         .format(prefix, 0 if nd is None else nd.id)
@@ -413,12 +418,12 @@ class _Dawg:
         packer.start(len(self._root))
         # Start with the root edges
         sortfunc = _DawgNode.sort_by_prefix
-        for prefix, nd in sortfunc(self._root.items()):
+        for prefix, nd in sortfunc(items(self._root)):
             packer.edge(nd.id, prefix)
         for node in self._unique_nodes_values:
             if node is not None:
                 packer.node_start(node.id, node.final, len(node.edges))
-                for prefix, nd in sortfunc(node.edges.items()):
+                for prefix, nd in sortfunc(items(node.edges)):
                     if nd is None:
                         packer.edge(0, prefix)
                     else:

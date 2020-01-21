@@ -2,8 +2,8 @@
 
 """ Admin web server for netskrafl.is
 
-    Copyright (C) 2015-2019 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+    Copyright (C) 2020 Miðeind ehf.
+    Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
@@ -95,7 +95,7 @@ def deferred_update():
 
 @app.route("/admin/setfriend", methods=["GET"])
 def admin_setfriend():
-    """ Start a user update background task """
+    """ Set the friend state of a user """
     uid = request.args.get("uid", "")
     state = request.args.get("state", "1")  # Default: set as friend
     try:

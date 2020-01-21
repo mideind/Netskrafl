@@ -3,7 +3,7 @@
 """ Firebase wrapper for Netskrafl
 
     Copyright (C) 2020 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+    Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
@@ -13,6 +13,7 @@
 
 """
 
+import os
 import time
 import base64
 import json
@@ -27,7 +28,8 @@ from oauth2client.client import GoogleCredentials
 from google.appengine.api import app_identity  # pylint: disable=E0611
 
 
-_FIREBASE_DB_URL = "https://netskrafl.firebaseio.com"
+_PROJECT_ID = os.environ.get("PROJECT_ID", "")
+_FIREBASE_DB_URL = "https://{0}.firebaseio.com".format(_PROJECT_ID)
 _IDENTITY_ENDPOINT = (
     "https://identitytoolkit.googleapis.com/"
     "google.identity.identitytoolkit.v1.IdentityToolkit"
@@ -45,6 +47,8 @@ _HEADERS = {"Connection": "keep-alive"}
 
 # Initialize thread-local storage
 _tls = threading.local()
+
+assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 
 def _get_http():

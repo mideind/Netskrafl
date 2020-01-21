@@ -157,11 +157,7 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        try:
-            return _loads(self._client.get(key))
-        except ConnectionError as e:
-            logging.info("Unable to connect to Redis server")
-            return None
+        return _loads(self._client.get(key))
 
 
 # Create a global singleton wrapper instance with default parameters,
