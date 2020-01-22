@@ -43,6 +43,8 @@ from flask import request, url_for, session
 from google.appengine.runtime import DeadlineExceededError
 # from google.appengine.api import users
 
+import six; reload(six)
+
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -50,6 +52,7 @@ import requests
 import requests_toolbelt.adapters.appengine
 
 import users
+import admin
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -2281,17 +2284,18 @@ def oauth2callback():
 
     if not _CLIENT_ID:
         # 500 - Internal server error
-        return jsonify({'status': 'invalid'}), 500
+        return jsonify({'status': 'invalid', "msg": "Missing CLIENT_ID"}), 500
 
     token = request.form.get("idToken", "")
     csrf_token = request.form.get("csrfToken", "")
 
     if not token:
         # 400 - Bad Request
-        return jsonify({"status:" "invalid"}), 400
+        return jsonify({"status": "invalid", "msg": "Missing token"}), 400
 
     # !!! TODO: Add CSRF verification
 
+    account = None
     userid = None
     try:
         idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), _CLIENT_ID)
@@ -2299,14 +2303,19 @@ def oauth2callback():
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid. Get the user's Google Account ID from the decoded token.
-        userid = idinfo["sub"]
+        account = idinfo["sub"]
         name = idinfo["name"]
         email = idinfo["email"]
-    except ValueError:
+        userid = User.login_by_account(account, name, email)
+    except ValueError as e:
         # Invalid token
-        response = jsonify({'status': 'invalid'})
         # 401 - Unauthorized
-        return response, 401
+        return jsonify({'status': 'invalid', 'msg': str(e)}), 401
+
+    if not userid:
+        # Unable to obtain the user id for some reason
+        # 401 - Unauthorized
+        return jsonify({'status': 'invalid', 'msg': "Unable to obtain user id"}), 401
 
     # Set session expiration to 14 days
     expires = datetime.utcnow() + timedelta(days=14)
@@ -2315,6 +2324,40 @@ def oauth2callback():
         "expires": expires
     }
     return jsonify({'status': 'success'})
+
+
+@app.route("/admin/usercount", methods=["POST"])
+def admin_usercount():
+    if not running_local:
+        return "", 401
+    return admin.admin_usercount()
+
+
+@app.route("/admin/userupdate", methods=['GET'])
+def admin_userupdate():
+    if not running_local:
+        return "", 401
+    return admin.admin_userupdate()
+
+
+@app.route("/admin/setfriend", methods=["GET"])
+def admin_setfriend():
+    if not running_local:
+        return "", 401
+    return admin.admin_setfriend()
+
+
+@app.route("/admin/loadgame", methods=["POST"])
+def admin_loadgame():
+    if not running_local:
+        return "", 401
+    return admin.admin_loadgame()
+
+
+@app.route("/admin/main")
+def admin_main():
+    """ Show main administration page """
+    return render_template("admin.html")
 
 
 # noinspection PyUnusedLocal

@@ -117,11 +117,13 @@ function initMain() {
       }
    });
 
+   /*
    serverQuery("/admin/usercount", { }, 
       function(json) {
          $("#num-users").text(json.count);
       }
    );
+   */
 }
 
 </script>
@@ -150,14 +152,6 @@ function initMain() {
 
       <p>Number of users: <span class="admin-stat" id="num-users">0</span></p>
       <p>Number of games played last 24 hours: <span class="admin-stat" id="num-games-24">0</span></p>
-
-   </div>
-
-   <div id="tabs-2">
-
-      <p><strong>Downloads</strong></p>
-
-      <p>Download <a download="games.json" href="{{ url_for ('admin_fetchgames') }}">list of finished games</a> as JSON</p>
 
    </div>
 

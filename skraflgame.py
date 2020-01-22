@@ -69,13 +69,15 @@ class User:
     _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
-    _NAMESPACE = "user:2"
+    _NAMESPACE = "user:3"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
 
-    def __init__(self, uid=None):
+    def __init__(self, uid=None, account=None):
         """ Initialize a fresh User instance """
+        self._account = account
+        self._email = None
         self._nickname = u""
         self._inactive = False
         self._preferences = {}
@@ -111,6 +113,8 @@ class User:
 
     def _init(self, um):
         """ Obtain the properties from the database entity """
+        self._account = um.account
+        self._email = um.email
         self._nickname = um.nickname
         self._inactive = um.inactive
         self._preferences = um.prefs
@@ -127,6 +131,12 @@ class User:
     def _fetch(self):
         """ Fetch the user's record from the database """
         um = UserModel.fetch(self._user_id)
+        if um is None and self._account:
+            um = UserModel.fetch_account(self._account)
+            if um is not None:
+                # We are able to use the account as the user id:
+                # set it as the user id to be used henceforth
+                self._user_id = self._account
         if um is None:
             # Use the default properties for a newly created user
             self.set_new_bag(True)  # Fresh users get the new bag by default
@@ -145,6 +155,8 @@ class User:
             # request in the interval between a database update and a memcache update
             um = UserModel.fetch(self._user_id)
             assert um is not None
+            um.account = self._account
+            um.email = self._email
             um.nickname = self._nickname
             um.nick_lc = self._nickname.lower()
             um.name_lc = self.full_name().lower()
@@ -202,11 +214,11 @@ class User:
         # Nicknames that haven't been properly set aren't displayed
         return User.is_valid_nick(self._nickname)
 
-    def get_pref(self, pref):
+    def get_pref(self, pref, default=None):
         """ Retrieve a preference, or None if not found """
         if self._preferences is None:
             return None
-        return self._preferences.get(pref)
+        return self._preferences.get(pref, default)
 
     def set_pref(self, pref, value):
         """ Set a preference to a value """
@@ -233,7 +245,7 @@ class User:
 
     def email(self):
         """ Returns the e-mail address of a user """
-        em = self.get_pref(u"email")
+        em = self.get_pref(u"email", self._email)
         return u"" if em is None else em
 
     def set_email(self, email):
@@ -500,6 +512,7 @@ class User:
                 return u
             # This might be a user that is not yet in the database
             u = cls()
+            # !!! TODO: Add the Google Account uid here as a default user id
             u._fetch()  # Creates a database entity if this is a fresh user
             memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u

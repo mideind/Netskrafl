@@ -67,7 +67,7 @@ import uuid
 from datetime import datetime
 
 # The following is a hack/workaround for a Google bug
-import six; reload(six)
+# import six; reload(six)
 
 from google.cloud import ndb
 
@@ -134,7 +134,9 @@ def iter_q(q, chunk_size=50, limit=0, projection=None):
             return
         # Get the next chunk
         items, next_cursor, more = q.fetch_page(
-            chunk_size, start_cursor=next_cursor, projection=projection
+            chunk_size,
+            start_cursor=next_cursor,
+            projection=projection
         )
 
 
@@ -164,11 +166,11 @@ class UserModel(ndb.Model):
     human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    highest_score_game = ndb.StringProperty(required=False, default=None)
+    highest_score_game = ndb.StringProperty(required=False, default=None, indexed=False)
     # Best word laid down
-    best_word = ndb.StringProperty(required=False, default=None)
+    best_word = ndb.StringProperty(required=False, default=None, indexed=False)
     best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    best_word_game = ndb.StringProperty(required=False, default=None)
+    best_word_game = ndb.StringProperty(required=False, default=None, indexed=False)
 
     @classmethod
     def create(cls, user_id, nickname, preferences=None):
@@ -186,6 +188,12 @@ class UserModel(ndb.Model):
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
         return cls.get_by_id(user_id)
+
+    @classmethod
+    def fetch_account(cls, account):
+        """ Attempt to fetch a user by Google account id """
+        q = cls.query(UserModel.account == account)
+        return q.get()
 
     @classmethod
     def fetch_multi(cls, user_ids):

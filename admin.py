@@ -16,21 +16,15 @@
 
 import logging
 
-from flask import render_template, jsonify
+from flask import jsonify
 from flask import request
 from google.appengine.ext import deferred
 
-import netskrafl
 from languages import Alphabet
-from skrafldb import ndb, Context, UserModel, GameModel
+from skrafldb import ndb, iter_q, Client, UserModel, GameModel
 from skraflgame import User, Game
 
 
-# We're plugging in to the normal Netskrafl Flask app
-app = netskrafl.app
-
-
-@app.route("/admin/usercount", methods=["POST"])
 def admin_usercount():
     """ Return a count of UserModel entities """
     count = UserModel.count()
@@ -41,59 +35,37 @@ def deferred_update():
     """ Update all users in the datastore with lowercase nick and full name """
     logging.info("Deferred user update starting")
     CHUNK_SIZE = 200
+    scan = 0
     count = 0
-    offset = 0
-    Context.disable_cache()
-    try:
-        q = UserModel.query()
-        while True:
-            ulist = []
-            chunk = 0
-            for um in q.fetch(CHUNK_SIZE, offset=offset):
-                chunk += 1
-                if um.nick_lc is None:
-                    try:
-                        um.nick_lc = um.nickname.lower()
-                        um.name_lc = (
-                            um.prefs.get("full_name", "").lower() if um.prefs else ""
-                        )
-                        ulist.append(um)
-                    except Exception as e:
-                        logging.info(
-                            "Exception in deferred_update() when setting nick_lc: {0}"
-                            .format(e)
-                        )
-            if ulist:
-                try:
-                    ndb.put_multi(ulist)
-                    count += len(ulist)
-                except Exception as e:
-                    logging.info(
-                        "Exception in deferred_update() when updating ndb: {0}"
-                        .format(e)
-                    )
-            if chunk < CHUNK_SIZE:
-                break
-            offset += CHUNK_SIZE
-    except Exception as e:
-        logging.info(
-            "Exception in deferred_update(): {0}, already updated {1} records"
-            .format(e, count)
-        )
-        # Do not retry the task
-        raise deferred.PermanentTaskFailure()
-    logging.info("Completed updating {0} user records".format(count))
+    with ndb.Client().context():
+        try:
+            q = UserModel.query()
+            for um in iter_q(q, chunk_size=CHUNK_SIZE):
+                scan += 1
+                if not um.email:
+                    um.email = um.prefs.get("email")
+                    if um.email:
+                        um.put()
+                        count += 1
+                if scan % 1000 == 0:
+                    logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
+        except Exception as e:
+            logging.info(
+                "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}"
+                .format(e, scan, count)
+            )
+            # Do not retry the task
+            raise deferred.PermanentTaskFailure()
+    logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
 
 
-# @app.route("/admin/userupdate", methods=['GET'])
-# def admin_userupdate():
-#     """ Start a user update background task """
-#     logging.info("Starting user update")
-#     deferred.defer(deferred_update)
-#     return "<html><body><p>User update started</p></body></html>"
+def admin_userupdate():
+    """ Start a user update background task """
+    logging.info("Starting user update")
+    deferred.defer(deferred_update)
+    return "<html><body><p>User update started</p></body></html>"
 
 
-@app.route("/admin/setfriend", methods=["GET"])
 def admin_setfriend():
     """ Set the friend state of a user """
     uid = request.args.get("uid", "")
@@ -119,7 +91,6 @@ def admin_setfriend():
     )
 
 
-@app.route("/admin/fetchgames", methods=["GET", "POST"])
 def admin_fetchgames():
     """ Return a JSON representation of all finished games """
     # noinspection PyPep8
@@ -143,7 +114,6 @@ def admin_fetchgames():
     return jsonify(gamelist=gamelist)
 
 
-@app.route("/admin/loadgame", methods=["POST"])
 def admin_loadgame():
     """ Fetch a game object and return it as JSON """
 
@@ -182,8 +152,3 @@ def admin_loadgame():
 
     return jsonify(game=g)
 
-
-@app.route("/admin/main")
-def admin_main():
-    """ Show main administration page """
-    return render_template("admin.html")
