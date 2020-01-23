@@ -166,16 +166,21 @@ class UserModel(ndb.Model):
     human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    highest_score_game = ndb.StringProperty(required=False, default=None, indexed=False)
+    # Note: indexing of string properties is mandatory
+    highest_score_game = ndb.StringProperty(required=False, default=None)
     # Best word laid down
-    best_word = ndb.StringProperty(required=False, default=None, indexed=False)
+    # Note: indexing of string properties is mandatory
+    best_word = ndb.StringProperty(required=False, default=None)
     best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
-    best_word_game = ndb.StringProperty(required=False, default=None, indexed=False)
+    # Note: indexing of string properties is mandatory
+    best_word_game = ndb.StringProperty(required=False, default=None)
 
     @classmethod
-    def create(cls, user_id, nickname, preferences=None):
+    def create(cls, user_id, account, email, nickname, preferences=None):
         """ Create a new user """
         user = cls(id=user_id)
+        user.account = account
+        user.email = email
         user.nickname = nickname  # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
@@ -193,6 +198,12 @@ class UserModel(ndb.Model):
     def fetch_account(cls, account):
         """ Attempt to fetch a user by Google account id """
         q = cls.query(UserModel.account == account)
+        return q.get()
+
+    @classmethod
+    def fetch_email(cls, email):
+        """ Attempt to fetch a user by email """
+        q = cls.query(UserModel.email == email)
         return q.get()
 
     @classmethod
@@ -223,6 +234,7 @@ class UserModel(ndb.Model):
     @classmethod
     def count(cls):
         """ Return a count of user entities """
+        # Beware: this seems to be EXTREMELY slow on Google Cloud Datastore
         return cls.query().count()
 
     @classmethod

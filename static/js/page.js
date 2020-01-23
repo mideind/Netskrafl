@@ -732,7 +732,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = $state.loginUrl;
+                  window.location.href = "/login"; // !!! TODO: FIXME
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
@@ -761,7 +761,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = $state.loginUrl;
+                  window.location.href = "/login"; // !!! TODO: FIXME
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]

@@ -34,13 +34,21 @@ import threading
 import re
 import random
 
+from functools import wraps
 from datetime import datetime, timedelta
 
-from flask import Flask
-from flask import render_template, redirect, jsonify
-from flask import request, url_for, session
+from flask import (
+    Flask, 
+    render_template,
+    redirect,
+    jsonify,
+    url_for,
+    request,
+    g,
+    session
+)
 
-from google.appengine.runtime import DeadlineExceededError
+# from google.appengine.runtime import DeadlineExceededError
 # from google.appengine.api import users
 
 import six; reload(six)
@@ -51,7 +59,6 @@ from google.auth.transport import requests as google_requests
 import requests
 import requests_toolbelt.adapters.appengine
 
-import users
 import admin
 
 from languages import Alphabet
@@ -117,6 +124,9 @@ app.config['DEBUG'] = running_local
 app.config.update(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
+    # SESSION_COOKIE_DOMAIN="netskrafl.is",
+    # SERVER_NAME="netskrafl.is",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=31)
 )
 
 # Read secret session key from file
@@ -200,6 +210,54 @@ def stripwhite(s):
     """ Flask/Jinja2 template filter to strip out consecutive whitespace """
     # Convert all consecutive runs of whitespace of 1 char or more into a single space
     return re.sub(r'\s+', ' ', s)
+
+
+def session_user():
+    """ Return the user who is authenticated in the current session, if any """
+    u = None
+    user = session.get("user")
+    if user is not None:
+        userid = user.get("id")
+        if userid:
+            u = User.load_if_exists(userid)
+    return u
+
+
+def authenticated(**error_kwargs):
+    """ Decorator for routes that require an authenticated user """
+
+    def wrap(func):
+
+        @wraps(func)
+        def route():
+            """ Load the authenticated user into g.user
+                before invoking the wrapped route function """
+            u = session_user()
+            if u is None:
+                # No authenticated user
+                if error_kwargs and "login_url" not in error_kwargs:
+                    # Reply with a JSON error code
+                    return jsonify(**error_kwargs)
+                # Reply with a redirect
+                login_url = error_kwargs.get("login_url")
+                return redirect(login_url or url_for("login"))
+            g.user = u
+            return func()
+
+        return route
+
+    return wrap
+
+
+def current_user():
+    """ Return the currently logged in user """
+    return g.get("user")
+
+
+def current_user_id():
+    """ Return the id of the currently logged in user """
+    u = g.get("user")
+    return None if u is None else u.id()
 
 
 class RequestData:
@@ -403,7 +461,7 @@ def _userlist(query, spec):
         return unicode(elo) if elo else u"-"
 
     # We will be returning a list of human players
-    cuser = User.current()
+    cuser = current_user()
     cuid = None if cuser is None else cuser.id()
 
     if query == u"robots":
@@ -618,7 +676,7 @@ def _gamelist(cuid, include_zombies=True):
     if include_zombies:
         for g in ZombieModel.list_games(cuid):
             opp = g["opp"]  # User id of opponent
-            u = User.load(opp)
+            u = User.load_if_exists(opp)
             nick = u.nickname()
             prefs = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -710,7 +768,7 @@ def _gamelist(cuid, include_zombies=True):
 def _rating(kind):
     """ Return a list of Elo ratings of the given kind ('all' or 'human') """
     result = []
-    cuser = User.current()
+    cuser = current_user()
     cuid = None if cuser is None else cuser.id()
 
     # Generate a list of challenges issued by this user
@@ -743,7 +801,7 @@ def _rating(kind):
             # Robots have the same new bag preference as the user
             new_bag = cuser and cuser.new_bag()
         else:
-            usr = User.load(uid)
+            usr = User.load_if_exists(uid)
             if usr is None:
                 # Something wrong with this one: don't bother
                 continue
@@ -857,7 +915,7 @@ def _challengelist():
     """ Return a list of challenges issued or received by the current user """
 
     result = []
-    cuid = User.current_id()
+    cuid = current_user_id()
 
     def is_timed(prefs):
         """ Return True if the challenge is for a timed game """
@@ -942,12 +1000,9 @@ def warmup():
 
 
 @app.route("/submitmove", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def submitmove():
     """ Handle a move that is being submitted from the client """
-
-    if not User.current_id():
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
     movelist = rq.get_list("moves")
@@ -964,7 +1019,7 @@ def submitmove():
     if movecount != game.num_moves():
         return jsonify(result=Error.OUT_OF_SYNC)
 
-    if game.player_id_to_move() != User.current_id():
+    if game.player_id_to_move() != current_user_id():
         return jsonify(result=Error.WRONG_USER)
 
     # Process the movestring
@@ -974,11 +1029,6 @@ def submitmove():
         # pylint: disable=broad-except
         try:
             result = _process_move(game, movelist)
-        except DeadlineExceededError:
-            logging.info("Deadline exceeded in submitmove()")
-            result = jsonify(result=Error.SERVER_ERROR)
-            # No use attempting to retry if deadline exceeded: get out
-            break
         except Exception as e:
             logging.info(
                 "Exception in submitmove(): {0} {1}"
@@ -995,16 +1045,17 @@ def submitmove():
 
 
 @app.route("/gamestate", methods=['POST'])
+@authenticated(ok=False)
 def gamestate():
     """ Returns the current state of a game """
 
     rq = RequestData(request)
     uuid = rq.get("game")
 
-    user_id = User.current_id()
-    game = Game.load(uuid) if uuid and user_id else None
+    user_id = current_user_id()
+    game = Game.load(uuid) if uuid else None
 
-    if not user_id or not game:
+    if not game:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
@@ -1018,14 +1069,11 @@ def gamestate():
 
 
 @app.route("/forceresign", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def forceresign():
     """ Forces a tardy user to resign, if the game is overdue """
 
-    user_id = User.current_id()
-    if user_id is None:
-        # We must have a logged-in user
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
+    user_id = current_user_id()
     rq = RequestData(request)
     uuid = rq.get("game")
     movecount = rq.get_int("mcount", -1)
@@ -1036,7 +1084,7 @@ def forceresign():
         return jsonify(result=Error.GAME_NOT_FOUND)
 
     # Only the user who is the opponent of the tardy user can force a resign
-    if game.player_id(1 - game.player_to_move()) != User.current_id():
+    if game.player_id(1 - game.player_to_move()) != user_id:
         return jsonify(result=Error.WRONG_USER)
 
     # Make sure the client is in sync with the server:
@@ -1052,12 +1100,9 @@ def forceresign():
 
 
 @app.route("/wordcheck", methods=['POST'])
+@authenticated(ok=False)
 def wordcheck():
     """ Check a list of words for validity """
-
-    if not User.current_id():
-        # If no user is logged in, we always return False
-        return jsonify(ok=False)
 
     rq = RequestData(request)
     words = rq.get_list("words")
@@ -1070,6 +1115,7 @@ def wordcheck():
 
 
 @app.route("/gamestats", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def gamestats():
     """ Calculate and return statistics on a given finished game """
 
@@ -1091,24 +1137,22 @@ def gamestats():
 
 
 @app.route("/userstats", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def userstats():
     """ Calculate and return statistics on a given user """
 
-    cid = User.current_id()
-    if not cid:
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
+    cid = current_user_id()
     rq = RequestData(request)
     uid = rq.get('user', cid)  # Current user is implicit
     user = None
 
     if uid is not None:
-        user = User.load(uid)
+        user = User.load_if_exists(uid)
 
     if user is None:
         return jsonify(result=Error.WRONG_USER)
 
-    cuser = User.current()
+    cuser = current_user()
     stats = user.statistics()
 
     # Include info on whether this user is a favorite of the current user
@@ -1127,20 +1171,13 @@ def userstats():
 
 
 @app.route("/userlist", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def userlist():
     """ Return user lists with particular criteria """
-
-    if not User.current_id():
-        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     query = rq.get('query')
     spec = rq.get('spec')
-
-    # Disable the in-context cache to save memory
-    # (it doesn't give any speed advantage for user lists anyway)
-    Context.disable_cache()
-
     return jsonify(
         result=Error.LEGAL,
         spec=spec,
@@ -1149,14 +1186,14 @@ def userlist():
 
 
 @app.route("/gamelist", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def gamelist():
     """ Return a list of active games for the current user """
 
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool('zombies', True)
-    # _gamelist() returns an empty list if no user is logged in
-    cuid = User.current_id()
+    cuid = current_user_id()
     return jsonify(
         result=Error.LEGAL,
         gamelist=_gamelist(cuid, include_zombies)
@@ -1164,20 +1201,17 @@ def gamelist():
 
 
 @app.route("/rating", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def rating():
     """ Return the newest Elo ratings table (top 100)
         of a given kind ('all' or 'human') """
-
-    if not User.current_id():
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
     rq = RequestData(request)
     kind = rq.get('kind', 'all')
-
     return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @app.route("/recentlist", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def recentlist():
     """ Return a list of recently completed games for the indicated user """
 
@@ -1192,8 +1226,8 @@ def recentlist():
     elif count < 1:
         count = 1
 
-    if user_id is None:
-        user_id = User.current_id()
+    if not user_id:
+        user_id = current_user_id()
 
     # _recentlist() returns an empty list for a nonexistent user
 
@@ -1204,26 +1238,24 @@ def recentlist():
 
 
 @app.route("/challengelist", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def challengelist():
     """ Return a list of challenges issued or received by the current user """
-    # _challengelist() returns an empty list if no user is logged in
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @app.route("/favorite", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def favorite():
     """ Create or delete an A-favors-B relation """
 
-    user = User.current()
-    if user is None:
-        # We must have a logged-in user
-        return jsonify(result=Error.LOGIN_REQUIRED)
+    user = current_user()
 
     rq = RequestData(request)
     destuser = rq.get('destuser')
     action = rq.get('action', u"add")
 
-    if destuser is not None:
+    if destuser:
         if action == u"add":
             user.add_favorite(destuser)
         elif action == u"delete":
@@ -1233,14 +1265,11 @@ def favorite():
 
 
 @app.route("/challenge", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def challenge():
     """ Create or delete an A-challenges-B relation """
 
-    user = User.current()
-    if user is None:
-        # We must have a logged-in user
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
+    user = current_user()
     rq = RequestData(request)
     destuser = rq.get('destuser')
     if not destuser:
@@ -1284,14 +1313,11 @@ def challenge():
 
 
 @app.route("/setuserpref", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def setuserpref():
     """ Set a user preference """
 
-    user = User.current()
-    if user is None:
-        # We must have a logged-in user
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
+    user = current_user()
     rq = RequestData(request)
 
     # Check for the beginner preference and convert it to bool if we can
@@ -1318,45 +1344,33 @@ def setuserpref():
 
 
 @app.route("/onlinecheck", methods=['POST'])
+@authenticated(online=False)
 def onlinecheck():
     """ Check whether a particular user is online """
-
-    if not User.current_id():
-        # We must have a logged-in user
-        return jsonify(online=False)
-
     rq = RequestData(request)
     user_id = rq.get('user')
     online = False
-    if user_id is not None:
+    if user_id:
         online = firebase.check_presence(user_id)
     return jsonify(online=online)
 
 
 @app.route("/waitcheck", methods=['POST'])
+@authenticated(waiting=False)
 def waitcheck():
     """ Check whether a particular opponent is waiting on a challenge """
-
-    if not User.current_id():
-        # We must have a logged-in user
-        return jsonify(waiting=False)
-
     rq = RequestData(request)
     opp_id = rq.get('user')
     waiting = False
-    if opp_id is not None:
-        waiting = _opponent_waiting(User.current_id(), opp_id)
+    if opp_id:
+        waiting = _opponent_waiting(current_user_id(), opp_id)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
 @app.route("/cancelwait", methods=['POST'])
+@authenticated(ok=False)
 def cancelwait():
     """ A wait on a challenge has been cancelled """
-
-    if not User.current_id():
-        # We must have a logged-in user
-        return jsonify(ok=False)
-
     rq = RequestData(request)
     user_id = rq.get('user')
     opp_id = rq.get('opp')
@@ -1375,19 +1389,20 @@ def cancelwait():
 
 
 @app.route("/chatmsg", methods=['POST'])
+@authenticated(ok=False)
 def chatmsg():
     """ Send a chat message on a conversation channel """
 
     rq = RequestData(request)
     channel = rq["channel"]
-    msg = rq["msg"]
-    uuid = u""
 
-    user_id = User.current_id()
-    if not user_id or not channel:
-        # We must have a logged-in user and a valid channel
+    if not channel:
+        # We must have a valid channel
         return jsonify(ok=False)
 
+    msg = rq["msg"]
+    uuid = u""
+    user_id = current_user_id()
     game = None
     if channel.startswith(u"game:"):
         # Send notifications to both players on the game channel
@@ -1422,17 +1437,18 @@ def chatmsg():
 
 
 @app.route("/chatload", methods=['POST'])
+@authenticated(ok=False)
 def chatload():
     """ Load all chat messages on a conversation channel """
 
     rq = RequestData(request)
     channel = rq["channel"]
 
-    user_id = User.current_id()
-    if not user_id or not channel:
-        # We must have a logged-in user and a valid channel
+    if not channel:
+        # We must have a valid channel
         return jsonify(ok=False)
 
+    user_id = current_user_id()
     game = None
     if channel.startswith(u"game:"):
         uuid = channel[5:][:36]  # The game id
@@ -1459,15 +1475,12 @@ def chatload():
 
 
 @app.route("/review")
+@authenticated()
 def review():
     """ Show game review page """
 
     # Only logged-in users who are paying friends can view this page
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
-
+    user = current_user()
     if not user.has_paid():
         # Only paying users can see game reviews
         return redirect(url_for('friend', action=1))
@@ -1527,14 +1540,12 @@ def review():
 
 
 @app.route("/bestmoves", methods=["POST"])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def bestmoves():
     """ Return a list of the best possible moves in a game
         at a given point """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in
-        return jsonify(result=Error.LOGIN_REQUIRED)
+    user = current_user()
     # !!! TODO
     if False:  # not user.has_paid():
         # User must be a paying friend
@@ -1597,7 +1608,7 @@ class UserForm:
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr=None):
-        self.logout_url = users.create_logout_url(_LOGOUT_URL)
+        self.logout_url = _LOGOUT_URL
         if usr:
             self.init_from_user(usr)
         else:
@@ -1709,13 +1720,11 @@ class UserForm:
 
 
 @app.route("/userprefs", methods=['GET', 'POST'])
+@authenticated()
 def userprefs():
     """ Handler for the user preferences page """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(users.create_login_url(url_for("userprefs")))
+    user = current_user()
 
     uf = UserForm()
     err = dict()
@@ -1740,63 +1749,56 @@ def userprefs():
 
 
 @app.route("/loaduserprefs", methods=['POST'])
+@authenticated(ok=False)
 def loaduserprefs():
     """ Fetch the preferences of the current user in JSON form """
-
-    user = User.current()
-    if user is None:
-        # User hasn't logged in
-        return jsonify(ok=False)
-
     # Return the user preferences in JSON form
-    uf = UserForm(user)
+    uf = UserForm(current_user())
     return jsonify(ok=True, userprefs=uf.as_dict())
 
 
 @app.route("/saveuserprefs", methods=['POST'])
+@authenticated(ok=False)
 def saveuserprefs():
     """ Fetch the preferences of the current user in JSON form """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in
-        return jsonify(ok=False)
-
+    user = current_user()
     j = request.get_json(silent=True)
 
     # Return the user preferences in JSON form
     uf = UserForm()
     uf.init_from_dict(j)
     err = uf.validate()
-    if not err:
-        uf.store(user)
-        return jsonify(ok=True)
-    return jsonify(ok=False, err=err)
+    if err:
+        return jsonify(ok=False, err=err)
+    uf.store(user)
+    return jsonify(ok=True)
 
 
 @app.route("/wait")
+@authenticated()
 def wait():
     """ Show page to wait for a timed game to start """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
+    user = current_user()
 
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith(u"robot-"):
+        # !!! TODO: Update for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
     if not found:
         # No challenge existed between the users: redirect to main page
+        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
-    opp_user = User.load(opp)
+    opp_user = User.load_if_exists(opp)
     if opp_user is None:
         # Opponent id not found
+        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
     # Notify the opponent of a change in the challenge list
@@ -1820,13 +1822,11 @@ def wait():
 
 
 @app.route("/newgame")
+@authenticated()
 def newgame():
     """ Show page to initiate a new game """
 
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for('login'))
+    user = current_user()
 
     # Get the opponent id
     opp = request.args.get("opp", None)
@@ -1836,6 +1836,7 @@ def newgame():
     rev = request.args.get("rev", None) is not None
 
     if opp is None:
+        # !!! TODO: Adapt for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     if opp.startswith(u"robot-"):
@@ -1844,13 +1845,15 @@ def newgame():
         # Play the game with the new bag if the user prefers it
         prefs = {"newbag": True} if user.new_bag() else None
         game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        # !!! TODO: Adapt for singlepage
         return redirect(url_for("board", game=game.id()))
 
     # Start a new game between two human users
     if rev:
         # Timed game: load the opponent
-        opp_user = User.load(opp)
+        opp_user = User.load_if_exists(opp)
         if opp_user is None:
+            # !!! TODO: Adapt for singlepage
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
         found, prefs = opp_user.accept_challenge(user.id())
@@ -1880,18 +1883,15 @@ def newgame():
 
 
 @app.route("/initgame", methods=['POST'])
+@authenticated(ok=False)
 def initgame():
     """ Create a new game and return its UUID """
 
-    user = User.current()
-    if user is None:
-        # Must have logged-in user
-        return jsonify(ok=False)
-
+    user = current_user()
     rq = RequestData(request)
     # Get the opponent id
     opp = rq.get("opp")
-    if opp is None:
+    if not opp:
         return jsonify(ok=False)
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
@@ -1909,7 +1909,7 @@ def initgame():
     # Start a new game between two human users
     if rev:
         # Timed game: load the opponent
-        opp_user = User.load(opp)
+        opp_user = User.load_if_exists(opp)
         if opp_user is None:
             return jsonify(ok=False)
         # In this case, the opponent accepts the challenge
@@ -1943,6 +1943,8 @@ def initgame():
 def board():
     """ The main game page """
 
+    # Note that authentication is not required to access this page
+
     uuid = request.args.get("game", None)
     # Requesting a look at a newly finished game
     zombie = request.args.get("zombie", None)
@@ -1972,7 +1974,7 @@ def board():
         # No active game to display: go back to main screen
         return redirect(url_for("main"))
 
-    user = User.current()
+    user = session_user()
     is_over = game.is_over()
     opp = None  # The opponent
 
@@ -1994,7 +1996,7 @@ def board():
 
     if player_index is not None and not game.is_autoplayer(1 - player_index):
         # Load information about the opponent
-        opp = User.load(game.player_id(1 - player_index))
+        opp = User.load_if_exists(game.player_id(1 - player_index))
 
     if zombie and player_index is not None:
         # This is a newly finished game that is now being viewed by clicking
@@ -2047,35 +2049,27 @@ def board():
 
 
 @app.route("/gameover", methods=['POST'])
+@authenticated(result=Error.LOGIN_REQUIRED)
 def gameover():
     """ A player has seen a game finish: remove it from
         the zombie list, if it is there """
-
-    cuid = User.current_id()
-    if not cuid:
-        # We must have a logged-in user
-        return jsonify(result=Error.LOGIN_REQUIRED)
-
+    cuid = current_user_id()
     rq = RequestData(request)
     game_id = rq.get('game')
     user_id = rq.get('player')
-
     if not game_id or cuid != user_id:
         # A user can only remove her own games from the zombie list
         return jsonify(result=Error.GAME_NOT_FOUND)
-
     ZombieModel.del_game(game_id, user_id)
-
     return jsonify(result=Error.LEGAL)
 
 
 @app.route("/friend")
+@authenticated()
 def friend():
     """ Page for users to register or unregister themselves
         as friends of Netskrafl """
-    user = User.current()
-    if user is None:
-        return redirect(url_for("login"))
+    user = current_user()
     try:
         action = int(request.args.get("action", "0"))
     except (TypeError, ValueError):
@@ -2098,14 +2092,13 @@ def friend():
             # Not a friend: nothing to cancel
             return redirect(url_for("main"))
         billing.cancel_friend(user)
-
     return render_template("friend.html", user=user, action=action)
 
 
 @app.route("/promo", methods=['POST'])
 def promo():
     """ Return promotional HTML corresponding to a given key (category) """
-    user = User.current()
+    user = session_user()
     if user is None:
         return u"<p>Notandi er ekki innskráður</p>", 401  # Unauthorized
     rq = RequestData(request)
@@ -2117,21 +2110,17 @@ def promo():
 
 
 @app.route("/signup", methods=['GET'])
+@authenticated()
 def signup():
     """ Sign up as a friend, enter card info, etc. """
-    user = User.current()
-    if user is None:
-        return redirect(url_for("login"))
-    return render_template("signup.html", user=user)
+    return render_template("signup.html", user=current_user())
 
 
 @app.route("/skilmalar", methods=['GET'])
+@authenticated()
 def skilmalar():
     """ Conditions """
-    user = User.current()
-    if user is None:
-        return redirect(url_for("login"))
-    return render_template("skilmalar.html", user=user)
+    return render_template("skilmalar.html", user=current_user())
 
 
 @app.route("/billing", methods=['GET', 'POST'])
@@ -2141,17 +2130,15 @@ def handle_billing():
 
 
 @app.route("/")
+@authenticated()
 def main():
     """ Handler for the main (index) page """
-
-    user = User.current()
-    if user is None:
-        # User hasn't logged in yet: redirect to login page
-        return redirect(url_for("login"))
 
     if _SINGLE_PAGE_UI:
         # Redirect to the single page UI
         return redirect(url_for("page"))
+
+    user = current_user()
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
@@ -2209,15 +2196,15 @@ def main():
 # pylint: disable=redefined-builtin
 @app.route("/help")
 def help():
-    """ Show help page """
-    user = User.current()
+    """ Show help page, which does not require authentication """
+    user = session_user()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab=None)
 
 
 @app.route("/rawhelp")
 def rawhelp():
-    """ Return raw help page HTML """
+    """ Return raw help page HTML. Authentication is not required. """
 
     def override_url_for(endpoint, **values):
         """ Convert URLs from old-format plain ones to single-page fancy ones """
@@ -2232,41 +2219,36 @@ def rawhelp():
 
 @app.route("/twoletter")
 def twoletter():
-    """ Show help page """
-    user = User.current()
-    # We tolerate a null (not logged in) user here
+    """ Show help page. Authentication is not required. """
+    user = session_user()
     return render_template("nshelp.html", user=user, tab="twoletter")
 
 
 @app.route("/faq")
 def faq():
-    """ Show help page """
-    user = User.current()
+    """ Show help page. Authentication is not required. """
+    user = session_user()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="faq")
 
 
 @app.route("/page")
+@authenticated()
 def page():
     """ Show single-page UI test """
-    user = User.current()
-    login_url = users.create_login_url("/page")
-    if user is None:
-        firebase_token = ""
-    else:
-        firebase_token = firebase.create_custom_token(user.id())
+    user = current_user()
+    firebase_token = firebase.create_custom_token(user.id())
     return render_template(
         "page.html",
         user=user,
         firebase_token=firebase_token,
-        login_url=login_url
     )
 
 
 @app.route("/newbag")
 def newbag():
-    """ Show help page """
-    user = User.current()
+    """ Show help page. Authentication is not required. """
+    user = session_user()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="newbag")
 
@@ -2274,8 +2256,9 @@ def newbag():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-    main_page = "/page" if _SINGLE_PAGE_UI else "/"
-    main_url = users.create_login_url(main_page)
+    main_url = "/page" if _SINGLE_PAGE_UI else "/"
+    if "user" in session:
+        del session["user"]
     return render_template("login.html", main_url=main_url)
 
 
@@ -2317,12 +2300,10 @@ def oauth2callback():
         # 401 - Unauthorized
         return jsonify({'status': 'invalid', 'msg': "Unable to obtain user id"}), 401
 
-    # Set session expiration to 14 days
-    expires = datetime.utcnow() + timedelta(days=14)
     session["user"] = {
         "id": userid,
-        "expires": expires
     }
+    session.permanent = True
     return jsonify({'status': 'success'})
 
 
@@ -2357,6 +2338,8 @@ def admin_loadgame():
 @app.route("/admin/main")
 def admin_main():
     """ Show main administration page """
+    if not running_local:
+        return "", 401
     return render_template("admin.html")
 
 

@@ -81,7 +81,6 @@ var $state = {
    hasPaid: {{ 'true' if user and user.has_paid() else 'false' }},
    uiFullscreen: true,
    uiLandscape: true,
-   loginUrl: "{{ login_url | safe }}",
    firebaseToken: "{{ firebase_token }}",
    // Array of supported emoticons in chat
    // Remember to change faq.html if this changes

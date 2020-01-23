@@ -29,7 +29,6 @@ from datetime import datetime, timedelta
 
 # from google.appengine.api import users
 
-import users
 from cache import memcache
 
 from skraflmechanics import (
@@ -76,6 +75,7 @@ class User:
 
     def __init__(self, uid=None, account=None):
         """ Initialize a fresh User instance """
+        self._user_id = uid
         self._account = account
         self._email = None
         self._nickname = u""
@@ -96,21 +96,6 @@ class User:
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
 
-        if uid is None:
-            # Obtain information from the currently logged in user
-            u = users.get_current_user()
-            if u is None:
-                self._user_id = None
-            else:
-                self._user_id = u.user_id()
-                self._nickname = u.nickname()  # Default
-                # Use the user's email address, if available
-                email = u.email()
-                if email:
-                    self.set_email(email)
-        else:
-            self._user_id = uid
-
     def _init(self, um):
         """ Obtain the properties from the database entity """
         self._account = um.account
@@ -127,26 +112,6 @@ class User:
         self._best_word = um.best_word
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
-
-    def _fetch(self):
-        """ Fetch the user's record from the database """
-        um = UserModel.fetch(self._user_id)
-        if um is None and self._account:
-            um = UserModel.fetch_account(self._account)
-            if um is not None:
-                # We are able to use the account as the user id:
-                # set it as the user id to be used henceforth
-                self._user_id = self._account
-        if um is None:
-            # Use the default properties for a newly created user
-            self.set_new_bag(True)  # Fresh users get the new bag by default
-            # This updates the database
-            UserModel.create(
-                self._user_id, self.nickname(), self._preferences
-            )
-        else:
-            # Initialize from the database
-            self._init(um)
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
@@ -460,17 +425,18 @@ class User:
         return True
 
     @classmethod
-    def load(cls, uid):
-        """ Load a user from persistent storage given his/her user id """
+    def load_if_exists(cls, uid):
+        """ Load a user by id if she exists, otherwise return None """
         with User._lock:
             u = memcache.get(uid, namespace=User._NAMESPACE)
-            if u is None:
-                # Not found in the memcache: create a user object and
-                # populate it from a database entity (or initialize
-                # a fresh one if no entity exists).
-                u = cls(uid)
-                u._fetch()
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+            if u is not None:
+                return u
+            um = UserModel.fetch(uid)
+            if um is None:
+                return None
+            u = cls(uid)
+            u._init(um)
+            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod
@@ -486,48 +452,41 @@ class User:
         return user_list
 
     @classmethod
-    def load_if_exists(cls, uid):
-        """ Load a user by id if she exists, otherwise return None """
-        with User._lock:
-            u = memcache.get(uid, namespace=User._NAMESPACE)
-            if u is not None:
-                return u
-            um = UserModel.fetch(uid)
-            if um is None:
-                return None
-            u = cls(uid=uid)
-            u._init(um)
-            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
-            return u
-
-    @classmethod
-    def current(cls):
-        """ Return the currently logged in user """
-        with User._lock:
-            cuid = cls.current_id()
-            if cuid is None:
-                return None
-            u = memcache.get(cuid, namespace=User._NAMESPACE)
-            if u is not None:
-                return u
-            # This might be a user that is not yet in the database
-            u = cls()
-            # !!! TODO: Add the Google Account uid here as a default user id
-            u._fetch()  # Creates a database entity if this is a fresh user
-            memcache.add(u.id(), u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
-            return u
-
-    @classmethod
-    def current_id(cls):
-        """ Return the id of the currently logged in user """
-        user = users.get_current_user()
-        return None if user is None else user.user_id()
-
-    @classmethod
-    def current_nickname(cls):
-        """ Return the nickname of the current user """
-        u = cls.current()
-        return None if u is None else u.nickname()
+    def login_by_account(cls, account, name, email):
+        """ Log in a user via the given Google Account and return her user id """
+        # First, see if the user account already exists under the Google account id
+        um = UserModel.fetch_account(account)
+        if um is not None:
+            # We've seen this Google Account before: return the user id
+            if email and email != um.email:
+                # Use the opportunity to update the email, if different
+                # (This should probably not happen very often)
+                um.email = email
+                um.put()
+            # Note that the user id might not be the Google account id!
+            # Instead, it could be the old GAE user id.
+            return um.key.id()
+        # We haven't seen this Google Account before: try to match by email
+        if email:
+            um = UserModel.fetch_email(email)
+            if um is not None:
+                # We probably have an older (GAE) user for this email:
+                # Associate the account with it from now on
+                um.account = account
+                return um.put().id()
+        # No match by account id or email: create a new user,
+        # with the account id as user id.
+        # New users are created with the new bag as default,
+        # and we also capture the email and the full name.
+        nickname = email.split("@")[0] or name.split()[0]
+        prefs = {u"newbag": True, u"email": email, u"full_name": name}
+        return UserModel.create(
+            user_id=account,
+            account=account,
+            email=email,
+            nickname=nickname,
+            preferences=prefs
+        )
 
     def to_serializable(self):
         """ Convert to JSON-serializable format """
@@ -864,8 +823,8 @@ class Game:
                 player = 1 - player
             pid_0 = self.player_ids[0]
             pid_1 = self.player_ids[1]
-            u0 = User.load(pid_0) if pid_0 else None
-            u1 = User.load(pid_1) if pid_1 else None
+            u0 = User.load_if_exists(pid_0) if pid_0 else None
+            u1 = User.load_if_exists(pid_1) if pid_1 else None
             if u0:
                 mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
                 mod_0 |= u0.adjust_best_word(
@@ -902,7 +861,7 @@ class Game:
         u = (
             None
             if self.player_ids[index] is None
-            else User.load(self.player_ids[index])
+            else User.load_if_exists(self.player_ids[index])
         )
         if u is None:
             # This is an autoplayer
@@ -920,7 +879,7 @@ class Game:
         u = (
             None
             if self.player_ids[index] is None
-            else User.load(self.player_ids[index])
+            else User.load_if_exists(self.player_ids[index])
         )
         if u is None:
             # This is an autoplayer
