@@ -149,7 +149,8 @@ class User:
         return self._user_id
 
     def nickname(self):
-        """ Returns the human-readable nickname of a user, or userid if a nick is not available """
+        """ Returns the human-readable nickname of a user,
+            or userid if a nick is not available """
         return self._nickname or self._user_id
 
     def set_nickname(self, nickname):
@@ -434,7 +435,7 @@ class User:
             um = UserModel.fetch(uid)
             if um is None:
                 return None
-            u = cls(uid)
+            u = cls(uid=uid)
             u._init(um)
             memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
@@ -446,7 +447,7 @@ class User:
         with User._lock:
             for um in UserModel.fetch_multi(uids):
                 if um is not None:
-                    u = cls(um.key.id())
+                    u = cls(uid=um.key.id())
                     u._init(um)
                     user_list.append(u)
         return user_list
@@ -471,7 +472,7 @@ class User:
             um = UserModel.fetch_email(email)
             if um is not None:
                 # We probably have an older (GAE) user for this email:
-                # Associate the account with it from now on
+                # Associate the account with it from now on (but keep the old id)
                 um.account = account
                 return um.put().id()
         # No match by account id or email: create a new user,

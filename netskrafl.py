@@ -213,7 +213,8 @@ def stripwhite(s):
 
 
 def session_user():
-    """ Return the user who is authenticated in the current session, if any """
+    """ Return the user who is authenticated in the current session, if any.
+        This can be called within any Flask request. """
     u = None
     user = session.get("user")
     if user is not None:
@@ -223,8 +224,12 @@ def session_user():
     return u
 
 
-def authenticated(**error_kwargs):
-    """ Decorator for routes that require an authenticated user """
+def auth_required(**error_kwargs):
+    """ Decorator for routes that require an authenticated user.
+        Call with no parameters to redirect unauthenticated requests
+        to url_for("login"), or login_url="..." to redirect to that URL,
+        or any other kwargs to return a JSON reply to unauthenticated
+        requests, containing those kwargs (via jsonify()). """
 
     def wrap(func):
 
@@ -241,6 +246,8 @@ def authenticated(**error_kwargs):
                 # Reply with a redirect
                 login_url = error_kwargs.get("login_url")
                 return redirect(login_url or url_for("login"))
+            # We have an authenticated user: store in g.user
+            # and call the route function
             g.user = u
             return func()
 
@@ -250,12 +257,14 @@ def authenticated(**error_kwargs):
 
 
 def current_user():
-    """ Return the currently logged in user """
+    """ Return the currently logged in user. Only valid within route functions
+        decorated with @auth_required. """
     return g.get("user")
 
 
 def current_user_id():
-    """ Return the id of the currently logged in user """
+    """ Return the id of the currently logged in user. Only valid within route
+        functions decorated with @auth_required. """
     u = g.get("user")
     return None if u is None else u.id()
 
@@ -1000,7 +1009,7 @@ def warmup():
 
 
 @app.route("/submitmove", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def submitmove():
     """ Handle a move that is being submitted from the client """
     # This URL should only receive Ajax POSTs from the client
@@ -1045,7 +1054,7 @@ def submitmove():
 
 
 @app.route("/gamestate", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def gamestate():
     """ Returns the current state of a game """
 
@@ -1069,7 +1078,7 @@ def gamestate():
 
 
 @app.route("/forceresign", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def forceresign():
     """ Forces a tardy user to resign, if the game is overdue """
 
@@ -1100,7 +1109,7 @@ def forceresign():
 
 
 @app.route("/wordcheck", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def wordcheck():
     """ Check a list of words for validity """
 
@@ -1115,7 +1124,7 @@ def wordcheck():
 
 
 @app.route("/gamestats", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def gamestats():
     """ Calculate and return statistics on a given finished game """
 
@@ -1137,7 +1146,7 @@ def gamestats():
 
 
 @app.route("/userstats", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def userstats():
     """ Calculate and return statistics on a given user """
 
@@ -1171,7 +1180,7 @@ def userstats():
 
 
 @app.route("/userlist", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def userlist():
     """ Return user lists with particular criteria """
 
@@ -1186,7 +1195,7 @@ def userlist():
 
 
 @app.route("/gamelist", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def gamelist():
     """ Return a list of active games for the current user """
 
@@ -1201,7 +1210,7 @@ def gamelist():
 
 
 @app.route("/rating", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def rating():
     """ Return the newest Elo ratings table (top 100)
         of a given kind ('all' or 'human') """
@@ -1211,7 +1220,7 @@ def rating():
 
 
 @app.route("/recentlist", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def recentlist():
     """ Return a list of recently completed games for the indicated user """
 
@@ -1238,14 +1247,14 @@ def recentlist():
 
 
 @app.route("/challengelist", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def challengelist():
     """ Return a list of challenges issued or received by the current user """
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @app.route("/favorite", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def favorite():
     """ Create or delete an A-favors-B relation """
 
@@ -1265,7 +1274,7 @@ def favorite():
 
 
 @app.route("/challenge", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def challenge():
     """ Create or delete an A-challenges-B relation """
 
@@ -1313,7 +1322,7 @@ def challenge():
 
 
 @app.route("/setuserpref", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def setuserpref():
     """ Set a user preference """
 
@@ -1344,7 +1353,7 @@ def setuserpref():
 
 
 @app.route("/onlinecheck", methods=['POST'])
-@authenticated(online=False)
+@auth_required(online=False)
 def onlinecheck():
     """ Check whether a particular user is online """
     rq = RequestData(request)
@@ -1356,7 +1365,7 @@ def onlinecheck():
 
 
 @app.route("/waitcheck", methods=['POST'])
-@authenticated(waiting=False)
+@auth_required(waiting=False)
 def waitcheck():
     """ Check whether a particular opponent is waiting on a challenge """
     rq = RequestData(request)
@@ -1368,7 +1377,7 @@ def waitcheck():
 
 
 @app.route("/cancelwait", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def cancelwait():
     """ A wait on a challenge has been cancelled """
     rq = RequestData(request)
@@ -1389,7 +1398,7 @@ def cancelwait():
 
 
 @app.route("/chatmsg", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def chatmsg():
     """ Send a chat message on a conversation channel """
 
@@ -1437,7 +1446,7 @@ def chatmsg():
 
 
 @app.route("/chatload", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def chatload():
     """ Load all chat messages on a conversation channel """
 
@@ -1475,7 +1484,7 @@ def chatload():
 
 
 @app.route("/review")
-@authenticated()
+@auth_required()
 def review():
     """ Show game review page """
 
@@ -1540,7 +1549,7 @@ def review():
 
 
 @app.route("/bestmoves", methods=["POST"])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def bestmoves():
     """ Return a list of the best possible moves in a game
         at a given point """
@@ -1720,7 +1729,7 @@ class UserForm:
 
 
 @app.route("/userprefs", methods=['GET', 'POST'])
-@authenticated()
+@auth_required()
 def userprefs():
     """ Handler for the user preferences page """
 
@@ -1749,7 +1758,7 @@ def userprefs():
 
 
 @app.route("/loaduserprefs", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def loaduserprefs():
     """ Fetch the preferences of the current user in JSON form """
     # Return the user preferences in JSON form
@@ -1758,7 +1767,7 @@ def loaduserprefs():
 
 
 @app.route("/saveuserprefs", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def saveuserprefs():
     """ Fetch the preferences of the current user in JSON form """
 
@@ -1776,7 +1785,7 @@ def saveuserprefs():
 
 
 @app.route("/wait")
-@authenticated()
+@auth_required()
 def wait():
     """ Show page to wait for a timed game to start """
 
@@ -1822,7 +1831,7 @@ def wait():
 
 
 @app.route("/newgame")
-@authenticated()
+@auth_required()
 def newgame():
     """ Show page to initiate a new game """
 
@@ -1883,7 +1892,7 @@ def newgame():
 
 
 @app.route("/initgame", methods=['POST'])
-@authenticated(ok=False)
+@auth_required(ok=False)
 def initgame():
     """ Create a new game and return its UUID """
 
@@ -2049,7 +2058,7 @@ def board():
 
 
 @app.route("/gameover", methods=['POST'])
-@authenticated(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def gameover():
     """ A player has seen a game finish: remove it from
         the zombie list, if it is there """
@@ -2065,7 +2074,7 @@ def gameover():
 
 
 @app.route("/friend")
-@authenticated()
+@auth_required()
 def friend():
     """ Page for users to register or unregister themselves
         as friends of Netskrafl """
@@ -2110,14 +2119,14 @@ def promo():
 
 
 @app.route("/signup", methods=['GET'])
-@authenticated()
+@auth_required()
 def signup():
     """ Sign up as a friend, enter card info, etc. """
     return render_template("signup.html", user=current_user())
 
 
 @app.route("/skilmalar", methods=['GET'])
-@authenticated()
+@auth_required()
 def skilmalar():
     """ Conditions """
     return render_template("skilmalar.html", user=current_user())
@@ -2125,12 +2134,12 @@ def skilmalar():
 
 @app.route("/billing", methods=['GET', 'POST'])
 def handle_billing():
-    """ Receive signup and billing confirmations """
+    """ Receive signup and billing confirmations. No authentication required. """
     return billing.handle(request)
 
 
 @app.route("/")
-@authenticated()
+@auth_required()
 def main():
     """ Handler for the main (index) page """
 
@@ -2233,7 +2242,7 @@ def faq():
 
 
 @app.route("/page")
-@authenticated()
+@auth_required()
 def page():
     """ Show single-page UI test """
     user = current_user()
@@ -2281,14 +2290,16 @@ def oauth2callback():
     account = None
     userid = None
     try:
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), _CLIENT_ID)
-        # idinfo = id_token.verify_oauth2_token(token, google_urllib3.Request(http), _CLIENT_ID)
+        idinfo = id_token.verify_oauth2_token(
+            token, google_requests.Request(), _CLIENT_ID
+        )
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid. Get the user's Google Account ID from the decoded token.
         account = idinfo["sub"]
         name = idinfo["name"]
-        email = idinfo["email"]
+        # Make sure that the e-mail address is in lowercase
+        email = idinfo["email"].lower()
         userid = User.login_by_account(account, name, email)
     except ValueError as e:
         # Invalid token
