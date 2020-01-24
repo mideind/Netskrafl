@@ -66,13 +66,15 @@ class User:
     _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
-    _NAMESPACE = "user:2"
+    _NAMESPACE = "user:3"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
 
     def __init__(self, uid=None):
         """ Initialize a fresh User instance """
+        self._email = None
+        self._account = None
         self._nickname = u""
         self._inactive = False
         self._preferences = {}
@@ -103,11 +105,14 @@ class User:
                 email = u.email()
                 if email:
                     self.set_email(email)
+                    self._email = email
         else:
             self._user_id = uid
 
     def _init(self, um):
         """ Obtain the properties from the database entity """
+        self._email = um.email
+        self._account = um.account
         self._nickname = um.nickname
         self._inactive = um.inactive
         self._preferences = um.prefs
@@ -123,17 +128,26 @@ class User:
 
     def _fetch(self):
         """ Fetch the user's record from the database """
+        # Store the already associated email, if any, making
+        # sure we retain it when updating the user information
+        email = self._email
         um = UserModel.fetch(self._user_id)
         if um is None:
             # Use the default properties for a newly created user
             self.set_new_bag(True)  # Fresh users get the new bag by default
             # This updates the database
             UserModel.create(
-                self._user_id, self.nickname(), self._preferences
+                self._user_id, self.nickname(), email, self._preferences
             )
         else:
             # Initialize from the database
             self._init(um)
+            # Hack to make sure that the e-mail from the logged-in user
+            # is preserved, if any
+            if email and not um.email:
+                self._email = email
+                um.email = email
+                um.put()
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
@@ -142,6 +156,8 @@ class User:
             # request in the interval between a database update and a memcache update
             um = UserModel.fetch(self._user_id)
             assert um is not None
+            um.email = self._email
+            um.account = self._account
             um.nickname = self._nickname
             um.nick_lc = self._nickname.lower()
             um.name_lc = self.full_name().lower()

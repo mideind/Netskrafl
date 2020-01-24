@@ -141,16 +141,17 @@ class UserModel(ndb.Model):
     human_elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
-    highest_score_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    highest_score_game = ndb.StringProperty(required = False, default = None)
     # Best word laid down
-    best_word = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word = ndb.StringProperty(required = False, default = None)
     best_word_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
-    best_word_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word_game = ndb.StringProperty(required = False, default = None)
 
     @classmethod
-    def create(cls, user_id, nickname, preferences = None):
+    def create(cls, user_id, nickname, email, preferences = None):
         """ Create a new user """
         user = cls(id = user_id)
+        user.email = email
         user.nickname = nickname # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False # A new user is always active
