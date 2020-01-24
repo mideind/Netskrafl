@@ -51,6 +51,7 @@ from flask import (
 # from google.appengine.runtime import DeadlineExceededError
 # from google.appengine.api import users
 
+# The following strangeness is needed because of a Google bug
 import six; reload(six)
 
 from google.oauth2 import id_token
@@ -58,8 +59,6 @@ from google.auth.transport import requests as google_requests
 
 import requests
 import requests_toolbelt.adapters.appengine
-
-import admin
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -2273,8 +2272,12 @@ def login():
 
 @app.route("/oauth2callback", methods=["POST"])
 def oauth2callback():
+    """ The OAuth2 login flow POSTs to this callback when a user has
+        signed in using a Google Account """
 
     if not _CLIENT_ID:
+        # Something is wrong in the internal setup of the server
+        # (environment variable probably missing)
         # 500 - Internal server error
         return jsonify({'status': 'invalid', "msg": "Missing CLIENT_ID"}), 500
 
@@ -2282,6 +2285,7 @@ def oauth2callback():
     csrf_token = request.form.get("csrfToken", "")
 
     if not token:
+        # No authentication token included in the request
         # 400 - Bad Request
         return jsonify({"status": "invalid", "msg": "Missing token"}), 400
 
@@ -2290,16 +2294,21 @@ def oauth2callback():
     account = None
     userid = None
     try:
+        # Verify the token and extract its claims
         idinfo = id_token.verify_oauth2_token(
             token, google_requests.Request(), _CLIENT_ID
         )
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
-        # ID token is valid. Get the user's Google Account ID from the decoded token.
+        # ID token is valid; extract the claims
+        # Get the user's Google Account ID
         account = idinfo["sub"]
+        # Full name of user
         name = idinfo["name"]
         # Make sure that the e-mail address is in lowercase
         email = idinfo["email"].lower()
+        # Attempt to find an associated user record in the datastore,
+        # or create a fresh user record if not found
         userid = User.login_by_account(account, name, email)
     except ValueError as e:
         # Invalid token
@@ -2311,6 +2320,7 @@ def oauth2callback():
         # 401 - Unauthorized
         return jsonify({'status': 'invalid', 'msg': "Unable to obtain user id"}), 401
 
+    # Authentication complete; user id obtained
     session["user"] = {
         "id": userid,
     }
@@ -2318,40 +2328,39 @@ def oauth2callback():
     return jsonify({'status': 'success'})
 
 
-@app.route("/admin/usercount", methods=["POST"])
-def admin_usercount():
-    if not running_local:
-        return "", 401
-    return admin.admin_usercount()
+# We only enable the administration routes if running
+# on a local development server, not on the production server
+
+if running_local:
+
+    import admin
 
 
-@app.route("/admin/userupdate", methods=['GET'])
-def admin_userupdate():
-    if not running_local:
-        return "", 401
-    return admin.admin_userupdate()
+    @app.route("/admin/usercount", methods=["POST"])
+    def admin_usercount():
+        # Be careful - this operation is EXTREMELY slow on Cloud Datastore
+        return admin.admin_usercount()
 
 
-@app.route("/admin/setfriend", methods=["GET"])
-def admin_setfriend():
-    if not running_local:
-        return "", 401
-    return admin.admin_setfriend()
+    @app.route("/admin/userupdate", methods=['GET'])
+    def admin_userupdate():
+        return admin.admin_userupdate()
 
 
-@app.route("/admin/loadgame", methods=["POST"])
-def admin_loadgame():
-    if not running_local:
-        return "", 401
-    return admin.admin_loadgame()
+    @app.route("/admin/setfriend", methods=["GET"])
+    def admin_setfriend():
+        return admin.admin_setfriend()
 
 
-@app.route("/admin/main")
-def admin_main():
-    """ Show main administration page """
-    if not running_local:
-        return "", 401
-    return render_template("admin.html")
+    @app.route("/admin/loadgame", methods=["POST"])
+    def admin_loadgame():
+        return admin.admin_loadgame()
+
+
+    @app.route("/admin/main")
+    def admin_main():
+        """ Show main administration page """
+        return render_template("admin.html")
 
 
 # noinspection PyUnusedLocal

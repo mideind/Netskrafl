@@ -15,18 +15,6 @@ instance_class: B2
 manual_scaling:
   instances: 3
 
-# Running on frontend instances of class 2 (256 MB RAM)
-#instance_class: F2
-#automatic_scaling:
-#  min_idle_instances: 4
-#  max_idle_instances: 6
-#  min_pending_latency: 2000ms
-#  max_pending_latency: 5000ms
-
-#inbound_services:
-#- warmup
-#- channel_presence
-
 vpc_access_connector:
   name: projects/netskrafl/locations/us-central1/connectors/vpc0c
 
@@ -183,12 +171,6 @@ handlers:
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
   expiration: "1d 0h"
-
-# Admin web URLs, requiring admin authorization
-- url: /admin/.*
-  script: netskrafl.app
-  login: admin
-  auth_fail_action: unauthorized
 
 # Catchall for all other URLS
 - url: .*
