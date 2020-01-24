@@ -24,7 +24,7 @@ import hmac
 
 from flask import redirect, jsonify, url_for
 
-import google.appengine.api.urlfetch as urlfetch
+import requests
 
 from skraflgame import User
 
@@ -123,7 +123,7 @@ def cancel_friend(user):
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
     try:
         url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
-        payload = json.dumps(dict(label=user.id()))
+        payload = dict(label=user.id())
         ts = datetime.utcnow().isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
@@ -136,14 +136,12 @@ def cancel_friend(user):
             "X-SalesCloud-Access-Key": _SECRET.public_key,
             "X-SalesCloud-Signature": digest
         }
-        result = urlfetch.fetch(
-            url=url,
-            follow_redirects=False,
-            deadline=30,
-            payload=payload,
-            method=urlfetch.POST,
+        result = requests.post(
+            url,
+            json=payload,
             headers=headers,
-            validate_certificate=True
+            timeout=30.0,
+            allow_redirects=False
         )
         if result.status_code != 200:
             # Not OK
@@ -152,7 +150,7 @@ def cancel_friend(user):
                 .format(user.id(), result.status_code)
             )
             return False
-        response = json.loads(result.content)
+        response = result.json
         # noinspection PySimplifyBooleanCheck,PyPep8
         if response.get("success") != True:
             logging.error(
@@ -165,7 +163,7 @@ def cancel_friend(user):
         user.set_has_paid(False)
         user.update()
         logging.info("Removed user {0} as friend".format(user.id()))
-    except urlfetch.Error as ex:
+    except requests.RequestException as ex:
         logging.error(
             "Exception when cancelling friend for user {1}: {0}".format(ex, user.id())
         )

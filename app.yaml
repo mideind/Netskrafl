@@ -7,9 +7,8 @@
 # Deploy with 'gcloud beta app deploy --no-promote --version=newdb app.yaml'
 #
 
-runtime: python27
-api_version: 1
-threadsafe: true
+runtime: python37
+entrypoint: gunicorn -b :$PORT netskrafl:app
 
 instance_class: B2
 manual_scaling:
@@ -35,9 +34,6 @@ libraries:
   version: latest
 - name: grpcio
   version: 1.0.0
-
-builtins:
-- deferred: on
 
 handlers:
 

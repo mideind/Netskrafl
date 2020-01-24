@@ -51,14 +51,11 @@ from flask import (
 # from google.appengine.runtime import DeadlineExceededError
 # from google.appengine.api import users
 
-# The following strangeness is needed because of a Google bug
-import six; reload(six)
-
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 import requests
-import requests_toolbelt.adapters.appengine
+# import requests_toolbelt.adapters.appengine
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -90,7 +87,7 @@ from cache import memcache
 
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
-requests_toolbelt.adapters.appengine.monkeypatch()
+# requests_toolbelt.adapters.appengine.monkeypatch()
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -141,9 +138,6 @@ _autoplayer_lock = threading.Lock()
 _PROMO_FREQUENCY = 8  # A promo check is done randomly, but on average every 1 out of N times
 _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
-
-# URL to navigate to after logout
-_LOGOUT_URL = "/"
 
 # Set to True to make the single-page UI the default
 _SINGLE_PAGE_UI = False
@@ -324,7 +318,7 @@ class RequestData:
         return r if isinstance(r, list) else []
 
     def __getitem__(self, key):
-        """ Shortcut: allow indexing syntax with an empty (Unicode) string default """
+        """ Shortcut: allow indexing syntax with an empty string default """
         return self.q.get(key, u"")
 
 
@@ -466,7 +460,7 @@ def _userlist(query, spec):
 
     def elo_str(elo):
         """ Return a string representation of an Elo score, or a hyphen if none """
-        return unicode(elo) if elo else u"-"
+        return elo or "-"
 
     # We will be returning a list of human players
     cuser = current_user()
@@ -1616,7 +1610,7 @@ class UserForm:
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr=None):
-        self.logout_url = _LOGOUT_URL
+        self.logout_url = url_for("logout")
         if usr:
             self.init_from_user(usr)
         else:
@@ -2270,6 +2264,14 @@ def login():
     return render_template("login.html", main_url=main_url)
 
 
+@app.route("/logout")
+def logout():
+    """ Log the user out """
+    if "user" in session:
+        del session["user"]
+    return redirect(url_for("login"))
+
+
 @app.route("/oauth2callback", methods=["POST"])
 def oauth2callback():
     """ The OAuth2 login flow POSTs to this callback when a user has
@@ -2380,4 +2382,4 @@ def server_error(e):
 # Run a default Flask web server for testing if invoked directly as a main program
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=8080, use_debugger=True)

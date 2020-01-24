@@ -201,10 +201,18 @@ function submitForm() {
 <script>
 
    function logOut() {
-      var auth2 = gapi.auth2.getAuthInstance();
-      auth2.signOut().then(
-         function () {
-            location.href='{{ uf.logout_url | safe }}';
+      gapi.load("auth2",
+         function() {
+            gapi.auth2.init({ client_id: '62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com' }).then(
+               function() {
+                  var auth2 = gapi.auth2.getAuthInstance();
+                  auth2.signOut().then(
+                     function () {
+                        location.href='{{ uf.logout_url | safe }}';
+                     }
+                  );
+               }
+            );
          }
       );
    }

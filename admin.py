@@ -18,7 +18,7 @@ import logging
 
 from flask import jsonify
 from flask import request
-from google.appengine.ext import deferred
+# from google.appengine.ext import deferred
 
 from languages import Alphabet
 from skrafldb import ndb, iter_q, Client, UserModel, GameModel
@@ -55,14 +55,16 @@ def deferred_update():
                 .format(e, scan, count)
             )
             # Do not retry the task
-            raise deferred.PermanentTaskFailure()
+            # !!! TODO: Alternative solution for Python 3 GAE environment
+            # raise deferred.PermanentTaskFailure()
     logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
 
 
 def admin_userupdate():
     """ Start a user update background task """
     logging.info("Starting user update")
-    deferred.defer(deferred_update)
+    # !!! TODO: Update for Python 3 GAE environment
+    # deferred.defer(deferred_update)
     return "<html><body><p>User update started</p></body></html>"
 
 
