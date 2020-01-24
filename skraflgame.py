@@ -104,6 +104,8 @@ class User:
                 # Use the user's email address, if available
                 email = u.email()
                 if email:
+                    # Make sure that the e-mail address is lowercase
+                    email = email.lower()
                     self.set_email(email)
                     self._email = email
         else:
@@ -142,9 +144,10 @@ class User:
         else:
             # Initialize from the database
             self._init(um)
-            # Hack to make sure that the e-mail from the logged-in user
-            # is preserved, if any
-            if email and not um.email:
+            # Hack to make sure that the e-mail address from the logged-in user
+            # is updated in the database
+            if email and email != um.email:
+                # Need to re-assign self._email since _init() may have overwritten it
                 self._email = email
                 um.email = email
                 um.put()
