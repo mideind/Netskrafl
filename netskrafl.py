@@ -139,6 +139,9 @@ _PROMO_FREQUENCY = 8  # A promo check is done randomly, but on average every 1 o
 _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
+# Maximum number of online users to display
+MAX_ONLINE = 80
+
 # Set to True to make the single-page UI the default
 _SINGLE_PAGE_UI = False
 
@@ -193,6 +196,7 @@ def inject_into_context():
         # Variable dev_server is True if running on the GAE development server
         dev_server=running_local,
         project_id=_PROJECT_ID,
+        client_id=_CLIENT_ID,
         firebase_api_key=_FIREBASE_API_KEY,
         firebase_sender_id=_FIREBASE_SENDER_ID
     )
@@ -503,16 +507,21 @@ def _userlist(query, spec):
     if online is None:
         # Not found: do a query
         online = firebase.get_connected_users()  # Returns a set
-        # Store the result as a list in the cache with a lifetime of 5 minutes
-        memcache.set("live", list(online), time=5 * 60, namespace="userlist")
+        # Store the result as a list in the cache with a lifetime of 10 minutes
+        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
     else:
         # Convert the cached list back into a set
         online = set(online)
 
     if query == u"live":
-        # Return all online (live) users
+        # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
-        ousers = User.load_multi(online)
+        if len(online) > MAX_ONLINE:
+            iter_online = random.sample(list(online), MAX_ONLINE)
+        else:
+            iter_online = online
+
+        ousers = User.load_multi(iter_online)
         for lu in ousers:
             if lu and lu.is_displayable() and lu.id() != cuid:
                 # Don't display the current user in the online list
@@ -2382,4 +2391,4 @@ def server_error(e):
 # Run a default Flask web server for testing if invoked directly as a main program
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8080, use_debugger=True)
+    app.run(debug=True, port=8080, use_debugger=True, threaded=False, processes=1)

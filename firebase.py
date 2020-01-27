@@ -217,4 +217,4 @@ def create_custom_token(uid, valid_minutes=60):
     global _firebase_app
     if _firebase_app is None:
         _firebase_app = initialize_app()
-    return auth.create_custom_token(uid)
+    return auth.create_custom_token(uid).decode()

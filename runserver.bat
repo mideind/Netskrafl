@@ -1,10 +1,12 @@
-REM Start the Google App Engine Development Server for Python
-set GOOGLE_APPLICATION_CREDENTIALS=resources\netskrafl-0dd9fbdf9ab3.json
-set PYTHON=C:\python27\python
-set CLOUD_SDK=%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk
-set PYTHONPATH=%CLOUD_SDK%\platform\google_appengine;%cd%\lib
-set APPSERVER=%CLOUD_SDK%\bin\dev_appserver.py
-%PYTHON% "%APPSERVER%" -A netskrafl --port=8080 --admin_port=8000 --host=0.0.0.0 ^
-   --enable_console --enable_host_checking=False --watcher_ignore_re="^(.*\.pyc)|(\.git.*)$" ^
-   app.yaml skraflstats.yaml
 
+REM Start the Netskrafl server on a local development machine
+
+set GOOGLE_APPLICATION_CREDENTIALS=resources\netskrafl-0dd9fbdf9ab3.json
+set PROJECT_ID=netskrafl
+set REDISHOST=10.128.0.3
+set REDISPORT=6379
+set CLIENT_ID=62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
+set FIREBASE_API_KEY=AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
+set FIREBASE_SENDER_ID=62474854399
+
+python netskrafl.py

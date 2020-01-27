@@ -499,7 +499,7 @@ function lateInit() {
 
 {% if firebase_token %}
    // Log in to Firebase and activate listeners once the login succeeds
-   initFirebaseListener("{{ firebase_token }}");
+   initFirebaseListener("{{ firebase_token | safe }}");
 {% endif %}
 
 {% if tab %}

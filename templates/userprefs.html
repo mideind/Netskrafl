@@ -46,7 +46,7 @@ function submitForm() {
 
    <div class="loginhdr"><span class='glyphicon glyphicon-address-book'></span> Upplýsingar um leikmann</div>
    <div>
-   <form name="frm1" id="frm1" action="{{ url_for('userprefs', from = from_url) | safe }}" method="post">
+   <form name="frm1" id="frm1" action="{{ url_for('userprefs', from=from_url) | safe }}" method="post">
 
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
@@ -203,7 +203,7 @@ function submitForm() {
    function logOut() {
       gapi.load("auth2",
          function() {
-            gapi.auth2.init({ client_id: '62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com' }).then(
+            gapi.auth2.init({ client_id: '{{ client_id | safe }}' }).then(
                function() {
                   var auth2 = gapi.auth2.getAuthInstance();
                   auth2.signOut().then(
