@@ -148,6 +148,7 @@ skip_files:
 - ^resources/.*\.txt$   # Raw text resources, such as word lists
 - ^resources/.*\.text\.dawg$   # DAWG trees in text form
 - ^resources/.*\.dawg\.pickle$ # DAWG trees in pickled form
+- ^resources/.*\.csv$   # CSV files
 - ^(.*/)?.*\.psd$       # Photoshop files
 - ^(.*/)?.*\.ai$        # Illustrator files
 - ^(.*/)?.*\.log$       # Local log files
@@ -165,5 +166,6 @@ skip_files:
 - ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
 - ^ptvsd/.*$            # PTVSD debugger
 - ^log/.*$              # Log files
+- ^venv/.*$             # Virtual environment files
 - ^[gG]runtfile.js$     # Gruntfile
 - ^(.*/)?\..*$          # Files whose names start with a period
