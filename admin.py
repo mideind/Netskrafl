@@ -37,7 +37,6 @@ def deferred_update():
     CHUNK_SIZE = 200
     scan = 0
     count = 0
-    logging.disable()
     with ndb.Client().context():
         try:
             q = UserModel.query()
@@ -48,11 +47,8 @@ def deferred_update():
                     um.put()
                     count += 1
                 if scan % 1000 == 0:
-                    logging.disable(level=logging.INFO)
                     logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
-                    logging.disable()
         except Exception as e:
-            logging.disable(level=logging.INFO)
             logging.info(
                 "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}"
                 .format(e, scan, count)
@@ -60,7 +56,6 @@ def deferred_update():
             # Do not retry the task
             # !!! TODO: Alternative solution for Python 3 GAE environment
             # raise deferred.PermanentTaskFailure()
-    logging.disable(level=logging.INFO)
     logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
 
 
