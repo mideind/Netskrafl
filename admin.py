@@ -15,10 +15,10 @@
 """
 
 import logging
+from threading import Thread
 
 from flask import jsonify
 from flask import request
-# from google.appengine.ext import deferred
 
 from languages import Alphabet
 from skrafldb import ndb, iter_q, Client, UserModel, GameModel
@@ -37,19 +37,22 @@ def deferred_update():
     CHUNK_SIZE = 200
     scan = 0
     count = 0
+    logging.disable()
     with ndb.Client().context():
         try:
             q = UserModel.query()
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
                 scan += 1
-                if not um.email:
-                    um.email = um.prefs.get("email")
-                    if um.email:
-                        um.put()
-                        count += 1
+                if um.email and not um.email.islower():
+                    um.email = um.email.lower()
+                    um.put()
+                    count += 1
                 if scan % 1000 == 0:
+                    logging.disable(level=logging.INFO)
                     logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
+                    logging.disable()
         except Exception as e:
+            logging.disable(level=logging.INFO)
             logging.info(
                 "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}"
                 .format(e, scan, count)
@@ -57,14 +60,14 @@ def deferred_update():
             # Do not retry the task
             # !!! TODO: Alternative solution for Python 3 GAE environment
             # raise deferred.PermanentTaskFailure()
+    logging.disable(level=logging.INFO)
     logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
 
 
 def admin_userupdate():
     """ Start a user update background task """
     logging.info("Starting user update")
-    # !!! TODO: Update for Python 3 GAE environment
-    # deferred.defer(deferred_update)
+    Thread(target=deferred_update).start()
     return "<html><body><p>User update started</p></body></html>"
 
 

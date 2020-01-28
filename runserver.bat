@@ -8,5 +8,6 @@ set REDISPORT=6379
 set CLIENT_ID=62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
 set FIREBASE_API_KEY=AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
 set FIREBASE_SENDER_ID=62474854399
+set SERVER_SOFTWARE=Development
 
 python netskrafl.py
