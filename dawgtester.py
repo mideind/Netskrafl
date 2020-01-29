@@ -83,6 +83,7 @@ class DawgTester:
         self._test_true(u"hán")
         self._test_true(u"háni")
         self._test_true(u"háns")
+        self._test_true(u"sté")
         self._test_false(u"réttleganna")
         self._test_false(u"meistarleganna")
         self._test_false(u"hjálpsamligana")

@@ -589,6 +589,7 @@ class DawgBuilder:
     def __init__(self, encoding):
         self._dawg = None
         self._encoding = encoding
+        self._alphabet = set(encoding)
 
     class _InFile(object):
         """ InFile represents a single sorted input file. """
@@ -765,6 +766,11 @@ class DawgBuilder:
                     removal.read_word()
                     remove_key = removal.next_key()
                     removed += 1
+                elif set(word) - self._alphabet:
+                    print(
+                        u"The word '{0}' contains characters that are "
+                        u"not in the expected alphabet".format(word)
+                    )
                 else:
                     # Not a word to be removed: add it to the graph
                     self._dawg.add_word(word)
