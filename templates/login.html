@@ -13,13 +13,14 @@
 <meta property="og:image:height" content="600" />
 
 <!-- Google OAuth sign-in -->
-<meta name="google-signin-client_id" content="62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com">
+<meta name="google-signin-scope" content="profile email openid">
+<meta name="google-signin-client_id" content="{{ client_id | safe }}">
+
+<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
 
 {% endblock %}
 
 {% block startscripts %}
-<!-- include 'firebase.html' -->
-<!-- include 'firebase-auth.html' -->
 {% endblock %}
 
 {% block scripts %}
@@ -41,14 +42,18 @@
    </div>
    <div id="board-pic"><img src="{{ url_for('static', filename='Board.png') }}" width="310" height="300"></div>
    <div class="welcome">
-      Netskrafl er vettvangur <b>yfir 16.000 íslenskra skraflara</b> á netinu.
+      Netskrafl er vettvangur <b>yfir 20.000 íslenskra skraflara</b> á netinu.
    </div>
    <div class="welcome">
       Netskrafl notar Google Accounts innskráningu, þá
-      sömu og er notuð m.a. í Gmail.
+      sömu og er notuð m.a. í Gmail. Til að auðkenna þig sem notanda
+      og halda innskráningunni virkri er óhjákvæmilegt að geyma
+      þar til gerða smáköku (<i>'cookie'</i>) í vafranum þínum.
    </div>
    <div class="welcome">
-      Netskrafl safnar hvorki persónuupplýsingum né geymir þær.
+      Til auðkenningar tengir Netskrafl tölvupóstfang við hvern notanda.
+      Að öðru leyti eru ekki geymdar aðrar upplýsingar um notendur en þær sem þeir
+      skrá sjálfir. Annáll er haldinn um umferð um vefinn.
    </div>
    <div class="welcome">
       Þú getur alltaf
@@ -56,8 +61,8 @@
       smella á <a href="{{ url_for('help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
       hér til vinstri.
    </div>
-   <div style="float:right">
-      <div class="g-signin2" data-onsuccess="onSignIn"></div>
+   <div style="float:right; margin-top:12px">
+      <div class="g-signin2" id="g-signin2-large" data-onsuccess="onSignIn"></div>
    </div>
 </div>
 
@@ -69,8 +74,9 @@
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
-   <div style="text-align: center">
-      <div class="g-signin2" data-onsuccess="onSignIn"></div>
+   <div style="width:100%; text-align: center">
+      <div class="g-signin2" id="g-signin2-small" data-onsuccess="onSignIn"
+         style="display:inline-block; margin-top:6px"></div>
    </div>
 </div>
 
@@ -79,6 +85,28 @@
 {% block endscripts %}
 
 <script>
+
+function renderButton() {
+   // Render the login buttons, i.e. for both large and small UI forms
+   var paramsLarge = {
+      'width': 220,
+      'height': 48,
+      'longtitle': true,
+      'theme': 'dark',
+      'onsuccess': onSignIn,
+      'onfailure': onFailure
+   };
+   gapi.signin2.render('g-signin2-large', paramsLarge);
+   var paramsSmall = {
+      'width': 172,
+      'height': 44,
+      'longtitle': false,
+      'theme': 'dark',
+      'onsuccess': onSignIn,
+      'onfailure': onFailure
+   };
+   gapi.signin2.render('g-signin2-small', paramsSmall);
+}
 
 function getCookie(name) {
    var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
@@ -99,7 +127,13 @@ function oauth2callback(idToken, csrfToken) {
    );
 }
 
+function onFailure(error) {
+   // Called when something goes wrong in the Google sign-in process
+   console.log(error);
+}
+
 function onSignIn(googleUser) {
+   // Called when a user has successfully logged in using the Google sign-in process
    var idToken = googleUser.getAuthResponse().id_token;
    var profile = googleUser.getBasicProfile();
    var id = profile.getId();
@@ -129,25 +163,6 @@ function onSignIn(googleUser) {
 }
 
 function initMain() {
-/*
-   gapi.load('auth2',
-      function() {
-         auth2 = gapi.auth2.init(
-            {
-               client_id: 'CLIENT_ID.apps.googleusercontent.com',
-               fetch_basic_profile: false,
-               scope: 'profile'
-            }
-         );
-         // Sign the user in, and then retrieve their ID.
-         auth2.signIn().then(
-            function() {
-               console.log(auth2.currentUser.get().getId());
-            }
-         );
-      }
-   );
-*/
 }
 
 $(document).ready(initMain);

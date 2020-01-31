@@ -46,7 +46,7 @@ class _Secret:
         """ Fetch secret key and client UUID from a file """
         try:
             with open("resources/salescloud_key.bin", "r") as f:
-                cls._SC_SECRET_KEY = f.readline().strip()
+                cls._SC_SECRET_KEY = f.readline().strip().encode("ascii")
                 cls._SC_CLIENT_UUID = f.readline().strip()
         except Exception:
             logging.error(u"Unable to read file resources/salescloud_key.bin")
@@ -55,7 +55,7 @@ class _Secret:
 
     @property
     def key(self):
-        """ Return the secret key value """
+        """ Return the secret key value, which is a bytes object """
         if not self._SC_SECRET_KEY:
             _Secret.load()
         return self._SC_SECRET_KEY
@@ -77,7 +77,8 @@ _SECRET = _Secret()
 
 
 def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=100.0):
-    """ Validate an incoming request against our secret key """
+    """ Validate an incoming request against our secret key. All parameters
+        are assumed to be strings (str) except payload and xsc_digest, which are bytes. """
 
     # Sanity check
     if not all((method, url, xsc_date, xsc_key, xsc_digest)):
@@ -108,8 +109,8 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=
             "Billing request outside timestamp window, delta is {0:.1f}".format(delta)
         )
         return False
-    # Reconstruct the signature
-    xsc_signature = xsc_date + xsc_key + method + url + payload
+    # Reconstruct the signature, which is a bytes object
+    xsc_signature = (xsc_date + xsc_key + method + url).encode("ascii") + payload
     # Hash it using the secret key
     my_digest = hmac.new(_SECRET.key, xsc_signature, hashlib.sha256).hexdigest()
     # Compare with the signature from the client and return True if they match
@@ -127,14 +128,16 @@ def cancel_friend(user):
         ts = datetime.utcnow().isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
-        signature = ts + _SECRET.public_key + method + url  # + payload
+        signature = (ts + _SECRET.public_key + method + url).encode('ascii')
         # Hash the signature using the secret key
-        digest = hmac.new(_SECRET.key, signature, hashlib.sha256).hexdigest()
+        digest = hmac.new(
+            _SECRET.key, signature, hashlib.sha256
+        )
         headers = {
             "Content-Type": "application/json",
             "X-SalesCloud-Date": ts,
             "X-SalesCloud-Access-Key": _SECRET.public_key,
-            "X-SalesCloud-Signature": digest
+            "X-SalesCloud-Signature": digest.hexdigest()
         }
         result = requests.post(
             url,
@@ -150,7 +153,7 @@ def cancel_friend(user):
                 .format(user.id(), result.status_code)
             )
             return False
-        response = result.json
+        response = result.json()
         # noinspection PySimplifyBooleanCheck,PyPep8
         if response.get("success") != True:
             logging.error(
@@ -181,14 +184,14 @@ def handle(request):
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
         xsc_date = request.args.get("salescloud_date", "")[0:256]
         xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode(
-            "utf-8"
+            "ascii"
         )
         uid = User.current_id() or ""
         # pylint: disable=bad-continuation
         if not request_valid(
             request.method,
             request.base_url,
-            uid,
+            uid.encode("ascii"),  # Payload
             xsc_date,
             xsc_key,
             xsc_digest,
@@ -206,9 +209,9 @@ def handle(request):
     xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]
     xsc_date = request.headers.get("X-SalesCloud-Date", "")[0:256]
     xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256].encode(
-        "utf-8"
+        "ascii"
     )
-    payload = ""
+    payload = b""
     try:
         # Do not accept request bodies larger than 2K
         if int(request.headers.get("Content-length", 0)) < 2048:
@@ -244,7 +247,7 @@ def handle(request):
     ):
         # Updating the subscription status of a user
         uid = j.get(u"customer_label")
-        if uid and not isinstance(uid, basestring):
+        if uid and not isinstance(uid, str):
             uid = None
         if uid:
             uid = uid[0:32]  # Sanity cut-off

@@ -348,9 +348,6 @@ div.bag {
    opacity: 0.75;
 }
 
-table.bag-content {
-}
-
 table.bag-content td {
    min-width: 12px;
    min-height: 17px;
@@ -843,6 +840,7 @@ div.loginform-large {
    left: 220px;
    top: 36px;
    width: auto;
+   max-width: 740px;
    padding: 0;
 }
 
@@ -980,9 +978,6 @@ div.movelist-container div.bag {
    margin: 0;
    padding: 4px 28px 0 27px;
    height: 104px;
-}
-
-div.game-item {
 }
 
 div.game-timed {
@@ -1319,7 +1314,6 @@ span.list-newbag {
    display: none;
    font-size: 18px;
    color: @triple-word;
-   width: 22px;
    max-width: 22px;
    margin-left: 14px;
    overflow: hidden;
@@ -1329,7 +1323,7 @@ span.list-manual {
    display: none;
    font-size: 18px;
    color: @triple-word;
-   width: 26px;
+   /* width: 26px; */
    max-width: 26px;
    margin-left: 14px;
    overflow: hidden;
@@ -1675,11 +1669,6 @@ div.challenge:before {
 
 div.challenge.disabled {
    border-color: @background;
-}
-
-div.over,
-span.over {
-   /* Overridden for fullscreen media */
 }
 
 div #userlist,
@@ -2389,7 +2378,6 @@ div.right-tab {
    min-width: 38px;
    top: auto;
    text-align: left;
-   vertical-align: middle;
    padding-top: 14px;
    padding-left: 10px;
    font-size: 20px;
@@ -2517,14 +2505,11 @@ div.modal-close#chat-send {
 
 span.statsbutton {
    display: inline;
-   height: 20px;
    text-align: center;
    background-color: white;
    font-size: 16px;
    font-weight: 700;
    color: @pass-btn;
-   margin-top: 0;
-   margin-bottom: 0;
    margin-left: 4px;
    margin-right: 4px;
    padding-top: 2px;
@@ -2645,10 +2630,14 @@ span.list-ch,
 span.list-fav,
 span.list-icon,
 span.list-myturn,
-span.list-overdue,
-span.list-newbag {
+span.list-overdue {
    font-size: 20px;
    width: 32px;
+   max-width: 32px;
+}
+
+span.list-newbag {
+   font-size: 20px;
    max-width: 32px;
 }
 
@@ -3415,12 +3404,6 @@ span.total {
    color: white;
 }
 
-.rightmove .total {
-}
-
-.leftmove .total {
-}
-
 span.highlight {
    background-color: @alert;
    color: white;
@@ -3448,8 +3431,6 @@ div.error p {
    position: relative;
    top: 0;
    left: 0;
-   width: auto;
-   height: auto;
    margin: 0;
    padding: 0;
 }
@@ -3755,9 +3736,6 @@ div.help-container span.glyphicon-coffee-cup {
    color: @pass-btn;
 }
 
-div.promo-friend {
-}
-
 div.promo-krafla {
    background-color: #dadcdd;
 }
@@ -3882,7 +3860,7 @@ div.listitem {
    padding-bottom: 5px;
    overflow: hidden;
    vertical-align: top;
-   text-overflow: ellipsis;
+   /* text-overflow: ellipsis; */
    white-space: nowrap;
 }
 

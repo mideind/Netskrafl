@@ -205,12 +205,13 @@ class UserModel(ndb.Model):
         """ Attempt to fetch a user by email """
         if not email:
             return None
-        q = cls.query(UserModel.email == email)
+        q = cls.query(UserModel.email == email.lower())
         result = q.fetch()
         if not result:
             return None
         # If multiple user records have the same email, return the newest one
-        return sorted(result, key=lambda u: u.timestamp, reverse=True)[0]
+        # - but try to keep user records with elo==0 out of the picture
+        return sorted(result, key=lambda u: (u.elo > 0, u.timestamp), reverse=True)[0]
 
     @classmethod
     def fetch_multi(cls, user_ids):

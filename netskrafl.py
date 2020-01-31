@@ -116,10 +116,14 @@ app.config['DEBUG'] = running_local
 
 # Make sure that the Flask session cookie is secure (i.e. only used
 # with HTTPS unless we're running on a development server) and
-# invisible from JavaScript (HTTPONLY)
+# invisible from JavaScript (HTTPONLY).
+# Also, we set SameSite to 'Strict', indicating that our session cookie
+# should only sent back from the client during sessions on our site,
+# i.e. not when navigating to it from other sites.
 app.config.update(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Strict',
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31)
@@ -1619,7 +1623,12 @@ class UserForm:
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr=None):
-        self.logout_url = url_for("logout")
+        # We store the URL that the client will redirect to after
+        # doing an auth2.disconnect() call, clearing client-side
+        # credentials. The login() handler clears the server-side
+        # user cookie, so there is no need for an intervening redirect
+        # to logout().
+        self.logout_url = url_for("login")
         if usr:
             self.init_from_user(usr)
         else:
