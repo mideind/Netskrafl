@@ -11,12 +11,14 @@
 		"files.exclude": {
 			"__pycache__/": true,
 			".idea/": true,
+			".vscode/": true,
+			"**/*.min.js": true,
+			"**/*.profile": true,
+			"**/*.pyc": true,
 			"google/": true,
 			"lib/": true,
 			"node_modules/": true,
-			"**/*.pyc": true,
-			"**/*.min.js": true,
-			"**/*.profile": true,
+			"venv/": true
 		},
 		"files.eol": "\n",
 		"[javascript]": {
@@ -31,5 +33,8 @@
 		"python.linting.pylintArgs": [
 			"--rcfile=${workspaceDir}/.pylintrc"
 		],
+		"files.watcherExclude": {
+			"**/venv/**": true
+		},
 	}
 }
