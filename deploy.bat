@@ -1,10 +1,6 @@
 @ECHO OFF
 ECHO Deploy an update to App Server
 set GOOGLE_APPLICATION_CREDENTIALS=resources\netskrafl-0dd9fbdf9ab3.json
-set PYTHONEXE=c:\python27\python
-set CLOUD_SDK=%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk
-set PYTHONPATH=%CLOUD_SDK%\platform\google_appengine;%cd%\lib
-set APPCFG=%CLOUD_SDK%\platform\google_appengine\appcfg.py
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
 IF /i "%1" EQU "STATS" GOTO STATS
@@ -18,28 +14,28 @@ IF /i "%1" EQU "DEFAULT" GOTO DEFAULT
 IF /i "%1" EQU "D" GOTO DEFAULT
 ECHO Full deployment (app + skraflstats) starting
 cmd.exe /c "grunt make"
-rem %PYTHONEXE% %APPCFG% update app.yaml skraflstats.yaml --noauth_local_webserver
+ECHO *** Currently disabled ***
 ECHO Full deployment completed
 GOTO :EOF
 :DEFAULT
 ECHO Default module deployment (app) starting
 cmd.exe /c "grunt make"
-%PYTHONEXE% "%APPCFG%" update app.yaml --noauth_local_webserver
+gcloud beta app deploy --version=newdb --no-promote --project=netskrafl app.yaml
 ECHO Default module deployment completed
 GOTO :EOF
 :INDEXES
 ECHO Index update starting
-%PYTHONEXE% "%APPCFG%" update_indexes . --noauth_local_webserver
+ECHO *** Currently disabled ***
 ECHO Index update completed
 GOTO :EOF
 :CRON
 ECHO Cron update starting
-%PYTHONEXE% "%APPCFG%" update_cron . --noauth_local_webserver
+ECHO *** Currently disabled ***
 ECHO Cron update completed
 GOTO :EOF
 :STATS
 ECHO Skraflstats deployment starting
-rem %PYTHONEXE% %APPCFG% update skraflstats.yaml --noauth_local_webserver
+ECHO *** Currently disabled ***
 ECHO Skraflstats deployment completed
 GOTO :EOF
 :EOF

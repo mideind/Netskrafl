@@ -1,0 +1,60 @@
+
+# Files that should not be uploaded to App Engine
+
+# Raw text resources, such as word lists
+resources/*.txt
+
+# DAWG trees in text form
+resources/*.text.dawg
+
+# DAWG trees in pickled form
+resources/*.dawg.pickle
+
+# CSV files
+resources/*.csv
+
+# Photoshop & Illustrator files
+*.psd
+*.ai
+
+# Log files
+*.log
+
+# MarkDown documentation files
+*.md
+
+# Windows batch files and shell scripts
+*.bat
+*.sh
+
+# Backup files
+*.bak
+
+# Temporary files
+*.tmp
+*.TMP
+
+# Style sheets in LESS, to be compiled to CSS
+*.less
+
+# Temporary files
+~*
+*.py[cod]
+**/.*
+__pycache__/
+ptvsd/
+log/
+.vscode/
+.idea/
+
+# NodeJS stuff, mostly related to Grunt
+node_modules/
+[gG]runtfile.js
+package*.json
+
+# Python2 App Engine library files
+lib/
+
+# Python3 virtual environment library files
+venv/
+

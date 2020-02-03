@@ -12,7 +12,8 @@ entrypoint: gunicorn -b :$PORT netskrafl:app
 
 instance_class: B2
 manual_scaling:
-  instances: 3
+  # !!! TODO: Update the following to 3 when doing a full deployment
+  instances: 1
 
 vpc_access_connector:
   name: projects/netskrafl/locations/us-central1/connectors/vpc0c
@@ -29,22 +30,11 @@ env_variables:
   FIREBASE_API_KEY: AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
   FIREBASE_SENDER_ID: 62474854399
 
-libraries:
-- name: ssl
-  version: latest
-- name: grpcio
-  version: 1.0.0
-
 handlers:
 
-# Predefined App Engine task queue deferral URL, admin only
+# Instance start
 - url: /_ah/start
-  script: netskrafl.app
-
-# Predefined App Engine task queue deferral URL, admin only
-- url: /_ah/queue/deferred
-  script: google.appengine.ext.deferred.deferred.application
-  login: admin
+  script: auto
 
 # Robots.txt URL, cacheable
 - url: /robots.txt
@@ -170,31 +160,4 @@ handlers:
 
 # Catchall for all other URLS
 - url: .*
-  script: netskrafl.app
-
-# Files that should not be uploaded to App Engine
-skip_files:
-- ^resources/.*\.txt$   # Raw text resources, such as word lists
-- ^resources/.*\.text\.dawg$   # DAWG trees in text form
-- ^resources/.*\.dawg\.pickle$ # DAWG trees in pickled form
-- ^resources/.*\.csv$   # CSV files
-- ^(.*/)?.*\.psd$       # Photoshop files
-- ^(.*/)?.*\.ai$        # Illustrator files
-- ^(.*/)?.*\.log$       # Local log files
-- ^(.*/)?.*\.md$        # MarkDown documentation files
-- ^(.*/)?.*\.bat$       # Windows batch files
-- ^(.*/)?.*\.bak$       # Backup files
-- ^(.*/)?.*\.tmp$       # Temporary files
-- ^(.*/)?.*\.TMP$       # Temporary files
-- ^(.*/)?.*\.less$      # Style sheets in LESS, to be compiled to CSS
-- ^(.*/)?#.*#$          # File names enclosed in hashes
-- ^(.*/)?.*~$           # Temporary files ending in a curl
-- ^(.*/)?.*\.py[co]$    # Python bytecode files
-- ^(.*/)?.*/RCS/.*$
-- ^\.git/.*$            # GitHub stuff
-- ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
-- ^ptvsd/.*$            # PTVSD debugger
-- ^log/.*$              # Log files
-- ^.vscode/.*$          # VSCode files
-- ^[gG]runtfile.js$     # Gruntfile
-- ^(.*/)?\..*$          # Files whose names start with a period
+  script: auto
