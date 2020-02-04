@@ -50,7 +50,7 @@ assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 def _get_http():
     """ Provides an authorized HTTP object, one per thread """
-    if not hasattr(_tls, "_HTTP"):
+    if not hasattr(_tls, "_HTTP") or _tls._HTTP is None:
         http = httplib2.Http(timeout=_TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
@@ -63,6 +63,17 @@ def _get_http():
     return _tls._HTTP
 
 
+def _request(*args, **kwargs):
+    """ Attempt to post a Firebase request, with recovery on a BrokenPipeError """
+    try:
+        return _get_http().request(*args, **kwargs)
+    except BrokenPipeError:
+        # Attempt recovery by creating a new httplib2.Http object and
+        # forcing re-generation of the credentials
+        _tls._HTTP = None
+    return _get_http().request(*args, **kwargs)
+
+
 def _firebase_put(path, message=None):
     """ Writes data to Firebase.
 
@@ -73,7 +84,7 @@ def _firebase_put(path, message=None):
         path - the url to the Firebase object to write.
         value - a json string.
     """
-    return _get_http().request(path, method="PUT", body=message, headers=_HEADERS)
+    return _request(path, method="PUT", body=message, headers=_HEADERS)
 
 
 def _firebase_get(path):
@@ -86,7 +97,7 @@ def _firebase_get(path):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _get_http().request(path, method="GET", headers=_HEADERS)
+    return _request(path, method="GET", headers=_HEADERS)
 
 
 def _firebase_patch(path, message):
@@ -99,7 +110,7 @@ def _firebase_patch(path, message):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _get_http().request(path, method="PATCH", body=message, headers=_HEADERS)
+    return _request(path, method="PATCH", body=message, headers=_HEADERS)
 
 
 def _firebase_delete(path):
@@ -111,7 +122,7 @@ def _firebase_delete(path):
     Args:
         path - the url to the Firebase object to delete.
     """
-    return _get_http().request(path, method="DELETE", headers=_HEADERS)
+    return _request(path, method="DELETE", headers=_HEADERS)
 
 
 def send_message(message, *args):

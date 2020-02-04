@@ -1,11 +1,11 @@
 gunicorn
-googleapis_common_protos
-google-cloud-ndb
 protobuf
+googleapis_common_protos
 flask>=0.10
-# httplib2
 oauth2client
-redis==3.3.11
 requests
 requests-toolbelt
 firebase-admin
+redis==3.3.11
+google-cloud-ndb
+google-python-cloud-debugger
