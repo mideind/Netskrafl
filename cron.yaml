@@ -2,8 +2,12 @@ cron:
 - description: Generate skraflstats
   url: /stats/run
   schedule: every day 02:00
-  target: skraflstats
+  retry_parameters:
+    job_retry_limit: 2
+    min_backoff_seconds: 60
 - description: Generate Elo ratings
   url: /stats/ratings
   schedule: every day 02:20
-  target: skraflstats
+  retry_parameters:
+    job_retry_limit: 2
+    min_backoff_seconds: 60

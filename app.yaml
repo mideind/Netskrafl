@@ -30,6 +30,9 @@ env_variables:
   FIREBASE_API_KEY: AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
   FIREBASE_SENDER_ID: 62474854399
 
+inbound_services:
+- warmup
+
 handlers:
 
 # Instance start

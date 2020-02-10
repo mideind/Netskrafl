@@ -84,6 +84,7 @@ from skrafldb import (
 import billing
 import firebase
 from cache import memcache
+import skraflstats
 
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
@@ -988,30 +989,17 @@ def _challengelist():
     return result
 
 
-@app.route("/_ah/start")
-def start():
+@app.route("/_ah/warmup")
+def warmup():
     """ App Engine is starting a fresh instance - warm it up
         by loading word database """
     wdb = Wordbase.dawg()
     ok = u"upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
     logging.info(
-        u"Start/warmup, instance {0}, ok is {1}"
+        u"Warmup, instance {0}, ok is {1}"
         .format(os.environ.get("INSTANCE_ID", ""), ok)
     )
     return "", 200
-
-
-@app.route("/_ah/stop")
-def stop():
-    """ App Engine is stopping an instance """
-    return "", 200
-
-
-@app.route("/_ah/warmup")
-def warmup():
-    """ App Engine is starting a fresh instance - warm it up
-        by loading word database """
-    return start()
 
 
 @app.route("/submitmove", methods=['POST'])
@@ -2346,6 +2334,24 @@ def oauth2callback():
     }
     session.permanent = True
     return jsonify({'status': 'success'})
+
+
+# Skraflstats routes
+
+@app.route("/stats/run", methods=["GET"])
+def stats_run():
+    """ Start a task to calculate Elo points for games """
+    if not "X-Appengine-Cron" in request.headers and not running_local:
+        return "Restricted URL", 403
+    return skraflstats.run(request)
+
+
+@app.route("/stats/ratings", methods=['GET'])
+def stats_ratings():
+    """ Start a task to calculate top Elo rankings """
+    if not "X-Appengine-Cron" in request.headers and not running_local:
+        return "Restricted URL", 403
+    return skraflstats.ratings()
 
 
 # We only enable the administration routes if running

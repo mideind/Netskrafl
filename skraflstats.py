@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """ Server module for Netskrafl statistics and other background tasks
 
     Copyright (C) 2020 Miðeind ehf.
@@ -19,52 +17,12 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
-
-from flask import Flask
-from flask import render_template, jsonify
-from flask import request, url_for
-
-from google.appengine.ext import deferred
-from google.appengine.runtime import DeadlineExceededError
-# from google.appengine.api import users
-
-import users
+from threading import Thread
 
 from languages import Alphabet
 from skrafldb import ndb, Client, Context, UserModel, GameModel, StatsModel, RatingModel
 from skrafldb import iter_q
 
-
-# Standard Flask initialization
-
-# Flask initialization
-# The following shenanigans auto-insert an NDB client context into each WSGI context
-
-def ndb_wsgi_middleware(wsgi_app):
-    """ Returns a wrapper for the original WSGI app """
-
-    def middleware(environ, start_response):
-        """ Wraps the original WSGI app """
-        with Client.get_context():
-            return wsgi_app(environ, start_response)
-
-    return middleware
-
-app = Flask(__name__)
-
-# Wrap the WSGI app to insert the NDB client context into each request
-app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
-
-running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
-
-if running_local:
-    logging.info(u"Skraflstats module running with DEBUG set to True")
-
-app.config["DEBUG"] = running_local
-
-# Read secret session key from file
-with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
-    app.secret_key = f.read()
 
 # The K constant used in the Elo calculation
 ELO_K = 20.0  # For established players
@@ -455,15 +413,15 @@ def _create_ratings():
 
 def deferred_stats(from_time, to_time):
     """ This is the deferred stats collection process """
-    # Disable the in-context cache to save memory
-    # (it doesn't give any speed advantage for this processing)
-    # !!! Removed for Cloud NDB migration
-    # Client.get_context().disable_cache()
 
     with Client.get_context() as context:
 
         t0 = time.time()
-        _run_stats(from_time, to_time)
+        try:
+            _run_stats(from_time, to_time)
+        except Exception as ex:
+            logging.error("Exception in deferred_stats: {0}".format(ex))
+            return
         t1 = time.time()
 
         logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
@@ -471,60 +429,23 @@ def deferred_stats(from_time, to_time):
 
 def deferred_ratings():
     """ This is the deferred ratings table calculation process """
-    # Disable the in-context cache to save memory
-    # (it doesn't give any speed advantage for this processing)
-    # !!! Removed for Cloud NDB migration
-    # Client.get_context().disable_cache()
     with Client.get_context() as context:
 
         t0 = time.time()
-
         try:
-
             _create_ratings()
-
-        except DeadlineExceededError:
-            # Hit deadline: save the stuff we already have and
-            # defer a new task to continue where we left off
-            logging.error(u"Deadline exceeded in ratings, failing permamently")
-            # Normal return prevents this task from being run again
-            raise deferred.PermanentTaskFailure()
-
         except Exception as ex:
-            logging.error(u"Exception in ratings, failing permanently: {0}".format(ex))
-            # Avoid having the task retried
-            raise deferred.PermanentTaskFailure()
-
+            logging.error("Exception in deferred_ratings: {0}".format(ex))
+            return
         t1 = time.time()
 
-        logging.info(u"Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+        logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
         StatsModel.log_cache_stats()
-        StatsModel.clear_cache()  # Do not maintain the cache in memory between runs
+        # Do not maintain the cache in memory between runs
+        StatsModel.clear_cache()
 
 
-@app.route("/_ah/start")
-def start():
-    """ App Engine is starting a fresh instance """
-    logging.info(u"Start instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok=True)
-
-
-@app.route("/_ah/stop")
-def stop():
-    """ App Engine is stopping this instance """
-    logging.info(u"Stop instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok=True)
-
-
-@app.route("/_ah/warmup")
-def warmup():
-    """ App Engine is warming up this instance """
-    logging.info(u"Warmup instance {0}".format(os.environ.get("INSTANCE_ID", "")))
-    return jsonify(ok=True)
-
-
-@app.route("/stats/run")
-def stats_run():
+def run(request):
     """ Calculate a new set of statistics """
     logging.info(u"Starting stats calculation")
 
@@ -537,53 +458,22 @@ def stats_run():
     month = int(request.args.get("month", str(yesterday.month)))
     day = int(request.args.get("day", str(yesterday.day)))
 
-    try:
-        from_time = datetime(year=year, month=month, day=day)
-        to_time = from_time + timedelta(days=1)
-        deferred.defer(deferred_stats, from_time=from_time, to_time=to_time)
-    except Exception as ex:
-        err = u"Stats calculation failed with exception {0}".format(ex)
-        logging.error(err)
-        return err, 200
+    from_time = datetime(year=year, month=month, day=day)
+    to_time = from_time + timedelta(days=1)
 
-    # All is well so far and the calculation has been submitted to a task queue
+    Thread(
+        target=deferred_stats,
+        kwargs=dict(from_time=from_time, to_time=to_time)
+    ).start()
+
+    # All is well so far and the calculation has been started
+    # on a separate thread
     return u"Stats calculation has been started", 200
 
 
-@app.route("/stats/ratings")
-def stats_ratings():
+def ratings():
     """ Calculate new ratings tables """
     logging.info(u"Starting ratings calculation")
-    deferred.defer(deferred_ratings)
+    Thread(target=deferred_ratings).start()
     return u"Ratings calculation has been started", 200
 
-
-@app.route("/stats/login")
-def stats_login():
-    """ Handler for the login & greeting page """
-    login_url = users.create_login_url(url_for("stats_ping"))
-    return render_template("statslogin.html", login_url=login_url)
-
-
-@app.route("/stats/ping")
-def stats_ping():
-    """ Confirm that the stats module is ready and serving """
-    return u"Stats module is up and running", 200
-
-
-@app.errorhandler(404)
-def page_not_found(_):
-    """ Return a custom 404 error """
-    return u"Incorrect URL path", 404
-
-
-@app.errorhandler(500)
-def server_error(e):
-    """ Return a custom 500 error """
-    return u"Server error: {}".format(e), 500
-
-
-# Run a default Flask web server for testing if invoked directly as a main program
-
-if __name__ == "__main__":
-    app.run(debug=True)
