@@ -192,7 +192,7 @@ class UserModel(ndb.Model):
     @classmethod
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
-        return cls.get_by_id(user_id)
+        return cls.get_by_id(user_id, use_cache=False, use_global_cache=False)
 
     @classmethod
     def fetch_account(cls, account):

@@ -752,7 +752,12 @@ function appendMove(player, co, tiles, score) {
             // Play fanfare sound if audio enabled
             var youWin = document.getElementById("you-win");
             if (youWin)
-               youWin.play();
+               try {
+                  youWin.play();
+               } catch(e) {
+                  // We are probably not allowed to play a sound:
+                  // just swallow the exception silently
+               }
          }
       }
       // Show the Facebook share button if the game is over
@@ -2421,7 +2426,12 @@ function markChatMsg() {
       if (newMsg)
          // Note that playing media outside user-invoked event handlers does not work on iOS.
          // That is a 'feature' introduced and documented by Apple.
-         newMsg.play();
+         try {
+            newMsg.play();
+         } catch (e) {
+            // We are probably not allowed to play a sound:
+            // just swallow the exception silently
+         }
       // Return false to indicate that the message has not been seen yet
       return false;
    }
@@ -2461,7 +2471,12 @@ function handleMoveMessage(json) {
    if (yourTurn)
       // Note that playing media outside user-invoked event handlers does not work on iOS.
       // That is a 'feature' introduced and documented by Apple.
-      yourTurn.play();
+      try {
+         yourTurn.play();
+      } catch(e) {
+         // In some cases, playing a sound will raise an exception
+         // If that happens, just swallow it silently
+      }
    if (gameOver) {
       // The game is now over and the player has seen it happen:
       // let the server know so it can remove the game from the zombie list

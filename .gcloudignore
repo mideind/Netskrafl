@@ -34,6 +34,11 @@ resources/*.csv
 *.tmp
 *.TMP
 
+# Editor workspaces
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
 # Style sheets in LESS, to be compiled to CSS
 *.less
 

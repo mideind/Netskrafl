@@ -64,11 +64,11 @@ class User:
     # Use a lock to avoid potential race conditions between the memcache and the database
     _lock = threading.Lock()
 
-    # User object expiration in memcache
+    # User object expiration in memcache/Redis, measured in seconds
     _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
-    _NAMESPACE = "user:3"
+    _NAMESPACE = "user:4"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
