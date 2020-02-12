@@ -221,8 +221,7 @@ def session_user():
     user = session.get("user")
     if user is not None:
         userid = user.get("id")
-        if userid:
-            u = User.load_if_exists(userid)
+        u = User.load_if_exists(userid)
     return u
 
 
@@ -1147,10 +1146,7 @@ def userstats():
     cid = current_user_id()
     rq = RequestData(request)
     uid = rq.get('user', cid)  # Current user is implicit
-    user = None
-
-    if uid is not None:
-        user = User.load_if_exists(uid)
+    user = User.load_if_exists(uid)
 
     if user is None:
         return jsonify(result=Error.WRONG_USER)

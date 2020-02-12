@@ -428,6 +428,8 @@ class User:
     @classmethod
     def load_if_exists(cls, uid):
         """ Load a user by id if she exists, otherwise return None """
+        if not uid:
+            return None
         with User._lock:
             u = memcache.get(uid, namespace=User._NAMESPACE)
             if u is not None:

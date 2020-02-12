@@ -202,6 +202,8 @@ def handle(request):
                 "Invalid signature in incoming redirect GET - url {0}"
                 .format(request.base_url)
             )
+            # !!! The signature from SalesCloud in this case does
+            # !!! not agree with our calculation, so we leave it at that
             # return "<html><body>Invalid signature</body></html>", 403 # Forbidden
         return redirect(url_for("friend", action=0))  # Redirect to a thank-you page
 
@@ -237,7 +239,8 @@ def handle(request):
     # u'before_renewal': u'2016-12-14T18:34:42+00:00',
     # u'product_id': u'479', u'type': u'subscription_updated'}
     if j is None:
-        return jsonify(ok=False, reason=u"Empty or illegal JSON")
+        logging.error("Empty or illegal JSON")
+        return jsonify(ok=False, reason=u"Empty or illegal JSON"), 400  # Bad request
     handled = False
     _FRIEND_OF_NETSKRAFL = u"479"  # Product id for friend subscription
     # pylint: disable=bad-continuation
@@ -246,22 +249,30 @@ def handle(request):
         and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL
     ):
         # Updating the subscription status of a user
-        uid = j.get(u"customer_label")
+        uid = j.get("customer_label")
         if uid and not isinstance(uid, str):
             uid = None
         if uid:
             uid = uid[0:32]  # Sanity cut-off
-        user = User.load_if_exists(uid) if uid else None
+        user = User.load_if_exists(uid)
         if user is None:
-            return jsonify(ok=False, reason=u"Unknown or illegal user id")
-        if j.get(u"subscription_status") == u"true":
+            logging.error(
+                "Unknown or illegal user id: '{0}'"
+                .format("[None]" if uid is None else uid)
+            )
+            return jsonify(
+                ok=False,
+                reason="Unknown or illegal user id (customer_label)"
+            ), 400  # Bad request
+        status = j.get("subscription_status")
+        if status == "true":
             # Enable subscription, mark as friend
             user.set_friend(True)
             user.set_has_paid(True)
             user.update()
             logging.info("Set user {0} as friend".format(uid))
             handled = True
-        elif j.get(u"subscription_status") == u"false":
+        elif status == "false":
             # Disable subscription, remove friend status
             user.set_friend(False)
             user.set_has_paid(False)
@@ -270,6 +281,6 @@ def handle(request):
             handled = True
     if not handled:
         logging.warning(
-            "/billing unknown request '{0}', did not handle".format(j.get(u"type"))
+            "/billing unknown request '{0}', did not handle".format(j.get("type"))
         )
     return jsonify(ok=True, handled=handled)
