@@ -55,7 +55,6 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 import requests
-# import requests_toolbelt.adapters.appengine
 
 from languages import Alphabet
 from dawgdictionary import Wordbase
@@ -86,9 +85,6 @@ import firebase
 from cache import memcache
 import skraflstats
 
-
-# Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
-# requests_toolbelt.adapters.appengine.monkeypatch()
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
