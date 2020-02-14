@@ -48,9 +48,6 @@ from flask import (
     session
 )
 
-# from google.appengine.runtime import DeadlineExceededError
-# from google.appengine.api import users
-
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 

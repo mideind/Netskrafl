@@ -27,8 +27,6 @@ import threading
 from random import randint
 from datetime import datetime, timedelta
 
-# from google.appengine.api import users
-
 from cache import memcache
 
 from skraflmechanics import (
