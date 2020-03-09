@@ -4,7 +4,7 @@ oauth2client
 requests
 firebase-admin
 redis==3.3.11
-google-cloud-ndb>=1.0.1
+google-cloud-ndb>=1.1.1
 google-python-cloud-debugger
 protobuf
 googleapis_common_protos
