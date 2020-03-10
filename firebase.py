@@ -66,12 +66,12 @@ def _get_http():
 def _request(*args, **kwargs):
     """ Attempt to post a Firebase request, with recovery on a BrokenPipeError """
     try:
-        return _get_http().request(*args, **kwargs)
+        return _get_http().request(*args, headers=_HEADERS, **kwargs)
     except BrokenPipeError:
         # Attempt recovery by creating a new httplib2.Http object and
         # forcing re-generation of the credentials
         _tls._HTTP = None
-    return _get_http().request(*args, **kwargs)
+    return _get_http().request(*args, headers=_HEADERS, **kwargs)
 
 
 def _firebase_put(path, message=None):
@@ -84,7 +84,7 @@ def _firebase_put(path, message=None):
         path - the url to the Firebase object to write.
         value - a json string.
     """
-    return _request(path, method="PUT", body=message, headers=_HEADERS)
+    return _request(path, method="PUT", body=message)
 
 
 def _firebase_get(path):
@@ -97,7 +97,7 @@ def _firebase_get(path):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _request(path, method="GET", headers=_HEADERS)
+    return _request(path, method="GET")
 
 
 def _firebase_patch(path, message):
@@ -110,7 +110,7 @@ def _firebase_patch(path, message):
     Args:
         path - the url to the Firebase object to read.
     """
-    return _request(path, method="PATCH", body=message, headers=_HEADERS)
+    return _request(path, method="PATCH", body=message)
 
 
 def _firebase_delete(path):
@@ -122,7 +122,7 @@ def _firebase_delete(path):
     Args:
         path - the url to the Firebase object to delete.
     """
-    return _request(path, method="DELETE", headers=_HEADERS)
+    return _request(path, method="DELETE")
 
 
 def send_message(message, *args):
@@ -145,7 +145,7 @@ def send_message(message, *args):
                 message=json.dumps(message)
             )
         # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
-        return response["status"] in {"200", "204"}
+        return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
         logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
         return False
