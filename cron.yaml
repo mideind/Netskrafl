@@ -1,3 +1,4 @@
+
 cron:
 - description: Generate skraflstats
   url: /stats/run
