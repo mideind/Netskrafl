@@ -45,12 +45,12 @@ class _Secret:
     def load(cls):
         """ Fetch secret key and client UUID from a file """
         try:
-            with open("resources/salescloud_key.bin", "r") as f:
+            with open("resources/salescloud_key.bin", "r", encoding="utf-8") as f:
                 cls._SC_SECRET_KEY = f.readline().strip().encode("ascii")
                 cls._SC_CLIENT_UUID = f.readline().strip()
         except Exception:
-            logging.error(u"Unable to read file resources/salescloud_key.bin")
-            cls._SC_SECRET_KEY = ""
+            logging.error("Unable to read file resources/salescloud_key.bin")
+            cls._SC_SECRET_KEY = b""
             cls._SC_CLIENT_UUID = ""
 
     @property
@@ -78,14 +78,10 @@ _SECRET = _Secret()
 
 def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=100.0):
     """ Validate an incoming request against our secret key. All parameters
-        are assumed to be strings (str) except payload and xsc_digest, which are bytes. """
+        are assumed to be strings (str) except payload, which is bytes. """
 
     # Sanity check
-    if not all((method, url, xsc_date, xsc_key, xsc_digest)):
-        return False
-
-    if payload is None:
-        logging.error("Payload is None in request_valid")
+    if not all((method, url, payload, xsc_date, xsc_key, xsc_digest)):
         return False
 
     # The public key must of course be correct
@@ -183,9 +179,7 @@ def handle(request):
         # after completing a payment form
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
         xsc_date = request.args.get("salescloud_date", "")[0:256]
-        xsc_digest = request.args.get("salescloud_signature", "")[0:256].encode(
-            "ascii"
-        )
+        xsc_digest = request.args.get("salescloud_signature", "")[0:256]
         uid = User.current_id() or ""
         # pylint: disable=bad-continuation
         if not request_valid(
@@ -210,9 +204,7 @@ def handle(request):
     # Begin by validating the request by checking its signature
     xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]
     xsc_date = request.headers.get("X-SalesCloud-Date", "")[0:256]
-    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256].encode(
-        "ascii"
-    )
+    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256]
     payload = b""
     try:
         # Do not accept request bodies larger than 2K
@@ -240,13 +232,13 @@ def handle(request):
     # u'product_id': u'479', u'type': u'subscription_updated'}
     if j is None:
         logging.error("Empty or illegal JSON")
-        return jsonify(ok=False, reason=u"Empty or illegal JSON"), 400  # Bad request
+        return jsonify(ok=False, reason="Empty or illegal JSON"), 400  # Bad request
     handled = False
-    _FRIEND_OF_NETSKRAFL = u"479"  # Product id for friend subscription
+    _FRIEND_OF_NETSKRAFL = "479"  # Product id for friend subscription
     # pylint: disable=bad-continuation
     if (
-        j.get(u"type") in (u"subscription_updated", u"subscription_created")
-        and j.get(u"product_id") == _FRIEND_OF_NETSKRAFL
+        j.get("type") in ("subscription_updated", "subscription_created")
+        and j.get("product_id") == _FRIEND_OF_NETSKRAFL
     ):
         # Updating the subscription status of a user
         uid = j.get("customer_label")
