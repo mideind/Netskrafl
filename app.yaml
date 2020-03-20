@@ -2,7 +2,7 @@
 # App.yaml for the Netskrafl application on Google App Engine
 #
 application: netskrafl
-version: bugfix
+version: touchfix
 runtime: python27
 api_version: 1
 threadsafe: true
@@ -158,14 +158,17 @@ skip_files:
 - ^(.*/)?.*\.tmp$       # Temporary files
 - ^(.*/)?.*\.TMP$       # Temporary files
 - ^(.*/)?.*\.less$      # Style sheets in LESS, to be compiled to CSS
+- ^(.*/)?.*\.sublime.*$ # Sublime editor files
 - ^(.*/)?#.*#$          # File names enclosed in hashes
 - ^(.*/)?.*~$           # Temporary files ending in a curl
 - ^(.*/)?.*\.py[co]$    # Python bytecode files
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$            # GitHub stuff
+- ^\.vscode/.*$         # Visual Studio code stuff
 - ^node_modules/.*$     # NodeJS stuff, mostly related to Grunt
 - ^ptvsd/.*$            # PTVSD debugger
 - ^log/.*$              # Log files
 - ^venv/.*$             # Virtual environment files
+- ^__pycache__/.*$      # Python code cache
 - ^[gG]runtfile.js$     # Gruntfile
 - ^(.*/)?\..*$          # Files whose names start with a period
