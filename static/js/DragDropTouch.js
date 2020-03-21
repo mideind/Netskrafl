@@ -291,7 +291,7 @@ var DragDropTouch;
             var delta = this._getDelta(e);
             return delta > DragDropTouch._THRESHOLD ||
                 (DragDropTouch._ISPRESSHOLDMODE && delta >= DragDropTouch._PRESSHOLDTHRESHOLD);
-        }
+        };
 
         // clear all members
         DragDropTouch.prototype._reset = function () {
@@ -390,7 +390,8 @@ var DragDropTouch;
             }
             // copy style (without transitions)
             var cs = getComputedStyle(src);
-            for (var i = 0; i < cs.length; i++) {
+            var i;
+            for (i = 0; i < cs.length; i++) {
                 var key = cs[i];
                 if (key.indexOf('transition') < 0) {
                     dst.style[key] = cs[key];
@@ -398,7 +399,7 @@ var DragDropTouch;
             }
             dst.style.pointerEvents = 'none';
             // and repeat for all children
-            for (var i = 0; i < src.children.length; i++) {
+            for (i = 0; i < src.children.length; i++) {
                 this._copyStyle(src.children[i], dst.children[i]);
             }
         };

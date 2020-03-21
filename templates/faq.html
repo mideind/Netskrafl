@@ -42,8 +42,9 @@ rel="noopener">Facebook-hópi Netskrafls</a>.</p>
 <li><a href="#faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?</a></li>
 <li><a href="#faq-26">Hvernig setur maður inn broskalla í spjallinu?</a></li>
 <li><a href="#faq-27">Hvað er „vinur Netskrafls“?</a></li>
-<li><a href="#faq-28">Hvað er „keppnishamur“?</a></li>
-<li><a href="#faq-29">Hvernig skora ég á andstæðing í keppnisham?</a></li>
+<li><a href="#faq-28">Hvernig hætti ég að vera „vinur Netskrafls“?</a></li>
+<li><a href="#faq-29">Hvað er „keppnishamur“?</a></li>
+<li><a href="#faq-30">Hvernig skora ég á andstæðing í keppnisham?</a></li>
 </ol>
 
 <p><b>Svör:</b></p>
@@ -448,7 +449,11 @@ með því að <a href="{{ url_for('friend', action=1) }}">smella hér</a>.</p>
 {% endif %}
 {% endif %}
 
-<li id="faq-28">Hvað er „keppnishamur“?</li>
+<li id="faq-28">Hvernig hætti ég að vera „vinur Netskrafls“?</li>
+<p>Það er einfalt: þú <a href="{{ url_for('friend', action=2) }}">smellir hér</a> og staðfestir svo.
+En það væri leitt að missa þig!</p>
+
+<li id="faq-29">Hvað er „keppnishamur“?</li>
 <p>Vinir Netskrafls geta skorað á aðra leikmenn í <b>keppnisham</b>.
 Í keppnisham er enginn grænn þumall sem segir til um hvort orð eru gild eða ekki. Leggja má niður
 hvaða orð sem er. Það er andstæðingsins að véfengja lögn sem hann telur ranga.</p>
@@ -463,9 +468,9 @@ andstæðingurinn 10 stig aukalega í sárabætur. Þú átt hins vegar áfram l
 <p>Keppnishamnum er ætlað að líkja eftir hefðbundnu borðskrafli. Reglur um véfengingu
 eru í samræmi við reglur Skraflfélags Íslands.</p>
 
-<li id="faq-29">Hvernig skora ég á andstæðing í keppnisham?</li>
+<li id="faq-30">Hvernig skora ég á andstæðing í keppnisham?</li>
 <p>Ef þú ert <a href="#faq-27">Vinur Netskrafls</a> getur þú skorað á aðra leikmenn
-í <a href="#faq-28">keppnisham</a>, hvort sem þeir eru einnig Vinir Netskrafls eður ei.</p>
+í <a href="#faq-29">keppnisham</a>, hvort sem þeir eru einnig Vinir Netskrafls eður ei.</p>
 <p>Keppnishamur er valinn með rofa í glugganum sem kemur upp þegar þú gefur út áskorun. Á myndinni
 sést hvernig rofinn á að vera stilltur fyrir keppnisham:</p>
 <p style="text-align:center;"><img src="{{ url_for('static', filename='ManualChallenge.png') }}"></p>
