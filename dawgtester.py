@@ -60,6 +60,10 @@ class DawgTester:
         self._test_true(u"blús")
         # self._test_true(u"hraðskákmótin") # Not in BÍN
         # self._test_true(u"jólahraðskákmótið") # Longer than 15 letters
+
+        self._test_true(u"dylstu")
+        self._test_true(u"innslagi")
+
         self._test_true(u"nafnskírteinið")
         self._test_false(u"abstraktmálarið")
         self._test_true(u"abstraktmálari")
