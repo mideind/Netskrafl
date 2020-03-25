@@ -1,11 +1,7 @@
 @ECHO OFF
 ECHO Deploy an update to App Server
 set PYTHONEXE=c:\python27\python
-IF EXIST "c:\program files (x86)\google\google_appengine\appcfg.py" GOTO :X86
-SET APPCFG="c:\program files\google\google_appengine\appcfg.py"
-GOTO :CHECKS
-:X86
-SET APPCFG="c:\program files (x86)\google\google_appengine\appcfg.py"
+SET APPCFG="%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk\platform\google_appengine\appcfg.py"
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
 IF /i "%1" EQU "STATS" GOTO STATS

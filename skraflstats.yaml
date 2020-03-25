@@ -29,6 +29,7 @@ handlers:
 skip_files:
 - ^resources/.*\.txt$
 - ^resources/.*\.dawg$
+- ^resources/.*\.dawg\.pickle$ # DAWG trees in pickled form
 - ^(.*/)?.*\.psd$
 - ^(.*/)?.*\.ai$
 - ^(.*/)?.*\.log$
@@ -44,5 +45,7 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^\.git/.*$
 - ^node_modules/.*$
+- ^ptvsd/.*$            # PTVSD debugger
+- ^log/.*$              # Log files
 - ^[gG]runtfile.js$
 - ^(.*/)?\..*$

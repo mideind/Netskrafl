@@ -173,7 +173,7 @@ Game.prototype.update = function(game) {
 Game.prototype.setSelectedTab = function(sel) {
   // Set the currently selected tab
   this.sel = sel;
-}
+};
 
 Game.prototype.tilescore = function(tile) {
   return this.newbag ? NEW_TILESCORE[tile] : OLD_TILESCORE[tile];

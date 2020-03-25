@@ -120,6 +120,10 @@ class UserModel(ndb.Model):
     """ Models an individual user """
 
     nickname = ndb.StringProperty(indexed = True)
+    email = ndb.StringProperty(required=False, default=None, indexed=True)
+    # Google Account identifier (unfortunately different from GAE user id)
+    account = ndb.StringProperty(required=False, default=None, indexed=True)
+
     # Lower case nickname and full name of user - used for search
     nick_lc = ndb.StringProperty(required = False, indexed = True, default = None)
     name_lc = ndb.StringProperty(required = False, indexed = True, default = None)
@@ -137,16 +141,17 @@ class UserModel(ndb.Model):
     human_elo = ndb.IntegerProperty(required = False, default = 0, indexed = True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
-    highest_score_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    highest_score_game = ndb.StringProperty(required = False, default = None)
     # Best word laid down
-    best_word = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word = ndb.StringProperty(required = False, default = None)
     best_word_score = ndb.IntegerProperty(required = False, default = 0, indexed = True)
-    best_word_game = ndb.StringProperty(required = False, default = None, indexed = False)
+    best_word_game = ndb.StringProperty(required = False, default = None)
 
     @classmethod
-    def create(cls, user_id, nickname, preferences = None):
+    def create(cls, user_id, nickname, email, preferences = None):
         """ Create a new user """
         user = cls(id = user_id)
+        user.email = email
         user.nickname = nickname # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False # A new user is always active
@@ -833,7 +838,8 @@ class StatsModel(ndb.Model):
     def _list_by(cls, prop, makedict, timestamp = None, max_len = MAX_STATS):
         """ Returns the Elo ratings at the indicated time point (None = now), in descending order  """
 
-        max_fetch = max_len * 2
+        max_fetch = max_len * 10 // 4  # max_len * 2.5
+        safety_buffer = max_fetch - max_len
         check_false_positives = True
 
         if timestamp is None:
@@ -856,7 +862,7 @@ class StatsModel(ndb.Model):
         # than those scanned to create the list. In other words, there may
         # be false positives on the list (but not false negatives, i.e.
         # there can't be higher Elo scores somewhere that didn't make it
-        # to the list). We attempt to address this by fetching double the
+        # to the list). We attempt to address this by fetching 2.5 times the
         # number of requested users, then separately checking each of them for
         # false positives. If we have too many false positives, we don't return
         # the full requested number of result records.
@@ -872,7 +878,7 @@ class StatsModel(ndb.Model):
                     if (lowest_elo is None) or (d["elo"] < lowest_elo):
                         lowest_elo = d["elo"]
                     if len(result) >= max_fetch:
-                        # We have double the number of entries requested: done
+                        # We have all the requested entries: done
                         break # From for loop
 
         false_pos = 0
@@ -893,14 +899,17 @@ class StatsModel(ndb.Model):
                         false_pos += 1
                     # Replace the entry with the newer one (which will lower it)
                     result[ukey] = nd
-            logging.info(u"False positives are {0}".format(false_pos))
+            logging.info(
+                u"False positives are {0}, safety buffer is {1}"
+                .format(false_pos, safety_buffer)
+            )
 
-        if false_pos > max_len:
+        if false_pos > safety_buffer:
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
             logging.error(u"False positives caused ratings list to be truncated")
-            max_len -= (false_pos - max_len)
+            max_len -= (false_pos - safety_buffer)
             if max_len < 0:
                 max_len = 0
 
