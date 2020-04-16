@@ -90,17 +90,23 @@ Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 ### Generating a new vocabulary file
 
 To generate a new vocabulary file (```ordalistimax15.sorted.txt```), assuming you already
-have the BÍN database in PostgreSQL (here in table ```ord19```), invoke ```psql```, log in
-to your database and create the following view:
+have the BÍN database in PostgreSQL (here in table ```ord19``` - remember to use the
+```is_IS``` collation locale!), invoke ```psql```, log in to your database and
+create the following view:
 
 ```
 create or replace view skrafl as
    select stofn, utg, ordfl, fl, ordmynd, beyging from ord19
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
    and fl <> 'bibl'
-   and not (beyging like 'SP-%-FT')
+   and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
    order by ordmynd;
 ```
+
+To explain, this extracts all 3-15 letter word forms containing only Icelandic lowercase
+alphabetic characters, omitting the *bibl* (Biblical) category (which contains mostly
+obscure proper names and derivations thereof), and also omitting plural question
+forms (*spurnarmyndir í fleirtölu*).
 
 Then, to generate the vocabulary file from the ```psql``` command line:
 
@@ -122,7 +128,7 @@ license (see below).
 
 *Netskrafl - an Icelandic crossword game website*
 
-*Copyright (C) 2019 Miðeind ehf.*
+*Copyright (C) 2020 Miðeind ehf.*
 
 This set of programs is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
