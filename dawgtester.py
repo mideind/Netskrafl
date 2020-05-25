@@ -1,16 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env pypy
 # -*- coding: utf-8 -*-
 
 """ Test module for DAWG dictionary
 
-    Copyright(C) 2020 Miðeind ehf.
-    Original author: Vilhjálmur Þorsteinsson
+    Author: Vilhjalmur Thorsteinsson, 2014
 
     This module contains test code for dawgdictionary.py
 
 """
-
-from __future__ import print_function
 
 import os
 import time
@@ -63,6 +60,10 @@ class DawgTester:
         self._test_true(u"blús")
         # self._test_true(u"hraðskákmótin") # Not in BÍN
         # self._test_true(u"jólahraðskákmótið") # Longer than 15 letters
+
+        self._test_true(u"dylstu")
+        self._test_true(u"innslagi")
+
         self._test_true(u"nafnskírteinið")
         self._test_false(u"abstraktmálarið")
         self._test_true(u"abstraktmálari")
@@ -83,7 +84,6 @@ class DawgTester:
         self._test_true(u"hán")
         self._test_true(u"háni")
         self._test_true(u"háns")
-        self._test_true(u"sté")
         self._test_false(u"réttleganna")
         self._test_false(u"meistarleganna")
         self._test_false(u"hjálpsamligana")
@@ -247,13 +247,13 @@ class DawgTester:
         print(u"Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print(u"\"{0}\"".format(word), end=" ")
+            print(u"\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print()
-        print()
+                print
+        print
         print(u"{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print()
+        print
         t0 = time.time()
         word = u"pr?óf"
         permlist = self._dawg.find_permutations(word)
@@ -261,13 +261,13 @@ class DawgTester:
         print(u"Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print(u"\"{0}\"".format(word), end=" ")
+            print(u"\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print()
-        print()
+                print
+        print
         print(u"{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print()
+        print
 
         print("Finding matches:")
         t0 = time.time()
@@ -277,13 +277,13 @@ class DawgTester:
         print(u"Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print(u"\"{0}\"".format(word), end=" ")
+            print(u"\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print()
-        print()
+                print
+        print
         print(u"{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print()
+        print
 
         t0 = time.time()
         word = u"f?r??t??n"
@@ -292,13 +292,13 @@ class DawgTester:
         print(u"Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print(u"\"{0}\"".format(word), end=" ")
+            print(u"\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print()
-        print()
+                print
+        print
         print(u"{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print()
+        print
 
         word = u"??"
         mlist = self._dawg.find_matches(word)
@@ -307,7 +307,7 @@ class DawgTester:
         for word in mlist:
             if word not in smallwords:
                 print (u"{0} in match result but not in smallwords".format(word))
-        print()
+        print
 
         print(u"Test finished")
 
