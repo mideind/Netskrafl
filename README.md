@@ -94,7 +94,7 @@ have the BÍN database in PostgreSQL (here in table ```ord19``` - remember to us
 ```is_IS``` collation locale!), invoke ```psql```, log in to your database and
 create the following view:
 
-```
+```sql
 create or replace view skrafl as
    select stofn, utg, ordfl, fl, ordmynd, beyging from ord19
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
@@ -110,7 +110,7 @@ forms (*spurnarmyndir í fleirtölu*).
 
 Then, to generate the vocabulary file from the ```psql``` command line:
 
-```
+```sql
 \copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt';
 ```
 
@@ -128,7 +128,7 @@ license (see below).
 
 *Netskrafl - an Icelandic crossword game website*
 
-*Copyright (C) 2020 Miðeind ehf.*
+*Copyright © 2020 Miðeind ehf.*
 
 This set of programs is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ The full text of the GNU General Public License is available here:
 Netskrafl contains the *DragDropTouch.js* module by Bernardo Castilho,
 which is licensed under the MIT license as follows:
 
-	Copyright (c) 2016 Bernardo Castilho
+	Copyright © 2016 Bernardo Castilho
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
@@ -171,7 +171,7 @@ which is licensed under the MIT license as follows:
 Netskrafl contains the *jQuery UI Touch Punch* library by David Furfero, which
 is licensed under the MIT license.
 
-	Copyright (c) 2011 David Furfero
+	Copyright © 2011 David Furfero
 
 	The MIT license, as spelled out above, applies to this library.
 
