@@ -899,7 +899,7 @@ function handleMoveMessage(json) {
 function initFirebaseListener(token) {
    // Sign into Firebase with the token passed from the server
    var uid = userId();
-   var basepath = 'user/' + uid + "/";
+   var basepath = "user/" + uid + "/";
    // Log in and attach listeners once the login succeeds
    loginFirebase(token,
       function() {

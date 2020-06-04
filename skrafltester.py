@@ -43,7 +43,7 @@ _PROFILING = False
 
 def test_move(state, movestring):
     """ Test placing a simple tile move """
-    coord, word = movestring.split(u" ")
+    coord, word = movestring.split(" ")
     rowid = Board.ROWIDS
     xd, yd = 0, 0
     horiz = True
@@ -59,11 +59,11 @@ def test_move(state, movestring):
     move = Move(word, row, col, horiz)
     next_is_blank = False
     for c in word:
-        if c == u"?":
+        if c == "?":
             next_is_blank = True
             continue
         if not state.board().is_covered(row, col):
-            move.add_cover(row, col, u"?" if next_is_blank else c, c)
+            move.add_cover(row, col, "?" if next_is_blank else c, c)
             next_is_blank = False
         row += xd
         col += yd
@@ -72,9 +72,9 @@ def test_move(state, movestring):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -89,9 +89,9 @@ def test_exchange(state, numtiles):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -105,9 +105,9 @@ def test_challenge(state):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -121,9 +121,9 @@ def test_response(state):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print(u"Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print(u"Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -139,10 +139,10 @@ def test_game(players, silent):
     # Initial, empty game state
     state = State(tileset=NewTileSet, drawtiles=True)
 
-    print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
-    print(u"Bag contents are:\n{0}".format(state.bag().contents()))
-    print(u"Rack 0 is {0}".format(state.rack(0)))
-    print(u"Rack 1 is {0}".format(state.rack(1)))
+    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("Bag contents are:\n{0}".format(state.bag().contents()))
+    print("Rack 0 is {0}".format(state.rack(0)))
+    print("Rack 1 is {0}".format(state.rack(1)))
 
     # Set player names
     for ix in range(2):
@@ -167,12 +167,12 @@ def test_game(players, silent):
         legal = state.check_legality(move)
         if legal != Error.LEGAL:
             # Oops: the autoplayer generated an illegal move
-            print(u"Play is not legal, code {0}".format(Error.errortext(legal)))
+            print("Play is not legal, code {0}".format(Error.errortext(legal)))
             return
 
         if not silent:
             print(
-                u"Play {0} scores {1} points ({2:.2f} seconds)"
+                "Play {0} scores {1} points ({2:.2f} seconds)"
                 .format(move, state.score(move), g1 - g0)
             )
 
@@ -189,7 +189,7 @@ def test_game(players, silent):
 
     if not silent:
         print(
-            u"Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)"
+            "Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)"
             .format(
                 p0,
                 p1,
@@ -209,11 +209,11 @@ def test_manual_game():
     # Initial, empty game state
     state = State(tileset=NewTileSet, manual_wordcheck=True, drawtiles=True)
 
-    print(u"Manual game")
-    print(u"After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
-    print(u"Bag contents are:\n{0}".format(state.bag().contents()))
-    print(u"Rack 0 is {0}".format(state.rack(0)))
-    print(u"Rack 1 is {0}".format(state.rack(1)))
+    print("Manual game")
+    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("Bag contents are:\n{0}".format(state.bag().contents()))
+    print("Rack 0 is {0}".format(state.rack(0)))
+    print("Rack 1 is {0}".format(state.rack(1)))
 
     # Set player names
     for ix in range(2):
@@ -221,26 +221,26 @@ def test_manual_game():
 
     # print(state.__str__()) # This works in Python 2 and 3
 
-    state.player_rack().set_tiles(u"stuðinn")
-    test_move(state, u"H4 stuði")
-    state.player_rack().set_tiles(u"dettsfj")
-    test_move(state, u"5E detts")
+    state.player_rack().set_tiles("stuðinn")
+    test_move(state, "H4 stuði")
+    state.player_rack().set_tiles("dettsfj")
+    test_move(state, "5E detts")
     test_exchange(state, 3)
-    state.player_rack().set_tiles(u"dýsturi")
-    test_move(state, u"I3 dýs")
-    state.player_rack().set_tiles(u"?xalmen")
+    state.player_rack().set_tiles("dýsturi")
+    test_move(state, "I3 dýs")
+    state.player_rack().set_tiles("?xalmen")
     # The question mark indicates a blank tile for the subsequent cover
-    test_move(state, u"6E ?óx")
-    state.player_rack().set_tiles(u"eiðarps")
+    test_move(state, "6E ?óx")
+    state.player_rack().set_tiles("eiðarps")
 
-    test_move(state, u"9F eipar")
+    test_move(state, "9F eipar")
     test_challenge(state)
     test_response(state)
 
-    state.player_rack().set_tiles(u"sóbetis")
-    test_move(state, u"J3 ós")
+    state.player_rack().set_tiles("sóbetis")
+    test_move(state, "J3 ós")
 
-    test_move(state, u"9F eiðar")
+    test_move(state, "9F eiðar")
     test_challenge(state)
     test_response(state)
 
@@ -249,7 +249,7 @@ def test_manual_game():
     p0, p1 = state.scores()
 
     print(
-        u"Manual game over, final score {3} {0} : {4} {1} after {2} moves"
+        "Manual game over, final score {3} {0} : {4} {1} after {2} moves"
         .format(
             p0, p1, state.num_moves(), state.player_name(0), state.player_name(1)
         )
@@ -269,12 +269,12 @@ def test(num_games, opponent, silent):
         return AutoPlayer_MiniMax(state)
 
     players = [None, None]
-    if opponent == u"minimax":
-        players[0] = (u"AutoPlayer", autoplayer_creator)
-        players[1] = (u"MiniMax", minimax_creator)
+    if opponent == "minimax":
+        players[0] = ("AutoPlayer", autoplayer_creator)
+        players[1] = ("MiniMax", minimax_creator)
     else:
-        players[0] = (u"AutoPlayer A", autoplayer_creator)
-        players[1] = (u"AutoPlayer B", autoplayer_creator)
+        players[0] = ("AutoPlayer A", autoplayer_creator)
+        players[1] = ("AutoPlayer B", autoplayer_creator)
 
     gameswon = [0, 0]
     totalpoints = [0, 0]
@@ -285,7 +285,7 @@ def test(num_games, opponent, silent):
     # Run games
     for ix in range(num_games):
         if not silent:
-            print(u"\nGame {0}/{1} starting".format(ix + 1, num_games))
+            print("\nGame {0}/{1} starting".format(ix + 1, num_games))
         if ix % 2 == 1:
             # Odd game: swap players
             players[0], players[1] = players[1], players[0]
@@ -307,15 +307,15 @@ def test(num_games, opponent, silent):
     t1 = time.time()
 
     print(
-        u"Test completed, {0} games played in {1:.2f} seconds, "
-        u"{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
+        "Test completed, {0} games played in {1:.2f} seconds, "
+        "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player):
         """ Report the result of a number of games """
         if gameswon[player] == 0:
             print(
-                u"{2} won {0} games and scored an average of {1:.1f} points per game"
+                "{2} won {0} games and scored an average of {1:.1f} points per game"
                 .format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
@@ -324,8 +324,8 @@ def test(num_games, opponent, silent):
             )
         else:
             print(
-                u"{3} won {0} games with an average margin of {2:.1f} and "
-                u"scored an average of {1:.1f} points per game"
+                "{3} won {0} games with an average margin of {2:.1f} and "
+                "scored an average of {1:.1f} points per game"
                 .format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
@@ -379,14 +379,14 @@ def main(argv=None):
             elif o in ("-m", "--manual"):
                 manual = True
 
-        print(u"Welcome to the Skrafl game tester")
+        print("Welcome to the Skrafl game tester")
 
         if manual:
             test_manual_game()
         else:
             print(
-                u"Running {0} games against {1}"
-                .format(num_games, opponent or u"autoplayer")
+                "Running {0} games against {1}"
+                .format(num_games, opponent or "autoplayer")
             )
             test(num_games, opponent, silent)
 
