@@ -37,7 +37,7 @@ class DawgTester:
         """ Load a DawgDictionary and test its functionality """
 
         print("DawgDictionary tester")
-        print("Author: Vilhjalmur Thorsteinsson\n")
+        print("Author: Vilhjálmur Þorsteinsson\n")
 
         t0 = time.time()
         self._dawg = PackedDawgDictionary()
@@ -84,6 +84,7 @@ class DawgTester:
         self._test_true(u"hán")
         self._test_true(u"háni")
         self._test_true(u"háns")
+        self._test_true(u"hvívetna")
         self._test_false(u"réttleganna")
         self._test_false(u"meistarleganna")
         self._test_false(u"hjálpsamligana")
