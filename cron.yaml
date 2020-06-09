@@ -1,14 +1,10 @@
 
+# Deploy with gcloud app deploy cron.yaml
+
 cron:
 - description: Generate skraflstats
   url: /stats/run
   schedule: every day 02:00
-  retry_parameters:
-    job_retry_limit: 2
-    min_backoff_seconds: 60
 - description: Generate Elo ratings
   url: /stats/ratings
   schedule: every day 02:20
-  retry_parameters:
-    job_retry_limit: 2
-    min_backoff_seconds: 60

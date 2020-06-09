@@ -1,4 +1,6 @@
-""" Server module for Netskrafl statistics and other background tasks
+"""
+
+    Server module for Netskrafl statistics and other background tasks
 
     Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -126,7 +128,7 @@ def _write_stats(timestamp, urecs):
 
 def _run_stats(from_time, to_time):
     """ Runs a process to update user statistics and Elo ratings """
-    logging.info(u"Generating stats from {0} to {1}".format(from_time, to_time))
+    logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
     if from_time is None or to_time is None:
         # Time range must be specified
@@ -270,16 +272,17 @@ def _run_stats(from_time, to_time):
             cnt += 1
             # Report on our progress
             if i % 1000 == 0:
-                logging.info(u"Processed {0} games".format(i))
+                logging.info("Processed {0} games".format(i))
 
     except DeadlineExceededError:
         # Hit deadline: save the stuff we already have and
         # defer a new task to continue where we left off
         logging.info(
-            u"Deadline exceeded in stats loop after {0} games and {1} users"
-            .format(cnt, len(users))
+            "Deadline exceeded in stats loop after {0} games and {1} users".format(
+                cnt, len(users)
+            )
         )
-        logging.info(u"Resuming from timestamp {0}".format(ts_last_processed))
+        logging.info("Resuming from timestamp {0}".format(ts_last_processed))
         if ts_last_processed is not None:
             _write_stats(ts_last_processed, users)
         deferred.defer(
@@ -289,14 +292,13 @@ def _run_stats(from_time, to_time):
         return
 
     except Exception as ex:
-        logging.info(u"Exception in stats loop: {0}".format(ex))
+        logging.info("Exception in stats loop: {0}".format(ex))
         # Avoid having the task retried
         raise deferred.PermanentTaskFailure()
 
     # Completed without incident
     logging.info(
-        u"Normal completion of stats for {1} games and {0} users"
-        .format(len(users), cnt)
+        "Normal completion of stats for {1} games and {0} users".format(len(users), cnt)
     )
 
     _write_stats(to_time, users)
@@ -304,7 +306,7 @@ def _run_stats(from_time, to_time):
 
 def _create_ratings():
     """ Create the Top 100 ratings tables """
-    logging.info(u"Starting _create_ratings")
+    logging.info("Starting _create_ratings")
 
     _key = StatsModel.dict_key
 
@@ -373,10 +375,10 @@ def _create_ratings():
         top100_human,
         top100_human_yesterday,
         top100_human_week_ago,
-        top100_human_month_ago
+        top100_human_month_ago,
     )
 
-    logging.info(u"Writing top 100 tables to the database")
+    logging.info("Writing top 100 tables to the database")
 
     # Write the Top 100 tables to the database
     rlist = []
@@ -408,7 +410,7 @@ def _create_ratings():
     # Put the entire top 100 table in one RPC call
     RatingModel.put_multi(rlist)
 
-    logging.info(u"Finishing _create_ratings")
+    logging.info("Finishing _create_ratings")
 
 
 def deferred_stats(from_time, to_time):
@@ -418,13 +420,14 @@ def deferred_stats(from_time, to_time):
 
         t0 = time.time()
         try:
-            _run_stats(from_time, to_time)
+            # _run_stats(from_time, to_time)
+            logging.info("Would call _run_stats() here")
         except Exception as ex:
             logging.error("Exception in deferred_stats: {0}".format(ex))
             return
         t1 = time.time()
 
-        logging.info(u"Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
+        logging.info("Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
 
 
 def deferred_ratings():
@@ -433,7 +436,8 @@ def deferred_ratings():
 
         t0 = time.time()
         try:
-            _create_ratings()
+            # _create_ratings()
+            logging.info("Would call _create_ratings() here")
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0}".format(ex))
             return
@@ -447,7 +451,7 @@ def deferred_ratings():
 
 def run(request):
     """ Calculate a new set of statistics """
-    logging.info(u"Starting stats calculation")
+    logging.info("Starting stats calculation")
 
     # If invoked without parameters (such as from a cron job),
     # this will calculate yesterday's statistics
@@ -462,18 +466,16 @@ def run(request):
     to_time = from_time + timedelta(days=1)
 
     Thread(
-        target=deferred_stats,
-        kwargs=dict(from_time=from_time, to_time=to_time)
+        target=deferred_stats, kwargs=dict(from_time=from_time, to_time=to_time)
     ).start()
 
     # All is well so far and the calculation has been started
     # on a separate thread
-    return u"Stats calculation has been started", 200
+    return "Stats calculation has been started", 200
 
 
-def ratings():
+def ratings(request):
     """ Calculate new ratings tables """
-    logging.info(u"Starting ratings calculation")
+    logging.info("Starting ratings calculation")
     Thread(target=deferred_ratings).start()
-    return u"Ratings calculation has been started", 200
-
+    return "Ratings calculation has been started", 200

@@ -8,7 +8,7 @@
 #
 
 runtime: python37
-entrypoint: gunicorn -b :$PORT netskrafl:app
+entrypoint: gunicorn -b :$PORT -w 2 netskrafl:app
 
 instance_class: B2
 manual_scaling:
@@ -34,10 +34,6 @@ inbound_services:
 - warmup
 
 handlers:
-
-# Instance start
-- url: /_ah/start
-  script: auto
 
 # Robots.txt URL, cacheable
 - url: /robots.txt
