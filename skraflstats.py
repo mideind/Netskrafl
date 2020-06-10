@@ -12,6 +12,18 @@
     are in no way affiliated with or endorsed by the owners or licensees
     of the SCRABBLE trademark.
 
+    This module implements two endpoints, /stats/run and /stats/ratings.
+    The first one is normally called by the Google Cloud Scheduler at 02:00
+    UTC each night, and the second one at 02:20 UTC. The endpoints cannot
+    be invoked manually via HTTP except when running on a local development
+    server.
+
+    /stats/run looks at the games played during the preceding day (UTC time)
+    and calculates Elo scores and high scores for each game and player.
+
+    /stats/ratings creates the top 100 Elo scoreboard, for human-only
+    games and for all games (including human-vs-robot).
+
 """
 
 import calendar
@@ -271,30 +283,15 @@ def _run_stats(from_time, to_time):
             ts_last_processed = lm
             cnt += 1
             # Report on our progress
-            if i % 1000 == 0:
+            if i % 500 == 0:
                 logging.info("Processed {0} games".format(i))
 
-    except DeadlineExceededError:
-        # Hit deadline: save the stuff we already have and
-        # defer a new task to continue where we left off
-        logging.info(
-            "Deadline exceeded in stats loop after {0} games and {1} users".format(
-                cnt, len(users)
-            )
-        )
-        logging.info("Resuming from timestamp {0}".format(ts_last_processed))
-        if ts_last_processed is not None:
-            _write_stats(ts_last_processed, users)
-        deferred.defer(
-            deferred_stats, from_time=ts_last_processed or from_time, to_time=to_time
-        )
-        # Normal return prevents this task from being run again
-        return
-
     except Exception as ex:
-        logging.info("Exception in stats loop: {0}".format(ex))
-        # Avoid having the task retried
-        raise deferred.PermanentTaskFailure()
+        logging.error(
+            "Exception in _run_stats() after {0} games and {1} users: {2}"
+            .format(cnt, len(users), ex)
+        )
+        return
 
     # Completed without incident
     logging.info(
@@ -420,8 +417,7 @@ def deferred_stats(from_time, to_time):
 
         t0 = time.time()
         try:
-            # _run_stats(from_time, to_time)
-            logging.info("Would call _run_stats() here")
+            _run_stats(from_time, to_time)
         except Exception as ex:
             logging.error("Exception in deferred_stats: {0}".format(ex))
             return
@@ -432,21 +428,22 @@ def deferred_stats(from_time, to_time):
 
 def deferred_ratings():
     """ This is the deferred ratings table calculation process """
+
     with Client.get_context() as context:
 
         t0 = time.time()
         try:
-            # _create_ratings()
-            logging.info("Would call _create_ratings() here")
+            _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0}".format(ex))
             return
         t1 = time.time()
 
-        logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
         StatsModel.log_cache_stats()
         # Do not maintain the cache in memory between runs
         StatsModel.clear_cache()
+
+        logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
 
 
 def run(request):

@@ -159,6 +159,13 @@ class RedisWrapper:
             key = namespace + "|" + key
         return _loads(self._client.get(key))
 
+    def delete(self, key, namespace=None):
+        """ Delete a value from the cache """
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            key = namespace + "|" + key
+        return self._client.delete(key)
+
 
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.
@@ -166,6 +173,6 @@ class RedisWrapper:
 # If we're running on the local
 # development server (GAE emulator), connect to a local Redis server.
 if os.environ.get('SERVER_SOFTWARE', '').startswith('Development'):
-    memcache = RedisWrapper(redis_host="localhost")
+    memcache = RedisWrapper(redis_host="127.0.0.1")
 else:
     memcache = RedisWrapper()

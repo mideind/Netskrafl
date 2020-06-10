@@ -1185,6 +1185,8 @@ def rating():
         of a given kind ('all' or 'human') """
     rq = RequestData(request)
     kind = rq.get("kind", "all")
+    if kind not in ("all", "human"):
+        kind = "all"
     return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
@@ -2321,7 +2323,12 @@ def stats_ratings():
     if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
         # Only allow bona fide Google Cloud Scheduler requests
         return "Restricted URL", 403
-    return skraflstats.ratings(request)
+    result, status = skraflstats.ratings(request)
+    if status == 200:
+        # New ratings: ensure that old ones are deleted from cache
+        memcache.delete("all", namespace="rating")
+        memcache.delete("human", namespace="rating")
+    return result, status
 
 
 # We only enable the administration routes if running
