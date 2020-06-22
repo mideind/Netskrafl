@@ -25,6 +25,7 @@ import os
 import redis
 import json
 import importlib
+import logging
 from datetime import datetime
 
 
@@ -127,11 +128,30 @@ class RedisWrapper:
         redis_host = redis_host or os.environ.get('REDISHOST', 'localhost')
         redis_port = redis_port or int(os.environ.get('REDISPORT', 6379))
         # Create a Redis client instance
-        self._client = redis.Redis(host=redis_host, port=redis_port)
+        self._client = redis.Redis(
+            host=redis_host, port=redis_port, retry_on_timeout=True
+        )
 
     def get_redis_client(self):
         """ Return the underlying Redis client instance """
         return self._client
+
+    def _call_with_retry(self, func, errval, *args, **kwargs):
+        """ Call a client function, attempting one retry
+            upon a connection error """
+        attempts = 0
+        while attempts < 2:
+            try:
+                ret = func(*args, **kwargs)
+                # No error: return
+                return ret
+            except redis.client.ConnectionError:
+                if attempts == 0:
+                    logging.warning("Retrying Redis call after connection error")
+                else:
+                    logging.error("Redis connection error persisted after retrying")
+                attempts += 1
+        return errval
 
     def add(self, key, value, time=None, namespace=None):
         """ Add a value to the cache, under the given key
@@ -140,16 +160,13 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._client.set(key, _dumps(value), ex=time)
+        return self._call_with_retry(self._client.set, None, key, _dumps(value), ex=time)
 
     def set(self, key, value, time=None, namespace=None):
         """ Set a value in the cache, under the given key
             and within the given namespace, with an optional
-            expiry time in seconds """
-        if namespace:
-            # Redis doesn't have namespaces, so we prepend the namespace id to the key
-            key = namespace + "|" + key
-        return self._client.set(key, _dumps(value), ex=time)
+            expiry time in seconds. This is an alias for self.add(). """
+        return self.add(key, value, time, namespace)
 
     def get(self, key, namespace=None):
         """ Fetch a value from the cache, under the given key and within
@@ -157,14 +174,14 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return _loads(self._client.get(key))
+        return _loads(self._call_with_retry(self._client.get, None, key))
 
     def delete(self, key, namespace=None):
         """ Delete a value from the cache """
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._client.delete(key)
+        return self._call_with_retry(self._client.delete, False, key)
 
 
 # Create a global singleton wrapper instance with default parameters,

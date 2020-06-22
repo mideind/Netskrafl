@@ -419,7 +419,7 @@ def deferred_stats(from_time, to_time):
         try:
             _run_stats(from_time, to_time)
         except Exception as ex:
-            logging.error("Exception in deferred_stats: {0}".format(ex))
+            logging.error("Exception in deferred_stats: {0!r}".format(ex))
             return
         t1 = time.time()
 
@@ -435,7 +435,7 @@ def deferred_ratings():
         try:
             _create_ratings()
         except Exception as ex:
-            logging.error("Exception in deferred_ratings: {0}".format(ex))
+            logging.error("Exception in deferred_ratings: {0!r}".format(ex))
             return
         t1 = time.time()
 
