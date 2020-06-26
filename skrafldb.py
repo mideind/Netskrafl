@@ -908,7 +908,7 @@ class StatsModel(ndb.Model):
         """ Returns the Elo ratings at the indicated time point (None = now),
             in descending order  """
 
-        max_fetch = max_len * 10 // 4  # max_len * 2.5
+        max_fetch = int(max_len * 2.6)  # Currently this means a safety_buffer of 160
         safety_buffer = max_fetch - max_len
         check_false_positives = True
 
