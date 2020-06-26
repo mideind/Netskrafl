@@ -144,11 +144,14 @@ def _run_stats(from_time, to_time):
 
     if from_time is None or to_time is None:
         # Time range must be specified
-        return
+        return False
 
     if from_time >= to_time:
         # Null time range
-        return
+        return False
+
+    # Clear previous cache contents, if any
+    StatsModel.clear_cache()
 
     # Iterate over all finished games within the time span in temporal order
     # pylint: disable=singleton-comparison
@@ -288,17 +291,17 @@ def _run_stats(from_time, to_time):
 
     except Exception as ex:
         logging.error(
-            "Exception in _run_stats() after {0} games and {1} users: {2}"
+            "Exception in _run_stats() after {0} games and {1} users: {2!r}"
             .format(cnt, len(users), ex)
         )
-        return
+        return False
 
     # Completed without incident
     logging.info(
         "Normal completion of stats for {1} games and {0} users".format(len(users), cnt)
     )
-
     _write_stats(to_time, users)
+    return True
 
 
 def _create_ratings():
@@ -416,14 +419,33 @@ def deferred_stats(from_time, to_time):
     with Client.get_context() as context:
 
         t0 = time.time()
+        success = False
         try:
-            _run_stats(from_time, to_time)
+            # Try up to two times to execute _run_stats()
+            attempts = 0
+            while attempts < 2:
+                if _run_stats(from_time, to_time):
+                    # Success: we're done
+                    success = True
+                    break
+                attempts += 1
+                logging.warning("Retrying _run_stats()")
+
         except Exception as ex:
             logging.error("Exception in deferred_stats: {0!r}".format(ex))
             return
-        t1 = time.time()
 
-        logging.info("Stats calculation finished in {0:.2f} seconds".format(t1 - t0))
+        t1 = time.time()
+        if success:
+            logging.info(
+                "Stats calculation successfully finished in {0:.2f} seconds"
+                .format(t1 - t0)
+            )
+        else:
+            logging.error(
+                "Stats calculation did not complete, after running for {0:.2f} seconds"
+                .format(t1 - t0)
+            )
 
 
 def deferred_ratings():
