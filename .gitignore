@@ -18,6 +18,9 @@ __pycache__/
 ptvsd/
 pydev_startup.py
 
+# Redis
+redis/
+
 # Secret session key
 resources/secret_key.bin
 resources/salescloud_key.bin
