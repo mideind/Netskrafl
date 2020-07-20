@@ -10,9 +10,8 @@
 runtime: python37
 entrypoint: gunicorn -b :$PORT -w 2 netskrafl:app
 
-instance_class: B2
+instance_class: B4
 manual_scaling:
-  # !!! TODO: Update the following to 3 when doing a full deployment
   instances: 2
 
 vpc_access_connector:

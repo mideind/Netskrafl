@@ -16,14 +16,15 @@
 <meta name="google-signin-scope" content="profile email openid">
 <meta name="google-signin-client_id" content="{{ client_id | safe }}">
 
-<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
-
 {% endblock %}
 
-{% block startscripts %}
+{% block styles %}
 {% endblock %}
 
 {% block scripts %}
+{% endblock %}
+
+{% block startscripts %}
 {% endblock %}
 
 {% block logo %}
@@ -97,6 +98,8 @@ function renderButton() {
       'onfailure': onFailure
    };
    gapi.signin2.render('g-signin2-large', paramsLarge);
+   $('#g-signin2-large span[id^="not_signed_"]').text("Innskrá með Google");
+   $('#g-signin2-large span[id^="connected"]').text("Skrái þig inn...");
    var paramsSmall = {
       'width': 172,
       'height': 44,
@@ -106,6 +109,8 @@ function renderButton() {
       'onfailure': onFailure
    };
    gapi.signin2.render('g-signin2-small', paramsSmall);
+   $('#g-signin2-small span[id^="not_signed_"]').text("Innskrá");
+   $('#g-signin2-small span[id^="connected"]').text("Skrái...");
 }
 
 function getCookie(name) {
@@ -168,5 +173,8 @@ function initMain() {
 $(document).ready(initMain);
 
 </script>
+
+<!-- This script must be at the end -->
+<script src="https://apis.google.com/js/platform.js?hl=is&onload=renderButton" async defer></script>
 
 {% endblock %}

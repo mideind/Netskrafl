@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Skrafldb - persistent data management for the Netskrafl application
+    Skrafldb - persistent data management for the Netskrafl application
 
     Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -92,6 +92,7 @@ class Client:
 
 
 class Context:
+
     """ Wrapper for NDB context operations """
 
     def __init__(self):
@@ -104,6 +105,7 @@ class Context:
 
 
 class Unique:
+
     """ Wrapper for generation of unique id strings for keys """
 
     def __init__(self):
@@ -423,6 +425,7 @@ class UserModel(ndb.Model):
 
 
 class MoveModel(ndb.Model):
+
     """ Models a single move in a Game """
 
     coord = ndb.StringProperty()
@@ -433,6 +436,7 @@ class MoveModel(ndb.Model):
 
 
 class GameModel(ndb.Model):
+
     """ Models a game between two users """
 
     # The players
@@ -631,6 +635,7 @@ class GameModel(ndb.Model):
 
 
 class FavoriteModel(ndb.Model):
+
     """ Models the fact that a user has marked another user as a favorite """
 
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
@@ -687,6 +692,7 @@ class FavoriteModel(ndb.Model):
 
 
 class ChallengeModel(ndb.Model):
+
     """ Models a challenge issued by a user to another user """
 
     # The challenging (source) user is the parent/ancestor of the relation
@@ -800,6 +806,7 @@ class ChallengeModel(ndb.Model):
 
 
 class StatsModel(ndb.Model):
+
     """ Models statistics about users """
 
     # The user associated with this statistic or None if robot
@@ -1123,6 +1130,7 @@ class StatsModel(ndb.Model):
 
 
 class RatingModel(ndb.Model):
+
     """ Models tables of user ratings """
 
     # Typically "all" or "human"
@@ -1242,6 +1250,7 @@ class RatingModel(ndb.Model):
 
 
 class ChatModel(ndb.Model):
+
     """ Models chat communications between users """
 
     # The channel (conversation) identifier
@@ -1300,6 +1309,7 @@ class ChatModel(ndb.Model):
 
 
 class ZombieModel(ndb.Model):
+
     """ Models finished games that have not been seen by one of the players """
 
     # The zombie game
@@ -1374,6 +1384,7 @@ class ZombieModel(ndb.Model):
 
 
 class PromoModel(ndb.Model):
+
     """ Models promotions displayed to players """
 
     # The player that saw the promotion
