@@ -329,7 +329,13 @@ function doRegisterSalesCloud(i,s,o,g,r,a,m) {
 }
 
 function registerSalesCloud() {
-   doRegisterSalesCloud(window,document,'script','https://salescloud.is/js/salescloud.js','salescloud');
+   doRegisterSalesCloud(
+      window,
+      document,
+      'script',
+      'https://cdn.salescloud.is/js/salescloud.min.js',
+      'salescloud'
+   );
 }
 
 function openPromoDialog(key, completeFunc) {
