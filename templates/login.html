@@ -153,16 +153,21 @@ function onSignIn(googleUser) {
    var csrfToken = getCookie('csrfToken');
    oauth2callback(idToken, csrfToken)
       .then(
-         function() {
+         function(data, textStatus, jqXHR) {
             // Redirect to initial URL on success
             window.location.assign("{{ main_url | safe }}");
          },
-         function(error) {
+         function(jqXHR, textStatus, errorThrown) {
             // Refresh page on error.
             // In all cases, client side state should be lost due to in-memory
             // persistence.
-            console.log("Error from oauth2callback(): " + error);
+            console.log("Error from oauth2callback(): " + errorThrown);
             window.location.assign('/login');
+         }
+      )
+      .always(
+         function() {
+            console.log("Callback finished");
          }
       );
 }

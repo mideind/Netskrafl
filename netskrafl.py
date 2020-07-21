@@ -223,6 +223,7 @@ def auth_required(**error_kwargs):
         requests, containing those kwargs (via jsonify()). """
 
     def wrap(func):
+
         @wraps(func)
         def route():
             """ Load the authenticated user into g.user
