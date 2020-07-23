@@ -123,6 +123,11 @@ class DawgTester:
         self._test_true(u"vísla")
         self._test_true(u"þolla")
         self._test_true(u"þrifla")
+        self._test_true(u"hóg")
+        self._test_true(u"íra")
+        self._test_true(u"íri")
+        self._test_true(u"bravó")
+        self._test_true(u"áldós")
 
         self._test_false(u"eystðu")
         self._test_false(u"blæstðu")
@@ -169,6 +174,7 @@ class DawgTester:
         self._test_false(u"þarftðu")
         self._test_false(u"þurreystðu")
         self._test_false(u"fatai")
+        self._test_false(u"ina")
 
         # Spurnarmyndir (question forms)
         # Allowed in singular (present and past tense),
