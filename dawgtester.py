@@ -1,9 +1,9 @@
-#!/usr/bin/env pypy
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 """ Test module for DAWG dictionary
 
-    Author: Vilhjalmur Thorsteinsson, 2014
+    Copyright (C) 2020 Miðeind ehf.
+    Original author: Vilhjálmur Þorsteinsson
 
     This module contains test code for dawgdictionary.py
 
@@ -22,16 +22,16 @@ class DawgTester:
         self._dawg = None
 
     def _test(self, word):
-        print(u"\"{0}\" is {1}found".format(word, u"" if word in self._dawg else u"not "))
+        print("\"{0}\" is {1}found".format(word, "" if word in self._dawg else u"not "))
 
     def _test_true(self, word):
         if word not in self._dawg:
-            print(u"Error: \"{0}\" was not found".format(word))
+            print("Error: \"{0}\" was not found".format(word))
 
     def _test_false(self, word):
         if word in self._dawg:
             # Tests the __contains__ operator
-            print(u"Error: \"{0}\" was found".format(word))
+            print("Error: \"{0}\" was found".format(word))
 
     def run(self, fname, relpath):
         """ Load a DawgDictionary and test its functionality """
@@ -48,186 +48,193 @@ class DawgTester:
         print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
 
         print("Checking a set of random words:")
-        self._test_true(u"abbadísarinnar")
-        self._test_true(u"absintufyllirí")
-        self._test_false(u"absolútt")
-        self._test_true(u"aborri")
-        self._test_true(u"eipaði")
-        self._test_true(u"geipaði")
-        self._test_false(u"eipeði")
-        self._test_false(u"abs")
-        self._test_true(u"halló")
-        self._test_true(u"blús")
-        # self._test_true(u"hraðskákmótin") # Not in BÍN
-        # self._test_true(u"jólahraðskákmótið") # Longer than 15 letters
+        self._test_true("abbadísarinnar")
+        self._test_true("absintufyllirí")
+        self._test_false("absolútt")
+        self._test_true("aborri")
+        self._test_true("eipaði")
+        self._test_true("geipaði")
+        self._test_false("eipeði")
+        self._test_false("abs")
+        self._test_true("halló")
+        self._test_true("blús")
+        # self._test_true("hraðskákmótin") # Not in BÍN
+        # self._test_true("jólahraðskákmótið") # Longer than 15 letters
 
-        self._test_true(u"dylstu")
-        self._test_true(u"innslagi")
+        self._test_true("dylstu")
+        self._test_true("innslagi")
 
-        self._test_true(u"nafnskírteinið")
-        self._test_false(u"abstraktmálarið")
-        self._test_true(u"abstraktmálari")
-        self._test_false(u"abstraktmálar")
-        self._test_false(u"abstraktmála")
-        self._test_true(u"prófun")
-        self._test_true(u"upphitun")
-        self._test_false(u"")
-        self._test_false(u"abo550")
-        self._test_false(u"ertðu")
-        self._test_false(u"sértðu")
-        # self._test_false(u"vextu") # Seems to be allowed
-        self._test_true(u"sértu")
-        self._test_true(u"dren")
-        self._test_true(u"drenið")
-        self._test_true(u"drensins")
-        self._test_true(u"álínis")
-        self._test_true(u"hán")
-        self._test_true(u"háni")
-        self._test_true(u"háns")
-        self._test_true(u"hvívetna")
-        self._test_false(u"réttleganna")
-        self._test_false(u"meistarleganna")
-        self._test_false(u"hjálpsamligana")
-        self._test_false(u"ennig")
+        self._test_true("nafnskírteinið")
+        self._test_false("abstraktmálarið")
+        self._test_true("abstraktmálari")
+        self._test_false("abstraktmálar")
+        self._test_false("abstraktmála")
+        self._test_true("prófun")
+        self._test_true("upphitun")
+        self._test_false("")
+        self._test_false("abo550")
+        self._test_false("ertðu")
+        self._test_false("sértðu")
+        # self._test_false("vextu") # Seems to be allowed
+        self._test_true("sértu")
+        self._test_true("dren")
+        self._test_true("drenið")
+        self._test_true("drensins")
+        self._test_true("álínis")
+        self._test_true("hán")
+        self._test_true("háni")
+        self._test_true("háns")
+        self._test_true("hvívetna")
+        self._test_false("réttleganna")
+        self._test_false("meistarleganna")
+        self._test_false("hjálpsamligana")
+        self._test_false("ennig")
 
-        self._test_true(u"bitla")
-        self._test_true(u"friðla")
-        self._test_true(u"fræla")
-        self._test_true(u"geistla")
-        self._test_true(u"greppla")
-        self._test_true(u"hógla")
-        self._test_true(u"hretla")
-        self._test_true(u"hrumla")
-        self._test_true(u"hæfla")
-        self._test_true(u"jagla")
-        self._test_true(u"mörla")
-        self._test_true(u"níðla")
-        self._test_true(u"ógjörla")
-        self._test_true(u"ragla")
-        self._test_true(u"rangla")
-        self._test_true(u"síðla")
-        self._test_true(u"sjóla")
-        self._test_true(u"skopla")
-        self._test_true(u"skrifla")
-        self._test_true(u"snæla")
-        self._test_true(u"spéla")
-        self._test_true(u"smásmugula")
-        self._test_true(u"safala")
-        self._test_true(u"strangla")
-        self._test_true(u"strikla")
-        self._test_true(u"sumla")
-        self._test_true(u"tæpla")
-        self._test_true(u"vesalla")
-        self._test_true(u"vesla")
-        self._test_true(u"vitla")
-        self._test_true(u"vígla")
-        self._test_true(u"vísla")
-        self._test_true(u"þolla")
-        self._test_true(u"þrifla")
+        self._test_true("bitla")
+        self._test_true("friðla")
+        self._test_true("fræla")
+        self._test_true("geistla")
+        self._test_true("greppla")
+        self._test_true("hógla")
+        self._test_true("hretla")
+        self._test_true("hrumla")
+        self._test_true("hæfla")
+        self._test_true("jagla")
+        self._test_true("mörla")
+        self._test_true("níðla")
+        self._test_true("ógjörla")
+        self._test_true("ragla")
+        self._test_true("rangla")
+        self._test_true("síðla")
+        self._test_true("sjóla")
+        self._test_true("skopla")
+        self._test_true("skrifla")
+        self._test_true("snæla")
+        self._test_true("spéla")
+        self._test_true("smásmugula")
+        self._test_true("safala")
+        self._test_true("strangla")
+        self._test_true("strikla")
+        self._test_true("sumla")
+        self._test_true("tæpla")
+        self._test_true("vesalla")
+        self._test_true("vesla")
+        self._test_true("vitla")
+        self._test_true("vígla")
+        self._test_true("vísla")
+        self._test_true("þolla")
+        self._test_true("þrifla")
+        self._test_true("hóg")
+        self._test_true("íra")
+        self._test_true("íri")
+        self._test_true("bravó")
+        self._test_true("áldós")
 
-        self._test_false(u"eystðu")
-        self._test_false(u"blæstðu")
-        self._test_false(u"botnfrýstðu")
-        self._test_false(u"áttðu")
-        self._test_false(u"endurkýstðu")
-        self._test_false(u"frýstðu")
-        self._test_false(u"gaddfrýstðu")
-        self._test_false(u"gagnfrýstðu")
-        self._test_false(u"gýstðu")
-        self._test_false(u"grandlestðu")
-        self._test_false(u"helfrýstðu")
-        self._test_false(u"hnýstðu")
-        self._test_false(u"hralestðu")
-        self._test_true(u"hraðlestu")
-        self._test_false(u"innblæstðu")
-        self._test_false(u"kýstðu")
-        self._test_false(u"kanntðu")
-        self._test_false(u"lestðu")
-        self._test_false(u"ljóslestðu")
-        self._test_false(u"marglestðu")
-        self._test_false(u"máttðu")
-        self._test_false(u"mislestðu")
-        self._test_false(u"moldeystðu")
-        self._test_false(u"manstðu")
-        self._test_false(u"muntðu")
-        self._test_false(u"ofrístðu")
-        self._test_false(u"rístðu")
-        self._test_false(u"sandblæstðu")
-        self._test_false(u"skaltðu")
-        self._test_false(u"stokkfrýstðu")
-        self._test_false(u"anntðu")
-        self._test_false(u"uppeystðu")
-        self._test_false(u"uppblæstðu")
-        self._test_false(u"úteystðu")
-        self._test_false(u"vextðu")
-        self._test_false(u"ertðu")
-        self._test_false(u"sértðu")
-        self._test_false(u"viltðu")
-        self._test_false(u"veistðu")
-        self._test_false(u"þaullestðu")
-        self._test_false(u"þinglestðu")
-        self._test_false(u"þrautlestðu")
-        self._test_false(u"þarftðu")
-        self._test_false(u"þurreystðu")
-        self._test_false(u"fatai")
+        self._test_false("eystðu")
+        self._test_false("blæstðu")
+        self._test_false("botnfrýstðu")
+        self._test_false("áttðu")
+        self._test_false("endurkýstðu")
+        self._test_false("frýstðu")
+        self._test_false("gaddfrýstðu")
+        self._test_false("gagnfrýstðu")
+        self._test_false("gýstðu")
+        self._test_false("grandlestðu")
+        self._test_false("helfrýstðu")
+        self._test_false("hnýstðu")
+        self._test_false("hralestðu")
+        self._test_true("hraðlestu")
+        self._test_false("innblæstðu")
+        self._test_false("kýstðu")
+        self._test_false("kanntðu")
+        self._test_false("lestðu")
+        self._test_false("ljóslestðu")
+        self._test_false("marglestðu")
+        self._test_false("máttðu")
+        self._test_false("mislestðu")
+        self._test_false("moldeystðu")
+        self._test_false("manstðu")
+        self._test_false("muntðu")
+        self._test_false("ofrístðu")
+        self._test_false("rístðu")
+        self._test_false("sandblæstðu")
+        self._test_false("skaltðu")
+        self._test_false("stokkfrýstðu")
+        self._test_false("anntðu")
+        self._test_false("uppeystðu")
+        self._test_false("uppblæstðu")
+        self._test_false("úteystðu")
+        self._test_false("vextðu")
+        self._test_false("ertðu")
+        self._test_false("sértðu")
+        self._test_false("viltðu")
+        self._test_false("veistðu")
+        self._test_false("þaullestðu")
+        self._test_false("þinglestðu")
+        self._test_false("þrautlestðu")
+        self._test_false("þarftðu")
+        self._test_false("þurreystðu")
+        self._test_false("fatai")
+        self._test_false("ina")
 
         # Spurnarmyndir (question forms)
         # Allowed in singular (present and past tense),
         # disallowed in plural (present and past tense)
-        self._test_true(u"ertu")
-        self._test_true(u"vertu")
-        self._test_true(u"sértu")
-        self._test_true(u"varstu")
-        self._test_true(u"verðurðu")
-        self._test_true(u"varðstu")
-        self._test_true(u"fórstu")
-        self._test_true(u"ferðu")
-        self._test_true(u"komstu")
-        self._test_true(u"kemurðu")
-        self._test_true(u"borðarðu")
-        self._test_true(u"borðaðirðu")
-        self._test_false(u"voruði")
-        self._test_false(u"eruði")
-        self._test_false(u"fóruði")
-        self._test_false(u"fariði")
-        self._test_false(u"borðiði")
-        self._test_false(u"borðuðuði")
-        self._test_false(u"komiði")
-        self._test_false(u"komuði")
+        self._test_true("ertu")
+        self._test_true("vertu")
+        self._test_true("sértu")
+        self._test_true("varstu")
+        self._test_true("verðurðu")
+        self._test_true("varðstu")
+        self._test_true("fórstu")
+        self._test_true("ferðu")
+        self._test_true("komstu")
+        self._test_true("kemurðu")
+        self._test_true("borðarðu")
+        self._test_true("borðaðirðu")
+        self._test_false("voruði")
+        self._test_false("eruði")
+        self._test_false("fóruði")
+        self._test_false("fariði")
+        self._test_false("borðiði")
+        self._test_false("borðuðuði")
+        self._test_false("komiði")
+        self._test_false("komuði")
 
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
         smallwords = [
-            u"að", u"af", u"ak", u"al", u"an", u"ar", u"as", u"at", u"ax",
-            u"áa", u"áð", u"ái", u"ál", u"ám", u"án", u"ár", u"ás", u"át",
-            u"bí", u"bú", u"bý", u"bæ",
-            u"dá", u"do", u"dó", u"dý",
-            u"eð", u"ef", u"eg", u"ei", u"ek", u"el", u"em", u"en", u"er", u"es", u"et", u"ex", u"ey",
-            u"ég", u"él", u"ét",
-            u"fa", u"fá", u"fé", u"fæ",
-            u"gá",
-            u"ha", u"há", u"hí", u"hó", u"hý", u"hæ",
-            u"ið", u"il", u"im",
-            u"íð", u"íl", u"ím", u"ís",
-            u"já", u"je", u"jó", u"jú",
-            u"ká", u"ku", u"kú",
-            u"la", u"lá", u"lé", u"ló", u"lú", u"lý", u"læ",
-            u"má", u"mi", u"mó", u"mý",
-            u"ná", u"né", u"nó", u"nú", u"ný", u"næ",
-            u"of", u"og", u"oj", u"ok", u"op", u"or",
-            u"óa", u"óð", u"óf", u"ói", u"ók", u"ól", u"óm", u"ón", u"óp", u"ós", u"óx",
-            u"pí", u"pu", u"pú", u"pæ",
-            u"rá", u"re", u"ré", u"rí", u"ró", u"rú", u"rý", u"ræ",
-            u"sá", u"sé", u"sí", u"so", u"sú", u"sý", u"sæ",
-            u"tá", u"te", u"té", u"ti", u"tí", u"tó", u"tý",
-            u"um", u"un",
-            u"úa", u"úð", u"úf", u"úi", u"úr", u"út",
-            u"vá", u"vé", u"ví", u"vó",
-            u"yl", u"ym", u"yr", u"ys",
-            u"ýf", u"ýg", u"ýi", u"ýk", u"ýl", u"ýr", u"ýs", u"ýt",
-            u"þá", u"þó", u"þú", u"þý",
-            u"æð", u"æf", u"æg", u"æi", u"æl", u"æp", u"ær", u"æs", u"æt",
-            u"öl", u"ör", u"ös", u"öt", u"öx"]
+            "að", "af", "ak", "al", "an", "ar", "as", "at", "ax",
+            "áa", "áð", "ái", "ál", "ám", "án", "ár", "ás", "át",
+            "bí", "bú", "bý", "bæ",
+            "dá", "do", "dó", "dý",
+            "eð", "ef", "eg", "ei", "ek", "el", "em", "en", "er", "es", "et", "ex", "ey",
+            "ég", "él", "ét",
+            "fa", "fá", "fé", "fæ",
+            "gá",
+            "ha", "há", "hí", "hó", "hý", "hæ",
+            "ið", "il", "im",
+            "íð", "íl", "ím", "ís",
+            "já", "je", "jó", "jú",
+            "ká", "ku", "kú",
+            "la", "lá", "lé", "ló", "lú", "lý", "læ",
+            "má", "mi", "mó", "mý",
+            "ná", "né", "nó", "nú", "ný", "næ",
+            "of", "og", "oj", "ok", "op", "or",
+            "óa", "óð", "óf", "ói", "ók", "ól", "óm", "ón", "óp", "ós", "óx",
+            "pí", "pu", "pú", "pæ",
+            "rá", "re", "ré", "rí", "ró", "rú", "rý", "ræ",
+            "sá", "sé", "sí", "so", "sú", "sý", "sæ",
+            "tá", "te", "té", "ti", "tí", "tó", "tý",
+            "um", "un",
+            "úa", "úð", "úf", "úi", "úr", "út",
+            "vá", "vé", "ví", "vó",
+            "yl", "ym", "yr", "ys",
+            "ýf", "ýg", "ýi", "ýk", "ýl", "ýr", "ýs", "ýt",
+            "þá", "þó", "þú", "þý",
+            "æð", "æf", "æg", "æi", "æl", "æp", "ær", "æs", "æt",
+            "öl", "ör", "ös", "öt", "öx"
+        ]
 
         print("Checking small words:")
 
@@ -245,72 +252,72 @@ class DawgTester:
         word = u"einstök"
         permlist = self._dawg.find_permutations(word)
         t1 = time.time()
-        print(u"Permutations of \"{0}\":".format(word))
+        print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print(u"\"{0}\"".format(word)),
+            print("\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print
-        print
-        print(u"{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print
+                print()
+        print()
+        print("{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
+        print()
         t0 = time.time()
         word = u"pr?óf"
         permlist = self._dawg.find_permutations(word)
         t1 = time.time()
-        print(u"Permutations of \"{0}\":".format(word))
+        print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print(u"\"{0}\"".format(word)),
+            print("\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print
-        print
-        print(u"{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print
+                print()
+        print()
+        print("{0} permutations found in {1:.2f} seconds".format(cnt, t1 - t0))
+        print()
 
         print("Finding matches:")
         t0 = time.time()
         word = u"e??st??"
         mlist = self._dawg.find_matches(word)
         t1 = time.time()
-        print(u"Matches of \"{0}\":".format(word))
+        print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print(u"\"{0}\"".format(word)),
+            print("\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print
-        print
-        print(u"{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print
+                print()
+        print()
+        print("{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
+        print()
 
         t0 = time.time()
         word = u"f?r??t??n"
         mlist = self._dawg.find_matches(word)
         t1 = time.time()
-        print(u"Matches of \"{0}\":".format(word))
+        print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print(u"\"{0}\"".format(word)),
+            print("\"{0}\"".format(word)),
             cnt += 1
             if cnt % 6 == 0:
-                print
-        print
-        print(u"{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
-        print
+                print()
+        print()
+        print("{0} matches found in {1:.2f} seconds".format(cnt, t1 - t0))
+        print()
 
-        word = u"??"
+        word = "??"
         mlist = self._dawg.find_matches(word)
 
-        print(u"{0} two-letter words found; should be {1}".format(len(mlist), len(smallwords)))
+        print("{0} two-letter words found; should be {1}".format(len(mlist), len(smallwords)))
         for word in mlist:
             if word not in smallwords:
-                print (u"{0} in match result but not in smallwords".format(word))
-        print
+                print("{0} in match result but not in smallwords".format(word))
+        print()
 
-        print(u"Test finished")
+        print("Test finished")
 
         self._dawg = None
 
