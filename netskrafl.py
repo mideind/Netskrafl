@@ -1,4 +1,6 @@
-""" Web server for netskrafl.is
+"""
+
+    Web server for netskrafl.is
 
     Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson

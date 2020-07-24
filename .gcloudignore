@@ -13,6 +13,9 @@ resources/*.dawg.pickle
 # CSV files
 resources/*.csv
 
+# Credential files
+resources/netskrafl-*.json
+
 # Photoshop & Illustrator files
 *.psd
 *.ai
