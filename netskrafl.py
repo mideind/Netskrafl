@@ -401,7 +401,7 @@ def _process_move(game, movelist):
                 # Generate an autoplayer move in response
                 game.autoplayer_move()
                 is_over = game.is_over()  # State may change during autoplayer_move()
-            elif m.needs_response_move():
+            elif m.needs_response_move:
                 # Challenge move: generate a response move
                 game.response_move()
                 is_over = game.is_over()  # State may change during response_move()
