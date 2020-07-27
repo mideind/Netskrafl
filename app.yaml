@@ -158,4 +158,6 @@ handlers:
 
 # Catchall for all other URLS
 - url: .*
+  secure: always
+  redirect_http_response_code: 301
   script: auto
