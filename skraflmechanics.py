@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
+    Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
 
     Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -24,6 +24,7 @@
 
 # pylint: disable=too-many-lines
 
+import abc
 from random import SystemRandom
 
 from dawgdictionary import Wordbase
@@ -31,8 +32,8 @@ from languages import Alphabet
 
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
-_DEBUG_MANUAL_WORDCHECK = False
 # _DEBUG_MANUAL_WORDCHECK = True
+_DEBUG_MANUAL_WORDCHECK = False
 
 
 # Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
@@ -83,7 +84,7 @@ class Board:
     SIZE = 15
 
     # The rows are identified by letter
-    ROWIDS = u"ABCDEFGHIJKLMNO"
+    ROWIDS = "ABCDEFGHIJKLMNO"
 
     _wordscore = [[int(c) for c in row] for row in _RAW_WORDSCORE]
     _letterscore = [[int(c) for c in row] for row in _RAW_LETTERSCORE]
@@ -104,9 +105,9 @@ class Board:
         # noinspection PyProtectedMember
         if copy is None:
             # Store letters on the board in list of strings
-            self._letters = [u" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._letters = [" " * Board.SIZE for _ in range(Board.SIZE)]
             # Store tiles on the board in list of strings
-            self._tiles = [u" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._tiles = [" " * Board.SIZE for _ in range(Board.SIZE)]
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
@@ -124,7 +125,7 @@ class Board:
 
     def is_covered(self, row, col):
         """ Is the specified square already covered (taken)? """
-        return self._letters[row][col] != u" "
+        return self._letters[row][col] != " "
 
     def has_adjacent(self, row, col):
         """ Check whether there are any tiles on the board adjacent to this square """
@@ -154,14 +155,14 @@ class Board:
         if prev == letter:
             # Unchanged square: we're done
             return
-        if prev == u" " and letter != u" ":
+        if prev == " " and letter != " ":
             # Putting a letter into a previously empty square
             self._numletters += 1
-        elif prev != u" " and letter == u" ":
+        elif prev != " " and letter == " ":
             # Removing a letter from a previously filled square
             self._numletters -= 1
         r = self._letters[row]
-        self._letters[row] = r[0:col] + letter + r[col + 1:]
+        self._letters[row] = r[0:col] + letter + r[col + 1 :]
 
     def set_tile(self, row, col, tile):
         """ Set the tile at the specified co-ordinate """
@@ -171,32 +172,32 @@ class Board:
         if prev == tile:
             # Unchanged square: we're done
             return
-        if prev == u" " and tile != u" ":
+        if prev == " " and tile != " ":
             # Putting a tile into a previously empty square
             self._numtiles += 1
-        elif prev != u" " and tile == u" ":
+        elif prev != " " and tile == " ":
             # Removing a tile from a previously filled square
             self._numtiles -= 1
         r = self._tiles[row]
-        self._tiles[row] = r[0:col] + tile + r[col + 1:]
+        self._tiles[row] = r[0:col] + tile + r[col + 1 :]
 
     def enum_tiles(self):
         """ Enumerate the tiles on the board with their coordinates """
         for x in range(Board.SIZE):
             for y in range(Board.SIZE):
                 t = self.tile_at(x, y)
-                if t != u" ":
+                if t != " ":
                     yield (x, y, t, self.letter_at(x, y))
 
     @staticmethod
     def adjacent(row, col, xd, yd, getter):
         """ Return the letters or tiles adjacent to the given square, in the direction (xd, yd) """
-        result = u""
+        result = ""
         row += xd
         col += yd
         while row in range(Board.SIZE) and col in range(Board.SIZE):
             ltr = getter(row, col)
-            if ltr == u" ":
+            if ltr == " ":
                 # Empty square: we're done
                 break
             if xd + yd < 0:
@@ -243,14 +244,12 @@ class Board:
 
     def __str__(self):
         """ Simple text dump of the contents of the board """
-        board = [u"   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5"]
+        board = ["   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5"]
         for y, row in enumerate(self._letters):
             board.append(
-                Board.ROWIDS[y]
-                + u": "
-                + u" ".join([u"." if c == u" " else c for c in row])
+                Board.ROWIDS[y] + ": " + " ".join(["." if c == " " else c for c in row])
             )
-        return u"\n".join(board)
+        return "\n".join(board)
 
     @staticmethod
     def wordscore(row, col):
@@ -268,7 +267,7 @@ class Bag:
     """ Represents a bag of tiles """
 
     # The sort order for displaying the bag, with blank tiles last
-    SORT_ORDER = Alphabet.order + u"?"
+    SORT_ORDER = Alphabet.order + "?"
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
@@ -280,7 +279,7 @@ class Bag:
             # Get a full bag from the requested tile set
             if debug:
                 # Small bag for debugging endgame cases
-                self._tiles = u"aaábdðefgiiíklmnnóprrsstuuúæ"
+                self._tiles = "aaábdðefgiiíklmnnóprrsstuuúæ"
             else:
                 self._tiles = tileset.full_bag()
             self._size = len(self._tiles)
@@ -294,7 +293,7 @@ class Bag:
         if self.is_empty():
             return None
         tile = self._tiles[Bag.RNG.randint(0, len(self._tiles) - 1)]
-        self._tiles = self._tiles.replace(tile, u"", 1)
+        self._tiles = self._tiles.replace(tile, "", 1)
         return tile
 
     def return_tiles(self, tiles):
@@ -327,7 +326,7 @@ class Bag:
 
     def subtract_board(self, board):
         """ Subtract all tiles on the board from the bag """
-        board_tiles = u"".join(tile for row, col, tile, letter in board.enum_tiles())
+        board_tiles = "".join(tile for row, col, tile, letter in board.enum_tiles())
         self._tiles = Alphabet.string_subtract(self._tiles, board_tiles)
 
     def subtract_rack(self, rack):
@@ -345,14 +344,14 @@ class Rack:
 
         # pylint: disable=protected-access
         if copy is None:
-            self._tiles = u""
+            self._tiles = ""
         else:
             # Copy constructor: initialize from another Rack
             self._tiles = copy._tiles
 
     def remove_tile(self, tile):
         """ Remove a tile from the rack """
-        self._tiles = self._tiles.replace(tile, u"", 1)
+        self._tiles = self._tiles.replace(tile, "", 1)
 
     def replenish(self, bag):
         """ Draw tiles from the bag until we have 7 tiles or the bag is empty """
@@ -377,14 +376,14 @@ class Rack:
 
     def set_tiles(self, tiles):
         """ Set the contents of the rack """
-        self._tiles = u"" if tiles is None else tiles
+        self._tiles = "" if tiles is None else tiles
 
     def contains(self, tiles):
         """ Check whether the rack contains all tiles in the tiles string """
         # (Quick and dirty, not time-critical)
         temp = self._tiles
         for c in tiles:
-            temp = temp.replace(c, u"", 1)
+            temp = temp.replace(c, "", 1)
         return len(self._tiles) - len(temp) == len(tiles)
 
     def exchange(self, bag, tiles):
@@ -393,7 +392,7 @@ class Rack:
             # Need seven tiles in the bag to be allowed to exchange
             return False
         # First remove the tiles from the rack and replenish it
-        removed = u""
+        removed = ""
         for c in tiles:
             if c in self._tiles:
                 # Be careful and only remove tiles that actually were there
@@ -416,7 +415,7 @@ class Rack:
             tiles.append(bag.draw_tile())
         # Return the tiles sorted in alphabetical order
         tiles.sort(key=Alphabet.all_tiles.index)
-        self._tiles = u"".join(tiles)
+        self._tiles = "".join(tiles)
 
 
 class State:
@@ -434,7 +433,7 @@ class State:
             self._scores = [0, 0]  # "Pure" scores from moves on the board
             # Adjustments (deltas) made at the end of the game
             self._adj_scores = [0, 0]
-            self._player_names = [u"", u""]
+            self._player_names = ["", ""]
             self._num_passes = 0  # Number of consecutive Pass moves
             self._num_moves = 0  # Number of moves made
             self._game_resigned = False
@@ -592,8 +591,8 @@ class State:
         """ Set the challengeable state, with the given covers being laid down """
         if score and self.manual_wordcheck:
             self._challenge_score = score
-            # logging.info(u"State.set_challengeable: last_rack is {0}"
-            # .format(last_rack).encode("latin-1"))
+            # logging.info("State.set_challengeable: last_rack is {0}"
+            # .format(last_rack))
             self._last_rack = last_rack
             self._last_covers = covers
 
@@ -607,7 +606,7 @@ class State:
 
     def set_rack(self, index, tiles):
         """ Set the contents of the rack (indexed by 0 or 1) """
-        self._racks[index].set_tiles(u"" if tiles is None else tiles)
+        self._racks[index].set_tiles("" if tiles is None else tiles)
 
     def board(self):
         """ Return the Board object of this state """
@@ -628,7 +627,7 @@ class State:
     def display_bag(self, player):
         """ Returns the current bag plus the rack of the opponent """
         displaybag = self._bag.contents() + self.rack(1 - player)
-        return u"".join(sorted(displaybag, key=Bag.SORT_ORDER.index))
+        return "".join(sorted(displaybag, key=Bag.SORT_ORDER.index))
 
     def is_game_over(self):
         """ The game is over if either rack is empty or if both players
@@ -700,15 +699,15 @@ class State:
         tomove1 = "-->" if self._player_to_move == 1 else ""
         return (
             self._board.__str__()
-            + u"\n{4}{0} {1} vs {5}{2} {3}".format(
+            + "\n{4}{0} {1} vs {5}{2} {3}".format(
                 self._player_names[0],
                 self._scores[0],
                 self._player_names[1],
                 self._scores[1],
                 tomove0,
-                tomove1
+                tomove1,
             )
-            + u"\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
+            + "\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
         )
 
 
@@ -766,37 +765,37 @@ class Error:
         """ Return a string identifier corresponding to an error code """
         if errcode == Error.GAME_OVER:
             # Special case
-            return u"GAME_OVER"
+            return "GAME_OVER"
         return [
-            u"LEGAL",
-            u"NULL_MOVE",
-            u"FIRST_MOVE_NOT_IN_CENTER",
-            u"DISJOINT",
-            u"NOT_ADJACENT",
-            u"SQUARE_ALREADY_OCCUPIED",
-            u"HAS_GAP",
-            u"WORD_NOT_IN_DICTIONARY",
-            u"CROSS_WORD_NOT_IN_DICTIONARY",
-            u"TOO_MANY_TILES_PLAYED",
-            u"TILE_NOT_IN_RACK",
-            u"EXCHANGE_NOT_ALLOWED",
-            u"TOO_MANY_TILES_EXCHANGED",
-            u"OUT_OF_SYNC",
-            u"LOGIN_REQUIRED",
-            u"WRONG_USER",
-            u"GAME_NOT_FOUND",
-            u"GAME_NOT_OVERDUE",
-            u"SERVER_ERROR",
-            u"NOT_MANUAL_WORDCHECK",
-            u"MOVE_NOT_CHALLENGEABLE",
-            u"ONLY_PASS_OR_CHALLENGE",
-            u"USER_MUST_BE_FRIEND"
+            "LEGAL",
+            "NULL_MOVE",
+            "FIRST_MOVE_NOT_IN_CENTER",
+            "DISJOINT",
+            "NOT_ADJACENT",
+            "SQUARE_ALREADY_OCCUPIED",
+            "HAS_GAP",
+            "WORD_NOT_IN_DICTIONARY",
+            "CROSS_WORD_NOT_IN_DICTIONARY",
+            "TOO_MANY_TILES_PLAYED",
+            "TILE_NOT_IN_RACK",
+            "EXCHANGE_NOT_ALLOWED",
+            "TOO_MANY_TILES_EXCHANGED",
+            "OUT_OF_SYNC",
+            "LOGIN_REQUIRED",
+            "WRONG_USER",
+            "GAME_NOT_FOUND",
+            "GAME_NOT_OVERDUE",
+            "SERVER_ERROR",
+            "NOT_MANUAL_WORDCHECK",
+            "MOVE_NOT_CHALLENGEABLE",
+            "ONLY_PASS_OR_CHALLENGE",
+            "USER_MUST_BE_FRIEND",
         ][errcode]
 
 
-class MoveBase(object):
+class MoveBase(abc.ABC):
 
-    """ Base class for the various types of moves """
+    """ Abstract base class for the various types of moves """
 
     def __init__(self):
         pass
@@ -834,9 +833,16 @@ class MoveBase(object):
         """ Return True if the player's rack should be replenished after the move """
         return False
 
+    @abc.abstractmethod
     def apply(self, state, shallow=False):
         """ Should be overridden in derived classes """
-        raise NotImplementedError
+        ...
+
+    @property
+    def needs_response_move(self):
+        """ Does this move call for a ResponseMove to be generated? """
+        # Only True for ChallengeMove instances
+        return False
 
 
 class Move(MoveBase):
@@ -906,7 +912,7 @@ class Move(MoveBase):
                 Board.ROWIDS[c.row] + str(c.col + 1),  # Coordinate
                 c.tile,
                 c.letter,  # Tile and letter
-                scores[c.tile]  # Score
+                scores[c.tile],  # Score
             )
             for c in self._covers
         ]
@@ -924,7 +930,7 @@ class Move(MoveBase):
 
     def __str__(self):
         """ Return the standard move notation of a coordinate followed by the word formed """
-        return self.short_coordinate() + u":'" + self._word + u"'"
+        return self.short_coordinate() + ":'" + self._word + "'"
 
     def add_cover(self, row, col, tile, letter):
         """ Add a placement of a tile on a board square to this move """
@@ -937,7 +943,7 @@ class Move(MoveBase):
             return False
         if (letter is None) or len(letter) != 1 or (letter not in Alphabet.order):
             return False
-        if tile != u"?" and tile != letter:
+        if tile != "?" and tile != letter:
             return False
         if len(self._covers) >= Rack.MAX_TILES:
             # Already have 7 tiles being played
@@ -961,10 +967,10 @@ class Move(MoveBase):
             """ Generator to enumerate through a tiles string, yielding (tile, letter) tuples """
             ix = 0
             while ix < len(tiles):
-                if tiles[ix] == u"?":
+                if tiles[ix] == "?":
                     # Wildcard tile: must be followed by its meaning
                     ix += 1
-                    yield (u"?", tiles[ix])
+                    yield ("?", tiles[ix])
                 else:
                     # Normal letter tile
                     yield (tiles[ix], tiles[ix])
@@ -1004,7 +1010,7 @@ class Move(MoveBase):
         vert = True
         first = True
         # All tiles played must be in the rack
-        played = u"".join([c.tile for c in self._covers])
+        played = "".join([c.tile for c in self._covers])
         if not rack.contains(played):
             return Error.TILE_NOT_IN_RACK
         # The tiles covered by the move must be purely horizontal or purely vertical
@@ -1025,11 +1031,9 @@ class Move(MoveBase):
         if len(self._covers) == 1:
             # In the case of a tied length, we use horizontal
             self._horizontal = (
-                len(board.letters_left(row, col))
-                + len(board.letters_right(row, col))
+                len(board.letters_left(row, col)) + len(board.letters_right(row, col))
             ) >= (
-                len(board.letters_above(row, col))
-                + len(board.letters_below(row, col))
+                len(board.letters_above(row, col)) + len(board.letters_below(row, col))
             )
             horiz = self._horizontal
         # The move is purely horizontal or vertical
@@ -1090,15 +1094,15 @@ class Move(MoveBase):
             self._numletters = row - self._row + 1
 
         # Assemble the resulting word
-        self._word = u""
-        self._tiles = u""
+        self._word = ""
+        self._tiles = ""
 
         def add(cix):
             """ Add a cover's letter and tile to the word and tiles strings """
             ltr = self._covers[cix].letter
             tile = self._covers[cix].tile
             self._word += ltr
-            self._tiles += tile + (ltr if tile == u"?" else u"")
+            self._tiles += tile + (ltr if tile == "?" else "")
 
         cix = 0
 
@@ -1241,15 +1245,11 @@ class Move(MoveBase):
         # Tally the scores of words formed across the primary word
         for c in self._covers:
             if self._horizontal:
-                cross = (
-                    board.tiles_above(c.row, c.col)
-                    + board.tiles_below(c.row, c.col)
+                cross = board.tiles_above(c.row, c.col) + board.tiles_below(
+                    c.row, c.col
                 )
             else:
-                cross = (
-                    board.tiles_left(c.row, c.col)
-                    + board.tiles_right(c.row, c.col)
-                )
+                cross = board.tiles_left(c.row, c.col) + board.tiles_right(c.row, c.col)
             if cross:
                 sc = scores[c.tile]
                 sc *= Board.letterscore(c.row, c.col)
@@ -1268,7 +1268,7 @@ class Move(MoveBase):
         board = state.board()
         rack = state.player_rack()
         last_rack = rack.contents()  # The rack as it stood before this move
-        # logging.info(u"Move.apply: last_rack set to {0}".format(last_rack).encode("latin-1"))
+        # logging.info("Move.apply: last_rack set to {0}".format(last_rack))
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
@@ -1303,7 +1303,7 @@ class ExchangeMove(MoveBase):
 
     def __str__(self):
         """ Return a readable description of the move """
-        return u"Exchanged {0}".format(len(self._tiles))
+        return "Exchanged {0}".format(len(self._tiles))
 
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
@@ -1325,7 +1325,7 @@ class ExchangeMove(MoveBase):
     # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
-        return (u"", u"EXCH " + self._tiles, 0)
+        return ("", "EXCH " + self._tiles, 0)
 
     def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
@@ -1361,7 +1361,13 @@ class ChallengeMove(MoveBase):
 
     def __str__(self):
         """ Return a readable description of the move """
-        return u"Challenge"
+        return "Challenge"
+
+    @property
+    def needs_response_move(self):
+        """ Does this move call for a ResponseMove to be generated? """
+        # Only True for ChallengeMove instances, not other moves
+        return True
 
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
@@ -1383,7 +1389,7 @@ class ChallengeMove(MoveBase):
     # noinspection PyMethodMayBeStatic
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
-        return (u"", u"CHALL", 0)
+        return ("", "CHALL", 0)
 
     def apply(self, state, shallow=False):
         """ Apply this move, assumed to be legal, to the current game state """
@@ -1402,7 +1408,7 @@ class ResponseMove(MoveBase):
 
     def __str__(self):
         """ Return a readable description of the move """
-        return u"Response"
+        return "Response"
 
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
@@ -1424,14 +1430,14 @@ class ResponseMove(MoveBase):
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         assert self._score is not None
-        return (u"", u"RESP", self._score)
+        return ("", "RESP", self._score)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """
         if self._score is None:
             self._score = state.challenge_score
-            # logging.info(u"Setting score of ResponseMove to {0}".format(self._score))
+            # logging.info("Setting score of ResponseMove to {0}".format(self._score))
             assert self._score != 0
         return self._score
 
@@ -1449,8 +1455,8 @@ class ResponseMove(MoveBase):
             last_covers = state.last_covers
             self._num_covers = -len(last_covers)  # Negative cover count
             for c in last_covers:
-                board.set_letter(c.row, c.col, u" ")
-                board.set_tile(c.row, c.col, u" ")
+                board.set_letter(c.row, c.col, " ")
+                board.set_tile(c.row, c.col, " ")
             if not shallow:
                 # Reset the opponent's rack to what it was before the move
                 bag = state.bag()
@@ -1458,8 +1464,8 @@ class ResponseMove(MoveBase):
                 # Return all the current tiles to the bag
                 bag.return_tiles(rack.contents())
                 # Draw all the previous tiles from the bag
-                # logging.info(u"ResponseMove.apply: setting rack to {0}"
-                # .format(state.last_rack).encode("latin-1"))
+                # logging.info("ResponseMove.apply: setting rack to {0}"
+                # .format(state.last_rack))
                 rack.set_tiles(state.last_rack)
                 bag.subtract_rack(rack.contents())
         state.clear_challengeable()
@@ -1471,7 +1477,7 @@ class PassMove(MoveBase):
 
     def __str__(self):
         """ Return a readable string describing the move """
-        return u"Pass"
+        return "Pass"
 
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
@@ -1481,7 +1487,7 @@ class PassMove(MoveBase):
     # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
-        return (u"", u"PASS", 0)
+        return ("", "PASS", 0)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def apply(self, state, shallow=False):
@@ -1500,7 +1506,7 @@ class ResignMove(MoveBase):
 
     def __str__(self):
         """ Return the standard move notation of a coordinate followed by the word formed """
-        return u"Resign"
+        return "Resign"
 
     def replenish(self):
         """ Return True if the player's rack should be replenished after the move """
@@ -1509,7 +1515,7 @@ class ResignMove(MoveBase):
     # pylint: disable=unused-argument
     def summary(self, board):
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
-        return (u"", u"RSGN", -self._forfeited_points)
+        return ("", "RSGN", -self._forfeited_points)
 
     def score(self, state):
         """ Calculate the score of this move, which is assumed to be legal """

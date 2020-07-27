@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Language, locale and alphabet encapsulation module
+    Language, locale and alphabet encapsulation module
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -29,16 +29,16 @@ class Alphabet:
     def __init__(self):
         pass
 
-    order = u'aábdðeéfghiíjklmnoóprstuúvxyýþæö'
+    order = "aábdðeéfghiíjklmnoóprstuúvxyýþæö"
     # Upper case version of the order string
-    upper = u'AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ'
+    upper = "AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ"
     # All tiles including wildcard '?'
-    all_tiles = order + u'?'
+    all_tiles = order + "?"
 
     # Sort ordering of all valid letters
-    full_order = u'aábcdðeéfghiíjklmnoópqrstuúvwxyýzþæö'
+    full_order = "aábcdðeéfghiíjklmnoópqrstuúvwxyýzþæö"
     # Upper case version of the full order string
-    full_upper = u'AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ'
+    full_upper = "AÁBCDÐEÉFGHIÍJKLMNOÓPQRSTUÚVWXYÝZÞÆÖ"
 
     # Map letters to bits
     letter_bit = {letter: 1 << ix for ix, letter in enumerate(order)}
@@ -50,7 +50,9 @@ class Alphabet:
     @staticmethod
     def bit_pattern(word):
         """ Return a pattern of bits indicating which letters are present in the word """
-        return functools.reduce(lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0)
+        return functools.reduce(
+            lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0
+        )
 
     @staticmethod
     def bit_of(c):
@@ -70,7 +72,9 @@ class Alphabet:
     @staticmethod
     def tolower(s):
         """ Return the argument string converted to lowercase """
-        return u''.join([Alphabet.lowercase(c) if c in Alphabet.full_upper else c for c in s])
+        return u"".join(
+            [Alphabet.lowercase(c) if c in Alphabet.full_upper else c for c in s]
+        )
 
     @staticmethod
     def sort(l):
@@ -87,7 +91,7 @@ class Alphabet:
         """ Subtract all letters in b from a, counting each instance separately """
         # Note that this cannot be done with sets, as they fold multiple letter instances into one
         lcount = [a.count(c) - b.count(c) for c in Alphabet.all_tiles]
-        return u''.join(
+        return "".join(
             [
                 Alphabet.all_tiles[ix] * lcount[ix]
                 for ix in range(len(lcount))
@@ -100,14 +104,14 @@ class Alphabet:
     def format_timestamp(ts):
         """ Return a timestamp formatted as a readable string """
         # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
-        return u"" + ts.isoformat(' ')[0:19]
+        return ts.isoformat(" ")[0:19]
 
     # noinspection PyUnusedLocal
     @staticmethod
     def format_timestamp_short(ts):
         """ Return a timestamp formatted as a readable string """
         # Returns a short ISO format: YYYY-MM-DD HH:MM
-        return u"" + ts.isoformat(' ')[0:16]
+        return ts.isoformat(" ")[0:16]
 
     @staticmethod
     def _init():
@@ -130,7 +134,7 @@ class Alphabet:
             # This does not need to be terribly efficient as the code is
             # only run once, during initialization
             for i in range(1, len(s) - 1):
-                rotate(ord(s[i]), ord(s[i-1]))
+                rotate(ord(s[i]), ord(s[i - 1]))
 
         adjust(Alphabet.full_upper)  # Uppercase adjustment
         adjust(Alphabet.full_order)  # Lowercase adjustment
@@ -184,7 +188,7 @@ class TileSet(object):
         """ Return a full bag of tiles """
         if not hasattr(cls, "_full_bag"):
             # Cache the bag
-            cls._full_bag = u''.join([tile * count for (tile, count) in cls.bag_tiles])
+            cls._full_bag = "".join([tile * count for (tile, count) in cls.bag_tiles])
         return cls._full_bag
 
     @classmethod
@@ -200,77 +204,77 @@ class OldTileSet(TileSet):
     # Letter scores in the old (original) Icelandic tile set
 
     scores = {
-        u'a': 1,
-        u'á': 4,
-        u'b': 6,
-        u'd': 4,
-        u'ð': 2,
-        u'e': 1,
-        u'é': 6,
-        u'f': 3,
-        u'g': 2,
-        u'h': 3,
-        u'i': 1,
-        u'í': 4,
-        u'j': 5,
-        u'k': 2,
-        u'l': 2,
-        u'm': 2,
-        u'n': 1,
-        u'o': 3,
-        u'ó': 6,
-        u'p': 8,
-        u'r': 1,
-        u's': 1,
-        u't': 1,
-        u'u': 1,
-        u'ú': 8,
-        u'v': 3,
-        u'x': 10,
-        u'y': 7,
-        u'ý': 9,
-        u'þ': 4,
-        u'æ': 5,
-        u'ö': 7,
-        u'?': 0
+        "a": 1,
+        "á": 4,
+        "b": 6,
+        "d": 4,
+        "ð": 2,
+        "e": 1,
+        "é": 6,
+        "f": 3,
+        "g": 2,
+        "h": 3,
+        "i": 1,
+        "í": 4,
+        "j": 5,
+        "k": 2,
+        "l": 2,
+        "m": 2,
+        "n": 1,
+        "o": 3,
+        "ó": 6,
+        "p": 8,
+        "r": 1,
+        "s": 1,
+        "t": 1,
+        "u": 1,
+        "ú": 8,
+        "v": 3,
+        "x": 10,
+        "y": 7,
+        "ý": 9,
+        "þ": 4,
+        "æ": 5,
+        "ö": 7,
+        "?": 0,
     }
 
     # Tiles in initial bag, with frequencies
 
     bag_tiles = [
-        (u"a", 10),
-        (u"á", 2),
-        (u"b", 1),
-        (u"d", 2),
-        (u"ð", 5),
-        (u"e", 6),
-        (u"é", 1),
-        (u"f", 3),
-        (u"g", 4),
-        (u"h", 2),
-        (u"i", 8),
-        (u"í", 2),
-        (u"j", 1),
-        (u"k", 3),
-        (u"l", 3),
-        (u"m", 3),
-        (u"n", 8),
-        (u"o", 3),
-        (u"ó", 1),
-        (u"p", 1),
-        (u"r", 7),
-        (u"s", 6),
-        (u"t", 5),
-        (u"u", 6),
-        (u"ú", 1),
-        (u"v", 2),
-        (u"x", 1),
-        (u"y", 1),
-        (u"ý", 1),
-        (u"þ", 1),
-        (u"æ", 1),
-        (u"ö", 1),
-        (u"?", 2)  # Blank tiles
+        ("a", 10),
+        ("á", 2),
+        ("b", 1),
+        ("d", 2),
+        ("ð", 5),
+        ("e", 6),
+        ("é", 1),
+        ("f", 3),
+        ("g", 4),
+        ("h", 2),
+        ("i", 8),
+        ("í", 2),
+        ("j", 1),
+        ("k", 3),
+        ("l", 3),
+        ("m", 3),
+        ("n", 8),
+        ("o", 3),
+        ("ó", 1),
+        ("p", 1),
+        ("r", 7),
+        ("s", 6),
+        ("t", 5),
+        ("u", 6),
+        ("ú", 1),
+        ("v", 2),
+        ("x", 1),
+        ("y", 1),
+        ("ý", 1),
+        ("þ", 1),
+        ("æ", 1),
+        ("ö", 1),
+        ("?", 2),  # Blank tiles
     ]
 
 
@@ -285,77 +289,77 @@ class NewTileSet(TileSet):
     # Scores in new Icelandic tile set
 
     scores = {
-        u'a': 1,
-        u'á': 3,
-        u'b': 5,
-        u'd': 5,
-        u'ð': 2,
-        u'e': 3,
-        u'é': 7,
-        u'f': 3,
-        u'g': 3,
-        u'h': 4,
-        u'i': 1,
-        u'í': 4,
-        u'j': 6,
-        u'k': 2,
-        u'l': 2,
-        u'm': 2,
-        u'n': 1,
-        u'o': 5,
-        u'ó': 3,
-        u'p': 5,
-        u'r': 1,
-        u's': 1,
-        u't': 2,
-        u'u': 2,
-        u'ú': 4,
-        u'v': 5,
-        u'x': 10,
-        u'y': 6,
-        u'ý': 5,
-        u'þ': 7,
-        u'æ': 4,
-        u'ö': 6,
-        u'?': 0
+        "a": 1,
+        "á": 3,
+        "b": 5,
+        "d": 5,
+        "ð": 2,
+        "e": 3,
+        "é": 7,
+        "f": 3,
+        "g": 3,
+        "h": 4,
+        "i": 1,
+        "í": 4,
+        "j": 6,
+        "k": 2,
+        "l": 2,
+        "m": 2,
+        "n": 1,
+        "o": 5,
+        "ó": 3,
+        "p": 5,
+        "r": 1,
+        "s": 1,
+        "t": 2,
+        "u": 2,
+        "ú": 4,
+        "v": 5,
+        "x": 10,
+        "y": 6,
+        "ý": 5,
+        "þ": 7,
+        "æ": 4,
+        "ö": 6,
+        "?": 0,
     }
 
     # New Icelandic tile set
 
     bag_tiles = [
-        (u"a", 11),
-        (u"á", 2),
-        (u"b", 1),
-        (u"d", 1),
-        (u"ð", 4),
-        (u"e", 3),
-        (u"é", 1),
-        (u"f", 3),
-        (u"g", 3),
-        (u"h", 1),
-        (u"i", 7),
-        (u"í", 1),
-        (u"j", 1),
-        (u"k", 4),
-        (u"l", 5),
-        (u"m", 3),
-        (u"n", 7),
-        (u"o", 1),
-        (u"ó", 2),
-        (u"p", 1),
-        (u"r", 8),
-        (u"s", 7),
-        (u"t", 6),
-        (u"u", 6),
-        (u"ú", 1),
-        (u"v", 1),
-        (u"x", 1),
-        (u"y", 1),
-        (u"ý", 1),
-        (u"þ", 1),
-        (u"æ", 2),
-        (u"ö", 1),
-        (u"?", 2)  # Blank tiles
+        ("a", 11),
+        ("á", 2),
+        ("b", 1),
+        ("d", 1),
+        ("ð", 4),
+        ("e", 3),
+        ("é", 1),
+        ("f", 3),
+        ("g", 3),
+        ("h", 1),
+        ("i", 7),
+        ("í", 1),
+        ("j", 1),
+        ("k", 4),
+        ("l", 5),
+        ("m", 3),
+        ("n", 7),
+        ("o", 1),
+        ("ó", 2),
+        ("p", 1),
+        ("r", 8),
+        ("s", 7),
+        ("t", 6),
+        ("u", 6),
+        ("ú", 1),
+        ("v", 1),
+        ("x", 1),
+        ("y", 1),
+        ("ý", 1),
+        ("þ", 1),
+        ("æ", 2),
+        ("ö", 1),
+        ("?", 2),  # Blank tiles
     ]
 
 

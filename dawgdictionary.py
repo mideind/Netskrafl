@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Word dictionary implemented with a DAWG
+    Word dictionary implemented with a DAWG
 
-    Copyright (C) 2019 Miðeind ehf.
+    Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -63,20 +63,9 @@ import logging
 import time
 import struct
 import sys
+import pickle
 
 from languages import Alphabet
-
-
-# Mask away differences between Python 2 and 3
-if sys.version_info >= (3, 0):
-    # Python 3
-    import pickle
-    items = lambda d: d.items()
-else:
-    # Python 2
-    # noinspection PyPep8Naming
-    import cPickle as pickle
-    items = lambda d: d.iteritems()
 
 
 class _Node:
@@ -110,10 +99,10 @@ class DawgDictionary:
         assert self._nodes is not None
         nodeid = self._index if self._index > 1 else 0
         self._index += 1
-        edgedata = line.split(u"_")
+        edgedata = line.split("_")
         final = False
         firstedge = 0
-        if len(edgedata) >= 1 and edgedata[0] == u"|":
+        if len(edgedata) >= 1 and edgedata[0] == "|":
             # Vertical bar denotes final node
             final = True
             firstedge = 1
@@ -127,7 +116,7 @@ class DawgDictionary:
         newnode.final = final
         # Process the edges
         for edge in edgedata[firstedge:]:
-            e = edge.split(u":")
+            e = edge.split(":")
             prefix = e[0]
             edgeid = int(e[1])
             if edgeid == 0:
@@ -280,20 +269,22 @@ class Wordbase:
         if bname_t is not None and (fname_t is None or bname_t > fname_t):
             # Load binary file if it exists and is newer than the text file
             logging.info(
-                u"Instance {0} loading DAWG from binary file {1}"
-                .format(os.environ.get("INSTANCE_ID", ""), bname)
+                "Instance {0} loading DAWG from binary file {1}".format(
+                    os.environ.get("INSTANCE_ID", ""), bname
+                )
             )
             # print("Loading binary DAWG")
             t0 = time.time()
             dawg = PackedDawgDictionary()
             dawg.load(bname)
             t1 = time.time()
-            logging.info(u"Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
+            logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
         elif fname_t is not None and (pname_t is None or fname_t > pname_t):
             # We have a newer text file (or no pickle): load it
             logging.info(
-                u"Instance {0} loading DAWG from text file {1}"
-                .format(os.environ.get("INSTANCE_ID", ""), fname)
+                "Instance {0} loading DAWG from text file {1}".format(
+                    os.environ.get("INSTANCE_ID", ""), fname
+                )
             )
             # print("Loading text DAWG")
             t0 = time.time()
@@ -301,14 +292,16 @@ class Wordbase:
             dawg.load(fname)
             t1 = time.time()
             logging.info(
-                u"Loaded {0} graph nodes in {1:.2f} seconds"
-                .format(dawg.num_nodes(), t1 - t0)
+                "Loaded {0} graph nodes in {1:.2f} seconds".format(
+                    dawg.num_nodes(), t1 - t0
+                )
             )
         else:
             # Newer pickle file or no text file: load the pickle
             logging.info(
-                u"Instance {0} loading DAWG from pickle file {1}"
-                .format(os.environ.get("INSTANCE_ID", ""), pname)
+                "Instance {0} loading DAWG from pickle file {1}".format(
+                    os.environ.get("INSTANCE_ID", ""), pname
+                )
             )
             # print("Loading pickled DAWG")
             t0 = time.time()
@@ -316,8 +309,9 @@ class Wordbase:
             dawg.load_pickle(pname)
             t1 = time.time()
             logging.info(
-                u"Loaded {0} graph nodes in {1:.2f} seconds"
-                .format(dawg.num_nodes(), t1 - t0)
+                "Loaded {0} graph nodes in {1:.2f} seconds".format(
+                    dawg.num_nodes(), t1 - t0
+                )
             )
 
         # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
@@ -360,7 +354,7 @@ class Navigation:
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
         nav = self._nav
-        for prefix, nextnode in items(node.edges):
+        for prefix, nextnode in node.edges.items():
             if nav.push_edge(prefix[0]):
                 # This edge is a candidate: navigate through it
                 self._navigate_from_edge(prefix, nextnode, matched)
@@ -385,7 +379,7 @@ class Navigation:
             # Check whether the next prefix character is a vertical bar, denoting finality
             final = False
             if j < lenp:
-                if prefix[j] == u"|":
+                if prefix[j] == "|":
                     final = True
                     j += 1
             elif (nextnode is None) or nextnode.final:
@@ -420,7 +414,7 @@ class Navigation:
         # The ship is ready to go
         if self._nav.accepting():
             # Leave shore and navigate the open seas
-            self._navigate_from_node(root, u"")
+            self._navigate_from_node(root, "")
         self._nav.done()
 
     def resume(self, prefix, nextnode, matched):
@@ -497,7 +491,7 @@ class PermutationNavigator:
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
         rack = self._rack
-        if not ((firstchar in rack) or (u"?" in rack)):
+        if not ((firstchar in rack) or ("?" in rack)):
             return False
         # Fit: save our rack and move into the edge
         self._stack.append(rack)
@@ -512,14 +506,14 @@ class PermutationNavigator:
         """ Returns True if the navigator will accept the new character """
         rack = self._rack
         exactmatch = newchar in rack
-        if (not exactmatch) and (u"?" not in rack):
+        if (not exactmatch) and ("?" not in rack):
             # Can't continue with this prefix - we no longer have rack letters matching it
             return False
         # We're fine with this: accept the character and remove from the rack
         if exactmatch:
-            self._rack = rack.replace(newchar, u"", 1)
+            self._rack = rack.replace(newchar, "", 1)
         else:
-            self._rack = rack.replace(u"?", u"", 1)
+            self._rack = rack.replace("?", "", 1)
         return True
 
     def accept(self, matched, final):
@@ -553,7 +547,7 @@ class MatchNavigator:
         self._lenp = len(pattern)
         self._index = 0
         self._chmatch = pattern[0]
-        self._wildcard = self._chmatch == u"?"
+        self._wildcard = self._chmatch == "?"
         self._stack = []
         self._result = []
         self._sort = sort
@@ -580,7 +574,7 @@ class MatchNavigator:
         self._index += 1
         if self._index < self._lenp:
             self._chmatch = self._pattern[self._index]
-            self._wildcard = self._chmatch == u"?"
+            self._wildcard = self._chmatch == "?"
         return True
 
     def accept(self, matched, final):
@@ -701,7 +695,7 @@ class PackedNavigation:
     # Assemble a decoding dictionary where encoded indices are mapped to
     # characters, eventually with a suffixed vertical bar '|' to denote finality
     _CODING = {i: c for i, c in enumerate(Alphabet.order)}
-    _CODING.update({i | 0x80: c + u"|" for i, c in enumerate(Alphabet.order)})
+    _CODING.update({i | 0x80: c + "|" for i, c in enumerate(Alphabet.order)})
 
     # The structure used to decode an edge offset from bytes
     _UINT32 = struct.Struct("<L")
@@ -730,16 +724,16 @@ class PackedNavigation:
             starting at the given offset in the DAWG bytearray """
         b = self._b
         coding = self._CODING
-        num_edges = b[offset] & 0x7f
+        num_edges = b[offset] & 0x7F
         offset += 1
         for _ in range(num_edges):
             len_byte = b[offset]
             offset += 1
             if len_byte & 0x40:
-                prefix = coding[len_byte & 0x3f]  # Single character
+                prefix = coding[len_byte & 0x3F]  # Single character
             else:
-                len_byte &= 0x3f
-                prefix = u"".join(coding[b[offset + j]] for j in range(len_byte))
+                len_byte &= 0x3F
+                prefix = "".join(coding[b[offset + j]] for j in range(len_byte))
                 offset += len_byte
             if b[offset - 1] & 0x80:
                 # The last character of the prefix had a final marker: nextnode is 0
@@ -747,7 +741,7 @@ class PackedNavigation:
             else:
                 # Read the next node offset
                 # Tuple of length 1, i.e. (n, )
-                nextnode, = self._UINT32.unpack_from(b, offset)
+                (nextnode,) = self._UINT32.unpack_from(b, offset)
                 offset += 4
             yield prefix, nextnode
 
@@ -761,7 +755,7 @@ class PackedNavigation:
         except KeyError:
             d = {prefix: nextnode for prefix, nextnode in self._iter_from_node(offset)}
             self._iter_cache[offset] = d
-        return items(d)
+        return d.items()
 
     def _navigate_from_node(self, offset, matched):
         """ Starting from a given node, navigate outgoing edges """
@@ -794,7 +788,7 @@ class PackedNavigation:
             # Check whether the next prefix character is a vertical bar, denoting finality
             final = False
             if j < lenp:
-                if prefix[j] == u"|":
+                if prefix[j] == "|":
                     final = True
                     j += 1
             elif nextnode == 0 or b[nextnode] & 0x80:
@@ -825,7 +819,7 @@ class PackedNavigation:
         # The ship is ready to go
         if self._nav.accepting():
             # Leave shore and navigate the open seas
-            self._navigate_from_node(0, u"")
+            self._navigate_from_node(0, "")
         self._nav.done()
 
     def resume(self, prefix, nextnode, matched):

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 
     Cache - Redis cache wrapper for the Netskrafl application
@@ -37,7 +35,7 @@ _modules = dict()
 _serializers = {
     ("datetime", "datetime"): (
         lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
-        lambda args: datetime(*args)
+        lambda args: datetime(*args),
     )
 }
 
@@ -67,20 +65,13 @@ def serialize(obj):
     assert serializer is not None or hasattr(cls, "from_serializable")
     # Return a serialization wrapper dict with enough info
     # for deserialization
-    return dict(
-        __cls__=cls_name,
-        __module__=module_name,
-        __obj__=s
-    )
+    return dict(__cls__=cls_name, __module__=module_name, __obj__=s)
 
 
 def _dumps(obj):
     """ Returns the given object in JSON format, using the custom serializer
         for composite objects """
-    return json.dumps(
-        obj,
-        default=serialize, ensure_ascii=False, separators=(',', ':')
-    )
+    return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
 def _loads(j):
@@ -112,8 +103,8 @@ def _loads(j):
         assert m is not None, "Unable to import module {0}".format(module_name)
     # Find the class within the module
     cls = getattr(m, cls_name)
-    assert cls is not None, (
-        "Unable to find class {0} in module {1}".format(cls_name, module_name)
+    assert cls is not None, "Unable to find class {0} in module {1}".format(
+        cls_name, module_name
     )
     # ...and create the instance by calling from_serializable() on the class
     return cls.from_serializable(d["__obj__"])
@@ -125,8 +116,8 @@ class RedisWrapper:
         making it appear as a simplified memcache instance """
 
     def __init__(self, redis_host=None, redis_port=None):
-        redis_host = redis_host or os.environ.get('REDISHOST', 'localhost')
-        redis_port = redis_port or int(os.environ.get('REDISPORT', 6379))
+        redis_host = redis_host or os.environ.get("REDISHOST", "localhost")
+        redis_port = redis_port or int(os.environ.get("REDISPORT", 6379))
         # Create a Redis client instance
         self._client = redis.Redis(
             host=redis_host, port=redis_port, retry_on_timeout=True
@@ -160,7 +151,9 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._call_with_retry(self._client.set, None, key, _dumps(value), ex=time)
+        return self._call_with_retry(
+            self._client.set, None, key, _dumps(value), ex=time
+        )
 
     def set(self, key, value, time=None, namespace=None):
         """ Set a value in the cache, under the given key
@@ -189,7 +182,7 @@ class RedisWrapper:
 
 # If we're running on the local
 # development server (GAE emulator), connect to a local Redis server.
-if os.environ.get('SERVER_SOFTWARE', '').startswith('Development'):
+if os.environ.get("SERVER_SOFTWARE", "").startswith("Development"):
     memcache = RedisWrapper(redis_host="127.0.0.1")
 else:
     memcache = RedisWrapper()

@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Skraflplayer - an automatic SCRABBLE(tm) player
+    Skraflplayer - an automatic SCRABBLE(tm) player
 
     Copyright (C) 2020 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -108,7 +108,7 @@ class Square:
 
     def is_empty(self):
         """ Is this square empty? """
-        return self._letter == u" "
+        return self._letter == " "
 
     def is_open(self):
         """ Can a new tile from the rack be placed here? """
@@ -217,8 +217,8 @@ class Axis:
                 else:
                     above = board.letters_left(x, y)
                     below = board.letters_right(x, y)
-                query = above or u""
-                query += u"?"
+                query = above or ""
+                query += "?"
                 if below:
                     query += below
                 if len(query) > 1:
@@ -248,7 +248,7 @@ class Axis:
         """ Find valid moves emanating (on the left and right) from this anchor """
         if maxleft == 0 and index > 0 and not self.is_empty(index - 1):
             # We have a left part already on the board: try to complete it
-            leftpart = u""
+            leftpart = ""
             ix = index
             while ix > 0 and not self.is_empty(ix - 1):
                 leftpart = self._sq[ix - 1].letter + leftpart
@@ -330,7 +330,7 @@ class LeftPermutationNavigator:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
-        if not ((firstchar in self._rack) or (u"?" in self._rack)):
+        if not ((firstchar in self._rack) or ("?" in self._rack)):
             return False
         # Fit: save our rack and move into the edge
         self._stack.append((self._rack, self._index))
@@ -345,15 +345,15 @@ class LeftPermutationNavigator:
     def accepts(self, newchar):
         """ Returns True if the navigator will accept the new character """
         exact_match = newchar in self._rack
-        if (not exact_match) and (u"?" not in self._rack):
+        if (not exact_match) and ("?" not in self._rack):
             # Can't continue with this prefix - we no longer have rack letters matching it
             return False
         # We're fine with this: accept the character and remove from the rack
         self._index += 1
         if exact_match:
-            self._rack = self._rack.replace(newchar, u"", 1)
+            self._rack = self._rack.replace(newchar, "", 1)
         else:
-            self._rack = self._rack.replace(u"?", u"", 1)
+            self._rack = self._rack.replace("?", "", 1)
         return True
 
     def accept_resumable(self, prefix, nextnode, matched):
@@ -462,7 +462,7 @@ class ExtendRightNavigator:
         # The tile we are placing next
         self._index = anchor
         self._stack = []
-        self._wildcard_in_rack = u"?" in rack
+        self._wildcard_in_rack = "?" in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
 
@@ -471,7 +471,7 @@ class ExtendRightNavigator:
             current square, given the cross-checks and the rack """
         axis = self._axis
         l_at_sq = axis.letter_at(self._index)
-        if l_at_sq != u" ":
+        if l_at_sq != " ":
             # There is a tile already in the square: we must match it exactly
             return Match.BOARD_TILE if ch == l_at_sq else Match.NO
         # Does the current rack allow this letter?
@@ -515,12 +515,12 @@ class ExtendRightNavigator:
         if match == Match.RACK_TILE:
             # We used a rack tile: remove it from the rack before continuing
             if newchar in self._rack:
-                self._rack = self._rack.replace(newchar, u"", 1)
+                self._rack = self._rack.replace(newchar, "", 1)
             else:
                 # Must be wildcard: remove it
-                # assert u'?' in self._rack
-                self._rack = self._rack.replace(u"?", u"", 1)
-            self._wildcard_in_rack = u"?" in self._rack
+                # assert "?" in self._rack
+                self._rack = self._rack.replace("?", "", 1)
+            self._wildcard_in_rack = "?" in self._rack
         return True
 
     def accept(self, matched, final):
@@ -540,19 +540,19 @@ class ExtendRightNavigator:
             # Fetch the rack as it was at the beginning of move generation
             autoplayer = self._axis.autoplayer
             rack = autoplayer.rack()
-            tiles = u""
+            tiles = ""
             for c in matched:
                 if self._axis.is_empty(ix):
                     # Empty square that is being covered by this move
                     # Find out whether it is a blank or normal letter tile
                     if c in rack:
-                        rack = rack.replace(c, u"", 1)
+                        rack = rack.replace(c, "", 1)
                         tile = c
                         tiles += c
                     else:
                         # Must be a wildcard match
-                        rack = rack.replace(u"?", u"", 1)
-                        tile = u"?"
+                        rack = rack.replace("?", "", 1)
+                        tile = "?"
                         tiles += tile + c
                     # assert row in range(Board.SIZE)
                     # assert col in range(Board.SIZE)
@@ -615,7 +615,7 @@ class AutoPlayer:
         self._robot_level = robot_level
 
         # Calculate a bit pattern representation of the rack
-        if u"?" in self._rack:
+        if "?" in self._rack:
             # Wildcard in rack: all letters allowed
             self._rack_bit_pattern = Alphabet.all_bits_set()
         else:
@@ -772,11 +772,10 @@ class AutoPlayer:
                 == scored_candidates[top_equal + 1][1]
             ):
                 top_equal += 1
-        # logging.info(u"Selecting one of {0} best moves from {2} after cutting {1} from top"
-        #    .format(picklist,
-        #    top_equal, num_candidates).encode("latin-1"))
+        # logging.info("Selecting one of {0} best moves from {2} after cutting {1} from top"
+        #    .format(picklist, top_equal, num_candidates))
         # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
-        #    logging.info(u"Move {0} score {1}".format(m, sc).encode("latin-1"))
+        #    logging.info("Move {0} score {1}".format(m, sc))
         return scored_candidates[top_equal + randint(0, picklist - 1)][0]
 
     # pylint: disable=unused-argument
@@ -906,11 +905,11 @@ class AutoPlayer_MiniMax(AutoPlayer):
 
         # pylint: disable=superfluous-parens
 
-        print(u"Looking at {0} top scoring candidate moves".format(NUM_CANDIDATES))
+        print("Looking at {0} top scoring candidate moves".format(NUM_CANDIDATES))
         # Look at the top scoring candidates
         for m, score in scored_candidates[0:NUM_CANDIDATES]:
 
-            print(u"Candidate move {0} with raw score {1}".format(m, score))
+            print("Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
             teststate = State(tileset=None, copy=self._state)  # Copy constructor
@@ -946,8 +945,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
                         sc = teststate.score(move)
                         if sc > 100:
                             print(
-                                u"Countermove rack '{0}' generated move {1} scoring {2}"
-                                .format(rack, move, sc)
+                                "Countermove rack '{0}' generated move {1} scoring {2}".format(
+                                    rack, move, sc
+                                )
                             )
                         # Cache the score
                         rackscores[rack] = sc
@@ -958,8 +958,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
                 avg_score = float(sum_score) / NUM_TEST_RACKS
 
             print(
-                u"Average score of {0} countermove racks is {1:.2f}"
-                .format(NUM_TEST_RACKS, avg_score)
+                "Average score of {0} countermove racks is {1:.2f}".format(
+                    NUM_TEST_RACKS, avg_score
+                )
             )
             print(countermoves)
 
@@ -973,8 +974,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
             weighted_candidates.append((m, score, avg_score))
 
         print(
-            u"Lowest score of countermove to all evaluated candidates is {0:.2f}"
-            .format(min_score)
+            "Lowest score of countermove to all evaluated candidates is {0:.2f}".format(
+                min_score
+            )
         )
         # Sort the candidates by the plain score after subtracting the effect of
         # potential countermoves, measured as the countermove score in excess of
@@ -984,14 +986,16 @@ class AutoPlayer_MiniMax(AutoPlayer):
         )
 
         print(
-            u"AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:"
-            .format(self._rack, len(scored_candidates))
+            "AutoPlayer_MinMax: Rack '{0}' generated {1} candidate moves:".format(
+                self._rack, len(scored_candidates)
+            )
         )
         # Show top 20 candidates
         for m, sc, wsc in weighted_candidates:
             print(
-                u"Move {0} score {1} weighted {2:.2f}"
-                .format(m, sc, float(sc) - (wsc - min_score))
+                "Move {0} score {1} weighted {2:.2f}".format(
+                    m, sc, float(sc) - (wsc - min_score)
+                )
             )
         # Return the highest-scoring candidate
         return weighted_candidates[0][0]

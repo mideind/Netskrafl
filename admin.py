@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Admin web server for netskrafl.is
+    Admin web server for netskrafl.is
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -47,16 +47,23 @@ def deferred_update():
                     um.put()
                     count += 1
                 if scan % 1000 == 0:
-                    logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
+                    logging.info(
+                        "Completed scanning {0} and updating {1} user records".format(
+                            scan, count
+                        )
+                    )
         except Exception as e:
             logging.info(
-                "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}"
-                .format(e, scan, count)
+                "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}".format(
+                    e, scan, count
+                )
             )
             # Do not retry the task
             # !!! TODO: Alternative solution for Python 3 GAE environment
             # raise deferred.PermanentTaskFailure()
-    logging.info("Completed scanning {0} and updating {1} user records".format(scan, count))
+    logging.info(
+        "Completed scanning {0} and updating {1} user records".format(scan, count)
+    )
 
 
 def admin_userupdate():
@@ -73,9 +80,8 @@ def admin_setfriend():
     try:
         state = bool(int(state))
     except Exception:
-        return (
-            "<html><body><p>Invalid state string: '{0}'</p></body></html>"
-            .format(state)
+        return "<html><body><p>Invalid state string: '{0}'</p></body></html>".format(
+            state
         )
     u = User.load_if_exists(uid) if uid else None
     if u is None:
@@ -85,9 +91,8 @@ def admin_setfriend():
     u.set_has_paid(state)
     u.update()
     logging.info("Friend state of user {0} manually set to {1}".format(uid, state))
-    return (
-        "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>"
-        .format(uid, state, was_friend)
+    return "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>".format(
+        uid, state, was_friend
     )
 
 
@@ -108,7 +113,7 @@ def admin_fetchgames():
                 rl=gm.robot_level,
                 s0=gm.score0,
                 s1=gm.score1,
-                pr=gm.prefs
+                pr=gm.prefs,
             )
         )
     return jsonify(gamelist=gamelist)
@@ -145,7 +150,7 @@ def admin_loadgame():
                     Alphabet.format_timestamp(m.ts),
                 )
                 for m in game.moves
-            ]
+            ],
         )
     else:
         g = None

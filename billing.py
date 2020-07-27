@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Billing manager for netskrafl.appspot.com
+    Billing manager for netskrafl.appspot.com
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -124,37 +124,33 @@ def cancel_friend(user):
         ts = datetime.utcnow().isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
-        signature = (ts + _SECRET.public_key + method + url).encode('ascii')
+        signature = (ts + _SECRET.public_key + method + url).encode("ascii")
         # Hash the signature using the secret key
-        digest = hmac.new(
-            _SECRET.key, signature, hashlib.sha256
-        )
+        digest = hmac.new(_SECRET.key, signature, hashlib.sha256)
         headers = {
             "Content-Type": "application/json",
             "X-SalesCloud-Date": ts,
             "X-SalesCloud-Access-Key": _SECRET.public_key,
-            "X-SalesCloud-Signature": digest.hexdigest()
+            "X-SalesCloud-Signature": digest.hexdigest(),
         }
         result = requests.post(
-            url,
-            json=payload,
-            headers=headers,
-            timeout=30.0,
-            allow_redirects=False
+            url, json=payload, headers=headers, timeout=30.0, allow_redirects=False
         )
         if result.status_code != 200:
             # Not OK
             logging.error(
-                "Cancel friend request to SalesCloud failed with status {1} for user {0}"
-                .format(user.id(), result.status_code)
+                "Cancel friend request to SalesCloud failed with status {1} for user {0}".format(
+                    user.id(), result.status_code
+                )
             )
             return False
         response = result.json()
         # noinspection PySimplifyBooleanCheck,PyPep8
         if response.get("success") != True:
             logging.error(
-                "Cancel friend request to SalesCloud failed for user {0}"
-                .format(user.id())
+                "Cancel friend request to SalesCloud failed for user {0}".format(
+                    user.id()
+                )
             )
             return False
         # Disable subscription, remove friend status
@@ -189,12 +185,13 @@ def handle(request):
             xsc_date,
             xsc_key,
             xsc_digest,
-            max_time=300.0
+            max_time=300.0,
         ):
             # Wrong signature: probably not coming from SalesCloud
             logging.warning(
-                "Invalid signature in incoming redirect GET - url {0}"
-                .format(request.base_url)
+                "Invalid signature in incoming redirect GET - url {0}".format(
+                    request.base_url
+                )
             )
             # !!! The signature from SalesCloud in this case does
             # !!! not agree with our calculation, so we leave it at that
@@ -249,13 +246,15 @@ def handle(request):
         user = User.load_if_exists(uid)
         if user is None:
             logging.error(
-                "Unknown or illegal user id: '{0}'"
-                .format("[None]" if uid is None else uid)
+                "Unknown or illegal user id: '{0}'".format(
+                    "[None]" if uid is None else uid
+                )
             )
-            return jsonify(
-                ok=False,
-                reason="Unknown or illegal user id (customer_label)"
-            ), 400  # Bad request
+            # Return 400: Bad request
+            return (
+                jsonify(ok=False, reason="Unknown or illegal user id (customer_label)"),
+                400,
+            )
         status = j.get("subscription_status")
         if status == "true":
             # Enable subscription, mark as friend

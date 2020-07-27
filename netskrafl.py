@@ -3,7 +3,7 @@
     Web server for netskrafl.is
 
     Copyright (C) 2020 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+    Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
@@ -368,7 +368,7 @@ def _process_move(game, movelist):
                 letter = tile
             m.add_cover(row, col, tile, letter)
     except Exception as e:
-        logging.info("Exception in _process_move(): {0}".format(e).encode("latin-1"))
+        logging.info("Exception in _process_move(): {0}".format(e))
         m = None
 
     # Process the move string here
@@ -401,8 +401,8 @@ def _process_move(game, movelist):
                 # Generate an autoplayer move in response
                 game.autoplayer_move()
                 is_over = game.is_over()  # State may change during autoplayer_move()
-            elif isinstance(m, ChallengeMove):
-                # Challenge: generate a response move
+            elif m.needs_response_move():
+                # Challenge move: generate a response move
                 game.response_move()
                 is_over = game.is_over()  # State may change during response_move()
 
@@ -1024,7 +1024,7 @@ def submitmove():
             logging.info(
                 "Exception in submitmove(): {0} {1}".format(
                     e, "- retrying" if attempt > 0 else ""
-                ).encode("latin-1")
+                )
             )
             if attempt == 0:
                 # Final attempt failed

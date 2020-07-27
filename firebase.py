@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
 
-""" Firebase wrapper for Netskrafl
+    Firebase wrapper for Netskrafl
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -36,7 +36,7 @@ _IDENTITY_ENDPOINT = (
 )
 _FIREBASE_SCOPES = [
     "https://www.googleapis.com/auth/firebase.database",
-    "https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/userinfo.email",
 ]
 _TIMEOUT = 15  # Seconds
 
@@ -141,8 +141,7 @@ def send_message(message, *args):
             response, _ = _firebase_delete(path=url)
         else:
             response, _ = _firebase_patch(
-                path=url + "?print=silent",
-                message=json.dumps(message)
+                path=url + "?print=silent", message=json.dumps(message)
             )
         # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
         return response["status"] in ("200", "204")
@@ -203,8 +202,9 @@ def get_connected_users():
             response, body = _firebase_get(path=url)
         except httplib2.HttpLib2Error as e:
             logging.warning(
-                "Exception [{}] raised in firebase.get_connected_users()"
-                .format(repr(e))
+                "Exception [{}] raised in firebase.get_connected_users()".format(
+                    repr(e)
+                )
             )
             return set()
         if response["status"] != "200":
@@ -216,6 +216,7 @@ def get_connected_users():
 
 
 _firebase_app = None
+
 
 def create_custom_token(uid, valid_minutes=60):
     """ Create a secure token for the given id.

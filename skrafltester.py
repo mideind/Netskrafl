@@ -1,7 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-""" Skrafltester
+"""
+
+    Skrafltester
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -18,8 +19,6 @@
         [-s (to run silently, i.e. only with ending summary)]
 
 """
-
-from __future__ import print_function
 
 import getopt
 import sys
@@ -403,7 +402,7 @@ def profile_main():
 
     """ Main function to invoke for profiling """
 
-    import cProfile as profile
+    import profile
     import pstats
 
     global _PROFILING
