@@ -23,6 +23,7 @@
 
 import collections
 import threading
+import logging
 
 from random import randint
 from datetime import datetime, timedelta
@@ -459,9 +460,15 @@ class User:
         um = UserModel.fetch_account(account)
         if um is not None:
             # We've seen this Google Account before: return the user id
+            logging.info("Login: Known Google Account {0} email {1} name '{2}'"
+                .format(account, email, name)
+            )
             if email and email != um.email:
                 # Use the opportunity to update the email, if different
                 # (This should probably not happen very often)
+                logging.info("Login: Account {0}, updating email from {1} to {2}"
+                    .format(account, um.email, email)
+                )
                 um.email = email
                 um.put()
             # Note that the user id might not be the Google account id!
@@ -473,12 +480,18 @@ class User:
             if um is not None:
                 # We probably have an older (GAE) user for this email:
                 # Associate the account with it from now on (but keep the old id)
+                logging.info("Login: Unknown account {0}, but email {1} matched existing account of '{2}'"
+                    .format(account, email, name)
+                )
                 um.account = account
                 return um.put().id()
         # No match by account id or email: create a new user,
         # with the account id as user id.
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
+        logging.info("Login: Unknown account {0} and email {1}; creating new user for '{2}'"
+            .format(account, email, name)
+        )
         nickname = email.split("@")[0] or name.split()[0]
         prefs = {"newbag": True, "email": email, "full_name": name}
         return UserModel.create(

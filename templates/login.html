@@ -122,6 +122,7 @@ function getCookie(name) {
 
 function oauth2callback(idToken, csrfToken) {
    // POST to oauth2 session login endpoint
+   console.log("oauth2callback()");
    return $.ajax(
       {
          type: 'POST',

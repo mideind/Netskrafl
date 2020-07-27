@@ -1582,6 +1582,7 @@ def bestmoves():
 
 
 class UserForm:
+
     """ Encapsulates the data in the user preferences form """
 
     def __init__(self, usr=None):
@@ -2258,6 +2259,7 @@ def oauth2callback():
         # Something is wrong in the internal setup of the server
         # (environment variable probably missing)
         # 500 - Internal server error
+        logging.warning("oauth2callback() called with missing CLIENT_ID")
         return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
 
     token = request.form.get("idToken", "")
@@ -2266,6 +2268,7 @@ def oauth2callback():
     if not token:
         # No authentication token included in the request
         # 400 - Bad Request
+        logging.warning("oauth2callback() called without authentication token")
         return jsonify({"status": "invalid", "msg": "Missing token"}), 400
 
     # !!! TODO: Add CSRF verification
@@ -2292,11 +2295,13 @@ def oauth2callback():
     except ValueError as e:
         # Invalid token
         # 401 - Unauthorized
+        logging.warning("oauth2callback() called with invalid token")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     if not userid:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
+        logging.warning("oauth2callback() unable to obtain user id")
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
     # Authentication complete; user id obtained
@@ -2304,6 +2309,9 @@ def oauth2callback():
         "id": userid,
     }
     session.permanent = True
+    logging.info("oauth2callback() successfully recognized account {0} userid {1} email {2} name '{3}'"
+        .format(account, userid, email, name)
+    )
     return jsonify({"status": "success"})
 
 

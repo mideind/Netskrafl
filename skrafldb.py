@@ -977,7 +977,7 @@ class StatsModel(ndb.Model):
                     # Replace the entry with the newer one (which will lower it)
                     result[ukey] = nd
             logging.info(
-                u"False positives are {0}, safety buffer is {1}"
+                "False positives are {0}, safety buffer is {1}"
                 .format(false_pos, safety_buffer)
             )
 
@@ -985,7 +985,7 @@ class StatsModel(ndb.Model):
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
-            logging.error(u"False positives caused ratings list to be truncated")
+            logging.error("False positives caused ratings list to be truncated")
             max_len -= (false_pos - safety_buffer)
             if max_len < 0:
                 max_len = 0
