@@ -249,9 +249,12 @@ class Wordbase:
 
     _dawg = None
     _dawg_common = None
+    _dawg_children = None
+    #TODO:bæta við hér bín - níðyrði
 
     _lock = threading.Lock()
     _lock_common = threading.Lock()
+    _lock_children = threading.Lock()
 
     def __init__(self):
         pass
@@ -342,6 +345,16 @@ class Wordbase:
                 Wordbase._dawg_common = Wordbase._load_resource("algeng")
             assert Wordbase._dawg_common is not None
             return Wordbase._dawg_common
+
+    @staticmethod
+    def dawg_children():
+        """ Return the children words DAWG object, loading it if required """
+        with Wordbase._lock_children:
+            if Wordbase._dawg_children is None:
+                Wordbase._dawg_children = Wordbase._load_resource("children")
+            assert Wordbase._dawg_children is not None
+            return Wordbase._dawg_children
+
 
 
 class Navigation:

@@ -507,7 +507,7 @@ class _BinaryDawgPacker:
 
     def node_end(self, ident):
         """ End a node in the binary buffer """
-        pass
+        pass  # pylint: disable=unnecessary-pass
 
     def edge(self, ident, prefix):
         """ Write an edge into the binary buffer """
@@ -673,7 +673,7 @@ class DawgBuilder:
 
         def close(self):
             """ Close the associated file, if it is still open """
-            pass
+            pass  # pylint: disable=unnecessary-pass
 
     def _load(self, relpath, inputs, removals, word_filter):
         """ Load word lists into the DAWG from one or more static text files,
@@ -967,6 +967,30 @@ def run_skrafl():
     # Test loading of DAWG for common words
     dawg = PackedDawgDictionary()
     fpath = os.path.abspath(os.path.join("resources", "algeng.bin.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
+
+    #Process list of words for children
+
+    print(u"Starting DAWG build for list of common words for children")
+    db = DawgBuilder(encoding=Alphabet.order)
+    t0 = time.time()
+    # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
+    db.build(
+        ["notabanki.txt"],  # Input files to be merged
+        "children",  # Output file - full name will be children.text.dawg
+        "resources",  # Subfolder of input and output files
+        #words to remove?
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    # Test loading of DAWG for common words
+    dawg = PackedDawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "children.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()

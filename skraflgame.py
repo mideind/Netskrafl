@@ -548,6 +548,11 @@ class Game:
             u"Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
             15
         ),
+        (
+            u"barnaskrafl",
+            u"Velur af handahófi einn af 10 stigalæstu leikjum í hverri stöðu",
+            20
+        )
     ]
 
     # The default nickname to display if a player has an unreadable nick
@@ -600,11 +605,14 @@ class Game:
             drawtiles=True,
             tileset=self.tileset,
             manual_wordcheck=self.manual_wordcheck(),
+            childrens_game=(robot_level == 20)
         )
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.timestamp = self.ts_last_move = datetime.utcnow()
+
+    #TODO: def.. robot level=20
 
     @classmethod
     def new(cls, player0_id, player1_id, robot_level=0, prefs=None):
@@ -666,7 +674,8 @@ class Game:
         game.state = State(
             drawtiles=False,
             manual_wordcheck=game.manual_wordcheck(),
-            tileset=game.tileset
+            tileset=game.tileset,
+            childrens_game=(game.robot_level == 20)
         )
 
         # Load the initial racks

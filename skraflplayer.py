@@ -377,7 +377,7 @@ class LeftPermutationNavigator:
     # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
-        pass
+        pass # pylint: disable=unnecessary-pass
 
 
 class LeftFindNavigator:
@@ -431,7 +431,7 @@ class LeftFindNavigator:
     # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
-        pass
+        pass # pylint: disable=unnecessary-pass
 
 
 class Match:
@@ -578,7 +578,7 @@ class ExtendRightNavigator:
     # noinspection PyMethodMayBeStatic
     def done(self):
         """ Called when the whole navigation is done """
-        pass
+        pass # pylint: disable=unnecessary-pass
 
 
 class AutoPlayer:
@@ -817,7 +817,7 @@ class AutoPlayer_Common(AutoPlayer):
         while p < self._play_one_of and i < num_candidates:
             m = scored_candidates[i][0]  # Candidate move
             w = m.word()  # The principal word being played
-            if len(w) == 2 or w in common:
+            if len(w) == 2 or w in common: # pylint: disable=unsupported-membership-test
                 # This one is playable - but we still won't put it on
                 # the candidate list if has the same score as the
                 # first (top-scoring) playable word
@@ -833,6 +833,48 @@ class AutoPlayer_Common(AutoPlayer):
             return None
         # Pick a move at random from the playable list
         return playable_candidates[randint(0, p - 1)][0]
+
+
+class AutoPlayer_Children(AutoPlayer):
+
+    """ This subclass of AutoPlayer only plays words from a
+        list of words suitable for children of the ages 8-12.
+    """
+    def __init__(self, state, robot_level = 20):
+        AutoPlayer.__init__(self, state, robot_level)
+        self._play_one_of = 10  # Plays one of the 10 bottom candidates
+
+    def _pick_candidate(self, scored_candidates):
+        """ From a sorted list of >1 scored candidates, pick a move to make """
+
+        num_candidates = len(scored_candidates)
+        scored_candidates.reverse()
+        children = Wordbase.dawg_children()  # List of playable words
+        playable_candidates = []
+        # Iterate through the candidates in descending score order
+        # until we have enough playable ones or we have exhausted the list
+        i = 0  # Candidate index
+        p = 0  # Playable index
+        while p < self._play_one_of and i < num_candidates:
+            m = scored_candidates[i][0]  # Candidate move
+            w = m.word()  # The principal word being played
+            if len(w) == 2 or w in children: # pylint: disable=unsupported-membership-test
+                # This one is playable - but we still won't put it on
+                # the candidate list if has the same score as the
+                # first (top-scoring) playable word
+                if p == 1 and scored_candidates[i][1] == playable_candidates[0][1]:
+                    pass
+                else:
+                    playable_candidates.append(scored_candidates[i])
+                    p += 1
+            i += 1
+        # Now we have a list of up to self._play_one_of playable moves
+        if p == 0:
+            # No playable move: give up and do an Exchange or Pass instead
+            return None
+        # Pick a move at random from the playable list
+        return playable_candidates[randint(0, p - 1)][0]
+
 
 
 class AutoPlayer_MiniMax(AutoPlayer):

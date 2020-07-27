@@ -22,11 +22,12 @@
 """
 
 import os
-import redis
 import json
 import importlib
 import logging
 from datetime import datetime
+import redis
+
 
 
 # A cache of imported modules, used to create fresh instances

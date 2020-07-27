@@ -35,8 +35,7 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
-
+from skraflplayer import AutoPlayer, AutoPlayer_MiniMax, AutoPlayer_Children
 
 _PROFILING = False
 
@@ -268,10 +267,18 @@ def test(num_games, opponent, silent):
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
+    def children_creator(state):
+        return AutoPlayer_Children(state)
+
     players = [None, None]
     if opponent == "minimax":
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)
+    
+    elif opponent == "children":
+        players[0] = (("Child A", children_creator))
+        players[1] = (("Child B", children_creator))
+
     else:
         players[0] = ("AutoPlayer A", autoplayer_creator)
         players[1] = ("AutoPlayer B", autoplayer_creator)
@@ -406,7 +413,7 @@ def profile_main():
     import cProfile as profile
     import pstats
 
-    global _PROFILING
+    global _PROFILING # pylint: disable=global-statement
 
     _PROFILING = True
 

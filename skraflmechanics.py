@@ -425,7 +425,7 @@ class State:
         Contains the current board, the racks, scores, etc.
     """
 
-    def __init__(self, tileset, manual_wordcheck=False, drawtiles=True, copy=None):
+    def __init__(self, tileset, manual_wordcheck=False, drawtiles=True, copy=None, children=False):
 
         # pylint: disable=protected-access
         if copy is None:
@@ -440,6 +440,7 @@ class State:
             self._game_resigned = False
             self._racks = [Rack(), Rack()]
             self._manual_wordcheck = manual_wordcheck
+            self.children = children
             # The score a challenge would get if made (0 if not challengeable)
             self._challenge_score = 0
             # The rack before the last challengeable move
@@ -1127,7 +1128,7 @@ class Move(MoveBase):
 
         def is_valid_word(word):
             """ Check whether a word is in the dictionary, unless this is a manual game """
-            return True if state.manual_wordcheck else word in Wordbase.dawg()
+            return True if state.manual_wordcheck else word in Wordbase.dawg() #TODO: breyta þessu svo það tékki á bín-níðyrði fyrir krakka.
 
         # Check whether the word is in the dictionary
         if not is_valid_word(self._word):
