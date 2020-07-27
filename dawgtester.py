@@ -129,6 +129,7 @@ class DawgTester:
         self._test_true("íri")
         self._test_true("bravó")
         self._test_true("áldós")
+        self._test_true("fleirum")
 
         self._test_false("eystðu")
         self._test_false("blæstðu")
