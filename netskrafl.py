@@ -2109,7 +2109,12 @@ def skilmalar():
 @app.route("/billing", methods=["GET", "POST"])
 def handle_billing():
     """ Receive signup and billing confirmations. No authentication required. """
-    return billing.handle(request)
+    uid = ""
+    u = session_user()
+    if u is not None:
+        # This is called within a session: pass the user id to the billing module
+        uid = u.id()
+    return billing.handle(request, uid)
 
 
 @app.route("/")

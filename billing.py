@@ -167,7 +167,7 @@ def cancel_friend(user):
     return True
 
 
-def handle(request):
+def handle(request, uid):
     """ Handle an incoming request to the /billing URL path """
 
     if request.method != "POST":
@@ -176,7 +176,6 @@ def handle(request):
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
         xsc_date = request.args.get("salescloud_date", "")[0:256]
         xsc_digest = request.args.get("salescloud_signature", "")[0:256]
-        uid = User.current_id() or ""
         # pylint: disable=bad-continuation
         if not request_valid(
             request.method,
