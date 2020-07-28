@@ -204,10 +204,16 @@ class UserModel(ndb.Model):
 
     @classmethod
     def fetch_email(cls, email):
-        """ Attempt to fetch a user by email """
+        """ Attempt to fetch a user by email. """
         if not email:
             return None
-        q = cls.query(UserModel.email == email.lower())
+        # Note that multiple records with the same e-mail may occur
+        # Do not return inactive accounts
+        q = (
+            cls
+            .query(UserModel.email == email.lower())
+            .filter(UserModel.inactive == False)
+        )
         result = q.fetch()
         if not result:
             return None
@@ -384,16 +390,14 @@ class UserModel(ndb.Model):
                         # Returned the requested number of records: done
                         return
 
-        q = cls.query(UserModel.human_elo < elo).order(
-            -UserModel.human_elo  # Descending order
-        )
+        # Descending order
+        q = cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo)
         lower = list(fetch(q, max_len))
         # Convert to an ascending list
         lower.reverse()
         # Repeat the query for same or higher rating
-        q = cls.query(UserModel.human_elo >= elo).order(
-            UserModel.human_elo  # Ascending order
-        )
+        # Ascending order
+        q = cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo)
         higher = list(fetch(q, max_len))
         # Concatenate the upper part of the lower range with the
         # lower part of the higher range in the most balanced way

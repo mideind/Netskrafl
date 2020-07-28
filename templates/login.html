@@ -52,7 +52,7 @@
       þar til gerða smáköku (<i>'cookie'</i>) í vafranum þínum.
    </div>
    <div class="welcome">
-      Til auðkenningar tengir Netskrafl tölvupóstfang við hvern notanda.
+      Til auðkenningar tengir Netskrafl tölvupóstfang og nafn við hvern notanda.
       Að öðru leyti eru ekki geymdar aðrar upplýsingar um notendur en þær sem þeir
       skrá sjálfir. Annáll er haldinn um umferð um vefinn.
    </div>
@@ -86,6 +86,8 @@
 {% block endscripts %}
 
 <script>
+
+var placeholder = 0;
 
 function renderButton() {
    // Render the login buttons, i.e. for both large and small UI forms
@@ -161,19 +163,22 @@ function onSignIn(googleUser) {
          function(data, textStatus, jqXHR) {
             // Redirect to initial URL on success
             console.log("Success from oauth2callback()");
-            window.location.assign("{{ main_url | safe }}");
+            window.location.assign("{{ main_url }}");
          },
          function(jqXHR, textStatus, errorThrown) {
             // Refresh page on error.
             // In all cases, client side state should be lost due to in-memory
             // persistence.
             console.log("Error from oauth2callback(): " + errorThrown);
-            window.location.assign('/login');
+            window.location.assign("{{ url_for('login') }}");
          }
       );
 }
 
 function initMain() {
+   // For mysterious reasons the presence of
+   // this function seems to be required, at least on Chrome
+   placeholder = 1; // Hack to prevent the browser from optimizing this function away
 }
 
 $(document).ready(initMain);
@@ -181,6 +186,6 @@ $(document).ready(initMain);
 </script>
 
 <!-- This script must be at the end -->
-<script src="https://apis.google.com/js/platform.js?hl=is&onload=renderButton" async defer></script>
+<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
 
 {% endblock %}

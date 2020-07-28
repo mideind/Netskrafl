@@ -2236,7 +2236,7 @@ def newbag():
 @app.route("/login")
 def login():
     """ Handler for the login & greeting page """
-    main_url = "/page" if _SINGLE_PAGE_UI else "/"
+    main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
     if "user" in session:
         del session["user"]
     return render_template("login.html", main_url=main_url)
