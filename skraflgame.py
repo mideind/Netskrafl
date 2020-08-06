@@ -550,7 +550,7 @@ class Game:
         ),
         (
             u"barnaskrafl",
-            u"Velur af handahófi einn af 10 stigalæstu leikjum í hverri stöðu",
+            u"Velur af handahófi einn af 10 stigalæstu leikjum í hverri stöðu. Sérstaklega gerður fyrir krakka",
             20
         )
     ]
@@ -611,8 +611,6 @@ class Game:
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
         self.timestamp = self.ts_last_move = datetime.utcnow()
-
-    #TODO: def.. robot level=20
 
     @classmethod
     def new(cls, player0_id, player1_id, robot_level=0, prefs=None):

@@ -594,13 +594,18 @@ class AutoPlayer:
 
     # The robot level that uses only common words
     AUTOPLAYER_COMMON = 15
+    AUTOPLAYER_CHILDREN = 20
 
     @staticmethod
     def create(state, robot_level=0):
         """ Create an Autoplayer instance of the desired ability level """
-        if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
+        if robot_level == AutoPlayer.AUTOPLAYER_COMMON:
             # Create an AutoPlayer that only plays common words
             return AutoPlayer_Common(state, robot_level)
+        
+        elif robot_level == AutoPlayer.AUTOPLAYER_CHILDREN:
+            # Create an AutoPlayer for children
+            return AutoPlayer_Children(state, robot_level)
         # Create a normal AutoPlayer using the entire vocabulary
         return AutoPlayer(state, robot_level)
 

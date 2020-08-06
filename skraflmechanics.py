@@ -1128,7 +1128,14 @@ class Move(MoveBase):
 
         def is_valid_word(word):
             """ Check whether a word is in the dictionary, unless this is a manual game """
-            return True if state.manual_wordcheck else word in Wordbase.dawg() #TODO: breyta þessu svo það tékki á bín-níðyrði fyrir krakka.
+            if state.manual_wordcheck:
+                return True  
+            elif state.childrens_game:
+                return word in Wordbase.dawg()
+                # TODO: return word in bin.dawg() or whatever it will be called
+            else:
+                return word in Wordbase.dawg() 
+            #TODO: breyta þessu svo það tékki á bín-níðyrði fyrir krakka.
 
         # Check whether the word is in the dictionary
         if not is_valid_word(self._word):
