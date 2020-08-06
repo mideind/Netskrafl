@@ -440,7 +440,7 @@ class State:
             self._game_resigned = False
             self._racks = [Rack(), Rack()]
             self._manual_wordcheck = manual_wordcheck
-            self.children = childrens_game
+            self.childrens_game = childrens_game
             # The score a challenge would get if made (0 if not challengeable)
             self._challenge_score = 0
             # The rack before the last challengeable move
