@@ -139,6 +139,15 @@ def iter_q(q, chunk_size=50, limit=0, projection=None):
             projection=projection
         )
 
+# class ChildModel(ndb.Model):
+    # """Models a child user"""
+#           id
+#           supervisor --> annar user (UserModel)(foreign key)
+##          password : Auto generated (?)              
+#           class : í hvaða bekk þau eru 
+#           Eru krakkarnir líka með öll stigin?
+#
+#           RÓSLÍN
 
 class UserModel(ndb.Model):
 
