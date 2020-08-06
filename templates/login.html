@@ -62,7 +62,7 @@
       smella á <a href="{{ url_for('help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
       hér til vinstri.
    </div>
-   <div style="float:right; margin-top:12px">
+   <div class="login-btn-large">
       <div class="g-signin2" id="g-signin2-large" data-onsuccess="onSignIn"></div>
    </div>
 </div>
@@ -75,7 +75,7 @@
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
-   <div style="width:100%; text-align: center">
+   <div class="login-btn-small">
       <div class="g-signin2" id="g-signin2-small" data-onsuccess="onSignIn"
          style="display:inline-block; margin-top:6px"></div>
    </div>
@@ -163,7 +163,7 @@ function onSignIn(googleUser) {
          function(data, textStatus, jqXHR) {
             // Redirect to initial URL on success
             console.log("Success from oauth2callback()");
-            window.location.assign("{{ main_url }}");
+            window.location.assign("{{ main_url }}?fromlogin=1");
          },
          function(jqXHR, textStatus, errorThrown) {
             // Refresh page on error.

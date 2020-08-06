@@ -237,6 +237,13 @@ def auth_required(**error_kwargs):
                     # Reply with a JSON error code
                     return jsonify(**error_kwargs)
                 # Reply with a redirect
+                # Check whether we're already coming from the
+                # login page, in which case we're screwed
+                # (cookies or popups are probably not allowed)
+                if request.args.get("fromlogin", "") == "1":
+                    return redirect(url_for("login_error"))
+                # Not already coming from the login page:
+                # redirect to it
                 login_url = error_kwargs.get("login_url")
                 return redirect(login_url or url_for("login"))
             # We have an authenticated user: store in g.user
@@ -2245,6 +2252,12 @@ def login():
     if "user" in session:
         del session["user"]
     return render_template("login.html", main_url=main_url)
+
+
+@app.route("/login_error")
+def login_error():
+    """ An error during login: probably cookies or popups are not allowed """
+    return render_template("login-error.html")
 
 
 @app.route("/logout")

@@ -64,14 +64,24 @@ def _get_http():
 
 
 def _request(*args, **kwargs):
-    """ Attempt to post a Firebase request, with recovery on a BrokenPipeError """
-    try:
-        return _get_http().request(*args, headers=_HEADERS, **kwargs)
-    except BrokenPipeError:
-        # Attempt recovery by creating a new httplib2.Http object and
-        # forcing re-generation of the credentials
-        _tls._HTTP = None
-    return _get_http().request(*args, headers=_HEADERS, **kwargs)
+    """ Attempt to post a Firebase request, with recovery on a ConnectionError """
+    MAX_ATTEMPTS = 2
+    attempts = 0
+    while attempts < MAX_ATTEMPTS:
+        try:
+            return _get_http().request(*args, headers=_HEADERS, **kwargs)
+        except ConnectionError:
+            # Note that BrokenPipeError is a subclass of ConnectionError
+            if attempts == MAX_ATTEMPTS - 1:
+                # Give up and re-raise the original exception
+                raise
+            # Attempt recovery by creating a new httplib2.Http object and
+            # forcing re-generation of the credentials
+            _tls._HTTP = None
+        # Try again
+        attempts += 1
+    # Should not get here
+    assert False, "Unexpected fall out of loop in firebase._request()"
 
 
 def _firebase_put(path, message=None):
@@ -229,4 +239,16 @@ def create_custom_token(uid, valid_minutes=60):
     global _firebase_app
     if _firebase_app is None:
         _firebase_app = initialize_app()
-    return auth.create_custom_token(uid).decode()
+    attempts = 0
+    MAX_ATTEMPTS = 2
+    while attempts < MAX_ATTEMPTS:
+        try:
+            return auth.create_custom_token(uid).decode()
+        except:
+            # It appears that ConnectionResetError exceptions can
+            # propagate (wrapped in an obscure Firebase object) from
+            # the call to create_custom_token()
+            if attempts == MAX_ATTEMPTS - 1:
+                raise
+        attempts += 1
+    assert False, "Unexpected fall out of loop in firebase.create_custom_token()"

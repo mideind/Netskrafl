@@ -1,0 +1,77 @@
+
+{% extends "container.html" %}
+
+{% block opengraph %}
+
+<meta property="og:locale" content="is_IS" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:description" content="Spilaðu skrafl á netinu" />
+<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="600" />
+<meta property="og:image:height" content="600" />
+
+{% endblock %}
+
+{% block styles %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block startscripts %}
+{% endblock %}
+
+{% block logo %}
+{% include 'logo.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="login-error">
+   <p class="login-error-icon"><span class="glyphicon glyphicon-exclamation-sign"></span></p>
+   <p class="login-sorry">Því miður tókst innskráningin ekki.</p>
+   <p>
+      Líklegasta skýringin er sú að
+      vafrinn þinn sé stilltur á að hafna vefkökum (e. cookies) eða
+      sprettigluggum (e. pop-ups). Netskrafl notar virkni frá
+      Google sem þarf á hvoru tveggja að halda til að innskráning
+      takist.
+   </p>
+   <div class="login-buttons">
+      <div class="get-help"><span class="glyphicon glyphicon-info-sign"></span>Fá hjálp</div>
+      <div class="try-again"><span class="glyphicon glyphicon-refresh"></span>Reyna aftur</div>
+   </div>
+   <div class="login-padding"></div>
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+function getCookie(name) {
+   var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+   return v ? v[2] : null;
+}
+
+function initMain() {
+   $("div.try-again").click(
+      function() {
+         window.location.assign("{{ url_for('login') }}");
+      }
+   );
+   $("div.get-help").click(
+      function() {
+         window.location.assign("{{ url_for('faq') }}#faq-31");
+      }
+   );
+}
+
+$(document).ready(initMain);
+
+</script>
+
+{% endblock %}

@@ -452,7 +452,7 @@ div.board-area {
 div.board {
    position: absolute;
    top: @board-top;
-   left: @margin-small;
+   left: 2px;
    height: 100%;
    padding-top: 8px;
    background-color: @container;
@@ -646,6 +646,44 @@ div.waitmove {
    z-index: 10;
 }
 
+div.login-buttons {
+   position: relative;
+}
+
+div.login-padding {
+   min-height: 60px;
+}
+
+div.try-again {
+   .submitbutton;
+   display: block;
+   position: absolute;
+   width: 128px;
+   top: 12px;
+   left: auto;
+   right: 0;
+   padding: 10px;
+}
+
+div.get-help {
+   .submitbutton;
+   display: block;
+   position: absolute;
+   top: 12px;
+   left: 0;
+   right: auto;
+   padding: 10px;
+   background-color: @triple-letter;
+}
+
+div.get-help span.glyphicon {
+   padding-right: 6px;
+}
+
+div.try-again span.glyphicon {
+   padding-right: 6px;
+}
+
 div.recallbtn {
    .standard-button;
    width: @btn-width-small;
@@ -825,12 +863,7 @@ div.player-btn.right.tomove {
 div.loginform-small {
    display: block;
    position: absolute;
-   width: @mobile-width; /* - 2 * @margin-small; */
-   /*
-   padding-top: @margin-small;
-   padding-left: @margin-small;
-   padding-right: @margin-small;
-   */
+   width: @mobile-width;
    padding-top: 0;
    padding-left: 0;
    padding-right: 0;
@@ -856,11 +889,46 @@ div.loginform-small div#logo-pic {
    padding-top: 0;
 }
 
+div.login-btn-large {
+   float:right;
+   margin-top:12px;
+}
+
+div.login-btn-small {
+   width:100%;
+   text-align: center;
+}
+
 div.blurb {
    font-size: 16px;
    font-weight: bold;
    padding-bottom: 24px;
    text-align: center;
+}
+
+div.login-error {
+   padding: 12px;
+   margin-top: 16px;
+   margin-left: 8px;
+   margin-right: 16px;
+   background-color: white;
+   color: black;
+   border-style: solid;
+   border-width: 0px;
+   border-radius: 6px;
+   font-size: 15px;
+   box-shadow: 3px 3px 5px 2px #333333;
+}
+
+p.login-sorry {
+   font-weight: bold;
+}
+
+p.login-error-icon {
+   margin-top: 8px;
+   margin-bottom: 8px;
+   font-size: 34px;
+   color: @triple-word;
 }
 
 div.heading {
@@ -1165,9 +1233,21 @@ div.tabbed-page {
    top: 0;
    width: @mobile-width;
    height: @mobile-height-net;
-   overflow: hidden;
+   overflow: auto;
    font-size: 13px;
    line-height: 23px;
+}
+
+ul.ui-tabs-nav {
+   display: none;
+}
+
+div.help-container img {
+   /* On mobile, scale images in help text down to fit the column width */
+   max-width: 100%;
+   height: auto;
+   object-fit: scale-down;
+   /* transform: scale(0.75); */
 }
 
 div#tabs,
@@ -1179,6 +1259,10 @@ div#main-tabs {
 div#tabs > div[role=tabpanel],
 div#main-tabs > div[role=tabpanel] {
    height: 657px;
+}
+
+div#tabs {
+   background-color: transparent;
 }
 
 div.userid {
@@ -1807,6 +1891,11 @@ div#own-stats {
    vertical-align: top;
 }
 
+/* Paragraphs of help text that should be centered on screens that are wide enough */
+p.help-center {
+   text-align: left;
+}
+
 /* ================= MEDIA-SPECIFIC STYLE ADJUSTMENTS ================== */
 
 /* ================= MOBILE PORTRAIT UI, LARGE ENOUGH TO BE NON-SCROLLABLE =============== */
@@ -1839,6 +1928,26 @@ div.container {
 
 div.game-container {
    height: @mobile-height;
+}
+
+div.tabbed-page {
+   width: 100%;
+}
+
+div.help-container {
+   width: 100%;
+}
+
+/* Paragraphs of help text that should be centered on screens that are wide enough */
+p.help-center {
+   text-align: center;
+}
+
+div.login-btn-small {
+   position: fixed;
+   top: 128px;
+   left: 50%;
+   width: 50%;
 }
 
 div.board {
@@ -2036,9 +2145,22 @@ div.info {
    font-size: 40px;
 }
 
+div.login-error {
+   .std-form;
+   top: 96px;
+   left: auto;
+   right: 202px;
+   width: 504px;
+   height: 276px;
+}
+
 div.board-help {
    display: block;
    z-index: 2;
+}
+
+ul.ui-tabs-nav {
+   display: block;
 }
 
 div.rightcol {
@@ -2536,6 +2658,7 @@ div.toggler {
 }
 
 div.tabbed-page {
+   overflow: hidden;
    left: 110px;
    top: 12px;
    width: 900px;
@@ -2544,10 +2667,20 @@ div.tabbed-page {
    line-height: 23px;
 }
 
+div.help-container img {
+   max-width: 100%;
+   height: auto;
+   /* transform: scale(1.0); */
+}
+
 div#tabs,
 div#main-tabs {
    padding: .2em;
    border: 2px solid #fcfdfd;
+}
+
+div#tabs {
+   background-color: #fcfdfd;
 }
 
 div.userid {
@@ -2899,6 +3032,13 @@ p#own-best {
 div#own-stats {
    margin-top: 16px;
    margin-bottom: 24px;
+}
+
+div.help-container {
+   width: 828px;
+   height: 640px;
+   overflow: auto;
+   padding-right: 24px;
 }
 
 } /* media min-width: 768px */
@@ -4945,13 +5085,6 @@ div#tabs-3 ol li,
 div#tabs-3 ol p,
 div#tabs-3 ol ul li {
    line-height: 1.65em;
-}
-
-div.help-container {
-   width: 828px;
-   height: 640px;
-   overflow: auto;
-   padding-right: 24px;
 }
 
 div.help-container ol li {
