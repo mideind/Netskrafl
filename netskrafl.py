@@ -2115,7 +2115,8 @@ def skilmalar():
 
 @app.route("/billing", methods=["GET", "POST"])
 def handle_billing():
-    """ Receive signup and billing confirmations. No authentication required. """
+    """ Receive signup and billing confirmations.
+        Authentication not necessarily required. """
     uid = ""
     u = session_user()
     if u is not None:

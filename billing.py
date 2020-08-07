@@ -14,6 +14,7 @@
 
 """
 
+import os
 import logging
 import json
 
@@ -44,12 +45,13 @@ class _Secret:
     @classmethod
     def load(cls):
         """ Fetch secret key and client UUID from a file """
+        fname = os.path.join("resources", "salescloud_key.bin")
         try:
-            with open("resources/salescloud_key.bin", "r", encoding="utf-8") as f:
+            with open(fname, "r", encoding="utf-8") as f:
                 cls._SC_SECRET_KEY = f.readline().strip().encode("ascii")
                 cls._SC_CLIENT_UUID = f.readline().strip()
         except Exception:
-            logging.error("Unable to read file resources/salescloud_key.bin")
+            logging.error("Unable to read file '{0}'".format(fname))
             cls._SC_SECRET_KEY = b""
             cls._SC_CLIENT_UUID = ""
 
@@ -177,6 +179,8 @@ def handle(request, uid):
         xsc_date = request.args.get("salescloud_date", "")[0:256]
         xsc_digest = request.args.get("salescloud_signature", "")[0:256]
         # pylint: disable=bad-continuation
+        if not uid:
+            logging.warning("uid is empty in billing.handle()")
         if not request_valid(
             request.method,
             request.base_url,
@@ -248,6 +252,10 @@ def handle(request, uid):
                 "Unknown or illegal user id: '{0}'".format(
                     "[None]" if uid is None else uid
                 )
+            )
+            logging.info(
+                "Original JSON from SalesCloud was:\n{0}"
+                .format(payload.decode("utf-8"))
             )
             # Return 400: Bad request
             return (
