@@ -9,7 +9,7 @@ threadsafe: true
 
 instance_class: B2
 manual_scaling:
-  instances: 3
+  instances: 1
 
 # Running on frontend instances of class 2 (256 MB RAM)
 #instance_class: F2
