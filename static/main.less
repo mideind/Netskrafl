@@ -1238,9 +1238,11 @@ div.tabbed-page {
    line-height: 23px;
 }
 
+/*
 ul.ui-tabs-nav {
    display: none;
 }
+*/
 
 div.help-container img {
    /* On mobile, scale images in help text down to fit the column width */
@@ -2668,7 +2670,7 @@ div.tabbed-page {
 }
 
 div.help-container img {
-   max-width: 100%;
+   max-width: 520px;
    height: auto;
    /* transform: scale(1.0); */
 }
@@ -5122,6 +5124,22 @@ div.help-container span.glyphicon-hourglass {
    color: @alert;
 }
 
+div.help-container p {
+   font-weight: normal;
+}
+
+div.help-container img.browserlogo {
+   height: 28px;
+   width: auto;
+   object-fit: scale-down;
+   margin-right: 8px;
+}
+
+div.help-container b.vcenter {
+   position: relative;
+   top: -8px;
+}
+
 div.twolist {
    -webkit-column-count: 2;
    -moz-column-count: 2;
@@ -5163,4 +5181,3 @@ div.signup-header {
    left: 110px;
    width: 900px;
 }
-
