@@ -61,6 +61,8 @@
 
 # pylint: disable=too-many-lines
 
+from typing import Dict, Tuple
+
 import logging
 import uuid
 
@@ -69,7 +71,7 @@ from datetime import datetime
 # The following is a hack/workaround for a Google bug
 # import six; reload(six)
 
-from google.cloud import ndb
+from google.cloud import ndb  # type: ignore
 
 from languages import Alphabet
 from cache import memcache
@@ -1039,7 +1041,7 @@ class StatsModel(ndb.Model):
 
         return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
 
-    _NB_CACHE = dict()
+    _NB_CACHE: Dict[Tuple[str, int], Dict[datetime, "StatsModel"]] = dict()
     _NB_CACHE_STATS = dict(hits=0, misses=0)
 
     @classmethod

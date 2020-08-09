@@ -19,13 +19,14 @@ import base64
 import json
 import threading
 import logging
+import socket
 from datetime import datetime
 
-import httplib2
+import httplib2  # type: ignore
 
-from oauth2client.client import GoogleCredentials
+from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import initialize_app, auth
+from firebase_admin import initialize_app, auth  # type: ignore
 
 
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
@@ -78,6 +79,12 @@ def _request(*args, **kwargs):
             # Attempt recovery by creating a new httplib2.Http object and
             # forcing re-generation of the credentials
             _tls._HTTP = None
+        except socket.timeout:
+            # socket.timeout is not a subclass of ConnectionError
+            # Make another attempt, then give up
+            if attempts == MAX_ATTEMPTS - 1:
+                # Give up and re-raise the original exception
+                raise
         # Try again
         attempts += 1
     # Should not get here

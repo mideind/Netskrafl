@@ -16,6 +16,8 @@
 
 """
 
+from typing import Dict, List, Tuple
+
 import functools
 
 
@@ -173,8 +175,8 @@ class TileSet(object):
     """ Abstract base class for tile sets. Concrete classes are found below. """
 
     # The following will be overridden in derived classes
-    scores = dict()
-    bag_tiles = []
+    scores: Dict[str, int] = dict()
+    bag_tiles: List[Tuple[str, int]] = []
 
     @classmethod
     def score(cls, tiles):
@@ -277,6 +279,8 @@ class OldTileSet(TileSet):
         ("?", 2),  # Blank tiles
     ]
 
+    BAG_SIZE: int = 0
+
 
 # Number of tiles in bag
 OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
@@ -361,6 +365,8 @@ class NewTileSet(TileSet):
         ("ö", 1),
         ("?", 2),  # Blank tiles
     ]
+
+    BAG_SIZE: int = 0
 
 
 # Number of tiles in bag
