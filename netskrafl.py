@@ -46,7 +46,7 @@ from flask import (
     jsonify,
     url_for,
     request, Request,
-    Response,
+    make_response, Response,
     g,
     session,
 )
@@ -189,6 +189,24 @@ def add_headers(response: Response) -> Response:
     return response
 
 
+def max_age(seconds):
+    """ Caching decorator for Flask - augments response
+        with a max-age cache header """
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            resp = f(*args, **kwargs)
+            if not isinstance(resp, Response):
+                resp = make_response(resp)
+            resp.cache_control.max_age = seconds
+            return resp
+
+        return decorated_function
+
+    return decorator
+
+
 @app.context_processor
 def inject_into_context() -> Dict[str, Union[bool, str]]:
     """ Inject variables and functions into all Flask contexts """
@@ -200,6 +218,27 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         firebase_api_key=_FIREBASE_API_KEY,
         firebase_sender_id=_FIREBASE_SENDER_ID,
     )
+
+
+# Flask cache busting for static .css and .js files
+@app.url_defaults
+def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]):
+    """ Add a ?h=XXX parameter to URLs for static .js and .css files,
+        where XXX is calculated from the file timestamp """
+
+    def static_file_hash(filename: str):
+        """ Obtain a timestamp for the given file """
+        return int(os.stat(filename).st_mtime)
+
+    if "static" == endpoint or endpoint.endswith(".static"):
+        filename = values.get("filename")
+        if filename and filename.endswith((".js", ".css")):
+            static_folder = app.static_folder or "."
+            param_name = "h"
+            # Add underscores in front of the param name until it is unique
+            while param_name in values:
+                param_name = "_" + param_name
+            values[param_name] = static_file_hash(os.path.join(static_folder, filename))
 
 
 @app.template_filter("stripwhite")
@@ -2331,6 +2370,12 @@ def oauth2callback():
         .format(account, userid, email, name)
     )
     return jsonify({"status": "success"})
+
+
+@app.route("/service-worker.js")
+@max_age(seconds=1 * 60 * 60)  # Cache file for 1 hour
+def service_worker():
+    return send_from_directory("static", "service-worker.js")
 
 
 # Cloud Scheduler routes - requests are only accepted when originated
