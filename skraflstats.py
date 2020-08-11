@@ -291,14 +291,15 @@ def _run_stats(from_time, to_time):
 
     except Exception as ex:
         logging.error(
-            "Exception in _run_stats() after {0} games and {1} users: {2!r}"
-            .format(cnt, len(users), ex)
+            "Exception in _run_stats(from={0}, to={1}) after {2} games and {3} users: {4!r}"
+            .format(from_time, to_time, cnt, len(users), ex)
         )
         return False
 
     # Completed without incident
     logging.info(
-        "Normal completion of stats for {1} games and {0} users".format(len(users), cnt)
+        "Normal completion of stats from {0} to {1}; {2} games and {3} users"
+        .format(from_time, to_time, cnt, len(users))
     )
     _write_stats(to_time, users)
     return True

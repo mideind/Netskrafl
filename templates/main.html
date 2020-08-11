@@ -453,7 +453,7 @@
 {% if dev_server %}
 <script src="{{ url_for('static', filename='main.js') }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='main.min.js', v=1) }}"></script>
+<script src="{{ url_for('static', filename='main.min.js') }}"></script>
 {% endif %}
 
 <script>

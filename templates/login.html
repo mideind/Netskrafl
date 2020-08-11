@@ -162,15 +162,22 @@ function onSignIn(googleUser) {
       .then(
          function(data, textStatus, jqXHR) {
             // Redirect to initial URL on success
-            console.log("Success from oauth2callback()");
-            window.location.assign("{{ main_url }}?fromlogin=1");
+            console.log("Back from oauth2callback()");
+            if (data.status === "success") {
+               window.location.assign("{{ main_url }}?fromlogin=1");
+            }
+            else {
+               // An error occurred
+               console.log("Error from oauth2callback(): " + data.msg);
+               window.location.assign("{{ url_for('login_error') }}");
+            }
          },
          function(jqXHR, textStatus, errorThrown) {
             // Refresh page on error.
             // In all cases, client side state should be lost due to in-memory
             // persistence.
             console.log("Error from oauth2callback(): " + errorThrown);
-            window.location.assign("{{ url_for('login') }}");
+            window.location.assign("{{ url_for('login_error') }}");
          }
       );
 }

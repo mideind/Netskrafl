@@ -246,7 +246,7 @@ def handle(request, uid):
             uid = None
         if uid:
             uid = uid[0:32]  # Sanity cut-off
-        user = User.load_if_exists(uid)
+        user = User.load_if_exists(uid) if uid else None
         if user is None:
             logging.error(
                 "Unknown or illegal user id: '{0}'".format(
@@ -257,10 +257,11 @@ def handle(request, uid):
                 "Original JSON from SalesCloud was:\n{0}"
                 .format(payload.decode("utf-8"))
             )
-            # Return 400: Bad request
-            return (
-                jsonify(ok=False, reason="Unknown or illegal user id (customer_label)"),
-                400,
+            # We no longer return HTTP code 400, since this simply
+            # makes SalesCloud repeat the request indefinitely
+            return jsonify(
+                ok=False,
+                reason="Unknown or illegal user id (customer_label)"
             )
         status = j.get("subscription_status")
         if status == "true":

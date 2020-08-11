@@ -495,9 +495,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {%- block endscripts -%}
 <!-- Netskrafl client script -->
 {%- if dev_server %}
-<script src="{{ url_for('static', filename='netskrafl.js', v=5) }}"></script>
+<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='netskrafl.min.js', v=5) }}"></script>
+<script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
 {% endif -%}
 <script>
 

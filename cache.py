@@ -19,6 +19,9 @@
 
 """
 
+from typing import Dict
+from types import ModuleType
+
 import os
 import redis
 import json
@@ -29,7 +32,7 @@ from datetime import datetime
 
 # A cache of imported modules, used to create fresh instances
 # when de-serializing JSON objects
-_modules = dict()
+_modules: Dict[str, ModuleType] = dict()
 
 # Custom serializers
 _serializers = {

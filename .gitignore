@@ -84,6 +84,7 @@ venv/
 node_modules/
 .idea/
 .vscode/
+.mypy_cache/
 
 # Node dependency descriptions
 package*.json

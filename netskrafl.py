@@ -28,6 +28,8 @@
 
 # pylint: disable=too-many-lines
 
+from typing import Optional, Dict, Union, List, Any
+
 import os
 import logging
 import threading
@@ -43,14 +45,15 @@ from flask import (
     redirect,
     jsonify,
     url_for,
-    request,
+    request, Request,
+    make_response, Response,
     g,
     session,
 )
 from werkzeug.urls import url_parse
 
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token  # type: ignore
+from google.auth.transport import requests as google_requests  # type: ignore
 
 import requests
 
@@ -102,7 +105,7 @@ def ndb_wsgi_middleware(wsgi_app):
 app = Flask(__name__)
 
 # Wrap the WSGI app to insert the NDB client context into each request
-app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
+setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 
 running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
@@ -113,7 +116,7 @@ if running_local:
     logging.info("Netskrafl app running with DEBUG set to True")
 else:
     # Import the Google Cloud client library
-    import google.cloud.logging
+    import google.cloud.logging  # type: ignore
     # Instantiate a logging client
     logging_client = google.cloud.logging.Client()
     # Connects the logger to the root logging handler;
@@ -177,7 +180,7 @@ assert _FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
 
 
 @app.after_request
-def add_headers(response):
+def add_headers(response: Response) -> Response:
     """ Inject additional headers into responses """
     if not running_local:
         # Add HSTS to enforce HTTPS
@@ -187,8 +190,26 @@ def add_headers(response):
     return response
 
 
+def max_age(seconds):
+    """ Caching decorator for Flask - augments response
+        with a max-age cache header """
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            resp = f(*args, **kwargs)
+            if not isinstance(resp, Response):
+                resp = make_response(resp)
+            resp.cache_control.max_age = seconds
+            return resp
+
+        return decorated_function
+
+    return decorator
+
+
 @app.context_processor
-def inject_into_context():
+def inject_into_context() -> Dict[str, Union[bool, str]]:
     """ Inject variables and functions into all Flask contexts """
     return dict(
         # Variable dev_server is True if running on the GAE development server
@@ -200,14 +221,35 @@ def inject_into_context():
     )
 
 
+# Flask cache busting for static .css and .js files
+@app.url_defaults
+def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]):
+    """ Add a ?h=XXX parameter to URLs for static .js and .css files,
+        where XXX is calculated from the file timestamp """
+
+    def static_file_hash(filename: str):
+        """ Obtain a timestamp for the given file """
+        return int(os.stat(filename).st_mtime)
+
+    if "static" == endpoint or endpoint.endswith(".static"):
+        filename = values.get("filename")
+        if filename and filename.endswith((".js", ".css")):
+            static_folder = app.static_folder or "."
+            param_name = "h"
+            # Add underscores in front of the param name until it is unique
+            while param_name in values:
+                param_name = "_" + param_name
+            values[param_name] = static_file_hash(os.path.join(static_folder, filename))
+
+
 @app.template_filter("stripwhite")
-def stripwhite(s):
+def stripwhite(s: str) -> str:
     """ Flask/Jinja2 template filter to strip out consecutive whitespace """
     # Convert all consecutive runs of whitespace of 1 char or more into a single space
     return re.sub(r"\s+", " ", s)
 
 
-def session_user():
+def session_user() -> Optional[User]:
     """ Return the user who is authenticated in the current session, if any.
         This can be called within any Flask request. """
     u = None
@@ -257,13 +299,13 @@ def auth_required(**error_kwargs):
     return wrap
 
 
-def current_user():
+def current_user() -> Optional[User]:
     """ Return the currently logged in user. Only valid within route functions
         decorated with @auth_required. """
     return g.get("user")
 
 
-def current_user_id():
+def current_user_id() -> Optional[str]:
     """ Return the id of the currently logged in user. Only valid within route
         functions decorated with @auth_required. """
     u = g.get("user")
@@ -278,7 +320,7 @@ class RequestData:
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))
 
-    def __init__(self, rq):
+    def __init__(self, rq: Request) -> None:
         # If JSON data is present, assume this is a JSON request
         self.q = rq.get_json(silent=True)
         self.using_json = True
@@ -289,18 +331,18 @@ class RequestData:
             if not self.q:
                 self.q = dict()
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None) -> Any:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
-    def get_int(self, key, default=0):
+    def get_int(self, key: str, default: int=0) -> int:
         """ Obtain an integer data item from the request """
         try:
             return int(self.q.get(key, default))
         except (TypeError, ValueError):
             return default
 
-    def get_bool(self, key, default=False):
+    def get_bool(self, key: str, default: bool=False) -> bool:
         """ Obtain a boolean data item from the request """
         try:
             val = self.q.get(key, default)
@@ -315,7 +357,7 @@ class RequestData:
         # Something else, i.e. neither truthy nor falsy: return the default
         return default
 
-    def get_list(self, key):
+    def get_list(self, key: str) -> List:
         """ Obtain a list data item from the request """
         if self.using_json:
             # Normal get from a JSON dictionary
@@ -325,7 +367,7 @@ class RequestData:
             r = self.q.getlist(key + "[]")
         return r if isinstance(r, list) else []
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         """ Shortcut: allow indexing syntax with an empty string default """
         return self.q.get(key, "")
 
@@ -2285,8 +2327,7 @@ def oauth2callback():
         # Something is wrong in the internal setup of the server
         # (environment variable probably missing)
         # 500 - Internal server error
-        logging.warning("oauth2callback() called with missing CLIENT_ID")
-        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
+        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"})
 
     token = request.form.get("idToken", "")
     csrf_token = request.form.get("csrfToken", "")
@@ -2294,8 +2335,7 @@ def oauth2callback():
     if not token:
         # No authentication token included in the request
         # 400 - Bad Request
-        logging.warning("oauth2callback() called without authentication token")
-        return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+        return jsonify({"status": "invalid", "msg": "Missing token"})
 
     # !!! TODO: Add CSRF verification
 
@@ -2320,25 +2360,29 @@ def oauth2callback():
         userid = User.login_by_account(account, name, email)
     except ValueError as e:
         # Invalid token
-        # 401 - Unauthorized
-        logging.warning("oauth2callback() called with invalid token")
-        return jsonify({"status": "invalid", "msg": str(e)}), 401
+        return jsonify({"status": "invalid", "msg": str(e)})
 
     if not userid:
         # Unable to obtain the user id for some reason
-        # 401 - Unauthorized
-        logging.warning("oauth2callback() unable to obtain user id")
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"})
 
     # Authentication complete; user id obtained
     session["user"] = {
         "id": userid,
     }
     session.permanent = True
-    logging.info("oauth2callback() successfully recognized account {0} userid {1} email {2} name '{3}'"
+    logging.info(
+        "oauth2callback() successfully recognized "
+        "account {0} userid {1} email {2} name '{3}'"
         .format(account, userid, email, name)
     )
     return jsonify({"status": "success"})
+
+
+@app.route("/service-worker.js")
+@max_age(seconds=1 * 60 * 60)  # Cache file for 1 hour
+def service_worker():
+    return send_from_directory("static", "service-worker.js")
 
 
 # Cloud Scheduler routes - requests are only accepted when originated
@@ -2415,8 +2459,7 @@ def server_error(e):
 if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
-        import googleclouddebugger
-
+        import googleclouddebugger  # type: ignore
         googleclouddebugger.enable()
     except ImportError:
         pass
