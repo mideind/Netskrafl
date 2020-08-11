@@ -50,6 +50,7 @@ from flask import (
     g,
     session,
 )
+from werkzeug.urls import url_parse
 
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
@@ -1763,6 +1764,12 @@ def userprefs():
 
     # The URL to go back to, if not main.html
     from_url = request.args.get("from", None)
+
+    # Validate that 'from_url' does not redirect to an external site.
+    # If 'url_parse(from_url).netloc' is empty, that means from_url is a relative
+    # link and is safe. If .netloc is populated, it might be external.
+    if from_url and url_parse(from_url).netloc != "":
+        from_url = None
 
     if request.method == "GET":
         # Entering the form for the first time: load the user data

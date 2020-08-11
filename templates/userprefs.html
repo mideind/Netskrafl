@@ -162,7 +162,7 @@ function submitForm() {
    <!-- Cancel button -->
    <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="10"
 {% if from_url %}
-      onclick="location.href='{{ from_url | safe }}'"
+      onclick="location.href='{{ from_url }}'"
 {% else %}
       onclick="location.href='{{ url_for('main') | safe }}'"
 {% endif %}
