@@ -1,6 +1,6 @@
 """
 
-    Wek server for netskrafl.is
+    Web server for netskrafl.is
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
