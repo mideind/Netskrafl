@@ -1769,7 +1769,7 @@ def userprefs():
     # If 'url_parse(from_url).netloc' is empty, that means from_url is a relative
     # link and is safe. If .netloc is populated, it might be external.
     if from_url and url_parse(from_url).netloc != "":
-        from_url = url_for("main")
+        from_url = None
 
     if request.method == "GET":
         # Entering the form for the first time: load the user data
