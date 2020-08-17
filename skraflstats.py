@@ -30,6 +30,8 @@ import calendar
 import logging
 import os
 import time
+import gc
+
 from datetime import datetime, timedelta
 from threading import Thread
 
@@ -149,6 +151,9 @@ def _run_stats(from_time, to_time):
     if from_time >= to_time:
         # Null time range
         return False
+
+    # Collect any stray garbage before we start
+    gc.collect()
 
     # Clear previous cache contents, if any
     StatsModel.clear_cache()
@@ -315,6 +320,9 @@ def _create_ratings():
     yesterday = timestamp - timedelta(days=1)
     week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
+
+    # Collect any stray garbage before we start
+    gc.collect()
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
         """ Go through a table of top scoring users and augment it
