@@ -1972,8 +1972,11 @@ div.rightcol {
 }
 
 div.rack {
+   display: none;
+   /*
    left: @rightcol-left;
    top: @rack-top;
+   */
 }
 
 div.recallbtn {
@@ -2070,6 +2073,16 @@ div.movelist-container {
 
 div.movelist {
    height: 272px;
+}
+
+div.right-area.with-clock div.movelist-container {
+   /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+   height: 224px;
+}
+
+div.right-area.with-clock div.movelist {
+   /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+   height: 224px;
 }
 
 div.movelist-container div.bag {
@@ -2175,7 +2188,7 @@ div.rightcol {
 
 div.right-area {
    margin-top: 8px;
-   height: 421px;
+   height: 420px;
 }
 
 div.heading {
@@ -2261,6 +2274,7 @@ div.bag {
 }
 
 div.rack {
+   display: block;
    top: auto;
    bottom: 125px;
    left: 236px;
@@ -2547,6 +2561,16 @@ div.movelist-container {
 
 div.movelist {
    height: 420px;
+}
+
+div.right-area.with-clock div.movelist-container {
+   /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+   height: 380px;
+}
+
+div.right-area.with-clock div.movelist {
+   /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+   height: 380px;
 }
 
 div.movelist-container div.bag {
@@ -3415,14 +3439,16 @@ div.movelist.noscroll {
 
 div.leftmove {
    text-align: left;
-   padding: 2px;
-   height: 16px;
+   padding-left: 2px;
+   height: 20px;
+   line-height: 18px;
 }
 
 div.rightmove {
    text-align: right;
-   padding: 2px;
-   height: 16px;
+   padding-right: 2px;
+   height: 20px;
+   line-height: 18px;
 }
 
 div.reviewhdr {
@@ -3556,6 +3582,7 @@ span.total {
    text-align: right;
    background-color: @board-background;
    color: white;
+   line-height: 16px;
 }
 
 span.highlight {

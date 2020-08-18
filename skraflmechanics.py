@@ -638,7 +638,7 @@ class State:
             # If the last move is challengeable, the game is not over,
             # even if one of the racks is empty
             return False
-        return self._racks[0].is_empty() or self._racks[1].is_empty()
+        return any(r.is_empty() for r in self._racks)
 
     def is_last_challenge(self):
         """ Is the game waiting for a potential challenge of the last move? """
@@ -665,7 +665,7 @@ class State:
             # There is no consideration of rack leave in this case
             return
 
-        if any(self._racks[ix].is_empty() for ix in range(2)):
+        if any(r.is_empty() for r in self._racks):
             # Normal win by one of the players
             for ix in range(2):
                 # Add double the score of the opponent's tiles (will be zero for the losing player)

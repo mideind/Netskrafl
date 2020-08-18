@@ -748,16 +748,18 @@ class PackedNavigation:
             yield prefix, nextnode
 
     def _make_iter_from_node(self, offset):
-        """ Return an iterator over the prefixes and next node pointers
+        """ Return an iterable over the prefixes and next node pointers
             of the edge at the given offset. If this is the first time
             that the edge is iterated, cache its unpacked contents
             in a dictionary for quicker subsequent iteration. """
         try:
-            d = self._iter_cache[offset]
+            prefix_nodes = self._iter_cache[offset]
         except KeyError:
-            d = {prefix: nextnode for prefix, nextnode in self._iter_from_node(offset)}
-            self._iter_cache[offset] = d
-        return d.items()
+            # Cache the list of (prefix, nextnode) tuples in a tuple
+            # (the list is read-only anyway)
+            prefix_nodes = tuple(t for t in self._iter_from_node(offset))
+            self._iter_cache[offset] = prefix_nodes
+        return prefix_nodes
 
     def _navigate_from_node(self, offset, matched):
         """ Starting from a given node, navigate outgoing edges """
