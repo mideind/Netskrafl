@@ -1,7 +1,6 @@
 /*
 
    Main.js
-
    Client-side script functions for main.html, the main page of Netskrafl
 
    Copyright (C) 2020 Miðeind ehf.
@@ -12,8 +11,7 @@
 
 */
 
-/*
-   global $:false,
+/* global $:false,
    showUserInfo, openPromoDialog, registerSalesCloud, newgameUrl, serverQuery,
    _populateStats, _populateRecentList, toggle, escapeHtml, userId, userHasPaid,
    waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener, initFirebaseListener,

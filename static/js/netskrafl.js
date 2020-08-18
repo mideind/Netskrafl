@@ -11,13 +11,13 @@
 
 */
 
-/*
-   global $:false, Mousetrap:false, serverQuery, gameId, localPlayer,
+/* global $:false, Mousetrap:false,
+   serverQuery, gameId, localPlayer,
    gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag,
    userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
    opponentInfo, preventPullToRefresh, initFirebaseListener, loginFirebase, attachFirebaseListener,
    initSkrafl, lateInit, initialGameTime, initBag, initMoveList, placeTiles,
-   favUserInfo, toggleVersus, initToggle, toggleStats, fbShare
+   favUserInfo, toggleVersus, initToggle, toggleStats, fbShare,
 */
 
 /* eslint-disable no-unused-vars */
