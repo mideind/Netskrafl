@@ -90,6 +90,7 @@ class User:
         self._best_word_game = None
         # Set of favorite users, only loaded upon demand
         self._favorites = None
+        self._supervisor = None
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -110,6 +111,7 @@ class User:
         self._best_word = um.best_word
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
+        self._supervisor = um.supervisor
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
@@ -150,6 +152,11 @@ class User:
         """ Returns the human-readable nickname of a user,
             or userid if a nick is not available """
         return self._nickname or self._user_id
+
+    @property
+    def is_child(self):
+        """ Return True if this user is a child user, i.e. has a supervisor """
+        return self._supervisor is not None
 
     def set_nickname(self, nickname):
         """ Sets the human-readable nickname of a user """
@@ -488,6 +495,17 @@ class User:
             nickname=nickname,
             preferences=prefs
         )
+
+    @classmethod
+    def login_by_child_id(cls, child_id):
+        """ Log in a user via the given child id and return her user id """
+        # Try to fetch the user having nick_lc == child_id
+        um = UserModel.fetch_nick_lc(child_id)
+        if um is None or um.supervisor is None:
+            # Not found or not a child: deny login
+            return None
+        # Return the user id (key) if the child is found, or None if not
+        return um.key.id()
 
     def to_serializable(self):
         """ Convert to JSON-serializable format """

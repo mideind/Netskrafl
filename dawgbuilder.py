@@ -997,6 +997,28 @@ def run_skrafl():
 
     print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
 
+    print(u"Starting DAWG build for all of BÍN without derogatory words")
+    db = DawgBuilder(encoding=Alphabet.order)
+    t0 = time.time()
+    # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
+    db.build(
+        ["kristinsnid.txt"],  # Input files to be merged
+        "nonDerogatory",  # Output file - full name will be children.text.dawg
+        "resources",  # Subfolder of input and output files
+        #words to remove?
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    # Test loading of DAWG for common childrens words
+    dawg = PackedDawgDictionary()
+    fpath = os.path.abspath(os.path.join("resources", "nonDerogatory.bin.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
+
     print("DAWG builder run complete")
 
 

@@ -387,12 +387,8 @@ tr.colid td {
    padding: 0;
 }
 
-// /* Board layout */
-// #H8::after, #B2::before, #C3::before, #D4::before, #E5::before, #B14::before, #C13::before, #D12::before, #E11::before,
-// #K5::before, #L4::before, #M3::before, #N2::before, #K11::before, #L12::before, #M13::before, #N14::before{
-//    /* Double word score */
-//    content: "2xo";
-// }
+/* Board layout */
+
 
 #child-btn {
    margin-top: 5px;
@@ -406,15 +402,34 @@ tr.colid td {
 #H8, #B2, #C3, #D4, #E5, #B14, #C13, #D12, #E11,
 #K5, #L4, #M3, #N2, #K11, #L12, #M13, #N14{
    /* Double word score */
-   background-image: url('2xword.png');
-   background-repeat: no-repeat;
-   background-size: 100% 100%;
-   background-position: center;
-   }
+   background-color: @double-word;
+   line-height: 60%;
+   text-align: center;
+}
+
+.doubleWord::before{
+//    /* Double word score */
+   content: "2x \00000a Orð";
+   white-space: pre;
+   font-size: 0.8rem;
+   font-weight: bold;
+}
+
 
 #A1, #A8, #A15, #H1, #H15, #O1, #O8, #O15 {
    /* Triple word score */
    background-color: @triple-word;
+   line-height: 60%;
+   text-align: center;
+   color:white;
+}
+
+.tripleWord::before {
+   /* Triple word score */
+   content: "3x \00000a Orð";
+   white-space: pre;
+   font-size: 0.8rem;
+   font-weight: bold;
 }
 
 #A4, #A12, #C7, #C9, #D1, #D8, #D15,
@@ -424,12 +439,38 @@ tr.colid td {
 #O4, #O12, #M7, #M9, #L1, #L8, #L15 {
    /* Double letter score */
    background-color: @double-letter;
+   text-align: center;
+   line-height: 60%;
 }
+
+.doubleLetter::before {
+   /* Double letter score */
+   content: "2x \00000a staf";
+   font-size: 0.8rem;
+   font-weight: bold;
+   white-space: pre;
+}
+
 
 #B6, #B10, #F2, #F6, #F10, #F14,
 #N6, #N10, #J2, #J6, #J10, #J14 {
    /* Triple letter score */
    background-color: @triple-letter;
+   text-align: center;
+   line-height: 60%;
+}
+
+.tripleLetter::before {
+   /* Triple letter score */
+   content: "3x \00000a staf";
+   font-size: 0.8rem;
+   font-weight: bold;
+   white-space: pre;
+   color: white;
+}
+
+.covered::before {
+   content:none;
 }
 
 table.board {
@@ -2151,6 +2192,7 @@ div.bag {
    display: block;
    bottom: 114px;
 }
+
 
 div.rack {
    top: auto;

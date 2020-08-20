@@ -250,11 +250,12 @@ class Wordbase:
     _dawg = None
     _dawg_common = None
     _dawg_children = None
-    #TODO:bæta við hér bín - níðyrði
+    _dawg_nonDerogatory = None
 
     _lock = threading.Lock()
     _lock_common = threading.Lock()
     _lock_children = threading.Lock()
+    _lock_nonDerogatory = threading.Lock()
 
     def __init__(self):
         pass
@@ -354,6 +355,15 @@ class Wordbase:
                 Wordbase._dawg_children = Wordbase._load_resource("children")
             assert Wordbase._dawg_children is not None
             return Wordbase._dawg_children
+
+    @staticmethod
+    def dawg_nonDerogatory():
+        """ Return the non derogatory words DAWG object, loading it if required """
+        with Wordbase._lock_nonDerogatory:
+            if Wordbase._dawg_nonDerogatory is None:
+                Wordbase._dawg_nonDerogatory = Wordbase._load_resource("nonDerogatory")
+            assert Wordbase.dawg_nonDerogatory is not None
+            return Wordbase._dawg_nonDerogatory
 
 
 

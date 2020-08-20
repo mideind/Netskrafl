@@ -183,6 +183,7 @@ class UserModel(ndb.Model):
     best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = ndb.StringProperty(required=False, default=None)
+    supervisor = ndb.KeyProperty(kind="UserModel")
 
     @classmethod
     def create(cls, user_id, account, email, nickname, preferences=None):
@@ -207,6 +208,12 @@ class UserModel(ndb.Model):
     def fetch_account(cls, account):
         """ Attempt to fetch a user by Google account id """
         q = cls.query(UserModel.account == account)
+        return q.get()
+
+    @classmethod
+    def fetch_nick_lc(cls, nick):
+        """ Attempt to fetch a user by nickname, in lower case """
+        q = cls.query(UserModel.nick_lc == nick.lower())
         return q.get()
 
     @classmethod

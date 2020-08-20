@@ -1,0 +1,121 @@
+
+{% extends "child-container.html" %}
+
+{% block opengraph %}
+
+<meta property="og:locale" content="is_IS" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:description" content="Spilaðu skrafl á netinu" />
+<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="600" />
+<meta property="og:image:height" content="600" />
+
+
+<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+
+{% endblock %}
+
+{% block startscripts %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block logo %}
+{% include 'logo.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="loginform-large">
+   <!-- Large UI form -->
+   <div class="loginhdr">
+      Velkomin í barnaskrafl!
+   </div>
+   <div class="blurb">
+      Skemmtilegt | skerpandi | ókeypis
+   </div>
+   <div id="board-pic"><img src="{{ url_for('static', filename='Board.png') }}" width="310" height="300"></div>
+   <div class="welcome">
+      Þú getur alltaf
+      fengið <a href="{{ url_for('childhelp') }}">hjálp</a> með því að
+      smella á <a href="{{ url_for('childhelp') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
+      hér til vinstri.
+   </div>
+   <form method="POST">
+      <label for="psw">Notendanafn: </label>
+      <input type="text" placeholder="Skráðu Notendanafn" name="psw" id="psw" required>
+      <button type="submit" onclick="onSignIn()">Skrá inn</button>
+   </form>
+</div>
+
+
+<div class="loginform-small">
+   <!-- Small UI form -->
+   <div id="logo-pic">
+      <img src="{{ url_for('static', filename='LoginLogo600.png') }}" width="300" height="300">
+   </div>
+   
+   <div class="blurb">
+      Skemmtilegt | skerpandi | ókeypis
+   </div>
+
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+function getCookie(name) {
+   var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+   return v ? v[2] : null;
+}
+
+function childauthcallback(idToken, csrfToken) {
+   // POST to child session login endpoint
+   return $.ajax(
+      {
+         type: 'POST',
+         url: "/childauthcallback",
+         data: {
+            idToken: idToken,
+            csrfToken: csrfToken,
+         }
+      }
+   );
+}
+
+function onSignIn() {
+   // Called when a child user has successfully logged in
+   var childId = $("#psw").val().strip();
+   // Session login endpoint is queried and the session cookie is set.
+   // CSRF token should be sent along with request.
+   var csrfToken = getCookie('csrfToken');
+   childauthcallback(childId, csrfToken)
+      .then(
+         function() {
+            // Redirect to initial URL on success
+            window.location.assign("{{ main_url | safe }}");
+         },
+         function(error) {
+            // Refresh page on error.
+            // In all cases, client side state should be lost due to in-memory
+            // persistence.
+            console.log("Error from oauth2callback(): " + error);
+            window.location.assign('/barnaskrafl?error=1');
+         }
+      );
+}
+
+function initMain() {
+}
+
+$(document).ready(initMain);
+
+</script>
+
+{% endblock %}

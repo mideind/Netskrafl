@@ -445,9 +445,10 @@ function startClock(igt) {
 
 function placeTile(sq, tile, letter, score) {
    /* Place a given tile in a particular square, either on the board or in the rack */
+   
    if (tile.length === 0) {
       /* Erasing tile */
-      $("#"+sq).html("");
+      $("#"+sq).html("").toggleClass("covered", false);
       return;
    }
    var attr;
@@ -460,7 +461,7 @@ function placeTile(sq, tile, letter, score) {
       /* Normal board tile */
       attr = "class='tile'";
    $("#"+sq).html("<div " + attr + ">" + letter +
-      "<div class='letterscore'>" + score + "</div></div>");
+      "<div class='letterscore'>" + score + "</div></div>").toggleClass("covered", true);
    var elem = $("#"+sq).children().eq(0);
    elem.data("score", score);
    if (sq.charAt(0) == "R") {
@@ -1233,6 +1234,7 @@ function moveTile(src, target) {
             $(src).data("letter", ' ');
             src.childNodes[0].nodeValue = "\xa0"; // Non-breaking space, i.e. &nbsp;
          }
+         
       }
       // Save this state in local storage,
       // to be restored when coming back to this game

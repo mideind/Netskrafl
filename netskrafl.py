@@ -1726,6 +1726,34 @@ def userprefs():
     # Render the form with the current data and error messages, if any
     return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
 
+@app.route("/childuserprefs", methods=["GET", "POST"])
+@auth_required()
+def childuserprefs():
+    """ Handler for the user preferences page """
+
+    user = current_user()
+
+    uf = UserForm()
+    err = dict()
+
+    # The URL to go back to, if not main.html
+    from_url = request.args.get("from", None)
+
+    if request.method == "GET":
+        # Entering the form for the first time: load the user data
+        uf.init_from_user(user)
+    elif request.method == "POST":
+        # Attempting to submit modified data: retrieve it and validate
+        uf.init_from_form(request.form)
+        err = uf.validate()
+        if not err:
+            # All is fine: store the data back in the user entity
+            uf.store(user)
+            return redirect(from_url or url_for("main"))
+
+    # Render the form with the current data and error messages, if any
+    return render_template("children-userprefs.html", uf=uf, err=err, from_url=from_url)
+
 
 @app.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
@@ -2182,6 +2210,14 @@ def help():
     return render_template("nshelp.html", user=user, tab=None)
 
 
+@app.route("/childhelp")
+def childhelp():
+    """ Show help page, which does not require authentication """
+    user = session_user()
+    # We tolerate a null (not logged in) user here
+    return render_template("child-help.html", user=user, tab=None)
+
+
 @app.route("/rawhelp")
 def rawhelp():
     """ Return raw help page HTML. Authentication is not required. """
@@ -2238,6 +2274,15 @@ def login():
     return render_template("login.html", main_url=main_url)
 
 
+@app.route("/barnaskrafl")
+def childlogin():
+    """ Handler for the login & greeting page """
+    main_url = "/page" if _SINGLE_PAGE_UI else "/"
+    if "user" in session:
+        del session["user"]
+    return render_template("children-main.html", main_url=main_url)
+
+
 @app.route("/logout")
 def logout():
     """ Log the user out """
@@ -2290,6 +2335,43 @@ def oauth2callback():
         # Invalid token
         # 401 - Unauthorized
         return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    if not userid:
+        # Unable to obtain the user id for some reason
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+
+    # Authentication complete; user id obtained
+    session["user"] = {
+        "id": userid,
+    }
+    session.permanent = True
+    return jsonify({"status": "success"})
+
+
+@app.route("/childauthcallback", methods=["POST"])
+def childauthcallback():
+    """ The children login flow POSTs to this callback when a user has
+        signed in """
+
+    if not _CLIENT_ID:
+        # Something is wrong in the internal setup of the server
+        # (environment variable probably missing)
+        # 500 - Internal server error
+        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
+
+    # The passed-in token is a unique child user id
+    token = request.form.get("idToken", "")
+    csrf_token = request.form.get("csrfToken", "")
+
+    if not token:
+        # No authentication token included in the request
+        # 400 - Bad Request
+        return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+
+    # !!! TODO: Add CSRF verification
+
+    userid = User.login_by_child_id(token)
 
     if not userid:
         # Unable to obtain the user id for some reason

@@ -1,0 +1,208 @@
+
+{% extends "child-container.html" %}
+
+{% block opengraph %}
+<!-- Google OAuth sign-in -->
+<meta name="google-signin-scope" content="profile email openid">
+<meta name="google-signin-client_id" content="{{ client_id | safe }}">
+<script src="https://apis.google.com/js/platform.js" async defer></script>
+{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+function buttonOver(elem) {
+   /* Show a hover effect on a button */
+   if (!$(elem).hasClass("disabled"))
+      $(elem).toggleClass("over", true);
+}
+
+function buttonOut(elem) {
+   /* Hide a hover effect on a button */
+   $(elem).toggleClass("over", false);
+}
+
+function submitForm() {
+   // POST the form to the server
+   // First transfer the state of our fancy simulated checkbox
+   $("#audio").prop('checked', $("#audio-toggler #opt2").hasClass("selected"));
+   $("#fanfare").prop('checked', $("#fanfare-toggler #opt2").hasClass("selected"));
+   $("#beginner").prop('checked', $("#beginner-toggler #opt2").hasClass("selected"));
+   $("#fairplay").prop('checked', $("#fairplay-toggler #opt2").hasClass("selected"));
+   $("#newbag").prop('checked', $("#newbag-toggler #opt2").hasClass("selected"));
+   document.getElementById('frm1').submit();
+}
+
+</script>
+
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+
+<div id="user-dialog" class="modal-dialog">
+<div id="user-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="loginhdr"><span class='glyphicon glyphicon-address-book'></span> Verðlaun Leikmanns</div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="user-ok" title="Vista" tabindex="9"
+{% if from_url %}
+      onclick="location.href='{{ from_url | safe }}'"
+{% else %}
+      onclick="location.href='{{ url_for('main') | safe }}'"
+{% endif %}
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+   <!-- Logout button -->
+   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="11"
+      onclick="logOut()"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
+
+
+</div> <!-- user-form -->
+</div> <!-- user-dialog -->
+
+{% endblock %}
+
+{%- block endscripts -%}
+
+<script>
+
+   function logOut() {
+      // The following complications seem to be required,
+      // in contradiction to Google's sample code
+      gapi.load("auth2",
+         function() {
+            gapi.auth2.init({ client_id: '{{ client_id | safe }}' }).then(
+               function() {
+                  var auth2 = gapi.auth2.getAuthInstance();
+                  // Rescind the client permissions, forcing a new login
+                  auth2.disconnect();
+                  // Redirect to the login page
+                  location.href = "{{ uf.logout_url | safe }}";
+               },
+               function() {
+                  console.log("Error in gapi.auth2.init()")
+               }
+            );
+         }
+      );
+   }
+
+   function doAudioToggle() {
+      // Toggle from one state to the other
+      $("#audio-toggler #opt1").toggleClass("selected");
+      $("#audio-toggler #opt2").toggleClass("selected");
+      if ($("#audio-toggler #opt2").hasClass("selected")) {
+         // Play a demo
+         var yourTurn = document.getElementById("your-turn");
+         if (yourTurn)
+            yourTurn.play();
+      }
+   }
+
+   // Initialize the audio toggler
+   if ($("#audio").prop('checked'))
+      $("#audio-toggler #opt2").addClass("selected");
+   else
+      $("#audio-toggler #opt1").addClass("selected");
+
+   $("#audio-toggler").click(doAudioToggle);
+   $("#audio-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doAudioToggle();
+   });
+
+   function doFanfareToggle() {
+      // Toggle from one state to the other
+      $("#fanfare-toggler #opt1").toggleClass("selected");
+      $("#fanfare-toggler #opt2").toggleClass("selected");
+      if ($("#fanfare-toggler #opt2").hasClass("selected")) {
+         // Play a demo
+         var youWin = document.getElementById("you-win");
+         if (youWin)
+            youWin.play();
+      }
+   }
+
+   // Initialize the fanfare toggler
+   if ($("#fanfare").prop('checked'))
+      $("#fanfare-toggler #opt2").addClass("selected");
+   else
+      $("#fanfare-toggler #opt1").addClass("selected");
+
+   $("#fanfare-toggler").click(doFanfareToggle);
+   $("#fanfare-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFanfareToggle();
+   });
+
+   function doBeginnerToggle() {
+      // Toggle from one state to the other
+      $("#beginner-toggler #opt1").toggleClass("selected");
+      $("#beginner-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the beginner toggler
+   if ($("#beginner").prop('checked'))
+      $("#beginner-toggler #opt2").addClass("selected");
+   else
+      $("#beginner-toggler #opt1").addClass("selected");
+
+   $("#beginner-toggler").click(doBeginnerToggle);
+   $("#beginner-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doBeginnerToggle();
+   });
+
+   function doFairplayToggle() {
+      // Toggle from one state to the other
+      $("#fairplay-toggler #opt1").toggleClass("selected");
+      $("#fairplay-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the fairplay toggler
+   if ($("#fairplay").prop('checked'))
+      $("#fairplay-toggler #opt2").addClass("selected");
+   else
+      $("#fairplay-toggler #opt1").addClass("selected");
+
+   $("#fairplay-toggler").click(doFairplayToggle);
+   $("#fairplay-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFairplayToggle();
+   });
+
+   function doNewbagToggle() {
+      // Toggle from one state to the other
+      $("#newbag-toggler #opt1").toggleClass("selected");
+      $("#newbag-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the newbag toggler
+   if ($("#newbag").prop('checked'))
+      $("#newbag-toggler #opt2").addClass("selected");
+   else
+      $("#newbag-toggler #opt1").addClass("selected");
+
+   $("#newbag-toggler").click(doNewbagToggle);
+   $("#newbag-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doNewbagToggle();
+   });
+
+</script>
+
+{%- endblock -%}
