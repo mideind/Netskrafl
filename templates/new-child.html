@@ -1,0 +1,90 @@
+
+{% extends "container.html" %}
+
+{% block opengraph %}
+<!-- Google OAuth sign-in -->
+<meta name="google-signin-scope" content="profile email openid">
+<meta name="google-signin-client_id" content="{{ client_id | safe }}">
+<script src="https://apis.google.com/js/platform.js" async defer></script>
+{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+function buttonOver(elem) {
+   /* Show a hover effect on a button */
+   if (!$(elem).hasClass("disabled"))
+      $(elem).toggleClass("over", true);
+}
+
+function buttonOut(elem) {
+   /* Hide a hover effect on a button */
+   $(elem).toggleClass("over", false);
+}
+
+function submitForm() {
+   // POST the form to the server
+   // First transfer the state of our fancy simulated checkbox
+   document.getElementById('frm1').submit();
+}
+
+</script>
+
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div id="user-dialog" class="modal-dialog">
+<div id="user-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="loginhdr"><span class='glyphicon glyphicon-ice-lolly'></span> Nýtt Barn</div>
+   <div>
+   <form name="frm1" id="frm1" action="{{ url_for('newchild', from=from_url) | safe }}" method="post">
+
+
+      <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
+         <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
+            class="text fullname"/></div>
+
+      <div class="dialog-spacer"><span class="caption">Einkenni:</span>
+         <input type="text" name="nickname" id="nickname" tabindex="1"
+            maxlength=15 autofocus required class="text username"/>
+         
+
+      <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
+         <input type="text" name="email" id="email" maxlength="32" tabindex="3"
+            class="text email"/></div>
+
+   </form>
+   </div>
+
+   <!-- OK button -->
+   <div class="modal-close" id="user-ok" title="Vista" tabindex="9"
+      onclick="submitForm()"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+   <!-- Cancel button -->
+   <div class="modal-close" id="user-cancel" title="Hætta við" tabindex="10"
+{% if from_url %}
+      onclick="location.href='{{ from_url | safe }}'"
+{% else %}
+      onclick="location.href='{{ url_for('main') | safe }}'"
+{% endif %}
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+
+</div> <!-- user-form -->
+</div> <!-- user-dialog -->
+
+{% endblock %}
+

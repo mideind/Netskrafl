@@ -1132,8 +1132,6 @@ class Move(MoveBase):
                 return True  
             elif state.childrens_game:
                 return word in Wordbase.dawg_nonDerogatory()
-                # TODO: return word in bin.dawg() or whatever it will be called
-                #Check if I can somehow figure out if its a robot or actual player
             else:
                 return word in Wordbase.dawg() 
             #TODO: breyta þessu svo það tékki á bín-níðyrði fyrir krakka.

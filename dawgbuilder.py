@@ -804,8 +804,8 @@ class DawgBuilder:
         self._dawg.write_packed(p)
         # Write packed DAWG to binary file
         with open(
-            os.path.abspath(os.path.join(relpath, output + u".bin.dawg")), "wb"
-        ) as of:
+                os.path.abspath(os.path.join(relpath, output + u".bin.dawg")), "wb"
+            ) as of:
             of.write(f.getvalue())
         f.close()
 

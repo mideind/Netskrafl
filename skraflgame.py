@@ -245,6 +245,10 @@ class User:
         assert isinstance(fanfare, bool)
         self.set_pref(u"fanfare", fanfare)
 
+    def set_grade(self, grade):
+        """Puts the grade of a child user into the prefs"""
+        self.set_pref(u"grade", grade)
+
     def beginner(self):
         """ Returns True if the user is a beginner so we show help panels, etc. """
         em = self.get_pref(u"beginner")

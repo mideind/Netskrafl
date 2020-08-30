@@ -57,10 +57,16 @@
    <div id="logo-pic">
       <img src="{{ url_for('static', filename='LoginLogo600.png') }}" width="300" height="300">
    </div>
+   <h1>Barnaskrafl</h1>
    
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
+   <form method="POST">
+      <label for="psw">Notendanafn: </label>
+      <input type="text" placeholder="Skráðu Notendanafn" name="psw" id="psw" required>
+      <button type="submit" onclick="onSignIn()">Skrá inn</button>
+   </form>
 
 </div>
 
@@ -91,7 +97,7 @@ function childauthcallback(idToken, csrfToken) {
 
 function onSignIn() {
    // Called when a child user has successfully logged in
-   var childId = $("#psw").val().strip();
+   var childId = $("#psw").val().trim();
    // Session login endpoint is queried and the session cookie is set.
    // CSRF token should be sent along with request.
    var csrfToken = getCookie('csrfToken');

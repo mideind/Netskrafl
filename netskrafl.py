@@ -1726,6 +1726,16 @@ def userprefs():
     # Render the form with the current data and error messages, if any
     return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
 
+
+@app.route("/newchild", methods=["GET", "POST"])
+@auth_required()
+def newchild():
+    """ Handler for the user preferences page """
+    from_url = request.args.get("from", None)
+
+    # Render the form with the current data and error messages, if any
+    return render_template("new-child.html", from_url=from_url)
+
 @app.route("/childuserprefs", methods=["GET", "POST"])
 @auth_required()
 def childuserprefs():
@@ -2264,6 +2274,28 @@ def newbag():
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="newbag")
 
+@app.route("/supervisor", methods=["POST"])
+def supervisor():
+    """The page used to create a new child account"""
+    supervisor = current_user()
+
+    uf = UserForm()
+    err = dict()
+
+    # The URL to go back to, if not main.html
+    from_url = request.args.get("from", None)
+
+    if request.method == "POST":
+        # Attempting to submit modified data: retrieve it and validate
+        uf.init_from_form(request.form)
+        err = uf.validate()
+        if not err:
+            # All is fine: store the data back in the user entity
+            uf.store(user)
+            return redirect(from_url or url_for("main"))
+
+    return render_template("supervisor.html")
+
 
 @app.route("/login")
 def login():
@@ -2274,9 +2306,9 @@ def login():
     return render_template("login.html", main_url=main_url)
 
 
-@app.route("/barnaskrafl")
+@app.route("/barnaskrafl", methods=["GET", "POST"])
 def childlogin():
-    """ Handler for the login & greeting page """
+    """ Handler for the child login & greeting page """
     main_url = "/page" if _SINGLE_PAGE_UI else "/"
     if "user" in session:
         del session["user"]

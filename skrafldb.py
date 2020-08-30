@@ -199,6 +199,20 @@ class UserModel(ndb.Model):
         user.ready_timed = False  # Not ready for timed games unless explicitly set
         return user.put().id()
 
+    @classmethod 
+    #TODO: setja inn user_id fyrir krakkana. Er ekki alveg viss um hvernig.
+    def create_child(cls, name, nickname, grade, supervisor,supervisor_email):
+        """Create a new child user"""
+        prefs = {u"newbag": True, u"email": supervisor_email, u"full_name": name, u"grade": grade}
+        return UserModel.create(
+            user_id="abcd",
+            account=supervisor,
+            supervisor=supervisor,
+            email=supervisor_email,
+            nickname=nickname,
+            preferences=prefs
+        )
+
     @classmethod
     def fetch(cls, user_id):
         """ Fetch a user entity by id """
