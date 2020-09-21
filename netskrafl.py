@@ -583,6 +583,32 @@ def _userlist(query, spec):
                             ),
                         }
                     )
+    elif query == "child":
+        # Return a list of children account belonging to this account
+        if cuid is not None:
+            i = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
+            ausers = User.load_multi(i)
+            for au in ausers:
+                if au and au.is_displayable() and au.id() != cuid:
+                    uid = au.id()
+                    chall = uid in challenges
+                    result.append(
+                        {
+                            "userid": uid,
+                            "nick": au.nickname(),
+                            "fullname": au.full_name(),
+                            "human_elo": elo_str(au.human_elo()),
+                            "fav": False if cuser is None else cuser.has_favorite(uid),
+                            "chall": chall,
+                            "fairplay": au.fairplay(),
+                            "newbag": au.new_bag(),
+                            "ready": (au.is_ready() and uid in online and not chall),
+                            "ready_timed": (
+                                au.is_ready_timed() and uid in online and not chall
+                            ),
+                        }
+                    )
+
 
     elif query == "search":
         # Return users with nicknames matching a pattern
@@ -1165,6 +1191,16 @@ def userlist():
     spec = rq.get("spec")
     return jsonify(result=Error.LEGAL, spec=spec, userlist=_userlist(query, spec))
 
+@app.route("/childlist", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def childlist():
+    """ Return user lists with particular criteria """
+
+    rq = RequestData(request)
+    query = rq.get("query")
+    spec = rq.get("spec")
+    return jsonify(result=Error.LEGAL, spec=spec, userlist=_userlist(query, spec))
+
 
 @app.route("/gamelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
@@ -1724,7 +1760,7 @@ def userprefs():
             return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
+    return render_template("new-child.html", uf=uf, err=err, from_url=from_url)
 
 
 @app.route("/newchild", methods=["GET", "POST"])
@@ -2274,7 +2310,7 @@ def newbag():
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="newbag")
 
-@app.route("/supervisor", methods=["POST"])
+@app.route("/supervisor", methods=["GET","POST"])
 def supervisor():
     """The page used to create a new child account"""
     supervisor = current_user()
@@ -2294,7 +2330,7 @@ def supervisor():
             uf.store(user)
             return redirect(from_url or url_for("main"))
 
-    return render_template("supervisor.html")
+    return render_template("new-child.html")
 
 
 @app.route("/login")

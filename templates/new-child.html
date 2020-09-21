@@ -1,6 +1,5 @@
 
 {% extends "container.html" %}
-
 {% block opengraph %}
 <!-- Google OAuth sign-in -->
 <meta name="google-signin-scope" content="profile email openid">
@@ -30,6 +29,11 @@ function buttonOut(elem) {
 function submitForm() {
    // POST the form to the server
    // First transfer the state of our fancy simulated checkbox
+   $("#audio").prop('checked', $("#audio-toggler #opt2").hasClass("selected"));
+   $("#fanfare").prop('checked', $("#fanfare-toggler #opt2").hasClass("selected"));
+   $("#beginner").prop('checked', $("#beginner-toggler #opt2").hasClass("selected"));
+   $("#fairplay").prop('checked', $("#fairplay-toggler #opt2").hasClass("selected"));
+   $("#newbag").prop('checked', $("#newbag-toggler #opt2").hasClass("selected"));
    document.getElementById('frm1').submit();
 }
 
@@ -43,26 +47,117 @@ function submitForm() {
 
 {% block content %}
 
-<div id="user-dialog" class="modal-dialog">
-<div id="user-form" class="ui-widget ui-widget-content ui-corner-all">
+<div class="tabbed-page">
 
-   <div class="loginhdr"><span class='glyphicon glyphicon-ice-lolly'></span> Nýtt Barn</div>
+   <div id="tabs">
+   <ul>
+      <li><a href="#tabs-1"><span class='glyphicon glyphicon-address-book'></span><span
+         class="tab-legend">Upplýsingar um leikmann</span></a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-hand-right'></span><span
+         class="tab-legend">Barnaskrafl</span><span
+         id="numchallenges" class="opp-ready">0</span></a></li>
+   </ul>
+
+   <div id="tabs-1">
    <div>
-   <form name="frm1" id="frm1" action="{{ url_for('newchild', from=from_url) | safe }}" method="post">
 
-
-      <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
-         <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
-            class="text fullname"/></div>
+      <p class="no-mobile-block"><strong>Upplýsingar um leikmann</strong></p>
+      <form name="frm1" id="frm1" action="{{ url_for('userprefs', from=from_url) | safe }}" method="post">
 
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
-            maxlength=15 autofocus required class="text username"/>
-         
+            maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"/>
+         &nbsp;<span style="color:red">*</span></div>
+      <div class="explain">Verður að vera útfyllt</div>
+   {% if err.get('nickname', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('nickname') }}</div>
+   {% endif %}
+
+      <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
+         <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
+            class="text fullname" value="{{ uf.full_name }}"/></div>
+      <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
+   {% if err.get('full_name', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('full_name') }}</div>
+   {% endif %}
 
       <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
          <input type="text" name="email" id="email" maxlength="32" tabindex="3"
-            class="text email"/></div>
+            class="text email" value="{{ uf.email }}"/></div>
+      <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
+   {% if err.get('email', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
+   {% endif %}
+
+      <div class="dialog-spacer"><span class="caption">Hljóðmerki:</span>
+         <input type="checkbox" name="audio" id="audio"
+            class="checkbox audio" value="True"
+   {% if uf.audio %}
+            checked
+   {% endif %}
+         />
+         <div id="audio-toggler" class="toggler" tabindex="4">
+            <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
+         </div>
+         <input type="checkbox" name="fanfare" id="fanfare"
+            class="checkbox audio" value="True"
+   {% if uf.fanfare %}
+            checked
+   {% endif %}
+         />
+         <span class="subcaption">Lúðraþytur eftir sigur:</span>
+         <div id="fanfare-toggler" class="toggler" tabindex="5">
+            <div class="option" id="opt1"><span class="glyphicon glyphicon-volume-off"></span></div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-volume-up"></span></div>
+         </div>
+      </div>
+      <div class="explain">Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst</div>
+
+      <div class="dialog-spacer"><span class="caption">Sýna reitagildi:</span>
+         <input type="checkbox" name="beginner" id="beginner"
+            class="checkbox beginner" value="True"
+{% if uf.beginner %}
+            checked
+{% endif %}
+         />
+         <div id="beginner-toggler" class="toggler" tabindex="6">
+            <div class="option" id="opt1">&nbsp;</div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-ok"></span></div>
+         </div>
+         <div class="subexplain">Stillir hvort <strong>minnismiði</strong> um margföldunargildi reita er sýndur við borðið</div>
+      </div>
+
+      <div class="dialog-spacer"><span class="caption">Nýi skraflpokinn:</span>
+         <input type="checkbox" name="newbag" id="newbag"
+            class="checkbox newbag" value="True"
+{% if uf.newbag %}
+            checked
+{% endif %}
+         />
+         <div id="newbag-toggler" class="toggler" tabindex="7">
+            <div class="option" id="opt1">&nbsp;</div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-shopping-bag"></span></div>
+         </div>
+         <div class="subexplain">Gefur til kynna hvort þú sért reiðubúin(n) að
+         skrafla með <strong>nýja íslenska skraflpokanum</strong></div>
+      </div>
+
+      <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
+         <input type="checkbox" name="fairplay" id="fairplay"
+            class="checkbox fairplay" value="True"
+{% if uf.fairplay %}
+            checked
+{% endif %}
+         />
+         <div id="fairplay-toggler" class="toggler" tabindex="8">
+            <div class="option" id="opt1">&nbsp;</div><!--
+         --><div class="option" id="opt2"><span class="glyphicon glyphicon-edit"></span></div>
+         </div>
+         <div class="subexplain">Með því að velja þessa merkingu lýsir þú því yfir að þú
+         skraflir við aðra leikmenn <strong>án stafrænna hjálpartækja</strong>
+         af nokkru tagi</div>
+      </div>
 
    </form>
    </div>
@@ -83,8 +178,216 @@ function submitForm() {
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
 
+   <!-- Logout button -->
+   <div class="modal-close" id="user-logout" title="Skrá mig út" tabindex="11"
+      onclick="logOut()"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-log-out"></span> Skrá mig út</div>
+
+{% if uf.friend %}
+   <!-- Friend badge -->
+   <div class="modal-close" id="user-unfriend" title="Hætta sem vinur" tabindex="11"
+      onclick="location.href='{{ url_for('friend', action=2) }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Þú ert vinur Netskrafls!</div>
+{% else %}
+   <!-- Become friend button -->
+   <div class="modal-close" id="user-friend" title="Gerast vinur" tabindex="11"
+      onclick="location.href='{{ url_for('friend', action=1) }}'"
+      onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Gerast vinur Netskrafls</div>
+{% endif %}
+
 </div> <!-- user-form -->
-</div> <!-- user-dialog -->
+
+<div id="tabs-2">
+   <div>
+
+      <p class="no-mobile-block"><strong>Þínir krakkar</strong></p>
+      <div class="listitem listheader">
+      <span class="list-ts">Nafn</span>
+      <span class="list-nick">Einkenni</span>
+      <span class="list-chall">Bekkur</span>
+      </div>
+
+      <!-- Game list will be populated by populateGameList() -->
+      <div id="gamelist"></div>
+
+</div>
+</div> <!-- class="tabbed-page" -->
+
+{%- endblock -%}
+!-- Audio resources -->
+<audio id="your-turn" preload="auto">
+   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="you-win" preload="auto">
+   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
+</audio>
+
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
+
+{% block endscripts %}
+
+<!-- Main page script -->
+{% if dev_server %}
+<script src="{{ url_for('static', filename='main.js') }}"></script>
+{% else %}
+<script src="{{ url_for('static', filename='main.min.js', v=1) }}"></script>
+{% endif %}
+
+<script>
+
+function lateInit() {
+   /* Initialization that needs server-side info. Called from initMain() */
+
+{% if firebase_token %}
+   // Log in to Firebase and activate listeners once the login succeeds
+   initFirebaseListener("{{ firebase_token | safe }}");
+{% endif %}
+
+{% if tab %}
+   /* Select default tab when opening page */
+   $("#tabs").tabs("option", "active", {{ tab }});
+{% endif %}
+   // Initialize the Elo list toggler
+   initToggle("#elo-toggler", false);
+   $("#elo-toggler").click(toggleElo);
+   // Initialize the stats togglers
+   initToggle("#stats-toggler", false);
+   $("#stats-toggler").click(toggleStats);
+   initToggle("#own-toggler", false);
+   $("#own-toggler").click(toggleOwnStats);
+}
+function logOut() {
+      // The following complications seem to be required,
+      // in contradiction to Google's sample code
+      gapi.load("auth2",
+         function() {
+            gapi.auth2.init({ client_id: '{{ client_id | safe }}' }).then(
+               function() {
+                  var auth2 = gapi.auth2.getAuthInstance();
+                  // Rescind the client permissions, forcing a new login
+                  auth2.disconnect();
+                  // Redirect to the login page
+                  location.href = "{{ uf.logout_url | safe }}";
+               },
+               function() {
+                  console.log("Error in gapi.auth2.init()")
+               }
+            );
+         }
+      );
+   }
+
+   function doAudioToggle() {
+      // Toggle from one state to the other
+      $("#audio-toggler #opt1").toggleClass("selected");
+      $("#audio-toggler #opt2").toggleClass("selected");
+      if ($("#audio-toggler #opt2").hasClass("selected")) {
+         // Play a demo
+         var yourTurn = document.getElementById("your-turn");
+         if (yourTurn)
+            yourTurn.play();
+      }
+   }
+
+   // Initialize the audio toggler
+   if ($("#audio").prop('checked'))
+      $("#audio-toggler #opt2").addClass("selected");
+   else
+      $("#audio-toggler #opt1").addClass("selected");
+
+   $("#audio-toggler").click(doAudioToggle);
+   $("#audio-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doAudioToggle();
+   });
+
+   function doFanfareToggle() {
+      // Toggle from one state to the other
+      $("#fanfare-toggler #opt1").toggleClass("selected");
+      $("#fanfare-toggler #opt2").toggleClass("selected");
+      if ($("#fanfare-toggler #opt2").hasClass("selected")) {
+         // Play a demo
+         var youWin = document.getElementById("you-win");
+         if (youWin)
+            youWin.play();
+      }
+   }
+
+   // Initialize the fanfare toggler
+   if ($("#fanfare").prop('checked'))
+      $("#fanfare-toggler #opt2").addClass("selected");
+   else
+      $("#fanfare-toggler #opt1").addClass("selected");
+
+   $("#fanfare-toggler").click(doFanfareToggle);
+   $("#fanfare-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFanfareToggle();
+   });
+
+   function doBeginnerToggle() {
+      // Toggle from one state to the other
+      $("#beginner-toggler #opt1").toggleClass("selected");
+      $("#beginner-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the beginner toggler
+   if ($("#beginner").prop('checked'))
+      $("#beginner-toggler #opt2").addClass("selected");
+   else
+      $("#beginner-toggler #opt1").addClass("selected");
+
+   $("#beginner-toggler").click(doBeginnerToggle);
+   $("#beginner-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doBeginnerToggle();
+   });
+
+   function doFairplayToggle() {
+      // Toggle from one state to the other
+      $("#fairplay-toggler #opt1").toggleClass("selected");
+      $("#fairplay-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the fairplay toggler
+   if ($("#fairplay").prop('checked'))
+      $("#fairplay-toggler #opt2").addClass("selected");
+   else
+      $("#fairplay-toggler #opt1").addClass("selected");
+
+   $("#fairplay-toggler").click(doFairplayToggle);
+   $("#fairplay-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doFairplayToggle();
+   });
+
+   function doNewbagToggle() {
+      // Toggle from one state to the other
+      $("#newbag-toggler #opt1").toggleClass("selected");
+      $("#newbag-toggler #opt2").toggleClass("selected");
+   }
+
+   // Initialize the newbag toggler
+   if ($("#newbag").prop('checked'))
+      $("#newbag-toggler #opt2").addClass("selected");
+   else
+      $("#newbag-toggler #opt1").addClass("selected");
+
+   $("#newbag-toggler").click(doNewbagToggle);
+   $("#newbag-toggler").keypress(function(ev) {
+      if (ev.keyCode === 0 || ev.keyCode == 32)
+         doNewbagToggle();
+   });
+
+
+$(document).ready(initMain);
+
+</script>
 
 {% endblock %}
-

@@ -68,6 +68,9 @@ class User:
     # Current namespace (schema) for memcached User objects
     _NAMESPACE = "user:4"
 
+    # List of nicknames to choose from for child users (lazy-loaded from text file)
+    _NICKNAMES = None
+
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
 
@@ -496,6 +499,42 @@ class User:
             user_id=account,
             account=account,
             email=email,
+            nickname=nickname,
+            preferences=prefs
+        )
+
+    @classmethod 
+    #TODO: setja inn user_id fyrir krakkana. Er ekki alveg viss um hvernig.
+    def create_child_account(cls, name, nickname, grade, supervisor):
+        """Create a new child user"""
+        prefs = {u"newbag": True, u"full_name": name, u"grade": grade}
+        # Assign a unique user id to the child account
+        # Normal login for child users uses the nickname to identify
+        # the user, not the user id or account id
+        uid = Unique.id()
+        # Create a nickname for the child by concatenating two words
+        # from a special list
+        if cls._NICKNAMES is None:
+            # Load the nicknames into memory the first time around
+            cls._NICKNAMES = []
+            fname = os.path.abspath(os.path.join("resources", "nicknames.txt"))
+            # TBD: Add the appropriate path name using os.path.join()
+            with open(fname, "r", encoding="utf-8") as f:
+                for line in f:
+                    cls._NICKNAMES.append(line.strip())
+        while True:
+            n1 = random.choice(cls._NICKNAMES)
+            n2 = random.choice(cls._NICKNAMES)
+            if n1 == n2:
+                continue
+            nickname = n1 + "-" + n2
+            if load_user_by_nickname(nickname) == None:
+                break
+        return UserModel.create(
+            user_id=uid,
+            account=uid,
+            supervisor=ndb.Key(UserModel, supervisor.id()),
+            email="",
             nickname=nickname,
             preferences=prefs
         )

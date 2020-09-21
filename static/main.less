@@ -403,13 +403,13 @@ tr.colid td {
 #K5, #L4, #M3, #N2, #K11, #L12, #M13, #N14{
    /* Double word score */
    background-color: @double-word;
-   line-height: 60%;
+   line-height: 80%;
    text-align: center;
 }
 
-.doubleWord::before{
+.doubleWord:empty::before{
 //    /* Double word score */
-   content: "2x \00000a Orð";
+   content: "2x \00000a orð";
    white-space: pre;
    font-size: 0.8rem;
    font-weight: bold;
@@ -419,14 +419,14 @@ tr.colid td {
 #A1, #A8, #A15, #H1, #H15, #O1, #O8, #O15 {
    /* Triple word score */
    background-color: @triple-word;
-   line-height: 60%;
+   line-height: 80%;
    text-align: center;
    color:white;
 }
 
-.tripleWord::before {
+.tripleWord:empty::before {
    /* Triple word score */
-   content: "3x \00000a Orð";
+   content: "3x \00000a orð";
    white-space: pre;
    font-size: 0.8rem;
    font-weight: bold;
@@ -440,10 +440,10 @@ tr.colid td {
    /* Double letter score */
    background-color: @double-letter;
    text-align: center;
-   line-height: 60%;
+   line-height: 80%;
 }
 
-.doubleLetter::before {
+.doubleLetter:empty::before {
    /* Double letter score */
    content: "2x \00000a staf";
    font-size: 0.8rem;
@@ -457,20 +457,16 @@ tr.colid td {
    /* Triple letter score */
    background-color: @triple-letter;
    text-align: center;
-   line-height: 60%;
+   line-height: 80%;
 }
 
-.tripleLetter::before {
+.tripleLetter:empty::before {
    /* Triple letter score */
    content: "3x \00000a staf";
    font-size: 0.8rem;
    font-weight: bold;
    white-space: pre;
    color: white;
-}
-
-.covered::before {
-   content:none;
 }
 
 table.board {

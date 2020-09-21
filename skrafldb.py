@@ -183,10 +183,10 @@ class UserModel(ndb.Model):
     best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = ndb.StringProperty(required=False, default=None)
-    supervisor = ndb.KeyProperty(kind="UserModel")
+    supervisor = ndb.KeyProperty(kind="UserModel", required=False, default=None)
 
     @classmethod
-    def create(cls, user_id, account, email, nickname, preferences=None):
+    def create(cls, user_id, account, email, nickname, preferences=None, supervisor=None):
         """ Create a new user """
         user = cls(id=user_id)
         user.account = account
@@ -197,21 +197,9 @@ class UserModel(ndb.Model):
         user.prefs = preferences or {}  # Default to no preferences
         user.ready = False  # Not ready for new challenges unless explicitly set
         user.ready_timed = False  # Not ready for timed games unless explicitly set
+        user.supervisor = supervisor
         return user.put().id()
 
-    @classmethod 
-    #TODO: setja inn user_id fyrir krakkana. Er ekki alveg viss um hvernig.
-    def create_child(cls, name, nickname, grade, supervisor,supervisor_email):
-        """Create a new child user"""
-        prefs = {u"newbag": True, u"email": supervisor_email, u"full_name": name, u"grade": grade}
-        return UserModel.create(
-            user_id="abcd",
-            account=supervisor,
-            supervisor=supervisor,
-            email=supervisor_email,
-            nickname=nickname,
-            preferences=prefs
-        )
 
     @classmethod
     def fetch(cls, user_id):
