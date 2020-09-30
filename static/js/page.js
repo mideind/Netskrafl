@@ -1278,7 +1278,7 @@ function createView() {
             m("li", 
               m("a[href='#tabs-1']",
                 [
-                  glyph("th"), m("span.tab-legend", "Viðureignir"), nbsp(),
+                  glyph("th"), m("span.tab-legend", "Viðureignir"),
                   m("span",
                     { id: 'numgames', style: numGames ? 'display: inline-block' : '' },
                     numGames
@@ -1289,7 +1289,7 @@ function createView() {
             m("li", 
               m("a[href='#tabs-2']",
                 [
-                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"), nbsp(),
+                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
                   m("span.opp-ready",
                     { id: 'numchallenges', style: numChallenges ? 'display: inline-block' : '' },
                     numChallenges
@@ -1640,7 +1640,7 @@ function createView() {
               m("span.list-elo-hdr",
                 [
                   m("span.glyphicon.glyphicon-user.elo-hdr-left[title='Mennskir andstæðingar']"),
-                  " Elo ",
+                  "Elo",
                   m("span.glyphicon.glyphicon-cog.elo-hdr-right[title='Allir andstæðingar']")
                 ]
               ),
@@ -1680,10 +1680,21 @@ function createView() {
             var isRobot = item.userid.indexOf("robot-") === 0;
             var fullname = [];
 
-            if (item.ready && !isRobot)
+            // Online and accepting challenges
+            if (item.ready && !isRobot) {
               fullname.push(m("span.ready-btn", { title: "Álínis og tekur við áskorunum" }));
-            if (item.ready_timed)
+              fullname.push(nbsp());
+            }
+            // Willing to accept challenges for timed games
+            if (item.ready_timed) {
               fullname.push(m("span.timed-btn", { title: "Til í viðureign með klukku" }));
+              fullname.push(nbsp());
+            }
+            // Fair play commitment
+            if (item.fairplay) {
+              fullname.push(m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }));
+              fullname.push(nbsp());
+            }
             fullname.push(item.fullname);
 
             function fav() {
@@ -2284,7 +2295,7 @@ function createView() {
           r.push(m(".chat-msg" +
             (p === 0 ? ".left" : ".right") +
             (p === player ? ".local" : ".remote"),
-            { key: i },
+            // { key: i },
             m.trust(escMsg))
           );
         }
@@ -2327,8 +2338,8 @@ function createView() {
 
     return m(".chat",
       {
-        style: "z-index: 6", // Appear on top of board on mobile
-        key: uuid
+        style: "z-index: 6" // Appear on top of board on mobile
+        // key: uuid
       },
       [
         m(".chat-area",
@@ -3551,24 +3562,33 @@ function createView() {
           "Gefa viðureign", glyph("fire")
         )
       );
-    if (!gameOver && !localTurn)
+    if (!gameOver && !localTurn) {
       // Indicate that it is the opponent's turn; offer to force a resignation
       // if the opponent hasn't moved for 14 days
-      r.push(m(".opp-turn", { style: { visibility: "visible" } },
-        [
-          m("span.move-indicator"), m("strong", game.nickname[1 - game.player]), " á leik",
-          tardyOpponent ? m("span.yesnobutton",
-            {
-              id: 'force-resign',
-              onclick: function(ev) { ev.preventDefault(); }, // !!! TBD !!!
-              onmouseout: buttonOut,
-              onmouseover: buttonOver,
-              title: '14 dagar liðnir án leiks'
-            },
-            "Þvinga til uppgjafar"
-          ) : ""
-        ]
-      ));
+      r.push(
+        m(".opp-turn",
+          { style: { visibility: "visible" } },
+          [
+            m("span.move-indicator"),
+            nbsp(),
+            m("strong", game.nickname[1 - game.player]),
+            " á leik",
+            nbsp(),
+            tardyOpponent ? m("span.yesnobutton",
+              {
+                id: 'force-resign',
+                style: { display: "inline" },
+                onclick: function(ev) { ev.preventDefault(); }, // !!! TBD !!!
+                onmouseout: buttonOut,
+                onmouseover: buttonOver,
+                title: '14 dagar liðnir án leiks'
+              },
+              "Þvinga til uppgjafar"
+            ) : ""
+          ]
+        )
+      );
+    }
     if (tilesPlaced)
       r.push(vwScore(game));
     // Is the server processing a move?
@@ -3771,31 +3791,31 @@ function createView() {
           m.trust(
             "<b>a</b>ð af ak al an ar as at ax<br>" +
             "<b>á</b>a áð ái ál ám án ár ás át<br>" +
-            "<b>b</b>í bú bý bæ&nbsp;&nbsp;" +
+            "<b>b</b>í bú bý bæ&nbsp;&nbsp; " +
             "<b>d</b>á do dó dý<br>" +
             "<b>e</b>ð ef eg ei ek el em en er es et ex ey<br>" +
-            "<b>é</b>g él ét&nbsp;&nbsp;" +
-            "<b>f</b>a fá fé fæ&nbsp;&nbsp;" +
+            "<b>é</b>g él ét&nbsp;&nbsp; " +
+            "<b>f</b>a fá fé fæ&nbsp;&nbsp; " +
             "<b>g</b>á<br>" +
-            "<b>h</b>a há hí hó hý hæ&nbsp;&nbsp;" +
-            "<b>i</b>ð il im&nbsp;&nbsp;" +
+            "<b>h</b>a há hí hó hý hæ&nbsp;&nbsp; " +
+            "<b>i</b>ð il im&nbsp;&nbsp; " +
             "<b>í</b>ð íl ím ís<br>" +
-            "<b>j</b>á je jó jú&nbsp;&nbsp;" +
-            "<b>k</b>á ku kú&nbsp;&nbsp;" +
+            "<b>j</b>á je jó jú&nbsp;&nbsp; " +
+            "<b>k</b>á ku kú&nbsp;&nbsp; " +
             "<b>l</b>a lá lé ló lú lý læ<br>" +
-            "<b>m</b>á mi mó mý&nbsp;&nbsp;" +
+            "<b>m</b>á mi mó mý&nbsp;&nbsp; " +
             "<b>n</b>á né nó nú ný næ<br>" +
             "<b>o</b>f og oj ok op or<br>" +
             "<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>" +
-            "<b>p</b>í pu pú pæ&nbsp;&nbsp;" +
+            "<b>p</b>í pu pú pæ&nbsp;&nbsp; " +
             "<b>r</b>á re ré rí ró rú rý ræ<br>" +
-            "<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp;" +
+            "<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp; " +
             "<b>t</b>á te té ti tí tó tý<br>" +
-            "<b>u</b>m un&nbsp;&nbsp;" +
+            "<b>u</b>m un&nbsp;&nbsp; " +
             "<b>ú</b>a úð úf úi úr út<br>" +
-            "<b>v</b>á vé ví vó&nbsp;&nbsp;" +
+            "<b>v</b>á vé ví vó&nbsp;&nbsp; " +
             "<b>y</b>l ym yr ys<br>" +
-            "<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp;" +
+            "<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp; " +
             "<b>þ</b>á þó þú þý<br>" +
             "<b>æ</b>ð æf æg æi æl æp ær æs æt<br>" +
             "<b>ö</b>l ör ös öt öx"
@@ -4366,8 +4386,8 @@ var EloList = {
           m("span.list-elo-no-mobile", rankStr(item.elo_yesterday, item.games_yesterday)),
           m("span.list-elo-no-mobile", rankStr(item.elo_week_ago, item.games_week_ago)),
           m("span.list-elo-no-mobile", rankStr(item.elo_month_ago, item.games_month_ago)),
-          m("span.list-games.bold", item.games),
-          m("span.list-ratio", item.ratio),
+          m("span.list-games.bold", item.games >= 100000 ? Math.round(item.games / 1000) + "K" : item.games),
+          m("span.list-ratio", item.ratio + "%"),
           m("span.list-avgpts", item.avgpts),
           m("span.list-info", { title: "Skoða feril" }, info),
           m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, newbag))
