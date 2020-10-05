@@ -124,7 +124,6 @@ function getCookie(name) {
 
 function oauth2callback(idToken, csrfToken) {
    // POST to oauth2 session login endpoint
-   console.log("oauth2callback()");
    return $.ajax(
       {
          type: 'POST',
@@ -162,7 +161,6 @@ function onSignIn(googleUser) {
       .then(
          function(data, textStatus, jqXHR) {
             // Redirect to initial URL on success
-            console.log("Back from oauth2callback()");
             if (data.status === "success") {
                window.location.assign("{{ main_url }}?fromlogin=1");
             }

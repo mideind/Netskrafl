@@ -1425,3 +1425,44 @@ class PromoModel(ndb.Model):
         for pm in q.fetch(projection=['timestamp']):
             yield pm.timestamp
 
+
+class CompletionModel(ndb.Model):
+
+    """ Models the successful completion of stats or ratings runs """
+
+    # The type of process that was completed, usually 'stats' or 'ratings'
+    proctype = ndb.StringProperty(required=True)
+    # The timestamp of the successful run
+    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+
+    # The from-to range of the successful process
+    ts_from = ndb.DateTimeProperty()
+    ts_to = ndb.DateTimeProperty()
+
+    # True if successful completion (the default); included for future expansion
+    success = ndb.BooleanProperty()
+
+    # The reason for failure, if any
+    reason = ndb.StringProperty()
+
+    @classmethod
+    def add_completion(cls, proctype, ts_from, ts_to):
+        """ Add a zombie game that has not been seen by the player in question """
+        cm = cls()
+        cm.proctype = proctype
+        cm.ts_from = ts_from
+        cm.ts_to = ts_to
+        cm.success = True
+        cm.reason = ""
+        cm.put()
+
+    @classmethod
+    def add_failure(cls, proctype, ts_from, ts_to, reason):
+        """ Add a zombie game that has not been seen by the player in question """
+        cm = cls()
+        cm.proctype = proctype
+        cm.ts_from = ts_from
+        cm.ts_to = ts_to
+        cm.success = False
+        cm.reason = reason
+        cm.put()

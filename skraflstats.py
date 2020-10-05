@@ -36,8 +36,10 @@ from datetime import datetime, timedelta
 from threading import Thread
 
 from languages import Alphabet
-from skrafldb import ndb, Client, Context, UserModel, GameModel, StatsModel, RatingModel
-from skrafldb import iter_q
+from skrafldb import (
+    ndb, Client, Context, UserModel, GameModel,
+    StatsModel, RatingModel, CompletionModel, iter_q
+)
 
 
 # The K constant used in the Elo calculation
@@ -429,6 +431,7 @@ def deferred_stats(from_time, to_time):
 
         t0 = time.time()
         success = False
+        error = "Gave up after two retries"
         try:
             # Try up to two times to execute _run_stats()
             attempts = 0
@@ -442,7 +445,8 @@ def deferred_stats(from_time, to_time):
 
         except Exception as ex:
             logging.error("Exception in deferred_stats: {0!r}".format(ex))
-            return
+            success = False
+            error = str(ex)
 
         t1 = time.time()
         if success:
@@ -450,11 +454,13 @@ def deferred_stats(from_time, to_time):
                 "Stats calculation successfully finished in {0:.2f} seconds"
                 .format(t1 - t0)
             )
+            CompletionModel.add_completion("stats", from_time, to_time)
         else:
             logging.error(
                 "Stats calculation did not complete, after running for {0:.2f} seconds"
                 .format(t1 - t0)
             )
+            CompletionModel.add_failure("stats", from_time, to_time, error)
 
 
 def deferred_ratings():
@@ -463,11 +469,15 @@ def deferred_ratings():
     with Client.get_context() as context:
 
         t0 = time.time()
+
         try:
             _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
+            now = datetime.utcnow()
+            CompletionModel.add_failure("ratings", now, now, str(ex))
             return
+
         t1 = time.time()
 
         StatsModel.log_cache_stats()
@@ -475,6 +485,8 @@ def deferred_ratings():
         StatsModel.clear_cache()
 
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
+        now = datetime.utcnow()
+        CompletionModel.add_completion("ratings", now, now)
 
 
 def run(request):
