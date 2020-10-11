@@ -1,4 +1,4 @@
-BIN_PATH = 'C:/Users/Tomas/Desktop/Mideind/bin'
+BIN_PATH = 'C:/Users/Tomas/Documents/github/Netskrafl/resources/ordabankar/psw.txt'
 
 
 alphabet = "aábdðeéfghiíjklmnoóprstuúvxyýþæö"
@@ -13,11 +13,12 @@ word_list = list()
 
 # setja síðan það sem er eftir í nýtt skjal og fara yfir það.
 
-with open(BIN_PATH + "/kristinsnid.txt", "r", encoding="UTF-8") as nota:
+with open(BIN_PATH, "r", encoding="UTF-8") as nota:
     for line in nota:
         line = line.strip()
         final_set.add(line)
 
-with open(BIN_PATH + "/kristinsnid.txt", "w", encoding="UTF-8") as loka:
+with open(BIN_PATH, "w", encoding="UTF-8") as loka:
     for element in sorted(final_set, key=lambda word: [alphabet.index(c) for c in word]):
-        loka.write(element + "\n")
+        if len(element) < 10:
+            loka.write(element + "\n")
