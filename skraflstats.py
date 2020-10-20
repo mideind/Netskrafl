@@ -294,7 +294,7 @@ def _run_stats(from_time, to_time):
             cnt += 1
             # Report on our progress
             if i % 500 == 0:
-                logging.info("Processed {0} games".format(i))
+                logging.info("Stats processed {0} games".format(i))
 
     except Exception as ex:
         logging.error(
@@ -494,7 +494,9 @@ def run(request):
     logging.info("Starting stats calculation")
 
     # If invoked without parameters (such as from a cron job),
-    # this will calculate yesterday's statistics
+    # this will calculate yesterday's statistics.
+    # If invoked with a year=YYYY&month=MM&day=DD parameter,
+    # the parameter is the starting date (from_time) for the calculation.
     now = datetime.utcnow()
     yesterday = now - timedelta(days=1)
 
