@@ -26,6 +26,8 @@
 
 """
 
+from typing import Dict
+
 import calendar
 import logging
 import os
@@ -173,7 +175,7 @@ def _run_stats(from_time, to_time):
     )
 
     # The accumulated user statistics
-    users = dict()
+    users: Dict[str, StatsModel] = dict()
 
     def _init_stat(user_id, robot_level):
         """ Returns the newest StatsModel instance available for the given user """

@@ -20,6 +20,8 @@
 
 """
 
+from typing import List, Optional, Tuple, Callable
+
 import getopt
 import sys
 import time
@@ -267,7 +269,7 @@ def test(num_games, opponent, silent):
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
-    players = [None, None]
+    players: List[Optional[Tuple[str, Callable]]] = [None, None]
     if opponent == "minimax":
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)

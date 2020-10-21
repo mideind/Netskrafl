@@ -13,6 +13,8 @@
 
 """
 
+from typing import Optional
+
 import os
 import time
 import base64
@@ -26,7 +28,7 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import initialize_app, auth  # type: ignore
+from firebase_admin import App, initialize_app, auth  # type: ignore
 
 
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
@@ -232,7 +234,7 @@ def get_connected_users():
         return set(msg.keys())
 
 
-_firebase_app = None
+_firebase_app: Optional[App] = None
 
 
 def create_custom_token(uid, valid_minutes=60):

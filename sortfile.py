@@ -15,6 +15,8 @@ C:\github\Skrafl>\python27\python sortfile.py
 
 """
 
+from typing import List, IO
+
 import os
 import io
 from tempfile import gettempdir
@@ -51,7 +53,7 @@ def batch_sort(input_file_name, output_file_name, buffer_size=32000, tempdirs=No
     if not tempdirs:
         tempdirs.append(gettempdir())
 
-    chunks = []
+    chunks: List[IO] = []
     try:
         with io.open(
             input_file_name, mode="r", buffering=64 * 1024, encoding="utf8"

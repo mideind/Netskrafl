@@ -16,7 +16,7 @@
 
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import functools
 
@@ -46,8 +46,8 @@ class Alphabet:
     letter_bit = {letter: 1 << ix for ix, letter in enumerate(order)}
 
     # Locale collation (sorting) map, initialized in _init()
-    _lcmap = None  # Case sensitive
-    _lcmap_nocase = None  # Case insensitive
+    _lcmap: Optional[List[int]] = None  # Case sensitive
+    _lcmap_nocase: Optional[List[int]] = None  # Case insensitive
 
     @staticmethod
     def bit_pattern(word):
@@ -177,6 +177,7 @@ class TileSet(object):
     # The following will be overridden in derived classes
     scores: Dict[str, int] = dict()
     bag_tiles: List[Tuple[str, int]] = []
+    _full_bag = ""
 
     @classmethod
     def score(cls, tiles):
@@ -188,7 +189,7 @@ class TileSet(object):
     @classmethod
     def full_bag(cls):
         """ Return a full bag of tiles """
-        if not hasattr(cls, "_full_bag"):
+        if not cls._full_bag:
             # Cache the bag
             cls._full_bag = "".join([tile * count for (tile, count) in cls.bag_tiles])
         return cls._full_bag

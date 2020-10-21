@@ -139,7 +139,7 @@ class RedisWrapper:
                 ret = func(*args, **kwargs)
                 # No error: return
                 return ret
-            except redis.client.ConnectionError:
+            except redis.exceptions.ConnectionError:
                 if attempts == 0:
                     logging.warning("Retrying Redis call after connection error")
                 else:

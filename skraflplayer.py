@@ -68,11 +68,17 @@
 
 """
 
+from typing import Optional, List, Tuple, Dict, cast
+
 from random import randint
 
 from dawgdictionary import Wordbase
 from languages import Alphabet
-from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
+from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
+from dawgdictionary import _Node
+
+# Type definitions
+LeftPart = Tuple[str, str, str, _Node]
 
 
 class Square:
@@ -134,9 +140,9 @@ class Square:
 
 class Axis:
 
-    """ Represents a one-dimensional axis on the board, either
-        horizontal or vertical. This is used to find legal moves
-        for an AutoPlayer.
+    """Represents a one-dimensional axis on the board, either
+    horizontal or vertical. This is used to find legal moves
+    for an AutoPlayer.
     """
 
     DAWG = Wordbase.dawg()
@@ -189,8 +195,8 @@ class Axis:
         return self._autoplayer
 
     def mark_anchor(self, index):
-        """ Force the indicated square to be an anchor. Used in first move
-            to mark the center square. """
+        """Force the indicated square to be an anchor. Used in first move
+        to mark the center square."""
         self._sq[index].mark_anchor()
 
     def init_crosschecks(self):
@@ -261,15 +267,15 @@ class Axis:
                 # We found a matching prefix in the graph
                 _, prefix, next_node = ns
                 # assert matched == leftpart
-                nav = ExtendRightNavigator(self, index, self._rack)
-                self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
+                rnav = ExtendRightNavigator(self, index, self._rack)
+                self.DAWG.resume_navigation(rnav, prefix, next_node, leftpart)
             return
 
         # We are not completing an existing left part
         # Begin by extending an empty prefix to the right, i.e. placing
         # tiles on the anchor square itself and to its right
-        nav = ExtendRightNavigator(self, index, self._rack)
-        self.DAWG.navigate(nav)
+        rnav = ExtendRightNavigator(self, index, self._rack)
+        self.DAWG.navigate(rnav)
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
@@ -278,12 +284,12 @@ class Axis:
                 lp_list = lpn.leftparts(left_len)
                 if lp_list is not None:
                     for leftpart, rack_leave, prefix, next_node in lp_list:
-                        nav = ExtendRightNavigator(self, index, rack_leave)
-                        self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
+                        rnav = ExtendRightNavigator(self, index, rack_leave)
+                        self.DAWG.resume_navigation(rnav, prefix, next_node, leftpart)
 
     def generate_moves(self, lpn):
-        """ Find all valid moves on this axis by attempting to place tiles
-            at and around all anchor squares """
+        """Find all valid moves on this axis by attempting to place tiles
+        at and around all anchor squares"""
         last_anchor = -1
         len_rack = len(self._rack)
         for i in range(Board.SIZE):
@@ -307,19 +313,21 @@ class Axis:
 
 class LeftPermutationNavigator:
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to find all left parts of words that are possible with
-        a particular rack. The results are accumulated by length.
-        This calculation is only done once at the start of move
-        generation for a particular rack and board.
+    """A navigation class to be used with DawgDictionary.navigate()
+    to find all left parts of words that are possible with
+    a particular rack. The results are accumulated by length.
+    This calculation is only done once at the start of move
+    generation for a particular rack and board.
     """
 
-    def __init__(self, rack):
+    def __init__(self, rack: str) -> None:
         self._rack = rack
-        self._stack = []
+        self._stack: List[Tuple[str, int]] = []
         self._maxleft = len(rack) - 1  # One tile on the anchor itself
         # assert self._maxleft > 0
-        self._leftparts = [None for _ in range(self._maxleft)]
+        self._leftparts: List[Optional[List[LeftPart]]] = [
+            None for _ in range(self._maxleft)
+        ]
         self._index = 0
 
     def leftparts(self, length):
@@ -366,7 +374,9 @@ class LeftPermutationNavigator:
         # of the prefix of the edge we were on, and the next node.
         # This gives us the ability to resume the navigation later at
         # the saved point, to generate right parts.
-        self._leftparts[lm].append((matched, self._rack, prefix, nextnode))
+        lp = self._leftparts[lm]
+        assert lp is not None
+        lp.append((matched, self._rack, prefix, nextnode))
 
     def pop_edge(self):
         """ Called when leaving an edge that has been navigated """
@@ -382,9 +392,9 @@ class LeftPermutationNavigator:
 
 class LeftFindNavigator:
 
-    """ A navigation class to trace a left part that is
-        already on the board, and note its ending position in
-        the graph.
+    """A navigation class to trace a left part that is
+    already on the board, and note its ending position in
+    the graph.
     """
 
     def __init__(self, prefix):
@@ -448,11 +458,11 @@ class Match:
 
 class ExtendRightNavigator:
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to perform the Appel & Jacobson ExtendRight function. This
-        places rack tiles on and to the right of an anchor square, in
-        conformance with the cross-checks and the tiles already on
-        the board.
+    """A navigation class to be used with DawgDictionary.navigate()
+    to perform the Appel & Jacobson ExtendRight function. This
+    places rack tiles on and to the right of an anchor square, in
+    conformance with the cross-checks and the tiles already on
+    the board.
     """
 
     def __init__(self, axis, anchor, rack):
@@ -467,8 +477,8 @@ class ExtendRightNavigator:
         self._last_check = None
 
     def _check(self, ch):
-        """ Check whether the letter ch could be placed at the
-            current square, given the cross-checks and the rack """
+        """Check whether the letter ch could be placed at the
+        current square, given the cross-checks and the rack"""
         axis = self._axis
         l_at_sq = axis.letter_at(self._index)
         if l_at_sq != " ":
@@ -583,13 +593,13 @@ class ExtendRightNavigator:
 
 class AutoPlayer:
 
-    """ Implements an automatic, computer-controlled player.
-        All legal moves on the board are generated and the
-        best move is then selected within the _find_best_move()
-        function. This base class has a simple implementation
-        of _find_best_move() that always chooses the best-scoring
-        move. Other derived classes, such as AutoPlayer_MinMax,
-        use more sophisticated heuristics to choose a move.
+    """Implements an automatic, computer-controlled player.
+    All legal moves on the board are generated and the
+    best move is then selected within the _find_best_move()
+    function. This base class has a simple implementation
+    of _find_best_move() that always chooses the best-scoring
+    move. Other derived classes, such as AutoPlayer_MinMax,
+    use more sophisticated heuristics to choose a move.
     """
 
     # The robot level that uses only common words
@@ -673,6 +683,7 @@ class AutoPlayer:
         self._candidates = []
         # Start by generating all possible permutations of the
         # rack that form left parts of words, ordering them by length
+        lpn: Optional[LeftPermutationNavigator]
         if len(self._rack) > 1:
             lpn = LeftPermutationNavigator(self._rack)
             Wordbase.dawg().navigate(lpn)
@@ -728,8 +739,8 @@ class AutoPlayer:
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
-            """ Sort moves first by descending score;
-                in case of ties prefer shorter words """
+            """Sort moves first by descending score;
+            in case of ties prefer shorter words"""
             # !!! TODO: Insert more sophisticated logic here,
             # !!! including whether triple-word-score opportunities
             # !!! are being opened for the opponent, minimal use
@@ -738,9 +749,9 @@ class AutoPlayer:
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            """ Special case for first move:
-                Sort moves first by descending score, and in case of ties,
-                try to go to the upper half of the board for a more open game
+            """Special case for first move:
+            Sort moves first by descending score, and in case of ties,
+            try to go to the upper half of the board for a more open game
             """
             return (-x[1], x[0].row)
 
@@ -795,8 +806,8 @@ class AutoPlayer:
 
 class AutoPlayer_Common(AutoPlayer):
 
-    """ This subclass of AutoPlayer only plays words from a
-        list of common words.
+    """This subclass of AutoPlayer only plays words from a
+    list of common words.
     """
 
     def __init__(self, state, robot_level):
@@ -808,7 +819,7 @@ class AutoPlayer_Common(AutoPlayer):
 
         num_candidates = len(scored_candidates)
         common = Wordbase.dawg_common()  # List of playable common words
-        playable_candidates = []
+        playable_candidates: List[Tuple[MoveBase, int]] = []
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
         i = 0  # Candidate index
@@ -836,8 +847,8 @@ class AutoPlayer_Common(AutoPlayer):
 
 class AutoPlayer_MiniMax(AutoPlayer):
 
-    """ This subclass of AutoPlayer uses a MiniMax algorithm to
-        select a move to play from the list of valid moves.
+    """This subclass of AutoPlayer uses a MiniMax algorithm to
+    select a move to play from the list of valid moves.
     """
 
     def __init__(self, state):
@@ -863,8 +874,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
-            """ Sort moves first by descending score;
-                in case of ties prefer shorter words """
+            """Sort moves first by descending score;
+            in case of ties prefer shorter words"""
             # !!! TODO: Insert more sophisticated logic here,
             # !!! including whether triple-word-score opportunities
             # !!! are being opened for the opponent, minimal use
@@ -873,9 +884,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            """ Special case for first move:
-                Sort moves first by descending score, and in case of ties,
-                try to go to the upper half of the board for a more open game """
+            """Special case for first move:
+            Sort moves first by descending score, and in case of ties,
+            try to go to the upper half of the board for a more open game"""
             return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
@@ -900,8 +911,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         NUM_TEST_RACKS = 20  # How many random test racks to try for statistical average
         NUM_CANDIDATES = 12  # How many top candidates do we look at with MiniMax?
 
-        weighted_candidates = []
-        min_score = None
+        weighted_candidates: List[Tuple[MoveBase, int, float]] = []
+        min_score: Optional[float] = None
 
         # pylint: disable=superfluous-parens
 
@@ -926,7 +937,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
                 # Loop over NUM_TEST_RACKS random racks to find
                 # the average countermove score
                 sum_score = 0
-                rackscores = dict()
+                rackscores: Dict[str, int] = dict()
                 for _ in range(NUM_TEST_RACKS):
                     # Make sure we test this for a random opponent rack
                     teststate.randomize_and_sort_rack()
@@ -974,15 +985,14 @@ class AutoPlayer_MiniMax(AutoPlayer):
             weighted_candidates.append((m, score, avg_score))
 
         print(
-            "Lowest score of countermove to all evaluated candidates is {0:.2f}".format(
-                min_score
-            )
+            f"Lowest score of countermove to all evaluated candidates is {min_score}"
         )
         # Sort the candidates by the plain score after subtracting the effect of
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found
+        min_score_float = cast(float, min_score)
         weighted_candidates.sort(
-            key=lambda x: float(x[1]) - (x[2] - min_score), reverse=True
+            key=lambda x: float(x[1]) - (x[2] - min_score_float), reverse=True
         )
 
         print(
@@ -994,7 +1004,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         for m, sc, wsc in weighted_candidates:
             print(
                 "Move {0} score {1} weighted {2:.2f}".format(
-                    m, sc, float(sc) - (wsc - min_score)
+                    m, sc, float(sc) - (wsc - min_score_float)
                 )
             )
         # Return the highest-scoring candidate

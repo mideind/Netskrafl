@@ -103,7 +103,7 @@
 
 """
 
-from __future__ import print_function
+from typing import Dict, List, Optional, IO
 
 import os
 import sys
@@ -121,17 +121,11 @@ from dawgdictionary import PackedDawgDictionary
 from languages import Alphabet
 
 
-# Mask away difference between Python 2 and 3
-# pylint: disable=redefined-builtin
-if sys.version_info >= (3, 0):
-    # Python 3
-    items = lambda d: d.items()
-else:
-    # Python 2
-    # noinspection PyPep8Naming
-    # Map iterator.next() to a function, a la Python 3
-    next = lambda iterator: iterator.next()
-    items = lambda d: d.iteritems()
+# Type definitions
+DawgDict = Dict[str, _DawgNode]
+
+# Relic of old Python 2.7 times
+items = lambda d: d.items()
 
 
 MAXLEN = 48  # Longest possible word to be processed
@@ -220,9 +214,9 @@ class _Dawg:
     def __init__(self):
         self._lastword = ""
         self._lastlen = 0
-        self._root = dict()
+        self._root: DawgDict = dict()
         # Initialize empty list of starting dictionaries
-        self._dicts = [None for _ in range(MAXLEN)]
+        self._dicts: List[Optional[DawgDict]] = [None for _ in range(MAXLEN)]
         self._dicts[0] = self._root
         # Initialize the result list of unique nodes
 
@@ -261,7 +255,7 @@ class _Dawg:
         if len(di) == 1:
             # Only one child: we can collapse
             lastd = None
-            tail = None
+            tail = ""
             for ch, nx in items(di):
                 # There will only be one iteration of this loop
                 tail = ch
@@ -334,6 +328,7 @@ class _Dawg:
         self._collapse_to(i)
         # Add the (divergent) rest of the word
         d = self._dicts[i]  # Note that self._dicts[0] is self._root
+        assert d is not None
         nd = None
         while i < lenword:
             nd = _DawgNode()
@@ -560,7 +555,7 @@ class _BinaryDawgPacker:
         """ Print the stream buffer in hexadecimal format """
         buf = self._stream.getvalue()
         print("Total of {0} bytes".format(len(buf)))
-        s = binascii.hexlify(buf)
+        s = binascii.hexlify(buf).decode("ascii")
         BYTES_PER_LINE = 16
         CHARS_PER_LINE = BYTES_PER_LINE * 2
         i = 0
@@ -602,7 +597,7 @@ class DawgBuilder:
             self._nxt = None
             self._key = None  # Sortkey for self._nxt
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin = codecs.open(fpath, mode="r", encoding="utf-8")
+            self._fin: Optional[IO] = codecs.open(fpath, mode="r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 
@@ -612,6 +607,7 @@ class DawgBuilder:
 
         def read_word(self):
             """ Read lines until we have a legal word or EOF """
+            assert self._fin is not None
             while True:
                 try:
                     line = next(self._fin).strip()
@@ -650,6 +646,7 @@ class DawgBuilder:
             """ Read the entire file and pre-sort it """
             self._list = []
             self._index = 0
+            assert self._fin is not None
             try:
                 for line in self._fin:
                     line = line.strip()
@@ -763,10 +760,12 @@ class DawgBuilder:
                 # This word passes the filter: check the removal list, if any
                 while remove_key is not None and remove_key < key:
                     # Skip past words in the removal file as needed
+                    assert removal is not None
                     removal.read_word()
                     remove_key = removal.next_key()
                 if remove_key is not None and remove_key == key:
                     # Found a word to be removed
+                    assert removal is not None
                     removal.read_word()
                     remove_key = removal.next_key()
                     removed += 1

@@ -9,6 +9,8 @@
 
 """
 
+from typing import Optional
+
 import os
 import time
 
@@ -19,16 +21,19 @@ from languages import Alphabet
 class DawgTester:
 
     def __init__(self):
-        self._dawg = None
+        self._dawg: Optional[PackedDawgDictionary] = None
 
-    def _test(self, word):
+    def _test(self, word: str) -> None:
+        assert self._dawg is not None
         print("\"{0}\" is {1}found".format(word, "" if word in self._dawg else u"not "))
 
-    def _test_true(self, word):
+    def _test_true(self, word: str) -> None:
+        assert self._dawg is not None
         if word not in self._dawg:
             print("Error: \"{0}\" was not found".format(word))
 
-    def _test_false(self, word):
+    def _test_false(self, word: str) -> None:
+        assert self._dawg is not None
         if word in self._dawg:
             # Tests the __contains__ operator
             print("Error: \"{0}\" was found".format(word))
@@ -256,7 +261,7 @@ class DawgTester:
         print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -270,7 +275,7 @@ class DawgTester:
         print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -286,7 +291,7 @@ class DawgTester:
         print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -301,7 +306,7 @@ class DawgTester:
         print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()

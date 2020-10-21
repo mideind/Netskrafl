@@ -14,6 +14,8 @@
 
 """
 
+from typing import Optional, Dict, Any
+
 import logging
 from threading import Thread
 
@@ -124,6 +126,8 @@ def admin_loadgame():
 
     uuid = request.form.get("uuid", None)
     game = None
+
+    g: Optional[Dict[str, Any]]
 
     if uuid:
         # Attempt to load the game whose id is in the URL query string

@@ -28,7 +28,18 @@
 
 # pylint: disable=too-many-lines
 
-from typing import Optional, Dict, Union, List, Any
+from typing import (
+    Optional,
+    Dict,
+    Union,
+    List,
+    Any,
+    TypeVar,
+    Callable,
+    Iterable,
+    Tuple,
+    cast,
+)
 
 import os
 import logging
@@ -46,12 +57,15 @@ from flask import (
     redirect,
     jsonify,
     url_for,
-    request, Request,
-    make_response, Response,
+    request,
+    Request,
+    make_response,
+    Response,
     g,
     session,
 )
 from werkzeug.urls import url_parse
+from werkzeug.wrappers import Response as WerkzeugResponse
 
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
@@ -61,6 +75,7 @@ import requests
 from languages import Alphabet
 from dawgdictionary import Wordbase
 from skraflmechanics import (
+    MoveBase,
     Move,
     PassMove,
     ExchangeMove,
@@ -87,6 +102,10 @@ import firebase
 from cache import memcache
 import skraflstats
 
+
+# Type definitions
+T = TypeVar("T")
+ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -118,6 +137,7 @@ if running_local:
 else:
     # Import the Google Cloud client library
     import google.cloud.logging  # type: ignore
+
     # Instantiate a logging client
     logging_client = google.cloud.logging.Client()
     # Connects the logger to the root logging handler;
@@ -191,9 +211,9 @@ def add_headers(response: Response) -> Response:
     return response
 
 
-def max_age(seconds):
-    """ Caching decorator for Flask - augments response
-        with a max-age cache header """
+def max_age(seconds: int) -> Callable:
+    """Caching decorator for Flask - augments response
+    with a max-age cache header"""
 
     def decorator(f):
         @wraps(f)
@@ -225,8 +245,8 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 # Flask cache busting for static .css and .js files
 @app.url_defaults
 def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]):
-    """ Add a ?h=XXX parameter to URLs for static .js and .css files,
-        where XXX is calculated from the file timestamp """
+    """Add a ?h=XXX parameter to URLs for static .js and .css files,
+    where XXX is calculated from the file timestamp"""
 
     def static_file_hash(filename: str):
         """ Obtain a timestamp for the given file """
@@ -251,8 +271,8 @@ def stripwhite(s: str) -> str:
 
 
 def session_user() -> Optional[User]:
-    """ Return the user who is authenticated in the current session, if any.
-        This can be called within any Flask request. """
+    """Return the user who is authenticated in the current session, if any.
+    This can be called within any Flask request."""
     u = None
     user = session.get("user")
     if user is not None:
@@ -262,18 +282,17 @@ def session_user() -> Optional[User]:
 
 
 def auth_required(**error_kwargs):
-    """ Decorator for routes that require an authenticated user.
-        Call with no parameters to redirect unauthenticated requests
-        to url_for("login"), or login_url="..." to redirect to that URL,
-        or any other kwargs to return a JSON reply to unauthenticated
-        requests, containing those kwargs (via jsonify()). """
+    """Decorator for routes that require an authenticated user.
+    Call with no parameters to redirect unauthenticated requests
+    to url_for("login"), or login_url="..." to redirect to that URL,
+    or any other kwargs to return a JSON reply to unauthenticated
+    requests, containing those kwargs (via jsonify())."""
 
     def wrap(func):
-
         @wraps(func)
         def route():
-            """ Load the authenticated user into g.user
-                before invoking the wrapped route function """
+            """Load the authenticated user into g.user
+            before invoking the wrapped route function"""
             u = session_user()
             if u is None:
                 # No authenticated user
@@ -301,22 +320,22 @@ def auth_required(**error_kwargs):
 
 
 def current_user() -> Optional[User]:
-    """ Return the currently logged in user. Only valid within route functions
-        decorated with @auth_required. """
+    """Return the currently logged in user. Only valid within route functions
+    decorated with @auth_required."""
     return g.get("user")
 
 
 def current_user_id() -> Optional[str]:
-    """ Return the id of the currently logged in user. Only valid within route
-        functions decorated with @auth_required. """
+    """Return the id of the currently logged in user. Only valid within route
+    functions decorated with @auth_required."""
     u = g.get("user")
     return None if u is None else u.id()
 
 
 class RequestData:
 
-    """ Wraps the Flask request object to allow error-checked retrieval of query
-        parameters either from JSON or from form-encoded POST data """
+    """Wraps the Flask request object to allow error-checked retrieval of query
+    parameters either from JSON or from form-encoded POST data"""
 
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))
@@ -336,14 +355,14 @@ class RequestData:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
-    def get_int(self, key: str, default: int=0) -> int:
+    def get_int(self, key: str, default: int = 0) -> int:
         """ Obtain an integer data item from the request """
         try:
             return int(self.q.get(key, default))
         except (TypeError, ValueError):
             return default
 
-    def get_bool(self, key: str, default: bool=False) -> bool:
+    def get_bool(self, key: str, default: T = cast(Any, False)) -> Union[bool, T]:
         """ Obtain a boolean data item from the request """
         try:
             val = self.q.get(key, default)
@@ -373,7 +392,7 @@ class RequestData:
         return self.q.get(key, "")
 
 
-def _process_move(game, movelist):
+def _process_move(game, movelist: Iterable[str]) -> Response:
     """ Process a move coming in from the client """
 
     assert game is not None
@@ -386,7 +405,7 @@ def _process_move(game, movelist):
     player_index = game.player_to_move()
 
     # Parse the move from the movestring we got back
-    m = Move("", 0, 0)
+    m: MoveBase = Move("", 0, 0)
     # pylint: disable=broad-except
     try:
         for mstr in movelist:
@@ -417,10 +436,10 @@ def _process_move(game, movelist):
                 tile = tile[0]
             else:
                 letter = tile
+            assert isinstance(m, Move)
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
-        m = None
 
     # Process the move string here
     # Unpack the error code and message
@@ -476,20 +495,20 @@ def _process_move(game, movelist):
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(1 - player_index, m)
-        msg = {
+        msg_dict = {
             "game/" + game.id() + "/" + opponent + "/move": client_state,
             "user/" + opponent: {"move": datetime.utcnow().isoformat()},
         }
-        firebase.send_message(msg)
+        firebase.send_message(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
 
 
-def fetch_users(ulist, uid_func):
+def fetch_users(ulist: Iterable[T], uid_func: Callable[[T], str]) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
     # Make a list of user ids by applying the uid_func to ulist entries (!= None)
-    uids = []
+    uids: List[str] = []
     for u in ulist:
         uid = None if u is None else uid_func(u)
         if uid:
@@ -500,12 +519,12 @@ def fetch_users(ulist, uid_func):
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
-def _userlist(query, spec):
+def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     """ Return a list of users matching the filter criteria """
 
-    result = []
+    result: List[Dict[str, Any]] = []
 
-    def elo_str(elo):
+    def elo_str(elo: Optional[str]) -> str:
         """ Return a string representation of an Elo score, or a hyphen if none """
         return elo or "-"
 
@@ -615,6 +634,7 @@ def _userlist(query, spec):
     elif query == "alike":
         # Return users with similar Elo ratings
         if cuid is not None:
+            assert cuser is not None
             i = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
             ausers = User.load_multi(i)
             for au in ausers:
@@ -674,7 +694,7 @@ def _userlist(query, spec):
                         "userid": uid,
                         "nick": ud["nickname"],
                         "fullname": User.full_name_from_prefs(ud["prefs"]),
-                        "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
+                        "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
@@ -701,9 +721,11 @@ def _userlist(query, spec):
     return result
 
 
-def _gamelist(cuid, include_zombies=True):
+def _gamelist(
+    cuid: str, include_zombies: bool = True
+) -> List[Dict[str, Union[str, int, bool]]]:
     """ Return a list of active and zombie games for the current user """
-    result = []
+    result: List[Dict[str, Union[str, int, bool]]] = []
     if not cuid:
         return result
     now = datetime.utcnow()
@@ -711,6 +733,8 @@ def _gamelist(cuid, include_zombies=True):
     # has not seen) at the top of the list
     if include_zombies:
         for g in ZombieModel.list_games(cuid):
+            if g is None:
+                continue
             opp = g["opp"]  # User id of opponent
             u = User.load_if_exists(opp)
             nick = u.nickname()
@@ -753,6 +777,8 @@ def _gamelist(cuid, include_zombies=True):
     opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
+        if g is None:
+            continue
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
@@ -888,8 +914,8 @@ def _rating(kind):
 
 
 def _recentlist(cuid, versus, max_len):
-    """ Return a list of recent games for the indicated user, eventually
-        filtered by the opponent id (versus) """
+    """Return a list of recent games for the indicated user, eventually
+    filtered by the opponent id (versus)"""
     if cuid is None:
         return []
     result = []
@@ -960,8 +986,8 @@ def _challengelist():
         return prefs.get("duration", 0) > 0
 
     def opp_ready(c):
-        """ Returns True if this is a timed challenge
-            and the opponent is ready to play """
+        """Returns True if this is a timed challenge
+        and the opponent is ready to play"""
         if not is_timed(c[1]):
             return False
         # Timed challenge: see if there is a Firebase path indicating
@@ -1011,8 +1037,8 @@ def _challengelist():
 
 @app.route("/_ah/warmup")
 def warmup():
-    """ App Engine is starting a fresh instance - warm it up
-        by loading word database """
+    """App Engine is starting a fresh instance - warm it up
+    by loading word database"""
     wdb = Wordbase.dawg()
     ok = "upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
     logging.info(
@@ -1025,10 +1051,8 @@ def warmup():
 def start():
     """ App Engine is starting a fresh instance """
     logging.info(
-        "Start, version {0}, instance {1}"
-        .format(
-            os.environ.get("GAE_VERSION", ""),
-            os.environ.get("GAE_INSTANCE", "")
+        "Start, version {0}, instance {1}".format(
+            os.environ.get("GAE_VERSION", ""), os.environ.get("GAE_INSTANCE", "")
         )
     )
     return "", 200, {}
@@ -1192,6 +1216,7 @@ def userstats():
         return jsonify(result=Error.WRONG_USER)
 
     cuser = current_user()
+    assert cuser is not None
     stats = user.statistics()
 
     # Include info on whether this user is a favorite of the current user
@@ -1211,7 +1236,7 @@ def userstats():
 
 @app.route("/userlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userlist():
+def userlist() -> Response:
     """ Return user lists with particular criteria """
 
     rq = RequestData(request)
@@ -1222,21 +1247,22 @@ def userlist():
 
 @app.route("/gamelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamelist():
+def gamelist() -> Response:
     """ Return a list of active games for the current user """
 
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
     cuid = current_user_id()
+    assert cuid is not None
     return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
 
 
 @app.route("/rating", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def rating():
-    """ Return the newest Elo ratings table (top 100)
-        of a given kind ('all' or 'human') """
+def rating() -> Response:
+    """Return the newest Elo ratings table (top 100)
+    of a given kind ('all' or 'human')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
     if kind not in ("all", "human"):
@@ -1246,7 +1272,7 @@ def rating():
 
 @app.route("/recentlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def recentlist():
+def recentlist() -> Response:
     """ Return a list of recently completed games for the indicated user """
 
     rq = RequestData(request)
@@ -1273,17 +1299,18 @@ def recentlist():
 
 @app.route("/challengelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def challengelist():
+def challengelist() -> Response:
     """ Return a list of challenges issued or received by the current user """
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @app.route("/favorite", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def favorite():
+def favorite() -> Response:
     """ Create or delete an A-favors-B relation """
 
     user = current_user()
+    assert user is not None
 
     rq = RequestData(request)
     destuser = rq.get("destuser")
@@ -1300,10 +1327,12 @@ def favorite():
 
 @app.route("/challenge", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def challenge():
+def challenge() -> Response:
     """ Create or delete an A-challenges-B relation """
 
     user = current_user()
+    assert user is not None
+
     rq = RequestData(request)
     destuser = rq.get("destuser")
     if not destuser:
@@ -1348,10 +1377,12 @@ def challenge():
 
 @app.route("/setuserpref", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def setuserpref():
+def setuserpref() -> Response:
     """ Set a user preference """
 
     user = current_user()
+    assert user is not None
+
     rq = RequestData(request)
 
     # Check for the beginner preference and convert it to bool if we can
@@ -1379,7 +1410,7 @@ def setuserpref():
 
 @app.route("/onlinecheck", methods=["POST"])
 @auth_required(online=False)
-def onlinecheck():
+def onlinecheck() -> Response:
     """ Check whether a particular user is online """
     rq = RequestData(request)
     user_id = rq.get("user")
@@ -1391,7 +1422,7 @@ def onlinecheck():
 
 @app.route("/waitcheck", methods=["POST"])
 @auth_required(waiting=False)
-def waitcheck():
+def waitcheck() -> Response:
     """ Check whether a particular opponent is waiting on a challenge """
     rq = RequestData(request)
     opp_id = rq.get("user")
@@ -1403,7 +1434,7 @@ def waitcheck():
 
 @app.route("/cancelwait", methods=["POST"])
 @auth_required(ok=False)
-def cancelwait():
+def cancelwait() -> Response:
     """ A wait on a challenge has been cancelled """
     rq = RequestData(request)
     user_id = rq.get("user")
@@ -1424,7 +1455,7 @@ def cancelwait():
 
 @app.route("/chatmsg", methods=["POST"])
 @auth_required(ok=False)
-def chatmsg():
+def chatmsg() -> Response:
     """ Send a chat message on a conversation channel """
 
     rq = RequestData(request)
@@ -1469,7 +1500,7 @@ def chatmsg():
 
 @app.route("/chatload", methods=["POST"])
 @auth_required(ok=False)
-def chatload():
+def chatload() -> Response:
     """ Load all chat messages on a conversation channel """
 
     rq = RequestData(request)
@@ -1507,11 +1538,13 @@ def chatload():
 
 @app.route("/review")
 @auth_required()
-def review():
+def review() -> ResponseType:
     """ Show game review page """
 
     # Only logged-in users who are paying friends can view this page
     user = current_user()
+    assert user is not None
+
     if not user.has_paid():
         # Only paying users can see game reviews
         return redirect(url_for("friend", action=1))
@@ -1572,11 +1605,13 @@ def review():
 
 @app.route("/bestmoves", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def bestmoves():
-    """ Return a list of the best possible moves in a game
-        at a given point """
+def bestmoves() -> Response:
+    """Return a list of the best possible moves in a game
+    at a given point"""
 
     user = current_user()
+    assert user is not None
+
     # !!! TODO
     if False:  # not user.has_paid():
         # User must be a paying friend
@@ -1636,7 +1671,7 @@ class UserForm:
 
     """ Encapsulates the data in the user preferences form """
 
-    def __init__(self, usr=None):
+    def __init__(self, usr: Optional[User] = None) -> None:
         # We store the URL that the client will redirect to after
         # doing an auth2.disconnect() call, clearing client-side
         # credentials. The login() handler clears the server-side
@@ -1656,7 +1691,7 @@ class UserForm:
             self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
 
-    def init_from_form(self, form):
+    def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
             self.nickname = form["nickname"].strip()
@@ -1679,18 +1714,18 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
 
-    def init_from_dict(self, d):
+    def init_from_dict(self, d: Dict[str, Union[str, bool]]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
-            self.nickname = d.get("nickname", "").strip()
+            self.nickname = cast(str, d.get("nickname", "")).strip()
         except (TypeError, ValueError, KeyError):
             pass
         try:
-            self.full_name = d.get("full_name", "").strip()
+            self.full_name = cast(str, d.get("full_name", "")).strip()
         except (TypeError, ValueError, KeyError):
             pass
         try:
-            self.email = d.get("email", "").strip()
+            self.email = cast(str, d.get("email", "")).strip()
         except (TypeError, ValueError, KeyError):
             pass
         try:
@@ -1702,7 +1737,7 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
 
-    def init_from_user(self, usr):
+    def init_from_user(self, usr: User) -> None:
         """ Load the data to be edited upon initial display of the form """
         self.nickname = usr.nickname()
         self.full_name = usr.full_name()
@@ -1714,10 +1749,10 @@ class UserForm:
         self.newbag = usr.new_bag()
         self.friend = usr.friend()
 
-    def validate(self):
-        """ Check the current form data for validity
-            and return a dict of errors, if any """
-        errors = dict()
+    def validate(self) -> Dict[str, str]:
+        """Check the current form data for validity
+        and return a dict of errors, if any"""
+        errors: Dict[str, str] = dict()
         # pylint: disable=bad-continuation
         if not self.nickname:
             errors["nickname"] = "Notandi verður að hafa einkenni"
@@ -1759,6 +1794,7 @@ def userprefs():
     """ Handler for the user preferences page """
 
     user = current_user()
+    assert user is not None
 
     uf = UserForm()
     err = dict()
@@ -1790,7 +1826,7 @@ def userprefs():
 
 @app.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
-def loaduserprefs():
+def loaduserprefs() -> ResponseType:
     """ Fetch the preferences of the current user in JSON form """
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
@@ -1799,7 +1835,7 @@ def loaduserprefs():
 
 @app.route("/saveuserprefs", methods=["POST"])
 @auth_required(ok=False)
-def saveuserprefs():
+def saveuserprefs() -> ResponseType:
     """ Fetch the preferences of the current user in JSON form """
 
     user = current_user()
@@ -1817,10 +1853,11 @@ def saveuserprefs():
 
 @app.route("/wait")
 @auth_required()
-def wait():
+def wait() -> ResponseType:
     """ Show page to wait for a timed game to start """
 
     user = current_user()
+    assert user is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
@@ -1843,9 +1880,10 @@ def wait():
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
+    uid = user.id() or ""
     msg = {
         "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
-        "user/" + user.id() + "/wait/" + opp: True,
+        "user/" + uid + "/wait/" + opp: True,
     }
     firebase.send_message(msg)
 
@@ -1853,7 +1891,7 @@ def wait():
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
-    firebase_token = firebase.create_custom_token(user.id())
+    firebase_token = firebase.create_custom_token(uid)
 
     # Go to the wait page
     return render_template(
@@ -1863,10 +1901,11 @@ def wait():
 
 @app.route("/newgame")
 @auth_required()
-def newgame():
+def newgame() -> ResponseType:
     """ Show page to initiate a new game """
 
     user = current_user()
+    assert user is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
@@ -1910,7 +1949,7 @@ def newgame():
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
@@ -1924,10 +1963,12 @@ def newgame():
 
 @app.route("/initgame", methods=["POST"])
 @auth_required(ok=False)
-def initgame():
+def initgame() -> ResponseType:
     """ Create a new game and return its UUID """
 
     user = current_user()
+    assert user is not None
+
     rq = RequestData(request)
     # Get the opponent id
     opp = rq.get("opp")
@@ -1967,7 +2008,7 @@ def initgame():
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and prefs.get("duration", 0) > 0:
@@ -1980,7 +2021,7 @@ def initgame():
 
 
 @app.route("/board")
-def board():
+def board() -> ResponseType:
     """ The main game page """
 
     # Note that authentication is not required to access this page
@@ -2038,7 +2079,7 @@ def board():
         # Load information about the opponent
         opp = User.load_if_exists(game.player_id(1 - player_index))
 
-    if zombie and player_index is not None:
+    if zombie and player_index is not None and user is not None:
         # This is a newly finished game that is now being viewed by clicking
         # on it from a zombie list: remove it from the list
         ZombieModel.del_game(game.id(), user.id())
@@ -2066,10 +2107,11 @@ def board():
 
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
-    if firebase_token is not None:
+    if firebase_token is not None and user is not None:
+        uid = user.id() or ""
         msg = {
             "game/" + game.id() + "/" + user.id(): None,
-            "user/" + user.id() + "/wait": None,
+            "user/" + uid + "/wait": None,
         }
         firebase.send_message(msg)
         # No need to clear other stuff on the /user/[user_id]/ path,
@@ -2090,9 +2132,9 @@ def board():
 
 @app.route("/gameover", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gameover():
-    """ A player has seen a game finish: remove it from
-        the zombie list, if it is there """
+def gameover() -> ResponseType:
+    """A player has seen a game finish: remove it from
+    the zombie list, if it is there"""
     cuid = current_user_id()
     rq = RequestData(request)
     game_id = rq.get("game")
@@ -2106,10 +2148,11 @@ def gameover():
 
 @app.route("/friend")
 @auth_required()
-def friend():
-    """ Page for users to register or unregister themselves
-        as friends of Netskrafl """
+def friend() -> ResponseType:
+    """Page for users to register or unregister themselves
+    as friends of Netskrafl"""
     user = current_user()
+    assert user is not None
     try:
         action = int(request.args.get("action", "0"))
     except (TypeError, ValueError):
@@ -2136,7 +2179,7 @@ def friend():
 
 
 @app.route("/promo", methods=["POST"])
-def promo():
+def promo() -> ResponseType:
     """ Return promotional HTML corresponding to a given key (category) """
     user = session_user()
     if user is None:
@@ -2151,33 +2194,33 @@ def promo():
 
 @app.route("/signup", methods=["GET"])
 @auth_required()
-def signup():
+def signup() -> ResponseType:
     """ Sign up as a friend, enter card info, etc. """
     return render_template("signup.html", user=current_user())
 
 
 @app.route("/skilmalar", methods=["GET"])
 @auth_required()
-def skilmalar():
+def skilmalar() -> ResponseType:
     """ Conditions """
     return render_template("skilmalar.html", user=current_user())
 
 
 @app.route("/billing", methods=["GET", "POST"])
-def handle_billing():
-    """ Receive signup and billing confirmations.
-        Authentication not necessarily required. """
+def handle_billing() -> ResponseType:
+    """Receive signup and billing confirmations.
+    Authentication not necessarily required."""
     uid = ""
     u = session_user()
     if u is not None:
         # This is called within a session: pass the user id to the billing module
-        uid = u.id()
+        uid = u.id() or ""
     return billing.handle(request, uid)
 
 
 @app.route("/")
 @auth_required()
-def main():
+def main() -> ResponseType:
     """ Handler for the main (index) page """
 
     if _SINGLE_PAGE_UI:
@@ -2185,6 +2228,7 @@ def main():
         return redirect(url_for("page"))
 
     user = current_user()
+    assert user is not None
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
@@ -2199,7 +2243,7 @@ def main():
 
     # Promotion display logic
     promo_to_show = None
-    promos = []
+    promos: List[datetime] = []
     if random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
@@ -2242,7 +2286,7 @@ def main():
 
 # pylint: disable=redefined-builtin
 @app.route("/help")
-def help():
+def help() -> ResponseType:
     """ Show help page, which does not require authentication """
     user = session_user()
     # We tolerate a null (not logged in) user here
@@ -2250,7 +2294,7 @@ def help():
 
 
 @app.route("/rawhelp")
-def rawhelp():
+def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
 
     def override_url_for(endpoint, **values):
@@ -2265,14 +2309,14 @@ def rawhelp():
 
 
 @app.route("/twoletter")
-def twoletter():
+def twoletter() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     return render_template("nshelp.html", user=user, tab="twoletter")
 
 
 @app.route("/faq")
-def faq():
+def faq() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
@@ -2281,15 +2325,20 @@ def faq():
 
 @app.route("/page")
 @auth_required()
-def page():
+def page() -> ResponseType:
     """ Show single-page UI test """
     user = current_user()
+    assert user is not None
     firebase_token = firebase.create_custom_token(user.id())
-    return render_template("page.html", user=user, firebase_token=firebase_token,)
+    return render_template(
+        "page.html",
+        user=user,
+        firebase_token=firebase_token,
+    )
 
 
 @app.route("/newbag")
-def newbag():
+def newbag() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
@@ -2297,7 +2346,7 @@ def newbag():
 
 
 @app.route("/login")
-def login():
+def login() -> ResponseType:
     """ Handler for the login & greeting page """
     main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
     if "user" in session:
@@ -2306,13 +2355,13 @@ def login():
 
 
 @app.route("/login_error")
-def login_error():
+def login_error() -> ResponseType:
     """ An error during login: probably cookies or popups are not allowed """
     return render_template("login-error.html")
 
 
 @app.route("/logout")
-def logout():
+def logout() -> ResponseType:
     """ Log the user out """
     if "user" in session:
         del session["user"]
@@ -2320,9 +2369,9 @@ def logout():
 
 
 @app.route("/oauth2callback", methods=["POST"])
-def oauth2callback():
-    """ The OAuth2 login flow POSTs to this callback when a user has
-        signed in using a Google Account """
+def oauth2callback() -> ResponseType:
+    """The OAuth2 login flow POSTs to this callback when a user has
+    signed in using a Google Account"""
 
     if not _CLIENT_ID:
         # Something is wrong in the internal setup of the server
@@ -2374,15 +2423,16 @@ def oauth2callback():
     session.permanent = True
     logging.info(
         "oauth2callback() successfully recognized "
-        "account {0} userid {1} email {2} name '{3}'"
-        .format(account, userid, email, name)
+        "account {0} userid {1} email {2} name '{3}'".format(
+            account, userid, email, name
+        )
     )
     return jsonify({"status": "success"})
 
 
 @app.route("/service-worker.js")
 @max_age(seconds=1 * 60 * 60)  # Cache file for 1 hour
-def service_worker():
+def service_worker() -> ResponseType:
     return send_from_directory("static", "service-worker.js")
 
 
@@ -2391,7 +2441,7 @@ def service_worker():
 
 
 @app.route("/stats/run", methods=["GET", "POST"])
-def stats_run():
+def stats_run() -> ResponseType:
     """ Start a task to calculate Elo points for games """
     if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
         # Only allow bona fide Google Cloud Scheduler requests
@@ -2400,7 +2450,7 @@ def stats_run():
 
 
 @app.route("/stats/ratings", methods=["GET", "POST"])
-def stats_ratings():
+def stats_ratings() -> ResponseType:
     """ Start a task to calculate top Elo rankings """
     if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
         # Only allow bona fide Google Cloud Scheduler requests
@@ -2461,6 +2511,7 @@ if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
         import googleclouddebugger  # type: ignore
+
         googleclouddebugger.enable()
     except ImportError:
         pass

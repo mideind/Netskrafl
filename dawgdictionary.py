@@ -56,7 +56,7 @@
 
 """
 
-from typing import Dict
+from typing import Dict, Union, Optional, Tuple, Iterator
 
 import os
 import codecs
@@ -69,6 +69,10 @@ import pickle
 
 from languages import Alphabet
 
+
+# Type definitions
+IterTuple = Tuple[str, int]
+PrefixNodes = Tuple[IterTuple, ...]
 
 class _Node:
 
@@ -238,8 +242,8 @@ class Wordbase:
         one for the main dictionary and the other for common words
     """
 
-    _dawg = None
-    _dawg_common = None
+    _dawg: Union[None, DawgDictionary, PackedDawgDictionary] = None
+    _dawg_common: Union[None, DawgDictionary, PackedDawgDictionary] = None
 
     _lock = threading.Lock()
     _lock_common = threading.Lock()
@@ -255,6 +259,10 @@ class Wordbase:
         bname = os.path.abspath(os.path.join("resources", resource + ".bin.dawg"))
         pname = os.path.abspath(os.path.join("resources", resource + ".dawg.pickle"))
         fname = os.path.abspath(os.path.join("resources", resource + ".text.dawg"))
+        fname_t: Optional[float]
+        bname_t: Optional[float]
+        pname_t: Optional[float]
+        dawg: Union[DawgDictionary, PackedDawgDictionary]
         try:
             fname_t = os.path.getmtime(fname)
         except os.error:
@@ -703,7 +711,7 @@ class PackedNavigation:
     _UINT32 = struct.Struct("<L")
 
     # Dictionary of edge iteration caches, keyed by byte buffer
-    _iter_caches: Dict[int, Dict[str, _Node]] = dict()
+    _iter_caches: Dict[int, Dict[int, PrefixNodes]] = dict()
 
     def __init__(self, nav, b):
         # Store the associated navigator
@@ -721,7 +729,7 @@ class PackedNavigation:
         # plain accept()
         self._resumable = callable(getattr(nav, "accept_resumable", None))
 
-    def _iter_from_node(self, offset):
+    def _iter_from_node(self, offset: int) -> Iterator[IterTuple]:
         """ A generator for yielding prefixes and next node offset along an edge
             starting at the given offset in the DAWG bytearray """
         b = self._b
@@ -747,7 +755,7 @@ class PackedNavigation:
                 offset += 4
             yield prefix, nextnode
 
-    def _make_iter_from_node(self, offset):
+    def _make_iter_from_node(self, offset: int) -> PrefixNodes:
         """ Return an iterable over the prefixes and next node pointers
             of the edge at the given offset. If this is the first time
             that the edge is iterated, cache its unpacked contents
