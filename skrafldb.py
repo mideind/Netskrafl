@@ -163,8 +163,11 @@ class UserModel(ndb.Model):
     name_lc = ndb.StringProperty(required=False, default=None)
 
     inactive = ndb.BooleanProperty()
-    locale = ndb.StringProperty(required=False, default=None)
+    # The user's preferred locale, i.e. language and other settings
+    locale = ndb.StringProperty(required=False, default="is_IS")
+    # Preferences dictionary
     prefs = ndb.JsonProperty()
+    # Creation time of the user entity
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
     # Ready for challenges?
     ready = ndb.BooleanProperty(required=False, default=False)
@@ -401,11 +404,11 @@ class UserModel(ndb.Model):
                 return
 
     @classmethod
-    def list_similar_elo(cls, elo: int, max_len=40, locale=None) -> List[UserModel]:
+    def list_similar_elo(cls, elo: int, max_len: int=40, locale: Optional[str]=None) -> List[str]:
         """ List users with a similar (human) Elo rating """
         # Start with max_len users with a lower Elo rating
 
-        def fetch(q, max_len):
+        def fetch(q: ndb.Query, max_len: int) -> Iterator[str]:
             """ Generator for returning query result keys """
             assert max_len > 0
             # pylint: disable=bad-continuation
@@ -530,7 +533,7 @@ class GameModel(ndb.Model):
     human_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
     human_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
 
-    def set_player(self, ix, user_id):
+    def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """ Set a player key property to point to a given user, or None """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         if ix == 0:
@@ -539,7 +542,7 @@ class GameModel(ndb.Model):
             self.player1 = k
 
     @classmethod
-    def fetch(cls, game_uuid, use_cache=True):
+    def fetch(cls, game_uuid: str, use_cache: bool=True) -> GameModel:
         """ Fetch a game entity given its uuid """
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
@@ -547,13 +550,13 @@ class GameModel(ndb.Model):
         return cls.get_by_id(game_uuid)
 
     @classmethod
-    def list_finished_games(cls, user_id, versus=None, max_len=10):
+    def list_finished_games(cls, user_id: str, versus: Optional[str]=None, max_len: int=10) -> List[Dict[str, Any]]:
         """ Query for a list of recently finished games for the given user """
         assert user_id is not None
         if user_id is None:
             return []
 
-        def game_callback(gm):
+        def game_callback(gm: GameModel) -> Dict[str, Any]:
             """ Map a game entity to a result dictionary with useful info about the game """
             game_uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
@@ -612,9 +615,8 @@ class GameModel(ndb.Model):
         return sorted(rlist, key=lambda x: x["ts_last_move"], reverse=True)[0:max_len]
 
     @classmethod
-    def iter_live_games(cls, user_id, max_len=10):
+    def iter_live_games(cls, user_id: Optional[str], max_len: int=10) -> Iterator[Dict[str, Any]]:
         """ Query for a list of active games for the given user """
-        assert user_id is not None
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
@@ -625,7 +627,7 @@ class GameModel(ndb.Model):
             .order(-GameModel.ts_last_move)
         )
 
-        def game_callback(gm):
+        def game_callback(gm: GameModel):
             """ Map a game entity to a result tuple with useful info about the game """
             game_uuid = gm.key.id()
             u0 = None if gm.player0 is None else gm.player0.id()
@@ -677,13 +679,13 @@ class FavoriteModel(ndb.Model):
     # The originating (source) user is the parent/ancestor of the relation
     destuser = ndb.KeyProperty(kind=UserModel)
 
-    def set_dest(self, user_id):
+    def set_dest(self, user_id: str) -> None:
         """ Set a destination user key property """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
-    def list_favorites(cls, user_id, max_len=MAX_FAVORITES):
+    def list_favorites(cls, user_id: str, max_len: int=MAX_FAVORITES) -> Iterator[str]:
         """ Query for a list of favorite users for the given user """
         assert user_id is not None
         if user_id is None:
@@ -691,10 +693,11 @@ class FavoriteModel(ndb.Model):
         k = ndb.Key(UserModel, user_id)
         q = cls.query(ancestor=k)
         for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
-            yield None if fm.destuser is None else fm.destuser.id()
+            if fm.destuser is not None:
+                yield fm.destuser.id()
 
     @classmethod
-    def has_relation(cls, srcuser_id, destuser_id):
+    def has_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> bool:
         """ Return True if destuser is a favorite of user """
         if srcuser_id is None or destuser_id is None:
             return False
@@ -704,14 +707,14 @@ class FavoriteModel(ndb.Model):
         return q.get(keys_only=True) is not None
 
     @classmethod
-    def add_relation(cls, src_id, dest_id):
+    def add_relation(cls, src_id: str, dest_id: str) -> None:
         """ Add a favorite relation between the two users """
         fm = FavoriteModel(parent=ndb.Key(UserModel, src_id))
         fm.set_dest(dest_id)
         fm.put()
 
     @classmethod
-    def del_relation(cls, src_id, dest_id):
+    def del_relation(cls, src_id: str, dest_id: str) -> None:
         """ Delete a favorite relation between a source user and a destination user """
         ks = ndb.Key(UserModel, src_id)
         kd = ndb.Key(UserModel, dest_id)
@@ -740,13 +743,13 @@ class ChallengeModel(ndb.Model):
     # The time of issuance
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
 
-    def set_dest(self, user_id):
+    def set_dest(self, user_id: Optional[str]) -> None:
         """ Set a destination user key property """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
-    def has_relation(cls, srcuser_id, destuser_id):
+    def has_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> bool:
         """ Return True if srcuser has issued a challenge to destuser """
         if srcuser_id is None or destuser_id is None:
             return False
@@ -756,7 +759,7 @@ class ChallengeModel(ndb.Model):
         return q.get(keys_only=True) is not None
 
     @classmethod
-    def find_relation(cls, srcuser_id, destuser_id):
+    def find_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> Tuple[bool, Optional[PrefsDict]]:
         """ Return (found, prefs) where found is True if srcuser has challenged destuser """
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
@@ -773,7 +776,7 @@ class ChallengeModel(ndb.Model):
         return (True, cm.prefs)
 
     @classmethod
-    def add_relation(cls, src_id, dest_id, prefs):
+    def add_relation(cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]) -> None:
         """ Add a challenge relation between the two users """
         cm = ChallengeModel(parent=ndb.Key(UserModel, src_id))
         cm.set_dest(dest_id)
@@ -781,11 +784,11 @@ class ChallengeModel(ndb.Model):
         cm.put()
 
     @classmethod
-    def del_relation(cls, src_id, dest_id):
+    def del_relation(cls, src_id: str, dest_id: str) -> Tuple[bool, Optional[PrefsDict]]:
         """ Delete a challenge relation between a source user and a destination user """
         ks = ndb.Key(UserModel, src_id)
         kd = ndb.Key(UserModel, dest_id)
-        prefs = None
+        prefs: Optional[PrefsDict] = None
         found = False
         while True:
             # There might conceivably be more than one relation,
@@ -802,7 +805,7 @@ class ChallengeModel(ndb.Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id, max_len=20):
+    def list_issued(cls, user_id: str, max_len=20) -> Iterator[Tuple[Optional[str], Optional[PrefsDict], datetime]]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:

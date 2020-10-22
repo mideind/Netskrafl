@@ -16,15 +16,17 @@
 
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Type
 
+import abc
 import functools
 
 
 class Alphabet:
 
-    """ This implementation of the Alphabet class encapsulates particulars of the Icelandic
-        language. Other languages can be supported by modifying or subclassing this class.
+    """ This implementation of the Alphabet class encapsulates
+        particulars of the Icelandic language. Other languages
+        can be supported by modifying or subclassing this class.
     """
 
     # Sort ordering of allowed Icelandic letters
@@ -51,7 +53,8 @@ class Alphabet:
 
     @staticmethod
     def bit_pattern(word):
-        """ Return a pattern of bits indicating which letters are present in the word """
+        """ Return a pattern of bits indicating which letters
+            are present in the word """
         return functools.reduce(
             lambda x, y: x | y, [Alphabet.letter_bit[c] for c in word], 0
         )
@@ -63,7 +66,8 @@ class Alphabet:
 
     @staticmethod
     def all_bits_set():
-        """ Return a bit pattern where the bits for all letters in the Alphabet are set """
+        """ Return a bit pattern where the bits for all letters
+            in the Alphabet are set """
         return 2 ** len(Alphabet.order) - 1
 
     @staticmethod
@@ -80,18 +84,21 @@ class Alphabet:
 
     @staticmethod
     def sort(l):
-        """ Sort a list in-place by lexicographic ordering according to this Alphabet """
+        """ Sort a list in-place by lexicographic ordering
+            according to this Alphabet """
         l.sort(key=Alphabet.sortkey)
 
     @staticmethod
     def sorted(l):
-        """ Return a list sorted by lexicographic ordering according to this Alphabet """
+        """ Return a list sorted by lexicographic ordering
+            according to this Alphabet """
         return sorted(l, key=Alphabet.sortkey)
 
     @staticmethod
     def string_subtract(a, b):
         """ Subtract all letters in b from a, counting each instance separately """
-        # Note that this cannot be done with sets, as they fold multiple letter instances into one
+        # Note that this cannot be done with sets,
+        # as they fold multiple letter instances into one
         lcount = [a.count(c) - b.count(c) for c in Alphabet.all_tiles]
         return "".join(
             [
@@ -121,10 +128,12 @@ class Alphabet:
         lcmap = [i for i in range(0, 256)]
 
         def rotate(letter, sort_after):
-            """ Modifies the lcmap so that the letter is sorted after the indicated letter """
+            """ Modifies the lcmap so that the letter is sorted
+                after the indicated letter """
             sort_as = lcmap[sort_after] + 1
             letter_val = lcmap[letter]
-            # We only support the case where a letter is moved forward in the sort order
+            # We only support the case where a letter is moved
+            # forward in the sort order
             if letter_val > sort_as:
                 for i in range(0, 256):
                     if (lcmap[i] >= sort_as) and (lcmap[i] < letter_val):
@@ -132,7 +141,8 @@ class Alphabet:
             lcmap[letter] = sort_as
 
         def adjust(s):
-            """ Ensure that the sort order in the lcmap is in ascending order as in s """
+            """ Ensure that the sort order in the lcmap is
+                in ascending order as in s """
             # This does not need to be terribly efficient as the code is
             # only run once, during initialization
             for i in range(1, len(s) - 1):
@@ -164,13 +174,18 @@ class Alphabet:
         assert Alphabet._lcmap_nocase
         return [Alphabet._lcmap_nocase[ord(c)] if ord(c) <= 255 else 256 for c in lstr]
 
+    @staticmethod
+    def tileset_for_locale(locale: str) -> Type[TileSet]:
+        """ Return an appropriate tile set for a given locale """
+        return TILESETS.get(locale, NewTileSet)
+
 
 # Initialize the locale collation (sorting) map
 Alphabet._init()  # pylint: disable=W0212
 
 
 # noinspection PyUnresolvedReferences
-class TileSet(object):
+class TileSet(abc.ABC):
 
     """ Abstract base class for tile sets. Concrete classes are found below. """
 
@@ -373,3 +388,92 @@ class NewTileSet(TileSet):
 # Number of tiles in bag
 NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 
+
+class EnglishTileSet(TileSet):
+
+    scores = {
+        "e": 1,
+        "a": 1,
+        "i": 1,
+        "o": 1,
+        "n": 1,
+        "r": 1,
+        "t": 1,
+        "l": 1,
+        "s": 1,
+        "u": 1,
+        "d": 2,
+        "g": 2,
+        "b": 3,
+        "c": 3,
+        "m": 3,
+        "p": 3,
+        "f": 4,
+        "h": 4,
+        "v": 4,
+        "w": 4,
+        "y": 4,
+        "k": 5,
+        "j": 8,
+        "x": 8,
+        "q": 10,
+        "z": 10,
+        "?": 0,
+    }
+
+    bag_tiles = [
+        ("e", 12),
+        ("a", 9),
+        ("i", 9),
+        ("o", 8),
+        ("n", 6),
+        ("r", 6),
+        ("t", 6),
+        ("l", 4),
+        ("s", 4),
+        ("u", 4),
+        ("d", 4),
+        ("g", 3),
+        ("b", 2),
+        ("c", 2),
+        ("m", 2),
+        ("p", 2),
+        ("f", 2),
+        ("h", 2),
+        ("v", 2),
+        ("w", 2),
+        ("y", 2),
+        ("k", 1),
+        ("j", 1),
+        ("x", 1),
+        ("q", 1),
+        ("z", 1),
+        ("?", 2),  # Blank tiles
+    ]
+
+    BAG_SIZE: int = 0
+
+
+# Number of tiles in bag
+EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
+
+# Mapping of locale code to tileset
+
+TILESETS: Dict[str, Type[TileSet]] = dict(
+    is_IS=NewTileSet,
+    en_AU=EnglishTileSet,
+    en_BZ=EnglishTileSet,
+    en_CA=EnglishTileSet,
+    en_GB=EnglishTileSet,
+    en_IE=EnglishTileSet,
+    en_IN=EnglishTileSet,
+    en_JM=EnglishTileSet,
+    en_MY=EnglishTileSet,
+    en_NZ=EnglishTileSet,
+    en_PH=EnglishTileSet,
+    en_SG=EnglishTileSet,
+    en_TT=EnglishTileSet,
+    en_US=EnglishTileSet,
+    en_ZA=EnglishTileSet,
+    en_ZW=EnglishTileSet,
+)

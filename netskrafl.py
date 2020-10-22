@@ -96,6 +96,7 @@ from skrafldb import (
     ChatModel,
     ZombieModel,
     PromoModel,
+    PrefsDict,
 )
 import billing
 import firebase
@@ -524,9 +525,9 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
 
     result: List[Dict[str, Any]] = []
 
-    def elo_str(elo: Optional[str]) -> str:
+    def elo_str(elo: Union[None, int, str]) -> str:
         """ Return a string representation of an Elo score, or a hyphen if none """
-        return elo or "-"
+        return str(elo) if elo else "-"
 
     # We will be returning a list of human players
     cuser = current_user()
@@ -635,8 +636,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         # Return users with similar Elo ratings
         if cuid is not None:
             assert cuser is not None
-            i = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
-            ausers = User.load_multi(i)
+            ui = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
+            ausers = User.load_multi(ui)
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
                     uid = au.id()
@@ -662,7 +663,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         # Return users with nicknames matching a pattern
 
         if not spec:
-            i = []
+            si = []
         else:
             # Limit the spec to 16 characters
             spec = spec[0:16]
@@ -671,18 +672,18 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             cache_range = "4:" + spec.lower()  # Case is not significant
 
             # Start by looking in the cache
-            i = memcache.get(cache_range, namespace="userlist")
-            if i is None:
+            si = memcache.get(cache_range, namespace="userlist")
+            if si is None:
                 # Not found: do an query, returning max 25 users
-                i = list(UserModel.list_prefix(spec, max_len=25))
+                si = list(UserModel.list_prefix(spec, max_len=25))
                 # Store the result in the cache with a lifetime of 2 minutes
-                memcache.set(cache_range, i, time=2 * 60, namespace="userlist")
+                memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
             return User.is_valid_nick(ud["nickname"])
 
-        for ud in i:
+        for ud in si:
             uid = ud["id"]
             if uid == cuid:
                 # Do not include the current user, if any, in the list
@@ -737,6 +738,8 @@ def _gamelist(
                 continue
             opp = g["opp"]  # User id of opponent
             u = User.load_if_exists(opp)
+            if u is None:
+                continue
             nick = u.nickname()
             prefs = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -1906,24 +1909,36 @@ def newgame() -> ResponseType:
 
     user = current_user()
     assert user is not None
+    uid = user.id()
+    assert uid is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
-
-    # Is this a reverse action, i.e. the challenger initiating a timed game,
-    # instead of the challenged player initiating a normal one?
-    rev = request.args.get("rev", None) is not None
 
     if opp is None:
         # !!! TODO: Adapt for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
+    # Get the board type
+    board_type = request.args.get("board_type", "standard")
+
+    # Is this a reverse action, i.e. the challenger initiating a timed game,
+    # instead of the challenged player initiating a normal one?
+    rev = request.args.get("rev", None) is not None
+
+    prefs: Optional[PrefsDict]
+
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = {"newbag": True} if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        prefs = dict(
+            newbag = user.new_bag(),
+            locale = user.locale,
+        )
+        if board_type != "standard":
+            prefs["board_type"] = board_type
+        game = Game.new(uid, None, robot_level, prefs=prefs)
         # !!! TODO: Adapt for singlepage
         return redirect(url_for("board", game=game.id()))
 
@@ -1935,7 +1950,7 @@ def newgame() -> ResponseType:
             # !!! TODO: Adapt for singlepage
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
-        found, prefs = opp_user.accept_challenge(user.id())
+        found, prefs = opp_user.accept_challenge(uid)
     else:
         # The current user accepts the challenge
         found, prefs = user.accept_challenge(opp)
@@ -1945,15 +1960,15 @@ def newgame() -> ResponseType:
         return redirect(url_for("main"))
 
     # Create a fresh game object
-    game = Game.new(user.id(), opp, 0, prefs)
+    game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
     msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
-    if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
+    if prefs and cast(int, prefs.get("duration", 0)) > 0:
+        msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
     firebase.send_message(msg)
 
@@ -1968,6 +1983,8 @@ def initgame() -> ResponseType:
 
     user = current_user()
     assert user is not None
+    uid = user.id()
+    assert uid is not None
 
     rq = RequestData(request)
     # Get the opponent id
@@ -1975,16 +1992,25 @@ def initgame() -> ResponseType:
     if not opp:
         return jsonify(ok=False)
 
+    board_type = rq.get("board_type", "standard")
+
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
     rev = rq.get_bool("rev")
+
+    prefs: Optional[PrefsDict]
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = {"newbag": True} if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        prefs = dict(
+            newbag = user.new_bag(),
+            locale = user.locale,
+        )
+        if board_type != "standard":
+            prefs["board_type"] = board_type
+        game = Game.new(uid, None, robot_level, prefs=prefs)
         return jsonify(ok=True, uuid=game.id())
 
     # Start a new game between two human users
@@ -1994,7 +2020,7 @@ def initgame() -> ResponseType:
         if opp_user is None:
             return jsonify(ok=False)
         # In this case, the opponent accepts the challenge
-        found, prefs = opp_user.accept_challenge(user.id())
+        found, prefs = opp_user.accept_challenge(uid)
     else:
         # The current user accepts the challenge
         found, prefs = user.accept_challenge(opp)
@@ -2004,15 +2030,15 @@ def initgame() -> ResponseType:
         return jsonify(ok=False)
 
     # Create a fresh game object
-    game = Game.new(user.id(), opp, 0, prefs)
+    game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
     msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
-    if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
+    if prefs and cast(int, prefs.get("duration", 0)) > 0:
+        msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
     firebase.send_message(msg)
 
@@ -2471,24 +2497,24 @@ if running_local:
     import admin
 
     @app.route("/admin/usercount", methods=["POST"])
-    def admin_usercount():
+    def admin_usercount() -> ResponseType:
         # Be careful - this operation is EXTREMELY slow on Cloud Datastore
         return admin.admin_usercount()
 
     @app.route("/admin/userupdate", methods=["GET"])
-    def admin_userupdate():
+    def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
 
     @app.route("/admin/setfriend", methods=["GET"])
-    def admin_setfriend():
+    def admin_setfriend() -> ResponseType:
         return admin.admin_setfriend()
 
     @app.route("/admin/loadgame", methods=["POST"])
-    def admin_loadgame():
+    def admin_loadgame() -> ResponseType:
         return admin.admin_loadgame()
 
     @app.route("/admin/main")
-    def admin_main():
+    def admin_main() -> ResponseType:
         """ Show main administration page """
         return render_template("admin.html")
 
@@ -2496,13 +2522,13 @@ if running_local:
 # noinspection PyUnusedLocal
 # pylint: disable=unused-argument
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(e) -> ResponseType:
     """ Return a custom 404 error """
     return "Þessi vefslóð er ekki rétt", 404
 
 
 @app.errorhandler(500)
-def server_error(e):
+def server_error(e) -> ResponseType:
     """ Return a custom 500 error """
     return "Eftirfarandi villa kom upp: {}".format(e), 500
 
@@ -2511,7 +2537,6 @@ if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
         import googleclouddebugger  # type: ignore
-
         googleclouddebugger.enable()
     except ImportError:
         pass

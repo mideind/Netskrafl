@@ -21,7 +21,7 @@
 
 # pylint: disable=too-many-lines
 
-from typing import Dict, Any, Optional, List, Union, Set, Tuple, NamedTuple, cast
+from typing import Dict, Any, Optional, List, Union, Set, Tuple, NamedTuple, Iterable, cast
 
 import collections
 import threading
@@ -73,8 +73,9 @@ MoveTuple = NamedTuple(
         ("move", MoveBase),
         ("rack", str),
         ("ts", datetime),
-    ]
+    ],
 )
+
 
 class User:
 
@@ -92,11 +93,16 @@ class User:
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
 
-    def __init__(self, uid: Optional[str]=None, account: Optional[str]=None, locale: Optional[str]=None):
+    def __init__(
+        self,
+        uid: Optional[str] = None,
+        account: Optional[str] = None,
+        locale: Optional[str] = None,
+    ):
         """ Initialize a fresh User instance """
         self._user_id = uid
         self._account = account
-        self._email = None
+        self._email: Optional[str] = None
         self._nickname = ""
         self._inactive = False
         self._locale = locale or "is_IS"
@@ -106,10 +112,10 @@ class User:
         self._elo = 0
         self._human_elo = 0
         self._highest_score = 0
-        self._highest_score_game = None
-        self._best_word = None
+        self._highest_score_game: Optional[str] = None
+        self._best_word: Optional[str] = None
         self._best_word_score = 0
-        self._best_word_game = None
+        self._best_word_game: Optional[str] = None
         # Set of favorite users, only loaded upon demand
         self._favorites: Optional[Set[str]] = None
 
@@ -172,8 +178,8 @@ class User:
         return self._user_id
 
     def nickname(self) -> str:
-        """ Returns the human-readable nickname of a user,
-            or userid if a nick is not available """
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
         return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
@@ -203,6 +209,7 @@ class User:
         # Nicknames that haven't been properly set aren't displayed
         return User.is_valid_nick(self._nickname)
 
+    @property
     def locale(self) -> str:
         """ Get the locale code for this user """
         return self._locale or "is_IS"
@@ -211,7 +218,9 @@ class User:
         """ Set the locale code for this user """
         self._locale = locale
 
-    def get_pref(self, pref: str, default: Optional[PrefItem]=None) -> Optional[PrefItem]:
+    def get_pref(
+        self, pref: str, default: Optional[PrefItem] = None
+    ) -> Optional[PrefItem]:
         """ Retrieve a preference, or None if not found """
         if self._preferences is None:
             return None
@@ -388,23 +397,27 @@ class User:
         if hasattr(self, "_favorites") and self._favorites:
             # Already have the favorites in memory
             return
-        self._favorites = set()
-        i = iter(FavoriteModel.list_favorites(self.id()))
-        self._favorites.update(i)
+        sid = self.id()
+        assert sid is not None
+        self._favorites = set(FavoriteModel.list_favorites(sid))
 
     def add_favorite(self, destuser_id):
         """ Add an A-favors-B relation between this user and the destuser """
+        sid = self.id()
+        assert sid is not None
         self._load_favorites()
         assert self._favorites is not None
         self._favorites.add(destuser_id)
-        FavoriteModel.add_relation(self.id(), destuser_id)
+        FavoriteModel.add_relation(sid, destuser_id)
 
     def del_favorite(self, destuser_id):
         """ Delete an A-favors-B relation between this user and the destuser """
+        sid = self.id()
+        assert sid is not None
         self._load_favorites()
         assert self._favorites is not None
         self._favorites.discard(destuser_id)
-        FavoriteModel.del_relation(self.id(), destuser_id)
+        FavoriteModel.del_relation(sid, destuser_id)
 
     def has_favorite(self, destuser_id):
         """ Returns True if there is an A-favors-B relation between this user and the destuser """
@@ -412,33 +425,41 @@ class User:
         assert self._favorites is not None
         return destuser_id in self._favorites
 
-    def has_challenge(self, destuser_id):
+    def has_challenge(self, destuser_id: str) -> bool:
         """ Returns True if this user has challenged destuser """
         # !!! TODO: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
-    def find_challenge(self, srcuser_id):
+    def find_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
         """ Returns (found, prefs) """
         return ChallengeModel.find_relation(srcuser_id, self.id())
 
-    def issue_challenge(self, destuser_id, prefs):
+    def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> None:
         """ Issue a challenge to the destuser """
-        ChallengeModel.add_relation(self.id(), destuser_id, prefs)
+        sid = self.id()
+        assert sid is not None
+        ChallengeModel.add_relation(sid, destuser_id, prefs)
 
-    def retract_challenge(self, destuser_id):
+    def retract_challenge(self, destuser_id: str) -> None:
         """ Retract a challenge previously issued to the destuser """
-        ChallengeModel.del_relation(self.id(), destuser_id)
+        sid = self.id()
+        assert sid is not None
+        ChallengeModel.del_relation(sid, destuser_id)
 
-    def decline_challenge(self, srcuser_id):
+    def decline_challenge(self, srcuser_id: str) -> None:
         """ Decline a challenge previously issued by the srcuser """
-        ChallengeModel.del_relation(srcuser_id, self.id())
+        sid = self.id()
+        assert sid is not None
+        ChallengeModel.del_relation(srcuser_id, sid)
 
-    def accept_challenge(self, srcuser_id):
+    def accept_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
         """ Decline a challenge previously issued by the srcuser """
         # Delete the accepted challenge and return the associated preferences
-        return ChallengeModel.del_relation(srcuser_id, self.id())
+        sid = self.id()
+        assert sid is not None
+        return ChallengeModel.del_relation(srcuser_id, sid)
 
-    def adjust_highest_score(self, score, game_uuid):
+    def adjust_highest_score(self, score: int, game_uuid: str) -> bool:
         """ If this is the highest score of the player, modify it """
         if self._highest_score and self._highest_score >= score:
             # Not a new record
@@ -448,7 +469,7 @@ class User:
         self._highest_score_game = game_uuid
         return True
 
-    def adjust_best_word(self, word, score, game_uuid):
+    def adjust_best_word(self, word: str, score: int, game_uuid: str) -> bool:
         """ If this is the highest scoring word of the player, modify it """
         if self._best_word_score and self._best_word_score >= score:
             # Not a new record
@@ -460,7 +481,7 @@ class User:
         return True
 
     @classmethod
-    def load_if_exists(cls, uid):
+    def load_if_exists(cls, uid: Optional[str]) -> Optional[User]:
         """ Load a user by id if she exists, otherwise return None """
         if not uid:
             return None
@@ -477,7 +498,7 @@ class User:
             return u
 
     @classmethod
-    def load_multi(cls, uids):
+    def load_multi(cls, uids: Iterable[str]) -> List[User]:
         """ Load multiple users from persistent storage, given their user id """
         user_list = []
         with User._lock:
@@ -489,7 +510,7 @@ class User:
         return user_list
 
     @classmethod
-    def login_by_account(cls, account, name, email, *, locale=None):
+    def login_by_account(cls, account: str, name: str, email: str, *, locale: Optional[str]=None):
         """ Log in a user via the given Google Account and return her user id """
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
@@ -528,7 +549,7 @@ class User:
         #     .format(account, email, name)
         # )
         nickname = email.split("@")[0] or name.split()[0]
-        prefs = {"newbag": True, "email": email, "full_name": name}
+        prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
         return UserModel.create(
             user_id=account,
             account=account,
@@ -538,21 +559,21 @@ class User:
             locale=locale,
         )
 
-    def to_serializable(self):
+    def to_serializable(self) -> Dict[str, Any]:
         """ Convert to JSON-serializable format """
         d = dict(**self.__dict__)
         del d["_favorites"]
         return d
 
     @classmethod
-    def from_serializable(cls, j):
+    def from_serializable(cls, j: Dict[str, Any]) -> User:
         """ Create a fresh instance from a JSON-serialized object """
         u = cls(uid=j["_user_id"])
         u.__dict__ = j
         u._favorites = None
         return u
 
-    def statistics(self):
+    def statistics(self) -> Dict[str, Any]:
         """ Return a set of key statistics on the user """
         reply: Dict[str, Any] = dict()
         sm = StatsModel.newest_for_user(self.id())
@@ -572,8 +593,8 @@ class User:
 
 class Game:
 
-    """ A wrapper class for a particular game that is in process
-        or completed. Contains inter alia a State instance.
+    """A wrapper class for a particular game that is in process
+    or completed. Contains inter alia a State instance.
     """
 
     # The available autoplayers (robots)
@@ -604,7 +625,7 @@ class Game:
 
     _lock = threading.Lock()
 
-    def __init__(self, uuid: Optional[str]=None) -> None:
+    def __init__(self, uuid: Optional[str] = None) -> None:
         # Unique id of the game
         self.uuid = uuid
         # The start time of the game
@@ -623,7 +644,7 @@ class Game:
         # History of moves in this game so far, as a list of MoveTuple namedtuples
         self.moves: List[MoveTuple] = []
         # Initial rack contents
-        self.initial_racks = [None, None]
+        self.initial_racks: List[Optional[str]] = [None, None]
         # Preferences (such as time limit, alternative bag or board, etc.)
         self._preferences: Optional[PrefsDict] = None
         # Cache of game over state (becomes True when the game is definitely over)
@@ -632,7 +653,13 @@ class Game:
         # in the NDB datastore
         self._erroneous = False
 
-    def _make_new(self, player0_id: str, player1_id: str, robot_level: int=0, prefs=None):
+    def _make_new(
+        self,
+        player0_id: Optional[str],
+        player1_id: Optional[str],
+        robot_level: int = 0,
+        prefs: Optional[PrefsDict] = None,
+    ):
         """ Initialize a new, fresh game """
         self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
@@ -650,7 +677,7 @@ class Game:
         self.timestamp = self.ts_last_move = datetime.utcnow()
 
     @classmethod
-    def new(cls, player0_id, player1_id, robot_level=0, prefs=None):
+    def new(cls, player0_id: Optional[str], player1_id: Optional[str], robot_level: int=0, prefs: Optional[PrefsDict]=None):
         """ Start and initialize a new game """
         game = cls(Unique.id())  # Assign a new unique id to the game
         if randint(0, 1) == 1:
@@ -868,23 +895,25 @@ class Game:
                         best_word_score[player] = score
                         best_word[player] = tiles
                 player = 1 - player
-            pid_0 = self.player_ids[0]
-            pid_1 = self.player_ids[1]
+            bw0, bw1 = best_word
+            pid_0, pid_1 = self.player_ids
             u0 = User.load_if_exists(pid_0) if pid_0 else None
             u1 = User.load_if_exists(pid_1) if pid_1 else None
             if u0:
                 mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
-                mod_0 |= u0.adjust_best_word(
-                    best_word[0], best_word_score[0], self.uuid
-                )
+                if bw0:
+                    mod_0 |= u0.adjust_best_word(
+                        bw0, best_word_score[0], self.uuid
+                    )
                 if mod_0:
                     # Modified: store the updated user entity
                     u0.update()
             if u1:
                 mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
-                mod_1 |= u1.adjust_best_word(
-                    best_word[1], best_word_score[1], self.uuid
-                )
+                if bw1:
+                    mod_1 |= u1.adjust_best_word(
+                        bw1, best_word_score[1], self.uuid
+                    )
                 if mod_1:
                     # Modified: store the updated user entity
                     u1.update()
@@ -1006,16 +1035,23 @@ class Game:
         return self.get_pref("locale") or "is_IS"
 
     @staticmethod
-    def tileset_from_prefs(prefs):
+    def tileset_from_prefs(prefs: Optional[PrefsDict]):
         """ Returns the tileset specified by the given game preferences """
-        new_bag = Game.new_bag_from_prefs(prefs)
-        return NewTileSet if new_bag else OldTileSet
+        if prefs is None:
+            # Stay backwards compatible with old version
+            return OldTileSet
+        lc = cast(str, prefs.get("locale", "is_IS"))
+        if lc == "is_IS":
+            # For Icelandic, there are two bags: select one by preference setting
+            new_bag = Game.new_bag_from_prefs(prefs)
+            return NewTileSet if new_bag else OldTileSet
+        # For other locales, use the Alphabet mapping found in languages.py
+        return Alphabet.tileset_for_locale(lc)
 
     @property
     def tileset(self):
         """ Return the tile set used in this game """
-        # !!! TODO: Add logic to select tile set by locale
-        return NewTileSet if self.new_bag() else OldTileSet
+        return Game.tileset_from_prefs(self._preferences)
 
     @property
     def net_moves(self) -> List[MoveTuple]:
@@ -1202,7 +1238,7 @@ class Game:
                 self.tileset.scores[tile],
             )
 
-    def state_after_move(self, move_number):
+    def state_after_move(self, move_number: int) -> State:
         """ Return a game state after the indicated move, 0=beginning state """
         # Initialize a fresh state object
         s = State(
@@ -1216,12 +1252,13 @@ class Game:
         assert self.state is not None
         for ix in range(2):
             s.set_player_name(ix, self.state.player_name(ix))
-            if self.initial_racks[ix] is None:
+            irack = self.initial_racks[ix]
+            if irack is None:
                 # Load the current rack rather than nothing
                 s.set_rack(ix, self.state.rack(ix))
             else:
                 # Load the initial rack
-                s.set_rack(ix, self.initial_racks[ix])
+                s.set_rack(ix, irack)
         # Apply the moves up to the state point
         for m in self.moves[0:move_number]:
             s.apply_move(m.move, shallow=True)  # Shallow apply
@@ -1231,8 +1268,8 @@ class Game:
         return s
 
     def display_bag(self, player_index):
-        """ Returns the bag as it should be displayed to the indicated player,
-            including the opponent's rack and sorted """
+        """Returns the bag as it should be displayed to the indicated player,
+        including the opponent's rack and sorted"""
         assert self.state is not None
         return self.state.display_bag(player_index)
 
@@ -1381,7 +1418,9 @@ class Game:
         assert self.state is not None
         return self.state.is_last_challenge()
 
-    def client_state(self, player_index: int, lastmove: Optional[MoveBase]=None, deep: bool=False) -> Dict[str, Any]:
+    def client_state(
+        self, player_index: int, lastmove: Optional[MoveBase] = None, deep: bool = False
+    ) -> Dict[str, Any]:
         """ Create a package of information for the client about the current state """
         assert self.state is not None
         reply: Dict[str, Any] = dict()
