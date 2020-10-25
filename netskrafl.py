@@ -28,6 +28,8 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 from typing import (
     Optional,
     Dict,
@@ -72,7 +74,7 @@ from google.auth.transport import requests as google_requests  # type: ignore
 
 import requests
 
-from languages import Alphabet
+from languages import Alphabet, current_alphabet
 from dawgdictionary import Wordbase
 from skraflmechanics import (
     MoveBase,
@@ -716,7 +718,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             # First by readiness
             0 if x["ready"] else 1 if x["ready_timed"] else 2,
             # Then by nickname
-            Alphabet.sortkey_nocase(x["nick"]),
+            current_alphabet().sortkey_nocase(x["nick"]),
         )
     )
     return result
@@ -1757,11 +1759,12 @@ class UserForm:
         and return a dict of errors, if any"""
         errors: Dict[str, str] = dict()
         # pylint: disable=bad-continuation
+        alphabet = current_alphabet()
         if not self.nickname:
             errors["nickname"] = "Notandi verður að hafa einkenni"
         elif (
-            self.nickname[0] not in Alphabet.full_order
-            and self.nickname[0] not in Alphabet.full_upper
+            self.nickname[0] not in alphabet.full_order
+            and self.nickname[0] not in alphabet.full_upper
         ):
             errors["nickname"] = "Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
@@ -2082,24 +2085,25 @@ def board() -> ResponseType:
         return redirect(url_for("main"))
 
     user = session_user()
+    uid = "" if user is None else (user.id() or "")
     is_over = game.is_over()
     opp = None  # The opponent
 
     if not is_over:
         # Game still in progress
-        if user is None:
+        if not uid:
             # User hasn't logged in yet: redirect to login page
             return redirect(url_for("login"))
-        if not game.has_player(user.id()):
+        if not game.has_player(uid):
             # This user is not a party to the game: redirect to main page
             return redirect(url_for("main"))
 
     # user can be None if the game is over - we do not require a login in that case
-    player_index = None if user is None else game.player_index(user.id())
+    player_index = None if user is None else game.player_index(uid)
 
     # If a logged-in user is looking at the board, we create a Firebase
     # token in order to maintain presence info
-    firebase_token = None if user is None else firebase.create_custom_token(user.id())
+    firebase_token = None if user is None else firebase.create_custom_token(uid)
 
     if player_index is not None and not game.is_autoplayer(1 - player_index):
         # Load information about the opponent
@@ -2108,7 +2112,7 @@ def board() -> ResponseType:
     if zombie and player_index is not None and user is not None:
         # This is a newly finished game that is now being viewed by clicking
         # on it from a zombie list: remove it from the list
-        ZombieModel.del_game(game.id(), user.id())
+        ZombieModel.del_game(game.id(), uid)
 
     ogd = None  # OpenGraph data
     if og is not None and is_over:
@@ -2134,9 +2138,8 @@ def board() -> ResponseType:
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
     if firebase_token is not None and user is not None:
-        uid = user.id() or ""
         msg = {
-            "game/" + game.id() + "/" + user.id(): None,
+            "game/" + game.id() + "/" + uid: None,
             "user/" + uid + "/wait": None,
         }
         firebase.send_message(msg)
@@ -2259,9 +2262,9 @@ def main() -> ResponseType:
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
 
-    uid = user.id()
+    uid = user.id() or ""
 
-    # Create a Firebase token for the logged-0in user
+    # Create a Firebase token for the logged-in user
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
@@ -2355,7 +2358,8 @@ def page() -> ResponseType:
     """ Show single-page UI test """
     user = current_user()
     assert user is not None
-    firebase_token = firebase.create_custom_token(user.id())
+    uid = user.id() or ""
+    firebase_token = firebase.create_custom_token(uid)
     return render_template(
         "page.html",
         user=user,

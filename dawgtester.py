@@ -9,13 +9,15 @@
 
 """
 
+from __future__ import annotations
+
 from typing import Optional
 
 import os
 import time
 
 from dawgdictionary import PackedDawgDictionary
-from languages import Alphabet
+from languages import IcelandicAlphabet
 
 
 class DawgTester:
@@ -245,8 +247,8 @@ class DawgTester:
         print("Checking small words:")
 
         # Check all possible two-letter combinations, allowing only those in the list
-        for first in Alphabet.order:
-            for second in Alphabet.order:
+        for first in IcelandicAlphabet.order:
+            for second in IcelandicAlphabet.order:
                 word = first + second
                 if word in smallwords:
                     self._test_true(word)

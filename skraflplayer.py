@@ -68,14 +68,16 @@
 
 """
 
+from __future__ import annotations
+
 from typing import Optional, List, Tuple, Dict, cast
 
 from random import randint
 
 from dawgdictionary import Wordbase
-from languages import Alphabet
+from languages import Alphabet, current_alphabet
 from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
-from dawgdictionary import _Node
+from dawgdictionary import _Node, Navigator
 
 # Type definitions
 LeftPart = Tuple[str, str, str, _Node]
@@ -89,18 +91,18 @@ class Square:
         parts above and/or below the square.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Cross checks, i.e. possible letters to be placed here,
         # represented as a bit pattern
         self._cc = 0
         # The tile located here, '?' if blank tile
-        self._tile = None
+        self._tile: Optional[str] = None
         # The letter located here, including meaning of blank tile
-        self._letter = None
+        self._letter: Optional[str] = None
         # Is this an anchor square?
         self._anchor = False
 
-    def init(self, autoplayer, row, col, crosscheck):
+    def init(self, autoplayer: AutoPlayer, row: int, col: int, crosscheck: int) -> None:
         """ Initialize this square from the board """
         board = autoplayer.board()
         self._tile = board.tile_at(row, col)
@@ -112,28 +114,28 @@ class Square:
             # mark as anchor
             self.mark_anchor()
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """ Is this square empty? """
         return self._letter == " "
 
-    def is_open(self):
+    def is_open(self) -> bool:
         """ Can a new tile from the rack be placed here? """
         return self.is_empty() and bool(self._cc)
 
-    def is_open_for(self, c):
+    def is_open_for(self, letter_bit: int) -> bool:
         """ Can this letter be placed here? """
-        return bool(self._cc & Alphabet.letter_bit[c])
+        return bool(self._cc & letter_bit)
 
     @property
-    def letter(self):
+    def letter(self) -> str:
         """ Return the letter at this square """
-        return self._letter
+        return self._letter or ""
 
-    def mark_anchor(self):
+    def mark_anchor(self) -> None:
         """ Mark this square as an anchor """
         self._anchor = True
 
-    def is_anchor(self):
+    def is_anchor(self) -> bool:
         """ Is this an anchor square? """
         return self._anchor
 
@@ -147,7 +149,7 @@ class Axis:
 
     DAWG = Wordbase.dawg()
 
-    def __init__(self, autoplayer, index, horizontal):
+    def __init__(self, autoplayer: AutoPlayer, index: int, horizontal: bool) -> None:
 
         self._autoplayer = autoplayer
         self._sq = [Square() for _ in range(Board.SIZE)]
@@ -157,51 +159,52 @@ class Axis:
         # Bit pattern representing empty squares on this axis
         self._empty_bits = 0
 
-    def is_horizontal(self):
+    def is_horizontal(self) -> bool:
         """ Is this a horizontal (row) axis? """
         return self._horizontal
 
-    def is_vertical(self):
+    def is_vertical(self) -> bool:
         """ Is this a vertical (column) axis? """
         return not self._horizontal
 
-    def coordinate_of(self, index):
+    def coordinate_of(self, index: int) -> Tuple[int, int]:
         """ Return the co-ordinate on the board of a square within this axis """
         return (self._index, index) if self._horizontal else (index, self._index)
 
-    def coordinate_step(self):
+    def coordinate_step(self) -> Tuple[int, int]:
         """ How to move along this axis on the board, (row,col) """
         return (0, 1) if self._horizontal else (1, 0)
 
-    def letter_at(self, index):
+    def letter_at(self, index: int) -> str:
         """ Return the letter at the index """
         return self._sq[index].letter
 
-    def is_open(self, index):
+    def is_open(self, index: int) -> bool:
         """ Is the square at the index open (i.e. can a tile be placed there?) """
         return self._sq[index].is_open()
 
-    def is_open_for(self, index, letter):
+    def is_open_for(self, index: int, letter_bit: int) -> bool:
         """ Is the square at the index open for this letter? """
-        return self._sq[index].is_open_for(letter)
+        return self._sq[index].is_open_for(letter_bit)
 
-    def is_empty(self, index):
+    def is_empty(self, index: int) -> bool:
         """ Is the square at the index empty? """
         return bool(self._empty_bits & (1 << index))
 
     @property
-    def autoplayer(self):
+    def autoplayer(self) -> AutoPlayer:
         """ Return the associated Autoplayer instance """
         return self._autoplayer
 
-    def mark_anchor(self, index):
+    def mark_anchor(self, index: int) -> None:
         """Force the indicated square to be an anchor. Used in first move
         to mark the center square."""
         self._sq[index].mark_anchor()
 
-    def init_crosschecks(self):
+    def init_crosschecks(self) -> None:
         """ Calculate and return a list of cross-check bit patterns for the indicated axis """
 
+        alphabet = current_alphabet()
         # The cross-check set is the set of letters that can appear in a square
         # and make cross words (above/left and/or below/right of the square) valid
         board = self._autoplayer.board()
@@ -236,7 +239,7 @@ class Axis:
                     if matches:
                         cix = len(above) if above else 0
                         # Note the set of allowed letters here
-                        bits = Alphabet.bit_pattern([wrd[cix] for wrd in matches])
+                        bits = alphabet.bit_pattern("".join(wrd[cix] for wrd in matches))
                     # Reduce the cross-check set by intersecting it with the allowed set.
                     # If the cross-check set and the rack have nothing in common, this
                     # will lead to the square being marked as closed, which saves
@@ -311,7 +314,7 @@ class Axis:
                 last_anchor = i
 
 
-class LeftPermutationNavigator:
+class LeftPermutationNavigator(Navigator):
 
     """A navigation class to be used with DawgDictionary.navigate()
     to find all left parts of words that are possible with
@@ -320,7 +323,10 @@ class LeftPermutationNavigator:
     generation for a particular rack and board.
     """
 
+    is_resumable = True
+
     def __init__(self, rack: str) -> None:
+        super().__init__()
         self._rack = rack
         self._stack: List[Tuple[str, int]] = []
         self._maxleft = len(rack) - 1  # One tile on the anchor itself
@@ -364,6 +370,11 @@ class LeftPermutationNavigator:
             self._rack = self._rack.replace("?", "", 1)
         return True
 
+    def accept(self, matched: str, final: bool) -> None:
+        """ Called to inform the navigator of a match and whether it is a final word """
+        # Should not be called, as is_resumable is set to True
+        raise NotImplementedError
+
     def accept_resumable(self, prefix, nextnode, matched):
         """ Called to inform the navigator of a match and whether it is a final word """
         # Accumulate all possible left parts, by length
@@ -390,14 +401,17 @@ class LeftPermutationNavigator:
         pass
 
 
-class LeftFindNavigator:
+class LeftFindNavigator(Navigator):
 
     """A navigation class to trace a left part that is
     already on the board, and note its ending position in
     the graph.
     """
 
+    is_resumable = True
+
     def __init__(self, prefix):
+        super().__init__()
         # The prefix to the left of the anchor
         self._prefix = prefix
         self._lenp = len(prefix)
@@ -426,6 +440,11 @@ class LeftFindNavigator:
         # So far, so good: move on
         self._pix += 1
         return True
+
+    def accept(self, matched: str, final: bool) -> None:
+        """ Called to inform the navigator of a match and whether it is a final word """
+        # Should not be called, as is_resumable is set to True
+        raise NotImplementedError
 
     def accept_resumable(self, prefix, nextnode, matched):
         """ Called to inform the navigator of a match and whether it is a final word """
@@ -456,7 +475,7 @@ class Match:
     RACK_TILE = 2
 
 
-class ExtendRightNavigator:
+class ExtendRightNavigator(Navigator):
 
     """A navigation class to be used with DawgDictionary.navigate()
     to perform the Appel & Jacobson ExtendRight function. This
@@ -466,6 +485,7 @@ class ExtendRightNavigator:
     """
 
     def __init__(self, axis, anchor, rack):
+        super().__init__()
         self._axis = axis
         self._rack = rack
         self._anchor = anchor
@@ -475,6 +495,7 @@ class ExtendRightNavigator:
         self._wildcard_in_rack = "?" in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
+        self._letter_bit = current_alphabet().letter_bit
 
     def _check(self, ch):
         """Check whether the letter ch could be placed at the
@@ -489,7 +510,7 @@ class ExtendRightNavigator:
             return Match.NO
         # Open square: apply cross-check constraints to the rack
         # Would this character pass the cross-checks?
-        return Match.RACK_TILE if axis.is_open_for(self._index, ch) else Match.NO
+        return Match.RACK_TILE if axis.is_open_for(self._index, self._letter_bit[ch]) else Match.NO
 
     def push_edge(self, firstchar):
         """ Returns True if the edge should be entered or False if not """
@@ -627,10 +648,10 @@ class AutoPlayer:
         # Calculate a bit pattern representation of the rack
         if "?" in self._rack:
             # Wildcard in rack: all letters allowed
-            self._rack_bit_pattern = Alphabet.all_bits_set()
+            self._rack_bit_pattern = current_alphabet().all_bits_set()
         else:
             # No wildcard: limits the possibilities of covering squares
-            self._rack_bit_pattern = Alphabet.bit_pattern(self._rack)
+            self._rack_bit_pattern = current_alphabet().bit_pattern(self._rack)
 
     def board(self):
         """ Return the board """

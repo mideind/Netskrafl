@@ -61,6 +61,8 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 from typing import Dict, Tuple, Optional, Iterator, Iterable, List, Any, Union
 
 import logging
@@ -68,12 +70,9 @@ import uuid
 
 from datetime import datetime
 
-# The following is a hack/workaround for a Google bug
-# import six; reload(six)
-
 from google.cloud import ndb  # type: ignore
 
-from languages import Alphabet
+from languages import current_alphabet
 from cache import memcache
 
 
@@ -285,17 +284,22 @@ class UserModel(ndb.Model):
     ) -> Iterator[Dict[str, Any]]:
         """ Query for a list of users within a nickname range """
 
-        nick_from = u"a" if nick_from is None else Alphabet.tolower(nick_from)
-        nick_to = u"ö" if nick_to is None else Alphabet.tolower(nick_to)
+        alphabet = current_alphabet()
+        tolower = alphabet.tolower
+        full_order = alphabet.full_order
+        full_upper = alphabet.full_upper
+
+        nick_from = u"a" if nick_from is None else tolower(nick_from)
+        nick_to = u"ö" if nick_to is None else tolower(nick_to)
 
         try:
-            o_from = Alphabet.full_order.index(nick_from[0])
+            o_from = full_order.index(nick_from[0])
         except ValueError:
             o_from = 0
         try:
-            o_to = Alphabet.full_order.index(nick_to[0])
+            o_to = full_order.index(nick_to[0])
         except ValueError:
-            o_to = len(Alphabet.full_order) - 1
+            o_to = len(full_order) - 1
 
         # We do this by issuing a series of queries, each returning
         # nicknames beginning with a particular letter.
@@ -309,9 +313,9 @@ class UserModel(ndb.Model):
 
         for i in range(o_from, o_to + 1):
             # Append the lower case letter
-            q_letters.append(Alphabet.full_order[i])
+            q_letters.append(full_order[i])
             # Append the upper case letter
-            q_letters.append(Alphabet.full_upper[i])
+            q_letters.append(full_upper[i])
 
         # For aesthetic cleanliness, sort the query letters (in Unicode order)
         q_letters.sort()
@@ -404,7 +408,9 @@ class UserModel(ndb.Model):
                 return
 
     @classmethod
-    def list_similar_elo(cls, elo: int, max_len: int=40, locale: Optional[str]=None) -> List[str]:
+    def list_similar_elo(
+        cls, elo: int, max_len: int = 40, locale: Optional[str] = None
+    ) -> List[str]:
         """ List users with a similar (human) Elo rating """
         # Start with max_len users with a lower Elo rating
 
@@ -542,7 +548,7 @@ class GameModel(ndb.Model):
             self.player1 = k
 
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool=True) -> GameModel:
+    def fetch(cls, game_uuid: str, use_cache: bool = True) -> GameModel:
         """ Fetch a game entity given its uuid """
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
@@ -550,7 +556,9 @@ class GameModel(ndb.Model):
         return cls.get_by_id(game_uuid)
 
     @classmethod
-    def list_finished_games(cls, user_id: str, versus: Optional[str]=None, max_len: int=10) -> List[Dict[str, Any]]:
+    def list_finished_games(
+        cls, user_id: str, versus: Optional[str] = None, max_len: int = 10
+    ) -> List[Dict[str, Any]]:
         """ Query for a list of recently finished games for the given user """
         assert user_id is not None
         if user_id is None:
@@ -615,7 +623,9 @@ class GameModel(ndb.Model):
         return sorted(rlist, key=lambda x: x["ts_last_move"], reverse=True)[0:max_len]
 
     @classmethod
-    def iter_live_games(cls, user_id: Optional[str], max_len: int=10) -> Iterator[Dict[str, Any]]:
+    def iter_live_games(
+        cls, user_id: Optional[str], max_len: int = 10
+    ) -> Iterator[Dict[str, Any]]:
         """ Query for a list of active games for the given user """
         if user_id is None:
             return
@@ -685,7 +695,9 @@ class FavoriteModel(ndb.Model):
         self.destuser = k
 
     @classmethod
-    def list_favorites(cls, user_id: str, max_len: int=MAX_FAVORITES) -> Iterator[str]:
+    def list_favorites(
+        cls, user_id: str, max_len: int = MAX_FAVORITES
+    ) -> Iterator[str]:
         """ Query for a list of favorite users for the given user """
         assert user_id is not None
         if user_id is None:
@@ -697,7 +709,9 @@ class FavoriteModel(ndb.Model):
                 yield fm.destuser.id()
 
     @classmethod
-    def has_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> bool:
+    def has_relation(
+        cls, srcuser_id: Optional[str], destuser_id: Optional[str]
+    ) -> bool:
         """ Return True if destuser is a favorite of user """
         if srcuser_id is None or destuser_id is None:
             return False
@@ -749,7 +763,9 @@ class ChallengeModel(ndb.Model):
         self.destuser = k
 
     @classmethod
-    def has_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> bool:
+    def has_relation(
+        cls, srcuser_id: Optional[str], destuser_id: Optional[str]
+    ) -> bool:
         """ Return True if srcuser has issued a challenge to destuser """
         if srcuser_id is None or destuser_id is None:
             return False
@@ -759,7 +775,9 @@ class ChallengeModel(ndb.Model):
         return q.get(keys_only=True) is not None
 
     @classmethod
-    def find_relation(cls, srcuser_id: Optional[str], destuser_id: Optional[str]) -> Tuple[bool, Optional[PrefsDict]]:
+    def find_relation(
+        cls, srcuser_id: Optional[str], destuser_id: Optional[str]
+    ) -> Tuple[bool, Optional[PrefsDict]]:
         """ Return (found, prefs) where found is True if srcuser has challenged destuser """
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
@@ -776,7 +794,9 @@ class ChallengeModel(ndb.Model):
         return (True, cm.prefs)
 
     @classmethod
-    def add_relation(cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]) -> None:
+    def add_relation(
+        cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
+    ) -> None:
         """ Add a challenge relation between the two users """
         cm = ChallengeModel(parent=ndb.Key(UserModel, src_id))
         cm.set_dest(dest_id)
@@ -784,7 +804,9 @@ class ChallengeModel(ndb.Model):
         cm.put()
 
     @classmethod
-    def del_relation(cls, src_id: str, dest_id: str) -> Tuple[bool, Optional[PrefsDict]]:
+    def del_relation(
+        cls, src_id: str, dest_id: str
+    ) -> Tuple[bool, Optional[PrefsDict]]:
         """ Delete a challenge relation between a source user and a destination user """
         ks = ndb.Key(UserModel, src_id)
         kd = ndb.Key(UserModel, dest_id)
@@ -805,7 +827,9 @@ class ChallengeModel(ndb.Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: str, max_len=20) -> Iterator[Tuple[Optional[str], Optional[PrefsDict], datetime]]:
+    def list_issued(
+        cls, user_id: str, max_len=20
+    ) -> Iterator[Tuple[Optional[str], Optional[PrefsDict], datetime]]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
@@ -1444,7 +1468,9 @@ class PromoModel(ndb.Model):
         pm.put()
 
     @classmethod
-    def list_promotions(cls, user_id: Optional[str], promotion: str) -> Iterator[datetime]:
+    def list_promotions(
+        cls, user_id: Optional[str], promotion: str
+    ) -> Iterator[datetime]:
         """ Return a list of timestamps for when the given promotion has been displayed """
         assert user_id is not None
         if user_id is None:
@@ -1487,7 +1513,9 @@ class CompletionModel(ndb.Model):
         cm.put()
 
     @classmethod
-    def add_failure(cls, proctype: str, ts_from: datetime, ts_to: datetime, reason: str) -> None:
+    def add_failure(
+        cls, proctype: str, ts_from: datetime, ts_to: datetime, reason: str
+    ) -> None:
         """ Add a zombie game that has not been seen by the player in question """
         cm = cls()
         cm.proctype = proctype

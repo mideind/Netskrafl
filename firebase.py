@@ -13,7 +13,9 @@
 
 """
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import Optional, Tuple, Set, Dict
 
 import os
 import time
@@ -51,7 +53,7 @@ _tls = threading.local()
 assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 
-def _get_http():
+def _get_http() -> httplib2.Http:
     """ Provides an authorized HTTP object, one per thread """
     if not hasattr(_tls, "_HTTP") or _tls._HTTP is None:
         http = httplib2.Http(timeout=_TIMEOUT)
@@ -66,7 +68,7 @@ def _get_http():
     return _tls._HTTP
 
 
-def _request(*args, **kwargs):
+def _request(*args, **kwargs) -> Tuple[httplib2.Response, str]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0
@@ -93,7 +95,7 @@ def _request(*args, **kwargs):
     assert False, "Unexpected fall out of loop in firebase._request()"
 
 
-def _firebase_put(path, message=None):
+def _firebase_put(path: str, message: Optional[str]=None) -> Tuple[httplib2.Response, str]:
     """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
@@ -106,7 +108,7 @@ def _firebase_put(path, message=None):
     return _request(path, method="PUT", body=message)
 
 
-def _firebase_get(path):
+def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
     """ Read the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -119,7 +121,7 @@ def _firebase_get(path):
     return _request(path, method="GET")
 
 
-def _firebase_patch(path, message):
+def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
     """ Update the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -132,7 +134,7 @@ def _firebase_patch(path, message):
     return _request(path, method="PATCH", body=message)
 
 
-def _firebase_delete(path):
+def _firebase_delete(path: str) -> Tuple[httplib2.Response, str]:
     """ Delete the data at the given path.
 
     An HTTP DELETE request allows deleting of the data at the given path.
@@ -144,7 +146,7 @@ def _firebase_delete(path):
     return _request(path, method="DELETE")
 
 
-def send_message(message, *args):
+def send_message(message: Optional[Dict], *args: str) -> bool:
     """ Updates data in Firebase. If a message object is provided, then it updates
         the data at the given location (whose path is built as a concatenation
         of the *args list) with the message using the PATCH http method.
@@ -169,7 +171,7 @@ def send_message(message, *args):
         return False
 
 
-def send_update(*args):
+def send_update(*args: str) -> bool:
     """ Updates the path endpoint to contain the current UTC timestamp """
     assert args, "Firebase path cannot be empty"
     endpoint = args[-1]
@@ -177,7 +179,7 @@ def send_update(*args):
     return send_message(value, *args[:-1])
 
 
-def check_wait(user_id, opp_id):
+def check_wait(user_id: str, opp_id: str) -> bool:
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
         url = "{}/user/{}/wait/{}.json".format(_FIREBASE_DB_URL, user_id, opp_id)
@@ -193,7 +195,7 @@ def check_wait(user_id, opp_id):
         return False
 
 
-def check_presence(user_id):
+def check_presence(user_id: str) -> bool:
     """ Check whether the given user has at least one active connection """
     try:
         url = "{}/connection/{}.json".format(_FIREBASE_DB_URL, user_id)
@@ -212,7 +214,7 @@ def check_presence(user_id):
 _USERLIST_LOCK = threading.Lock()
 
 
-def get_connected_users():
+def get_connected_users() -> Set[str]:
     """ Return a set of all presently connected users """
     with _USERLIST_LOCK:
         # Serialize access to the connected user list
@@ -237,7 +239,7 @@ def get_connected_users():
 _firebase_app: Optional[App] = None
 
 
-def create_custom_token(uid, valid_minutes=60):
+def create_custom_token(uid: str, valid_minutes: int=60) -> bytes:
     """ Create a secure token for the given id.
 
         This method is used to create secure custom JWT tokens to be passed to

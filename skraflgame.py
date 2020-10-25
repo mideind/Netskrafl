@@ -21,7 +21,20 @@
 
 # pylint: disable=too-many-lines
 
-from typing import Dict, Any, Optional, List, Union, Set, Tuple, NamedTuple, Iterable, cast
+from __future__ import annotations
+
+from typing import (
+    Dict,
+    Any,
+    Optional,
+    List,
+    Union,
+    Set,
+    Tuple,
+    NamedTuple,
+    Iterable,
+    cast,
+)
 
 import collections
 import threading
@@ -510,7 +523,9 @@ class User:
         return user_list
 
     @classmethod
-    def login_by_account(cls, account: str, name: str, email: str, *, locale: Optional[str]=None):
+    def login_by_account(
+        cls, account: str, name: str, email: str, *, locale: Optional[str] = None
+    ):
         """ Log in a user via the given Google Account and return her user id """
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
@@ -677,7 +692,13 @@ class Game:
         self.timestamp = self.ts_last_move = datetime.utcnow()
 
     @classmethod
-    def new(cls, player0_id: Optional[str], player1_id: Optional[str], robot_level: int=0, prefs: Optional[PrefsDict]=None):
+    def new(
+        cls,
+        player0_id: Optional[str],
+        player1_id: Optional[str],
+        robot_level: int = 0,
+        prefs: Optional[PrefsDict] = None,
+    ):
         """ Start and initialize a new game """
         game = cls(Unique.id())  # Assign a new unique id to the game
         if randint(0, 1) == 1:
@@ -902,18 +923,14 @@ class Game:
             if u0:
                 mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
                 if bw0:
-                    mod_0 |= u0.adjust_best_word(
-                        bw0, best_word_score[0], self.uuid
-                    )
+                    mod_0 |= u0.adjust_best_word(bw0, best_word_score[0], self.uuid)
                 if mod_0:
                     # Modified: store the updated user entity
                     u0.update()
             if u1:
                 mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
                 if bw1:
-                    mod_1 |= u1.adjust_best_word(
-                        bw1, best_word_score[1], self.uuid
-                    )
+                    mod_1 |= u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
                 if mod_1:
                     # Modified: store the updated user entity
                     u1.update()

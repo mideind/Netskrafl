@@ -26,7 +26,9 @@
 
 """
 
-from typing import Dict
+from __future__ import annotations
+
+from typing import Dict, Tuple, Union
 
 import calendar
 import logging
@@ -37,10 +39,19 @@ import gc
 from datetime import datetime, timedelta
 from threading import Thread
 
+from flask import Request
+
 from languages import Alphabet
 from skrafldb import (
-    ndb, Client, Context, UserModel, GameModel,
-    StatsModel, RatingModel, CompletionModel, iter_q
+    ndb,
+    Client,
+    Context,
+    UserModel,
+    GameModel,
+    StatsModel,
+    RatingModel,
+    CompletionModel,
+    iter_q,
 )
 
 
@@ -53,7 +64,7 @@ BEGINNER_K = 32.0  # For beginning players
 ESTABLISHED_MARK = 10
 
 
-def monthdelta(date, delta):
+def monthdelta(date: datetime, delta: int) -> datetime:
     """ Calculate a date x months from now, in the past or in the future """
     m, y = (date.month + delta) % 12, date.year + (date.month + delta - 1) // 12
     if not m:
@@ -62,7 +73,9 @@ def monthdelta(date, delta):
     return date.replace(day=d, month=m, year=y)
 
 
-def _compute_elo(o_elo, sc0, sc1, est0, est1):
+def _compute_elo(
+    o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int
+) -> Tuple[int, int]:
     """ Computes the Elo points of the two users after their game """
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
@@ -122,7 +135,7 @@ def _compute_elo(o_elo, sc0, sc1, est0, est1):
     return (adj0, adj1)
 
 
-def _write_stats(timestamp, urecs):
+def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
     """ Writes the freshly calculated statistics records to the database """
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
@@ -144,7 +157,7 @@ def _write_stats(timestamp, urecs):
     UserModel.put_multi(um_list)
 
 
-def _run_stats(from_time, to_time):
+def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     """ Runs a process to update user statistics and Elo ratings """
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
@@ -300,21 +313,23 @@ def _run_stats(from_time, to_time):
 
     except Exception as ex:
         logging.error(
-            "Exception in _run_stats(from={0}, to={1}) after {2} games and {3} users: {4!r}"
-            .format(from_time, to_time, cnt, len(users), ex)
+            "Exception in _run_stats(from={0}, to={1}) after {2} games and {3} users: {4!r}".format(
+                from_time, to_time, cnt, len(users), ex
+            )
         )
         return False
 
     # Completed without incident
     logging.info(
-        "Normal completion of stats from {0} to {1}; {2} games and {3} users"
-        .format(from_time, to_time, cnt, len(users))
+        "Normal completion of stats from {0} to {1}; {2} games and {3} users".format(
+            from_time, to_time, cnt, len(users)
+        )
     )
     _write_stats(to_time, users)
     return True
 
 
-def _create_ratings():
+def _create_ratings() -> None:
     """ Create the Top 100 ratings tables """
     logging.info("Starting _create_ratings")
 
@@ -329,8 +344,8 @@ def _create_ratings():
     gc.collect()
 
     def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
-        """ Go through a table of top scoring users and augment it
-            with data from previous time points """
+        """Go through a table of top scoring users and augment it
+        with data from previous time points"""
 
         for sm in t:
             # Augment the rating with info about progress
@@ -426,7 +441,7 @@ def _create_ratings():
     logging.info("Finishing _create_ratings")
 
 
-def deferred_stats(from_time, to_time):
+def deferred_stats(from_time: datetime, to_time: datetime) -> None:
     """ This is the deferred stats collection process """
 
     with Client.get_context() as context:
@@ -453,19 +468,21 @@ def deferred_stats(from_time, to_time):
         t1 = time.time()
         if success:
             logging.info(
-                "Stats calculation successfully finished in {0:.2f} seconds"
-                .format(t1 - t0)
+                "Stats calculation successfully finished in {0:.2f} seconds".format(
+                    t1 - t0
+                )
             )
             CompletionModel.add_completion("stats", from_time, to_time)
         else:
             logging.error(
-                "Stats calculation did not complete, after running for {0:.2f} seconds"
-                .format(t1 - t0)
+                "Stats calculation did not complete, after running for {0:.2f} seconds".format(
+                    t1 - t0
+                )
             )
             CompletionModel.add_failure("stats", from_time, to_time, error)
 
 
-def deferred_ratings():
+def deferred_ratings() -> None:
     """ This is the deferred ratings table calculation process """
 
     with Client.get_context() as context:
@@ -491,7 +508,7 @@ def deferred_ratings():
         CompletionModel.add_completion("ratings", now, now)
 
 
-def run(request):
+def run(request: Request) -> Tuple[str, int]:
     """ Calculate a new set of statistics """
     logging.info("Starting stats calculation")
 
@@ -518,7 +535,7 @@ def run(request):
     return "Stats calculation has been started", 200
 
 
-def ratings(request):
+def ratings(request: Request) -> Tuple[str, int]:
     """ Calculate new ratings tables """
     logging.info("Starting ratings calculation")
     Thread(target=deferred_ratings).start()

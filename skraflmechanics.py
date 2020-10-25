@@ -24,13 +24,15 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 from typing import List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
 
 from dawgdictionary import Wordbase
-from languages import Alphabet, TileSet
+from languages import TileSet, current_alphabet
 
 
 # Type definitions
@@ -271,8 +273,6 @@ class Bag:
 
     """ Represents a bag of tiles """
 
-    # The sort order for displaying the bag, with blank tiles last
-    SORT_ORDER = Alphabet.order + "?"
     # The random number generator to use to draw tiles
     RNG = SystemRandom()
 
@@ -338,11 +338,11 @@ class Bag:
     def subtract_board(self, board):
         """ Subtract all tiles on the board from the bag """
         board_tiles = "".join(tile for row, col, tile, letter in board.enum_tiles())
-        self._tiles = Alphabet.string_subtract(self._tiles, board_tiles)
+        self._tiles = current_alphabet().string_subtract(self._tiles, board_tiles)
 
     def subtract_rack(self, rack):
         """ Subtract all tiles in the rack from the bag """
-        self._tiles = Alphabet.string_subtract(self._tiles, rack)
+        self._tiles = current_alphabet().string_subtract(self._tiles, rack)
 
 
 class Rack:
@@ -425,7 +425,7 @@ class Rack:
         while len(tiles) < n and not bag.is_empty():
             tiles.append(bag.draw_tile())
         # Return the tiles sorted in alphabetical order
-        tiles.sort(key=Alphabet.all_tiles.index)
+        tiles.sort(key=current_alphabet().all_tiles.index)
         self._tiles = "".join(tiles)
 
 
@@ -660,7 +660,8 @@ class State:
     def display_bag(self, player: int) -> str:
         """ Returns the current bag plus the rack of the opponent """
         displaybag = self._bag.contents() + self.rack(1 - player)
-        return "".join(sorted(displaybag, key=Bag.SORT_ORDER.index))
+        sort_order = current_alphabet().all_tiles
+        return "".join(sorted(displaybag, key=sort_order.index))
 
     def is_game_over(self) -> bool:
         """The game is over if either rack is empty or if both players
@@ -987,7 +988,7 @@ class Move(MoveBase):
             return False
         if (tile is None) or len(tile) != 1:
             return False
-        if (letter is None) or len(letter) != 1 or (letter not in Alphabet.order):
+        if (letter is None) or len(letter) != 1 or (letter not in current_alphabet().order):
             return False
         if tile != "?" and tile != letter:
             return False

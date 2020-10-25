@@ -103,6 +103,8 @@
 
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional, IO
 
 import os
@@ -118,7 +120,7 @@ from dawgdictionary import PackedDawgDictionary
 
 # The DAWG builder uses the collation (sorting) given by Alphabet.sortkey
 # This is by default the Icelandic sorting order
-from languages import Alphabet
+from languages import IcelandicAlphabet, EnglishAlphabet, current_alphabet
 
 
 # Type definitions
@@ -163,7 +165,7 @@ class _DawgNode:
     @staticmethod
     def sort_by_prefix(l):
         """ Return a list of (prefix, node) tuples sorted by prefix """
-        return sorted(l, key=lambda x: Alphabet.sortkey(x[0]))
+        return sorted(l, key=lambda x: current_alphabet().sortkey(x[0]))
 
     @staticmethod
     def stringify_edges(edges):
@@ -584,18 +586,19 @@ class DawgBuilder:
         processing to appear as one aggregated and sorted word list.
     """
 
-    def __init__(self, encoding):
-        self._dawg = None
+    def __init__(self, encoding: str) -> None:
+        self._dawg: Optional[_Dawg] = None
         self._encoding = encoding
         self._alphabet = set(encoding)
 
-    class _InFile(object):
+    class _InFile:
         """ InFile represents a single sorted input file. """
 
         def __init__(self, relpath, fname):
             self._eof = False
             self._nxt = None
             self._key = None  # Sortkey for self._nxt
+            self._sortkey = current_alphabet().sortkey
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin: Optional[IO] = codecs.open(fpath, mode="r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
@@ -618,7 +621,7 @@ class DawgBuilder:
                 if line and len(line) < MAXLEN:
                     # Valid word
                     self._nxt = line
-                    self._key = Alphabet.sortkey(line)
+                    self._key = self._sortkey(line)
                     return True
 
         def next_word(self):
@@ -646,6 +649,7 @@ class DawgBuilder:
             """ Read the entire file and pre-sort it """
             self._list = []
             self._index = 0
+            self._sortkey = current_alphabet().sortkey
             assert self._fin is not None
             try:
                 for line in self._fin:
@@ -659,7 +663,7 @@ class DawgBuilder:
                 self._fin.close()
                 self._fin = None
             self._len = len(self._list)
-            self._list.sort(key=Alphabet.sortkey)
+            self._list.sort(key=self._sortkey)
             self.read_word()
 
         def read_word(self):
@@ -667,7 +671,7 @@ class DawgBuilder:
                 self._eof = True
                 return False
             self._nxt = self._list[self._index]
-            self._key = Alphabet.sortkey(self._nxt)
+            self._key = self._sortkey(self._nxt)
             self._index += 1
             return True
 
@@ -880,7 +884,7 @@ def run_test():
     """ Build a DAWG from the files listed """
     # This creates a DAWG from a single file named testwords.txt
     print("Starting DAWG build for testwords.txt")
-    db = DawgBuilder(encoding=Alphabet.order)
+    db = DawgBuilder(encoding=IcelandicAlphabet.order)
     t0 = time.time()
     db.build(
         ["testwords.txt"],  # Input files to be merged
@@ -896,7 +900,7 @@ def run_twl06():
     # This creates a DAWG from a single file named TWL06.txt,
     # the Scrabble Tournament Word List version 6
     print("Starting DAWG build for TWL06.txt")
-    db = DawgBuilder(encoding="abcdefghijklmnopqrstuvwxyz")
+    db = DawgBuilder(encoding=EnglishAlphabet.order)
     t0 = time.time()
     db.build(
         ["TWL06.txt"],  # Input files to be merged
@@ -912,7 +916,7 @@ def run_sowpods():
     # This creates a DAWG from a single file named sowpods.txt,
     # the combined European & U.S. English word list
     print("Starting DAWG build for sowpods.txt")
-    db = DawgBuilder(encoding="abcdefghijklmnopqrstuvwxyz")
+    db = DawgBuilder(encoding=EnglishAlphabet.order)
     t0 = time.time()
     db.build(
         ["sowpods.txt"],  # Input files to be merged
@@ -932,7 +936,7 @@ def run_skrafl():
     # ordalisti.remove.txt (known errors) are removed.
     # The result is about 2.3 million words, generating >100,000 graph nodes
     print("Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
-    db = DawgBuilder(encoding=Alphabet.order)
+    db = DawgBuilder(encoding=IcelandicAlphabet.order)
     t0 = time.time()
     db.build(
         ["ordalistimax15.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
@@ -956,7 +960,7 @@ def run_skrafl():
     # Process list of common words
 
     print("Starting DAWG build for list of common words")
-    db = DawgBuilder(encoding=Alphabet.order)
+    db = DawgBuilder(encoding=IcelandicAlphabet.order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
