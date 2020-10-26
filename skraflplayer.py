@@ -395,11 +395,6 @@ class LeftPermutationNavigator(Navigator):
         # We need to visit all outgoing edges, so return True
         return True
 
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
-
 
 class LeftFindNavigator(Navigator):
 
@@ -451,16 +446,6 @@ class LeftFindNavigator(Navigator):
         if self._pix == self._lenp:
             # Found the left part: save the position (state)
             self._state = (matched, prefix, nextnode)
-
-    # noinspection PyMethodMayBeStatic
-    def pop_edge(self):
-        """ Called when leaving an edge that has been navigated """
-        return False
-
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
 
 
 class Match:
@@ -605,11 +590,6 @@ class ExtendRightNavigator(Navigator):
         self._rack, self._index, self._wildcard_in_rack = self._stack.pop()
         # Once past the prefix, we need to visit all outgoing edges, so return True
         return True
-
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
 
 
 class AutoPlayer:
