@@ -79,16 +79,17 @@ from languages import Alphabet, current_alphabet
 from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
 from dawgdictionary import _Node, Navigator
 
+
 # Type definitions
-LeftPart = Tuple[str, str, str, _Node]
+LeftPart = Tuple[str, str, str, int]
 
 
 class Square:
 
-    """ Represents a single square within an axis.
-        A square knows about its cross-checks, i.e. which letters can be
-        legally placed in the square while matching correctly with word
-        parts above and/or below the square.
+    """Represents a single square within an axis.
+    A square knows about its cross-checks, i.e. which letters can be
+    legally placed in the square while matching correctly with word
+    parts above and/or below the square.
     """
 
     def __init__(self) -> None:
@@ -239,7 +240,9 @@ class Axis:
                     if matches:
                         cix = len(above) if above else 0
                         # Note the set of allowed letters here
-                        bits = alphabet.bit_pattern("".join(wrd[cix] for wrd in matches))
+                        bits = alphabet.bit_pattern(
+                            "".join(wrd[cix] for wrd in matches)
+                        )
                     # Reduce the cross-check set by intersecting it with the allowed set.
                     # If the cross-check set and the rack have nothing in common, this
                     # will lead to the square being marked as closed, which saves
@@ -336,11 +339,11 @@ class LeftPermutationNavigator(Navigator):
         ]
         self._index = 0
 
-    def leftparts(self, length):
+    def leftparts(self, length: int) -> Optional[List[LeftPart]]:
         """ Returns a list of leftparts of the length requested """
         return self._leftparts[length - 1] if 0 < length <= self._maxleft else None
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
@@ -350,13 +353,13 @@ class LeftPermutationNavigator(Navigator):
         self._stack.append((self._rack, self._index))
         return True
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue until we have generated all left parts possible from the
         # rack but leaving at least one tile
         return self._index < self._maxleft
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         exact_match = newchar in self._rack
         if (not exact_match) and ("?" not in self._rack):
@@ -375,7 +378,7 @@ class LeftPermutationNavigator(Navigator):
         # Should not be called, as is_resumable is set to True
         raise NotImplementedError
 
-    def accept_resumable(self, prefix, nextnode, matched):
+    def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         # Accumulate all possible left parts, by length
         lm = len(matched) - 1
@@ -389,7 +392,7 @@ class LeftPermutationNavigator(Navigator):
         assert lp is not None
         lp.append((matched, self._rack, prefix, nextnode))
 
-    def pop_edge(self):
+    def pop_edge(self) -> bool:
         """ Called when leaving an edge that has been navigated """
         self._rack, self._index = self._stack.pop()
         # We need to visit all outgoing edges, so return True
@@ -495,7 +498,11 @@ class ExtendRightNavigator(Navigator):
             return Match.NO
         # Open square: apply cross-check constraints to the rack
         # Would this character pass the cross-checks?
-        return Match.RACK_TILE if axis.is_open_for(self._index, self._letter_bit[ch]) else Match.NO
+        return (
+            Match.RACK_TILE
+            if axis.is_open_for(self._index, self._letter_bit[ch])
+            else Match.NO
+        )
 
     def push_edge(self, firstchar):
         """ Returns True if the edge should be entered or False if not """
@@ -985,9 +992,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # Keep track of the weighted candidate moves
             weighted_candidates.append((m, score, avg_score))
 
-        print(
-            f"Lowest score of countermove to all evaluated candidates is {min_score}"
-        )
+        print(f"Lowest score of countermove to all evaluated candidates is {min_score}")
         # Sort the candidates by the plain score after subtracting the effect of
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found

@@ -58,7 +58,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Union, Optional, Tuple, Iterator
+from typing import Dict, Union, Optional, Tuple, Iterator, List
 
 import os
 import codecs
@@ -470,7 +470,7 @@ class Navigator(abc.ABC):
         """ Called to inform the navigator of a match and whether it is a final word """
         raise NotImplementedError
 
-    def accept_resumable(self, prefix: str, nextnode: _Node, matched: str) -> None:
+    def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
         """ This is not an abstract method since it is not mandatory to implement """
         # If implemented in a subclass, set is_resumable = True
         raise NotImplementedError
@@ -664,13 +664,13 @@ class PackedDawgDictionary:
     """Encapsulates a DAWG dictionary that is initialized from a packed
     binary file on disk and navigated as a byte buffer."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # The packed byte buffer
-        self._b = None
+        self._b: Optional[bytearray] = None
         # Lock to ensure that only one thread loads the dictionary
         self._lock = threading.Lock()
 
-    def load(self, fname):
+    def load(self, fname: str) -> None:
         """ Load a packed DAWG from a binary file """
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
@@ -681,21 +681,21 @@ class PackedDawgDictionary:
             with open(fname, mode="rb") as fin:
                 self._b = bytearray(fin.read())
 
-    def num_nodes(self):
+    def num_nodes(self) -> int:
         """ Return a count of unique nodes in the DAWG """
         return 0  # !!! TBD - maybe not required
 
-    def find(self, word):
+    def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
         nav = FindNavigator(word)
         self.navigate(nav)
         return nav.is_found()
 
-    def __contains__(self, word):
+    def __contains__(self, word: str) -> bool:
         """ Enable simple lookup syntax: "word" in dawgdict """
         return self.find(word)
 
-    def find_matches(self, pattern, sort=True):
+    def find_matches(self, pattern: str, sort: bool=True) -> List[str]:
         """Returns a list of words matching a pattern.
         The pattern contains characters and '?'-signs denoting wildcards.
         Characters are matched exactly, while the wildcards match any character.
@@ -704,7 +704,7 @@ class PackedDawgDictionary:
         self.navigate(nav)
         return nav.result()
 
-    def find_permutations(self, rack, minlen=0):
+    def find_permutations(self, rack: str, minlen: int=0) -> List[str]:
         """Returns a list of legal permutations of a rack of letters.
         The list is sorted in descending order by permutation length.
         The rack may contain question marks '?' as wildcards, matching all letters.
@@ -715,7 +715,7 @@ class PackedDawgDictionary:
         self.navigate(nav)
         return nav.result()
 
-    def navigate(self, nav):
+    def navigate(self, nav: Navigator) -> None:
         """A generic function to navigate through the DAWG under
         the control of a navigation object.
 
@@ -741,9 +741,10 @@ class PackedDawgDictionary:
         else:
             PackedNavigation(nav, self._b).go()
 
-    def resume_navigation(self, nav, prefix, nextnode, leftpart):
+    def resume_navigation(self, nav: Navigator, prefix: str, nextnode: int, leftpart: str) -> None:
         """Continue a previous navigation of the DAWG, using saved
         state information"""
+        assert self._b is not None
         PackedNavigation(nav, self._b).resume(prefix, nextnode, leftpart)
 
 
@@ -757,7 +758,7 @@ class PackedNavigation:
     # Dictionary of edge iteration caches, keyed by byte buffer
     _iter_caches: Dict[int, Dict[int, PrefixNodes]] = dict()
 
-    def __init__(self, nav, b):
+    def __init__(self, nav: Navigator, b: bytearray) -> None:
         # Store the associated navigator
         self._nav = nav
         # The DAWG bytearray
@@ -813,7 +814,7 @@ class PackedNavigation:
             self._iter_cache[offset] = prefix_nodes
         return prefix_nodes
 
-    def _navigate_from_node(self, offset, matched):
+    def _navigate_from_node(self, offset: int, matched: str) -> None:
         """ Starting from a given node, navigate outgoing edges """
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
@@ -826,7 +827,7 @@ class PackedNavigation:
                     # Short-circuit and finish the loop if pop_edge() returns False
                     break
 
-    def _navigate_from_edge(self, prefix, nextnode, matched):
+    def _navigate_from_edge(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Navigate along an edge, accepting partial and full matches """
         # Go along the edge as long as the navigator is accepting
         b = self._b
@@ -870,7 +871,7 @@ class PackedNavigation:
             # continue with the next node
             self._navigate_from_node(nextnode, matched)
 
-    def go(self):
+    def go(self) -> None:
         """ Perform the navigation using the given navigator """
         # The ship is ready to go
         if self._nav.accepting():
@@ -878,6 +879,6 @@ class PackedNavigation:
             self._navigate_from_node(0, "")
         self._nav.done()
 
-    def resume(self, prefix, nextnode, matched):
+    def resume(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Resume navigation from a previously saved state """
         self._navigate_from_edge(prefix, nextnode, matched)

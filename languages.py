@@ -14,6 +14,15 @@
 
     Currently the only supported language is Icelandic.
 
+    Locale-dependent information is stored in a ContextVar called
+    current_locale, defined at the bottom of this module. ContextVars
+    were introduced in Python 3.7 and encapsulate thread local state
+    in a safe manner, also under asynchronous frameworks. The default
+    locale is 'is_IS', i.e. the Icelandic locale with the Icelandic
+    alphabet and 'new' tile set. To use another locale during processing
+    of a request or otherwise, set the current_locale variable accordingly
+    before invoking the request processing code.
+
 """
 
 from __future__ import annotations

@@ -124,10 +124,7 @@ from languages import IcelandicAlphabet, EnglishAlphabet, current_alphabet
 
 
 # Type definitions
-DawgDict = Dict[str, _DawgNode]
-
-# Relic of old Python 2.7 times
-items = lambda d: d.items()
+DawgDict = Dict[str, "_DawgNode"]
 
 
 MAXLEN = 48  # Longest possible word to be processed
@@ -173,7 +170,7 @@ class _DawgNode:
             hashable key for node edges """
         edges = [
             prefix + ":" + ("0" if node is None else str(node.id))
-            for prefix, node in _DawgNode.sort_by_prefix(items(edges))
+            for prefix, node in _DawgNode.sort_by_prefix(edges.items())
         ]
         return "_".join(edges)
 
@@ -258,7 +255,7 @@ class _Dawg:
             # Only one child: we can collapse
             lastd = None
             tail = ""
-            for ch, nx in items(di):
+            for ch, nx in di.items():
                 # There will only be one iteration of this loop
                 tail = ch
                 lastd = nx
@@ -290,7 +287,7 @@ class _Dawg:
         if edges:
             # We must iterate over a cloned list because
             # the underlying dict may be modified in _collapse_branch()
-            for letter, node in list(items(edges)):
+            for letter, node in list(edges.items()):
                 if node:
                     self._collapse_branch(edges, letter, node)
 
@@ -363,7 +360,7 @@ class _Dawg:
 
     def _dump_level(self, level, d):
         """ Dump a level of the tree and continue into sublevels by recursion """
-        for ch, nx in items(d):
+        for ch, nx in d.items():
             s = " " * level + ch
             if nx and nx.final:
                 s += "|"
@@ -384,7 +381,7 @@ class _Dawg:
         for n in self._unique_nodes_values:
             if n is not None:
                 print("Node {0}{1}".format(n.id, "|" if n.final else ""))
-                for prefix, nd in items(n.edges):
+                for prefix, nd in n.edges.items():
                     print(
                         "   Edge {0} to node {1}".format(
                             prefix, 0 if nd is None else nd.id
@@ -419,12 +416,12 @@ class _Dawg:
         packer.start(len(self._root))
         # Start with the root edges
         sortfunc = _DawgNode.sort_by_prefix
-        for prefix, nd in sortfunc(items(self._root)):
+        for prefix, nd in sortfunc(self._root.items()):
             packer.edge(nd.id, prefix)
         for node in self._unique_nodes_values:
             if node is not None:
                 packer.node_start(node.id, node.final, len(node.edges))
-                for prefix, nd in sortfunc(items(node.edges)):
+                for prefix, nd in sortfunc(node.edges.items()):
                     if nd is None:
                         packer.edge(0, prefix)
                     else:
@@ -987,10 +984,10 @@ def run_skrafl():
 if __name__ == "__main__":
 
     # Build the whole Icelandic Netskrafl word database by default
-    run_skrafl()
+    # run_skrafl()
 
     # Build Tournament Word List v6 (TWL06)
-    # run_twl06()
+    run_twl06()
 
     # Build SOWPODS
-    # run_sowpods()
+    run_sowpods()
