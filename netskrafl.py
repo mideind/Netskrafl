@@ -74,7 +74,13 @@ from google.auth.transport import requests as google_requests  # type: ignore
 
 import requests
 
-from languages import Alphabet, current_alphabet
+from languages import (
+    Alphabet,
+    current_alphabet,
+    set_locale,
+    current_lc,
+    SUPPORTED_LOCALES,
+)
 from dawgdictionary import Wordbase
 from skraflmechanics import (
     MoveBase,
@@ -109,6 +115,16 @@ import skraflstats
 # Type definitions
 T = TypeVar("T")
 ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
+RouteType = Callable[[], ResponseType]
+UserPrefsType = Dict[str, Union[str, bool]]
+
+# Main Flask application instance
+app = Flask(__name__)
+
+running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+
+app.config["DEBUG"] = running_local
+
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -125,15 +141,8 @@ def ndb_wsgi_middleware(wsgi_app):
     return middleware
 
 
-app = Flask(__name__)
-
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
-
-running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
-
-app.config["DEBUG"] = running_local
-
 
 if running_local:
     logging.info("Netskrafl app running with DEBUG set to True")
@@ -146,7 +155,6 @@ else:
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     logging_client.setup_logging()
-
 
 # Make sure that the Flask session cookie is secure (i.e. only used
 # with HTTPS unless we're running on a development server) and
@@ -247,11 +255,11 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 
 # Flask cache busting for static .css and .js files
 @app.url_defaults
-def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]):
+def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     """Add a ?h=XXX parameter to URLs for static .js and .css files,
     where XXX is calculated from the file timestamp"""
 
-    def static_file_hash(filename: str):
+    def static_file_hash(filename: str) -> int:
         """ Obtain a timestamp for the given file """
         return int(os.stat(filename).st_mtime)
 
@@ -284,16 +292,16 @@ def session_user() -> Optional[User]:
     return u
 
 
-def auth_required(**error_kwargs):
+def auth_required(**error_kwargs) -> Callable[[RouteType], RouteType]:
     """Decorator for routes that require an authenticated user.
     Call with no parameters to redirect unauthenticated requests
     to url_for("login"), or login_url="..." to redirect to that URL,
     or any other kwargs to return a JSON reply to unauthenticated
     requests, containing those kwargs (via jsonify())."""
 
-    def wrap(func):
+    def wrap(func: RouteType) -> RouteType:
         @wraps(func)
-        def route():
+        def route() -> ResponseType:
             """Load the authenticated user into g.user
             before invoking the wrapped route function"""
             u = session_user()
@@ -315,6 +323,8 @@ def auth_required(**error_kwargs):
             # We have an authenticated user: store in g.user
             # and call the route function
             g.user = u
+            # Set the locale for this thread to the user's locale
+            set_locale(u.locale)
             return func()
 
         return route
@@ -638,7 +648,9 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         # Return users with similar Elo ratings
         if cuid is not None:
             assert cuser is not None
-            ui = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
+            ui = UserModel.list_similar_elo(
+                cuser.human_elo(), max_len=40, locale=current_lc()
+            )
             ausers = User.load_multi(ui)
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
@@ -677,7 +689,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             si = memcache.get(cache_range, namespace="userlist")
             if si is None:
                 # Not found: do an query, returning max 25 users
-                si = list(UserModel.list_prefix(spec, max_len=25))
+                si = list(UserModel.list_prefix(spec, max_len=25, locale=current_lc()))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
@@ -832,9 +844,9 @@ def _gamelist(
     return result
 
 
-def _rating(kind):
+def _rating(kind: str) -> List[Dict[str, Any]]:
     """ Return a list of Elo ratings of the given kind ('all' or 'human') """
-    result = []
+    result: List[Dict[str, Any]] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
 
@@ -918,12 +930,12 @@ def _rating(kind):
     return result
 
 
-def _recentlist(cuid, versus, max_len):
+def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str, Any]]:
     """Return a list of recent games for the indicated user, eventually
     filtered by the opponent id (versus)"""
+    result: List[Dict[str, Any]] = []
     if cuid is None:
-        return []
-    result = []
+        return result
     # Obtain a list of recently finished games where the indicated user was a player
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
@@ -973,18 +985,18 @@ def _recentlist(cuid, versus, max_len):
     return result
 
 
-def _opponent_waiting(user_id, opp_id):
+def _opponent_waiting(user_id: str, opp_id: str) -> bool:
     """ Return True if the given opponent is waiting on this user's challenge """
     return firebase.check_wait(opp_id, user_id)
 
 
-def _challengelist():
+def _challengelist() -> List[Dict[str, Any]]:
     """ Return a list of challenges issued or received by the current user """
 
-    result = []
+    result: List[Dict[str, Any]] = []
     cuid = current_user_id()
 
-    def is_timed(prefs):
+    def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
         """ Return True if the challenge is for a timed game """
         if prefs is None:
             return False
@@ -997,6 +1009,7 @@ def _challengelist():
             return False
         # Timed challenge: see if there is a Firebase path indicating
         # that the opponent is waiting for this user
+        assert cuid is not None
         return _opponent_waiting(cuid, c[0])
 
     if cuid is not None:
@@ -1042,10 +1055,9 @@ def _challengelist():
 
 @app.route("/_ah/warmup")
 def warmup():
-    """App Engine is starting a fresh instance - warm it up
-    by loading word database"""
-    wdb = Wordbase.dawg()
-    ok = "upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
+    """ App Engine is starting a fresh instance - warm it up
+        by loading all vocabularies """
+    ok = Wordbase.warmup()
     logging.info(
         "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
     )
@@ -1433,7 +1445,9 @@ def waitcheck() -> Response:
     opp_id = rq.get("user")
     waiting = False
     if opp_id:
-        waiting = _opponent_waiting(current_user_id(), opp_id)
+        cuid = current_user_id()
+        assert cuid is not None
+        waiting = _opponent_waiting(cuid, opp_id)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
@@ -1695,6 +1709,8 @@ class UserForm:
             self.fairplay = False  # Defaults to False, must be explicitly set to True
             self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
+            # !!! TODO: Obtain default locale from Accept-Language and/or origin URL
+            self.locale = "is_IS"
 
     def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
@@ -1710,6 +1726,7 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
+        self.locale = form.get("locale", "").strip() or "is_IS"
         try:
             self.audio = "audio" in form  # State of the checkbox
             self.fanfare = "fanfare" in form
@@ -1719,20 +1736,21 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
 
-    def init_from_dict(self, d: Dict[str, Union[str, bool]]) -> None:
+    def init_from_dict(self, d: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
-            self.nickname = cast(str, d.get("nickname", "")).strip()
-        except (TypeError, ValueError, KeyError):
+            self.nickname = d.get("nickname", "").strip()
+        except (TypeError, ValueError):
             pass
         try:
-            self.full_name = cast(str, d.get("full_name", "")).strip()
-        except (TypeError, ValueError, KeyError):
+            self.full_name = d.get("full_name", "").strip()
+        except (TypeError, ValueError):
             pass
         try:
-            self.email = cast(str, d.get("email", "")).strip()
-        except (TypeError, ValueError, KeyError):
+            self.email = d.get("email", "").strip()
+        except (TypeError, ValueError):
             pass
+        self.locale = d.get("locale", "").strip() or "is_IS"
         try:
             self.audio = bool(d.get("audio", False))
             self.fanfare = bool(d.get("fanfare", False))
@@ -1753,6 +1771,7 @@ class UserForm:
         self.fairplay = usr.fairplay()
         self.newbag = usr.new_bag()
         self.friend = usr.friend()
+        self.locale = usr.locale
 
     def validate(self) -> Dict[str, str]:
         """Check the current form data for validity
@@ -1775,9 +1794,11 @@ class UserForm:
             errors["full_name"] = "Nafn má ekki innihalda gæsalappir"
         if self.email and "@" not in self.email:
             errors["email"] = "Tölvupóstfang verður að innihalda @-merki"
+        if self.locale not in SUPPORTED_LOCALES:
+            errors["locale"] = "Óþekkt staðfang (locale)"
         return errors
 
-    def store(self, usr):
+    def store(self, usr: User) -> None:
         """ Store validated form data back into the user entity """
         usr.set_nickname(self.nickname)
         usr.set_full_name(self.full_name)
@@ -1787,9 +1808,10 @@ class UserForm:
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
         usr.set_new_bag(self.newbag)
+        usr.set_locale(self.locale)
         usr.update()
 
-    def as_dict(self):
+    def as_dict(self) -> UserPrefsType:
         """ Return the user preferences as a dictionary """
         return self.__dict__
 
@@ -1803,7 +1825,7 @@ def userprefs():
     assert user is not None
 
     uf = UserForm()
-    err = dict()
+    err: Dict[str, str] = dict()
 
     # The URL to go back to, if not main.html
     from_url = request.args.get("from", None)
@@ -1845,6 +1867,7 @@ def saveuserprefs() -> ResponseType:
     """ Fetch the preferences of the current user in JSON form """
 
     user = current_user()
+    assert user is not None
     j = request.get_json(silent=True)
 
     # Return the user preferences in JSON form
@@ -1935,10 +1958,7 @@ def newgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(
-            newbag = user.new_bag(),
-            locale = user.locale,
-        )
+        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
@@ -2007,10 +2027,7 @@ def initgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(
-            newbag = user.new_bag(),
-            locale = user.locale,
-        )
+        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
@@ -2360,11 +2377,7 @@ def page() -> ResponseType:
     assert user is not None
     uid = user.id() or ""
     firebase_token = firebase.create_custom_token(uid)
-    return render_template(
-        "page.html",
-        user=user,
-        firebase_token=firebase_token,
-    )
+    return render_template("page.html", user=user, firebase_token=firebase_token,)
 
 
 @app.route("/newbag")
@@ -2541,6 +2554,7 @@ if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
         import googleclouddebugger  # type: ignore
+
         googleclouddebugger.enable()
     except ImportError:
         pass

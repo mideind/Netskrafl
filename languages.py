@@ -27,7 +27,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Optional, Type, NamedTuple, Callable
+from typing import Dict, List, Tuple, Optional, Type, NamedTuple, Callable, Any
 
 import abc
 import functools
@@ -117,9 +117,7 @@ class Alphabet(abc.ABC):
 
     def tolower(self, s: str) -> str:
         """ Return the argument string converted to lowercase """
-        return "".join(
-            [self.lowercase(c) if c in self.full_upper else c for c in s]
-        )
+        return "".join([self.lowercase(c) if c in self.full_upper else c for c in s])
 
     def sort(self, l: List[str]) -> None:
         """Sort a list in-place by lexicographic ordering
@@ -215,6 +213,7 @@ class TileSet(abc.ABC):
     """ Abstract base class for tile sets. Concrete classes are found below. """
 
     # The following will be overridden in derived classes
+    alphabet: Alphabet
     scores: Dict[str, int] = dict()
     bag_tiles: List[Tuple[str, int]] = []
     _full_bag = ""
@@ -490,34 +489,80 @@ EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
 
 # Mapping of locale code to tileset
 
-TILESETS: Dict[str, Type[TileSet]] = dict(
-    is_IS=NewTileSet,
-    en_AU=EnglishTileSet,
-    en_BZ=EnglishTileSet,
-    en_CA=EnglishTileSet,
-    en_GB=EnglishTileSet,
-    en_IE=EnglishTileSet,
-    en_IN=EnglishTileSet,
-    en_JM=EnglishTileSet,
-    en_MY=EnglishTileSet,
-    en_NZ=EnglishTileSet,
-    en_PH=EnglishTileSet,
-    en_SG=EnglishTileSet,
-    en_TT=EnglishTileSet,
-    en_US=EnglishTileSet,
-    en_ZA=EnglishTileSet,
-    en_ZW=EnglishTileSet,
-)
+TILESETS: Dict[str, Type[TileSet]] = {
+    "is": NewTileSet,
+    "is_IS": NewTileSet,
+    "en": EnglishTileSet,
+    "en_AU": EnglishTileSet,
+    "en_BZ": EnglishTileSet,
+    "en_CA": EnglishTileSet,
+    "en_GB": EnglishTileSet,
+    "en_IE": EnglishTileSet,
+    "en_IN": EnglishTileSet,
+    "en_JM": EnglishTileSet,
+    "en_MY": EnglishTileSet,
+    "en_NZ": EnglishTileSet,
+    "en_PH": EnglishTileSet,
+    "en_SG": EnglishTileSet,
+    "en_TT": EnglishTileSet,
+    "en_US": EnglishTileSet,
+    "en_ZA": EnglishTileSet,
+    "en_ZW": EnglishTileSet,
+}
+
+ALPHABETS: Dict[str, Alphabet] = {
+    "is": IcelandicAlphabet,
+    "en": EnglishAlphabet,
+}
+
+VOCABULARIES: Dict[str, str] = {
+    "is": "ordalisti",
+    "en": "sowpods",
+    "en_US": "TWL06",
+}
+
+# Set of all supported locale codes
+SUPPORTED_LOCALES = frozenset(TILESETS.keys() | ALPHABETS.keys() | VOCABULARIES.keys())
 
 Locale = NamedTuple(
-    "Locale", [("lc", str), ("alphabet", Alphabet), ("tileset", Type[TileSet])]
+    "Locale", [("lc", str), ("alphabet", Alphabet), ("tileset", Type[TileSet]), ("vocabulary", str)]
 )
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale("is_IS", IcelandicAlphabet, NewTileSet)
+default_locale: Locale = Locale("is_IS", IcelandicAlphabet, NewTileSet, "ordalisti")
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
 current_lc: Callable[[], str] = lambda: current_locale.get().lc
 current_alphabet: Callable[[], Alphabet] = lambda: current_locale.get().alphabet
 current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tileset
+current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
+
+
+def dget(d: Dict[str, Any], key: str, default: Any) -> Any:
+    """ Retrieve value from dictionary by locale code, as precisely as possible,
+        i.e. trying 'is_IS' first, then 'is', before giving up """
+    val = d.get(key)
+    while val is None:
+        key = "".join(key.split("_")[0:-1])
+        if key:
+            val = d.get(key)
+        else:
+            break
+    return default if val is None else val
+
+
+def alphabet_for_locale(lc: str) -> Alphabet:
+    """ Return the Alphabet for the given locale """
+    return dget(ALPHABETS, lc, default_locale.alphabet)
+
+
+def set_locale(lc: str) -> None:
+    """ Set the current thread's locale context """
+    locale = Locale(
+        lc=lc,
+        alphabet=dget(ALPHABETS, lc, default_locale.alphabet),
+        tileset=dget(TILESETS, lc, default_locale.tileset),
+        vocabulary=dget(VOCABULARIES, lc, default_locale.vocabulary)
+    )
+    current_locale.set(locale)

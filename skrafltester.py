@@ -30,12 +30,10 @@ import time
 
 from languages import (
     NewTileSet,
-    IcelandicAlphabet,
-    EnglishAlphabet,
-    EnglishTileSet,
-    Locale,
+    set_locale,
     current_locale,
     current_tileset,
+    current_vocabulary,
 )
 from skraflmechanics import (
     State,
@@ -392,13 +390,8 @@ def main(argv=None):
 
         print("Welcome to the Skrafl game tester")
 
-        if locale == "is_IS":
-            pass
-        elif locale == "en_US":
-            english_locale: Locale = Locale("en_US", EnglishAlphabet, EnglishTileSet)
-            current_locale.set(english_locale)
-        else:
-            raise Usage(f"Unknown locale: '{locale}'")
+        set_locale(locale)
+        print(f"Using vocabulary {current_vocabulary()}")
 
         if manual:
             test_manual_game()

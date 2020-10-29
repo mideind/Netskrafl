@@ -63,7 +63,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Optional, Iterator, Iterable, List, Any, Union
+from typing import Dict, Tuple, Optional, Iterator, Iterable, List, Any, Union, Callable
 
 import logging
 import uuid
@@ -362,7 +362,9 @@ class UserModel(ndb.Model):
         prefix = prefix.lower()
         id_set = set()
 
-        def list_q(q, f):
+        def list_q(
+            q: ndb.Query, f: Callable[[UserModel], str]
+        ) -> Iterator[Dict[str, Any]]:
             """ Yield the results of a user query """
             CHUNK_SIZE = 50
             for um in iter_q(q, chunk_size=CHUNK_SIZE):

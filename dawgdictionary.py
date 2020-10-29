@@ -61,16 +61,14 @@ from __future__ import annotations
 from typing import Dict, Union, Optional, Tuple, Iterator, List
 
 import os
-import codecs
+import sys
 import threading
 import logging
 import time
 import struct
-import sys
-import pickle
 import abc
 
-from languages import current_alphabet
+from languages import current_alphabet, current_vocabulary
 
 
 # Type definitions
@@ -78,115 +76,43 @@ IterTuple = Tuple[str, int]
 PrefixNodes = Tuple[IterTuple, ...]
 
 
-class _Node:
+class PackedDawgDictionary:
 
-    """ This class must be at module level for pickling """
+    """Encapsulates a DAWG dictionary that is initialized from a packed
+    binary file on disk and navigated as a byte buffer."""
 
-    def __init__(self):
-        self.final = False
-        self.edges = dict()
-
-
-class DawgDictionary:
-
-    """A 'classic' DAWG dictionary, loaded either from a text
-    file or from a pickle. This implementation has largely
-    been surpassed by PackedDawgDictionary, defined below."""
-
-    def __init__(self):
-        # Initialize an empty graph
-        # The root entry will eventually be self._nodes[0]
-        self._nodes = None
-        # Running counter of nodes read
-        self._index = 1
+    def __init__(self) -> None:
+        # The packed byte buffer
+        self._b: Optional[bytearray] = None
         # Lock to ensure that only one thread loads the dictionary
         self._lock = threading.Lock()
 
-    def _parse_and_add(self, line):
-        """ Parse a single line of a DAWG text file and add to the graph structure """
-        # The first line is the root (by convention nodeid 0)
-        # The first non-root node is in line 2 and has nodeid 2
-        assert self._nodes is not None
-        nodeid = self._index if self._index > 1 else 0
-        self._index += 1
-        edgedata = line.split("_")
-        final = False
-        firstedge = 0
-        if len(edgedata) >= 1 and edgedata[0] == "|":
-            # Vertical bar denotes final node
-            final = True
-            firstedge = 1
-        if nodeid in self._nodes:
-            # We have already seen this node id: use the previously created instance
-            newnode = self._nodes[nodeid]
-        else:
-            # The id is appearing for the first time: add it
-            newnode = _Node()
-            self._nodes[nodeid] = newnode
-        newnode.final = final
-        # Process the edges
-        for edge in edgedata[firstedge:]:
-            e = edge.split(":")
-            prefix = e[0]
-            edgeid = int(e[1])
-            if edgeid == 0:
-                # Edge leads to null/zero, i.e. is final
-                newnode.edges[prefix] = None
-            elif edgeid in self._nodes:
-                # Edge leads to a node we've already seen
-                newnode.edges[prefix] = self._nodes[edgeid]
-            else:
-                # Edge leads to a new, previously unseen node: Create it
-                newterminal = _Node()
-                newnode.edges[prefix] = newterminal
-                self._nodes[edgeid] = newterminal
-
-    def load(self, fname):
-        """ Load a DAWG from a text file """
-        # Reset the graph contents
+    def load(self, fname: str) -> None:
+        """ Load a packed DAWG from a binary file """
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
-            if self._nodes is not None:
+            if self._b is not None:
                 # Already loaded
                 return
-            self._nodes = dict()
-            self._index = 1
-            with codecs.open(fname, mode="r", encoding="utf-8") as fin:
-                for line in fin:
-                    line = line.strip()
-                    if line:
-                        self._parse_and_add(line)
+            # Quickly gulp the file contents into the byte buffer
+            with open(fname, mode="rb") as fin:
+                self._b = bytearray(fin.read())
 
-    def store_pickle(self, fname):
-        """ Store a DAWG in a Python pickle file """
-        # noinspection Restricted_Python_calls
-        with open(fname, "wb") as pf:
-            pickle.dump(self._nodes, pf, pickle.HIGHEST_PROTOCOL)
-
-    def load_pickle(self, fname):
-        """ Load a DAWG from a Python pickle file """
-        with self._lock:
-            if self._nodes is not None:
-                # Already loaded
-                return
-            with open(fname, "rb") as pf:
-                self._nodes = pickle.load(pf)
-
-    def num_nodes(self):
+    def num_nodes(self) -> int:
         """ Return a count of unique nodes in the DAWG """
-        return 0 if self._nodes is None else len(self._nodes)
+        return 0  # !!! TBD - maybe not required
 
-    def find(self, word):
+    def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
         nav = FindNavigator(word)
         self.navigate(nav)
         return nav.is_found()
 
-    def __contains__(self, word):
+    def __contains__(self, word: str) -> bool:
         """ Enable simple lookup syntax: "word" in dawgdict """
         return self.find(word)
 
-    def find_matches(self, pattern, sort=True):
+    def find_matches(self, pattern: str, sort: bool=True) -> List[str]:
         """Returns a list of words matching a pattern.
         The pattern contains characters and '?'-signs denoting wildcards.
         Characters are matched exactly, while the wildcards match any character.
@@ -195,7 +121,7 @@ class DawgDictionary:
         self.navigate(nav)
         return nav.result()
 
-    def find_permutations(self, rack, minlen=0):
+    def find_permutations(self, rack: str, minlen: int=0) -> List[str]:
         """Returns a list of legal permutations of a rack of letters.
         The list is sorted in descending order by permutation length.
         The rack may contain question marks '?' as wildcards, matching all letters.
@@ -226,132 +152,79 @@ class DawgDictionary:
         def done()
             called when the navigation is completed
         """
-        if self._nodes is None:
+        if self._b is None:
             # No graph: no navigation
             nav.done()
-            return
-        root = self._nodes[0]  # Start at the root
-        Navigation(nav).go(root)
+        else:
+            PackedNavigation(nav, self._b).go()
 
-    # noinspection PyMethodMayBeStatic
-    def resume_navigation(
-        self, nav: Navigator, prefix: str, nextnode: _Node, leftpart: str
-    ) -> None:
+    def resume_navigation(self, nav: Navigator, prefix: str, nextnode: int, leftpart: str) -> None:
         """Continue a previous navigation of the DAWG, using saved
         state information"""
-        Navigation(nav).resume(prefix, nextnode, leftpart)
+        assert self._b is not None
+        PackedNavigation(nav, self._b).resume(prefix, nextnode, leftpart)
 
 
 class Wordbase:
 
-    """Container for two singleton instances of the word database,
-    one for the main dictionary and the other for common words
-    """
+    """ Container for singleton instances of the supported dictionaries """
 
-    _dawg: Union[None, DawgDictionary, PackedDawgDictionary] = None
-    _dawg_common: Union[None, DawgDictionary, PackedDawgDictionary] = None
+    # Known dictionaries
+    DAWGS = [
+        "ordalisti",
+        "algeng",
+        "sowpods",
+        "TWL06",
+    ]
+
+    _dawg: Dict[str, PackedDawgDictionary] = dict()
 
     _lock = threading.Lock()
-    _lock_common = threading.Lock()
-
-    def __init__(self):
-        pass
 
     @staticmethod
     def _load_resource(resource):
-        """ Load a dictionary, from either a text file or a pickle file """
-        # Assumes that the appropriate lock has been acquired
-        # Compare the file times of the text version vs. the pickled version
+        """ Load a dictionary from a binary DAWG file """
         bname = os.path.abspath(os.path.join("resources", resource + ".bin.dawg"))
-        pname = os.path.abspath(os.path.join("resources", resource + ".dawg.pickle"))
-        fname = os.path.abspath(os.path.join("resources", resource + ".text.dawg"))
-        fname_t: Optional[float]
-        bname_t: Optional[float]
-        pname_t: Optional[float]
-        dawg: Union[DawgDictionary, PackedDawgDictionary]
-        try:
-            fname_t = os.path.getmtime(fname)
-        except os.error:
-            fname_t = None
-        try:
-            bname_t = os.path.getmtime(bname)
-        except os.error:
-            bname_t = None
-        try:
-            pname_t = os.path.getmtime(pname)
-        except os.error:
-            pname_t = None
-
-        if bname_t is not None and (fname_t is None or bname_t > fname_t):
-            # Load binary file if it exists and is newer than the text file
-            logging.info(
-                "Instance {0} loading DAWG from binary file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), bname
-                )
+        # Load packed binary file
+        logging.info(
+            "Instance {0} loading DAWG from binary file {1}".format(
+                os.environ.get("INSTANCE_ID", ""), bname
             )
-            # print("Loading binary DAWG")
-            t0 = time.time()
-            dawg = PackedDawgDictionary()
-            dawg.load(bname)
-            t1 = time.time()
-            logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
-        elif fname_t is not None and (pname_t is None or fname_t > pname_t):
-            # We have a newer text file (or no pickle): load it
-            logging.info(
-                "Instance {0} loading DAWG from text file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), fname
-                )
-            )
-            # print("Loading text DAWG")
-            t0 = time.time()
-            dawg = DawgDictionary()
-            dawg.load(fname)
-            t1 = time.time()
-            logging.info(
-                "Loaded {0} graph nodes in {1:.2f} seconds".format(
-                    dawg.num_nodes(), t1 - t0
-                )
-            )
-        else:
-            # Newer pickle file or no text file: load the pickle
-            logging.info(
-                "Instance {0} loading DAWG from pickle file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), pname
-                )
-            )
-            # print("Loading pickled DAWG")
-            t0 = time.time()
-            dawg = DawgDictionary()
-            dawg.load_pickle(pname)
-            t1 = time.time()
-            logging.info(
-                "Loaded {0} graph nodes in {1:.2f} seconds".format(
-                    dawg.num_nodes(), t1 - t0
-                )
-            )
-
-        # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
+        )
+        t0 = time.time()
+        dawg = PackedDawgDictionary()
+        dawg.load(bname)
+        t1 = time.time()
+        logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
         return dawg
 
     @staticmethod
     def dawg():
-        """ Return the main dictionary DAWG object, loading it if required """
-        with Wordbase._lock:
-            if Wordbase._dawg is None:
-                # Main dictionary
-                Wordbase._dawg = Wordbase._load_resource("ordalisti")
-            assert Wordbase._dawg is not None
-            return Wordbase._dawg
+        """ Return the main dictionary DAWG object, associated with the
+            current thread, i.e. the current user's locale  """
+        return Wordbase._dawg[current_vocabulary()]
 
     @staticmethod
     def dawg_common():
-        """ Return the common words DAWG object, loading it if required """
-        with Wordbase._lock_common:
-            if Wordbase._dawg_common is None:
-                # Common words
-                Wordbase._dawg_common = Wordbase._load_resource("algeng")
-            assert Wordbase._dawg_common is not None
-            return Wordbase._dawg_common
+        """ Return the common words DAWG object """
+        # !!! TODO: This is presently hardcoded for the Icelandic robot 'Amlóði'
+        return Wordbase._dawg["algeng"]
+
+    @staticmethod
+    def warmup() -> bool:
+        """ Called from GAE instance initialization; add warmup code here if needed """
+        return True
+
+    @staticmethod
+    def initialize() -> None:
+        """ Load all known dictionaries into memory """
+        with Wordbase._lock:
+            if not Wordbase._dawg:
+                for dawg in Wordbase.DAWGS:
+                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg)
+
+
+Wordbase.initialize()
 
 
 class Navigation:
@@ -657,95 +530,6 @@ class MatchNavigator(Navigator):
     def result(self):
         """ Return the list of results accumulated during the navigation """
         return self._result
-
-
-class PackedDawgDictionary:
-
-    """Encapsulates a DAWG dictionary that is initialized from a packed
-    binary file on disk and navigated as a byte buffer."""
-
-    def __init__(self) -> None:
-        # The packed byte buffer
-        self._b: Optional[bytearray] = None
-        # Lock to ensure that only one thread loads the dictionary
-        self._lock = threading.Lock()
-
-    def load(self, fname: str) -> None:
-        """ Load a packed DAWG from a binary file """
-        with self._lock:
-            # Ensure that we don't have multiple threads trying to load simultaneously
-            if self._b is not None:
-                # Already loaded
-                return
-            # Quickly gulp the file contents into the byte buffer
-            with open(fname, mode="rb") as fin:
-                self._b = bytearray(fin.read())
-
-    def num_nodes(self) -> int:
-        """ Return a count of unique nodes in the DAWG """
-        return 0  # !!! TBD - maybe not required
-
-    def find(self, word: str) -> bool:
-        """ Look for a word in the graph, returning True if it is found or False if not """
-        nav = FindNavigator(word)
-        self.navigate(nav)
-        return nav.is_found()
-
-    def __contains__(self, word: str) -> bool:
-        """ Enable simple lookup syntax: "word" in dawgdict """
-        return self.find(word)
-
-    def find_matches(self, pattern: str, sort: bool=True) -> List[str]:
-        """Returns a list of words matching a pattern.
-        The pattern contains characters and '?'-signs denoting wildcards.
-        Characters are matched exactly, while the wildcards match any character.
-        """
-        nav = MatchNavigator(pattern, sort)
-        self.navigate(nav)
-        return nav.result()
-
-    def find_permutations(self, rack: str, minlen: int=0) -> List[str]:
-        """Returns a list of legal permutations of a rack of letters.
-        The list is sorted in descending order by permutation length.
-        The rack may contain question marks '?' as wildcards, matching all letters.
-        Question marks should be used carefully as they can
-        yield very large result sets.
-        """
-        nav = PermutationNavigator(rack, minlen)
-        self.navigate(nav)
-        return nav.result()
-
-    def navigate(self, nav: Navigator) -> None:
-        """A generic function to navigate through the DAWG under
-        the control of a navigation object.
-
-        The navigation object should implement the following interface:
-
-        def push_edge(firstchar)
-            returns True if the edge should be entered or False if not
-        def accepting()
-            returns False if the navigator does not want more characters
-        def accepts(newchar)
-            returns True if the navigator will accept and 'eat' the new character
-        def accept(matched, final)
-            called to inform the navigator of a match and whether it is a final word
-        def pop_edge()
-            called when leaving an edge that has been navigated; returns False
-            if there is no need to visit other edges
-        def done()
-            called when the navigation is completed
-        """
-        if self._b is None:
-            # No graph: no navigation
-            nav.done()
-        else:
-            PackedNavigation(nav, self._b).go()
-
-    def resume_navigation(self, nav: Navigator, prefix: str, nextnode: int, leftpart: str) -> None:
-        """Continue a previous navigation of the DAWG, using saved
-        state information"""
-        assert self._b is not None
-        PackedNavigation(nav, self._b).resume(prefix, nextnode, leftpart)
 
 
 class PackedNavigation:

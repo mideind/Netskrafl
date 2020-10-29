@@ -118,9 +118,9 @@ import io
 
 from dawgdictionary import PackedDawgDictionary
 
-# The DAWG builder uses the collation (sorting) given by Alphabet.sortkey
-# This is by default the Icelandic sorting order
-from languages import IcelandicAlphabet, EnglishAlphabet, current_alphabet
+# The DAWG builder uses the collation (sorting) given by
+# the current locale setting, typically 'is_IS' or 'en_US'
+from languages import current_alphabet, set_locale
 
 
 # Type definitions
@@ -881,7 +881,7 @@ def run_test():
     """ Build a DAWG from the files listed """
     # This creates a DAWG from a single file named testwords.txt
     print("Starting DAWG build for testwords.txt")
-    db = DawgBuilder(encoding=IcelandicAlphabet.order)
+    db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
         ["testwords.txt"],  # Input files to be merged
@@ -897,11 +897,13 @@ def run_twl06():
     # This creates a DAWG from a single file named TWL06.txt,
     # the Scrabble Tournament Word List version 6
     print("Starting DAWG build for TWL06.txt")
-    db = DawgBuilder(encoding=EnglishAlphabet.order)
+    # Set the English-United States locale
+    set_locale("en_US")
+    db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
         ["TWL06.txt"],  # Input files to be merged
-        "TWL06",  # Output file - full name will be TWL06.text.dawg
+        "TWL06",  # Output file - full name will be TWL06.bin.dawg
         "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
@@ -913,11 +915,13 @@ def run_sowpods():
     # This creates a DAWG from a single file named sowpods.txt,
     # the combined European & U.S. English word list
     print("Starting DAWG build for sowpods.txt")
-    db = DawgBuilder(encoding=EnglishAlphabet.order)
+    # Set the generic English locale
+    set_locale("en")
+    db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
         ["sowpods.txt"],  # Input files to be merged
-        "sowpods",  # Output file - full name will be TWL06.text.dawg
+        "sowpods",  # Output file - full name will be sowpods.bin.dawg
         "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
@@ -933,7 +937,8 @@ def run_skrafl():
     # ordalisti.remove.txt (known errors) are removed.
     # The result is about 2.3 million words, generating >100,000 graph nodes
     print("Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
-    db = DawgBuilder(encoding=IcelandicAlphabet.order)
+    set_locale("is_IS")
+    db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
         ["ordalistimax15.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
@@ -957,7 +962,7 @@ def run_skrafl():
     # Process list of common words
 
     print("Starting DAWG build for list of common words")
-    db = DawgBuilder(encoding=IcelandicAlphabet.order)
+    db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(

@@ -32,7 +32,7 @@ import abc
 from random import SystemRandom
 
 from dawgdictionary import Wordbase
-from languages import TileSet, current_alphabet
+from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
 
 
 # Type definitions
@@ -282,22 +282,23 @@ class Bag:
         copy: Optional[Bag] = None,
         debug: bool = False,
     ) -> None:
-
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
+        self._tileset = tileset
         if copy is None:
             # Get a full bag from the requested tile set
+            assert tileset is not None
             if debug:
                 # Small bag for debugging endgame cases
                 self._tiles = "aaábdðefgiiíklmnnóprrsstuuúæ"
             else:
-                assert tileset is not None
                 self._tiles = tileset.full_bag()
             self._size = len(self._tiles)
         else:
             # Copy constructor: initialize from another Bag
             self._tiles = copy._tiles
             self._size = copy._size
+            self._tileset = copy._tileset
 
     def draw_tile(self):
         """ Draw a single tile from the bag """
@@ -335,14 +336,20 @@ class Bag:
         """ Does the bag contain enough tiles to allow exchange? """
         return self.num_tiles() >= Rack.MAX_TILES
 
+    @property
+    def alphabet(self) -> Alphabet:
+        """ Return the alphabet that is associated with this bag """
+        assert self._tileset is not None
+        return self._tileset.alphabet
+
     def subtract_board(self, board):
         """ Subtract all tiles on the board from the bag """
         board_tiles = "".join(tile for row, col, tile, letter in board.enum_tiles())
-        self._tiles = current_alphabet().string_subtract(self._tiles, board_tiles)
+        self._tiles = self.alphabet.string_subtract(self._tiles, board_tiles)
 
     def subtract_rack(self, rack):
         """ Subtract all tiles in the rack from the bag """
-        self._tiles = current_alphabet().string_subtract(self._tiles, rack)
+        self._tiles = self.alphabet.string_subtract(self._tiles, rack)
 
 
 class Rack:
@@ -425,7 +432,7 @@ class Rack:
         while len(tiles) < n and not bag.is_empty():
             tiles.append(bag.draw_tile())
         # Return the tiles sorted in alphabetical order
-        tiles.sort(key=current_alphabet().all_tiles.index)
+        tiles.sort(key=bag.alphabet.all_tiles.index)
         self._tiles = "".join(tiles)
 
 
@@ -660,7 +667,8 @@ class State:
     def display_bag(self, player: int) -> str:
         """ Returns the current bag plus the rack of the opponent """
         displaybag = self._bag.contents() + self.rack(1 - player)
-        sort_order = current_alphabet().all_tiles
+        alphabet = alphabet_for_locale(self.locale)
+        sort_order = alphabet.all_tiles
         return "".join(sorted(displaybag, key=sort_order.index))
 
     def is_game_over(self) -> bool:
@@ -898,25 +906,27 @@ class Move(MoveBase):
     # If an opponent challenges a valid move, the player gets a bonus
     INCORRECT_CHALLENGE_BONUS = 10
 
-    def __init__(self, word, row, col, horiz=True):
+    def __init__(self, word: str, row: int, col: int, horiz: bool=True) -> None:
         super(Move, self).__init__()
         # A list of squares covered by the play, i.e. actual tiles
         # laid down on the board
-        self._covers = []
+        self._covers: List[Cover] = []
         # Number of letters in word formed (this may be >= len(self._covers))
         self._numletters = 0 if word is None else len(word)
         # The word formed
         self._word = word
         # The tiles used to form the word. '?' tiles are followed
         # by the letter they represent.
-        self._tiles = None
+        self._tiles: Optional[str] = None
         # Starting row and column of word formed
         self._row = row
         self._col = col
         # Is the word horizontal or vertical?
         self._horizontal = horiz
         # Cached score of this move
-        self._score = None
+        self._score: Optional[int] = None
+        # Cached vocabulary DAWG
+        self._dawg = Wordbase.dawg()
 
     def set_tiles(self, tiles: str) -> None:
         """ Set the tiles string once it is known """
@@ -940,7 +950,7 @@ class Move(MoveBase):
         """ Return the starting row of this move """
         return self._row
 
-    def covers(self):
+    def covers(self) -> List[Cover]:
         """ Return the list of covered squares """
         return self._covers
 
@@ -974,7 +984,7 @@ class Move(MoveBase):
             column number + row letter for vertical ones """
         return Board.short_coordinate(self._horizontal, self._row, self._col)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """ Return the standard move notation of a coordinate
             followed by the word formed """
         return self.short_coordinate() + ":'" + self._word + "'"
@@ -1181,7 +1191,7 @@ class Move(MoveBase):
         def is_valid_word(word):
             """ Check whether a word is in the dictionary,
                 unless this is a manual game """
-            return True if state.manual_wordcheck else word in Wordbase.dawg()
+            return True if state.manual_wordcheck else word in self._dawg
 
         # Check whether the word is in the dictionary
         if not is_valid_word(self._word):
@@ -1229,7 +1239,7 @@ class Move(MoveBase):
         invalid: List[str] = []
 
         # Check whether the main word is in the dictionary
-        if self._word not in Wordbase.dawg():
+        if self._word not in self._dawg:
             invalid.append(self._word)
 
         # Check all cross words formed by the new tiles
@@ -1246,7 +1256,7 @@ class Move(MoveBase):
                     + c.letter
                     + board.letters_right(c.row, c.col)
                 )
-            if len(cross) > 1 and cross not in Wordbase.dawg():
+            if len(cross) > 1 and cross not in self._dawg:
                 invalid.append(cross)
 
         return invalid  # Returns an empty list if all words are valid

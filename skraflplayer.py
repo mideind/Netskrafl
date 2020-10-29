@@ -77,7 +77,7 @@ from random import randint
 from dawgdictionary import Wordbase
 from languages import Alphabet, current_alphabet
 from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
-from dawgdictionary import _Node, Navigator
+from dawgdictionary import Navigator
 
 
 # Type definitions
@@ -148,8 +148,6 @@ class Axis:
     for an AutoPlayer.
     """
 
-    DAWG = Wordbase.dawg()
-
     def __init__(self, autoplayer: AutoPlayer, index: int, horizontal: bool) -> None:
 
         self._autoplayer = autoplayer
@@ -159,6 +157,7 @@ class Axis:
         self._rack = autoplayer.rack()
         # Bit pattern representing empty squares on this axis
         self._empty_bits = 0
+        self._dawg = Wordbase.dawg()
 
     def is_horizontal(self) -> bool:
         """ Is this a horizontal (row) axis? """
@@ -235,7 +234,7 @@ class Axis:
                     # Nontrivial cross-check: Query the word database
                     # for words that fit this pattern
                     # Don't need a sorted result
-                    matches = self.DAWG.find_matches(query, sort=False)
+                    matches = self._dawg.find_matches(query, sort=False)
                     bits = 0
                     if matches:
                         cix = len(above) if above else 0
@@ -267,21 +266,21 @@ class Axis:
                 ix -= 1
             # Use the ExtendRightNavigator to find valid words with this left part
             nav = LeftFindNavigator(leftpart)
-            self.DAWG.navigate(nav)
+            self._dawg.navigate(nav)
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
                 _, prefix, next_node = ns
                 # assert matched == leftpart
                 rnav = ExtendRightNavigator(self, index, self._rack)
-                self.DAWG.resume_navigation(rnav, prefix, next_node, leftpart)
+                self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
             return
 
         # We are not completing an existing left part
         # Begin by extending an empty prefix to the right, i.e. placing
         # tiles on the anchor square itself and to its right
         rnav = ExtendRightNavigator(self, index, self._rack)
-        self.DAWG.navigate(rnav)
+        self._dawg.navigate(rnav)
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
@@ -291,7 +290,7 @@ class Axis:
                 if lp_list is not None:
                     for leftpart, rack_leave, prefix, next_node in lp_list:
                         rnav = ExtendRightNavigator(self, index, rack_leave)
-                        self.DAWG.resume_navigation(rnav, prefix, next_node, leftpart)
+                        self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
 
     def generate_moves(self, lpn):
         """Find all valid moves on this axis by attempting to place tiles
@@ -826,7 +825,8 @@ class AutoPlayer_Common(AutoPlayer):
         """ From a sorted list of >1 scored candidates, pick a move to make """
 
         num_candidates = len(scored_candidates)
-        common = Wordbase.dawg_common()  # List of playable common words
+        # List of playable common words
+        common = Wordbase.dawg_common()
         playable_candidates: List[Tuple[MoveBase, int]] = []
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
