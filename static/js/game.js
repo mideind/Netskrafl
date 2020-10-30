@@ -179,22 +179,6 @@ var Game = (function() {
 
   var GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
-  // Original Icelandic bag
-  var OLD_TILESCORE = {
-    'a': 1, 'á': 4, 'b': 6, 'd': 4, 'ð': 2, 'e': 1, 'é': 6, 'f': 3, 'g': 2,
-    'h': 3, 'i': 1, 'í': 4, 'j': 5, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 3,
-    'ó': 6, 'p': 8, 'r': 1, 's': 1, 't': 1, 'u': 1, 'ú': 8, 'v': 3, 'x': 10,
-    'y': 7, 'ý': 9, 'þ': 4, 'æ': 5, 'ö': 7, '?': 0
-  };
-
-  // New Icelandic bag
-  var NEW_TILESCORE = {
-    'a': 1, 'á': 3, 'b': 5, 'd': 5, 'ð': 2, 'e': 3, 'é': 7, 'f': 3, 'g': 3,
-    'h': 4, 'i': 1, 'í': 4, 'j': 6, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 5,
-    'ó': 3, 'p': 5, 'r': 1, 's': 1, 't': 2, 'u': 2, 'ú': 4, 'v': 5, 'x': 10,
-    'y': 6, 'ý': 5, 'þ': 7, 'æ': 4, 'ö': 6, '?': 0
-  };
-
   var WORDSCORE = [
     "311111131111113",
     "121111111111121",
@@ -260,6 +244,10 @@ var Game = (function() {
     this.autoplayer = [false, false];
     this.scores = [0, 0];
     this.bag = "";
+    this.tileScores = {};
+    this.locale = "is_IS";
+    this.alphabet = "";
+    this.boardType = "standard";
     this.stats = null; // Game review statistics
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
@@ -295,6 +283,10 @@ var Game = (function() {
     this.newmoves = undefined;
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
+    this.tileScores = game.tile_scores;
+    this.locale = game.locale;
+    this.alphabet = game.alphabet;
+    this.boardType = game.board_type;
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)
@@ -344,7 +336,7 @@ var Game = (function() {
   };
 
   Game.prototype.tilescore = function(tile) {
-    return this.newbag ? NEW_TILESCORE[tile] : OLD_TILESCORE[tile];
+    return this.tileScores[tile];
   };
 
   Game.prototype.loadGames = function() {

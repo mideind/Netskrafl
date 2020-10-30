@@ -1490,6 +1490,10 @@ class Game:
         reply["player"] = player_index  # Can be None if the game is over
         reply["newbag"] = self.new_bag()
         reply["manual"] = self.manual_wordcheck()
+        reply["locale"] = self.locale
+        reply["alphabet"] = self.tileset.alphabet.order
+        reply["tile_scores"] = self.tileset.scores
+        reply["board_type"] = self.board_type
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()

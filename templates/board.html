@@ -531,9 +531,11 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
 {% endfor %}
 {% if game.is_over() %}
 {% for m in game.get_final_adjustments() %}
-      appendMove({{ m[0] }}, "{{ m[1][0] }}", "{{ m[1][1] }}", {{ m[1][2] }});
+{%    set m0, m1 = m[0], m[1] %}
+{%    set m10, m11, m12 = m1[0], m1[1], m1[2] %}
+      appendMove({{ m0 }}, "{{ m10 }}", "{{ m11 }}", {{ m12 }});
 {% endfor %}
-      gameOver = true; // Make sure that the gameOver variable is set no matter what
+      gameOver = true; /* Make sure that the gameOver variable is set no matter what */
 {% endif %}
    }
 
@@ -603,6 +605,26 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       return {{ "true" if game.manual_wordcheck() else "false" }};
    }
 
+   function gameAlphabet() {
+      /* Return the alphabet used in the game, as a string */
+      return "{{ game.tileset.alphabet.order }}";
+   }
+
+   function gameTilescores() {
+      /* Return the tile score dict for this game */
+      return {{ game.tileset.scores | tojson }};
+   }
+
+   function gameLocale() {
+      /* Return the locale used in the game, for example 'is_IS' or 'en_US' */
+      return "{{ game.locale }}";
+   }
+
+   function gameBoardType() {
+      /* Return the board type in the game, for example 'standard' */
+      return "{{ game.board_type }}";
+   }
+
    /* Array of supported emoticons in chat */
    // Remember to change faq.html if this changes
    var emoticons = Array(
@@ -644,7 +666,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
          per player and the elapsed time so far for each player in seconds */
       return {
          duration: {{ time_info.duration }},
-         elapsed: [{{ time_info.elapsed[0] }}, {{ time_info.elapsed[1] }}]
+{%  set ti0 = time_info.elapsed[0] %}
+{%  set ti1 = time_info.elapsed[1] %}
+         elapsed: [{{ ti0 }}, {{ ti1 }}]
       };
    }
 
@@ -684,8 +708,9 @@ b<b>æ</b> fæ hæ læ næ pæ ræ sæ
       initFirebaseListener("{{ firebase_token }}");
       initPresence(userId());
 {% endif %}
-      scoreLeft = {{ game.final_scores()[0] }};
-      scoreRight = {{ game.final_scores()[1] }};
+{%  set fsc0, fsc1 = game.final_scores() %}
+      scoreLeft = {{ fsc0 }};
+      scoreRight = {{ fsc1 }};
 {% if user and game.is_overdue() and not game.my_turn(user.id()) %}
       // Display option to force opponent to resign
       $("#force-resign").css("display", "inline");
