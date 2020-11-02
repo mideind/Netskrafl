@@ -951,7 +951,7 @@ def run_skrafl():
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of DAWG
-    dawg = PackedDawgDictionary()
+    dawg = PackedDawgDictionary(current_alphabet())
     fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)
@@ -975,7 +975,7 @@ def run_skrafl():
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of DAWG for common words
-    dawg = PackedDawgDictionary()
+    dawg = PackedDawgDictionary(current_alphabet())
     fpath = os.path.abspath(os.path.join("resources", "algeng.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)

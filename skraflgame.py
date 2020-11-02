@@ -32,6 +32,7 @@ from typing import (
     Set,
     Tuple,
     NamedTuple,
+    Iterator,
     Iterable,
     cast,
 )
@@ -42,9 +43,12 @@ import logging
 
 from random import randint
 from datetime import datetime, timedelta
+from itertools import groupby
 
 from cache import memcache
 
+from languages import Alphabet, OldTileSet, NewTileSet, vocabulary_for_locale
+from dawgdictionary import Wordbase
 from skraflmechanics import (
     State,
     Board,
@@ -62,7 +66,6 @@ from skraflmechanics import (
     DetailTuple,
 )
 from skraflplayer import AutoPlayer
-from languages import Alphabet, OldTileSet, NewTileSet
 from skrafldb import (
     PrefItem,
     PrefsDict,
@@ -1069,6 +1072,15 @@ class Game:
     def tileset(self):
         """ Return the tile set used in this game """
         return Game.tileset_from_prefs(self._preferences)
+
+    @property
+    def two_letter_words(self) -> Tuple[Iterator[Tuple[str, Iterator[str]]], Iterator[Tuple[str, Iterator[str]]]]:
+        """ Return the two-letter list that applies to this game,
+            as a tuple of two lists, one grouped by first letter, and
+            the other grouped by the second (last) letter """
+        vocab = vocabulary_for_locale(self.locale)
+        tw0, tw1 = Wordbase.two_letter_words(vocab)
+        return groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
 
     @property
     def net_moves(self) -> List[MoveTuple]:

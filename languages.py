@@ -557,6 +557,11 @@ def alphabet_for_locale(lc: str) -> Alphabet:
     return dget(ALPHABETS, lc, default_locale.alphabet)
 
 
+def vocabulary_for_locale(lc: str) -> str:
+    """ Return the identifier of the vocabulary for the given locale """
+    return dget(VOCABULARIES, lc, default_locale.vocabulary)
+
+
 def set_locale(lc: str) -> None:
     """ Set the current thread's locale context """
     locale = Locale(

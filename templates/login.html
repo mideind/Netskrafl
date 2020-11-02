@@ -12,10 +12,6 @@
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
 
-<!-- Google OAuth sign-in -->
-<meta name="google-signin-scope" content="profile email openid">
-<meta name="google-signin-client_id" content="{{ client_id | safe }}">
-
 {% endblock %}
 
 {% block styles %}
@@ -63,7 +59,7 @@
       hér til vinstri.
    </div>
    <div class="login-btn-large">
-      <div class="g-signin2" id="g-signin2-large" data-onsuccess="onSignIn"></div>
+      <div class="signin" id="signin-large">Innskrá</div>
    </div>
 </div>
 
@@ -76,8 +72,7 @@
       Skemmtilegt | skerpandi | ókeypis
    </div>
    <div class="login-btn-small">
-      <div class="g-signin2" id="g-signin2-small" data-onsuccess="onSignIn"
-         style="display:inline-block; margin-top:6px"></div>
+      <div class="signin" id="signin-small">Innskrá</div>
    </div>
 </div>
 
@@ -87,110 +82,14 @@
 
 <script>
 
-var placeholder = 0;
-
-function renderButton() {
-   // Render the login buttons, i.e. for both large and small UI forms
-   var paramsLarge = {
-      'width': 220,
-      'height': 48,
-      'longtitle': true,
-      'theme': 'dark',
-      'onsuccess': onSignIn,
-      'onfailure': onFailure
-   };
-   gapi.signin2.render('g-signin2-large', paramsLarge);
-   // Translate button text to Icelandic
-   $('#g-signin2-large span[id^="not_signed_"]').text("Innskrá með Google");
-   $('#g-signin2-large span[id^="connected"]').text("Skrái þig inn...");
-   var paramsSmall = {
-      'width': 172,
-      'height': 44,
-      'longtitle': false,
-      'theme': 'dark',
-      'onsuccess': onSignIn,
-      'onfailure': onFailure
-   };
-   gapi.signin2.render('g-signin2-small', paramsSmall);
-   // Translate button text to Icelandic
-   $('#g-signin2-small span[id^="not_signed_"]').text("Innskrá");
-   $('#g-signin2-small span[id^="connected"]').text("Skrái...");
-}
-
-function getCookie(name) {
-   var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-   return v ? v[2] : null;
-}
-
-function oauth2callback(idToken, csrfToken) {
-   // POST to oauth2 session login endpoint
-   return $.ajax(
-      {
-         type: 'POST',
-         url: "/oauth2callback",
-         data: {
-            idToken: idToken,
-            csrfToken: csrfToken,
-         }
-      }
-   );
-}
-
-function onFailure(error) {
-   // Called when something goes wrong in the Google sign-in process
-   console.log(error);
-}
-
-function onSignIn(googleUser) {
-   // Called when a user has successfully logged in using the Google sign-in process
-   var idToken = googleUser.getAuthResponse().id_token;
-   /*
-   var profile = googleUser.getBasicProfile();
-   var id = profile.getId();
-   var name = profile.getName();
-   var email = profile.getEmail();
-   console.log('ID: ' + id);
-   console.log('Name: ' + name);
-   console.log('Email: ' + email);
-   console.log("ID Token: " + idToken);
-   */
-   // Session login endpoint is queried and the session cookie is set.
-   // CSRF token should be sent along with request.
-   var csrfToken = getCookie('csrfToken');
-   oauth2callback(idToken, csrfToken)
-      .then(
-         function(data, textStatus, jqXHR) {
-            // Redirect to initial URL on success
-            if (data.status === "success") {
-               window.location.assign("{{ main_url }}?fromlogin=1");
-            }
-            else {
-               // An error occurred
-               console.log("Error from oauth2callback(): " + data.msg);
-               window.location.assign("{{ url_for('login_error') }}");
-            }
-         },
-         function(jqXHR, textStatus, errorThrown) {
-            // Refresh page on error.
-            // In all cases, client side state should be lost due to in-memory
-            // persistence.
-            console.log("Error from oauth2callback(): " + errorThrown);
-            window.location.assign("{{ url_for('login_error') }}");
-         }
-      );
-}
-
 function initMain() {
-   // For mysterious reasons the presence of
-   // this function seems to be required, at least on Chrome
-   placeholder = 1; // Hack to prevent the browser from optimizing this function away
+   $("div.signin").click(
+      function() { window.location = "{{ url_for('login') }}"; }
+   );
 }
 
 $(document).ready(initMain);
 
 </script>
-
-<!-- This script must be at the end -->
-<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
 
 {% endblock %}

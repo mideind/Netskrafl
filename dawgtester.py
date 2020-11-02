@@ -47,7 +47,7 @@ class DawgTester:
         print("Author: Vilhjálmur Þorsteinsson\n")
 
         t0 = time.time()
-        self._dawg = PackedDawgDictionary()
+        self._dawg = PackedDawgDictionary(IcelandicAlphabet)
         fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
         self._dawg.load(fpath)
         t1 = time.time()

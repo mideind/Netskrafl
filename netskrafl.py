@@ -69,8 +69,7 @@ from flask import (
 from werkzeug.urls import url_parse
 from werkzeug.wrappers import Response as WerkzeugResponse
 
-from google.oauth2 import id_token  # type: ignore
-from google.auth.transport import requests as google_requests  # type: ignore
+from authlib.integrations.flask_client import OAuth  # type: ignore
 
 import requests
 
@@ -129,7 +128,6 @@ app.config["DEBUG"] = running_local
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
 
-
 def ndb_wsgi_middleware(wsgi_app):
     """ Returns a wrapper for the original WSGI app """
 
@@ -169,11 +167,25 @@ app.config.update(
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
+    # Add Google OAuth2 client id and secret
+    GOOGLE_CLIENT_ID=os.environ.get("CLIENT_ID", ""),
+    GOOGLE_CLIENT_SECRET=os.environ.get("CLIENT_SECRET", ""),
 )
 
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
     app.secret_key = f.read()
+
+# Initialize the OAuth wrapper
+OAUTH_CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    server_metadata_url=OAUTH_CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
 # exceptions, run the AutoPlayer move generator serially and exclusively
@@ -316,10 +328,10 @@ def auth_required(**error_kwargs) -> Callable[[RouteType], RouteType]:
                 # (cookies or popups are probably not allowed)
                 if request.args.get("fromlogin", "") == "1":
                     return redirect(url_for("login_error"))
-                # Not already coming from the login page:
+                # Not already coming from the greeting page:
                 # redirect to it
                 login_url = error_kwargs.get("login_url")
-                return redirect(login_url or url_for("login"))
+                return redirect(login_url or url_for("greet"))
             # We have an authenticated user: store in g.user
             # and call the route function
             g.user = u
@@ -2388,13 +2400,19 @@ def newbag() -> ResponseType:
     return render_template("nshelp.html", user=user, tab="newbag")
 
 
+@app.route("/greet")
+def greet() -> ResponseType:
+    """ Handler for the greeting page """
+    return render_template("login.html")
+
+
 @app.route("/login")
 def login() -> ResponseType:
-    """ Handler for the login & greeting page """
-    main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
+    """ Handler for the login sequence """
     if "user" in session:
         del session["user"]
-    return render_template("login.html", main_url=main_url)
+    redirect_uri = url_for('oauth2callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
 
 
 @app.route("/login_error")
@@ -2411,34 +2429,16 @@ def logout() -> ResponseType:
     return redirect(url_for("login"))
 
 
-@app.route("/oauth2callback", methods=["POST"])
+@app.route("/oauth2callback")
 def oauth2callback() -> ResponseType:
     """The OAuth2 login flow POSTs to this callback when a user has
     signed in using a Google Account"""
 
-    if not _CLIENT_ID:
-        # Something is wrong in the internal setup of the server
-        # (environment variable probably missing)
-        # 500 - Internal server error
-        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"})
-
-    token = request.form.get("idToken", "")
-    csrf_token = request.form.get("csrfToken", "")
-
-    if not token:
-        # No authentication token included in the request
-        # 400 - Bad Request
-        return jsonify({"status": "invalid", "msg": "Missing token"})
-
-    # !!! TODO: Add CSRF verification
-
+    token = oauth.google.authorize_access_token()
+    idinfo = oauth.google.parse_id_token(token)
     account = None
     userid = None
     try:
-        # Verify the token and extract its claims
-        idinfo = id_token.verify_oauth2_token(
-            token, google_requests.Request(), _CLIENT_ID
-        )
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
@@ -2453,11 +2453,11 @@ def oauth2callback() -> ResponseType:
         userid = User.login_by_account(account, name, email)
     except ValueError as e:
         # Invalid token
-        return jsonify({"status": "invalid", "msg": str(e)})
+        userid = None
 
     if not userid:
         # Unable to obtain the user id for some reason
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"})
+        return redirect(url_for("login_error"))
 
     # Authentication complete; user id obtained
     session["user"] = {
@@ -2470,7 +2470,8 @@ def oauth2callback() -> ResponseType:
             account, userid, email, name
         )
     )
-    return jsonify({"status": "success"})
+    main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
+    return redirect(main_url)
 
 
 @app.route("/service-worker.js")

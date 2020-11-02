@@ -3246,38 +3246,44 @@ div.twoletter {
 div.twoletter-area {
    position: absolute;
    top: 0; right: 0;
-   padding: 14px;
-   text-align: right;
    height: 100%;
+   font-size: 15px;
+   line-height: 23px;
+   text-align: right;
+   padding-left: 14px;
+   padding-right: 10px;
+   margin-top: 6px;
+   margin-bottom: 6px;
    cursor: pointer;
 }
 
-div.twoletter-area span {
-   font-size: 15px;
-   line-height: 23px;
-   padding-bottom: 4px;
-   margin-top: 3px;
-   margin-bottom: 3px;
-}
-
-div.twoletter-area.with-clock span {
+div.twoletter-area.with-clock {
    font-size: 13px;
    line-height: 21px;
-   padding-bottom: 4px;
    margin-top: 3px;
    margin-bottom: 3px;
 }
 
-div.twoletter-area span b {
+div.twoletter-area#two-2 {
+   visibility: hidden;
+}
+
+div.twoletter-group {
+   display: inline-block;
+   margin-right: 6px;
+}
+
+div.twoletter-word {
+   display: inline-block;
+   padding-right: 4px;
+}
+
+div.twoletter-word b {
    background-color: darken(@freshtile, 5%);
    color: white;
    padding-left: 2px;
    padding-right: 2px;
    border-radius: 2px;
-}
-
-div.twoletter-area#two-2 {
-   visibility: hidden;
 }
 
 div.games-item {
