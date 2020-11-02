@@ -51,6 +51,7 @@ import random
 
 from functools import wraps
 from datetime import datetime, timedelta
+from logging.config import dictConfig
 
 from flask import (
     Flask,
@@ -70,6 +71,7 @@ from werkzeug.urls import url_parse
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from authlib.integrations.flask_client import OAuth  # type: ignore
+from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
 import requests
 
@@ -117,11 +119,29 @@ ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 RouteType = Callable[[], ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 
-# Main Flask application instance
-app = Flask(__name__)
-
+# Are we running in a local development environment or on a GAE server?
 running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
+if running_local:
+    # Configure logging
+    dictConfig({
+        'version': 1,
+        'formatters': {'default': {
+            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+        }},
+        'handlers': {'wsgi': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://flask.logging.wsgi_errors_stream',
+            'formatter': 'default'
+        }},
+        'root': {
+            'level': 'INFO',
+            'handlers': ['wsgi']
+        }
+    })
+
+# Main Flask application instance
+app = Flask(__name__)
 app.config["DEBUG"] = running_local
 
 
@@ -142,8 +162,35 @@ def ndb_wsgi_middleware(wsgi_app):
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 
+# client_id and client_secretfor Google Sign-In
+_CLIENT_ID = os.environ.get("CLIENT_ID", "")
+_CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
+
+assert _CLIENT_ID, "CLIENT_ID environment variable not set"
+assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
+
+# Flask configuration
+# Make sure that the Flask session cookie is secure (i.e. only used
+# with HTTPS unless we're running on a development server) and
+# invisible from JavaScript (HTTPONLY).
+# Also, we set SameSite to 'Strict', indicating that our session cookie
+# should only sent back from the client during sessions on our site,
+# i.e. not when navigating to it from other sites.
+flask_config = dict(
+    SESSION_COOKIE_SECURE=not running_local,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Strict",
+    # SESSION_COOKIE_DOMAIN="netskrafl.is",
+    # SERVER_NAME="netskrafl.is",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=31),
+    # Add Google OAuth2 client id and secret
+    GOOGLE_CLIENT_ID=_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET=_CLIENT_SECRET,
+)
+
 if running_local:
     logging.info("Netskrafl app running with DEBUG set to True")
+    # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library
     import google.cloud.logging  # type: ignore
@@ -154,27 +201,12 @@ else:
     # by default this captures all logs at INFO level and higher
     logging_client.setup_logging()
 
-# Make sure that the Flask session cookie is secure (i.e. only used
-# with HTTPS unless we're running on a development server) and
-# invisible from JavaScript (HTTPONLY).
-# Also, we set SameSite to 'Strict', indicating that our session cookie
-# should only sent back from the client during sessions on our site,
-# i.e. not when navigating to it from other sites.
-app.config.update(
-    SESSION_COOKIE_SECURE=not running_local,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Strict",
-    # SESSION_COOKIE_DOMAIN="netskrafl.is",
-    # SERVER_NAME="netskrafl.is",
-    PERMANENT_SESSION_LIFETIME=timedelta(days=31),
-    # Add Google OAuth2 client id and secret
-    GOOGLE_CLIENT_ID=os.environ.get("CLIENT_ID", ""),
-    GOOGLE_CLIENT_SECRET=os.environ.get("CLIENT_SECRET", ""),
-)
-
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
     app.secret_key = f.read()
+
+# Load the Flask configuration
+app.config.update(**flask_config)
 
 # Initialize the OAuth wrapper
 OAUTH_CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
@@ -207,9 +239,6 @@ _SINGLE_PAGE_UI = False
 # App Engine (and Firebase) project id
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
 
-# Client_id for Google Sign-In
-_CLIENT_ID = os.environ.get("CLIENT_ID", "")
-
 # Firebase configuration
 _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
@@ -217,7 +246,6 @@ _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
 # Valid token issuers for OAuth2 login
 _VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
-assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _PROJECT_ID, "PROJECT_ID environment variable not set"
 assert _FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
 assert _FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
@@ -297,7 +325,7 @@ def session_user() -> Optional[User]:
     """Return the user who is authenticated in the current session, if any.
     This can be called within any Flask request."""
     u = None
-    user = session.get("user")
+    user = session.get("userid")
     if user is not None:
         userid = user.get("id")
         u = User.load_if_exists(userid)
@@ -1708,7 +1736,7 @@ class UserForm:
         # credentials. The login() handler clears the server-side
         # user cookie, so there is no need for an intervening redirect
         # to logout().
-        self.logout_url = url_for("login")
+        self.logout_url = url_for("logout")
         if usr:
             self.init_from_user(usr)
         else:
@@ -2409,8 +2437,8 @@ def greet() -> ResponseType:
 @app.route("/login")
 def login() -> ResponseType:
     """ Handler for the login sequence """
-    if "user" in session:
-        del session["user"]
+    session.pop("userid", None)
+    session.pop("user", None)
     redirect_uri = url_for('oauth2callback', _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -2424,9 +2452,9 @@ def login_error() -> ResponseType:
 @app.route("/logout")
 def logout() -> ResponseType:
     """ Log the user out """
-    if "user" in session:
-        del session["user"]
-    return redirect(url_for("login"))
+    session.pop("userid", None)
+    session.pop("user", None)
+    return redirect(url_for("greet"))
 
 
 @app.route("/oauth2callback")
@@ -2434,11 +2462,12 @@ def oauth2callback() -> ResponseType:
     """The OAuth2 login flow POSTs to this callback when a user has
     signed in using a Google Account"""
 
-    token = oauth.google.authorize_access_token()
-    idinfo = oauth.google.parse_id_token(token)
     account = None
     userid = None
+    idinfo = None
     try:
+        token = oauth.google.authorize_access_token()
+        idinfo = oauth.google.parse_id_token(token)
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
@@ -2454,15 +2483,20 @@ def oauth2callback() -> ResponseType:
     except ValueError as e:
         # Invalid token
         userid = None
+    except MismatchingStateError as e:
+        # Something is wrong with the CSRF token
+        logging.warning(f"oauth2callback(): {e}")
+        userid = None
 
     if not userid:
         # Unable to obtain the user id for some reason
         return redirect(url_for("login_error"))
 
     # Authentication complete; user id obtained
-    session["user"] = {
+    session["userid"] = {
         "id": userid,
     }
+    session["user"] = idinfo
     session.permanent = True
     logging.info(
         "oauth2callback() successfully recognized "

@@ -1215,6 +1215,52 @@ div.modal-close#chat-send {
    color: white;
 }
 
+div.twoletter {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme4;
+   overflow: hidden;
+   z-index: 3;
+}
+
+div.twoletter-area {
+   position: absolute;
+   top: 0; right: 0;
+   height: 100%;
+   font-size: 15px;
+   line-height: 24px;
+   text-align: right;
+   padding-left: 14px;
+   padding-right: 10px;
+   margin-top: 12px;
+   cursor: pointer;
+}
+
+div.twoletter-area#two-2 {
+   visibility: hidden;
+}
+
+div.twoletter-group {
+   display: inline-block;
+   margin-right: 5px;
+}
+
+div.twoletter-word {
+   display: inline-block;
+   padding-right: 4px;
+}
+
+div.twoletter-word b {
+   background-color: darken(@freshtile, 5%);
+   color: white;
+   padding-left: 2px;
+   padding-right: 2px;
+   border-radius: 2px;
+}
+
 span.statsbutton {
    display: none;
 }
@@ -3067,6 +3113,21 @@ div.help-container {
    padding-right: 24px;
 }
 
+div.twoletter-area {
+   font-size: 14px;
+   line-height: 20px;
+}
+
+div.twoletter-area.with-clock {
+   font-size: 13px;
+   line-height: 21px;
+   margin-top: 3px;
+}
+
+div.twoletter-word {
+   padding-right: 3px;
+}
+
 } /* media min-width: 768px */
 
 /* ================= END OF MEDIA-SPECIFIC STYLE ADJUSTMENTS =================== */
@@ -3230,60 +3291,6 @@ div.fairplay {
    width: 100%;
    text-align: center;
    color: @freshtile;
-}
-
-div.twoletter {
-   position: absolute;
-   top: 0px;
-   left: 0px;
-   width: 100%;
-   height: 100%;
-   background-color: @theme4;
-   overflow: hidden;
-   z-index: 3;
-}
-
-div.twoletter-area {
-   position: absolute;
-   top: 0; right: 0;
-   height: 100%;
-   font-size: 15px;
-   line-height: 23px;
-   text-align: right;
-   padding-left: 14px;
-   padding-right: 10px;
-   margin-top: 6px;
-   margin-bottom: 6px;
-   cursor: pointer;
-}
-
-div.twoletter-area.with-clock {
-   font-size: 13px;
-   line-height: 21px;
-   margin-top: 3px;
-   margin-bottom: 3px;
-}
-
-div.twoletter-area#two-2 {
-   visibility: hidden;
-}
-
-div.twoletter-group {
-   display: inline-block;
-   margin-right: 6px;
-}
-
-div.twoletter-word {
-   display: inline-block;
-   padding-right: 4px;
-}
-
-div.twoletter-word b {
-   background-color: darken(@freshtile, 5%);
-   color: white;
-   padding-left: 2px;
-   padding-right: 2px;
-   border-radius: 2px;
 }
 
 div.games-item {

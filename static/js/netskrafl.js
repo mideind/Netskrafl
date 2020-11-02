@@ -299,7 +299,7 @@ var reloadInterval = null;
 function reloadPage() {
    window.clearInterval(reloadInterval);
    reloadInterval = null;
-   window.location.reload(true); // Bypass cache
+   location.reload();
 }
 
 function calcTimeToGo(player) {

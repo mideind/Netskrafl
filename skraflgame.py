@@ -84,12 +84,7 @@ StatsDict = Dict[str, Union[str, int, float, Tuple[int, int]]]
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = NamedTuple(
     "MoveTuple",
-    [
-        ("player", int),
-        ("move", MoveBase),
-        ("rack", str),
-        ("ts", datetime),
-    ],
+    [("player", int), ("move", MoveBase), ("rack", str), ("ts", datetime),],
 )
 
 
@@ -1074,13 +1069,19 @@ class Game:
         return Game.tileset_from_prefs(self._preferences)
 
     @property
-    def two_letter_words(self) -> Tuple[Iterator[Tuple[str, Iterator[str]]], Iterator[Tuple[str, Iterator[str]]]]:
+    def two_letter_words(
+        self,
+    ) -> Tuple[List[Tuple[str, List[str]]], List[Tuple[str, List[str]]]]:
         """ Return the two-letter list that applies to this game,
             as a tuple of two lists, one grouped by first letter, and
             the other grouped by the second (last) letter """
         vocab = vocabulary_for_locale(self.locale)
         tw0, tw1 = Wordbase.two_letter_words(vocab)
-        return groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+        gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+        return (
+            [(key, list(grp)) for key, grp in gr0],
+            [(key, list(grp)) for key, grp in gr1],
+        )
 
     @property
     def net_moves(self) -> List[MoveTuple]:
