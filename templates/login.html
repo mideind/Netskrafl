@@ -58,9 +58,7 @@
       smella á <a href="{{ url_for('help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
       hér til vinstri.
    </div>
-   <div class="login-btn-large">
-      <div class="signin" id="signin-large">Innskrá</div>
-   </div>
+   <div class="login-btn-large">Innskrá <span class="glyphicon glyphicon-play"></span></div>
 </div>
 
 <div class="loginform-small">
@@ -71,9 +69,7 @@
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
-   <div class="login-btn-small">
-      <div class="signin" id="signin-small">Innskrá</div>
-   </div>
+   <div class="login-btn-small">Innskrá</div>
 </div>
 
 {% endblock %}
@@ -83,9 +79,12 @@
 <script>
 
 function initMain() {
-   $("div.signin").click(
-      function() { window.location = "{{ url_for('login') }}"; }
-   );
+   var loginFunc = function(ev) {
+      $(ev.currentTarget).html("Skrái þig inn...");
+      window.location = "{{ url_for('login') }}";
+   };
+   $("div.login-btn-small").click(loginFunc);
+   $("div.login-btn-large").click(loginFunc);
 }
 
 $(document).ready(initMain);
