@@ -95,7 +95,9 @@ def _request(*args, **kwargs) -> Tuple[httplib2.Response, str]:
     assert False, "Unexpected fall out of loop in firebase._request()"
 
 
-def _firebase_put(path: str, message: Optional[str]=None) -> Tuple[httplib2.Response, str]:
+def _firebase_put(
+    path: str, message: Optional[str] = None
+) -> Tuple[httplib2.Response, str]:
     """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
@@ -164,7 +166,8 @@ def send_message(message: Optional[Dict], *args: str) -> bool:
             response, _ = _firebase_patch(
                 path=url + "?print=silent", message=json.dumps(message)
             )
-        # If all is well and good, "200" (OK) or "204" (No Content) is returned in the status field
+        # If all is well and good, "200" (OK) or "204" (No Content)
+        # is returned in the status field
         return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
         logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
@@ -239,7 +242,7 @@ def get_connected_users() -> Set[str]:
 _firebase_app: Optional[App] = None
 
 
-def create_custom_token(uid: str, valid_minutes: int=60) -> bytes:
+def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     """ Create a secure token for the given id.
 
         This method is used to create secure custom JWT tokens to be passed to

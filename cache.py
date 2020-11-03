@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Any, Callable, Optional
 from types import ModuleType
 
 import os
@@ -45,7 +45,7 @@ _serializers = {
 }
 
 
-def serialize(obj):
+def serialize(obj: Any) -> Dict[str, Any]:
     """ Return a JSON-serializable representation of an object """
     cls = obj.__class__
     cls_name = cls.__name__
@@ -73,13 +73,13 @@ def serialize(obj):
     return dict(__cls__=cls_name, __module__=module_name, __obj__=s)
 
 
-def _dumps(obj):
+def _dumps(obj: Any) -> str:
     """ Returns the given object in JSON format, using the custom serializer
         for composite objects """
     return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
-def _loads(j):
+def _loads(j: str) -> Any:
     """ Return an instance of a serializable class,
         initialized from a JSON string """
     if j is None:
@@ -120,19 +120,22 @@ class RedisWrapper:
     """ Wrapper class around the Redis client,
         making it appear as a simplified memcache instance """
 
-    def __init__(self, redis_host=None, redis_port=None):
+    def __init__(
+        self, redis_host: Optional[str] = None, redis_port: int = None
+    ) -> None:
         redis_host = redis_host or os.environ.get("REDISHOST", "localhost")
         redis_port = redis_port or int(os.environ.get("REDISPORT", 6379))
+        assert redis_host is not None
         # Create a Redis client instance
         self._client = redis.Redis(
             host=redis_host, port=redis_port, retry_on_timeout=True
         )
 
-    def get_redis_client(self):
+    def get_redis_client(self) -> redis.Redis:
         """ Return the underlying Redis client instance """
         return self._client
 
-    def _call_with_retry(self, func, errval, *args, **kwargs):
+    def _call_with_retry(self, func: Callable, errval: Any, *args, **kwargs) -> Any:
         """ Call a client function, attempting one retry
             upon a connection error """
         attempts = 0
@@ -149,7 +152,13 @@ class RedisWrapper:
                 attempts += 1
         return errval
 
-    def add(self, key, value, time=None, namespace=None):
+    def add(
+        self,
+        key: str,
+        value: Any,
+        time: Optional[int] = None,
+        namespace: Optional[str] = None,
+    ) -> Any:
         """ Add a value to the cache, under the given key
             and within the given namespace, with an optional
             expiry time in seconds """
@@ -160,13 +169,19 @@ class RedisWrapper:
             self._client.set, None, key, _dumps(value), ex=time
         )
 
-    def set(self, key, value, time=None, namespace=None):
+    def set(
+        self,
+        key: str,
+        value: Any,
+        time: Optional[int] = None,
+        namespace: Optional[str] = None,
+    ) -> Any:
         """ Set a value in the cache, under the given key
             and within the given namespace, with an optional
             expiry time in seconds. This is an alias for self.add(). """
         return self.add(key, value, time, namespace)
 
-    def get(self, key, namespace=None):
+    def get(self, key: str, namespace: Optional[str] = None) -> Any:
         """ Fetch a value from the cache, under the given key and within
             the given namespace. Returns None if the key is not found. """
         if namespace:
@@ -174,7 +189,7 @@ class RedisWrapper:
             key = namespace + "|" + key
         return _loads(self._call_with_retry(self._client.get, None, key))
 
-    def delete(self, key, namespace=None):
+    def delete(self, key: str, namespace: Optional[str] = None) -> Any:
         """ Delete a value from the cache """
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key

@@ -179,7 +179,8 @@ assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 flask_config = dict(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Strict",
+    # SESSION_COOKIE_SAMESITE="Strict",
+    SESSION_COOKIE_SAMESITE="Lax",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
@@ -2459,7 +2460,7 @@ def logout() -> ResponseType:
 
 @app.route("/oauth2callback")
 def oauth2callback() -> ResponseType:
-    """The OAuth2 login flow POSTs to this callback when a user has
+    """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
 
     account = None
@@ -2480,16 +2481,14 @@ def oauth2callback() -> ResponseType:
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
         userid = User.login_by_account(account, name, email)
-    except ValueError as e:
-        # Invalid token
-        userid = None
-    except MismatchingStateError as e:
-        # Something is wrong with the CSRF token
+    except (ValueError, MismatchingStateError) as e:
+        # Something is wrong: we're not getting the same (random) state string back
+        # that we originally sent to the OAuth2 provider
         logging.warning(f"oauth2callback(): {e}")
         userid = None
 
     if not userid:
-        # Unable to obtain the user id for some reason
+        # Unable to obtain a properly authenticated user id for some reason
         return redirect(url_for("login_error"))
 
     # Authentication complete; user id obtained
