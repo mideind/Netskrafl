@@ -76,6 +76,8 @@ function submitForm() {
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
 {% endif %}
 
+{% if dev_server %}
+      <!-- If running on dev server, squeeze in a field to edit the user locale -->
       <div class="dialog-spacer"><span class="caption">Staðfang:</span>
          <input type="text" name="locale" id="locale" maxlength="5" tabindex="3"
             class="text" value="{{ uf.locale }}"/>
@@ -83,6 +85,7 @@ function submitForm() {
       <div class="explain">Íslenskt skrafl=is_IS, bandarískt=en_US, bandarísk/breskt=en_GB</div>
 {% if err.get('locale', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('locale') }}</div>
+{% endif %}
 {% endif %}
 
       <div class="dialog-spacer"><span class="caption">Hljóðmerki:</span>

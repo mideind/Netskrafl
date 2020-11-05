@@ -67,6 +67,7 @@ import logging
 import time
 import struct
 import abc
+from functools import lru_cache
 
 from languages import (
     Alphabet,
@@ -488,9 +489,6 @@ class Navigation:
     # The structure used to decode an edge offset from bytes
     _UINT32 = struct.Struct("<L")
 
-    # Dictionary of edge iteration caches, keyed by byte buffer
-    _iter_caches: Dict[int, Dict[int, PrefixNodes]] = dict()
-
     def __init__(self, nav: Navigator, b: bytearray, alphabet: Alphabet) -> None:
         # Store the associated navigator
         self._nav = nav
@@ -498,12 +496,6 @@ class Navigation:
         self._b = b
         # The alphabet to use for decoding the DAWG
         self._alphabet = alphabet
-        if id(b) in self._iter_caches:
-            # We already have a cache associated with this byte buffer
-            self._iter_cache = self._iter_caches[id(b)]
-        else:
-            # Create a fresh cache for this byte buffer
-            self._iter_cache = self._iter_caches[id(b)] = dict()
         # If the navigator implements accept_resumable(),
         # note it and call it with additional state information instead of
         # plain accept()
@@ -535,19 +527,12 @@ class Navigation:
                 offset += 4
             yield prefix, nextnode
 
+    @lru_cache(maxsize=32*1024)
     def _make_iter_from_node(self, offset: int) -> PrefixNodes:
         """Return an iterable over the prefixes and next node pointers
-        of the edge at the given offset. If this is the first time
-        that the edge is iterated, cache its unpacked contents
-        in a dictionary for quicker subsequent iteration."""
-        try:
-            prefix_nodes = self._iter_cache[offset]
-        except KeyError:
-            # Cache the list of (prefix, nextnode) tuples in a tuple
-            # (the list is read-only anyway)
-            prefix_nodes = tuple(t for t in self._iter_from_node(offset))
-            self._iter_cache[offset] = prefix_nodes
-        return prefix_nodes
+        of the edge at the given offset. This function is LRU cached,
+        storing up to 32k node-to-prefix-list associations. """
+        return tuple(self._iter_from_node(offset))
 
     def _navigate_from_node(self, offset: int, matched: str) -> None:
         """ Starting from a given node, navigate outgoing edges """

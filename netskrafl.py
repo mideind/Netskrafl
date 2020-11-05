@@ -173,13 +173,11 @@ assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 # Make sure that the Flask session cookie is secure (i.e. only used
 # with HTTPS unless we're running on a development server) and
 # invisible from JavaScript (HTTPONLY).
-# Also, we set SameSite to 'Strict', indicating that our session cookie
-# should only sent back from the client during sessions on our site,
-# i.e. not when navigating to it from other sites.
+# We set SameSite to 'Lax', as it cannot be 'Strict' due to the user
+# authentication (OAuth2) redirection flow.
 flask_config = dict(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
-    # SESSION_COOKIE_SAMESITE="Strict",
     SESSION_COOKIE_SAMESITE="Lax",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
@@ -285,7 +283,7 @@ def max_age(seconds: int) -> Callable:
 def inject_into_context() -> Dict[str, Union[bool, str]]:
     """ Inject variables and functions into all Flask contexts """
     return dict(
-        # Variable dev_server is True if running on the GAE development server
+        # Variable dev_server is True if running on a (local) GAE development server
         dev_server=running_local,
         project_id=_PROJECT_ID,
         client_id=_CLIENT_ID,

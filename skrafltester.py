@@ -17,6 +17,7 @@
         [-n number_of_games_to_run (default 4)]
         [-o minimax|autoplayer (to choose opponent, default minimax)]
         [-s (to run silently, i.e. only with ending summary)]
+        [-l locale (is_IS for Icelandic, en_US or en_GB for English)]
 
 """
 
