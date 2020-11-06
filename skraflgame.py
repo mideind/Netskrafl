@@ -99,7 +99,8 @@ class User:
     _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
-    _NAMESPACE = "user:4"
+    # Upgraded from 4 to 5 after adding locale attribute
+    _NAMESPACE = "user:5"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
