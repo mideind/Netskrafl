@@ -162,9 +162,11 @@ def ndb_wsgi_middleware(wsgi_app):
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 
-# client_id and client_secretfor Google Sign-In
+# client_id and client_secret for Google Sign-In
 _CLIENT_ID = os.environ.get("CLIENT_ID", "")
-_CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
+# Read client secret key from file
+with open(os.path.abspath(os.path.join("resources", "client_secret.txt")), "r") as f_txt:
+    _CLIENT_SECRET = f_txt.read().strip()
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
