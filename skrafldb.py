@@ -272,82 +272,13 @@ class UserModel(ndb.Model):
     @classmethod
     def filter_locale(cls, q: ndb.Query, locale: Optional[str]) -> ndb.Query:
         """ Filter the query by locale, if given, otherwise stay with the is_IS default """
-        if locale is None:
-            return q.filter(
-                ndb.OR(UserModel.locale == "is_IS", UserModel.locale == None)
-            )
-        return q.filter(UserModel.locale == locale)
-
-    @classmethod
-    def list(
-        cls, nick_from: str, nick_to: str, max_len=100, locale: Optional[str] = None
-    ) -> Iterator[Dict[str, Any]]:
-        """ Query for a list of users within a nickname range """
-
-        alphabet = current_alphabet()
-        tolower = alphabet.tolower
-        full_order = alphabet.full_order
-        full_upper = alphabet.full_upper
-
-        nick_from = u"a" if nick_from is None else tolower(nick_from)
-        nick_to = u"ö" if nick_to is None else tolower(nick_to)
-
-        try:
-            o_from = full_order.index(nick_from[0])
-        except ValueError:
-            o_from = 0
-        try:
-            o_to = full_order.index(nick_to[0])
-        except ValueError:
-            o_to = len(full_order) - 1
-
-        # We do this by issuing a series of queries, each returning
-        # nicknames beginning with a particular letter.
-        # These shenanigans are necessary because NDB maintains its string
-        # indexes by Unicode ordinal index, which is quite different from
-        # the actual sort collation order we need. Additionally, the
-        # indexes are case-sensitive while our query boundaries are not.
-
-        # Prepare the list of query letters
-        q_letters = []
-
-        for i in range(o_from, o_to + 1):
-            # Append the lower case letter
-            q_letters.append(full_order[i])
-            # Append the upper case letter
-            q_letters.append(full_upper[i])
-
-        # For aesthetic cleanliness, sort the query letters (in Unicode order)
-        q_letters.sort()
-
-        count = 0
-        for q_from in q_letters:
-
-            q_to = chr(ord(q_from) + 1)
-
-            q = cls.query(
-                ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to)
-            )
-            q = cls.filter_locale(q, locale)
-
-            # Individual letters contain >600 users as of 2015-02-12
-            CHUNK_SIZE = 1000
-            for um in iter_q(q, chunk_size=CHUNK_SIZE):
-                if not um.inactive:
-                    # This entity matches: return a dict describing it
-                    yield dict(
-                        id=um.key.id(),
-                        nickname=um.nickname,
-                        prefs=um.prefs,
-                        timestamp=um.timestamp,
-                        ready=um.ready,
-                        ready_timed=um.ready_timed,
-                        human_elo=um.human_elo,
-                    )
-                    count += 1
-                    if max_len and count >= max_len:
-                        # Reached limit: done
-                        return
+        # TODO: To be modified once locale support is fully in place
+        return q
+        # if locale is None:
+        #     return q.filter(
+        #         ndb.OR(UserModel.locale == "is_IS", UserModel.locale == None)
+        #     )
+        # return q.filter(UserModel.locale == locale)
 
     @classmethod
     def list_prefix(
