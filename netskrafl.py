@@ -124,21 +124,24 @@ running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
 if running_local:
     # Configure logging
-    dictConfig({
-        'version': 1,
-        'formatters': {'default': {
-            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-        }},
-        'handlers': {'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
-            'formatter': 'default'
-        }},
-        'root': {
-            'level': 'INFO',
-            'handlers': ['wsgi']
+    dictConfig(
+        {
+            'version': 1,
+            'formatters': {
+                'default': {
+                    'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+                }
+            },
+            'handlers': {
+                'wsgi': {
+                    'class': 'logging.StreamHandler',
+                    'stream': 'ext://flask.logging.wsgi_errors_stream',
+                    'formatter': 'default',
+                }
+            },
+            'root': {'level': 'INFO', 'handlers': ['wsgi']},
         }
-    })
+    )
 
 # Main Flask application instance
 app = Flask(__name__)
@@ -147,6 +150,7 @@ app.config["DEBUG"] = running_local
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
+
 
 def ndb_wsgi_middleware(wsgi_app):
     """ Returns a wrapper for the original WSGI app """
@@ -165,7 +169,9 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 # client_id and client_secret for Google Sign-In
 _CLIENT_ID = os.environ.get("CLIENT_ID", "")
 # Read client secret key from file
-with open(os.path.abspath(os.path.join("resources", "client_secret.txt")), "r") as f_txt:
+with open(
+    os.path.abspath(os.path.join("resources", "client_secret.txt")), "r"
+) as f_txt:
     _CLIENT_SECRET = f_txt.read().strip()
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
@@ -215,9 +221,7 @@ oauth = OAuth(app)
 oauth.register(
     name='google',
     server_metadata_url=OAUTH_CONF_URL,
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
+    client_kwargs={'scope': 'openid email profile'},
 )
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
@@ -2551,13 +2555,13 @@ def stats_ratings() -> ResponseType:
         return "Restricted URL", 403
     wait = True
     if cloud_scheduler:
-        logging.info("Running stats from cloud scheduler")
+        logging.info("Running ratings from cloud scheduler")
         # Run Cloud Scheduler tasks asynchronously
         wait = False
     elif task_queue:
-        logging.info(f"Running stats from queue {task_queue_name}")
+        logging.info(f"Running ratings from queue {task_queue_name}")
     elif cron_job:
-        logging.info("Running stats from cron job")
+        logging.info("Running ratings from cron job")
     result, status = skraflstats.ratings(request, wait=wait)
     if status == 200:
         # New ratings: ensure that old ones are deleted from cache
