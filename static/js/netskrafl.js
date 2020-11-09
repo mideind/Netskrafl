@@ -13,7 +13,7 @@
 
 /* global $:false, Mousetrap:false,
    serverQuery, gameId, localPlayer,
-   gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag,
+   gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag, gameTilescores, gameAlphabet,
    userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
    opponentInfo, preventPullToRefresh, initFirebaseListener, loginFirebase, attachFirebaseListener,
    initSkrafl, lateInit, initialGameTime, initBag, initMoveList, placeTiles,
@@ -30,26 +30,6 @@ var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
 var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
-var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
-
-// Original Icelandic bag
-var OLD_TILESCORE = {
-   'a': 1, 'á': 4, 'b': 6, 'd': 4, 'ð': 2, 'e': 1, 'é': 6, 'f': 3, 'g': 2,
-   'h': 3, 'i': 1, 'í': 4, 'j': 5, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 3,
-   'ó': 6, 'p': 8, 'r': 1, 's': 1, 't': 1, 'u': 1, 'ú': 8, 'v': 3, 'x': 10,
-   'y': 7, 'ý': 9, 'þ': 4, 'æ': 5, 'ö': 7, '?': 0
-};
-
-// New Icelandic bag
-var NEW_TILESCORE = {
-   'a': 1, 'á': 3, 'b': 5, 'd': 5, 'ð': 2, 'e': 3, 'é': 7, 'f': 3, 'g': 3,
-   'h': 4, 'i': 1, 'í': 4, 'j': 6, 'k': 2, 'l': 2, 'm': 2, 'n': 1, 'o': 5,
-   'ó': 3, 'p': 5, 'r': 1, 's': 1, 't': 2, 'u': 2, 'ú': 4, 'v': 5, 'x': 10,
-   'y': 6, 'ý': 5, 'þ': 7, 'æ': 4, 'ö': 6, '?': 0
-};
-
-// Default to the old bag
-var TILESCORE = OLD_TILESCORE;
 
 var WORDSCORE = [
    "311111131111113",
@@ -198,6 +178,7 @@ function restoreTiles() {
    /* Restore tile locations from local storage */
    if (!hasLocalStorage())
       return;
+   var tileScores = gameTilescores();
    try {
       /* First check whether the rack matches by comparing sorted arrays */
       var i, sq, t, rackTileId, rackTile;
@@ -250,7 +231,7 @@ function restoreTiles() {
                      // We have info about the meaning of the blank tile
                      letter = t.charAt(1);
                }
-               placeTile(sq, tile, letter, TILESCORE[tile]);
+               placeTile(sq, tile, letter, tileScores[tile]);
                // Do additional stuff to make this look like a proper rack tile
                $("#" + sq).children().eq(0).addClass("racktile").data("tile", tile);
                if (tile == '?' && letter != tile)
@@ -266,7 +247,7 @@ function restoreTiles() {
          // We don't need to worry about the meaning of blank tiles here
          sq = firstEmptyRackSlot();
          if (sq !== null)
-            placeTile(sq, tile, tile, TILESCORE[tile]);
+            placeTile(sq, tile, tile, tileScores[tile]);
       }
    }
    catch (e) {
@@ -318,7 +299,7 @@ var reloadInterval = null;
 function reloadPage() {
    window.clearInterval(reloadInterval);
    reloadInterval = null;
-   window.location.reload(true); // Bypass cache
+   location.reload();
 }
 
 function calcTimeToGo(player) {
@@ -484,6 +465,7 @@ function removeNewestTileMove() {
 function placeMove(player, co, tiles, score) {
    /* Place an entire move on the board, returning a dictionary of the tiles actually added */
    var placed = { };
+   var tileScores = gameTilescores();
    if (co !== "") {
       var vec = toVector(co);
       var col = vec.col;
@@ -501,7 +483,7 @@ function placeMove(player, co, tiles, score) {
             var letter = tile;
             if (nextBlank)
                tile = '?';
-            var tscore = TILESCORE[tile];
+            var tscore = tileScores[tile];
             placeTile(sq, tile, letter, tscore);
             placed[sq] = { tile: tile, letter: letter, score: tscore };
          }
@@ -559,6 +541,7 @@ function showBestMove(ev) {
    var nextBlank = false;
    var tileDiv = null;
    var nsq = null;
+   var tileScores = gameTilescores();
    if (ev.data.show) {
       /* Clear the list of temporary tiles added */
       tempTiles = { };
@@ -590,7 +573,7 @@ function showBestMove(ev) {
       tileDiv = tileAt(row, col);
       if (tileDiv === null && ev.data.show) {
          /* No tile in the square: add it temporarily & highlight it */
-         placeTile(sq, tile, letter, TILESCORE[tile]);
+         placeTile(sq, tile, letter, tileScores[tile]);
          tempTiles[sq] = true;
          tileDiv = tileAt(row, col);
          $(tileDiv).addClass("highlight" + playerColor);
@@ -963,9 +946,10 @@ function openBlankDialog(elDragged, target) {
    // Reset the esc key to make it close the dialog
    Mousetrap.bind('esc', keyBlankDialog);
    // Bind all normal keys to make them select a letter and close the dialog
-   for (var i = 0; i < LEGAL_LETTERS.length; i++) {
-      Mousetrap.bind(LEGAL_LETTERS[i], keyBlankDialog);
-      Mousetrap.bind("shift+" + LEGAL_LETTERS[i], keyBlankDialog);
+   var legalLetters = gameAlphabet();
+   for (var i = 0; i < legalLetters.length; i++) {
+      Mousetrap.bind(legalLetters[i], keyBlankDialog);
+      Mousetrap.bind("shift+" + legalLetters[i], keyBlankDialog);
    }
 }
 
@@ -1000,9 +984,10 @@ function closeBlankDialog(ev) {
    // Rebind the Esc key to the resetRack() function
    Mousetrap.bind('esc', resetRack);
    // Unbind the alphabetic letters
-   for (var i = 0; i < LEGAL_LETTERS.length; i++) {
-      Mousetrap.unbind(LEGAL_LETTERS[i]);
-      Mousetrap.unbind("shift+" + LEGAL_LETTERS[i]);
+   var legalLetters = gameAlphabet();
+   for (var i = 0; i < legalLetters.length; i++) {
+      Mousetrap.unbind(legalLetters[i]);
+      Mousetrap.unbind("shift+" + legalLetters[i]);
    }
    saveTiles();
    updateButtonState();
@@ -1013,14 +998,15 @@ function prepareBlankDialog() {
    var bt = $("#blank-meaning");
    bt.html("");
    // Create tile TDs and DIVs for all legal letters
-   var len = LEGAL_LETTERS.length;
+   var legalLetters = gameAlphabet();
+   var len = legalLetters.length;
    var ix = 0;
    while (len > 0) {
       /* Rows */
       var str = "<tr>";
       /* Columns: max BLANK_TILES_PER_LINE tiles per row */
       for (var i = 0; i < BLANK_TILES_PER_LINE && len > 0; i++) {
-         var tile = LEGAL_LETTERS[ix++];
+         var tile = legalLetters[ix++];
          str += "<td><div class='blank-choice'>" + tile + "</div></td>";
          len--;
       }
@@ -2589,10 +2575,6 @@ function initSkrafl(jQuery) {
    if (igt.duration > 0)
       // This is a timed game: move things around and show the clock
       showClock();
-
-   if (gameUsesNewBag())
-      // Switch tile scores to the new bag
-      TILESCORE = NEW_TILESCORE;
 
    placeTiles();
    initMoveList(); // Sets gameOver to true if the game is over

@@ -17,14 +17,25 @@
         [-n number_of_games_to_run (default 4)]
         [-o minimax|autoplayer (to choose opponent, default minimax)]
         [-s (to run silently, i.e. only with ending summary)]
+        [-l locale (is_IS for Icelandic, en_US or en_GB for English)]
 
 """
+
+from __future__ import annotations
+
+from typing import List, Optional, Tuple, Callable
 
 import getopt
 import sys
 import time
 
-from languages import NewTileSet
+from languages import (
+    NewTileSet,
+    set_locale,
+    current_locale,
+    current_tileset,
+    current_vocabulary,
+)
 from skraflmechanics import (
     State,
     Board,
@@ -136,7 +147,7 @@ def test_game(players, silent):
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(tileset=NewTileSet, drawtiles=True)
+    state = State(tileset=current_tileset(), drawtiles=True)
 
     print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
@@ -171,8 +182,9 @@ def test_game(players, silent):
 
         if not silent:
             print(
-                "Play {0} scores {1} points ({2:.2f} seconds)"
-                .format(move, state.score(move), g1 - g0)
+                "Play {0} scores {1} points ({2:.2f} seconds)".format(
+                    move, state.score(move), g1 - g0
+                )
             )
 
         # Apply the move to the state and switch players
@@ -188,14 +200,13 @@ def test_game(players, silent):
 
     if not silent:
         print(
-            "Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)"
-            .format(
+            "Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)".format(
                 p0,
                 p1,
                 state.num_moves(),
                 t1 - t0,
                 state.player_name(0),
-                state.player_name(1)
+                state.player_name(1),
             )
         )
 
@@ -248,8 +259,7 @@ def test_manual_game():
     p0, p1 = state.scores()
 
     print(
-        "Manual game over, final score {3} {0} : {4} {1} after {2} moves"
-        .format(
+        "Manual game over, final score {3} {0} : {4} {1} after {2} moves".format(
             p0, p1, state.num_moves(), state.player_name(0), state.player_name(1)
         )
     )
@@ -267,7 +277,7 @@ def test(num_games, opponent, silent):
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
-    players = [None, None]
+    players: List[Optional[Tuple[str, Callable]]] = [None, None]
     if opponent == "minimax":
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)
@@ -314,8 +324,7 @@ def test(num_games, opponent, silent):
         """ Report the result of a number of games """
         if gameswon[player] == 0:
             print(
-                "{2} won {0} games and scored an average of {1:.1f} points per game"
-                .format(
+                "{2} won {0} games and scored an average of {1:.1f} points per game".format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
                     players[player][0],
@@ -324,8 +333,7 @@ def test(num_games, opponent, silent):
         else:
             print(
                 "{3} won {0} games with an average margin of {2:.1f} and "
-                "scored an average of {1:.1f} points per game"
-                .format(
+                "scored an average of {1:.1f} points per game".format(
                     gameswon[player],
                     float(totalpoints[player]) / num_games,
                     float(sumofmargin[player]) / gameswon[player],
@@ -355,8 +363,8 @@ def main(argv=None):
         try:
             opts, _ = getopt.getopt(
                 argv[1:],
-                "hn:o:sm",
-                ["help", "numgames", "opponent", "silent", "manual"],
+                "hl:n:o:sm",
+                ["help", "locale", "numgames", "opponent", "silent", "manual"],
             )
         except getopt.error as msg:
             raise Usage(msg)
@@ -364,11 +372,14 @@ def main(argv=None):
         opponent = "autoplayer"
         silent = False
         manual = False
+        locale = "is_IS"
         # process options
         for o, a in opts:
             if o in ("-h", "--help"):
                 print(__doc__)
                 sys.exit(0)
+            elif o in ("-l", "--locale"):
+                locale = str(a)
             elif o in ("-n", "--numgames"):
                 num_games = int(a)
             elif o in ("-o", "--opponent"):
@@ -380,12 +391,16 @@ def main(argv=None):
 
         print("Welcome to the Skrafl game tester")
 
+        set_locale(locale)
+        print(f"Using vocabulary {current_vocabulary()}")
+
         if manual:
             test_manual_game()
         else:
             print(
-                "Running {0} games against {1}"
-                .format(num_games, opponent or "autoplayer")
+                "Running {0} games against {1}".format(
+                    num_games, opponent or "autoplayer"
+                )
             )
             test(num_games, opponent, silent)
 

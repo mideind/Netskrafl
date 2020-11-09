@@ -22,6 +22,9 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
+# Google OAuth client secret
+resources/client_secret.txt
+
 # Private GAE services key
 resources/netskrafl-*.json
 

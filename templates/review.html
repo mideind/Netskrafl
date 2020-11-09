@@ -255,13 +255,25 @@ function closeReview() {
    window.location.href='{{ url_for('main') | safe }}';
 }
 
+function gameTilescores() {
+   /* Return the tile score dict for this game */
+   return {{ game.tileset.scores | tojson }};
+}
+
+function gameLocale() {
+   /* Return the locale used in the game, for example 'is_IS' or 'en_US' */
+   return "{{ game.locale }}";
+}
+
+function gameBoardType() {
+   /* Return the board type in the game, for example 'standard' */
+   return "{{ game.board_type }}";
+}
+
 function initReview(jQuery) {
 
    /* Called when the page is displayed or refreshed */
 
-   if (gameUsesNewBag())
-      // Switch tile scores to the new bag
-      TILESCORE = NEW_TILESCORE;
    placeTiles();
    initMoveList();
    initBag();

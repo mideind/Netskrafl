@@ -37,7 +37,6 @@ var main = (function() {
 var RACK_SIZE = 7;
 var BAG_TILES_PER_LINE = 19;
 var BLANK_TILES_PER_LINE = 6;
-var LEGAL_LETTERS = "aábdðeéfghiíjklmnoóprstuúvxyýþæö";
 var ROUTE_PREFIX = "/page#!";
 var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 var BOARD_PREFIX = "/board?game=";
@@ -2957,7 +2956,8 @@ function createView() {
     // A dialog for choosing the meaning of a blank tile
 
     function blankLetters() {
-      var len = LEGAL_LETTERS.length;
+      var legalLetters = game.alphabet;
+      var len = legalLetters.length;
       var ix = 0;
       var r = [];
       while (len > 0) {
@@ -2965,7 +2965,7 @@ function createView() {
         var c = [];
         /* Columns: max BLANK_TILES_PER_LINE tiles per row */
         for (var i = 0; i < BLANK_TILES_PER_LINE && len > 0; i++) {
-          var letter = LEGAL_LETTERS[ix++];
+          var letter = legalLetters[ix++];
           c.push(
             m("td",
               {
