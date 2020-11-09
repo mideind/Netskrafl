@@ -2520,19 +2520,45 @@ def service_worker() -> ResponseType:
 @app.route("/stats/run", methods=["GET", "POST"])
 def stats_run() -> ResponseType:
     """ Start a task to calculate Elo points for games """
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
-        # Only allow bona fide Google Cloud Scheduler requests
+    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403
-    return skraflstats.run(request)
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running stats from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running stats from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running stats from cron job")
+    return skraflstats.run(request, wait=wait)
 
 
 @app.route("/stats/ratings", methods=["GET", "POST"])
 def stats_ratings() -> ResponseType:
     """ Start a task to calculate top Elo rankings """
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
-        # Only allow bona fide Google Cloud Scheduler requests
+    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403
-    result, status = skraflstats.ratings(request)
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running stats from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running stats from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running stats from cron job")
+    result, status = skraflstats.ratings(request, wait=wait)
     if status == 200:
         # New ratings: ensure that old ones are deleted from cache
         memcache.delete("all", namespace="rating")

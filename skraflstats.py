@@ -441,13 +441,14 @@ def _create_ratings() -> None:
     logging.info("Finishing _create_ratings")
 
 
-def deferred_stats(from_time: datetime, to_time: datetime) -> None:
+def deferred_stats(from_time: datetime, to_time: datetime) -> bool:
     """ This is the deferred stats collection process """
+
+    success = False
 
     with Client.get_context() as context:
 
         t0 = time.time()
-        success = False
         error = "Gave up after two retries"
         try:
             # Try up to two times to execute _run_stats()
@@ -481,8 +482,10 @@ def deferred_stats(from_time: datetime, to_time: datetime) -> None:
             )
             CompletionModel.add_failure("stats", from_time, to_time, error)
 
+    return success
 
-def deferred_ratings() -> None:
+
+def deferred_ratings() -> bool:
     """ This is the deferred ratings table calculation process """
 
     with Client.get_context() as context:
@@ -495,7 +498,7 @@ def deferred_ratings() -> None:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
             now = datetime.utcnow()
             CompletionModel.add_failure("ratings", now, now, str(ex))
-            return
+            return False
 
         t1 = time.time()
 
@@ -507,8 +510,10 @@ def deferred_ratings() -> None:
         now = datetime.utcnow()
         CompletionModel.add_completion("ratings", now, now)
 
+    return True
 
-def run(request: Request) -> Tuple[str, int]:
+
+def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     """ Calculate a new set of statistics """
     logging.info("Starting stats calculation")
 
@@ -526,17 +531,34 @@ def run(request: Request) -> Tuple[str, int]:
     from_time = datetime(year=year, month=month, day=day)
     to_time = from_time + timedelta(days=1)
 
-    Thread(
-        target=deferred_stats, kwargs=dict(from_time=from_time, to_time=to_time)
-    ).start()
+    kwargs = dict(from_time=from_time, to_time=to_time)
 
-    # All is well so far and the calculation has been started
-    # on a separate thread
-    return "Stats calculation has been started", 200
+    if not wait:
+        # Asynchronous execution
+        Thread(
+            target=deferred_stats, kwargs=kwargs,
+        ).start()
+        # All is well so far and the calculation has been started
+        # on a separate thread
+        return "Stats calculation has been started", 200
+
+    # Synchronous execution
+    success = deferred_stats(**kwargs)
+    if not success:
+        return "Stats calculation failed", 500
+
+    return "Stats calculation has been completed", 200
 
 
-def ratings(request: Request) -> Tuple[str, int]:
+def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
     """ Calculate new ratings tables """
     logging.info("Starting ratings calculation")
-    Thread(target=deferred_ratings).start()
-    return "Ratings calculation has been started", 200
+    if not wait:
+        Thread(target=deferred_ratings).start()
+        return "Ratings calculation has been started", 200
+
+    success = deferred_ratings()
+    if not success:
+        return "Ratings calculation failed", 500
+
+    return "Ratings calculation completed", 200

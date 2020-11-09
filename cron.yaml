@@ -1,0 +1,15 @@
+cron:
+- description: "Skrafl stats"
+  url: /stats/run
+  schedule: every day 03:00
+  retry_parameters:
+    job_retry_limit: 2
+    min_backoff_seconds: 30.0
+    max_doublings: 1
+- description: "Skrafl ratings"
+  url: /stats/ratings
+  schedule: every day 03:30
+  retry_parameters:
+    job_retry_limit: 2
+    min_backoff_seconds: 30.0
+    max_doublings: 1
