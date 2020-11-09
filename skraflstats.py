@@ -28,7 +28,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Any
 
 import calendar
 import logging
@@ -441,13 +441,11 @@ def _create_ratings() -> None:
     logging.info("Finishing _create_ratings")
 
 
-def deferred_stats(from_time: datetime, to_time: datetime) -> bool:
+def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
     """ This is the deferred stats collection process """
 
-    success = False
-
-    with Client.get_context() as context:
-
+    def _deferred_stats() -> bool:
+        success = False
         t0 = time.time()
         error = "Gave up after two retries"
         try:
@@ -481,14 +479,21 @@ def deferred_stats(from_time: datetime, to_time: datetime) -> bool:
                 )
             )
             CompletionModel.add_failure("stats", from_time, to_time, error)
+        return success
 
-    return success
+    if wait:
+        # Synchronous
+        return _deferred_stats()
+
+    # Asynchronous: we need a new context for this thread
+    with Client.get_context() as context:
+        return _deferred_stats()
 
 
-def deferred_ratings() -> bool:
+def deferred_ratings(wait: bool) -> bool:
     """ This is the deferred ratings table calculation process """
 
-    with Client.get_context() as context:
+    def _deferred_ratings() -> bool:
 
         t0 = time.time()
 
@@ -510,7 +515,15 @@ def deferred_ratings() -> bool:
         now = datetime.utcnow()
         CompletionModel.add_completion("ratings", now, now)
 
-    return True
+        return True
+
+    if wait:
+        # Synchronous: we don't need a client context
+        return _deferred_ratings()
+
+    # Asynchronous: this thread needs a fresh client context
+    with Client.get_context() as context:
+        return _deferred_ratings()
 
 
 def run(request: Request, *, wait: bool) -> Tuple[str, int]:
@@ -531,13 +544,11 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     from_time = datetime(year=year, month=month, day=day)
     to_time = from_time + timedelta(days=1)
 
-    kwargs = dict(from_time=from_time, to_time=to_time)
+    kwargs: Dict[str, Any] = dict(from_time=from_time, to_time=to_time, wait=wait)
 
     if not wait:
         # Asynchronous execution
-        Thread(
-            target=deferred_stats, kwargs=kwargs,
-        ).start()
+        Thread(target=deferred_stats, kwargs=kwargs).start()
         # All is well so far and the calculation has been started
         # on a separate thread
         return "Stats calculation has been started", 200
@@ -553,11 +564,12 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
 def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
     """ Calculate new ratings tables """
     logging.info("Starting ratings calculation")
+    kwargs: Dict[str, Any] = dict(wait=wait)
     if not wait:
-        Thread(target=deferred_ratings).start()
+        Thread(target=deferred_ratings, kwargs=kwargs).start()
         return "Ratings calculation has been started", 200
 
-    success = deferred_ratings()
+    success = deferred_ratings(**kwargs)
     if not success:
         return "Ratings calculation failed", 500
 
