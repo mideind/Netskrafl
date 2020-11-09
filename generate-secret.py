@@ -19,7 +19,7 @@ def read():
     print("Contents of {}".format(file_path))
     with open(file_path, "rb") as f:
         random_bytes = f.read()
-        print(random_bytes.encode('base64'))
+        print(random_bytes.decode('base64'))
 
 
 if len(sys.argv) > 1 and sys.argv[1] == "read":

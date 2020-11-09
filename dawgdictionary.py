@@ -56,397 +56,284 @@
 
 """
 
-from typing import Dict
+from __future__ import annotations
+
+from typing import Dict, Union, Optional, Tuple, Iterator, List
 
 import os
-import codecs
+import sys
 import threading
 import logging
 import time
 import struct
-import sys
-import pickle
+import abc
+from functools import lru_cache
 
-from languages import Alphabet
-
-
-class _Node:
-
-    """ This class must be at module level for pickling """
-
-    def __init__(self):
-        self.final = False
-        self.edges = dict()
+from languages import (
+    Alphabet,
+    IcelandicAlphabet,
+    EnglishAlphabet,
+    current_alphabet,
+    current_vocabulary,
+)
 
 
-class DawgDictionary:
+# Type definitions
+IterTuple = Tuple[str, int]
+PrefixNodes = Tuple[IterTuple, ...]
 
-    """ A 'classic' DAWG dictionary, loaded either from a text
-        file or from a pickle. This implementation has largely
-        been surpassed by PackedDawgDictionary, defined below. """
 
-    def __init__(self):
-        # Initialize an empty graph
-        # The root entry will eventually be self._nodes[0]
-        self._nodes = None
-        # Running counter of nodes read
-        self._index = 1
+class PackedDawgDictionary:
+
+    """Encapsulates a DAWG dictionary that is initialized from a packed
+    binary file on disk and navigated as a byte buffer."""
+
+    def __init__(self, alphabet: Alphabet) -> None:
+        # The packed byte buffer
+        self._b: Optional[bytearray] = None
         # Lock to ensure that only one thread loads the dictionary
         self._lock = threading.Lock()
+        self._alphabet = alphabet
+        # Cached list of two letter words in this DAWG,
+        # sorted by first letter and second letter
+        self._two_letter: Tuple[List[str], List[str]] = ([], [])
 
-    def _parse_and_add(self, line):
-        """ Parse a single line of a DAWG text file and add to the graph structure """
-        # The first line is the root (by convention nodeid 0)
-        # The first non-root node is in line 2 and has nodeid 2
-        assert self._nodes is not None
-        nodeid = self._index if self._index > 1 else 0
-        self._index += 1
-        edgedata = line.split("_")
-        final = False
-        firstedge = 0
-        if len(edgedata) >= 1 and edgedata[0] == "|":
-            # Vertical bar denotes final node
-            final = True
-            firstedge = 1
-        if nodeid in self._nodes:
-            # We have already seen this node id: use the previously created instance
-            newnode = self._nodes[nodeid]
-        else:
-            # The id is appearing for the first time: add it
-            newnode = _Node()
-            self._nodes[nodeid] = newnode
-        newnode.final = final
-        # Process the edges
-        for edge in edgedata[firstedge:]:
-            e = edge.split(":")
-            prefix = e[0]
-            edgeid = int(e[1])
-            if edgeid == 0:
-                # Edge leads to null/zero, i.e. is final
-                newnode.edges[prefix] = None
-            elif edgeid in self._nodes:
-                # Edge leads to a node we've already seen
-                newnode.edges[prefix] = self._nodes[edgeid]
-            else:
-                # Edge leads to a new, previously unseen node: Create it
-                newterminal = _Node()
-                newnode.edges[prefix] = newterminal
-                self._nodes[edgeid] = newterminal
-
-    def load(self, fname):
-        """ Load a DAWG from a text file """
-        # Reset the graph contents
+    def load(self, fname: str) -> None:
+        """ Load a packed DAWG from a binary file """
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
-            if self._nodes is not None:
+            if self._b is not None:
                 # Already loaded
                 return
-            self._nodes = dict()
-            self._index = 1
-            with codecs.open(fname, mode="r", encoding="utf-8") as fin:
-                for line in fin:
-                    line = line.strip()
-                    if line:
-                        self._parse_and_add(line)
+            # Quickly gulp the file contents into the byte buffer
+            with open(fname, mode="rb") as fin:
+                self._b = bytearray(fin.read())
 
-    def store_pickle(self, fname):
-        """ Store a DAWG in a Python pickle file """
-        # noinspection Restricted_Python_calls
-        with open(fname, "wb") as pf:
-            pickle.dump(self._nodes, pf, pickle.HIGHEST_PROTOCOL)
-
-    def load_pickle(self, fname):
-        """ Load a DAWG from a Python pickle file """
-        with self._lock:
-            if self._nodes is not None:
-                # Already loaded
-                return
-            with open(fname, "rb") as pf:
-                self._nodes = pickle.load(pf)
-
-    def num_nodes(self):
+    def num_nodes(self) -> int:
         """ Return a count of unique nodes in the DAWG """
-        return 0 if self._nodes is None else len(self._nodes)
+        return 0  # !!! TBD - maybe not required
 
-    def find(self, word):
+    def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
         nav = FindNavigator(word)
         self.navigate(nav)
         return nav.is_found()
 
-    def __contains__(self, word):
+    def __contains__(self, word: str) -> bool:
         """ Enable simple lookup syntax: "word" in dawgdict """
         return self.find(word)
 
-    def find_matches(self, pattern, sort=True):
-        """ Returns a list of words matching a pattern.
-            The pattern contains characters and '?'-signs denoting wildcards.
-            Characters are matched exactly, while the wildcards match any character.
+    def find_matches(self, pattern: str, sort: bool = True) -> List[str]:
+        """Returns a list of words matching a pattern.
+        The pattern contains characters and '?'-signs denoting wildcards.
+        Characters are matched exactly, while the wildcards match any character.
         """
         nav = MatchNavigator(pattern, sort)
         self.navigate(nav)
         return nav.result()
 
-    def find_permutations(self, rack, minlen=0):
-        """ Returns a list of legal permutations of a rack of letters.
-            The list is sorted in descending order by permutation length.
-            The rack may contain question marks '?' as wildcards, matching all letters.
-            Question marks should be used carefully as they can
-            yield very large result sets.
+    def find_permutations(self, rack: str, minlen: int = 0) -> List[str]:
+        """Returns a list of legal permutations of a rack of letters.
+        The list is sorted in descending order by permutation length.
+        The rack may contain question marks '?' as wildcards, matching all letters.
+        Question marks should be used carefully as they can
+        yield very large result sets.
         """
         nav = PermutationNavigator(rack, minlen)
         self.navigate(nav)
         return nav.result()
 
-    def navigate(self, nav):
-        """ A generic function to navigate through the DAWG under
-            the control of a navigation object.
+    def navigate(self, nav: Navigator) -> None:
+        """A generic function to navigate through the DAWG under
+        the control of a navigation object.
 
-            The navigation object should implement the following interface:
+        The navigation object should implement the following interface:
 
-            def push_edge(firstchar)
-                returns True if the edge should be entered or False if not
-            def accepting()
-                returns False if the navigator does not want more characters
-            def accepts(newchar)
-                returns True if the navigator will accept and 'eat' the new character
-            def accept(matched, final)
-                called to inform the navigator of a match and whether it is a final word
-            def pop_edge()
-                called when leaving an edge that has been navigated; returns False
-                if there is no need to visit other edges
-            def done()
-                called when the navigation is completed
+        def push_edge(firstchar)
+            returns True if the edge should be entered or False if not
+        def accepting()
+            returns False if the navigator does not want more characters
+        def accepts(newchar)
+            returns True if the navigator will accept and 'eat' the new character
+        def accept(matched, final)
+            called to inform the navigator of a match and whether it is a final word
+        def pop_edge()
+            called when leaving an edge that has been navigated; returns False
+            if there is no need to visit other edges
+        def done()
+            called when the navigation is completed
         """
-        if self._nodes is None:
+        if self._b is None:
             # No graph: no navigation
             nav.done()
-            return
-        root = self._nodes[0]  # Start at the root
-        Navigation(nav).go(root)
+        else:
+            Navigation(nav, self._b, self._alphabet).go()
 
-    # noinspection PyMethodMayBeStatic
-    def resume_navigation(self, nav, prefix, nextnode, leftpart):
-        """ Continue a previous navigation of the DAWG, using saved
-            state information """
-        return Navigation(nav).resume(prefix, nextnode, leftpart)
+    def resume_navigation(
+        self, nav: Navigator, prefix: str, nextnode: int, leftpart: str
+    ) -> None:
+        """Continue a previous navigation of the DAWG, using saved
+        state information"""
+        assert self._b is not None
+        Navigation(nav, self._b, self._alphabet).resume(prefix, nextnode, leftpart)
+
+    def two_letter_words(self) -> Tuple[List[str], List[str]]:
+        """Return the two letter words in this DAWG,
+        sorted by first letter and by second letter"""
+        if not self._two_letter[0]:
+            # Cache has not yet been populated: calculate the lists
+            sk = self._alphabet.sortkey
+            # The list sorted by first letter
+            tw0 = self.find_matches("??", sort=True)
+            # The list sorted by second (last) letter
+            tw1 = sorted(tw0, key=lambda w: sk(w[1] + w[0]))
+            self._two_letter = (tw0, tw1)
+        return self._two_letter
 
 
 class Wordbase:
 
-    """ Container for two singleton instances of the word database,
-        one for the main dictionary and the other for common words
-    """
+    """ Container for singleton instances of the supported dictionaries """
 
-    _dawg = None
-    _dawg_common = None
+    # Known dictionaries
+    DAWGS = [
+        ("ordalisti", IcelandicAlphabet),
+        ("algeng", IcelandicAlphabet),
+        ("sowpods", EnglishAlphabet),
+        ("TWL06", EnglishAlphabet),
+    ]
+
+    _dawg: Dict[str, PackedDawgDictionary] = dict()
 
     _lock = threading.Lock()
-    _lock_common = threading.Lock()
-
-    def __init__(self):
-        pass
 
     @staticmethod
-    def _load_resource(resource):
-        """ Load a dictionary, from either a text file or a pickle file """
-        # Assumes that the appropriate lock has been acquired
-        # Compare the file times of the text version vs. the pickled version
+    def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
+        """ Load a dictionary from a binary DAWG file """
         bname = os.path.abspath(os.path.join("resources", resource + ".bin.dawg"))
-        pname = os.path.abspath(os.path.join("resources", resource + ".dawg.pickle"))
-        fname = os.path.abspath(os.path.join("resources", resource + ".text.dawg"))
-        try:
-            fname_t = os.path.getmtime(fname)
-        except os.error:
-            fname_t = None
-        try:
-            bname_t = os.path.getmtime(bname)
-        except os.error:
-            bname_t = None
-        try:
-            pname_t = os.path.getmtime(pname)
-        except os.error:
-            pname_t = None
-
-        if bname_t is not None and (fname_t is None or bname_t > fname_t):
-            # Load binary file if it exists and is newer than the text file
-            logging.info(
-                "Instance {0} loading DAWG from binary file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), bname
-                )
+        # Load packed binary file
+        logging.info(
+            "Instance {0} loading DAWG from binary file {1}".format(
+                os.environ.get("INSTANCE_ID", ""), bname
             )
-            # print("Loading binary DAWG")
-            t0 = time.time()
-            dawg = PackedDawgDictionary()
-            dawg.load(bname)
-            t1 = time.time()
-            logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
-        elif fname_t is not None and (pname_t is None or fname_t > pname_t):
-            # We have a newer text file (or no pickle): load it
-            logging.info(
-                "Instance {0} loading DAWG from text file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), fname
-                )
-            )
-            # print("Loading text DAWG")
-            t0 = time.time()
-            dawg = DawgDictionary()
-            dawg.load(fname)
-            t1 = time.time()
-            logging.info(
-                "Loaded {0} graph nodes in {1:.2f} seconds".format(
-                    dawg.num_nodes(), t1 - t0
-                )
-            )
-        else:
-            # Newer pickle file or no text file: load the pickle
-            logging.info(
-                "Instance {0} loading DAWG from pickle file {1}".format(
-                    os.environ.get("INSTANCE_ID", ""), pname
-                )
-            )
-            # print("Loading pickled DAWG")
-            t0 = time.time()
-            dawg = DawgDictionary()
-            dawg.load_pickle(pname)
-            t1 = time.time()
-            logging.info(
-                "Loaded {0} graph nodes in {1:.2f} seconds".format(
-                    dawg.num_nodes(), t1 - t0
-                )
-            )
-
-        # Do not assign Wordbase._dawg until fully loaded, to prevent race conditions
+        )
+        t0 = time.time()
+        dawg = PackedDawgDictionary(alphabet)
+        dawg.load(bname)
+        t1 = time.time()
+        logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
         return dawg
 
     @staticmethod
     def dawg():
-        """ Return the main dictionary DAWG object, loading it if required """
-        with Wordbase._lock:
-            if Wordbase._dawg is None:
-                # Main dictionary
-                Wordbase._dawg = Wordbase._load_resource("ordalisti")
-            assert Wordbase._dawg is not None
-            return Wordbase._dawg
+        """Return the main dictionary DAWG object, associated with the
+        current thread, i.e. the current user's locale"""
+        return Wordbase._dawg[current_vocabulary()]
+
+    @staticmethod
+    def two_letter_words(
+        vocabulary: Optional[str] = None,
+    ) -> Tuple[List[str], List[str]]:
+        """Return the two letter word list associated with the
+        current vocabulary"""
+        dawg = Wordbase._dawg.get(vocabulary or current_vocabulary())
+        return ([], []) if dawg is None else dawg.two_letter_words()
 
     @staticmethod
     def dawg_common():
-        """ Return the common words DAWG object, loading it if required """
-        with Wordbase._lock_common:
-            if Wordbase._dawg_common is None:
-                # Common words
-                Wordbase._dawg_common = Wordbase._load_resource("algeng")
-            assert Wordbase._dawg_common is not None
-            return Wordbase._dawg_common
+        """ Return the common words DAWG object """
+        # !!! TODO: This is presently hardcoded for the Icelandic robot 'Amlóði'
+        return Wordbase._dawg["algeng"]
+
+    @staticmethod
+    def warmup() -> bool:
+        """ Called from GAE instance initialization; add warmup code here if needed """
+        return True
+
+    @staticmethod
+    def initialize() -> None:
+        """ Load all known dictionaries into memory """
+        with Wordbase._lock:
+            if not Wordbase._dawg:
+                for dawg, alphabet in Wordbase.DAWGS:
+                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
 
 
-class Navigation:
-
-    """ Manages the state for a navigation while it is in progress """
-
-    def __init__(self, nav):
-        self._nav = nav
-        # If the navigator has a method called accept_resumable(),
-        # note it and call it with additional state information instead of
-        # plain accept()
-        self._resumable = callable(getattr(nav, "accept_resumable", None))
-
-    def _navigate_from_node(self, node, matched):
-        """ Starting from a given node, navigate outgoing edges """
-        # Go through the edges of this node and follow the ones
-        # okayed by the navigator
-        nav = self._nav
-        for prefix, nextnode in node.edges.items():
-            if nav.push_edge(prefix[0]):
-                # This edge is a candidate: navigate through it
-                self._navigate_from_edge(prefix, nextnode, matched)
-                if not nav.pop_edge():
-                    # Short-circuit and finish the loop if pop_edge() returns False
-                    break
-
-    def _navigate_from_edge(self, prefix, nextnode, matched):
-        """ Navigate along an edge, accepting partial and full matches """
-        # Go along the edge as long as the navigator is accepting
-        lenp = len(prefix)
-        j = 0
-        nav = self._nav
-        while j < lenp and nav.accepting():
-            # See if the navigator is OK with accepting the current character
-            if not nav.accepts(prefix[j]):
-                # Nope: we're done with this edge
-                return
-            # So far, we have a match: add a letter to the matched path
-            matched += prefix[j]
-            j += 1
-            # Check whether the next prefix character is a vertical bar, denoting finality
-            final = False
-            if j < lenp:
-                if prefix[j] == "|":
-                    final = True
-                    j += 1
-            elif (nextnode is None) or nextnode.final:
-                # If we're at the final char of the prefix and the next node is final,
-                # set the final flag as well (there is no trailing vertical bar in this case)
-                final = True
-            # Tell the navigator where we are
-            if self._resumable:
-                # The navigator wants to know the position in the graph
-                # so that navigation can be resumed later from this spot
-                nav.accept_resumable(prefix[j:], nextnode, matched)
-            else:
-                # Normal navigator: tell it about the match
-                nav.accept(matched, final)
-        # We're done following the prefix for as long as it goes and
-        # as long as the navigator was accepting
-        if j < lenp:
-            # We didn't complete the prefix, so the navigator must no longer
-            # be interested (accepting): we're done
-            return
-        if nav.accepting() and (nextnode is not None):
-            # Gone through the entire edge and still have rack letters left:
-            # continue with the next node
-            self._navigate_from_node(nextnode, matched)
-
-    def go(self, root):
-        """ Perform the navigation using the given navigator """
-        if root is None:
-            # No root: no navigation
-            self._nav.done()
-            return
-        # The ship is ready to go
-        if self._nav.accepting():
-            # Leave shore and navigate the open seas
-            self._navigate_from_node(root, "")
-        self._nav.done()
-
-    def resume(self, prefix, nextnode, matched):
-        """ Resume navigation from a previously saved state """
-        self._navigate_from_edge(prefix, nextnode, matched)
+Wordbase.initialize()
 
 
-class FindNavigator:
+class Navigator(abc.ABC):
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to find a particular word in the dictionary by exact match
-    """
+    """Base class for navigators that move through the DAWG,
+    finding words or patterns or collecting information,
+    for instance about possible moves"""
 
-    def __init__(self, word):
+    is_resumable = False
+
+    def __init__(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def push_edge(self, firstchar: str) -> bool:
+        """ Returns True if the edge should be entered or False if not """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def accepting(self) -> bool:
+        """ Returns False if the navigator does not want more characters """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def accepts(self, newchar: str) -> bool:
+        """ Returns True if the navigator will accept the new character """
+        raise NotImplementedError
+
+    # pylint: disable=unused-argument
+    @abc.abstractmethod
+    def accept(self, matched: str, final: bool) -> None:
+        """ Called to inform the navigator of a match and whether it is a final word """
+        raise NotImplementedError
+
+    def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
+        """ This is not an abstract method since it is not mandatory to implement """
+        # If implemented in a subclass, set is_resumable = True
+        raise NotImplementedError
+
+    def pop_edge(self) -> bool:
+        """Called when leaving an edge that has been navigated;
+        returns False if there is no need to visit other edges"""
+        # An implementation is not mandatory
+        return False
+
+    def done(self) -> None:
+        """ Called when the whole navigation is done """
+        # An implementation is not mandatory
+        pass
+
+
+class FindNavigator(Navigator):
+
+    """A navigation class to be used with DawgDictionary.navigate()
+    to find a particular word in the dictionary by exact match"""
+
+    def __init__(self, word: str) -> None:
+        super().__init__()
         self._word = word
         self._len = len(word)
         self._index = 0
         self._found = False
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # Enter the edge if it fits where we are in the word
         return self._word[self._index] == firstchar
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Don't go too deep
         return self._index < self._len
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         if newchar != self._word[self._index]:
             return False
@@ -455,40 +342,32 @@ class FindNavigator:
         return True
 
     # pylint: disable=unused-argument
-    def accept(self, matched, final):
+    def accept(self, matched: str, final: bool) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         if final and self._index == self._len:
             # Yes, this is what we were looking for
             # assert matched == self._word
             self._found = True
 
-    def pop_edge(self):
-        """ Called when leaving an edge that has been navigated """
-        # We only need to visit one outgoing edge, so short-circuit the edge loop
-        return False
-
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
-
-    def is_found(self):
+    def is_found(self) -> bool:
         """ Return True if the sought word was found in the DAWG """
         return self._found
 
 
-class PermutationNavigator:
+class PermutationNavigator(Navigator):
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to find all permutations of a rack
+    """A navigation class to be used with DawgDictionary.navigate()
+    to find all permutations of a rack
     """
 
-    def __init__(self, rack, minlen=0):
+    def __init__(self, rack: str, minlen: int = 0) -> None:
+        super().__init__()
         self._rack = rack
-        self._stack = []
-        self._result = []
+        self._stack: List[str] = []
+        self._result: List[str] = []
         self._minlen = minlen
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
@@ -499,12 +378,12 @@ class PermutationNavigator:
         self._stack.append(rack)
         return True
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue as long as there is something left on the rack
         return bool(self._rack)
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         rack = self._rack
         exactmatch = newchar in rack
@@ -518,43 +397,44 @@ class PermutationNavigator:
             self._rack = rack.replace("?", "", 1)
         return True
 
-    def accept(self, matched, final):
+    def accept(self, matched: str, final: bool) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         if final and len(matched) >= self._minlen:
             self._result.append(matched)
 
-    def pop_edge(self):
+    def pop_edge(self) -> bool:
         """ Called when leaving an edge that has been navigated """
         self._rack = self._stack.pop()
         # We need to visit all outgoing edges, so return True
         return True
 
-    def done(self):
+    def done(self) -> None:
         """ Called when the whole navigation is done """
-        self._result.sort(key=lambda x: (-len(x), Alphabet.sortkey(x)))
+        self._result.sort(key=lambda x: (-len(x), current_alphabet().sortkey(x)))
 
-    def result(self):
+    def result(self) -> List[str]:
         """ Return the list of results accumulated during the navigation """
         return self._result
 
 
-class MatchNavigator:
+class MatchNavigator(Navigator):
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to find all words matching a pattern
+    """A navigation class to be used with DawgDictionary.navigate()
+    to find all words matching a pattern
     """
 
-    def __init__(self, pattern, sort):
+    def __init__(self, pattern: str, sort: bool) -> None:
+        super().__init__()
         self._pattern = pattern
         self._lenp = len(pattern)
         self._index = 0
         self._chmatch = pattern[0]
         self._wildcard = self._chmatch == "?"
-        self._stack = []
-        self._result = []
+        self._stack: List[Tuple[int, str, bool]] = []
+        self._result: List[str] = []
         self._sort = sort
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
@@ -564,12 +444,12 @@ class MatchNavigator:
         self._stack.append((self._index, self._chmatch, self._wildcard))
         return True
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue as long as there is something left to match
         return self._index < self._lenp
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         if not self._wildcard and (newchar != self._chmatch):
             return False
@@ -579,153 +459,53 @@ class MatchNavigator:
             self._wildcard = self._chmatch == "?"
         return True
 
-    def accept(self, matched, final):
+    def accept(self, matched: str, final: bool) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         if final and self._index == self._lenp:
             # We have an entire pattern match
             # (Note that this could be relaxed to also return partial (shorter) pattern matches)
             self._result.append(matched)
 
-    def pop_edge(self):
+    def pop_edge(self) -> bool:
         """ Called when leaving an edge that has been navigated """
         self._index, self._chmatch, self._wildcard = self._stack.pop()
         # We need to continue visiting edges only if this is a wildcard position
         return self._wildcard
 
-    def done(self):
+    def done(self) -> None:
         """ Called when the whole navigation is done """
         if self._sort:
-            self._result.sort(key=Alphabet.sortkey)
+            self._result.sort(key=current_alphabet().sortkey)
 
-    def result(self):
+    def result(self) -> List[str]:
         """ Return the list of results accumulated during the navigation """
         return self._result
 
 
-class PackedDawgDictionary:
-
-    """ Encapsulates a DAWG dictionary that is initialized from a packed
-        binary file on disk and navigated as a byte buffer. """
-
-    def __init__(self):
-        # The packed byte buffer
-        self._b = None
-        # Lock to ensure that only one thread loads the dictionary
-        self._lock = threading.Lock()
-
-    def load(self, fname):
-        """ Load a packed DAWG from a binary file """
-        with self._lock:
-            # Ensure that we don't have multiple threads trying to load simultaneously
-            if self._b is not None:
-                # Already loaded
-                return
-            # Quickly gulp the file contents into the byte buffer
-            with open(fname, mode="rb") as fin:
-                self._b = bytearray(fin.read())
-
-    def num_nodes(self):
-        """ Return a count of unique nodes in the DAWG """
-        return 0  # !!! TBD - maybe not required
-
-    def find(self, word):
-        """ Look for a word in the graph, returning True if it is found or False if not """
-        nav = FindNavigator(word)
-        self.navigate(nav)
-        return nav.is_found()
-
-    def __contains__(self, word):
-        """ Enable simple lookup syntax: "word" in dawgdict """
-        return self.find(word)
-
-    def find_matches(self, pattern, sort=True):
-        """ Returns a list of words matching a pattern.
-            The pattern contains characters and '?'-signs denoting wildcards.
-            Characters are matched exactly, while the wildcards match any character.
-        """
-        nav = MatchNavigator(pattern, sort)
-        self.navigate(nav)
-        return nav.result()
-
-    def find_permutations(self, rack, minlen=0):
-        """ Returns a list of legal permutations of a rack of letters.
-            The list is sorted in descending order by permutation length.
-            The rack may contain question marks '?' as wildcards, matching all letters.
-            Question marks should be used carefully as they can
-            yield very large result sets.
-        """
-        nav = PermutationNavigator(rack, minlen)
-        self.navigate(nav)
-        return nav.result()
-
-    def navigate(self, nav):
-        """ A generic function to navigate through the DAWG under
-            the control of a navigation object.
-
-            The navigation object should implement the following interface:
-
-            def push_edge(firstchar)
-                returns True if the edge should be entered or False if not
-            def accepting()
-                returns False if the navigator does not want more characters
-            def accepts(newchar)
-                returns True if the navigator will accept and 'eat' the new character
-            def accept(matched, final)
-                called to inform the navigator of a match and whether it is a final word
-            def pop_edge()
-                called when leaving an edge that has been navigated; returns False
-                if there is no need to visit other edges
-            def done()
-                called when the navigation is completed
-        """
-        if self._b is None:
-            # No graph: no navigation
-            nav.done()
-        else:
-            PackedNavigation(nav, self._b).go()
-
-    def resume_navigation(self, nav, prefix, nextnode, leftpart):
-        """ Continue a previous navigation of the DAWG, using saved
-            state information """
-        return PackedNavigation(nav, self._b).resume(prefix, nextnode, leftpart)
-
-
-class PackedNavigation:
+class Navigation:
 
     """ Manages the state for a navigation while it is in progress """
-
-    # Assemble a decoding dictionary where encoded indices are mapped to
-    # characters, eventually with a suffixed vertical bar '|' to denote finality
-    _CODING = {i: c for i, c in enumerate(Alphabet.order)}
-    _CODING.update({i | 0x80: c + "|" for i, c in enumerate(Alphabet.order)})
 
     # The structure used to decode an edge offset from bytes
     _UINT32 = struct.Struct("<L")
 
-    # Dictionary of edge iteration caches, keyed by byte buffer
-    _iter_caches: Dict[int, Dict[str, _Node]] = dict()
-
-    def __init__(self, nav, b):
+    def __init__(self, nav: Navigator, b: bytearray, alphabet: Alphabet) -> None:
         # Store the associated navigator
         self._nav = nav
         # The DAWG bytearray
         self._b = b
-        if id(b) in self._iter_caches:
-            # We already have a cache associated with this byte buffer
-            self._iter_cache = self._iter_caches[id(b)]
-        else:
-            # Create a fresh cache for this byte buffer
-            self._iter_cache = self._iter_caches[id(b)] = dict()
-        # If the navigator has a method called accept_resumable(),
+        # The alphabet to use for decoding the DAWG
+        self._alphabet = alphabet
+        # If the navigator implements accept_resumable(),
         # note it and call it with additional state information instead of
         # plain accept()
-        self._resumable = callable(getattr(nav, "accept_resumable", None))
+        self._resumable = nav.is_resumable
 
-    def _iter_from_node(self, offset):
-        """ A generator for yielding prefixes and next node offset along an edge
-            starting at the given offset in the DAWG bytearray """
+    def _iter_from_node(self, offset: int) -> Iterator[IterTuple]:
+        """A generator for yielding prefixes and next node offset along an edge
+        starting at the given offset in the DAWG bytearray"""
         b = self._b
-        coding = self._CODING
+        coding = self._alphabet.coding
         num_edges = b[offset] & 0x7F
         offset += 1
         for _ in range(num_edges):
@@ -747,21 +527,14 @@ class PackedNavigation:
                 offset += 4
             yield prefix, nextnode
 
-    def _make_iter_from_node(self, offset):
-        """ Return an iterable over the prefixes and next node pointers
-            of the edge at the given offset. If this is the first time
-            that the edge is iterated, cache its unpacked contents
-            in a dictionary for quicker subsequent iteration. """
-        try:
-            prefix_nodes = self._iter_cache[offset]
-        except KeyError:
-            # Cache the list of (prefix, nextnode) tuples in a tuple
-            # (the list is read-only anyway)
-            prefix_nodes = tuple(t for t in self._iter_from_node(offset))
-            self._iter_cache[offset] = prefix_nodes
-        return prefix_nodes
+    @lru_cache(maxsize=32*1024)
+    def _make_iter_from_node(self, offset: int) -> PrefixNodes:
+        """Return an iterable over the prefixes and next node pointers
+        of the edge at the given offset. This function is LRU cached,
+        storing up to 32k node-to-prefix-list associations. """
+        return tuple(self._iter_from_node(offset))
 
-    def _navigate_from_node(self, offset, matched):
+    def _navigate_from_node(self, offset: int, matched: str) -> None:
         """ Starting from a given node, navigate outgoing edges """
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
@@ -774,7 +547,7 @@ class PackedNavigation:
                     # Short-circuit and finish the loop if pop_edge() returns False
                     break
 
-    def _navigate_from_edge(self, prefix, nextnode, matched):
+    def _navigate_from_edge(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Navigate along an edge, accepting partial and full matches """
         # Go along the edge as long as the navigator is accepting
         b = self._b
@@ -818,7 +591,7 @@ class PackedNavigation:
             # continue with the next node
             self._navigate_from_node(nextnode, matched)
 
-    def go(self):
+    def go(self) -> None:
         """ Perform the navigation using the given navigator """
         # The ship is ready to go
         if self._nav.accepting():
@@ -826,6 +599,6 @@ class PackedNavigation:
             self._navigate_from_node(0, "")
         self._nav.done()
 
-    def resume(self, prefix, nextnode, matched):
+    def resume(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Resume navigation from a previously saved state """
         self._navigate_from_edge(prefix, nextnode, matched)

@@ -68,33 +68,42 @@
 
 """
 
+from __future__ import annotations
+
+from typing import Optional, List, Tuple, Dict, cast
+
 from random import randint
 
 from dawgdictionary import Wordbase
-from languages import Alphabet
-from skraflmechanics import State, Board, Cover, Move, ExchangeMove, PassMove
+from languages import Alphabet, current_alphabet
+from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
+from dawgdictionary import Navigator
+
+
+# Type definitions
+LeftPart = Tuple[str, str, str, int]
 
 
 class Square:
 
-    """ Represents a single square within an axis.
-        A square knows about its cross-checks, i.e. which letters can be
-        legally placed in the square while matching correctly with word
-        parts above and/or below the square.
+    """Represents a single square within an axis.
+    A square knows about its cross-checks, i.e. which letters can be
+    legally placed in the square while matching correctly with word
+    parts above and/or below the square.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Cross checks, i.e. possible letters to be placed here,
         # represented as a bit pattern
         self._cc = 0
         # The tile located here, '?' if blank tile
-        self._tile = None
+        self._tile: Optional[str] = None
         # The letter located here, including meaning of blank tile
-        self._letter = None
+        self._letter: Optional[str] = None
         # Is this an anchor square?
         self._anchor = False
 
-    def init(self, autoplayer, row, col, crosscheck):
+    def init(self, autoplayer: AutoPlayer, row: int, col: int, crosscheck: int) -> None:
         """ Initialize this square from the board """
         board = autoplayer.board()
         self._tile = board.tile_at(row, col)
@@ -106,42 +115,40 @@ class Square:
             # mark as anchor
             self.mark_anchor()
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """ Is this square empty? """
         return self._letter == " "
 
-    def is_open(self):
+    def is_open(self) -> bool:
         """ Can a new tile from the rack be placed here? """
         return self.is_empty() and bool(self._cc)
 
-    def is_open_for(self, c):
+    def is_open_for(self, letter_bit: int) -> bool:
         """ Can this letter be placed here? """
-        return bool(self._cc & Alphabet.letter_bit[c])
+        return bool(self._cc & letter_bit)
 
     @property
-    def letter(self):
+    def letter(self) -> str:
         """ Return the letter at this square """
-        return self._letter
+        return self._letter or ""
 
-    def mark_anchor(self):
+    def mark_anchor(self) -> None:
         """ Mark this square as an anchor """
         self._anchor = True
 
-    def is_anchor(self):
+    def is_anchor(self) -> bool:
         """ Is this an anchor square? """
         return self._anchor
 
 
 class Axis:
 
-    """ Represents a one-dimensional axis on the board, either
-        horizontal or vertical. This is used to find legal moves
-        for an AutoPlayer.
+    """Represents a one-dimensional axis on the board, either
+    horizontal or vertical. This is used to find legal moves
+    for an AutoPlayer.
     """
 
-    DAWG = Wordbase.dawg()
-
-    def __init__(self, autoplayer, index, horizontal):
+    def __init__(self, autoplayer: AutoPlayer, index: int, horizontal: bool) -> None:
 
         self._autoplayer = autoplayer
         self._sq = [Square() for _ in range(Board.SIZE)]
@@ -150,52 +157,54 @@ class Axis:
         self._rack = autoplayer.rack()
         # Bit pattern representing empty squares on this axis
         self._empty_bits = 0
+        self._dawg = Wordbase.dawg()
 
-    def is_horizontal(self):
+    def is_horizontal(self) -> bool:
         """ Is this a horizontal (row) axis? """
         return self._horizontal
 
-    def is_vertical(self):
+    def is_vertical(self) -> bool:
         """ Is this a vertical (column) axis? """
         return not self._horizontal
 
-    def coordinate_of(self, index):
+    def coordinate_of(self, index: int) -> Tuple[int, int]:
         """ Return the co-ordinate on the board of a square within this axis """
         return (self._index, index) if self._horizontal else (index, self._index)
 
-    def coordinate_step(self):
+    def coordinate_step(self) -> Tuple[int, int]:
         """ How to move along this axis on the board, (row,col) """
         return (0, 1) if self._horizontal else (1, 0)
 
-    def letter_at(self, index):
+    def letter_at(self, index: int) -> str:
         """ Return the letter at the index """
         return self._sq[index].letter
 
-    def is_open(self, index):
+    def is_open(self, index: int) -> bool:
         """ Is the square at the index open (i.e. can a tile be placed there?) """
         return self._sq[index].is_open()
 
-    def is_open_for(self, index, letter):
+    def is_open_for(self, index: int, letter_bit: int) -> bool:
         """ Is the square at the index open for this letter? """
-        return self._sq[index].is_open_for(letter)
+        return self._sq[index].is_open_for(letter_bit)
 
-    def is_empty(self, index):
+    def is_empty(self, index: int) -> bool:
         """ Is the square at the index empty? """
         return bool(self._empty_bits & (1 << index))
 
     @property
-    def autoplayer(self):
+    def autoplayer(self) -> AutoPlayer:
         """ Return the associated Autoplayer instance """
         return self._autoplayer
 
-    def mark_anchor(self, index):
-        """ Force the indicated square to be an anchor. Used in first move
-            to mark the center square. """
+    def mark_anchor(self, index: int) -> None:
+        """Force the indicated square to be an anchor. Used in first move
+        to mark the center square."""
         self._sq[index].mark_anchor()
 
-    def init_crosschecks(self):
+    def init_crosschecks(self) -> None:
         """ Calculate and return a list of cross-check bit patterns for the indicated axis """
 
+        alphabet = current_alphabet()
         # The cross-check set is the set of letters that can appear in a square
         # and make cross words (above/left and/or below/right of the square) valid
         board = self._autoplayer.board()
@@ -225,12 +234,14 @@ class Axis:
                     # Nontrivial cross-check: Query the word database
                     # for words that fit this pattern
                     # Don't need a sorted result
-                    matches = self.DAWG.find_matches(query, sort=False)
+                    matches = self._dawg.find_matches(query, sort=False)
                     bits = 0
                     if matches:
                         cix = len(above) if above else 0
                         # Note the set of allowed letters here
-                        bits = Alphabet.bit_pattern([wrd[cix] for wrd in matches])
+                        bits = alphabet.bit_pattern(
+                            "".join(wrd[cix] for wrd in matches)
+                        )
                     # Reduce the cross-check set by intersecting it with the allowed set.
                     # If the cross-check set and the rack have nothing in common, this
                     # will lead to the square being marked as closed, which saves
@@ -255,21 +266,21 @@ class Axis:
                 ix -= 1
             # Use the ExtendRightNavigator to find valid words with this left part
             nav = LeftFindNavigator(leftpart)
-            self.DAWG.navigate(nav)
+            self._dawg.navigate(nav)
             ns = nav.state()
             if ns is not None:
                 # We found a matching prefix in the graph
                 _, prefix, next_node = ns
                 # assert matched == leftpart
-                nav = ExtendRightNavigator(self, index, self._rack)
-                self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
+                rnav = ExtendRightNavigator(self, index, self._rack)
+                self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
             return
 
         # We are not completing an existing left part
         # Begin by extending an empty prefix to the right, i.e. placing
         # tiles on the anchor square itself and to its right
-        nav = ExtendRightNavigator(self, index, self._rack)
-        self.DAWG.navigate(nav)
+        rnav = ExtendRightNavigator(self, index, self._rack)
+        self._dawg.navigate(rnav)
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
@@ -278,12 +289,12 @@ class Axis:
                 lp_list = lpn.leftparts(left_len)
                 if lp_list is not None:
                     for leftpart, rack_leave, prefix, next_node in lp_list:
-                        nav = ExtendRightNavigator(self, index, rack_leave)
-                        self.DAWG.resume_navigation(nav, prefix, next_node, leftpart)
+                        rnav = ExtendRightNavigator(self, index, rack_leave)
+                        self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
 
     def generate_moves(self, lpn):
-        """ Find all valid moves on this axis by attempting to place tiles
-            at and around all anchor squares """
+        """Find all valid moves on this axis by attempting to place tiles
+        at and around all anchor squares"""
         last_anchor = -1
         len_rack = len(self._rack)
         for i in range(Board.SIZE):
@@ -305,28 +316,33 @@ class Axis:
                 last_anchor = i
 
 
-class LeftPermutationNavigator:
+class LeftPermutationNavigator(Navigator):
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to find all left parts of words that are possible with
-        a particular rack. The results are accumulated by length.
-        This calculation is only done once at the start of move
-        generation for a particular rack and board.
+    """A navigation class to be used with DawgDictionary.navigate()
+    to find all left parts of words that are possible with
+    a particular rack. The results are accumulated by length.
+    This calculation is only done once at the start of move
+    generation for a particular rack and board.
     """
 
-    def __init__(self, rack):
+    is_resumable = True
+
+    def __init__(self, rack: str) -> None:
+        super().__init__()
         self._rack = rack
-        self._stack = []
+        self._stack: List[Tuple[str, int]] = []
         self._maxleft = len(rack) - 1  # One tile on the anchor itself
         # assert self._maxleft > 0
-        self._leftparts = [None for _ in range(self._maxleft)]
+        self._leftparts: List[Optional[List[LeftPart]]] = [
+            None for _ in range(self._maxleft)
+        ]
         self._index = 0
 
-    def leftparts(self, length):
+    def leftparts(self, length: int) -> Optional[List[LeftPart]]:
         """ Returns a list of leftparts of the length requested """
         return self._leftparts[length - 1] if 0 < length <= self._maxleft else None
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
@@ -336,13 +352,13 @@ class LeftPermutationNavigator:
         self._stack.append((self._rack, self._index))
         return True
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue until we have generated all left parts possible from the
         # rack but leaving at least one tile
         return self._index < self._maxleft
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         exact_match = newchar in self._rack
         if (not exact_match) and ("?" not in self._rack):
@@ -356,7 +372,12 @@ class LeftPermutationNavigator:
             self._rack = self._rack.replace("?", "", 1)
         return True
 
-    def accept_resumable(self, prefix, nextnode, matched):
+    def accept(self, matched: str, final: bool) -> None:
+        """ Called to inform the navigator of a match and whether it is a final word """
+        # Should not be called, as is_resumable is set to True
+        raise NotImplementedError
+
+    def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         # Accumulate all possible left parts, by length
         lm = len(matched) - 1
@@ -366,28 +387,28 @@ class LeftPermutationNavigator:
         # of the prefix of the edge we were on, and the next node.
         # This gives us the ability to resume the navigation later at
         # the saved point, to generate right parts.
-        self._leftparts[lm].append((matched, self._rack, prefix, nextnode))
+        lp = self._leftparts[lm]
+        assert lp is not None
+        lp.append((matched, self._rack, prefix, nextnode))
 
-    def pop_edge(self):
+    def pop_edge(self) -> bool:
         """ Called when leaving an edge that has been navigated """
         self._rack, self._index = self._stack.pop()
         # We need to visit all outgoing edges, so return True
         return True
 
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
 
+class LeftFindNavigator(Navigator):
 
-class LeftFindNavigator:
-
-    """ A navigation class to trace a left part that is
-        already on the board, and note its ending position in
-        the graph.
+    """A navigation class to trace a left part that is
+    already on the board, and note its ending position in
+    the graph.
     """
 
+    is_resumable = True
+
     def __init__(self, prefix):
+        super().__init__()
         # The prefix to the left of the anchor
         self._prefix = prefix
         self._lenp = len(prefix)
@@ -417,21 +438,16 @@ class LeftFindNavigator:
         self._pix += 1
         return True
 
+    def accept(self, matched: str, final: bool) -> None:
+        """ Called to inform the navigator of a match and whether it is a final word """
+        # Should not be called, as is_resumable is set to True
+        raise NotImplementedError
+
     def accept_resumable(self, prefix, nextnode, matched):
         """ Called to inform the navigator of a match and whether it is a final word """
         if self._pix == self._lenp:
             # Found the left part: save the position (state)
             self._state = (matched, prefix, nextnode)
-
-    # noinspection PyMethodMayBeStatic
-    def pop_edge(self):
-        """ Called when leaving an edge that has been navigated """
-        return False
-
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
 
 
 class Match:
@@ -446,16 +462,17 @@ class Match:
     RACK_TILE = 2
 
 
-class ExtendRightNavigator:
+class ExtendRightNavigator(Navigator):
 
-    """ A navigation class to be used with DawgDictionary.navigate()
-        to perform the Appel & Jacobson ExtendRight function. This
-        places rack tiles on and to the right of an anchor square, in
-        conformance with the cross-checks and the tiles already on
-        the board.
+    """A navigation class to be used with DawgDictionary.navigate()
+    to perform the Appel & Jacobson ExtendRight function. This
+    places rack tiles on and to the right of an anchor square, in
+    conformance with the cross-checks and the tiles already on
+    the board.
     """
 
     def __init__(self, axis, anchor, rack):
+        super().__init__()
         self._axis = axis
         self._rack = rack
         self._anchor = anchor
@@ -465,10 +482,11 @@ class ExtendRightNavigator:
         self._wildcard_in_rack = "?" in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
+        self._letter_bit = current_alphabet().letter_bit
 
     def _check(self, ch):
-        """ Check whether the letter ch could be placed at the
-            current square, given the cross-checks and the rack """
+        """Check whether the letter ch could be placed at the
+        current square, given the cross-checks and the rack"""
         axis = self._axis
         l_at_sq = axis.letter_at(self._index)
         if l_at_sq != " ":
@@ -479,7 +497,11 @@ class ExtendRightNavigator:
             return Match.NO
         # Open square: apply cross-check constraints to the rack
         # Would this character pass the cross-checks?
-        return Match.RACK_TILE if axis.is_open_for(self._index, ch) else Match.NO
+        return (
+            Match.RACK_TILE
+            if axis.is_open_for(self._index, self._letter_bit[ch])
+            else Match.NO
+        )
 
     def push_edge(self, firstchar):
         """ Returns True if the edge should be entered or False if not """
@@ -575,21 +597,16 @@ class ExtendRightNavigator:
         # Once past the prefix, we need to visit all outgoing edges, so return True
         return True
 
-    # noinspection PyMethodMayBeStatic
-    def done(self):
-        """ Called when the whole navigation is done """
-        pass
-
 
 class AutoPlayer:
 
-    """ Implements an automatic, computer-controlled player.
-        All legal moves on the board are generated and the
-        best move is then selected within the _find_best_move()
-        function. This base class has a simple implementation
-        of _find_best_move() that always chooses the best-scoring
-        move. Other derived classes, such as AutoPlayer_MinMax,
-        use more sophisticated heuristics to choose a move.
+    """Implements an automatic, computer-controlled player.
+    All legal moves on the board are generated and the
+    best move is then selected within the _find_best_move()
+    function. This base class has a simple implementation
+    of _find_best_move() that always chooses the best-scoring
+    move. Other derived classes, such as AutoPlayer_MinMax,
+    use more sophisticated heuristics to choose a move.
     """
 
     # The robot level that uses only common words
@@ -617,10 +634,10 @@ class AutoPlayer:
         # Calculate a bit pattern representation of the rack
         if "?" in self._rack:
             # Wildcard in rack: all letters allowed
-            self._rack_bit_pattern = Alphabet.all_bits_set()
+            self._rack_bit_pattern = current_alphabet().all_bits_set()
         else:
             # No wildcard: limits the possibilities of covering squares
-            self._rack_bit_pattern = Alphabet.bit_pattern(self._rack)
+            self._rack_bit_pattern = current_alphabet().bit_pattern(self._rack)
 
     def board(self):
         """ Return the board """
@@ -673,6 +690,7 @@ class AutoPlayer:
         self._candidates = []
         # Start by generating all possible permutations of the
         # rack that form left parts of words, ordering them by length
+        lpn: Optional[LeftPermutationNavigator]
         if len(self._rack) > 1:
             lpn = LeftPermutationNavigator(self._rack)
             Wordbase.dawg().navigate(lpn)
@@ -728,8 +746,8 @@ class AutoPlayer:
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
-            """ Sort moves first by descending score;
-                in case of ties prefer shorter words """
+            """Sort moves first by descending score;
+            in case of ties prefer shorter words"""
             # !!! TODO: Insert more sophisticated logic here,
             # !!! including whether triple-word-score opportunities
             # !!! are being opened for the opponent, minimal use
@@ -738,9 +756,9 @@ class AutoPlayer:
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            """ Special case for first move:
-                Sort moves first by descending score, and in case of ties,
-                try to go to the upper half of the board for a more open game
+            """Special case for first move:
+            Sort moves first by descending score, and in case of ties,
+            try to go to the upper half of the board for a more open game
             """
             return (-x[1], x[0].row)
 
@@ -795,8 +813,8 @@ class AutoPlayer:
 
 class AutoPlayer_Common(AutoPlayer):
 
-    """ This subclass of AutoPlayer only plays words from a
-        list of common words.
+    """This subclass of AutoPlayer only plays words from a
+    list of common words.
     """
 
     def __init__(self, state, robot_level):
@@ -807,8 +825,9 @@ class AutoPlayer_Common(AutoPlayer):
         """ From a sorted list of >1 scored candidates, pick a move to make """
 
         num_candidates = len(scored_candidates)
-        common = Wordbase.dawg_common()  # List of playable common words
-        playable_candidates = []
+        # List of playable common words
+        common = Wordbase.dawg_common()
+        playable_candidates: List[Tuple[MoveBase, int]] = []
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
         i = 0  # Candidate index
@@ -836,8 +855,8 @@ class AutoPlayer_Common(AutoPlayer):
 
 class AutoPlayer_MiniMax(AutoPlayer):
 
-    """ This subclass of AutoPlayer uses a MiniMax algorithm to
-        select a move to play from the list of valid moves.
+    """This subclass of AutoPlayer uses a MiniMax algorithm to
+    select a move to play from the list of valid moves.
     """
 
     def __init__(self, state):
@@ -863,8 +882,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
         def keyfunc(x):
-            """ Sort moves first by descending score;
-                in case of ties prefer shorter words """
+            """Sort moves first by descending score;
+            in case of ties prefer shorter words"""
             # !!! TODO: Insert more sophisticated logic here,
             # !!! including whether triple-word-score opportunities
             # !!! are being opened for the opponent, minimal use
@@ -873,9 +892,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
-            """ Special case for first move:
-                Sort moves first by descending score, and in case of ties,
-                try to go to the upper half of the board for a more open game """
+            """Special case for first move:
+            Sort moves first by descending score, and in case of ties,
+            try to go to the upper half of the board for a more open game"""
             return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
@@ -900,8 +919,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         NUM_TEST_RACKS = 20  # How many random test racks to try for statistical average
         NUM_CANDIDATES = 12  # How many top candidates do we look at with MiniMax?
 
-        weighted_candidates = []
-        min_score = None
+        weighted_candidates: List[Tuple[MoveBase, int, float]] = []
+        min_score: Optional[float] = None
 
         # pylint: disable=superfluous-parens
 
@@ -926,7 +945,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
                 # Loop over NUM_TEST_RACKS random racks to find
                 # the average countermove score
                 sum_score = 0
-                rackscores = dict()
+                rackscores: Dict[str, int] = dict()
                 for _ in range(NUM_TEST_RACKS):
                     # Make sure we test this for a random opponent rack
                     teststate.randomize_and_sort_rack()
@@ -973,16 +992,13 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # Keep track of the weighted candidate moves
             weighted_candidates.append((m, score, avg_score))
 
-        print(
-            "Lowest score of countermove to all evaluated candidates is {0:.2f}".format(
-                min_score
-            )
-        )
+        print(f"Lowest score of countermove to all evaluated candidates is {min_score}")
         # Sort the candidates by the plain score after subtracting the effect of
         # potential countermoves, measured as the countermove score in excess of
         # the lowest countermove score found
+        min_score_float = cast(float, min_score)
         weighted_candidates.sort(
-            key=lambda x: float(x[1]) - (x[2] - min_score), reverse=True
+            key=lambda x: float(x[1]) - (x[2] - min_score_float), reverse=True
         )
 
         print(
@@ -994,7 +1010,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         for m, sc, wsc in weighted_candidates:
             print(
                 "Move {0} score {1} weighted {2:.2f}".format(
-                    m, sc, float(sc) - (wsc - min_score)
+                    m, sc, float(sc) - (wsc - min_score_float)
                 )
             )
         # Return the highest-scoring candidate

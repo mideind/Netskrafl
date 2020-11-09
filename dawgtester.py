@@ -9,26 +9,33 @@
 
 """
 
+from __future__ import annotations
+
+from typing import Optional
+
 import os
 import time
 
 from dawgdictionary import PackedDawgDictionary
-from languages import Alphabet
+from languages import IcelandicAlphabet
 
 
 class DawgTester:
 
     def __init__(self):
-        self._dawg = None
+        self._dawg: Optional[PackedDawgDictionary] = None
 
-    def _test(self, word):
+    def _test(self, word: str) -> None:
+        assert self._dawg is not None
         print("\"{0}\" is {1}found".format(word, "" if word in self._dawg else u"not "))
 
-    def _test_true(self, word):
+    def _test_true(self, word: str) -> None:
+        assert self._dawg is not None
         if word not in self._dawg:
             print("Error: \"{0}\" was not found".format(word))
 
-    def _test_false(self, word):
+    def _test_false(self, word: str) -> None:
+        assert self._dawg is not None
         if word in self._dawg:
             # Tests the __contains__ operator
             print("Error: \"{0}\" was found".format(word))
@@ -40,7 +47,7 @@ class DawgTester:
         print("Author: Vilhjálmur Þorsteinsson\n")
 
         t0 = time.time()
-        self._dawg = PackedDawgDictionary()
+        self._dawg = PackedDawgDictionary(IcelandicAlphabet)
         fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
         self._dawg.load(fpath)
         t1 = time.time()
@@ -240,8 +247,8 @@ class DawgTester:
         print("Checking small words:")
 
         # Check all possible two-letter combinations, allowing only those in the list
-        for first in Alphabet.order:
-            for second in Alphabet.order:
+        for first in IcelandicAlphabet.order:
+            for second in IcelandicAlphabet.order:
                 word = first + second
                 if word in smallwords:
                     self._test_true(word)
@@ -256,7 +263,7 @@ class DawgTester:
         print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -270,7 +277,7 @@ class DawgTester:
         print("Permutations of \"{0}\":".format(word))
         cnt = 0
         for word in permlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -286,7 +293,7 @@ class DawgTester:
         print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()
@@ -301,7 +308,7 @@ class DawgTester:
         print("Matches of \"{0}\":".format(word))
         cnt = 0
         for word in mlist:
-            print("\"{0}\"".format(word)),
+            print("\"{0}\"".format(word), sep=" ")
             cnt += 1
             if cnt % 6 == 0:
                 print()

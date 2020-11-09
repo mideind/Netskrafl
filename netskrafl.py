@@ -28,7 +28,20 @@
 
 # pylint: disable=too-many-lines
 
-from typing import Optional, Dict, Union, List, Any
+from __future__ import annotations
+
+from typing import (
+    Optional,
+    Dict,
+    Union,
+    List,
+    Any,
+    TypeVar,
+    Callable,
+    Iterable,
+    Tuple,
+    cast,
+)
 
 import os
 import logging
@@ -38,6 +51,7 @@ import random
 
 from functools import wraps
 from datetime import datetime, timedelta
+from logging.config import dictConfig
 
 from flask import (
     Flask,
@@ -46,21 +60,31 @@ from flask import (
     redirect,
     jsonify,
     url_for,
-    request, Request,
-    make_response, Response,
+    request,
+    Request,
+    make_response,
+    Response,
     g,
     session,
 )
 from werkzeug.urls import url_parse
+from werkzeug.wrappers import Response as WerkzeugResponse
 
-from google.oauth2 import id_token  # type: ignore
-from google.auth.transport import requests as google_requests  # type: ignore
+from authlib.integrations.flask_client import OAuth  # type: ignore
+from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
 import requests
 
-from languages import Alphabet
+from languages import (
+    Alphabet,
+    current_alphabet,
+    set_locale,
+    current_lc,
+    SUPPORTED_LOCALES,
+)
 from dawgdictionary import Wordbase
 from skraflmechanics import (
+    MoveBase,
     Move,
     PassMove,
     ExchangeMove,
@@ -81,11 +105,47 @@ from skrafldb import (
     ChatModel,
     ZombieModel,
     PromoModel,
+    PrefsDict,
 )
 import billing
 import firebase
 from cache import memcache
 import skraflstats
+
+
+# Type definitions
+T = TypeVar("T")
+ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
+RouteType = Callable[[], ResponseType]
+UserPrefsType = Dict[str, Union[str, bool]]
+
+# Are we running in a local development environment or on a GAE server?
+running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+
+if running_local:
+    # Configure logging
+    dictConfig(
+        {
+            'version': 1,
+            'formatters': {
+                'default': {
+                    'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+                }
+            },
+            'handlers': {
+                'wsgi': {
+                    'class': 'logging.StreamHandler',
+                    'stream': 'ext://flask.logging.wsgi_errors_stream',
+                    'formatter': 'default',
+                }
+            },
+            'root': {'level': 'INFO', 'handlers': ['wsgi']},
+        }
+    )
+
+# Main Flask application instance
+app = Flask(__name__)
+app.config["DEBUG"] = running_local
 
 
 # Flask initialization
@@ -103,46 +163,66 @@ def ndb_wsgi_middleware(wsgi_app):
     return middleware
 
 
-app = Flask(__name__)
-
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 
-running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+# client_id and client_secret for Google Sign-In
+_CLIENT_ID = os.environ.get("CLIENT_ID", "")
+# Read client secret key from file
+with open(
+    os.path.abspath(os.path.join("resources", "client_secret.txt")), "r"
+) as f_txt:
+    _CLIENT_SECRET = f_txt.read().strip()
 
-app.config["DEBUG"] = running_local
+assert _CLIENT_ID, "CLIENT_ID environment variable not set"
+assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 
+# Flask configuration
+# Make sure that the Flask session cookie is secure (i.e. only used
+# with HTTPS unless we're running on a development server) and
+# invisible from JavaScript (HTTPONLY).
+# We set SameSite to 'Lax', as it cannot be 'Strict' due to the user
+# authentication (OAuth2) redirection flow.
+flask_config = dict(
+    SESSION_COOKIE_SECURE=not running_local,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    # SESSION_COOKIE_DOMAIN="netskrafl.is",
+    # SERVER_NAME="netskrafl.is",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=31),
+    # Add Google OAuth2 client id and secret
+    GOOGLE_CLIENT_ID=_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET=_CLIENT_SECRET,
+)
 
 if running_local:
     logging.info("Netskrafl app running with DEBUG set to True")
+    # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library
     import google.cloud.logging  # type: ignore
+
     # Instantiate a logging client
     logging_client = google.cloud.logging.Client()
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     logging_client.setup_logging()
 
-
-# Make sure that the Flask session cookie is secure (i.e. only used
-# with HTTPS unless we're running on a development server) and
-# invisible from JavaScript (HTTPONLY).
-# Also, we set SameSite to 'Strict', indicating that our session cookie
-# should only sent back from the client during sessions on our site,
-# i.e. not when navigating to it from other sites.
-app.config.update(
-    SESSION_COOKIE_SECURE=not running_local,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Strict",
-    # SESSION_COOKIE_DOMAIN="netskrafl.is",
-    # SERVER_NAME="netskrafl.is",
-    PERMANENT_SESSION_LIFETIME=timedelta(days=31),
-)
-
 # Read secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
     app.secret_key = f.read()
+
+# Load the Flask configuration
+app.config.update(**flask_config)
+
+# Initialize the OAuth wrapper
+OAUTH_CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    server_metadata_url=OAUTH_CONF_URL,
+    client_kwargs={'scope': 'openid email profile'},
+)
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
 # exceptions, run the AutoPlayer move generator serially and exclusively
@@ -164,9 +244,6 @@ _SINGLE_PAGE_UI = False
 # App Engine (and Firebase) project id
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
 
-# Client_id for Google Sign-In
-_CLIENT_ID = os.environ.get("CLIENT_ID", "")
-
 # Firebase configuration
 _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
@@ -174,7 +251,6 @@ _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
 # Valid token issuers for OAuth2 login
 _VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
-assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _PROJECT_ID, "PROJECT_ID environment variable not set"
 assert _FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
 assert _FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
@@ -191,9 +267,9 @@ def add_headers(response: Response) -> Response:
     return response
 
 
-def max_age(seconds):
-    """ Caching decorator for Flask - augments response
-        with a max-age cache header """
+def max_age(seconds: int) -> Callable:
+    """Caching decorator for Flask - augments response
+    with a max-age cache header"""
 
     def decorator(f):
         @wraps(f)
@@ -213,7 +289,7 @@ def max_age(seconds):
 def inject_into_context() -> Dict[str, Union[bool, str]]:
     """ Inject variables and functions into all Flask contexts """
     return dict(
-        # Variable dev_server is True if running on the GAE development server
+        # Variable dev_server is True if running on a (local) GAE development server
         dev_server=running_local,
         project_id=_PROJECT_ID,
         client_id=_CLIENT_ID,
@@ -224,11 +300,11 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 
 # Flask cache busting for static .css and .js files
 @app.url_defaults
-def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]):
-    """ Add a ?h=XXX parameter to URLs for static .js and .css files,
-        where XXX is calculated from the file timestamp """
+def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
+    """Add a ?h=XXX parameter to URLs for static .js and .css files,
+    where XXX is calculated from the file timestamp"""
 
-    def static_file_hash(filename: str):
+    def static_file_hash(filename: str) -> int:
         """ Obtain a timestamp for the given file """
         return int(os.stat(filename).st_mtime)
 
@@ -251,29 +327,28 @@ def stripwhite(s: str) -> str:
 
 
 def session_user() -> Optional[User]:
-    """ Return the user who is authenticated in the current session, if any.
-        This can be called within any Flask request. """
+    """Return the user who is authenticated in the current session, if any.
+    This can be called within any Flask request."""
     u = None
-    user = session.get("user")
+    user = session.get("userid")
     if user is not None:
         userid = user.get("id")
         u = User.load_if_exists(userid)
     return u
 
 
-def auth_required(**error_kwargs):
-    """ Decorator for routes that require an authenticated user.
-        Call with no parameters to redirect unauthenticated requests
-        to url_for("login"), or login_url="..." to redirect to that URL,
-        or any other kwargs to return a JSON reply to unauthenticated
-        requests, containing those kwargs (via jsonify()). """
+def auth_required(**error_kwargs) -> Callable[[RouteType], RouteType]:
+    """Decorator for routes that require an authenticated user.
+    Call with no parameters to redirect unauthenticated requests
+    to url_for("login"), or login_url="..." to redirect to that URL,
+    or any other kwargs to return a JSON reply to unauthenticated
+    requests, containing those kwargs (via jsonify())."""
 
-    def wrap(func):
-
+    def wrap(func: RouteType) -> RouteType:
         @wraps(func)
-        def route():
-            """ Load the authenticated user into g.user
-                before invoking the wrapped route function """
+        def route() -> ResponseType:
+            """Load the authenticated user into g.user
+            before invoking the wrapped route function"""
             u = session_user()
             if u is None:
                 # No authenticated user
@@ -286,13 +361,15 @@ def auth_required(**error_kwargs):
                 # (cookies or popups are probably not allowed)
                 if request.args.get("fromlogin", "") == "1":
                     return redirect(url_for("login_error"))
-                # Not already coming from the login page:
+                # Not already coming from the greeting page:
                 # redirect to it
                 login_url = error_kwargs.get("login_url")
-                return redirect(login_url or url_for("login"))
+                return redirect(login_url or url_for("greet"))
             # We have an authenticated user: store in g.user
             # and call the route function
             g.user = u
+            # Set the locale for this thread to the user's locale
+            set_locale(u.locale)
             return func()
 
         return route
@@ -301,22 +378,22 @@ def auth_required(**error_kwargs):
 
 
 def current_user() -> Optional[User]:
-    """ Return the currently logged in user. Only valid within route functions
-        decorated with @auth_required. """
+    """Return the currently logged in user. Only valid within route functions
+    decorated with @auth_required."""
     return g.get("user")
 
 
 def current_user_id() -> Optional[str]:
-    """ Return the id of the currently logged in user. Only valid within route
-        functions decorated with @auth_required. """
+    """Return the id of the currently logged in user. Only valid within route
+    functions decorated with @auth_required."""
     u = g.get("user")
     return None if u is None else u.id()
 
 
 class RequestData:
 
-    """ Wraps the Flask request object to allow error-checked retrieval of query
-        parameters either from JSON or from form-encoded POST data """
+    """Wraps the Flask request object to allow error-checked retrieval of query
+    parameters either from JSON or from form-encoded POST data"""
 
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))
@@ -336,14 +413,14 @@ class RequestData:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
-    def get_int(self, key: str, default: int=0) -> int:
+    def get_int(self, key: str, default: int = 0) -> int:
         """ Obtain an integer data item from the request """
         try:
             return int(self.q.get(key, default))
         except (TypeError, ValueError):
             return default
 
-    def get_bool(self, key: str, default: bool=False) -> bool:
+    def get_bool(self, key: str, default: T = cast(Any, False)) -> Union[bool, T]:
         """ Obtain a boolean data item from the request """
         try:
             val = self.q.get(key, default)
@@ -373,7 +450,7 @@ class RequestData:
         return self.q.get(key, "")
 
 
-def _process_move(game, movelist):
+def _process_move(game, movelist: Iterable[str]) -> Response:
     """ Process a move coming in from the client """
 
     assert game is not None
@@ -386,7 +463,7 @@ def _process_move(game, movelist):
     player_index = game.player_to_move()
 
     # Parse the move from the movestring we got back
-    m = Move("", 0, 0)
+    m: MoveBase = Move("", 0, 0)
     # pylint: disable=broad-except
     try:
         for mstr in movelist:
@@ -417,10 +494,10 @@ def _process_move(game, movelist):
                 tile = tile[0]
             else:
                 letter = tile
+            assert isinstance(m, Move)
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
-        m = None
 
     # Process the move string here
     # Unpack the error code and message
@@ -476,20 +553,20 @@ def _process_move(game, movelist):
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(1 - player_index, m)
-        msg = {
+        msg_dict = {
             "game/" + game.id() + "/" + opponent + "/move": client_state,
             "user/" + opponent: {"move": datetime.utcnow().isoformat()},
         }
-        firebase.send_message(msg)
+        firebase.send_message(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(player_index))
 
 
-def fetch_users(ulist, uid_func):
+def fetch_users(ulist: Iterable[T], uid_func: Callable[[T], str]) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
     # Make a list of user ids by applying the uid_func to ulist entries (!= None)
-    uids = []
+    uids: List[str] = []
     for u in ulist:
         uid = None if u is None else uid_func(u)
         if uid:
@@ -500,14 +577,14 @@ def fetch_users(ulist, uid_func):
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
-def _userlist(query, spec):
+def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     """ Return a list of users matching the filter criteria """
 
-    result = []
+    result: List[Dict[str, Any]] = []
 
-    def elo_str(elo):
+    def elo_str(elo: Union[None, int, str]) -> str:
         """ Return a string representation of an Elo score, or a hyphen if none """
-        return elo or "-"
+        return str(elo) if elo else "-"
 
     # We will be returning a list of human players
     cuser = current_user()
@@ -615,8 +692,11 @@ def _userlist(query, spec):
     elif query == "alike":
         # Return users with similar Elo ratings
         if cuid is not None:
-            i = UserModel.list_similar_elo(cuser.human_elo(), max_len=40)
-            ausers = User.load_multi(i)
+            assert cuser is not None
+            ui = UserModel.list_similar_elo(
+                cuser.human_elo(), max_len=40, locale=current_lc()
+            )
+            ausers = User.load_multi(ui)
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
                     uid = au.id()
@@ -642,7 +722,7 @@ def _userlist(query, spec):
         # Return users with nicknames matching a pattern
 
         if not spec:
-            i = []
+            si = []
         else:
             # Limit the spec to 16 characters
             spec = spec[0:16]
@@ -651,18 +731,18 @@ def _userlist(query, spec):
             cache_range = "4:" + spec.lower()  # Case is not significant
 
             # Start by looking in the cache
-            i = memcache.get(cache_range, namespace="userlist")
-            if i is None:
+            si = memcache.get(cache_range, namespace="userlist")
+            if si is None:
                 # Not found: do an query, returning max 25 users
-                i = list(UserModel.list_prefix(spec, max_len=25))
+                si = list(UserModel.list_prefix(spec, max_len=25, locale=current_lc()))
                 # Store the result in the cache with a lifetime of 2 minutes
-                memcache.set(cache_range, i, time=2 * 60, namespace="userlist")
+                memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         def displayable(ud):
             """ Determine whether a user entity is displayable in a list """
             return User.is_valid_nick(ud["nickname"])
 
-        for ud in i:
+        for ud in si:
             uid = ud["id"]
             if uid == cuid:
                 # Do not include the current user, if any, in the list
@@ -674,7 +754,7 @@ def _userlist(query, spec):
                         "userid": uid,
                         "nick": ud["nickname"],
                         "fullname": User.full_name_from_prefs(ud["prefs"]),
-                        "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
+                        "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
@@ -695,15 +775,17 @@ def _userlist(query, spec):
             # First by readiness
             0 if x["ready"] else 1 if x["ready_timed"] else 2,
             # Then by nickname
-            Alphabet.sortkey_nocase(x["nick"]),
+            current_alphabet().sortkey_nocase(x["nick"]),
         )
     )
     return result
 
 
-def _gamelist(cuid, include_zombies=True):
+def _gamelist(
+    cuid: str, include_zombies: bool = True
+) -> List[Dict[str, Union[str, int, bool]]]:
     """ Return a list of active and zombie games for the current user """
-    result = []
+    result: List[Dict[str, Union[str, int, bool]]] = []
     if not cuid:
         return result
     now = datetime.utcnow()
@@ -711,8 +793,12 @@ def _gamelist(cuid, include_zombies=True):
     # has not seen) at the top of the list
     if include_zombies:
         for g in ZombieModel.list_games(cuid):
+            if g is None:
+                continue
             opp = g["opp"]  # User id of opponent
             u = User.load_if_exists(opp)
+            if u is None:
+                continue
             nick = u.nickname()
             prefs = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -753,6 +839,8 @@ def _gamelist(cuid, include_zombies=True):
     opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
+        if g is None:
+            continue
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
@@ -801,9 +889,9 @@ def _gamelist(cuid, include_zombies=True):
     return result
 
 
-def _rating(kind):
+def _rating(kind: str) -> List[Dict[str, Any]]:
     """ Return a list of Elo ratings of the given kind ('all' or 'human') """
-    result = []
+    result: List[Dict[str, Any]] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
 
@@ -887,12 +975,12 @@ def _rating(kind):
     return result
 
 
-def _recentlist(cuid, versus, max_len):
-    """ Return a list of recent games for the indicated user, eventually
-        filtered by the opponent id (versus) """
+def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str, Any]]:
+    """Return a list of recent games for the indicated user, eventually
+    filtered by the opponent id (versus)"""
+    result: List[Dict[str, Any]] = []
     if cuid is None:
-        return []
-    result = []
+        return result
     # Obtain a list of recently finished games where the indicated user was a player
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
@@ -942,30 +1030,31 @@ def _recentlist(cuid, versus, max_len):
     return result
 
 
-def _opponent_waiting(user_id, opp_id):
+def _opponent_waiting(user_id: str, opp_id: str) -> bool:
     """ Return True if the given opponent is waiting on this user's challenge """
     return firebase.check_wait(opp_id, user_id)
 
 
-def _challengelist():
+def _challengelist() -> List[Dict[str, Any]]:
     """ Return a list of challenges issued or received by the current user """
 
-    result = []
+    result: List[Dict[str, Any]] = []
     cuid = current_user_id()
 
-    def is_timed(prefs):
+    def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
         """ Return True if the challenge is for a timed game """
         if prefs is None:
             return False
         return prefs.get("duration", 0) > 0
 
     def opp_ready(c):
-        """ Returns True if this is a timed challenge
-            and the opponent is ready to play """
+        """Returns True if this is a timed challenge
+        and the opponent is ready to play"""
         if not is_timed(c[1]):
             return False
         # Timed challenge: see if there is a Firebase path indicating
         # that the opponent is waiting for this user
+        assert cuid is not None
         return _opponent_waiting(cuid, c[0])
 
     if cuid is not None:
@@ -1012,9 +1101,8 @@ def _challengelist():
 @app.route("/_ah/warmup")
 def warmup():
     """ App Engine is starting a fresh instance - warm it up
-        by loading word database """
-    wdb = Wordbase.dawg()
-    ok = "upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
+        by loading all vocabularies """
+    ok = Wordbase.warmup()
     logging.info(
         "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
     )
@@ -1025,10 +1113,8 @@ def warmup():
 def start():
     """ App Engine is starting a fresh instance """
     logging.info(
-        "Start, version {0}, instance {1}"
-        .format(
-            os.environ.get("GAE_VERSION", ""),
-            os.environ.get("GAE_INSTANCE", "")
+        "Start, version {0}, instance {1}".format(
+            os.environ.get("GAE_VERSION", ""), os.environ.get("GAE_INSTANCE", "")
         )
     )
     return "", 200, {}
@@ -1192,6 +1278,7 @@ def userstats():
         return jsonify(result=Error.WRONG_USER)
 
     cuser = current_user()
+    assert cuser is not None
     stats = user.statistics()
 
     # Include info on whether this user is a favorite of the current user
@@ -1211,7 +1298,7 @@ def userstats():
 
 @app.route("/userlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userlist():
+def userlist() -> Response:
     """ Return user lists with particular criteria """
 
     rq = RequestData(request)
@@ -1222,21 +1309,22 @@ def userlist():
 
 @app.route("/gamelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamelist():
+def gamelist() -> Response:
     """ Return a list of active games for the current user """
 
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
     cuid = current_user_id()
+    assert cuid is not None
     return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
 
 
 @app.route("/rating", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def rating():
-    """ Return the newest Elo ratings table (top 100)
-        of a given kind ('all' or 'human') """
+def rating() -> Response:
+    """Return the newest Elo ratings table (top 100)
+    of a given kind ('all' or 'human')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
     if kind not in ("all", "human"):
@@ -1246,7 +1334,7 @@ def rating():
 
 @app.route("/recentlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def recentlist():
+def recentlist() -> Response:
     """ Return a list of recently completed games for the indicated user """
 
     rq = RequestData(request)
@@ -1273,17 +1361,18 @@ def recentlist():
 
 @app.route("/challengelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def challengelist():
+def challengelist() -> Response:
     """ Return a list of challenges issued or received by the current user """
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @app.route("/favorite", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def favorite():
+def favorite() -> Response:
     """ Create or delete an A-favors-B relation """
 
     user = current_user()
+    assert user is not None
 
     rq = RequestData(request)
     destuser = rq.get("destuser")
@@ -1300,10 +1389,12 @@ def favorite():
 
 @app.route("/challenge", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def challenge():
+def challenge() -> Response:
     """ Create or delete an A-challenges-B relation """
 
     user = current_user()
+    assert user is not None
+
     rq = RequestData(request)
     destuser = rq.get("destuser")
     if not destuser:
@@ -1348,10 +1439,12 @@ def challenge():
 
 @app.route("/setuserpref", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def setuserpref():
+def setuserpref() -> Response:
     """ Set a user preference """
 
     user = current_user()
+    assert user is not None
+
     rq = RequestData(request)
 
     # Check for the beginner preference and convert it to bool if we can
@@ -1379,7 +1472,7 @@ def setuserpref():
 
 @app.route("/onlinecheck", methods=["POST"])
 @auth_required(online=False)
-def onlinecheck():
+def onlinecheck() -> Response:
     """ Check whether a particular user is online """
     rq = RequestData(request)
     user_id = rq.get("user")
@@ -1391,19 +1484,21 @@ def onlinecheck():
 
 @app.route("/waitcheck", methods=["POST"])
 @auth_required(waiting=False)
-def waitcheck():
+def waitcheck() -> Response:
     """ Check whether a particular opponent is waiting on a challenge """
     rq = RequestData(request)
     opp_id = rq.get("user")
     waiting = False
     if opp_id:
-        waiting = _opponent_waiting(current_user_id(), opp_id)
+        cuid = current_user_id()
+        assert cuid is not None
+        waiting = _opponent_waiting(cuid, opp_id)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
 @app.route("/cancelwait", methods=["POST"])
 @auth_required(ok=False)
-def cancelwait():
+def cancelwait() -> Response:
     """ A wait on a challenge has been cancelled """
     rq = RequestData(request)
     user_id = rq.get("user")
@@ -1424,7 +1519,7 @@ def cancelwait():
 
 @app.route("/chatmsg", methods=["POST"])
 @auth_required(ok=False)
-def chatmsg():
+def chatmsg() -> Response:
     """ Send a chat message on a conversation channel """
 
     rq = RequestData(request)
@@ -1469,7 +1564,7 @@ def chatmsg():
 
 @app.route("/chatload", methods=["POST"])
 @auth_required(ok=False)
-def chatload():
+def chatload() -> Response:
     """ Load all chat messages on a conversation channel """
 
     rq = RequestData(request)
@@ -1507,11 +1602,13 @@ def chatload():
 
 @app.route("/review")
 @auth_required()
-def review():
+def review() -> ResponseType:
     """ Show game review page """
 
     # Only logged-in users who are paying friends can view this page
     user = current_user()
+    assert user is not None
+
     if not user.has_paid():
         # Only paying users can see game reviews
         return redirect(url_for("friend", action=1))
@@ -1572,11 +1669,13 @@ def review():
 
 @app.route("/bestmoves", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def bestmoves():
-    """ Return a list of the best possible moves in a game
-        at a given point """
+def bestmoves() -> Response:
+    """Return a list of the best possible moves in a game
+    at a given point"""
 
     user = current_user()
+    assert user is not None
+
     # !!! TODO
     if False:  # not user.has_paid():
         # User must be a paying friend
@@ -1636,13 +1735,13 @@ class UserForm:
 
     """ Encapsulates the data in the user preferences form """
 
-    def __init__(self, usr=None):
+    def __init__(self, usr: Optional[User] = None) -> None:
         # We store the URL that the client will redirect to after
         # doing an auth2.disconnect() call, clearing client-side
         # credentials. The login() handler clears the server-side
         # user cookie, so there is no need for an intervening redirect
         # to logout().
-        self.logout_url = url_for("login")
+        self.logout_url = url_for("logout")
         if usr:
             self.init_from_user(usr)
         else:
@@ -1655,8 +1754,10 @@ class UserForm:
             self.fairplay = False  # Defaults to False, must be explicitly set to True
             self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
+            # !!! TODO: Obtain default locale from Accept-Language and/or origin URL
+            self.locale = "is_IS"
 
-    def init_from_form(self, form):
+    def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
             self.nickname = form["nickname"].strip()
@@ -1670,6 +1771,7 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
+        self.locale = form.get("locale", "").strip() or "is_IS"
         try:
             self.audio = "audio" in form  # State of the checkbox
             self.fanfare = "fanfare" in form
@@ -1679,20 +1781,21 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
 
-    def init_from_dict(self, d):
+    def init_from_dict(self, d: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
             self.nickname = d.get("nickname", "").strip()
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError):
             pass
         try:
             self.full_name = d.get("full_name", "").strip()
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError):
             pass
         try:
             self.email = d.get("email", "").strip()
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError):
             pass
+        self.locale = d.get("locale", "").strip() or "is_IS"
         try:
             self.audio = bool(d.get("audio", False))
             self.fanfare = bool(d.get("fanfare", False))
@@ -1702,7 +1805,7 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
 
-    def init_from_user(self, usr):
+    def init_from_user(self, usr: User) -> None:
         """ Load the data to be edited upon initial display of the form """
         self.nickname = usr.nickname()
         self.full_name = usr.full_name()
@@ -1713,17 +1816,19 @@ class UserForm:
         self.fairplay = usr.fairplay()
         self.newbag = usr.new_bag()
         self.friend = usr.friend()
+        self.locale = usr.locale
 
-    def validate(self):
-        """ Check the current form data for validity
-            and return a dict of errors, if any """
-        errors = dict()
+    def validate(self) -> Dict[str, str]:
+        """Check the current form data for validity
+        and return a dict of errors, if any"""
+        errors: Dict[str, str] = dict()
         # pylint: disable=bad-continuation
+        alphabet = current_alphabet()
         if not self.nickname:
             errors["nickname"] = "Notandi verður að hafa einkenni"
         elif (
-            self.nickname[0] not in Alphabet.full_order
-            and self.nickname[0] not in Alphabet.full_upper
+            self.nickname[0] not in alphabet.full_order
+            and self.nickname[0] not in alphabet.full_upper
         ):
             errors["nickname"] = "Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
@@ -1734,9 +1839,11 @@ class UserForm:
             errors["full_name"] = "Nafn má ekki innihalda gæsalappir"
         if self.email and "@" not in self.email:
             errors["email"] = "Tölvupóstfang verður að innihalda @-merki"
+        if self.locale not in SUPPORTED_LOCALES:
+            errors["locale"] = "Óþekkt staðfang (locale)"
         return errors
 
-    def store(self, usr):
+    def store(self, usr: User) -> None:
         """ Store validated form data back into the user entity """
         usr.set_nickname(self.nickname)
         usr.set_full_name(self.full_name)
@@ -1746,9 +1853,10 @@ class UserForm:
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
         usr.set_new_bag(self.newbag)
+        usr.set_locale(self.locale)
         usr.update()
 
-    def as_dict(self):
+    def as_dict(self) -> UserPrefsType:
         """ Return the user preferences as a dictionary """
         return self.__dict__
 
@@ -1759,9 +1867,10 @@ def userprefs():
     """ Handler for the user preferences page """
 
     user = current_user()
+    assert user is not None
 
     uf = UserForm()
-    err = dict()
+    err: Dict[str, str] = dict()
 
     # The URL to go back to, if not main.html
     from_url = request.args.get("from", None)
@@ -1790,7 +1899,7 @@ def userprefs():
 
 @app.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
-def loaduserprefs():
+def loaduserprefs() -> ResponseType:
     """ Fetch the preferences of the current user in JSON form """
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
@@ -1799,10 +1908,11 @@ def loaduserprefs():
 
 @app.route("/saveuserprefs", methods=["POST"])
 @auth_required(ok=False)
-def saveuserprefs():
+def saveuserprefs() -> ResponseType:
     """ Fetch the preferences of the current user in JSON form """
 
     user = current_user()
+    assert user is not None
     j = request.get_json(silent=True)
 
     # Return the user preferences in JSON form
@@ -1817,10 +1927,11 @@ def saveuserprefs():
 
 @app.route("/wait")
 @auth_required()
-def wait():
+def wait() -> ResponseType:
     """ Show page to wait for a timed game to start """
 
     user = current_user()
+    assert user is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
@@ -1843,9 +1954,10 @@ def wait():
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
+    uid = user.id() or ""
     msg = {
         "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
-        "user/" + user.id() + "/wait/" + opp: True,
+        "user/" + uid + "/wait/" + opp: True,
     }
     firebase.send_message(msg)
 
@@ -1853,7 +1965,7 @@ def wait():
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
-    firebase_token = firebase.create_custom_token(user.id())
+    firebase_token = firebase.create_custom_token(uid)
 
     # Go to the wait page
     return render_template(
@@ -1863,28 +1975,38 @@ def wait():
 
 @app.route("/newgame")
 @auth_required()
-def newgame():
+def newgame() -> ResponseType:
     """ Show page to initiate a new game """
 
     user = current_user()
+    assert user is not None
+    uid = user.id()
+    assert uid is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
-
-    # Is this a reverse action, i.e. the challenger initiating a timed game,
-    # instead of the challenged player initiating a normal one?
-    rev = request.args.get("rev", None) is not None
 
     if opp is None:
         # !!! TODO: Adapt for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
+    # Get the board type
+    board_type = request.args.get("board_type", "standard")
+
+    # Is this a reverse action, i.e. the challenger initiating a timed game,
+    # instead of the challenged player initiating a normal one?
+    rev = request.args.get("rev", None) is not None
+
+    prefs: Optional[PrefsDict]
+
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = {"newbag": True} if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        if board_type != "standard":
+            prefs["board_type"] = board_type
+        game = Game.new(uid, None, robot_level, prefs=prefs)
         # !!! TODO: Adapt for singlepage
         return redirect(url_for("board", game=game.id()))
 
@@ -1896,7 +2018,7 @@ def newgame():
             # !!! TODO: Adapt for singlepage
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
-        found, prefs = opp_user.accept_challenge(user.id())
+        found, prefs = opp_user.accept_challenge(uid)
     else:
         # The current user accepts the challenge
         found, prefs = user.accept_challenge(opp)
@@ -1906,15 +2028,15 @@ def newgame():
         return redirect(url_for("main"))
 
     # Create a fresh game object
-    game = Game.new(user.id(), opp, 0, prefs)
+    game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
-    if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
+    if prefs and cast(int, prefs.get("duration", 0)) > 0:
+        msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
     firebase.send_message(msg)
 
@@ -1924,26 +2046,36 @@ def newgame():
 
 @app.route("/initgame", methods=["POST"])
 @auth_required(ok=False)
-def initgame():
+def initgame() -> ResponseType:
     """ Create a new game and return its UUID """
 
     user = current_user()
+    assert user is not None
+    uid = user.id()
+    assert uid is not None
+
     rq = RequestData(request)
     # Get the opponent id
     opp = rq.get("opp")
     if not opp:
         return jsonify(ok=False)
 
+    board_type = rq.get("board_type", "standard")
+
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
     rev = rq.get_bool("rev")
+
+    prefs: Optional[PrefsDict]
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = {"newbag": True} if user.new_bag() else None
-        game = Game.new(user.id(), None, robot_level, prefs=prefs)
+        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        if board_type != "standard":
+            prefs["board_type"] = board_type
+        game = Game.new(uid, None, robot_level, prefs=prefs)
         return jsonify(ok=True, uuid=game.id())
 
     # Start a new game between two human users
@@ -1953,7 +2085,7 @@ def initgame():
         if opp_user is None:
             return jsonify(ok=False)
         # In this case, the opponent accepts the challenge
-        found, prefs = opp_user.accept_challenge(user.id())
+        found, prefs = opp_user.accept_challenge(uid)
     else:
         # The current user accepts the challenge
         found, prefs = user.accept_challenge(opp)
@@ -1963,15 +2095,15 @@ def initgame():
         return jsonify(ok=False)
 
     # Create a fresh game object
-    game = Game.new(user.id(), opp, 0, prefs)
+    game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
-    if prefs and prefs.get("duration", 0) > 0:
-        msg["user/" + opp + "/wait/" + user.id()] = {"game": game.id()}
+    if prefs and cast(int, prefs.get("duration", 0)) > 0:
+        msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
     firebase.send_message(msg)
 
@@ -1980,7 +2112,7 @@ def initgame():
 
 
 @app.route("/board")
-def board():
+def board() -> ResponseType:
     """ The main game page """
 
     # Note that authentication is not required to access this page
@@ -2015,33 +2147,34 @@ def board():
         return redirect(url_for("main"))
 
     user = session_user()
+    uid = "" if user is None else (user.id() or "")
     is_over = game.is_over()
     opp = None  # The opponent
 
     if not is_over:
         # Game still in progress
-        if user is None:
+        if not uid:
             # User hasn't logged in yet: redirect to login page
             return redirect(url_for("login"))
-        if not game.has_player(user.id()):
+        if not game.has_player(uid):
             # This user is not a party to the game: redirect to main page
             return redirect(url_for("main"))
 
     # user can be None if the game is over - we do not require a login in that case
-    player_index = None if user is None else game.player_index(user.id())
+    player_index = None if user is None else game.player_index(uid)
 
     # If a logged-in user is looking at the board, we create a Firebase
     # token in order to maintain presence info
-    firebase_token = None if user is None else firebase.create_custom_token(user.id())
+    firebase_token = None if user is None else firebase.create_custom_token(uid)
 
     if player_index is not None and not game.is_autoplayer(1 - player_index):
         # Load information about the opponent
         opp = User.load_if_exists(game.player_id(1 - player_index))
 
-    if zombie and player_index is not None:
+    if zombie and player_index is not None and user is not None:
         # This is a newly finished game that is now being viewed by clicking
         # on it from a zombie list: remove it from the list
-        ZombieModel.del_game(game.id(), user.id())
+        ZombieModel.del_game(game.id(), uid)
 
     ogd = None  # OpenGraph data
     if og is not None and is_over:
@@ -2066,10 +2199,10 @@ def board():
 
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
-    if firebase_token is not None:
+    if firebase_token is not None and user is not None:
         msg = {
-            "game/" + game.id() + "/" + user.id(): None,
-            "user/" + user.id() + "/wait": None,
+            "game/" + game.id() + "/" + uid: None,
+            "user/" + uid + "/wait": None,
         }
         firebase.send_message(msg)
         # No need to clear other stuff on the /user/[user_id]/ path,
@@ -2090,9 +2223,9 @@ def board():
 
 @app.route("/gameover", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gameover():
-    """ A player has seen a game finish: remove it from
-        the zombie list, if it is there """
+def gameover() -> ResponseType:
+    """A player has seen a game finish: remove it from
+    the zombie list, if it is there"""
     cuid = current_user_id()
     rq = RequestData(request)
     game_id = rq.get("game")
@@ -2106,10 +2239,11 @@ def gameover():
 
 @app.route("/friend")
 @auth_required()
-def friend():
-    """ Page for users to register or unregister themselves
-        as friends of Netskrafl """
+def friend() -> ResponseType:
+    """Page for users to register or unregister themselves
+    as friends of Netskrafl"""
     user = current_user()
+    assert user is not None
     try:
         action = int(request.args.get("action", "0"))
     except (TypeError, ValueError):
@@ -2136,7 +2270,7 @@ def friend():
 
 
 @app.route("/promo", methods=["POST"])
-def promo():
+def promo() -> ResponseType:
     """ Return promotional HTML corresponding to a given key (category) """
     user = session_user()
     if user is None:
@@ -2151,33 +2285,33 @@ def promo():
 
 @app.route("/signup", methods=["GET"])
 @auth_required()
-def signup():
+def signup() -> ResponseType:
     """ Sign up as a friend, enter card info, etc. """
     return render_template("signup.html", user=current_user())
 
 
 @app.route("/skilmalar", methods=["GET"])
 @auth_required()
-def skilmalar():
+def skilmalar() -> ResponseType:
     """ Conditions """
     return render_template("skilmalar.html", user=current_user())
 
 
 @app.route("/billing", methods=["GET", "POST"])
-def handle_billing():
-    """ Receive signup and billing confirmations.
-        Authentication not necessarily required. """
+def handle_billing() -> ResponseType:
+    """Receive signup and billing confirmations.
+    Authentication not necessarily required."""
     uid = ""
     u = session_user()
     if u is not None:
         # This is called within a session: pass the user id to the billing module
-        uid = u.id()
+        uid = u.id() or ""
     return billing.handle(request, uid)
 
 
 @app.route("/")
 @auth_required()
-def main():
+def main() -> ResponseType:
     """ Handler for the main (index) page """
 
     if _SINGLE_PAGE_UI:
@@ -2185,13 +2319,14 @@ def main():
         return redirect(url_for("page"))
 
     user = current_user()
+    assert user is not None
 
     # Initial tab to show, if any
     tab = request.args.get("tab", None)
 
-    uid = user.id()
+    uid = user.id() or ""
 
-    # Create a Firebase token for the logged-0in user
+    # Create a Firebase token for the logged-in user
     # to enable refreshing of the client page when
     # the user state changes (game moves made, challenges
     # issued or accepted, etc.)
@@ -2199,7 +2334,7 @@ def main():
 
     # Promotion display logic
     promo_to_show = None
-    promos = []
+    promos: List[datetime] = []
     if random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
@@ -2242,7 +2377,7 @@ def main():
 
 # pylint: disable=redefined-builtin
 @app.route("/help")
-def help():
+def help() -> ResponseType:
     """ Show help page, which does not require authentication """
     user = session_user()
     # We tolerate a null (not logged in) user here
@@ -2250,7 +2385,7 @@ def help():
 
 
 @app.route("/rawhelp")
-def rawhelp():
+def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
 
     def override_url_for(endpoint, **values):
@@ -2265,14 +2400,14 @@ def rawhelp():
 
 
 @app.route("/twoletter")
-def twoletter():
+def twoletter() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     return render_template("nshelp.html", user=user, tab="twoletter")
 
 
 @app.route("/faq")
-def faq():
+def faq() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
@@ -2281,72 +2416,63 @@ def faq():
 
 @app.route("/page")
 @auth_required()
-def page():
+def page() -> ResponseType:
     """ Show single-page UI test """
     user = current_user()
-    firebase_token = firebase.create_custom_token(user.id())
+    assert user is not None
+    uid = user.id() or ""
+    firebase_token = firebase.create_custom_token(uid)
     return render_template("page.html", user=user, firebase_token=firebase_token,)
 
 
 @app.route("/newbag")
-def newbag():
+def newbag() -> ResponseType:
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
     return render_template("nshelp.html", user=user, tab="newbag")
 
 
+@app.route("/greet")
+def greet() -> ResponseType:
+    """ Handler for the greeting page """
+    return render_template("login.html")
+
+
 @app.route("/login")
-def login():
-    """ Handler for the login & greeting page """
-    main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
-    if "user" in session:
-        del session["user"]
-    return render_template("login.html", main_url=main_url)
+def login() -> ResponseType:
+    """ Handler for the login sequence """
+    session.pop("userid", None)
+    session.pop("user", None)
+    redirect_uri = url_for('oauth2callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
 
 
 @app.route("/login_error")
-def login_error():
+def login_error() -> ResponseType:
     """ An error during login: probably cookies or popups are not allowed """
     return render_template("login-error.html")
 
 
 @app.route("/logout")
-def logout():
+def logout() -> ResponseType:
     """ Log the user out """
-    if "user" in session:
-        del session["user"]
-    return redirect(url_for("login"))
+    session.pop("userid", None)
+    session.pop("user", None)
+    return redirect(url_for("greet"))
 
 
-@app.route("/oauth2callback", methods=["POST"])
-def oauth2callback():
-    """ The OAuth2 login flow POSTs to this callback when a user has
-        signed in using a Google Account """
-
-    if not _CLIENT_ID:
-        # Something is wrong in the internal setup of the server
-        # (environment variable probably missing)
-        # 500 - Internal server error
-        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"})
-
-    token = request.form.get("idToken", "")
-    csrf_token = request.form.get("csrfToken", "")
-
-    if not token:
-        # No authentication token included in the request
-        # 400 - Bad Request
-        return jsonify({"status": "invalid", "msg": "Missing token"})
-
-    # !!! TODO: Add CSRF verification
+@app.route("/oauth2callback")
+def oauth2callback() -> ResponseType:
+    """The OAuth2 login flow GETs this callback when a user has
+    signed in using a Google Account"""
 
     account = None
     userid = None
+    idinfo = None
     try:
-        # Verify the token and extract its claims
-        idinfo = id_token.verify_oauth2_token(
-            token, google_requests.Request(), _CLIENT_ID
-        )
+        token = oauth.google.authorize_access_token()
+        idinfo = oauth.google.parse_id_token(token)
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
@@ -2359,30 +2485,35 @@ def oauth2callback():
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
         userid = User.login_by_account(account, name, email)
-    except ValueError as e:
-        # Invalid token
-        return jsonify({"status": "invalid", "msg": str(e)})
+    except (ValueError, MismatchingStateError) as e:
+        # Something is wrong: we're not getting the same (random) state string back
+        # that we originally sent to the OAuth2 provider
+        logging.warning(f"oauth2callback(): {e}")
+        userid = None
 
     if not userid:
-        # Unable to obtain the user id for some reason
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"})
+        # Unable to obtain a properly authenticated user id for some reason
+        return redirect(url_for("login_error"))
 
     # Authentication complete; user id obtained
-    session["user"] = {
+    session["userid"] = {
         "id": userid,
     }
+    session["user"] = idinfo
     session.permanent = True
     logging.info(
         "oauth2callback() successfully recognized "
-        "account {0} userid {1} email {2} name '{3}'"
-        .format(account, userid, email, name)
+        "account {0} userid {1} email {2} name '{3}'".format(
+            account, userid, email, name
+        )
     )
-    return jsonify({"status": "success"})
+    main_url = url_for("page") if _SINGLE_PAGE_UI else url_for("main")
+    return redirect(main_url)
 
 
 @app.route("/service-worker.js")
 @max_age(seconds=1 * 60 * 60)  # Cache file for 1 hour
-def service_worker():
+def service_worker() -> ResponseType:
     return send_from_directory("static", "service-worker.js")
 
 
@@ -2391,21 +2522,47 @@ def service_worker():
 
 
 @app.route("/stats/run", methods=["GET", "POST"])
-def stats_run():
+def stats_run() -> ResponseType:
     """ Start a task to calculate Elo points for games """
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
-        # Only allow bona fide Google Cloud Scheduler requests
+    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403
-    return skraflstats.run(request)
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running stats from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running stats from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running stats from cron job")
+    return skraflstats.run(request, wait=wait)
 
 
 @app.route("/stats/ratings", methods=["GET", "POST"])
-def stats_ratings():
+def stats_ratings() -> ResponseType:
     """ Start a task to calculate top Elo rankings """
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") != "true" and not running_local:
-        # Only allow bona fide Google Cloud Scheduler requests
+    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403
-    result, status = skraflstats.ratings(request)
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running ratings from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running ratings from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running ratings from cron job")
+    result, status = skraflstats.ratings(request, wait=wait)
     if status == 200:
         # New ratings: ensure that old ones are deleted from cache
         memcache.delete("all", namespace="rating")
@@ -2421,24 +2578,24 @@ if running_local:
     import admin
 
     @app.route("/admin/usercount", methods=["POST"])
-    def admin_usercount():
+    def admin_usercount() -> ResponseType:
         # Be careful - this operation is EXTREMELY slow on Cloud Datastore
         return admin.admin_usercount()
 
     @app.route("/admin/userupdate", methods=["GET"])
-    def admin_userupdate():
+    def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
 
     @app.route("/admin/setfriend", methods=["GET"])
-    def admin_setfriend():
+    def admin_setfriend() -> ResponseType:
         return admin.admin_setfriend()
 
     @app.route("/admin/loadgame", methods=["POST"])
-    def admin_loadgame():
+    def admin_loadgame() -> ResponseType:
         return admin.admin_loadgame()
 
     @app.route("/admin/main")
-    def admin_main():
+    def admin_main() -> ResponseType:
         """ Show main administration page """
         return render_template("admin.html")
 
@@ -2446,13 +2603,13 @@ if running_local:
 # noinspection PyUnusedLocal
 # pylint: disable=unused-argument
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(e) -> ResponseType:
     """ Return a custom 404 error """
     return "Þessi vefslóð er ekki rétt", 404
 
 
 @app.errorhandler(500)
-def server_error(e):
+def server_error(e) -> ResponseType:
     """ Return a custom 500 error """
     return "Eftirfarandi villa kom upp: {}".format(e), 500
 
@@ -2461,6 +2618,7 @@ if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
         import googleclouddebugger  # type: ignore
+
         googleclouddebugger.enable()
     except ImportError:
         pass

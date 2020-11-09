@@ -3,6 +3,7 @@
 
 # Raw text resources, such as word lists
 resources/*.txt
+!resources/client_secret.txt
 
 # DAWG trees in text form
 resources/*.text.dawg

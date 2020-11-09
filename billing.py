@@ -14,6 +14,10 @@
 
 """
 
+from __future__ import annotations
+
+from typing import Optional
+
 import os
 import logging
 import json
@@ -35,8 +39,8 @@ class _Secret:
     """ A wrapper for private and public key data used
         in communications with SalesCloud """
 
-    _SC_SECRET_KEY = None
-    _SC_CLIENT_UUID = None
+    _SC_SECRET_KEY: Optional[bytes] = None
+    _SC_CLIENT_UUID: Optional[str] = None
     _SC_PUBLIC_KEY = "Netskrafl-Friend-Access"
 
     def __init__(self):

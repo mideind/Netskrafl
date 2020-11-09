@@ -452,7 +452,7 @@ div.board-area {
 div.board {
    position: absolute;
    top: @board-top;
-   left: 2px;
+   left: 2px; /* Seems to be required for correct alignment on iPhone */
    height: 100%;
    padding-top: 8px;
    background-color: @container;
@@ -890,13 +890,52 @@ div.loginform-small div#logo-pic {
 }
 
 div.login-btn-large {
-   float:right;
-   margin-top:12px;
+   text-align: center;
+   font-size: 19px;
+   font-weight: 400;
+   width: 160px;
+   color: white;
+   background-color: darken(@freshtile, 10%);
+   margin: 0;
+   margin-top: 12px;
+   margin-left: 6px;
+   padding: 6px;
+   padding-top: 9px;
+   padding-bottom: 9px;
+   border-radius: 5px;
+   vertical-align: middle;
+   cursor: pointer;
+   float: right;
+}
+
+div.login-btn-large:hover {
+   background-color: @pass-btn;
+}
+
+div.login-btn-large span {
+   padding-left: 18px;
 }
 
 div.login-btn-small {
-   width:100%;
+   width: 60%;
    text-align: center;
+   font-size: 19px;
+   font-weight: 400;
+   color: white;
+   background-color: darken(@freshtile, 10%);
+   margin-left: auto;
+   margin-right: auto;
+   margin-top: 12px;
+   padding: 6px;
+   padding-top: 9px;
+   padding-bottom: 9px;
+   border-radius: 5px;
+   vertical-align: middle;
+   cursor: pointer;
+}
+
+div.login-btn-small:hover {
+   background-color: @pass-btn;
 }
 
 div.blurb {
@@ -1213,6 +1252,52 @@ div.modal-close#chat-send {
    padding-bottom: 0;
    background-color: darken(@double-letter, 10%);
    color: white;
+}
+
+div.twoletter {
+   position: absolute;
+   top: 0px;
+   left: 0px;
+   width: 100%;
+   height: 100%;
+   background-color: @theme4;
+   overflow: hidden;
+   z-index: 3;
+}
+
+div.twoletter-area {
+   position: absolute;
+   top: 0; right: 0;
+   height: 100%;
+   font-size: 15px;
+   line-height: 24px;
+   text-align: right;
+   padding-left: 14px;
+   padding-right: 10px;
+   margin-top: 12px;
+   cursor: pointer;
+}
+
+div.twoletter-area#two-2 {
+   visibility: hidden;
+}
+
+div.twoletter-group {
+   display: inline-block;
+   margin-right: 5px;
+}
+
+div.twoletter-word {
+   display: inline-block;
+   padding-right: 4px;
+}
+
+div.twoletter-word b {
+   background-color: darken(@freshtile, 5%);
+   color: white;
+   padding-left: 2px;
+   padding-right: 2px;
+   border-radius: 2px;
 }
 
 span.statsbutton {
@@ -3067,6 +3152,21 @@ div.help-container {
    padding-right: 24px;
 }
 
+div.twoletter-area {
+   font-size: 14px;
+   line-height: 20px;
+}
+
+div.twoletter-area.with-clock {
+   font-size: 13px;
+   line-height: 21px;
+   margin-top: 3px;
+}
+
+div.twoletter-word {
+   padding-right: 3px;
+}
+
 } /* media min-width: 768px */
 
 /* ================= END OF MEDIA-SPECIFIC STYLE ADJUSTMENTS =================== */
@@ -3230,54 +3330,6 @@ div.fairplay {
    width: 100%;
    text-align: center;
    color: @freshtile;
-}
-
-div.twoletter {
-   position: absolute;
-   top: 0px;
-   left: 0px;
-   width: 100%;
-   height: 100%;
-   background-color: @theme4;
-   overflow: hidden;
-   z-index: 3;
-}
-
-div.twoletter-area {
-   position: absolute;
-   top: 0; right: 0;
-   padding: 14px;
-   text-align: right;
-   height: 100%;
-   cursor: pointer;
-}
-
-div.twoletter-area span {
-   font-size: 15px;
-   line-height: 23px;
-   padding-bottom: 4px;
-   margin-top: 3px;
-   margin-bottom: 3px;
-}
-
-div.twoletter-area.with-clock span {
-   font-size: 13px;
-   line-height: 21px;
-   padding-bottom: 4px;
-   margin-top: 3px;
-   margin-bottom: 3px;
-}
-
-div.twoletter-area span b {
-   background-color: darken(@freshtile, 5%);
-   color: white;
-   padding-left: 2px;
-   padding-right: 2px;
-   border-radius: 2px;
-}
-
-div.twoletter-area#two-2 {
-   visibility: hidden;
 }
 
 div.games-item {

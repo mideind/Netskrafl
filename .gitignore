@@ -22,7 +22,7 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
-# Client secret key for OAuth
+# Google OAuth client secret
 resources/client_secret.txt
 
 # Private GAE services key

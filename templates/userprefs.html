@@ -1,13 +1,6 @@
 
 {% extends "container.html" %}
 
-{% block opengraph %}
-<!-- Google OAuth sign-in -->
-<meta name="google-signin-scope" content="profile email openid">
-<meta name="google-signin-client_id" content="{{ client_id | safe }}">
-<script src="https://apis.google.com/js/platform.js" async defer></script>
-{% endblock %}
-
 {% block styles %}
 <link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
@@ -29,7 +22,7 @@ function buttonOut(elem) {
 
 function submitForm() {
    // POST the form to the server
-   // First transfer the state of our fancy simulated checkbox
+   // First transfer the state of our fancy simulated checkboxes
    $("#audio").prop('checked', $("#audio-toggler #opt2").hasClass("selected"));
    $("#fanfare").prop('checked', $("#fanfare-toggler #opt2").hasClass("selected"));
    $("#beginner").prop('checked', $("#beginner-toggler #opt2").hasClass("selected"));
@@ -58,7 +51,8 @@ function submitForm() {
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
             maxlength=15 autofocus required class="text username" value="{{ uf.nickname }}"/>
-         &nbsp;<span style="color:red">*</span></div>
+         &nbsp;<span style="color:red">*</span>
+      </div>
       <div class="explain">Verður að vera útfyllt</div>
 {% if err.get('nickname', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('nickname') }}</div>
@@ -66,7 +60,8 @@ function submitForm() {
 
       <div class="dialog-spacer"><span class="caption">Fullt nafn:</span>
          <input type="text" name="full_name" id="full_name" maxlength="32" tabindex="2"
-            class="text fullname" value="{{ uf.full_name }}"/></div>
+            class="text fullname" value="{{ uf.full_name }}"/>
+      </div>
       <div class="explain">Valfrjálst - sýnt í notendalistum Netskrafls</div>
 {% if err.get('full_name', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('full_name') }}</div>
@@ -74,10 +69,23 @@ function submitForm() {
 
       <div class="dialog-spacer"><span class="caption">Tölvupóstfang:</span>
          <input type="text" name="email" id="email" maxlength="32" tabindex="3"
-            class="text email" value="{{ uf.email }}"/></div>
+            class="text email" value="{{ uf.email }}"/>
+      </div>
       <div class="explain">Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik</div>
 {% if err.get('email', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('email') }}</div>
+{% endif %}
+
+{% if dev_server %}
+      <!-- If running on dev server, squeeze in a field to edit the user locale -->
+      <div class="dialog-spacer"><span class="caption">Staðfang:</span>
+         <input type="text" name="locale" id="locale" maxlength="5" tabindex="3"
+            class="text" value="{{ uf.locale }}"/>
+      </div>
+      <div class="explain">Íslenskt skrafl=is_IS, bandarískt=en_US, bandarísk/breskt=en_GB</div>
+{% if err.get('locale', None) %}
+      <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('locale') }}</div>
+{% endif %}
 {% endif %}
 
       <div class="dialog-spacer"><span class="caption">Hljóðmerki:</span>
@@ -208,24 +216,7 @@ function submitForm() {
 <script>
 
    function logOut() {
-      // The following complications seem to be required,
-      // in contradiction to Google's sample code
-      gapi.load("auth2",
-         function() {
-            gapi.auth2.init({ client_id: '{{ client_id | safe }}' }).then(
-               function() {
-                  var auth2 = gapi.auth2.getAuthInstance();
-                  // Rescind the client permissions, forcing a new login
-                  auth2.disconnect();
-                  // Redirect to the login page
-                  location.href = "{{ uf.logout_url | safe }}";
-               },
-               function() {
-                  console.log("Error in gapi.auth2.init()")
-               }
-            );
-         }
-      );
+      location.href = "{{ uf.logout_url | safe }}";
    }
 
    function doAudioToggle() {

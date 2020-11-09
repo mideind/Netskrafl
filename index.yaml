@@ -118,11 +118,24 @@ indexes:
 
 - kind: UserModel
   properties:
+  - name: locale
+  - name: nick_lc
+
+- kind: UserModel
+  properties:
+  - name: locale
+  - name: name_lc
+
+- kind: UserModel
+  properties:
+#  - name: locale
   - name: human_elo
+    direction: asc
   - name: highest_score
 
 - kind: UserModel
   properties:
+#  - name: locale
   - name: human_elo
     direction: desc
   - name: highest_score
