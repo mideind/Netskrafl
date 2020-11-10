@@ -2422,7 +2422,7 @@ def page() -> ResponseType:
     assert user is not None
     uid = user.id() or ""
     firebase_token = firebase.create_custom_token(uid)
-    return render_template("page.html", user=user, firebase_token=firebase_token,)
+    return render_template("page.html", user=user, firebase_token=firebase_token)
 
 
 @app.route("/newbag")

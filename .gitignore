@@ -62,7 +62,6 @@ profile.bin
 *.code-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
-.vscode/
 
 # Distribution / packaging / IDEs
 .Python

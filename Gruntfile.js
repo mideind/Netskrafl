@@ -22,6 +22,7 @@ module.exports = function (grunt) {
                nonew: true,
                regexp: true,
                undef: true,
+               validthis: true,
                unused: false,
                maxlen: 120,
                predef: ['$', 'm', 'document', 'window', 'alert', 'console', 'Mousetrap',

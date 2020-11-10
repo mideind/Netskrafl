@@ -299,7 +299,7 @@ var reloadInterval = null;
 function reloadPage() {
    window.clearInterval(reloadInterval);
    reloadInterval = null;
-   location.reload();
+   window.location.reload();
 }
 
 function calcTimeToGo(player) {
@@ -2595,9 +2595,8 @@ function initSkrafl(jQuery) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }
-   if (gameIsFairplay())
-      // Display fair play indicator
-      $("div.fairplay").css("display", "block");
+   // Display fair play indicator
+   $("div.fairplay").css("visibility", gameIsFairplay() ? "visible" : "hidden");
    updateButtonState();
 
    // Prepare the dialog box that asks for the meaning of a blank tile

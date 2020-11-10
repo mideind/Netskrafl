@@ -1885,7 +1885,12 @@ function createView() {
           nothingFound ?
             m("div",
                 { id: "user-no-match", style: { display: "block" } },
-                [ glyph("search"), " ", m("span", { id: "search-prefix" }, model.userListCriteria.spec), " finnst ekki" ]
+                [
+                  glyph("search"),
+                  " ",
+                  m("span", { id: "search-prefix" }, model.userListCriteria.spec),
+                  " finnst ekki"
+                ]
               )
             : ""
         ];
@@ -2096,8 +2101,9 @@ function createView() {
             m("h3.clockright"),
             m(".clockface", glyph("time")),
             m(".fairplay",
-              fairplay ? { style: { display: "block" } } : { },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+              { style: { visibility: fairplay ? "visible" : "hidden" } },
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } )),
+            m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
           ]
         );
       }
@@ -2209,7 +2215,7 @@ function createView() {
             m("h3.scoreleft", sc0),
             m("h3.scoreright", sc1),
             m(".fairplay",
-              fairplay ? { style: { display: "block" } } : { },
+              { style: { visibility: fairplay ? "visible" : "hidden" } },
               m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
           ]
         );
@@ -2960,6 +2966,12 @@ function createView() {
       var len = legalLetters.length;
       var ix = 0;
       var r = [];
+
+      var clickLetter = function(letter, ev) {
+        ev.preventDefault();
+        game.placeBlank(letter);
+      };
+
       while (len > 0) {
         /* Rows */
         var c = [];
@@ -2969,10 +2981,7 @@ function createView() {
           c.push(
             m("td",
               {
-                onclick: function(letter, ev) {
-                  ev.preventDefault();
-                  game.placeBlank(letter);
-                }.bind(null, letter),
+                onclick: clickLetter.bind(null, letter),
                 onmouseover: buttonOver,
                 onmouseout: buttonOut
               },
@@ -4976,16 +4985,16 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   var ids = [];
   var lis = []; // The <li> elements
   var i;
+  var clickTab = function(i, ev) {
+    // When this tab header is clicked, select the associated tab
+    selectTab(this, i);
+    ev.preventDefault();
+  };
   // Iterate over the <a> elements inside the <li> elements inside the <ul>
   for (i = 0; i < tablist.length; i++) {
     ids.push(tablist[i].getAttribute("href").slice(1));
     // Decorate the <a> elements
-    tablist[i].onclick = function(i, ev) {
-        // When this tab header is clicked, select the associated tab
-        selectTab(this, i);
-        ev.preventDefault();
-      }
-      .bind(vnode, i);
+    tablist[i].onclick = clickTab.bind(vnode, i);
     tablist[i].setAttribute("href", null);
     tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
     tablist[i].setAttribute("role", "presentation");
@@ -5009,52 +5018,56 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   vnode.state.selected = 0;
   if (wireHrefs) {
     // Wire all hrefs that point to single-page URLs
+    var clickURL = function(href, ev) {
+      var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+      var qix = uri.indexOf("?");
+      var route = (qix >= 0) ? uri.slice(0, qix) : uri;
+      var qparams = uri.slice(route.length + 1);
+      var params = qparams.length ? getUrlVars(qparams) : { };
+      m.route.set(route, params);
+      if (window.history)
+        window.history.pushState({}, "", href); // Enable the back button
+      ev.preventDefault();
+    };
+    var clickUserPrefs = function(ev) {
+      if ($state.userId != "")
+        // Don't show the userprefs if no user logged in
+        this.pushDialog("userprefs");
+      ev.preventDefault();
+    };
+    var clickTwoLetter = function(ev) {
+      selectTab(this, 2); // Select tab number 2
+      ev.preventDefault();
+    };
+    var clickNewBag = function(ev) {
+      selectTab(this, 3); // Select tab number 3
+      ev.preventDefault();
+    };
     var anchors = tabdiv.querySelectorAll("a");
     for (i = 0; i < anchors.length; i++) {
       var a = anchors[i];
       var href = a.getAttribute("href");
       if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
         // Single-page URL: wire it up (as if it had had an m.route.Link on it)
-        a.onclick = function(href, ev) {
-          var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-          var qix = uri.indexOf("?");
-          var route = (qix >= 0) ? uri.slice(0, qix) : uri;
-          var qparams = uri.slice(route.length + 1);
-          var params = qparams.length ? getUrlVars(qparams) : { };
-          m.route.set(route, params);
-          if (window.history)
-            window.history.pushState({}, "", href); // Enable the back button
-          ev.preventDefault();
-        }.bind(null, href);
+        a.onclick = clickURL.bind(null, href);
       }
       else
       if (href && href == "$$userprefs$$") {
         // Special marker indicating that this link invokes
         // a user preference dialog
-        a.onclick = function(ev) {
-          if ($state.userId != "")
-            // Don't show the userprefs if no user logged in
-            this.pushDialog("userprefs");
-          ev.preventDefault();
-        }.bind(view);
+        a.onclick = clickUserPrefs.bind(view);
       }
       else
       if (href && href == "$$twoletter$$") {
         // Special marker indicating that this link invokes
         // the two-letter word list or the opponents tab
-        a.onclick = function(ev) {
-          selectTab(this, 2); // Select tab number 2
-          ev.preventDefault();
-        }.bind(vnode);
+        a.onclick = clickTwoLetter.bind(vnode);
       }
       else
       if (href && href == "$$newbag$$") {
         // Special marker indicating that this link invokes
         // the explanation of the new bag
-        a.onclick = function(ev) {
-          selectTab(this, 3); // Select tab number 3
-          ev.preventDefault();
-        }.bind(vnode);
+        a.onclick = clickNewBag.bind(vnode);
       }
     }
   }
