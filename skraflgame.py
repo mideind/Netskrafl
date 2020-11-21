@@ -504,7 +504,6 @@ class User:
         )
 
     @classmethod 
-    #TODO: setja inn user_id fyrir krakkana. Er ekki alveg viss um hvernig.
     def create_child_account(cls, name, nickname, grade, supervisor):
         """Create a new child user"""
         prefs = {u"newbag": True, u"full_name": name, u"grade": grade}

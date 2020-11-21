@@ -676,7 +676,7 @@ def _userlist(query, spec):
 def _gamelist(cuid, include_zombies=True):
     """ Return a list of active and zombie games for the current user """
     result = []
-    if not cuid:
+    if not cuid: 
         return result
     now = datetime.utcnow()
     # Place zombie games (recently finished games that this player
@@ -1883,6 +1883,7 @@ def newgame():
 
     # Get the opponent id
     opp = request.args.get("opp", None)
+    print("OPP", opp)
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -2350,6 +2351,27 @@ def childlogin():
         del session["user"]
     return render_template("children-main.html", main_url=main_url)
 
+@app.route("/check")
+@auth_required(ok=False)
+def checkifchildhasgames():
+    """Checks if the user already has a game in session if so continues it, if the user 
+       does not already have a game in session it creates a new one"""
+    nonempty, childgames = childhasgame()
+    if nonempty:
+        return redirect(childgames.url)
+    else: 
+        return redirect(url_for("newgame", opp="robot-20"))
+        #play that game return render(sometemplate with some values)
+    #Return render(blank slate sometemplate) /newgame?opp=robot-20
+
+def childhasgame():
+    cuid = current_user_id()
+    game_list = _gamelist(cuid,False)
+    if len(challenge_list) == 0:
+        return False
+    
+    else:
+        return (True, challenge_list)
 
 @app.route("/logout")
 def logout():

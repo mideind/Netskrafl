@@ -202,7 +202,7 @@ function submitForm() {
 
 <div id="tabs-2">
    <div>
-
+      <button class="modal-close" id="user-ok" style=position:absolute;right:16px;background-color:#47ba96;border:none;><a href="signup" style=color:white>Búa til barn</a></button>
       <p class="no-mobile-block"><strong>Þínir krakkar</strong></p>
       <div class="listitem listheader">
       <span class="list-ts">Nafn</span>
@@ -210,8 +210,16 @@ function submitForm() {
       <span class="list-chall">Bekkur</span>
       </div>
 
-      <!-- Game list will be populated by populateGameList() -->
-      <div id="gamelist"></div>
+      <!-- Game list will be populated by populaUserList() -->
+      <div id="gamelist" style=background-color:#fce5cb></div>
+      <div id="newChild" style=background-color:pink><form action="/action_page.php">
+  <label for="fname">Nafn:</label> &nbsp
+  <input type="text" id="fname" name="fname" value="John"> &nbsp
+  <label for="lname">Bekkur:</label> &nbsp
+  <input type="text" id="lname" name="lname" value="Doe"> &nbsp
+  <input type="submit" value="Submit">
+</form> 
+</form></div>
 
 </div>
 </div> <!-- class="tabbed-page" -->
