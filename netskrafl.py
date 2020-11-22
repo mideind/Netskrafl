@@ -647,6 +647,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             if lu and lu.is_displayable() and lu.id() != cuid:
                 # Don't display the current user in the online list
                 uid = lu.id()
+                if uid is None:
+                    continue
                 chall = uid in challenges
                 result.append(
                     {
@@ -701,6 +703,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
                     uid = au.id()
+                    if uid is None:
+                        continue
                     chall = uid in challenges
                     result.append(
                         {
@@ -745,6 +749,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
 
         for ud in si:
             uid = ud["id"]
+            if uid is None:
+                continue
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
