@@ -37,8 +37,8 @@ from contextvars import ContextVar
 
 class Alphabet(abc.ABC):
 
-    """ Base class for alphabets particular to languages,
-        i.e. the letters used in a game """
+    """Base class for alphabets particular to languages,
+    i.e. the letters used in a game"""
 
     LCMAP = [i for i in range(0, 256)]
 
@@ -525,7 +525,13 @@ VOCABULARIES: Dict[str, str] = {
 SUPPORTED_LOCALES = frozenset(TILESETS.keys() | ALPHABETS.keys() | VOCABULARIES.keys())
 
 Locale = NamedTuple(
-    "Locale", [("lc", str), ("alphabet", Alphabet), ("tileset", Type[TileSet]), ("vocabulary", str)]
+    "Locale",
+    [
+        ("lc", str),
+        ("alphabet", Alphabet),
+        ("tileset", Type[TileSet]),
+        ("vocabulary", str),
+    ],
 )
 
 # Use a context variable (thread local) to store the locale information
@@ -540,8 +546,8 @@ current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
 
 
 def dget(d: Dict[str, Any], key: str, default: Any) -> Any:
-    """ Retrieve value from dictionary by locale code, as precisely as possible,
-        i.e. trying 'is_IS' first, then 'is', before giving up """
+    """Retrieve value from dictionary by locale code, as precisely as possible,
+    i.e. trying 'is_IS' first, then 'is', before giving up"""
     val = d.get(key)
     while val is None:
         key = "".join(key.split("_")[0:-1])
@@ -568,6 +574,6 @@ def set_locale(lc: str) -> None:
         lc=lc,
         alphabet=dget(ALPHABETS, lc, default_locale.alphabet),
         tileset=dget(TILESETS, lc, default_locale.tileset),
-        vocabulary=dget(VOCABULARIES, lc, default_locale.vocabulary)
+        vocabulary=dget(VOCABULARIES, lc, default_locale.vocabulary),
     )
     current_locale.set(locale)

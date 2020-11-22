@@ -44,6 +44,7 @@ import logging
 from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
+from functools import cached_property
 
 from cache import memcache
 
@@ -84,8 +85,15 @@ StatsDict = Dict[str, Union[str, int, float, Tuple[int, int]]]
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = NamedTuple(
     "MoveTuple",
-    [("player", int), ("move", MoveBase), ("rack", str), ("ts", datetime),],
+    [
+        ("player", int),
+        ("move", MoveBase),
+        ("rack", str),
+        ("ts", datetime),
+    ],
 )
+TwoLetterGroupList = List[Tuple[str, List[str]]]
+TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
 
 
 class User:
@@ -540,7 +548,9 @@ class User:
                 #     .format(account, um.email, email)
                 # )
                 um.email = email
-                um.put()
+            # Note the login timestamp
+            um.last_login = datetime.utcnow()
+            um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
             return um.key.id()
@@ -554,6 +564,8 @@ class User:
                 #     .format(account, email, name)
                 # )
                 um.account = account
+                # Note the last login
+                um.last_login = datetime.utcnow()
                 return um.put().id()
         # No match by account id or email: create a new user,
         # with the account id as user id.
@@ -1069,13 +1081,11 @@ class Game:
         """ Return the tile set used in this game """
         return Game.tileset_from_prefs(self._preferences)
 
-    @property
-    def two_letter_words(
-        self,
-    ) -> Tuple[List[Tuple[str, List[str]]], List[Tuple[str, List[str]]]]:
-        """ Return the two-letter list that applies to this game,
-            as a tuple of two lists, one grouped by first letter, and
-            the other grouped by the second (last) letter """
+    @cached_property
+    def two_letter_words(self) -> TwoLetterGroupTuple:
+        """Return the two-letter list that applies to this game,
+        as a tuple of two lists, one grouped by first letter, and
+        the other grouped by the second (last) letter"""
         vocab = vocabulary_for_locale(self.locale)
         tw0, tw1 = Wordbase.two_letter_words(vocab)
         gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
@@ -1508,6 +1518,7 @@ class Game:
         reply["alphabet"] = self.tileset.alphabet.order
         reply["tile_scores"] = self.tileset.scores
         reply["board_type"] = self.board_type
+        reply["two_letter_words"] = self.two_letter_words
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()

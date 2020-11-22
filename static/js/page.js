@@ -43,78 +43,6 @@ var BOARD_PREFIX = "/board?game=";
 var BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 
-var _TWO_LETTER_PAGE0 =
-  m(".twoletter-area[title='Smelltu til að raða eftir seinni staf']", 
-    m("span",
-      m.trust(
-        "<b>a</b>ð af ak al an ar as at ax<br>" +
-        "<b>á</b>a áð ái ál ám án ár ás át<br>" +
-        "<b>b</b>í bú bý bæ&nbsp;&nbsp; " +
-        "<b>d</b>á do dó dý<br>" +
-        "<b>e</b>ð ef eg ei ek el em en er es et ex ey<br>" +
-        "<b>é</b>g él ét&nbsp;&nbsp; " +
-        "<b>f</b>a fá fé fæ&nbsp;&nbsp; " +
-        "<b>g</b>á<br>" +
-        "<b>h</b>a há hí hó hý hæ&nbsp;&nbsp; " +
-        "<b>i</b>ð il im&nbsp;&nbsp; " +
-        "<b>í</b>ð íl ím ís<br>" +
-        "<b>j</b>á je jó jú&nbsp;&nbsp; " +
-        "<b>k</b>á ku kú&nbsp;&nbsp; " +
-        "<b>l</b>a lá lé ló lú lý læ<br>" +
-        "<b>m</b>á mi mó mý&nbsp;&nbsp; " +
-        "<b>n</b>á né nó nú ný næ<br>" +
-        "<b>o</b>f og oj ok op or<br>" +
-        "<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>" +
-        "<b>p</b>í pu pú pæ&nbsp;&nbsp; " +
-        "<b>r</b>á re ré rí ró rú rý ræ<br>" +
-        "<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp; " +
-        "<b>t</b>á te té ti tí tó tý<br>" +
-        "<b>u</b>m un&nbsp;&nbsp; " +
-        "<b>ú</b>a úð úf úi úr út<br>" +
-        "<b>v</b>á vé ví vó&nbsp;&nbsp; " +
-        "<b>y</b>l ym yr ys<br>" +
-        "<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp; " +
-        "<b>þ</b>á þó þú þý<br>" +
-        "<b>æ</b>ð æf æg æi æl æp ær æs æt<br>" +
-        "<b>ö</b>l ör ös öt öx"
-        )
-    )
-  );
-
-var _TWO_LETTER_PAGE1 = 
-  m(".twoletter-area[title='Smelltu til að raða eftir fyrri staf']", 
-    m("span",
-      m.trust(
-        "á<b>a</b> fa ha la óa úa&nbsp;&nbsp;" +
-        "d<b>á</b> fá gá há<br>já ká lá má ná rá sá tá vá þá<br>" +
-        "a<b>ð</b> áð eð ið íð óð úð æð&nbsp;&nbsp;" +
-        "j<b>e</b> re te<br>" +
-        "f<b>é</b> lé né ré sé té vé&nbsp;" +
-        "a<b>f</b> ef of óf úf ýf æf<br>" +
-        "e<b>g</b> ég og ýg æg&nbsp;&nbsp;" +
-        "á<b>i</b> ei mi ói ti úi ýi æi<br>" +
-        "b<b>í</b> hí pí rí sí tí ví&nbsp;&nbsp;" +
-        "o<b>j</b>&nbsp;&nbsp;" +
-        "a<b>k</b> ek ok ók ýk<br>" +
-        "a<b>l</b> ál el él il íl ól yl ýl æl öl<br>" +
-        "á<b>m</b> em im ím óm um ym<br>" +
-        "a<b>n</b> án en ón un&nbsp;&nbsp;" +
-        "d<b>o</b> so<br>" +
-        "d<b>ó</b> hó jó ló mó nó ró tó vó þó<br>" +
-        "o<b>p</b> óp æp&nbsp;&nbsp;" +
-        "a<b>r</b> ár er or úr yr ýr ær ör<br>" +
-        "a<b>s</b> ás es ís ós ys ýs æs ös<br>" +
-        "a<b>t</b> át et ét út ýt æt öt<br>" +
-        "k<b>u</b> pu&nbsp;&nbsp;" +
-        "b<b>ú</b> jú kú lú nú pú rú sú þú<br>" +
-        "a<b>x</b> ex óx öx&nbsp;&nbsp;" +
-        "e<b>y</b><br>" +
-        "b<b>ý</b> dý hý lý mý ný rý sý tý þý<br>" +
-        "b<b>æ</b> fæ hæ læ næ pæ ræ sæ"
-      )
-    )
-  );
-
 function main() {
   // The main UI entry point, called from page.html
 
@@ -2117,7 +2045,7 @@ function createView() {
           component = vwMovelist.call(view, game);
         else
         if (sel == "twoletter")
-          component = m(vwTwoLetter);
+          component = m(vwTwoLetter, { data: game.two_letter_words } );
         else
         if (sel == "chat")
           component = vwChat(game);
@@ -2133,7 +2061,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
+      return m("div", [ m("main", m(".game-container")), vwBack() ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2163,19 +2091,21 @@ function createView() {
         }
       },
       [
-        vwBack(),
-        $state.beginner ? vwBeginner(game) : "",
-        vwInfo(),
+        // The main game area
         m("main",
           m(".game-container",
             [
               vwBoardArea(game),
               vwRightColumn(),
-              vwBag(bag, newbag),
+              $state.uiFullscreen ? vwBag(bag, newbag) : "", // Visible in fullscreen
               game.askingForBlank ? vwBlankDialog(game) : ""
             ]
           )
-        )
+        ),
+        // The left margin stuff: back button, square color help, info/help button
+        vwBack(),
+        $state.beginner ? vwBeginner(game) : "",
+        vwInfo()
       ]
     );
   }
@@ -2231,7 +2161,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
+      return m("div", [ m("main", m(".game-container")), vwBack() ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2245,11 +2175,11 @@ function createView() {
       r.push(vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
-        vwBack(), // Button to go back to main screen
-        vwInfo(), // Help button
         m("main",
           m(".game-container", r)
-        )
+        ),
+        vwBack(), // Button to go back to main screen
+        vwInfo() // Help button
       ]
     );
   }
@@ -2497,7 +2427,7 @@ function createView() {
           },
           movelist()
         ),
-        vwBag(bag, newbag) // Visible on mobile
+        !$state.uiFullscreen ? vwBag(bag, newbag) : "" // Visible on mobile
       ]
     );
   }
@@ -3024,8 +2954,13 @@ function createView() {
     // Icon for going back to the main screen
     return m(".logo-back", 
       m(m.route.Link,
-        { href: "/main", class: "backlink" },
-        glyph("download", { title: "Aftur í aðalskjá" })
+        {
+          href: "/main",
+          class: "backlink"
+        },
+        m(".circle",
+          glyph("home", { title: "Aftur í aðalskjá" })
+        )
       )
     );
   }
@@ -3801,8 +3736,30 @@ function createView() {
     // The two-letter-word list tab
     var page = 0;
 
+    function renderWord(bold, w) {
+      // For the first two-letter word in each group,
+      // render the former letter in bold
+      if (!bold)
+        return m(".twoletter-word", w);
+      if (page == 0)
+        return m(".twoletter-word", [ m("b", w[0]), w[1] ]);
+      else
+        return m(".twoletter-word", [ w[0], m("b", w[1]) ]);
+    }
+
     return {
       view: function(vnode) {
+        var twoLetterWords = vnode.attrs.data[page];
+        var twoLetterList = [];
+        for (var i = 0; i < twoLetterWords.length; i++) {
+          var twl = twoLetterWords[i][1];
+          var sublist = [];
+          for (var j = 0; j < twl.length; j++)
+            sublist.push(renderWord(j == 0, twl[j]));
+          twoLetterList.push(
+            m(".twoletter-group", sublist)
+          );
+        }
         return m(".twoletter",
           {
             // Switch between pages when clicked
@@ -3810,7 +3767,14 @@ function createView() {
             style: "z-index: 6" // Appear on top of board on mobile
           },
           // Show the requested page
-          page === 0 ? _TWO_LETTER_PAGE0 : _TWO_LETTER_PAGE1
+          m(".twoletter-area",
+            {
+              title: page == 0
+                ? "Smelltu til að raða eftir seinni staf"
+                : "Smelltu til að raða eftir fyrri staf"
+            },
+            twoLetterList
+          )
         );
       }
     };
@@ -4047,12 +4011,12 @@ function createActions(model, view) {
      mql = window.matchMedia("(min-width: 667px)");
      if (mql) {
         mediaMinWidth667(mql);
-        mql.addListener(mediaMinWidth667);
+        mql.addEventListener("change", mediaMinWidth667);
      }
      mql = window.matchMedia("(min-width: 768px)");
      if (mql) {
         mediaMinWidth768(mql);
-        mql.addListener(mediaMinWidth768);
+        mql.addEventListener("change", mediaMinWidth768);
      }
   }
 

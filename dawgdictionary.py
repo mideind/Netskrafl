@@ -81,6 +81,7 @@ from languages import (
 # Type definitions
 IterTuple = Tuple[str, int]
 PrefixNodes = Tuple[IterTuple, ...]
+TwoLetterListTuple = Tuple[List[str], List[str]]
 
 
 class PackedDawgDictionary:
@@ -177,7 +178,7 @@ class PackedDawgDictionary:
         assert self._b is not None
         Navigation(nav, self._b, self._alphabet).resume(prefix, nextnode, leftpart)
 
-    def two_letter_words(self) -> Tuple[List[str], List[str]]:
+    def two_letter_words(self) -> TwoLetterListTuple:
         """Return the two letter words in this DAWG,
         sorted by first letter and by second letter"""
         if not self._two_letter[0]:
@@ -527,11 +528,11 @@ class Navigation:
                 offset += 4
             yield prefix, nextnode
 
-    @lru_cache(maxsize=32*1024)
+    @lru_cache(maxsize=32 * 1024)
     def _make_iter_from_node(self, offset: int) -> PrefixNodes:
         """Return an iterable over the prefixes and next node pointers
         of the edge at the given offset. This function is LRU cached,
-        storing up to 32k node-to-prefix-list associations. """
+        storing up to 32k node-to-prefix-list associations."""
         return tuple(self._iter_from_node(offset))
 
     def _navigate_from_node(self, offset: int, matched: str) -> None:

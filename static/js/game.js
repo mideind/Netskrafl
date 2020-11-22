@@ -248,6 +248,7 @@ var Game = (function() {
     this.locale = "is_IS";
     this.alphabet = "";
     this.boardType = "standard";
+    this.two_letter_words = [[], []];
     this.stats = null; // Game review statistics
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
@@ -287,6 +288,7 @@ var Game = (function() {
     this.locale = game.locale;
     this.alphabet = game.alphabet;
     this.boardType = game.board_type;
+    this.two_letter_words = game.two_letter_words || [[], []];
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)

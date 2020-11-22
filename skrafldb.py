@@ -63,7 +63,18 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Optional, Iterator, Iterable, List, Any, Union, Callable
+from typing import (
+    Dict,
+    Set,
+    Tuple,
+    Optional,
+    Iterator,
+    Iterable,
+    List,
+    Any,
+    Union,
+    Callable,
+)
 
 import logging
 import uuid
@@ -79,6 +90,7 @@ from cache import memcache
 # Type definitions
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
+ChallengeTuple = Tuple[Optional[str], Optional[PrefsDict], datetime]
 
 
 class Client:
@@ -124,7 +136,10 @@ class Unique:
 
 
 def iter_q(
-    q: ndb.Query, chunk_size: int = 50, limit: int = 0, projection=None
+    q: ndb.Query,
+    chunk_size: int = 50,
+    limit: int = 0,
+    projection: Optional[List[str]] = None,
 ) -> Iterator:
     """ Generator for iterating through a query using a cursor """
     if 0 < limit < chunk_size:
@@ -168,6 +183,8 @@ class UserModel(ndb.Model):
     prefs = ndb.JsonProperty()
     # Creation time of the user entity
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    # Last login for the user
+    last_login = ndb.DateTimeProperty(required=False)
     # Ready for challenges?
     ready = ndb.BooleanProperty(required=False, default=False)
     # Ready for timed challenges?
@@ -208,6 +225,7 @@ class UserModel(ndb.Model):
         user.ready = False  # Not ready for new challenges unless explicitly set
         user.ready_timed = False  # Not ready for timed games unless explicitly set
         user.locale = locale or "is_IS"
+        user.last_login = datetime.utcnow()
         return user.put().id()
 
     @classmethod
@@ -271,8 +289,8 @@ class UserModel(ndb.Model):
 
     @classmethod
     def filter_locale(cls, q: ndb.Query, locale: Optional[str]) -> ndb.Query:
-        """ Filter the query by locale, if given, otherwise stay
-            with the is_IS default """
+        """Filter the query by locale, if given, otherwise stay
+        with the is_IS default"""
         # TODO: To be modified once locale support is fully in place
         return q
         # if locale is None:
@@ -292,7 +310,7 @@ class UserModel(ndb.Model):
             return
 
         prefix = prefix.lower()
-        id_set = set()
+        id_set: Set[str] = set()
 
         def list_q(
             q: ndb.Query, f: Callable[[UserModel], str]
@@ -353,9 +371,11 @@ class UserModel(ndb.Model):
             assert max_len > 0
             # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
-                if k.highest_score > 0:
-                    # Has played at least one game: Yield the key value
+            for k in iter_q(
+                q, chunk_size=max_len, projection=["highest_score", "inactive"]
+            ):
+                if k.highest_score > 0 and not k.inactive:
+                    # Is active and has played at least one game: Yield the key value
                     yield k.key.id()
                     counter += 1
                     if counter >= max_len:
@@ -761,9 +781,7 @@ class ChallengeModel(ndb.Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(
-        cls, user_id: str, max_len=20
-    ) -> Iterator[Tuple[Optional[str], Optional[PrefsDict], datetime]]:
+    def list_issued(cls, user_id: str, max_len=20) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
@@ -772,7 +790,7 @@ class ChallengeModel(ndb.Model):
         # List issued challenges in ascending order by timestamp (oldest first)
         q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
-        def ch_callback(cm):
+        def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map an issued challenge to a tuple of useful info """
             id0 = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
@@ -781,7 +799,9 @@ class ChallengeModel(ndb.Model):
             yield ch_callback(cm)
 
     @classmethod
-    def list_received(cls, user_id, max_len=20):
+    def list_received(
+        cls, user_id: Optional[str], max_len: int = 20
+    ) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued to a particular user """
         assert user_id is not None
         if user_id is None:
@@ -790,7 +810,7 @@ class ChallengeModel(ndb.Model):
         # List received challenges in ascending order by timestamp (oldest first)
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
-        def ch_callback(cm):
+        def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map a received challenge to a tuple of useful info """
             p0 = cm.key.parent()
             id0 = None if p0 is None else p0.id()

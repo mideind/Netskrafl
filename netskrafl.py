@@ -330,8 +330,7 @@ def session_user() -> Optional[User]:
     """Return the user who is authenticated in the current session, if any.
     This can be called within any Flask request."""
     u = None
-    user = session.get("userid")
-    if user is not None:
+    if (user := session.get("userid")) is not None:
         userid = user.get("id")
         u = User.load_if_exists(userid)
     return u
@@ -563,7 +562,9 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
     return jsonify(game.client_state(player_index))
 
 
-def fetch_users(ulist: Iterable[T], uid_func: Callable[[T], str]) -> Dict[str, User]:
+def fetch_users(
+    ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
+) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
     # Make a list of user ids by applying the uid_func to ulist entries (!= None)
     uids: List[str] = []
@@ -1067,41 +1068,45 @@ def _challengelist() -> List[Dict[str, Any]]:
         opponents = fetch_users(received + issued, lambda c: c[0])
         # List the received challenges
         for c in received:
-            u = opponents[c[0]]  # User id
-            nick = u.nickname()
-            result.append(
-                {
-                    "received": True,
-                    "userid": c[0],
-                    "opp": nick,
-                    "fullname": u.full_name(),
-                    "prefs": c[1],
-                    "ts": Alphabet.format_timestamp_short(c[2]),
-                    "opp_ready": False,
-                }
-            )
+            uid = c[0]  # User id
+            if uid is not None:
+                u = opponents[uid]
+                nick = u.nickname()
+                result.append(
+                    {
+                        "received": True,
+                        "userid": uid,
+                        "opp": nick,
+                        "fullname": u.full_name(),
+                        "prefs": c[1],
+                        "ts": Alphabet.format_timestamp_short(c[2]),
+                        "opp_ready": False,
+                    }
+                )
         # List the issued challenges
         for c in issued:
-            u = opponents[c[0]]  # User id
-            nick = u.nickname()
-            result.append(
-                {
-                    "received": False,
-                    "userid": c[0],
-                    "opp": nick,
-                    "fullname": u.full_name(),
-                    "prefs": c[1],
-                    "ts": Alphabet.format_timestamp_short(c[2]),
-                    "opp_ready": opp_ready(c),
-                }
-            )
+            uid = c[0]  # User id
+            if uid is not None:
+                u = opponents[uid]
+                nick = u.nickname()
+                result.append(
+                    {
+                        "received": False,
+                        "userid": uid,
+                        "opp": nick,
+                        "fullname": u.full_name(),
+                        "prefs": c[1],
+                        "ts": Alphabet.format_timestamp_short(c[2]),
+                        "opp_ready": opp_ready(c),
+                    }
+                )
     return result
 
 
 @app.route("/_ah/warmup")
 def warmup():
-    """ App Engine is starting a fresh instance - warm it up
-        by loading all vocabularies """
+    """App Engine is starting a fresh instance - warm it up
+    by loading all vocabularies"""
     ok = Wordbase.warmup()
     logging.info(
         "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
@@ -2003,7 +2008,10 @@ def newgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        prefs = dict(
+            newbag=user.new_bag(),
+            locale=user.locale,
+        )
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
@@ -2072,7 +2080,10 @@ def initgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        prefs = dict(
+            newbag=user.new_bag(),
+            locale=user.locale,
+        )
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)

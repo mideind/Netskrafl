@@ -2544,12 +2544,12 @@ function initMediaListener() {
    mql = window.matchMedia("(min-width: 667px)");
    if (mql) {
       mediaMinWidth667(mql);
-      mql.addListener(mediaMinWidth667);
+      mql.addEventListener("change", mediaMinWidth667);
    }
    mql = window.matchMedia("(min-width: 768px)");
    if (mql) {
       mediaMinWidth768(mql);
-      mql.addListener(mediaMinWidth768);
+      mql.addEventListener("change", mediaMinWidth768);
    }
 }
 
