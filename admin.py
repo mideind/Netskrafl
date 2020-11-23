@@ -29,13 +29,13 @@ from skrafldb import ndb, iter_q, Client, UserModel, GameModel
 from skraflgame import User, Game
 
 
-def admin_usercount():
+def admin_usercount() -> str:
     """ Return a count of UserModel entities """
     count = UserModel.count()
     return jsonify(count=count)
 
 
-def deferred_update():
+def deferred_update() -> None:
     """ Update all users in the datastore with lowercase nick and full name """
     logging.info("Deferred user update starting")
     CHUNK_SIZE = 200
@@ -70,14 +70,14 @@ def deferred_update():
     )
 
 
-def admin_userupdate():
+def admin_userupdate() -> str:
     """ Start a user update background task """
     logging.info("Starting user update")
     Thread(target=deferred_update).start()
     return "<html><body><p>User update started</p></body></html>"
 
 
-def admin_setfriend():
+def admin_setfriend() -> str:
     """ Set the friend state of a user """
     uid = request.args.get("uid", "")
     state = request.args.get("state", "1")  # Default: set as friend
@@ -100,7 +100,7 @@ def admin_setfriend():
     )
 
 
-def admin_fetchgames():
+def admin_fetchgames() -> str:
     """ Return a JSON representation of all finished games """
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
@@ -123,7 +123,7 @@ def admin_fetchgames():
     return jsonify(gamelist=gamelist)
 
 
-def admin_loadgame():
+def admin_loadgame() -> str:
     """ Fetch a game object and return it as JSON """
 
     uuid = request.form.get("uuid", None)
