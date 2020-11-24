@@ -529,7 +529,6 @@ function createView() {
     // Display the appropriate content for the route,
     // also considering active dialogs
     var views = [];
-    var move;
     switch (model.routeName) {
       case "login":
         views.push(vwLogin.call(this, model, actions));
@@ -2126,10 +2125,10 @@ function createView() {
       function vwRightHeading() {
         // The right-side heading on the game screen
 
-        var fairplay = game ? game.fairplay : false;
-        var player = game ? game.player : 0;
-        var sc0 = game ? game.scores[0].toString() : "";
-        var sc1 = game ? game.scores[1].toString() : "";
+        var fairplay = game.fairplay;
+        var player = game.player;
+        var sc0 = game.scores[0].toString();
+        var sc1 = game.scores[1].toString();
         return m(".heading",
           {
             // On mobile only: If the header is clicked, go to the main screen
@@ -2153,7 +2152,7 @@ function createView() {
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", vwBestMoves.call(view, game, move, bestMoves));
+        return m(".right-area", vwBestMoves.call(view, model, move, bestMoves));
       }
 
       return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
@@ -2163,8 +2162,6 @@ function createView() {
       // No associated game
       return m("div", [ m("main", m(".game-container")), vwBack() ]);
 
-    var bag = game ? game.bag : "";
-    var newbag = game ? game.newbag : true;
     // Create a list of major elements that we're showing
     var r = [];
     r.push(vwBoardReview(game, move));
@@ -2432,10 +2429,11 @@ function createView() {
     );
   }
 
-  function vwBestMoves(game, move, bestMoves) {
+  function vwBestMoves(model, move, bestMoves) {
     // List of best moves, in a game review
 
     var view = this;
+    var game = model.game;
 
     function bestHeader(co, tiles, score) {
       // Generate the header of the best move list
@@ -2516,7 +2514,7 @@ function createView() {
         tiles = mlist[i][1][1];
         score = mlist[i][1][2];
         r.push(
-          vwBestMove.call(view, game, mlist[i],
+          vwBestMove.call(view, model, move, mlist[i],
             {
               key: i.toString(),
               player: player, co: co, tiles: tiles, score: score
@@ -2721,32 +2719,65 @@ function createView() {
     }
   }
 
-  function vwBestMove(game, move, info) {
+  function vwBestMove(model, moveIndex, move, info) {
     // Displays a move in a list of best available moves
 
     var view = this;
-
-    function highlightMove(co, tiles, playerColor, show) {
-       /* Highlight a move's tiles when hovering over it in the move list */
-       var vec = toVector(co);
-       var col = vec.col;
-       var row = vec.row;
-       for (var i = 0; i < tiles.length; i++) {
-          var tile = tiles[i];
-          if (tile == '?')
-             continue;
-          var sq = coord(row, col);
-          if (game.tiles[sq] !== undefined)
-            game.tiles[sq].highlight = show ? playerColor : undefined;
-          col += vec.dx;
-          row += vec.dy;
-       }
-    }
-
+    var game = model.game;
     var player = info.player;
     var co = info.co;
     var tiles = info.tiles;
     var score = info.score;
+
+    function highlightMove(co, tiles, playerColor, show) {
+      /* Highlight a move's tiles when hovering over it in the move list */
+      var vec = toVector(co);
+      var col = vec.col;
+      var row = vec.row;
+      var nextBlank = false;
+      // If we're highlighting a move, show all moves leading up to it on the board
+      if (show) {
+        game.placeTiles(moveIndex - 1);
+      }
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile == "?") {
+          nextBlank = true;
+          continue;
+        }
+        var sq = coord(row, col);
+        var letter = tile;
+        if (nextBlank)
+          tile = '?';
+        var tscore = game.tilescore(tile);
+        if (show) {
+          if (!(sq in game.tiles)) {
+            // Showing a tile that was not already on the board
+            game.tiles[sq] = {
+              player: player,
+              tile: tile,
+              letter: letter,
+              score: tscore,
+              draggable: false,
+              freshtile: false,
+              index: 0,
+              xchg: false,
+              review: true, // Mark as a 'review tile'
+              highlight: playerColor
+            };
+          }
+          else {
+            // Highlighting a tile that was already on the board
+            game.tiles[sq].highlight = playerColor;
+          }
+        }
+        col += vec.dx;
+        row += vec.dy;
+        nextBlank = false;
+      }
+      if (!show)
+        game.placeTiles(model.reviewMove);
+    }
 
     // Add a single move to the move list
     var rawCoord = co;
@@ -3031,9 +3062,11 @@ function createView() {
       // highlight0 is the local player color (yellow/orange)
       // highlight1 is the remote player color (green)
       classes.push("highlight" + t.highlight);
+      /*
       if (t.player == parseInt(t.highlight))
         // This tile was originally laid down by the other player
         classes.push("dim");
+      */
     }
     if (game.showingDialog === null && !game.over) {
       if (t.draggable) {
@@ -3150,8 +3183,8 @@ function createView() {
             {
               id: coord,
               key: coord,
-              ondragover: function(ev) { ev.stopPropagation(); },
-              ondrop: function(ev) { ev.stopPropagation(); }
+              ondragover: stopPropagation,
+              ondrop: stopPropagation
             },
             vwTile(game, coord))
           );
@@ -3769,9 +3802,9 @@ function createView() {
           // Show the requested page
           m(".twoletter-area",
             {
-              title: page == 0
-                ? "Smelltu til að raða eftir seinni staf"
-                : "Smelltu til að raða eftir fyrri staf"
+              title: page == 0 ?
+                "Smelltu til að raða eftir seinni staf" :
+                "Smelltu til að raða eftir fyrri staf"
             },
             twoLetterList
           )
@@ -5073,6 +5106,10 @@ function buttonOut(ev) {
   if (clist !== undefined)
     clist.remove("over");
   ev.redraw = false;
+}
+
+function stopPropagation(ev) {
+  ev.stopPropagation();
 }
 
 // Glyphicon utility function: inserts a glyphicon span

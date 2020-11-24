@@ -481,7 +481,7 @@ var Game = (function() {
           score: tscore,
           draggable: false,
           freshtile: false,
-          index: 0,
+          index: 0, // Index of this tile within the move, for animation purposes
           xchg: false
         };
       col += vec.dx;
@@ -524,7 +524,7 @@ var Game = (function() {
         if (!(sq in this.tiles))
           throw "Tile from lastmove not in square " + sq;
         this.tiles[sq].freshtile = true;
-        this.tiles[sq].index = i;
+        this.tiles[sq].index = i; // Index of tile within move, for animation purposes
       }
     // Also put the rack tiles into this.tiles
     for (i = 0; i < this.rack.length; i++) {

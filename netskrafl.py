@@ -239,7 +239,7 @@ _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 MAX_ONLINE = 80
 
 # Set to True to make the single-page UI the default
-_SINGLE_PAGE_UI = False
+_SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "FALSE").upper() == "TRUE"
 
 # App Engine (and Firebase) project id
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
