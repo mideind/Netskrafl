@@ -10,7 +10,7 @@ The game, which is free-to-play, is accessible on the web at [https://netskrafl.
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
-The game backend is implemented in Python 3.7 for the
+The game backend is implemented in Python 3.8 for the
 [Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
 
 The frontend is a tablet- and smartphone-friendly web client in HTML5 and JavaScript connecting
@@ -59,7 +59,7 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 #### Follow these steps:
 
-0. Install [Python 3.7](https://www.python.org/downloads/release/python-370/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
+0. Install [Python 3.8](https://www.python.org/downloads/release/python-380/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads)
 (GAE) for Python and follow the installation instructions.

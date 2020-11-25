@@ -62,9 +62,6 @@ def deferred_update() -> None:
                     e, scan, count
                 )
             )
-            # Do not retry the task
-            # !!! TODO: Alternative solution for Python 3 GAE environment
-            # raise deferred.PermanentTaskFailure()
     logging.info(
         "Completed scanning {0} and updating {1} user records".format(scan, count)
     )

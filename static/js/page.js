@@ -133,7 +133,7 @@ function createModel(settings) {
 
   function loadGame(uuid, funcComplete) {
     // Fetch a game state from the server, given a uuid
-    console.log("Initiating load of game " + uuid);
+    // console.log("Initiating load of game " + uuid);
     m.request({
       method: "POST",
       url: "/gamestate",
@@ -145,7 +145,7 @@ function createModel(settings) {
       this.bestMoves = null;
       this.highlightedMove = null;
       if (!result.ok) {
-        console.log("Game " + uuid + " could not be loaded");
+        // console.log("Game " + uuid + " could not be loaded");
       }
       else {
         this.game = new Game(uuid, result.game);
@@ -373,12 +373,12 @@ function createModel(settings) {
       if (activateSpinner)
         this.spinners--;
       if (!result.ok) {
-        console.log("Unable to load user preferences");
+        // console.log("Unable to load user preferences");
         this.user = null;
         this.userErrors = null;
       }
       else {
-        console.log("User preferences loaded");
+        // console.log("User preferences loaded");
         this.user = result.userprefs;
         this.userErrors = null;
       }
@@ -558,7 +558,7 @@ function createView() {
         );
         break;
       default:
-        console.log("Unknown route name: " + model.routeName);
+        // console.log("Unknown route name: " + model.routeName);
         return m("div", "Þessi vefslóð er ekki rétt");
     }
     // Push any open dialogs
@@ -3740,6 +3740,7 @@ function createView() {
   }
 
   function vwCongrats(game) {
+    // Congratulations message when a game has been won
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
         [

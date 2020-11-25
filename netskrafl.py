@@ -18,7 +18,7 @@
 
     The web client code is found in netskrafl.js.
 
-    The server is compatible with Python 2.7 and 3.x, CPython and PyPy.
+    The server is compatible with Python >= 3.8.
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
