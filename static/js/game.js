@@ -455,7 +455,7 @@ var Game = (function() {
     });
   };
 
-  Game.prototype.placeMove = function(player, co, tiles) {
+  Game.prototype.placeMove = function(player, co, tiles, highlight) {
     // Place an entire move into the tiles dictionary
     var vec = toVector(co);
     var col = vec.col;
@@ -473,7 +473,7 @@ var Game = (function() {
         tile = '?';
       var tscore = this.tilescore(tile);
       // Place the tile, if it isn't there already
-      if (!(sq in this.tiles))
+      if (!(sq in this.tiles)) {
         this.tiles[sq] = {
           player: player,
           tile: tile,
@@ -482,8 +482,16 @@ var Game = (function() {
           draggable: false,
           freshtile: false,
           index: 0, // Index of this tile within the move, for animation purposes
-          xchg: false
+          xchg: false,
         };
+        if (highlight) {
+          // Highlight the tile
+          if (player == this.player)
+            this.tiles[sq].highlight = 0; // Local player color
+          else
+            this.tiles[sq].highlight = 1; // Remote player color
+        }
+      }
       col += vec.dx;
       row += vec.dy;
       nextBlank = false;
@@ -495,7 +503,7 @@ var Game = (function() {
     this.rack = rack;
   };
 
-  Game.prototype.placeTiles = function(move) {
+  Game.prototype.placeTiles = function(move, noHighlight) {
     // Make a tile dictionary for the game.
     // If move is given, it is an index of the
     // last move in the move list that should be
@@ -512,7 +520,8 @@ var Game = (function() {
       // var score = mlist[i][1][2];
       // !!! TODO: handle successful challenges
       if (co != "") {
-        this.placeMove(player, co, tiles);
+        var highlight = (move !== undefined) && (i == move - 1) && !noHighlight;
+        this.placeMove(player, co, tiles, highlight);
         this.numTileMoves++;
       }
     }

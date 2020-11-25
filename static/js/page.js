@@ -107,6 +107,8 @@ function createModel(settings) {
     reviewMove: null,
     // The best moves available at this stage, if reviewing game
     bestMoves: null,
+    // The index of the best move being highlighted, if reviewing game
+    highlightedMove: null,
     // Model methods
     loadGame: loadGame,
     loadGameList: loadGameList,
@@ -141,6 +143,7 @@ function createModel(settings) {
       this.game = null;
       this.reviewMove = null;
       this.bestMoves = null;
+      this.highlightedMove = null;
       if (!result.ok) {
         console.log("Game " + uuid + " could not be loaded");
       }
@@ -310,6 +313,7 @@ function createModel(settings) {
     if (!move) {
       this.reviewMove = null;
       this.bestMoves = null;
+      this.highlightedMove = null;
       this.game.setRack([]);
       this.game.placeTiles(0);
       return;
@@ -323,6 +327,7 @@ function createModel(settings) {
       body: { game: this.game.uuid, move: move }
     })
     .then(function(json) {
+      this.highlightedMove = null;
       if (!json || json.result !== 0) {
         this.reviewMove = null;
         this.bestMoves = null;
@@ -699,7 +704,7 @@ function createView() {
           m(".welcome",
             [
               "Netskrafl er vettvangur ",
-              m("b", "yfir 16.000 íslenskra skraflara"),
+              m("b", "yfir 20.000 íslenskra skraflara"),
               " á netinu."
             ]
           ),
@@ -1061,7 +1066,7 @@ function createView() {
             vwDialogButton("user-friend", "Gerast vinur",
               function(ev) {
                 // Invoke the friend promo dialog
-                this.pushDialog("promo", { key: "friend" });
+                this.pushDialog("promo", { kind: "friend" });
               }.bind(view),
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
@@ -1096,7 +1101,7 @@ function createView() {
       {
         model: model,
         view: this,
-        key: args.key
+        kind: args.kind
       }
     );
   }
@@ -2094,7 +2099,7 @@ function createView() {
         m("main",
           m(".game-container",
             [
-              vwBoardArea(game),
+              vwBoardArea(model),
               vwRightColumn(),
               $state.uiFullscreen ? vwBag(bag, newbag) : "", // Visible in fullscreen
               game.askingForBlank ? vwBlankDialog(game) : ""
@@ -2164,7 +2169,7 @@ function createView() {
 
     // Create a list of major elements that we're showing
     var r = [];
-    r.push(vwBoardReview(game, move));
+    r.push(vwBoardReview(model, move));
     r.push(vwRightColumn());
     if (move === null)
       // Only show the stats overlay if move is null.
@@ -2514,7 +2519,7 @@ function createView() {
         tiles = mlist[i][1][1];
         score = mlist[i][1][2];
         r.push(
-          vwBestMove.call(view, model, move, mlist[i],
+          vwBestMove.call(view, model, move, i, mlist[i],
             {
               key: i.toString(),
               player: player, co: co, tiles: tiles, score: score
@@ -2595,7 +2600,7 @@ function createView() {
                   m.route.set("/review/" + uuid);
                 else
                   // Show a friend promotion dialog
-                  this.pushDialog("promo", { key: "friend" });
+                  this.pushDialog("promo", { kind: "friend" });
                 ev.preventDefault();
               }.bind(view, game.uuid)
             },
@@ -2719,7 +2724,7 @@ function createView() {
     }
   }
 
-  function vwBestMove(model, moveIndex, move, info) {
+  function vwBestMove(model, moveIndex, bestMoveIndex, move, info) {
     // Displays a move in a list of best available moves
 
     var view = this;
@@ -2730,14 +2735,15 @@ function createView() {
     var score = info.score;
 
     function highlightMove(co, tiles, playerColor, show) {
-      /* Highlight a move's tiles when hovering over it in the move list */
+      /* Highlight a move's tiles when hovering over it in the best move list */
       var vec = toVector(co);
       var col = vec.col;
       var row = vec.row;
       var nextBlank = false;
       // If we're highlighting a move, show all moves leading up to it on the board
       if (show) {
-        game.placeTiles(moveIndex - 1);
+        model.highlightedMove = bestMoveIndex;
+        game.placeTiles(moveIndex - 1, true); // No highlight
       }
       for (var i = 0; i < tiles.length; i++) {
         var tile = tiles[i];
@@ -2775,8 +2781,10 @@ function createView() {
         row += vec.dy;
         nextBlank = false;
       }
-      if (!show)
+      if (!show) {
+        model.highlightedMove = null;
         game.placeTiles(model.reviewMove);
+      }
     }
 
     // Add a single move to the move list
@@ -2800,14 +2808,14 @@ function createView() {
     // Word lookup
     attribs.onclick = function() { window.open('http://malid.is/leit/' + tiles, 'malid'); };
     // Highlight the move on the board while hovering over it
-    attribs.onmouseout = function() {
+    attribs.onmouseout = function(move) {
       move.highlighted = false;
       highlightMove(rawCoord, tiles, playerColor, false);
-    };
-    attribs.onmouseover = function() {
+    }.bind(null, move);
+    attribs.onmouseover = function(move) {
       move.highlighted = true;
       highlightMove(rawCoord, tiles, playerColor, true);
-    };
+    }.bind(null, move);
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
@@ -2996,13 +3004,14 @@ function createView() {
     );
   }
 
-  function vwBoardArea(game) {
+  function vwBoardArea(model) {
     // Collection of components in the board (left-side) area
     var r = [];
+    var game = model.game;
     if (game) {
       r = [
-        vwBoard(game),
-        vwRack(game),
+        vwBoard(model),
+        vwRack(model),
         vwButtons(game),
         vwErrors(game),
         vwCongrats(game)
@@ -3012,20 +3021,21 @@ function createView() {
     return m(".board-area", r);
   }
 
-  function vwBoardReview(game, move) {
+  function vwBoardReview(model, move) {
     // The board area within a game review screen
     var r = [];
+    var game = model.game;
     if (game) {
       r = [
-        vwBoard(game),
-        vwRack(game),
-        vwButtonsReview(game, move)
+        vwBoard(model),
+        vwRack(model),
+        vwButtonsReview(model, move)
       ];
     }
     return m(".board-area", r);
   }
 
-  function vwTile(game, coord) {
+  function vwTile(game, coord, opponent) {
     // A single tile, on the board or in the rack
     var t = game.tiles[coord];
     var classes = [ ".tile" ];
@@ -3033,7 +3043,12 @@ function createView() {
     if (t.tile == '?')
       classes.push("blanktile");
     if (coord[0] == 'R' || t.draggable) {
-      classes.push("racktile");
+      if (opponent)
+        // Showing the opponent's rack
+        classes.push("freshtile");
+      else
+        // Showing the player's rack
+        classes.push("racktile");
       if (coord[0] == 'R' && game.showingDialog == "exchange") {
         // Rack tile, and we're showing the exchange dialog
         if (t.xchg)
@@ -3092,6 +3107,17 @@ function createView() {
     }
     return m(classes.join("."), attrs,
       [ t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score) ]
+    );
+  }
+
+  function vwReviewTile(game, coord, child) {
+    // Return a td element that wraps an 'inert' tile in a review screen
+    return m("td",
+      {
+        id: coord,
+        key: coord
+      },
+      child || ""
     );
   }
 
@@ -3159,8 +3185,10 @@ function createView() {
     );
   }
 
-  function vwBoard(game) {
+  function vwBoard(model) {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
+
+    var game = model.game;
 
     function colid() {
       // The column identifier row
@@ -3208,16 +3236,29 @@ function createView() {
     return m(".board", m("table.board", m("tbody", allrows())));
   }
 
-  function vwRack(game) {
+  function vwRack(model) {
     // A rack of 7 tiles
     var r = [];
+    var game = model.game;
+    // If review==true, this is a review rack
+    // that is not a drop target and whose color reflects the
+    // currently shown move.
+    var review = model.reviewMove !== null;
+    // If opponent==true, we're showing the opponent's rack
+    var opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
     for (var i = 1; i <= RACK_SIZE; i++) {
       var coord = 'R' + i.toString();
-      if (game && (coord in game.tiles))
+      if (game && (coord in game.tiles)) {
         // We have a tile in this rack slot, but it is a drop target anyway
-        r.push(vwDropTarget(game, coord, vwTile(game, coord)));
+        if (review)
+          r.push(vwReviewTile(game, coord, vwTile(game, coord, opponent)));
+        else
+          r.push(vwDropTarget(game, coord, vwTile(game, coord)));
+      }
       else
-        // Empty rack slot which is a drop target
+      if (review)
+        r.push(vwReviewTile(game, coord));
+      else
         r.push(vwDropTarget(game, coord));
     }
     return m(".rack", m("table.board", m("tbody", m("tr", r))));
@@ -3245,11 +3286,33 @@ function createView() {
     var sc = [ ".score" ];
     var mv = move ? game.moves[move - 1] : undefined;
     var score = mv ? mv[1][2] : undefined;
-    // TODO: Add logic to select class .green or .yellow depending
-    // TODO: on whose move it is
+    if (move > 0) {
+      if (move % 2 == game.player)
+        // Opponent move: show in green
+        sc.push("green");
+      else
+        // Player's move: show in yellow
+        sc.push("yellow");
+    }
     return m(
       sc.join("."),
       score === undefined ? "" : score.toString()
+    );
+  }
+
+  function vwScoreDiff(model, move) {
+    // Shows the score of the current move within a game review screen
+    var game = model.game;
+    var sc = [ ".scorediff" ];
+    var mv = move ? game.moves[move - 1] : undefined;
+    var score = mv ? mv[1][2] : undefined;
+    var bestScore = model.bestMoves[model.highlightedMove][1][2];
+    if (score >= bestScore)
+      sc.push("posdiff");
+    return m(
+      sc.join("."),
+      { style: { visibility: "visible" }},
+      (score - bestScore).toString()
     );
   }
 
@@ -3270,12 +3333,23 @@ function createView() {
       return txt;
     }
 
+    var leftPlayerColor, rightPlayerColor;
+
+    if (game.player == 1) {
+      rightPlayerColor = "humancolor";
+      leftPlayerColor = "autoplayercolor";
+    }
+    else {
+      leftPlayerColor = "humancolor";
+      rightPlayerColor = "autoplayercolor";
+    }
+
     return m(
       ".gamestats", { style: { visibility: "visible" } },
       [
         m("div", { style: { position: "relative", width: "100%" } },
           [
-            m("h3.playerleft", { style: { width: "50%" } }, 
+            m("h3.playerleft", { class: leftPlayerColor, style: { width: "50%" } }, 
               m(".robot-btn.left",
                 game.autoplayer[0] ?
                   [ glyph("cog"), nbsp(), game.nickname[0] ]
@@ -3283,7 +3357,7 @@ function createView() {
                   game.nickname[0]
               )
             ),
-            m("h3.playerright", { style: { width: "50%" } },
+            m("h3.playerright", { class: rightPlayerColor, style: { width: "50%" } },
               m(".robot-btn.right",
                 game.autoplayer[1] ?
                   [ glyph("cog"), nbsp(), game.nickname[1] ]
@@ -3578,8 +3652,9 @@ function createView() {
     return r;
   }
 
-  function vwButtonsReview(game, move) {
+  function vwButtonsReview(model, move) {
     // The navigation buttons below the board on the review screen
+    var game = model.game;
     var r = [];
     r.push(
       makeButton(
@@ -3617,6 +3692,10 @@ function createView() {
         "navnext"
       )
     );
+    // Show the score difference between an actual move and
+    // a particular move on the best move list
+    if (model.highlightedMove !== null)
+      r.push(vwScoreDiff(model, move));
     r.push(vwScoreReview(game, move));
     return r;
   }
@@ -4747,7 +4826,7 @@ function PromoDialog(initialVnode) {
 
   function _fetchContent(vnode) {
     // Fetch the content
-    vnode.attrs.model.loadPromoContent(vnode.attrs.key,
+    vnode.attrs.model.loadPromoContent(vnode.attrs.kind,
       function(contentHtml) {
         html = contentHtml;
       }
@@ -4764,7 +4843,7 @@ function PromoDialog(initialVnode) {
       return m(".modal-dialog",
         { id: "promo-dialog", style: { visibility: "visible" } },
         m(".ui-widget.ui-widget-content.ui-corner-all",
-          { id: "promo-form", className: "promo-" + vnode.attrs.key },
+          { id: "promo-form", className: "promo-" + vnode.attrs.kind },
           m("div",
             {
               id: "promo-content",
