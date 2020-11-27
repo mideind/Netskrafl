@@ -513,12 +513,19 @@ TILESETS: Dict[str, Type[TileSet]] = {
 ALPHABETS: Dict[str, Alphabet] = {
     "is": IcelandicAlphabet,
     "en": EnglishAlphabet,
+    # Everything else presently defaults to IcelandicAlphabet
 }
 
 VOCABULARIES: Dict[str, str] = {
     "is": "ordalisti",
     "en": "sowpods",
     "en_US": "TWL06",
+    # Everything else presently defaults to 'ordalisti'
+}
+
+BOARD_TYPES: Dict[str, str] = {
+    "is": "standard",
+    # Everything else defaults to 'explo'
 }
 
 # Set of all supported locale codes
@@ -531,18 +538,20 @@ Locale = NamedTuple(
         ("alphabet", Alphabet),
         ("tileset", Type[TileSet]),
         ("vocabulary", str),
+        ("board_type", str),
     ],
 )
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale("is_IS", IcelandicAlphabet, NewTileSet, "ordalisti")
+default_locale: Locale = Locale("is_IS", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
 current_lc: Callable[[], str] = lambda: current_locale.get().lc
 current_alphabet: Callable[[], Alphabet] = lambda: current_locale.get().alphabet
 current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tileset
 current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
+current_board_type: Callable[[], str] = lambda: current_locale.get().board_type
 
 
 def dget(d: Dict[str, Any], key: str, default: Any) -> Any:
@@ -563,17 +572,28 @@ def alphabet_for_locale(lc: str) -> Alphabet:
     return dget(ALPHABETS, lc, default_locale.alphabet)
 
 
+def tileset_for_locale(lc: str) -> Type[TileSet]:
+    """ Return the identifier of the default board type for the given locale """
+    return dget(TILESETS, lc, default_locale.tileset)
+
+
 def vocabulary_for_locale(lc: str) -> str:
     """ Return the identifier of the vocabulary for the given locale """
     return dget(VOCABULARIES, lc, default_locale.vocabulary)
+
+
+def board_type_for_locale(lc: str) -> str:
+    """ Return the identifier of the default board type for the given locale """
+    return dget(BOARD_TYPES, lc, "explo")
 
 
 def set_locale(lc: str) -> None:
     """ Set the current thread's locale context """
     locale = Locale(
         lc=lc,
-        alphabet=dget(ALPHABETS, lc, default_locale.alphabet),
-        tileset=dget(TILESETS, lc, default_locale.tileset),
-        vocabulary=dget(VOCABULARIES, lc, default_locale.vocabulary),
+        alphabet=alphabet_for_locale(lc),
+        tileset=tileset_for_locale(lc),
+        vocabulary=vocabulary_for_locale(lc),
+        board_type=board_type_for_locale(lc),
     )
     current_locale.set(locale)

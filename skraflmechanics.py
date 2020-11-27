@@ -44,6 +44,7 @@ DetailTuple = Tuple[str, str, str, int]
 # _DEBUG_MANUAL_WORDCHECK = True
 _DEBUG_MANUAL_WORDCHECK = False
 
+# !!! TODO: Add support for both 'standard' and 'explo' boards here
 # Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
 _STANDARD_WORDSCORE = [
     "311111131111113",

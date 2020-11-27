@@ -78,6 +78,7 @@ import requests
 from languages import (
     Alphabet,
     current_alphabet,
+    current_board_type,
     set_locale,
     current_lc,
     SUPPORTED_LOCALES,
@@ -2003,7 +2004,7 @@ def newgame() -> ResponseType:
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Get the board type
-    board_type = request.args.get("board_type", "standard")
+    board_type = request.args.get("board_type", current_board_type())
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -2075,7 +2076,7 @@ def initgame() -> ResponseType:
     if not opp:
         return jsonify(ok=False)
 
-    board_type = rq.get("board_type", "standard")
+    board_type = rq.get("board_type", current_board_type())
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?

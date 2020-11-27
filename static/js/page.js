@@ -18,10 +18,9 @@
 
 */
 
-/*
-  global m:false, Promise:false, $state:false, Game:false,
-  loginFirebase, attachFirebaseListener, detachFirebaseListener,
-  toVector, coord, registerSalesCloud
+/* global m:false, Promise:false, $state:false, Game:false,
+   loginFirebase, attachFirebaseListener, detachFirebaseListener,
+   toVector, coord, registerSalesCloud, setTimeout
 */
 
 /* eslint-disable indent */
@@ -2053,7 +2052,7 @@ function createView() {
           component = vwMovelist.call(view, game);
         else
         if (sel == "twoletter")
-          component = m(vwTwoLetter, { data: game.two_letter_words } );
+          component = m(vwTwoLetter, { data: game.twoLetterWords() } );
         else
         if (sel == "chat")
           component = vwChat(game);

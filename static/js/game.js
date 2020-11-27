@@ -12,9 +12,7 @@
 
 */
 
-/*
-  global m:false, $state:false
-*/
+/* global m:false, $state:false */
 
 /* eslint-disable no-unused-vars */
 
@@ -179,77 +177,80 @@ var Game = (function() {
 
   var GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
-  var WORDSCORE = [
-    "3      3      3",
-    " 2           2 ",
-    "  2         2  ",
-    "   2       2   ",
-    "    2     2    ",
-    "               ",
-    "               ",
-    "3      2      3",
-    "               ",
-    "               ",
-    "    2     2    ",
-    "   2       2   ",
-    "  2         2  ",
-    " 2           2 ",
-    "3      3      3"
-  ];
-
-  var LETTERSCORE = [
-    "   2       2   ",
-    "     3   3     ",
-    "      2 2      ",
-    "2      2      2",
-    "               ",
-    " 3   3   3   3 ",
-    "  2   2 2   2  ",
-    "   2       2   ",
-    "  2   2 2   2  ",
-    " 3   3   3   3 ",
-    "               ",
-    "2      2      2",
-    "      2 2      ",
-    "     3   3     ",
-    "   2       2   "
-  ];
-
-  var WORDSCORE_newBoard = [
-    "3      3      3",
-    "               ",
-    "  2         2  ",
-    "   2      2    ",
-    "    2          ",
-    "               ",
-    "      2      2 ",
-    "3      2      3",
-    "        2      ",
-    "            2  ",
-    "   2       2   ",
-    "          2    ",
-    "  2      2     ",
-    "      2      2 ",
-    "3      3      3"
-  ];
-
-  var LETTERSCORE_newBoard = [
-    "               ",
-    " 2    2 2  3 2 ",
-    "     3   2     ",
-    "   2   3       ",
-    "           2  2",
-    "  3  2    2 2  ",
-    " 2      3      ",
-    "   3       3   ",
-    " 2    3      2 ",
-    "  2      2     ",
-    "     2       3 ",
-    " 3  2  3      2",
-    "     2      2  ",
-    " 2      2 3    ",
-    "    2      2   "
-  ];
+  var BOARD = {
+    standard: {
+      WORDSCORE: [
+        "3      3      3",
+        " 2           2 ",
+        "  2         2  ",
+        "   2       2   ",
+        "    2     2    ",
+        "               ",
+        "               ",
+        "3      2      3",
+        "               ",
+        "               ",
+        "    2     2    ",
+        "   2       2   ",
+        "  2         2  ",
+        " 2           2 ",
+        "3      3      3"
+      ],
+      LETTERSCORE: [
+        "   2       2   ",
+        "     3   3     ",
+        "      2 2      ",
+        "2      2      2",
+        "               ",
+        " 3   3   3   3 ",
+        "  2   2 2   2  ",
+        "   2       2   ",
+        "  2   2 2   2  ",
+        " 3   3   3   3 ",
+        "               ",
+        "2      2      2",
+        "      2 2      ",
+        "     3   3     ",
+        "   2       2   "
+      ]
+    },
+    explo: {
+      WORDSCORE: [
+        "3      3      3",
+        "               ",
+        "  2         2  ",
+        "   2      2    ",
+        "    2          ",
+        "               ",
+        "      2      2 ",
+        "3      2      3",
+        "        2      ",
+        "            2  ",
+        "   2       2   ",
+        "          2    ",
+        "  2      2     ",
+        "      2      2 ",
+        "3      3      3"
+      ],
+      LETTERSCORE: [
+        "               ",
+        " 2    2 2  3 2 ",
+        "     3   2     ",
+        "   2   3       ",
+        "           2  2",
+        "  3  2    2 2  ",
+        " 2      3      ",
+        "   3       3   ",
+        " 2    3      2 ",
+        "  2      2     ",
+        "     2       3 ",
+        " 3  2  3      2",
+        "     2      2  ",
+        " 2      2 3    ",
+        "    2      2   "
+      ]
+    }
+  };
 
   function Game(uuid, game) {
     // Game constructor
@@ -279,16 +280,17 @@ var Game = (function() {
     this.autoplayer = [false, false];
     this.scores = [0, 0];
     this.bag = "";
-    this.tileScores = {};
     this.locale = "is_IS";
     this.alphabet = "";
-    this.boardType = "standard";
-    this.WORDSCORE = WORDSCORE;
-    this.LETTERSCORE = LETTERSCORE;
-    this.two_letter_words = [[], []];
     this.stats = null; // Game review statistics
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
+    // Note: the following attributes have Python naming conventions,
+    // since they are copied directly from JSON-encoded Python objects
+    this.tile_scores = {};
+    // Default to the standard board for the Icelandic locale
+    this.board_type = "standard";
+    this.two_letter_words = [[], []];
     // Load previously saved tile positions from
     // local storage, if any
     var savedTiles = this.localStorage.loadTiles();
@@ -300,18 +302,19 @@ var Game = (function() {
 
   Game.prototype.init = function(game) {
     // Initialize the game state with data from the server
-    var key;
     // !!! TODO: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
     this.over = game.result == GAME_OVER;
-    if (this.over || !game.result)
+    if (this.over || game.result === 0)
       this.currentError = this.currentMessage = null;
     else {
-      this.currentError = game.result;
-      this.currentMessage = game.msg;
+      // Nonzero game.result: something is wrong
+      this.currentError = game.result || "server";
+      this.currentMessage = game.msg || "";
+      return;
     }
     // Copy game JSON properties over to this object
-    for (key in game)
+    for (var key in game)
       if (game.hasOwnProperty(key))
         this[key] = game[key];
     if (game.newmoves !== undefined && game.newmoves.length > 0)
@@ -321,10 +324,6 @@ var Game = (function() {
     this.newmoves = undefined;
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
-    this.tileScores = game.tile_scores;
-    this.locale = game.locale;
-    this.alphabet = game.alphabet;
-    this.boardType = game.board_type;
     this.two_letter_words = game.two_letter_words || [[], []];
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
@@ -339,13 +338,12 @@ var Game = (function() {
     // Update the game state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
-    var sq;
-    if (game.num_moves <= this.moves.length)
+    if (game.num_moves !== undefined && game.num_moves <= this.moves.length)
       // This is probably a starting notification from Firebase,
       // not adding a new move but repeating the last move made: ignore it
       return;
     // Stop highlighting the previous opponent move, if any
-    for (sq in this.tiles)
+    for (var sq in this.tiles)
       if (this.tiles.hasOwnProperty(sq))
         this.tiles[sq].freshtile = false;
     this.init(game);
@@ -375,7 +373,13 @@ var Game = (function() {
   };
 
   Game.prototype.tilescore = function(tile) {
-    return this.tileScores[tile];
+    // Note: The Python naming convention of tile_score is intentional
+    return this.tile_scores[tile];
+  };
+
+  Game.prototype.twoLetterWords = function() {
+    // Note: The Python naming convention of two_letter_words is intentional
+    return this.two_letter_words;
   };
 
   Game.prototype.loadGames = function() {
@@ -706,6 +710,7 @@ var Game = (function() {
     ).then(
       function(result) {
         this.moveInProgress = false;
+        // The update() function also handles error results
         this.update(result);
       }.bind(this)
     ).catch(
@@ -996,11 +1001,17 @@ var Game = (function() {
   };
 
   Game.prototype.wordScore = function(row, col) {
-    return parseInt(this.WORDSCORE[row].charAt(col)) || 1;
+    // Return the word score multiplier at the given coordinate
+    // on the game's board
+    var wsc = BOARD[this.board_type].WORDSCORE;
+    return parseInt(wsc[row].charAt(col)) || 1;
   };
 
   Game.prototype.letterScore = function(row, col) {
-    return parseInt(this.LETTERSCORE[row].charAt(col)) || 1;
+    // Return the letter score multiplier at the given coordinate
+    // on the game's board
+    var lsc = BOARD[this.board_type].LETTERSCORE;
+    return parseInt(lsc[row].charAt(col)) || 1;
   };
 
   Game.prototype.squareType = function(row, col) {
