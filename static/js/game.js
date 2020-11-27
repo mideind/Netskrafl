@@ -180,41 +180,76 @@ var Game = (function() {
   var GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
   var WORDSCORE = [
-    "311111131111113",
-    "121111111111121",
-    "112111111111211",
-    "111211111112111",
-    "111121111121111",
-    "111111111111111",
-    "111111111111111",
-    "311111121111113",
-    "111111111111111",
-    "111111111111111",
-    "111121111121111",
-    "111211111112111",
-    "112111111111211",
-    "121111111111121",
-    "311111131111113"
+    "3      3      3",
+    " 2           2 ",
+    "  2         2  ",
+    "   2       2   ",
+    "    2     2    ",
+    "               ",
+    "               ",
+    "3      2      3",
+    "               ",
+    "               ",
+    "    2     2    ",
+    "   2       2   ",
+    "  2         2  ",
+    " 2           2 ",
+    "3      3      3"
   ];
 
   var LETTERSCORE = [
-    "111211111112111",
-    "111113111311111",
-    "111111212111111",
-    "211111121111112",
-    "111111111111111",
-    "131113111311131",
-    "112111212111211",
-    "111211111112111",
-    "112111212111211",
-    "131113111311131",
-    "111111111111111",
-    "211111121111112",
-    "111111212111111",
-    "111113111311111",
-    "111211111112111"
+    "   2       2   ",
+    "     3   3     ",
+    "      2 2      ",
+    "2      2      2",
+    "               ",
+    " 3   3   3   3 ",
+    "  2   2 2   2  ",
+    "   2       2   ",
+    "  2   2 2   2  ",
+    " 3   3   3   3 ",
+    "               ",
+    "2      2      2",
+    "      2 2      ",
+    "     3   3     ",
+    "   2       2   "
   ];
 
+  var WORDSCORE_newBoard = [
+    "3      3      3",
+    "               ",
+    "  2         2  ",
+    "   2      2    ",
+    "    2          ",
+    "               ",
+    "      2      2 ",
+    "3      2      3",
+    "        2      ",
+    "            2  ",
+    "   2       2   ",
+    "          2    ",
+    "  2      2     ",
+    "      2      2 ",
+    "3      3      3"
+  ];
+
+  var LETTERSCORE_newBoard = [
+    "               ",
+    " 2    2 2  3 2 ",
+    "     3   2     ",
+    "   2   3       ",
+    "           2  2",
+    "  3  2    2 2  ",
+    " 2      3      ",
+    "   3       3   ",
+    " 2    3      2 ",
+    "  2      2     ",
+    "     2       3 ",
+    " 3  2  3      2",
+    "     2      2  ",
+    " 2      2 3    ",
+    "    2      2   "
+  ];
 
   function Game(uuid, game) {
     // Game constructor
@@ -248,6 +283,8 @@ var Game = (function() {
     this.locale = "is_IS";
     this.alphabet = "";
     this.boardType = "standard";
+    this.WORDSCORE = WORDSCORE;
+    this.LETTERSCORE = LETTERSCORE;
     this.two_letter_words = [[], []];
     this.stats = null; // Game review statistics
     // Create a local storage object for this game
@@ -959,11 +996,34 @@ var Game = (function() {
   };
 
   Game.prototype.wordScore = function(row, col) {
-    return parseInt(WORDSCORE[row].charAt(col));
+    return parseInt(this.WORDSCORE[row].charAt(col)) || 1;
   };
 
   Game.prototype.letterScore = function(row, col) {
-    return parseInt(LETTERSCORE[row].charAt(col));
+    return parseInt(this.LETTERSCORE[row].charAt(col)) || 1;
+  };
+
+  Game.prototype.squareType = function(row, col) {
+    // Return the square type, or "" if none
+    var wsc = this.wordScore(row, col);
+    if (wsc == 2)
+      return "dw"; // Double word
+    if (wsc == 3)
+      return "tw"; // Triple word
+    var lsc = this.letterScore(row, col);
+    if (lsc == 2)
+      return "dl"; // Double letter
+    if (lsc == 3)
+      return "tl"; // Triple letter
+    return ""; // Plain square
+  };
+
+  Game.prototype.squareClass = function(coord) {
+    // Given a coordinate in string form, return the square's type/class
+    if (!coord || coord[0] == "R")
+      return undefined;
+    var vec = toVector(coord);
+    return this.squareType(vec.row, vec.col) || undefined;
   };
 
   Game.prototype.tileAt = function(row, col) {

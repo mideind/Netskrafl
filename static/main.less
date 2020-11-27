@@ -391,14 +391,13 @@ tr.colid td {
 }
 
 /* Board layout */
+
 #H8, #B2, #C3, #D4, #E5, #B14, #C13, #D12, #E11,
 #K5, #L4, #M3, #N2, #K11, #L12, #M13, #N14 {
-   /* Double word score */
    background-color: @double-word;
 }
 
 #A1, #A8, #A15, #H1, #H15, #O1, #O8, #O15 {
-   /* Triple word score */
    background-color: @triple-word;
 }
 
@@ -407,12 +406,30 @@ tr.colid td {
 #H4, #H12,
 #I3, #I7, #I9, #I13,
 #O4, #O12, #M7, #M9, #L1, #L8, #L15 {
-   /* Double letter score */
    background-color: @double-letter;
 }
 
 #B6, #B10, #F2, #F6, #F10, #F14,
 #N6, #N10, #J2, #J6, #J10, #J14 {
+   background-color: @triple-letter;
+}
+
+table.board td.dw {
+   /* Double word score */
+   background-color: @double-word;
+}
+
+table.board td.tw {
+   /* Triple word score */
+   background-color: @triple-word;
+}
+
+table.board td.dl {
+   /* Double letter score */
+   background-color: @double-letter;
+}
+
+table.board td.tl {
    /* Triple letter score */
    background-color: @triple-letter;
 }

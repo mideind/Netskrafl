@@ -21,7 +21,7 @@
 /*
   global m:false, Promise:false, $state:false, Game:false,
   loginFirebase, attachFirebaseListener, detachFirebaseListener,
-  toVector, coord
+  toVector, coord, registerSalesCloud
 */
 
 /* eslint-disable indent */
@@ -579,7 +579,7 @@ function createView() {
   // Dialog support
 
   function pushDialog(dialogName, dialogArgs) {
-    this.dialogStack.push({ name: dialogName, args : dialogArgs });
+    this.dialogStack.push({ name: dialogName, args: dialogArgs });
     m.redraw(); // Ensure that the dialog is shown
   }
 
@@ -1059,14 +1059,17 @@ function createView() {
             [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
             vwDialogButton("user-unfriend", "Hætta sem vinur",
-              function(ev) { /* !!! TBD */ },
+              function(ev) {
+                window.location.href = user.unfriend_url;
+                ev.preventDefault();
+              },
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ], 12
             )
           :
             vwDialogButton("user-friend", "Gerast vinur",
               function(ev) {
                 // Invoke the friend promo dialog
-                this.pushDialog("promo", { kind: "friend" });
+                this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
               }.bind(view),
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
@@ -1101,7 +1104,8 @@ function createView() {
       {
         model: model,
         view: this,
-        kind: args.kind
+        kind: args.kind,
+        initFunc: args.initFunc
       }
     );
   }
@@ -2589,6 +2593,9 @@ function createView() {
     var rightTotal = info.rightTotal;
 
     function gameOverMove(tiles) {
+      // Add a 'game over' div at the bottom of the move list
+      // of a completed game. The div includes a button to
+      // open a review of the game, if the user is a friend of Netskrafl.
       return m(".move.gameover",
         [
           m("span.gameovermsg", tiles),
@@ -2600,7 +2607,7 @@ function createView() {
                   m.route.set("/review/" + uuid);
                 else
                   // Show a friend promotion dialog
-                  this.pushDialog("promo", { kind: "friend" });
+                  this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
                 ev.preventDefault();
               }.bind(view, game.uuid)
             },
@@ -3114,8 +3121,9 @@ function createView() {
     // Return a td element that wraps an 'inert' tile in a review screen
     return m("td",
       {
-        id: coord,
-        key: coord
+        id: "_" + coord,
+        key: coord,
+        class: game.squareClass(coord)
       },
       child || ""
     );
@@ -3130,8 +3138,9 @@ function createView() {
       cls += ".blinking";
     return m("td" + cls,
       {
-        id: coord,
+        id: "_" + coord,
         key: coord,
+        class: game.squareClass(coord),
         ondragenter: function(ev) {
           ev.preventDefault();
           ev.dataTransfer.dropEffect = 'move';
@@ -3209,8 +3218,9 @@ function createView() {
           // There is a tile in this square: render it
           r.push(m("td",
             {
-              id: coord,
+              id: "_" + coord,
               key: coord,
+              class: game.squareClass(coord),
               ondragover: stopPropagation,
               ondrop: stopPropagation
             },
@@ -4827,11 +4837,31 @@ function PromoDialog(initialVnode) {
 
   function _fetchContent(vnode) {
     // Fetch the content
-    vnode.attrs.model.loadPromoContent(vnode.attrs.kind,
+    vnode.attrs.model.loadPromoContent(
+      vnode.attrs.kind,
       function(contentHtml) {
         html = contentHtml;
       }
     );
+  }
+
+  function _onUpdate(appView, initFunc, vnode) {
+    var i, noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
+    // Override onclick, onmouseover and onmouseout for No buttons
+    for (i = 0; i < noButtons.length; i++) {
+      noButtons[i].onclick = function(ev) { this.popDialog(); }.bind(appView);
+      noButtons[i].onmouseover = buttonOver;
+      noButtons[i].onmouseout = buttonOut;
+    }
+    // Override onmouseover and onmouseout for Yes buttons
+    var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
+    for (i = 0; i < yesButtons.length; i++) {
+      yesButtons[i].onmouseover = buttonOver;
+      yesButtons[i].onmouseout = buttonOut;
+    }
+    // Run an initialization function, if specified
+    if (initFunc !== undefined)
+      initFunc();
   }
 
   return {
@@ -4841,6 +4871,7 @@ function PromoDialog(initialVnode) {
 
     view: function(vnode) {
       var appView = vnode.attrs.view;
+      var initFunc = vnode.attrs.initFunc;
       return m(".modal-dialog",
         { id: "promo-dialog", style: { visibility: "visible" } },
         m(".ui-widget.ui-widget-content.ui-corner-all",
@@ -4848,21 +4879,7 @@ function PromoDialog(initialVnode) {
           m("div",
             {
               id: "promo-content",
-              onupdate: function(vnode) {
-                var i, noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
-                // Override onclick, onmouseover and onmouseout for No buttons
-                for (i = 0; i < noButtons.length; i++) {
-                  noButtons[i].onclick = function(ev) { this.popDialog(); }.bind(appView);
-                  noButtons[i].onmouseover = buttonOver;
-                  noButtons[i].onmouseout = buttonOut;
-                }
-                // Override onmouseover and onmouseout for Yes buttons
-                var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
-                for (i = 0; i < yesButtons.length; i++) {
-                  yesButtons[i].onmouseover = buttonOver;
-                  yesButtons[i].onmouseout = buttonOut;
-                }
-              }
+              onupdate: _onUpdate.bind(null, appView, initFunc)
             },
             m.trust(html)
           )

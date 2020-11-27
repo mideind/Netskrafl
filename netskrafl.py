@@ -1753,6 +1753,7 @@ class UserForm:
         # user cookie, so there is no need for an intervening redirect
         # to logout().
         self.logout_url = url_for("logout")
+        self.unfriend_url = url_for("friend", action=2)
         if usr:
             self.init_from_user(usr)
         else:
