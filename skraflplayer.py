@@ -72,7 +72,7 @@ from __future__ import annotations
 
 from typing import Optional, List, Tuple, Dict, cast
 
-from random import randint
+import random
 
 from dawgdictionary import Wordbase
 from languages import Alphabet, current_alphabet
@@ -701,14 +701,23 @@ class AutoPlayer:
         # (row or column) on the board separately
 
         if self._board.is_empty():
-            # Special case for first move: only consider the vertical
-            # central axis (any move played there can identically be
-            # played horizontally), and with only one anchor in the
-            # middle square
-            axis = self._axis_from_column(Board.SIZE // 2)
-            axis.init_crosschecks()
-            # Mark the center anchor
-            axis.mark_anchor(Board.SIZE // 2)
+            # Special case for first move: must pass through the starting
+            # square, which is an anchor. We choose randomly to find either
+            # horizontal or vertical moves. The move lists for both directions
+            # are identical, apart from the symmetrical reflection of the coordinates.
+            ssq_row, ssq_col = self.board().start_square
+            if random.choice((False, True)):
+                # Vertical move
+                axis = self._axis_from_column(ssq_col)
+                axis.init_crosschecks()
+                # Mark the starting anchor
+                axis.mark_anchor(ssq_row)
+            else:
+                # Horizontal move
+                axis = self._axis_from_row(ssq_row)
+                axis.init_crosschecks()
+                # Mark the starting anchor
+                axis.mark_anchor(ssq_col)
             axis.generate_moves(lpn)
         else:
             # Normal move: go through all 15 (row) + 15 (column) axes and generate
@@ -794,7 +803,7 @@ class AutoPlayer:
         #    .format(picklist, top_equal, num_candidates))
         # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
         #    logging.info("Move {0} score {1}".format(m, sc))
-        return scored_candidates[top_equal + randint(0, picklist - 1)][0]
+        return scored_candidates[top_equal + random.randint(0, picklist - 1)][0]
 
     # pylint: disable=unused-argument
     def _find_best_move(self, depth):
@@ -850,7 +859,7 @@ class AutoPlayer_Common(AutoPlayer):
             # No playable move: give up and do an Exchange or Pass instead
             return None
         # Pick a move at random from the playable list
-        return playable_candidates[randint(0, p - 1)][0]
+        return playable_candidates[random.randint(0, p - 1)][0]
 
 
 class AutoPlayer_MiniMax(AutoPlayer):

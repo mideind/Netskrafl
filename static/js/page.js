@@ -3644,7 +3644,7 @@ function createView() {
               {
                 id: 'force-resign',
                 style: { display: "inline" },
-                onclick: function(ev) { ev.preventDefault(); }, // !!! TBD !!!
+                onclick: function(ev) { ev.preventDefault(); }, // !!! TODO !!!
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
                 title: '14 dagar liðnir án leiks'
@@ -3659,7 +3659,16 @@ function createView() {
       r.push(vwScore(game));
     // Is the server processing a move?
     if (game.moveInProgress)
-      r.push(m(".waitmove", { style: { display: "block" } }));
+      r.push(
+        m(".waitmove", { style: { display: "block" } },
+          m("img",
+            {
+              src: '/static/ajax-loader.gif', border: 0,
+              width: 16, height:16
+            }
+          )
+        )
+      );
     return r;
   }
 
@@ -3716,7 +3725,7 @@ function createView() {
     var msg = game.currentMessage || "";
     var errorMessages = {
       1: "Enginn stafur lagður niður",
-      2: "Fyrsta orð verður að liggja um miðjureitinn",
+      2: "Fyrsta orð verður að liggja um byrjunarreitinn",
       3: "Orð verður að vera samfellt á borðinu",
       4: "Orð verður að tengjast orði sem fyrir er",
       5: "Reitur þegar upptekinn",

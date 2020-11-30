@@ -30,6 +30,7 @@ from typing import List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
+from functools import cached_property
 
 from dawgdictionary import Wordbase
 from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
@@ -158,16 +159,30 @@ class Board:
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
-            self._board_type = board_type
+            self._board_type = board_type or "standard"
         else:
             # Copy constructor: initialize from another Board
             self._letters = copy._letters[:]
             self._tiles = copy._tiles[:]
             self._numletters = copy._numletters
             self._numtiles = copy._numtiles
-            self._board_type = copy._board_type
+            self._board_type = copy._board_type or "standard"
         self._wordscore = _WORDSCORE[self._board_type]
         self._letterscore = _LETTERSCORE[self._board_type]
+
+    @cached_property
+    def start_square(self) -> Tuple[int, int]:
+        """ Return the starting square of this board as a (row, col) tuple """
+        if self._board_type == "explo":
+            # For 'explo', the starting square is C3
+            return (2, 2)
+        # For the standard board, the starting square is H8
+        return (Board.SIZE // 2, Board.SIZE // 2)
+
+    @property
+    def board_type(self) -> str:
+        """ Return the board type, i.e. 'standard' or 'explo' """
+        return self._board_type
 
     def is_empty(self):
         """ Is the board empty, i.e. contains no tiles? """
@@ -1242,13 +1257,12 @@ class Move(MoveBase):
         # Check that the play is adjacent to some previously placed tile
         # (unless this is the first move, i.e. the board is empty)
         if board.is_empty():
-            # Must go through the center square
-            center = False
+            # First tile move: must go through the starting square
+            ssq = board.start_square
             for c in self._covers:
-                if c.row == Board.SIZE // 2 and c.col == Board.SIZE // 2:
-                    center = True
+                if (c.row, c.col) == ssq:
                     break
-            if not center:
+            else:
                 return Error.FIRST_MOVE_NOT_IN_CENTER
         else:
             # Must be adjacent to something already on the board
