@@ -226,27 +226,27 @@ var Game = (function() {
         "3      2      3",
         "        2      ",
         "            2  ",
-        "   2       2   ",
-        "          2    ",
+        "   2      2    ",
+        "           2   ",
         "  2      2     ",
         "      2      2 ",
         "3      3      3"
       ],
       LETTERSCORE: [
-        "               ",
-        " 2    2 2  3 2 ",
+        "   2       2   ",
+        " 2    2 2    3 ",
         "     3   2     ",
-        "   2   3       ",
-        "           2  2",
-        "  3  2    2 2  ",
-        " 2      3      ",
-        "   3       3   ",
-        " 2    3      2 ",
-        "  2      2     ",
-        "     2       3 ",
-        " 3  2  3      2",
+        "2  2   3       ",
+        "           3  2",
+        "  3  2   3  2  ",
+        " 2        2    ",
+        "   3       2   ",
+        " 2             ",
+        "  2  3   2     ",
+        "      2      3 ",
+        "2   3  2      2",
         "     2      2  ",
-        " 2      2 3    ",
+        " 3        3    ",
         "    2      2   "
       ]
     }
@@ -290,6 +290,8 @@ var Game = (function() {
     this.tile_scores = {};
     // Default to the standard board for the Icelandic locale
     this.board_type = "standard";
+    this.centerSquare = "H8";
+    this.centerCoord = [7, 7]; // row, col
     this.two_letter_words = [[], []];
     // Load previously saved tile positions from
     // local storage, if any
@@ -325,6 +327,8 @@ var Game = (function() {
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
     this.two_letter_words = game.two_letter_words || [[], []];
+    this.centerSquare = this.board_type == "explo" ? "C3" : "H8";
+    this.centerCoord = this.board_type == "explo" ? [2, 2] : [7, 7];
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)
@@ -986,7 +990,7 @@ var Game = (function() {
           {
             method: "POST",
             url: "/wordcheck",
-            body: { word: scoreResult.word, words: scoreResult.words }
+            body: { locale: this.locale, word: scoreResult.word, words: scoreResult.words }
           }
         ).then(
           function(result) {
@@ -1112,7 +1116,9 @@ var Game = (function() {
     }
     if (this.numTileMoves === 0) {
       // First move that actually lays down tiles must go through center square
-      if (null === this.tileAt(7, 7))
+      var c = this.centerCoord;
+      if (null === this.tileAt(c[0], c[1]))
+        // No tile in the center square
         return undefined;
     }
     else

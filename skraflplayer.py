@@ -931,7 +931,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print("Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
-            teststate = State(tileset=None, copy=self._state)  # Copy constructor
+            teststate = State(copy=self._state)  # Copy constructor
             teststate.apply_move(m)
 
             countermoves = list()

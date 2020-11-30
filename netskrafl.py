@@ -80,6 +80,7 @@ from languages import (
     current_alphabet,
     current_board_type,
     set_locale,
+    set_game_locale,
     current_lc,
     SUPPORTED_LOCALES,
 )
@@ -1162,6 +1163,9 @@ def submitmove():
     if game.player_id_to_move() != current_user_id():
         return jsonify(result=Error.WRONG_USER)
 
+    # Switch to the game's locale before processing the move
+    set_game_locale(game.locale)
+
     # Process the movestring
     # Try twice in case of timeout or other exception
     result = None
@@ -1195,7 +1199,7 @@ def gamestate():
     user_id = current_user_id()
     game = Game.load(uuid) if uuid else None
 
-    if not game:
+    if game is None:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
@@ -1204,6 +1208,9 @@ def gamestate():
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
         return jsonify(ok=False)
+
+    # Switch to the game's locale for the client state info
+    set_game_locale(game.locale)
 
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
@@ -1241,12 +1248,18 @@ def forceresign():
 
 @app.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
-def wordcheck():
+def wordcheck() -> str:
     """ Check a list of words for validity """
 
     rq = RequestData(request)
+    # If a locale is included in the request,
+    # use it within the current thread for the vocabulary lookup
+    locale: Optional[str] = rq.get("locale")
     words = rq.get_list("words")
     word = rq["word"]
+
+    if locale is not None:
+        set_game_locale(locale)
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -1256,7 +1269,7 @@ def wordcheck():
 
 @app.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamestats():
+def gamestats() -> str:
     """ Calculate and return statistics on a given finished game """
 
     rq = RequestData(request)
@@ -1273,12 +1286,15 @@ def gamestats():
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
 
+    # Switch to the game's locale
+    set_game_locale(game.locale)
+
     return jsonify(game.statistics())
 
 
 @app.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userstats():
+def userstats() -> str:
     """ Calculate and return statistics on a given user """
 
     cid = current_user_id()
@@ -1636,6 +1652,10 @@ def review() -> ResponseType:
         # The game is not found: abort
         return redirect(url_for("main"))
 
+    # Swith the current thread to the game's locale, overriding the
+    # user's locale settings - except for the language
+    set_game_locale(game.locale)
+
     try:
         move_number = int(request.args.get("move", "0"))
     except (TypeError, ValueError):
@@ -1702,6 +1722,9 @@ def bestmoves() -> Response:
     if game is None or not game.is_over():
         # The game is not found or still in progress: abort
         return jsonify(result=Error.GAME_NOT_FOUND)
+
+    # Switch to the game's locale
+    set_game_locale(game.locale)
 
     move_number = rq.get_int("move")
     if move_number > game.num_moves():
@@ -2178,6 +2201,10 @@ def board() -> ResponseType:
         if not game.has_player(uid):
             # This user is not a party to the game: redirect to main page
             return redirect(url_for("main"))
+
+    # Switch the current thread to the game's locale (i.e. not the
+    # user's locale, except for the language setting)
+    set_game_locale(game.locale)
 
     # user can be None if the game is over - we do not require a login in that case
     player_index = None if user is None else game.player_index(uid)

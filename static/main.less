@@ -434,6 +434,18 @@ table.board td.tl {
    background-color: @triple-letter;
 }
 
+table.board td.center {
+   font-family: 'Glyphicons Regular';
+   text-align: center;
+   font-size: 17px;
+   line-height: 21px;
+   color: #202020;
+}
+
+table.board td.center:before {
+   content: "\E050"; /* Star */
+}
+
 table.board {
    margin: 0;
    padding: 0;
@@ -443,8 +455,16 @@ table.board {
    .noselect;
 }
 
+table.board tr {
+   height: 24px;
+}
+
 .rack table.board {
    border-spacing: 4px;
+}
+
+.rack table.board tr {
+   height: 28px;
 }
 
 div.logo-back {
@@ -481,20 +501,27 @@ div.board {
 }
 
 div.tile {
+   position: relative;
    background-color: @tile;
    font-size: 17px;
-   line-height: 7px;
+   line-height: 22px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
-   height: (@board-cell-small - 8px);
-   width: (@board-cell-small + 3px);
+   height: @board-cell-small;
+   width: @board-cell-small;
    overflow: hidden;
    margin: 0;
-   margin-left: -3px;
    padding: 0;
-   padding-top: 8px;
+   margin-left: -2px;
+   padding-right: 2px;
+   vertical-align: top;
    cursor: default;
+}
+
+div.tile.wide {
+   margin-left: -3px;
+   padding-right: 3px;
 }
 
 /* On small form factors, we have bigger tiles in the rack than on the board */
@@ -518,12 +545,7 @@ div.tile.ui-draggable-dragging {
 }
 
 .board td {
-   min-height: @board-cell-small;
    min-width: @board-cell-small;
-   max-height: @board-cell-small;
-   max-width: @board-cell-small;
-   height: @board-cell-small;
-   width: @board-cell-small;
    overflow: hidden;
    background-color: @board-background;
    border-style: solid;
@@ -533,12 +555,13 @@ div.tile.ui-draggable-dragging {
 }
 
 .rack td {
-   min-height: @rack-cell-small;
    min-width: @rack-cell-small;
+   /*
    max-height: @rack-cell-small;
    max-width: @rack-cell-small;
    height: @rack-cell-small;
    width: @rack-cell-small;
+   */
 }
 
 tr.colid {
@@ -562,9 +585,9 @@ div.rack {
 }
 
 div.letterscore {
-   position: relative;
-   bottom: 2px;
-   left: 15px;
+   position: absolute;
+   bottom: 0px;
+   right: 0px;
    height: 9px;
    width: 9px;
    font-size: 6px;
@@ -573,6 +596,7 @@ div.letterscore {
    font-weight: 400;
    padding: 0;
    background-color: transparent;
+   vertical-align: bottom;
 }
 
 .rack div.letterscore {
@@ -2750,7 +2774,7 @@ div.scorediff {
    text-align: center;
    vertical-align: middle;
    bottom: 272px;
-   left: 646px;
+   left: 650px;
    background-color: @alert;
    font-size: 18px;
    font-weight: normal;

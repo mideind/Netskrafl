@@ -110,7 +110,7 @@
    }
    
    div.board {
-      top: 8px;
+      top: 0px;
       left: 88px;
       height: auto;
    }
@@ -123,7 +123,20 @@
       height: @board-cell-big;
       width: @board-cell-big;
    }
-   
+
+   table.board td.center {
+      font-size: 28px;
+      line-height: 32px;
+   }
+
+   table.board tr {
+      height: 34px;
+   }
+
+   .rack table.board tr {
+      height: 34px;
+   }
+
    div.tile {
       font-size: 25px;
       line-height: 26px;
@@ -133,7 +146,22 @@
       padding-top: 2px;
       padding-right: 2px;
    }
+
+   .rack div.tile {
+      font-size: 25px;
+      line-height: 26px;
+      height: (@board-cell-big - 2px);
+      width: (@board-cell-big - 2px);
+      padding-top: 2px;
+      margin-left: 0;
+   }
    
+   div.tile.wide {
+      /* Wide character tile: Z, Q */
+      margin-left: -3px;
+      padding-right: 5px;
+   }
+
    /* On large UIs, tile size doesn't change while dragging */
    
    div.tile.ui-draggable-dragging {
@@ -144,14 +172,28 @@
    }
    
    div.letterscore {
-      bottom: 8px;
-      left: 22px;
-      height: 9px;
-      width: 9px;
+      bottom: 2px;
+      right: 1px;
       font-size: 9px;
       line-height: 9px;
    }
    
+   .rack div.letterscore {
+      right: 0px;
+      left: auto;
+   }
+
+   div.tile.wide div.letterscore {
+      /* Adjust letter score position for wide tiles */
+      right: 2px;
+      left: auto;
+   }
+
+   .rack div.tile.wide div.letterscore {
+      /* Adjust letter score position for wide tiles */
+      right: 2px;
+   }
+
    tr.colid {
       display: table-row;
    }
@@ -193,29 +235,14 @@
       width: @board-cell-big;
    }
    
-   .rack div.tile {
-      font-size: 25px;
-      line-height: 26px;
-      height: (@board-cell-big - 2px);
-      width: (@board-cell-big - 2px);
-      padding-top: 2px;
-      margin-left: 0;
-   }
-   
-   .rack div.letterscore {
-      left: 22px;
-      font-size: 9px;
-      line-height: 9px;
-   }
-   
    div.word-check {
       width: 48px;
       height: 48px;
       font-size: 26px;
       line-height: 45px;
       top: auto;
-      bottom: 268px;
-      left: 645px;
+      bottom: 272px;
+      left: 648px;
       border-radius: 5px;
    }
    
@@ -225,8 +252,8 @@
       font-size: 24px;
       line-height: 46px;
       top: auto;
-      bottom: 204px;
-      left: 645px;
+      bottom: 208px;
+      left: 648px;
       border-radius: 5px;
    }
    

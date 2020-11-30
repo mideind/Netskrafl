@@ -44,44 +44,86 @@ DetailTuple = Tuple[str, str, str, int]
 # _DEBUG_MANUAL_WORDCHECK = True
 _DEBUG_MANUAL_WORDCHECK = False
 
-# !!! TODO: Add support for both 'standard' and 'explo' boards here
-# Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
-_STANDARD_WORDSCORE = [
-    "311111131111113",
-    "121111111111121",
-    "112111111111211",
-    "111211111112111",
-    "111121111121111",
-    "111111111111111",
-    "111111111111111",
-    "311111121111113",
-    "111111111111111",
-    "111111111111111",
-    "111121111121111",
-    "111211111112111",
-    "112111111111211",
-    "121111111111121",
-    "311111131111113",
-]
+# Board squares with word/letter scores
+# ' '=normal/single, '2'=double, '3'=triple score
+_WSC = {
+    "standard": [
+        "3      3      3",
+        " 2           2 ",
+        "  2         2  ",
+        "   2       2   ",
+        "    2     2    ",
+        "               ",
+        "               ",
+        "3      2      3",
+        "               ",
+        "               ",
+        "    2     2    ",
+        "   2       2   ",
+        "  2         2  ",
+        " 2           2 ",
+        "3      3      3",
+    ],
+    "explo": [
+        "3      3      3",
+        "               ",
+        "  2         2  ",
+        "   2      2    ",
+        "    2          ",
+        "               ",
+        "      2      2 ",
+        "3      2      3",
+        "        2      ",
+        "            2  ",
+        "   2      2    ",
+        "           2   ",
+        "  2      2     ",
+        "      2      2 ",
+        "3      3      3",
+    ]
+}
 
-# Board squares with letter scores (1=normal/single, 2=double, 3=triple letter score)
-_STANDARD_LETTERSCORE = [
-    "111211111112111",
-    "111113111311111",
-    "111111212111111",
-    "211111121111112",
-    "111111111111111",
-    "131113111311131",
-    "112111212111211",
-    "111211111112111",
-    "112111212111211",
-    "131113111311131",
-    "111111111111111",
-    "211111121111112",
-    "111111212111111",
-    "111113111311111",
-    "111211111112111",
-]
+_LSC = {
+    "standard": [
+        "   2       2   ",
+        "     3   3     ",
+        "      2 2      ",
+        "2      2      2",
+        "               ",
+        " 3   3   3   3 ",
+        "  2   2 2   2  ",
+        "   2       2   ",
+        "  2   2 2   2  ",
+        " 3   3   3   3 ",
+        "               ",
+        "2      2      2",
+        "      2 2      ",
+        "     3   3     ",
+        "   2       2   ",
+    ],
+    "explo": [
+        "   2       2   ",
+        " 2    2 2    3 ",
+        "     3   2     ",
+        "2  2   3       ",
+        "           3  2",
+        "  3  2   3  2  ",
+        " 2        2    ",
+        "   3       2   ",
+        " 2             ",
+        "  2  3   2     ",
+        "      2      3 ",
+        "2   3  2      2",
+        "     2      2  ",
+        " 3        3    ",
+        "    2      2   ",
+    ],
+}
+
+# For each board type, convert the word and letter score strings to integer arrays
+_xlt = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
+_WORDSCORE = { key: _xlt(val) for key, val in _WSC.items() }
+_LETTERSCORE = { key: _xlt(val) for key, val in _LSC.items() }
 
 
 class Board:
@@ -93,9 +135,6 @@ class Board:
 
     # The rows are identified by letter
     ROWIDS = "ABCDEFGHIJKLMNO"
-
-    _wordscore = [[int(c) for c in row] for row in _STANDARD_WORDSCORE]
-    _letterscore = [[int(c) for c in row] for row in _STANDARD_LETTERSCORE]
 
     @staticmethod
     def short_coordinate(horiz, row, col):
@@ -127,6 +166,8 @@ class Board:
             self._numletters = copy._numletters
             self._numtiles = copy._numtiles
             self._board_type = copy._board_type
+        self._wordscore = _WORDSCORE[self._board_type]
+        self._letterscore = _LETTERSCORE[self._board_type]
 
     def is_empty(self):
         """ Is the board empty, i.e. contains no tiles? """
@@ -444,7 +485,7 @@ class State:
 
     def __init__(
         self,
-        tileset: Optional[Type[TileSet]],
+        tileset: Optional[Type[TileSet]] = None,
         manual_wordcheck: bool = False,
         drawtiles: bool = True,
         copy: Optional[State] = None,
@@ -454,7 +495,7 @@ class State:
 
         # pylint: disable=protected-access
         if copy is None:
-            self._board = Board()
+            self._board = Board(board_type=board_type)
             self._player_to_move = 0
             self._scores: List[int] = [0, 0]  # "Pure" scores from moves on the board
             # Adjustments (deltas) made at the end of the game

@@ -2798,7 +2798,7 @@ function createView() {
     // Normal tile move
     co = "(" + co + ")";
     // Note: String.replace() will not work here since there may be two question marks in the string
-    tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+    var word = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
     // Normal game move
     var title = "Smelltu til að fletta upp";
     var playerColor = "0";
@@ -2812,22 +2812,22 @@ function createView() {
     }
     var attribs = { title: title };
     // Word lookup
-    attribs.onclick = function() { window.open('http://malid.is/leit/' + tiles, 'malid'); };
+    attribs.onclick = function() { window.open('http://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
-    attribs.onmouseout = function(move) {
-      move.highlighted = false;
-      highlightMove(rawCoord, tiles, playerColor, false);
-    }.bind(null, move);
     attribs.onmouseover = function(move) {
       move.highlighted = true;
       highlightMove(rawCoord, tiles, playerColor, true);
+    }.bind(null, move);
+    attribs.onmouseout = function(move) {
+      move.highlighted = false;
+      highlightMove(rawCoord, tiles, playerColor, false);
     }.bind(null, move);
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
           m("span.score" + (move.highlighted ? ".highlight" : ""), score),
-          m("span.wordmove", [ m("i", tiles), nbsp(), co ])
+          m("span.wordmove", [ m("i", word), nbsp(), co ])
         ]
       );
     }
@@ -2835,7 +2835,7 @@ function createView() {
       // Move by right side player
       return m(".move.rightmove." + cls, attribs,
         [
-          m("span.wordmove", [ co, nbsp(), m("i", tiles) ]),
+          m("span.wordmove", [ co, nbsp(), m("i", word) ]),
           m("span.score" + (move.highlighted ? ".highlight" : ""), score)
         ]
       );
@@ -3048,6 +3048,9 @@ function createView() {
     var attrs = {};
     if (t.tile == '?')
       classes.push("blanktile");
+    if (t.letter == 'z' || t.letter == 'q')
+      // Wide letter: handle specially
+      classes.push("wide");
     if (coord[0] == 'R' || t.draggable) {
       if (opponent)
         // Showing the opponent's rack
@@ -3120,7 +3123,6 @@ function createView() {
     // Return a td element that wraps an 'inert' tile in a review screen
     return m("td",
       {
-        id: "_" + coord,
         key: coord,
         class: game.squareClass(coord)
       },
@@ -3135,9 +3137,11 @@ function createView() {
     // target of a pending blank tile dialog
     if (game.askingForBlank !== null && game.askingForBlank.to == coord)
       cls += ".blinking";
+    if (coord == game.centerSquare)
+      // Unoccupied center square, first move
+      cls += ".center";
     return m("td" + cls,
       {
-        id: "_" + coord,
         key: coord,
         class: game.squareClass(coord),
         ondragenter: function(ev) {
@@ -3217,7 +3221,6 @@ function createView() {
           // There is a tile in this square: render it
           r.push(m("td",
             {
-              id: "_" + coord,
               key: coord,
               class: game.squareClass(coord),
               ondragover: stopPropagation,
@@ -3292,9 +3295,11 @@ function createView() {
 
   function vwScoreReview(game, move) {
     // Shows the score of the current move within a game review screen
-    var sc = [ ".score" ];
     var mv = move ? game.moves[move - 1] : undefined;
     var score = mv ? mv[1][2] : undefined;
+    if (score === undefined)
+      return undefined;
+    var sc = [ ".score" ];
     if (move > 0) {
       if (move % 2 == game.player)
         // Opponent move: show in green
@@ -3303,10 +3308,7 @@ function createView() {
         // Player's move: show in yellow
         sc.push("yellow");
     }
-    return m(
-      sc.join("."),
-      score === undefined ? "" : score.toString()
-    );
+    return m(sc.join("."), score.toString());
   }
 
   function vwScoreDiff(model, move) {
@@ -3685,7 +3687,7 @@ function createView() {
     );
     r.push(
       makeButton(
-        "navbtn", (move === null) || (move >= game.moves.length),
+        "navbtn", !move || move >= game.moves.length,
         function(move) {
           // Navigate to next move
           m.route.set(

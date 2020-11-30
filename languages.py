@@ -510,11 +510,15 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "en_ZW": EnglishTileSet,
 }
 
+# Mapping of locale code to alphabet
+
 ALPHABETS: Dict[str, Alphabet] = {
     "is": IcelandicAlphabet,
     "en": EnglishAlphabet,
     # Everything else presently defaults to IcelandicAlphabet
 }
+
+# Mapping of locale code to vocabulary
 
 VOCABULARIES: Dict[str, str] = {
     "is": "ordalisti",
@@ -523,18 +527,30 @@ VOCABULARIES: Dict[str, str] = {
     # Everything else presently defaults to 'ordalisti'
 }
 
+# Mapping of locale code to board type
+
 BOARD_TYPES: Dict[str, str] = {
     "is": "standard",
     # Everything else defaults to 'explo'
 }
 
+# Mapping of locale code to language
+
+LANGUAGES: Dict[str, str] = {
+    "is": "is",
+    "en_US": "en",
+    "en_GB": "en",
+    # Everything else defaults to 'en'
+}
+
 # Set of all supported locale codes
-SUPPORTED_LOCALES = frozenset(TILESETS.keys() | ALPHABETS.keys() | VOCABULARIES.keys())
+SUPPORTED_LOCALES = frozenset(TILESETS.keys() | ALPHABETS.keys() | VOCABULARIES.keys() | BOARD_TYPES.keys() | LANGUAGES.keys())
 
 Locale = NamedTuple(
     "Locale",
     [
         ("lc", str),
+        ("language", str),
         ("alphabet", Alphabet),
         ("tileset", Type[TileSet]),
         ("vocabulary", str),
@@ -544,10 +560,11 @@ Locale = NamedTuple(
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale("is_IS", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
+default_locale: Locale = Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
 current_lc: Callable[[], str] = lambda: current_locale.get().lc
+current_language: Callable[[], str] = lambda: current_locale.get().language
 current_alphabet: Callable[[], Alphabet] = lambda: current_locale.get().alphabet
 current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tileset
 current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
@@ -587,13 +604,35 @@ def board_type_for_locale(lc: str) -> str:
     return dget(BOARD_TYPES, lc, "explo")
 
 
+def language_for_locale(lc: str) -> str:
+    """ Return the identifier of the language for the given locale """
+    return dget(LANGUAGES, lc, "en")
+
+
 def set_locale(lc: str) -> None:
     """ Set the current thread's locale context """
     locale = Locale(
         lc=lc,
+        language=language_for_locale(lc),
         alphabet=alphabet_for_locale(lc),
         tileset=tileset_for_locale(lc),
         vocabulary=vocabulary_for_locale(lc),
         board_type=board_type_for_locale(lc),
     )
     current_locale.set(locale)
+
+
+def set_game_locale(lc: str) -> None:
+    """ Override the current thread's locale context to correspond to a
+        particular game's locale. This doesn't change the UI language,
+        which remains tied to the logged-in user. """
+    locale = Locale(
+        lc=lc,
+        language=current_language(),
+        alphabet=alphabet_for_locale(lc),
+        tileset=tileset_for_locale(lc),
+        vocabulary=vocabulary_for_locale(lc),
+        board_type=board_type_for_locale(lc),
+    )
+    current_locale.set(locale)
+

@@ -209,6 +209,14 @@ class Wordbase:
     _lock = threading.Lock()
 
     @staticmethod
+    def initialize() -> None:
+        """ Load all known dictionaries into memory """
+        with Wordbase._lock:
+            if not Wordbase._dawg:
+                for dawg, alphabet in Wordbase.DAWGS:
+                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
+
+    @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
         """ Load a dictionary from a binary DAWG file """
         bname = os.path.abspath(os.path.join("resources", resource + ".bin.dawg"))
@@ -250,14 +258,6 @@ class Wordbase:
     def warmup() -> bool:
         """ Called from GAE instance initialization; add warmup code here if needed """
         return True
-
-    @staticmethod
-    def initialize() -> None:
-        """ Load all known dictionaries into memory """
-        with Wordbase._lock:
-            if not Wordbase._dawg:
-                for dawg, alphabet in Wordbase.DAWGS:
-                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
 
 
 Wordbase.initialize()
