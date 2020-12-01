@@ -98,7 +98,6 @@ function populateUserList(json) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    for (var i = 0; i < json.userlist.length; i++) {
       var item = json.userlist[i];
@@ -198,7 +197,6 @@ function populateEloList(json) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    for (var i = 0; i < json.rating.length; i++) {
       var item = json.rating[i];
@@ -377,7 +375,6 @@ function populateGameList(json) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    numGames = json.gamelist.length;
    var numMyTurns = 0;
@@ -599,7 +596,6 @@ function populateChallengeList(json) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    /* Clear list of challenges received by this user */
    $("#chall-received").html("");

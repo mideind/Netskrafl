@@ -257,7 +257,7 @@ var Game = (function() {
     // Add extra data and methods to our game model object
     this.uuid = uuid;
     // console.log("Game " + uuid + " loaded");
-    this.zombie = false; // !!! TODO
+    this.zombie = false; // !!! FIXME
     this.gamelist = null; // No gamelist loaded yet
     this.messages = null;
     this.wordBad = false;
@@ -304,7 +304,7 @@ var Game = (function() {
 
   Game.prototype.init = function(game) {
     // Initialize the game state with data from the server
-    // !!! TODO: If the last move was by the opponent, highlight it
+    // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
     this.over = game.result == GAME_OVER;
     if (this.over || game.result === 0)
@@ -416,7 +416,7 @@ var Game = (function() {
         this.messages = result.messages || [];
       else
         this.messages = [];
-      // !!! TODO: The following is too simplistic;
+      // !!! FIXME: The following is too simplistic;
       // !!! we should check for a new message from the
       // !!! opponent that comes after the last message-seen
       // !!! marker
@@ -563,7 +563,7 @@ var Game = (function() {
       var co = mlist[i][1][0];
       var tiles = mlist[i][1][1];
       // var score = mlist[i][1][2];
-      // !!! TODO: handle successful challenges
+      // !!! FIXME: handle successful challenges
       if (co != "") {
         var highlight = (move !== undefined) && (i == move - 1) && !noHighlight;
         this.placeMove(player, co, tiles, highlight);

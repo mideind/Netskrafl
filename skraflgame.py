@@ -447,7 +447,7 @@ class User:
 
     def has_challenge(self, destuser_id: str) -> bool:
         """ Returns True if this user has challenged destuser """
-        # !!! TODO: Cache this in the user object to save NDB reads
+        # TBD: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def find_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
@@ -1382,7 +1382,7 @@ class Game:
             # The user is not a player of this game, or robot opponent: no chat
             return False
         # Check the database
-        # !!! TBD: consider memcaching this
+        # TBD: consider memcaching this
         uuid = self.id()
         if not uuid:
             return False

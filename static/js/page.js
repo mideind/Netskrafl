@@ -734,7 +734,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = "/login"; // !!! TODO: FIXME
+                  window.location.href = "/page";
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
@@ -763,7 +763,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = "/login"; // !!! TODO: FIXME
+                  window.location.href = "/page";
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
@@ -2601,7 +2601,7 @@ function createView() {
           m("span.statsbutton",
             {
               onclick: function(uuid, ev) {
-                if (true || $state.hasPaid) // !!! TODO
+                if (true || $state.hasPaid) // !!! FIXME
                   // Show the game review
                   m.route.set("/review/" + uuid);
                 else
@@ -2676,7 +2676,7 @@ function createView() {
       // Normal tile move
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
-      tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+      tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
       tileMoveIncrement = 1;
     }
     if (wrdclass == "gameover")
@@ -2687,7 +2687,7 @@ function createView() {
     var playerColor = "0";
     var lcp = game.player;
     var cls;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! TBD: Check -1 case
+    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2798,13 +2798,13 @@ function createView() {
     // Normal tile move
     co = "(" + co + ")";
     // Note: String.replace() will not work here since there may be two question marks in the string
-    var word = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+    var word = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
     // Normal game move
     var title = "Smelltu til að fletta upp";
     var playerColor = "0";
     var lcp = game.player;
     var cls;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! TBD: Check -1 case
+    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -3644,7 +3644,7 @@ function createView() {
               {
                 id: 'force-resign',
                 style: { display: "inline" },
-                onclick: function(ev) { ev.preventDefault(); }, // !!! TODO !!!
+                onclick: function(ev) { ev.preventDefault(); }, // !!! FIXME: Implement forced resignation
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
                 title: '14 dagar liðnir án leiks'

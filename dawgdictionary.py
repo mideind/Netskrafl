@@ -110,10 +110,6 @@ class PackedDawgDictionary:
             with open(fname, mode="rb") as fin:
                 self._b = bytearray(fin.read())
 
-    def num_nodes(self) -> int:
-        """ Return a count of unique nodes in the DAWG """
-        return 0  # !!! TBD - maybe not required
-
     def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
         nav = FindNavigator(word)
@@ -251,7 +247,7 @@ class Wordbase:
     @staticmethod
     def dawg_common():
         """ Return the common words DAWG object """
-        # !!! TODO: This is presently hardcoded for the Icelandic robot 'Amlóði'
+        # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Amlóði'
         return Wordbase._dawg["algeng"]
 
     @staticmethod

@@ -295,7 +295,7 @@ class UserModel(ndb.Model):
     def filter_locale(cls, q: ndb.Query, locale: Optional[str]) -> ndb.Query:
         """Filter the query by locale, if given, otherwise stay
         with the is_IS default"""
-        # TODO: To be modified once locale support is fully in place
+        # FIXME: To be modified once locale support is fully in place
         return q
         # if locale is None:
         #     return q.filter(

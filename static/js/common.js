@@ -126,7 +126,6 @@ function _populateRecentList(json, listId) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    for (var i = 0; i < json.recentlist.length; i++) {
       var item = json.recentlist[i];

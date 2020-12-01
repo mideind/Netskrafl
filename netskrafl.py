@@ -624,8 +624,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     # Get the list of online users
 
     # Start by looking in the cache
-    # !!! TODO: Cache the entire list including the user information,
-    # !!! only updating the favorite state (fav field) for the requesting user
+    # TBD: Cache the entire list including the user information,
+    # only updating the favorite state (fav field) for the requesting user
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
@@ -1708,7 +1708,7 @@ def bestmoves() -> Response:
     user = current_user()
     assert user is not None
 
-    # !!! TODO
+    # !!! FIXME
     if False:  # not user.has_paid():
         # User must be a paying friend
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
@@ -1790,8 +1790,7 @@ class UserForm:
             self.fairplay = False  # Defaults to False, must be explicitly set to True
             self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
-            # !!! TODO: Obtain default locale from Accept-Language and/or origin URL
-            self.locale = "is_IS"
+            self.locale = current_lc()
 
     def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
@@ -1966,26 +1965,24 @@ def saveuserprefs() -> ResponseType:
 def wait() -> ResponseType:
     """ Show page to wait for a timed game to start """
 
+    # !!! FIXME: Update wait logic for singlepage
     user = current_user()
     assert user is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith("robot-"):
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
     if not found:
         # No challenge existed between the users: redirect to main page
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
     opp_user = User.load_if_exists(opp)
     if opp_user is None:
         # Opponent id not found
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
     # Notify the opponent of a change in the challenge list
@@ -2014,6 +2011,8 @@ def wait() -> ResponseType:
 def newgame() -> ResponseType:
     """ Show page to initiate a new game """
 
+    # Note: this code is not used in the single page UI
+
     user = current_user()
     assert user is not None
     uid = user.id()
@@ -2023,7 +2022,6 @@ def newgame() -> ResponseType:
     opp = request.args.get("opp", None)
 
     if opp is None:
-        # !!! TODO: Adapt for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Get the board type
@@ -2046,7 +2044,6 @@ def newgame() -> ResponseType:
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
-        # !!! TODO: Adapt for singlepage
         return redirect(url_for("board", game=game.id()))
 
     # Start a new game between two human users
@@ -2054,7 +2051,6 @@ def newgame() -> ResponseType:
         # Timed game: load the opponent
         opp_user = User.load_if_exists(opp)
         if opp_user is None:
-            # !!! TODO: Adapt for singlepage
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
         found, prefs = opp_user.accept_challenge(uid)
@@ -2097,6 +2093,7 @@ def initgame() -> ResponseType:
     # Get the opponent id
     opp = rq.get("opp")
     if not opp:
+        # Unknown opponent
         return jsonify(ok=False)
 
     board_type = rq.get("board_type", current_board_type())
@@ -2118,6 +2115,7 @@ def initgame() -> ResponseType:
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
+        # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
 
     # Start a new game between two human users
@@ -2139,8 +2137,7 @@ def initgame() -> ResponseType:
     # Create a fresh game object
     game = Game.new(uid, opp, 0, prefs)
 
-    # Notify the opponent's main.html that there is a new game
-    # !!! board.html eventually needs to listen to this as well
+    # Notify the opponent's client that there is a new game
     msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
@@ -2149,7 +2146,7 @@ def initgame() -> ResponseType:
 
     firebase.send_message(msg)
 
-    # Go to the game page
+    # Return the uuid of the new game
     return jsonify(ok=True, uuid=game.id())
 
 
