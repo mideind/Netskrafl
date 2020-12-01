@@ -439,7 +439,7 @@ table.board td.center {
    text-align: center;
    font-size: 17px;
    line-height: 21px;
-   color: #202020;
+   color: @board-center;
 }
 
 table.board td.center:before {
@@ -1000,7 +1000,7 @@ div.login-error {
    border-width: 0px;
    border-radius: 6px;
    font-size: 15px;
-   box-shadow: 3px 3px 5px 2px #333333;
+   box-shadow: 3px 3px 5px 2px @box-shadow;
 }
 
 p.login-sorry {
@@ -1159,7 +1159,7 @@ div.modal-dialog#spinner-dialog {
    padding-right: 12px;
    padding-top: 6px;
    padding-bottom: 6px;
-   box-shadow: 3px 3px 5px 2px #333333;
+   box-shadow: 3px 3px 5px 2px @box-shadow;
    font-size: 1em;
    z-index: 20;
 }
@@ -1991,7 +1991,7 @@ div.hint {
    font-style: italic;
    font-size: 1.0em;
    z-index: 10;
-   color: #666666;
+   color: @hint;
    margin-left: 12px;
    margin-right: 12px;
 }
@@ -2077,16 +2077,16 @@ div.racktile {
 @keyframes selBlank {
    0% { color: white; background-color: @alert; }
    45% { color: white; background-color: @alert; }
-   50% { color: #777777; background-color: @racktile; }
-   95% { color: #777777; background-color: @racktile; }
+   50% { color: @blank-sel; background-color: @racktile; }
+   95% { color: @blank-sel; background-color: @racktile; }
    100% { color: white; background-color: @alert; }
 }
 
 @-webkit-keyframes selBlank {
    0% { color: white; background-color: @alert; }
    45% { color: white; background-color: @alert; }
-   50% { color: #777777; background-color: @racktile; }
-   95% { color: #777777; background-color: @racktile; }
+   50% { color: @blank-sel; background-color: @racktile; }
+   95% { color: @blank-sel; background-color: @racktile; }
    100% { color: white; background-color: @alert; }
 }
 
@@ -2121,7 +2121,7 @@ td.sel {
 }
 
 div.ui-draggable-dragging {
-   box-shadow: 2px 2px 4px 1px #333333;
+   box-shadow: 2px 2px 4px 1px @box-shadow;
    color: black;
    background-color: @racktile;
 }
@@ -2136,7 +2136,7 @@ div.xchgsel {
 }
 
 .blanktile {
-   color: #777777;
+   color: @blank-sel;
 }
 
 div.freshtile {
@@ -2268,7 +2268,7 @@ div.at-top-left div.tilecount.trans {
 }
 
 div.at-top-left div.tilecount div.tc {
-   color: #f4f4f4;
+   color: @tab-background;
    padding-left: 4px;
    margin-left: 0;
    overflow: hidden;
@@ -2282,7 +2282,7 @@ div.at-top-left div.tilecount div.tc {
 }
 
 div.at-top-left div.tilecount div.oc {
-   color: black;
+   color: @almost-black;
    padding-left: 8px;
    margin-left: 0;
    overflow: hidden;
@@ -2437,7 +2437,7 @@ div.gamestats {
    cursor: pointer;
    padding: 12px;
    border-radius: 5px;
-   box-shadow: 3px 3px 5px 2px #333333;
+   box-shadow: 3px 3px 5px 2px @box-shadow;
 }
 
 div.statscol {
@@ -2852,7 +2852,7 @@ div.help-container span.glyphicon-coffee-cup {
 }
 
 div.promo-krafla {
-   background-color: #dadcdd;
+   background-color: @background;
 }
 
 div.btn-krafla-yes {
