@@ -23,7 +23,7 @@
 @mobile-height-net: (@mobile-height - @navbar-height);
 
 @board-cell-big: 32px;
-@board-cell-small: 22px;
+@board-cell-small: 21px;
 
 @rack-cell-big: 32px;
 @rack-cell-small: 26px;
@@ -319,6 +319,24 @@ div.game-container {
    overflow-y: hidden;
 }
 
+div.header {
+   height: 65px - @margin-small;
+   margin-top: @margin-small;
+   margin-left: @margin-small;
+   margin-right: @margin-small;
+}
+
+div.header-logo {
+   display: block;
+   float: left;
+   padding-left: 4px;
+}
+
+div.header-button {
+   display: block;
+   float: right;
+}
+
 div.logo {
    display: none;
    position: absolute;
@@ -329,12 +347,9 @@ div.logo {
 }
 
 div.rightcol {
-   display: block;
-   position: absolute;
+   position: relative;
    width: @mobile-width - 2 * @margin-small;
    left: @margin-small;
-   top: @margin-small;
-   height: 72px;
 }
 
 div.bag {
@@ -378,16 +393,16 @@ td.highlight {
 tr.colid td {
    height: 24px;
    width: 32px;
+   margin: 0;
+   padding: 0;
    overflow: hidden;
    background-color: transparent;
    text-align: center;
    font-size: 14px;
    line-height: 14px;
    font-weight: 400;
-   border-width: 1px;
    border-color: transparent;
-   margin: 0;
-   padding: 0;
+   box-shadow: none;
 }
 
 /* Board layout */
@@ -484,27 +499,21 @@ div.bag {
 }
 
 div.board-area {
-   position: absolute;
-   z-index: 5;
-   height: 100%;
+   position: relative;
 }
 
 div.board {
-   position: absolute;
-   top: @board-top;
-   left: 2px; /* Seems to be required for correct alignment on iPhone */
-   height: 100%;
    padding-top: 8px;
    background-color: @container;
-   padding-left: 5px;
-   padding-right: 5px;
+   margin-left: @margin-small;
 }
 
 div.tile {
    position: relative;
    background-color: @tile;
+   font-family: @tile-font, @font3, @font4;
    font-size: 17px;
-   line-height: 22px;
+   line-height: 21px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
@@ -513,8 +522,8 @@ div.tile {
    overflow: hidden;
    margin: 0;
    padding: 0;
-   margin-left: -2px;
-   padding-right: 2px;
+   margin-left: -1px;
+   padding-right: 1px;
    vertical-align: top;
    cursor: default;
 }
@@ -548,10 +557,12 @@ div.tile.ui-draggable-dragging {
    min-width: @board-cell-small;
    overflow: hidden;
    background-color: @board-background;
+   padding: 0;
    border-style: solid;
    border-color: @cell-border;
-   border-width: 1px;
-   padding: 0;
+   border-width: 1.5px;
+   border-radius: 2px;
+   box-shadow: inset 0px 0px 3px 1px #afb7ca87;
 }
 
 .rack td {
@@ -572,16 +583,27 @@ td.rowid {
    display: none;
 }
 
+div.rack-row {
+   display: block;
+   width: 100%;
+}
+
+div.rack-left {
+   display: inline-block;
+   width: 20px;
+}
+
+div.rack-right {
+   display: inline-block;
+   width: 20px;
+}
+
 div.rack {
-   position: absolute;
+   display: inline-block;
    text-align: center;
-   top: @board-top + @board-size + @vertical-space;
-   left: @margin-small;
-   background-color: @board-background;
    padding: 6px;
-   border-width: 0;
-   border-radius: 5px;
    margin: 0;
+   width: 100%;
 }
 
 div.letterscore {
@@ -733,7 +755,7 @@ div.recallbtn {
    width: @btn-width-small;
    height: @btn-height-small;
    left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
-   background-color: darken(@racktile, 10%);
+   background-color: @racktile;
 }
 
 div.scramblebtn {
@@ -741,7 +763,7 @@ div.scramblebtn {
    width: @btn-width-small;
    height: @btn-height-small;
    left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
-   background-color: darken(@double-letter, 10%);
+   background-color: @double-letter;
 }
 
 div.submitexchange {
@@ -749,7 +771,7 @@ div.submitexchange {
    width: @btn-width-small;
    height: @btn-height-small;
    left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 1;
-   background-color: darken(@freshtile, 10%);
+   background-color: @freshtile;
 }
 
 div.submitpass {
@@ -781,70 +803,42 @@ div.submitmove.hidden {
    display: none;
 }
 
-h3.playerleft {
-   display: inline-block;
-   position: absolute;
-   top: 0; left: 0;
-   margin: 0;
-   padding-left: 48px;
-   width: 132px;
+div.player {
+   display: block;
+   padding-left: 4px;
+   padding-right: 4px;
    height: 32px;
    min-height: 32px;
    font-size: 14px;
    line-height: 16px;
-   font-weight: 700;
-   text-align: left;
-   color: @neutral;
+   font-weight: 400;
+   color: @cell-border;
 }
 
-h3.playerright {
+div.scoreleft {
    display: inline-block;
-   position: absolute;
-   top: 0; right: 0;
-   margin: 0;
-   padding-right: 48px;
-   width: 132px;
-   height: 32px;
-   min-height: 32px;
-   font-size: 14px;
-   line-height: 16px;
-   font-weight: 700;
-   text-align: right;
-   color: @neutral;
-}
-
-h3.scoreleft {
-   display: inline-block;
-   position: absolute;
-   top: 0;
-   left: 0;
-   width: 145px;
+   width: 48px;
+   height: 30px;
+   padding-left: 8px;
    font-size: 22px;
    line-height: 22px;
-   font-weight: 700;
+   font-weight: 400;
    text-align: left;
    color: white;
    overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 6px;
-   padding-left: 5px;
 }
 
-h3.scoreright {
+div.scoreright {
    display: inline-block;
-   position: absolute;
-   top: 0;
-   right: 0;
-   width: 145px;
+   width: 48px;
+   height: 30px;
+   padding-right: 8px;
    font-size: 22px;
    line-height: 22px;
-   font-weight: 700;
+   font-weight: 400;
    text-align: right;
    color: white;
    overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 6px;
-   padding-right: 5px;
 }
 
 div.robot-btn {
@@ -896,12 +890,14 @@ div.player-btn.left,
 div.player-btn.right {
    padding-left: 4px;
    padding-right: 4px;
-   color: @neutral;
+   // color: @neutral;
+   color: white;
 }
 
 div.player-btn.left.tomove,
 div.player-btn.right.tomove {
-   color: @alert;
+   // color: @alert;
+   color: white;
 }
 
 div.loginform-small {
@@ -1017,11 +1013,22 @@ p.login-error-icon {
 div.heading {
    position: relative;
    width: 100%;
-   height: 72px;
    background-color: @board-background;
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
+}
+
+div.leftplayer {
+   display: inline-block;
+   width: 50%;
+   text-align: left;
+}
+
+div.rightplayer {
+   display: inline-block;
+   width: 50%;
+   text-align: right;
 }
 
 div.right-tab {
@@ -1084,6 +1091,7 @@ div.right-tab.alert > span.glyphicon {
 }
 
 div.right-area {
+   display: none;
    position: relative;
    left: 0;
    height: @mobile-height-net - @board-top - @margin-small;
@@ -1295,7 +1303,7 @@ div.modal-close#chat-send {
    margin: 0 0 2px 8px;
    padding-top: 4px;
    padding-bottom: 0;
-   background-color: darken(@double-letter, 10%);
+   background-color: @double-letter;
    color: white;
 }
 
@@ -1732,33 +1740,6 @@ div.fairplay {
    display: none;
 }
 
-div.home {
-   padding-top: 4px;
-   font-size: 22px;
-   line-height: 24px;
-   display: block;
-   text-align: center;
-   color: @container;
-}
-
-div.circle {
-   height: 38px;
-   width: 38px;
-   background-color: @double-letter;
-   border-radius: 50%;
-   display: inline-block;
-   position: relative;
-   top: -6px;
-}
-
-a.backlink div.circle:hover {
-   background-color: @pass-btn;
-}
-
-div.circle span.glyphicon {
-   top: 8px;
-}
-
 div.user-cat span#break {
    display: inline;
 }
@@ -2034,7 +2015,7 @@ div#own-toggler {
 p#own-best {
    display: inline-block;
    position: absolute;
-   left: 46px;
+   left: 34px;
    top: 68px;
    text-align: right;
    font-size: 0.85em;
@@ -3820,6 +3801,8 @@ div.explain {
    margin-bottom: 12px;
    font-size: 14px;
    text-align: left;
+   font-style: italic;
+   color: @hint;
 }
 
 div.subexplain {
@@ -3830,6 +3813,8 @@ div.subexplain {
    margin-left: 18px;
    margin-right: 6px;
    font-size: 14px;
+   // font-style: italic;
+   color: @hint;
 }
 
 div.errinput {

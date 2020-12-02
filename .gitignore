@@ -37,8 +37,7 @@ resources/TWL06.txt
 resources/sowpods.txt
 
 # CSS files generated from Less
-static/skrafl-curry.css
-static/skrafl-desat.css
+static/skrafl-*.css
 
 # Concatenated JS
 static/netskrafl.js

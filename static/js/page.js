@@ -678,6 +678,35 @@ function createView() {
     );
   }
 
+  function vwExploLogo(legend, scale) {
+    // The Explo logo, with or without the legend ('explo')
+    if (scale === undefined)
+      scale = 1.0;
+    return m("img",
+      legend ?
+        {
+          alt: 'Explo',
+          width: 89 * scale, height: 40 * scale,
+          src: '/static/explo-logo.svg'
+        }
+      :
+        {
+          alt: 'Explo',
+          width: 23 * scale, height: 40 * scale,
+          src: '/static/explo-logo-only.svg'
+        }
+    );
+  }
+
+  function vwLeftLogo() {
+    return m(".logo",
+      m(m.route.Link,
+        { href: '/main', class: "nodecorate" },
+        vwExploLogo(false, 1.5)
+      )
+    );
+  }
+
   // Login screen
 
   function vwLogin(model, actions) {
@@ -825,7 +854,8 @@ function createView() {
 
     // Output literal HTML obtained from rawhelp.html on the server
     return [
-      vwLogo(),
+      // vwLogo(),
+      vwLeftLogo(),
       vwUserId.call(this),
       m("main",
         vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
@@ -1927,7 +1957,8 @@ function createView() {
     }
 
     return [
-      vwLogo(),
+      // vwLogo(),
+      vwLeftLogo(), // No legend, scale up by 50%
       vwUserId.call(this),
       vwInfo(),
       m("main",
@@ -2019,26 +2050,22 @@ function createView() {
         var sc0 = game ? game.scores[0].toString() : "";
         var sc1 = game ? game.scores[1].toString() : "";
         return m(".heading",
-          {
-            // On mobile only: If the header is clicked, go to the main screen
-            onclick: function(ev) {
-              if (!$state.uiFullscreen) m.route.set("/main");
-            }
-          },
           [
-            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-              vwPlayerName(view, game, "left")),
-            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-              vwPlayerName(view, game, "right")),
-            m("h3.scoreleft", sc0),
-            m("h3.scoreright", sc1),
+            m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".player", vwPlayerName(view, game, "left")),
+              m(".scoreleft", sc0),
+            ]),
+            m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".player", vwPlayerName(view, game, "right")),
+              m(".scoreright", sc1),
+            ]),
             m("h3.clockleft"),
             m("h3.clockright"),
             m(".clockface", glyph("time")),
             m(".fairplay",
               { style: { visibility: fairplay ? "visible" : "hidden" } },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } )),
-            m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+            // m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
           ]
         );
       }
@@ -2102,8 +2129,9 @@ function createView() {
         m("main",
           m(".game-container",
             [
-              vwBoardArea(model),
+              vwHeader(),
               vwRightColumn(),
+              vwBoardArea(model),
               $state.uiFullscreen ? vwBag(bag, newbag) : "", // Visible in fullscreen
               game.askingForBlank ? vwBlankDialog(game) : ""
             ]
@@ -2113,6 +2141,23 @@ function createView() {
         vwBack(),
         $state.beginner ? vwBeginner(game) : "",
         vwInfo()
+      ]
+    );
+  }
+
+  function vwHeader() {
+    // The header on a mobile screen
+    return m(".header", [
+        m(".header-logo",
+          m(m.route.Link,
+            {
+              href: "/page",
+              class: "backlink"
+            },
+            vwExploLogo(true, 1.0)
+          )
+        ),
+        m(".header-button")
       ]
     );
   }
@@ -2145,12 +2190,16 @@ function createView() {
             }
           },
           [
-            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-              vwPlayerName(view, game, "left")),
-            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-              vwPlayerName(view, game, "right")),
-            m("h3.scoreleft", sc0),
-            m("h3.scoreright", sc1),
+            m(".leftplayer", [
+              m(".player" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
+                vwPlayerName(view, game, "left")),
+              m(".scoreleft", sc0),
+            ]),
+            m(".rightplayer", [
+              m(".player" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
+                vwPlayerName(view, game, "right")),
+              m(".scoreright", sc1),
+            ]),
             m(".fairplay",
               { style: { visibility: fairplay ? "visible" : "hidden" } },
               m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
@@ -2172,8 +2221,8 @@ function createView() {
 
     // Create a list of major elements that we're showing
     var r = [];
-    r.push(vwBoardReview(model, move));
     r.push(vwRightColumn());
+    r.push(vwBoardReview(model, move));
     if (move === null)
       // Only show the stats overlay if move is null.
       // This means we don't show the overlay if move is 0.
@@ -3000,12 +3049,10 @@ function createView() {
     return m(".logo-back", 
       m(m.route.Link,
         {
-          href: "/main",
+          href: "/page",
           class: "backlink"
         },
-        m(".circle",
-          glyph("home", { title: "Aftur í aðalskjá" })
-        )
+        vwExploLogo(false, 1.5)
       )
     );
   }
@@ -3273,7 +3320,11 @@ function createView() {
       else
         r.push(vwDropTarget(game, coord));
     }
-    return m(".rack", m("table.board", m("tbody", m("tr", r))));
+    return m(".rack-row", [
+      m(".rack-left"),
+      m(".rack", m("table.board", m("tbody", m("tr", r)))),
+      m(".rack-right")
+    ]);
   }
 
   function vwScore(game) {
@@ -3360,7 +3411,7 @@ function createView() {
       [
         m("div", { style: { position: "relative", width: "100%" } },
           [
-            m("h3.playerleft", { class: leftPlayerColor, style: { width: "50%" } }, 
+            m(".player", { class: leftPlayerColor, style: { width: "50%" } }, 
               m(".robot-btn.left",
                 game.autoplayer[0] ?
                   [ glyph("cog"), nbsp(), game.nickname[0] ]
@@ -3368,7 +3419,7 @@ function createView() {
                   game.nickname[0]
               )
             ),
-            m("h3.playerright", { class: rightPlayerColor, style: { width: "50%" } },
+            m(".player", { class: rightPlayerColor, style: { width: "50%" } },
               m(".robot-btn.right",
                 game.autoplayer[1] ?
                   [ glyph("cog"), nbsp(), game.nickname[1] ]

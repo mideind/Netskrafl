@@ -16,43 +16,35 @@
       height: initial;
       width: initial;
    }
-   
+
    div.container {
       width: 1024px;
       height: 768px; /* Was 748 */
       overflow-y: hidden;
    }
-   
+
    div.game-container {
       height: 768px;
    }
-   
+
+   div.header {
+      display: none;
+   }
+
    div.logo {
       display: block;
    }
-   
+
    div.logo-back {
       display: block;
       position: absolute;
-      top: 38px;
-      left: 26px;
+      top: 28px;
+      left: 28px;
       width: 50px;
       height: 50px;
       font-size: 20px;
-      text-align: center;
    }
    
-   div.logo-back div.circle {
-      height: 40px;
-      width: 40px;
-      color: @container;
-      background-color: @triple-letter;
-   }
-
-   div.logo-back div.circle:hover {
-      background-color: @pass-btn;
-   }
-
    div.info {
       display: block;
       position: absolute;
@@ -83,6 +75,7 @@
    }
    
    div.rightcol {
+      position: absolute;
       width: 302px;
       top: 38px;
       right: 12px;
@@ -91,6 +84,7 @@
    }
    
    div.right-area {
+      display: block;
       margin-top: 8px;
       height: 420px;
    }
@@ -110,9 +104,15 @@
    }
    
    div.board {
-      top: 0px;
+      position: absolute;
+      top: 0;
       left: 88px;
       height: auto;
+      margin: 0;
+      padding-top: 8px;
+      padding-left: 5px;
+      padding-right: 5px;
+      background-color: @container;
    }
    
    .board td {
@@ -205,27 +205,33 @@
       min-width: 16px;
       max-width: 16px;
       overflow: hidden;
-      background-color: transparent;
-      text-align: center;
       font-size: 14px;
       line-height: 14px;
+      text-align: center;
       font-weight: 400;
-      border-width: 1px;
+      background-color: transparent;
       border-color: transparent;
+      box-shadow: none;
    }
    
    div.bag {
       display: block;
       bottom: 114px;
    }
-   
+
    div.rack {
+      position: absolute;
       display: block;
       top: auto;
       bottom: 125px;
       left: 236px;
+      padding: 6px;
+      border-width: 0;
+      border-radius: 5px;
+      margin: 0;
+      background-color: @board-background;
    }
-   
+
    .rack td {
       min-height: @board-cell-big;
       min-width: @board-cell-big;
@@ -350,36 +356,21 @@
       visibility: hidden;
    }
    
-   h3.playerleft {
+   div.player {
       height: 40px;
       min-height: 40px;
       font-size: 16px;
       line-height: 24px;
    }
    
-   div.gamestats h3.playerleft {
-      padding-left: 4px;
-   }
-   
-   h3.playerright {
-      height: 40px;
-      min-height: 40px;
-      font-size: 16px;
-      line-height: 24px;
-   }
-   
-   div.gamestats h3.playerright {
-      padding-right: 10px;
-   }
-   
-   h3.scoreleft {
+   div.scoreleft {
       top: 42px;
       width: 145px;
       font-size: 24px;
       line-height: 24px;
    }
    
-   h3.scoreright {
+   div.scoreright {
       top: 42px;
       width: 145px;
       font-size: 24px;
@@ -692,10 +683,6 @@
       display: block;
    }
 
-   div.home {
-      display: none;
-   }
-   
    span.list-opp {
       width: 290px;
       max-width: 290px;
