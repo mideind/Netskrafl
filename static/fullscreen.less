@@ -89,10 +89,6 @@
       height: 420px;
    }
    
-   div.heading {
-      height: 78px;
-   }
-   
    div.games,
    div.twoletter,
    div.chat {
@@ -106,12 +102,9 @@
    div.board {
       position: absolute;
       top: 0;
-      left: 88px;
+      left: 76px;
       height: auto;
       margin: 0;
-      padding-top: 8px;
-      padding-left: 5px;
-      padding-right: 5px;
       background-color: @container;
    }
    
@@ -219,17 +212,31 @@
       bottom: 114px;
    }
 
+   div.rack-row {
+      margin: 0;
+   }
+
    div.rack {
       position: absolute;
       display: block;
+      width: auto;
+      float: none;
       top: auto;
-      bottom: 125px;
-      left: 236px;
+      bottom: 120px;
+      left: 231px;
       padding: 6px;
       border-width: 0;
       border-radius: 5px;
       margin: 0;
       background-color: @board-background;
+   }
+
+   div.rack-left {
+      display: none;
+   }
+
+   div.rack-right {
+      display: none;
    }
 
    .rack td {
@@ -262,12 +269,29 @@
       left: 648px;
       border-radius: 5px;
    }
-   
+
+   .standard-button {
+      position: absolute;
+      top: @btn-top;
+      text-align: center;
+      font-size: 19px;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+      padding: 6px;
+      padding-top: 9px;
+      border-radius: 5px;
+      vertical-align: middle;
+      cursor: pointer;
+      .noselect;
+   }
+ 
    .submitbutton {
+      .standard-button;
       width: @wide-btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 600px;
       background-color: darken(@freshtile, 10%);
       font-size: 18px;
@@ -276,23 +300,25 @@
    
    div.submitnewgame {
       .submitbutton;
+      top: 464px;
    }
-   
+
    div.fb-share {
       .submitbutton;
       left: 122px;
       height: 60px;
       /* bottom: 104px; */
    }
-   
+
    div.waitmove {
       .submitbutton;
    }
-   
+
    div.submitmove {
       .submitbutton;
+      display: block;
    }
-   
+
    div.submitmove.error-shown {
       display: block;
    }
@@ -307,42 +333,47 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 101px;
+      display: block;
    }
    
    div.submitexchange {
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 167px;
+      display: block;
    }
    
    div.recallbtn {
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 167px;
+      display: block;
    }
-   
+
    /* To the right of the rack */
-   
+
    div.scramblebtn {
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 534px;
+      display: block;
    }
    
    div.submitpass {
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 125px;
       left: 600px;
+      display: block;
    }
    
    div.fb-share {
@@ -383,41 +414,43 @@
       color: @neutral;
       cursor: pointer;
    }
-   
+
    div.player-btn:hover {
       background-color: white;
       color: @neutral;
    }
-   
+
    div.player-btn.left {
       padding-right: 2px;
    }
-   
+
    div.player-btn.right {
       padding-left: 2px;
    }
-   
+
+   /*
    div.player-btn.left.tomove,
    div.player-btn.right.tomove {
       color: @neutral;
    }
-   
+   */
+
    div.robot-btn {
       width: 141px;
    }
-   
+
    div.gamestats div.robot-btn {
       width: 100%;
    }
-   
+
    div.loginform-large {
       display: block;
    }
-   
+
    div.loginform-small {
       display: none;
    }
-   
+
    div.loginhdr {
       font-size: 34px;
       font-weight: 700;

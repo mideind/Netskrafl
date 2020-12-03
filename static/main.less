@@ -26,7 +26,7 @@
 @board-cell-small: 21px;
 
 @rack-cell-big: 32px;
-@rack-cell-small: 26px;
+@rack-cell-small: 29px;
 
 @btn-height-big: 30px;
 @btn-width-big: 40px;
@@ -35,7 +35,7 @@
 @btn-width-small: 33px;
 
 @wide-btn-width-big: 82px;
-@wide-btn-width-small: 96px;
+@wide-btn-width-small: 32px;
 
 @margin-small: 8px;
 
@@ -476,6 +476,8 @@ table.board tr {
 
 .rack table.board {
    border-spacing: 4px;
+   margin-left: auto;
+   margin-right: auto;
 }
 
 .rack table.board tr {
@@ -537,11 +539,9 @@ div.tile.wide {
 
 .rack div.tile {
    font-size: 21px;
-   line-height: 12px;
-   height: @rack-cell-small - 6px;
-   width: @rack-cell-small + 3px;
-   padding-top: 6px;
-   margin-left: -3px;
+   line-height: 27px;
+   height: @rack-cell-small;
+   width: @rack-cell-small;
 }
 
 /* While dragging a tile, show it in the rack form factor */
@@ -586,24 +586,28 @@ td.rowid {
 div.rack-row {
    display: block;
    width: 100%;
+   margin-top: 12px;
 }
 
 div.rack-left {
-   display: inline-block;
-   width: 20px;
+   display: block;
+   width: 14%;
+   height: 1px;
+   float: left;
 }
 
 div.rack-right {
-   display: inline-block;
-   width: 20px;
+   display: block;
+   width: 14%;
+   height: 1px;
+   float: left;
 }
 
 div.rack {
-   display: inline-block;
-   text-align: center;
-   padding: 6px;
-   margin: 0;
-   width: 100%;
+   display: block;
+   padding: 0;
+   width: 72%;
+   float: left;
 }
 
 div.letterscore {
@@ -666,10 +670,8 @@ div.score {
 }
 
 .standard-button {
-   position: absolute;
-   top: @btn-top;
    text-align: center;
-   font-size: 19px;
+   font-size: 16px;
    font-weight: 700;
    color: white;
    margin: 0;
@@ -685,16 +687,12 @@ div.score {
    .standard-button;
    width: @wide-btn-width-small;
    height: @btn-height-small;
-   left: 259px;
    background-color: darken(@freshtile, 10%);
-   font-size: 16px;
-   font-weight: 700;
 }
 
 div.submitnewgame {
    .submitbutton;
    display: none;
-   top: 464px;
 }
 
 div.fb-share {
@@ -754,44 +752,58 @@ div.recallbtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
    background-color: @racktile;
+   display: none;
+}
+
+div.rack-left div.recallbtn {
+   display: block;
+   margin-left: auto; // Right-align the button
 }
 
 div.scramblebtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
    background-color: @double-letter;
+   display: none;
+}
+
+div.rack-left div.scramblebtn {
+   display: block;
+   margin-left: auto; // Right-align the button
 }
 
 div.submitexchange {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 1;
    background-color: @freshtile;
+   display: none;
 }
 
 div.submitpass {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 2;
    background-color: @pass-btn;
+   display: none;
 }
 
 div.submitresign {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 3;
    background-color: @alert;
+   display: none;
 }
 
 div.submitmove {
    .submitbutton;
+   display: none;
+}
+
+div.rack-right div.submitmove {
    display: block;
 }
 
@@ -809,7 +821,7 @@ div.player {
    padding-right: 4px;
    height: 32px;
    min-height: 32px;
-   font-size: 14px;
+   font-size: 16px;
    line-height: 16px;
    font-weight: 400;
    color: @cell-border;
@@ -876,7 +888,7 @@ div.player-btn {
    top: 0; left: 0;
    margin: 2px;
    padding: 6px 2px 2px;
-   width: 118px;
+   width: 128px;
    height: 28px;
    min-height: 28px;
    border-radius: 5px;
@@ -1114,7 +1126,7 @@ div.movelist-container {
    left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - 3 * @margin-small;
-   background-color: @background;
+   background-color: @board-background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
    z-index: 6;
@@ -2460,19 +2472,19 @@ div #gamestarted {
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, @racktile, @background, @background);
+   background: linear-gradient(to right, @racktile, @board-background, @board-background);
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @background, @background, @freshtile);
+   background: linear-gradient(to right, @board-background, @board-background, @freshtile);
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @background, @background, @racktile);
+   background: linear-gradient(to right, @board-background, @board-background, @racktile);
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @freshtile, @background, @background);
+   background: linear-gradient(to right, @freshtile, @board-background, @board-background);
 }
 
 span.score {

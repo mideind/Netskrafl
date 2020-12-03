@@ -3321,10 +3321,40 @@ function createView() {
         r.push(vwDropTarget(game, coord));
     }
     return m(".rack-row", [
-      m(".rack-left"),
+      m(".rack-left", vwRackLeftButton(model)),
       m(".rack", m("table.board", m("tbody", m("tr", r)))),
-      m(".rack-right")
+      m(".rack-right", vwRackRightButton(model))
     ]);
+  }
+
+  function vwRackLeftButton(model) {
+    // The button to the left of the rack in the mobile UI
+    var s = buttonState(model.game);
+    if (s.showRecall && !s.showingDialog)
+      // Show a 'Recall tiles' button
+      return makeButton(
+        "recallbtn", false, function() { model.game.resetRack(); },
+        "Færa stafi aftur í rekka", glyph("down-arrow")
+      );
+    if (s.showScramble && !s.showingDialog)
+      // Show a 'Scramble rack' button
+      return makeButton(
+        "scramblebtn", false, function() { model.game.rescrambleRack(); },
+        "Stokka upp rekka", glyph("random")
+      );
+    return [];
+  }
+
+  function vwRackRightButton(model) {
+    // The button to the right of the rack in the mobile UI
+    var s = buttonState(model.game);
+    if (s.showMove && s.tilesPlaced && !s.showingDialog)
+      // Show a 'Submit move' button, with a Play icon
+      return makeButton(
+        "submitmove", false, function() { model.game.submitMove(); },
+        "Leika", glyph("play")
+      );
+    return [];
   }
 
   function vwScore(game) {
@@ -3579,60 +3609,68 @@ function createView() {
     );
   }
 
-  function vwButtons(game) {
-    // The set of buttons below the game board, alongside the rack
-
-    var tilesPlaced = game.tilesPlaced().length > 0;
-    var gameOver = game.over;
-    var localTurn = game.localturn;
-    var gameIsManual = game.manual;
-    var challengeAllowed = game.chall;
-    var lastChallenge = game.last_chall;
-    var showingDialog = game.showingDialog !== null;
-    var exchangeAllowed = game.xchg;
-    var tardyOpponent = !localTurn && !gameOver && game.overdue;
-    var showResign = false;
-    var showExchange = false;
-    var showPass = false;
-    var showRecall = false;
-    var showScramble = false;
-    var showMove = false;
-    var showChallenge = false;
-    var showChallengeInfo = false;
-    if (localTurn && !gameOver)
+  function buttonState(game) {
+    // Calculate a set of booleans describing the state of the game
+    var s = {};
+    s.tilesPlaced = game.tilesPlaced().length > 0;
+    s.gameOver = game.over;
+    s.localTurn = game.localturn;
+    s.gameIsManual = game.manual;
+    s.challengeAllowed = game.chall;
+    s.lastChallenge = game.last_chall;
+    s.showingDialog = game.showingDialog !== null;
+    s.exchangeAllowed = game.xchg;
+    s.wordGood = game.wordGood;
+    s.wordBad = game.wordBad;
+    s.tardyOpponent = !s.localTurn && !s.gameOver && game.overdue;
+    s.showResign = false;
+    s.showExchange = false;
+    s.showPass = false;
+    s.showRecall = false;
+    s.showScramble = false;
+    s.showMove = false;
+    s.showChallenge = false;
+    s.showChallengeInfo = false;
+    if (s.localTurn && !s.gameOver)
       // This player's turn
-      if (lastChallenge) {
-        showChallenge = true;
-        showPass = true;
-        showChallengeInfo = true;
+      if (s.lastChallenge) {
+        s.showChallenge = true;
+        s.showPass = true;
+        s.showChallengeInfo = true;
       }
       else {
-        showMove = tilesPlaced;
-        showExchange = !tilesPlaced;
-        showPass = !tilesPlaced;
-        showResign = !tilesPlaced;
-        showChallenge = !tilesPlaced && gameIsManual && challengeAllowed;
+        s.showMove = s.tilesPlaced;
+        s.showExchange = !s.tilesPlaced;
+        s.showPass = !s.tilesPlaced;
+        s.showResign = !s.tilesPlaced;
+        s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
       }
-    if (!gameOver)
-      if (tilesPlaced)
-        showRecall = true;
+    if (!s.gameOver)
+      if (s.tilesPlaced)
+        s.showRecall = true;
       else
-        showScramble = true;
+        s.showScramble = true;
+    return s;
+  }
+
+  function vwButtons(game) {
+    // The set of buttons below the game board, alongside the rack
+    var s = buttonState(game);
     var r = [];
     r.push(m(".word-check" +
-      (game.wordGood ? ".word-good" : "") +
-      (game.wordBad ? ".word-bad" : "")));
-    if (showChallenge)
+      (s.wordGood ? ".word-good" : "") +
+      (s.wordBad ? ".word-bad" : "")));
+    if (s.showChallenge)
       r.push(
         makeButton(
-          "challenge", (tilesPlaced && !lastChallenge) || showingDialog,
+          "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           function() { game.submitChallenge(); },
           'Véfenging (röng kostar 10 stig)'
         )
       );
-    if (showChallengeInfo)
+    if (s.showChallengeInfo)
       r.push(m(".chall-info"));
-    if (showRecall)
+    if (s.showRecall)
       r.push(
         makeButton(
           "recallbtn", false,
@@ -3640,46 +3678,46 @@ function createView() {
           "Færa stafi aftur í rekka", glyph("down-arrow")
         )
       );
-    if (showScramble)
+    if (s.showScramble)
       r.push(
-        makeButton("scramblebtn", showingDialog,
+        makeButton("scramblebtn", s.showingDialog,
           function() { game.rescrambleRack(); },
           "Stokka upp rekka", glyph("random")
         )
       );
-    if (showMove)
+    if (s.showMove)
       r.push(
         makeButton(
-          "submitmove", !tilesPlaced || showingDialog,
+          "submitmove", !s.tilesPlaced || s.showingDialog,
           function() { game.submitMove(); },
           "Leika", [ "Leika", nbsp(), glyph("play") ]
         )
       );
-    if (showPass)
+    if (s.showPass)
       r.push(
         makeButton(
-          "submitpass", (tilesPlaced && !lastChallenge) || showingDialog,
+          "submitpass", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           function() { game.submitPass(); },
           "Pass", glyph("forward")
         )
       );
-    if (showExchange)
+    if (s.showExchange)
       r.push(
         makeButton(
-          "submitexchange", tilesPlaced || showingDialog || !exchangeAllowed,
+          "submitexchange", s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           function() { game.submitExchange(); },
           "Skipta stöfum", glyph("refresh")
         )
       );
-    if (showResign)
+    if (s.showResign)
       r.push(
         makeButton(
-          "submitresign", showingDialog,
+          "submitresign", s.showingDialog,
           function() { game.submitResign(); },
           "Gefa viðureign", glyph("fire")
         )
       );
-    if (!gameOver && !localTurn) {
+    if (!s.gameOver && !s.localTurn) {
       // Indicate that it is the opponent's turn; offer to force a resignation
       // if the opponent hasn't moved for 14 days
       r.push(
@@ -3691,7 +3729,7 @@ function createView() {
             m("strong", game.nickname[1 - game.player]),
             " á leik",
             nbsp(),
-            tardyOpponent ? m("span.yesnobutton",
+            s.tardyOpponent ? m("span.yesnobutton",
               {
                 id: 'force-resign',
                 style: { display: "inline" },
@@ -3706,7 +3744,7 @@ function createView() {
         )
       );
     }
-    if (tilesPlaced)
+    if (s.tilesPlaced)
       r.push(vwScore(game));
     // Is the server processing a move?
     if (game.moveInProgress)
