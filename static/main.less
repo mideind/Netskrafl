@@ -868,6 +868,10 @@ div.robot-btn {
    background-color: transparent;
 }
 
+div.robot-btn span.glyphicon-cog {
+   margin-right: 2px;
+}
+
 div.robot-btn.left {
    padding-left: 4px;
 }
@@ -1118,6 +1122,15 @@ div.right-area {
 div.right-area.with-clock {
    height: 380px;
    margin-top: 48px;
+}
+
+div.message {
+   text-align: center;
+   font-size: 14px;
+   line-height: 26px;
+   height: 28px;
+   background-color: @racktile;
+   font-weight: 400;
 }
 
 div.movelist-container {
@@ -2464,7 +2477,7 @@ div #gamestarted {
 }
 
 .humancolor {
-   background-color: @racktile;
+   background-color: @player;
 }
 
 .autoplayercolor {
@@ -2472,7 +2485,7 @@ div #gamestarted {
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, @racktile, @board-background, @board-background);
+   background: linear-gradient(to right, @player, @board-background, @board-background);
 }
 
 .autoplayergrad_right {
@@ -2480,7 +2493,7 @@ div #gamestarted {
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @racktile);
+   background: linear-gradient(to right, @board-background, @board-background, @player);
 }
 
 .autoplayergrad_left {

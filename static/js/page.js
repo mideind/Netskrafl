@@ -2,7 +2,7 @@
 
 	Page.js
 
-	Single page UI for Netskrafl using the Mithril library
+	Single page UI for Explo using the Mithril library
 
   Copyright (C) 2020 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
@@ -662,7 +662,7 @@ function createView() {
     );
   }
 
-  function vwLogo() {
+  function vwNetskraflLogo() {
     // The Netskrafl logo
     return m(".logo",
       m(m.route.Link,
@@ -715,7 +715,7 @@ function createView() {
     function vwLoginLarge() {
       // Full screen version of login page
       return [
-        vwLogo(),
+        vwNetskraflLogo(),
         vwInfo(),
         m(".loginform-large",
         [
@@ -854,7 +854,7 @@ function createView() {
 
     // Output literal HTML obtained from rawhelp.html on the server
     return [
-      // vwLogo(),
+      // vwNetskraflLogo(),
       vwLeftLogo(),
       vwUserId.call(this),
       m("main",
@@ -1957,7 +1957,7 @@ function createView() {
     }
 
     return [
-      // vwLogo(),
+      // vwNetskraflLogo(),
       vwLeftLogo(), // No legend, scale up by 50%
       vwUserId.call(this),
       vwInfo(),
@@ -2090,7 +2090,87 @@ function createView() {
         return m(".right-area", component ? [ tabgrp, component ] : [ tabgrp ]);
       }
 
-      return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
+      function vwRightMessage() {
+        var s = buttonState(game);
+        var msg = "";
+        var player = game.player;
+        var opp = game.nickname[1 - player];
+        if (game.moves.length == 0) {
+          // Initial move
+          msg = [m("strong", "You start!"), " Cover the asterisk with your move."];
+          return m(".message", msg);
+        }
+        var move = game.moves[game.moves.length - 1];
+        var mtype = move[1][1];
+        if (s.congratulate) {
+          // This player won
+          if (mtype == "RSGN")
+            msg = [m("strong", [opp, " resigned!"]), " Congratulations."];
+          else
+            msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
+        }
+        else
+        if (s.gameOver) {
+          // This player lost
+          msg = "Game over!";
+        }
+        else
+        if (!s.localTurn) {
+          // It's the opponent's turn
+          msg = ["It's ", opp, "'s turn. Plan your next move!"];
+        }
+        else
+        if (s.tilesPlaced > 0) {
+          if (game.currentScore === undefined)
+            msg = "Tiles must be consecutive.";
+          else
+          if (game.wordGood === false) {
+            msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
+          }
+          else {
+            msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
+          }
+        }
+        else {
+          var co = move[1][0];
+          var tiles = mtype;
+          var score = move[1][2];
+          if (co == "") {
+            // Not a regular tile move
+            if (tiles == "PASS")
+              msg = [opp, " passed."];
+            else
+            if (tiles.indexOf("EXCH") === 0) {
+              var numtiles = tiles.slice(5).length;
+              msg = [
+                opp, " exchanged ",
+                numtiles.toString(),
+                (numtiles == 1 ? " tile" : " tiles"),
+                "."
+              ];
+            }
+            else
+            if (tiles == "CHALL")
+              msg = [opp, " challenged your move."];
+            else
+            if (tiles == "RESP") {
+              if (score < 0)
+                msg = [opp, " successfully challenged your move."];
+              else
+                msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
+            }
+          }
+          else {
+            // Regular tile move
+            tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
+            msg = [opp, " played ", m("strong", tiles),
+              " for ", m("strong", score.toString()), " points"];
+          }
+        }
+        return m(".message", msg);
+      }
+
+      return m(".rightcol", [ vwRightHeading(), vwRightArea(), vwRightMessage() ]);
     }
 
     if (game === undefined || game === null)
@@ -2450,16 +2530,17 @@ function createView() {
       var leftTotal = 0;
       var rightTotal = 0;
       for (var i = 0; i < mlist.length; i++) {
-        var player = mlist[i][0];
-        var co = mlist[i][1][0];
-        var tiles = mlist[i][1][1];
-        var score = mlist[i][1][2];
+        var move = mlist[i];
+        var player = move[0];
+        var co = move[1][0];
+        var tiles = move[1][1];
+        var score = move[1][2];
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
           rightTotal = Math.max(rightTotal + score, 0);
         r.push(
-          vwMove.call(view, game, mlist[i],
+          vwMove.call(view, game, move,
             {
               key: i.toString(),
               leftTotal: leftTotal, rightTotal: rightTotal,
@@ -2643,7 +2724,7 @@ function createView() {
     function gameOverMove(tiles) {
       // Add a 'game over' div at the bottom of the move list
       // of a completed game. The div includes a button to
-      // open a review of the game, if the user is a friend of Netskrafl.
+      // open a review of the game, if the user is a friend of Explo.
       return m(".move.gameover",
         [
           m("span.gameovermsg", tiles),
@@ -3614,6 +3695,7 @@ function createView() {
     var s = {};
     s.tilesPlaced = game.tilesPlaced().length > 0;
     s.gameOver = game.over;
+    s.congratulate = game.congratulate;
     s.localTurn = game.localturn;
     s.gameIsManual = game.manual;
     s.challengeAllowed = game.chall;
@@ -4719,7 +4801,7 @@ function UserInfoDialog(initialVnode) {
             m(".usr-info-hdr",
               [
                 m("h1.usr-info-icon",
-                  [stats.friend ? glyph("coffee-cup", { title: 'Vinur Netskrafls' }) : glyph("user"), nbsp()]
+                  [stats.friend ? glyph("coffee-cup", { title: 'Friend of Explo' }) : glyph("user"), nbsp()]
                 ),
                 m("h1[id='usr-info-nick']", vnode.attrs.nick),
                 m("span.vbar", "|"),
