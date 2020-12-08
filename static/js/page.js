@@ -2091,6 +2091,7 @@ function createView() {
       }
 
       function vwRightMessage() {
+        // Display a status message in the mobile UI
         var s = buttonState(game);
         var msg = "";
         var player = game.player;
@@ -3402,13 +3403,13 @@ function createView() {
         r.push(vwDropTarget(game, coord));
     }
     return m(".rack-row", [
-      m(".rack-left", vwRackLeftButton(model)),
+      m(".rack-left", vwRackLeftButtons(model)),
       m(".rack", m("table.board", m("tbody", m("tr", r)))),
-      m(".rack-right", vwRackRightButton(model))
+      m(".rack-right", vwRackRightButtons(model))
     ]);
   }
 
-  function vwRackLeftButton(model) {
+  function vwRackLeftButtons(model) {
     // The button to the left of the rack in the mobile UI
     var s = buttonState(model.game);
     if (s.showRecall && !s.showingDialog)
@@ -3426,10 +3427,10 @@ function createView() {
     return [];
   }
 
-  function vwRackRightButton(model) {
+  function vwRackRightButtons(model) {
     // The button to the right of the rack in the mobile UI
     var s = buttonState(model.game);
-    if (s.showMove && s.tilesPlaced && !s.showingDialog)
+    if (s.canPlay && !s.showingDialog)
       // Show a 'Submit move' button, with a Play icon
       return makeButton(
         "submitmove", false, function() { model.game.submitMove(); },
@@ -3704,6 +3705,7 @@ function createView() {
     s.exchangeAllowed = game.xchg;
     s.wordGood = game.wordGood;
     s.wordBad = game.wordBad;
+    s.canPlay = false;
     s.tardyOpponent = !s.localTurn && !s.gameOver && game.overdue;
     s.showResign = false;
     s.showExchange = false;
@@ -3727,6 +3729,8 @@ function createView() {
         s.showResign = !s.tilesPlaced;
         s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
       }
+    if (s.showMove && (s.wordGood || s.gameIsManual))
+      s.canPlay = true;
     if (!s.gameOver)
       if (s.tilesPlaced)
         s.showRecall = true;

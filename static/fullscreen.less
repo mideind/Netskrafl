@@ -48,8 +48,9 @@
    div.info {
       display: block;
       position: absolute;
-      top: 456px;
-      left: 26px;
+      bottom: 138px;
+      top: auto;
+      left: 28px;
       width: 50px;
       height: 50px;
       font-size: 40px;
@@ -185,6 +186,7 @@
    .rack div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
       right: 2px;
+      left: auto;
    }
 
    tr.colid {
@@ -249,6 +251,7 @@
    }
    
    div.word-check {
+      display: block;
       width: 48px;
       height: 48px;
       font-size: 26px;
@@ -260,6 +263,7 @@
    }
    
    div.score {
+      display: block;
       width: 48px;
       height: 48px;
       font-size: 24px;
@@ -330,6 +334,8 @@
    /* To the left of the rack */
    
    div.submitresign {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
@@ -339,6 +345,8 @@
    }
    
    div.submitexchange {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
@@ -348,6 +356,8 @@
    }
    
    div.recallbtn {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
@@ -359,6 +369,8 @@
    /* To the right of the rack */
 
    div.scramblebtn {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
@@ -368,6 +380,8 @@
    }
    
    div.submitpass {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
@@ -395,14 +409,12 @@
    }
    
    div.scoreleft {
-      top: 42px;
       width: 145px;
       font-size: 24px;
       line-height: 24px;
    }
    
    div.scoreright {
-      top: 42px;
       width: 145px;
       font-size: 24px;
       line-height: 24px;
@@ -517,7 +529,11 @@
    div.movelist {
       height: 420px;
    }
-   
+
+   div.message {
+      display: none;
+   }
+
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;

@@ -34,6 +34,9 @@
 @btn-height-small: 26px;
 @btn-width-small: 33px;
 
+@btn-font-small: 18px;
+@btn-font-big: 22px;
+
 @wide-btn-width-big: 82px;
 @wide-btn-width-small: 32px;
 
@@ -320,7 +323,7 @@ div.game-container {
 }
 
 div.header {
-   height: 65px - @margin-small;
+   height: 56px - @margin-small;
    margin-top: @margin-small;
    margin-left: @margin-small;
    margin-right: @margin-small;
@@ -613,7 +616,7 @@ div.rack {
 div.letterscore {
    position: absolute;
    bottom: 0px;
-   right: 0px;
+   right: 1px;
    height: 9px;
    width: 9px;
    font-size: 6px;
@@ -627,11 +630,13 @@ div.letterscore {
 
 .rack div.letterscore {
    left: 19px;
+   right: auto;
    font-size: 9px;
    line-height: 9px;
 }
 
 div.word-check {
+   display: none;
    position: absolute;
    width: 44px;
    height: 44px;
@@ -651,6 +656,7 @@ div.word-check {
 }
 
 div.score {
+   display: none;
    position: absolute;
    width: 44px;
    height: 44px;
@@ -671,7 +677,7 @@ div.score {
 
 .standard-button {
    text-align: center;
-   font-size: 16px;
+   font-size: @btn-font-small;
    font-weight: 700;
    color: white;
    margin: 0;
@@ -687,7 +693,7 @@ div.score {
    .standard-button;
    width: @wide-btn-width-small;
    height: @btn-height-small;
-   background-color: darken(@freshtile, 10%);
+   background-color: @submit-btn;
 }
 
 div.submitnewgame {
@@ -828,37 +834,44 @@ div.player {
 }
 
 div.scoreleft {
-   display: inline-block;
-   width: 48px;
+   display: block;
+   width: 42px;
    height: 30px;
-   padding-left: 8px;
+   padding-left: 4px;
    font-size: 22px;
    line-height: 22px;
    font-weight: 400;
    text-align: left;
    color: white;
    overflow: hidden;
+   position: absolute;
+   top: 4px;
+   left: 0;
 }
 
 div.scoreright {
-   display: inline-block;
-   width: 48px;
+   display: block;
+   width: 42px;
    height: 30px;
-   padding-right: 8px;
+   padding-right: 4px;
    font-size: 22px;
    line-height: 22px;
    font-weight: 400;
    text-align: right;
    color: white;
    overflow: hidden;
+   position: absolute;
+   top: 4px;
+   right: 0;
 }
 
 div.robot-btn {
-   display: inline-block;
+   display: block;
    position: relative;
    top: 0; left: 0;
-   margin: 2px;
-   padding: 6px 2px 2px;
+   margin-left: 0px;
+   margin-right: 2px;
+   padding-top: 6px;
    width: 126px;
    height: 28px;
    min-height: 28px;
@@ -872,14 +885,6 @@ div.robot-btn span.glyphicon-cog {
    margin-right: 2px;
 }
 
-div.robot-btn.left {
-   padding-left: 4px;
-}
-
-div.robot-btn.right {
-   padding-right: 4px;
-}
-
 div.gamestats div.robot-btn {
    width: 100%;
    margin: 0;
@@ -887,33 +892,105 @@ div.gamestats div.robot-btn {
 }
 
 div.player-btn {
-   display: inline-block;
+   display: block;
    position: relative;
    top: 0; left: 0;
-   margin: 2px;
-   padding: 6px 2px 2px;
+   margin-left: 2px;
+   margin-right: 2px;
+   padding-top: 6px;
    width: 128px;
    height: 28px;
+   line-height: 20px;
    min-height: 28px;
    border-radius: 5px;
    border-width: 0;
    white-space: nowrap;
    overflow: hidden;
    background-color: transparent;
+   color: white;
 }
 
-div.player-btn.left,
-div.player-btn.right {
-   padding-left: 4px;
-   padding-right: 4px;
-   // color: @neutral;
-   color: white;
+div.player-btn.left, div.robot-btn.left {
+   padding-left: 44px;
+}
+
+div.player-btn.right, div.robot-btn.right {
+   padding-right: 44px;
 }
 
 div.player-btn.left.tomove,
 div.player-btn.right.tomove {
    // color: @alert;
    color: white;
+}
+
+div.heading {
+   position: relative;
+   width: 100%;
+   background-color: @board-background;
+   top: 0; left: 0;
+   padding-left: 0;
+   padding-right: 0;
+   height: 32px;
+}
+
+@media (min-height: 736px) {
+
+   // Tall mobile phones: use two lines to display the header
+
+   div.player {
+      display: block;
+      padding-left: 4px;
+      padding-right: 4px;
+      height: 32px;
+      min-height: 32px;
+      font-size: 16px;
+      line-height: 16px;
+      font-weight: 400;
+      color: @cell-border;
+   }
+
+   div.scoreleft {
+      display: inline-block;
+      position: relative;
+      left: auto;
+      top: auto;
+      padding-left: 8px;
+   }
+
+   div.scoreright {
+      display: inline-block;
+      position: relative;
+      right: auto;
+      top: auto;
+      padding-right: 8px;
+   }
+
+   div.player-btn {
+      display: inline-block;
+      line-height: auto;
+   }
+
+   div.robot-btn {
+      display: inline-block;
+   }
+
+   div.player-btn.left, div.robot-btn.left {
+      padding-left: 4px;
+   }
+
+   div.player-btn.right, div.robot-btn.right {
+      padding-right: 4px;
+   }
+
+   div.heading {
+      height: auto;
+   }
+
+   div.header {
+      height: 60px - @margin-small;
+   }
+
 }
 
 div.loginform-small {
@@ -1026,15 +1103,6 @@ p.login-error-icon {
    color: @triple-word;
 }
 
-div.heading {
-   position: relative;
-   width: 100%;
-   background-color: @board-background;
-   top: 0; left: 0;
-   padding-left: 0;
-   padding-right: 0;
-}
-
 div.leftplayer {
    display: inline-block;
    width: 50%;
@@ -1131,6 +1199,10 @@ div.message {
    height: 28px;
    background-color: @racktile;
    font-weight: 400;
+}
+
+div.message strong {
+   text-transform: uppercase;
 }
 
 div.movelist-container {
@@ -2146,6 +2218,7 @@ div.xchgsel {
 }
 
 div.freshtile {
+   color: @cell-border;
    background-color: @freshtile;
 }
 
@@ -2156,6 +2229,7 @@ div.highlight0 {
 
 div.highlight1 {
    /* Computer (remote) player */
+   color: @cell-border;
    background-color: @freshtile;
 }
 
