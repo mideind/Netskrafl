@@ -3715,7 +3715,7 @@ function createView() {
     s.showMove = false;
     s.showChallenge = false;
     s.showChallengeInfo = false;
-    if (s.localTurn && !s.gameOver)
+    if (s.localTurn && !s.gameOver) {
       // This player's turn
       if (s.lastChallenge) {
         s.showChallenge = true;
@@ -3729,6 +3729,7 @@ function createView() {
         s.showResign = !s.tilesPlaced;
         s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
       }
+    }
     if (s.showMove && (s.wordGood || s.gameIsManual))
       s.canPlay = true;
     if (!s.gameOver)

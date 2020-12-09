@@ -473,6 +473,12 @@ table.board {
    .noselect;
 }
 
+div.board table.board {
+   transform: scale(1.0);
+   transform-origin: 0 0;
+   transform-box: view-box;
+}
+
 table.board tr {
    height: 24px;
 }
@@ -505,12 +511,13 @@ div.bag {
 
 div.board-area {
    position: relative;
+   margin: @margin-small;
+   margin-left: (@margin-small - 1);
 }
 
 div.board {
-   padding-top: 8px;
    background-color: @container;
-   margin-left: @margin-small;
+   overflow: auto;
 }
 
 div.tile {
@@ -764,7 +771,7 @@ div.recallbtn {
 
 div.rack-left div.recallbtn {
    display: block;
-   margin-left: auto; // Right-align the button
+   margin-right: auto; // Left-align the button
 }
 
 div.scramblebtn {
@@ -777,7 +784,7 @@ div.scramblebtn {
 
 div.rack-left div.scramblebtn {
    display: block;
-   margin-left: auto; // Right-align the button
+   margin-right: auto; // Left-align the button
 }
 
 div.submitexchange {
