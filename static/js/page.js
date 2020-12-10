@@ -108,6 +108,8 @@ function createModel(settings) {
     bestMoves: null,
     // The index of the best move being highlighted, if reviewing game
     highlightedMove: null,
+    // The current scaling of the board
+    boardScale: 1.0,
     // Model methods
     loadGame: loadGame,
     loadGameList: loadGameList,
@@ -127,7 +129,8 @@ function createModel(settings) {
     markFavorite: markFavorite,
     addChatMessage: addChatMessage,
     handleUserMessage: handleUserMessage,
-    handleMoveMessage: handleMoveMessage
+    handleMoveMessage: handleMoveMessage,
+    updateScale: updateScale
   };
 
   function loadGame(uuid, funcComplete) {
@@ -143,6 +146,7 @@ function createModel(settings) {
       this.reviewMove = null;
       this.bestMoves = null;
       this.highlightedMove = null;
+      this.boardScale = 1.0;
       if (!result.ok) {
         // console.log("Game " + uuid + " could not be loaded");
       }
@@ -479,6 +483,34 @@ function createModel(settings) {
     }
   }
 
+  function updateScale() {
+    // Update the board scale (zoom)
+    if (!this.game || $state.uiFullscreen) {
+      // No game or we're in full screen mode: always 100% scale
+      this.boardScale = 1.0;
+      return;
+    }
+    var tp = this.game.tilesPlaced();
+    var numTiles = tp.length;
+    if (numTiles == 1 && this.boardScale == 1.0) {
+      // Laying down first tile: zoom in & position
+      this.boardScale = 1.5;
+      var sq = tp[0];
+      setTimeout(function() {
+        var el = document.getElementById(sq);
+        var board = document.getElementById("board");
+        var elRect = el.getBoundingClientRect();
+        var boardRect = board.getBoundingClientRect();
+        board.scrollTo({ left: elRect.left - boardRect.left, top: elRect.top - boardRect.top, behavior: "smooth"});
+      });
+    }
+    else
+    if (numTiles == 0 && this.boardScale > 1.0) {
+      // Removing only remaining tile: zoom out
+      this.boardScale = 1.0;
+    }
+  }
+
 }
 
 function createView() {
@@ -541,7 +573,7 @@ function createView() {
         views.push(vwMain.call(this, model, actions));
         break;
       case "game":
-        views.push(vwGame.call(this, model, actions));
+        views.push(vwGame.call(this, model));
         break;
       case "review":
         views.push(vwReview.call(this, model, actions));
@@ -678,31 +710,38 @@ function createView() {
     );
   }
 
-  function vwExploLogo(legend, scale) {
+  function ExploLogo(initialVnode) {
+
     // The Explo logo, with or without the legend ('explo')
-    if (scale === undefined)
-      scale = 1.0;
-    return m("img",
-      legend ?
-        {
-          alt: 'Explo',
-          width: 89 * scale, height: 40 * scale,
-          src: '/static/explo-logo.svg'
-        }
-      :
-        {
-          alt: 'Explo',
-          width: 23 * scale, height: 40 * scale,
-          src: '/static/explo-logo-only.svg'
-        }
-    );
+
+    var scale = initialVnode.attrs.scale || 1.0;
+    var legend = initialVnode.attrs.legend;
+
+    return {
+      view: function(vnode) {
+        return m("img",
+          legend ?
+            {
+              alt: 'Explo',
+              width: 89 * scale, height: 40 * scale,
+              src: '/static/explo-logo.svg'
+            }
+          :
+            {
+              alt: 'Explo',
+              width: 23 * scale, height: 40 * scale,
+              src: '/static/explo-logo-only.svg'
+            }
+        );
+      }
+    };
   }
 
   function vwLeftLogo() {
     return m(".logo",
       m(m.route.Link,
         { href: '/main', class: "nodecorate" },
-        vwExploLogo(false, 1.5)
+        m(ExploLogo, { legend: false, scale: 1.5 })
       )
     );
   }
@@ -721,7 +760,7 @@ function createView() {
         [
           m(".loginhdr", "Velkomin í Netskrafl!"),
           m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-          m("div", { id: 'board-pic' }, 
+          m("div", { id: "board-pic" },
             m("img",
               {
                 width: 310, height: 300,
@@ -778,7 +817,7 @@ function createView() {
       return m(".loginform-small",
         [
           m("div", 
-            { id: 'logo-pic' }, 
+            { id: "logo-pic" },
             m("img",
               {
                 height: 375, width: 375,
@@ -903,7 +942,7 @@ function createView() {
       return [
         m("input.checkbox." + id,
           {
-            type: 'checkbox',
+            type: "checkbox",
             id: id,
             name: id,
             checked: state,
@@ -912,7 +951,7 @@ function createView() {
         ),
         m(".toggler",
           {
-            id: id + '-toggler',
+            id: id + "-toggler",
             tabindex: tabindex,
             onclick: function(ev) {
               doToggle(id + "-toggler", func);
@@ -957,7 +996,7 @@ function createView() {
 
     return m(".modal-dialog",
       {
-        id: 'user-dialog',
+        id: "user-dialog",
         oncreate: initFocus
         // onupdate: initFocus
       },
@@ -2033,7 +2072,7 @@ function createView() {
 
   // Game screen
 
-  function vwGame(model, actions) {
+  function vwGame(model) {
     // A view of a game, in-progress or finished
 
     var game = model.game;
@@ -2176,7 +2215,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), vwBack() ]);
+      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2198,10 +2237,11 @@ function createView() {
         },
         ondrop: function(ev) {
           ev.stopPropagation();
-          // Move the tile from the source to the destination
+          // Move the tile from the board back to the rack
           var from = ev.dataTransfer.getData("text");
           // Move to the first available slot in the rack
           game.attemptMove(from, "R1");
+          model.updateScale();
           return false;
         }
       },
@@ -2210,37 +2250,41 @@ function createView() {
         m("main",
           m(".game-container",
             [
-              vwHeader(),
+              m(MobileHeader),
               vwRightColumn(),
-              vwBoardArea(model),
-              $state.uiFullscreen ? vwBag(bag, newbag) : "", // Visible in fullscreen
-              game.askingForBlank ? vwBlankDialog(game) : ""
+              m(BoardArea, { model: model }),
+              $state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
+              game.askingForBlank ? m(BlankDialog, { game: game }) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
-        vwBack(),
+        m(BackButton),
         $state.beginner ? vwBeginner(game) : "",
         vwInfo()
       ]
     );
   }
 
-  function vwHeader() {
+  function MobileHeader(initialVnode) {
     // The header on a mobile screen
-    return m(".header", [
-        m(".header-logo",
-          m(m.route.Link,
-            {
-              href: "/page",
-              class: "backlink"
-            },
-            vwExploLogo(true, 1.0)
-          )
-        ),
-        m(".header-button")
-      ]
-    );
+    return {
+      view: function(vnode) {
+        return m(".header", [
+            m(".header-logo",
+              m(m.route.Link,
+                {
+                  href: "/page",
+                  class: "backlink"
+                },
+                m(ExploLogo, { legend: true, scale: 1.0 })
+              )
+            ),
+            m(".header-button")
+          ]
+        );
+      }
+    };
   }
 
   // Review screen
@@ -2298,7 +2342,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), vwBack() ]);
+      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
 
     // Create a list of major elements that we're showing
     var r = [];
@@ -2313,7 +2357,7 @@ function createView() {
         m("main",
           m(".game-container", r)
         ),
-        vwBack(), // Button to go back to main screen
+        m(BackButton), // Button to go back to main screen
         vwInfo() // Help button
       ]
     );
@@ -2563,7 +2607,7 @@ function createView() {
           },
           movelist()
         ),
-        !$state.uiFullscreen ? vwBag(bag, newbag) : "" // Visible on mobile
+        !$state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
       ]
     );
   }
@@ -3027,14 +3071,13 @@ function createView() {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  function vwBag(bag, newbag) {
+  function Bag(initialVnode) {
     // The bag of tiles
-    var lenbag = bag.length;
 
-    function tiles() {
+    function tiles(bag) {
       var r = [];
       var ix = 0;
-      var count = lenbag;
+      var count = bag.length;
       while (count > 0) {
         // Rows
         var cols = [];
@@ -3052,20 +3095,28 @@ function createView() {
       return r;
     }
 
-    var cls = "";
-    if (lenbag <= RACK_SIZE)
-      cls += ".empty";
-    else
-    if (newbag)
-      cls += ".new";
-    return m(".bag",
-      { title: 'Flísar sem eftir eru í pokanum' },
-      m("table.bag-content" + cls, tiles(bag))
-    );
+    return {
+      view: function(vnode) {
+        var bag = vnode.attrs.bag;
+        var newbag = vnode.attrs.newbag;
+        var cls = "";
+        if (bag.length <= RACK_SIZE)
+          cls += ".empty";
+        else
+        if (newbag)
+          cls += ".new";
+        return m(".bag",
+          { title: 'Flísar sem eftir eru í pokanum' },
+          m("table.bag-content" + cls, tiles(bag))
+        );
+      }
+    };
   }
 
-  function vwBlankDialog(game) {
+  function BlankDialog(initialVnode) {
     // A dialog for choosing the meaning of a blank tile
+
+    var game = initialVnode.attrs.game;
 
     function blankLetters() {
       var legalLetters = game.alphabet;
@@ -3101,59 +3152,74 @@ function createView() {
       return r;
     }
 
-    return m(".modal-dialog",
-      {
-        id: 'blank-dialog',
-        style: { visibility: "visible" }
-      },
-      m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
-        [
-          m("p", "Hvaða staf táknar auða flísin?"),
-          m(".rack.blank-rack", m("table.board", { id: 'blank-meaning' }, blankLetters())),
-          m(DialogButton,
-            {
-              id: 'blank-close',
-              title: 'Hætta við',
-              onclick: function(ev) {
-                ev.preventDefault();
-                game.cancelBlankDialog();
-              }
-            },
-            glyph("remove")
+    return {
+      view: function(vnode) {
+        return m(".modal-dialog",
+          {
+            id: 'blank-dialog',
+            style: { visibility: "visible" }
+          },
+          m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
+            [
+              m("p", "Hvaða staf táknar auða flísin?"),
+              m(".rack.blank-rack",
+                m("table.board", { id: 'blank-meaning' }, blankLetters())
+              ),
+              m(DialogButton,
+                {
+                  id: 'blank-close',
+                  title: 'Hætta við',
+                  onclick: function(ev) {
+                    ev.preventDefault();
+                    game.cancelBlankDialog();
+                  }
+                },
+                glyph("remove")
+              )
+            ]
           )
-        ]
-      )
-    );
+        );
+      }
+    };
   }
 
-  function vwBack() {
+  function BackButton(initialVnode) {
     // Icon for going back to the main screen
-    return m(".logo-back", 
-      m(m.route.Link,
-        {
-          href: "/page",
-          class: "backlink"
-        },
-        vwExploLogo(false, 1.5)
-      )
-    );
+    return {
+      view: function(vnode) {
+        return m(".logo-back", 
+          m(m.route.Link,
+            {
+              href: "/page",
+              class: "backlink"
+            },
+            m(ExploLogo, { legend: false, scale: 1.5 })
+          )
+        );
+      }
+    };
   }
 
-  function vwBoardArea(model) {
+  function BoardArea(initialVnode) {
     // Collection of components in the board (left-side) area
-    var r = [];
-    var game = model.game;
-    if (game) {
-      r = [
-        vwBoard(model),
-        vwRack(model),
-        vwButtons(game),
-        vwErrors(game),
-        vwCongrats(game)
-      ];
-      r = r.concat(vwDialogs(game));
-    }
-    return m(".board-area", r);
+    return {
+      view: function(vnode) {
+        var model = vnode.attrs.model;
+        var game = model.game;
+        var r = [];
+        if (game) {
+          r = [
+            m(Board, { model: model }),
+            vwRack(model),
+            vwButtons(model),
+            vwErrors(game),
+            vwCongrats(game)
+          ];
+          r = r.concat(vwDialogs(game));
+        }
+        return m(".board-area", r);
+      }
+    };
   }
 
   function vwBoardReview(model, move) {
@@ -3162,7 +3228,7 @@ function createView() {
     var game = model.game;
     if (game) {
       r = [
-        vwBoard(model),
+        m(Board, { model: model }),
         vwRack(model),
         vwButtonsReview(model, move)
       ];
@@ -3248,19 +3314,25 @@ function createView() {
     );
   }
 
-  function vwReviewTile(game, coord, child) {
+  function ReviewTile(initialVnode) {
     // Return a td element that wraps an 'inert' tile in a review screen
-    return m("td",
-      {
-        key: coord,
-        class: game.squareClass(coord)
-      },
-      child || ""
-    );
+    return {
+      view: function(vnode) {
+        var coord = vnode.attrs.coord;
+        return m("td",
+          {
+            key: coord,
+            id: coord,
+            class: vnode.attrs.game.squareClass(coord)
+          }
+        );
+      }
+    };
   }
 
-  function vwDropTarget(game, coord, child) {
+  function vwDropTarget(model, coord, child) {
     // Return a td element that is a target for dropping tiles
+    var game = model.game;
     var cls = "";
     // Mark the cell with the 'blinking' class if it is the drop
     // target of a pending blank tile dialog
@@ -3272,6 +3344,7 @@ function createView() {
     return m("td" + cls,
       {
         key: coord,
+        id: coord,
         class: game.squareClass(coord),
         ondragenter: function(ev) {
           ev.preventDefault();
@@ -3298,6 +3371,7 @@ function createView() {
           // Move the tile from the source to the destination
           var from = ev.dataTransfer.getData("text");
           game.attemptMove(from, to);
+          model.updateScale();
           return false;
         }.bind(null, coord),
         onclick: function(to, ev) {
@@ -3309,6 +3383,7 @@ function createView() {
             game.attemptMove(game.selectedSq, to);
             game.selectedSq = null;
             ev.currentTarget.classList.remove("sel");
+            model.updateScale();
             return false;
           }
         }.bind(null, coord),
@@ -3326,10 +3401,8 @@ function createView() {
     );
   }
 
-  function vwBoard(model) {
+  function Board(initialVnode) {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
-
-    var game = model.game;
 
     function colid() {
       // The column identifier row
@@ -3340,9 +3413,10 @@ function createView() {
       return m("tr.colid", r);
     }
 
-    function row(rowid) {
+    function row(model, rowid) {
       // Each row of the board
       var r = [];
+      var game = model.game;
       r.push(m("td.rowid", { key: "R" + rowid }, rowid));
       for (var col = 1; col <= 15; col++) {
         var coord = rowid + col.toString();
@@ -3351,6 +3425,7 @@ function createView() {
           r.push(m("td",
             {
               key: coord,
+              id: coord,
               class: game.squareClass(coord),
               ondragover: stopPropagation,
               ondrop: stopPropagation
@@ -3359,22 +3434,31 @@ function createView() {
           );
         else
           // Empty square which is a drop target
-          r.push(vwDropTarget(game, coord));
+          r.push(vwDropTarget(model, coord));
       }
       return m("tr", r);
     }
 
-    function allrows() {
+    function allrows(model) {
       // Return a list of all rows on the board
       var r = [];
       r.push(colid());
       var rows = "ABCDEFGHIJKLMNO";
       for (var i = 0; i < rows.length; i++)
-        r.push(row(rows[i]));
+        r.push(row(model, rows[i]));
       return r;
     }
 
-    return m(".board", m("table.board", m("tbody", allrows())));
+    return {
+      view: function(vnode) {  
+        var model = vnode.attrs.model;
+        var scale = model.boardScale || 1.0;
+        var attrs = { };
+        if (scale != 1.0)
+          attrs.style = "transform: scale(" + scale + ")";
+        return m(".board", { id: "board" }, m("table.board", attrs, m("tbody", allrows(model))));
+      }
+    };
   }
 
   function vwRack(model) {
@@ -3392,15 +3476,17 @@ function createView() {
       if (game && (coord in game.tiles)) {
         // We have a tile in this rack slot, but it is a drop target anyway
         if (review)
-          r.push(vwReviewTile(game, coord, vwTile(game, coord, opponent)));
+          r.push(
+            m(ReviewTile, { game: game, coord: coord }, vwTile(game, coord, opponent))
+          );
         else
-          r.push(vwDropTarget(game, coord, vwTile(game, coord)));
+          r.push(vwDropTarget(model, coord, vwTile(game, coord)));
       }
       else
       if (review)
-        r.push(vwReviewTile(game, coord));
+        r.push(m(ReviewTile, { game: game, coord: coord }));
       else
-        r.push(vwDropTarget(game, coord));
+        r.push(vwDropTarget(model, coord));
     }
     return m(".rack-row", [
       m(".rack-left", vwRackLeftButtons(model)),
@@ -3415,7 +3501,7 @@ function createView() {
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
       return makeButton(
-        "recallbtn", false, function() { model.game.resetRack(); },
+        "recallbtn", false, function() { model.game.resetRack(); model.updateScale(); },
         "Færa stafi aftur í rekka", glyph("down-arrow")
       );
     if (s.showScramble && !s.showingDialog)
@@ -3740,8 +3826,9 @@ function createView() {
     return s;
   }
 
-  function vwButtons(game) {
+  function vwButtons(model) {
     // The set of buttons below the game board, alongside the rack
+    var game = model.game;
     var s = buttonState(game);
     var r = [];
     r.push(m(".word-check" +
@@ -3761,7 +3848,7 @@ function createView() {
       r.push(
         makeButton(
           "recallbtn", false,
-          function() { game.resetRack(); },
+          function() { game.resetRack(); model.updateScale(); },
           "Færa stafi aftur í rekka", glyph("down-arrow")
         )
       );

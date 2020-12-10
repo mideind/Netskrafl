@@ -479,6 +479,8 @@ div.board table.board {
    transform-box: view-box;
 }
 
+#board { transition: transform .2s ease-in-out; }
+
 table.board tr {
    height: 24px;
 }
@@ -1314,6 +1316,7 @@ div.error {
 
 div.opp-turn {
    .bottom-message;
+   display: none;
    left: @margin-small * 2 + @btn-width-small + 8px;
    width: @mobile-width - 4 * @margin-small - @btn-width-small - 8px;
 }
