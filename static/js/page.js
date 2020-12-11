@@ -483,11 +483,43 @@ function createModel(settings) {
     }
   }
 
+  function resetScale() {
+    // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
+    this.boardScale = 1.0;
+    var board = document.getElementById("board");
+    if (board)
+      board.scrollTo(0, 0);
+  }
+
   function updateScale() {
+
     // Update the board scale (zoom)
-    if (!this.game || $state.uiFullscreen) {
+
+    function scrollIntoView(sq) {
+      // Scroll a square above and to the left of the placed tile into view
+      var offset = 3;
+      var vec = toVector(sq);
+      var row = Math.max(0, vec.row - offset);
+      var col = Math.max(0, vec.col - offset);
+      var c = coord(row, col);
+      var el = document.getElementById("sq_" + c);
+      var board = document.getElementById("board");
+      var elRect = el.getBoundingClientRect();
+      var boardRect = board.getBoundingClientRect();
+      board.scrollTo(
+        {
+          left: elRect.left - boardRect.left,
+          top: elRect.top - boardRect.top,
+          behavior: "smooth"
+        }
+      );
+    }
+
+    if (!this.game || $state.uiFullscreen || this.game.moveInProgress) {
       // No game or we're in full screen mode: always 100% scale
-      this.boardScale = 1.0;
+      // Also, as soon as a move is being processed by the server, we zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
       return;
     }
     var tp = this.game.tilesPlaced();
@@ -495,19 +527,13 @@ function createModel(settings) {
     if (numTiles == 1 && this.boardScale == 1.0) {
       // Laying down first tile: zoom in & position
       this.boardScale = 1.5;
-      var sq = tp[0];
-      setTimeout(function() {
-        var el = document.getElementById(sq);
-        var board = document.getElementById("board");
-        var elRect = el.getBoundingClientRect();
-        var boardRect = board.getBoundingClientRect();
-        board.scrollTo({ left: elRect.left - boardRect.left, top: elRect.top - boardRect.top, behavior: "smooth"});
-      });
+      setTimeout(scrollIntoView.bind(null, tp[0]));
     }
     else
     if (numTiles == 0 && this.boardScale > 1.0) {
       // Removing only remaining tile: zoom out
-      this.boardScale = 1.0;
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
     }
   }
 
@@ -3322,7 +3348,7 @@ function createView() {
         return m("td",
           {
             key: coord,
-            id: coord,
+            id: "sq_" + coord,
             class: vnode.attrs.game.squareClass(coord)
           }
         );
@@ -3344,7 +3370,7 @@ function createView() {
     return m("td" + cls,
       {
         key: coord,
-        id: coord,
+        id: "sq_" + coord,
         class: game.squareClass(coord),
         ondragenter: function(ev) {
           ev.preventDefault();
@@ -3425,7 +3451,7 @@ function createView() {
           r.push(m("td",
             {
               key: coord,
-              id: coord,
+              id: "sq_" + coord,
               class: game.squareClass(coord),
               ondragover: stopPropagation,
               ondrop: stopPropagation
@@ -3453,10 +3479,17 @@ function createView() {
       view: function(vnode) {  
         var model = vnode.attrs.model;
         var scale = model.boardScale || 1.0;
-        var attrs = { };
+        var attrs = {
+          ondblclick: function(ev) {
+            model.resetScale();
+            ev.preventDefault();
+          }
+        };
         if (scale != 1.0)
           attrs.style = "transform: scale(" + scale + ")";
-        return m(".board", { id: "board" }, m("table.board", attrs, m("tbody", allrows(model))));
+        return m(".board",
+          { id: "board" }, m("table.board", attrs, m("tbody", allrows(model)))
+        );
       }
     };
   }
@@ -3501,7 +3534,8 @@ function createView() {
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
       return makeButton(
-        "recallbtn", false, function() { model.game.resetRack(); model.updateScale(); },
+        "recallbtn", false,
+        function() { model.game.resetRack(); model.updateScale(); },
         "Færa stafi aftur í rekka", glyph("down-arrow")
       );
     if (s.showScramble && !s.showingDialog)
@@ -3519,7 +3553,8 @@ function createView() {
     if (s.canPlay && !s.showingDialog)
       // Show a 'Submit move' button, with a Play icon
       return makeButton(
-        "submitmove", false, function() { model.game.submitMove(); },
+        "submitmove", false,
+        function() { model.game.submitMove(); model.updateScale(); },
         "Leika", glyph("play")
       );
     return [];
@@ -3863,7 +3898,7 @@ function createView() {
       r.push(
         makeButton(
           "submitmove", !s.tilesPlaced || s.showingDialog,
-          function() { game.submitMove(); },
+          function() { game.submitMove(); }, // No need to updateScale() here
           "Leika", [ "Leika", nbsp(), glyph("play") ]
         )
       );
