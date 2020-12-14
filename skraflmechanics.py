@@ -35,10 +35,6 @@ from functools import cached_property
 from dawgdictionary import Wordbase
 from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
 
-# Type definitions
-SummaryTuple = Tuple[str, str, int]
-MoveSummaryTuple = Tuple[int, SummaryTuple]
-DetailTuple = Tuple[str, str, str, int]
 
 # Type definitions
 SummaryTuple = Tuple[str, str, int]

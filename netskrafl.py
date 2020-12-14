@@ -153,6 +153,7 @@ app.config["DEBUG"] = running_local
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
 
+
 def ndb_wsgi_middleware(wsgi_app):
     """ Returns a wrapper for the original WSGI app """
 
