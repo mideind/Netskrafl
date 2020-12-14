@@ -478,6 +478,7 @@ div.board table.board {
    transform: scale(1.0);
    transform-origin: 0 0;
    transform-box: view-box;
+   touch-action: none;
 }
 
 #board { transition: transform .2s ease-in-out; }
@@ -821,6 +822,7 @@ div.submitmove {
 
 div.rack-right div.submitmove {
    display: block;
+   margin-left: auto; // Right-align the button
 }
 
 div.submitmove.error-shown {
