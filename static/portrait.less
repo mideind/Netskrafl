@@ -1,0 +1,17 @@
+
+/* ================= MOBILE PORTRAIT UI, LARGE ENOUGH TO BE NON-SCROLLABLE =============== */
+
+@media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
+
+   /* On sufficiently large mobile screens, keep the body fixed (unscrollable) */
+   body {
+      position: fixed;
+      overflow: hidden;
+   }
+
+   div.container {
+      /* position: fixed; */
+      overflow: hidden;
+   }
+}
+ 

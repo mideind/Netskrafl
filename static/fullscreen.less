@@ -1,0 +1,1067 @@
+
+/* ================= FULL-SCREEN (NON-MOBILE) UI ====================== */
+
+@media all and (min-width: 768px) {
+
+   /* Large screen (iPad and larger) */
+   
+   html {
+      height: initial;
+      overflow: initial;
+   }
+   
+   body {
+      position: initial;
+      overflow: initial;
+      height: initial;
+      width: initial;
+   }
+
+   div.container {
+      width: 1024px;
+      height: 768px; /* Was 748 */
+      overflow-y: hidden;
+   }
+
+   div.game-container {
+      height: 768px;
+   }
+
+   div.header {
+      display: none;
+   }
+
+   div.logo {
+      display: block;
+   }
+
+   div.logo-back {
+      display: block;
+      position: absolute;
+      top: 28px;
+      left: 28px;
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+   }
+   
+   div.info {
+      display: block;
+      position: absolute;
+      bottom: 138px;
+      top: auto;
+      left: 28px;
+      width: 50px;
+      height: 50px;
+      font-size: 40px;
+      text-align: center;
+   }
+   
+   div.login-error {
+      .std-form;
+      top: 96px;
+      left: auto;
+      right: 202px;
+      width: 504px;
+      height: 276px;
+   }
+   
+   div.board-help {
+      display: block;
+      z-index: 2;
+   }
+   
+   ul.ui-tabs-nav {
+      display: block;
+   }
+   
+   div.rightcol {
+      position: absolute;
+      width: 302px;
+      top: 38px;
+      right: 12px;
+      height: auto;
+      left: auto;
+   }
+   
+   div.right-area {
+      display: block;
+      margin-top: 8px;
+      height: 420px;
+   }
+   
+   div.games,
+   div.twoletter,
+   div.chat {
+      display: block;
+   }
+   
+   div.board-area {
+      height: 750px;
+   }
+   
+   div.board {
+      position: absolute;
+      top: 0;
+      left: 76px;
+      height: auto;
+      margin: 0;
+      background-color: @container;
+   }
+   
+   .board td {
+      min-height: @board-cell-big;
+      min-width: @board-cell-big;
+      max-height: @board-cell-big;
+      max-width: @board-cell-big;
+      height: @board-cell-big;
+      width: @board-cell-big;
+   }
+
+   table.board td.center {
+      font-size: 28px;
+      line-height: 32px;
+   }
+
+   table.board tr {
+      height: 34px;
+   }
+
+   .rack table.board tr {
+      height: 34px;
+   }
+
+   div.tile {
+      font-size: 25px;
+      line-height: 26px;
+      height: (@board-cell-big - 2px);
+      width: (@board-cell-big - 2px);
+      margin: 0;
+      padding-top: 2px;
+      padding-right: 2px;
+   }
+
+   .rack div.tile {
+      font-size: 25px;
+      line-height: 26px;
+      height: (@board-cell-big - 2px);
+      width: (@board-cell-big - 2px);
+      padding-top: 2px;
+      margin-left: 0;
+   }
+   
+   div.tile.wide {
+      /* Wide character tile: Z, Q */
+      margin-left: -3px;
+      padding-right: 5px;
+   }
+
+   /* On large UIs, tile size doesn't change while dragging */
+   
+   div.tile.ui-draggable-dragging {
+      font-size: 25px;
+      line-height: 26px;
+      height: (@board-cell-big - 2px);
+      width: (@board-cell-big - 2px);
+   }
+   
+   div.letterscore {
+      bottom: 2px;
+      right: 1px;
+      font-size: 9px;
+      line-height: 9px;
+   }
+   
+   .rack div.letterscore {
+      right: 0px;
+      left: auto;
+   }
+
+   div.tile.wide div.letterscore {
+      /* Adjust letter score position for wide tiles */
+      right: 2px;
+      left: auto;
+   }
+
+   .rack div.tile.wide div.letterscore {
+      /* Adjust letter score position for wide tiles */
+      right: 2px;
+      left: auto;
+   }
+
+   tr.colid {
+      display: table-row;
+   }
+   
+   td.rowid {
+      display: table-cell;
+      width: 16px;
+      height: 32px;
+      min-width: 16px;
+      max-width: 16px;
+      overflow: hidden;
+      font-size: 14px;
+      line-height: 14px;
+      text-align: center;
+      font-weight: 400;
+      background-color: transparent;
+      border-color: transparent;
+      box-shadow: none;
+   }
+   
+   div.bag {
+      display: block;
+      bottom: 114px;
+   }
+
+   div.rack-row {
+      margin: 0;
+   }
+
+   div.rack {
+      position: absolute;
+      display: block;
+      width: auto;
+      float: none;
+      top: auto;
+      bottom: 120px;
+      left: 231px;
+      padding: 6px;
+      border-width: 0;
+      border-radius: 5px;
+      margin: 0;
+      background-color: @board-background;
+   }
+
+   div.rack-left {
+      display: none;
+   }
+
+   div.rack-right {
+      display: none;
+   }
+
+   .rack td {
+      min-height: @board-cell-big;
+      min-width: @board-cell-big;
+      max-height: @board-cell-big;
+      max-width: @board-cell-big;
+      height: @board-cell-big;
+      width: @board-cell-big;
+   }
+   
+   div.word-check {
+      display: block;
+      width: 48px;
+      height: 48px;
+      font-size: 26px;
+      line-height: 45px;
+      top: auto;
+      bottom: 272px;
+      left: 648px;
+      border-radius: 5px;
+   }
+   
+   div.score {
+      display: block;
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+      line-height: 46px;
+      top: auto;
+      bottom: 208px;
+      left: 648px;
+      border-radius: 5px;
+   }
+
+   .standard-button {
+      position: absolute;
+      top: @btn-top;
+      text-align: center;
+      font-size: 19px;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+      padding: 6px;
+      padding-top: 9px;
+      border-radius: 5px;
+      vertical-align: middle;
+      cursor: pointer;
+      .noselect;
+   }
+ 
+   .submitbutton {
+      .standard-button;
+      width: @wide-btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 600px;
+      background-color: darken(@freshtile, 10%);
+      font-size: 18px;
+      font-weight: 700;
+   }
+   
+   div.submitnewgame {
+      .submitbutton;
+      top: 464px;
+   }
+
+   div.fb-share {
+      .submitbutton;
+      left: 122px;
+      height: 60px;
+      /* bottom: 104px; */
+   }
+
+   div.waitmove {
+      .submitbutton;
+   }
+
+   div.submitmove {
+      .submitbutton;
+      display: block;
+   }
+
+   div.submitmove.error-shown {
+      display: block;
+   }
+   
+   div.submitmove.hidden {
+      display: none;
+   }
+   
+   /* To the left of the rack */
+   
+   div.submitresign {
+      position: absolute;
+      font-size: @btn-font-big;
+      width: @btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 101px;
+      display: block;
+   }
+   
+   div.submitexchange {
+      position: absolute;
+      font-size: @btn-font-big;
+      width: @btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 167px;
+      display: block;
+   }
+   
+   div.recallbtn {
+      position: absolute;
+      font-size: @btn-font-big;
+      width: @btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 167px;
+      display: block;
+   }
+
+   /* To the right of the rack */
+
+   div.scramblebtn {
+      position: absolute;
+      font-size: @btn-font-big;
+      width: @btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 534px;
+      display: block;
+   }
+   
+   div.submitpass {
+      position: absolute;
+      font-size: @btn-font-big;
+      width: @btn-width-big;
+      height: @btn-height-big;
+      top: auto;
+      bottom: 125px;
+      left: 600px;
+      display: block;
+   }
+   
+   div.fb-share {
+      .submitbutton;
+      display: block;
+      left: 122px;
+      height: 60px;
+      /* bottom: 104px; */
+      color: white;
+      background-color: @double-letter;
+      visibility: hidden;
+   }
+   
+   div.player {
+      height: 40px;
+      min-height: 40px;
+      font-size: 16px;
+      line-height: 24px;
+   }
+   
+   div.scoreleft {
+      width: 145px;
+      font-size: 24px;
+      line-height: 24px;
+   }
+   
+   div.scoreright {
+      width: 145px;
+      font-size: 24px;
+      line-height: 24px;
+   }
+   
+   div.player-btn {
+      width: 141px;
+      padding-top: 4px;
+      color: @neutral;
+      cursor: pointer;
+   }
+
+   div.player-btn:hover {
+      background-color: white;
+      color: @neutral;
+   }
+
+   div.player-btn.left {
+      padding-right: 2px;
+   }
+
+   div.player-btn.right {
+      padding-left: 2px;
+   }
+
+   /*
+   div.player-btn.left.tomove,
+   div.player-btn.right.tomove {
+      color: @neutral;
+   }
+   */
+
+   div.robot-btn {
+      width: 141px;
+   }
+
+   div.gamestats div.robot-btn {
+      width: 100%;
+   }
+
+   div.loginform-large {
+      display: block;
+   }
+
+   div.loginform-small {
+      display: none;
+   }
+
+   div.loginhdr {
+      font-size: 34px;
+      font-weight: 700;
+      padding-top: 12px;
+      padding-bottom: 24px;
+      text-align: left;
+   }
+   
+   div#board-pic {
+      text-align: left;
+      float: left;
+      padding-right: 24px;
+      padding-top: 0;
+      padding-bottom: 0;
+   }
+   
+   div.blurb {
+      font-size: 22px;
+      font-weight: bold;
+      padding-bottom: 22px;
+      text-align: left;
+   }
+   
+   div.right-tab {
+      display: block;
+      height: 38px;
+      min-height: 38px;
+      width: 38px;
+      min-width: 38px;
+      top: auto;
+      text-align: left;
+      padding-top: 14px;
+      padding-left: 10px;
+      font-size: 20px;
+      line-height: 20px;
+      z-index: 2;
+   }
+   
+   div.right-tab#tab-movelist {
+      top: 0;
+      left: -40px;
+   }
+   
+   div.right-tab#tab-twoletter {
+      top: 58px;
+      left: -40px;
+   }
+   
+   div.right-tab#tab-games {
+      top: 116px;
+      left: -40px;
+   }
+   
+   div.right-tab#tab-chat {
+      top: 174px;
+      left: -40px;
+   }
+   
+   div.movelist-container {
+      padding-top: 0;
+      padding-bottom: 0;
+      height: 420px;
+   }
+   
+   div.movelist {
+      height: 420px;
+   }
+
+   div.message {
+      display: none;
+   }
+
+   div.right-area.with-clock div.movelist-container {
+      /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+      height: 380px;
+   }
+   
+   div.right-area.with-clock div.movelist {
+      /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+      height: 380px;
+   }
+   
+   div.movelist-container div.bag {
+      display: none;
+   }
+   
+   div.game-timed {
+      display: block;
+   }
+   
+   div#blank-form {
+      right: 12px;
+   }
+
+   div.blank-rack {
+      top: 0;
+      left: 0;
+   }
+
+   div#blank-form {
+      display: block;
+   }
+
+   div.modal-dialog {
+      position: absolute;
+   }
+   
+   .bottom-message {
+      text-align: center;
+      bottom: 70px;
+      left: 122px;
+      width: 512px;
+      height: 28px;
+      font-size: 16px;
+      line-height: 24px;
+      padding: 4px 0 0;
+      margin: 0;
+   }
+   
+   .bold-bottom-message {
+      .bottom-message;
+   }
+   
+   div.error {
+      .bold-bottom-message;
+   }
+   
+   div.opp-turn {
+      .bottom-message;
+      display: block;
+   }
+   
+   div#congrats {
+      .bottom-message;
+   }
+   
+   div.resign {
+      .bold-bottom-message;
+   }
+   
+   div.pass {
+      .bold-bottom-message;
+   }
+   
+   div.pass-last {
+      .bold-bottom-message;
+   }
+   
+   div.chall {
+      .bold-bottom-message;
+   }
+   
+   div.chall-info {
+      .bold-bottom-message;
+   }
+   
+   div.exchange {
+      .bold-bottom-message;
+   }
+   
+   div.gameinfo {
+      .bottom-message;
+   }
+   
+   input.chat-txt {
+      width: 218px;
+      height: 22px;
+      font-size: 15px;
+   }
+   
+   div.chat-area {
+      height: 350px;
+      width: 278px;
+   }
+   
+   div.modal-close#chat-send {
+      height: 25px;
+      bottom: 0;
+   }
+   
+   span.statsbutton {
+      display: inline;
+      text-align: center;
+      background-color: white;
+      font-size: 16px;
+      font-weight: 700;
+      color: @pass-btn;
+      margin-left: 4px;
+      margin-right: 4px;
+      padding-top: 2px;
+      padding-bottom: 2px;
+      padding-left: 12px;
+      padding-right: 12px;
+      border-radius: 5px;
+      cursor: pointer;
+   }
+   
+   div.toggler {
+      display: inline-block;
+   }
+   
+   div.tabbed-page {
+      overflow: hidden;
+      left: 110px;
+      top: 12px;
+      width: 900px;
+      height: 744px;
+      font-size: 13px;
+      line-height: 23px;
+   }
+   
+   div.help-container img {
+      max-width: 520px;
+      height: auto;
+      /* transform: scale(1.0); */
+   }
+   
+   div#tabs,
+   div#main-tabs {
+      padding: .2em;
+      border: 2px solid @tab-background;
+   }
+   
+   div#tabs {
+      background-color: @tab-background;
+   }
+   
+   div.userid {
+      display: block;
+   }
+   
+   .no-mobile-block {
+      display: block;
+   }
+   
+   .no-mobile-inline {
+      display: inline;
+   }
+   
+   .no-mobile-inline-block {
+      display: inline-block;
+   }
+   
+   .no-mobile-list {
+      display: list-item;
+   }
+   
+   .tab-legend {
+      display: inline;
+      padding-left: 12px;
+   }
+   
+   .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+      min-width: auto;
+      padding-left: 1em;
+      padding-right: 1em;
+      text-align: left;
+   }
+   
+   .ui-tabs .ui-tabs-panel {
+      padding: 1em 1.4em;
+   }
+   
+   div.fairplay {
+      top: 44px;
+      font-size: 28px;
+      line-height: 28px;
+      display: block;
+   }
+
+   span.list-opp {
+      width: 290px;
+      max-width: 290px;
+   }
+   
+   span.list-nick,
+   span.list-nick-elo {
+      width: 220px;
+      max-width: 220px;
+   }
+   
+   span.list-fullname-robot {
+      width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
+      max-width: 486px;
+      font-size: 1.0em;
+   }
+   
+   span.list-chall {
+      width: 315px;
+      max-width: 315px;
+   }
+   
+   span.list-ts,
+   span.list-ts-short,
+   span.list-info-hdr,
+   span.list-info,
+   span.list-games,
+   span.list-ratio,
+   span.list-avgpts,
+   span.list-manual,
+   span.list-fav,
+   span.list-overdue,
+   span.list-newbag,
+   span.list-duration,
+   span.list-rank-no-mobile,
+   span.list-elo-no-mobile {
+      display: inline-block;
+   }
+   
+   span.list-tc {
+      width: 100px;
+      max-width: 100px;
+      padding-right: 6px;
+   }
+   
+   span.list-ch,
+   span.list-fav,
+   span.list-icon,
+   span.list-myturn,
+   span.list-overdue {
+      font-size: 20px;
+      width: 32px;
+      max-width: 32px;
+   }
+   
+   span.list-newbag {
+      font-size: 20px;
+      width: 32px;
+      max-width: 32px;
+   }
+   
+   span.list-s0 {
+      width: 40px;
+      max-width: 40px;
+   }
+   
+   span.list-s1 {
+      width: 40px;
+      max-width: 40px;
+   }
+   
+   span.list-scorehdr {
+      width: 88px; /* list-s0 + list-colon + list-s1 */
+      max-width: 88px;
+   }
+   
+   div.user-cat span#break {
+      display: none;
+   }
+   
+   div.user-cat#user-headings {
+      line-height: 32px;
+   }
+   
+   div.user-cat#user-search {
+      display: block;
+   }
+   
+   div#chall-form {
+      position: absolute;
+      padding-top: 12px;
+      left: auto;
+      right: 300px;
+      top: 48px;
+      width: 428px;
+      height: 634px;
+      font-size: 1em;
+   }
+   
+   div#chall-fairplay {
+      margin-top: 15px;
+      padding-left: 52px;
+      padding-right: 52px;
+   }
+   
+   div#ready-toggler {
+      display: block;
+      position: absolute;
+      left: 10px;
+      top: 538px;
+   }
+   
+   div#timed-toggler {
+      display: block;
+      position: absolute;
+      left: 10px;
+      top: 590px;
+   }
+   
+   span.caption.wide {
+      width: 264px;
+   }
+   
+   div#chall-ok {
+      right: 66px; /* 12 + 54 */
+   }
+   
+   div#chall-cancel {
+      right: 162px; /* 12 + 72 + 12 + 12 + 54 */
+   }
+   
+   span.mobile-break,
+   span.mobile-space {
+      display: none;
+   }
+   
+   div#user-load {
+      top: 320px;
+      left: 406px;
+      width: 48px;
+      height: 48px;
+      background-size: 48px 48px;
+   }
+   
+   div#spinner-dialog div#user-load {
+      top: (768px - 48px) / 2;
+      left: (1024px - 48px) / 2;
+      width: 48px;
+      height: 48px;
+      background-size: 48px 48px;
+   }
+   
+   div#promo-form {
+      left: auto;
+      top: 16px;
+      right: 12px;
+      width: 884px;
+      height: 644px;
+      line-height: 1.62em;
+   }
+   
+   div#promo-content {
+      margin-top: 48px;
+      margin-left: 48px;
+      margin-right: 48px;
+   }
+   
+   div.promo-fullscreen {
+      display: block;
+   }
+   
+   div.promo-mobile {
+      display: none;
+   }
+   
+   div.btn-promo-no {
+      width: 160px;
+      height: 28px;
+      bottom: 48px;
+      right: 48px;
+      top: auto;
+      background-color: @board-background;
+   }
+   
+   div.challenge {
+      width: 48px;
+      height: 48px;
+      top: auto;
+      bottom: 204px;
+      left: 644px;
+      font-size: 26px;
+      line-height: 46px;
+   }
+   
+   div.over {
+      outline: yellow solid 3px;
+   }
+   
+   span.over {
+      outline: yellow solid 3px;
+   }
+   
+   div #userlist,
+   div #gamelist,
+   div #elolist {
+      height: 540px; /* 15 lines @ 36px each */
+   }
+   
+   div #recentlist {
+      height: 468px; /* 13 lines @ 36px each */
+   }
+   
+   div #usr-recent {
+      height: 432px; /* 12 lines @ 36px each */
+   }
+   
+   div #chall-sent,
+   div #chall-received {
+      height: 216px; /* 6 lines @ 36px each */
+   }
+   
+   span.list-win {
+      width: 32px;
+      max-width: 32px;
+      margin-left: 2px;
+   }
+   
+   div.games {
+      height: 100%;
+      padding: 0px;
+   }
+   
+   div.games-item {
+      margin-left: 4px;
+      margin-right: 4px;
+   }
+   
+   div#wait-form {
+      .std-form;
+      top: 56px;
+      left: auto;
+      right: 202px;
+      width: 504px;
+      height: 544px;
+   }
+   
+   span.left-to-move,
+   span.right-to-move {
+      position: relative;
+      top: 2px;
+      font-family: 'Glyphicons Regular';
+      font-style: normal;
+      font-weight: normal;
+      color: @alert;
+      padding-right: 2px;
+   }
+   
+   /* Show red flag by the id of the player whose move it is */
+   div.player-btn.tomove span.left-to-move:before {
+      content: "\E267";
+   }
+   
+   div.player-btn.tomove span.right-to-move:before {
+      content: "\E267";
+   }
+   
+   div.hint {
+      top: 220px;
+      margin-left: 60px;
+      margin-right: 160px;
+      font-size: inherit;
+   }
+   
+   div.stats-box {
+      width: auto;
+      position: static;
+      top: auto;
+      left: auto;
+   }
+   
+   div.stats-fig {
+      width: 80px;
+      height: 27px;
+      padding: 6px;
+      border-radius: 5px;
+      border-width: 2px;
+      font-size: 20px;
+      margin-top: 4px;
+      margin-right: 8px;
+      margin-left: 8px;
+   }
+   
+   div#own-toggler {
+      margin-top: 7px;
+      margin-right: 8px;
+   }
+   
+   p#own-best {
+      left: auto;
+      right: 30px;
+      top: 66px;
+      font-size: 1.0em;
+   }
+
+   div#own-stats {
+      margin-top: 16px;
+      margin-bottom: 24px;
+   }
+   
+   div.help-container {
+      width: 828px;
+      height: 640px;
+      overflow: auto;
+      padding-right: 24px;
+   }
+   
+   div.twoletter-area {
+      font-size: 14px;
+      line-height: 20px;
+   }
+   
+   div.twoletter-area.with-clock {
+      font-size: 13px;
+      line-height: 21px;
+      margin-top: 3px;
+   }
+   
+   div.twoletter-word {
+      padding-right: 3px;
+   }
+   
+} /* media min-width: 768px */

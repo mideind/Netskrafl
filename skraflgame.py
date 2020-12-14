@@ -44,6 +44,7 @@ import logging
 from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
+from functools import cached_property
 
 from cache import memcache
 
@@ -84,8 +85,15 @@ StatsDict = Dict[str, Union[str, int, float, Tuple[int, int]]]
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
 MoveTuple = NamedTuple(
     "MoveTuple",
-    [("player", int), ("move", MoveBase), ("rack", str), ("ts", datetime),],
+    [
+        ("player", int),
+        ("move", MoveBase),
+        ("rack", str),
+        ("ts", datetime),
+    ],
 )
+TwoLetterGroupList = List[Tuple[str, List[str]]]
+TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
 
 
 class User:
@@ -413,7 +421,7 @@ class User:
         assert sid is not None
         self._favorites = set(FavoriteModel.list_favorites(sid))
 
-    def add_favorite(self, destuser_id):
+    def add_favorite(self, destuser_id: str) -> None:
         """ Add an A-favors-B relation between this user and the destuser """
         sid = self.id()
         assert sid is not None
@@ -422,7 +430,7 @@ class User:
         self._favorites.add(destuser_id)
         FavoriteModel.add_relation(sid, destuser_id)
 
-    def del_favorite(self, destuser_id):
+    def del_favorite(self, destuser_id: str) -> None:
         """ Delete an A-favors-B relation between this user and the destuser """
         sid = self.id()
         assert sid is not None
@@ -431,7 +439,7 @@ class User:
         self._favorites.discard(destuser_id)
         FavoriteModel.del_relation(sid, destuser_id)
 
-    def has_favorite(self, destuser_id):
+    def has_favorite(self, destuser_id: str) -> bool:
         """ Returns True if there is an A-favors-B relation between this user and the destuser """
         self._load_favorites()
         assert self._favorites is not None
@@ -439,7 +447,7 @@ class User:
 
     def has_challenge(self, destuser_id: str) -> bool:
         """ Returns True if this user has challenged destuser """
-        # !!! TODO: Cache this in the user object to save NDB reads
+        # TBD: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def find_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
@@ -540,7 +548,9 @@ class User:
                 #     .format(account, um.email, email)
                 # )
                 um.email = email
-                um.put()
+            # Note the login timestamp
+            um.last_login = datetime.utcnow()
+            um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
             return um.key.id()
@@ -554,6 +564,8 @@ class User:
                 #     .format(account, email, name)
                 # )
                 um.account = account
+                # Note the last login
+                um.last_login = datetime.utcnow()
                 return um.put().id()
         # No match by account id or email: create a new user,
         # with the account id as user id.
@@ -934,12 +946,12 @@ class Game:
                     # Modified: store the updated user entity
                     u1.update()
 
-    def id(self):
+    def id(self) -> Optional[str]:
         """ Returns the unique id of this game """
         return self.uuid
 
     @staticmethod
-    def autoplayer_name(level):
+    def autoplayer_name(level: int) -> str:
         """ Return the autoplayer name for a given level """
         i = len(Game.AUTOPLAYERS)
         while i > 0:
@@ -948,7 +960,7 @@ class Game:
                 return Game.AUTOPLAYERS[i][0]
         return Game.AUTOPLAYERS[0][0]  # Strongest player by default
 
-    def player_nickname(self, index):
+    def player_nickname(self, index: int) -> str:
         """ Returns the nickname of a player """
         u = (
             None
@@ -966,7 +978,7 @@ class Game:
                 nick = Game.UNDEFINED_NAME
         return nick
 
-    def player_fullname(self, index):
+    def player_fullname(self, index: int) -> str:
         """ Returns the full name of a player """
         u = (
             None
@@ -986,69 +998,69 @@ class Game:
                     name = Game.UNDEFINED_NAME
         return name
 
-    def get_pref(self, pref):
+    def get_pref(self, pref: str) -> Union[None, str, int, bool]:
         """ Retrieve a preference, or None if not found """
         if self._preferences is None:
             return None
         return self._preferences.get(pref, None)
 
-    def set_pref(self, pref, value):
+    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
         """ Set a preference to a value """
         if self._preferences is None:
             self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
-    def fairplay_from_prefs(prefs):
+    def fairplay_from_prefs(prefs: PrefsDict) -> bool:
         """ Returns the fairplay commitment specified by the given game preferences """
-        return prefs is not None and prefs.get("fairplay", False)
+        return prefs is not None and cast(bool, prefs.get("fairplay", False))
 
-    def get_fairplay(self):
+    def get_fairplay(self) -> bool:
         """ True if this was originated as a fairplay game """
-        return self.get_pref("fairplay") or False
+        return cast(bool, self.get_pref("fairplay")) or False
 
-    def set_fairplay(self, state):
+    def set_fairplay(self, state: bool) -> None:
         """ Set the fairplay commitment of this game """
         self.set_pref("fairplay", state)
 
     @staticmethod
-    def new_bag_from_prefs(prefs):
+    def new_bag_from_prefs(prefs: PrefsDict) -> bool:
         """ Returns true if the game preferences specify a new bag """
-        return prefs is not None and prefs.get("newbag", False)
+        return prefs is not None and cast(bool, prefs.get("newbag", False))
 
-    def new_bag(self):
+    def new_bag(self) -> bool:
         """ True if this game uses the new bag """
-        return self.get_pref("newbag") or False
+        return cast(bool, self.get_pref("newbag")) or False
 
-    def set_new_bag(self, state):
+    def set_new_bag(self, state: bool) -> None:
         """ Configures the game as using the new bag """
         self.set_pref("newbag", state)
 
     @staticmethod
-    def manual_wordcheck_from_prefs(prefs):
+    def manual_wordcheck_from_prefs(prefs: PrefsDict) -> bool:
         """ Returns true if the game preferences specify a manual wordcheck """
-        return prefs is not None and prefs.get("manual", False)
+        return prefs is not None and cast(bool, prefs.get("manual", False))
 
-    def manual_wordcheck(self):
+    def manual_wordcheck(self) -> bool:
         """ True if this game uses manual wordcheck """
         if self.is_robot_game():
             # A robot game always uses automatic wordcheck
             return False
-        return self.get_pref("manual") or False
+        return cast(bool, self.get_pref("manual")) or False
 
-    def set_manual_wordcheck(self, state):
+    def set_manual_wordcheck(self, state: bool) -> None:
         """ Configures the game as using manual wordcheck """
         self.set_pref("manual", state)
 
     @property
-    def board_type(self):
+    def board_type(self) -> str:
         """ Return the type of the board used in this game """
-        return self.get_pref("board_type") or "standard"
+        return cast(str, self.get_pref("board_type")) or "standard"
 
     @property
-    def locale(self):
+    def locale(self) -> str:
         """ Return the locale of this game """
-        return self.get_pref("locale") or "is_IS"
+        return cast(str, self.get_pref("locale")) or "is_IS"
 
     @staticmethod
     def tileset_from_prefs(prefs: Optional[PrefsDict]):
@@ -1069,13 +1081,11 @@ class Game:
         """ Return the tile set used in this game """
         return Game.tileset_from_prefs(self._preferences)
 
-    @property
-    def two_letter_words(
-        self,
-    ) -> Tuple[List[Tuple[str, List[str]]], List[Tuple[str, List[str]]]]:
-        """ Return the two-letter list that applies to this game,
-            as a tuple of two lists, one grouped by first letter, and
-            the other grouped by the second (last) letter """
+    @cached_property
+    def two_letter_words(self) -> TwoLetterGroupTuple:
+        """Return the two-letter list that applies to this game,
+        as a tuple of two lists, one grouped by first letter, and
+        the other grouped by the second (last) letter"""
         vocab = vocabulary_for_locale(self.locale)
         tw0, tw1 = Wordbase.two_letter_words(vocab)
         gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
@@ -1111,7 +1121,7 @@ class Game:
 
     def get_duration(self) -> int:
         """ Return the duration for each player in the game, e.g. 25 if 2x25 minute game """
-        return self.get_pref("duration") or 0
+        return cast(int, self.get_pref("duration")) or 0
 
     def set_duration(self, duration: int) -> None:
         """ Set the duration for each player in the game, e.g. 25 if 2x25 minute game """
@@ -1298,48 +1308,48 @@ class Game:
         s.recalc_bag()
         return s
 
-    def display_bag(self, player_index):
+    def display_bag(self, player_index: int) -> str:
         """Returns the bag as it should be displayed to the indicated player,
         including the opponent's rack and sorted"""
         assert self.state is not None
         return self.state.display_bag(player_index)
 
-    def num_moves(self):
+    def num_moves(self) -> int:
         """ Returns the number of moves in the game so far """
         return len(self.moves)
 
-    def is_erroneous(self):
+    def is_erroneous(self) -> bool:
         """ Return True if this game object is incorrectly serialized """
         return self._erroneous
 
-    def player_to_move(self):
+    def player_to_move(self) -> int:
         """ Returns the index (0 or 1) of the player whose move it is """
         assert self.state is not None
         return self.state.player_to_move()
 
-    def player_id_to_move(self):
+    def player_id_to_move(self) -> Optional[str]:
         """ Return the userid of the player whose turn it is, or None if autoplayer """
         return self.player_ids[self.player_to_move()]
 
-    def player_id(self, player_index):
+    def player_id(self, player_index: int) -> Optional[str]:
         """ Return the userid of the indicated player """
         return self.player_ids[player_index]
 
-    def my_turn(self, user_id):
+    def my_turn(self, user_id: str) -> bool:
         """ Return True if it is the indicated player's turn to move """
         if self.is_over():
             return False
         return self.player_id_to_move() == user_id
 
-    def is_autoplayer(self, player_index):
+    def is_autoplayer(self, player_index: int) -> bool:
         """ Return True if the player in question is an autoplayer """
         return self.player_ids[player_index] is None
 
-    def is_robot_game(self):
+    def is_robot_game(self) -> bool:
         """ Return True if one of the players is an autoplayer """
         return self.is_autoplayer(0) or self.is_autoplayer(1)
 
-    def player_index(self, user_id):
+    def player_index(self, user_id: str) -> Optional[int]:
         """ Return the player index (0 or 1) of the given user, or None if not a player """
         if self.player_ids[0] == user_id:
             return 0
@@ -1347,17 +1357,17 @@ class Game:
             return 1
         return None
 
-    def has_player(self, user_id):
+    def has_player(self, user_id: str) -> bool:
         """ Return True if the indicated user is a player of this game """
         return self.player_index(user_id) is not None
 
-    def start_time(self):
+    def start_time(self) -> str:
         """ Returns the timestamp of the game in a readable format """
         return (
             "" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
         )
 
-    def end_time(self):
+    def end_time(self) -> str:
         """ Returns the time of the last move in a readable format """
         return (
             ""
@@ -1365,15 +1375,18 @@ class Game:
             else Alphabet.format_timestamp(self.ts_last_move)
         )
 
-    def has_new_chat_msg(self, user_id):
+    def has_new_chat_msg(self, user_id: str) -> bool:
         """ Return True if there is a new chat message that the given user hasn't seen """
         p = self.player_index(user_id)
         if p is None or self.is_autoplayer(1 - p):
             # The user is not a player of this game, or robot opponent: no chat
             return False
         # Check the database
-        # !!! TBD: consider memcaching this
-        return ChatModel.check_conversation("game:" + self.id(), user_id)
+        # TBD: consider memcaching this
+        uuid = self.id()
+        if not uuid:
+            return False
+        return ChatModel.check_conversation("game:" + uuid, user_id)
 
     def _append_final_adjustments(self, movelist: List[MoveSummaryTuple]) -> None:
         """ Appends final score adjustment transactions to the given movelist """
@@ -1508,6 +1521,7 @@ class Game:
         reply["alphabet"] = self.tileset.alphabet.order
         reply["tile_scores"] = self.tileset.scores
         reply["board_type"] = self.board_type
+        reply["two_letter_words"] = self.two_letter_words
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()

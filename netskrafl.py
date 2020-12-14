@@ -18,7 +18,7 @@
 
     The web client code is found in netskrafl.js.
 
-    The server is compatible with Python 2.7 and 3.x, CPython and PyPy.
+    The server is compatible with Python >= 3.8.
 
     Note: SCRABBLE is a registered trademark. This software or its author
     are in no way affiliated with or endorsed by the owners or licensees
@@ -78,7 +78,9 @@ import requests
 from languages import (
     Alphabet,
     current_alphabet,
+    current_board_type,
     set_locale,
+    set_game_locale,
     current_lc,
     SUPPORTED_LOCALES,
 )
@@ -124,21 +126,24 @@ running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
 if running_local:
     # Configure logging
-    dictConfig({
-        'version': 1,
-        'formatters': {'default': {
-            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-        }},
-        'handlers': {'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
-            'formatter': 'default'
-        }},
-        'root': {
-            'level': 'INFO',
-            'handlers': ['wsgi']
+    dictConfig(
+        {
+            'version': 1,
+            'formatters': {
+                'default': {
+                    'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+                }
+            },
+            'handlers': {
+                'wsgi': {
+                    'class': 'logging.StreamHandler',
+                    'stream': 'ext://flask.logging.wsgi_errors_stream',
+                    'formatter': 'default',
+                }
+            },
+            'root': {'level': 'INFO', 'handlers': ['wsgi']},
         }
-    })
+    )
 
 # Main Flask application instance
 app = Flask(__name__)
@@ -165,7 +170,9 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 # client_id and client_secret for Google Sign-In
 _CLIENT_ID = os.environ.get("CLIENT_ID", "")
 # Read client secret key from file
-with open(os.path.abspath(os.path.join("resources", "client_secret.txt")), "r") as f_txt:
+with open(
+    os.path.abspath(os.path.join("resources", "client_secret.txt")), "r"
+) as f_txt:
     _CLIENT_SECRET = f_txt.read().strip()
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
@@ -215,9 +222,7 @@ oauth = OAuth(app)
 oauth.register(
     name='google',
     server_metadata_url=OAUTH_CONF_URL,
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
+    client_kwargs={'scope': 'openid email profile'},
 )
 
 # To try to finish requests as soon as possible and avoid DeadlineExceeded
@@ -235,7 +240,7 @@ _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 MAX_ONLINE = 80
 
 # Set to True to make the single-page UI the default
-_SINGLE_PAGE_UI = False
+_SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "FALSE").upper() == "TRUE"
 
 # App Engine (and Firebase) project id
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
@@ -326,8 +331,7 @@ def session_user() -> Optional[User]:
     """Return the user who is authenticated in the current session, if any.
     This can be called within any Flask request."""
     u = None
-    user = session.get("userid")
-    if user is not None:
+    if (user := session.get("userid")) is not None:
         userid = user.get("id")
         u = User.load_if_exists(userid)
     return u
@@ -559,7 +563,9 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
     return jsonify(game.client_state(player_index))
 
 
-def fetch_users(ulist: Iterable[T], uid_func: Callable[[T], str]) -> Dict[str, User]:
+def fetch_users(
+    ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
+) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
     # Make a list of user ids by applying the uid_func to ulist entries (!= None)
     uids: List[str] = []
@@ -617,8 +623,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     # Get the list of online users
 
     # Start by looking in the cache
-    # !!! TODO: Cache the entire list including the user information,
-    # !!! only updating the favorite state (fav field) for the requesting user
+    # TBD: Cache the entire list including the user information,
+    # only updating the favorite state (fav field) for the requesting user
     online = memcache.get("live", namespace="userlist")
     if online is None:
         # Not found: do a query
@@ -642,6 +648,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             if lu and lu.is_displayable() and lu.id() != cuid:
                 # Don't display the current user in the online list
                 uid = lu.id()
+                if uid is None:
+                    continue
                 chall = uid in challenges
                 result.append(
                     {
@@ -696,6 +704,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             for au in ausers:
                 if au and au.is_displayable() and au.id() != cuid:
                     uid = au.id()
+                    if uid is None:
+                        continue
                     chall = uid in challenges
                     result.append(
                         {
@@ -740,6 +750,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
 
         for ud in si:
             uid = ud["id"]
+            if uid is None:
+                continue
             if uid == cuid:
                 # Do not include the current user, if any, in the list
                 continue
@@ -1063,41 +1075,45 @@ def _challengelist() -> List[Dict[str, Any]]:
         opponents = fetch_users(received + issued, lambda c: c[0])
         # List the received challenges
         for c in received:
-            u = opponents[c[0]]  # User id
-            nick = u.nickname()
-            result.append(
-                {
-                    "received": True,
-                    "userid": c[0],
-                    "opp": nick,
-                    "fullname": u.full_name(),
-                    "prefs": c[1],
-                    "ts": Alphabet.format_timestamp_short(c[2]),
-                    "opp_ready": False,
-                }
-            )
+            uid = c[0]  # User id
+            if uid is not None:
+                u = opponents[uid]
+                nick = u.nickname()
+                result.append(
+                    {
+                        "received": True,
+                        "userid": uid,
+                        "opp": nick,
+                        "fullname": u.full_name(),
+                        "prefs": c[1],
+                        "ts": Alphabet.format_timestamp_short(c[2]),
+                        "opp_ready": False,
+                    }
+                )
         # List the issued challenges
         for c in issued:
-            u = opponents[c[0]]  # User id
-            nick = u.nickname()
-            result.append(
-                {
-                    "received": False,
-                    "userid": c[0],
-                    "opp": nick,
-                    "fullname": u.full_name(),
-                    "prefs": c[1],
-                    "ts": Alphabet.format_timestamp_short(c[2]),
-                    "opp_ready": opp_ready(c),
-                }
-            )
+            uid = c[0]  # User id
+            if uid is not None:
+                u = opponents[uid]
+                nick = u.nickname()
+                result.append(
+                    {
+                        "received": False,
+                        "userid": uid,
+                        "opp": nick,
+                        "fullname": u.full_name(),
+                        "prefs": c[1],
+                        "ts": Alphabet.format_timestamp_short(c[2]),
+                        "opp_ready": opp_ready(c),
+                    }
+                )
     return result
 
 
 @app.route("/_ah/warmup")
 def warmup():
-    """ App Engine is starting a fresh instance - warm it up
-        by loading all vocabularies """
+    """App Engine is starting a fresh instance - warm it up
+    by loading all vocabularies"""
     ok = Wordbase.warmup()
     logging.info(
         "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
@@ -1146,6 +1162,9 @@ def submitmove():
     if game.player_id_to_move() != current_user_id():
         return jsonify(result=Error.WRONG_USER)
 
+    # Switch to the game's locale before processing the move
+    set_game_locale(game.locale)
+
     # Process the movestring
     # Try twice in case of timeout or other exception
     result = None
@@ -1179,7 +1198,7 @@ def gamestate():
     user_id = current_user_id()
     game = Game.load(uuid) if uuid else None
 
-    if not game:
+    if game is None:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
@@ -1188,6 +1207,9 @@ def gamestate():
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
         return jsonify(ok=False)
+
+    # Switch to the game's locale for the client state info
+    set_game_locale(game.locale)
 
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
@@ -1225,12 +1247,18 @@ def forceresign():
 
 @app.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
-def wordcheck():
+def wordcheck() -> str:
     """ Check a list of words for validity """
 
     rq = RequestData(request)
+    # If a locale is included in the request,
+    # use it within the current thread for the vocabulary lookup
+    locale: Optional[str] = rq.get("locale")
     words = rq.get_list("words")
     word = rq["word"]
+
+    if locale is not None:
+        set_game_locale(locale)
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -1240,7 +1268,7 @@ def wordcheck():
 
 @app.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamestats():
+def gamestats() -> str:
     """ Calculate and return statistics on a given finished game """
 
     rq = RequestData(request)
@@ -1257,12 +1285,15 @@ def gamestats():
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
 
+    # Switch to the game's locale
+    set_game_locale(game.locale)
+
     return jsonify(game.statistics())
 
 
 @app.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userstats():
+def userstats() -> str:
     """ Calculate and return statistics on a given user """
 
     cid = current_user_id()
@@ -1620,6 +1651,10 @@ def review() -> ResponseType:
         # The game is not found: abort
         return redirect(url_for("main"))
 
+    # Swith the current thread to the game's locale, overriding the
+    # user's locale settings - except for the language
+    set_game_locale(game.locale)
+
     try:
         move_number = int(request.args.get("move", "0"))
     except (TypeError, ValueError):
@@ -1672,7 +1707,7 @@ def bestmoves() -> Response:
     user = current_user()
     assert user is not None
 
-    # !!! TODO
+    # !!! FIXME
     if False:  # not user.has_paid():
         # User must be a paying friend
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
@@ -1686,6 +1721,9 @@ def bestmoves() -> Response:
     if game is None or not game.is_over():
         # The game is not found or still in progress: abort
         return jsonify(result=Error.GAME_NOT_FOUND)
+
+    # Switch to the game's locale
+    set_game_locale(game.locale)
 
     move_number = rq.get_int("move")
     if move_number > game.num_moves():
@@ -1738,6 +1776,7 @@ class UserForm:
         # user cookie, so there is no need for an intervening redirect
         # to logout().
         self.logout_url = url_for("logout")
+        self.unfriend_url = url_for("friend", action=2)
         if usr:
             self.init_from_user(usr)
         else:
@@ -1750,8 +1789,7 @@ class UserForm:
             self.fairplay = False  # Defaults to False, must be explicitly set to True
             self.newbag = False  # Defaults to False, must be explicitly set to True
             self.friend = False
-            # !!! TODO: Obtain default locale from Accept-Language and/or origin URL
-            self.locale = "is_IS"
+            self.locale = current_lc()
 
     def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
@@ -1926,26 +1964,24 @@ def saveuserprefs() -> ResponseType:
 def wait() -> ResponseType:
     """ Show page to wait for a timed game to start """
 
+    # !!! FIXME: Update wait logic for singlepage
     user = current_user()
     assert user is not None
 
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith("robot-"):
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
     if not found:
         # No challenge existed between the users: redirect to main page
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
     opp_user = User.load_if_exists(opp)
     if opp_user is None:
         # Opponent id not found
-        # !!! TODO: Update for singlepage
         return redirect(url_for("main"))
 
     # Notify the opponent of a change in the challenge list
@@ -1974,6 +2010,8 @@ def wait() -> ResponseType:
 def newgame() -> ResponseType:
     """ Show page to initiate a new game """
 
+    # Note: this code is not used in the single page UI
+
     user = current_user()
     assert user is not None
     uid = user.id()
@@ -1983,11 +2021,10 @@ def newgame() -> ResponseType:
     opp = request.args.get("opp", None)
 
     if opp is None:
-        # !!! TODO: Adapt for singlepage
         return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
 
     # Get the board type
-    board_type = request.args.get("board_type", "standard")
+    board_type = request.args.get("board_type", current_board_type())
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -1999,11 +2036,13 @@ def newgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        prefs = dict(
+            newbag=user.new_bag(),
+            locale=user.locale,
+        )
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
-        # !!! TODO: Adapt for singlepage
         return redirect(url_for("board", game=game.id()))
 
     # Start a new game between two human users
@@ -2011,7 +2050,6 @@ def newgame() -> ResponseType:
         # Timed game: load the opponent
         opp_user = User.load_if_exists(opp)
         if opp_user is None:
-            # !!! TODO: Adapt for singlepage
             return redirect(url_for("main"))
         # In this case, the opponent accepts the challenge
         found, prefs = opp_user.accept_challenge(uid)
@@ -2054,9 +2092,10 @@ def initgame() -> ResponseType:
     # Get the opponent id
     opp = rq.get("opp")
     if not opp:
+        # Unknown opponent
         return jsonify(ok=False)
 
-    board_type = rq.get("board_type", "standard")
+    board_type = rq.get("board_type", current_board_type())
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -2068,10 +2107,14 @@ def initgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        prefs = dict(
+            newbag=user.new_bag(),
+            locale=user.locale,
+        )
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
+        # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
 
     # Start a new game between two human users
@@ -2093,8 +2136,7 @@ def initgame() -> ResponseType:
     # Create a fresh game object
     game = Game.new(uid, opp, 0, prefs)
 
-    # Notify the opponent's main.html that there is a new game
-    # !!! board.html eventually needs to listen to this as well
+    # Notify the opponent's client that there is a new game
     msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
@@ -2103,7 +2145,7 @@ def initgame() -> ResponseType:
 
     firebase.send_message(msg)
 
-    # Go to the game page
+    # Return the uuid of the new game
     return jsonify(ok=True, uuid=game.id())
 
 
@@ -2155,6 +2197,10 @@ def board() -> ResponseType:
         if not game.has_player(uid):
             # This user is not a party to the game: redirect to main page
             return redirect(url_for("main"))
+
+    # Switch the current thread to the game's locale (i.e. not the
+    # user's locale, except for the language setting)
+    set_game_locale(game.locale)
 
     # user can be None if the game is over - we do not require a login in that case
     player_index = None if user is None else game.player_index(uid)
@@ -2418,7 +2464,7 @@ def page() -> ResponseType:
     assert user is not None
     uid = user.id() or ""
     firebase_token = firebase.create_custom_token(uid)
-    return render_template("page.html", user=user, firebase_token=firebase_token,)
+    return render_template("page.html", user=user, firebase_token=firebase_token)
 
 
 @app.route("/newbag")
@@ -2551,13 +2597,13 @@ def stats_ratings() -> ResponseType:
         return "Restricted URL", 403
     wait = True
     if cloud_scheduler:
-        logging.info("Running stats from cloud scheduler")
+        logging.info("Running ratings from cloud scheduler")
         # Run Cloud Scheduler tasks asynchronously
         wait = False
     elif task_queue:
-        logging.info(f"Running stats from queue {task_queue_name}")
+        logging.info(f"Running ratings from queue {task_queue_name}")
     elif cron_job:
-        logging.info("Running stats from cron job")
+        logging.info("Running ratings from cron job")
     result, status = skraflstats.ratings(request, wait=wait)
     if status == 200:
         # New ratings: ensure that old ones are deleted from cache

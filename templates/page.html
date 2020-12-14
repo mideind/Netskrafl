@@ -108,10 +108,11 @@ var $state = {
 
 </script>
 
-<!-- !!! TBD: Concatenate and minify the following scripts (plus mousetrap.min.js) -->
+<!-- !!! FIXME: Concatenate and minify the following scripts (plus mousetrap.min.js) -->
 <script src="{{ url_for('static', filename='js/channel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 <script src="{{ url_for('static', filename='js/page.js') }}"></script>
+<script src="{{ url_for('static', filename='js/util.js') }}"></script>
 
 <script src="{{ url_for('static', filename='js/DragDropTouch.js') }}"></script>
 
@@ -128,6 +129,27 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener("DOMContentLoaded", main); // main() is located in page.js
+
+// SalesCloud stuff
+function doRegisterSalesCloud(i,s,o,g,r,a,m) {
+  i.SalesCloudObject=r;
+  i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments);};
+  i[r].l=1*new Date();
+  a=s.createElement(o);
+  m=s.getElementsByTagName(o)[0];
+  a.src=g;
+  m.parentNode.insertBefore(a,m);
+}
+
+function registerSalesCloud() {
+  doRegisterSalesCloud(
+     window,
+     document,
+     'script',
+     'https://cdn.salescloud.is/js/salescloud.min.js',
+     'salescloud'
+  );
+}
 
 </script>
 

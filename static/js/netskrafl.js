@@ -299,7 +299,7 @@ var reloadInterval = null;
 function reloadPage() {
    window.clearInterval(reloadInterval);
    reloadInterval = null;
-   location.reload();
+   window.location.reload();
 }
 
 function calcTimeToGo(player) {
@@ -707,7 +707,7 @@ function appendMove(player, co, tiles, score) {
       // Normal tile move
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
-      tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+      tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
       tileMoveIncrement = 1;
    }
    /* Update the scores */
@@ -819,7 +819,7 @@ function appendBestMove(player, co, tiles, score) {
    var str;
    co = "(" + co + ")";
    // Note: String.replace will not work here since string may contain multiple '?' instances
-   tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+   tiles = tiles.split("?").join(""); /* To be done: Display wildcard characters differently? */
    if (player === 0) {
       /* Left side player */
       str = '<div class="leftmove">' +
@@ -864,7 +864,7 @@ function appendBestHeader(moveNumber, co, tiles, score) {
    if (co.length > 0) {
       // Regular move
       co = " (" + co + ")";
-      dispText = "<i>" + tiles.split("?").join("") + "</i>"; /* !!! TODO: Display wildcard characters differently? */
+      dispText = "<i>" + tiles.split("?").join("") + "</i>"; /* TBD: Display wildcard characters differently? */
    }
    else {
       /* Not a regular tile move */
@@ -2003,7 +2003,6 @@ function updateStats(json) {
       return;
    if (json.result !== 0 && json.result != GAME_OVER)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    setStat("gamestart", json);
    setStat("gameend", json);
@@ -2198,7 +2197,6 @@ function populateGames(json) {
       return;
    if (json.result !== 0)
       /* Probably out of sync or login required */
-      /* !!! TBD: Add error reporting here */
       return;
    var numGames = json.gamelist.length;
    // var numMyTurns = 0;
@@ -2231,7 +2229,7 @@ function populateGames(json) {
       // numMyTurns++;
    }
    // Show a red flag if there are pending games
-   // !!! TODO: implement this properly with a listening channel
+   // TBD: implement this properly with a listening channel
    // $("#tab-games").toggleClass("alert", numMyTurns !== 0);
 }
 
@@ -2544,12 +2542,12 @@ function initMediaListener() {
    mql = window.matchMedia("(min-width: 667px)");
    if (mql) {
       mediaMinWidth667(mql);
-      mql.addListener(mediaMinWidth667);
+      mql.addEventListener("change", mediaMinWidth667);
    }
    mql = window.matchMedia("(min-width: 768px)");
    if (mql) {
       mediaMinWidth768(mql);
-      mql.addListener(mediaMinWidth768);
+      mql.addEventListener("change", mediaMinWidth768);
    }
 }
 
@@ -2595,9 +2593,8 @@ function initSkrafl(jQuery) {
       $("h3.playerleft").addClass("humancolor");
       $("h3.playerright").addClass("autoplayercolor");
    }
-   if (gameIsFairplay())
-      // Display fair play indicator
-      $("div.fairplay").css("display", "block");
+   // Display fair play indicator
+   $("div.fairplay").css("visibility", gameIsFairplay() ? "visible" : "hidden");
    updateButtonState();
 
    // Prepare the dialog box that asks for the meaning of a blank tile

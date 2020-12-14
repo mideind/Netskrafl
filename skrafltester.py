@@ -147,7 +147,7 @@ def test_game(players, silent):
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(tileset=current_tileset(), drawtiles=True)
+    state = State(tileset=current_tileset(), drawtiles=True, board_type="standard")
 
     print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
@@ -217,7 +217,9 @@ def test_manual_game():
     """ Manual game test """
 
     # Initial, empty game state
-    state = State(tileset=NewTileSet, manual_wordcheck=True, drawtiles=True)
+    state = State(
+        tileset=NewTileSet, manual_wordcheck=True, drawtiles=True, board_type="standard"
+    )
 
     print("Manual game")
     print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))

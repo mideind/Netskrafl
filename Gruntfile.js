@@ -22,6 +22,7 @@ module.exports = function (grunt) {
                nonew: true,
                regexp: true,
                undef: true,
+               validthis: true,
                unused: false,
                maxlen: 120,
                predef: ['$', 'm', 'document', 'window', 'alert', 'console', 'Mousetrap',
@@ -88,7 +89,8 @@ module.exports = function (grunt) {
          development: {
             files: {
                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
-               'static/skrafl-desat.css': ['static/skrafl-desat.less']
+               'static/skrafl-desat.css': ['static/skrafl-desat.less'],
+               'static/skrafl-explo.css': ['static/skrafl-explo.less']
             },
             options: {
             }
@@ -96,7 +98,8 @@ module.exports = function (grunt) {
          production: {
             files: {
                'static/skrafl-curry.css': ['static/skrafl-curry.less'],
-               'static/skrafl-desat.css': ['static/skrafl-desat.less']
+               'static/skrafl-desat.css': ['static/skrafl-desat.less'],
+               'static/skrafl-explo.css': ['static/skrafl-explo.less']
             },
             options: {
                cleancss: true

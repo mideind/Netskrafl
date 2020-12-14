@@ -12,9 +12,7 @@
 
 */
 
-/*
-  global m:false, $state:false
-*/
+/* global m:false, $state:false */
 
 /* eslint-disable no-unused-vars */
 
@@ -179,49 +177,87 @@ var Game = (function() {
 
   var GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
-  var WORDSCORE = [
-    "311111131111113",
-    "121111111111121",
-    "112111111111211",
-    "111211111112111",
-    "111121111121111",
-    "111111111111111",
-    "111111111111111",
-    "311111121111113",
-    "111111111111111",
-    "111111111111111",
-    "111121111121111",
-    "111211111112111",
-    "112111111111211",
-    "121111111111121",
-    "311111131111113"
-  ];
-
-  var LETTERSCORE = [
-    "111211111112111",
-    "111113111311111",
-    "111111212111111",
-    "211111121111112",
-    "111111111111111",
-    "131113111311131",
-    "112111212111211",
-    "111211111112111",
-    "112111212111211",
-    "131113111311131",
-    "111111111111111",
-    "211111121111112",
-    "111111212111111",
-    "111113111311111",
-    "111211111112111"
-  ];
-
+  var BOARD = {
+    standard: {
+      WORDSCORE: [
+        "3      3      3",
+        " 2           2 ",
+        "  2         2  ",
+        "   2       2   ",
+        "    2     2    ",
+        "               ",
+        "               ",
+        "3      2      3",
+        "               ",
+        "               ",
+        "    2     2    ",
+        "   2       2   ",
+        "  2         2  ",
+        " 2           2 ",
+        "3      3      3"
+      ],
+      LETTERSCORE: [
+        "   2       2   ",
+        "     3   3     ",
+        "      2 2      ",
+        "2      2      2",
+        "               ",
+        " 3   3   3   3 ",
+        "  2   2 2   2  ",
+        "   2       2   ",
+        "  2   2 2   2  ",
+        " 3   3   3   3 ",
+        "               ",
+        "2      2      2",
+        "      2 2      ",
+        "     3   3     ",
+        "   2       2   "
+      ]
+    },
+    explo: {
+      WORDSCORE: [
+        "3      3      3",
+        "               ",
+        "  2         2  ",
+        "   2      2    ",
+        "    2          ",
+        "               ",
+        "      2      2 ",
+        "3      2      3",
+        "        2      ",
+        "            2  ",
+        "   2      2    ",
+        "           2   ",
+        "  2      2     ",
+        "      2      2 ",
+        "3      3      3"
+      ],
+      LETTERSCORE: [
+        "    2      2   ",
+        " 2   3  2    3 ",
+        "      2  2     ",
+        "   2   3       ",
+        "2          3  2",
+        " 3   2   3  2  ",
+        "  2       2    ",
+        "   3       2   ",
+        " 2             ",
+        "  2  3   2     ",
+        "      2      3 ",
+        "2   3  2      2",
+        "     2      2  ",
+        " 3        3    ",
+        "    2      2   "
+      ]
+    }
+  };
 
   function Game(uuid, game) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
     // console.log("Game " + uuid + " loaded");
-    this.zombie = false; // !!! TODO
+    this.zombie = false; // !!! FIXME
     this.gamelist = null; // No gamelist loaded yet
     this.messages = null;
     this.wordBad = false;
@@ -244,13 +280,19 @@ var Game = (function() {
     this.autoplayer = [false, false];
     this.scores = [0, 0];
     this.bag = "";
-    this.tileScores = {};
     this.locale = "is_IS";
     this.alphabet = "";
-    this.boardType = "standard";
     this.stats = null; // Game review statistics
     // Create a local storage object for this game
     this.localStorage = new LocalStorage(uuid);
+    // Note: the following attributes have Python naming conventions,
+    // since they are copied directly from JSON-encoded Python objects
+    this.tile_scores = {};
+    // Default to the standard board for the Icelandic locale
+    this.board_type = "standard";
+    this.centerSquare = "H8";
+    this.centerCoord = [7, 7]; // row, col
+    this.two_letter_words = [[], []];
     // Load previously saved tile positions from
     // local storage, if any
     var savedTiles = this.localStorage.loadTiles();
@@ -262,18 +304,19 @@ var Game = (function() {
 
   Game.prototype.init = function(game) {
     // Initialize the game state with data from the server
-    var key;
-    // !!! TODO: If the last move was by the opponent, highlight it
+    // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
     this.over = game.result == GAME_OVER;
-    if (this.over || !game.result)
+    if (this.over || game.result === 0)
       this.currentError = this.currentMessage = null;
     else {
-      this.currentError = game.result;
-      this.currentMessage = game.msg;
+      // Nonzero game.result: something is wrong
+      this.currentError = game.result || "server";
+      this.currentMessage = game.msg || "";
+      return;
     }
     // Copy game JSON properties over to this object
-    for (key in game)
+    for (var key in game)
       if (game.hasOwnProperty(key))
         this[key] = game[key];
     if (game.newmoves !== undefined && game.newmoves.length > 0)
@@ -283,10 +326,9 @@ var Game = (function() {
     this.newmoves = undefined;
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
-    this.tileScores = game.tile_scores;
-    this.locale = game.locale;
-    this.alphabet = game.alphabet;
-    this.boardType = game.board_type;
+    this.two_letter_words = game.two_letter_words || [[], []];
+    this.centerSquare = this.board_type == "explo" ? "C3" : "H8";
+    this.centerCoord = this.board_type == "explo" ? [2, 2] : [7, 7];
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)
@@ -300,13 +342,12 @@ var Game = (function() {
     // Update the game state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
-    var sq;
-    if (game.num_moves <= this.moves.length)
+    if (game.num_moves !== undefined && game.num_moves <= this.moves.length)
       // This is probably a starting notification from Firebase,
       // not adding a new move but repeating the last move made: ignore it
       return;
     // Stop highlighting the previous opponent move, if any
-    for (sq in this.tiles)
+    for (var sq in this.tiles)
       if (this.tiles.hasOwnProperty(sq))
         this.tiles[sq].freshtile = false;
     this.init(game);
@@ -336,7 +377,13 @@ var Game = (function() {
   };
 
   Game.prototype.tilescore = function(tile) {
-    return this.tileScores[tile];
+    // Note: The Python naming convention of tile_score is intentional
+    return this.tile_scores[tile];
+  };
+
+  Game.prototype.twoLetterWords = function() {
+    // Note: The Python naming convention of two_letter_words is intentional
+    return this.two_letter_words;
   };
 
   Game.prototype.loadGames = function() {
@@ -369,7 +416,7 @@ var Game = (function() {
         this.messages = result.messages || [];
       else
         this.messages = [];
-      // !!! TODO: The following is too simplistic;
+      // !!! FIXME: The following is too simplistic;
       // !!! we should check for a new message from the
       // !!! opponent that comes after the last message-seen
       // !!! marker
@@ -453,7 +500,7 @@ var Game = (function() {
     });
   };
 
-  Game.prototype.placeMove = function(player, co, tiles) {
+  Game.prototype.placeMove = function(player, co, tiles, highlight) {
     // Place an entire move into the tiles dictionary
     var vec = toVector(co);
     var col = vec.col;
@@ -471,7 +518,7 @@ var Game = (function() {
         tile = '?';
       var tscore = this.tilescore(tile);
       // Place the tile, if it isn't there already
-      if (!(sq in this.tiles))
+      if (!(sq in this.tiles)) {
         this.tiles[sq] = {
           player: player,
           tile: tile,
@@ -479,9 +526,17 @@ var Game = (function() {
           score: tscore,
           draggable: false,
           freshtile: false,
-          index: 0,
-          xchg: false
+          index: 0, // Index of this tile within the move, for animation purposes
+          xchg: false,
         };
+        if (highlight) {
+          // Highlight the tile
+          if (player == this.player)
+            this.tiles[sq].highlight = 0; // Local player color
+          else
+            this.tiles[sq].highlight = 1; // Remote player color
+        }
+      }
       col += vec.dx;
       row += vec.dy;
       nextBlank = false;
@@ -493,7 +548,7 @@ var Game = (function() {
     this.rack = rack;
   };
 
-  Game.prototype.placeTiles = function(move) {
+  Game.prototype.placeTiles = function(move, noHighlight) {
     // Make a tile dictionary for the game.
     // If move is given, it is an index of the
     // last move in the move list that should be
@@ -508,9 +563,10 @@ var Game = (function() {
       var co = mlist[i][1][0];
       var tiles = mlist[i][1][1];
       // var score = mlist[i][1][2];
-      // !!! TODO: handle successful challenges
+      // !!! FIXME: handle successful challenges
       if (co != "") {
-        this.placeMove(player, co, tiles);
+        var highlight = (move !== undefined) && (i == move - 1) && !noHighlight;
+        this.placeMove(player, co, tiles, highlight);
         this.numTileMoves++;
       }
     }
@@ -522,7 +578,7 @@ var Game = (function() {
         if (!(sq in this.tiles))
           throw "Tile from lastmove not in square " + sq;
         this.tiles[sq].freshtile = true;
-        this.tiles[sq].index = i;
+        this.tiles[sq].index = i; // Index of tile within move, for animation purposes
       }
     // Also put the rack tiles into this.tiles
     for (i = 0; i < this.rack.length; i++) {
@@ -658,6 +714,7 @@ var Game = (function() {
     ).then(
       function(result) {
         this.moveInProgress = false;
+        // The update() function also handles error results
         this.update(result);
       }.bind(this)
     ).catch(
@@ -933,7 +990,7 @@ var Game = (function() {
           {
             method: "POST",
             url: "/wordcheck",
-            body: { word: scoreResult.word, words: scoreResult.words }
+            body: { locale: this.locale, word: scoreResult.word, words: scoreResult.words }
           }
         ).then(
           function(result) {
@@ -948,11 +1005,40 @@ var Game = (function() {
   };
 
   Game.prototype.wordScore = function(row, col) {
-    return parseInt(WORDSCORE[row].charAt(col));
+    // Return the word score multiplier at the given coordinate
+    // on the game's board
+    var wsc = BOARD[this.board_type].WORDSCORE;
+    return parseInt(wsc[row].charAt(col)) || 1;
   };
 
   Game.prototype.letterScore = function(row, col) {
-    return parseInt(LETTERSCORE[row].charAt(col));
+    // Return the letter score multiplier at the given coordinate
+    // on the game's board
+    var lsc = BOARD[this.board_type].LETTERSCORE;
+    return parseInt(lsc[row].charAt(col)) || 1;
+  };
+
+  Game.prototype.squareType = function(row, col) {
+    // Return the square type, or "" if none
+    var wsc = this.wordScore(row, col);
+    if (wsc == 2)
+      return "dw"; // Double word
+    if (wsc == 3)
+      return "tw"; // Triple word
+    var lsc = this.letterScore(row, col);
+    if (lsc == 2)
+      return "dl"; // Double letter
+    if (lsc == 3)
+      return "tl"; // Triple letter
+    return ""; // Plain square
+  };
+
+  Game.prototype.squareClass = function(coord) {
+    // Given a coordinate in string form, return the square's type/class
+    if (!coord || coord[0] == "R")
+      return undefined;
+    var vec = toVector(coord);
+    return this.squareType(vec.row, vec.col) || undefined;
   };
 
   Game.prototype.tileAt = function(row, col) {
@@ -1030,7 +1116,9 @@ var Game = (function() {
     }
     if (this.numTileMoves === 0) {
       // First move that actually lays down tiles must go through center square
-      if (null === this.tileAt(7, 7))
+      var c = this.centerCoord;
+      if (null === this.tileAt(c[0], c[1]))
+        // No tile in the center square
         return undefined;
     }
     else

@@ -81,6 +81,7 @@ from languages import (
 # Type definitions
 IterTuple = Tuple[str, int]
 PrefixNodes = Tuple[IterTuple, ...]
+TwoLetterListTuple = Tuple[List[str], List[str]]
 
 
 class PackedDawgDictionary:
@@ -108,10 +109,6 @@ class PackedDawgDictionary:
             # Quickly gulp the file contents into the byte buffer
             with open(fname, mode="rb") as fin:
                 self._b = bytearray(fin.read())
-
-    def num_nodes(self) -> int:
-        """ Return a count of unique nodes in the DAWG """
-        return 0  # !!! TBD - maybe not required
 
     def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
@@ -177,7 +174,7 @@ class PackedDawgDictionary:
         assert self._b is not None
         Navigation(nav, self._b, self._alphabet).resume(prefix, nextnode, leftpart)
 
-    def two_letter_words(self) -> Tuple[List[str], List[str]]:
+    def two_letter_words(self) -> TwoLetterListTuple:
         """Return the two letter words in this DAWG,
         sorted by first letter and by second letter"""
         if not self._two_letter[0]:
@@ -206,6 +203,14 @@ class Wordbase:
     _dawg: Dict[str, PackedDawgDictionary] = dict()
 
     _lock = threading.Lock()
+
+    @staticmethod
+    def initialize() -> None:
+        """ Load all known dictionaries into memory """
+        with Wordbase._lock:
+            if not Wordbase._dawg:
+                for dawg, alphabet in Wordbase.DAWGS:
+                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
 
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
@@ -242,21 +247,13 @@ class Wordbase:
     @staticmethod
     def dawg_common():
         """ Return the common words DAWG object """
-        # !!! TODO: This is presently hardcoded for the Icelandic robot 'Amlóði'
+        # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Amlóði'
         return Wordbase._dawg["algeng"]
 
     @staticmethod
     def warmup() -> bool:
         """ Called from GAE instance initialization; add warmup code here if needed """
         return True
-
-    @staticmethod
-    def initialize() -> None:
-        """ Load all known dictionaries into memory """
-        with Wordbase._lock:
-            if not Wordbase._dawg:
-                for dawg, alphabet in Wordbase.DAWGS:
-                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
 
 
 Wordbase.initialize()
@@ -527,11 +524,11 @@ class Navigation:
                 offset += 4
             yield prefix, nextnode
 
-    @lru_cache(maxsize=32*1024)
+    @lru_cache(maxsize=32 * 1024)
     def _make_iter_from_node(self, offset: int) -> PrefixNodes:
         """Return an iterable over the prefixes and next node pointers
         of the edge at the given offset. This function is LRU cached,
-        storing up to 32k node-to-prefix-list associations. """
+        storing up to 32k node-to-prefix-list associations."""
         return tuple(self._iter_from_node(offset))
 
     def _navigate_from_node(self, offset: int, matched: str) -> None:

@@ -132,6 +132,7 @@ indexes:
   - name: human_elo
     direction: asc
   - name: highest_score
+  - name: inactive
 
 - kind: UserModel
   properties:
@@ -139,3 +140,4 @@ indexes:
   - name: human_elo
     direction: desc
   - name: highest_score
+  - name: inactive

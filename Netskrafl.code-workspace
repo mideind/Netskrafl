@@ -24,7 +24,7 @@
 		"[javascript]": {
 			"editor.tabSize": 2,
 		},
-		"python.pythonPath": "C:\\Python27\\python.exe",
+		"python.pythonPath": "C:\\Python37\\python.exe",
 		"python.formatting.blackArgs": ["-S"],
 		"python.autoComplete.extraPaths": [
 			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
@@ -36,5 +36,6 @@
 		"files.watcherExclude": {
 			"**/venv/**": true
 		},
+		"mypy.executable": "C:\\Users\\Notandi\\Documents\\Github\\Netskrafl\\venv\\scripts\\mypyls.exe",
 	}
 }

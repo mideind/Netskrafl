@@ -105,7 +105,6 @@ def _compute_elo(
     exp1 = q1 / (q0 + q1)
 
     # Represent the actual outcome
-    # !!! TBD: Use a more fine-grained representation incorporating the score difference?
     if sc0 > sc1:
         # Player 0 won
         act0 = 1.0

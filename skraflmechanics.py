@@ -30,10 +30,15 @@ from typing import List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
+from functools import cached_property
 
 from dawgdictionary import Wordbase
 from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
 
+# Type definitions
+SummaryTuple = Tuple[str, str, int]
+MoveSummaryTuple = Tuple[int, SummaryTuple]
+DetailTuple = Tuple[str, str, str, int]
 
 # Type definitions
 SummaryTuple = Tuple[str, str, int]
@@ -44,43 +49,86 @@ DetailTuple = Tuple[str, str, str, int]
 # _DEBUG_MANUAL_WORDCHECK = True
 _DEBUG_MANUAL_WORDCHECK = False
 
-# Board squares with word scores (1=normal/single, 2=double, 3=triple word score)
-_STANDARD_WORDSCORE = [
-    "311111131111113",
-    "121111111111121",
-    "112111111111211",
-    "111211111112111",
-    "111121111121111",
-    "111111111111111",
-    "111111111111111",
-    "311111121111113",
-    "111111111111111",
-    "111111111111111",
-    "111121111121111",
-    "111211111112111",
-    "112111111111211",
-    "121111111111121",
-    "311111131111113",
-]
+# Board squares with word/letter scores
+# ' '=normal/single, '2'=double, '3'=triple score
+_WSC = {
+    "standard": [
+        "3      3      3",
+        " 2           2 ",
+        "  2         2  ",
+        "   2       2   ",
+        "    2     2    ",
+        "               ",
+        "               ",
+        "3      2      3",
+        "               ",
+        "               ",
+        "    2     2    ",
+        "   2       2   ",
+        "  2         2  ",
+        " 2           2 ",
+        "3      3      3",
+    ],
+    "explo": [
+        "3      3      3",
+        "               ",
+        "  2         2  ",
+        "   2      2    ",
+        "    2          ",
+        "               ",
+        "      2      2 ",
+        "3      2      3",
+        "        2      ",
+        "            2  ",
+        "   2      2    ",
+        "           2   ",
+        "  2      2     ",
+        "      2      2 ",
+        "3      3      3",
+    ]
+}
 
-# Board squares with letter scores (1=normal/single, 2=double, 3=triple letter score)
-_STANDARD_LETTERSCORE = [
-    "111211111112111",
-    "111113111311111",
-    "111111212111111",
-    "211111121111112",
-    "111111111111111",
-    "131113111311131",
-    "112111212111211",
-    "111211111112111",
-    "112111212111211",
-    "131113111311131",
-    "111111111111111",
-    "211111121111112",
-    "111111212111111",
-    "111113111311111",
-    "111211111112111",
-]
+_LSC = {
+    "standard": [
+        "   2       2   ",
+        "     3   3     ",
+        "      2 2      ",
+        "2      2      2",
+        "               ",
+        " 3   3   3   3 ",
+        "  2   2 2   2  ",
+        "   2       2   ",
+        "  2   2 2   2  ",
+        " 3   3   3   3 ",
+        "               ",
+        "2      2      2",
+        "      2 2      ",
+        "     3   3     ",
+        "   2       2   ",
+    ],
+    "explo": [
+        "    2      2   ",
+        " 2   3  2    3 ",
+        "      2  2     ",
+        "   2   3       ",
+        "2          3  2",
+        " 3   2   3  2  ",
+        "  2       2    ",
+        "   3       2   ",
+        " 2             ",
+        "  2  3   2     ",
+        "      2      3 ",
+        "2   3  2      2",
+        "     2      2  ",
+        " 3        3    ",
+        "    2      2   ",
+    ],
+}
+
+# For each board type, convert the word and letter score strings to integer arrays
+_xlt = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
+_WORDSCORE = { key: _xlt(val) for key, val in _WSC.items() }
+_LETTERSCORE = { key: _xlt(val) for key, val in _LSC.items() }
 
 
 class Board:
@@ -92,9 +140,6 @@ class Board:
 
     # The rows are identified by letter
     ROWIDS = "ABCDEFGHIJKLMNO"
-
-    _wordscore = [[int(c) for c in row] for row in _STANDARD_WORDSCORE]
-    _letterscore = [[int(c) for c in row] for row in _STANDARD_LETTERSCORE]
 
     @staticmethod
     def short_coordinate(horiz, row, col):
@@ -118,14 +163,30 @@ class Board:
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
-            self._board_type = board_type
+            self._board_type = board_type or "standard"
         else:
             # Copy constructor: initialize from another Board
             self._letters = copy._letters[:]
             self._tiles = copy._tiles[:]
             self._numletters = copy._numletters
             self._numtiles = copy._numtiles
-            self._board_type = copy._board_type
+            self._board_type = copy._board_type or "standard"
+        self._wordscore = _WORDSCORE[self._board_type]
+        self._letterscore = _LETTERSCORE[self._board_type]
+
+    @cached_property
+    def start_square(self) -> Tuple[int, int]:
+        """ Return the starting square of this board as a (row, col) tuple """
+        if self._board_type == "explo":
+            # For 'explo', the starting square is C3
+            return (2, 2)
+        # For the standard board, the starting square is H8
+        return (Board.SIZE // 2, Board.SIZE // 2)
+
+    @property
+    def board_type(self) -> str:
+        """ Return the board type, i.e. 'standard' or 'explo' """
+        return self._board_type
 
     def is_empty(self):
         """ Is the board empty, i.e. contains no tiles? """
@@ -443,7 +504,7 @@ class State:
 
     def __init__(
         self,
-        tileset: Optional[Type[TileSet]],
+        tileset: Optional[Type[TileSet]] = None,
         manual_wordcheck: bool = False,
         drawtiles: bool = True,
         copy: Optional[State] = None,
@@ -453,7 +514,7 @@ class State:
 
         # pylint: disable=protected-access
         if copy is None:
-            self._board = Board()
+            self._board = Board(board_type=board_type)
             self._player_to_move = 0
             self._scores: List[int] = [0, 0]  # "Pure" scores from moves on the board
             # Adjustments (deltas) made at the end of the game
@@ -1200,13 +1261,12 @@ class Move(MoveBase):
         # Check that the play is adjacent to some previously placed tile
         # (unless this is the first move, i.e. the board is empty)
         if board.is_empty():
-            # Must go through the center square
-            center = False
+            # First tile move: must go through the starting square
+            ssq = board.start_square
             for c in self._covers:
-                if c.row == Board.SIZE // 2 and c.col == Board.SIZE // 2:
-                    center = True
+                if (c.row, c.col) == ssq:
                     break
-            if not center:
+            else:
                 return Error.FIRST_MOVE_NOT_IN_CENTER
         else:
             # Must be adjacent to something already on the board

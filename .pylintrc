@@ -337,10 +337,7 @@ logging-modules=logging
 [MISCELLANEOUS]
 
 # List of note tags to take in consideration, separated by a comma.
-notes=FIXME,
-      XXX,
-      TODO,
-      TBD
+notes=FIXME,XXX,TODO,TBD
 
 
 [SIMILARITIES]

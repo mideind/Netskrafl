@@ -72,7 +72,7 @@ from __future__ import annotations
 
 from typing import Optional, List, Tuple, Dict, cast
 
-from random import randint
+import random
 
 from dawgdictionary import Wordbase
 from languages import Alphabet, current_alphabet
@@ -701,14 +701,23 @@ class AutoPlayer:
         # (row or column) on the board separately
 
         if self._board.is_empty():
-            # Special case for first move: only consider the vertical
-            # central axis (any move played there can identically be
-            # played horizontally), and with only one anchor in the
-            # middle square
-            axis = self._axis_from_column(Board.SIZE // 2)
-            axis.init_crosschecks()
-            # Mark the center anchor
-            axis.mark_anchor(Board.SIZE // 2)
+            # Special case for first move: must pass through the starting
+            # square, which is an anchor. We choose randomly to find either
+            # horizontal or vertical moves. The move lists for both directions
+            # are identical, apart from the symmetrical reflection of the coordinates.
+            ssq_row, ssq_col = self.board().start_square
+            if random.choice((False, True)):
+                # Vertical move
+                axis = self._axis_from_column(ssq_col)
+                axis.init_crosschecks()
+                # Mark the starting anchor
+                axis.mark_anchor(ssq_row)
+            else:
+                # Horizontal move
+                axis = self._axis_from_row(ssq_row)
+                axis.init_crosschecks()
+                # Mark the starting anchor
+                axis.mark_anchor(ssq_col)
             axis.generate_moves(lpn)
         else:
             # Normal move: go through all 15 (row) + 15 (column) axes and generate
@@ -748,11 +757,11 @@ class AutoPlayer:
         def keyfunc(x):
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
-            # !!! TODO: Insert more sophisticated logic here,
-            # !!! including whether triple-word-score opportunities
-            # !!! are being opened for the opponent, minimal use
-            # !!! of blank tiles, leaving a good vowel/consonant
-            # !!! balance on the rack, etc.
+            # More sophisticated logic can be inserted here,
+            # including whether triple-word-score opportunities
+            # are being opened for the opponent, minimal use
+            # of blank tiles, leaving a good vowel/consonant
+            # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
@@ -794,7 +803,7 @@ class AutoPlayer:
         #    .format(picklist, top_equal, num_candidates))
         # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
         #    logging.info("Move {0} score {1}".format(m, sc))
-        return scored_candidates[top_equal + randint(0, picklist - 1)][0]
+        return scored_candidates[top_equal + random.randint(0, picklist - 1)][0]
 
     # pylint: disable=unused-argument
     def _find_best_move(self, depth):
@@ -850,7 +859,7 @@ class AutoPlayer_Common(AutoPlayer):
             # No playable move: give up and do an Exchange or Pass instead
             return None
         # Pick a move at random from the playable list
-        return playable_candidates[randint(0, p - 1)][0]
+        return playable_candidates[random.randint(0, p - 1)][0]
 
 
 class AutoPlayer_MiniMax(AutoPlayer):
@@ -875,8 +884,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # Only one legal move: play it
             return self._candidates[0]
 
-        # !!! TODO: Consider looking at exchange moves if there are
-        # !!! few and weak candidates
+        # TBD: Consider looking at exchange moves if there are
+        # few and weak candidates
 
         # Calculate the score of each candidate
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
@@ -884,11 +893,11 @@ class AutoPlayer_MiniMax(AutoPlayer):
         def keyfunc(x):
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
-            # !!! TODO: Insert more sophisticated logic here,
-            # !!! including whether triple-word-score opportunities
-            # !!! are being opened for the opponent, minimal use
-            # !!! of blank tiles, leaving a good vowel/consonant
-            # !!! balance on the rack, etc.
+            # More sophisticated logic could be inserted here,
+            # including whether triple-word-score opportunities
+            # are being opened for the opponent, minimal use
+            # of blank tiles, leaving a good vowel/consonant
+            # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
         def keyfunc_firstmove(x):
@@ -913,8 +922,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # Weigh top candidates by alpha-beta testing of potential
         # moves and counter-moves
 
-        # !!! TODO: In endgame, if we have moves that complete the game
-        # !!! (use all rack tiles) we need not consider opponent countermoves
+        # TBD: In the endgame, if we have moves that complete the game
+        # (use all rack tiles) we need not consider opponent countermoves
 
         NUM_TEST_RACKS = 20  # How many random test racks to try for statistical average
         NUM_CANDIDATES = 12  # How many top candidates do we look at with MiniMax?
@@ -931,14 +940,14 @@ class AutoPlayer_MiniMax(AutoPlayer):
             print("Candidate move {0} with raw score {1}".format(m, score))
 
             # Create a game state where the candidate move has been played
-            teststate = State(tileset=None, copy=self._state)  # Copy constructor
+            teststate = State(copy=self._state)  # Copy constructor
             teststate.apply_move(m)
 
             countermoves = list()
 
             if teststate.is_game_over():
                 # This move finishes the game. The opponent then scores nothing
-                # !!! TODO: (and in fact we get her tile score, but leave that aside here)
+                # (and in fact we get her tile score, but leave that aside here)
                 avg_score = 0.0
                 countermoves.append(0)
             else:
@@ -973,7 +982,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
                     sum_score += sc
                     countermoves.append(sc)
                 # Calculate the average score of the countermoves to this candidate
-                # !!! TODO: Maybe a median score is better than average?
+                # TBD: Maybe a median score is better than average?
                 avg_score = float(sum_score) / NUM_TEST_RACKS
 
             print(

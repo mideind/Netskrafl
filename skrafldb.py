@@ -63,7 +63,19 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Optional, Iterator, Iterable, List, Any, Union, Callable
+from typing import (
+    Dict,
+    Set,
+    Tuple,
+    Optional,
+    Iterator,
+    Iterable,
+    List,
+    Any,
+    Union,
+    Callable,
+    cast,
+)
 
 import logging
 import uuid
@@ -79,6 +91,8 @@ from cache import memcache
 # Type definitions
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
+ChallengeTuple = Tuple[Optional[str], Optional[PrefsDict], datetime]
+StatsResults = List[Dict[str, Union[None, str, int]]]
 
 
 class Client:
@@ -124,7 +138,10 @@ class Unique:
 
 
 def iter_q(
-    q: ndb.Query, chunk_size: int = 50, limit: int = 0, projection=None
+    q: ndb.Query,
+    chunk_size: int = 50,
+    limit: int = 0,
+    projection: Optional[List[str]] = None,
 ) -> Iterator:
     """ Generator for iterating through a query using a cursor """
     if 0 < limit < chunk_size:
@@ -168,6 +185,8 @@ class UserModel(ndb.Model):
     prefs = ndb.JsonProperty()
     # Creation time of the user entity
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    # Last login for the user
+    last_login = ndb.DateTimeProperty(required=False)
     # Ready for challenges?
     ready = ndb.BooleanProperty(required=False, default=False)
     # Ready for timed challenges?
@@ -176,6 +195,8 @@ class UserModel(ndb.Model):
     elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Elo points for human-only games
     human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    # Elo points for manual (competition) games
+    manual_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Best total score in a game
     highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Note: indexing of string properties is mandatory
@@ -208,6 +229,7 @@ class UserModel(ndb.Model):
         user.ready = False  # Not ready for new challenges unless explicitly set
         user.ready_timed = False  # Not ready for timed games unless explicitly set
         user.locale = locale or "is_IS"
+        user.last_login = datetime.utcnow()
         return user.put().id()
 
     @classmethod
@@ -271,8 +293,9 @@ class UserModel(ndb.Model):
 
     @classmethod
     def filter_locale(cls, q: ndb.Query, locale: Optional[str]) -> ndb.Query:
-        """ Filter the query by locale, if given, otherwise stay with the is_IS default """
-        # TODO: To be modified once locale support is fully in place
+        """Filter the query by locale, if given, otherwise stay
+        with the is_IS default"""
+        # FIXME: To be modified once locale support is fully in place
         return q
         # if locale is None:
         #     return q.filter(
@@ -291,7 +314,7 @@ class UserModel(ndb.Model):
             return
 
         prefix = prefix.lower()
-        id_set = set()
+        id_set: Set[str] = set()
 
         def list_q(
             q: ndb.Query, f: Callable[[UserModel], str]
@@ -313,6 +336,7 @@ class UserModel(ndb.Model):
                         ready=um.ready,
                         ready_timed=um.ready_timed,
                         human_elo=um.human_elo,
+                        manual_elo=um.manual_elo,
                     )
                     id_set.add(um.key.id())
 
@@ -352,9 +376,11 @@ class UserModel(ndb.Model):
             assert max_len > 0
             # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
-                if k.highest_score > 0:
-                    # Has played at least one game: Yield the key value
+            for k in iter_q(
+                q, chunk_size=max_len, projection=["highest_score", "inactive"]
+            ):
+                if k.highest_score > 0 and not k.inactive:
+                    # Is active and has played at least one game: Yield the key value
                     yield k.key.id()
                     counter += 1
                     if counter >= max_len:
@@ -471,6 +497,13 @@ class GameModel(ndb.Model):
     # Human-only Elo point adjustment as a result of this game
     human_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
     human_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    # Manual-only Elo points of both players when game finished
+    # (not defined unless this is a manual (competition) game)
+    manual_elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    manual_elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    # Manual-only Elo point adjustment as a result of this game
+    manual_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    manual_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """ Set a player key property to point to a given user, or None """
@@ -508,6 +541,7 @@ class GameModel(ndb.Model):
                 sc0, sc1 = gm.score0, gm.score1
                 elo_adj = gm.elo0_adj
                 human_elo_adj = gm.human_elo0_adj
+                manual_elo_adj = gm.manual_elo0_adj
             else:
                 # Player 1 is the source player, 0 is the opponent
                 assert u1 == user_id
@@ -515,6 +549,7 @@ class GameModel(ndb.Model):
                 sc1, sc0 = gm.score0, gm.score1
                 elo_adj = gm.elo1_adj
                 human_elo_adj = gm.human_elo1_adj
+                manual_elo_adj = gm.manual_elo1_adj
             return dict(
                 uuid=game_uuid,
                 ts=gm.timestamp,
@@ -525,6 +560,7 @@ class GameModel(ndb.Model):
                 sc1=sc1,
                 elo_adj=elo_adj,
                 human_elo_adj=human_elo_adj,
+                manual_elo_adj=manual_elo_adj,
                 prefs=gm.prefs,
             )
 
@@ -760,9 +796,7 @@ class ChallengeModel(ndb.Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(
-        cls, user_id: str, max_len=20
-    ) -> Iterator[Tuple[Optional[str], Optional[PrefsDict], datetime]]:
+    def list_issued(cls, user_id: str, max_len=20) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
@@ -771,7 +805,7 @@ class ChallengeModel(ndb.Model):
         # List issued challenges in ascending order by timestamp (oldest first)
         q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
-        def ch_callback(cm):
+        def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map an issued challenge to a tuple of useful info """
             id0 = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
@@ -780,7 +814,9 @@ class ChallengeModel(ndb.Model):
             yield ch_callback(cm)
 
     @classmethod
-    def list_received(cls, user_id, max_len=20):
+    def list_received(
+        cls, user_id: Optional[str], max_len: int = 20
+    ) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued to a particular user """
         assert user_id is not None
         if user_id is None:
@@ -789,7 +825,7 @@ class ChallengeModel(ndb.Model):
         # List received challenges in ascending order by timestamp (oldest first)
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
-        def ch_callback(cm):
+        def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map a received challenge to a tuple of useful info """
             p0 = cm.key.parent()
             id0 = None if p0 is None else p0.id()
@@ -812,15 +848,19 @@ class StatsModel(ndb.Model):
 
     games = ndb.IntegerProperty()
     human_games = ndb.IntegerProperty()
+    manual_games = ndb.IntegerProperty(required=False, default=0)
 
     elo = ndb.IntegerProperty(indexed=True, default=1200)
     human_elo = ndb.IntegerProperty(indexed=True, default=1200)
+    manual_elo = ndb.IntegerProperty(required=False, indexed=True, default=1200)
 
     score = ndb.IntegerProperty(indexed=False)
     human_score = ndb.IntegerProperty(indexed=False)
+    manual_score = ndb.IntegerProperty(required=False, indexed=False, default=0)
 
     score_against = ndb.IntegerProperty(indexed=False)
     human_score_against = ndb.IntegerProperty(indexed=False)
+    manual_score_against = ndb.IntegerProperty(required=False, indexed=False, default=0)
 
     wins = ndb.IntegerProperty(indexed=False)
     losses = ndb.IntegerProperty(indexed=False)
@@ -828,35 +868,44 @@ class StatsModel(ndb.Model):
     human_wins = ndb.IntegerProperty(indexed=False)
     human_losses = ndb.IntegerProperty(indexed=False)
 
+    manual_wins = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    manual_losses = ndb.IntegerProperty(required=False, indexed=False, default=0)
+
     MAX_STATS = 100
 
-    def set_user(self, user_id, robot_level=0):
+    def set_user(self, user_id: Optional[str], robot_level=0) -> None:
         """ Set the user key property """
         k = None if user_id is None else ndb.Key(UserModel, user_id)
         self.user = k
         self.robot_level = robot_level
 
     @classmethod
-    def create(cls, user_id, robot_level=0):
+    def create(cls, user_id: str, robot_level: int = 0) -> StatsModel:
         """ Create a fresh instance with default values """
         sm = cls()
         sm.set_user(user_id, robot_level)
         sm.timestamp = None
         sm.elo = 1200
         sm.human_elo = 1200
+        sm.manual_elo = 1200
         sm.games = 0
         sm.human_games = 0
+        sm.manual_games = 0
         sm.score = 0
         sm.human_score = 0
+        sm.manual_score = 0
         sm.score_against = 0
         sm.human_score_against = 0
+        sm.manual_score_against = 0
         sm.wins = 0
         sm.losses = 0
         sm.human_wins = 0
         sm.human_losses = 0
+        sm.manual_wins = 0
+        sm.manual_losses = 0
         return sm
 
-    def copy_from(self, src):
+    def copy_from(self, src: StatsModel) -> None:
         """ Copy data from the src instance """
         # user and robot_level are assumed to be in place already
         assert hasattr(self, "user")
@@ -864,38 +913,50 @@ class StatsModel(ndb.Model):
         self.timestamp = src.timestamp
         self.elo = src.elo
         self.human_elo = src.human_elo
+        self.manual_elo = src.manual_elo
         self.games = src.games
         self.human_games = src.human_games
+        self.manual_games = src.manual_games
         self.score = src.score
         self.human_score = src.human_score
+        self.manual_score = src.manual_score
         self.score_against = src.score_against
         self.human_score_against = src.human_score_against
+        self.manual_score_against = src.manual_score_against
         self.wins = src.wins
         self.losses = src.losses
         self.human_wins = src.human_wins
         self.human_losses = src.human_losses
+        self.manual_wins = src.manual_wins
+        self.manual_losses = src.manual_losses
 
-    def populate_dict(self, d):
+    def populate_dict(self, d: Dict[str, int]) -> None:
         """ Copy statistics data to the given dict """
         d["elo"] = self.elo
         d["human_elo"] = self.human_elo
+        d["manual_elo"] = self.manual_elo
         d["games"] = self.games
         d["human_games"] = self.human_games
+        d["manual_games"] = self.manual_games
         d["score"] = self.score
         d["human_score"] = self.human_score
+        d["manual_score"] = self.manual_score
         d["score_against"] = self.score_against
         d["human_score_against"] = self.human_score_against
+        d["manual_score_against"] = self.manual_score_against
         d["wins"] = self.wins
         d["losses"] = self.losses
         d["human_wins"] = self.human_wins
         d["human_losses"] = self.human_losses
+        d["manual_wins"] = self.manual_wins
+        d["manual_losses"] = self.manual_losses
 
     @staticmethod
-    def dict_key(d):
+    def dict_key(d: Dict[str, Any]) -> str:
         """ Return a dictionary key that works for human users and robots """
         if d["user"] is None:
             return "robot-" + str(d["robot_level"])
-        return d["user"]
+        return cast(str, d["user"])
 
     @staticmethod
     def user_id_from_key(k: Optional[str]) -> Tuple[Optional[str], int]:
@@ -905,7 +966,13 @@ class StatsModel(ndb.Model):
         return (k, 0)
 
     @classmethod
-    def _list_by(cls, prop, makedict, timestamp=None, max_len=MAX_STATS):
+    def _list_by(
+        cls,
+        prop: ndb.Property,
+        makedict: Callable[[StatsModel], Dict[str, Union[None, str, int]]],
+        timestamp: Optional[datetime] = None,
+        max_len: int = MAX_STATS,
+    ) -> StatsResults:
         """Returns the Elo ratings at the indicated time point (None = now),
         in descending order"""
 
@@ -924,9 +991,9 @@ class StatsModel(ndb.Model):
         # so we need to fetch irrespective of timestamp and manually filter
         q = cls.query().order(-prop)
 
-        result: Dict[str, Dict[str, int]] = dict()
+        result: Dict[str, Dict[str, Union[None, str, int]]] = dict()
         CHUNK_SIZE = 100
-        lowest_elo = None
+        lowest_elo: Optional[int] = None
 
         # The following loop may yield an incorrect result since there may
         # be newer stats records for individual users with lower Elo scores
@@ -943,11 +1010,14 @@ class StatsModel(ndb.Model):
                 # Within our time range
                 d = makedict(sm)
                 ukey = cls.dict_key(d)
-                if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
+                if (ukey not in result) or (
+                    cast(datetime, d["timestamp"])
+                    > cast(datetime, result[ukey]["timestamp"])
+                ):
                     # Fresh entry or newer (and also lower) than the previous one
                     result[ukey] = d
-                    if (lowest_elo is None) or (d["elo"] < lowest_elo):
-                        lowest_elo = d["elo"]
+                    if (lowest_elo is None) or cast(int, d["elo"]) < lowest_elo:
+                        lowest_elo = cast(int, d["elo"])
                     if len(result) >= max_fetch:
                         # We have all the requested entries: done
                         break  # From for loop
@@ -959,15 +1029,14 @@ class StatsModel(ndb.Model):
                 sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
                 assert sm is not None  # We should always have an entity here
                 nd = makedict(sm)
-                nd_ts = nd[
-                    "timestamp"
-                ]  # This may be None if a default record was created
-                if (nd_ts is not None) and nd_ts > d["timestamp"]:
+                # This may be None if a default record was created
+                nd_ts = cast(datetime, nd["timestamp"])
+                if (nd_ts is not None) and nd_ts > cast(datetime, d["timestamp"]):
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
-                    assert nd["elo"] <= d["elo"]
+                    assert cast(int, nd["elo"]) <= cast(int, d["elo"])
                     assert lowest_elo is not None
-                    if nd["elo"] < lowest_elo:
+                    if cast(int, nd["elo"]) < lowest_elo:
                         # The entry didn't belong on the list at all
                         false_pos += 1
                     # Replace the entry with the newer one (which will lower it)
@@ -988,17 +1057,21 @@ class StatsModel(ndb.Model):
                 max_len = 0
 
         # Sort in descending order by Elo, and finally rank and return the result
-        result_list = sorted(result.values(), key=lambda x: -x["elo"])[0:max_len]
+        result_list = sorted(result.values(), key=lambda x: -cast(int, x["elo"]))[
+            0:max_len
+        ]
         for ix, d in enumerate(result_list):
             d["rank"] = ix + 1
 
         return result_list
 
     @classmethod
-    def list_elo(cls, timestamp=None, max_len=MAX_STATS):
+    def list_elo(
+        cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
+    ) -> StatsResults:
         """ Return the top Elo-rated users for all games (including robots) """
 
-        def _makedict(sm):
+        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
             return dict(
                 user=None if sm.user is None else sm.user.id(),
                 robot_level=sm.robot_level,
@@ -1014,10 +1087,12 @@ class StatsModel(ndb.Model):
         return cls._list_by(StatsModel.elo, _makedict, timestamp, max_len)
 
     @classmethod
-    def list_human_elo(cls, timestamp=None, max_len=MAX_STATS):
+    def list_human_elo(
+        cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
+    ) -> StatsResults:
         """ Return the top Elo-rated users for human-only games """
 
-        def _makedict(sm):
+        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
             return dict(
                 user=None if sm.user is None else sm.user.id(),
                 robot_level=sm.robot_level,
@@ -1032,7 +1107,28 @@ class StatsModel(ndb.Model):
 
         return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
 
-    _NB_CACHE: Dict[Tuple[str, int], Dict[datetime, "StatsModel"]] = dict()
+    @classmethod
+    def list_manual_elo(
+        cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
+    ) -> StatsResults:
+        """ Return the top Elo-rated users for manual-only games """
+
+        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
+            return dict(
+                user=None if sm.user is None else sm.user.id(),
+                robot_level=sm.robot_level,
+                timestamp=sm.timestamp,
+                games=sm.manual_games,
+                elo=sm.manual_elo,
+                score=sm.manual_score,
+                score_against=sm.manual_score_against,
+                wins=sm.manual_wins,
+                losses=sm.manual_losses,
+            )
+
+        return cls._list_by(StatsModel.manual_elo, _makedict, timestamp, max_len)
+
+    _NB_CACHE: Dict[Tuple[str, int], Dict[datetime, StatsModel]] = dict()
     _NB_CACHE_STATS = dict(hits=0, misses=0)
 
     @classmethod

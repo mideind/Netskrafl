@@ -7,7 +7,7 @@
 # Deploy with 'gcloud beta app deploy --no-promote --version=newdb app.yaml'
 #
 
-runtime: python37
+runtime: python38
 entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
 
 instance_class: B4

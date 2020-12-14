@@ -2,7 +2,7 @@
 
 	Page.js
 
-	Single page UI for Netskrafl using the Mithril library
+	Single page UI for Explo using the Mithril library
 
   Copyright (C) 2020 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
@@ -18,10 +18,9 @@
 
 */
 
-/*
-  global m:false, Promise:false, $state:false, Game:false,
-  loginFirebase, attachFirebaseListener, detachFirebaseListener,
-  toVector, coord
+/* global m:false, Promise:false, $state:false, Game:false,
+   loginFirebase, attachFirebaseListener, detachFirebaseListener,
+   toVector, coord, registerSalesCloud, setTimeout, addPinchZoom
 */
 
 /* eslint-disable indent */
@@ -42,78 +41,6 @@ var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 var BOARD_PREFIX = "/board?game=";
 var BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
-
-var _TWO_LETTER_PAGE0 =
-  m(".twoletter-area[title='Smelltu til að raða eftir seinni staf']", 
-    m("span",
-      m.trust(
-        "<b>a</b>ð af ak al an ar as at ax<br>" +
-        "<b>á</b>a áð ái ál ám án ár ás át<br>" +
-        "<b>b</b>í bú bý bæ&nbsp;&nbsp; " +
-        "<b>d</b>á do dó dý<br>" +
-        "<b>e</b>ð ef eg ei ek el em en er es et ex ey<br>" +
-        "<b>é</b>g él ét&nbsp;&nbsp; " +
-        "<b>f</b>a fá fé fæ&nbsp;&nbsp; " +
-        "<b>g</b>á<br>" +
-        "<b>h</b>a há hí hó hý hæ&nbsp;&nbsp; " +
-        "<b>i</b>ð il im&nbsp;&nbsp; " +
-        "<b>í</b>ð íl ím ís<br>" +
-        "<b>j</b>á je jó jú&nbsp;&nbsp; " +
-        "<b>k</b>á ku kú&nbsp;&nbsp; " +
-        "<b>l</b>a lá lé ló lú lý læ<br>" +
-        "<b>m</b>á mi mó mý&nbsp;&nbsp; " +
-        "<b>n</b>á né nó nú ný næ<br>" +
-        "<b>o</b>f og oj ok op or<br>" +
-        "<b>ó</b>a óð óf ói ók ól óm ón óp ós óx<br>" +
-        "<b>p</b>í pu pú pæ&nbsp;&nbsp; " +
-        "<b>r</b>á re ré rí ró rú rý ræ<br>" +
-        "<b>s</b>á sé sí so sú sý sæ&nbsp;&nbsp; " +
-        "<b>t</b>á te té ti tí tó tý<br>" +
-        "<b>u</b>m un&nbsp;&nbsp; " +
-        "<b>ú</b>a úð úf úi úr út<br>" +
-        "<b>v</b>á vé ví vó&nbsp;&nbsp; " +
-        "<b>y</b>l ym yr ys<br>" +
-        "<b>ý</b>f ýg ýi ýk ýl ýr ýs ýt&nbsp;&nbsp; " +
-        "<b>þ</b>á þó þú þý<br>" +
-        "<b>æ</b>ð æf æg æi æl æp ær æs æt<br>" +
-        "<b>ö</b>l ör ös öt öx"
-        )
-    )
-  );
-
-var _TWO_LETTER_PAGE1 = 
-  m(".twoletter-area[title='Smelltu til að raða eftir fyrri staf']", 
-    m("span",
-      m.trust(
-        "á<b>a</b> fa ha la óa úa&nbsp;&nbsp;" +
-        "d<b>á</b> fá gá há<br>já ká lá má ná rá sá tá vá þá<br>" +
-        "a<b>ð</b> áð eð ið íð óð úð æð&nbsp;&nbsp;" +
-        "j<b>e</b> re te<br>" +
-        "f<b>é</b> lé né ré sé té vé&nbsp;" +
-        "a<b>f</b> ef of óf úf ýf æf<br>" +
-        "e<b>g</b> ég og ýg æg&nbsp;&nbsp;" +
-        "á<b>i</b> ei mi ói ti úi ýi æi<br>" +
-        "b<b>í</b> hí pí rí sí tí ví&nbsp;&nbsp;" +
-        "o<b>j</b>&nbsp;&nbsp;" +
-        "a<b>k</b> ek ok ók ýk<br>" +
-        "a<b>l</b> ál el él il íl ól yl ýl æl öl<br>" +
-        "á<b>m</b> em im ím óm um ym<br>" +
-        "a<b>n</b> án en ón un&nbsp;&nbsp;" +
-        "d<b>o</b> so<br>" +
-        "d<b>ó</b> hó jó ló mó nó ró tó vó þó<br>" +
-        "o<b>p</b> óp æp&nbsp;&nbsp;" +
-        "a<b>r</b> ár er or úr yr ýr ær ör<br>" +
-        "a<b>s</b> ás es ís ós ys ýs æs ös<br>" +
-        "a<b>t</b> át et ét út ýt æt öt<br>" +
-        "k<b>u</b> pu&nbsp;&nbsp;" +
-        "b<b>ú</b> jú kú lú nú pú rú sú þú<br>" +
-        "a<b>x</b> ex óx öx&nbsp;&nbsp;" +
-        "e<b>y</b><br>" +
-        "b<b>ý</b> dý hý lý mý ný rý sý tý þý<br>" +
-        "b<b>æ</b> fæ hæ læ næ pæ ræ sæ"
-      )
-    )
-  );
 
 function main() {
   // The main UI entry point, called from page.html
@@ -179,6 +106,10 @@ function createModel(settings) {
     reviewMove: null,
     // The best moves available at this stage, if reviewing game
     bestMoves: null,
+    // The index of the best move being highlighted, if reviewing game
+    highlightedMove: null,
+    // The current scaling of the board
+    boardScale: 1.0,
     // Model methods
     loadGame: loadGame,
     loadGameList: loadGameList,
@@ -198,12 +129,14 @@ function createModel(settings) {
     markFavorite: markFavorite,
     addChatMessage: addChatMessage,
     handleUserMessage: handleUserMessage,
-    handleMoveMessage: handleMoveMessage
+    handleMoveMessage: handleMoveMessage,
+    updateScale: updateScale,
+    resetScale: resetScale
   };
 
   function loadGame(uuid, funcComplete) {
     // Fetch a game state from the server, given a uuid
-    console.log("Initiating load of game " + uuid);
+    // console.log("Initiating load of game " + uuid);
     m.request({
       method: "POST",
       url: "/gamestate",
@@ -213,8 +146,10 @@ function createModel(settings) {
       this.game = null;
       this.reviewMove = null;
       this.bestMoves = null;
+      this.highlightedMove = null;
+      this.boardScale = 1.0;
       if (!result.ok) {
-        console.log("Game " + uuid + " could not be loaded");
+        // console.log("Game " + uuid + " could not be loaded");
       }
       else {
         this.game = new Game(uuid, result.game);
@@ -382,6 +317,7 @@ function createModel(settings) {
     if (!move) {
       this.reviewMove = null;
       this.bestMoves = null;
+      this.highlightedMove = null;
       this.game.setRack([]);
       this.game.placeTiles(0);
       return;
@@ -395,6 +331,7 @@ function createModel(settings) {
       body: { game: this.game.uuid, move: move }
     })
     .then(function(json) {
+      this.highlightedMove = null;
       if (!json || json.result !== 0) {
         this.reviewMove = null;
         this.bestMoves = null;
@@ -440,12 +377,12 @@ function createModel(settings) {
       if (activateSpinner)
         this.spinners--;
       if (!result.ok) {
-        console.log("Unable to load user preferences");
+        // console.log("Unable to load user preferences");
         this.user = null;
         this.userErrors = null;
       }
       else {
-        console.log("User preferences loaded");
+        // console.log("User preferences loaded");
         this.user = result.userprefs;
         this.userErrors = null;
       }
@@ -547,6 +484,60 @@ function createModel(settings) {
     }
   }
 
+  function resetScale() {
+    // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
+    this.boardScale = 1.0;
+    var board = document.getElementById("board");
+    if (board)
+      board.scrollTo(0, 0);
+  }
+
+  function updateScale() {
+
+    // Update the board scale (zoom)
+
+    function scrollIntoView(sq) {
+      // Scroll a square above and to the left of the placed tile into view
+      var offset = 3;
+      var vec = toVector(sq);
+      var row = Math.max(0, vec.row - offset);
+      var col = Math.max(0, vec.col - offset);
+      var c = coord(row, col);
+      var el = document.getElementById("sq_" + c);
+      var board = document.getElementById("board");
+      var elRect = el.getBoundingClientRect();
+      var boardRect = board.getBoundingClientRect();
+      board.scrollTo(
+        {
+          left: elRect.left - boardRect.left,
+          top: elRect.top - boardRect.top,
+          behavior: "smooth"
+        }
+      );
+    }
+
+    if (!this.game || $state.uiFullscreen || this.game.moveInProgress) {
+      // No game or we're in full screen mode: always 100% scale
+      // Also, as soon as a move is being processed by the server, we zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
+      return;
+    }
+    var tp = this.game.tilesPlaced();
+    var numTiles = tp.length;
+    if (numTiles == 1 && this.boardScale == 1.0) {
+      // Laying down first tile: zoom in & position
+      this.boardScale = 1.5;
+      setTimeout(scrollIntoView.bind(null, tp[0]));
+    }
+    else
+    if (numTiles == 0 && this.boardScale > 1.0) {
+      // Removing only remaining tile: zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
+    }
+  }
+
 }
 
 function createView() {
@@ -601,7 +592,6 @@ function createView() {
     // Display the appropriate content for the route,
     // also considering active dialogs
     var views = [];
-    var move;
     switch (model.routeName) {
       case "login":
         views.push(vwLogin.call(this, model, actions));
@@ -610,7 +600,7 @@ function createView() {
         views.push(vwMain.call(this, model, actions));
         break;
       case "game":
-        views.push(vwGame.call(this, model, actions));
+        views.push(vwGame.call(this, model));
         break;
       case "review":
         views.push(vwReview.call(this, model, actions));
@@ -626,7 +616,7 @@ function createView() {
         );
         break;
       default:
-        console.log("Unknown route name: " + model.routeName);
+        // console.log("Unknown route name: " + model.routeName);
         return m("div", "Þessi vefslóð er ekki rétt");
     }
     // Push any open dialogs
@@ -647,7 +637,7 @@ function createView() {
   // Dialog support
 
   function pushDialog(dialogName, dialogArgs) {
-    this.dialogStack.push({ name: dialogName, args : dialogArgs });
+    this.dialogStack.push({ name: dialogName, args: dialogArgs });
     m.redraw(); // Ensure that the dialog is shown
   }
 
@@ -731,7 +721,7 @@ function createView() {
     );
   }
 
-  function vwLogo() {
+  function vwNetskraflLogo() {
     // The Netskrafl logo
     return m(".logo",
       m(m.route.Link,
@@ -747,6 +737,46 @@ function createView() {
     );
   }
 
+  function ExploLogo(initialVnode) {
+
+    // The Explo logo, with or without the legend ('explo')
+
+    var scale = initialVnode.attrs.scale || 1.0;
+    var legend = initialVnode.attrs.legend;
+
+    return {
+      view: function(vnode) {
+        return m("img",
+          legend ?
+            {
+              alt: 'Explo',
+              width: 89 * scale, height: 40 * scale,
+              src: '/static/explo-logo.svg'
+            }
+          :
+            {
+              alt: 'Explo',
+              width: 23 * scale, height: 40 * scale,
+              src: '/static/explo-logo-only.svg'
+            }
+        );
+      }
+    };
+  }
+
+  function LeftLogo(initialVnode) {
+    return {
+      view: function(vnode) {
+        return m(".logo",
+          m(m.route.Link,
+            { href: '/main', class: "nodecorate" },
+            m(ExploLogo, { legend: false, scale: 1.5 })
+          )
+        );
+      }
+    };
+  }
+
   // Login screen
 
   function vwLogin(model, actions) {
@@ -755,13 +785,13 @@ function createView() {
     function vwLoginLarge() {
       // Full screen version of login page
       return [
-        vwLogo(),
+        vwNetskraflLogo(),
         vwInfo(),
         m(".loginform-large",
         [
           m(".loginhdr", "Velkomin í Netskrafl!"),
           m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-          m("div", { id: 'board-pic' }, 
+          m("div", { id: "board-pic" },
             m("img",
               {
                 width: 310, height: 300,
@@ -772,7 +802,7 @@ function createView() {
           m(".welcome",
             [
               "Netskrafl er vettvangur ",
-              m("b", "yfir 16.000 íslenskra skraflara"),
+              m("b", "yfir 20.000 íslenskra skraflara"),
               " á netinu."
             ]
           ),
@@ -803,7 +833,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = "/login"; // !!! TODO: FIXME
+                  window.location.href = "/page";
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
@@ -818,7 +848,7 @@ function createView() {
       return m(".loginform-small",
         [
           m("div", 
-            { id: 'logo-pic' }, 
+            { id: "logo-pic" },
             m("img",
               {
                 height: 375, width: 375,
@@ -832,7 +862,7 @@ function createView() {
               {
                 type: 'submit',
                 onclick: function(ev) {
-                  window.location.href = "/login"; // !!! TODO: FIXME
+                  window.location.href = "/page";
                 }
               },
               [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
@@ -894,7 +924,8 @@ function createView() {
 
     // Output literal HTML obtained from rawhelp.html on the server
     return [
-      vwLogo(),
+      // vwNetskraflLogo(),
+      m(LeftLogo),
       vwUserId.call(this),
       m("main",
         vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
@@ -942,7 +973,7 @@ function createView() {
       return [
         m("input.checkbox." + id,
           {
-            type: 'checkbox',
+            type: "checkbox",
             id: id,
             name: id,
             checked: state,
@@ -951,7 +982,7 @@ function createView() {
         ),
         m(".toggler",
           {
-            id: id + '-toggler',
+            id: id + "-toggler",
             tabindex: tabindex,
             onclick: function(ev) {
               doToggle(id + "-toggler", func);
@@ -996,7 +1027,7 @@ function createView() {
 
     return m(".modal-dialog",
       {
-        id: 'user-dialog',
+        id: "user-dialog",
         oncreate: initFocus
         // onupdate: initFocus
       },
@@ -1127,14 +1158,17 @@ function createView() {
             [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
             vwDialogButton("user-unfriend", "Hætta sem vinur",
-              function(ev) { /* !!! TBD */ },
+              function(ev) {
+                window.location.href = user.unfriend_url;
+                ev.preventDefault();
+              },
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ], 12
             )
           :
             vwDialogButton("user-friend", "Gerast vinur",
               function(ev) {
                 // Invoke the friend promo dialog
-                this.pushDialog("promo", { key: "friend" });
+                this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
               }.bind(view),
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
@@ -1169,7 +1203,8 @@ function createView() {
       {
         model: model,
         view: this,
-        key: args.key
+        kind: args.kind,
+        initFunc: args.initFunc
       }
     );
   }
@@ -1885,7 +1920,12 @@ function createView() {
           nothingFound ?
             m("div",
                 { id: "user-no-match", style: { display: "block" } },
-                [ glyph("search"), " ", m("span", { id: "search-prefix" }, model.userListCriteria.spec), " finnst ekki" ]
+                [
+                  glyph("search"),
+                  " ",
+                  m("span", { id: "search-prefix" }, model.userListCriteria.spec),
+                  " finnst ekki"
+                ]
               )
             : ""
         ];
@@ -1987,7 +2027,8 @@ function createView() {
     }
 
     return [
-      vwLogo(),
+      // vwNetskraflLogo(),
+      m(LeftLogo), // No legend, scale up by 50%
       vwUserId.call(this),
       vwInfo(),
       m("main",
@@ -2062,7 +2103,7 @@ function createView() {
 
   // Game screen
 
-  function vwGame(model, actions) {
+  function vwGame(model) {
     // A view of a game, in-progress or finished
 
     var game = model.game;
@@ -2079,25 +2120,22 @@ function createView() {
         var sc0 = game ? game.scores[0].toString() : "";
         var sc1 = game ? game.scores[1].toString() : "";
         return m(".heading",
-          {
-            // On mobile only: If the header is clicked, go to the main screen
-            onclick: function(ev) {
-              if (!$state.uiFullscreen) m.route.set("/main");
-            }
-          },
           [
-            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-              vwPlayerName(view, game, "left")),
-            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-              vwPlayerName(view, game, "right")),
-            m("h3.scoreleft", sc0),
-            m("h3.scoreright", sc1),
+            m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".player", vwPlayerName(view, game, "left")),
+              m(".scoreleft", sc0),
+            ]),
+            m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".player", vwPlayerName(view, game, "right")),
+              m(".scoreright", sc1),
+            ]),
             m("h3.clockleft"),
             m("h3.clockright"),
             m(".clockface", glyph("time")),
             m(".fairplay",
-              fairplay ? { style: { display: "block" } } : { },
+              { style: { visibility: fairplay ? "visible" : "hidden" } },
               m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+            // m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
           ]
         );
       }
@@ -2107,27 +2145,113 @@ function createView() {
         var sel = (game && game.sel) ? game.sel : "movelist";
         // Show the chat tab unless the opponent is an autoplayer
         var component = null;
-        if (sel == "movelist")
-          component = vwMovelist.call(view, game);
-        else
-        if (sel == "twoletter")
-          component = m(vwTwoLetter);
-        else
-        if (sel == "chat")
-          component = vwChat(game);
-        else
-        if (sel == "games")
-          component = vwGames(game);
+        switch (sel) {
+          case "movelist":
+            component = vwMovelist.call(view, game);
+            break;
+          case "twoletter":
+            component = m(vwTwoLetter, { data: game.twoLetterWords() } );
+            break;
+          case "chat":
+            component = vwChat(game);
+            break;
+          case "games":
+            component = vwGames(game);
+            break;
+          default:
+            break;
+        }
         var tabgrp = vwTabGroup(game);
         return m(".right-area", component ? [ tabgrp, component ] : [ tabgrp ]);
       }
 
-      return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
+      function vwRightMessage() {
+        // Display a status message in the mobile UI
+        var s = buttonState(game);
+        var msg = "";
+        var player = game.player;
+        var opp = game.nickname[1 - player];
+        if (game.moves.length == 0) {
+          // Initial move
+          msg = [m("strong", "You start!"), " Cover the asterisk with your move."];
+          return m(".message", msg);
+        }
+        var move = game.moves[game.moves.length - 1];
+        var mtype = move[1][1];
+        if (s.congratulate) {
+          // This player won
+          if (mtype == "RSGN")
+            msg = [m("strong", [opp, " resigned!"]), " Congratulations."];
+          else
+            msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
+        }
+        else
+        if (s.gameOver) {
+          // This player lost
+          msg = "Game over!";
+        }
+        else
+        if (!s.localTurn) {
+          // It's the opponent's turn
+          msg = ["It's ", opp, "'s turn. Plan your next move!"];
+        }
+        else
+        if (s.tilesPlaced > 0) {
+          if (game.currentScore === undefined)
+            msg = "Tiles must be consecutive.";
+          else
+          if (game.wordGood === false) {
+            msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
+          }
+          else {
+            msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
+          }
+        }
+        else {
+          var co = move[1][0];
+          var tiles = mtype;
+          var score = move[1][2];
+          if (co == "") {
+            // Not a regular tile move
+            if (tiles == "PASS")
+              msg = [opp, " passed."];
+            else
+            if (tiles.indexOf("EXCH") === 0) {
+              var numtiles = tiles.slice(5).length;
+              msg = [
+                opp, " exchanged ",
+                numtiles.toString(),
+                (numtiles == 1 ? " tile" : " tiles"),
+                "."
+              ];
+            }
+            else
+            if (tiles == "CHALL")
+              msg = [opp, " challenged your move."];
+            else
+            if (tiles == "RESP") {
+              if (score < 0)
+                msg = [opp, " successfully challenged your move."];
+              else
+                msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
+            }
+          }
+          else {
+            // Regular tile move
+            tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
+            msg = [opp, " played ", m("strong", tiles),
+              " for ", m("strong", score.toString()), " points"];
+          }
+        }
+        return m(".message", msg);
+      }
+
+      return m(".rightcol", [ vwRightHeading(), vwRightArea(), vwRightMessage() ]);
     }
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
+      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2149,29 +2273,54 @@ function createView() {
         },
         ondrop: function(ev) {
           ev.stopPropagation();
-          // Move the tile from the source to the destination
+          // Move the tile from the board back to the rack
           var from = ev.dataTransfer.getData("text");
           // Move to the first available slot in the rack
           game.attemptMove(from, "R1");
+          model.updateScale();
           return false;
         }
       },
       [
-        vwBack(),
-        $state.beginner ? vwBeginner(game) : "",
-        vwInfo(),
+        // The main game area
         m("main",
           m(".game-container",
             [
-              vwBoardArea(game),
+              m(MobileHeader),
               vwRightColumn(),
-              vwBag(bag, newbag),
-              game.askingForBlank ? vwBlankDialog(game) : ""
+              m(BoardArea, { model: model }),
+              $state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
+              game.askingForBlank ? m(BlankDialog, { game: game }) : ""
             ]
           )
-        )
+        ),
+        // The left margin stuff: back button, square color help, info/help button
+        m(BackButton),
+        $state.beginner ? vwBeginner(game) : "",
+        vwInfo()
       ]
     );
+  }
+
+  function MobileHeader(initialVnode) {
+    // The header on a mobile screen
+    return {
+      view: function(vnode) {
+        return m(".header", [
+            m(".header-logo",
+              m(m.route.Link,
+                {
+                  href: "/page",
+                  class: "backlink"
+                },
+                m(ExploLogo, { legend: true, scale: 1.0 })
+              )
+            ),
+            m(".header-button")
+          ]
+        );
+      }
+    };
   }
 
   // Review screen
@@ -2190,10 +2339,10 @@ function createView() {
       function vwRightHeading() {
         // The right-side heading on the game screen
 
-        var fairplay = game ? game.fairplay : false;
-        var player = game ? game.player : 0;
-        var sc0 = game ? game.scores[0].toString() : "";
-        var sc1 = game ? game.scores[1].toString() : "";
+        var fairplay = game.fairplay;
+        var player = game.player;
+        var sc0 = game.scores[0].toString();
+        var sc1 = game.scores[1].toString();
         return m(".heading",
           {
             // On mobile only: If the header is clicked, go to the main screen
@@ -2202,14 +2351,18 @@ function createView() {
             }
           },
           [
-            m("h3.playerleft" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-              vwPlayerName(view, game, "left")),
-            m("h3.playerright" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-              vwPlayerName(view, game, "right")),
-            m("h3.scoreleft", sc0),
-            m("h3.scoreright", sc1),
+            m(".leftplayer", [
+              m(".player" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
+                vwPlayerName(view, game, "left")),
+              m(".scoreleft", sc0),
+            ]),
+            m(".rightplayer", [
+              m(".player" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
+                vwPlayerName(view, game, "right")),
+              m(".scoreright", sc1),
+            ]),
             m(".fairplay",
-              fairplay ? { style: { display: "block" } } : { },
+              { style: { visibility: fairplay ? "visible" : "hidden" } },
               m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
           ]
         );
@@ -2217,7 +2370,7 @@ function createView() {
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", vwBestMoves.call(view, game, move, bestMoves));
+        return m(".right-area", vwBestMoves.call(view, model, move, bestMoves));
       }
 
       return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
@@ -2225,25 +2378,23 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ vwBack(), m("main", m(".game-container")) ]);
+      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
 
-    var bag = game ? game.bag : "";
-    var newbag = game ? game.newbag : true;
     // Create a list of major elements that we're showing
     var r = [];
-    r.push(vwBoardReview(game, move));
     r.push(vwRightColumn());
+    r.push(m(BoardReview, { model: model, move: move }));
     if (move === null)
       // Only show the stats overlay if move is null.
       // This means we don't show the overlay if move is 0.
       r.push(vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
-        vwBack(), // Button to go back to main screen
-        vwInfo(), // Help button
         m("main",
           m(".game-container", r)
-        )
+        ),
+        m(BackButton), // Button to go back to main screen
+        vwInfo() // Help button
       ]
     );
   }
@@ -2460,16 +2611,17 @@ function createView() {
       var leftTotal = 0;
       var rightTotal = 0;
       for (var i = 0; i < mlist.length; i++) {
-        var player = mlist[i][0];
-        var co = mlist[i][1][0];
-        var tiles = mlist[i][1][1];
-        var score = mlist[i][1][2];
+        var move = mlist[i];
+        var player = move[0];
+        var co = move[1][0];
+        var tiles = move[1][1];
+        var score = move[1][2];
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
           rightTotal = Math.max(rightTotal + score, 0);
         r.push(
-          vwMove.call(view, game, mlist[i],
+          vwMove.call(view, game, move,
             {
               key: i.toString(),
               leftTotal: leftTotal, rightTotal: rightTotal,
@@ -2491,15 +2643,16 @@ function createView() {
           },
           movelist()
         ),
-        vwBag(bag, newbag) // Visible on mobile
+        !$state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
       ]
     );
   }
 
-  function vwBestMoves(game, move, bestMoves) {
+  function vwBestMoves(model, move, bestMoves) {
     // List of best moves, in a game review
 
     var view = this;
+    var game = model.game;
 
     function bestHeader(co, tiles, score) {
       // Generate the header of the best move list
@@ -2580,7 +2733,7 @@ function createView() {
         tiles = mlist[i][1][1];
         score = mlist[i][1][2];
         r.push(
-          vwBestMove.call(view, game, mlist[i],
+          vwBestMove.call(view, model, move, i, mlist[i],
             {
               key: i.toString(),
               player: player, co: co, tiles: tiles, score: score
@@ -2650,18 +2803,21 @@ function createView() {
     var rightTotal = info.rightTotal;
 
     function gameOverMove(tiles) {
+      // Add a 'game over' div at the bottom of the move list
+      // of a completed game. The div includes a button to
+      // open a review of the game, if the user is a friend of Explo.
       return m(".move.gameover",
         [
           m("span.gameovermsg", tiles),
           m("span.statsbutton",
             {
               onclick: function(uuid, ev) {
-                if (true || $state.hasPaid) // !!! TODO
+                if (true || $state.hasPaid) // !!! FIXME
                   // Show the game review
                   m.route.set("/review/" + uuid);
                 else
                   // Show a friend promotion dialog
-                  this.pushDialog("promo", { key: "friend" });
+                  this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
                 ev.preventDefault();
               }.bind(view, game.uuid)
             },
@@ -2731,7 +2887,7 @@ function createView() {
       // Normal tile move
       co = "(" + co + ")";
       // Note: String.replace() will not work here since there may be two question marks in the string
-      tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+      tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
       tileMoveIncrement = 1;
     }
     if (wrdclass == "gameover")
@@ -2742,7 +2898,7 @@ function createView() {
     var playerColor = "0";
     var lcp = game.player;
     var cls;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! TBD: Check -1 case
+    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2785,45 +2941,81 @@ function createView() {
     }
   }
 
-  function vwBestMove(game, move, info) {
+  function vwBestMove(model, moveIndex, bestMoveIndex, move, info) {
     // Displays a move in a list of best available moves
 
     var view = this;
-
-    function highlightMove(co, tiles, playerColor, show) {
-       /* Highlight a move's tiles when hovering over it in the move list */
-       var vec = toVector(co);
-       var col = vec.col;
-       var row = vec.row;
-       for (var i = 0; i < tiles.length; i++) {
-          var tile = tiles[i];
-          if (tile == '?')
-             continue;
-          var sq = coord(row, col);
-          if (game.tiles[sq] !== undefined)
-            game.tiles[sq].highlight = show ? playerColor : undefined;
-          col += vec.dx;
-          row += vec.dy;
-       }
-    }
-
+    var game = model.game;
     var player = info.player;
     var co = info.co;
     var tiles = info.tiles;
     var score = info.score;
+
+    function highlightMove(co, tiles, playerColor, show) {
+      /* Highlight a move's tiles when hovering over it in the best move list */
+      var vec = toVector(co);
+      var col = vec.col;
+      var row = vec.row;
+      var nextBlank = false;
+      // If we're highlighting a move, show all moves leading up to it on the board
+      if (show) {
+        model.highlightedMove = bestMoveIndex;
+        game.placeTiles(moveIndex - 1, true); // No highlight
+      }
+      for (var i = 0; i < tiles.length; i++) {
+        var tile = tiles[i];
+        if (tile == "?") {
+          nextBlank = true;
+          continue;
+        }
+        var sq = coord(row, col);
+        var letter = tile;
+        if (nextBlank)
+          tile = '?';
+        var tscore = game.tilescore(tile);
+        if (show) {
+          if (!(sq in game.tiles)) {
+            // Showing a tile that was not already on the board
+            game.tiles[sq] = {
+              player: player,
+              tile: tile,
+              letter: letter,
+              score: tscore,
+              draggable: false,
+              freshtile: false,
+              index: 0,
+              xchg: false,
+              review: true, // Mark as a 'review tile'
+              highlight: playerColor
+            };
+          }
+          else {
+            // Highlighting a tile that was already on the board
+            game.tiles[sq].highlight = playerColor;
+          }
+        }
+        col += vec.dx;
+        row += vec.dy;
+        nextBlank = false;
+      }
+      if (!show) {
+        model.highlightedMove = null;
+        game.placeTiles(model.reviewMove);
+      }
+    }
 
     // Add a single move to the move list
     var rawCoord = co;
     // Normal tile move
     co = "(" + co + ")";
     // Note: String.replace() will not work here since there may be two question marks in the string
-    tiles = tiles.split("?").join(""); /* !!! TODO: Display wildcard characters differently? */
+    var word = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
     // Normal game move
     var title = "Smelltu til að fletta upp";
     var playerColor = "0";
     var lcp = game.player;
     var cls;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! TBD: Check -1 case
+    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2831,22 +3023,22 @@ function createView() {
     }
     var attribs = { title: title };
     // Word lookup
-    attribs.onclick = function() { window.open('http://malid.is/leit/' + tiles, 'malid'); };
+    attribs.onclick = function() { window.open('http://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
-    attribs.onmouseout = function() {
-      move.highlighted = false;
-      highlightMove(rawCoord, tiles, playerColor, false);
-    };
-    attribs.onmouseover = function() {
+    attribs.onmouseover = function(move) {
       move.highlighted = true;
       highlightMove(rawCoord, tiles, playerColor, true);
-    };
+    }.bind(null, move);
+    attribs.onmouseout = function(move) {
+      move.highlighted = false;
+      highlightMove(rawCoord, tiles, playerColor, false);
+    }.bind(null, move);
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
           m("span.score" + (move.highlighted ? ".highlight" : ""), score),
-          m("span.wordmove", [ m("i", tiles), nbsp(), co ])
+          m("span.wordmove", [ m("i", word), nbsp(), co ])
         ]
       );
     }
@@ -2854,7 +3046,7 @@ function createView() {
       // Move by right side player
       return m(".move.rightmove." + cls, attribs,
         [
-          m("span.wordmove", [ co, nbsp(), m("i", tiles) ]),
+          m("span.wordmove", [ co, nbsp(), m("i", word) ]),
           m("span.score" + (move.highlighted ? ".highlight" : ""), score)
         ]
       );
@@ -2915,14 +3107,13 @@ function createView() {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  function vwBag(bag, newbag) {
+  function Bag(initialVnode) {
     // The bag of tiles
-    var lenbag = bag.length;
 
-    function tiles() {
+    function tiles(bag) {
       var r = [];
       var ix = 0;
-      var count = lenbag;
+      var count = bag.length;
       while (count > 0) {
         // Rows
         var cols = [];
@@ -2940,26 +3131,40 @@ function createView() {
       return r;
     }
 
-    var cls = "";
-    if (lenbag <= RACK_SIZE)
-      cls += ".empty";
-    else
-    if (newbag)
-      cls += ".new";
-    return m(".bag",
-      { title: 'Flísar sem eftir eru í pokanum' },
-      m("table.bag-content" + cls, tiles(bag))
-    );
+    return {
+      view: function(vnode) {
+        var bag = vnode.attrs.bag;
+        var newbag = vnode.attrs.newbag;
+        var cls = "";
+        if (bag.length <= RACK_SIZE)
+          cls += ".empty";
+        else
+        if (newbag)
+          cls += ".new";
+        return m(".bag",
+          { title: 'Flísar sem eftir eru í pokanum' },
+          m("table.bag-content" + cls, tiles(bag))
+        );
+      }
+    };
   }
 
-  function vwBlankDialog(game) {
+  function BlankDialog(initialVnode) {
     // A dialog for choosing the meaning of a blank tile
+
+    var game = initialVnode.attrs.game;
 
     function blankLetters() {
       var legalLetters = game.alphabet;
       var len = legalLetters.length;
       var ix = 0;
       var r = [];
+
+      var clickLetter = function(letter, ev) {
+        ev.preventDefault();
+        game.placeBlank(letter);
+      };
+
       while (len > 0) {
         /* Rows */
         var c = [];
@@ -2969,10 +3174,7 @@ function createView() {
           c.push(
             m("td",
               {
-                onclick: function(letter, ev) {
-                  ev.preventDefault();
-                  game.placeBlank(letter);
-                }.bind(null, letter),
+                onclick: clickLetter.bind(null, letter),
                 onmouseover: buttonOver,
                 onmouseout: buttonOut
               },
@@ -2986,203 +3188,275 @@ function createView() {
       return r;
     }
 
-    return m(".modal-dialog",
-      {
-        id: 'blank-dialog',
-        style: { visibility: "visible" }
-      },
-      m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
-        [
-          m("p", "Hvaða staf táknar auða flísin?"),
-          m(".rack.blank-rack", m("table.board", { id: 'blank-meaning' }, blankLetters())),
-          m(DialogButton,
-            {
-              id: 'blank-close',
-              title: 'Hætta við',
-              onclick: function(ev) {
-                ev.preventDefault();
-                game.cancelBlankDialog();
-              }
-            },
-            glyph("remove")
+    return {
+      view: function(vnode) {
+        return m(".modal-dialog",
+          {
+            id: 'blank-dialog',
+            style: { visibility: "visible" }
+          },
+          m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
+            [
+              m("p", "Hvaða staf táknar auða flísin?"),
+              m(".rack.blank-rack",
+                m("table.board", { id: 'blank-meaning' }, blankLetters())
+              ),
+              m(DialogButton,
+                {
+                  id: 'blank-close',
+                  title: 'Hætta við',
+                  onclick: function(ev) {
+                    ev.preventDefault();
+                    game.cancelBlankDialog();
+                  }
+                },
+                glyph("remove")
+              )
+            ]
           )
-        ]
-      )
-    );
+        );
+      }
+    };
   }
 
-  function vwBack() {
+  function BackButton(initialVnode) {
     // Icon for going back to the main screen
-    return m(".logo-back", 
-      m(m.route.Link,
-        { href: "/main", class: "backlink" },
-        glyph("download", { title: "Aftur í aðalskjá" })
-      )
-    );
+    return {
+      view: function(vnode) {
+        return m(".logo-back", 
+          m(m.route.Link,
+            {
+              href: "/page",
+              class: "backlink"
+            },
+            m(ExploLogo, { legend: false, scale: 1.5 })
+          )
+        );
+      }
+    };
   }
 
-  function vwBoardArea(game) {
+  function BoardArea(initialVnode) {
     // Collection of components in the board (left-side) area
-    var r = [];
-    if (game) {
-      r = [
-        vwBoard(game),
-        vwRack(game),
-        vwButtons(game),
-        vwErrors(game),
-        vwCongrats(game)
-      ];
-      r = r.concat(vwDialogs(game));
-    }
-    return m(".board-area", r);
-  }
-
-  function vwBoardReview(game, move) {
-    // The board area within a game review screen
-    var r = [];
-    if (game) {
-      r = [
-        vwBoard(game),
-        vwRack(game),
-        vwButtonsReview(game, move)
-      ];
-    }
-    return m(".board-area", r);
-  }
-
-  function vwTile(game, coord) {
-    // A single tile, on the board or in the rack
-    var t = game.tiles[coord];
-    var classes = [ ".tile" ];
-    var attrs = {};
-    if (t.tile == '?')
-      classes.push("blanktile");
-    if (coord[0] == 'R' || t.draggable) {
-      classes.push("racktile");
-      if (coord[0] == 'R' && game.showingDialog == "exchange") {
-        // Rack tile, and we're showing the exchange dialog
-        if (t.xchg)
-          // Chosen as an exchange tile
-          classes.push("xchgsel");
-        // Exchange dialog is live: add a click handler for the
-        // exchange state
-        attrs.onclick = function(tile, ev) {
-          // Toggle the exchange status
-          tile.xchg = !tile.xchg;
-          ev.preventDefault();
-        }.bind(null, t);
-      }
-    }
-    if (t.freshtile) {
-      classes.push("freshtile");
-      // Make fresh tiles appear sequentally by animation
-      var ANIMATION_STEP = 150; // Milliseconds
-      var delay = (t.index * ANIMATION_STEP).toString() + "ms";
-      attrs.style = "animation-delay: " + delay + "; " +
-        "-webkit-animation-delay: " + delay + ";";
-    }
-    if (coord == game.selectedSq)
-      classes.push("sel"); // Blinks red
-    if (t.highlight !== undefined) {
-      // highlight0 is the local player color (yellow/orange)
-      // highlight1 is the remote player color (green)
-      classes.push("highlight" + t.highlight);
-      if (t.player == parseInt(t.highlight))
-        // This tile was originally laid down by the other player
-        classes.push("dim");
-    }
-    if (game.showingDialog === null && !game.over) {
-      if (t.draggable) {
-        // Make the tile draggable, unless we're showing a dialog
-        attrs.draggable = "true";
-        attrs.ondragstart = function(coord, ev) {
-          // ev.dataTransfer.effectAllowed = "copyMove";
-          game.selectedSq = null;
-          ev.dataTransfer.effectAllowed = "move";
-          ev.dataTransfer.setData("text", coord);
-          ev.redraw = false;
-        }.bind(null, coord);
-        attrs.onclick = function(coord, ev) {
-          // When clicking a tile, make it selected (blinking)
-          if (coord == game.selectedSq)
-            // Clicking again: deselect
-            game.selectedSq = null;
-          else
-            game.selectedSq = coord;
-          ev.stopPropagation();
-        }.bind(null, coord);
-      }
-    }
-    return m(classes.join("."), attrs,
-      [ t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score) ]
-    );
-  }
-
-  function vwDropTarget(game, coord, child) {
-    // Return a td element that is a target for dropping tiles
-    var cls = "";
-    // Mark the cell with the 'blinking' class if it is the drop
-    // target of a pending blank tile dialog
-    if (game.askingForBlank !== null && game.askingForBlank.to == coord)
-      cls += ".blinking";
-    return m("td" + cls,
-      {
-        id: coord,
-        key: coord,
-        ondragenter: function(ev) {
-          ev.preventDefault();
-          ev.dataTransfer.dropEffect = 'move';
-          ev.currentTarget.classList.add("over");
-          ev.redraw = false;
-          return false;
-        },
-        ondragleave: function(ev) {
-          ev.preventDefault();
-          ev.currentTarget.classList.remove("over");
-          ev.redraw = false;
-          return false;
-        },
-        ondragover: function(ev) {
-          // This is necessary to allow a drop
-          ev.preventDefault();
-          ev.redraw = false;
-          return false;
-        },
-        ondrop: function(to, ev) {
-          ev.stopPropagation();
-          ev.currentTarget.classList.remove("over");
-          // Move the tile from the source to the destination
-          var from = ev.dataTransfer.getData("text");
-          game.attemptMove(from, to);
-          return false;
-        }.bind(null, coord),
-        onclick: function(to, ev) {
-          // If a square is selected (blinking red) and
-          // we click on an empty square, move the selected tile
-          // to the clicked square
-          if (game.selectedSq !== null) {
-            ev.stopPropagation();
-            game.attemptMove(game.selectedSq, to);
-            game.selectedSq = null;
-            ev.currentTarget.classList.remove("sel");
-            return false;
-          }
-        }.bind(null, coord),
-        onmouseover: function(ev) {
-          // If a tile is selected, show a red selection square
-          // around this square when the mouse is over it
-          if (game.selectedSq !== null)
-            ev.currentTarget.classList.add("sel");
-        },
-        onmouseout: function(ev) {
-          ev.currentTarget.classList.remove("sel");
+    return {
+      view: function(vnode) {
+        var model = vnode.attrs.model;
+        var game = model.game;
+        var r = [];
+        if (game) {
+          r = [
+            m(Board, { model: model }),
+            m(Rack, { model: model }),
+            vwButtons(model),
+            vwErrors(game),
+            vwCongrats(game)
+          ];
+          r = r.concat(vwDialogs(game));
         }
-      },
-      child || ""
-    );
+        return m(".board-area", r);
+      }
+    };
   }
 
-  function vwBoard(game) {
+  function BoardReview(initialVnode) {
+    // The board area within a game review screen
+    return {
+      view: function(vnode) {
+        var model = vnode.attrs.model;
+        var game = model.game;
+        var r = [];
+        if (game) {
+          r = [
+            m(Board, { model: model }),
+            m(Rack, { model: model }),
+            vwButtonsReview(model, vnode.attrs.move)
+          ];
+        }
+        return m(".board-area", r);
+      }
+    };
+  }
+
+  function Tile(initialVnode) {
+    return {
+      view: function(vnode) {
+        var game = vnode.attrs.game;
+        var coord = vnode.attrs.coord;
+        var opponent = vnode.attrs.opponent;
+        // A single tile, on the board or in the rack
+        var t = game.tiles[coord];
+        var classes = [ ".tile" ];
+        var attrs = {};
+        if (t.tile == '?')
+          classes.push("blanktile");
+        if (t.letter == 'z' || t.letter == 'q')
+          // Wide letter: handle specially
+          classes.push("wide");
+        if (coord[0] == 'R' || t.draggable) {
+          if (opponent)
+            // Showing the opponent's rack
+            classes.push("freshtile");
+          else
+            // Showing the player's rack
+            classes.push("racktile");
+          if (coord[0] == 'R' && game.showingDialog == "exchange") {
+            // Rack tile, and we're showing the exchange dialog
+            if (t.xchg)
+              // Chosen as an exchange tile
+              classes.push("xchgsel");
+            // Exchange dialog is live: add a click handler for the
+            // exchange state
+            attrs.onclick = function(tile, ev) {
+              // Toggle the exchange status
+              tile.xchg = !tile.xchg;
+              ev.preventDefault();
+            }.bind(null, t);
+          }
+        }
+        if (t.freshtile) {
+          classes.push("freshtile");
+          // Make fresh tiles appear sequentally by animation
+          var ANIMATION_STEP = 150; // Milliseconds
+          var delay = (t.index * ANIMATION_STEP).toString() + "ms";
+          attrs.style = "animation-delay: " + delay + "; " +
+            "-webkit-animation-delay: " + delay + ";";
+        }
+        if (coord == game.selectedSq)
+          classes.push("sel"); // Blinks red
+        if (t.highlight !== undefined) {
+          // highlight0 is the local player color (yellow/orange)
+          // highlight1 is the remote player color (green)
+          classes.push("highlight" + t.highlight);
+          /*
+          if (t.player == parseInt(t.highlight))
+            // This tile was originally laid down by the other player
+            classes.push("dim");
+          */
+        }
+        if (game.showingDialog === null && !game.over) {
+          if (t.draggable) {
+            // Make the tile draggable, unless we're showing a dialog
+            attrs.draggable = "true";
+            attrs.ondragstart = function(coord, ev) {
+              // ev.dataTransfer.effectAllowed = "copyMove";
+              game.selectedSq = null;
+              ev.dataTransfer.effectAllowed = "move";
+              ev.dataTransfer.setData("text", coord);
+              ev.redraw = false;
+            }.bind(null, coord);
+            attrs.onclick = function(coord, ev) {
+              // When clicking a tile, make it selected (blinking)
+              if (coord == game.selectedSq)
+                // Clicking again: deselect
+                game.selectedSq = null;
+              else
+                game.selectedSq = coord;
+              ev.stopPropagation();
+            }.bind(null, coord);
+          }
+        }
+        return m(classes.join("."), attrs,
+          [ t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score) ]
+        );
+      }
+    };
+  }
+
+  function ReviewTile(initialVnode) {
+    // Return a td element that wraps an 'inert' tile in a review screen
+    return {
+      view: function(vnode) {
+        var coord = vnode.attrs.coord;
+        return m("td",
+          {
+            key: coord,
+            id: "sq_" + coord,
+            class: vnode.attrs.game.squareClass(coord)
+          },
+          vnode.children
+        );
+      }
+    };
+  }
+
+  function DropTarget(initialVnode) {
+    // Return a td element that is a target for dropping tiles
+    return {
+      view: function(vnode) {
+        var model = vnode.attrs.model;
+        var coord = vnode.attrs.coord;
+        var game = model.game;
+        var cls = "";
+        // Mark the cell with the 'blinking' class if it is the drop
+        // target of a pending blank tile dialog
+        if (game.askingForBlank !== null && game.askingForBlank.to == coord)
+          cls += ".blinking";
+        if (coord == game.centerSquare)
+          // Unoccupied center square, first move
+          cls += ".center";
+        return m("td" + cls,
+          {
+            key: coord,
+            id: "sq_" + coord,
+            class: game.squareClass(coord),
+            ondragenter: function(ev) {
+              ev.preventDefault();
+              ev.dataTransfer.dropEffect = 'move';
+              ev.currentTarget.classList.add("over");
+              ev.redraw = false;
+              return false;
+            },
+            ondragleave: function(ev) {
+              ev.preventDefault();
+              ev.currentTarget.classList.remove("over");
+              ev.redraw = false;
+              return false;
+            },
+            ondragover: function(ev) {
+              // This is necessary to allow a drop
+              ev.preventDefault();
+              ev.redraw = false;
+              return false;
+            },
+            ondrop: function(to, ev) {
+              ev.stopPropagation();
+              ev.currentTarget.classList.remove("over");
+              // Move the tile from the source to the destination
+              var from = ev.dataTransfer.getData("text");
+              game.attemptMove(from, to);
+              model.updateScale();
+              return false;
+            }.bind(null, coord),
+            onclick: function(to, ev) {
+              // If a square is selected (blinking red) and
+              // we click on an empty square, move the selected tile
+              // to the clicked square
+              if (game.selectedSq !== null) {
+                ev.stopPropagation();
+                game.attemptMove(game.selectedSq, to);
+                game.selectedSq = null;
+                ev.currentTarget.classList.remove("sel");
+                model.updateScale();
+                return false;
+              }
+            }.bind(null, coord),
+            onmouseover: function(ev) {
+              // If a tile is selected, show a red selection square
+              // around this square when the mouse is over it
+              if (game.selectedSq !== null)
+                ev.currentTarget.classList.add("sel");
+            },
+            onmouseout: function(ev) {
+              ev.currentTarget.classList.remove("sel");
+            }
+          },
+          vnode.children
+        );
+      }
+    };
+  }
+
+  function Board(initialVnode) {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
 
     function colid() {
@@ -3194,56 +3468,149 @@ function createView() {
       return m("tr.colid", r);
     }
 
-    function row(rowid) {
+    function row(model, rowid) {
       // Each row of the board
       var r = [];
-      r.push(m("td.rowid", { key: "R" + rowid }, rowid));
+      var game = model.game;
+      r.push(m("td.rowid", /* { key: "R" + rowid }, */ rowid));
       for (var col = 1; col <= 15; col++) {
         var coord = rowid + col.toString();
         if (game && (coord in game.tiles))
           // There is a tile in this square: render it
           r.push(m("td",
             {
-              id: coord,
-              key: coord,
-              ondragover: function(ev) { ev.stopPropagation(); },
-              ondrop: function(ev) { ev.stopPropagation(); }
+              // key: coord,
+              id: "sq_" + coord,
+              class: game.squareClass(coord),
+              ondragover: stopPropagation,
+              ondrop: stopPropagation
             },
-            vwTile(game, coord))
-          );
+            m(Tile, { game: game, coord: coord })
+          ));
         else
           // Empty square which is a drop target
-          r.push(vwDropTarget(game, coord));
+          r.push(m(DropTarget, { model: model, coord: coord }));
       }
       return m("tr", r);
     }
 
-    function allrows() {
+    function allrows(model) {
       // Return a list of all rows on the board
       var r = [];
       r.push(colid());
       var rows = "ABCDEFGHIJKLMNO";
       for (var i = 0; i < rows.length; i++)
-        r.push(row(rows[i]));
+        r.push(row(model, rows[i]));
       return r;
     }
 
-    return m(".board", m("table.board", m("tbody", allrows())));
+    function zoomIn(model) {
+      model.boardScale = 1.5;
+    }
+
+    function zoomOut(model) {
+      if (model.boardScale != 1.0)
+        model.resetScale();
+    }
+
+    return {
+      view: function(vnode) {  
+        var model = vnode.attrs.model;
+        var scale = model.boardScale || 1.0;
+        var attrs = {
+          ondblclick: function(ev) {
+            model.resetScale();
+            ev.preventDefault();
+          }
+        };
+        // Add handlers for pinch zoom functionality
+        addPinchZoom(attrs, zoomIn.bind(null, model), zoomOut.bind(null, model));
+        if (scale != 1.0)
+          attrs.style = "transform: scale(" + scale + ")";
+        return m(".board",
+          { id: "board" }, m("table.board", attrs, m("tbody", allrows(model)))
+        );
+      }
+    };
   }
 
-  function vwRack(game) {
+  function Rack(initialVnode) {
     // A rack of 7 tiles
-    var r = [];
-    for (var i = 1; i <= RACK_SIZE; i++) {
-      var coord = 'R' + i.toString();
-      if (game && (coord in game.tiles))
-        // We have a tile in this rack slot, but it is a drop target anyway
-        r.push(vwDropTarget(game, coord, vwTile(game, coord)));
-      else
-        // Empty rack slot which is a drop target
-        r.push(vwDropTarget(game, coord));
-    }
-    return m(".rack", m("table.board", m("tbody", m("tr", r))));
+    return {
+      view: function(vnode) {
+        var model = vnode.attrs.model;
+        var game = model.game;
+        var r = [];
+        // If review==true, this is a review rack
+        // that is not a drop target and whose color reflects the
+        // currently shown move.
+        var review = model.reviewMove !== null;
+        // If opponent==true, we're showing the opponent's rack
+        var opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
+        for (var i = 1; i <= RACK_SIZE; i++) {
+          var coord = 'R' + i.toString();
+          if (game && (coord in game.tiles)) {
+            // We have a tile in this rack slot, but it is a drop target anyway
+            if (review) {
+              r.push(
+                m(ReviewTile, { game: game, coord: coord },
+                  m(Tile, { game: game, coord: coord, opponent: opponent })
+                )
+              );
+            }
+            else {
+              r.push(
+                m(DropTarget, { model: model, coord: coord },
+                  m(Tile, { game: game, coord: coord })
+                )
+              );
+            }
+          }
+          else
+          if (review)
+            r.push(m(ReviewTile, { game: game, coord: coord }));
+          else
+            r.push(m(DropTarget, { model: model, coord: coord }));
+        }
+        return m(".rack-row", [
+          m(".rack-left", vwRackLeftButtons(model)),
+          m(".rack", m("table.board", m("tbody", m("tr", r)))),
+          m(".rack-right", vwRackRightButtons(model))
+        ]);
+      }
+    };
+  }
+
+  function vwRackLeftButtons(model) {
+    // The button to the left of the rack in the mobile UI
+    var s = buttonState(model.game);
+    if (s.showRecall && !s.showingDialog)
+      // Show a 'Recall tiles' button
+      return makeButton(
+        "recallbtn", false,
+        function() { model.game.resetRack(); model.updateScale(); },
+        "Færa stafi aftur í rekka", glyph("down-arrow")
+      );
+    if (s.showScramble && !s.showingDialog)
+      // Show a 'Scramble rack' button
+      return makeButton(
+        "scramblebtn", false, function() { model.game.rescrambleRack(); },
+        "Stokka upp rekka", glyph("random")
+      );
+    return [];
+  }
+
+  function vwRackRightButtons(model) {
+    // The button to the right of the rack in the mobile UI
+    var s = buttonState(model.game);
+    if (s.canPlay && !s.showingDialog)
+      // Show a 'Submit move' button, with a Play icon
+      return makeButton(
+        "submitmove", false,
+        function() { model.game.submitMove(); model.updateScale(); },
+        "Leika", glyph("play")
+      );
+    return [];
   }
 
   function vwScore(game) {
@@ -3265,14 +3632,35 @@ function createView() {
 
   function vwScoreReview(game, move) {
     // Shows the score of the current move within a game review screen
-    var sc = [ ".score" ];
     var mv = move ? game.moves[move - 1] : undefined;
     var score = mv ? mv[1][2] : undefined;
-    // TODO: Add logic to select class .green or .yellow depending
-    // TODO: on whose move it is
+    if (score === undefined)
+      return undefined;
+    var sc = [ ".score" ];
+    if (move > 0) {
+      if (move % 2 == game.player)
+        // Opponent move: show in green
+        sc.push("green");
+      else
+        // Player's move: show in yellow
+        sc.push("yellow");
+    }
+    return m(sc.join("."), score.toString());
+  }
+
+  function vwScoreDiff(model, move) {
+    // Shows the score of the current move within a game review screen
+    var game = model.game;
+    var sc = [ ".scorediff" ];
+    var mv = move ? game.moves[move - 1] : undefined;
+    var score = mv ? mv[1][2] : undefined;
+    var bestScore = model.bestMoves[model.highlightedMove][1][2];
+    if (score >= bestScore)
+      sc.push("posdiff");
     return m(
       sc.join("."),
-      score === undefined ? "" : score.toString()
+      { style: { visibility: "visible" }},
+      (score - bestScore).toString()
     );
   }
 
@@ -3293,12 +3681,23 @@ function createView() {
       return txt;
     }
 
+    var leftPlayerColor, rightPlayerColor;
+
+    if (game.player == 1) {
+      rightPlayerColor = "humancolor";
+      leftPlayerColor = "autoplayercolor";
+    }
+    else {
+      leftPlayerColor = "humancolor";
+      rightPlayerColor = "autoplayercolor";
+    }
+
     return m(
       ".gamestats", { style: { visibility: "visible" } },
       [
         m("div", { style: { position: "relative", width: "100%" } },
           [
-            m("h3.playerleft", { style: { width: "50%" } }, 
+            m(".player", { class: leftPlayerColor, style: { width: "50%" } }, 
               m(".robot-btn.left",
                 game.autoplayer[0] ?
                   [ glyph("cog"), nbsp(), game.nickname[0] ]
@@ -3306,7 +3705,7 @@ function createView() {
                   game.nickname[0]
               )
             ),
-            m("h3.playerright", { style: { width: "50%" } },
+            m(".player", { class: rightPlayerColor, style: { width: "50%" } },
               m(".robot-btn.right",
                 game.autoplayer[1] ?
                   [ glyph("cog"), nbsp(), game.nickname[1] ]
@@ -3466,107 +3865,121 @@ function createView() {
     );
   }
 
-  function vwButtons(game) {
-    // The set of buttons below the game board, alongside the rack
-
-    var tilesPlaced = game.tilesPlaced().length > 0;
-    var gameOver = game.over;
-    var localTurn = game.localturn;
-    var gameIsManual = game.manual;
-    var challengeAllowed = game.chall;
-    var lastChallenge = game.last_chall;
-    var showingDialog = game.showingDialog !== null;
-    var exchangeAllowed = game.xchg;
-    var tardyOpponent = !localTurn && !gameOver && game.overdue;
-    var showResign = false;
-    var showExchange = false;
-    var showPass = false;
-    var showRecall = false;
-    var showScramble = false;
-    var showMove = false;
-    var showChallenge = false;
-    var showChallengeInfo = false;
-    if (localTurn && !gameOver)
+  function buttonState(game) {
+    // Calculate a set of booleans describing the state of the game
+    var s = {};
+    s.tilesPlaced = game.tilesPlaced().length > 0;
+    s.gameOver = game.over;
+    s.congratulate = game.congratulate;
+    s.localTurn = game.localturn;
+    s.gameIsManual = game.manual;
+    s.challengeAllowed = game.chall;
+    s.lastChallenge = game.last_chall;
+    s.showingDialog = game.showingDialog !== null;
+    s.exchangeAllowed = game.xchg;
+    s.wordGood = game.wordGood;
+    s.wordBad = game.wordBad;
+    s.canPlay = false;
+    s.tardyOpponent = !s.localTurn && !s.gameOver && game.overdue;
+    s.showResign = false;
+    s.showExchange = false;
+    s.showPass = false;
+    s.showRecall = false;
+    s.showScramble = false;
+    s.showMove = false;
+    s.showChallenge = false;
+    s.showChallengeInfo = false;
+    if (s.localTurn && !s.gameOver) {
       // This player's turn
-      if (lastChallenge) {
-        showChallenge = true;
-        showPass = true;
-        showChallengeInfo = true;
+      if (s.lastChallenge) {
+        s.showChallenge = true;
+        s.showPass = true;
+        s.showChallengeInfo = true;
       }
       else {
-        showMove = tilesPlaced;
-        showExchange = !tilesPlaced;
-        showPass = !tilesPlaced;
-        showResign = !tilesPlaced;
-        showChallenge = !tilesPlaced && gameIsManual && challengeAllowed;
+        s.showMove = s.tilesPlaced;
+        s.showExchange = !s.tilesPlaced;
+        s.showPass = !s.tilesPlaced;
+        s.showResign = !s.tilesPlaced;
+        s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
       }
-    if (!gameOver)
-      if (tilesPlaced)
-        showRecall = true;
+    }
+    if (s.showMove && (s.wordGood || s.gameIsManual))
+      s.canPlay = true;
+    if (!s.gameOver)
+      if (s.tilesPlaced)
+        s.showRecall = true;
       else
-        showScramble = true;
+        s.showScramble = true;
+    return s;
+  }
+
+  function vwButtons(model) {
+    // The set of buttons below the game board, alongside the rack
+    var game = model.game;
+    var s = buttonState(game);
     var r = [];
     r.push(m(".word-check" +
-      (game.wordGood ? ".word-good" : "") +
-      (game.wordBad ? ".word-bad" : "")));
-    if (showChallenge)
+      (s.wordGood ? ".word-good" : "") +
+      (s.wordBad ? ".word-bad" : "")));
+    if (s.showChallenge)
       r.push(
         makeButton(
-          "challenge", (tilesPlaced && !lastChallenge) || showingDialog,
+          "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           function() { game.submitChallenge(); },
           'Véfenging (röng kostar 10 stig)'
         )
       );
-    if (showChallengeInfo)
+    if (s.showChallengeInfo)
       r.push(m(".chall-info"));
-    if (showRecall)
+    if (s.showRecall)
       r.push(
         makeButton(
           "recallbtn", false,
-          function() { game.resetRack(); },
+          function() { game.resetRack(); model.updateScale(); },
           "Færa stafi aftur í rekka", glyph("down-arrow")
         )
       );
-    if (showScramble)
+    if (s.showScramble)
       r.push(
-        makeButton("scramblebtn", showingDialog,
+        makeButton("scramblebtn", s.showingDialog,
           function() { game.rescrambleRack(); },
           "Stokka upp rekka", glyph("random")
         )
       );
-    if (showMove)
+    if (s.showMove)
       r.push(
         makeButton(
-          "submitmove", !tilesPlaced || showingDialog,
-          function() { game.submitMove(); },
+          "submitmove", !s.tilesPlaced || s.showingDialog,
+          function() { game.submitMove(); }, // No need to updateScale() here
           "Leika", [ "Leika", nbsp(), glyph("play") ]
         )
       );
-    if (showPass)
+    if (s.showPass)
       r.push(
         makeButton(
-          "submitpass", (tilesPlaced && !lastChallenge) || showingDialog,
+          "submitpass", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           function() { game.submitPass(); },
           "Pass", glyph("forward")
         )
       );
-    if (showExchange)
+    if (s.showExchange)
       r.push(
         makeButton(
-          "submitexchange", tilesPlaced || showingDialog || !exchangeAllowed,
+          "submitexchange", s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           function() { game.submitExchange(); },
           "Skipta stöfum", glyph("refresh")
         )
       );
-    if (showResign)
+    if (s.showResign)
       r.push(
         makeButton(
-          "submitresign", showingDialog,
+          "submitresign", s.showingDialog,
           function() { game.submitResign(); },
           "Gefa viðureign", glyph("fire")
         )
       );
-    if (!gameOver && !localTurn) {
+    if (!s.gameOver && !s.localTurn) {
       // Indicate that it is the opponent's turn; offer to force a resignation
       // if the opponent hasn't moved for 14 days
       r.push(
@@ -3578,11 +3991,11 @@ function createView() {
             m("strong", game.nickname[1 - game.player]),
             " á leik",
             nbsp(),
-            tardyOpponent ? m("span.yesnobutton",
+            s.tardyOpponent ? m("span.yesnobutton",
               {
                 id: 'force-resign',
                 style: { display: "inline" },
-                onclick: function(ev) { ev.preventDefault(); }, // !!! TBD !!!
+                onclick: function(ev) { ev.preventDefault(); }, // !!! FIXME: Implement forced resignation
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
                 title: '14 dagar liðnir án leiks'
@@ -3593,16 +4006,26 @@ function createView() {
         )
       );
     }
-    if (tilesPlaced)
+    if (s.tilesPlaced)
       r.push(vwScore(game));
     // Is the server processing a move?
     if (game.moveInProgress)
-      r.push(m(".waitmove", { style: { display: "block" } }));
+      r.push(
+        m(".waitmove", { style: { display: "block" } },
+          m("img",
+            {
+              src: '/static/ajax-loader.gif', border: 0,
+              width: 16, height:16
+            }
+          )
+        )
+      );
     return r;
   }
 
-  function vwButtonsReview(game, move) {
+  function vwButtonsReview(model, move) {
     // The navigation buttons below the board on the review screen
+    var game = model.game;
     var r = [];
     r.push(
       makeButton(
@@ -3624,7 +4047,7 @@ function createView() {
     );
     r.push(
       makeButton(
-        "navbtn", (move === null) || (move >= game.moves.length),
+        "navbtn", !move || move >= game.moves.length,
         function(move) {
           // Navigate to next move
           m.route.set(
@@ -3640,6 +4063,10 @@ function createView() {
         "navnext"
       )
     );
+    // Show the score difference between an actual move and
+    // a particular move on the best move list
+    if (model.highlightedMove !== null)
+      r.push(vwScoreDiff(model, move));
     r.push(vwScoreReview(game, move));
     return r;
   }
@@ -3649,7 +4076,7 @@ function createView() {
     var msg = game.currentMessage || "";
     var errorMessages = {
       1: "Enginn stafur lagður niður",
-      2: "Fyrsta orð verður að liggja um miðjureitinn",
+      2: "Fyrsta orð verður að liggja um byrjunarreitinn",
       3: "Orð verður að vera samfellt á borðinu",
       4: "Orð verður að tengjast orði sem fyrir er",
       5: "Reitur þegar upptekinn",
@@ -3684,6 +4111,7 @@ function createView() {
   }
 
   function vwCongrats(game) {
+    // Congratulations message when a game has been won
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
         [
@@ -3792,8 +4220,30 @@ function createView() {
     // The two-letter-word list tab
     var page = 0;
 
+    function renderWord(bold, w) {
+      // For the first two-letter word in each group,
+      // render the former letter in bold
+      if (!bold)
+        return m(".twoletter-word", w);
+      if (page == 0)
+        return m(".twoletter-word", [ m("b", w[0]), w[1] ]);
+      else
+        return m(".twoletter-word", [ w[0], m("b", w[1]) ]);
+    }
+
     return {
       view: function(vnode) {
+        var twoLetterWords = vnode.attrs.data[page];
+        var twoLetterList = [];
+        for (var i = 0; i < twoLetterWords.length; i++) {
+          var twl = twoLetterWords[i][1];
+          var sublist = [];
+          for (var j = 0; j < twl.length; j++)
+            sublist.push(renderWord(j == 0, twl[j]));
+          twoLetterList.push(
+            m(".twoletter-group", sublist)
+          );
+        }
         return m(".twoletter",
           {
             // Switch between pages when clicked
@@ -3801,7 +4251,14 @@ function createView() {
             style: "z-index: 6" // Appear on top of board on mobile
           },
           // Show the requested page
-          page === 0 ? _TWO_LETTER_PAGE0 : _TWO_LETTER_PAGE1
+          m(".twoletter-area",
+            {
+              title: page == 0 ?
+                "Smelltu til að raða eftir seinni staf" :
+                "Smelltu til að raða eftir fyrri staf"
+            },
+            twoLetterList
+          )
         );
       }
     };
@@ -4038,12 +4495,12 @@ function createActions(model, view) {
      mql = window.matchMedia("(min-width: 667px)");
      if (mql) {
         mediaMinWidth667(mql);
-        mql.addListener(mediaMinWidth667);
+        mql.addEventListener("change", mediaMinWidth667);
      }
      mql = window.matchMedia("(min-width: 768px)");
      if (mql) {
         mediaMinWidth768(mql);
-        mql.addListener(mediaMinWidth768);
+        mql.addEventListener("change", mediaMinWidth768);
      }
   }
 
@@ -4524,7 +4981,7 @@ function UserInfoDialog(initialVnode) {
             m(".usr-info-hdr",
               [
                 m("h1.usr-info-icon",
-                  [stats.friend ? glyph("coffee-cup", { title: 'Vinur Netskrafls' }) : glyph("user"), nbsp()]
+                  [stats.friend ? glyph("coffee-cup", { title: 'Friend of Explo' }) : glyph("user"), nbsp()]
                 ),
                 m("h1[id='usr-info-nick']", vnode.attrs.nick),
                 m("span.vbar", "|"),
@@ -4741,11 +5198,31 @@ function PromoDialog(initialVnode) {
 
   function _fetchContent(vnode) {
     // Fetch the content
-    vnode.attrs.model.loadPromoContent(vnode.attrs.key,
+    vnode.attrs.model.loadPromoContent(
+      vnode.attrs.kind,
       function(contentHtml) {
         html = contentHtml;
       }
     );
+  }
+
+  function _onUpdate(appView, initFunc, vnode) {
+    var i, noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
+    // Override onclick, onmouseover and onmouseout for No buttons
+    for (i = 0; i < noButtons.length; i++) {
+      noButtons[i].onclick = function(ev) { this.popDialog(); }.bind(appView);
+      noButtons[i].onmouseover = buttonOver;
+      noButtons[i].onmouseout = buttonOut;
+    }
+    // Override onmouseover and onmouseout for Yes buttons
+    var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
+    for (i = 0; i < yesButtons.length; i++) {
+      yesButtons[i].onmouseover = buttonOver;
+      yesButtons[i].onmouseout = buttonOut;
+    }
+    // Run an initialization function, if specified
+    if (initFunc !== undefined)
+      initFunc();
   }
 
   return {
@@ -4755,28 +5232,15 @@ function PromoDialog(initialVnode) {
 
     view: function(vnode) {
       var appView = vnode.attrs.view;
+      var initFunc = vnode.attrs.initFunc;
       return m(".modal-dialog",
         { id: "promo-dialog", style: { visibility: "visible" } },
         m(".ui-widget.ui-widget-content.ui-corner-all",
-          { id: "promo-form", className: "promo-" + vnode.attrs.key },
+          { id: "promo-form", className: "promo-" + vnode.attrs.kind },
           m("div",
             {
               id: "promo-content",
-              onupdate: function(vnode) {
-                var i, noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
-                // Override onclick, onmouseover and onmouseout for No buttons
-                for (i = 0; i < noButtons.length; i++) {
-                  noButtons[i].onclick = function(ev) { this.popDialog(); }.bind(appView);
-                  noButtons[i].onmouseover = buttonOver;
-                  noButtons[i].onmouseout = buttonOut;
-                }
-                // Override onmouseover and onmouseout for Yes buttons
-                var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
-                for (i = 0; i < yesButtons.length; i++) {
-                  yesButtons[i].onmouseover = buttonOver;
-                  yesButtons[i].onmouseout = buttonOut;
-                }
-              }
+              onupdate: _onUpdate.bind(null, appView, initFunc)
             },
             m.trust(html)
           )
@@ -4976,16 +5440,16 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   var ids = [];
   var lis = []; // The <li> elements
   var i;
+  var clickTab = function(i, ev) {
+    // When this tab header is clicked, select the associated tab
+    selectTab(this, i);
+    ev.preventDefault();
+  };
   // Iterate over the <a> elements inside the <li> elements inside the <ul>
   for (i = 0; i < tablist.length; i++) {
     ids.push(tablist[i].getAttribute("href").slice(1));
     // Decorate the <a> elements
-    tablist[i].onclick = function(i, ev) {
-        // When this tab header is clicked, select the associated tab
-        selectTab(this, i);
-        ev.preventDefault();
-      }
-      .bind(vnode, i);
+    tablist[i].onclick = clickTab.bind(vnode, i);
     tablist[i].setAttribute("href", null);
     tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
     tablist[i].setAttribute("role", "presentation");
@@ -5009,52 +5473,56 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   vnode.state.selected = 0;
   if (wireHrefs) {
     // Wire all hrefs that point to single-page URLs
+    var clickURL = function(href, ev) {
+      var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+      var qix = uri.indexOf("?");
+      var route = (qix >= 0) ? uri.slice(0, qix) : uri;
+      var qparams = uri.slice(route.length + 1);
+      var params = qparams.length ? getUrlVars(qparams) : { };
+      m.route.set(route, params);
+      if (window.history)
+        window.history.pushState({}, "", href); // Enable the back button
+      ev.preventDefault();
+    };
+    var clickUserPrefs = function(ev) {
+      if ($state.userId != "")
+        // Don't show the userprefs if no user logged in
+        this.pushDialog("userprefs");
+      ev.preventDefault();
+    };
+    var clickTwoLetter = function(ev) {
+      selectTab(this, 2); // Select tab number 2
+      ev.preventDefault();
+    };
+    var clickNewBag = function(ev) {
+      selectTab(this, 3); // Select tab number 3
+      ev.preventDefault();
+    };
     var anchors = tabdiv.querySelectorAll("a");
     for (i = 0; i < anchors.length; i++) {
       var a = anchors[i];
       var href = a.getAttribute("href");
       if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
         // Single-page URL: wire it up (as if it had had an m.route.Link on it)
-        a.onclick = function(href, ev) {
-          var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-          var qix = uri.indexOf("?");
-          var route = (qix >= 0) ? uri.slice(0, qix) : uri;
-          var qparams = uri.slice(route.length + 1);
-          var params = qparams.length ? getUrlVars(qparams) : { };
-          m.route.set(route, params);
-          if (window.history)
-            window.history.pushState({}, "", href); // Enable the back button
-          ev.preventDefault();
-        }.bind(null, href);
+        a.onclick = clickURL.bind(null, href);
       }
       else
       if (href && href == "$$userprefs$$") {
         // Special marker indicating that this link invokes
         // a user preference dialog
-        a.onclick = function(ev) {
-          if ($state.userId != "")
-            // Don't show the userprefs if no user logged in
-            this.pushDialog("userprefs");
-          ev.preventDefault();
-        }.bind(view);
+        a.onclick = clickUserPrefs.bind(view);
       }
       else
       if (href && href == "$$twoletter$$") {
         // Special marker indicating that this link invokes
         // the two-letter word list or the opponents tab
-        a.onclick = function(ev) {
-          selectTab(this, 2); // Select tab number 2
-          ev.preventDefault();
-        }.bind(vnode);
+        a.onclick = clickTwoLetter.bind(vnode);
       }
       else
       if (href && href == "$$newbag$$") {
         // Special marker indicating that this link invokes
         // the explanation of the new bag
-        a.onclick = function(ev) {
-          selectTab(this, 3); // Select tab number 3
-          ev.preventDefault();
-        }.bind(vnode);
+        a.onclick = clickNewBag.bind(vnode);
       }
     }
   }
@@ -5096,6 +5564,10 @@ function buttonOut(ev) {
   if (clist !== undefined)
     clist.remove("over");
   ev.redraw = false;
+}
+
+function stopPropagation(ev) {
+  ev.stopPropagation();
 }
 
 // Glyphicon utility function: inserts a glyphicon span
