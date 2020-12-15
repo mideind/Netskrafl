@@ -964,7 +964,7 @@ class Move(MoveBase):
     INCORRECT_CHALLENGE_BONUS = 10
 
     def __init__(self, word: str, row: int, col: int, horiz: bool = True) -> None:
-        super(Move, self).__init__()
+        super().__init__()
         # A list of squares covered by the play, i.e. actual tiles
         # laid down on the board
         self._covers: List[Cover] = []
@@ -1420,7 +1420,7 @@ class ExchangeMove(MoveBase):
     and new tiles drawn instead"""
 
     def __init__(self, tiles: str) -> None:
-        super(ExchangeMove, self).__init__()
+        super().__init__()
         self._tiles = tiles
 
     def __str__(self) -> str:
@@ -1623,7 +1623,7 @@ class ResignMove(MoveBase):
     """ Represents a resign move, where the player forfeits the game """
 
     def __init__(self, forfeited_points):
-        super(ResignMove, self).__init__()
+        super().__init__()
         self._forfeited_points = forfeited_points
 
     def __str__(self):

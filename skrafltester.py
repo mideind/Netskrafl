@@ -352,7 +352,7 @@ class Usage(Exception):
     """ Error reporting exception for wrong command line arguments """
 
     def __init__(self, msg):
-        super(Usage, self).__init__(msg)
+        super().__init__(msg)
         self.msg = msg
 
 
