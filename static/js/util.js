@@ -21,7 +21,9 @@
 
 // Global vars to cache event state
 var evCache = [];
-var prevDiff = -1;
+var origDistance = -1;
+var PINCH_THRESHOLD = 10; // Minimum pinch movement
+var hasZoomed = false;
 
 function addPinchZoom(attrs, funcZoomIn, funcZoomOut) {
   // Install event handlers for the pointer target
@@ -39,7 +41,6 @@ function pointerdown_handler(ev) {
   // The pointerdown event signals the start of a touch interaction.
   // This event is cached to support 2-finger gestures
   evCache.push(ev);
-  ev.preventDefault();
 }
 
 function pointermove_handler(funcZoomIn, funcZoomOut, ev) {
@@ -60,23 +61,33 @@ function pointermove_handler(funcZoomIn, funcZoomOut, ev) {
   // If two pointers are down, check for pinch gestures
   if (evCache.length == 2) {
     // Calculate the distance between the two pointers
-    var curDiff = Math.abs(evCache[0].clientX - evCache[1].clientX);
+    var curDistance = Math.sqrt(
+      Math.pow(evCache[0].clientX - evCache[1].clientX, 2) +
+      Math.pow(evCache[0].clientY - evCache[1].clientY, 2)
+    );
  
-    if (prevDiff > 0) {
-      if (curDiff > prevDiff) {
+    if (origDistance > 0) {
+      if (curDistance - origDistance >= PINCH_THRESHOLD) {
         // The distance between the two pointers has increased
-        funcZoomIn();
+        if (!hasZoomed)
+          funcZoomIn();
+        hasZoomed = true;
       }
-      if (curDiff < prevDiff) {
+      else
+      if (origDistance - curDistance >= PINCH_THRESHOLD) {
         // The distance between the two pointers has decreased
-        funcZoomOut();
+        if (!hasZoomed)
+          funcZoomOut();
+        hasZoomed = true;
       }
     }
- 
-    // Cache the distance for the next move event 
-    prevDiff = curDiff;
+    else
+    if (origDistance < 0) {
+      // Note the original difference between two pointers
+      origDistance = curDistance;
+      hasZoomed = false;
+    }
   }
-  ev.preventDefault();
 }
 
 function pointerup_handler(ev) {
@@ -85,9 +96,8 @@ function pointerup_handler(ev) {
   remove_event(ev);
   // If the number of pointers down is less than two then reset diff tracker
   if (evCache.length < 2) {
-    prevDiff = -1;
+    origDistance = -1;
   }
-  ev.preventDefault();
 }
 
 function remove_event(ev) {

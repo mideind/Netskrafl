@@ -488,8 +488,12 @@ function createModel(settings) {
     // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
     this.boardScale = 1.0;
     var board = document.getElementById("board");
-    if (board)
+    if (board) {
+      if (board.children.length)
+        // FIXME: Make this less of a hack
+        board.children[0].setAttribute("style", "transform: scale(1.0)");
       board.scrollTo(0, 0);
+    }
   }
 
   function updateScale() {
@@ -505,6 +509,9 @@ function createModel(settings) {
       var c = coord(row, col);
       var el = document.getElementById("sq_" + c);
       var board = document.getElementById("board");
+      if (board.children.length)
+        // FIXME: Make this less of a hack
+        board.children[0].setAttribute("style", "transform: scale(1.5)");
       var elRect = el.getBoundingClientRect();
       var boardRect = board.getBoundingClientRect();
       board.scrollTo(
@@ -3509,8 +3516,10 @@ function createView() {
     }
 
     function zoomOut(model) {
-      if (model.boardScale != 1.0)
-        model.resetScale();
+      if (model.boardScale != 1.0) {
+        model.boardScale = 1.0;
+        setTimeout(model.resetScale);
+      }
     }
 
     return {
@@ -3518,10 +3527,12 @@ function createView() {
         var model = vnode.attrs.model;
         var scale = model.boardScale || 1.0;
         var attrs = {
+          /*
           ondblclick: function(ev) {
             model.resetScale();
             ev.preventDefault();
           }
+          */
         };
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, zoomIn.bind(null, model), zoomOut.bind(null, model));
