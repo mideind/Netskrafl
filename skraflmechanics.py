@@ -81,7 +81,7 @@ _WSC = {
         "  2      2     ",
         "      2      2 ",
         "3      3      3",
-    ]
+    ],
 }
 
 _LSC = {
@@ -123,8 +123,8 @@ _LSC = {
 
 # For each board type, convert the word and letter score strings to integer arrays
 _xlt = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
-_WORDSCORE = { key: _xlt(val) for key, val in _WSC.items() }
-_LETTERSCORE = { key: _xlt(val) for key, val in _LSC.items() }
+_WORDSCORE = {key: _xlt(val) for key, val in _WSC.items()}
+_LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
 
 
 class Board:
@@ -495,8 +495,8 @@ class Rack:
 
 class State:
 
-    """ Represents the state of a game at a particular point.
-        Contains the current board, the racks, scores, etc. """
+    """Represents the state of a game at a particular point.
+    Contains the current board, the racks, scores, etc."""
 
     def __init__(
         self,
@@ -907,8 +907,8 @@ class MoveBase(abc.ABC):
 
     # noinspection PyUnusedLocal
     def details(self, state: State) -> List:
-        """ Return a tuple list describing tiles committed
-            to the board by this move """
+        """Return a tuple list describing tiles committed
+        to the board by this move"""
         return []  # No tiles
 
     # noinspection PyUnusedLocal
@@ -963,7 +963,7 @@ class Move(MoveBase):
     # If an opponent challenges a valid move, the player gets a bonus
     INCORRECT_CHALLENGE_BONUS = 10
 
-    def __init__(self, word: str, row: int, col: int, horiz: bool=True) -> None:
+    def __init__(self, word: str, row: int, col: int, horiz: bool = True) -> None:
         super(Move, self).__init__()
         # A list of squares covered by the play, i.e. actual tiles
         # laid down on the board
@@ -1036,14 +1036,14 @@ class Move(MoveBase):
         return (self.short_coordinate(), self._tiles or "", self.score(state))
 
     def short_coordinate(self) -> str:
-        """ Return the coordinate of the move,
-            i.e. row letter + column number for horizontal moves or
-            column number + row letter for vertical ones """
+        """Return the coordinate of the move,
+        i.e. row letter + column number for horizontal moves or
+        column number + row letter for vertical ones"""
         return Board.short_coordinate(self._horizontal, self._row, self._col)
 
     def __str__(self) -> str:
-        """ Return the standard move notation of a coordinate
-            followed by the word formed """
+        """Return the standard move notation of a coordinate
+        followed by the word formed"""
         return self.short_coordinate() + ":'" + self._word + "'"
 
     def add_cover(self, row: int, col: int, tile: str, letter: str) -> bool:
@@ -1055,7 +1055,11 @@ class Move(MoveBase):
             return False
         if (tile is None) or len(tile) != 1:
             return False
-        if (letter is None) or len(letter) != 1 or (letter not in current_alphabet().order):
+        if (
+            (letter is None)
+            or len(letter) != 1
+            or (letter not in current_alphabet().order)
+        ):
             return False
         if tile != "?" and tile != letter:
             return False
@@ -1078,8 +1082,8 @@ class Move(MoveBase):
         self.set_tiles(tiles)
 
         def enum_covers(tiles: str) -> Iterator[Tuple[str, str]]:
-            """ Generator to enumerate through a tiles string,
-                yielding (tile, letter) tuples """
+            """Generator to enumerate through a tiles string,
+            yielding (tile, letter) tuples"""
             ix = 0
             while ix < len(tiles):
                 if tiles[ix] == "?":
@@ -1246,8 +1250,8 @@ class Move(MoveBase):
                     self._tiles += ltr
 
         def is_valid_word(word):
-            """ Check whether a word is in the dictionary,
-                unless this is a manual game """
+            """Check whether a word is in the dictionary,
+            unless this is a manual game"""
             return True if state.manual_wordcheck else word in self._dawg
 
         # Check whether the word is in the dictionary
@@ -1289,8 +1293,8 @@ class Move(MoveBase):
         return Error.LEGAL
 
     def check_words(self, board: Board) -> List[str]:
-        """ Do simple word validation on this move, returning
-            a list of invalid words formed """
+        """Do simple word validation on this move, returning
+        a list of invalid words formed"""
 
         invalid: List[str] = []
 
@@ -1412,8 +1416,8 @@ class Move(MoveBase):
 
 class ExchangeMove(MoveBase):
 
-    """ Represents an exchange move, where tiles are returned to the bag
-        and new tiles drawn instead """
+    """Represents an exchange move, where tiles are returned to the bag
+    and new tiles drawn instead"""
 
     def __init__(self, tiles: str) -> None:
         super(ExchangeMove, self).__init__()
@@ -1456,24 +1460,24 @@ class ExchangeMove(MoveBase):
 
 class ChallengeMove(MoveBase):
 
-    """ Represents a challenge move, where the last move played by the
-        opponent is challenged.
+    """Represents a challenge move, where the last move played by the
+    opponent is challenged.
 
-        If the challenge is correct, the opponent
-        loses the points he got for the wrong word.
+    If the challenge is correct, the opponent
+    loses the points he got for the wrong word.
 
-        Move sequence for a correct challenge:
+    Move sequence for a correct challenge:
 
-        [wrong move, score=X]    CHALL score=0
-        RESP score=-X            [next move by challenger]
+    [wrong move, score=X]    CHALL score=0
+    RESP score=-X            [next move by challenger]
 
-        If the challenge is incorrect, the opponent gets a 10 point
-        bonus but the challenger does not lose his turn.
+    If the challenge is incorrect, the opponent gets a 10 point
+    bonus but the challenger does not lose his turn.
 
-        Move sequence for an incorrect challenge:
+    Move sequence for an incorrect challenge:
 
-        [correct move, score=X]  CHALL score=0
-        RESP score=10            [next move by challenger]
+    [correct move, score=X]  CHALL score=0
+    RESP score=10            [next move by challenger]
 
     """
 
@@ -1623,8 +1627,8 @@ class ResignMove(MoveBase):
         self._forfeited_points = forfeited_points
 
     def __str__(self):
-        """ Return the standard move notation of a coordinate
-            followed by the word formed """
+        """Return the standard move notation of a coordinate
+        followed by the word formed"""
         return "Resign"
 
     def replenish(self):
