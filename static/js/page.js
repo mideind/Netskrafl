@@ -2178,13 +2178,8 @@ function createView() {
         var msg = "";
         var player = game.player;
         var opp = game.nickname[1 - player];
-        if (game.moves.length == 0) {
-          // Initial move
-          msg = [m("strong", "You start!"), " Cover the asterisk with your move."];
-          return m(".message", msg);
-        }
-        var move = game.moves[game.moves.length - 1];
-        var mtype = move[1][1];
+        var move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
+        var mtype = move ? move[1][1] : undefined;
         if (s.congratulate) {
           // This player won
           if (mtype == "RSGN")
@@ -2204,8 +2199,12 @@ function createView() {
         }
         else
         if (s.tilesPlaced > 0) {
-          if (game.currentScore === undefined)
-            msg = "Tiles must be consecutive.";
+          if (game.currentScore === undefined) {
+            if (move === undefined)
+              msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
+            else
+              msg = "Tiles must be consecutive.";
+          }
           else
           if (game.wordGood === false) {
             msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
@@ -2213,6 +2212,11 @@ function createView() {
           else {
             msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
           }
+        }
+        else
+        if (move === undefined) {
+          // Initial move
+          msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
         }
         else {
           var co = move[1][0];
