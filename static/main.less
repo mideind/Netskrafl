@@ -479,9 +479,9 @@ div.board table.board {
    transform-origin: 0 0;
    transform-box: view-box;
    touch-action: pan-x pan-y;
+   // !!! Scrolling into view doesn't seem to work with this transition enabled
+   // transition: transform .2s ease-in-out;
 }
-
-#board { transition: transform .2s ease-in-out; }
 
 table.board tr {
    height: 24px;
@@ -1486,18 +1486,11 @@ div.tabbed-page {
    line-height: 23px;
 }
 
-/*
-ul.ui-tabs-nav {
-   display: none;
-}
-*/
-
 div.help-container img {
    /* On mobile, scale images in help text down to fit the column width */
    max-width: 100%;
    height: auto;
    object-fit: scale-down;
-   /* transform: scale(0.75); */
 }
 
 div#tabs,

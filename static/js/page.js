@@ -487,13 +487,12 @@ function createModel(settings) {
   function resetScale() {
     // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
     this.boardScale = 1.0;
-    var board = document.getElementById("board");
-    if (board) {
-      if (board.children.length)
-        // FIXME: Make this less of a hack
-        board.children[0].setAttribute("style", "transform: scale(1.0)");
-      board.scrollTo(0, 0);
-    }
+    var boardParent = document.getElementById("board-parent");
+    var board = boardParent.children[0];
+    if (board)
+      board.setAttribute("style", "transform: scale(1.0)");
+    if (boardParent)
+      boardParent.scrollTo(0, 0);
   }
 
   function updateScale() {
@@ -508,13 +507,16 @@ function createModel(settings) {
       var col = Math.max(0, vec.col - offset);
       var c = coord(row, col);
       var el = document.getElementById("sq_" + c);
-      var board = document.getElementById("board");
-      if (board.children.length)
-        // FIXME: Make this less of a hack
-        board.children[0].setAttribute("style", "transform: scale(1.5)");
+      var boardParent = document.getElementById("board-parent");
+      var board = boardParent.children[0];
+      // The following seems to be needed to ensure that
+      // the transform and hence the size of the board has been 
+      // updated in the browser, before calculating the client rects
+      if (board)
+        board.setAttribute("style", "transform: scale(1.5)");
       var elRect = el.getBoundingClientRect();
-      var boardRect = board.getBoundingClientRect();
-      board.scrollTo(
+      var boardRect = boardParent.getBoundingClientRect();
+      boardParent.scrollTo(
         {
           left: elRect.left - boardRect.left,
           top: elRect.top - boardRect.top,
@@ -3530,20 +3532,14 @@ function createView() {
       view: function(vnode) {  
         var model = vnode.attrs.model;
         var scale = model.boardScale || 1.0;
-        var attrs = {
-          /*
-          ondblclick: function(ev) {
-            model.resetScale();
-            ev.preventDefault();
-          }
-          */
-        };
+        var attrs = { };
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, zoomIn.bind(null, model), zoomOut.bind(null, model));
         if (scale != 1.0)
           attrs.style = "transform: scale(" + scale + ")";
         return m(".board",
-          { id: "board" }, m("table.board", attrs, m("tbody", allrows(model)))
+          { id: "board-parent" },
+          m("table.board", attrs, m("tbody", allrows(model)))
         );
       }
     };
@@ -5369,7 +5365,8 @@ var DialogButton = {
       onmouseover: buttonOver
     };
     for (var a in vnode.attrs)
-      attrs[a] = vnode.attrs[a];
+      if (vnode.attrs.hasOwnProperty(a))
+        attrs[a] = vnode.attrs[a];
     return m(".modal-close", attrs, vnode.children);
   }
 
