@@ -39,7 +39,7 @@
       display: block;
       position: absolute;
       top: 44px;
-      left: 24px;
+      left: 20px;
       width: 50px;
       height: 50px;
       font-size: 20px;
@@ -50,7 +50,7 @@
       position: absolute;
       bottom: 198px;
       top: auto;
-      left: 18px;
+      left: 14px;
       width: 50px;
       height: 50px;
       font-size: 40px;
@@ -124,11 +124,11 @@
    }
 
    table.board tr {
-      height: 34px;
+      height: 35px; /* 32px + 2 * 1.5px */
    }
 
    .rack table.board tr {
-      height: 34px;
+      height: 35px; /* 32px + 2 * 1.5px */
    }
 
    div.tile {
@@ -195,10 +195,6 @@
    
    td.rowid {
       display: table-cell;
-      width: 16px;
-      height: 32px;
-      min-width: 16px;
-      max-width: 16px;
       overflow: hidden;
       font-size: 14px;
       line-height: 14px;
@@ -257,8 +253,8 @@
       font-size: 26px;
       line-height: 45px;
       top: auto;
-      bottom: 272px;
-      left: 648px;
+      bottom: 256px;
+      left: 639px;
       border-radius: 5px;
    }
    
@@ -269,8 +265,8 @@
       font-size: 24px;
       line-height: 46px;
       top: auto;
-      bottom: 208px;
-      left: 648px;
+      bottom: 192px;
+      left: 639px;
       border-radius: 5px;
    }
 
@@ -296,10 +292,11 @@
       height: @btn-height-big;
       top: auto;
       bottom: 125px;
-      left: 600px;
+      left: 597px;
       background-color: darken(@freshtile, 10%);
       font-size: 18px;
-      font-weight: 700;
+      line-height: 24px;
+      font-weight: normal;
    }
    
    div.submitnewgame {
@@ -321,6 +318,11 @@
    div.submitmove {
       .submitbutton;
       display: block;
+   }
+
+   div.submitmove span.glyphicon-play {
+      top: 3px;
+      left: 3px;
    }
 
    div.submitmove.error-shown {
