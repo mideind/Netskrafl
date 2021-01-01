@@ -24,7 +24,7 @@
 		"[javascript]": {
 			"editor.tabSize": 2,
 		},
-		"python.pythonPath": "C:\\Python27\\python.exe",
+		"python.pythonPath": "c:\\Users\\tomas\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
 		"python.formatting.blackArgs": ["-S"],
 		"python.autoComplete.extraPaths": [
 			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
