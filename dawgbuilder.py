@@ -116,8 +116,6 @@ import binascii
 import struct
 import io
 
-from dawgdictionary import PackedDawgDictionary
-
 # The DAWG builder uses the collation (sorting) given by
 # the current locale setting, typically 'is_IS' or 'en_US'
 from languages import current_alphabet, set_locale
@@ -950,15 +948,6 @@ def run_skrafl():
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    # Test loading of DAWG
-    dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
-    t0 = time.time()
-    dawg.load(fpath)
-    t1 = time.time()
-
-    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
-
     # Process list of common words
 
     print("Starting DAWG build for list of common words")
@@ -973,6 +962,17 @@ def run_skrafl():
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    # Test loading of DAWG
+    from dawgdictionary import PackedDawgDictionary
+
+    dawg = PackedDawgDictionary(current_alphabet())
+    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of DAWG for common words
     dawg = PackedDawgDictionary(current_alphabet())
@@ -989,10 +989,10 @@ def run_skrafl():
 if __name__ == "__main__":
 
     # Build the whole Icelandic Netskrafl word database by default
-    # run_skrafl()
+    run_skrafl()
 
     # Build Tournament Word List v6 (TWL06)
-    run_twl06()
+    # run_twl06()
 
     # Build SOWPODS
-    run_sowpods()
+    # run_sowpods()

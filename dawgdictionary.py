@@ -210,7 +210,10 @@ class Wordbase:
         with Wordbase._lock:
             if not Wordbase._dawg:
                 for dawg, alphabet in Wordbase.DAWGS:
-                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
+                    try:
+                        Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
+                    except FileNotFoundError:
+                        logging.warning("Unable to load DAWG {0}".format(dawg))
 
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
