@@ -2394,7 +2394,6 @@ def oauth2callback():
 
     token = request.form.get("idToken", "")
     csrf_token = request.form.get("csrfToken", "")
-
     if not token:
         # No authentication token included in the request
         # 400 - Bad Request
@@ -2409,6 +2408,7 @@ def oauth2callback():
         idinfo = id_token.verify_oauth2_token(
             token, google_requests.Request(), _CLIENT_ID
         )
+        # idinfo = dict(sub="1234", name="Test", email="test@test.is")
         if idinfo["iss"] not in _VALID_ISSUERS:
             raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims

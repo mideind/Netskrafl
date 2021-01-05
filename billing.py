@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" Billing manager for netskrafl.appspot.com
+""" Billing manager for netskrafl.appspot.co
 
     Copyright (C) 2020 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
