@@ -377,10 +377,11 @@ class UserModel(ndb.Model):
             # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
             for k in iter_q(
-                q, chunk_size=max_len, projection=["highest_score", "inactive"]
+                q, chunk_size=max_len, projection=["highest_score"]
             ):
-                if k.highest_score > 0 and not k.inactive:
-                    # Is active and has played at least one game: Yield the key value
+                if k.highest_score > 0:
+                    # Has played at least one game: Yield the key value
+                    # Note that inactive users will be filtered out at a later stage
                     yield k.key.id()
                     counter += 1
                     if counter >= max_len:
