@@ -374,11 +374,8 @@ class UserModel(ndb.Model):
         def fetch(q: ndb.Query, max_len: int) -> Iterator[str]:
             """ Generator for returning query result keys """
             assert max_len > 0
-            # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
-            for k in iter_q(
-                q, chunk_size=max_len, projection=["highest_score"]
-            ):
+            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
                     # Note that inactive users will be filtered out at a later stage
@@ -847,9 +844,9 @@ class StatsModel(ndb.Model):
     # The timestamp of this statistic
     timestamp = ndb.DateTimeProperty(indexed=True, auto_now_add=True)
 
-    games = ndb.IntegerProperty()
-    human_games = ndb.IntegerProperty()
-    manual_games = ndb.IntegerProperty(required=False, default=0)
+    games = ndb.IntegerProperty(indexed=False)
+    human_games = ndb.IntegerProperty(indexed=False)
+    manual_games = ndb.IntegerProperty(required=False, indexed=False, default=0)
 
     elo = ndb.IntegerProperty(indexed=True, default=1200)
     human_elo = ndb.IntegerProperty(indexed=True, default=1200)
@@ -1229,39 +1226,45 @@ class RatingModel(ndb.Model):
     # The ordinal rank
     rank = ndb.IntegerProperty(required=True)
 
-    user = ndb.KeyProperty(kind=UserModel, required=False, default=None)
-    robot_level = ndb.IntegerProperty(required=False, default=0)
+    user = ndb.KeyProperty(kind=UserModel, required=False, default=None, indexed=False)
+    robot_level = ndb.IntegerProperty(required=False, default=0, indexed=False)
 
-    games = ndb.IntegerProperty(required=False, default=0)
-    elo = ndb.IntegerProperty(required=False, default=1200)
-    score = ndb.IntegerProperty(required=False, default=0)
-    score_against = ndb.IntegerProperty(required=False, default=0)
-    wins = ndb.IntegerProperty(required=False, default=0)
-    losses = ndb.IntegerProperty(required=False, default=0)
+    games = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    elo = ndb.IntegerProperty(required=False, default=1200, indexed=False)
+    score = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    score_against = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    wins = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    losses = ndb.IntegerProperty(required=False, default=0, indexed=False)
 
-    rank_yesterday = ndb.IntegerProperty(required=False, default=0)
-    games_yesterday = ndb.IntegerProperty(required=False, default=0)
-    elo_yesterday = ndb.IntegerProperty(required=False, default=1200)
-    score_yesterday = ndb.IntegerProperty(required=False, default=0)
-    score_against_yesterday = ndb.IntegerProperty(required=False, default=0)
-    wins_yesterday = ndb.IntegerProperty(required=False, default=0)
-    losses_yesterday = ndb.IntegerProperty(required=False, default=0)
+    rank_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    games_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    elo_yesterday = ndb.IntegerProperty(required=False, default=1200, indexed=False)
+    score_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    score_against_yesterday = ndb.IntegerProperty(
+        required=False, default=0, indexed=False
+    )
+    wins_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    losses_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
 
-    rank_week_ago = ndb.IntegerProperty(required=False, default=0)
-    games_week_ago = ndb.IntegerProperty(required=False, default=0)
-    elo_week_ago = ndb.IntegerProperty(required=False, default=1200)
-    score_week_ago = ndb.IntegerProperty(required=False, default=0)
-    score_against_week_ago = ndb.IntegerProperty(required=False, default=0)
-    wins_week_ago = ndb.IntegerProperty(required=False, default=0)
-    losses_week_ago = ndb.IntegerProperty(required=False, default=0)
+    rank_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    games_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    elo_week_ago = ndb.IntegerProperty(required=False, default=1200, indexed=False)
+    score_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    score_against_week_ago = ndb.IntegerProperty(
+        required=False, default=0, indexed=False
+    )
+    wins_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    losses_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
 
-    rank_month_ago = ndb.IntegerProperty(required=False, default=0)
-    games_month_ago = ndb.IntegerProperty(required=False, default=0)
-    elo_month_ago = ndb.IntegerProperty(required=False, default=1200)
-    score_month_ago = ndb.IntegerProperty(required=False, default=0)
-    score_against_month_ago = ndb.IntegerProperty(required=False, default=0)
-    wins_month_ago = ndb.IntegerProperty(required=False, default=0)
-    losses_month_ago = ndb.IntegerProperty(required=False, default=0)
+    rank_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    games_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    elo_month_ago = ndb.IntegerProperty(required=False, default=1200, indexed=False)
+    score_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    score_against_month_ago = ndb.IntegerProperty(
+        required=False, default=0, indexed=False
+    )
+    wins_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    losses_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
 
     @classmethod
     def get_or_create(cls, kind, rank):
@@ -1337,6 +1340,11 @@ class RatingModel(ndb.Model):
     def put_multi(recs):
         """ Insert or update multiple ratings records """
         ndb.put_multi(recs)
+
+    @classmethod
+    def delete_all(cls):
+        """ Delete all ratings records """
+        ndb.delete_multi(cls.query().iter(keys_only=True))
 
 
 class ChatModel(ndb.Model):

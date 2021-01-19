@@ -14,7 +14,7 @@
 /* global $:false, Mousetrap:false,
    serverQuery, gameId, localPlayer,
    gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag, gameTilescores, gameAlphabet,
-   userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
+   gameLocale, userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
    opponentInfo, preventPullToRefresh, initFirebaseListener, loginFirebase, attachFirebaseListener,
    initSkrafl, lateInit, initialGameTime, initBag, initMoveList, placeTiles,
    favUserInfo, toggleVersus, initToggle, toggleStats, fbShare,
@@ -1423,7 +1423,7 @@ function updateButtonState() {
          wordGoodOrBad(false, false);
          if (!gameIsManual())
             serverQuery("/wordcheck",
-               { word: wordToCheck, words: scoreResult.words },
+               { locale: gameLocale(), word: wordToCheck, words: scoreResult.words },
                showWordCheck
             );
       }

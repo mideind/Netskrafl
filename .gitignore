@@ -28,10 +28,6 @@ resources/client_secret.txt
 # Private GAE services key
 resources/netskrafl-*.json
 
-# Unsorted BIN word lists
-resources/ordalistimax15.txt
-resources/ordalisti.algeng.txt
-
 # Non-Icelandic word lists
 resources/TWL06.txt
 resources/sowpods.txt
