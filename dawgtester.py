@@ -216,6 +216,10 @@ class DawgTester:
         self._test_false("strinum")
         self._test_false("sigrihrt")
 
+        self._test_true("fau")
+        self._test_true("ifa")
+        self._test_true("yla")
+
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
         smallwords = [
