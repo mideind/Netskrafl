@@ -195,7 +195,7 @@ class Wordbase:
     # Known dictionaries
     DAWGS = [
         ("ordalisti", IcelandicAlphabet),
-        ("algeng", IcelandicAlphabet),
+        ("amlodi", IcelandicAlphabet),
         ("midlungur", IcelandicAlphabet),
         ("sowpods", EnglishAlphabet),
         ("TWL06", EnglishAlphabet),
@@ -252,7 +252,7 @@ class Wordbase:
     def dawg_common() -> PackedDawgDictionary:
         """ Return the common words DAWG object """
         # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Amlóði'
-        return Wordbase._dawg["algeng"]
+        return Wordbase._dawg["amlodi"]
 
     @staticmethod
     def dawg_medium() -> PackedDawgDictionary:

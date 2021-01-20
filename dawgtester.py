@@ -209,6 +209,13 @@ class DawgTester:
         self._test_false("komiði")
         self._test_false("komuði")
 
+        self._test_false("öfgahu")
+        self._test_false("salilíkari")
+        self._test_false("blýlegrar")
+        self._test_false("mismri")
+        self._test_false("strinum")
+        self._test_false("sigrihrt")
+
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
         smallwords = [

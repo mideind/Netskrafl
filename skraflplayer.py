@@ -637,9 +637,9 @@ class AutoPlayer:
             # Create an AutoPlayer that plays medium-heavy words
             return AutoPlayer_Medium(state)
         # Create a normal AutoPlayer using the entire vocabulary
-        return AutoPlayer(state, robot_level)
+        return AutoPlayer(state)
 
-    def __init__(self, state: State, robot_level: int = 0) -> None:
+    def __init__(self, state: State) -> None:
 
         # List of valid, candidate moves
         self._candidates: List[MoveBase] = []
@@ -647,7 +647,6 @@ class AutoPlayer:
         self._board = state.board()
         # The rack that the autoplayer has to work with
         self._rack = state.player_rack().contents()
-        self._robot_level = robot_level
 
         # Calculate a bit pattern representation of the rack
         if "?" in self._rack:
@@ -803,29 +802,7 @@ class AutoPlayer:
 
     def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
-
-        num_candidates = len(scored_candidates)
-        picklist = self._robot_level
-        if picklist < 1:
-            picklist = 1
-        elif picklist > num_candidates:
-            picklist = num_candidates
-        top_equal = 0
-        # Move the selection window down the list as long as
-        # the top moves have the same score
-        if picklist > 1:
-            # pylint: disable=bad-continuation
-            while (
-                picklist + top_equal < num_candidates
-                and scored_candidates[top_equal][1]
-                == scored_candidates[top_equal + 1][1]
-            ):
-                top_equal += 1
-        # logging.info("Selecting one of {0} best moves from {2} after cutting {1} from top"
-        #    .format(picklist, top_equal, num_candidates))
-        # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
-        #    logging.info("Move {0} score {1}".format(m, sc))
-        return scored_candidates[top_equal + random.randint(0, picklist - 1)][0]
+        return scored_candidates[0][0]
 
     # pylint: disable=unused-argument
     def _find_best_move(self, depth: int) -> Optional[MoveBase]:
@@ -846,22 +823,20 @@ class AutoPlayer_Custom(AutoPlayer):
 
     """ This subclass of AutoPlayer only plays words from a particular vocabulary """
 
-    def __init__(self, state: State, robot_level: int) -> None:
-        AutoPlayer.__init__(self, state, robot_level)
+    # The number of candidate moves to pick from, randomly
+    NUM_TO_PICK_FROM: int
 
-    def num_to_pick_from(self) -> int:
-        """ Return the number of candidate moves to pick from, randomly """
-        raise NotImplementedError
+    # The custom vocabulary used by this robot
+    VOCABULARY: PackedDawgDictionary
 
-    def vocabulary(self) -> PackedDawgDictionary:
-        """ Return the custom vocabulary used by this robot """
-        raise NotImplementedError
+    def __init__(self, state: State) -> None:
+        super().__init__(state)
 
     def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
         # Custom dictionary
-        vocab = self.vocabulary()
-        play_one_of = self.num_to_pick_from()
+        vocab = self.VOCABULARY
+        play_one_of = self.NUM_TO_PICK_FROM
         playable_candidates: MoveList = []
         num_candidates = len(scored_candidates)
         # Iterate through the candidates in descending score order
@@ -882,7 +857,7 @@ class AutoPlayer_Custom(AutoPlayer):
                     playable_candidates.append(scored_candidates[i])
                     p += 1
             i += 1
-        # Now we have a list of up to self.num_to_pick_from() playable moves
+        # Now we have a list of up to NUM_TO_PICK_FROM playable moves
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None
@@ -894,32 +869,28 @@ class AutoPlayer_Medium(AutoPlayer_Custom):
 
     """ This robot plays one of 8 not-super-rare words """
 
+    # This robot plays one of the 10 top candidate moves
+    NUM_TO_PICK_FROM = 10
+
+    # Return the vocabulary of medium-heavy words
+    VOCABULARY = Wordbase.dawg_medium()
+
     def __init__(self, state: State) -> None:
-        AutoPlayer.__init__(self, state, 8)
-
-    def num_to_pick_from(self) -> int:
-        """ This robot plays one of the 8 top candidate moves """
-        return 8
-
-    def vocabulary(self) -> PackedDawgDictionary:
-        """ Return the vocabulary of medium-heavy words """
-        return Wordbase.dawg_medium()
+        super().__init__(state)
 
 
 class AutoPlayer_Common(AutoPlayer_Custom):
 
     """ This robot only plays words from a list of common words """
 
+    # This robot plays one of the 10 top candidate moves
+    NUM_TO_PICK_FROM = 20
+
+    # Return the vocabulary of common words
+    VOCABULARY = Wordbase.dawg_common()
+
     def __init__(self, state: State) -> None:
-        AutoPlayer.__init__(self, state, 15)
-
-    def num_to_pick_from(self) -> int:
-        """ This robot plays one of the 20 top candidate moves """
-        return 20
-
-    def vocabulary(self) -> PackedDawgDictionary:
-        """ Return the vocabulary of common words """
-        return Wordbase.dawg_common()
+        super().__init__(state)
 
 
 class AutoPlayer_MiniMax(AutoPlayer):
@@ -929,7 +900,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
     """
 
     def __init__(self, state: State) -> None:
-        AutoPlayer.__init__(self, state)
+        super().__init__(state)
 
     def _find_best_move(self, depth: int) -> Optional[MoveBase]:
         """ Analyze the list of candidate moves and pick the best one """
