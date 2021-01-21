@@ -638,7 +638,7 @@ class Game:
         ),
         (
             "Miðlungur",
-            "Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu",
+            "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
             8,
         ),
         (

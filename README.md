@@ -91,14 +91,14 @@ Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 ### Generating a new vocabulary file
 
-To generate a new vocabulary file (```ordalistimax15.sorted.txt```), assuming you already
-have the BÍN database in PostgreSQL (here in table ```ord19``` - remember to use the
+To generate a new vocabulary file (```ordalisti.full.sorted.txt```), assuming you already
+have the BÍN database in PostgreSQL (here in table ```sigrunarsnid``` - remember to use the
 ```is_IS``` collation locale!), invoke ```psql```, log in to your database and
 create the following view:
 
 ```sql
 create or replace view skrafl as
-   select stofn, utg, ordfl, fl, ordmynd, beyging from ord19
+   select stofn, utg, ordfl, fl, ordmynd, beyging from sigrunarsnid
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
    and fl <> 'bibl'
    and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
@@ -113,9 +113,23 @@ forms (*spurnarmyndir í fleirtölu*).
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt';
+\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
+To extract only the subset of BÍN used by the robot *Miðlungur*, use the following
+view, assuming you have the *Kristínarsnið* form of BÍN in the table ```kristinarsnid```
+containing the ```malsnid``` and ```einkunn``` columns:
+
+```sql
+create or replace view skrafl_midlungur as
+	select stofn, utg, ordfl, fl, ordmynd, beyging
+	from kristinarsnid
+	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD', 'FORN', 'URE', 'STAD'])))
+		and einkunn > 0;
+```
+
+You can then use the ```skrafl_midlungur``` view as the underlying table for the previous
+(vocabulary) query, replacing ```sigrunarsnid``` with ```skrafl_midlungur```.
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
