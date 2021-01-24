@@ -509,6 +509,9 @@ class State:
     ):
 
         # pylint: disable=protected-access
+        # The covers laid down in the last challengeable move
+        self._last_covers: Optional[List[Cover]] = None
+
         if copy is None:
             self._board = Board(board_type=board_type)
             self._player_to_move = 0
@@ -527,8 +530,6 @@ class State:
             self._challenge_score = 0
             # The rack before the last challengeable move
             self._last_rack: Optional[str] = None
-            # The covers laid down in the last challengeable move
-            self._last_covers = None
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
             if manual_wordcheck and _DEBUG_MANUAL_WORDCHECK:
@@ -683,7 +684,7 @@ class State:
         self._last_covers = None
         self._challenge_score = 0
 
-    def set_challengeable(self, score, covers, last_rack):
+    def set_challengeable(self, score: int, covers: List[Cover], last_rack: str) -> None:
         """ Set the challengeable state, with the given covers being laid down """
         if score and self.manual_wordcheck:
             self._challenge_score = score
@@ -696,7 +697,7 @@ class State:
         """ Return the contents of the rack (indexed by 0 or 1) """
         return self._racks[index].contents()
 
-    def rack_details(self, index: int):
+    def rack_details(self, index: int) -> List[Tuple[str, int]]:
         """ Return the contents of the rack (indexed by 0 or 1) """
         assert self._tileset is not None
         return self._racks[index].details(self._tileset)
