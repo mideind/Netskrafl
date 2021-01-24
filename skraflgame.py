@@ -685,7 +685,7 @@ class Game:
         player1_id: Optional[str],
         robot_level: int = 0,
         prefs: Optional[PrefsDict] = None,
-    ):
+    ) -> None:
         """ Initialize a new, fresh game """
         self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
@@ -709,7 +709,7 @@ class Game:
         player1_id: Optional[str],
         robot_level: int = 0,
         prefs: Optional[PrefsDict] = None,
-    ):
+    ) -> Game:
         """ Start and initialize a new game """
         game = cls(Unique.id())  # Assign a new unique id to the game
         if randint(0, 1) == 1:
@@ -724,20 +724,20 @@ class Game:
         return game
 
     @classmethod
-    def load(cls, uuid, use_cache=True):
+    def load(cls, uuid: str, use_cache: bool = True) -> Optional[Game]:
         """ Load an already existing game from persistent storage """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
             return cls._load_locked(uuid, use_cache)
 
-    def store(self):
+    def store(self) -> None:
         """ Store the game state in persistent storage """
         # Avoid race conditions by securing the lock before storing
         with Game._lock:
             self._store_locked()
 
     @classmethod
-    def _load_locked(cls, uuid, use_cache=True):
+    def _load_locked(cls, uuid: str, use_cache: bool = True) -> Optional[Game]:
         """ Load an existing game from cache or persistent storage under lock """
 
         gm = GameModel.fetch(uuid, use_cache)
@@ -838,7 +838,7 @@ class Game:
             elif mm.tiles == "RESP":
 
                 # Response to challenge
-                m = ResponseMove()
+                m = ResponseMove(mm.score)
 
             if m is None:
                 # Something is wrong: mark the game as erroneous
@@ -872,7 +872,7 @@ class Game:
 
         return game
 
-    def _store_locked(self):
+    def _store_locked(self) -> None:
         """ Store the game after having acquired the object lock """
 
         assert self.uuid is not None
@@ -1103,7 +1103,7 @@ class Game:
         assert self.state is not None
         net_m: List[MoveTuple] = []
         for m in self.moves:
-            if isinstance(m.move, ResponseMove) and m.move.score(self.state) < 0:
+            if m.move.is_successful_challenge(self.state):
                 # Successful challenge: Erase the two previous moves
                 # (the challenge and the illegal move)
                 assert len(net_m) >= 2
@@ -1463,13 +1463,17 @@ class Game:
         return self.state.is_last_challenge()
 
     def client_state(
-        self, player_index: int, lastmove: Optional[MoveBase] = None, deep: bool = False
+        self,
+        player_index: Optional[int],
+        lastmove: Optional[MoveBase] = None,
+        deep: bool = False,
     ) -> Dict[str, Any]:
         """ Create a package of information for the client about the current state """
         assert self.state is not None
         reply: Dict[str, Any] = dict()
         num_moves = 1
-        lm = None
+        lm: Optional[MoveBase] = None
+        succ_chall = False
         if self.last_move is not None:
             # Show the autoplayer or response move that was made
             lm = self.last_move
@@ -1480,8 +1484,8 @@ class Game:
             lm = lastmove
         if lm is not None:
             reply["lastmove"] = lm.details(self.state)
-        # Successful challenge?
-        succ_chall = isinstance(lm, ResponseMove) and lm.score(self.state) < 0
+            # Successful challenge?
+            succ_chall = lm.is_successful_challenge(self.state)
         newmoves = [
             (m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]
         ]

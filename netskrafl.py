@@ -1197,6 +1197,8 @@ def gamestate():
     uuid = rq.get("game")
 
     user_id = current_user_id()
+    assert user_id is not None
+
     game = Game.load(uuid) if uuid else None
 
     if game is None:
@@ -1567,7 +1569,7 @@ def chatmsg() -> Response:
         if uuid:
             game = Game.load(uuid)
 
-    if game is None or not game.has_player(user_id):
+    if game is None or user_id is None or not game.has_player(user_id):
         # The logged-in user must be a player in the game
         return jsonify(ok=False)
 
@@ -1584,8 +1586,11 @@ def chatmsg() -> Response:
         msg = {}
         for p in range(0, 2):
             # Send a Firebase notification to /game/[gameid]/[userid]/chat
-            msg["game/" + uuid + "/" + game.player_id(p) + "/chat"] = md
-        firebase.send_message(msg)
+            pid = game.player_id(p)
+            if pid is not None:
+                msg["game/" + uuid + "/" + pid + "/chat"] = md
+        if msg:
+            firebase.send_message(msg)
 
     return jsonify(ok=True)
 
@@ -1609,7 +1614,7 @@ def chatload() -> Response:
         if uuid:
             game = Game.load(uuid)
 
-    if game is None or not game.has_player(user_id):
+    if game is None or user_id is None or not game.has_player(user_id):
         # The logged-in user must be a player in the game
         return jsonify(ok=False)
 
@@ -1680,9 +1685,10 @@ def review() -> ResponseType:
             # 19 is what fits on screen
             best_moves = apl.generate_best_moves(19)
 
-    if game.has_player(user.id()):
+    uid = user.id()
+    if uid is not None and game.has_player(uid):
         # Look at the game from the point of view of this player
-        user_index = game.player_index(user.id())
+        user_index = game.player_index(uid)
     else:
         # This is an outside spectator: look at it from the point of view of
         # player 0, or the human player if player 0 is an autoplayer
@@ -1748,9 +1754,10 @@ def bestmoves() -> Response:
                 (player_index, m.summary(state)) for m, _ in apl.generate_best_moves(19)
             ]
 
-    if game.has_player(user.id()):
+    uid = user.id()
+    if uid is not None and game.has_player(uid):
         # Look at the game from the point of view of this player
-        user_index = game.player_index(user.id())
+        user_index = game.player_index(uid)
     else:
         # This is an outside spectator: look at it from the point of view of
         # player 0, or the human player if player 0 is an autoplayer
@@ -2243,11 +2250,13 @@ def board() -> ResponseType:
     # Delete the Firebase subtree for this game,
     # to get earlier move and chat notifications out of the way
     if firebase_token is not None and user is not None:
-        msg = {
-            "game/" + game.id() + "/" + uid: None,
-            "user/" + uid + "/wait": None,
-        }
-        firebase.send_message(msg)
+        game_id = game.id()
+        if game_id is not None:
+            msg = {
+                "game/" + game_id + "/" + uid: None,
+                "user/" + uid + "/wait": None,
+            }
+            firebase.send_message(msg)
         # No need to clear other stuff on the /user/[user_id]/ path,
         # since we're not listening to it in board.html
 
