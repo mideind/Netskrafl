@@ -74,14 +74,25 @@ from typing import Optional, List, Tuple, Dict, cast
 
 import random
 
-from dawgdictionary import Wordbase
+from dawgdictionary import Wordbase, PackedDawgDictionary
 from languages import Alphabet, current_alphabet
-from skraflmechanics import State, Board, Cover, MoveBase, Move, ExchangeMove, PassMove
+from skraflmechanics import (
+    State,
+    Board,
+    Cover,
+    Rack,
+    MoveBase,
+    Move,
+    ExchangeMove,
+    PassMove,
+)
 from dawgdictionary import Navigator
 
 
 # Type definitions
 LeftPart = Tuple[str, str, str, int]
+MoveTuple = Tuple[MoveBase, int]
+MoveList = List[MoveTuple]
 
 
 class Square:
@@ -255,7 +266,9 @@ class Axis:
             x += xd
             y += yd
 
-    def _gen_moves_from_anchor(self, index, maxleft, lpn):
+    def _gen_moves_from_anchor(
+        self, index: int, maxleft: int, lpn: Optional[LeftPermutationNavigator]
+    ) -> None:
         """ Find valid moves emanating (on the left and right) from this anchor """
         if maxleft == 0 and index > 0 and not self.is_empty(index - 1):
             # We have a left part already on the board: try to complete it
@@ -292,7 +305,7 @@ class Axis:
                         rnav = ExtendRightNavigator(self, index, rack_leave)
                         self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
 
-    def generate_moves(self, lpn):
+    def generate_moves(self, lpn: Optional[LeftPermutationNavigator]) -> None:
         """Find all valid moves on this axis by attempting to place tiles
         at and around all anchor squares"""
         last_anchor = -1
@@ -611,25 +624,29 @@ class AutoPlayer:
 
     # The robot level that uses only common words
     AUTOPLAYER_COMMON = 15
+    # The robot level that plays medium-heavy words
+    AUTOPLAYER_MEDIUM = 8
 
     @staticmethod
-    def create(state, robot_level=0):
+    def create(state, robot_level: int = 0) -> AutoPlayer:
         """ Create an Autoplayer instance of the desired ability level """
         if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
             # Create an AutoPlayer that only plays common words
-            return AutoPlayer_Common(state, robot_level)
+            return AutoPlayer_Common(state)
+        if robot_level >= AutoPlayer.AUTOPLAYER_MEDIUM:
+            # Create an AutoPlayer that plays medium-heavy words
+            return AutoPlayer_Medium(state)
         # Create a normal AutoPlayer using the entire vocabulary
-        return AutoPlayer(state, robot_level)
+        return AutoPlayer(state)
 
-    def __init__(self, state, robot_level=0):
+    def __init__(self, state: State) -> None:
 
         # List of valid, candidate moves
-        self._candidates = []
+        self._candidates: List[MoveBase] = []
         self._state = state
         self._board = state.board()
         # The rack that the autoplayer has to work with
         self._rack = state.player_rack().contents()
-        self._robot_level = robot_level
 
         # Calculate a bit pattern representation of the rack
         if "?" in self._rack:
@@ -639,39 +656,39 @@ class AutoPlayer:
             # No wildcard: limits the possibilities of covering squares
             self._rack_bit_pattern = current_alphabet().bit_pattern(self._rack)
 
-    def board(self):
+    def board(self) -> Board:
         """ Return the board """
         return self._board
 
-    def rack(self):
+    def rack(self) -> str:
         """ Return the rack, as a string of tiles """
         return self._rack
 
-    def rack_bit_pattern(self):
+    def rack_bit_pattern(self) -> int:
         """ Return the bit pattern corresponding to the rack """
         return self._rack_bit_pattern
 
-    def candidates(self):
+    def candidates(self) -> List[MoveBase]:
         """ The list of valid, candidate moves """
         return self._candidates
 
-    def add_candidate(self, move):
+    def add_candidate(self, move: MoveBase) -> None:
         """ Add a candidate move to the AutoPlayer's list """
         self._candidates.append(move)
 
-    def _axis_from_row(self, row):
+    def _axis_from_row(self, row: int) -> Axis:
         """ Create and initialize an Axis from a board row """
         return Axis(self, row, True)  # Horizontal
 
-    def _axis_from_column(self, col):
+    def _axis_from_column(self, col: int) -> Axis:
         """ Create and initialize an Axis from a board column """
         return Axis(self, col, False)  # Vertical
 
-    def generate_move(self):
+    def generate_move(self) -> MoveBase:
         """ Finds and returns a Move object to be played """
         return self._generate_move(depth=1)
 
-    def generate_best_moves(self, max_number=0):
+    def generate_best_moves(self, max_number: int = 0) -> MoveList:
         """ Returns a list in descending order of the n best moves, or all moves if n <= 0 """
         self._generate_candidates()
         if not self._candidates:
@@ -684,7 +701,7 @@ class AutoPlayer:
         # Return the top candidates
         return sorted_candidates[0:max_number]
 
-    def _generate_candidates(self):
+    def _generate_candidates(self) -> None:
         """ Generate a fresh candidate list """
 
         self._candidates = []
@@ -731,7 +748,7 @@ class AutoPlayer:
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
 
-    def _generate_move(self, depth):
+    def _generate_move(self, depth: int) -> MoveBase:
         """ Finds and returns a Move object to be played, eventually weighted by countermoves """
 
         # Generate a fresh list of candidate moves
@@ -749,12 +766,12 @@ class AutoPlayer:
         # If we can't exchange tiles, we have to pass
         return PassMove()
 
-    def _score_candidates(self):
+    def _score_candidates(self) -> MoveList:
         """ Calculate the score of each candidate """
 
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x):
+        def keyfunc(x: MoveTuple) -> Tuple:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic can be inserted here,
@@ -764,11 +781,14 @@ class AutoPlayer:
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x):
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game
             """
+            # !!! FIXME: On the Explo board, there is no need to encourage
+            # !!! going to the upper half of the board
+            assert isinstance(x[0], Move)
             return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function
@@ -780,33 +800,12 @@ class AutoPlayer:
             scored_candidates.sort(key=keyfunc)
         return scored_candidates
 
-    def _pick_candidate(self, scored_candidates):
+    def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
-
-        num_candidates = len(scored_candidates)
-        picklist = self._robot_level
-        if picklist < 1:
-            picklist = 1
-        elif picklist > num_candidates:
-            picklist = num_candidates
-        top_equal = 0
-        # Move the selection window down the list as long as the top moves have the same score
-        if picklist > 1:
-            # pylint: disable=bad-continuation
-            while (
-                picklist + top_equal < num_candidates
-                and scored_candidates[top_equal][1]
-                == scored_candidates[top_equal + 1][1]
-            ):
-                top_equal += 1
-        # logging.info("Selecting one of {0} best moves from {2} after cutting {1} from top"
-        #    .format(picklist, top_equal, num_candidates))
-        # for m, sc in scored_candidates[top_equal : top_equal + picklist]:
-        #    logging.info("Move {0} score {1}".format(m, sc))
-        return scored_candidates[top_equal + random.randint(0, picklist - 1)][0]
+        return scored_candidates[0][0]
 
     # pylint: disable=unused-argument
-    def _find_best_move(self, depth):
+    def _find_best_move(self, depth: int) -> Optional[MoveBase]:
         """ Analyze the list of candidate moves and pick the highest-scoring one """
 
         if not self._candidates:
@@ -820,46 +819,78 @@ class AutoPlayer:
         return self._pick_candidate(self._score_candidates())
 
 
-class AutoPlayer_Common(AutoPlayer):
+class AutoPlayer_Custom(AutoPlayer):
 
-    """This subclass of AutoPlayer only plays words from a
-    list of common words.
-    """
+    """ This subclass of AutoPlayer only plays words from a particular vocabulary """
 
-    def __init__(self, state, robot_level):
-        AutoPlayer.__init__(self, state, robot_level)
-        self._play_one_of = 20  # Plays one of the 20 top candidates
+    # The number of candidate moves to pick from, randomly
+    NUM_TO_PICK_FROM: int
 
-    def _pick_candidate(self, scored_candidates):
+    # The custom vocabulary used by this robot
+    VOCABULARY: PackedDawgDictionary
+
+    def __init__(self, state: State) -> None:
+        super().__init__(state)
+
+    def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
-
+        # Custom dictionary
+        vocab = self.VOCABULARY
+        play_one_of = self.NUM_TO_PICK_FROM
+        playable_candidates: MoveList = []
         num_candidates = len(scored_candidates)
-        # List of playable common words
-        common = Wordbase.dawg_common()
-        playable_candidates: List[Tuple[MoveBase, int]] = []
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
         i = 0  # Candidate index
         p = 0  # Playable index
-        while p < self._play_one_of and i < num_candidates:
-            m = scored_candidates[i][0]  # Candidate move
+        while p < play_one_of and i < num_candidates:
+            m, score = scored_candidates[i]  # Candidate move
+            assert isinstance(m, Move)
             w = m.word()  # The principal word being played
-            if len(w) == 2 or w in common:
+            if len(w) == 2 or w in vocab:
                 # This one is playable - but we still won't put it on
                 # the candidate list if has the same score as the
                 # first (top-scoring) playable word
-                if p == 1 and scored_candidates[i][1] == playable_candidates[0][1]:
+                if p == 1 and score == playable_candidates[0][1]:
                     pass
                 else:
                     playable_candidates.append(scored_candidates[i])
                     p += 1
             i += 1
-        # Now we have a list of up to self._play_one_of playable moves
+        # Now we have a list of up to NUM_TO_PICK_FROM playable moves
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None
         # Pick a move at random from the playable list
         return playable_candidates[random.randint(0, p - 1)][0]
+
+
+class AutoPlayer_Medium(AutoPlayer_Custom):
+
+    """ This robot plays one of 8 not-super-rare words """
+
+    # This robot plays one of the 10 top candidate moves
+    NUM_TO_PICK_FROM = 10
+
+    # Return the vocabulary of medium-heavy words
+    VOCABULARY = Wordbase.dawg_medium()
+
+    def __init__(self, state: State) -> None:
+        super().__init__(state)
+
+
+class AutoPlayer_Common(AutoPlayer_Custom):
+
+    """ This robot only plays words from a list of common words """
+
+    # This robot plays one of the 10 top candidate moves
+    NUM_TO_PICK_FROM = 20
+
+    # Return the vocabulary of common words
+    VOCABULARY = Wordbase.dawg_common()
+
+    def __init__(self, state: State) -> None:
+        super().__init__(state)
 
 
 class AutoPlayer_MiniMax(AutoPlayer):
@@ -868,10 +899,10 @@ class AutoPlayer_MiniMax(AutoPlayer):
     select a move to play from the list of valid moves.
     """
 
-    def __init__(self, state):
-        AutoPlayer.__init__(self, state)
+    def __init__(self, state: State) -> None:
+        super().__init__(state)
 
-    def _find_best_move(self, depth):
+    def _find_best_move(self, depth: int) -> Optional[MoveBase]:
         """ Analyze the list of candidate moves and pick the best one """
 
         # assert depth >= 0
@@ -890,7 +921,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # Calculate the score of each candidate
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x):
+        def keyfunc(x: MoveTuple) -> Tuple:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic could be inserted here,
@@ -900,10 +931,11 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x):
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game"""
+            assert isinstance(x[0], Move)
             return (-x[1], x[0].row)
 
         # Sort the candidate moves using the appropriate key function

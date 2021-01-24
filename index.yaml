@@ -20,37 +20,6 @@ indexes:
   properties:
   - name: timestamp
 
-- kind: ChannelModel
-  properties:
-  - name: connected
-  - name: entity
-  - name: kind
-  - name: user
-  - name: expiry
-
-- kind: ChannelModel
-  properties:
-  - name: connected
-  - name: expiry
-
-- kind: ChannelModel
-  properties:
-  - name: connected
-  - name: expiry
-  - name: user
-
-- kind: ChannelModel
-  properties:
-  - name: connected
-  - name: user
-  - name: expiry
-
-- kind: ChannelModel
-  properties:
-  - name: entity
-  - name: kind
-  - name: expiry
-
 - kind: ChatModel
   properties:
   - name: channel
@@ -112,6 +81,30 @@ indexes:
 - kind: StatsModel
   properties:
   - name: robot_level
+  - name: timestamp
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: robot_level
+  - name: user
+  - name: timestamp
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: human_elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
   - name: user
   - name: timestamp
     direction: desc
@@ -132,7 +125,7 @@ indexes:
   - name: human_elo
     direction: asc
   - name: highest_score
-  - name: inactive
+#  - name: inactive
 
 - kind: UserModel
   properties:
@@ -140,4 +133,4 @@ indexes:
   - name: human_elo
     direction: desc
   - name: highest_score
-  - name: inactive
+#  - name: inactive

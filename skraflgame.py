@@ -131,6 +131,7 @@ class User:
         self._ready_timed = False
         self._elo = 0
         self._human_elo = 0
+        self._manual_elo = 0
         self._highest_score = 0
         self._highest_score_game: Optional[str] = None
         self._best_word: Optional[str] = None
@@ -154,6 +155,7 @@ class User:
         self._ready_timed = um.ready_timed
         self._elo = um.elo
         self._human_elo = um.human_elo
+        self._manual_elo = um.manual_elo
         self._highest_score = um.highest_score
         self._highest_score_game = um.highest_score_game
         self._best_word = um.best_word
@@ -180,6 +182,7 @@ class User:
             um.ready_timed = self._ready_timed
             um.elo = self._elo
             um.human_elo = self._human_elo
+            um.manual_elo = self._manual_elo
             um.highest_score = self._highest_score
             um.highest_score_game = self._highest_score_game
             um.best_word = self._best_word
@@ -216,6 +219,10 @@ class User:
     def human_elo(self) -> int:
         """ Return the human-only Elo points of the user """
         return self._human_elo or User.DEFAULT_ELO
+
+    def manual_elo(self) -> int:
+        """ Return the human-only, manual-game-only Elo points of the user """
+        return self._manual_elo or User.DEFAULT_ELO
 
     def is_inactive(self) -> bool:
         """ Return True if the user is marked as inactive """
@@ -620,15 +627,18 @@ class User:
 class Game:
 
     """A wrapper class for a particular game that is in process
-    or completed. Contains inter alia a State instance.
-    """
+    or completed. Contains inter alia a State instance."""
 
     # The available autoplayers (robots)
     AUTOPLAYERS = [
-        ("Fullsterkur", "Velur stigahæsta leik í hverri stöðu", 0),
+        (
+            "Fullsterkur",
+            "Velur stigahæsta leik í hverri stöðu",
+            0,
+        ),
         (
             "Miðlungur",
-            "Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu",
+            "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
             8,
         ),
         (

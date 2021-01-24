@@ -53,6 +53,7 @@ from skrafldb import (
     CompletionModel,
     iter_q,
 )
+from skraflgame import Game, User
 
 
 # The K constant used in the Elo calculation
@@ -149,6 +150,7 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
             if um:
                 um.elo = sm.elo
                 um.human_elo = sm.human_elo
+                um.manual_elo = sm.manual_elo
                 um_list.append(um)
     # Update the statistics records
     StatsModel.put_multi(urecs.values())
@@ -201,14 +203,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
         i = 0
         for gm in iter_q(q, chunk_size=250):
             i += 1
-            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
-            p0 = None if gm.player0 is None else gm.player0.id()
-            p1 = None if gm.player1 is None else gm.player1.id()
-            robot_game = (p0 is None) or (p1 is None)
-            if robot_game:
-                rl = gm.robot_level
-            else:
-                rl = 0
+
             s0 = gm.score0
             s1 = gm.score1
 
@@ -218,6 +213,17 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 # doesn't get Elo points for a draw; in fact,
                 # ignore such a game altogether in the statistics
                 continue
+
+            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
+            p0 = None if gm.player0 is None else gm.player0.id()
+            p1 = None if gm.player1 is None else gm.player1.id()
+            robot_game = (p0 is None) or (p1 is None)
+            manual_game = False
+            if robot_game:
+                rl = gm.robot_level
+            else:
+                rl = 0
+                manual_game = Game.manual_wordcheck_from_prefs(gm.prefs)
 
             if p0 is None:
                 k0 = "robot-" + str(rl)
@@ -236,12 +242,17 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 urec1 = users[k1]
             else:
                 users[k1] = urec1 = _init_stat(p1, rl if p1 is None else 0)
+
             # Number of games played
             urec0.games += 1
             urec1.games += 1
             if not robot_game:
                 urec0.human_games += 1
                 urec1.human_games += 1
+                if manual_game:
+                    urec0.manual_games += 1
+                    urec1.manual_games += 1
+
             # Total scores
             urec0.score += s0
             urec1.score += s1
@@ -252,6 +263,12 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 urec1.human_score += s1
                 urec0.human_score_against += s1
                 urec1.human_score_against += s0
+                if manual_game:
+                    urec0.manual_score += s0
+                    urec1.manual_score += s1
+                    urec0.manual_score_against += s1
+                    urec1.manual_score_against += s0
+
             # Wins and losses
             if s0 > s1:
                 urec0.wins += 1
@@ -266,13 +283,24 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 elif s1 > s0:
                     urec1.human_wins += 1
                     urec0.human_losses += 1
+                if manual_game:
+                    if s0 > s1:
+                        urec0.manual_wins += 1
+                        urec1.manual_losses += 1
+                    elif s1 > s0:
+                        urec1.manual_wins += 1
+                        urec0.manual_losses += 1
+
             # Find out whether players are established or beginners
             est0 = urec0.games > ESTABLISHED_MARK
             est1 = urec1.games > ESTABLISHED_MARK
+
             # Save the Elo point state used in the calculation
             gm.elo0, gm.elo1 = urec0.elo, urec1.elo
+
             # Compute the Elo points of both players
             adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
+
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
             # Adjust player 0
@@ -287,25 +315,44 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
-                gm.human_elo0, gm.human_elo1 = urec0.human_elo, urec1.human_elo
-                adj = _compute_elo(
-                    (urec0.human_elo, urec1.human_elo), s0, s1, est0, est1
-                )
+                uelo0 = urec0.human_elo or User.DEFAULT_ELO
+                uelo1 = urec1.human_elo or User.DEFAULT_ELO
+                gm.human_elo0, gm.human_elo1 = uelo0, uelo1
+                adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                 # Adjust player 0
                 if est0 and not est1:
                     adj = (0, adj[1])
                 gm.human_elo0_adj = adj[0]
-                urec0.human_elo += adj[0]
+                urec0.human_elo = uelo0 + adj[0]
                 # Adjust player 1
                 if est1 and not est0:
                     adj = (adj[0], 0)
                 gm.human_elo1_adj = adj[1]
-                urec1.human_elo += adj[1]
+                urec1.human_elo = uelo1 + adj[1]
+                # If manual game, compute the manual-only Elo
+                if manual_game:
+                    uelo0 = urec0.manual_elo or User.DEFAULT_ELO
+                    uelo1 = urec1.manual_elo or User.DEFAULT_ELO
+                    gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
+                    adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                    # Adjust player 0
+                    if est0 and not est1:
+                        adj = (0, adj[1])
+                    gm.manual_elo0_adj = adj[0]
+                    urec0.manual_elo = uelo0 + adj[0]
+                    # Adjust player 1
+                    if est1 and not est0:
+                        adj = (adj[0], 0)
+                    gm.manual_elo1_adj = adj[1]
+                    urec1.manual_elo = uelo1 + adj[1]
+
             # Save the game object with the new Elo adjustment statistics
             gm.put()
+
             # Save the last processed timestamp
             ts_last_processed = lm
             cnt += 1
+
             # Report on our progress
             if i % 500 == 0:
                 logging.info("Stats processed {0} games".format(i))
@@ -372,7 +419,6 @@ def _create_ratings() -> None:
 
     # All players including robot games
 
-    # top100_all = StatsModel.list_elo(None, 100)
     top100_all = [sm for sm in StatsModel.list_elo(timestamp, 100)]
     top100_all_yesterday = {_key(sm): sm for sm in StatsModel.list_elo(yesterday, 100)}
     top100_all_week_ago = {_key(sm): sm for sm in StatsModel.list_elo(week_ago, 100)}
@@ -385,7 +431,6 @@ def _create_ratings() -> None:
 
     # Human only games
 
-    # top100_human = StatsModel.list_human_elo(None, 100)
     top100_human = [sm for sm in StatsModel.list_human_elo(timestamp, 100)]
     top100_human_yesterday = {
         _key(sm): sm for sm in StatsModel.list_human_elo(yesterday, 100)
@@ -405,7 +450,33 @@ def _create_ratings() -> None:
         top100_human_month_ago,
     )
 
+    # Manual (and human only) games
+
+    top100_manual = [sm for sm in StatsModel.list_manual_elo(timestamp, 100)]
+    top100_manual_yesterday = {
+        _key(sm): sm for sm in StatsModel.list_manual_elo(yesterday, 100)
+    }
+    top100_manual_week_ago = {
+        _key(sm): sm for sm in StatsModel.list_manual_elo(week_ago, 100)
+    }
+    top100_manual_month_ago = {
+        _key(sm): sm for sm in StatsModel.list_manual_elo(month_ago, 100)
+    }
+
+    # Augment the table for manual only games
+    _augment_table(
+        top100_manual,
+        top100_manual_yesterday,
+        top100_manual_week_ago,
+        top100_manual_month_ago,
+    )
+
+    logging.info("Deleting top 100 tables")
+    # FIXME: Note that the following call can be deleted after
+    # it has been run once and the indexes have thereby been cleaned up in ndb
+    RatingModel.delete_all()
     logging.info("Writing top 100 tables to the database")
+    t0 = time.time()
 
     # Write the Top 100 tables to the database
     rlist = []
@@ -434,10 +505,24 @@ def _create_ratings() -> None:
             rm.games = -1
         rlist.append(rm)
 
+        # Manual (and human) only
+        rm = RatingModel.get_or_create("manual", rank + 1)
+        if rank < len(top100_manual):
+            rm.assign(top100_manual[rank])
+        else:
+            # Sentinel empty records
+            rm.user = None
+            rm.robot_level = -1
+            rm.games = -1
+        rlist.append(rm)
+
     # Put the entire top 100 table in one RPC call
     RatingModel.put_multi(rlist)
 
-    logging.info("Finishing _create_ratings")
+    t1 = time.time()
+    logging.info(
+        "Finishing _create_ratings in {0:.1f} seconds".format(t1 - t0)
+    )
 
 
 def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:

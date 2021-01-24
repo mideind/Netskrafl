@@ -45,7 +45,7 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
+from skraflplayer import AutoPlayer, AutoPlayer_Common, AutoPlayer_Medium, AutoPlayer_MiniMax
 
 
 _PROFILING = False
@@ -275,12 +275,26 @@ def test(num_games, opponent, silent):
         """ Create a normal autoplayer instance """
         return AutoPlayer(state)
 
+    def common_creator(state):
+        """ Create a common autoplayer instance """
+        return AutoPlayer_Common(state)
+
+    def medium_creator(state):
+        """ Create a medium autoplayer instance """
+        return AutoPlayer_Medium(state)
+
     def minimax_creator(state):
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
     players: List[Optional[Tuple[str, Callable]]] = [None, None]
-    if opponent == "minimax":
+    if opponent == "amlodi":
+        players[0] = ("Amlóði A", common_creator)
+        players[1] = ("Amlóði B", common_creator)
+    elif opponent == "midlungur":
+        players[0] = ("Miðlungur A", medium_creator)
+        players[1] = ("Miðlungur B", medium_creator)
+    elif opponent == "minimax":
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)
     else:

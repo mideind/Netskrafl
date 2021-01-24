@@ -116,8 +116,6 @@ import binascii
 import struct
 import io
 
-from dawgdictionary import PackedDawgDictionary
-
 # The DAWG builder uses the collation (sorting) given by
 # the current locale setting, typically 'is_IS' or 'en_US'
 from languages import current_alphabet, set_locale
@@ -938,11 +936,12 @@ def run_skrafl():
     # The result is about 2.3 million words, generating >100,000 graph nodes
     print("Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
     set_locale("is_IS")
+
     db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
-        ["ordalistimax15.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
-        "ordalisti",  # Output file - full name will be ordalisti.text.dawg
+        ["ordalisti.full.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
+        "ordalisti",  # Output file - full name will be ordalisti.bin.dawg
         "resources",  # Subfolder of input and output files
         filter_skrafl,  # Word filter function to apply
         "ordalisti.remove.txt",  # Words to remove
@@ -950,38 +949,65 @@ def run_skrafl():
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    # Test loading of DAWG
-    dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
-    t0 = time.time()
-    dawg.load(fpath)
-    t1 = time.time()
+    # Process Miðlungur vocabulary
 
-    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
-
-    # Process list of common words
-
-    print("Starting DAWG build for list of common words")
+    print("Starting DAWG build for Miðlungur")
     db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
-        ["ordalisti.algeng.sorted.txt"],  # Input files to be merged
-        "algeng",  # Output file - full name will be algeng.text.dawg
+        ["ordalisti.mid.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
+        "midlungur",  # Output file - full name will be midlungur.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+        "ordalisti.remove.txt",  # Words to remove
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    # Process Amlóði vocabulary
+
+    print("Starting DAWG build for Amlóði")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
+    db.build(
+        ["ordalisti.aml.sorted.txt"],  # Input files to be merged
+        "amlodi",  # Output file - full name will be amlodi.bin.dawg
         "resources",  # Subfolder of input and output files
         filter_common,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    # Test loading of DAWG for common words
+    # Test loading of DAWG
+    from dawgdictionary import PackedDawgDictionary
+
     dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "algeng.bin.dawg"))
+    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
 
-    print("DAWG packed binary file loaded in {0:.2f} seconds".format(t1 - t0))
+    print("ordalisti.bin.dawg loaded in {0:.2f} seconds".format(t1 - t0))
+
+    # Test loading of Miðlungur DAWG
+    dawg = PackedDawgDictionary(current_alphabet())
+    fpath = os.path.abspath(os.path.join("resources", "midlungur.bin.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("midlungur.bin.dawg loaded in {0:.2f} seconds".format(t1 - t0))
+
+    # Test loading of Amlóði DAWG
+    dawg = PackedDawgDictionary(current_alphabet())
+    fpath = os.path.abspath(os.path.join("resources", "amlodi.bin.dawg"))
+    t0 = time.time()
+    dawg.load(fpath)
+    t1 = time.time()
+
+    print("amlodi.bin.dawg loaded in {0:.2f} seconds".format(t1 - t0))
 
     print("DAWG builder run complete")
 
@@ -989,10 +1015,10 @@ def run_skrafl():
 if __name__ == "__main__":
 
     # Build the whole Icelandic Netskrafl word database by default
-    # run_skrafl()
+    run_skrafl()
 
     # Build Tournament Word List v6 (TWL06)
-    run_twl06()
+    # run_twl06()
 
     # Build SOWPODS
-    run_sowpods()
+    # run_sowpods()
