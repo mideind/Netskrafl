@@ -1714,9 +1714,8 @@ def bestmoves() -> Response:
     user = current_user()
     assert user is not None
 
-    # !!! FIXME
-    if False:  # not user.has_paid():
-        # User must be a paying friend
+    if not user.has_paid() and not running_local:
+        # User must be a paying friend, or we're on a development server
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
 
     rq = RequestData(request)
