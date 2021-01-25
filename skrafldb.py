@@ -444,16 +444,15 @@ class GameModel(ndb.Model):
     player0 = ndb.KeyProperty(kind=UserModel)
     player1 = ndb.KeyProperty(kind=UserModel)
 
-    # The racks
-    rack0 = ndb.StringProperty()
-    rack1 = ndb.StringProperty()
+    rack0 = ndb.StringProperty(indexed=False)
+    rack1 = ndb.StringProperty(indexed=False)
 
     # The scores
-    score0 = ndb.IntegerProperty()
-    score1 = ndb.IntegerProperty()
+    score0 = ndb.IntegerProperty(indexed=False)
+    score1 = ndb.IntegerProperty(indexed=False)
 
     # Whose turn is it next, 0 or 1?
-    to_move = ndb.IntegerProperty()
+    to_move = ndb.IntegerProperty(indexed=False)
 
     # How difficult should the robot player be (if the opponent is a robot)?
     # None or 0 = most difficult
@@ -472,8 +471,8 @@ class GameModel(ndb.Model):
     moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
 
     # The initial racks
-    irack0 = ndb.StringProperty(required=False, default=None)
-    irack1 = ndb.StringProperty(required=False, default=None)
+    irack0 = ndb.StringProperty(required=False, indexed=False, default=None)
+    irack1 = ndb.StringProperty(required=False, indexed=False, default=None)
 
     # Game preferences, such as duration, alternative bags or boards, etc.
     prefs = ndb.JsonProperty(required=False, default=None)

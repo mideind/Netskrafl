@@ -44,6 +44,7 @@ ey
 fa
 fá
 fé
+fleiru
 fleirum
 fæ
 gá
@@ -112,6 +113,13 @@ pæ
 rá
 re
 ré
+rita
+ritan
+ritu
+rituna
+ritunnar
+ritunni
+riturnar
 rí
 ró
 rú

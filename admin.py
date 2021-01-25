@@ -20,6 +20,7 @@ from typing import Optional, Dict, Any
 
 import logging
 from threading import Thread
+from datetime import datetime
 
 from flask import jsonify
 from flask import request
@@ -126,21 +127,22 @@ def admin_loadgame() -> str:
     uuid = request.form.get("uuid", None)
     game = None
 
-    g: Optional[Dict[str, Any]]
+    g: Optional[Dict[str, Any]] = None
 
     if uuid:
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game:
+    if game is not None and game.state is not None:
         board = game.state.board()
+        now = datetime.utcnow()
         g = dict(
             uuid=game.uuid,
-            timestamp=Alphabet.format_timestamp(game.timestamp),
+            timestamp=Alphabet.format_timestamp(game.timestamp or now),
             player0=game.player_ids[0],
             player1=game.player_ids[1],
             robot_level=game.robot_level,
-            ts_last_move=Alphabet.format_timestamp(game.ts_last_move),
+            ts_last_move=Alphabet.format_timestamp(game.ts_last_move or now),
             irack0=game.initial_racks[0],
             irack1=game.initial_racks[1],
             prefs=game._preferences,
@@ -148,15 +150,13 @@ def admin_loadgame() -> str:
             moves=[
                 (
                     m.player,
-                    m.move.summary(board),
+                    m.move.summary(game.state),
                     m.rack,
                     Alphabet.format_timestamp(m.ts),
                 )
                 for m in game.moves
             ],
         )
-    else:
-        g = None
 
     return jsonify(game=g)
 

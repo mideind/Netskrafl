@@ -365,12 +365,12 @@ class Usage(Exception):
 
     """ Error reporting exception for wrong command line arguments """
 
-    def __init__(self, msg):
-        super().__init__(msg)
+    def __init__(self, msg: getopt.GetoptError) -> None:
+        super().__init__(msg.msg)
         self.msg = msg
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]]=None) -> int:
     """ Guido van Rossum's pattern for a Python main function """
 
     if argv is None:
@@ -429,7 +429,7 @@ def main(argv=None):
     return 0
 
 
-def profile_main():
+def profile_main() -> None:
 
     """ Main function to invoke for profiling """
 

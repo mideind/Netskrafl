@@ -28,13 +28,17 @@ resources/client_secret.txt
 # Private GAE services key
 resources/netskrafl-*.json
 
+# Unsorted BIN word lists
+resources/ordalistimax15.txt
+resources/ordalisti.full.sorted.txt
+resources/ordalisti.mid.sorted.txt
+
 # Non-Icelandic word lists
 resources/TWL06.txt
 resources/sowpods.txt
 
 # CSS files generated from Less
-static/skrafl-curry.css
-static/skrafl-desat.css
+static/skrafl-*.css
 
 # Concatenated JS
 static/netskrafl.js
