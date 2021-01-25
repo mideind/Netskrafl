@@ -2317,7 +2317,7 @@ def promo() -> ResponseType:
     """ Return promotional HTML corresponding to a given key (category) """
     user = session_user()
     if user is None:
-        return "<p>Notandi er ekki innskráður</p>", 401  # Unauthorized
+        return "<p>Notandi er ekki innskráður</p>"  # Unauthorized
     rq = RequestData(request)
     key = rq.get("key", "")
     VALID_PROMOS = {"friend", "krafla"}
