@@ -444,8 +444,8 @@ class GameModel(ndb.Model):
     player0 = ndb.KeyProperty(kind=UserModel)
     player1 = ndb.KeyProperty(kind=UserModel)
 
-    rack0 = ndb.StringProperty(indexed=False)
-    rack1 = ndb.StringProperty(indexed=False)
+    rack0 = ndb.StringProperty()  # Must be indexed
+    rack1 = ndb.StringProperty()  # Must be indexed
 
     # The scores
     score0 = ndb.IntegerProperty(indexed=False)
@@ -471,8 +471,8 @@ class GameModel(ndb.Model):
     moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
 
     # The initial racks
-    irack0 = ndb.StringProperty(required=False, indexed=False, default=None)
-    irack1 = ndb.StringProperty(required=False, indexed=False, default=None)
+    irack0 = ndb.StringProperty(required=False, default=None)  # Must be indexed
+    irack1 = ndb.StringProperty(required=False, default=None)  # Must be indexed
 
     # Game preferences, such as duration, alternative bags or boards, etc.
     prefs = ndb.JsonProperty(required=False, default=None)
