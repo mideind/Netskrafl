@@ -34,7 +34,14 @@ from firebase_admin import App, initialize_app, auth  # type: ignore
 
 
 _PROJECT_ID = os.environ.get("PROJECT_ID", "")
-_FIREBASE_DB_URL = "https://{0}.firebaseio.com".format(_PROJECT_ID)
+
+# Select Firebase database URL depending on project ID
+_FIREBASE_DB = {
+    "netskrafl": "https://netskrafl.firebaseio.com",
+    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
+}
+_FIREBASE_DB_URL = _FIREBASE_DB[_PROJECT_ID]
+
 _IDENTITY_ENDPOINT = (
     "https://identitytoolkit.googleapis.com/"
     "google.identity.identitytoolkit.v1.IdentityToolkit"

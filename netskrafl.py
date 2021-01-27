@@ -168,11 +168,19 @@ def ndb_wsgi_middleware(wsgi_app):
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(app.wsgi_app))
 
+# App Engine (and Firebase) project id
+_PROJECT_ID = os.environ.get("PROJECT_ID", "")
+
 # client_id and client_secret for Google Sign-In
 _CLIENT_ID = os.environ.get("CLIENT_ID", "")
+_CLIENT_SECRET_FILE = {
+    "netskrafl": "client_secret.txt",
+    "explo-dev": "client_secret_explo.txt",
+}.get(_PROJECT_ID, "client_secret.txt")
+
 # Read client secret key from file
 with open(
-    os.path.abspath(os.path.join("resources", "client_secret.txt")), "r"
+    os.path.abspath(os.path.join("resources", _CLIENT_SECRET_FILE)), "r"
 ) as f_txt:
     _CLIENT_SECRET = f_txt.read().strip()
 
@@ -242,9 +250,6 @@ MAX_ONLINE = 80
 
 # Set to True to make the single-page UI the default
 _SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "FALSE").upper() == "TRUE"
-
-# App Engine (and Firebase) project id
-_PROJECT_ID = os.environ.get("PROJECT_ID", "")
 
 # Firebase configuration
 _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")

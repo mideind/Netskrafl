@@ -4,30 +4,32 @@
 # Copyright (C) 2021 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
-# Deploy with 'gcloud beta app deploy --no-promote --version=somename app.yaml'
+# Deploy with 'gcloud beta app deploy --no-promote --version=somename app-explo.yaml'
 #
 
 runtime: python38
 entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
 
-instance_class: B4
+#instance_class: B4
+instance_class: B2
 manual_scaling:
-  instances: 2
+  #instances: 2
+  instances: 1
 
 vpc_access_connector:
-  name: projects/netskrafl/locations/us-central1/connectors/vpc0c
+  name: projects/explo-dev/locations/europe-west1/connectors/vpc0c
 
 env_variables:
   # When running on the local development server,
   # REDISHOST is automatically set to 'localhost' (in cache.py)
-  REDISHOST: 10.128.0.3
+  REDISHOST: 10.194.164.243
   REDISPORT: 6379
-  CLIENT_ID: 62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
-  PROJECT_ID: netskrafl
+  CLIENT_ID: 970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com
+  PROJECT_ID: explo-dev
   # The following API key is not a secret - it is sent to clients in cleartext
   # as required by the Firebase client JS code
-  FIREBASE_API_KEY: AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
-  FIREBASE_SENDER_ID: 62474854399
+  FIREBASE_API_KEY: AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc
+  FIREBASE_SENDER_ID: 970204261331
 
 inbound_services:
 - warmup
