@@ -2523,9 +2523,11 @@ def oauth2callback() -> ResponseType:
     """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
 
-    account = None
-    userid = None
-    idinfo = None
+    account: Optional[str] = None
+    userid: Optional[str] = None
+    idinfo: Dict[str, Any] = dict()
+    email: Optional[str] = None
+    name: Optional[str] = None
     try:
         token = oauth.google.authorize_access_token()
         idinfo = oauth.google.parse_id_token(token)
@@ -2534,13 +2536,14 @@ def oauth2callback() -> ResponseType:
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo["sub"]
+        assert account
         # Full name of user
         name = idinfo["name"]
         # Make sure that the e-mail address is in lowercase
         email = idinfo["email"].lower()
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
-        userid = User.login_by_account(account, name, email)
+        userid = User.login_by_account(account, name or "", email or "")
     except (ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
