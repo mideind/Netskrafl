@@ -260,38 +260,38 @@ class User:
         self._preferences[pref] = value
 
     @staticmethod
-    def full_name_from_prefs(prefs):
+    def full_name_from_prefs(prefs) -> str:
         """ Returns the full name of a user from a dict of preferences """
         if prefs is None:
             return ""
         fn = prefs.get("full_name")
         return "" if fn is None else fn
 
-    def full_name(self):
+    def full_name(self) -> str:
         """ Returns the full name of a user """
-        fn = self.get_pref("full_name")
+        fn = cast(Optional[str], self.get_pref("full_name"))
         return "" if fn is None else fn
 
-    def set_full_name(self, full_name):
+    def set_full_name(self, full_name: str) -> None:
         """ Sets the full name of a user """
         self.set_pref("full_name", full_name)
 
-    def email(self):
+    def email(self) -> str:
         """ Returns the e-mail address of a user """
-        em = self.get_pref("email", self._email)
+        em = cast(Optional[str], self.get_pref("email", self._email))
         return "" if em is None else em
 
-    def set_email(self, email):
+    def set_email(self, email: str) -> None:
         """ Sets the e-mail address of a user """
         self.set_pref("email", email)
 
-    def audio(self):
+    def audio(self) -> bool:
         """ Returns True if the user wants audible signals """
-        em = self.get_pref("audio")
+        em = cast(Optional[bool], self.get_pref("audio"))
         # True by default
         return True if em is None else em
 
-    def set_audio(self, audio):
+    def set_audio(self, audio: bool) -> None:
         """ Sets the audio preference of a user to True or False """
         assert isinstance(audio, bool)
         self.set_pref("audio", audio)
@@ -766,7 +766,7 @@ class Game:
             game.ts_last_move = game.timestamp
 
         # Initialize the preferences
-        game._preferences = gm.prefs
+        game._preferences = cast(PrefsDict, gm.prefs)
 
         # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
@@ -1021,7 +1021,7 @@ class Game:
         self._preferences[pref] = value
 
     @staticmethod
-    def fairplay_from_prefs(prefs: PrefsDict) -> bool:
+    def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the fairplay commitment specified by the given game preferences """
         return prefs is not None and cast(bool, prefs.get("fairplay", False))
 
@@ -1034,7 +1034,7 @@ class Game:
         self.set_pref("fairplay", state)
 
     @staticmethod
-    def new_bag_from_prefs(prefs: PrefsDict) -> bool:
+    def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns true if the game preferences specify a new bag """
         return prefs is not None and cast(bool, prefs.get("newbag", False))
 
@@ -1047,7 +1047,7 @@ class Game:
         self.set_pref("newbag", state)
 
     @staticmethod
-    def manual_wordcheck_from_prefs(prefs: PrefsDict) -> bool:
+    def manual_wordcheck_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns true if the game preferences specify a manual wordcheck """
         return prefs is not None and cast(bool, prefs.get("manual", False))
 

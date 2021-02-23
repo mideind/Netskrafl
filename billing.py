@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union, Tuple
 
 import os
 import logging
@@ -27,17 +27,24 @@ from datetime import datetime
 import hashlib
 import hmac
 
-from flask import redirect, jsonify, url_for
+from flask import redirect, jsonify, url_for, Request
+import flask.wrappers
+import werkzeug.wrappers
 
 import requests
 
 from skraflgame import User
 
 
+ResponseType = Union[
+    str, flask.wrappers.Response, werkzeug.wrappers.Response, Tuple[str, int]
+]
+
+
 class _Secret:
 
-    """ A wrapper for private and public key data used
-        in communications with SalesCloud """
+    """A wrapper for private and public key data used
+    in communications with SalesCloud"""
 
     _SC_SECRET_KEY: Optional[bytes] = None
     _SC_CLIENT_UUID: Optional[str] = None
@@ -60,21 +67,23 @@ class _Secret:
             cls._SC_CLIENT_UUID = ""
 
     @property
-    def key(self):
+    def key(self) -> bytes:
         """ Return the secret key value, which is a bytes object """
         if not self._SC_SECRET_KEY:
             _Secret.load()
+        assert self._SC_SECRET_KEY
         return self._SC_SECRET_KEY
 
     @property
-    def uuid(self):
+    def uuid(self) -> str:
         """ Return the client UUID """
         if not self._SC_CLIENT_UUID:
             _Secret.load()
+        assert self._SC_CLIENT_UUID
         return self._SC_CLIENT_UUID
 
     @property
-    def public_key(self):
+    def public_key(self) -> str:
         """ Return Netskrafl's public key """
         return self._SC_PUBLIC_KEY
 
@@ -82,9 +91,17 @@ class _Secret:
 _SECRET = _Secret()
 
 
-def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=100.0):
-    """ Validate an incoming request against our secret key. All parameters
-        are assumed to be strings (str) except payload, which is bytes. """
+def request_valid(
+    method: str,
+    url: str,
+    payload: bytes,
+    xsc_date: str,
+    xsc_key: str,
+    xsc_digest: str,
+    max_time: float = 100.0,
+) -> bool:
+    """Validate an incoming request against our secret key. All parameters
+    are assumed to be strings (str) except payload, which is bytes."""
 
     # Sanity check
     if not all((method, url, payload, xsc_date, xsc_key, xsc_digest)):
@@ -122,7 +139,7 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=
     return xsc_digest == my_digest
 
 
-def cancel_friend(user):
+def cancel_friend(user: User) -> bool:
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
     try:
         url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
@@ -173,7 +190,7 @@ def cancel_friend(user):
     return True
 
 
-def handle(request, uid):
+def handle(request: Request, uid) -> ResponseType:
     """ Handle an incoming request to the /billing URL path """
 
     if request.method != "POST":
@@ -258,14 +275,14 @@ def handle(request, uid):
                 )
             )
             logging.info(
-                "Original JSON from SalesCloud was:\n{0}"
-                .format(payload.decode("utf-8"))
+                "Original JSON from SalesCloud was:\n{0}".format(
+                    payload.decode("utf-8")
+                )
             )
             # We no longer return HTTP code 400, since this simply
             # makes SalesCloud repeat the request indefinitely
             return jsonify(
-                ok=False,
-                reason="Unknown or illegal user id (customer_label)"
+                ok=False, reason="Unknown or illegal user id (customer_label)"
             )
         status = j.get("subscription_status")
         if status == "true":

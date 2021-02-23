@@ -357,7 +357,7 @@ class Bag:
             self._size = copy._size
             self._tileset = copy._tileset
 
-    def draw_tile(self):
+    def draw_tile(self) -> Optional[str]:
         """ Draw a single tile from the bag """
         if self.is_empty():
             return None
@@ -365,31 +365,31 @@ class Bag:
         self._tiles = self._tiles.replace(tile, "", 1)
         return tile
 
-    def return_tiles(self, tiles):
+    def return_tiles(self, tiles: str) -> None:
         """ Return one or more tiles to the bag """
         self._tiles += tiles
 
-    def contents(self):
+    def contents(self) -> str:
         """ Return the contents of the bag """
         return self._tiles
 
-    def set_contents(self, tiles):
+    def set_contents(self, tiles: str) -> None:
         """ Set the contents of the bag """
         self._tiles = tiles
 
-    def num_tiles(self):
+    def num_tiles(self) -> int:
         """ Return the number of tiles in the bag """
         return len(self._tiles)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """ Returns True if the bag is empty, i.e. all tiles have been drawn """
         return not self._tiles
 
-    def is_full(self):
+    def is_full(self) -> bool:
         """ Returns True if the bag is full, i.e. no tiles have been drawn """
         return self.num_tiles() == self._size
 
-    def allows_exchange(self):
+    def allows_exchange(self) -> bool:
         """ Does the bag contain enough tiles to allow exchange? """
         return self.num_tiles() >= Rack.MAX_TILES
 
@@ -431,7 +431,9 @@ class Rack:
     def replenish(self, bag: Bag) -> None:
         """ Draw tiles from the bag until we have 7 tiles or the bag is empty """
         while len(self._tiles) < Rack.MAX_TILES and not bag.is_empty():
-            self._tiles += bag.draw_tile()
+            tile = bag.draw_tile()
+            assert tile
+            self._tiles += tile
 
     def contents(self) -> str:
         """ Return the contents of the rack """
@@ -487,7 +489,9 @@ class Rack:
         bag.return_tiles(self._tiles)
         tiles: List[str] = []
         while len(tiles) < n and not bag.is_empty():
-            tiles.append(bag.draw_tile())
+            tile = bag.draw_tile()
+            assert tile
+            tiles.append(tile)
         # Return the tiles sorted in alphabetical order
         tiles.sort(key=bag.alphabet.all_tiles.index)
         self._tiles = "".join(tiles)

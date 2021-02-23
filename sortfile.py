@@ -2,16 +2,16 @@
 
 """
 
-Sort utility for large UTF-8 text files
+    Sort utility for large UTF-8 text files
 
-Adapted from Recipe 466302: Sorting big files the Python 2.4 way
-    by Nicolas Lehuen
-    http://code.activestate.com/recipes/576755-sorting-big-files-the-python-26-way/
+    Adapted from Recipe 466302: Sorting big files the Python 2.4 way
+        by Nicolas Lehuen
+        http://code.activestate.com/recipes/576755-sorting-big-files-the-python-26-way/
 
-Example usage:
+    Example usage:
 
-C:\github\Skrafl>\python27\python sortfile.py
-    resources/ordalistimax15.txt resources/ordalistimax15.sorted.txt -b 200000
+        python sortfile.py
+        resources/ordalistimax15.txt resources/ordalistimax15.sorted.txt -b 200000
 
 """
 

@@ -121,7 +121,9 @@ class Context:
     @staticmethod
     def disable_cache() -> None:
         """ Disable the NDB in-context cache """
-        ndb.get_context().set_cache_policy(False)
+        ctx = ndb.get_context()
+        assert ctx is not None
+        ctx.set_cache_policy(False)
 
 
 class Unique:
@@ -169,44 +171,44 @@ class UserModel(ndb.Model):
 
     """ Models an individual user """
 
-    nickname = ndb.StringProperty()
-    email = ndb.StringProperty(required=False, default=None)
+    nickname = cast(str, ndb.StringProperty())
+    email = cast(str, ndb.StringProperty(required=False, default=None))
     # Google Account identifier (unfortunately different from GAE user id)
-    account = ndb.StringProperty(required=False, default=None)
+    account = cast(str, ndb.StringProperty(required=False, default=None))
 
     # Lower case nickname and full name of user - used for search
-    nick_lc = ndb.StringProperty(required=False, default=None)
-    name_lc = ndb.StringProperty(required=False, default=None)
+    nick_lc = cast(str, ndb.StringProperty(required=False, default=None))
+    name_lc = cast(str, ndb.StringProperty(required=False, default=None))
 
     inactive = ndb.BooleanProperty()
     # The user's preferred locale, i.e. language and other settings
-    locale = ndb.StringProperty(required=False, default="is_IS")
+    locale = cast(str, ndb.StringProperty(required=False, default="is_IS"))
     # Preferences dictionary
-    prefs = ndb.JsonProperty()
+    prefs = cast(PrefsDict, ndb.JsonProperty())
     # Creation time of the user entity
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
     # Last login for the user
-    last_login = ndb.DateTimeProperty(required=False)
+    last_login = cast(datetime, ndb.DateTimeProperty(required=False))
     # Ready for challenges?
     ready = ndb.BooleanProperty(required=False, default=False)
     # Ready for timed challenges?
     ready_timed = ndb.BooleanProperty(required=False, default=False)
     # Elo points
-    elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
     # Elo points for human-only games
-    human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    human_elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
     # Elo points for manual (competition) games
-    manual_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    manual_elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
     # Best total score in a game
-    highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    highest_score = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
     # Note: indexing of string properties is mandatory
-    highest_score_game = ndb.StringProperty(required=False, default=None)
+    highest_score_game = cast(str, ndb.StringProperty(required=False, default=None))
     # Best word laid down
     # Note: indexing of string properties is mandatory
-    best_word = ndb.StringProperty(required=False, default=None)
-    best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    best_word = cast(str, ndb.StringProperty(required=False, default=None))
+    best_word_score = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
     # Note: indexing of string properties is mandatory
-    best_word_game = ndb.StringProperty(required=False, default=None)
+    best_word_game = cast(str, ndb.StringProperty(required=False, default=None))
 
     @classmethod
     def create(
@@ -429,11 +431,11 @@ class MoveModel(ndb.Model):
 
     """ Models a single move in a Game """
 
-    coord = ndb.StringProperty()
-    tiles = ndb.StringProperty()
-    score = ndb.IntegerProperty(default=0)
-    rack = ndb.StringProperty(required=False, default=None)
-    timestamp = ndb.DateTimeProperty(required=False, default=None)
+    coord = cast(str, ndb.StringProperty())
+    tiles = cast(str, ndb.StringProperty())
+    score = cast(int, ndb.IntegerProperty(default=0))
+    rack = cast(str, ndb.StringProperty(required=False, default=None))
+    timestamp = cast(datetime, ndb.DateTimeProperty(required=False, default=None))
 
 
 class GameModel(ndb.Model):
@@ -444,41 +446,41 @@ class GameModel(ndb.Model):
     player0 = ndb.KeyProperty(kind=UserModel)
     player1 = ndb.KeyProperty(kind=UserModel)
 
-    rack0 = ndb.StringProperty()  # Must be indexed
-    rack1 = ndb.StringProperty()  # Must be indexed
+    rack0 = cast(str, ndb.StringProperty())  # Must be indexed
+    rack1 = cast(str, ndb.StringProperty())  # Must be indexed
 
     # The scores
-    score0 = ndb.IntegerProperty(indexed=False)
-    score1 = ndb.IntegerProperty(indexed=False)
+    score0 = cast(int, ndb.IntegerProperty(indexed=False))
+    score1 = cast(int, ndb.IntegerProperty(indexed=False))
 
     # Whose turn is it next, 0 or 1?
-    to_move = ndb.IntegerProperty(indexed=False)
+    to_move = cast(int, ndb.IntegerProperty(indexed=False))
 
     # How difficult should the robot player be (if the opponent is a robot)?
     # None or 0 = most difficult
-    robot_level = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    robot_level = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
 
     # Is this game over?
     over = ndb.BooleanProperty()
 
     # When was the game started?
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     # The timestamp of the last move in the game
-    ts_last_move = ndb.DateTimeProperty(required=False, default=None)
+    ts_last_move = cast(datetime, ndb.DateTimeProperty(required=False, default=None))
 
     # The moves so far
-    moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
+    moves = cast(Iterable[MoveModel], ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False))
 
     # The initial racks
-    irack0 = ndb.StringProperty(required=False, default=None)  # Must be indexed
-    irack1 = ndb.StringProperty(required=False, default=None)  # Must be indexed
+    irack0 = cast(str, ndb.StringProperty(required=False, default=None))  # Must be indexed
+    irack1 = cast(str, ndb.StringProperty(required=False, default=None))  # Must be indexed
 
     # Game preferences, such as duration, alternative bags or boards, etc.
     prefs = ndb.JsonProperty(required=False, default=None)
 
     # Count of tiles that have been laid on the board
-    tile_count = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    tile_count = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=None))
 
     # Elo statistics properties - only defined for finished games
     # Elo points of both players when game finished, before adjustment
@@ -721,7 +723,7 @@ class ChallengeModel(ndb.Model):
     prefs = ndb.JsonProperty()
 
     # The time of issuance
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """ Set a destination user key property """
@@ -838,35 +840,35 @@ class StatsModel(ndb.Model):
 
     # The user associated with this statistic or None if robot
     user = ndb.KeyProperty(kind=UserModel, indexed=True, required=False, default=None)
-    robot_level = ndb.IntegerProperty(required=False, default=0)
+    robot_level = cast(int, ndb.IntegerProperty(required=False, default=0))
 
     # The timestamp of this statistic
-    timestamp = ndb.DateTimeProperty(indexed=True, auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(indexed=True, auto_now_add=True))
 
-    games = ndb.IntegerProperty(indexed=False)
-    human_games = ndb.IntegerProperty(indexed=False)
-    manual_games = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    games = cast(int, ndb.IntegerProperty(indexed=False))
+    human_games = cast(int, ndb.IntegerProperty(indexed=False))
+    manual_games = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
 
-    elo = ndb.IntegerProperty(indexed=True, default=1200)
-    human_elo = ndb.IntegerProperty(indexed=True, default=1200)
-    manual_elo = ndb.IntegerProperty(required=False, indexed=True, default=1200)
+    elo = cast(int, ndb.IntegerProperty(indexed=True, default=1200))
+    human_elo = cast(int, ndb.IntegerProperty(indexed=True, default=1200))
+    manual_elo = cast(int, ndb.IntegerProperty(required=False, indexed=True, default=1200))
 
-    score = ndb.IntegerProperty(indexed=False)
-    human_score = ndb.IntegerProperty(indexed=False)
-    manual_score = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    score = cast(int, ndb.IntegerProperty(indexed=False))
+    human_score = cast(int, ndb.IntegerProperty(indexed=False))
+    manual_score = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
 
-    score_against = ndb.IntegerProperty(indexed=False)
-    human_score_against = ndb.IntegerProperty(indexed=False)
-    manual_score_against = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    score_against = cast(int, ndb.IntegerProperty(indexed=False))
+    human_score_against = cast(int, ndb.IntegerProperty(indexed=False))
+    manual_score_against = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
 
-    wins = ndb.IntegerProperty(indexed=False)
-    losses = ndb.IntegerProperty(indexed=False)
+    wins = cast(int, ndb.IntegerProperty(indexed=False))
+    losses = cast(int, ndb.IntegerProperty(indexed=False))
 
-    human_wins = ndb.IntegerProperty(indexed=False)
-    human_losses = ndb.IntegerProperty(indexed=False)
+    human_wins = cast(int, ndb.IntegerProperty(indexed=False))
+    human_losses = cast(int, ndb.IntegerProperty(indexed=False))
 
-    manual_wins = ndb.IntegerProperty(required=False, indexed=False, default=0)
-    manual_losses = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    manual_wins = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
+    manual_losses = cast(int, ndb.IntegerProperty(required=False, indexed=False, default=0))
 
     MAX_STATS = 100
 
@@ -1357,7 +1359,7 @@ class ChatModel(ndb.Model):
     user = ndb.KeyProperty(kind=UserModel, indexed=True, required=True)
 
     # The timestamp of this chat message
-    timestamp = ndb.DateTimeProperty(indexed=True, auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(indexed=True, auto_now_add=True))
 
     # The actual message - by convention, an empty msg from a user means that
     # the user has seen all older messages
@@ -1489,7 +1491,7 @@ class PromoModel(ndb.Model):
     # The promotion id
     promotion = ndb.StringProperty(required=True)
     # The timestamp
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     def set_player(self, user_id: str) -> None:
         """ Set the player's user id """
@@ -1526,11 +1528,11 @@ class CompletionModel(ndb.Model):
     # The type of process that was completed, usually 'stats' or 'ratings'
     proctype = ndb.StringProperty(required=True)
     # The timestamp of the successful run
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     # The from-to range of the successful process
-    ts_from = ndb.DateTimeProperty()
-    ts_to = ndb.DateTimeProperty()
+    ts_from = cast(datetime, ndb.DateTimeProperty())
+    ts_to = cast(datetime, ndb.DateTimeProperty())
 
     # True if successful completion (the default); included for future expansion
     success = ndb.BooleanProperty()

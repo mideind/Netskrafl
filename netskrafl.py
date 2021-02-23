@@ -73,8 +73,6 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-import requests
-
 from languages import (
     Alphabet,
     current_alphabet,
@@ -98,7 +96,6 @@ from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import (
     Client,
-    Context,
     UserModel,
     GameModel,
     FavoriteModel,
@@ -406,7 +403,7 @@ class RequestData:
 
     def __init__(self, rq: Request) -> None:
         # If JSON data is present, assume this is a JSON request
-        self.q = rq.get_json(silent=True)
+        self.q: Dict[str, Any] = rq.get_json(silent=True)
         self.using_json = True
         if not self.q:
             # No JSON data: assume this is a form-encoded request
@@ -448,7 +445,7 @@ class RequestData:
             r = self.q.get(key, [])
         else:
             # Use special getlist() call on request.form object
-            r = self.q.getlist(key + "[]")
+            r = cast(Any, self.q).getlist(key + "[]")
         return r if isinstance(r, list) else []
 
     def __getitem__(self, key: str) -> Any:
@@ -814,7 +811,7 @@ def _gamelist(
             if u is None:
                 continue
             nick = u.nickname()
-            prefs = g.get("prefs", None)
+            prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
@@ -1147,7 +1144,7 @@ def stop():
 
 @app.route("/submitmove", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def submitmove():
+def submitmove() -> ResponseType:
     """ Handle a move that is being submitted from the client """
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
@@ -1190,6 +1187,7 @@ def submitmove():
         else:
             # No exception: done
             break
+    assert result is not None
     return result
 
 
