@@ -2,7 +2,7 @@
 
     Game and User classes for netskrafl.is
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -32,14 +32,11 @@ from typing import (
     Set,
     Tuple,
     NamedTuple,
-    Iterator,
     Iterable,
     cast,
 )
 
-import collections
 import threading
-import logging
 
 from random import randint
 from datetime import datetime, timedelta
@@ -62,9 +59,7 @@ from skraflmechanics import (
     ChallengeMove,
     ResponseMove,
     ResignMove,
-    SummaryTuple,
     MoveSummaryTuple,
-    DetailTuple,
 )
 from skraflplayer import AutoPlayer
 from skrafldb import (
@@ -170,7 +165,9 @@ class User:
             assert self._user_id is not None
             um = UserModel.fetch(self._user_id)
             assert um is not None
+            assert self._account is not None
             um.account = self._account
+            assert self._email is not None
             um.email = self._email
             um.nickname = self._nickname
             um.nick_lc = self._nickname.lower()
@@ -531,7 +528,7 @@ class User:
         with User._lock:
             for um in UserModel.fetch_multi(uids):
                 if um is not None:
-                    u = cls(uid=um.key.id())
+                    u = cls(uid=um.user_id())
                     u._init(um)
                     user_list.append(u)
         return user_list
@@ -560,7 +557,7 @@ class User:
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
-            return um.key.id()
+            return um.user_id()
         # We haven't seen this Google Account before: try to match by email
         if email:
             um = UserModel.fetch_email(email)
@@ -609,7 +606,9 @@ class User:
     def statistics(self) -> Dict[str, Any]:
         """ Return a set of key statistics on the user """
         reply: Dict[str, Any] = dict()
-        sm = StatsModel.newest_for_user(self.id())
+        user_id = self.id()
+        assert user_id is not None
+        sm = StatsModel.newest_for_user(user_id)
         reply["result"] = Error.LEGAL
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
@@ -769,8 +768,8 @@ class Game:
         game._preferences = cast(PrefsDict, gm.prefs)
 
         # A player_id of None means that the player is an autoplayer (robot)
-        game.player_ids[0] = None if gm.player0 is None else gm.player0.id()
-        game.player_ids[1] = None if gm.player1 is None else gm.player1.id()
+        game.player_ids[0] = gm.player0_id()
+        game.player_ids[1] = gm.player1_id()
 
         game.robot_level = gm.robot_level
 
@@ -888,12 +887,12 @@ class Game:
         assert self.uuid is not None
 
         gm = GameModel(id=self.uuid)
-        gm.timestamp = self.timestamp
-        gm.ts_last_move = self.ts_last_move
+        gm.timestamp = cast(datetime, self.timestamp)
+        gm.ts_last_move = cast(datetime, self.ts_last_move)
         gm.set_player(0, self.player_ids[0])
         gm.set_player(1, self.player_ids[1])
-        gm.irack0 = self.initial_racks[0]
-        gm.irack1 = self.initial_racks[1]
+        gm.irack0 = cast(str, self.initial_racks[0])
+        gm.irack1 = cast(str, self.initial_racks[1])
         assert self.state is not None
         gm.rack0 = self.state.rack(0)
         gm.rack1 = self.state.rack(1)
@@ -903,7 +902,7 @@ class Game:
         gm.score1 = sc[1]
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
-        gm.prefs = self._preferences
+        gm.prefs = cast(PrefsDict, self._preferences)
         tile_count = 0
         movelist = []
         for m in self.moves:

@@ -4,7 +4,7 @@
 
     Skrafltester
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -139,7 +139,7 @@ def test_response(state):
     return True
 
 
-def test_game(players, silent):
+def test_game(players, silent) -> Tuple[int, int]:
     """ Go through a whole game by pitting two AutoPlayers against each other """
     # The players parameter is a list of tuples: (playername, constructorfunc)
     # where constructorfunc accepts a State parameter and returns a freshly
@@ -178,7 +178,7 @@ def test_game(players, silent):
         if legal != Error.LEGAL:
             # Oops: the autoplayer generated an illegal move
             print("Play is not legal, code {0}".format(Error.errortext(legal)))
-            return
+            return 0, 0
 
         if not silent:
             print(

@@ -2,7 +2,7 @@
 
     Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -28,11 +28,10 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union, Any
+from typing import Dict, Tuple, Any
 
 import calendar
 import logging
-import os
 import time
 import gc
 
@@ -45,7 +44,6 @@ from languages import Alphabet
 from skrafldb import (
     ndb,
     Client,
-    Context,
     UserModel,
     GameModel,
     StatsModel,
@@ -57,12 +55,12 @@ from skraflgame import Game, User
 
 
 # The K constant used in the Elo calculation
-ELO_K = 20.0  # For established players
-BEGINNER_K = 32.0  # For beginning players
+ELO_K: float = 20.0  # For established players
+BEGINNER_K: float = 32.0  # For beginning players
 
 # How many games a player plays as a provisional player
 # before becoming an established one
-ESTABLISHED_MARK = 10
+ESTABLISHED_MARK: int = 10
 
 
 def monthdelta(date: datetime, delta: int) -> datetime:
@@ -144,14 +142,13 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
         # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
         # Fetch user information to update Elo statistics
-        if sm.user:
+        um = sm.fetch_user()
+        if um:
             # Not robot
-            um = UserModel.fetch(sm.user.id())
-            if um:
-                um.elo = sm.elo
-                um.human_elo = sm.human_elo
-                um.manual_elo = sm.manual_elo
-                um_list.append(um)
+            um.elo = sm.elo
+            um.human_elo = sm.human_elo
+            um.manual_elo = sm.manual_elo
+            um_list.append(um)
     # Update the statistics records
     StatsModel.put_multi(urecs.values())
     # Update the user records
@@ -196,7 +193,6 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
     cnt = 0
-    ts_last_processed = None
 
     try:
         # Use i as a progress counter
@@ -349,11 +345,8 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             # Save the game object with the new Elo adjustment statistics
             gm.put()
 
-            # Save the last processed timestamp
-            ts_last_processed = lm
-            cnt += 1
-
             # Report on our progress
+            cnt += 1
             if i % 500 == 0:
                 logging.info("Stats processed {0} games".format(i))
 
@@ -520,9 +513,7 @@ def _create_ratings() -> None:
     RatingModel.put_multi(rlist)
 
     t1 = time.time()
-    logging.info(
-        "Finishing _create_ratings in {0:.1f} seconds".format(t1 - t0)
-    )
+    logging.info("Finishing _create_ratings in {0:.1f} seconds".format(t1 - t0))
 
 
 def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
