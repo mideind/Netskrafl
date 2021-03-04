@@ -79,7 +79,8 @@ import billing
 import firebase
 from cache import memcache
 import skraflstats
-
+from google.cloud import storage
+from flask_cors import CORS
 
 # Flask initialization
 # The following shenanigans auto-insert an NDB client context into each WSGI context
@@ -97,7 +98,7 @@ def ndb_wsgi_middleware(wsgi_app):
 
 
 app = Flask(__name__)
-
+CORS(app, supports_credentials=True, origins="http://localhost:19006")
 # Wrap the WSGI app to insert the NDB client context into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
 
@@ -105,6 +106,12 @@ running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
 app.config["DEBUG"] = running_local
 
+# If you don't specify credentials when constructing the client, the
+# client library will look for credentials in the environment.
+storage_client = storage.Client()
+
+# Make an authenticated API request
+buckets = list(storage_client.list_buckets())
 
 if running_local:
     logging.info("Netskrafl app running with DEBUG set to True")
@@ -127,7 +134,7 @@ else:
 app.config.update(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Strict",
+    # SESSION_COOKIE_SAMESITE="None",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
@@ -165,7 +172,8 @@ _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
 
 # Valid token issuers for OAuth2 login
-_VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
+_VALID_ISSUERS = frozenset(
+    ("accounts.google.com", "https://accounts.google.com"))
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _PROJECT_ID, "PROJECT_ID environment variable not set"
@@ -366,7 +374,8 @@ def _process_move(game, movelist):
                 letter = tile
             m.add_cover(row, col, tile, letter)
     except Exception as e:
-        logging.info("Exception in _process_move(): {0}".format(e).encode("latin-1"))
+        logging.info("Exception in _process_move(): {0}".format(
+            e).encode("latin-1"))
         m = None
 
     # Process the move string here
@@ -665,7 +674,8 @@ def _gamelist(cuid, include_zombies=True):
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
-            timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
+            timed = Game.get_duration_from_prefs(
+                prefs)  # Time per player in minutes
             result.append(
                 {
                     "uuid": g["uuid"],
@@ -708,7 +718,8 @@ def _gamelist(cuid, include_zombies=True):
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
-        timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
+        timed = Game.get_duration_from_prefs(
+            prefs)  # Time per player in minutes
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -961,9 +972,11 @@ def warmup():
     """ App Engine is starting a fresh instance - warm it up
         by loading word database """
     wdb = Wordbase.dawg()
-    ok = "upphitun" in wdb  # Use a random word to check ('upphitun' means warm-up)
+    # Use a random word to check ('upphitun' means warm-up)
+    ok = "upphitun" in wdb
     logging.info(
-        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
+        "Warmup, instance {0}, ok is {1}".format(
+            os.environ.get("GAE_INSTANCE", ""), ok)
     )
     return "", 200, {}
 
@@ -984,7 +997,8 @@ def start():
 @app.route("/_ah/stop")
 def stop():
     """ App Engine is shutting down an instance """
-    logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))
+    logging.info("Stop, instance {0}".format(
+        os.environ.get("GAE_INSTANCE", "")))
     return "", 200, {}
 
 
@@ -1403,7 +1417,8 @@ def chatmsg():
         # as read confirmations
         # The message to be sent in JSON form via Firebase
         md = dict(
-            game=uuid, from_userid=user_id, msg=msg, ts=Alphabet.format_timestamp(ts)
+            game=uuid, from_userid=user_id, msg=msg, ts=Alphabet.format_timestamp(
+                ts)
         )
         msg = {}
         for p in range(0, 2):
@@ -1484,7 +1499,8 @@ def review():
     elif move_number < 0:
         move_number = 0
 
-    state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
+    state = game.state_after_move(
+        move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
     best_moves = None
@@ -1545,7 +1561,8 @@ def bestmoves():
     elif move_number < 0:
         move_number = 0
 
-    state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
+    state = game.state_after_move(
+        move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
     best_moves = None
@@ -1766,7 +1783,8 @@ def wait():
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith("robot-"):
         # !!! TODO: Update for singlepage
-        return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
+        # Go directly to opponents tab
+        return redirect(url_for("main", tab="2"))
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
@@ -1817,7 +1835,8 @@ def newgame():
 
     if opp is None:
         # !!! TODO: Adapt for singlepage
-        return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
+        # Go directly to opponents tab
+        return redirect(url_for("main", tab="2"))
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
@@ -1972,7 +1991,8 @@ def board():
 
     # If a logged-in user is looking at the board, we create a Firebase
     # token in order to maintain presence info
-    firebase_token = None if user is None else firebase.create_custom_token(user.id())
+    firebase_token = None if user is None else firebase.create_custom_token(
+        user.id())
 
     if player_index is not None and not game.is_autoplayer(1 - player_index):
         # Load information about the opponent
@@ -2142,7 +2162,8 @@ def main():
 
         # The list_promotions call yields a list of timestamps
         if promo_to_show:
-            promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
+            promos = sorted(
+                list(PromoModel.list_promotions(uid, promo_to_show)))
             now = datetime.utcnow()
             if len(promos) >= _PROMO_COUNT:
                 # Already seen too many of these
@@ -2258,8 +2279,10 @@ def oauth2callback():
         # 500 - Internal server error
         return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
 
-    token = request.form.get("idToken", "")
-    csrf_token = request.form.get("csrfToken", "")
+#  or request.json['idToken']
+# or request.json['csrfToken']
+    token = request.form.get("idToken", "") or request.json['idToken']
+    csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
 
     if not token:
         # No authentication token included in the request
@@ -2287,6 +2310,7 @@ def oauth2callback():
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
         userid = User.login_by_account(account, name, email)
+
     except ValueError as e:
         # Invalid token
         # 401 - Unauthorized
@@ -2387,6 +2411,6 @@ if not running_local:
 
 
 # Run a default Flask web server for testing if invoked directly as a main program
-
 if __name__ == "__main__":
-    app.run(debug=True, port=8080, use_debugger=True, threaded=False, processes=1)
+    app.run(debug=True, port=8080, use_debugger=True,
+            threaded=False, processes=1)

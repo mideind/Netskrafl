@@ -72,9 +72,11 @@ def test_move(state, movestring):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -89,9 +91,11 @@ def test_exchange(state, numtiles):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -105,9 +109,11 @@ def test_challenge(state):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -121,9 +127,11 @@ def test_response(state):
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -139,7 +147,8 @@ def test_game(players, silent):
     # Initial, empty game state
     state = State(tileset=NewTileSet, drawtiles=True)
 
-    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(
+        state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -210,7 +219,8 @@ def test_manual_game():
     state = State(tileset=NewTileSet, manual_wordcheck=True, drawtiles=True)
 
     print("Manual game")
-    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(
+        state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -257,7 +267,6 @@ def test_manual_game():
 
 
 def test(num_games, opponent, silent):
-
     """ Test running a number of games """
 
     def autoplayer_creator(state):
@@ -308,7 +317,8 @@ def test(num_games, opponent, silent):
 
     print(
         "Test completed, {0} games played in {1:.2f} seconds, "
-        "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
+        "{2:.2f} seconds per game".format(
+            num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player):
@@ -400,7 +410,6 @@ def main(argv=None):
 
 
 def profile_main():
-
     """ Main function to invoke for profiling """
 
     import cProfile as profile

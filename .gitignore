@@ -22,6 +22,8 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
+resources/Explo Development-414318fa79b8.json
+
 # Private GAE services key
 resources/netskrafl-*.json
 
