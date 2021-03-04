@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "explo-dev",
+  "private_key_id": "414318fa79b82492fdd9ff11c65fb51b543a069e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCNSwJoM9QcYJb2\nsceZxrN+0UZJfEWZ7dWqj6MI/E2ME6oTYLYXP2GBvdtkDmr2a8LWAGR0HLKCIuY3\n2thFW8L/6tYa05P0xWS/rCAjWzq5dzDwVSw4oh+443iKUcCscnKqq+G8mbTfU3Ki\nB6G0zJaJGbBkFEVAMiLhVqB+ckTNWWcfmgtdS62YeTIPxjUMZnUH9Vivg6DIOxKe\nKaRHYeEmyPRf8m2xQXtDSlzzdfC48T4oO/PdIjuyqazr8ds2X7WVjfzEMZBhX62y\nRA220eme89MteIW5MPqU0S9G9MjAfITDzPyUCT+5Eg26R9BZjinmHKU0cnkj6MBI\nH8t5NA79AgMBAAECggEAMygr7G+LhmTAc/yFUNudJLb/1F5+0s9Gc9VCyd+T8joy\nc4aqFzu3AaMsmosP1j3JEvOca1/yj+Sz5xhBAsfJECDGOXtOkCqiIjXfgv2mgv0x\nRmsIMk8c3jPZ8nbMJIPhmYLXHhKm5s8Pa7QIq+4BOQ2IjIu8URR2BZF4VZ/o4lJJ\nGfcfYVqjUVL75+TDuljmnuRhXEEF3CoHVdzATiMR7VK7tj1uLtNFq70Z4hKqfvna\nT+3MuPXuRNnMGyvH/etqS1nBaig6zigZY3R5HZk2wm7QOT64+R/05av7B4qiO1po\nvEpdGjTstVTJCQUACHATybUPk2FcjQR45BIBzJoIPwKBgQDDo9AZc1BDnvIEpQ26\nIZRbYop43SjA18lxo0JStFWJ/Xr9NLvdZNy6566hNajEo/9Scd9+pVzhJ81att6+\n6UQ4epNmYqK646fR4Ppoy4ghEz6d/b4agWBRNqWyUTE00veq8mBdKa9n+tBPH8dN\ncAiRZIN/ymFhVYmDCdKgQEXZ/wKBgQC44roZF+z168IlYtDo7bdRSotMDBeQEB7o\nB8SoeSrcbho6VC6G400aQpS67MvrgoRN5x05PZb7NzhswjmAHF7QOAFe4+k44iKb\na0rsArOZwkbAT8mV3LBgSgMyDGAXl+oUlQBEdd4bn34sb0r2BeZ/XY9moJlYKuKP\neXfE/MN/AwKBgQC4PIsbfImItKUrlJfhwf+pM5o9id/4Av5Ugq9RnTu0sD3jN4b3\nTiXD6ax9aj/dtqcZ59zVsjpOWqI7nF0Voiy5l006LQccQolmz5xhldJDe5ELTcp5\nwX6H3JOb4nQZT9cmaAwxj7D8lakX6lBQ74FSEjr33AlqlRfjjBuLCBv/1wKBgQCs\nS44F6IgJPWW2FXp+N1nIxeE+Q16KAJvsu6CHKDPLLEgA54ZcaeLmf/m+oQIAPacy\nOhi/ySe0gOdyYyXWv5mUDT0pwtcLDaIWmEw/2Nyqg6QPf8tqfzlW4mJL98Bs/ENG\nXvzaz8TmlSGuIyEGWMVPGE+U4kFFKuHrttTonG1LJQKBgQCHMJxpIoHoX/zr8Gb2\n24UuQz/xPl5kv0IU7guQ2X3otidYUo03oGFxa4xSHDmh3dBo4oMfowqr3puSwzB7\niSVrIL/w0/ni7dhEciXEsksRpeV3xqpOrA/mcKsJt4MotmqDe03hNkJN7m47feKj\nazLfD0Ow7eWM//bzSEcwsYtm8w==\n-----END PRIVATE KEY-----\n",
+  "client_email": "explo-development@explo-dev.iam.gserviceaccount.com",
+  "client_id": "102894829735281858234",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/explo-development%40explo-dev.iam.gserviceaccount.com"
+}
