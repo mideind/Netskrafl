@@ -9,4 +9,4 @@ export FIREBASE_APP_ID=1:970204261331:web:fce1615824c2e382ec9d26
 export SERVER_SOFTWARE=Development
 export OAUTHLIB_INSECURE_TRANSPORT=1
 
-python3 ./netskrafl.py
+python3 ./chatsocket.py
