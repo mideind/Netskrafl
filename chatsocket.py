@@ -12,7 +12,7 @@ app.debug = True
 @socketio.on("newChatMessage")
 def handleMsg(msg):
    print("new messages", msg)
-   emit("newChatMessage", msg)
+   emit("newChatMessage", msg, room=msg['room'])
 
 @socketio.on('join')
 def on_join(data):
