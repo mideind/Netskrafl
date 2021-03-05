@@ -1522,15 +1522,7 @@ def review():
         # player 0, or the human player if player 0 is an autoplayer
         user_index = 1 if game.is_autoplayer(0) else 0
 
-    return render_template(
-        "review.html",
-        game=game,
-        state=state,
-        player_index=player_index,
-        user_index=user_index,
-        move_number=move_number,
-        best_moves=best_moves,
-    )
+    return jsonify(ok=True)
 
 
 @app.route("/bestmoves", methods=["POST"])
@@ -1742,7 +1734,7 @@ def userprefs():
             return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
+    return jsonify(ok=True)
 
 
 @app.route("/loaduserprefs", methods=["POST"])
@@ -1814,9 +1806,7 @@ def wait():
     firebase_token = firebase.create_custom_token(user.id())
 
     # Go to the wait page
-    return render_template(
-        "wait.html", user=user, opp=opp_user, prefs=prefs, firebase_token=firebase_token
-    )
+    return jsonify(ok=True)
 
 
 @app.route("/newgame")
@@ -2035,17 +2025,7 @@ def board():
         # No need to clear other stuff on the /user/[user_id]/ path,
         # since we're not listening to it in board.html
 
-    return render_template(
-        "board.html",
-        game=game,
-        user=user,
-        opp=opp,
-        player_index=player_index,
-        zombie=bool(zombie),
-        time_info=game.time_info(),
-        og=ogd,  # OpenGraph data
-        firebase_token=firebase_token,
-    )
+    return jsonify(ok=True)
 
 
 @app.route("/gameover", methods=["POST"])
@@ -2092,7 +2072,7 @@ def friend():
             # Not a friend: nothing to cancel
             return redirect(url_for("main"))
         billing.cancel_friend(user)
-    return render_template("friend.html", user=user, action=action)
+    return jsonify(ok=True)
 
 
 @app.route("/promo", methods=["POST"])
@@ -2106,21 +2086,21 @@ def promo():
     VALID_PROMOS = {"friend", "krafla"}
     if key not in VALID_PROMOS:
         key = "error"
-    return render_template("promo-" + key + ".html", user=user)
+    return jsonify(ok=True)
 
 
 @app.route("/signup", methods=["GET"])
 @auth_required()
 def signup():
     """ Sign up as a friend, enter card info, etc. """
-    return render_template("signup.html", user=current_user())
+    return jsonify(ok=True)
 
 
 @app.route("/skilmalar", methods=["GET"])
 @auth_required()
 def skilmalar():
     """ Conditions """
-    return render_template("skilmalar.html", user=current_user())
+    return jsonify(ok=True)
 
 
 @app.route("/billing", methods=["GET", "POST"])
@@ -2186,13 +2166,7 @@ def main():
     msg = {"challenge": None, "move": None, "wait": None}
     firebase.send_message(msg, "user", uid)
 
-    return render_template(
-        "main.html",
-        user=user,
-        tab=tab,
-        firebase_token=firebase_token,
-        promo=promo_to_show,
-    )
+    return jsonify(ok=True)
 
 
 # pylint: disable=redefined-builtin
@@ -2201,7 +2175,7 @@ def help():
     """ Show help page, which does not require authentication """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab=None)
+    return jsonify(ok=True)
 
 
 @app.route("/rawhelp")
@@ -2216,14 +2190,14 @@ def rawhelp():
             return "$$" + endpoint + "$$"
         return url_for(endpoint, **values)
 
-    return render_template("rawhelp.html", url_for=override_url_for)
+    return jsonify(ok=True)
 
 
 @app.route("/twoletter")
 def twoletter():
     """ Show help page. Authentication is not required. """
     user = session_user()
-    return render_template("nshelp.html", user=user, tab="twoletter")
+    return jsonify(ok=True)
 
 
 @app.route("/faq")
@@ -2231,7 +2205,7 @@ def faq():
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab="faq")
+    return jsonify(ok=True)
 
 
 @app.route("/page")
@@ -2240,7 +2214,7 @@ def page():
     """ Show single-page UI test """
     user = current_user()
     firebase_token = firebase.create_custom_token(user.id())
-    return render_template("page.html", user=user, firebase_token=firebase_token,)
+    return jsonify(ok=True)
 
 
 @app.route("/newbag")
@@ -2248,7 +2222,7 @@ def newbag():
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab="newbag")
+    return jsonify(ok=True)
 
 
 @app.route("/login")
@@ -2257,7 +2231,7 @@ def login():
     main_url = "/page" if _SINGLE_PAGE_UI else "/"
     if "user" in session:
         del session["user"]
-    return render_template("login.html", main_url=main_url)
+    return jsonify(ok=True)
 
 
 @app.route("/logout")
@@ -2383,7 +2357,7 @@ if running_local:
     @app.route("/admin/main")
     def admin_main():
         """ Show main administration page """
-        return render_template("admin.html")
+        return jsonify(ok=True)
 
 
 # noinspection PyUnusedLocal
