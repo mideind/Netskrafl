@@ -8,6 +8,8 @@ export FIREBASE_SENDER_ID=970204261331
 export FIREBASE_APP_ID=1:970204261331:web:fce1615824c2e382ec9d26
 export SERVER_SOFTWARE=Development
 export OAUTHLIB_INSECURE_TRANSPORT=1
+export REDISHOST=10.128.0.3
+export REDISPORT=6379
 
-python3 ./main.py &
-python3 ./chatsocket.py &
+python3 ./src/main.py &
+python3 ./src/chatsocket.py &
