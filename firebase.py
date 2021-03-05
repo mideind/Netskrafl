@@ -69,7 +69,7 @@ def _get_http() -> httplib2.Http:
     return _tls._HTTP
 
 
-def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
+def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0
@@ -78,7 +78,7 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
             kw: Dict[str, Any] = kwargs.copy()
             kw["headers"] = _HEADERS
             response, content = _get_http().request(*args, **kw)
-            assert isinstance(content, str)
+            assert isinstance(content, bytes)
             return response, content
         except ConnectionError:
             # Note that BrokenPipeError is a subclass of ConnectionError
@@ -102,7 +102,7 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
 
 def _firebase_put(
     path: str, message: Optional[str] = None
-) -> Tuple[httplib2.Response, str]:
+) -> Tuple[httplib2.Response, bytes]:
     """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
@@ -115,7 +115,7 @@ def _firebase_put(
     return _request(path, method="PUT", body=message)
 
 
-def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Read the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -128,7 +128,7 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="GET")
 
 
-def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
+def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
     """ Update the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -141,7 +141,7 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="PATCH", body=message)
 
 
-def _firebase_delete(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Delete the data at the given path.
 
     An HTTP DELETE request allows deleting of the data at the given path.

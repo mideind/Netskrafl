@@ -197,36 +197,44 @@ class UserModel(ndb.Model):
     """ Models an individual user """
 
     nickname = cast(str, ndb.StringProperty())
-    email = cast(str, ndb.StringProperty(required=False, default=None))
+    email = cast(Optional[str], ndb.StringProperty(required=False, default=None))
     # Google Account identifier (unfortunately different from GAE user id)
-    account = cast(str, ndb.StringProperty(required=False, default=None))
+    account = cast(Optional[str], ndb.StringProperty(required=False, default=None))
 
     # Lower case nickname and full name of user - used for search
-    nick_lc = cast(str, ndb.StringProperty(required=False, default=None))
-    name_lc = cast(str, ndb.StringProperty(required=False, default=None))
+    nick_lc = cast(Optional[str], ndb.StringProperty(required=False, default=None))
+    name_lc = cast(Optional[str], ndb.StringProperty(required=False, default=None))
 
     inactive = cast(bool, ndb.BooleanProperty())
     # The user's preferred locale, i.e. language and other settings
-    locale = cast(str, ndb.StringProperty(required=False, default="is_IS"))
+    locale = cast(Optional[str], ndb.StringProperty(required=False, default="is_IS"))
     # Preferences dictionary
     prefs = cast(PrefsDict, ndb.JsonProperty())
     # Creation time of the user entity
     timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
     # Last login for the user
-    last_login = cast(datetime, ndb.DateTimeProperty(required=False))
+    last_login = cast(Optional[datetime], ndb.DateTimeProperty(required=False))
     # Ready for challenges?
-    ready = ndb.BooleanProperty(required=False, default=False)
+    ready = cast(Optional[bool], ndb.BooleanProperty(required=False, default=False))
     # Ready for timed challenges?
-    ready_timed = ndb.BooleanProperty(required=False, default=False)
+    ready_timed = cast(
+        Optional[bool], ndb.BooleanProperty(required=False, default=False)
+    )
     # Elo points
-    elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
+    elo = cast(
+        Optional[int], ndb.IntegerProperty(required=False, default=0, indexed=True)
+    )
     # Elo points for human-only games
-    human_elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
+    human_elo = cast(
+        Optional[int], ndb.IntegerProperty(required=False, default=0, indexed=True)
+    )
     # Elo points for manual (competition) games
-    manual_elo = cast(int, ndb.IntegerProperty(required=False, default=0, indexed=True))
+    manual_elo = cast(
+        Optional[int], ndb.IntegerProperty(required=False, default=0, indexed=True)
+    )
     # Best total score in a game
     highest_score = cast(
-        int, ndb.IntegerProperty(required=False, default=0, indexed=True)
+        Optional[int], ndb.IntegerProperty(required=False, default=0, indexed=True)
     )
     # Note: indexing of string properties is mandatory
     highest_score_game = cast(

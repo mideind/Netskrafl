@@ -165,9 +165,7 @@ class User:
             assert self._user_id is not None
             um = UserModel.fetch(self._user_id)
             assert um is not None
-            assert self._account is not None
             um.account = self._account
-            assert self._email is not None
             um.email = self._email
             um.nickname = self._nickname
             um.nick_lc = self._nickname.lower()
