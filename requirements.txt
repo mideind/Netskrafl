@@ -9,3 +9,7 @@ google-python-cloud-debugger; sys_platform == 'osx'
 protobuf
 googleapis_common_protos
 google-cloud-logging
+flask_cors
+flask_socketio
+eventlet
+gevent-websocket

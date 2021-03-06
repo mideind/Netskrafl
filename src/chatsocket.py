@@ -9,10 +9,12 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 app.debug = True
 
+
 @socketio.on("newChatMessage")
 def handleMsg(msg):
-   print("new messages", msg)
-   emit("newChatMessage", msg, room=msg['room'])
+    print("new messages", msg)
+    emit("newChatMessage", msg, room=msg['room'])
+
 
 @socketio.on('join')
 def on_join(data):
@@ -22,6 +24,7 @@ def on_join(data):
     join_room(room)
     send(opponentName + ' has entered the room.', room=room)
 
+
 @socketio.on('leave')
 def on_leave(data):
     opponentName = data['opponentName']
@@ -29,5 +32,6 @@ def on_leave(data):
     leave_room(room)
     send(opponentName + ' has left the room.', room=room)
 
+
 if __name__ == "__main__":
-  socketio.run(app)
+    socketio.run(app, host="0.0.0.0")

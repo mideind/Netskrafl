@@ -2386,5 +2386,5 @@ if not running_local:
 
 # Run a default Flask web server for testing if invoked directly as a main program
 if __name__ == "__main__":
-    app.run(debug=True, port=8080, use_debugger=True,
-            threaded=False, processes=1)
+    app.run(debug=True, port=6000, use_debugger=True,
+            threaded=False, processes=1, host="0.0.0.0")
