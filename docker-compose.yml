@@ -3,7 +3,7 @@ services:
   explo-server:
     build:
       context: ./
-      dockerfile: dockerfile-server
+      dockerfile: dockerfile
     image: explo-server:latest
     restart: on-failure
     ports:
@@ -21,19 +21,6 @@ services:
       REDISPORT: 6379
       FLASK_APP: "main.py"
       ENV FLASK_RUN_HOST: "0.0.0.0"
-  explo-ws:
-    build:
-      context: ./
-      dockerfile: dockerfile-ws
-    image: explo-ws:latest
-    restart: on-failure
-    ports:
-      - "5000:5000"
-    environment:
-      FLASK_APP: "chatsocket.py"
-      ENV FLASK_RUN_HOST: "0.0.0.0"
-      REDISHOST: 10.128.0.3
-      REDISPORT: 6379
   redis:
     image: "redis:alpine"
     ports:
