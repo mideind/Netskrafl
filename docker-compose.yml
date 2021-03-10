@@ -7,7 +7,7 @@ services:
     image: explo-server:latest
     restart: on-failure
     ports:
-      - "3000:6000"
+      - "3000:3000"
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: "./resources/Explo\ Development-414318fa79b8.json"
       PROJECT_ID: "explo-dev"

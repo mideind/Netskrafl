@@ -16,7 +16,7 @@ RUN python3 ./dawgbuilder.py
 
 RUN python3 ./generate-secret.py
 
-EXPOSE 6000
+EXPOSE 3000
 
 ENTRYPOINT [ "python3" ]
 
