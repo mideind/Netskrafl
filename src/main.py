@@ -133,9 +133,10 @@ else:
 # should only sent back from the client during sessions on our site,
 # i.e. not when navigating to it from other sites.
 app.config.update(
-    SESSION_COOKIE_SECURE=not running_local,
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="None",
+    CSRF_COOKIE_SAMESITE="None",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
