@@ -98,7 +98,8 @@ def ndb_wsgi_middleware(wsgi_app):
 
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://explo.300dev.pl", "http://localhost:19006"])
+CORS(app, supports_credentials=True, origins=[
+     "http://explo.300dev.pl", "http://localhost:19006"])
 # Wrap the WSGI app to insert the NDB client context into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
 
@@ -132,9 +133,9 @@ else:
 # should only sent back from the client during sessions on our site,
 # i.e. not when navigating to it from other sites.
 app.config.update(
-    # SESSION_COOKIE_SECURE=not running_local,
+    SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_HTTPONLY=True,
-    # SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SAMESITE="None",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
