@@ -485,6 +485,7 @@ def _userlist(query, spec):
                     "newbag": cuser is not None and cuser.new_bag(),
                     "ready": True,  # The robots are always ready for a challenge
                     "ready_timed": False,  # Timed games are not available for robots
+                    "live": True,  # robots are always online
                 }
             )
         # That's it; we're done (no sorting required)
@@ -539,6 +540,7 @@ def _userlist(query, spec):
                         "newbag": lu.new_bag(),
                         "ready": lu.is_ready() and not chall,
                         "ready_timed": lu.is_ready_timed() and not chall,
+                        "live": True
                     }
                 )
 
@@ -562,6 +564,7 @@ def _userlist(query, spec):
                             "chall": chall,
                             "fairplay": fu.fairplay(),
                             "newbag": fu.new_bag(),
+                            "live": favid in online,
                             "ready": (fu.is_ready() and favid in online and not chall),
                             "ready_timed": (
                                 fu.is_ready_timed() and favid in online and not chall
@@ -587,6 +590,7 @@ def _userlist(query, spec):
                             "fav": False if cuser is None else cuser.has_favorite(uid),
                             "chall": chall,
                             "fairplay": au.fairplay(),
+                            "live": uid in online,
                             "newbag": au.new_bag(),
                             "ready": (au.is_ready() and uid in online and not chall),
                             "ready_timed": (
@@ -634,6 +638,7 @@ def _userlist(query, spec):
                         "human_elo": elo_str(ud["human_elo"] or User.DEFAULT_ELO),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
+                        "live": uid in online,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
                         "newbag": User.new_bag_from_prefs(ud["prefs"]),
                         "ready": (ud["ready"] and uid in online and not chall),
