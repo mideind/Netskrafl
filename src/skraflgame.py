@@ -23,6 +23,7 @@
 
 import collections
 import threading
+import logging
 
 from random import randint
 from datetime import datetime, timedelta
@@ -90,6 +91,7 @@ class User:
         self._best_word_game = None
         # Set of favorite users, only loaded upon demand
         self._favorites = None
+        self._image = u""
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -110,6 +112,7 @@ class User:
         self._best_word = um.best_word
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
+        self._image = um.image
 
     def update(self):
         """ Update the user's record in the database and in the memcache """
@@ -134,6 +137,7 @@ class User:
             um.best_word = self._best_word
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
+            um.image = self._image
             um.put()
 
             # Note: the namespace version should be incremented each time
@@ -226,6 +230,15 @@ class User:
         """ Sets the audio preference of a user to True or False """
         assert isinstance(audio, bool)
         self.set_pref(u"audio", audio)
+
+    def image(self):
+        """ Returns the e-mail address of a user """
+        em = self.get_pref(u"image", self._image)
+        return u"" if em is None else em
+
+    def set_image(self, image):
+        """ Sets the e-mail address of a user """
+        self.set_pref(u"image", image)
 
     def fanfare(self):
         """ Returns True if the user wants a fanfare sound when winning """
@@ -437,7 +450,8 @@ class User:
                 return None
             u = cls(uid=uid)
             u._init(um)
-            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+            memcache.add(uid, u, time=User._CACHE_EXPIRY,
+                         namespace=User._NAMESPACE)
             return u
 
     @classmethod
@@ -453,11 +467,14 @@ class User:
         return user_list
 
     @classmethod
-    def login_by_account(cls, account, name, email):
+    def login_by_account(cls, account, name, email, image):
         """ Log in a user via the given Google Account and return her user id """
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
         if um is not None:
+            if image and image != um.image:
+                um.image = image
+                um.put()
             # We've seen this Google Account before: return the user id
             if email and email != um.email:
                 # Use the opportunity to update the email, if different
@@ -466,6 +483,7 @@ class User:
                 um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
+            print('test')
             return um.key.id()
         # We haven't seen this Google Account before: try to match by email
         if email:
@@ -486,6 +504,7 @@ class User:
             account=account,
             email=email,
             nickname=nickname,
+            image=image,
             preferences=prefs
         )
 
@@ -522,7 +541,8 @@ class User:
 
 
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
-MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
+MoveTuple = collections.namedtuple(
+    "MoveTuple", ["player", "move", "rack", "ts"])
 
 
 class Game:
@@ -1025,7 +1045,8 @@ class Game:
             # Timed game: calculate the overtime
             el = self.get_elapsed()
             for player in range(2):
-                overtime[player] = max(0.0, el[player] - duration)  # Never negative
+                overtime[player] = max(
+                    0.0, el[player] - duration)  # Never negative
         return tuple(overtime)
 
     def overtime_adjustment(self):
@@ -1108,7 +1129,8 @@ class Game:
         self.state.apply_move(move)
         self.ts_last_move = datetime.utcnow()
         mt = MoveTuple(
-            player_index, move, self.state.rack(player_index), self.ts_last_move
+            player_index, move, self.state.rack(
+                player_index), self.ts_last_move
         )
         self.moves.append(mt)
         self.last_move = None  # No response move yet
@@ -1265,7 +1287,8 @@ class Game:
                 # If losing player is still winning on points, add points to the
                 # winning player so that she leads by one point
                 if sc[ix] + adjustment[ix] >= sc[1 - ix]:
-                    adjustment[1 - ix] = sc[ix] + adjustment[ix] + 1 - sc[1 - ix]
+                    adjustment[1 - ix] = sc[ix] + \
+                        adjustment[ix] + 1 - sc[1 - ix]
             else:
                 # Normal end of game
                 opp_rack = self.state.rack(1 - lastplayer)
@@ -1286,15 +1309,19 @@ class Game:
                     movelist.append((lastplayer, (u"", u"--", 0)))
                 else:
                     # The game has ended by passes: each player gets her own rack subtracted
-                    movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
-                    movelist.append((lastplayer, (u"", last_rack, -1 * last_score)))
+                    movelist.append(
+                        (1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
+                    movelist.append(
+                        (lastplayer, (u"", last_rack, -1 * last_score)))
 
             # If this is a timed game, add eventual overtime adjustment
             if tuple(adjustment) != (0, 0):
                 movelist.append(
-                    (1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer]))
+                    (1 - lastplayer, (u"", u"TIME",
+                                      adjustment[1 - lastplayer]))
                 )
-                movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
+                movelist.append(
+                    (lastplayer, (u"", u"TIME", adjustment[lastplayer])))
 
         # Add a synthetic "game over" move
         movelist.append((1 - lastplayer, (u"", u"OVER", 0)))
@@ -1374,10 +1401,13 @@ class Game:
                 (m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]
             ]
             reply["fairplay"] = self.get_fairplay()
-            reply["autoplayer"] = [self.is_autoplayer(0), self.is_autoplayer(1)]
-            reply["nickname"] = [self.player_nickname(0), self.player_nickname(1)]
+            reply["autoplayer"] = [
+                self.is_autoplayer(0), self.is_autoplayer(1)]
+            reply["nickname"] = [self.player_nickname(
+                0), self.player_nickname(1)]
             reply["userid"] = [self.player_id(0), self.player_id(1)]
-            reply["fullname"] = [self.player_fullname(0), self.player_fullname(1)]
+            reply["fullname"] = [self.player_fullname(
+                0), self.player_fullname(1)]
             reply["overdue"] = self.is_overdue()
 
         return reply
@@ -1424,8 +1454,10 @@ class Game:
         ncovers = [(m.player, m.move.num_covers()) for m in net_moves]
         bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
         # Number of bingoes (net of successful challenges)
-        reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
-        reply["bingoes1"] = sum([1 if p == 1 and bingo else 0 for p, bingo in bingoes])
+        reply["bingoes0"] = sum(
+            [1 if p == 0 and bingo else 0 for p, bingo in bingoes])
+        reply["bingoes1"] = sum(
+            [1 if p == 1 and bingo else 0 for p, bingo in bingoes])
         # Number of tiles laid down (net of successful challenges)
         reply["tiles0"] = t0 = sum([nc if p == 0 else 0 for p, nc in ncovers])
         reply["tiles1"] = t1 = sum([nc if p == 1 else 0 for p, nc in ncovers])
@@ -1460,8 +1492,10 @@ class Game:
         reply["average0"] = (float(lsc0) / (t0 - b0)) if (t0 > b0) else 0.0
         reply["average1"] = (float(lsc1) / (t1 - b1)) if (t1 > b1) else 0.0
         # Calculate point multiple of tiles laid down (score / nominal points)
-        reply["multiple0"] = (float(cleanscore[0]) / lsc0) if (lsc0 > 0) else 0.0
-        reply["multiple1"] = (float(cleanscore[1]) / lsc1) if (lsc1 > 0) else 0.0
+        reply["multiple0"] = (float(cleanscore[0]) /
+                              lsc0) if (lsc0 > 0) else 0.0
+        reply["multiple1"] = (float(cleanscore[1]) /
+                              lsc1) if (lsc1 > 0) else 0.0
         # Calculate average score of each move
         reply["avgmove0"] = (float(cleanscore[0]) / m0) if (m0 > 0) else 0.0
         reply["avgmove1"] = (float(cleanscore[1]) / m1) if (m1 > 0) else 0.0
@@ -1484,10 +1518,14 @@ class Game:
             reply["overtime0"] = oa[0]
             reply["overtime1"] = oa[1]
             # Contribution of remaining tiles at the end of the game
-            reply["remaining0"] = sc[0] - cleanscore[0] - oa[0] - wrong_chall[0]
-            reply["remaining1"] = sc[1] - cleanscore[1] - oa[1] - wrong_chall[1]
+            reply["remaining0"] = sc[0] - \
+                cleanscore[0] - oa[0] - wrong_chall[0]
+            reply["remaining1"] = sc[1] - \
+                cleanscore[1] - oa[1] - wrong_chall[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
-        reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
-        reply["ratio1"] = (float(sc[1]) / totalsc * 100.0) if totalsc > 0 else 0.0
+        reply["ratio0"] = (float(sc[0]) / totalsc *
+                           100.0) if totalsc > 0 else 0.0
+        reply["ratio1"] = (float(sc[1]) / totalsc *
+                           100.0) if totalsc > 0 else 0.0
         return reply

@@ -540,7 +540,8 @@ def _userlist(query, spec):
                         "newbag": lu.new_bag(),
                         "ready": lu.is_ready() and not chall,
                         "ready_timed": lu.is_ready_timed() and not chall,
-                        "live": True
+                        "live": True,
+                        "image": lu.image()
                     }
                 )
 
@@ -569,6 +570,7 @@ def _userlist(query, spec):
                             "ready_timed": (
                                 fu.is_ready_timed() and favid in online and not chall
                             ),
+                            "image": fu.image()
                         }
                     )
 
@@ -596,6 +598,7 @@ def _userlist(query, spec):
                             "ready_timed": (
                                 au.is_ready_timed() and uid in online and not chall
                             ),
+                            "image": au.image()
                         }
                     )
 
@@ -645,6 +648,7 @@ def _userlist(query, spec):
                         "ready_timed": (
                             ud["ready_timed"] and uid in online and not chall
                         ),
+                        "image": ud["image"]
                     }
                 )
 
@@ -1610,6 +1614,7 @@ class UserForm:
             self.nickname = ""
             self.full_name = ""
             self.email = ""
+            self.image = ""
             self.audio = True
             self.fanfare = True
             self.beginner = True
@@ -1629,6 +1634,10 @@ class UserForm:
             pass
         try:
             self.email = form["email"].strip()
+        except (TypeError, ValueError, KeyError):
+            pass
+        try:
+            self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
             pass
         try:
@@ -1655,6 +1664,10 @@ class UserForm:
         except (TypeError, ValueError, KeyError):
             pass
         try:
+            self.image = d.get("image", "").strip()
+        except (TypeError, ValueError, KeyError):
+            pass
+        try:
             self.audio = bool(d.get("audio", False))
             self.fanfare = bool(d.get("fanfare", False))
             self.beginner = bool(d.get("beginner", False))
@@ -1675,6 +1688,7 @@ class UserForm:
         self.newbag = usr.new_bag()
         self.friend = usr.friend()
         self.id = current_user_id()
+        self.image = usr.image()
 
     def validate(self):
         """ Check the current form data for validity
@@ -1708,6 +1722,7 @@ class UserForm:
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
         usr.set_new_bag(self.newbag)
+        usr.set_image(self.image)
         usr.update()
 
     def as_dict(self):
@@ -1750,6 +1765,7 @@ def loaduserprefs():
     """ Fetch the preferences of the current user in JSON form """
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
+    print(uf.as_dict())
     return jsonify(ok=True, userprefs=uf.as_dict())
 
 
@@ -2286,11 +2302,13 @@ def oauth2callback():
         account = idinfo["sub"]
         # Full name of user
         name = idinfo["name"]
+        # User image
+        image = idinfo["picture"]
         # Make sure that the e-mail address is in lowercase
         email = idinfo["email"].lower()
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
-        userid = User.login_by_account(account, name, email)
+        userid = User.login_by_account(account, name, email, image)
 
     except ValueError as e:
         # Invalid token

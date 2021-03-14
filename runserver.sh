@@ -11,5 +11,4 @@ export OAUTHLIB_INSECURE_TRANSPORT=1
 export REDISHOST=0.0.0.0
 export REDISPORT=6379
 
-python3 ./src/main.py &
-python3 ./src/chatsocket.py 
+python3 ./src/main.py 

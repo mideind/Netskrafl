@@ -148,6 +148,8 @@ class UserModel(ndb.Model):
 
     nickname = ndb.StringProperty()
     email = ndb.StringProperty(required=False, default=None)
+
+    image = ndb.StringProperty(required=False, default=None)
     # Google Account identifier (unfortunately different from GAE user id)
     account = ndb.StringProperty(required=False, default=None)
 
@@ -167,20 +169,23 @@ class UserModel(ndb.Model):
     # Elo points for human-only games
     human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
     # Best total score in a game
-    highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    highest_score = ndb.IntegerProperty(
+        required=False, default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     highest_score_game = ndb.StringProperty(required=False, default=None)
     # Best word laid down
     # Note: indexing of string properties is mandatory
     best_word = ndb.StringProperty(required=False, default=None)
-    best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    best_word_score = ndb.IntegerProperty(
+        required=False, default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = ndb.StringProperty(required=False, default=None)
 
     @classmethod
-    def create(cls, user_id, account, email, nickname, preferences=None):
+    def create(cls, user_id, account, email, nickname, image, preferences=None):
         """ Create a new user """
         user = cls(id=user_id)
+        user.image = image
         user.account = account
         user.email = email
         user.nickname = nickname  # Default to the same nickname
@@ -225,7 +230,8 @@ class UserModel(ndb.Model):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys = [ndb.Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
+            keys = [ndb.Key(UserModel, uid)
+                    for uid in user_ids[ix: ix + MAX_CHUNK]]
             len_keys = len(keys)
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
@@ -287,7 +293,8 @@ class UserModel(ndb.Model):
             q_to = unichr(ord(q_from) + 1)
 
             q = cls.query(
-                ndb.AND(UserModel.nickname >= q_from, UserModel.nickname < q_to)
+                ndb.AND(UserModel.nickname >= q_from,
+                        UserModel.nickname < q_to)
             )
 
             # Individual letters contain >600 users as of 2015-02-12
@@ -337,7 +344,8 @@ class UserModel(ndb.Model):
                         timestamp=um.timestamp,
                         ready=um.ready,
                         ready_timed=um.ready_timed,
-                        human_elo=um.human_elo
+                        human_elo=um.human_elo,
+                        image=um.image
                     )
                     id_set.add(um.key.id())
 
@@ -468,7 +476,8 @@ class GameModel(ndb.Model):
     ts_last_move = ndb.DateTimeProperty(required=False, default=None)
 
     # The moves so far
-    moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
+    moves = ndb.LocalStructuredProperty(
+        MoveModel, repeated=True, indexed=False)
 
     # The initial racks
     irack0 = ndb.StringProperty(required=False, default=None)
@@ -478,7 +487,8 @@ class GameModel(ndb.Model):
     prefs = ndb.JsonProperty(required=False, default=None)
 
     # Count of tiles that have been laid on the board
-    tile_count = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    tile_count = ndb.IntegerProperty(
+        required=False, indexed=False, default=None)
 
     # Elo statistics properties - only defined for finished games
     # Elo points of both players when game finished, before adjustment
@@ -489,11 +499,15 @@ class GameModel(ndb.Model):
     elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
     # Human-only Elo points of both players when game finished
     # (not defined if robot game)
-    human_elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    human_elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    human_elo0 = ndb.IntegerProperty(
+        required=False, indexed=False, default=None)
+    human_elo1 = ndb.IntegerProperty(
+        required=False, indexed=False, default=None)
     # Human-only Elo point adjustment as a result of this game
-    human_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    human_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    human_elo0_adj = ndb.IntegerProperty(
+        required=False, indexed=False, default=None)
+    human_elo1_adj = ndb.IntegerProperty(
+        required=False, indexed=False, default=None)
 
     def set_player(self, ix, user_id):
         """ Set a player key property to point to a given user, or None """
@@ -554,8 +568,10 @@ class GameModel(ndb.Model):
         if versus:
             # Add a filter on the opponent
             v = ndb.Key(UserModel, versus)
-            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
-            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
+            q0 = cls.query(ndb.AND(GameModel.player1 ==
+                                   k, GameModel.player0 == v))
+            q1 = cls.query(ndb.AND(GameModel.player0 ==
+                                   k, GameModel.player1 == v))
         else:
             # Plain filter on the player
             q0 = cls.query(GameModel.player0 == k)
@@ -793,7 +809,8 @@ class ChallengeModel(ndb.Model):
             return
         k = ndb.Key(UserModel, user_id)
         # List received challenges in ascending order by timestamp (oldest first)
-        q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
+        q = cls.query(ChallengeModel.destuser == k).order(
+            ChallengeModel.timestamp)
 
         def ch_callback(cm):
             """ Map a received challenge to a tuple of useful info """
@@ -810,7 +827,8 @@ class StatsModel(ndb.Model):
     """ Models statistics about users """
 
     # The user associated with this statistic or None if robot
-    user = ndb.KeyProperty(kind=UserModel, indexed=True, required=False, default=None)
+    user = ndb.KeyProperty(kind=UserModel, indexed=True,
+                           required=False, default=None)
     robot_level = ndb.IntegerProperty(required=False, default=0)
 
     # The timestamp of this statistic
@@ -915,7 +933,8 @@ class StatsModel(ndb.Model):
         """ Returns the Elo ratings at the indicated time point (None = now),
             in descending order  """
 
-        max_fetch = int(max_len * 2.6)  # Currently this means a safety_buffer of 160
+        # Currently this means a safety_buffer of 160
+        max_fetch = int(max_len * 2.6)
         safety_buffer = max_fetch - max_len
         check_false_positives = True
 
@@ -965,7 +984,8 @@ class StatsModel(ndb.Model):
                 sm = cls.newest_before(timestamp, d["user"], d["robot_level"])
                 assert sm is not None  # We should always have an entity here
                 nd = makedict(sm)
-                nd_ts = nd["timestamp"]  # This may be None if a default record was created
+                # This may be None if a default record was created
+                nd_ts = nd["timestamp"]
                 if (nd_ts is not None) and nd_ts > d["timestamp"]:
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
@@ -985,13 +1005,15 @@ class StatsModel(ndb.Model):
             # Houston, we have a problem: the original list was way off
             # and the corrections are not sufficient;
             # truncate the result accordingly
-            logging.error(u"False positives caused ratings list to be truncated")
+            logging.error(
+                u"False positives caused ratings list to be truncated")
             max_len -= (false_pos - safety_buffer)
             if max_len < 0:
                 max_len = 0
 
         # Sort in descending order by Elo, and finally rank and return the result
-        result_list = sorted(result.values(), key=lambda x: -x["elo"])[0:max_len]
+        result_list = sorted(
+            result.values(), key=lambda x: -x["elo"])[0:max_len]
         for ix, d in enumerate(result_list):
             d["rank"] = ix + 1
 
@@ -1086,9 +1108,11 @@ class StatsModel(ndb.Model):
                 k = ndb.Key(UserModel, user_id)
             # Use a common query structure and index for humans and robots
             q = cls.query(
-                ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level)
+                ndb.AND(StatsModel.user == k,
+                        StatsModel.robot_level == robot_level)
             )
-            q = q.filter(StatsModel.timestamp <= ts).order(-StatsModel.timestamp)
+            q = q.filter(StatsModel.timestamp <=
+                         ts).order(-StatsModel.timestamp)
             sm_before = q.get()
             if sm_before is not None:
                 # Found: copy the stats
@@ -1414,8 +1438,8 @@ class PromoModel(ndb.Model):
         if user_id is None:
             return
         k = ndb.Key(UserModel, user_id)
-        q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
+        q = cls.query(PromoModel.player == k).filter(
+            PromoModel.promotion == promotion)
 
         for pm in q.fetch(projection=['timestamp']):
             yield pm.timestamp
-
