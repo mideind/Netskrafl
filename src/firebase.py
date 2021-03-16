@@ -33,7 +33,7 @@ assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 # Select Firebase database URL depending on project ID
 _FIREBASE_DB: Mapping[str, str] = {
     "netskrafl": "https://netskrafl.firebaseio.com",
-    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
+    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app",
 }
 _FIREBASE_DB_URL: str = _FIREBASE_DB[_PROJECT_ID]
 
@@ -162,7 +162,8 @@ def send_message(message: Optional[Dict], *args: str) -> bool:
         # is returned in the status field
         return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
-        logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
+        logging.warning(
+            "Exception [{}] in firebase.send_message()".format(repr(e)))
         return False
 
 
@@ -177,7 +178,8 @@ def send_update(*args: str) -> bool:
 def check_wait(user_id: str, opp_id: str) -> bool:
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
-        url = "{}/user/{}/wait/{}.json".format(_FIREBASE_DB_URL, user_id, opp_id)
+        url = "{}/user/{}/wait/{}.json".format(
+            _FIREBASE_DB_URL, user_id, opp_id)
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
@@ -201,7 +203,8 @@ def check_presence(user_id: str) -> bool:
         return bool(msg)
     except httplib2.HttpLib2Error as e:
         logging.warning(
-            "Exception [{}] raised in firebase.check_presence()".format(repr(e))
+            "Exception [{}] raised in firebase.check_presence()".format(
+                repr(e))
         )
         return False
 

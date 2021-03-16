@@ -464,9 +464,11 @@ def _get_online():
     # !!! TODO: Cache the entire list including the user information,
     # !!! only updating the favorite state (fav field) for the requesting user
     online = memcache.get("live", namespace="userlist")
-    if online is None:
+
+    if not online:
         # Not found: do a query
         online = firebase.get_connected_users()  # Returns a set
+
         # Store the result as a list in the cache with a lifetime of 10 minutes
         memcache.set("live", list(online), time=10 * 60, namespace="userlist")
     else:
@@ -518,7 +520,6 @@ def _userlist(query, spec):
         )
 
     online = _get_online()
-
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -2291,7 +2292,7 @@ def logout():
     """ Log the user out """
     if "user" in session:
         del session["user"]
-    return redirect(url_for("login"))
+    return jsonify(ok=True)
 
 
 @app.route("/oauth2callback", methods=["POST"])
