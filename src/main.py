@@ -457,6 +457,24 @@ def fetch_users(ulist, uid_func):
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
+def _get_online():
+    # Get the list of online users
+
+    # Start by looking in the cache
+    # !!! TODO: Cache the entire list including the user information,
+    # !!! only updating the favorite state (fav field) for the requesting user
+    online = memcache.get("live", namespace="userlist")
+    if online is None:
+        # Not found: do a query
+        online = firebase.get_connected_users()  # Returns a set
+        # Store the result as a list in the cache with a lifetime of 10 minutes
+        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
+    else:
+        # Convert the cached list back into a set
+        online = set(online)
+    return online
+
+
 def _userlist(query, spec):
     """ Return a list of users matching the filter criteria """
 
@@ -499,20 +517,7 @@ def _userlist(query, spec):
             [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
         )
 
-    # Get the list of online users
-
-    # Start by looking in the cache
-    # !!! TODO: Cache the entire list including the user information,
-    # !!! only updating the favorite state (fav field) for the requesting user
-    online = memcache.get("live", namespace="userlist")
-    if online is None:
-        # Not found: do a query
-        online = firebase.get_connected_users()  # Returns a set
-        # Store the result as a list in the cache with a lifetime of 10 minutes
-        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
-    else:
-        # Convert the cached list back into a set
-        online = set(online)
+    online = _get_online()
 
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
@@ -669,10 +674,14 @@ def _userlist(query, spec):
 
 def _gamelist(cuid, include_zombies=True):
     """ Return a list of active and zombie games for the current user """
+
     result = []
     if not cuid:
         return result
+
     now = datetime.utcnow()
+    online = _get_online()
+    cuser = current_user()
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
     if include_zombies:
@@ -704,6 +713,9 @@ def _gamelist(cuid, include_zombies=True):
                     "newbag": new_bag,
                     "manual": manual,
                     "timed": timed,
+                    "live": opp in online,
+                    "image": u.image(),
+                    "fav": False if cuser is None else cuser.has_favorite(opp),
                     "tile_count": 100,  # All tiles (100%) accounted for
                 }
             )
@@ -764,6 +776,9 @@ def _gamelist(cuid, include_zombies=True):
                 "manual": manual,
                 "timed": timed,
                 "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles()),
+                "live": opp in online,
+                "image":  u"" if u is None else u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(opp),
             }
         )
     return result
@@ -861,10 +876,14 @@ def _recentlist(cuid, versus, max_len):
     if cuid is None:
         return []
     result = []
+    cuser = current_user()
     # Obtain a list of recently finished games where the indicated user was a player
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
+
+    online = _get_online()
+
     for g in rlist:
         opp = g["opp"]
         if opp is None:
@@ -905,6 +924,10 @@ def _recentlist(cuid, versus, max_len):
                 "minutes": int(minutes),
                 "duration": Game.get_duration_from_prefs(prefs),
                 "manual": Game.manual_wordcheck_from_prefs(prefs),
+                "live": opp in online,
+                "image": u"" if u is None else u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(opp),
+
             }
         )
     return result
@@ -919,7 +942,8 @@ def _challengelist():
     """ Return a list of challenges issued or received by the current user """
 
     result = []
-    cuid = current_user_id()
+    cuser = current_user()
+    cuid = cuser.id()
 
     def is_timed(prefs):
         """ Return True if the challenge is for a timed game """
@@ -935,7 +959,7 @@ def _challengelist():
         # Timed challenge: see if there is a Firebase path indicating
         # that the opponent is waiting for this user
         return _opponent_waiting(cuid, c[0])
-
+    online = _get_online()
     if cuid is not None:
 
         # List received challenges
@@ -957,6 +981,9 @@ def _challengelist():
                     "prefs": c[1],
                     "ts": Alphabet.format_timestamp_short(c[2]),
                     "opp_ready": False,
+                    "live": c[0] in online,
+                    "image": u.image(),
+                    "fav": False if cuser is None else cuser.has_favorite(c[0]),
                 }
             )
         # List the issued challenges
@@ -972,6 +999,9 @@ def _challengelist():
                     "prefs": c[1],
                     "ts": Alphabet.format_timestamp_short(c[2]),
                     "opp_ready": opp_ready(c),
+                    "live": c[0] in online,
+                    "image": u.image(),
+                    "fav": False if cuser is None else cuser.has_favorite(c[0])
                 }
             )
     return result
@@ -1765,7 +1795,6 @@ def loaduserprefs():
     """ Fetch the preferences of the current user in JSON form """
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
-    print(uf.as_dict())
     return jsonify(ok=True, userprefs=uf.as_dict())
 
 

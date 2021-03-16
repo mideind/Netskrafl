@@ -483,7 +483,6 @@ class User:
                 um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
-            print('test')
             return um.key.id()
         # We haven't seen this Google Account before: try to match by email
         if email:
