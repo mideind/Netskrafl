@@ -2246,14 +2246,46 @@ def rawhelp():
     return jsonify(ok=True)
 
 
-@app.route("/twoletter")
-def twoletter():
+@app.route("/twoletters",  methods=["POST"])
+def twoletters():
     """ Show help page. Authentication is not required. """
     user = session_user()
-    return jsonify(ok=True)
+
+    words = [
+        "að", "af", "ak", "an", "ar", "as", "at", "ax", "áa",
+        "áð", "ái", "ál", "ám", "án", "ár", "ás", "át", "bí", "bú", "bý", "bæ",
+        "dá", "do", "dó", "dý",
+        "eð", "ef", "eg", "ei", "ek", "el", "em", "en", "er", "es", "et", "ex", "ey",
+        "ég", "él", "ét",
+        "fa", "fá", "fé", "fæ", "gá", "ha", "há", "hí", "hó", "hý", "hæ",
+        "ið", "il", "im", "íð", "íl", "ím", "ís"
+        "já", "je", "jó", "jú", "ká", "ku", "kú",
+        "la", "lá", "lé", "ló", "lú", "lý", "læ",
+        "má", "mi", "mó", "mý",
+        "ná", "né", "nó", "nú", "ný", "næ",
+        "of", "og", "oj", "ok", "op", "or",
+        "óa", "óð", "óf", "ói", "ók", "ól", "óm", "ón", "óp", "ós", "óx",
+        "pí", "pu", "pú", "pæ",
+        "rá", "re", "ré", "rí", "ró", "rú", "rý", "ræ",
+        "sá", "sé", "sí", "so", "sú", "sý", "sæ",
+        "tá", "te", "té", "ti", "tí", "tó", "tý",
+        "um", "un",
+        "úa", "úð", "úf", "úi", "úr", "út",
+        "vá", "vé", "ví", "vó",
+        "yl", "ym", "yr", "ys",
+        "ýf", "ýg", "ýi", "ýk", "ýl", "ýr", "ýs", "ýt",
+        "þá", "þó", "þú", "þý",
+        "æð", "æf", "æg", "æi", "æl", "æp", "ær", "æs", "æt",
+        "öl", "ör", "ös", "öt", "öx"]
+    letters = [
+        'a', 'á', 'b', 'd', 'e', 'é', 'f', 'g', 'h', 'i', 'í', 'j', 'k', 'l', 'm', 'n', 'o', 'ó', 'p', 'r', 's', 't', 'u', 'ú', 'v', 'y', 'ý', 'þ', 'æ', 'ö']
+    return jsonify({
+        "words": words,
+        "letters": letters
+    })
 
 
-@app.route("/faq")
+@ app.route("/faq")
 def faq():
     """ Show help page. Authentication is not required. """
     user = session_user()
@@ -2261,8 +2293,8 @@ def faq():
     return jsonify(ok=True)
 
 
-@app.route("/page")
-@auth_required()
+@ app.route("/page")
+@ auth_required()
 def page():
     """ Show single-page UI test """
     user = current_user()
@@ -2270,7 +2302,7 @@ def page():
     return jsonify(ok=True)
 
 
-@app.route("/newbag")
+@ app.route("/newbag")
 def newbag():
     """ Show help page. Authentication is not required. """
     user = session_user()
@@ -2278,7 +2310,7 @@ def newbag():
     return jsonify(ok=True)
 
 
-@app.route("/login")
+@ app.route("/login")
 def login():
     """ Handler for the login & greeting page """
     main_url = "/page" if _SINGLE_PAGE_UI else "/"
@@ -2287,7 +2319,7 @@ def login():
     return jsonify(ok=True)
 
 
-@app.route("/logout")
+@ app.route("/logout")
 def logout():
     """ Log the user out """
     if "user" in session:
@@ -2295,7 +2327,7 @@ def logout():
     return jsonify(ok=True)
 
 
-@app.route("/oauth2callback", methods=["POST"])
+@ app.route("/oauth2callback", methods=["POST"])
 def oauth2callback():
     """ The OAuth2 login flow POSTs to this callback when a user has
         signed in using a Google Account """
