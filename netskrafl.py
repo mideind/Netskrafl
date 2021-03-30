@@ -73,8 +73,6 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-import requests
-
 from languages import (
     Alphabet,
     current_alphabet,
@@ -98,7 +96,6 @@ from skraflplayer import AutoPlayer
 from skraflgame import User, Game
 from skrafldb import (
     Client,
-    Context,
     UserModel,
     GameModel,
     FavoriteModel,
@@ -118,7 +115,7 @@ import skraflstats
 # Type definitions
 T = TypeVar("T")
 ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
-RouteType = Callable[[], ResponseType]
+RouteType = Callable[..., ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 
 # Are we running in a local development environment or on a GAE server?
@@ -154,10 +151,10 @@ app.config["DEBUG"] = running_local
 # The following shenanigans auto-insert an NDB client context into each WSGI context
 
 
-def ndb_wsgi_middleware(wsgi_app):
+def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
     """ Returns a wrapper for the original WSGI app """
 
-    def middleware(environ, start_response):
+    def middleware(environ: Any, start_response: Any) -> Any:
         """ Wraps the original WSGI app """
         with Client.get_context():
             return wsgi_app(environ, start_response)
@@ -274,13 +271,13 @@ def add_headers(response: Response) -> Response:
     return response
 
 
-def max_age(seconds: int) -> Callable:
+def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
     """Caching decorator for Flask - augments response
     with a max-age cache header"""
 
-    def decorator(f):
+    def decorator(f: RouteType) -> RouteType:
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args: Any, **kwargs: Any) -> ResponseType:
             resp = f(*args, **kwargs)
             if not isinstance(resp, Response):
                 resp = make_response(resp)
@@ -343,7 +340,7 @@ def session_user() -> Optional[User]:
     return u
 
 
-def auth_required(**error_kwargs) -> Callable[[RouteType], RouteType]:
+def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
     """Decorator for routes that require an authenticated user.
     Call with no parameters to redirect unauthenticated requests
     to url_for("login"), or login_url="..." to redirect to that URL,
@@ -360,7 +357,7 @@ def auth_required(**error_kwargs) -> Callable[[RouteType], RouteType]:
                 # No authenticated user
                 if error_kwargs and "login_url" not in error_kwargs:
                     # Reply with a JSON error code
-                    return jsonify(**error_kwargs)
+                    return cast(ResponseType, jsonify(**error_kwargs))
                 # Reply with a redirect
                 # Check whether we're already coming from the
                 # login page, in which case we're screwed
@@ -406,7 +403,7 @@ class RequestData:
 
     def __init__(self, rq: Request) -> None:
         # If JSON data is present, assume this is a JSON request
-        self.q = rq.get_json(silent=True)
+        self.q: Dict[str, Any] = rq.get_json(silent=True)
         self.using_json = True
         if not self.q:
             # No JSON data: assume this is a form-encoded request
@@ -415,7 +412,7 @@ class RequestData:
             if not self.q:
                 self.q = dict()
 
-    def get(self, key: str, default=None) -> Any:
+    def get(self, key: str, default: Any=None) -> Any:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
@@ -441,7 +438,7 @@ class RequestData:
         # Something else, i.e. neither truthy nor falsy: return the default
         return default
 
-    def get_list(self, key: str) -> List:
+    def get_list(self, key: str) -> List[Any]:
         """ Obtain a list data item from the request """
         if self.using_json:
             # Normal get from a JSON dictionary
@@ -456,15 +453,17 @@ class RequestData:
         return self.q.get(key, "")
 
 
-def _process_move(game, movelist: Iterable[str]) -> Response:
+def _process_move(game: Game, movelist: Iterable[str]) -> Response:
     """ Process a move coming in from the client """
 
     assert game is not None
 
-    if game.is_over() or game.is_erroneous():
+    game_id = game.id()
+
+    if game_id is None or game.is_over() or game.is_erroneous():
         # This game is already completed, or cannot be correctly
         # serialized from the datastore
-        return jsonify(result=Error.GAME_NOT_FOUND)
+        return cast(Response, jsonify(result=Error.GAME_NOT_FOUND))
 
     player_index = game.player_to_move()
 
@@ -484,6 +483,7 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
                 break
             if mstr == "rsgn":
                 # Resign from game, forfeiting all points
+                assert game.state is not None
                 m = ResignMove(game.state.scores()[player_index])
                 break
             if mstr == "chall":
@@ -515,7 +515,7 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
     if err != Error.LEGAL:
         # Something was wrong with the move:
         # show the user a corresponding error message
-        return jsonify(result=err, msg=msg)
+        return cast(Response, jsonify(result=err, msg=msg))
 
     # Serialize access to the following code section
     with _autoplayer_lock:
@@ -551,7 +551,7 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
         # zombie game list so that the opponent has a better chance to notice
         # the result
         if is_over and opponent is not None:
-            ZombieModel.add_game(game.id(), opponent)
+            ZombieModel.add_game(game_id, opponent)
 
     if opponent is not None:
         # Send Firebase notifications
@@ -559,8 +559,8 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(1 - player_index, m)
-        msg_dict = {
-            "game/" + game.id() + "/" + opponent + "/move": client_state,
+        msg_dict: Dict[str, Any] = {
+            "game/" + game_id + "/" + opponent + "/move": client_state,
             "user/" + opponent: {"move": datetime.utcnow().isoformat()},
         }
         firebase.send_message(msg_dict)

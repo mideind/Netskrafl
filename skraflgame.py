@@ -32,14 +32,11 @@ from typing import (
     Set,
     Tuple,
     NamedTuple,
-    Iterator,
     Iterable,
     cast,
 )
 
-import collections
 import threading
-import logging
 
 from random import randint
 from datetime import datetime, timedelta
@@ -62,9 +59,7 @@ from skraflmechanics import (
     ChallengeMove,
     ResponseMove,
     ResignMove,
-    SummaryTuple,
     MoveSummaryTuple,
-    DetailTuple,
 )
 from skraflplayer import AutoPlayer
 from skrafldb import (
@@ -1021,7 +1016,7 @@ class Game:
         self._preferences[pref] = value
 
     @staticmethod
-    def fairplay_from_prefs(prefs: PrefsDict) -> bool:
+    def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the fairplay commitment specified by the given game preferences """
         return prefs is not None and cast(bool, prefs.get("fairplay", False))
 
@@ -1034,7 +1029,7 @@ class Game:
         self.set_pref("fairplay", state)
 
     @staticmethod
-    def new_bag_from_prefs(prefs: PrefsDict) -> bool:
+    def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns true if the game preferences specify a new bag """
         return prefs is not None and cast(bool, prefs.get("newbag", False))
 
@@ -1047,7 +1042,7 @@ class Game:
         self.set_pref("newbag", state)
 
     @staticmethod
-    def manual_wordcheck_from_prefs(prefs: PrefsDict) -> bool:
+    def manual_wordcheck_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns true if the game preferences specify a manual wordcheck """
         return prefs is not None and cast(bool, prefs.get("manual", False))
 

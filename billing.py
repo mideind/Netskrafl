@@ -43,11 +43,11 @@ class _Secret:
     _SC_CLIENT_UUID: Optional[str] = None
     _SC_PUBLIC_KEY = "Netskrafl-Friend-Access"
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @classmethod
-    def load(cls):
+    def load(cls) -> None:
         """ Fetch secret key and client UUID from a file """
         fname = os.path.join("resources", "salescloud_key.bin")
         try:
@@ -60,21 +60,23 @@ class _Secret:
             cls._SC_CLIENT_UUID = ""
 
     @property
-    def key(self):
+    def key(self) -> bytes:
         """ Return the secret key value, which is a bytes object """
         if not self._SC_SECRET_KEY:
             _Secret.load()
+        assert self._SC_SECRET_KEY is not None
         return self._SC_SECRET_KEY
 
     @property
-    def uuid(self):
+    def uuid(self) -> str:
         """ Return the client UUID """
         if not self._SC_CLIENT_UUID:
             _Secret.load()
+        assert self._SC_CLIENT_UUID is not None
         return self._SC_CLIENT_UUID
 
     @property
-    def public_key(self):
+    def public_key(self) -> str:
         """ Return Netskrafl's public key """
         return self._SC_PUBLIC_KEY
 

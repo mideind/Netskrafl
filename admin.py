@@ -26,7 +26,7 @@ from flask import jsonify
 from flask import request
 
 from languages import Alphabet
-from skrafldb import ndb, iter_q, Client, UserModel, GameModel
+from skrafldb import ndb, iter_q, Query, UserModel, GameModel
 from skraflgame import User, Game
 
 
@@ -44,7 +44,7 @@ def deferred_update() -> None:
     count = 0
     with ndb.Client().context():
         try:
-            q = UserModel.query()
+            q: Query[UserModel] = UserModel.query()
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
                 scan += 1
                 if um.email and not um.email.islower():
