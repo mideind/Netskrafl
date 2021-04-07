@@ -75,7 +75,7 @@ def _get_http() -> httplib2.Http:
     return _tls._HTTP
 
 
-def _request(*args, **kwargs) -> Tuple[httplib2.Response, str]:
+def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0

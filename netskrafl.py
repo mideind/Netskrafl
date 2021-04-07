@@ -445,7 +445,7 @@ class RequestData:
             r = self.q.get(key, [])
         else:
             # Use special getlist() call on request.form object
-            r = self.q.getlist(key + "[]")
+            r = cast(Any, self.q).getlist(key + "[]")
         return r if isinstance(r, list) else []
 
     def __getitem__(self, key: str) -> Any:
@@ -1147,7 +1147,7 @@ def stop():
 
 @app.route("/submitmove", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def submitmove():
+def submitmove() -> Response:
     """ Handle a move that is being submitted from the client """
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
@@ -1173,7 +1173,7 @@ def submitmove():
 
     # Process the movestring
     # Try twice in case of timeout or other exception
-    result = None
+    result: Response = jsonify(result=Error.LEGAL)
     for attempt in reversed(range(2)):
         # pylint: disable=broad-except
         try:
@@ -1787,21 +1787,20 @@ class UserForm:
         # credentials. The login() handler clears the server-side
         # user cookie, so there is no need for an intervening redirect
         # to logout().
-        self.logout_url = url_for("logout")
-        self.unfriend_url = url_for("friend", action=2)
+        self.logout_url: str = url_for("logout")
+        self.unfriend_url: str = url_for("friend", action=2)
+        self.nickname: str = ""
+        self.full_name: str = ""
+        self.email: str = ""
+        self.audio: bool = True
+        self.fanfare: bool = True
+        self.beginner: bool = True
+        self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
+        self.newbag: bool = False  # Defaults to False, must be explicitly set to True
+        self.friend: bool = False
+        self.locale: str = current_lc()
         if usr:
             self.init_from_user(usr)
-        else:
-            self.nickname = ""
-            self.full_name = ""
-            self.email = ""
-            self.audio = True
-            self.fanfare = True
-            self.beginner = True
-            self.fairplay = False  # Defaults to False, must be explicitly set to True
-            self.newbag = False  # Defaults to False, must be explicitly set to True
-            self.friend = False
-            self.locale = current_lc()
 
     def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
@@ -1879,9 +1878,9 @@ class UserForm:
             errors["nickname"] = "Einkenni verður að byrja á bókstaf"
         elif len(self.nickname) > 15:
             errors["nickname"] = "Einkenni má ekki vera lengra en 15 stafir"
-        elif u'"' in self.nickname:
+        elif '"' in self.nickname:
             errors["nickname"] = "Einkenni má ekki innihalda gæsalappir"
-        if u'"' in self.full_name:
+        if '"' in self.full_name:
             errors["full_name"] = "Nafn má ekki innihalda gæsalappir"
         if self.email and "@" not in self.email:
             errors["email"] = "Tölvupóstfang verður að innihalda @-merki"

@@ -105,7 +105,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, IO
+from typing import Callable, Dict, List, Optional, IO
 
 import os
 import sys
@@ -589,21 +589,21 @@ class DawgBuilder:
     class _InFile:
         """ InFile represents a single sorted input file. """
 
-        def __init__(self, relpath, fname):
+        def __init__(self, relpath: str, fname: str) -> None:
             self._eof = False
             self._nxt = None
-            self._key = None  # Sortkey for self._nxt
+            self._key: Optional[List[int]] = None  # Sortkey for self._nxt
             self._sortkey = current_alphabet().sortkey
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin: Optional[IO] = codecs.open(fpath, mode="r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 
-        def _init(self):
+        def _init(self) -> None:
             # Read the first word from the file to initialize the iteration
             self.read_word()
 
-        def read_word(self):
+        def read_word(self) -> bool:
             """ Read lines until we have a legal word or EOF """
             assert self._fin is not None
             while True:
@@ -619,19 +619,19 @@ class DawgBuilder:
                     self._key = self._sortkey(line)
                     return True
 
-        def next_word(self):
+        def next_word(self) -> Optional[str]:
             """ Returns the next available word from this input file """
             return None if self._eof else self._nxt
 
-        def next_key(self):
+        def next_key(self) -> Optional[List[int]]:
             """ Returns the sort key of the next available word from this input file """
             return None if self._eof else self._key
 
-        def has_word(self):
+        def has_word(self) -> bool:
             """ True if a word is available, or False if EOF has been reached """
             return not self._eof
 
-        def close(self):
+        def close(self) -> None:
             """ Close the associated file, if it is still open """
             if self._fin is not None:
                 self._fin.close()
@@ -640,9 +640,9 @@ class DawgBuilder:
     class _InFileToBeSorted(_InFile):
         """ InFileToBeSorted represents an input file that should be pre-sorted in memory """
 
-        def _init(self):
+        def _init(self) -> None:
             """ Read the entire file and pre-sort it """
-            self._list = []
+            self._list: List[str] = []
             self._index = 0
             self._sortkey = current_alphabet().sortkey
             assert self._fin is not None
@@ -661,7 +661,7 @@ class DawgBuilder:
             self._list.sort(key=self._sortkey)
             self.read_word()
 
-        def read_word(self):
+        def read_word(self) -> bool:
             if self._index >= self._len:
                 self._eof = True
                 return False
@@ -670,11 +670,11 @@ class DawgBuilder:
             self._index += 1
             return True
 
-        def close(self):
+        def close(self) -> None:
             """ Close the associated file, if it is still open """
             pass
 
-    def _load(self, relpath, inputs, removals, word_filter):
+    def _load(self, relpath: str, inputs: List[str], removals: str, word_filter: Callable[[str], bool]) -> None:
         """ Load word lists into the DAWG from one or more static text files,
             assumed to be located in the relpath subdirectory.
             The text files should contain one word per line,
@@ -716,7 +716,7 @@ class DawgBuilder:
         # Merge the inputs
         while True:
             smallest = None
-            key_smallest = None
+            key_smallest: Optional[List[int]] = None
             # Find the smallest next word among the input files
             for f in infiles:
                 if f.has_word():
@@ -726,6 +726,7 @@ class DawgBuilder:
                     else:
                         # Use the sort ordering of the current locale to compare words
                         key_f = f.next_key()
+                        assert key_smallest is not None
                         if key_f == key_smallest:
                             # We have the same word in two files: make sure we don't add it twice
                             f.read_word()
@@ -740,6 +741,8 @@ class DawgBuilder:
                 break
             # We have the smallest word
             word = smallest.next_word()
+            assert word is not None
+            assert key_smallest is not None
             key = key_smallest
             incount += 1
             if lastkey and lastkey >= key:
