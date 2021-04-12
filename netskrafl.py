@@ -357,7 +357,7 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
                 # No authenticated user
                 if error_kwargs and "login_url" not in error_kwargs:
                     # Reply with a JSON error code
-                    return cast(ResponseType, jsonify(**error_kwargs))
+                    return jsonify(**error_kwargs)
                 # Reply with a redirect
                 # Check whether we're already coming from the
                 # login page, in which case we're screwed
@@ -412,7 +412,7 @@ class RequestData:
             if not self.q:
                 self.q = dict()
 
-    def get(self, key: str, default: Any=None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
 
