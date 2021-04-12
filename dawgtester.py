@@ -2,7 +2,7 @@
 
 """ Test module for DAWG dictionary
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This module contains test code for dawgdictionary.py

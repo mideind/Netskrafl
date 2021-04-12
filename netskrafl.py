@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -814,7 +814,7 @@ def _gamelist(
             if u is None:
                 continue
             nick = u.nickname()
-            prefs = g.get("prefs", None)
+            prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
@@ -1147,7 +1147,7 @@ def stop():
 
 @app.route("/submitmove", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def submitmove() -> Response:
+def submitmove() -> ResponseType:
     """ Handle a move that is being submitted from the client """
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
@@ -1190,6 +1190,7 @@ def submitmove() -> Response:
         else:
             # No exception: done
             break
+    assert result is not None
     return result
 
 

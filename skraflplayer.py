@@ -2,7 +2,7 @@
 
     Skraflplayer - an automatic SCRABBLE(tm) player
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -788,8 +788,9 @@ class AutoPlayer:
             """
             # !!! FIXME: On the Explo board, there is no need to encourage
             # !!! going to the upper half of the board
-            assert isinstance(x[0], Move)
-            return (-x[1], x[0].row)
+            m, sc = x
+            assert isinstance(m, Move)
+            return (-sc, m.row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():
@@ -935,8 +936,9 @@ class AutoPlayer_MiniMax(AutoPlayer):
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game"""
-            assert isinstance(x[0], Move)
-            return (-x[1], x[0].row)
+            m, sc = x
+            assert isinstance(m, Move)
+            return (-sc, m.row)
 
         # Sort the candidate moves using the appropriate key function
         if self._board.is_empty():

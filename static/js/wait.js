@@ -5,7 +5,7 @@
    Client-side script for wait.html,
    a page displated while waiting for a time-limited game to start
 
-   Copyright (C) 2020 Miðeind ehf.
+   Copyright (C) 2021 Miðeind ehf.
    Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.

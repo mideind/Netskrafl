@@ -4,7 +4,7 @@
 
     DAWG dictionary builder
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -132,24 +132,24 @@ COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
 
 class _DawgNode:
 
-    """ A _DawgNode is a node in a Directed Acyclic Word Graph (DAWG).
-        It contains:
-            * a node identifier (a simple unique sequence number);
-            * a dictionary of edges (children) where each entry has a prefix
-                (following letter(s)) together with its child _DawgNode;
-            * and a Bool (final) indicating whether this node in the graph
-                also marks the end of a legal word.
+    """A _DawgNode is a node in a Directed Acyclic Word Graph (DAWG).
+    It contains:
+        * a node identifier (a simple unique sequence number);
+        * a dictionary of edges (children) where each entry has a prefix
+            (following letter(s)) together with its child _DawgNode;
+        * and a Bool (final) indicating whether this node in the graph
+            also marks the end of a legal word.
 
-        A _DawgNode has a string representation which can be hashed to
-        determine whether it is identical to a previously encountered node,
-        i.e. whether it has the same final flag and the same edges with
-        prefixes leading to the same child nodes. This assumes
-        that the child nodes have already been subjected to the same
-        test, i.e. whether they are identical to previously encountered
-        nodes and, in that case, modified to point to the previous, identical
-        subgraph. Each graph layer can thus depend on the (shallow) comparisons
-        made in previous layers and deep comparisons are not necessary. This
-        is an important optimization when building the graph.
+    A _DawgNode has a string representation which can be hashed to
+    determine whether it is identical to a previously encountered node,
+    i.e. whether it has the same final flag and the same edges with
+    prefixes leading to the same child nodes. This assumes
+    that the child nodes have already been subjected to the same
+    test, i.e. whether they are identical to previously encountered
+    nodes and, in that case, modified to point to the previous, identical
+    subgraph. Each graph layer can thus depend on the (shallow) comparisons
+    made in previous layers and deep comparisons are not necessary. This
+    is an important optimization when building the graph.
 
     """
 
@@ -164,8 +164,8 @@ class _DawgNode:
 
     @staticmethod
     def stringify_edges(edges):
-        """ Utility function to create a compact descriptor string and
-            hashable key for node edges """
+        """Utility function to create a compact descriptor string and
+        hashable key for node edges"""
         edges = [
             prefix + ":" + ("0" if node is None else str(node.id))
             for prefix, node in _DawgNode.sort_by_prefix(edges.items())
@@ -207,7 +207,6 @@ class _DawgNode:
 
 
 class _Dawg:
-
     def __init__(self):
         self._lastword = ""
         self._lastlen = 0
@@ -299,14 +298,14 @@ class _Dawg:
             j -= 1
 
     def add_word(self, wrd):
-        """ Add a word to the DAWG.
-            Words are expected to arrive in sorted order.
+        """Add a word to the DAWG.
+        Words are expected to arrive in sorted order.
 
-            As an example, we may have these three words arriving in sequence:
+        As an example, we may have these three words arriving in sequence:
 
-            abbadísar
-            abbadísarinnar  [extends last word by 5 letters]
-            abbadísarstofa  [backtracks from last word by 5 letters]
+        abbadísar
+        abbadísarinnar  [extends last word by 5 letters]
+        abbadísarstofa  [backtracks from last word by 5 letters]
 
         """
         # Sanity check: make sure the word is not too long
@@ -441,30 +440,30 @@ class _Dawg:
 
 class _BinaryDawgPacker:
 
-    """ _BinaryDawgPacker packs the DAWG data to a byte stream.
+    """_BinaryDawgPacker packs the DAWG data to a byte stream.
 
-        The stream format is as follows:
+    The stream format is as follows:
 
-        For each node:
-            BYTE Node header
-                [feeeeeee]
-                    f = final bit
-                    eeee = number of edges
-            For each edge out of a node:
-                BYTE Prefix header
-                    [ftnnnnnn]
-                    If t == 1 then
-                        f = final bit of single prefix character
-                        nnnnnn = single prefix character,
-                            coded as an index into AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ
-                    else
-                        00nnnnnn = number of prefix characters following
-                        n * BYTE Prefix characters
-                            [fccccccc]
-                                f = final bit
-                                ccccccc = prefix character,
-                                    coded as an index into AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ
-                DWORD Offset of child node
+    For each node:
+        BYTE Node header
+            [feeeeeee]
+                f = final bit
+                eeee = number of edges
+        For each edge out of a node:
+            BYTE Prefix header
+                [ftnnnnnn]
+                If t == 1 then
+                    f = final bit of single prefix character
+                    nnnnnn = single prefix character,
+                        coded as an index into AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ
+                else
+                    00nnnnnn = number of prefix characters following
+                    n * BYTE Prefix characters
+                        [fccccccc]
+                            f = final bit
+                            ccccccc = prefix character,
+                                coded as an index into AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ
+            DWORD Offset of child node
 
     """
 
@@ -573,12 +572,12 @@ class _BinaryDawgPacker:
 # noinspection Restricted_Python_calls
 class DawgBuilder:
 
-    """ Creates a DAWG from word lists and writes the resulting
-        graph to binary or text files.
+    """Creates a DAWG from word lists and writes the resulting
+    graph to binary or text files.
 
-        The word lists are assumed to be pre-sorted in ascending
-        lexicographic order. They are automatically merged during
-        processing to appear as one aggregated and sorted word list.
+    The word lists are assumed to be pre-sorted in ascending
+    lexicographic order. They are automatically merged during
+    processing to appear as one aggregated and sorted word list.
     """
 
     def __init__(self, encoding: str) -> None:
@@ -590,8 +589,8 @@ class DawgBuilder:
         """ InFile represents a single sorted input file. """
 
         def __init__(self, relpath: str, fname: str) -> None:
-            self._eof = False
-            self._nxt = None
+            self._eof: bool = False
+            self._nxt: Optional[str] = None
             self._key: Optional[List[int]] = None  # Sortkey for self._nxt
             self._sortkey = current_alphabet().sortkey
             fpath = os.path.abspath(os.path.join(relpath, fname))
@@ -725,6 +724,7 @@ class DawgBuilder:
                         key_smallest = smallest.next_key()
                     else:
                         # Use the sort ordering of the current locale to compare words
+                        assert key_smallest is not None
                         key_f = f.next_key()
                         assert key_smallest is not None
                         if key_f == key_smallest:
@@ -744,6 +744,7 @@ class DawgBuilder:
             assert word is not None
             assert key_smallest is not None
             key = key_smallest
+            assert key is not None
             incount += 1
             if lastkey and lastkey >= key:
                 # Something appears to be wrong with the input sort order.
@@ -826,11 +827,11 @@ class DawgBuilder:
     def build(
         self, inputs, output, relpath="resources", word_filter=None, removals=None
     ):
-        """ Build a DAWG from input file(s) and write it to the output file(s)
-            (potentially in multiple formats).
-            The input files are assumed to be individually sorted in correct
-            ascending alphabetical order. They will be merged in parallel into
-            a single sorted stream and added to the DAWG.
+        """Build a DAWG from input file(s) and write it to the output file(s)
+        (potentially in multiple formats).
+        The input files are assumed to be individually sorted in correct
+        ascending alphabetical order. They will be merged in parallel into
+        a single sorted stream and added to the DAWG.
         """
         # inputs is a list of input file names
         # output is an output file name without file type suffix (extension);
@@ -861,19 +862,19 @@ def nofilter(word):  # pylint: disable=W0613
 
 
 def filter_skrafl(word):
-    """ Filtering for Icelandic Scrabble(tm)
-        Exclude words longer than SCRABBLE_MAXLEN letters (won't fit on board)
-        Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
-        Exclude two-letter words in the word database that are not
-            allowed according to Icelandic Scrabble rules
+    """Filtering for Icelandic Scrabble(tm)
+    Exclude words longer than SCRABBLE_MAXLEN letters (won't fit on board)
+    Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
+    Exclude two-letter words in the word database that are not
+        allowed according to Icelandic Scrabble rules
     """
     return len(word) <= SCRABBLE_MAXLEN
 
 
 def filter_common(word):
-    """ For the list of common words used by the weakest robot,
-        skip words longer than 12 characters (those would almost
-        never be used anyway)
+    """For the list of common words used by the weakest robot,
+    skip words longer than 12 characters (those would almost
+    never be used anyway)
     """
     return len(word) <= COMMON_MAXLEN
 

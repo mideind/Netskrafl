@@ -2,7 +2,7 @@
 
     Firebase wrapper for Netskrafl
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -15,11 +15,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Tuple, Set, Dict
+from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict
 
 import os
-import time
-import base64
 import json
 import threading
 import logging
@@ -33,31 +31,27 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
 
-_PROJECT_ID = os.environ.get("PROJECT_ID", "")
+_PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
+
+assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 # Select Firebase database URL depending on project ID
-_FIREBASE_DB = {
+_FIREBASE_DB: Mapping[str, str] = {
     "netskrafl": "https://netskrafl.firebaseio.com",
     "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
 }
-_FIREBASE_DB_URL = _FIREBASE_DB[_PROJECT_ID]
+_FIREBASE_DB_URL: str = _FIREBASE_DB[_PROJECT_ID]
 
-_IDENTITY_ENDPOINT = (
-    "https://identitytoolkit.googleapis.com/"
-    "google.identity.identitytoolkit.v1.IdentityToolkit"
-)
-_FIREBASE_SCOPES = [
+_FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",
     "https://www.googleapis.com/auth/userinfo.email",
 ]
-_TIMEOUT = 15  # Seconds
+_TIMEOUT: int = 15  # Seconds
 
-_HEADERS = {"Connection": "keep-alive"}
+_HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
 
 # Initialize thread-local storage
 _tls = threading.local()
-
-assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 
 def _get_http() -> httplib2.Http:
@@ -75,13 +69,17 @@ def _get_http() -> httplib2.Http:
     return _tls._HTTP
 
 
-def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
+def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0
     while attempts < MAX_ATTEMPTS:
         try:
-            return _get_http().request(*args, headers=_HEADERS, **kwargs)
+            kw: Dict[str, Any] = kwargs.copy()
+            kw["headers"] = _HEADERS
+            response, content = _get_http().request(*args, **kw)
+            assert isinstance(content, bytes)
+            return response, content
         except ConnectionError:
             # Note that BrokenPipeError is a subclass of ConnectionError
             if attempts == MAX_ATTEMPTS - 1:
@@ -104,7 +102,7 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, str]:
 
 def _firebase_put(
     path: str, message: Optional[str] = None
-) -> Tuple[httplib2.Response, str]:
+) -> Tuple[httplib2.Response, bytes]:
     """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
@@ -117,7 +115,7 @@ def _firebase_put(
     return _request(path, method="PUT", body=message)
 
 
-def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Read the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -130,7 +128,7 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="GET")
 
 
-def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
+def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
     """ Update the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -143,7 +141,7 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="PATCH", body=message)
 
 
-def _firebase_delete(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Delete the data at the given path.
 
     An HTTP DELETE request allows deleting of the data at the given path.
