@@ -577,8 +577,8 @@ class GameModel(Model):
     """ Models a game between two users """
 
     # The players
-    player0 = Model.DbKey(kind=UserModel)
-    player1 = Model.DbKey(kind=UserModel)
+    player0 = Model.OptionalDbKey(kind=UserModel)
+    player1 = Model.OptionalDbKey(kind=UserModel)
 
     rack0 = Model.Str()  # Must be indexed
     rack1 = Model.Str()  # Must be indexed
@@ -651,15 +651,15 @@ class GameModel(Model):
 
     def player0_id(self) -> Optional[str]:
         """ Return the user id of player 0, if any """
-        if self.player0 is None:
+        if (p := self.player0) is None:
             return None
-        return self.player0.id()
+        return p.id()
 
     def player1_id(self) -> Optional[str]:
         """ Return the user id of player 1, if any """
-        if self.player1 is None:
+        if (p := self.player1) is None:
             return None
-        return self.player1.id()
+        return p.id()
 
     @classmethod
     def fetch(cls, game_uuid: str, use_cache: bool = True) -> GameModel:
