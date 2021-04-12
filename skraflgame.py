@@ -146,8 +146,8 @@ class User:
         self._inactive = um.inactive
         self._locale = um.locale or "is_IS"
         self._preferences = um.prefs
-        self._ready = um.ready
-        self._ready_timed = um.ready_timed
+        self._ready = False if um.ready is None else um.ready
+        self._ready_timed = False if um.ready_timed is None else um.ready_timed
         self._elo = um.elo
         self._human_elo = um.human_elo
         self._manual_elo = um.manual_elo
@@ -290,7 +290,7 @@ class User:
 
     def email(self) -> str:
         """ Returns the e-mail address of a user """
-        return self.get_string_pref("email", self._email)
+        return self.get_string_pref("email", self._email or "")
 
     def set_email(self, email: str) -> None:
         """ Sets the e-mail address of a user """
@@ -790,11 +790,12 @@ class Game:
         game.initial_racks[0] = gm.irack0
         game.initial_racks[1] = gm.irack1
 
-        game.state.set_rack(0, gm.irack0)
-        game.state.set_rack(1, gm.irack1)
+        game.state.set_rack(0, gm.irack0 or "")
+        game.state.set_rack(1, gm.irack1 or "")
 
         # Process the moves
         player = 0
+        now = datetime.utcnow()
 
         for mm in gm.moves:
 
@@ -862,8 +863,8 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, shallow=True)
                 # Append to the move history
-                game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
-                game.state.set_rack(player, mm.rack)
+                game.moves.append(MoveTuple(player, m, mm.rack or "", mm.timestamp or now))
+                game.state.set_rack(player, mm.rack or "")
 
             player = 1 - player
 
