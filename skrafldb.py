@@ -150,11 +150,11 @@ class Model(ndb.Model):
         return cast(Query[_T], super().query(*args, **kwargs))
 
     @staticmethod
-    def DbKey(kind: Type[ndb.Model], indexed: bool = False) -> Key:
+    def DbKey(kind: Type[ndb.Model], indexed: bool = True) -> Key:
         return cast(Key, ndb.KeyProperty(kind=kind, required=True, indexed=indexed))
 
     @staticmethod
-    def OptionalDbKey(kind: Type[ndb.Model], indexed: bool = False) -> Optional[Key]:
+    def OptionalDbKey(kind: Type[ndb.Model], indexed: bool = True) -> Optional[Key]:
         return cast(
             Optional[Key],
             ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
@@ -1005,7 +1005,7 @@ class StatsModel(Model):
     """ Models statistics about users """
 
     # The user associated with this statistic or None if robot
-    user = Model.OptionalDbKey(kind=UserModel, indexed=True)
+    user = Model.OptionalDbKey(kind=UserModel)
     robot_level = Model.OptionalInt(default=0)
 
     # The timestamp of this statistic
@@ -1552,7 +1552,7 @@ class ChatModel(Model):
     channel = Model.Str()
 
     # The user originating this chat message
-    user = Model.DbKey(kind=UserModel, indexed=True)
+    user = Model.DbKey(kind=UserModel)
 
     # The timestamp of this chat message
     timestamp = Model.Datetime(indexed=True, auto_now_add=True)
