@@ -181,7 +181,10 @@ class Model(ndb.Model):
     @staticmethod
     def Int(default: Optional[int] = None, indexed: bool = False) -> int:
         return cast(
-            int, ndb.IntegerProperty(required=True, default=default, indexed=indexed)
+            int,
+            ndb.IntegerProperty(
+                required=(default is None), default=default, indexed=indexed
+            ),
         )
 
     @staticmethod
@@ -298,13 +301,16 @@ class UserModel(Model):
     nickname = Model.Str()
 
     email = Model.OptionalStr()
-    # Google Account identifier (unfortunately different from GAE user id)
+
+    # OAuth2 account identifier (unfortunately different from GAE user id)
+    # optionally prefixed by the authentication provider id (default: 'google:')
     account = Model.OptionalStr()
 
     # Lower case nickname and full name of user - used for search
     nick_lc = Model.OptionalStr()
     name_lc = Model.OptionalStr()
 
+    # Is the user no longer active/enabled?
     inactive = Model.Bool()
     # The user's preferred locale, i.e. language and other settings
     locale = Model.OptionalStr(default="is_IS")
@@ -319,19 +325,19 @@ class UserModel(Model):
     # Ready for timed challenges?
     ready_timed = Model.OptionalBool(default=False)
     # Elo points
-    elo = Model.OptionalInt(default=0, indexed=True)
+    elo = Model.Int(default=0, indexed=True)
     # Elo points for human-only games
-    human_elo = Model.OptionalInt(default=0, indexed=True)
+    human_elo = Model.Int(default=0, indexed=True)
     # Elo points for manual (competition) games
-    manual_elo = Model.OptionalInt(default=0, indexed=True)
+    manual_elo = Model.Int(default=0, indexed=True)
     # Best total score in a game
-    highest_score = Model.OptionalInt(default=0, indexed=True)
+    highest_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     highest_score_game = Model.OptionalStr()
     # Best word laid down
     # Note: indexing of string properties is mandatory
     best_word = Model.OptionalStr()
-    best_word_score = Model.OptionalInt(default=0, indexed=True)
+    best_word_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = Model.OptionalStr()
 
@@ -366,7 +372,8 @@ class UserModel(Model):
 
     @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
-        """ Attempt to fetch a user by Google account id """
+        """ Attempt to fetch a user by OAuth2 account id,
+            prefixed by the authentication provider """
         q = cls.query(UserModel.account == account)
         return q.get()
 
@@ -592,7 +599,7 @@ class GameModel(Model):
 
     # How difficult should the robot player be (if the opponent is a robot)?
     # None or 0 = most difficult
-    robot_level = Model.OptionalInt(indexed=False, default=0)
+    robot_level = Model.Int(indexed=False, default=0)
 
     # Is this game over?
     over = Model.Bool()
@@ -1006,47 +1013,35 @@ class StatsModel(Model):
 
     # The user associated with this statistic or None if robot
     user = Model.OptionalDbKey(kind=UserModel)
-    robot_level = Model.OptionalInt(default=0)
+    robot_level = Model.Int(default=0, indexed=True)
 
     # The timestamp of this statistic
     timestamp = Model.Datetime(indexed=True, auto_now_add=True)
 
-    games = cast(int, ndb.IntegerProperty(indexed=False))
-    human_games = cast(int, ndb.IntegerProperty(indexed=False))
-    manual_games = cast(
-        int, ndb.IntegerProperty(required=False, indexed=False, default=0)
-    )
+    games = Model.Int()
+    human_games = Model.Int()
+    manual_games = Model.Int(default=0)
 
-    elo = cast(int, ndb.IntegerProperty(indexed=True, default=1200))
-    human_elo = cast(int, ndb.IntegerProperty(indexed=True, default=1200))
-    manual_elo = cast(
-        int, ndb.IntegerProperty(required=False, indexed=True, default=1200)
-    )
+    elo = Model.Int(indexed=True, default=1200)
+    human_elo = Model.Int(indexed=True, default=1200)
+    manual_elo = Model.Int(indexed=True, default=1200)
 
-    score = cast(int, ndb.IntegerProperty(indexed=False))
-    human_score = cast(int, ndb.IntegerProperty(indexed=False))
-    manual_score = cast(
-        int, ndb.IntegerProperty(required=False, indexed=False, default=0)
-    )
+    score = Model.Int()
+    human_score = Model.Int()
+    manual_score = Model.Int(default=0)
 
-    score_against = cast(int, ndb.IntegerProperty(indexed=False))
-    human_score_against = cast(int, ndb.IntegerProperty(indexed=False))
-    manual_score_against = cast(
-        int, ndb.IntegerProperty(required=False, indexed=False, default=0)
-    )
+    score_against = Model.Int()
+    human_score_against = Model.Int()
+    manual_score_against = Model.Int(default=0)
 
-    wins = cast(int, ndb.IntegerProperty(indexed=False))
-    losses = cast(int, ndb.IntegerProperty(indexed=False))
+    wins = Model.Int()
+    losses = Model.Int()
 
-    human_wins = cast(int, ndb.IntegerProperty(indexed=False))
-    human_losses = cast(int, ndb.IntegerProperty(indexed=False))
+    human_wins = Model.Int()
+    human_losses = Model.Int()
 
-    manual_wins = cast(
-        int, ndb.IntegerProperty(required=False, indexed=False, default=0)
-    )
-    manual_losses = cast(
-        int, ndb.IntegerProperty(required=False, indexed=False, default=0)
-    )
+    manual_wins = Model.Int(default=0)
+    manual_losses = Model.Int(default=0)
 
     MAX_STATS = 100
 
@@ -1415,51 +1410,45 @@ class RatingModel(Model):
     """ Models tables of user ratings """
 
     # Typically "all" or "human"
-    kind = ndb.StringProperty(required=True)
+    kind = Model.Str()
 
     # The ordinal rank
     rank = Model.Int()
 
     user = Model.OptionalDbKey(kind=UserModel, indexed=False)
 
-    robot_level = Model.OptionalInt(default=0, indexed=False)
+    robot_level = Model.Int(default=0, indexed=False)
 
-    games = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    elo = ndb.IntegerProperty(required=False, default=1200, indexed=False)
-    score = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    score_against = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    wins = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    losses = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    games = Model.Int(default=0)
+    elo = Model.Int(default=1200)
+    score = Model.Int(default=0)
+    score_against = Model.Int(default=0)
+    wins = Model.Int(default=0)
+    losses = Model.Int(default=0)
 
-    rank_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    games_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    elo_yesterday = ndb.IntegerProperty(required=False, default=1200, indexed=False)
-    score_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    score_against_yesterday = ndb.IntegerProperty(
-        required=False, default=0, indexed=False
-    )
-    wins_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    losses_yesterday = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    rank_yesterday = Model.Int(default=0)
+    games_yesterday = Model.Int(default=0)
+    elo_yesterday = Model.Int(default=1200)
+    score_yesterday = Model.Int(default=0)
+    score_against_yesterday = Model.Int(default=0)
+    wins_yesterday = Model.OptionalInt(default=0)
+    losses_yesterday = Model.Int(default=0)
 
-    rank_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    games_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    elo_week_ago = ndb.IntegerProperty(required=False, default=1200, indexed=False)
-    score_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    score_against_week_ago = ndb.IntegerProperty(
-        required=False, default=0, indexed=False
-    )
-    wins_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    losses_week_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    rank_week_ago = Model.Int(default=0)
+    games_week_ago = Model.Int(default=0)
+    elo_week_ago = Model.Int(default=1200)
+    score_week_ago = Model.Int(default=0)
+    score_against_week_ago = Model.Int(default=0)
+    wins_week_ago = Model.Int(default=0)
+    losses_week_ago = Model.Int(default=0)
 
-    rank_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    games_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    elo_month_ago = ndb.IntegerProperty(required=False, default=1200, indexed=False)
-    score_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    score_against_month_ago = ndb.IntegerProperty(
-        required=False, default=0, indexed=False
-    )
-    wins_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
-    losses_month_ago = ndb.IntegerProperty(required=False, default=0, indexed=False)
+    rank_month_ago = Model.Int(default=0)
+    games_month_ago = Model.Int(default=0)
+    elo_month_ago = Model.Int(default=1200)
+    score_month_ago = Model.Int(default=0)
+    score_against_month_ago = Model.Int(default=0)
+    wins_month_ago = Model.Int(default=0)
+    losses_month_ago = Model.Int(default=0)
 
     @classmethod
     def get_or_create(cls, kind, rank):
@@ -1491,7 +1480,7 @@ class RatingModel(Model):
             RatingModel.rank
         )
         for rm in iter_q(q, CHUNK_SIZE, limit=100):
-            v: Dict[str, Any] = dict(
+            v: Dict[str, Union[str, Optional[int]]] = dict(
                 rank=rm.rank,
                 games=rm.games,
                 elo=rm.elo,
@@ -1734,19 +1723,19 @@ class CompletionModel(Model):
     """ Models the successful completion of stats or ratings runs """
 
     # The type of process that was completed, usually 'stats' or 'ratings'
-    proctype = cast(str, ndb.StringProperty(required=True))
+    proctype = Model.Str()
     # The timestamp of the successful run
-    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
+    timestamp = Model.Datetime(auto_now_add=True)
 
     # The from-to range of the successful process
-    ts_from = cast(datetime, ndb.DateTimeProperty())
-    ts_to = cast(datetime, ndb.DateTimeProperty())
+    ts_from = Model.Datetime()
+    ts_to = Model.Datetime()
 
     # True if successful completion (the default); included for future expansion
-    success = cast(bool, ndb.BooleanProperty())
+    success = Model.Bool()
 
     # The reason for failure, if any
-    reason = cast(str, ndb.StringProperty())
+    reason = Model.Str()
 
     @classmethod
     def add_completion(cls, proctype: str, ts_from: datetime, ts_to: datetime) -> None:
