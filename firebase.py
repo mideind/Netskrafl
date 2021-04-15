@@ -153,7 +153,7 @@ def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
     return _request(path, method="DELETE")
 
 
-def send_message(message: Optional[Dict], *args: str) -> bool:
+def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """ Updates data in Firebase. If a message object is provided, then it updates
         the data at the given location (whose path is built as a concatenation
         of the *args list) with the message using the PATCH http method.

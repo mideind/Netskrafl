@@ -113,17 +113,17 @@ class User:
         uid: Optional[str] = None,
         account: Optional[str] = None,
         locale: Optional[str] = None,
-    ):
+    ) -> None:
         """ Initialize a fresh User instance """
         self._user_id = uid
         self._account = account
         self._email: Optional[str] = None
         self._nickname = ""
-        self._inactive = False
+        self._inactive: bool = False
         self._locale = locale or "is_IS"
         self._preferences: PrefsDict = {}
-        self._ready = False
-        self._ready_timed = False
+        self._ready: bool = False
+        self._ready_timed: bool = False
         self._elo = 0
         self._human_elo = 0
         self._manual_elo = 0
@@ -146,8 +146,8 @@ class User:
         self._inactive = um.inactive
         self._locale = um.locale or "is_IS"
         self._preferences = um.prefs
-        self._ready = um.ready
-        self._ready_timed = um.ready_timed
+        self._ready = False if um.ready is None else um.ready
+        self._ready_timed = False if um.ready_timed is None else um.ready_timed
         self._elo = um.elo
         self._human_elo = um.human_elo
         self._manual_elo = um.manual_elo
@@ -248,6 +248,24 @@ class User:
             return None
         return self._preferences.get(pref, default)
 
+    def get_string_pref(
+        self, pref: str, default: str = ""
+    ) -> str:
+        """ Retrieve a string preference, or "" if not found """
+        if self._preferences is None:
+            return default
+        val = self._preferences.get(pref, default)
+        return val if isinstance(val, str) else default
+
+    def get_bool_pref(
+        self, pref: str, default: bool = False
+    ) -> bool:
+        """ Retrieve a string preference, or "" if not found """
+        if self._preferences is None:
+            return default
+        val = self._preferences.get(pref, default)
+        return val if isinstance(val, bool) else default
+
     def set_pref(self, pref: str, value: PrefItem) -> None:
         """ Set a preference to a value """
         if self._preferences is None:
@@ -264,8 +282,7 @@ class User:
 
     def full_name(self) -> str:
         """ Returns the full name of a user """
-        fn = cast(Optional[str], self.get_pref("full_name"))
-        return "" if fn is None else fn
+        return self.get_string_pref("full_name")
 
     def set_full_name(self, full_name: str) -> None:
         """ Sets the full name of a user """
@@ -273,8 +290,7 @@ class User:
 
     def email(self) -> str:
         """ Returns the e-mail address of a user """
-        em = cast(Optional[str], self.get_pref("email", self._email))
-        return "" if em is None else em
+        return self.get_string_pref("email", self._email or "")
 
     def set_email(self, email: str) -> None:
         """ Sets the e-mail address of a user """
@@ -282,33 +298,29 @@ class User:
 
     def audio(self) -> bool:
         """ Returns True if the user wants audible signals """
-        em = cast(Optional[bool], self.get_pref("audio"))
         # True by default
-        return True if em is None else em
+        return self.get_bool_pref("audio", True)
 
     def set_audio(self, audio: bool) -> None:
         """ Sets the audio preference of a user to True or False """
         assert isinstance(audio, bool)
         self.set_pref("audio", audio)
 
-    def fanfare(self):
+    def fanfare(self) -> bool:
         """ Returns True if the user wants a fanfare sound when winning """
-        em = self.get_pref("fanfare")
-        # True by default
-        return True if em is None else em
+        return self.get_bool_pref("fanfare", True)
 
-    def set_fanfare(self, fanfare):
+    def set_fanfare(self, fanfare: bool) -> None:
         """ Sets the fanfare preference of a user to True or False """
         assert isinstance(fanfare, bool)
         self.set_pref("fanfare", fanfare)
 
-    def beginner(self):
+    def beginner(self) -> bool:
         """ Returns True if the user is a beginner so we show help panels, etc. """
-        em = self.get_pref("beginner")
         # True by default
-        return True if em is None else em
+        return self.get_bool_pref("beginner", True)
 
-    def set_beginner(self, beginner):
+    def set_beginner(self, beginner: bool) -> None:
         """ Sets the beginner state of a user to True or False """
         assert isinstance(beginner, bool)
         self.set_pref("beginner", beginner)
@@ -321,13 +333,12 @@ class User:
         fp = prefs.get("fairplay")
         return False if fp is None else fp
 
-    def fairplay(self):
+    def fairplay(self) -> bool:
         """ Returns True if the user has committed to a fair play statement """
-        em = self.get_pref("fairplay")
         # False by default
-        return False if em is None else em
+        return self.get_bool_pref("fairplay", False)
 
-    def set_fairplay(self, state):
+    def set_fairplay(self, state: bool) -> None:
         """ Sets the fairplay state of a user to True or False """
         assert isinstance(state, bool)
         self.set_pref("fairplay", state)
@@ -341,13 +352,12 @@ class User:
         # True by default
         return True if newbag is None else newbag
 
-    def new_bag(self):
+    def new_bag(self) -> bool:
         """ Returns True if the user would like to play with the new bag """
-        newbag = self.get_pref("newbag")
         # True by default
-        return True if newbag is None else newbag
+        return self.get_bool_pref("newbag", True)
 
-    def set_new_bag(self, state):
+    def set_new_bag(self, state: bool) -> None:
         """ Sets the new bag preference of a user to True or False """
         assert isinstance(state, bool)
         self.set_pref("newbag", state)
@@ -360,13 +370,12 @@ class User:
         friend = prefs.get("friend")
         return False if friend is None else friend
 
-    def friend(self):
+    def friend(self) -> bool:
         """ Returns True if the user is a friend of Netskrafl """
-        friend = self.get_pref("friend")
         # False by default
-        return False if friend is None else friend
+        return self.get_bool_pref("friend", False)
 
-    def set_friend(self, state):
+    def set_friend(self, state: bool) -> None:
         """ Sets the friend status of a user to True or False """
         assert isinstance(state, bool)
         self.set_pref("friend", state)
@@ -382,27 +391,24 @@ class User:
         has_paid = prefs.get("haspaid")
         return False if has_paid is None else has_paid
 
-    def has_paid(self):
+    def has_paid(self) -> bool:
         """ Returns True if the user is a paying friend of Netskrafl """
         if not self.friend():
             # Must be a friend before being a paying friend
             return False
-        has_paid = self.get_pref("haspaid")
         # False by default
-        return False if has_paid is None else has_paid
+        return self.get_bool_pref("haspaid", False)
 
-    def set_has_paid(self, state):
+    def set_has_paid(self, state: bool) -> None:
         """ Sets the payment status of a user to True or False """
-        assert isinstance(state, bool)
         self.set_pref("haspaid", state)
 
-    def is_ready(self):
+    def is_ready(self) -> bool:
         """ Returns True if the user is ready to accept challenges """
         return self._ready
 
-    def set_ready(self, ready):
+    def set_ready(self, ready: bool) -> None:
         """ Sets the ready state of a user to True or False """
-        assert isinstance(ready, bool)
         self._ready = ready
 
     def is_ready_timed(self):
@@ -784,11 +790,12 @@ class Game:
         game.initial_racks[0] = gm.irack0
         game.initial_racks[1] = gm.irack1
 
-        game.state.set_rack(0, gm.irack0)
-        game.state.set_rack(1, gm.irack1)
+        game.state.set_rack(0, gm.irack0 or "")
+        game.state.set_rack(1, gm.irack1 or "")
 
         # Process the moves
         player = 0
+        now = datetime.utcnow()
 
         for mm in gm.moves:
 
@@ -856,8 +863,8 @@ class Game:
                 # not modify the bag or the racks
                 game.state.apply_move(m, shallow=True)
                 # Append to the move history
-                game.moves.append(MoveTuple(player, m, mm.rack, mm.timestamp))
-                game.state.set_rack(player, mm.rack)
+                game.moves.append(MoveTuple(player, m, mm.rack or "", mm.timestamp or now))
+                game.state.set_rack(player, mm.rack or "")
 
             player = 1 - player
 

@@ -58,10 +58,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Union, Optional, Tuple, Iterator, List
+from typing import Dict, Optional, Tuple, Iterator, List
 
 import os
-import sys
 import threading
 import logging
 import time

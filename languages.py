@@ -96,10 +96,11 @@ class Alphabet(abc.ABC):
         self.coding.update({i | 0x80: c + "|" for i, c in enumerate(self.order)})
 
     def bit_pattern(self, word: str) -> int:
-        """Return a pattern of bits indicating which letters
-        are present in the word"""
+        """ Return a pattern of bits indicating which letters
+            are present in the word """
+        bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
         return functools.reduce(
-            lambda x, y: x | y, [self.letter_bit[c] for c in word], 0
+            bitwise_or, [self.letter_bit[c] for c in word], 0
         )
 
     def bit_of(self, c):

@@ -673,22 +673,16 @@ class DawgBuilder:
             """ Close the associated file, if it is still open """
             pass
 
-    def _load(
-        self,
-        relpath: str,
-        inputs: str,
-        removals: str,
-        word_filter: Optional[Callable[[str], bool]],
-    ) -> None:
-        """Load word lists into the DAWG from one or more static text files,
-        assumed to be located in the relpath subdirectory.
-        The text files should contain one word per line,
-        encoded in UTF-8 format. Lines may end with CR/LF or LF only.
-        Upper or lower case should be consistent throughout.
-        All lower case is preferred. The words should appear in
-        ascending sort order within each file. The input files will
-        be merged in sorted order in the load process. Words found
-        in the removals file will be removed from the output.
+    def _load(self, relpath: str, inputs: List[str], removals: str, word_filter: Callable[[str], bool]) -> None:
+        """ Load word lists into the DAWG from one or more static text files,
+            assumed to be located in the relpath subdirectory.
+            The text files should contain one word per line,
+            encoded in UTF-8 format. Lines may end with CR/LF or LF only.
+            Upper or lower case should be consistent throughout.
+            All lower case is preferred. The words should appear in
+            ascending sort order within each file. The input files will
+            be merged in sorted order in the load process. Words found
+            in the removals file will be removed from the output.
         """
         self._dawg = _Dawg()
         # Total number of words read from input files
@@ -721,7 +715,7 @@ class DawgBuilder:
         # Merge the inputs
         while True:
             smallest = None
-            key_smallest = None
+            key_smallest: Optional[List[int]] = None
             # Find the smallest next word among the input files
             for f in infiles:
                 if f.has_word():
@@ -732,6 +726,7 @@ class DawgBuilder:
                         # Use the sort ordering of the current locale to compare words
                         assert key_smallest is not None
                         key_f = f.next_key()
+                        assert key_smallest is not None
                         if key_f == key_smallest:
                             # We have the same word in two files: make sure we don't add it twice
                             f.read_word()
@@ -747,6 +742,7 @@ class DawgBuilder:
             # We have the smallest word
             word = smallest.next_word()
             assert word is not None
+            assert key_smallest is not None
             key = key_smallest
             assert key is not None
             incount += 1

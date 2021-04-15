@@ -267,27 +267,27 @@ def test_manual_game():
     )
 
 
-def test(num_games, opponent, silent):
+def test(num_games: int, opponent: str, silent: bool) -> None:
 
     """ Test running a number of games """
 
-    def autoplayer_creator(state):
+    def autoplayer_creator(state: State) -> AutoPlayer:
         """ Create a normal autoplayer instance """
         return AutoPlayer(state)
 
-    def common_creator(state):
+    def common_creator(state: State) -> AutoPlayer:
         """ Create a common autoplayer instance """
         return AutoPlayer_Common(state)
 
-    def medium_creator(state):
+    def medium_creator(state: State) -> AutoPlayer:
         """ Create a medium autoplayer instance """
         return AutoPlayer_Medium(state)
 
-    def minimax_creator(state):
+    def minimax_creator(state: State) -> AutoPlayer:
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
-    players: List[Optional[Tuple[str, Callable]]] = [None, None]
+    players: List[Optional[Tuple[str, Callable[[State], AutoPlayer]]]] = [None, None]
     if opponent == "amlodi":
         players[0] = ("Amlóði A", common_creator)
         players[1] = ("Amlóði B", common_creator)
