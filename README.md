@@ -5,16 +5,16 @@
 ### English summary
 
 This repository contains the implementation of an Icelandic crossword game
-inspired by SCRABBLE(tm).
-The game, which is free-to-play, is accessible on the web at [https://netskrafl.is](https://netskrafl.is).
+in the genre of SCRABBLE(tm). The game, which is free-to-play, is accessible
+on the web at [https://netskrafl.is](https://netskrafl.is).
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
 The game backend is implemented in Python 3.8 for the
 [Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
 
-The frontend is a tablet- and smartphone-friendly web client in HTML5 and JavaScript connecting
-via Ajax to a Flask-based web server on the backend.
+The frontend is a tablet- and smartphone-friendly web client in HTML5
+and JavaScript connecting via Ajax to a Flask-based web server on the backend.
 
 The game contains a robot crossword player written in Python. The algorithm is based
 on Appel & Jacobson's classic paper

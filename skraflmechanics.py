@@ -1,6 +1,6 @@
 """
 
-    Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
+    Skraflmechanics - the inner workings of a crossword game server
 
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -9,16 +9,11 @@
     For further information, see https://github.com/mideind/Netskrafl
 
     This module contains classes that implement various
-    mechanics for a SCRABBLE(tm)-like game, including the
-    board itself, the players, their racks, moves,
-    scoring, etc.
+    mechanics for a crossword game, including the board itself,
+    the players, their racks, moves, scoring, etc.
 
     Algorithms for automatic (computer) play are found
     in skraflplayer.py
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
 """
 
@@ -131,9 +126,11 @@ _LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
 
 class Board:
 
-    """Represents the characteristics and the contents of a Scrabble board."""
+    """ Represents the characteristics and the contents
+        of a crossword game board. """
 
-    # A standard Scrabble board is 15 x 15 squares
+    # A common standard board is 15 x 15 squares,
+    # but this is easily adjustable by changing this constant
     SIZE = 15
 
     # The rows are identified by letter

@@ -9,7 +9,7 @@
     For further information, see https://github.com/mideind/Netskrafl
 
     This web server module uses the Flask framework to implement
-    a crossword game similar to SCRABBLE(tm).
+    a crossword game.
 
     The actual game logic is found in skraflplayer.py and
     skraflmechanics.py.
@@ -19,10 +19,6 @@
     The web client code is found in netskrafl.js.
 
     The server is compatible with Python >= 3.8.
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
 """
 

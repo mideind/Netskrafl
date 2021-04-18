@@ -8,10 +8,6 @@
     The GNU General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
-
     This module implements two endpoints, /stats/run and /stats/ratings.
     The first one is normally called by the Google Cloud Scheduler at 02:00
     UTC each night, and the second one at 02:20 UTC. The endpoints cannot

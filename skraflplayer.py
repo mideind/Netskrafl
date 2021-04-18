@@ -1,6 +1,6 @@
 """
 
-    Skraflplayer - an automatic SCRABBLE(tm) player
+    Skraflplayer - an automatic crossword game player
 
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -9,7 +9,7 @@
     For further information, see https://github.com/mideind/Netskrafl
 
     This module finds and ranks all legal moves on
-    a SCRABBLE(tm)-like board.
+    a crossword game board.
 
     The algorithm is based on the classic paper by Appel & Jacobson,
     "The World's Fastest Scrabble Program",

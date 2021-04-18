@@ -126,7 +126,7 @@ DawgDict = Dict[str, Optional["_DawgNode"]]
 
 
 MAXLEN = 48  # Longest possible word to be processed
-SCRABBLE_MAXLEN = 15  # Longest possible word in a Scrabble database
+WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
 
 
@@ -881,13 +881,13 @@ def nofilter(word: str) -> bool:  # pylint: disable=W0613
 
 
 def filter_skrafl(word: str) -> bool:
-    """Filtering for Icelandic Scrabble(tm)
-    Exclude words longer than SCRABBLE_MAXLEN letters (won't fit on board)
-    Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
-    Exclude two-letter words in the word database that are not
-        allowed according to Icelandic Scrabble rules
+    """ Filtering for an Icelandic crossword game.
+        Exclude words longer than WORD_MAXLEN letters (won't fit on board)
+        Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
+        Exclude two-letter words in the word database that are not
+        allowed according to the rules of 'Skraflfélag Íslands'
     """
-    return len(word) <= SCRABBLE_MAXLEN
+    return len(word) <= WORD_MAXLEN
 
 
 def filter_common(word: str) -> bool:
@@ -916,7 +916,7 @@ def run_test() -> None:
 def run_twl06() -> None:
     """ Build a DAWG from the files listed """
     # This creates a DAWG from a single file named TWL06.txt,
-    # the Scrabble Tournament Word List version 6
+    # the Tournament Word List version 6
     print("Starting DAWG build for TWL06.txt")
     # Set the English-United States locale
     set_locale("en_US")
