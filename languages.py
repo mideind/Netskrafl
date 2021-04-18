@@ -27,7 +27,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Optional, Type, NamedTuple, Callable, Any
+from typing import Dict, List, Tuple, Type, NamedTuple, Callable, Any
 
 import abc
 import functools
@@ -101,7 +101,7 @@ class Alphabet(abc.ABC):
         bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
         return functools.reduce(bitwise_or, [self.letter_bit[c] for c in word], 0)
 
-    def bit_of(self, c):
+    def bit_of(self, c: str) -> int:
         """ Returns the bit corresponding to a character in the alphabet """
         return self.letter_bit[c]
 
@@ -218,7 +218,7 @@ class TileSet(abc.ABC):
     _full_bag = ""
 
     @classmethod
-    def score(cls, tiles):
+    def score(cls, tiles: str):
         """ Return the net (plain) score of the given tiles """
         if not tiles:
             return 0
@@ -235,7 +235,7 @@ class TileSet(abc.ABC):
     @classmethod
     def num_tiles(cls):
         """ Return the total number of tiles in this tile set """
-        return sum(n for letter, n in cls.bag_tiles)
+        return sum(n for _, n in cls.bag_tiles)
 
 
 class OldTileSet(TileSet):
@@ -551,6 +551,7 @@ class NewEnglishTileSet(TileSet):
         ("v", 1),
         ("j", 1),
         ("z", 1),
+        ("q", 1),
         ("?", 2),  # Blank tiles
     ]
 
@@ -559,7 +560,7 @@ class NewEnglishTileSet(TileSet):
 
 # Number of tiles in bag
 NewEnglishTileSet.BAG_SIZE = NewEnglishTileSet.num_tiles()
-
+assert NewEnglishTileSet.BAG_SIZE == EnglishTileSet.BAG_SIZE
 
 # Mapping of locale code to tileset
 

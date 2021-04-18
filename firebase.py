@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict
+from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict, cast
 
 import os
 import json
@@ -57,10 +57,10 @@ _tls = threading.local()
 def _get_http() -> httplib2.Http:
     """ Provides an authorized HTTP object, one per thread """
     if not hasattr(_tls, "_HTTP") or _tls._HTTP is None:
-        http = httplib2.Http(timeout=_TIMEOUT)
+        http: httplib2.Http = cast(Any, httplib2).Http(timeout=_TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
-        creds = GoogleCredentials.get_application_default().create_scoped(
+        creds = cast(Any, GoogleCredentials).get_application_default().create_scoped(
             _FIREBASE_SCOPES
         )
         creds.authorize(http)
@@ -73,11 +73,13 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0
+    response: httplib2.Response
+    content: bytes
     while attempts < MAX_ATTEMPTS:
         try:
             kw: Dict[str, Any] = kwargs.copy()
             kw["headers"] = _HEADERS
-            response, content = _get_http().request(*args, **kw)
+            response, content = cast(Any, _get_http()).request(*args, **kw)
             assert isinstance(content, bytes)
             return response, content
         except ConnectionError:
@@ -100,7 +102,7 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     assert False, "Unexpected fall out of loop in firebase._request()"
 
 
-def _firebase_put(
+def _firebase_put(  # type: ignore
     path: str, message: Optional[str] = None
 ) -> Tuple[httplib2.Response, bytes]:
     """ Writes data to Firebase.
@@ -262,7 +264,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:
         try:
-            return auth.create_custom_token(uid).decode()
+            return cast(Any, auth).create_custom_token(uid).decode()
         except:
             # It appears that ConnectionResetError exceptions can
             # propagate (wrapped in an obscure Firebase object) from

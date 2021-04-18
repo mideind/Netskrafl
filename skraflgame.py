@@ -33,6 +33,7 @@ from typing import (
     Tuple,
     NamedTuple,
     Iterable,
+    Iterator,
     cast,
 )
 
@@ -232,6 +233,11 @@ class User:
         return User.is_valid_nick(self._nickname)
 
     @property
+    def preferences(self) -> PrefsDict:
+        """ Return the game preferences as a dictionary """
+        return self._preferences
+
+    @property
     def locale(self) -> str:
         """ Get the locale code for this user """
         return self._locale or "is_IS"
@@ -273,12 +279,12 @@ class User:
         self._preferences[pref] = value
 
     @staticmethod
-    def full_name_from_prefs(prefs) -> str:
+    def full_name_from_prefs(prefs: Optional[PrefsDict]) -> str:
         """ Returns the full name of a user from a dict of preferences """
         if prefs is None:
             return ""
         fn = prefs.get("full_name")
-        return "" if fn is None else fn
+        return fn if fn is not None and isinstance(fn, str) else ""
 
     def full_name(self) -> str:
         """ Returns the full name of a user """
@@ -326,12 +332,12 @@ class User:
         self.set_pref("beginner", beginner)
 
     @staticmethod
-    def fairplay_from_prefs(prefs):
+    def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the fairplay preference of a user """
         if prefs is None:
             return False
         fp = prefs.get("fairplay")
-        return False if fp is None else fp
+        return isinstance(fp, bool) and fp
 
     def fairplay(self) -> bool:
         """ Returns True if the user has committed to a fair play statement """
@@ -344,13 +350,13 @@ class User:
         self.set_pref("fairplay", state)
 
     @staticmethod
-    def new_bag_from_prefs(prefs):
+    def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the new bag preference of a user """
         if prefs is None:
             return False
         newbag = prefs.get("newbag")
         # True by default
-        return True if newbag is None else newbag
+        return newbag if isinstance(newbag, bool) else True
 
     def new_bag(self) -> bool:
         """ Returns True if the user would like to play with the new bag """
@@ -363,12 +369,12 @@ class User:
         self.set_pref("newbag", state)
 
     @staticmethod
-    def friend_from_prefs(prefs):
+    def friend_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns True if the user is a friend of Netskrafl """
         if prefs is None:
             return False
         friend = prefs.get("friend")
-        return False if friend is None else friend
+        return isinstance(friend, bool) and friend
 
     def friend(self) -> bool:
         """ Returns True if the user is a friend of Netskrafl """
@@ -381,7 +387,7 @@ class User:
         self.set_pref("friend", state)
 
     @staticmethod
-    def has_paid_from_prefs(prefs):
+    def has_paid_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns True if the user is a paying friend of Netskrafl """
         if prefs is None:
             return False
@@ -389,7 +395,7 @@ class User:
             # Must be a friend before being a paying friend
             return False
         has_paid = prefs.get("haspaid")
-        return False if has_paid is None else has_paid
+        return isinstance(has_paid, bool) and has_paid
 
     def has_paid(self) -> bool:
         """ Returns True if the user is a paying friend of Netskrafl """
@@ -411,11 +417,11 @@ class User:
         """ Sets the ready state of a user to True or False """
         self._ready = ready
 
-    def is_ready_timed(self):
+    def is_ready_timed(self) -> bool:
         """ Returns True if the user is ready for timed games """
         return self._ready_timed
 
-    def set_ready_timed(self, ready):
+    def set_ready_timed(self, ready: bool) -> None:
         """ Sets the whether a user is ready for timed games """
         assert isinstance(ready, bool)
         self._ready_timed = ready
@@ -528,7 +534,7 @@ class User:
     @classmethod
     def load_multi(cls, uids: Iterable[str]) -> List[User]:
         """ Load multiple users from persistent storage, given their user id """
-        user_list = []
+        user_list: List[User] = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
                 if um is not None:
@@ -595,7 +601,7 @@ class User:
 
     def to_serializable(self) -> Dict[str, Any]:
         """ Convert to JSON-serializable format """
-        d = dict(**self.__dict__)
+        d: Dict[str, Any] = dict(**self.__dict__)
         del d["_favorites"]
         return d
 
@@ -617,7 +623,8 @@ class User:
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["friend"] = self.friend()
-        sm.populate_dict(reply)
+        if sm is not None:
+            sm.populate_dict(reply)
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score
         reply["highest_score_game"] = self._highest_score_game
@@ -769,7 +776,7 @@ class Game:
             game.ts_last_move = game.timestamp
 
         # Initialize the preferences
-        game._preferences = cast(PrefsDict, gm.prefs)
+        game._preferences = gm.prefs
 
         # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = gm.player0_id()
@@ -909,7 +916,7 @@ class Game:
         gm.robot_level = self.robot_level
         gm.prefs = cast(PrefsDict, self._preferences)
         tile_count = 0
-        movelist = []
+        movelist: List[MoveModel] = []
         for m in self.moves:
             mm = MoveModel()
             coord, tiles, score = m.move.summary(self.state)
@@ -963,6 +970,11 @@ class Game:
     def id(self) -> Optional[str]:
         """ Returns the unique id of this game """
         return self.uuid
+
+    @property
+    def preferences(self) -> Optional[PrefsDict]:
+        """ Return the game preferences, as a dictionary """
+        return self._preferences
 
     @staticmethod
     def autoplayer_name(level: int) -> str:
@@ -1270,6 +1282,7 @@ class Game:
         """ Generate an AutoPlayer move and register it """
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
+        assert self.state is not None
         apl = AutoPlayer.create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
@@ -1281,16 +1294,18 @@ class Game:
         self.register_move(move)
         self.last_move = move  # Store the response move
 
-    def enum_tiles(self, state=None):
+    def enum_tiles(self, state: Optional[State]=None) -> Iterator[Tuple[str, str, str, int]]:
         """ Enumerate all tiles on the board in a convenient form """
         if state is None:
             state = self.state
+        assert state is not None
+        scores = self.tileset.scores
         for x, y, tile, letter in state.board().enum_tiles():
             yield (
                 Board.ROWIDS[x] + str(y + 1),
                 tile,
                 letter,
-                self.tileset.scores[tile],
+                scores[tile],
             )
 
     def state_after_move(self, move_number: int) -> State:
