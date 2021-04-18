@@ -2578,7 +2578,8 @@ function createView() {
           if (tile == '?')
              continue;
           var sq = coord(row, col);
-          game.tiles[sq].highlight = show ? playerColor : undefined;
+          if (game.tiles.hasOwnProperty(sq))
+            game.tiles[sq].highlight = show ? playerColor : undefined;
           col += vec.dx;
           row += vec.dy;
        }

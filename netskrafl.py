@@ -2046,7 +2046,7 @@ def newgame() -> ResponseType:
     # instead of the challenged player initiating a normal one?
     rev = request.args.get("rev", None) is not None
 
-    prefs: Optional[PrefsDict]
+    prefs: Optional[PrefsDict] = None
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)

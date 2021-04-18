@@ -557,20 +557,39 @@ var Game = (function() {
     this.numTileMoves = 0;
     var mlist = this.moves;
     var i, sq;
+    var last = (move !== undefined) ? move : mlist.length;
 
-    for (i = 0; i < (move !== undefined ? move : mlist.length); i++) {
-      var player = mlist[i][0];
-      var co = mlist[i][1][0];
-      var tiles = mlist[i][1][1];
-      // var score = mlist[i][1][2];
-      // !!! FIXME: handle successful challenges
-      if (co != "") {
+    function successfullyChallenged(ix) {
+      // Was the move with index ix successfully challenged?
+      if (ix + 2 >= last)
+        // The move list is too short for a response move
+        return false;
+      var mv = mlist[ix + 2];
+      var co = mv[1][0];
+      var tiles = mv[1][1];
+      if (co != "")
+        // The player's next move is a normal tile move
+        return false;
+      var score = mv[1][2];
+      // Return true if this was a challenge response with a negative score
+      // (i.e. a successful challenge)
+      return (tiles == "RESP") && (score < 0);
+    }
+
+    for (i = 0; i < last; i++) {
+      var mv = mlist[i];
+      var player = mv[0];
+      var co = mv[1][0];
+      var tiles = mv[1][1];
+      if (co != "" && !successfullyChallenged(i)) {
+        // Unchallenged tile move: place it on the board
         var highlight = (move !== undefined) && (i == move - 1) && !noHighlight;
         this.placeMove(player, co, tiles, highlight);
         this.numTileMoves++;
       }
     }
     // If it's our turn, mark the opponent's last move
+    // The type of this.lastmove corresponds to DetailTuple on the server side
     mlist = this.lastmove;
     if (mlist !== undefined && mlist.length && this.localturn)
       for (i = 0; i < mlist.length; i++) {
