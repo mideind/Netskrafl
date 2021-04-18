@@ -7,7 +7,7 @@
   Copyright (C) 2015-2019 Miðeind ehf.
   Author: Vilhjalmur Thorsteinsson
 
-  The GNU General Public License, version 3, applies to this software.
+  The GNU Affero General Public License, version 3, applies to this software.
   For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */
