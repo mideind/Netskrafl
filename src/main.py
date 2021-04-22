@@ -1315,6 +1315,8 @@ def challenge():
     fairplay = rq.get_bool("fairplay")
     new_bag = rq.get_bool("newbag")
     manual = rq.get_bool("manual")
+    mode = rq.get_int("mode")
+
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -1330,6 +1332,7 @@ def challenge():
                 "fairplay": fairplay,
                 "newbag": new_bag,
                 "manual": manual,
+                "mode": mode
             },
         )
     elif action == "retract":
