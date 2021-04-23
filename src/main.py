@@ -710,9 +710,11 @@ def _gamelist(cuid, include_zombies=True):
                     "my_turn": False,
                     "overdue": False,
                     "zombie": True,
-                    "fairplay": fairplay,
-                    "newbag": new_bag,
-                    "manual": manual,
+                    "prefs": {
+                        "fairplay": fairplay,
+                        "newbag": new_bag,
+                        "manual": manual,
+                    },
                     "timed": timed,
                     "live": opp in online,
                     "image": u.image(),
@@ -772,9 +774,11 @@ def _gamelist(cuid, include_zombies=True):
                 "my_turn": g["my_turn"],
                 "overdue": overdue,
                 "zombie": False,
-                "fairplay": fairplay,
-                "newbag": new_bag,
-                "manual": manual,
+                "prefs": {
+                    "fairplay": fairplay,
+                    "newbag": new_bag,
+                    "manual": manual,
+                },
                 "timed": timed,
                 "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles()),
                 "live": opp in online,
@@ -923,8 +927,10 @@ def _recentlist(cuid, versus, max_len):
                 "days": int(days),
                 "hours": int(hours),
                 "minutes": int(minutes),
-                "duration": Game.get_duration_from_prefs(prefs),
-                "manual": Game.manual_wordcheck_from_prefs(prefs),
+                "prefs": {
+                    "duration": Game.get_duration_from_prefs(prefs),
+                    "manual": Game.manual_wordcheck_from_prefs(prefs),
+                },
                 "live": opp in online,
                 "image": u"" if u is None else u.image(),
                 "fav": False if cuser is None else cuser.has_favorite(opp),
@@ -1315,6 +1321,8 @@ def challenge():
     fairplay = rq.get_bool("fairplay")
     new_bag = rq.get_bool("newbag")
     manual = rq.get_bool("manual")
+    mode = rq.get_int("mode")
+
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -1330,6 +1338,7 @@ def challenge():
                 "fairplay": fairplay,
                 "newbag": new_bag,
                 "manual": manual,
+                "mode": mode
             },
         )
     elif action == "retract":
