@@ -5,7 +5,7 @@
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module stores data in the Google App Engine NDB
@@ -66,6 +66,8 @@ from __future__ import annotations
 from typing import (
     Dict,
     Generic,
+    Literal,
+    Sequence,
     Set,
     Tuple,
     Optional,
@@ -79,6 +81,7 @@ from typing import (
     Union,
     Callable,
     cast,
+    overload,
 )
 
 import logging
@@ -117,18 +120,72 @@ StatsResults = List[StatsDict]
 
 class Query(Generic[_T], ndb.Query):
 
-    """ A more type-safe version of ndb.Query """
+    """ A type-safer wrapper around ndb.Query """
 
     def order(self, *args: Any, **kwargs: Any) -> Query[_T]:
-        return cast(Query[_T], super().order(*args, **kwargs))
+        f: Callable[..., Query[_T]] = cast(Any, super()).order
+        return f(*args, **kwargs)
 
     def filter(self, *args: Any, **kwargs: Any) -> Query[_T]:
-        return cast(Query[_T], super().filter(*args, **kwargs))
+        f: Callable[..., Query[_T]] = cast(Any, super()).filter
+        return f(*args, **kwargs)
+    
+    def fetch(self, *args: Any, **kwargs: Any) -> List[_T]:
+        f: Callable[..., List[_T]] = cast(Any, super()).fetch
+        return f(*args, **kwargs)
+
+    def fetch_async(self, *args: Any, **kwargs: Any) -> Future[_T]:
+        f: Callable[..., Future[_T]] = cast(Any, super()).fetch_async
+        return f(*args, **kwargs)
+
+    def fetch_page(self, *args: Any, **kwargs: Any) -> Tuple[Iterable[_T], int, bool]:
+        f: Callable[..., Tuple[Iterable[_T], int, bool]] = cast(Any, super()).fetch_page
+        return f(*args, **kwargs)
+
+    @overload
+    def get(self, keys_only: Literal[True]) -> Optional[Key]:
+        ...
+
+    @overload
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T]:
+        ...
+
+    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key, _T]:
+        f: Callable[..., Union[None, Key, _T]] = cast(Any, super()).get
+        return f(*args, **kwargs)
+
+    def count(self, *args: Any, **kwargs: Any) -> int:
+        return cast(Any, super()).count(*args, **kwargs)
+
+    @overload
+    def iter(self, keys_only: Literal[True]) -> Iterable[Key]:
+        ...
+
+    @overload
+    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T]:
+        ...
+
+    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T]]:
+        f: Callable[..., Union[Iterable[Key], Iterable[_T]]] = cast(Any, super()).iter
+        return f(*args, **kwargs)
+
+
+class Future(Generic[_T], ndb.Future):
+
+    """ A type-safer wrapper around ndb.Future """
+
+    def get_result(self) -> List[_T]:
+        f: Callable[[], List[_T]] = cast(Any, super()).get_result
+        return f()
+
+    @staticmethod
+    def wait_all(futures: Sequence[Future[_T]]) -> None:
+        cast(Any, ndb.Future).wait_all(futures)
 
 
 class Key(ndb.Key):
 
-    """ A more type-safe version of ndb.Key """
+    """ A type-safer wrapper around ndb.Key """
 
     def id(self) -> str:
         return cast(str, super().id())
@@ -136,25 +193,42 @@ class Key(ndb.Key):
     def parent(self) -> Optional[Key]:
         return cast(Optional[Key], super().parent())
 
+    def delete(self, *args: Any, **kwargs: Any) -> None:
+        cast(Any, super()).delete(*args, **kwargs)
+
+
+_T_Model = TypeVar("_T_Model", bound="Model")
+
 
 class Model(ndb.Model):
 
-    """ A more type-safe version of ndb.Model """
+    """ A type-safer wrapper around ndb.Model """
 
     @property
     def key(self) -> Key:
-        return cast(Key, super().key)
+        return cast(Key, cast(Any, super()).key)
+
+    def put(self, **kwargs: Any) -> Key:
+        return cast(Any, super()).put(**kwargs)
 
     @classmethod
-    def query(cls: Type[_T], *args: Any, **kwargs: Any) -> Query[_T]:
-        return cast(Query[_T], super().query(*args, **kwargs))
+    def put_multi(cls: Type[_T_Model], recs: Iterable[_T_Model]) -> None:
+        put_multi(recs)
+
+    @classmethod
+    def get_by_id(cls: Type[_T_Model], identifier: str, **kwargs: Any) -> Optional[_T_Model]:
+        return cast(Any, super()).get_by_id(identifier, **kwargs)
+
+    @classmethod
+    def query(cls: Type[_T_Model], *args: Any, **kwargs: Any) -> Query[_T_Model]:
+        return cast(Query[_T_Model], cast(Any, super()).query(*args, **kwargs))
 
     @staticmethod
-    def DbKey(kind: Type[ndb.Model], indexed: bool = True) -> Key:
+    def DbKey(kind: Type[_T_Model], indexed: bool = True) -> Key:
         return cast(Key, ndb.KeyProperty(kind=kind, required=True, indexed=indexed))
 
     @staticmethod
-    def OptionalDbKey(kind: Type[ndb.Model], indexed: bool = True) -> Optional[Key]:
+    def OptionalDbKey(kind: Type[_T_Model], indexed: bool = True) -> Optional[Key]:
         return cast(
             Optional[Key],
             ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
@@ -248,14 +322,14 @@ class Context:
     @staticmethod
     def disable_cache() -> None:
         """ Disable the NDB in-context cache """
-        ctx = cast(Any, ndb.get_context())
+        ctx = cast(Any, ndb).get_context()
         assert ctx is not None
         ctx.set_cache_policy(False)
 
 
 class Unique:
 
-    """ Wrapper for generation of unique id strings for keys """
+    """ Utility class for generation of unique id strings for keys """
 
     def __init__(self) -> None:
         pass
@@ -292,6 +366,16 @@ def iter_q(
         items, next_cursor, more = q.fetch_page(
             chunk_size, start_cursor=next_cursor, projection=projection
         )
+
+
+def put_multi(recs: Iterable[Model]) -> None:
+    """ Type-safer call to ndb.put_multi() """
+    cast(Any, ndb).put_multi(recs)
+
+
+def delete_multi(keys: Iterable[Key]) -> None:
+    """ Type-safer call to ndb.delete_multi() """
+    cast(Any, ndb).delete_multi(keys)
 
 
 class UserModel(Model):
@@ -408,20 +492,15 @@ class UserModel(Model):
             len_keys = len(keys)
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
-                return ndb.get_multi(keys)
+                return cast(Any, ndb).get_multi(keys)
             # Otherwise, accumulate chunks
-            result.extend(ndb.get_multi(keys))
+            result.extend(cast(Any, ndb).get_multi(keys))
             ix += len_keys
         return result
 
     def user_id(self) -> str:
         """ Return the ndb key of a user as a string """
         return self.key.id()
-
-    @staticmethod
-    def put_multi(recs: Iterable[UserModel]) -> None:
-        """ Insert or update multiple user records """
-        ndb.put_multi(recs)
 
     @classmethod
     def count(cls) -> int:
@@ -484,7 +563,7 @@ class UserModel(Model):
 
         # Return users with nicknames matching the prefix
         q: Query[UserModel]
-        q = cls.query(UserModel.nick_lc >= prefix).order(UserModel.nick_lc)
+        q = cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc)
         q = cls.filter_locale(q, locale)
 
         for ud in list_q(q, lambda um: um.nick_lc or ""):
@@ -495,7 +574,7 @@ class UserModel(Model):
                 return
 
         # Return users with full names matching the prefix
-        q = cls.query(UserModel.name_lc >= prefix).order(UserModel.name_lc)
+        q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
         q = cls.filter_locale(q, locale)
 
         um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
@@ -669,7 +748,7 @@ class GameModel(Model):
         return p.id()
 
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool = True) -> GameModel:
+    def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
         """ Fetch a game entity given its uuid """
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
@@ -743,7 +822,7 @@ class GameModel(Model):
         # Issue two asynchronous queries in parallel
         qf = (q0.fetch_async(max_len), q1.fetch_async(max_len))
         # Wait for both of them to finish
-        ndb.Future.wait_all(qf)
+        Future.wait_all(qf)
 
         # Combine the two query result lists and call game_callback() on each item
         rlist = map(game_callback, qf[0].get_result() + qf[1].get_result())
@@ -833,7 +912,7 @@ class FavoriteModel(Model):
             return
         k = Key(UserModel, user_id)
         q: Query[FavoriteModel] = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
+        for fm in q.fetch(max_len, read_consistency=cast(Any, ndb).EVENTUAL):
             if fm.destuser is not None:
                 yield fm.destuser.id()
 
@@ -966,7 +1045,7 @@ class ChallengeModel(Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: str, max_len=20) -> Iterator[ChallengeTuple]:
+    def list_issued(cls, user_id: str, max_len: int=20) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
@@ -1206,8 +1285,8 @@ class StatsModel(Model):
                 assert sm is not None  # We should always have an entity here
                 nd = makedict(sm)
                 # This may be None if a default record was created
-                nd_ts = cast(datetime, nd["timestamp"])
-                if (nd_ts is not None) and nd_ts > cast(datetime, d["timestamp"]):
+                nd_ts = nd["timestamp"]
+                if (nd_ts is not None) and nd_ts > d["timestamp"]:
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
                     assert nd["elo"] <= d["elo"]
@@ -1353,7 +1432,8 @@ class StatsModel(Model):
                         sm.copy_from(c_val)
                         return sm
             else:
-                cache[key] = dict()
+                d: Dict[datetime, StatsModel] = dict()
+                cache[key] = d
         cls._NB_CACHE_STATS["misses"] += 1
         sm = cls.create(user_id, robot_level)
         if ts:
@@ -1392,15 +1472,10 @@ class StatsModel(Model):
             sm = cls.create(user_id)
         return sm
 
-    @staticmethod
-    def put_multi(recs: Iterable[StatsModel]) -> None:
-        """ Insert or update multiple stats records """
-        ndb.put_multi(recs)
-
     @classmethod
     def delete_ts(cls, timestamp: datetime) -> None:
         """ Delete all stats records at a particular timestamp """
-        ndb.delete_multi(
+        delete_multi(
             cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True)
         )
 
@@ -1451,7 +1526,7 @@ class RatingModel(Model):
     losses_month_ago = Model.Int(default=0)
 
     @classmethod
-    def get_or_create(cls, kind, rank):
+    def get_or_create(cls, kind: str, rank: int) -> RatingModel:
         """ Get an existing entity or create a new one if it doesn't exist """
         k = Key(cls, kind + ":" + str(rank))
         rm = k.get()
@@ -1463,7 +1538,7 @@ class RatingModel(Model):
         rm.rank = rank
         return rm
 
-    def assign(self, dict_args):
+    def assign(self, dict_args: StatsDict) -> None:
         """ Populate attributes from a dict """
         for key, val in dict_args.items():
             if key == "user":
@@ -1522,15 +1597,10 @@ class RatingModel(Model):
 
             yield v
 
-    @staticmethod
-    def put_multi(recs):
-        """ Insert or update multiple ratings records """
-        ndb.put_multi(recs)
-
     @classmethod
-    def delete_all(cls):
+    def delete_all(cls) -> None:
         """ Delete all ratings records """
-        ndb.delete_multi(cls.query().iter(keys_only=True))
+        delete_multi(cls.query().iter(keys_only=True))
 
 
 class ChatModel(Model):
@@ -1642,7 +1712,7 @@ class ZombieModel(Model):
         zmk.delete()
 
     @classmethod
-    def list_games(cls, user_id: str) -> Iterator[Optional[Dict[str, Any]]]:
+    def list_games(cls, user_id: str) -> Iterator[Dict[str, Any]]:
         """ List all zombie games for the given player """
         assert user_id is not None
         if user_id is None:
@@ -1655,6 +1725,8 @@ class ZombieModel(Model):
             if not zm.game:
                 return None
             gm = GameModel.fetch(zm.game.id())
+            if gm is None:
+                return None
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
@@ -1676,7 +1748,8 @@ class ZombieModel(Model):
             )
 
         for zm in q.fetch():
-            yield z_callback(zm)
+            if (zd := z_callback(zm)) is not None:
+                yield zd
 
 
 class PromoModel(Model):

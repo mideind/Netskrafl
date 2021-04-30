@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# type: ignore
 """
 
     Sort utility for large UTF-8 text files
@@ -15,20 +14,24 @@
 
 """
 
-from typing import List, IO
+from typing import List, IO, NamedTuple, Any
 
 import os
 import io
 from tempfile import gettempdir
 from itertools import islice, cycle
-from collections import namedtuple
 import heapq
 
-Keyed = namedtuple("Keyed", ["key", "obj"])
+Keyed = NamedTuple(
+    "Keyed", [
+        ("key", str),
+        ("obj", Any),
+    ]
+)
 lexorder = u"\naábdðeéfghiíjklmnoóprstuúvxyýþæö"
 
 
-def keyfunc(line):
+def keyfunc(line: str) -> List[int]:
     try:
         return [lexorder.index(c) for c in line]
     except ValueError:

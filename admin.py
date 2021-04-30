@@ -5,18 +5,14 @@
     Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
 """
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast
 
 import logging
 from threading import Thread
@@ -33,7 +29,7 @@ from skraflgame import User, Game
 def admin_usercount() -> str:
     """ Return a count of UserModel entities """
     count = UserModel.count()
-    return jsonify(count=count)
+    return cast(str, jsonify(count=count))
 
 
 def deferred_update() -> None:
@@ -103,7 +99,7 @@ def admin_fetchgames() -> str:
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
-    gamelist = []
+    gamelist: List[Dict[str, Any]] = []
     for gm in q.fetch():
         gamelist.append(
             dict(
@@ -118,7 +114,7 @@ def admin_fetchgames() -> str:
                 pr=gm.prefs,
             )
         )
-    return jsonify(gamelist=gamelist)
+    return cast(str, jsonify(gamelist=gamelist))
 
 
 def admin_loadgame() -> str:
@@ -134,7 +130,6 @@ def admin_loadgame() -> str:
         game = Game.load(uuid)
 
     if game is not None and game.state is not None:
-        board = game.state.board()
         now = datetime.utcnow()
         g = dict(
             uuid=game.uuid,
@@ -145,7 +140,7 @@ def admin_loadgame() -> str:
             ts_last_move=Alphabet.format_timestamp(game.ts_last_move or now),
             irack0=game.initial_racks[0],
             irack1=game.initial_racks[1],
-            prefs=game._preferences,
+            prefs=game.preferences,
             over=game.is_over(),
             moves=[
                 (
@@ -158,5 +153,5 @@ def admin_loadgame() -> str:
             ],
         )
 
-    return jsonify(game=g)
+    return cast(str, jsonify(game=g))
 

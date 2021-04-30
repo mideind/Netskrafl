@@ -40,7 +40,7 @@ class DawgTester:
             # Tests the __contains__ operator
             print("Error: \"{0}\" was found".format(word))
 
-    def run(self, fname, relpath):
+    def run(self, fname: str, relpath: str):
         """ Load a DawgDictionary and test its functionality """
 
         print("DawgDictionary tester")

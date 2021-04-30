@@ -5,12 +5,8 @@
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
     This module implements two endpoints, /stats/run and /stats/ratings.
     The first one is normally called by the Google Cloud Scheduler at 02:00
@@ -28,7 +24,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Any
+from typing import Dict, Iterable, List, Optional, Tuple, Any, cast
 
 import calendar
 import logging
@@ -40,7 +36,6 @@ from threading import Thread
 
 from flask import Request
 
-from languages import Alphabet
 from skrafldb import (
     ndb,
     Client,
@@ -50,6 +45,7 @@ from skrafldb import (
     RatingModel,
     CompletionModel,
     iter_q,
+    StatsDict,
 )
 from skraflgame import Game, User
 
@@ -137,7 +133,7 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
     """ Writes the freshly calculated statistics records to the database """
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
-    um_list = []
+    um_list: List[UserModel] = []
     for sm in urecs.values():
         # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
@@ -178,7 +174,8 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     q = (
         GameModel.query(
             ndb.AND(
-                GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time
+                cast(datetime, GameModel.ts_last_move) > from_time,
+                cast(datetime, GameModel.ts_last_move) <= to_time,
             )
         )
         .order(GameModel.ts_last_move)
@@ -188,11 +185,13 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     # The accumulated user statistics
     users: Dict[str, StatsModel] = dict()
 
-    def _init_stat(user_id, robot_level):
+    def _init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
         """ Returns the newest StatsModel instance available for the given user """
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
     cnt = 0
+    p0: Optional[str]
+    p1: Optional[str]
 
     try:
         # Use i as a progress counter
@@ -210,7 +209,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 # ignore such a game altogether in the statistics
                 continue
 
-            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
+            # lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
             p1 = None if gm.player1 is None else gm.player1.id()
             robot_game = (p0 is None) or (p1 is None)
@@ -382,7 +381,12 @@ def _create_ratings() -> None:
     # Collect any stray garbage before we start
     gc.collect()
 
-    def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
+    def _augment_table(
+        t: Iterable[StatsDict],
+        t_yesterday: Dict[str, StatsDict],
+        t_week_ago: Dict[str, StatsDict],
+        t_month_ago: Dict[str, StatsDict],
+    ) -> None:
         """Go through a table of top scoring users and augment it
         with data from previous time points"""
 
@@ -391,7 +395,7 @@ def _create_ratings() -> None:
             key = _key(sm)
 
             # pylint: disable=cell-var-from-loop
-            def _augment(prop):
+            def _augment(prop: str) -> None:
                 sm[prop + "_yesterday"] = (
                     t_yesterday[key][prop] if key in t_yesterday else 0
                 )
@@ -472,7 +476,7 @@ def _create_ratings() -> None:
     t0 = time.time()
 
     # Write the Top 100 tables to the database
-    rlist = []
+    rlist: List[RatingModel] = []
 
     for rank in range(0, 100):
 
@@ -561,7 +565,7 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
         return _deferred_stats()
 
     # Asynchronous: we need a new context for this thread
-    with Client.get_context() as context:
+    with Client.get_context():
         return _deferred_stats()
 
 
@@ -597,7 +601,7 @@ def deferred_ratings(wait: bool) -> bool:
         return _deferred_ratings()
 
     # Asynchronous: this thread needs a fresh client context
-    with Client.get_context() as context:
+    with Client.get_context():
         return _deferred_ratings()
 
 

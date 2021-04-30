@@ -1,15 +1,15 @@
 """
 
-    Skraflplayer - an automatic SCRABBLE(tm) player
+    Skraflplayer - an automatic crossword game player
 
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module finds and ranks all legal moves on
-    a SCRABBLE(tm)-like board.
+    a crossword game board.
 
     The algorithm is based on the classic paper by Appel & Jacobson,
     "The World's Fastest Scrabble Program",
@@ -75,12 +75,11 @@ from typing import Optional, List, Tuple, Dict, cast
 import random
 
 from dawgdictionary import Wordbase, PackedDawgDictionary
-from languages import Alphabet, current_alphabet
+from languages import current_alphabet
 from skraflmechanics import (
     State,
     Board,
     Cover,
-    Rack,
     MoveBase,
     Move,
     ExchangeMove,
@@ -395,7 +394,9 @@ class LeftPermutationNavigator(Navigator):
         # Accumulate all possible left parts, by length
         lm = len(matched) - 1
         if self._leftparts[lm] is None:
-            self._leftparts[lm] = list()
+            # Satisfy Pylance
+            empty_list: List[LeftPart] = []
+            self._leftparts[lm] = empty_list
         # Store the matched word part as well as the remaining part
         # of the prefix of the edge we were on, and the next node.
         # This gives us the ability to resume the navigation later at
@@ -420,29 +421,29 @@ class LeftFindNavigator(Navigator):
 
     is_resumable = True
 
-    def __init__(self, prefix):
+    def __init__(self, prefix: str) -> None:
         super().__init__()
         # The prefix to the left of the anchor
         self._prefix = prefix
         self._lenp = len(prefix)
         # Prefix index
         self._pix = 0
-        self._state = None
+        self._state: Optional[Tuple[str, str, int]] = None
 
-    def state(self):
+    def state(self) -> Optional[Tuple[str, str, int]]:
         """ Returns the current state of the navigator """
         return self._state
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # If we are still navigating through the prefix, do a simple compare
         return firstchar == self._prefix[self._pix]
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         return self._pix < self._lenp
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         if self._prefix[self._pix] != newchar:
             # assert False
@@ -456,7 +457,7 @@ class LeftFindNavigator(Navigator):
         # Should not be called, as is_resumable is set to True
         raise NotImplementedError
 
-    def accept_resumable(self, prefix, nextnode, matched):
+    def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         if self._pix == self._lenp:
             # Found the left part: save the position (state)
@@ -484,20 +485,20 @@ class ExtendRightNavigator(Navigator):
     the board.
     """
 
-    def __init__(self, axis, anchor, rack):
+    def __init__(self, axis: Axis, anchor: int, rack: str) -> None:
         super().__init__()
         self._axis = axis
         self._rack = rack
         self._anchor = anchor
         # The tile we are placing next
         self._index = anchor
-        self._stack = []
+        self._stack: List[Tuple[str, int, bool]] = []
         self._wildcard_in_rack = "?" in rack
         # Cache the initial check we do when pushing into an edge
         self._last_check = None
         self._letter_bit = current_alphabet().letter_bit
 
-    def _check(self, ch):
+    def _check(self, ch: str) -> int:
         """Check whether the letter ch could be placed at the
         current square, given the cross-checks and the rack"""
         axis = self._axis
@@ -516,7 +517,7 @@ class ExtendRightNavigator(Navigator):
             else Match.NO
         )
 
-    def push_edge(self, firstchar):
+    def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
         # We are in the right part: check whether we have a potential match
         self._last_check = self._check(firstchar)
@@ -526,7 +527,7 @@ class ExtendRightNavigator(Navigator):
         self._stack.append((self._rack, self._index, self._wildcard_in_rack))
         return True
 
-    def accepting(self):
+    def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue as long as there is something left to check
         if self._index >= Board.SIZE:
@@ -536,7 +537,7 @@ class ExtendRightNavigator(Navigator):
         # or we're at an occupied square
         return bool(self._rack) or not self._axis.is_empty(self._index)
 
-    def accepts(self, newchar):
+    def accepts(self, newchar: str) -> bool:
         """ Returns True if the navigator will accept the new character """
         # We are on the anchor square or to its right
         # Use the cached check from push_edge if we have one
@@ -558,7 +559,7 @@ class ExtendRightNavigator(Navigator):
             self._wildcard_in_rack = "?" in self._rack
         return True
 
-    def accept(self, matched, final):
+    def accept(self, matched: str, final: bool) -> None:
         """ Called to inform the navigator of a match and whether it is a final word """
         # pylint: disable=bad-continuation
         if (
@@ -628,7 +629,7 @@ class AutoPlayer:
     AUTOPLAYER_MEDIUM = 8
 
     @staticmethod
-    def create(state, robot_level: int = 0) -> AutoPlayer:
+    def create(state: State, robot_level: int = 0) -> AutoPlayer:
         """ Create an Autoplayer instance of the desired ability level """
         if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
             # Create an AutoPlayer that only plays common words
@@ -771,7 +772,7 @@ class AutoPlayer:
 
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x: MoveTuple) -> Tuple:
+        def keyfunc(x: MoveTuple) -> Tuple[int, int]:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic can be inserted here,
@@ -781,7 +782,7 @@ class AutoPlayer:
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple[int, int]:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game
@@ -922,7 +923,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # Calculate the score of each candidate
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x: MoveTuple) -> Tuple:
+        def keyfunc(x: MoveTuple) -> Tuple[int, int]:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic could be inserted here,
@@ -932,7 +933,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple[int, int]:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game"""
@@ -977,7 +978,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             teststate = State(copy=self._state)  # Copy constructor
             teststate.apply_move(m)
 
-            countermoves = list()
+            countermoves: List[int] = []
 
             if teststate.is_game_over():
                 # This move finishes the game. The opponent then scores nothing
