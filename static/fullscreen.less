@@ -16,48 +16,41 @@
       height: initial;
       width: initial;
    }
-   
+
    div.container {
       width: 1024px;
       height: 768px; /* Was 748 */
       overflow-y: hidden;
    }
-   
+
    div.game-container {
       height: 768px;
    }
-   
+
+   div.header {
+      display: none;
+   }
+
    div.logo {
       display: block;
    }
-   
+
    div.logo-back {
       display: block;
       position: absolute;
-      top: 38px;
-      left: 26px;
+      top: 44px;
+      left: 20px;
       width: 50px;
       height: 50px;
       font-size: 20px;
-      text-align: center;
    }
    
-   div.logo-back div.circle {
-      height: 40px;
-      width: 40px;
-      color: @container;
-      background-color: @triple-letter;
-   }
-
-   div.logo-back div.circle:hover {
-      background-color: @pass-btn;
-   }
-
    div.info {
       display: block;
       position: absolute;
-      top: 456px;
-      left: 26px;
+      bottom: 198px;
+      top: auto;
+      left: 14px;
       width: 50px;
       height: 50px;
       font-size: 40px;
@@ -83,20 +76,18 @@
    }
    
    div.rightcol {
+      position: absolute;
       width: 302px;
-      top: 38px;
+      top: 44px;
       right: 12px;
       height: auto;
       left: auto;
    }
    
    div.right-area {
+      display: block;
       margin-top: 8px;
       height: 420px;
-   }
-   
-   div.heading {
-      height: 78px;
    }
    
    div.games,
@@ -110,9 +101,12 @@
    }
    
    div.board {
-      top: 0px;
-      left: 88px;
+      position: absolute;
+      top: 0;
+      left: 56px;
       height: auto;
+      margin: 0;
+      background-color: @container;
    }
    
    .board td {
@@ -130,11 +124,11 @@
    }
 
    table.board tr {
-      height: 34px;
+      height: 35px; /* 32px + 2 * 1.5px */
    }
 
    .rack table.board tr {
-      height: 34px;
+      height: 35px; /* 32px + 2 * 1.5px */
    }
 
    div.tile {
@@ -192,6 +186,7 @@
    .rack div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
       right: 2px;
+      left: auto;
    }
 
    tr.colid {
@@ -200,32 +195,48 @@
    
    td.rowid {
       display: table-cell;
-      width: 16px;
-      height: 32px;
-      min-width: 16px;
-      max-width: 16px;
       overflow: hidden;
-      background-color: transparent;
-      text-align: center;
       font-size: 14px;
       line-height: 14px;
+      text-align: center;
       font-weight: 400;
-      border-width: 1px;
+      background-color: transparent;
       border-color: transparent;
+      box-shadow: none;
    }
    
    div.bag {
       display: block;
       bottom: 114px;
    }
-   
-   div.rack {
-      display: block;
-      top: auto;
-      bottom: 125px;
-      left: 236px;
+
+   div.rack-row {
+      margin: 0;
    }
-   
+
+   div.rack {
+      position: absolute;
+      display: block;
+      width: auto;
+      float: none;
+      top: auto;
+      bottom: 120px;
+      left: 217px;
+      padding: 6px;
+      border-width: 0;
+      border-radius: 5px;
+      margin: 0;
+      background-color: @board-background;
+   }
+
+   div.rack-left {
+      display: none;
+   }
+
+   div.rack-right {
+      display: none;
+   }
+
    .rack td {
       min-height: @board-cell-big;
       min-width: @board-cell-big;
@@ -236,57 +247,84 @@
    }
    
    div.word-check {
+      display: block;
       width: 48px;
       height: 48px;
       font-size: 26px;
       line-height: 45px;
       top: auto;
-      bottom: 272px;
-      left: 648px;
+      bottom: 256px;
+      left: 639px;
       border-radius: 5px;
    }
    
    div.score {
+      display: block;
       width: 48px;
       height: 48px;
       font-size: 24px;
       line-height: 46px;
       top: auto;
-      bottom: 208px;
-      left: 648px;
+      bottom: 192px;
+      left: 639px;
       border-radius: 5px;
    }
-   
+
+   .standard-button {
+      position: absolute;
+      top: @btn-top;
+      text-align: center;
+      font-size: 19px;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+      padding: 6px;
+      padding-top: 9px;
+      border-radius: 5px;
+      vertical-align: middle;
+      cursor: pointer;
+      .noselect;
+   }
+ 
    .submitbutton {
+      .standard-button;
       width: @wide-btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 600px;
+      bottom: 125px;
+      left: 597px;
       background-color: darken(@freshtile, 10%);
       font-size: 18px;
-      font-weight: 700;
+      line-height: 24px;
+      font-weight: normal;
    }
    
    div.submitnewgame {
       .submitbutton;
+      top: 464px;
    }
-   
+
    div.fb-share {
       .submitbutton;
       left: 122px;
       height: 60px;
       /* bottom: 104px; */
    }
-   
+
    div.waitmove {
       .submitbutton;
    }
-   
+
    div.submitmove {
       .submitbutton;
+      display: block;
    }
-   
+
+   div.submitmove span.glyphicon-play {
+      top: 3px;
+      left: 3px;
+   }
+
    div.submitmove.error-shown {
       display: block;
    }
@@ -298,45 +336,60 @@
    /* To the left of the rack */
    
    div.submitresign {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 101px;
+      bottom: 125px;
+      left: 79px;
+      display: block;
    }
    
    div.submitexchange {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 167px;
+      bottom: 125px;
+      left: 145px;
+      display: block;
    }
    
    div.recallbtn {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 167px;
+      bottom: 125px;
+      left: 145px;
+      display: block;
    }
-   
+
    /* To the right of the rack */
-   
+
    div.scramblebtn {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 534px;
+      bottom: 125px;
+      left: 524px;
+      display: block;
    }
    
    div.submitpass {
+      position: absolute;
+      font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
-      left: 600px;
+      bottom: 125px;
+      left: 590px;
+      display: block;
    }
    
    div.fb-share {
@@ -350,37 +403,20 @@
       visibility: hidden;
    }
    
-   h3.playerleft {
+   div.player {
       height: 40px;
       min-height: 40px;
       font-size: 16px;
       line-height: 24px;
    }
    
-   div.gamestats h3.playerleft {
-      padding-left: 4px;
-   }
-   
-   h3.playerright {
-      height: 40px;
-      min-height: 40px;
-      font-size: 16px;
-      line-height: 24px;
-   }
-   
-   div.gamestats h3.playerright {
-      padding-right: 10px;
-   }
-   
-   h3.scoreleft {
-      top: 42px;
+   div.scoreleft {
       width: 145px;
       font-size: 24px;
       line-height: 24px;
    }
    
-   h3.scoreright {
-      top: 42px;
+   div.scoreright {
       width: 145px;
       font-size: 24px;
       line-height: 24px;
@@ -392,41 +428,43 @@
       color: @neutral;
       cursor: pointer;
    }
-   
+
    div.player-btn:hover {
       background-color: white;
       color: @neutral;
    }
-   
+
    div.player-btn.left {
       padding-right: 2px;
    }
-   
+
    div.player-btn.right {
       padding-left: 2px;
    }
-   
+
+   /*
    div.player-btn.left.tomove,
    div.player-btn.right.tomove {
       color: @neutral;
    }
-   
+   */
+
    div.robot-btn {
       width: 141px;
    }
-   
+
    div.gamestats div.robot-btn {
       width: 100%;
    }
-   
+
    div.loginform-large {
       display: block;
    }
-   
+
    div.loginform-small {
       display: none;
    }
-   
+
    div.loginhdr {
       font-size: 34px;
       font-weight: 700;
@@ -462,6 +500,7 @@
       padding-left: 10px;
       font-size: 20px;
       line-height: 20px;
+      z-index: 2;
    }
    
    div.right-tab#tab-movelist {
@@ -493,7 +532,11 @@
    div.movelist {
       height: 420px;
    }
-   
+
+   div.message {
+      display: none;
+   }
+
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;
@@ -532,11 +575,11 @@
    .bottom-message {
       text-align: center;
       bottom: 70px;
-      left: 122px;
+      left: 102px;
       width: 512px;
       height: 28px;
       font-size: 16px;
-      line-height: normal;
+      line-height: 24px;
       padding: 4px 0 0;
       margin: 0;
    }
@@ -636,7 +679,6 @@
    div.help-container img {
       max-width: 520px;
       height: auto;
-      /* transform: scale(1.0); */
    }
    
    div#tabs,
@@ -696,10 +738,6 @@
       display: block;
    }
 
-   div.home {
-      display: none;
-   }
-   
    span.list-opp {
       width: 290px;
       max-width: 290px;

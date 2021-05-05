@@ -19,10 +19,10 @@
 @mobile-height-net: (@mobile-height - @navbar-height);
 
 @board-cell-big: 32px;
-@board-cell-small: 22px;
+@board-cell-small: 21px;
 
 @rack-cell-big: 32px;
-@rack-cell-small: 26px;
+@rack-cell-small: 29px;
 
 @btn-height-big: 30px;
 @btn-width-big: 40px;
@@ -30,8 +30,11 @@
 @btn-height-small: 26px;
 @btn-width-small: 33px;
 
+@btn-font-small: 18px;
+@btn-font-big: 22px;
+
 @wide-btn-width-big: 82px;
-@wide-btn-width-small: 96px;
+@wide-btn-width-small: 32px;
 
 @margin-small: 8px;
 
@@ -292,6 +295,7 @@ body {
    height: @mobile-height-net;
    width: 100%;
    overflow-x: auto;
+   touch-action: none;
 }
 
 div.container {
@@ -315,6 +319,24 @@ div.game-container {
    overflow-y: hidden;
 }
 
+div.header {
+   height: 56px - @margin-small;
+   margin-top: @margin-small;
+   margin-left: @margin-small;
+   margin-right: @margin-small;
+}
+
+div.header-logo {
+   display: block;
+   float: left;
+   padding-left: 4px;
+}
+
+div.header-button {
+   display: block;
+   float: right;
+}
+
 div.logo {
    display: none;
    position: absolute;
@@ -325,12 +347,9 @@ div.logo {
 }
 
 div.rightcol {
-   display: block;
-   position: absolute;
+   position: relative;
    width: @mobile-width - 2 * @margin-small;
    left: @margin-small;
-   top: @margin-small;
-   height: 72px;
 }
 
 div.bag {
@@ -348,8 +367,8 @@ div.bag {
 }
 
 table.bag-content td {
-   min-width: 12px;
-   min-height: 17px;
+   width: 12px;
+   height: 17px;
    background-color: @tile;
    overflow: hidden;
    cursor: default;
@@ -374,16 +393,16 @@ td.highlight {
 tr.colid td {
    height: 24px;
    width: 32px;
+   margin: 0;
+   padding: 0;
    overflow: hidden;
    background-color: transparent;
    text-align: center;
    font-size: 14px;
    line-height: 14px;
    font-weight: 400;
-   border-width: 1px;
    border-color: transparent;
-   margin: 0;
-   padding: 0;
+   box-shadow: none;
 }
 
 /* Board layout */
@@ -451,12 +470,23 @@ table.board {
    .noselect;
 }
 
+div.board table.board {
+   transform: scale(1.0);
+   transform-origin: 0 0;
+   transform-box: view-box;
+   touch-action: pan-x pan-y;
+   // !!! Scrolling into view doesn't seem to work with this transition enabled
+   // transition: transform .2s ease-in-out;
+}
+
 table.board tr {
    height: 24px;
 }
 
 .rack table.board {
    border-spacing: 4px;
+   margin-left: auto;
+   margin-right: auto;
 }
 
 .rack table.board tr {
@@ -480,27 +510,22 @@ div.bag {
 }
 
 div.board-area {
-   position: absolute;
-   z-index: 5;
-   height: 100%;
+   position: relative;
+   margin: @margin-small;
+   margin-left: (@margin-small - 1);
 }
 
 div.board {
-   position: absolute;
-   top: @board-top;
-   left: 2px; /* Seems to be required for correct alignment on iPhone */
-   height: 100%;
-   padding-top: 8px;
    background-color: @container;
-   padding-left: 5px;
-   padding-right: 5px;
+   overflow: auto;
 }
 
 div.tile {
    position: relative;
    background-color: @tile;
+   font-family: @tile-font, @font3, @font4;
    font-size: 17px;
-   line-height: 22px;
+   line-height: 21px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
@@ -509,8 +534,8 @@ div.tile {
    overflow: hidden;
    margin: 0;
    padding: 0;
-   margin-left: -2px;
-   padding-right: 2px;
+   margin-left: -1px;
+   padding-right: 1px;
    vertical-align: top;
    cursor: default;
 }
@@ -524,11 +549,9 @@ div.tile.wide {
 
 .rack div.tile {
    font-size: 21px;
-   line-height: 12px;
-   height: @rack-cell-small - 6px;
-   width: @rack-cell-small + 1px;
-   padding-top: 6px;
-   margin-left: -3px;
+   line-height: 27px;
+   height: @rack-cell-small;
+   width: @rack-cell-small;
 }
 
 /* While dragging a tile, show it in the rack form factor */
@@ -544,10 +567,12 @@ div.tile.ui-draggable-dragging {
    min-width: @board-cell-small;
    overflow: hidden;
    background-color: @board-background;
+   padding: 0;
    border-style: solid;
    border-color: @cell-border;
-   border-width: 1px;
-   padding: 0;
+   border-width: 1.5px;
+   border-radius: 2px;
+   box-shadow: inset 0px 0px 3px 1px #afb7ca87;
 }
 
 .rack td {
@@ -563,22 +588,37 @@ td.rowid {
    display: none;
 }
 
+div.rack-row {
+   display: block;
+   width: 100%;
+   margin-top: 12px;
+}
+
+div.rack-left {
+   display: block;
+   width: 14%;
+   height: 1px;
+   float: left;
+}
+
+div.rack-right {
+   display: block;
+   width: 14%;
+   height: 1px;
+   float: left;
+}
+
 div.rack {
-   position: absolute;
-   text-align: center;
-   top: @board-top + @board-size + @vertical-space;
-   left: @margin-small;
-   background-color: @board-background;
-   padding: 6px;
-   border-width: 0;
-   border-radius: 5px;
-   margin: 0;
+   display: block;
+   padding: 0;
+   width: 72%;
+   float: left;
 }
 
 div.letterscore {
    position: absolute;
    bottom: 0px;
-   right: 0px;
+   right: 1px;
    height: 9px;
    width: 9px;
    font-size: 6px;
@@ -592,11 +632,13 @@ div.letterscore {
 
 .rack div.letterscore {
    left: 19px;
+   right: auto;
    font-size: 9px;
    line-height: 9px;
 }
 
 div.word-check {
+   display: none;
    position: absolute;
    width: 44px;
    height: 44px;
@@ -616,6 +658,7 @@ div.word-check {
 }
 
 div.score {
+   display: none;
    position: absolute;
    width: 44px;
    height: 44px;
@@ -635,10 +678,8 @@ div.score {
 }
 
 .standard-button {
-   position: absolute;
-   top: @btn-top;
    text-align: center;
-   font-size: 19px;
+   font-size: @btn-font-small;
    font-weight: 700;
    color: white;
    margin: 0;
@@ -654,16 +695,12 @@ div.score {
    .standard-button;
    width: @wide-btn-width-small;
    height: @btn-height-small;
-   left: 259px;
-   background-color: darken(@freshtile, 10%);
-   font-size: 16px;
-   font-weight: 700;
+   background-color: @submit-btn;
 }
 
 div.submitnewgame {
    .submitbutton;
    display: none;
-   top: 464px;
 }
 
 div.fb-share {
@@ -723,45 +760,60 @@ div.recallbtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
-   background-color: darken(@racktile, 10%);
+   background-color: @racktile;
+   display: none;
+}
+
+div.rack-left div.recallbtn {
+   display: block;
+   margin-right: auto; // Left-align the button
 }
 
 div.scramblebtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 0;
-   background-color: darken(@double-letter, 10%);
+   background-color: @double-letter;
+   display: none;
+}
+
+div.rack-left div.scramblebtn {
+   display: block;
+   margin-right: auto; // Left-align the button
 }
 
 div.submitexchange {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 1;
-   background-color: darken(@freshtile, 10%);
+   background-color: @freshtile;
+   display: none;
 }
 
 div.submitpass {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 2;
    background-color: @pass-btn;
+   display: none;
 }
 
 div.submitresign {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   left: @btn-left-small + (@btn-spacing-small + @btn-width-small) * 3;
    background-color: @alert;
+   display: none;
 }
 
 div.submitmove {
    .submitbutton;
+   display: none;
+}
+
+div.rack-right div.submitmove {
    display: block;
+   margin-left: auto; // Right-align the button
 }
 
 div.submitmove.error-shown {
@@ -772,78 +824,57 @@ div.submitmove.hidden {
    display: none;
 }
 
-h3.playerleft {
-   display: inline-block;
-   position: absolute;
-   top: 0; left: 0;
-   margin: 0;
-   padding-left: 48px;
-   width: 132px;
+div.player {
+   display: block;
+   padding-left: 4px;
+   padding-right: 4px;
    height: 32px;
    min-height: 32px;
-   font-size: 14px;
+   font-size: 16px;
    line-height: 16px;
-   font-weight: 700;
+   font-weight: 400;
+   color: @cell-border;
+}
+
+div.scoreleft {
+   display: block;
+   width: 42px;
+   height: 30px;
+   padding-left: 4px;
+   font-size: 22px;
+   line-height: 22px;
+   font-weight: 400;
    text-align: left;
-   color: @neutral;
-}
-
-h3.playerright {
-   display: inline-block;
+   color: white;
+   overflow: hidden;
    position: absolute;
-   top: 0; right: 0;
-   margin: 0;
-   padding-right: 48px;
-   width: 132px;
-   height: 32px;
-   min-height: 32px;
-   font-size: 14px;
-   line-height: 16px;
-   font-weight: 700;
-   text-align: right;
-   color: @neutral;
-}
-
-h3.scoreleft {
-   display: inline-block;
-   position: absolute;
-   top: 0;
+   top: 4px;
    left: 0;
-   width: 145px;
-   font-size: 22px;
-   line-height: 22px;
-   font-weight: 700;
-   text-align: left;
-   color: white;
-   overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 6px;
-   padding-left: 5px;
 }
 
-h3.scoreright {
-   display: inline-block;
-   position: absolute;
-   top: 0;
-   right: 0;
-   width: 145px;
+div.scoreright {
+   display: block;
+   width: 42px;
+   height: 30px;
+   padding-right: 4px;
    font-size: 22px;
    line-height: 22px;
-   font-weight: 700;
+   font-weight: 400;
    text-align: right;
    color: white;
    overflow: hidden;
-   margin-top: 4px;
-   margin-bottom: 6px;
-   padding-right: 5px;
+   position: absolute;
+   top: 4px;
+   right: 0;
 }
 
 div.robot-btn {
-   display: inline-block;
+   display: block;
    position: relative;
    top: 0; left: 0;
-   margin: 2px;
-   padding: 6px 2px 2px;
+   margin-left: 0px;
+   margin-right: 2px;
+   padding-top: 6px;
    width: 126px;
    height: 28px;
    min-height: 28px;
@@ -853,12 +884,8 @@ div.robot-btn {
    background-color: transparent;
 }
 
-div.robot-btn.left {
-   padding-left: 4px;
-}
-
-div.robot-btn.right {
-   padding-right: 4px;
+div.robot-btn span.glyphicon-cog {
+   margin-right: 2px;
 }
 
 div.gamestats div.robot-btn {
@@ -868,31 +895,105 @@ div.gamestats div.robot-btn {
 }
 
 div.player-btn {
-   display: inline-block;
+   display: block;
    position: relative;
    top: 0; left: 0;
-   margin: 2px;
-   padding: 6px 2px 2px;
-   width: 118px;
+   margin-left: 2px;
+   margin-right: 2px;
+   padding-top: 6px;
+   width: 128px;
    height: 28px;
+   line-height: 20px;
    min-height: 28px;
    border-radius: 5px;
    border-width: 0;
    white-space: nowrap;
    overflow: hidden;
    background-color: transparent;
+   color: white;
 }
 
-div.player-btn.left,
-div.player-btn.right {
-   padding-left: 4px;
-   padding-right: 4px;
-   color: @neutral;
+div.player-btn.left, div.robot-btn.left {
+   padding-left: 44px;
+}
+
+div.player-btn.right, div.robot-btn.right {
+   padding-right: 44px;
 }
 
 div.player-btn.left.tomove,
 div.player-btn.right.tomove {
-   color: @alert;
+   // color: @alert;
+   color: white;
+}
+
+div.heading {
+   position: relative;
+   width: 100%;
+   background-color: @board-background;
+   top: 0; left: 0;
+   padding-left: 0;
+   padding-right: 0;
+   height: 32px;
+}
+
+@media (min-height: 736px) {
+
+   // Tall mobile phones: use two lines to display the header
+
+   div.player {
+      display: block;
+      padding-left: 4px;
+      padding-right: 4px;
+      height: 32px;
+      min-height: 32px;
+      font-size: 16px;
+      line-height: 16px;
+      font-weight: 400;
+      color: @cell-border;
+   }
+
+   div.scoreleft {
+      display: inline-block;
+      position: relative;
+      left: auto;
+      top: auto;
+      padding-left: 8px;
+   }
+
+   div.scoreright {
+      display: inline-block;
+      position: relative;
+      right: auto;
+      top: auto;
+      padding-right: 8px;
+   }
+
+   div.player-btn {
+      display: inline-block;
+      line-height: auto;
+   }
+
+   div.robot-btn {
+      display: inline-block;
+   }
+
+   div.player-btn.left, div.robot-btn.left {
+      padding-left: 4px;
+   }
+
+   div.player-btn.right, div.robot-btn.right {
+      padding-right: 4px;
+   }
+
+   div.heading {
+      height: auto;
+   }
+
+   div.header {
+      height: 60px - @margin-small;
+   }
+
 }
 
 div.loginform-small {
@@ -1005,14 +1106,16 @@ p.login-error-icon {
    color: @triple-word;
 }
 
-div.heading {
-   position: relative;
-   width: 100%;
-   height: 72px;
-   background-color: @board-background;
-   top: 0; left: 0;
-   padding-left: 0;
-   padding-right: 0;
+div.leftplayer {
+   display: inline-block;
+   width: 50%;
+   text-align: left;
+}
+
+div.rightplayer {
+   display: inline-block;
+   width: 50%;
+   text-align: right;
 }
 
 div.right-tab {
@@ -1075,6 +1178,7 @@ div.right-tab.alert > span.glyphicon {
 }
 
 div.right-area {
+   display: none;
    position: relative;
    left: 0;
    height: @mobile-height-net - @board-top - @margin-small;
@@ -1091,13 +1195,26 @@ div.right-area.with-clock {
    margin-top: 48px;
 }
 
+div.message {
+   text-align: center;
+   font-size: 14px;
+   line-height: 26px;
+   height: 28px;
+   background-color: @racktile;
+   font-weight: 400;
+}
+
+div.message strong {
+   text-transform: uppercase;
+}
+
 div.movelist-container {
    position: absolute;
    top: 0;
    left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - 3 * @margin-small;
-   background-color: @background;
+   background-color: @board-background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
    z-index: 6;
@@ -1193,6 +1310,7 @@ div.error {
 
 div.opp-turn {
    .bottom-message;
+   display: none;
    left: @margin-small * 2 + @btn-width-small + 8px;
    width: @mobile-width - 4 * @margin-small - @btn-width-small - 8px;
 }
@@ -1286,7 +1404,7 @@ div.modal-close#chat-send {
    margin: 0 0 2px 8px;
    padding-top: 4px;
    padding-bottom: 0;
-   background-color: darken(@double-letter, 10%);
+   background-color: @double-letter;
    color: white;
 }
 
@@ -1359,18 +1477,11 @@ div.tabbed-page {
    line-height: 23px;
 }
 
-/*
-ul.ui-tabs-nav {
-   display: none;
-}
-*/
-
 div.help-container img {
    /* On mobile, scale images in help text down to fit the column width */
    max-width: 100%;
    height: auto;
    object-fit: scale-down;
-   /* transform: scale(0.75); */
 }
 
 div#tabs,
@@ -1723,33 +1834,6 @@ div.fairplay {
    display: none;
 }
 
-div.home {
-   padding-top: 4px;
-   font-size: 22px;
-   line-height: 24px;
-   display: block;
-   text-align: center;
-   color: @container;
-}
-
-div.circle {
-   height: 38px;
-   width: 38px;
-   background-color: @double-letter;
-   border-radius: 50%;
-   display: inline-block;
-   position: relative;
-   top: -6px;
-}
-
-a.backlink div.circle:hover {
-   background-color: @pass-btn;
-}
-
-div.circle span.glyphicon {
-   top: 8px;
-}
-
 div.user-cat span#break {
    display: inline;
 }
@@ -2025,7 +2109,7 @@ div#own-toggler {
 p#own-best {
    display: inline-block;
    position: absolute;
-   left: 46px;
+   left: 34px;
    top: 68px;
    text-align: right;
    font-size: 0.85em;
@@ -2131,6 +2215,7 @@ div.xchgsel {
 }
 
 div.freshtile {
+   color: @cell-border;
    background-color: @freshtile;
 }
 
@@ -2141,6 +2226,7 @@ div.highlight0 {
 
 div.highlight1 {
    /* Computer (remote) player */
+   color: @cell-border;
    background-color: @freshtile;
 }
 
@@ -2462,7 +2548,7 @@ div #gamestarted {
 }
 
 .humancolor {
-   background-color: @racktile;
+   background-color: @player;
 }
 
 .autoplayercolor {
@@ -2470,19 +2556,19 @@ div #gamestarted {
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, @racktile, @background, @background);
+   background: linear-gradient(to right, @player, @board-background, @board-background);
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @background, @background, @freshtile);
+   background: linear-gradient(to right, @board-background, @board-background, @freshtile);
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @background, @background, @racktile);
+   background: linear-gradient(to right, @board-background, @board-background, @player);
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @freshtile, @background, @background);
+   background: linear-gradient(to right, @freshtile, @board-background, @board-background);
 }
 
 span.score {
@@ -3811,6 +3897,8 @@ div.explain {
    margin-bottom: 12px;
    font-size: 14px;
    text-align: left;
+   font-style: italic;
+   color: @hint;
 }
 
 div.subexplain {
@@ -3821,6 +3909,8 @@ div.subexplain {
    margin-left: 18px;
    margin-right: 6px;
    font-size: 14px;
+   // font-style: italic;
+   color: @hint;
 }
 
 div.errinput {

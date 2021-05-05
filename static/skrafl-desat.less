@@ -8,17 +8,18 @@
 
 */
 
+@pure-blue: #78aee6;
+@hover-tab: @pure-blue;
 @board-background: desaturate(#afb8bf, 40%); /* Pantone 7543 U */
 @double-word: desaturate(#f7d2d8, 40%); /* Pantone 698 U */
 @triple-word: desaturate(#ee4f68, 40%); /* Pantone 192 U */
-@pure-blue: #78aee6;
-@hover-tab: @pure-blue;
 @double-letter: desaturate(@pure-blue, 40%); /* Pantone 284 U */
 @triple-letter: desaturate(#006db8, 40%); /* Pantone 300 U */
 @alert: desaturate(#ee4f68, 40%); /* Pantone 192 U */
 @tile: desaturate(#e4ad87, 10%); /* Pantone 721 U */
 @racktile: desaturate(#fcce43, 10%); /* Pantone 7404 U */
 @freshtile: desaturate(#7ad3b7, 10%); /* Pantone 337 U */
+@player: @racktile;
 @cell-border: #e8e8e8; /* #f2f2f2; */
 @neutral: desaturate(#222222, 40%);
 @box-shadow: #333333;
@@ -31,14 +32,16 @@
 @statsbackground: rgba(255, 255, 255, 0.95);
 @nav-btn: @pass-btn;
 @close-btn: @freshtile;
+@submit-btn: darken(@freshtile, 10%);
 @help-link: @triple-letter;
 @focal: #ffffc8; /* Pale yellow */
-@chat-background: desaturate(lighten(@board-background, 10%), 10%);
+@chall-btn: @triple-letter;
+@score-manual: @double-letter;
 @chall-btn: @triple-letter;
 @score-manual: @double-letter;
 @tab-background: #f4f4f4;
 @almost-black: #202020;
-@clock-digits: #000000;
+@clock-digits: @almost-black;
 @board-center: @almost-black;
 
 @theme1: fade(@racktile, 10%);
@@ -52,5 +55,9 @@
 @font2: 'Helvetica Neue';
 @font3: 'Arial';
 @font4: sans-serif;
+@tile-font: 'Open Sans';
 
 @import 'main.less';
+@import 'portrait.less';
+@import 'landscape.less';
+@import 'fullscreen.less';
