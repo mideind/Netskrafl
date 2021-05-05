@@ -2,10 +2,10 @@
 
     Word dictionary implemented with a DAWG
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     DawgDictionary uses a Directed Acyclic Word Graph (DAWG) internally
@@ -58,10 +58,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Union, Optional, Tuple, Iterator, List
+from typing import Dict, Optional, Tuple, Iterator, List
 
 import os
-import sys
 import threading
 import logging
 import time
@@ -195,7 +194,8 @@ class Wordbase:
     # Known dictionaries
     DAWGS = [
         ("ordalisti", IcelandicAlphabet),
-        ("algeng", IcelandicAlphabet),
+        ("amlodi", IcelandicAlphabet),
+        ("midlungur", IcelandicAlphabet),
         ("sowpods", EnglishAlphabet),
         ("TWL06", EnglishAlphabet),
     ]
@@ -210,7 +210,10 @@ class Wordbase:
         with Wordbase._lock:
             if not Wordbase._dawg:
                 for dawg, alphabet in Wordbase.DAWGS:
-                    Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
+                    try:
+                        Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
+                    except FileNotFoundError:
+                        logging.warning("Unable to load DAWG {0}".format(dawg))
 
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
@@ -230,7 +233,7 @@ class Wordbase:
         return dawg
 
     @staticmethod
-    def dawg():
+    def dawg() -> PackedDawgDictionary:
         """Return the main dictionary DAWG object, associated with the
         current thread, i.e. the current user's locale"""
         return Wordbase._dawg[current_vocabulary()]
@@ -245,10 +248,16 @@ class Wordbase:
         return ([], []) if dawg is None else dawg.two_letter_words()
 
     @staticmethod
-    def dawg_common():
+    def dawg_common() -> PackedDawgDictionary:
         """ Return the common words DAWG object """
         # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Amlóði'
-        return Wordbase._dawg["algeng"]
+        return Wordbase._dawg["amlodi"]
+
+    @staticmethod
+    def dawg_medium() -> PackedDawgDictionary:
+        """ Return the medium level DAWG object """
+        # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Miðlungur'
+        return Wordbase._dawg["midlungur"]
 
     @staticmethod
     def warmup() -> bool:

@@ -2,10 +2,10 @@
 
     Firebase wrapper for Netskrafl
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module implements a thin wrapper around the Google Firebase
@@ -15,11 +15,9 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Set, Dict
+from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict, cast
 
 import os
-import time
-import base64
 import json
 import threading
 import logging
@@ -33,33 +31,36 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
 
-_PROJECT_ID = os.environ.get("PROJECT_ID", "")
-_FIREBASE_DB_URL = "https://{0}.firebaseio.com".format(_PROJECT_ID)
-_IDENTITY_ENDPOINT = (
-    "https://identitytoolkit.googleapis.com/"
-    "google.identity.identitytoolkit.v1.IdentityToolkit"
-)
-_FIREBASE_SCOPES = [
+_PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
+
+assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
+
+# Select Firebase database URL depending on project ID
+_FIREBASE_DB: Mapping[str, str] = {
+    "netskrafl": "https://netskrafl.firebaseio.com",
+    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
+}
+_FIREBASE_DB_URL: str = _FIREBASE_DB[_PROJECT_ID]
+
+_FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",
     "https://www.googleapis.com/auth/userinfo.email",
 ]
-_TIMEOUT = 15  # Seconds
+_TIMEOUT: int = 15  # Seconds
 
-_HEADERS = {"Connection": "keep-alive"}
+_HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
 
 # Initialize thread-local storage
 _tls = threading.local()
-
-assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 
 def _get_http() -> httplib2.Http:
     """ Provides an authorized HTTP object, one per thread """
     if not hasattr(_tls, "_HTTP") or _tls._HTTP is None:
-        http = httplib2.Http(timeout=_TIMEOUT)
+        http: httplib2.Http = cast(Any, httplib2).Http(timeout=_TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
-        creds = GoogleCredentials.get_application_default().create_scoped(
+        creds = cast(Any, GoogleCredentials).get_application_default().create_scoped(
             _FIREBASE_SCOPES
         )
         creds.authorize(http)
@@ -68,13 +69,19 @@ def _get_http() -> httplib2.Http:
     return _tls._HTTP
 
 
-def _request(*args, **kwargs) -> Tuple[httplib2.Response, str]:
+def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     """ Attempt to post a Firebase request, with recovery on a ConnectionError """
     MAX_ATTEMPTS = 2
     attempts = 0
+    response: httplib2.Response
+    content: bytes
     while attempts < MAX_ATTEMPTS:
         try:
-            return _get_http().request(*args, headers=_HEADERS, **kwargs)
+            kw: Dict[str, Any] = kwargs.copy()
+            kw["headers"] = _HEADERS
+            response, content = cast(Any, _get_http()).request(*args, **kw)
+            assert isinstance(content, bytes)
+            return response, content
         except ConnectionError:
             # Note that BrokenPipeError is a subclass of ConnectionError
             if attempts == MAX_ATTEMPTS - 1:
@@ -95,9 +102,9 @@ def _request(*args, **kwargs) -> Tuple[httplib2.Response, str]:
     assert False, "Unexpected fall out of loop in firebase._request()"
 
 
-def _firebase_put(
+def _firebase_put(  # type: ignore
     path: str, message: Optional[str] = None
-) -> Tuple[httplib2.Response, str]:
+) -> Tuple[httplib2.Response, bytes]:
     """ Writes data to Firebase.
 
     An HTTP PUT writes an entire object at the given database path. Updates to
@@ -110,7 +117,7 @@ def _firebase_put(
     return _request(path, method="PUT", body=message)
 
 
-def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Read the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -123,7 +130,7 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="GET")
 
 
-def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
+def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
     """ Update the data at the given path.
 
     An HTTP GET request allows reading of data at a particular path.
@@ -136,7 +143,7 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="PATCH", body=message)
 
 
-def _firebase_delete(path: str) -> Tuple[httplib2.Response, str]:
+def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Delete the data at the given path.
 
     An HTTP DELETE request allows deleting of the data at the given path.
@@ -148,7 +155,7 @@ def _firebase_delete(path: str) -> Tuple[httplib2.Response, str]:
     return _request(path, method="DELETE")
 
 
-def send_message(message: Optional[Dict], *args: str) -> bool:
+def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """ Updates data in Firebase. If a message object is provided, then it updates
         the data at the given location (whose path is built as a concatenation
         of the *args list) with the message using the PATCH http method.
@@ -257,7 +264,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:
         try:
-            return auth.create_custom_token(uid).decode()
+            return cast(Any, auth).create_custom_token(uid).decode()
         except:
             # It appears that ConnectionResetError exceptions can
             # propagate (wrapped in an obscure Firebase object) from

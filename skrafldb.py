@@ -2,10 +2,10 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module stores data in the Google App Engine NDB
@@ -65,6 +65,9 @@ from __future__ import annotations
 
 from typing import (
     Dict,
+    Generic,
+    Literal,
+    Sequence,
     Set,
     Tuple,
     Optional,
@@ -72,9 +75,13 @@ from typing import (
     Iterable,
     List,
     Any,
+    Type,
+    TypeVar,
+    TypedDict,
     Union,
     Callable,
     cast,
+    overload,
 )
 
 import logging
@@ -84,15 +91,209 @@ from datetime import datetime
 
 from google.cloud import ndb  # type: ignore
 
-from languages import current_alphabet
 from cache import memcache
 
 
 # Type definitions
+_T = TypeVar("_T")
+
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
 ChallengeTuple = Tuple[Optional[str], Optional[PrefsDict], datetime]
-StatsResults = List[Dict[str, Union[None, str, int]]]
+
+
+class StatsDict(TypedDict):
+    user: Optional[str]
+    robot_level: int
+    timestamp: datetime
+    games: int
+    elo: int
+    score: int
+    score_against: int
+    wins: int
+    losses: int
+    rank: int
+
+
+StatsResults = List[StatsDict]
+
+
+class Query(Generic[_T], ndb.Query):
+
+    """ A type-safer wrapper around ndb.Query """
+
+    def order(self, *args: Any, **kwargs: Any) -> Query[_T]:
+        f: Callable[..., Query[_T]] = cast(Any, super()).order
+        return f(*args, **kwargs)
+
+    def filter(self, *args: Any, **kwargs: Any) -> Query[_T]:
+        f: Callable[..., Query[_T]] = cast(Any, super()).filter
+        return f(*args, **kwargs)
+    
+    def fetch(self, *args: Any, **kwargs: Any) -> List[_T]:
+        f: Callable[..., List[_T]] = cast(Any, super()).fetch
+        return f(*args, **kwargs)
+
+    def fetch_async(self, *args: Any, **kwargs: Any) -> Future[_T]:
+        f: Callable[..., Future[_T]] = cast(Any, super()).fetch_async
+        return f(*args, **kwargs)
+
+    def fetch_page(self, *args: Any, **kwargs: Any) -> Tuple[Iterable[_T], int, bool]:
+        f: Callable[..., Tuple[Iterable[_T], int, bool]] = cast(Any, super()).fetch_page
+        return f(*args, **kwargs)
+
+    @overload
+    def get(self, keys_only: Literal[True]) -> Optional[Key]:
+        ...
+
+    @overload
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T]:
+        ...
+
+    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key, _T]:
+        f: Callable[..., Union[None, Key, _T]] = cast(Any, super()).get
+        return f(*args, **kwargs)
+
+    def count(self, *args: Any, **kwargs: Any) -> int:
+        return cast(Any, super()).count(*args, **kwargs)
+
+    @overload
+    def iter(self, keys_only: Literal[True]) -> Iterable[Key]:
+        ...
+
+    @overload
+    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T]:
+        ...
+
+    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T]]:
+        f: Callable[..., Union[Iterable[Key], Iterable[_T]]] = cast(Any, super()).iter
+        return f(*args, **kwargs)
+
+
+class Future(Generic[_T], ndb.Future):
+
+    """ A type-safer wrapper around ndb.Future """
+
+    def get_result(self) -> List[_T]:
+        f: Callable[[], List[_T]] = cast(Any, super()).get_result
+        return f()
+
+    @staticmethod
+    def wait_all(futures: Sequence[Future[_T]]) -> None:
+        cast(Any, ndb.Future).wait_all(futures)
+
+
+class Key(ndb.Key):
+
+    """ A type-safer wrapper around ndb.Key """
+
+    def id(self) -> str:
+        return cast(str, super().id())
+
+    def parent(self) -> Optional[Key]:
+        return cast(Optional[Key], super().parent())
+
+    def delete(self, *args: Any, **kwargs: Any) -> None:
+        cast(Any, super()).delete(*args, **kwargs)
+
+
+_T_Model = TypeVar("_T_Model", bound="Model")
+
+
+class Model(ndb.Model):
+
+    """ A type-safer wrapper around ndb.Model """
+
+    @property
+    def key(self) -> Key:
+        return cast(Key, cast(Any, super()).key)
+
+    def put(self, **kwargs: Any) -> Key:
+        return cast(Any, super()).put(**kwargs)
+
+    @classmethod
+    def put_multi(cls: Type[_T_Model], recs: Iterable[_T_Model]) -> None:
+        put_multi(recs)
+
+    @classmethod
+    def get_by_id(cls: Type[_T_Model], identifier: str, **kwargs: Any) -> Optional[_T_Model]:
+        return cast(Any, super()).get_by_id(identifier, **kwargs)
+
+    @classmethod
+    def query(cls: Type[_T_Model], *args: Any, **kwargs: Any) -> Query[_T_Model]:
+        return cast(Query[_T_Model], cast(Any, super()).query(*args, **kwargs))
+
+    @staticmethod
+    def DbKey(kind: Type[_T_Model], indexed: bool = True) -> Key:
+        return cast(Key, ndb.KeyProperty(kind=kind, required=True, indexed=indexed))
+
+    @staticmethod
+    def OptionalDbKey(kind: Type[_T_Model], indexed: bool = True) -> Optional[Key]:
+        return cast(
+            Optional[Key],
+            ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
+        )
+
+    @staticmethod
+    def Str() -> str:
+        return cast(str, ndb.StringProperty(required=True))
+
+    @staticmethod
+    def OptionalStr(default: Optional[str] = None) -> Optional[str]:
+        return cast(Optional[str], ndb.StringProperty(required=False, default=default))
+
+    @staticmethod
+    def Bool() -> bool:
+        return cast(bool, ndb.BooleanProperty(required=True))
+
+    @staticmethod
+    def OptionalBool(default: Optional[bool] = None) -> Optional[bool]:
+        return cast(
+            Optional[bool], ndb.BooleanProperty(required=False, default=default)
+        )
+
+    @staticmethod
+    def Int(default: Optional[int] = None, indexed: bool = False) -> int:
+        return cast(
+            int,
+            ndb.IntegerProperty(
+                required=(default is None), default=default, indexed=indexed
+            ),
+        )
+
+    @staticmethod
+    def OptionalInt(
+        default: Optional[int] = None, indexed: bool = False
+    ) -> Optional[int]:
+        return cast(
+            Optional[int],
+            ndb.IntegerProperty(required=False, default=default, indexed=indexed),
+        )
+
+    @staticmethod
+    def Datetime(
+        default: Optional[datetime] = None,
+        indexed: bool = False,
+        auto_now_add: bool = False,
+    ) -> datetime:
+        return cast(
+            datetime,
+            ndb.DateTimeProperty(
+                required=True,
+                default=default,
+                indexed=indexed,
+                auto_now_add=auto_now_add,
+            ),
+        )
+
+    @staticmethod
+    def OptionalDatetime(
+        default: Optional[datetime] = None, indexed: bool = False
+    ) -> Optional[datetime]:
+        return cast(
+            Optional[datetime],
+            ndb.DateTimeProperty(required=False, default=default, indexed=indexed),
+        )
 
 
 class Client:
@@ -121,12 +322,14 @@ class Context:
     @staticmethod
     def disable_cache() -> None:
         """ Disable the NDB in-context cache """
-        ndb.get_context().set_cache_policy(False)
+        ctx = cast(Any, ndb).get_context()
+        assert ctx is not None
+        ctx.set_cache_policy(False)
 
 
 class Unique:
 
-    """ Wrapper for generation of unique id strings for keys """
+    """ Utility class for generation of unique id strings for keys """
 
     def __init__(self) -> None:
         pass
@@ -138,11 +341,11 @@ class Unique:
 
 
 def iter_q(
-    q: ndb.Query,
+    q: Query[_T],
     chunk_size: int = 50,
     limit: int = 0,
     projection: Optional[List[str]] = None,
-) -> Iterator:
+) -> Iterator[_T]:
     """ Generator for iterating through a query using a cursor """
     if 0 < limit < chunk_size:
         # Don't fetch more than we want
@@ -165,48 +368,62 @@ def iter_q(
         )
 
 
-class UserModel(ndb.Model):
+def put_multi(recs: Iterable[Model]) -> None:
+    """ Type-safer call to ndb.put_multi() """
+    cast(Any, ndb).put_multi(recs)
+
+
+def delete_multi(keys: Iterable[Key]) -> None:
+    """ Type-safer call to ndb.delete_multi() """
+    cast(Any, ndb).delete_multi(keys)
+
+
+class UserModel(Model):
 
     """ Models an individual user """
 
-    nickname = ndb.StringProperty()
-    email = ndb.StringProperty(required=False, default=None)
-    # Google Account identifier (unfortunately different from GAE user id)
-    account = ndb.StringProperty(required=False, default=None)
+    nickname = Model.Str()
+
+    email = Model.OptionalStr()
+
+    # OAuth2 account identifier (unfortunately different from GAE user id)
+    # optionally prefixed by the authentication provider id (default: 'google:')
+    account = Model.OptionalStr()
 
     # Lower case nickname and full name of user - used for search
-    nick_lc = ndb.StringProperty(required=False, default=None)
-    name_lc = ndb.StringProperty(required=False, default=None)
+    nick_lc = Model.OptionalStr()
+    name_lc = Model.OptionalStr()
 
-    inactive = ndb.BooleanProperty()
+    # Is the user no longer active/enabled?
+    inactive = Model.Bool()
     # The user's preferred locale, i.e. language and other settings
-    locale = ndb.StringProperty(required=False, default="is_IS")
+    locale = Model.OptionalStr(default="is_IS")
     # Preferences dictionary
-    prefs = ndb.JsonProperty()
+    prefs = cast(PrefsDict, ndb.JsonProperty())
     # Creation time of the user entity
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True)
     # Last login for the user
-    last_login = ndb.DateTimeProperty(required=False)
+    last_login = Model.OptionalDatetime()
     # Ready for challenges?
-    ready = ndb.BooleanProperty(required=False, default=False)
+    ready = Model.OptionalBool(default=False)
     # Ready for timed challenges?
-    ready_timed = ndb.BooleanProperty(required=False, default=False)
+    ready_timed = Model.OptionalBool(default=False)
     # Elo points
-    elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    elo = Model.Int(default=0, indexed=True)
     # Elo points for human-only games
-    human_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    human_elo = Model.Int(default=0, indexed=True)
     # Elo points for manual (competition) games
-    manual_elo = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    manual_elo = Model.Int(default=0, indexed=True)
     # Best total score in a game
-    highest_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    highest_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
-    highest_score_game = ndb.StringProperty(required=False, default=None)
+    highest_score_game = Model.OptionalStr()
     # Best word laid down
     # Note: indexing of string properties is mandatory
-    best_word = ndb.StringProperty(required=False, default=None)
-    best_word_score = ndb.IntegerProperty(required=False, default=0, indexed=True)
+    best_word = Model.OptionalStr()
+    best_word_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
-    best_word_game = ndb.StringProperty(required=False, default=None)
+    best_word_game = Model.OptionalStr()
 
     @classmethod
     def create(
@@ -217,9 +434,9 @@ class UserModel(ndb.Model):
         nickname: str,
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
-    ):
+    ) -> str:
         """ Create a new user """
-        user = cls(id=user_id)
+        user: UserModel = cls(id=user_id)
         user.account = account
         user.email = email
         user.nickname = nickname  # Default to the same nickname
@@ -239,7 +456,8 @@ class UserModel(ndb.Model):
 
     @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
-        """ Attempt to fetch a user by Google account id """
+        """ Attempt to fetch a user by OAuth2 account id,
+            prefixed by the authentication provider """
         q = cls.query(UserModel.account == account)
         return q.get()
 
@@ -270,20 +488,19 @@ class UserModel(ndb.Model):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys = [ndb.Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
+            keys = [Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
             len_keys = len(keys)
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
-                return ndb.get_multi(keys)
+                return cast(Any, ndb).get_multi(keys)
             # Otherwise, accumulate chunks
-            result.extend(ndb.get_multi(keys))
+            result.extend(cast(Any, ndb).get_multi(keys))
             ix += len_keys
         return result
 
-    @staticmethod
-    def put_multi(recs: Iterable[UserModel]) -> None:
-        """ Insert or update multiple user records """
-        ndb.put_multi(recs)
+    def user_id(self) -> str:
+        """ Return the ndb key of a user as a string """
+        return self.key.id()
 
     @classmethod
     def count(cls) -> int:
@@ -292,7 +509,9 @@ class UserModel(ndb.Model):
         return cls.query().count()
 
     @classmethod
-    def filter_locale(cls, q: ndb.Query, locale: Optional[str]) -> ndb.Query:
+    def filter_locale(
+        cls, q: Query[UserModel], locale: Optional[str]
+    ) -> Query[UserModel]:
         """Filter the query by locale, if given, otherwise stay
         with the is_IS default"""
         # FIXME: To be modified once locale support is fully in place
@@ -305,7 +524,7 @@ class UserModel(ndb.Model):
 
     @classmethod
     def list_prefix(
-        cls, prefix: str, max_len=50, locale: Optional[str] = None
+        cls, prefix: str, max_len: int = 50, locale: Optional[str] = None
     ) -> Iterator[Dict[str, Any]]:
         """ Query for a list of users having a name or nick with the given prefix """
 
@@ -317,7 +536,7 @@ class UserModel(ndb.Model):
         id_set: Set[str] = set()
 
         def list_q(
-            q: ndb.Query, f: Callable[[UserModel], str]
+            q: Query[UserModel], f: Callable[[UserModel], str]
         ) -> Iterator[Dict[str, Any]]:
             """ Yield the results of a user query """
             CHUNK_SIZE = 50
@@ -343,7 +562,8 @@ class UserModel(ndb.Model):
         counter = 0
 
         # Return users with nicknames matching the prefix
-        q = cls.query(UserModel.nick_lc >= prefix).order(UserModel.nick_lc)
+        q: Query[UserModel]
+        q = cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc)
         q = cls.filter_locale(q, locale)
 
         for ud in list_q(q, lambda um: um.nick_lc or ""):
@@ -354,10 +574,11 @@ class UserModel(ndb.Model):
                 return
 
         # Return users with full names matching the prefix
-        q = cls.query(UserModel.name_lc >= prefix).order(UserModel.name_lc)
+        q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
         q = cls.filter_locale(q, locale)
 
-        for ud in list_q(q, lambda um: um.name_lc or ""):
+        um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
+        for ud in list_q(q, um_func):
             yield ud
             counter += 1
             if 0 < max_len <= counter:
@@ -371,16 +592,14 @@ class UserModel(ndb.Model):
         """ List users with a similar (human) Elo rating """
         # Start with max_len users with a lower Elo rating
 
-        def fetch(q: ndb.Query, max_len: int) -> Iterator[str]:
+        def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
             """ Generator for returning query result keys """
             assert max_len > 0
-            # pylint: disable=bad-continuation
             counter = 0  # Number of results already returned
-            for k in iter_q(
-                q, chunk_size=max_len, projection=["highest_score", "inactive"]
-            ):
-                if k.highest_score > 0 and not k.inactive:
-                    # Is active and has played at least one game: Yield the key value
+            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
+                if k.highest_score > 0:
+                    # Has played at least one game: Yield the key value
+                    # Note that inactive users will be filtered out at a later stage
                     yield k.key.id()
                     counter += 1
                     if counter >= max_len:
@@ -388,6 +607,7 @@ class UserModel(ndb.Model):
                         return
 
         # Descending order
+        q: Query[UserModel]
         q = cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo)
         q = cls.filter_locale(q, locale)
         lower = list(fetch(q, max_len))
@@ -427,94 +647,108 @@ class UserModel(ndb.Model):
         return result
 
 
-class MoveModel(ndb.Model):
+class MoveModel(Model):
 
     """ Models a single move in a Game """
 
-    coord = ndb.StringProperty()
-    tiles = ndb.StringProperty()
-    score = ndb.IntegerProperty(default=0)
-    rack = ndb.StringProperty(required=False, default=None)
-    timestamp = ndb.DateTimeProperty(required=False, default=None)
+    coord = Model.Str()
+    tiles = Model.Str()
+    score = Model.Int(default=0)
+    rack = Model.OptionalStr()
+    timestamp = Model.OptionalDatetime()
 
 
-class GameModel(ndb.Model):
+class GameModel(Model):
 
     """ Models a game between two users """
 
     # The players
-    player0 = ndb.KeyProperty(kind=UserModel)
-    player1 = ndb.KeyProperty(kind=UserModel)
+    player0 = Model.OptionalDbKey(kind=UserModel)
+    player1 = Model.OptionalDbKey(kind=UserModel)
 
-    # The racks
-    rack0 = ndb.StringProperty(indexed=False)
-    rack1 = ndb.StringProperty(indexed=False)
+    rack0 = Model.Str()  # Must be indexed
+    rack1 = Model.Str()  # Must be indexed
 
     # The scores
-    score0 = ndb.IntegerProperty(indexed=False)
-    score1 = ndb.IntegerProperty(indexed=False)
+    score0 = Model.Int(indexed=False)
+    score1 = Model.Int(indexed=False)
 
     # Whose turn is it next, 0 or 1?
-    to_move = ndb.IntegerProperty(indexed=False)
+    to_move = Model.Int(indexed=False)
 
     # How difficult should the robot player be (if the opponent is a robot)?
     # None or 0 = most difficult
-    robot_level = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    robot_level = Model.Int(indexed=False, default=0)
 
     # Is this game over?
-    over = ndb.BooleanProperty()
+    over = Model.Bool()
 
     # When was the game started?
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True)
 
     # The timestamp of the last move in the game
-    ts_last_move = ndb.DateTimeProperty(required=False, default=None)
+    ts_last_move = Model.OptionalDatetime()
 
     # The moves so far
-    moves = ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False)
+    moves = cast(
+        Iterable[MoveModel],
+        ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False),
+    )
 
     # The initial racks
-    irack0 = ndb.StringProperty(required=False, indexed=False, default=None)
-    irack1 = ndb.StringProperty(required=False, indexed=False, default=None)
+    irack0 = Model.OptionalStr()  # Must be indexed
+    irack1 = Model.OptionalStr()  # Must be indexed
 
     # Game preferences, such as duration, alternative bags or boards, etc.
-    prefs = ndb.JsonProperty(required=False, default=None)
+    prefs = cast(PrefsDict, ndb.JsonProperty(required=False, default=None))
 
     # Count of tiles that have been laid on the board
-    tile_count = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    tile_count = Model.OptionalInt()
 
     # Elo statistics properties - only defined for finished games
     # Elo points of both players when game finished, before adjustment
-    elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    elo0 = Model.OptionalInt()
+    elo1 = Model.OptionalInt()
     # Adjustment of Elo points of both players as a result of this game
-    elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    elo0_adj = Model.OptionalInt()
+    elo1_adj = Model.OptionalInt()
     # Human-only Elo points of both players when game finished
     # (not defined if robot game)
-    human_elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    human_elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    human_elo0 = Model.OptionalInt()
+    human_elo1 = Model.OptionalInt()
     # Human-only Elo point adjustment as a result of this game
-    human_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    human_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    human_elo0_adj = Model.OptionalInt()
+    human_elo1_adj = Model.OptionalInt()
     # Manual-only Elo points of both players when game finished
     # (not defined unless this is a manual (competition) game)
-    manual_elo0 = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    manual_elo1 = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    manual_elo0 = Model.OptionalInt()
+    manual_elo1 = Model.OptionalInt()
     # Manual-only Elo point adjustment as a result of this game
-    manual_elo0_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
-    manual_elo1_adj = ndb.IntegerProperty(required=False, indexed=False, default=None)
+    manual_elo0_adj = Model.OptionalInt()
+    manual_elo1_adj = Model.OptionalInt()
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """ Set a player key property to point to a given user, or None """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        k = None if user_id is None else Key(UserModel, user_id)
         if ix == 0:
             self.player0 = k
         elif ix == 1:
             self.player1 = k
 
+    def player0_id(self) -> Optional[str]:
+        """ Return the user id of player 0, if any """
+        if (p := self.player0) is None:
+            return None
+        return p.id()
+
+    def player1_id(self) -> Optional[str]:
+        """ Return the user id of player 1, if any """
+        if (p := self.player1) is None:
+            return None
+        return p.id()
+
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool = True) -> GameModel:
+    def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
         """ Fetch a game entity given its uuid """
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
@@ -533,8 +767,8 @@ class GameModel(ndb.Model):
         def game_callback(gm: GameModel) -> Dict[str, Any]:
             """ Map a game entity to a result dictionary with useful info about the game """
             game_uuid = gm.key.id()
-            u0 = None if gm.player0 is None else gm.player0.id()
-            u1 = None if gm.player1 is None else gm.player1.id()
+            u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
+            u1: Optional[str] = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
                 # Player 0 is the source player, 1 is the opponent
                 opp = u1
@@ -564,11 +798,14 @@ class GameModel(ndb.Model):
                 prefs=gm.prefs,
             )
 
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
+
+        q0: Query[GameModel]
+        q1: Query[GameModel]
 
         if versus:
             # Add a filter on the opponent
-            v = ndb.Key(UserModel, versus)
+            v = Key(UserModel, versus)
             q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
             q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
         else:
@@ -577,13 +814,15 @@ class GameModel(ndb.Model):
             q1 = cls.query(GameModel.player1 == k)
 
         # pylint: disable=singleton-comparison
-        q0 = q0.filter(GameModel.over == True).order(-GameModel.ts_last_move)
-        q1 = q1.filter(GameModel.over == True).order(-GameModel.ts_last_move)
+        # The cast to int below is a hack for type checking
+        # (it has no effect at run-time)
+        q0 = q0.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
+        q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
 
         # Issue two asynchronous queries in parallel
         qf = (q0.fetch_async(max_len), q1.fetch_async(max_len))
         # Wait for both of them to finish
-        ndb.Future.wait_all(qf)
+        Future.wait_all(qf)
 
         # Combine the two query result lists and call game_callback() on each item
         rlist = map(game_callback, qf[0].get_result() + qf[1].get_result())
@@ -598,19 +837,19 @@ class GameModel(ndb.Model):
         """ Query for a list of active games for the given user """
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         # pylint: disable=singleton-comparison
-        q = (
+        q: Query[GameModel] = (
             cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k))
             .filter(GameModel.over == False)
-            .order(-GameModel.ts_last_move)
+            .order(-cast(int, GameModel.ts_last_move))
         )
 
-        def game_callback(gm: GameModel):
+        def game_callback(gm: GameModel) -> Dict[str, Any]:
             """ Map a game entity to a result tuple with useful info about the game """
             game_uuid = gm.key.id()
-            u0 = None if gm.player0 is None else gm.player0.id()
-            u1 = None if gm.player1 is None else gm.player1.id()
+            u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
+            u1: Optional[str] = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
                 # Player 0 is the source player, 1 is the opponent
                 opp = u1
@@ -649,18 +888,18 @@ class GameModel(ndb.Model):
             yield game_callback(gm)
 
 
-class FavoriteModel(ndb.Model):
+class FavoriteModel(Model):
 
     """ Models the fact that a user has marked another user as a favorite """
 
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
 
     # The originating (source) user is the parent/ancestor of the relation
-    destuser = ndb.KeyProperty(kind=UserModel)
+    destuser = Model.DbKey(kind=UserModel)
 
     def set_dest(self, user_id: str) -> None:
         """ Set a destination user key property """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        k = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
@@ -671,9 +910,9 @@ class FavoriteModel(ndb.Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
-        q = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
+        k = Key(UserModel, user_id)
+        q: Query[FavoriteModel] = cls.query(ancestor=k)
+        for fm in q.fetch(max_len, read_consistency=cast(Any, ndb).EVENTUAL):
             if fm.destuser is not None:
                 yield fm.destuser.id()
 
@@ -684,51 +923,55 @@ class FavoriteModel(ndb.Model):
         """ Return True if destuser is a favorite of user """
         if srcuser_id is None or destuser_id is None:
             return False
-        ks = ndb.Key(UserModel, srcuser_id)
-        kd = ndb.Key(UserModel, destuser_id)
-        q = cls.query(ancestor=ks).filter(FavoriteModel.destuser == kd)
+        ks = Key(UserModel, srcuser_id)
+        kd = Key(UserModel, destuser_id)
+        q: Query[FavoriteModel] = cls.query(ancestor=ks).filter(
+            FavoriteModel.destuser == kd
+        )
         return q.get(keys_only=True) is not None
 
     @classmethod
     def add_relation(cls, src_id: str, dest_id: str) -> None:
         """ Add a favorite relation between the two users """
-        fm = FavoriteModel(parent=ndb.Key(UserModel, src_id))
+        fm = FavoriteModel(parent=Key(UserModel, src_id))
         fm.set_dest(dest_id)
         fm.put()
 
     @classmethod
     def del_relation(cls, src_id: str, dest_id: str) -> None:
         """ Delete a favorite relation between a source user and a destination user """
-        ks = ndb.Key(UserModel, src_id)
-        kd = ndb.Key(UserModel, dest_id)
+        ks = Key(UserModel, src_id)
+        kd = Key(UserModel, dest_id)
         while True:
             # There might conceivably be more than one relation,
             # so repeat the query/delete cycle until we don't find any more
-            q = cls.query(ancestor=ks).filter(FavoriteModel.destuser == kd)
+            q: Query[FavoriteModel] = cls.query(ancestor=ks).filter(
+                FavoriteModel.destuser == kd
+            )
             fmk = q.get(keys_only=True)
             if fmk is None:
                 return
             fmk.delete()
 
 
-class ChallengeModel(ndb.Model):
+class ChallengeModel(Model):
 
     """ Models a challenge issued by a user to another user """
 
     # The challenging (source) user is the parent/ancestor of the relation
 
     # The challenged user
-    destuser = ndb.KeyProperty(kind=UserModel)
+    destuser = Model.DbKey(kind=UserModel)
 
     # The parameters of the challenge (time, bag type, etc.)
-    prefs = ndb.JsonProperty()
+    prefs = cast(PrefsDict, ndb.JsonProperty())
 
     # The time of issuance
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """ Set a destination user key property """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        k = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
@@ -738,9 +981,11 @@ class ChallengeModel(ndb.Model):
         """ Return True if srcuser has issued a challenge to destuser """
         if srcuser_id is None or destuser_id is None:
             return False
-        ks = ndb.Key(UserModel, srcuser_id)
-        kd = ndb.Key(UserModel, destuser_id)
-        q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
+        ks = Key(UserModel, srcuser_id)
+        kd = Key(UserModel, destuser_id)
+        q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
+            ChallengeModel.destuser == kd
+        )
         return q.get(keys_only=True) is not None
 
     @classmethod
@@ -751,9 +996,11 @@ class ChallengeModel(ndb.Model):
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
             return (False, None)
-        ks = ndb.Key(UserModel, srcuser_id)
-        kd = ndb.Key(UserModel, destuser_id)
-        q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
+        ks = Key(UserModel, srcuser_id)
+        kd = Key(UserModel, destuser_id)
+        q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
+            ChallengeModel.destuser == kd
+        )
         cm = q.get()
         if cm is None:
             # Not found
@@ -767,7 +1014,7 @@ class ChallengeModel(ndb.Model):
         cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
     ) -> None:
         """ Add a challenge relation between the two users """
-        cm = ChallengeModel(parent=ndb.Key(UserModel, src_id))
+        cm = ChallengeModel(parent=Key(UserModel, src_id))
         cm.set_dest(dest_id)
         cm.prefs = {} if prefs is None else prefs
         cm.put()
@@ -777,14 +1024,16 @@ class ChallengeModel(ndb.Model):
         cls, src_id: str, dest_id: str
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """ Delete a challenge relation between a source user and a destination user """
-        ks = ndb.Key(UserModel, src_id)
-        kd = ndb.Key(UserModel, dest_id)
+        ks = Key(UserModel, src_id)
+        kd = Key(UserModel, dest_id)
         prefs: Optional[PrefsDict] = None
         found = False
         while True:
             # There might conceivably be more than one relation,
             # so repeat the query/delete cycle until we don't find any more
-            q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
+            q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
+                ChallengeModel.destuser == kd
+            )
             cm = q.get()
             if cm is None:
                 # Return the preferences of the challenge, if any
@@ -796,18 +1045,18 @@ class ChallengeModel(ndb.Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: str, max_len=20) -> Iterator[ChallengeTuple]:
+    def list_issued(cls, user_id: str, max_len: int=20) -> Iterator[ChallengeTuple]:
         """ Query for a list of challenges issued by a particular user """
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         # List issued challenges in ascending order by timestamp (oldest first)
-        q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
+        q: Query[ChallengeModel] = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map an issued challenge to a tuple of useful info """
-            id0 = None if cm.destuser is None else cm.destuser.id()
+            id0: Optional[str] = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
 
         for cm in q.fetch(max_len):
@@ -821,66 +1070,68 @@ class ChallengeModel(ndb.Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         # List received challenges in ascending order by timestamp (oldest first)
-        q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
+        q: Query[ChallengeModel] = cls.query(ChallengeModel.destuser == k).order(
+            ChallengeModel.timestamp
+        )
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """ Map a received challenge to a tuple of useful info """
             p0 = cm.key.parent()
-            id0 = None if p0 is None else p0.id()
+            id0: Optional[str] = None if p0 is None else p0.id()
             return (id0, cm.prefs, cm.timestamp)
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
 
 
-class StatsModel(ndb.Model):
+class StatsModel(Model):
 
     """ Models statistics about users """
 
     # The user associated with this statistic or None if robot
-    user = ndb.KeyProperty(kind=UserModel, indexed=True, required=False, default=None)
-    robot_level = ndb.IntegerProperty(required=False, default=0)
+    user = Model.OptionalDbKey(kind=UserModel)
+    robot_level = Model.Int(default=0, indexed=True)
 
     # The timestamp of this statistic
-    timestamp = ndb.DateTimeProperty(indexed=True, auto_now_add=True)
+    timestamp = Model.Datetime(indexed=True, auto_now_add=True)
 
-    games = ndb.IntegerProperty()
-    human_games = ndb.IntegerProperty()
-    manual_games = ndb.IntegerProperty(required=False, default=0)
+    games = Model.Int()
+    human_games = Model.Int()
+    manual_games = Model.Int(default=0)
 
-    elo = ndb.IntegerProperty(indexed=True, default=1200)
-    human_elo = ndb.IntegerProperty(indexed=True, default=1200)
-    manual_elo = ndb.IntegerProperty(required=False, indexed=True, default=1200)
+    elo = Model.Int(indexed=True, default=1200)
+    human_elo = Model.Int(indexed=True, default=1200)
+    manual_elo = Model.Int(indexed=True, default=1200)
 
-    score = ndb.IntegerProperty(indexed=False)
-    human_score = ndb.IntegerProperty(indexed=False)
-    manual_score = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    score = Model.Int()
+    human_score = Model.Int()
+    manual_score = Model.Int(default=0)
 
-    score_against = ndb.IntegerProperty(indexed=False)
-    human_score_against = ndb.IntegerProperty(indexed=False)
-    manual_score_against = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    score_against = Model.Int()
+    human_score_against = Model.Int()
+    manual_score_against = Model.Int(default=0)
 
-    wins = ndb.IntegerProperty(indexed=False)
-    losses = ndb.IntegerProperty(indexed=False)
+    wins = Model.Int()
+    losses = Model.Int()
 
-    human_wins = ndb.IntegerProperty(indexed=False)
-    human_losses = ndb.IntegerProperty(indexed=False)
+    human_wins = Model.Int()
+    human_losses = Model.Int()
 
-    manual_wins = ndb.IntegerProperty(required=False, indexed=False, default=0)
-    manual_losses = ndb.IntegerProperty(required=False, indexed=False, default=0)
+    manual_wins = Model.Int(default=0)
+    manual_losses = Model.Int(default=0)
 
     MAX_STATS = 100
 
-    def set_user(self, user_id: Optional[str], robot_level=0) -> None:
+    def set_user(self, user_id: Optional[str], robot_level: int = 0) -> None:
         """ Set the user key property """
-        k = None if user_id is None else ndb.Key(UserModel, user_id)
+        k = None if user_id is None else Key(UserModel, user_id)
         self.user = k
         self.robot_level = robot_level
 
     @classmethod
-    def create(cls, user_id: str, robot_level: int = 0) -> StatsModel:
+    def create(cls, user_id: Optional[str], robot_level: int = 0) -> StatsModel:
         """ Create a fresh instance with default values """
         sm = cls()
         sm.set_user(user_id, robot_level)
@@ -952,7 +1203,7 @@ class StatsModel(ndb.Model):
         d["manual_losses"] = self.manual_losses
 
     @staticmethod
-    def dict_key(d: Dict[str, Any]) -> str:
+    def dict_key(d: StatsDict) -> str:
         """ Return a dictionary key that works for human users and robots """
         if d["user"] is None:
             return "robot-" + str(d["robot_level"])
@@ -965,11 +1216,18 @@ class StatsModel(ndb.Model):
             return (None, int(k[6:]))
         return (k, 0)
 
+    def fetch_user(self) -> Optional[UserModel]:
+        """ Fetch the user associated with a StatsModel instance """
+        if (user := self.user) is None:
+            # Probably a robot
+            return None
+        return UserModel.fetch(user.id())
+
     @classmethod
     def _list_by(
         cls,
         prop: ndb.Property,
-        makedict: Callable[[StatsModel], Dict[str, Union[None, str, int]]],
+        makedict: Callable[[StatsModel], StatsDict],
         timestamp: Optional[datetime] = None,
         max_len: int = MAX_STATS,
     ) -> StatsResults:
@@ -989,9 +1247,9 @@ class StatsModel(ndb.Model):
         # Use descending Elo order
         # Ndb doesn't allow us to put an inequality filter on the timestamp here
         # so we need to fetch irrespective of timestamp and manually filter
-        q = cls.query().order(-prop)
+        q: Query[StatsModel] = cls.query().order(-prop)
 
-        result: Dict[str, Dict[str, Union[None, str, int]]] = dict()
+        result: Dict[str, StatsDict] = dict()
         CHUNK_SIZE = 100
         lowest_elo: Optional[int] = None
 
@@ -1010,14 +1268,11 @@ class StatsModel(ndb.Model):
                 # Within our time range
                 d = makedict(sm)
                 ukey = cls.dict_key(d)
-                if (ukey not in result) or (
-                    cast(datetime, d["timestamp"])
-                    > cast(datetime, result[ukey]["timestamp"])
-                ):
+                if (ukey not in result) or (d["timestamp"] > result[ukey]["timestamp"]):
                     # Fresh entry or newer (and also lower) than the previous one
                     result[ukey] = d
-                    if (lowest_elo is None) or cast(int, d["elo"]) < lowest_elo:
-                        lowest_elo = cast(int, d["elo"])
+                    if (lowest_elo is None) or d["elo"] < lowest_elo:
+                        lowest_elo = d["elo"]
                     if len(result) >= max_fetch:
                         # We have all the requested entries: done
                         break  # From for loop
@@ -1030,13 +1285,13 @@ class StatsModel(ndb.Model):
                 assert sm is not None  # We should always have an entity here
                 nd = makedict(sm)
                 # This may be None if a default record was created
-                nd_ts = cast(datetime, nd["timestamp"])
-                if (nd_ts is not None) and nd_ts > cast(datetime, d["timestamp"]):
+                nd_ts = nd["timestamp"]
+                if (nd_ts is not None) and nd_ts > d["timestamp"]:
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
-                    assert cast(int, nd["elo"]) <= cast(int, d["elo"])
+                    assert nd["elo"] <= d["elo"]
                     assert lowest_elo is not None
-                    if cast(int, nd["elo"]) < lowest_elo:
+                    if nd["elo"] < lowest_elo:
                         # The entry didn't belong on the list at all
                         false_pos += 1
                     # Replace the entry with the newer one (which will lower it)
@@ -1057,9 +1312,7 @@ class StatsModel(ndb.Model):
                 max_len = 0
 
         # Sort in descending order by Elo, and finally rank and return the result
-        result_list = sorted(result.values(), key=lambda x: -cast(int, x["elo"]))[
-            0:max_len
-        ]
+        result_list = sorted(result.values(), key=lambda x: -x["elo"])[0:max_len]
         for ix, d in enumerate(result_list):
             d["rank"] = ix + 1
 
@@ -1071,10 +1324,10 @@ class StatsModel(ndb.Model):
     ) -> StatsResults:
         """ Return the top Elo-rated users for all games (including robots) """
 
-        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
-            return dict(
+        def _makedict(sm: StatsModel) -> StatsDict:
+            return StatsDict(
                 user=None if sm.user is None else sm.user.id(),
-                robot_level=sm.robot_level,
+                robot_level=sm.robot_level or 0,
                 timestamp=sm.timestamp,
                 games=sm.games,
                 elo=sm.elo,
@@ -1082,9 +1335,12 @@ class StatsModel(ndb.Model):
                 score_against=sm.score_against,
                 wins=sm.wins,
                 losses=sm.losses,
+                rank=0,
             )
 
-        return cls._list_by(StatsModel.elo, _makedict, timestamp, max_len)
+        return cls._list_by(
+            cast(ndb.Property, StatsModel.elo), _makedict, timestamp, max_len
+        )
 
     @classmethod
     def list_human_elo(
@@ -1092,10 +1348,10 @@ class StatsModel(ndb.Model):
     ) -> StatsResults:
         """ Return the top Elo-rated users for human-only games """
 
-        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
-            return dict(
+        def _makedict(sm: StatsModel) -> StatsDict:
+            return StatsDict(
                 user=None if sm.user is None else sm.user.id(),
-                robot_level=sm.robot_level,
+                robot_level=sm.robot_level or 0,
                 timestamp=sm.timestamp,
                 games=sm.human_games,
                 elo=sm.human_elo,
@@ -1103,9 +1359,12 @@ class StatsModel(ndb.Model):
                 score_against=sm.human_score_against,
                 wins=sm.human_wins,
                 losses=sm.human_losses,
+                rank=0,
             )
 
-        return cls._list_by(StatsModel.human_elo, _makedict, timestamp, max_len)
+        return cls._list_by(
+            cast(ndb.Property, StatsModel.human_elo), _makedict, timestamp, max_len
+        )
 
     @classmethod
     def list_manual_elo(
@@ -1113,10 +1372,10 @@ class StatsModel(ndb.Model):
     ) -> StatsResults:
         """ Return the top Elo-rated users for manual-only games """
 
-        def _makedict(sm: StatsModel) -> Dict[str, Union[Optional[str], int]]:
-            return dict(
+        def _makedict(sm: StatsModel) -> StatsDict:
+            return StatsDict(
                 user=None if sm.user is None else sm.user.id(),
-                robot_level=sm.robot_level,
+                robot_level=sm.robot_level or 0,
                 timestamp=sm.timestamp,
                 games=sm.manual_games,
                 elo=sm.manual_elo,
@@ -1124,21 +1383,24 @@ class StatsModel(ndb.Model):
                 score_against=sm.manual_score_against,
                 wins=sm.manual_wins,
                 losses=sm.manual_losses,
+                rank=0,
             )
 
-        return cls._list_by(StatsModel.manual_elo, _makedict, timestamp, max_len)
+        return cls._list_by(
+            cast(ndb.Property, StatsModel.manual_elo), _makedict, timestamp, max_len
+        )
 
-    _NB_CACHE: Dict[Tuple[str, int], Dict[datetime, StatsModel]] = dict()
-    _NB_CACHE_STATS = dict(hits=0, misses=0)
+    _NB_CACHE: Dict[Tuple[Optional[str], int], Dict[datetime, StatsModel]] = dict()
+    _NB_CACHE_STATS: Dict[str, int] = dict(hits=0, misses=0)
 
     @classmethod
-    def clear_cache(cls):
+    def clear_cache(cls) -> None:
         """ Reset the cache """
         cls._NB_CACHE = dict()
         cls._NB_CACHE_STATS = dict(hits=0, misses=0)
 
     @classmethod
-    def log_cache_stats(cls):
+    def log_cache_stats(cls) -> None:
         """ Show cache statistics in the log """
         hits = cls._NB_CACHE_STATS["hits"]
         misses = cls._NB_CACHE_STATS["misses"]
@@ -1155,7 +1417,9 @@ class StatsModel(ndb.Model):
         )
 
     @classmethod
-    def newest_before(cls, ts, user_id, robot_level=0):
+    def newest_before(
+        cls, ts: datetime, user_id: Optional[str], robot_level: int = 0
+    ) -> StatsModel:
         """ Returns the newest available stats record for the user at or before the given time """
         cache = cls._NB_CACHE
         key = (user_id, robot_level)
@@ -1168,7 +1432,8 @@ class StatsModel(ndb.Model):
                         sm.copy_from(c_val)
                         return sm
             else:
-                cache[key] = dict()
+                d: Dict[datetime, StatsModel] = dict()
+                cache[key] = d
         cls._NB_CACHE_STATS["misses"] += 1
         sm = cls.create(user_id, robot_level)
         if ts:
@@ -1176,12 +1441,14 @@ class StatsModel(ndb.Model):
             if user_id is None:
                 k = None
             else:
-                k = ndb.Key(UserModel, user_id)
+                k = Key(UserModel, user_id)
             # Use a common query structure and index for humans and robots
             q = cls.query(
                 ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level)
             )
-            q = q.filter(StatsModel.timestamp <= ts).order(-StatsModel.timestamp)
+            q = q.filter(StatsModel.timestamp <= ts).order(
+                -cast(int, StatsModel.timestamp)
+            )
             sm_before = q.get()
             if sm_before is not None:
                 # Found: copy the stats
@@ -1190,14 +1457,14 @@ class StatsModel(ndb.Model):
         return sm
 
     @classmethod
-    def newest_for_user(cls, user_id):
+    def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
         """ Returns the newest available stats record for the user """
         if user_id is None:
             return None
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         # Use a common query structure and index for humans and robots
         q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)).order(
-            -StatsModel.timestamp
+            -cast(int, StatsModel.timestamp)
         )
         sm = q.get()
         if sm is None:
@@ -1205,67 +1472,63 @@ class StatsModel(ndb.Model):
             sm = cls.create(user_id)
         return sm
 
-    @staticmethod
-    def put_multi(recs):
-        """ Insert or update multiple stats records """
-        ndb.put_multi(recs)
-
     @classmethod
-    def delete_ts(cls, timestamp):
+    def delete_ts(cls, timestamp: datetime) -> None:
         """ Delete all stats records at a particular timestamp """
-        ndb.delete_multi(
+        delete_multi(
             cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True)
         )
 
 
-class RatingModel(ndb.Model):
+class RatingModel(Model):
 
     """ Models tables of user ratings """
 
     # Typically "all" or "human"
-    kind = ndb.StringProperty(required=True)
+    kind = Model.Str()
 
     # The ordinal rank
-    rank = ndb.IntegerProperty(required=True)
+    rank = Model.Int()
 
-    user = ndb.KeyProperty(kind=UserModel, required=False, default=None)
-    robot_level = ndb.IntegerProperty(required=False, default=0)
+    user = Model.OptionalDbKey(kind=UserModel, indexed=False)
 
-    games = ndb.IntegerProperty(required=False, default=0)
-    elo = ndb.IntegerProperty(required=False, default=1200)
-    score = ndb.IntegerProperty(required=False, default=0)
-    score_against = ndb.IntegerProperty(required=False, default=0)
-    wins = ndb.IntegerProperty(required=False, default=0)
-    losses = ndb.IntegerProperty(required=False, default=0)
+    robot_level = Model.Int(default=0, indexed=False)
 
-    rank_yesterday = ndb.IntegerProperty(required=False, default=0)
-    games_yesterday = ndb.IntegerProperty(required=False, default=0)
-    elo_yesterday = ndb.IntegerProperty(required=False, default=1200)
-    score_yesterday = ndb.IntegerProperty(required=False, default=0)
-    score_against_yesterday = ndb.IntegerProperty(required=False, default=0)
-    wins_yesterday = ndb.IntegerProperty(required=False, default=0)
-    losses_yesterday = ndb.IntegerProperty(required=False, default=0)
+    games = Model.Int(default=0)
+    elo = Model.Int(default=1200)
+    score = Model.Int(default=0)
+    score_against = Model.Int(default=0)
+    wins = Model.Int(default=0)
+    losses = Model.Int(default=0)
 
-    rank_week_ago = ndb.IntegerProperty(required=False, default=0)
-    games_week_ago = ndb.IntegerProperty(required=False, default=0)
-    elo_week_ago = ndb.IntegerProperty(required=False, default=1200)
-    score_week_ago = ndb.IntegerProperty(required=False, default=0)
-    score_against_week_ago = ndb.IntegerProperty(required=False, default=0)
-    wins_week_ago = ndb.IntegerProperty(required=False, default=0)
-    losses_week_ago = ndb.IntegerProperty(required=False, default=0)
+    rank_yesterday = Model.Int(default=0)
+    games_yesterday = Model.Int(default=0)
+    elo_yesterday = Model.Int(default=1200)
+    score_yesterday = Model.Int(default=0)
+    score_against_yesterday = Model.Int(default=0)
+    wins_yesterday = Model.OptionalInt(default=0)
+    losses_yesterday = Model.Int(default=0)
 
-    rank_month_ago = ndb.IntegerProperty(required=False, default=0)
-    games_month_ago = ndb.IntegerProperty(required=False, default=0)
-    elo_month_ago = ndb.IntegerProperty(required=False, default=1200)
-    score_month_ago = ndb.IntegerProperty(required=False, default=0)
-    score_against_month_ago = ndb.IntegerProperty(required=False, default=0)
-    wins_month_ago = ndb.IntegerProperty(required=False, default=0)
-    losses_month_ago = ndb.IntegerProperty(required=False, default=0)
+    rank_week_ago = Model.Int(default=0)
+    games_week_ago = Model.Int(default=0)
+    elo_week_ago = Model.Int(default=1200)
+    score_week_ago = Model.Int(default=0)
+    score_against_week_ago = Model.Int(default=0)
+    wins_week_ago = Model.Int(default=0)
+    losses_week_ago = Model.Int(default=0)
+
+    rank_month_ago = Model.Int(default=0)
+    games_month_ago = Model.Int(default=0)
+    elo_month_ago = Model.Int(default=1200)
+    score_month_ago = Model.Int(default=0)
+    score_against_month_ago = Model.Int(default=0)
+    wins_month_ago = Model.Int(default=0)
+    losses_month_ago = Model.Int(default=0)
 
     @classmethod
-    def get_or_create(cls, kind, rank):
+    def get_or_create(cls, kind: str, rank: int) -> RatingModel:
         """ Get an existing entity or create a new one if it doesn't exist """
-        k = ndb.Key(cls, kind + ":" + str(rank))
+        k = Key(cls, kind + ":" + str(rank))
         rm = k.get()
         if rm is None:
             # Did not already exist in the database:
@@ -1275,22 +1538,24 @@ class RatingModel(ndb.Model):
         rm.rank = rank
         return rm
 
-    def assign(self, dict_args):
+    def assign(self, dict_args: StatsDict) -> None:
         """ Populate attributes from a dict """
         for key, val in dict_args.items():
             if key == "user":
                 # Re-pack the user id into a key
-                setattr(self, key, None if val is None else ndb.Key(UserModel, val))
+                setattr(self, key, None if val is None else Key(UserModel, val))
             else:
                 setattr(self, key, val)
 
     @classmethod
-    def list_rating(cls, kind):
+    def list_rating(cls, kind: str) -> Iterator[Dict[str, Any]]:
         """ Iterate through the rating table of a given kind, in ascending order by rank """
         CHUNK_SIZE = 100
-        q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
+        q: Query[RatingModel] = cls.query(RatingModel.kind == kind).order(
+            RatingModel.rank
+        )
         for rm in iter_q(q, CHUNK_SIZE, limit=100):
-            v = dict(
+            v: Dict[str, Union[str, Optional[int]]] = dict(
                 rank=rm.rank,
                 games=rm.games,
                 elo=rm.elo,
@@ -1332,34 +1597,38 @@ class RatingModel(ndb.Model):
 
             yield v
 
-    @staticmethod
-    def put_multi(recs):
-        """ Insert or update multiple ratings records """
-        ndb.put_multi(recs)
+    @classmethod
+    def delete_all(cls) -> None:
+        """ Delete all ratings records """
+        delete_multi(cls.query().iter(keys_only=True))
 
 
-class ChatModel(ndb.Model):
+class ChatModel(Model):
 
     """ Models chat communications between users """
 
     # The channel (conversation) identifier
-    channel = ndb.StringProperty(required=True)
+    channel = Model.Str()
 
     # The user originating this chat message
-    user = ndb.KeyProperty(kind=UserModel, indexed=True, required=True)
+    user = Model.DbKey(kind=UserModel)
 
     # The timestamp of this chat message
-    timestamp = ndb.DateTimeProperty(indexed=True, auto_now_add=True)
+    timestamp = Model.Datetime(indexed=True, auto_now_add=True)
 
     # The actual message - by convention, an empty msg from a user means that
     # the user has seen all older messages
-    msg = ndb.StringProperty()
+    msg = Model.Str()
 
     @classmethod
-    def list_conversation(cls, channel, maxlen=250):
+    def list_conversation(
+        cls, channel: str, maxlen: int = 250
+    ) -> Iterator[Dict[str, Any]]:
         """ Return the newest items in a conversation """
         CHUNK_SIZE = 100
-        q = cls.query(ChatModel.channel == channel).order(-ChatModel.timestamp)
+        q = cls.query(ChatModel.channel == channel).order(
+            -cast(int, ChatModel.timestamp)
+        )
         count = 0
         for cm in iter_q(q, CHUNK_SIZE):
             if cm.msg:
@@ -1370,10 +1639,12 @@ class ChatModel(ndb.Model):
                     break
 
     @classmethod
-    def check_conversation(cls, channel, userid):
+    def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
         """ Returns True if there are unseen messages in the conversation """
         CHUNK_SIZE = 40
-        q = cls.query(ChatModel.channel == channel).order(-ChatModel.timestamp)
+        q = cls.query(ChatModel.channel == channel).order(
+            -cast(int, ChatModel.timestamp)
+        )
         for cm in iter_q(q, CHUNK_SIZE):
             if (cm.user.id() != userid) and cm.msg:
                 # Found a message originated by the other user
@@ -1385,11 +1656,17 @@ class ChatModel(ndb.Model):
         return False
 
     @classmethod
-    def add_msg(cls, channel, userid, msg, timestamp=None):
+    def add_msg(
+        cls,
+        channel: str,
+        userid: Optional[str],
+        msg: str,
+        timestamp: Optional[datetime] = None,
+    ) -> datetime:
         """ Adds a message to a chat conversation on a channel """
         cm = cls()
         cm.channel = channel
-        cm.user = ndb.Key(UserModel, userid)
+        cm.user = Key(UserModel, userid)
         cm.msg = msg
         cm.timestamp = timestamp or datetime.utcnow()
         cm.put()
@@ -1397,25 +1674,25 @@ class ChatModel(ndb.Model):
         return cm.timestamp
 
 
-class ZombieModel(ndb.Model):
+class ZombieModel(Model):
 
     """ Models finished games that have not been seen by one of the players """
 
     # The zombie game
-    game = ndb.KeyProperty(kind=GameModel)
+    game = Model.DbKey(kind=GameModel)
     # The player that has not seen the result
-    player = ndb.KeyProperty(kind=UserModel)
+    player = Model.DbKey(kind=UserModel)
 
-    def set_player(self, user_id):
+    def set_player(self, user_id: Optional[str]) -> None:
         """ Set the player's user id """
-        self.player = None if user_id is None else ndb.Key(UserModel, user_id)
+        self.player = None if user_id is None else Key(UserModel, user_id)
 
-    def set_game(self, game_id):
+    def set_game(self, game_id: Optional[str]) -> None:
         """ Set the game id """
-        self.game = None if game_id is None else ndb.Key(GameModel, game_id)
+        self.game = None if game_id is None else Key(GameModel, game_id)
 
     @classmethod
-    def add_game(cls, game_id, user_id):
+    def add_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
         """ Add a zombie game that has not been seen by the player in question """
         zm = cls()
         zm.set_game(game_id)
@@ -1423,10 +1700,10 @@ class ZombieModel(ndb.Model):
         zm.put()
 
     @classmethod
-    def del_game(cls, game_id, user_id):
+    def del_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
         """ Delete a zombie game after the player has seen it """
-        kg = ndb.Key(GameModel, game_id)
-        kp = ndb.Key(UserModel, user_id)
+        kg = Key(GameModel, game_id)
+        kp = Key(UserModel, user_id)
         q = cls.query(ZombieModel.game == kg).filter(ZombieModel.player == kp)
         zmk = q.get(keys_only=True)
         if not zmk:
@@ -1435,12 +1712,12 @@ class ZombieModel(ndb.Model):
         zmk.delete()
 
     @classmethod
-    def list_games(cls, user_id: str) -> Iterator[Optional[Dict[str, Any]]]:
+    def list_games(cls, user_id: str) -> Iterator[Dict[str, Any]]:
         """ List all zombie games for the given player """
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         q = cls.query(ZombieModel.player == k)
 
         def z_callback(zm: ZombieModel) -> Optional[Dict[str, Any]]:
@@ -1448,6 +1725,8 @@ class ZombieModel(ndb.Model):
             if not zm.game:
                 return None
             gm = GameModel.fetch(zm.game.id())
+            if gm is None:
+                return None
             u0 = None if gm.player0 is None else gm.player0.id()
             u1 = None if gm.player1 is None else gm.player1.id()
             if u0 == user_id:
@@ -1469,24 +1748,25 @@ class ZombieModel(ndb.Model):
             )
 
         for zm in q.fetch():
-            yield z_callback(zm)
+            if (zd := z_callback(zm)) is not None:
+                yield zd
 
 
-class PromoModel(ndb.Model):
+class PromoModel(Model):
 
     """ Models promotions displayed to players """
 
     # The player that saw the promotion
-    player = ndb.KeyProperty(kind=UserModel)
+    player = Model.DbKey(kind=UserModel)
     # The promotion id
-    promotion = ndb.StringProperty(required=True)
+    promotion = Model.Str()
     # The timestamp
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True)
 
     def set_player(self, user_id: str) -> None:
         """ Set the player's user id """
         assert user_id is not None
-        self.player = ndb.Key(UserModel, user_id)
+        self.player = Key(UserModel, user_id)
 
     @classmethod
     def add_promotion(cls, user_id: str, promotion: str) -> None:
@@ -1504,31 +1784,31 @@ class PromoModel(ndb.Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = ndb.Key(UserModel, user_id)
+        k = Key(UserModel, user_id)
         q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
 
         for pm in q.fetch(projection=["timestamp"]):
             yield pm.timestamp
 
 
-class CompletionModel(ndb.Model):
+class CompletionModel(Model):
 
     """ Models the successful completion of stats or ratings runs """
 
     # The type of process that was completed, usually 'stats' or 'ratings'
-    proctype = ndb.StringProperty(required=True)
+    proctype = Model.Str()
     # The timestamp of the successful run
-    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True)
 
     # The from-to range of the successful process
-    ts_from = ndb.DateTimeProperty()
-    ts_to = ndb.DateTimeProperty()
+    ts_from = Model.Datetime()
+    ts_to = Model.Datetime()
 
     # True if successful completion (the default); included for future expansion
-    success = ndb.BooleanProperty()
+    success = Model.Bool()
 
     # The reason for failure, if any
-    reason = ndb.StringProperty()
+    reason = Model.Str()
 
     @classmethod
     def add_completion(cls, proctype: str, ts_from: datetime, ts_to: datetime) -> None:

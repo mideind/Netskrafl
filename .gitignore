@@ -27,11 +27,12 @@ resources/client_secret*.txt
 
 # Private GAE services key
 resources/netskrafl-*.json
-resources/explo-dev-*.json
+resources/explo-*.json
 
 # Unsorted BIN word lists
 resources/ordalistimax15.txt
-resources/ordalisti.algeng.txt
+resources/ordalisti.full.sorted.txt
+resources/ordalisti.mid.sorted.txt
 
 # Non-Icelandic word lists
 resources/TWL06.txt

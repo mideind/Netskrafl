@@ -5,16 +5,16 @@
 ### English summary
 
 This repository contains the implementation of an Icelandic crossword game
-inspired by SCRABBLE(tm).
-The game, which is free-to-play, is accessible on the web at [https://netskrafl.is](https://netskrafl.is).
+in the genre of SCRABBLE(tm). The game, which is free-to-play, is accessible
+on the web at [https://netskrafl.is](https://netskrafl.is).
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
 The game backend is implemented in Python 3.8 for the
 [Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
 
-The frontend is a tablet- and smartphone-friendly web client in HTML5 and JavaScript connecting
-via Ajax to a Flask-based web server on the backend.
+The frontend is a tablet- and smartphone-friendly web client in HTML5
+and JavaScript connecting via Ajax to a Flask-based web server on the backend.
 
 The game contains a robot crossword player written in Python. The algorithm is based
 on Appel & Jacobson's classic paper
@@ -91,14 +91,14 @@ Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 ### Generating a new vocabulary file
 
-To generate a new vocabulary file (```ordalistimax15.sorted.txt```), assuming you already
-have the BÍN database in PostgreSQL (here in table ```ord19``` - remember to use the
+To generate a new vocabulary file (```ordalisti.full.sorted.txt```), assuming you already
+have the BÍN database in PostgreSQL (here in table ```sigrunarsnid``` - remember to use the
 ```is_IS``` collation locale!), invoke ```psql```, log in to your database and
 create the following view:
 
 ```sql
 create or replace view skrafl as
-   select stofn, utg, ordfl, fl, ordmynd, beyging from ord19
+   select stofn, utg, ordfl, fl, ordmynd, beyging from sigrunarsnid
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
    and fl <> 'bibl'
    and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
@@ -113,9 +113,23 @@ forms (*spurnarmyndir í fleirtölu*).
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalistimax15.sorted.txt';
+\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
+To extract only the subset of BÍN used by the robot *Miðlungur*, use the following
+view, assuming you have the *Kristínarsnið* form of BÍN in the table ```kristinarsnid```
+containing the ```malsnid``` and ```einkunn``` columns:
+
+```sql
+create or replace view skrafl_midlungur as
+	select stofn, utg, ordfl, fl, ordmynd, beyging
+	from kristinarsnid
+	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD', 'FORN', 'URE', 'STAD'])))
+		and einkunn > 0;
+```
+
+You can then use the ```skrafl_midlungur``` view as the underlying table for the previous
+(vocabulary) query, replacing ```sigrunarsnid``` with ```skrafl_midlungur```.
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
@@ -123,27 +137,27 @@ Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
 Contact me via GitHub for queries or information regarding Netskrafl.
 
 Please contact me if you have plans for using Netskrafl as a basis for your
-own game website and prefer not to operate under the conditions of the GNU GPL v3
-license (see below).
+own game website and prefer not to operate under the conditions of the
+GNU Affero GPL v3 license (see below).
 
 ### License
 
 *Netskrafl - an Icelandic crossword game website*
 
-*Copyright © 2020 Miðeind ehf.*
+*Copyright © 2021 Miðeind ehf.*
 
 This set of programs is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
 
 This set of programs is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Affero General Public License for more details.
 
-The full text of the GNU General Public License is available here:
-[http://www.gnu.org/licenses/gpl.html](http://www.gnu.org/licenses/gpl.html).
+The full text of the GNU Affero General Public License is available here:
+[https://www.gnu.org/licenses/agpl-3.0.en.html](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ### Included third party software
 
@@ -179,5 +193,5 @@ is licensed under the MIT license.
 
 ### Trademarks
 
-*SCRABBLE is a registered trademark. This software or its author are in no way affiliated
-with or endorsed by the owners or licensees of the SCRABBLE trademark.*
+*SCRABBLE is a registered trademark. This software or its author are in no way
+affiliated with or endorsed by the owners or licensees of the SCRABBLE trademark.*

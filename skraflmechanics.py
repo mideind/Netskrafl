@@ -1,24 +1,19 @@
 """
 
-    Skraflmechanics - the inner workings of a SCRABBLE(tm) game server
+    Skraflmechanics - the inner workings of a crossword game server
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module contains classes that implement various
-    mechanics for a SCRABBLE(tm)-like game, including the
-    board itself, the players, their racks, moves,
-    scoring, etc.
+    mechanics for a crossword game, including the board itself,
+    the players, their racks, moves, scoring, etc.
 
     Algorithms for automatic (computer) play are found
     in skraflplayer.py
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
 """
 
@@ -26,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple, Iterator, Union, Optional, Type
+from typing import Callable, List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
@@ -122,23 +117,27 @@ _LSC = {
 }
 
 # For each board type, convert the word and letter score strings to integer arrays
-_xlt = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
+_xlt: Callable[[List[str]], List[List[int]]] = lambda arr: [
+    [1 if c == " " else int(c) for c in row] for row in arr
+]
 _WORDSCORE = {key: _xlt(val) for key, val in _WSC.items()}
 _LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
 
 
 class Board:
 
-    """Represents the characteristics and the contents of a Scrabble board."""
+    """ Represents the characteristics and the contents
+        of a crossword game board. """
 
-    # A standard Scrabble board is 15 x 15 squares
+    # A common standard board is 15 x 15 squares,
+    # but this is easily adjustable by changing this constant
     SIZE = 15
 
     # The rows are identified by letter
     ROWIDS = "ABCDEFGHIJKLMNO"
 
     @staticmethod
-    def short_coordinate(horiz, row, col):
+    def short_coordinate(horiz: bool, row: int, col: int) -> str:
         """RC if horizontal move, or CR if vertical.
         R is A,B,C... C is 1,2,3..."""
         return (
@@ -147,10 +146,14 @@ class Board:
             else str(col + 1) + Board.ROWIDS[row]
         )
 
-    def __init__(self, copy=None, board_type=None):
+    def __init__(
+        self, copy: Optional[Board] = None, board_type: Optional[str] = None
+    ) -> None:
 
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
+        self._letters: List[str]
+        self._tiles: List[str]
         if copy is None:
             # Store letters on the board in list of strings
             self._letters = [" " * Board.SIZE for _ in range(Board.SIZE)]
@@ -184,16 +187,16 @@ class Board:
         """ Return the board type, i.e. 'standard' or 'explo' """
         return self._board_type
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """ Is the board empty, i.e. contains no tiles? """
         # One of those checks should actually be enough
         return self._numletters == 0 and self._numtiles == 0
 
-    def is_covered(self, row, col):
+    def is_covered(self, row: int, col: int) -> bool:
         """ Is the specified square already covered (taken)? """
         return self._letters[row][col] != " "
 
-    def has_adjacent(self, row, col):
+    def has_adjacent(self, row: int, col: int) -> bool:
         """ Check whether there are any tiles on the board adjacent to this square """
         if row > 0 and self.is_covered(row - 1, col):
             return True
@@ -205,15 +208,15 @@ class Board:
             return True
         return False
 
-    def letter_at(self, row, col):
+    def letter_at(self, row: int, col: int) -> str:
         """ Return the letter at the specified co-ordinate """
         return self._letters[row][col]
 
-    def tile_at(self, row, col):
+    def tile_at(self, row: int, col: int) -> str:
         """ Return the tile at the specified co-ordinate (may be '?' for blank tile) """
         return self._tiles[row][col]
 
-    def set_letter(self, row, col, letter):
+    def set_letter(self, row: int, col: int, letter: str) -> None:
         """ Set the letter at the specified co-ordinate """
         # assert letter is not None
         # assert len(letter) == 1
@@ -230,7 +233,7 @@ class Board:
         r = self._letters[row]
         self._letters[row] = r[0:col] + letter + r[col + 1 :]
 
-    def set_tile(self, row, col, tile):
+    def set_tile(self, row: int, col: int, tile: str) -> None:
         """ Set the tile at the specified co-ordinate """
         # assert tile is not None
         # assert len(tile) == 1
@@ -247,7 +250,7 @@ class Board:
         r = self._tiles[row]
         self._tiles[row] = r[0:col] + tile + r[col + 1 :]
 
-    def enum_tiles(self):
+    def enum_tiles(self) -> Iterator[Tuple[int, int, str, str]]:
         """ Enumerate the tiles on the board with their coordinates """
         for x in range(Board.SIZE):
             for y in range(Board.SIZE):
@@ -256,7 +259,9 @@ class Board:
                     yield (x, y, t, self.letter_at(x, y))
 
     @staticmethod
-    def adjacent(row, col, xd, yd, getter):
+    def adjacent(
+        row: int, col: int, xd: int, yd: int, getter: Callable[[int, int], str]
+    ) -> str:
         """ Return the letters or tiles adjacent to the given square, in the direction (xd, yd) """
         result = ""
         row += xd
@@ -276,39 +281,39 @@ class Board:
             col += yd
         return result
 
-    def letters_above(self, row, col):
+    def letters_above(self, row: int, col: int) -> str:
         """ Return the letters immediately above the given square, if any """
         return self.adjacent(row, col, -1, 0, self.letter_at)
 
-    def letters_below(self, row, col):
+    def letters_below(self, row: int, col: int) -> str:
         """ Return the letters immediately below the given square, if any """
         return self.adjacent(row, col, 1, 0, self.letter_at)
 
-    def letters_left(self, row, col):
+    def letters_left(self, row: int, col: int) -> str:
         """ Return the letters immediately to the left of the given square, if any """
         return self.adjacent(row, col, 0, -1, self.letter_at)
 
-    def letters_right(self, row, col):
+    def letters_right(self, row: int, col: int) -> str:
         """ Return the letters immediately to the right of the given square, if any """
         return self.adjacent(row, col, 0, 1, self.letter_at)
 
-    def tiles_above(self, row, col):
+    def tiles_above(self, row: int, col: int) -> str:
         """ Return the tiles immediately above the given square, if any """
         return self.adjacent(row, col, -1, 0, self.tile_at)
 
-    def tiles_below(self, row, col):
+    def tiles_below(self, row: int, col: int) -> str:
         """ Return the tiles immediately below the given square, if any """
         return self.adjacent(row, col, 1, 0, self.tile_at)
 
-    def tiles_left(self, row, col):
+    def tiles_left(self, row: int, col: int) -> str:
         """ Return the tiles immediately to the left of the given square, if any """
         return self.adjacent(row, col, 0, -1, self.tile_at)
 
-    def tiles_right(self, row, col):
+    def tiles_right(self, row: int, col: int) -> str:
         """ Return the tiles immediately to the right of the given square, if any """
         return self.adjacent(row, col, 0, 1, self.tile_at)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """ Simple text dump of the contents of the board """
         board = ["   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5"]
         for y, row in enumerate(self._letters):
@@ -317,11 +322,11 @@ class Board:
             )
         return "\n".join(board)
 
-    def wordscore(self, row, col):
+    def wordscore(self, row: int, col: int) -> int:
         """ Returns the word score factor of the indicated square, 1, 2 or 3 """
         return self._wordscore[row][col]
 
-    def letterscore(self, row, col):
+    def letterscore(self, row: int, col: int) -> int:
         """ Returns the letter score factor of the indicated square, 1, 2 or 3 """
         return self._letterscore[row][col]
 
@@ -357,7 +362,7 @@ class Bag:
             self._size = copy._size
             self._tileset = copy._tileset
 
-    def draw_tile(self):
+    def draw_tile(self) -> Optional[str]:
         """ Draw a single tile from the bag """
         if self.is_empty():
             return None
@@ -365,31 +370,31 @@ class Bag:
         self._tiles = self._tiles.replace(tile, "", 1)
         return tile
 
-    def return_tiles(self, tiles):
+    def return_tiles(self, tiles: str) -> None:
         """ Return one or more tiles to the bag """
         self._tiles += tiles
 
-    def contents(self):
+    def contents(self) -> str:
         """ Return the contents of the bag """
         return self._tiles
 
-    def set_contents(self, tiles):
+    def set_contents(self, tiles: str) -> None:
         """ Set the contents of the bag """
         self._tiles = tiles
 
-    def num_tiles(self):
+    def num_tiles(self) -> int:
         """ Return the number of tiles in the bag """
         return len(self._tiles)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """ Returns True if the bag is empty, i.e. all tiles have been drawn """
         return not self._tiles
 
-    def is_full(self):
+    def is_full(self) -> bool:
         """ Returns True if the bag is full, i.e. no tiles have been drawn """
         return self.num_tiles() == self._size
 
-    def allows_exchange(self):
+    def allows_exchange(self) -> bool:
         """ Does the bag contain enough tiles to allow exchange? """
         return self.num_tiles() >= Rack.MAX_TILES
 
@@ -399,12 +404,12 @@ class Bag:
         assert self._tileset is not None
         return self._tileset.alphabet
 
-    def subtract_board(self, board):
+    def subtract_board(self, board: Board) -> None:
         """ Subtract all tiles on the board from the bag """
-        board_tiles = "".join(tile for row, col, tile, letter in board.enum_tiles())
+        board_tiles = "".join(tile for _, _, tile, _ in board.enum_tiles())
         self._tiles = self.alphabet.string_subtract(self._tiles, board_tiles)
 
-    def subtract_rack(self, rack):
+    def subtract_rack(self, rack: str) -> None:
         """ Subtract all tiles in the rack from the bag """
         self._tiles = self.alphabet.string_subtract(self._tiles, rack)
 
@@ -431,7 +436,9 @@ class Rack:
     def replenish(self, bag: Bag) -> None:
         """ Draw tiles from the bag until we have 7 tiles or the bag is empty """
         while len(self._tiles) < Rack.MAX_TILES and not bag.is_empty():
-            self._tiles += bag.draw_tile()
+            tile = bag.draw_tile()
+            assert tile
+            self._tiles += tile
 
     def contents(self) -> str:
         """ Return the contents of the rack """
@@ -487,7 +494,9 @@ class Rack:
         bag.return_tiles(self._tiles)
         tiles: List[str] = []
         while len(tiles) < n and not bag.is_empty():
-            tiles.append(bag.draw_tile())
+            tile = bag.draw_tile()
+            assert tile
+            tiles.append(tile)
         # Return the tiles sorted in alphabetical order
         tiles.sort(key=bag.alphabet.all_tiles.index)
         self._tiles = "".join(tiles)
@@ -506,7 +515,10 @@ class State:
         copy: Optional[State] = None,
         locale: Optional[str] = None,
         board_type: Optional[str] = None,
-    ):
+    ) -> None:
+
+        # The covers laid down in the last challengeable move
+        self._last_covers: Optional[List[Cover]] = None
 
         # pylint: disable=protected-access
         # The covers laid down in the last challengeable move
@@ -560,7 +572,7 @@ class State:
             self._board_type = copy._board_type
             self._bag = Bag(tileset=None, copy=copy._bag)
 
-    def load_board(self, board):
+    def load_board(self, board: Board) -> None:
         """ Load a Board into this state """
         self._board = board
 
@@ -665,12 +677,12 @@ class State:
         return self._last_rack
 
     @property
-    def last_covers(self):
+    def last_covers(self) -> Optional[List[Cover]]:
         """ Return the covers of the last/challengeable move """
         return self._last_covers
 
     @property
-    def challenge_score(self):
+    def challenge_score(self) -> int:
         """ The score of a challenge move, if made """
         return self._challenge_score
 
@@ -684,7 +696,9 @@ class State:
         self._last_covers = None
         self._challenge_score = 0
 
-    def set_challengeable(self, score: int, covers: List[Cover], last_rack: str) -> None:
+    def set_challengeable(
+        self, score: int, covers: List[Cover], last_rack: str
+    ) -> None:
         """ Set the challengeable state, with the given covers being laid down """
         if score and self.manual_wordcheck:
             self._challenge_score = score
@@ -744,7 +758,11 @@ class State:
         """ Is the game waiting for a potential challenge of the last move? """
         return self.is_challengeable() and any(r.is_empty() for r in self._racks)
 
-    def finalize_score(self, lost_on_overtime=None, overtime_adjustment=None):
+    def finalize_score(
+        self,
+        lost_on_overtime: Optional[int] = None,
+        overtime_adjustment: Optional[Tuple[int, int]] = None,
+    ) -> None:
         """ When game is completed, calculate the final score adjustments """
 
         if self._game_resigned:
@@ -821,7 +839,7 @@ class Cover:
 
     # pylint: disable=too-few-public-methods
 
-    def __init__(self, row, col, tile, letter):
+    def __init__(self, row: int, col: int, tile: str, letter: str) -> None:
         self.row = row
         self.col = col
         self.tile = tile
@@ -834,7 +852,7 @@ class Error:
 
     # pylint: disable=too-few-public-methods
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     LEGAL = 0
@@ -865,7 +883,7 @@ class Error:
     GAME_OVER = 99
 
     @staticmethod
-    def errortext(errcode):
+    def errortext(errcode: int) -> str:
         """ Return a string identifier corresponding to an error code """
         if errcode == Error.GAME_OVER:
             # Special case
@@ -907,7 +925,7 @@ class MoveBase(abc.ABC):
     # pylint: disable=unused-argument
 
     # noinspection PyUnusedLocal
-    def details(self, state: State) -> List:
+    def details(self, state: State) -> List[DetailTuple]:
         """Return a tuple list describing tiles committed
         to the board by this move"""
         return []  # No tiles
@@ -954,10 +972,16 @@ class MoveBase(abc.ABC):
         # Only True for ChallengeMove instances
         return False
 
+    def is_successful_challenge(self, state: State) -> bool:
+        """ Is this move a successful challenge? """
+        # Only True for ResponseMove instances that denote
+        # successful challenges (and thus have a negative score)
+        return False
+
 
 class Move(MoveBase):
 
-    """ Represents a move by a player """
+    """ Represents a normal tile move """
 
     # Bonus score for playing all 7 tiles in one move
     BINGO_BONUS = 50
@@ -1218,11 +1242,12 @@ class Move(MoveBase):
         self._word = ""
         self._tiles = ""
 
-        def add(cix):
+        def add(cix: int) -> None:
             """ Add a cover's letter and tile to the word and tiles strings """
             ltr = self._covers[cix].letter
             tile = self._covers[cix].tile
             self._word += ltr
+            assert self._tiles is not None
             self._tiles += tile + (ltr if tile == "?" else "")
 
         cix = 0
@@ -1238,6 +1263,7 @@ class Move(MoveBase):
                     # This is a letter that was already on the board
                     ltr = board.letter_at(self._row, self._col + ix)
                     self._word += ltr
+                    assert self._tiles is not None  # Satisfy Pylance
                     self._tiles += ltr
             else:
                 if cix < len(self._covers) and self._row + ix == self._covers[cix].row:
@@ -1250,10 +1276,10 @@ class Move(MoveBase):
                     self._word += ltr
                     self._tiles += ltr
 
-        def is_valid_word(word):
+        def is_valid_word(word: str) -> bool:
             """Check whether a word is in the dictionary,
             unless this is a manual game"""
-            return True if state.manual_wordcheck else word in self._dawg
+            return state.manual_wordcheck or (word in self._dawg)
 
         # Check whether the word is in the dictionary
         if not is_valid_word(self._word):
@@ -1524,9 +1550,9 @@ class ResponseMove(MoveBase):
 
     """ Represents a response to a challenge move """
 
-    def __init__(self) -> None:
+    def __init__(self, score: Optional[int] = None) -> None:
         super().__init__()
-        self._score: Optional[int] = None
+        self._score = score
         self._num_covers = 0
 
     def __str__(self) -> str:
@@ -1564,6 +1590,12 @@ class ResponseMove(MoveBase):
             assert self._score != 0
         return self._score
 
+    def is_successful_challenge(self, state: State) -> bool:
+        """ Is this move a successful challenge? """
+        # Only True for ResponseMove instances that denote
+        # successful challenges (and thus have a negative score)
+        return self.score(state) < 0
+
     # noinspection PyMethodMayBeStatic
     def num_covers(self) -> int:
         """ Return the number of tiles played in this move """
@@ -1576,6 +1608,7 @@ class ResponseMove(MoveBase):
             board = state.board()
             # Remove the last move from the board
             last_covers = state.last_covers
+            assert last_covers is not None
             self._num_covers = -len(last_covers)  # Negative cover count
             for c in last_covers:
                 board.set_letter(c.row, c.col, " ")
@@ -1598,22 +1631,22 @@ class PassMove(MoveBase):
 
     """ Represents a pass move, where the player does nothing """
 
-    def __str__(self):
+    def __str__(self) -> str:
         """ Return a readable string describing the move """
         return "Pass"
 
-    def replenish(self):
+    def replenish(self) -> bool:
         """ Return True if the player's rack should be replenished after the move """
         return False
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     # pylint: disable=unused-argument
-    def summary(self, board):
+    def summary(self, state: State) -> SummaryTuple:
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return ("", "PASS", 0)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def apply(self, state, shallow=False):
+    def apply(self, state: State, shallow: bool = False) -> None:
         """ Apply this move, assumed to be legal, to the current game state """
         # Increment the number of consecutive Pass moves
         state.add_pass()  # Clears the challengeable flag
@@ -1623,31 +1656,31 @@ class ResignMove(MoveBase):
 
     """ Represents a resign move, where the player forfeits the game """
 
-    def __init__(self, forfeited_points):
+    def __init__(self, forfeited_points: int) -> None:
         super().__init__()
         self._forfeited_points = forfeited_points
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return the standard move notation of a coordinate
         followed by the word formed"""
         return "Resign"
 
-    def replenish(self):
+    def replenish(self) -> bool:
         """ Return True if the player's rack should be replenished after the move """
         return False
 
     # pylint: disable=unused-argument
-    def summary(self, board):
+    def summary(self, state: State) -> SummaryTuple:
         """ Return a summary of the move, as a tuple: (coordinate, word, score) """
         return ("", "RSGN", -self._forfeited_points)
 
-    def score(self, state):
+    def score(self, state: State) -> int:
         """ Calculate the score of this move, which is assumed to be legal """
         # A resignation loses all points
         return -self._forfeited_points
 
     # noinspection PyMethodMayBeStatic
-    def apply(self, state, shallow=False):
+    def apply(self, state: State, shallow: bool = False) -> None:
         """ Apply this move, assumed to be legal, to the current game state """
         # Resign the game, causing is_game_over() to become True
         state.resign_game()  # Clears the challengeable flag

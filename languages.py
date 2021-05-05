@@ -2,10 +2,10 @@
 
     Language, locale and alphabet encapsulation module
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     The classes in this module encapsulate particulars of supported
@@ -27,7 +27,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Optional, Type, NamedTuple, Callable, Any
+from typing import Dict, List, Tuple, Type, NamedTuple, Callable, Any
 
 import abc
 import functools
@@ -98,11 +98,10 @@ class Alphabet(abc.ABC):
     def bit_pattern(self, word: str) -> int:
         """Return a pattern of bits indicating which letters
         are present in the word"""
-        return functools.reduce(
-            lambda x, y: x | y, [self.letter_bit[c] for c in word], 0
-        )
+        bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
+        return functools.reduce(bitwise_or, [self.letter_bit[c] for c in word], 0)
 
-    def bit_of(self, c):
+    def bit_of(self, c: str) -> int:
         """ Returns the bit corresponding to a character in the alphabet """
         return self.letter_bit[c]
 
@@ -219,7 +218,7 @@ class TileSet(abc.ABC):
     _full_bag = ""
 
     @classmethod
-    def score(cls, tiles):
+    def score(cls, tiles: str):
         """ Return the net (plain) score of the given tiles """
         if not tiles:
             return 0
@@ -236,7 +235,7 @@ class TileSet(abc.ABC):
     @classmethod
     def num_tiles(cls):
         """ Return the total number of tiles in this tile set """
-        return sum(n for letter, n in cls.bag_tiles)
+        return sum(n for _, n in cls.bag_tiles)
 
 
 class OldTileSet(TileSet):
@@ -487,27 +486,103 @@ class EnglishTileSet(TileSet):
 # Number of tiles in bag
 EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
 
+
+class NewEnglishTileSet(TileSet):
+
+    """ New English Tile Set - Copyright (C) Miðeind ehf.
+        Created by a proprietary method of game simulation.
+    """
+
+    alphabet = EnglishAlphabet
+
+    scores = {
+        "t": 1,
+        "i": 1,
+        "o": 1,
+        "s": 1,
+        "a": 1,
+        "e": 1,
+        "h": 2,
+        "y": 2,
+        "m": 2,
+        "u": 2,
+        "d": 2,
+        "n": 2,
+        "l": 2,
+        "r": 2,
+        "k": 3,
+        "w": 3,
+        "p": 3,
+        "b": 3,
+        "g": 3,
+        "c": 3,
+        "f": 4,
+        "x": 5,
+        "v": 5,
+        "j": 6,
+        "z": 6,
+        "q": 15,
+        "?": 0,
+    }
+
+    bag_tiles = [
+        ("e", 12),
+        ("a", 11),
+        ("s", 9),
+        ("o", 7),
+        ("i", 6),
+        ("r", 6),
+        ("n", 5),
+        ("l", 5),
+        ("t", 4),
+        ("u", 4),
+        ("d", 4),
+        ("m", 3),
+        ("g", 3),
+        ("c", 3),
+        ("h", 2),
+        ("y", 2),
+        ("p", 2),
+        ("b", 2),
+        ("k", 1),
+        ("w", 1),
+        ("f", 1),
+        ("x", 1),
+        ("v", 1),
+        ("j", 1),
+        ("z", 1),
+        ("q", 1),
+        ("?", 2),  # Blank tiles
+    ]
+
+    BAG_SIZE: int = 0
+
+
+# Number of tiles in bag
+NewEnglishTileSet.BAG_SIZE = NewEnglishTileSet.num_tiles()
+assert NewEnglishTileSet.BAG_SIZE == EnglishTileSet.BAG_SIZE
+
 # Mapping of locale code to tileset
 
 TILESETS: Dict[str, Type[TileSet]] = {
     "is": NewTileSet,
     "is_IS": NewTileSet,
-    "en": EnglishTileSet,
-    "en_AU": EnglishTileSet,
-    "en_BZ": EnglishTileSet,
-    "en_CA": EnglishTileSet,
-    "en_GB": EnglishTileSet,
-    "en_IE": EnglishTileSet,
-    "en_IN": EnglishTileSet,
-    "en_JM": EnglishTileSet,
-    "en_MY": EnglishTileSet,
-    "en_NZ": EnglishTileSet,
-    "en_PH": EnglishTileSet,
-    "en_SG": EnglishTileSet,
-    "en_TT": EnglishTileSet,
-    "en_US": EnglishTileSet,
-    "en_ZA": EnglishTileSet,
-    "en_ZW": EnglishTileSet,
+    "en": NewEnglishTileSet,
+    "en_AU": NewEnglishTileSet,
+    "en_BZ": NewEnglishTileSet,
+    "en_CA": NewEnglishTileSet,
+    "en_GB": NewEnglishTileSet,
+    "en_IE": NewEnglishTileSet,
+    "en_IN": NewEnglishTileSet,
+    "en_JM": NewEnglishTileSet,
+    "en_MY": NewEnglishTileSet,
+    "en_NZ": NewEnglishTileSet,
+    "en_PH": NewEnglishTileSet,
+    "en_SG": NewEnglishTileSet,
+    "en_TT": NewEnglishTileSet,
+    "en_US": NewEnglishTileSet,
+    "en_ZA": NewEnglishTileSet,
+    "en_ZW": NewEnglishTileSet,
 }
 
 # Mapping of locale code to alphabet
@@ -544,7 +619,13 @@ LANGUAGES: Dict[str, str] = {
 }
 
 # Set of all supported locale codes
-SUPPORTED_LOCALES = frozenset(TILESETS.keys() | ALPHABETS.keys() | VOCABULARIES.keys() | BOARD_TYPES.keys() | LANGUAGES.keys())
+SUPPORTED_LOCALES = frozenset(
+    TILESETS.keys()
+    | ALPHABETS.keys()
+    | VOCABULARIES.keys()
+    | BOARD_TYPES.keys()
+    | LANGUAGES.keys()
+)
 
 Locale = NamedTuple(
     "Locale",
@@ -560,7 +641,9 @@ Locale = NamedTuple(
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
+default_locale: Locale = Locale(
+    "is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard"
+)
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
 current_lc: Callable[[], str] = lambda: current_locale.get().lc
@@ -623,9 +706,9 @@ def set_locale(lc: str) -> None:
 
 
 def set_game_locale(lc: str) -> None:
-    """ Override the current thread's locale context to correspond to a
-        particular game's locale. This doesn't change the UI language,
-        which remains tied to the logged-in user. """
+    """Override the current thread's locale context to correspond to a
+    particular game's locale. This doesn't change the UI language,
+    which remains tied to the logged-in user."""
     locale = Locale(
         lc=lc,
         language=current_language(),
@@ -635,4 +718,3 @@ def set_game_locale(lc: str) -> None:
         board_type=board_type_for_locale(lc),
     )
     current_locale.set(locale)
-

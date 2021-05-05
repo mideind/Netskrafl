@@ -2,10 +2,10 @@
 
     Billing manager for netskrafl.appspot.com
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module interfaces with web commerce services
@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional, Union, Tuple, Any, cast
 
 import os
 import logging
@@ -27,27 +27,39 @@ from datetime import datetime
 import hashlib
 import hmac
 
-from flask import redirect, jsonify, url_for
+from flask import redirect, jsonify as flask_jsonify, url_for, Request
+import flask.wrappers
+import werkzeug.wrappers
 
 import requests
 
 from skraflgame import User
 
 
+ResponseType = Union[
+    str, flask.wrappers.Response, werkzeug.wrappers.Response, Tuple[str, int]
+]
+
+
+# Type annotation wrapper for flask.jsonify()
+def jsonify(*args: Any, **kwargs: Any) -> str:
+    return cast(str, flask_jsonify(*args, **kwargs))
+
+
 class _Secret:
 
-    """ A wrapper for private and public key data used
-        in communications with SalesCloud """
+    """A wrapper for private and public key data used
+    in communications with SalesCloud"""
 
     _SC_SECRET_KEY: Optional[bytes] = None
     _SC_CLIENT_UUID: Optional[str] = None
     _SC_PUBLIC_KEY = "Netskrafl-Friend-Access"
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @classmethod
-    def load(cls):
+    def load(cls) -> None:
         """ Fetch secret key and client UUID from a file """
         fname = os.path.join("resources", "salescloud_key.bin")
         try:
@@ -60,21 +72,23 @@ class _Secret:
             cls._SC_CLIENT_UUID = ""
 
     @property
-    def key(self):
+    def key(self) -> bytes:
         """ Return the secret key value, which is a bytes object """
         if not self._SC_SECRET_KEY:
             _Secret.load()
+        assert self._SC_SECRET_KEY is not None
         return self._SC_SECRET_KEY
 
     @property
-    def uuid(self):
+    def uuid(self) -> str:
         """ Return the client UUID """
         if not self._SC_CLIENT_UUID:
             _Secret.load()
+        assert self._SC_CLIENT_UUID is not None
         return self._SC_CLIENT_UUID
 
     @property
-    def public_key(self):
+    def public_key(self) -> str:
         """ Return Netskrafl's public key """
         return self._SC_PUBLIC_KEY
 
@@ -82,9 +96,17 @@ class _Secret:
 _SECRET = _Secret()
 
 
-def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=100.0):
-    """ Validate an incoming request against our secret key. All parameters
-        are assumed to be strings (str) except payload, which is bytes. """
+def request_valid(
+    method: str,
+    url: str,
+    payload: bytes,
+    xsc_date: str,
+    xsc_key: str,
+    xsc_digest: str,
+    max_time: float = 100.0,
+) -> bool:
+    """Validate an incoming request against our secret key. All parameters
+    are assumed to be strings (str) except payload, which is bytes."""
 
     # Sanity check
     if not all((method, url, payload, xsc_date, xsc_key, xsc_digest)):
@@ -122,7 +144,7 @@ def request_valid(method, url, payload, xsc_date, xsc_key, xsc_digest, max_time=
     return xsc_digest == my_digest
 
 
-def cancel_friend(user):
+def cancel_friend(user: User) -> bool:
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
     try:
         url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
@@ -139,7 +161,7 @@ def cancel_friend(user):
             "X-SalesCloud-Access-Key": _SECRET.public_key,
             "X-SalesCloud-Signature": digest.hexdigest(),
         }
-        result = requests.post(
+        result: requests.Response = cast(Any, requests).post(
             url, json=payload, headers=headers, timeout=30.0, allow_redirects=False
         )
         if result.status_code != 200:
@@ -150,9 +172,8 @@ def cancel_friend(user):
                 )
             )
             return False
-        response = result.json()
-        # noinspection PySimplifyBooleanCheck,PyPep8
-        if response.get("success") != True:
+        response: Dict[str, Any] = cast(Any, result).json()
+        if response.get("success") is not True:
             logging.error(
                 "Cancel friend request to SalesCloud failed for user {0}".format(
                     user.id()
@@ -173,7 +194,7 @@ def cancel_friend(user):
     return True
 
 
-def handle(request, uid):
+def handle(request: Request, uid: str) -> ResponseType:
     """ Handle an incoming request to the /billing URL path """
 
     if request.method != "POST":
@@ -245,27 +266,27 @@ def handle(request, uid):
         and j.get("product_id") == _FRIEND_OF_NETSKRAFL
     ):
         # Updating the subscription status of a user
-        uid = j.get("customer_label")
-        if uid and not isinstance(uid, str):
-            uid = None
-        if uid:
-            uid = uid[0:32]  # Sanity cut-off
-        user = User.load_if_exists(uid) if uid else None
+        customer = j.get("customer_label")
+        if not isinstance(customer, str):
+            customer = None
+        if customer:
+            customer = customer[0:32]  # Sanity cut-off
+        user = User.load_if_exists(customer) if customer else None
         if user is None:
             logging.error(
                 "Unknown or illegal user id: '{0}'".format(
-                    "[None]" if uid is None else uid
+                    customer or "[None]"
                 )
             )
             logging.info(
-                "Original JSON from SalesCloud was:\n{0}"
-                .format(payload.decode("utf-8"))
+                "Original JSON from SalesCloud was:\n{0}".format(
+                    payload.decode("utf-8")
+                )
             )
             # We no longer return HTTP code 400, since this simply
             # makes SalesCloud repeat the request indefinitely
             return jsonify(
-                ok=False,
-                reason="Unknown or illegal user id (customer_label)"
+                ok=False, reason="Unknown or illegal user id (customer_label)"
             )
         status = j.get("subscription_status")
         if status == "true":
@@ -273,14 +294,14 @@ def handle(request, uid):
             user.set_friend(True)
             user.set_has_paid(True)
             user.update()
-            logging.info("Set user {0} as friend".format(uid))
+            logging.info("Set user {0} as friend".format(customer))
             handled = True
         elif status == "false":
             # Disable subscription, remove friend status
             user.set_friend(False)
             user.set_has_paid(False)
             user.update()
-            logging.info("Removed user {0} as friend".format(uid))
+            logging.info("Removed user {0} as friend".format(customer))
             handled = True
     if not handled:
         logging.warning(

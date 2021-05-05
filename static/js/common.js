@@ -4,10 +4,10 @@
 
    Common utility functions used by the Netskrafl HTML pages
 
-   Copyright (C) 2015-2020 Miðeind ehf.
+   Copyright (C) 2021 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
-   The GNU General Public License, version 3, applies to this software.
+   The GNU Affero General Public License, version 3, applies to this software.
    For further information, see https://github.com/vthorsteinsson/Netskrafl
 
 */

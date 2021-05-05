@@ -2,37 +2,34 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
-    Note: SCRABBLE is a registered trademark. This software or its author
-    are in no way affiliated with or endorsed by the owners or licensees
-    of the SCRABBLE trademark.
 
 """
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast
 
 import logging
 from threading import Thread
+from datetime import datetime
 
 from flask import jsonify
 from flask import request
 
 from languages import Alphabet
-from skrafldb import ndb, iter_q, Client, UserModel, GameModel
+from skrafldb import ndb, iter_q, Query, UserModel, GameModel
 from skraflgame import User, Game
 
 
 def admin_usercount() -> str:
     """ Return a count of UserModel entities """
     count = UserModel.count()
-    return jsonify(count=count)
+    return cast(str, jsonify(count=count))
 
 
 def deferred_update() -> None:
@@ -43,7 +40,7 @@ def deferred_update() -> None:
     count = 0
     with ndb.Client().context():
         try:
-            q = UserModel.query()
+            q: Query[UserModel] = UserModel.query()
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
                 scan += 1
                 if um.email and not um.email.islower():
@@ -102,7 +99,7 @@ def admin_fetchgames() -> str:
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
-    gamelist = []
+    gamelist: List[Dict[str, Any]] = []
     for gm in q.fetch():
         gamelist.append(
             dict(
@@ -117,7 +114,7 @@ def admin_fetchgames() -> str:
                 pr=gm.prefs,
             )
         )
-    return jsonify(gamelist=gamelist)
+    return cast(str, jsonify(gamelist=gamelist))
 
 
 def admin_loadgame() -> str:
@@ -126,37 +123,35 @@ def admin_loadgame() -> str:
     uuid = request.form.get("uuid", None)
     game = None
 
-    g: Optional[Dict[str, Any]]
+    g: Optional[Dict[str, Any]] = None
 
     if uuid:
         # Attempt to load the game whose id is in the URL query string
         game = Game.load(uuid)
 
-    if game:
-        board = game.state.board()
+    if game is not None and game.state is not None:
+        now = datetime.utcnow()
         g = dict(
             uuid=game.uuid,
-            timestamp=Alphabet.format_timestamp(game.timestamp),
+            timestamp=Alphabet.format_timestamp(game.timestamp or now),
             player0=game.player_ids[0],
             player1=game.player_ids[1],
             robot_level=game.robot_level,
-            ts_last_move=Alphabet.format_timestamp(game.ts_last_move),
+            ts_last_move=Alphabet.format_timestamp(game.ts_last_move or now),
             irack0=game.initial_racks[0],
             irack1=game.initial_racks[1],
-            prefs=game._preferences,
+            prefs=game.preferences,
             over=game.is_over(),
             moves=[
                 (
                     m.player,
-                    m.move.summary(board),
+                    m.move.summary(game.state),
                     m.rack,
                     Alphabet.format_timestamp(m.ts),
                 )
                 for m in game.moves
             ],
         )
-    else:
-        g = None
 
-    return jsonify(game=g)
+    return cast(str, jsonify(game=g))
 

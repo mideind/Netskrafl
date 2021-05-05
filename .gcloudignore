@@ -4,6 +4,7 @@
 # Raw text resources, such as word lists
 resources/*.txt
 !resources/client_secret.txt
+!resources/client_secret_explo.txt
 
 # DAWG trees in text form
 resources/*.text.dawg
@@ -16,6 +17,7 @@ resources/*.csv
 
 # Credential files
 resources/netskrafl-*.json
+resources/explo-*.json
 
 # Photoshop & Illustrator files
 *.psd

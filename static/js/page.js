@@ -4,10 +4,10 @@
 
 	Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2020 Miðeind ehf.
+  Copyright (C) 2021 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
-  The GNU General Public License, version 3, applies to this software.
+  The GNU Affero General Public License, version 3, applies to this software.
   For further information, see https://github.com/mideind/Netskrafl
 
   This UI is built on top of Mithril (https://mithril.js.org), a lightweight,
@@ -2802,7 +2802,8 @@ function createView() {
           if (tile == '?')
              continue;
           var sq = coord(row, col);
-          game.tiles[sq].highlight = show ? playerColor : undefined;
+          if (game.tiles.hasOwnProperty(sq))
+            game.tiles[sq].highlight = show ? playerColor : undefined;
           col += vec.dx;
           row += vec.dy;
        }

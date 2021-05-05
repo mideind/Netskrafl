@@ -1,34 +1,37 @@
-# -*- coding: utf-8 -*-
+# type: ignore
+"""
+
+    Sort utility for large UTF-8 text files
+
+    Adapted from Recipe 466302: Sorting big files the Python 2.4 way
+        by Nicolas Lehuen
+        http://code.activestate.com/recipes/576755-sorting-big-files-the-python-26-way/
+
+    Example usage:
+
+        python sortfile.py
+        resources/ordalistimax15.txt resources/ordalistimax15.sorted.txt -b 200000
 
 """
 
-Sort utility for large UTF-8 text files
-
-Adapted from Recipe 466302: Sorting big files the Python 2.4 way
-    by Nicolas Lehuen
-    http://code.activestate.com/recipes/576755-sorting-big-files-the-python-26-way/
-
-Example usage:
-
-C:\github\Skrafl>\python27\python sortfile.py
-    resources/ordalistimax15.txt resources/ordalistimax15.sorted.txt -b 200000
-
-"""
-
-from typing import List, IO
+from typing import List, IO, NamedTuple, Any
 
 import os
 import io
 from tempfile import gettempdir
 from itertools import islice, cycle
-from collections import namedtuple
 import heapq
 
-Keyed = namedtuple("Keyed", ["key", "obj"])
+Keyed = NamedTuple(
+    "Keyed", [
+        ("key", str),
+        ("obj", Any),
+    ]
+)
 lexorder = u"\naábdðeéfghiíjklmnoóprstuúvxyýþæö"
 
 
-def keyfunc(line):
+def keyfunc(line: str) -> List[int]:
     try:
         return [lexorder.index(c) for c in line]
     except ValueError:

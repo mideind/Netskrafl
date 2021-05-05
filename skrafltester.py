@@ -4,10 +4,10 @@
 
     Skrafltester
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
-    The GNU General Public License, version 3, applies to this software.
+    The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This program implements a testing function for the
@@ -23,7 +23,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable, cast
 
 import getopt
 import sys
@@ -32,7 +32,6 @@ import time
 from languages import (
     NewTileSet,
     set_locale,
-    current_locale,
     current_tileset,
     current_vocabulary,
 )
@@ -45,13 +44,17 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import AutoPlayer, AutoPlayer_MiniMax
+from skraflplayer import AutoPlayer, AutoPlayer_Common, AutoPlayer_Medium, AutoPlayer_MiniMax
 
 
-_PROFILING = False
+PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
+PlayerList = List[PlayerTuple]
 
 
-def test_move(state, movestring):
+_PROFILING = False  # type: ignore
+
+
+def test_move(state: State, movestring: str) -> bool:
     """ Test placing a simple tile move """
     coord, word = movestring.split(" ")
     rowid = Board.ROWIDS
@@ -90,7 +93,7 @@ def test_move(state, movestring):
     return True
 
 
-def test_exchange(state, numtiles):
+def test_exchange(state: State, numtiles: int) -> bool:
     """ Test exchange move """
     exch = state.player_rack().contents()[0:numtiles]
     move = ExchangeMove(exch)
@@ -107,7 +110,7 @@ def test_exchange(state, numtiles):
     return True
 
 
-def test_challenge(state):
+def test_challenge(state: State) -> bool:
     """ Test challenge move """
     move = ChallengeMove()
     legal = state.check_legality(move)
@@ -123,7 +126,7 @@ def test_challenge(state):
     return True
 
 
-def test_response(state):
+def test_response(state: State) -> bool:
     """ Test response move """
     move = ResponseMove()
     legal = state.check_legality(move)
@@ -139,7 +142,7 @@ def test_response(state):
     return True
 
 
-def test_game(players, silent):
+def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
     """ Go through a whole game by pitting two AutoPlayers against each other """
     # The players parameter is a list of tuples: (playername, constructorfunc)
     # where constructorfunc accepts a State parameter and returns a freshly
@@ -177,8 +180,10 @@ def test_game(players, silent):
         legal = state.check_legality(move)
         if legal != Error.LEGAL:
             # Oops: the autoplayer generated an illegal move
+            if isinstance(legal, tuple):
+                legal = legal[0]
             print("Play is not legal, code {0}".format(Error.errortext(legal)))
-            return
+            return 0, 0
 
         if not silent:
             print(
@@ -267,20 +272,34 @@ def test_manual_game():
     )
 
 
-def test(num_games, opponent, silent):
+def test(num_games: int, opponent: str, silent: bool) -> None:
 
     """ Test running a number of games """
 
-    def autoplayer_creator(state):
+    def autoplayer_creator(state: State) -> AutoPlayer:
         """ Create a normal autoplayer instance """
         return AutoPlayer(state)
 
-    def minimax_creator(state):
+    def common_creator(state: State) -> AutoPlayer:
+        """ Create a common autoplayer instance """
+        return AutoPlayer_Common(state)
+
+    def medium_creator(state: State) -> AutoPlayer:
+        """ Create a medium autoplayer instance """
+        return AutoPlayer_Medium(state)
+
+    def minimax_creator(state: State) -> AutoPlayer:
         """ Create a minimax autoplayer instance """
         return AutoPlayer_MiniMax(state)
 
-    players: List[Optional[Tuple[str, Callable]]] = [None, None]
-    if opponent == "minimax":
+    players: PlayerList = cast(PlayerList, [None, None])
+    if opponent == "amlodi":
+        players[0] = ("Amlóði A", common_creator)
+        players[1] = ("Amlóði B", common_creator)
+    elif opponent == "midlungur":
+        players[0] = ("Miðlungur A", medium_creator)
+        players[1] = ("Miðlungur B", medium_creator)
+    elif opponent == "minimax":
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)
     else:
@@ -322,7 +341,7 @@ def test(num_games, opponent, silent):
         "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
-    def reportscore(player):
+    def reportscore(player: int) -> None:
         """ Report the result of a number of games """
         if gameswon[player] == 0:
             print(
@@ -351,12 +370,12 @@ class Usage(Exception):
 
     """ Error reporting exception for wrong command line arguments """
 
-    def __init__(self, msg):
-        super().__init__(msg)
+    def __init__(self, msg: getopt.GetoptError) -> None:
+        super().__init__(msg.msg)
         self.msg = msg
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]]=None) -> int:
     """ Guido van Rossum's pattern for a Python main function """
 
     if argv is None:
@@ -415,7 +434,7 @@ def main(argv=None):
     return 0
 
 
-def profile_main():
+def profile_main() -> None:
 
     """ Main function to invoke for profiling """
 
@@ -424,7 +443,7 @@ def profile_main():
 
     global _PROFILING
 
-    _PROFILING = True
+    _PROFILING = True  # type: ignore
 
     filename = "skrafltester.profile"
 

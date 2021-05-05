@@ -2,7 +2,7 @@
 
 """ Test module for DAWG dictionary
 
-    Copyright (C) 2020 Miðeind ehf.
+    Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This module contains test code for dawgdictionary.py
@@ -40,7 +40,7 @@ class DawgTester:
             # Tests the __contains__ operator
             print("Error: \"{0}\" was found".format(word))
 
-    def run(self, fname, relpath):
+    def run(self, fname: str, relpath: str):
         """ Load a DawgDictionary and test its functionality """
 
         print("DawgDictionary tester")
@@ -208,6 +208,19 @@ class DawgTester:
         self._test_false("borðuðuði")
         self._test_false("komiði")
         self._test_false("komuði")
+
+        self._test_false("öfgahu")
+        self._test_false("salilíkari")
+        self._test_false("blýlegrar")
+        self._test_false("mismri")
+        self._test_false("strinum")
+        self._test_false("sigrihrt")
+        self._test_false("býj")
+
+        self._test_true("fau")
+        self._test_true("ifa")
+        self._test_true("yla")
+        self._test_true("ritu")
 
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
