@@ -520,6 +520,7 @@ class State:
         # The covers laid down in the last challengeable move
         self._last_covers: Optional[List[Cover]] = None
 
+        # pylint: disable=protected-access
         if copy is None:
             self._board = Board(board_type=board_type)
             self._player_to_move = 0
