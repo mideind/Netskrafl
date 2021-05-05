@@ -33,15 +33,11 @@
 
    Style sheet template for netskrafl.is
 
-   Copyright (C) 2015-2020 Miðeind ehf.
+   Copyright (C) 2021 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
-   The GNU General Public License, version 3, applies to this software.
+   The GNU Affero General Public License, version 3, applies to this software.
    For further information, see https://github.com/vthorsteinsson/Netskrafl
-
-   Note: SCRABBLE is a registered trademark. This software or its author
-   are in no way affiliated with or endorsed by the owners or licensees
-   of the SCRABBLE trademark.
 
 */
 @font-face {
@@ -489,11 +485,6 @@ div.board table.board {
   transform-box: view-box;
   touch-action: pan-x pan-y;
 }
-/*
-div.board table.board.zoomed {
-   transform: scale(1.5);
-}
-*/
 table.board tr {
   height: 24px;
 }
@@ -576,12 +567,7 @@ div.tile.ui-draggable-dragging {
 }
 .rack td {
   min-width: 29px;
-  /*
-   max-height: @rack-cell-small;
-   max-width: @rack-cell-small;
-   height: @rack-cell-small;
-   width: @rack-cell-small;
-   */
+  width: 31px;
 }
 tr.colid {
   display: none;
@@ -5474,6 +5460,9 @@ div.signup-header {
     border: 2px solid #f4f4f4;
   }
   div#tabs {
+    background-color: #f4f4f4;
+  }
+  .ui-widget-header .ui-state-active {
     background-color: #f4f4f4;
   }
   div.userid {

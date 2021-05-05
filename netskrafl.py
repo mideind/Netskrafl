@@ -119,7 +119,9 @@ RouteType = Callable[..., ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 
 # Are we running in a local development environment or on a GAE server?
-running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+running_local: bool = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+# Set SERVER_HOST to 0.0.0.0 to accept HTTP connections from the outside
+host: str = os.environ.get("SERVER_HOST", "127.0.0.1")
 
 if running_local:
     # Configure logging
@@ -2696,4 +2698,4 @@ if not running_local:
 # Run a default Flask web server for testing if invoked directly as a main program
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8080, use_debugger=True, threaded=False, processes=1)
+    app.run(host=host, debug=True, port=8080, use_debugger=True, threaded=False, processes=1)
