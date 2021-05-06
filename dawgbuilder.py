@@ -210,6 +210,9 @@ class _DawgNode:
 
 
 class _Dawg:
+
+    """ Directed Acyclic Word Graph (DAWG) """
+
     def __init__(self) -> None:
         self._lastword = ""
         self._lastlen = 0
@@ -222,12 +225,12 @@ class _Dawg:
         # Keep a list of the values inserted too. Note that using
         # OrderedDict raises an exception while enumerating the values
         # (presumably because the dictionary has been altered).
-        self._unique_nodes: Dict[_DawgNode, _DawgNode] = dict()
+        self._unique_nodes: Dict[Optional[_DawgNode], Optional[_DawgNode]] = dict()
         # Don't mess with the following unless you know what you're
         # doing - this is a hack to make sure dict enumeration and
         # renumbering of ids work correctly even under Python 3 dict
         # randomization
-        self._unique_nodes_values: List[_DawgNode] = list()
+        self._unique_nodes_values: List[Optional[_DawgNode]] = list()
 
     def _collapse_branch(self, parent: DawgDict, prefix: str, node: _DawgNode) -> None:
         """ Attempt to collapse a single branch of the tree """
@@ -251,6 +254,8 @@ class _Dawg:
         # If any of the chained nodes has a final marker, add a vertical bar '|' to
         # the prefix instead.
 
+        node_new: Optional[_DawgNode] = node
+
         if len(di) == 1:
             # Only one child: we can collapse
             lastd: Optional[_DawgNode] = None
@@ -260,26 +265,25 @@ class _Dawg:
                 tail = ch
                 lastd = nx
             # Delete the child node and put a string of prefix characters into the root instead
-            assert lastd is not None
             del parent[prefix]
             if node.final:
                 tail = "|" + tail
             prefix += tail
             parent[prefix] = lastd
-            node = lastd
+            node_new = lastd
 
         # If a node with the same signature (key) has already been generated,
         # i.e. having the same final flag and the same edges leading to the same
         # child nodes, replace the edge leading to this node with an edge
         # to the previously generated node.
 
-        if node in self._unique_nodes:
+        if node_new in self._unique_nodes:
             # Signature matches a previously generated node: replace the edge
-            parent[prefix] = self._unique_nodes[node]
+            parent[prefix] = self._unique_nodes[node_new]
         else:
             # This is a new, unique signature: store it in the dictionary of unique nodes
-            self._unique_nodes[node] = node
-            self._unique_nodes_values.append(node)
+            self._unique_nodes[node_new] = node_new
+            self._unique_nodes_values.append(node_new)
 
     def _collapse(self, edges: Optional[DawgDict]) -> None:
         """ Collapse and optimize the edges in the parent dict """
