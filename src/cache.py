@@ -37,13 +37,13 @@ _modules = dict()
 _serializers = {
     ("datetime", "datetime"): (
         lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
-        lambda args: datetime(*args)
+        lambda args: datetime(*args),
     )
 }
 
 
 def serialize(obj):
-    """ Return a JSON-serializable representation of an object """
+    """Return a JSON-serializable representation of an object"""
     cls = obj.__class__
     cls_name = cls.__name__
     module_name = cls.__module__
@@ -67,25 +67,18 @@ def serialize(obj):
     assert serializer is not None or hasattr(cls, "from_serializable")
     # Return a serialization wrapper dict with enough info
     # for deserialization
-    return dict(
-        __cls__=cls_name,
-        __module__=module_name,
-        __obj__=s
-    )
+    return dict(__cls__=cls_name, __module__=module_name, __obj__=s)
 
 
 def _dumps(obj):
-    """ Returns the given object in JSON format, using the custom serializer
-        for composite objects """
-    return json.dumps(
-        obj,
-        default=serialize, ensure_ascii=False, separators=(',', ':')
-    )
+    """Returns the given object in JSON format, using the custom serializer
+    for composite objects"""
+    return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(',', ':'))
 
 
 def _loads(j):
-    """ Return an instance of a serializable class,
-        initialized from a JSON string """
+    """Return an instance of a serializable class,
+    initialized from a JSON string"""
     if j is None:
         return None
     d = json.loads(j)
@@ -112,8 +105,8 @@ def _loads(j):
         assert m is not None, "Unable to import module {0}".format(module_name)
     # Find the class within the module
     cls = getattr(m, cls_name)
-    assert cls is not None, (
-        "Unable to find class {0} in module {1}".format(cls_name, module_name)
+    assert cls is not None, "Unable to find class {0} in module {1}".format(
+        cls_name, module_name
     )
     # ...and create the instance by calling from_serializable() on the class
     return cls.from_serializable(d["__obj__"])
@@ -121,8 +114,8 @@ def _loads(j):
 
 class RedisWrapper:
 
-    """ Wrapper class around the Redis client,
-        making it appear as a simplified memcache instance """
+    """Wrapper class around the Redis client,
+    making it appear as a simplified memcache instance"""
 
     def __init__(self, redis_host=None, redis_port=None):
         redis_host = redis_host or os.environ.get('REDISHOST', 'localhost')
@@ -133,12 +126,12 @@ class RedisWrapper:
         )
 
     def get_redis_client(self):
-        """ Return the underlying Redis client instance """
+        """Return the underlying Redis client instance"""
         return self._client
 
     def _call_with_retry(self, func, errval, *args, **kwargs):
-        """ Call a client function, attempting one retry
-            upon a connection error """
+        """Call a client function, attempting one retry
+        upon a connection error"""
         attempts = 0
         while attempts < 2:
             try:
@@ -147,39 +140,39 @@ class RedisWrapper:
                 return ret
             except redis.client.ConnectionError:
                 if attempts == 0:
-                    logging.warning(
-                        "Retrying Redis call after connection error")
+                    logging.warning("Retrying Redis call after connection error")
                 else:
-                    logging.error(
-                        "Redis connection error persisted after retrying")
+                    logging.error("Redis connection error persisted after retrying")
                 attempts += 1
         return errval
 
     def add(self, key, value, time=None, namespace=None):
-        """ Add a value to the cache, under the given key
-            and within the given namespace, with an optional
-            expiry time in seconds """
+        """Add a value to the cache, under the given key
+        and within the given namespace, with an optional
+        expiry time in seconds"""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._call_with_retry(self._client.set, None, key, _dumps(value), ex=time)
+        return self._call_with_retry(
+            self._client.set, None, key, _dumps(value), ex=time
+        )
 
     def set(self, key, value, time=None, namespace=None):
-        """ Set a value in the cache, under the given key
-            and within the given namespace, with an optional
-            expiry time in seconds. This is an alias for self.add(). """
+        """Set a value in the cache, under the given key
+        and within the given namespace, with an optional
+        expiry time in seconds. This is an alias for self.add()."""
         return self.add(key, value, time, namespace)
 
     def get(self, key, namespace=None):
-        """ Fetch a value from the cache, under the given key and within
-            the given namespace. Returns None if the key is not found. """
+        """Fetch a value from the cache, under the given key and within
+        the given namespace. Returns None if the key is not found."""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
         return _loads(self._call_with_retry(self._client.get, None, key))
 
     def delete(self, key, namespace=None):
-        """ Delete a value from the cache """
+        """Delete a value from the cache"""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
