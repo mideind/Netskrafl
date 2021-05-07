@@ -120,7 +120,7 @@ StatsResults = List[StatsDict]
 
 class Query(Generic[_T], ndb.Query):
 
-    """ A type-safer wrapper around ndb.Query """
+    """A type-safer wrapper around ndb.Query"""
 
     def order(self, *args: Any, **kwargs: Any) -> Query[_T]:
         f: Callable[..., Query[_T]] = cast(Any, super()).order
@@ -129,7 +129,7 @@ class Query(Generic[_T], ndb.Query):
     def filter(self, *args: Any, **kwargs: Any) -> Query[_T]:
         f: Callable[..., Query[_T]] = cast(Any, super()).filter
         return f(*args, **kwargs)
-    
+
     def fetch(self, *args: Any, **kwargs: Any) -> List[_T]:
         f: Callable[..., List[_T]] = cast(Any, super()).fetch
         return f(*args, **kwargs)
@@ -172,7 +172,7 @@ class Query(Generic[_T], ndb.Query):
 
 class Future(Generic[_T], ndb.Future):
 
-    """ A type-safer wrapper around ndb.Future """
+    """A type-safer wrapper around ndb.Future"""
 
     def get_result(self) -> List[_T]:
         f: Callable[[], List[_T]] = cast(Any, super()).get_result
@@ -185,7 +185,7 @@ class Future(Generic[_T], ndb.Future):
 
 class Key(ndb.Key):
 
-    """ A type-safer wrapper around ndb.Key """
+    """A type-safer wrapper around ndb.Key"""
 
     def id(self) -> str:
         return cast(str, super().id())
@@ -202,7 +202,7 @@ _T_Model = TypeVar("_T_Model", bound="Model")
 
 class Model(ndb.Model):
 
-    """ A type-safer wrapper around ndb.Model """
+    """A type-safer wrapper around ndb.Model"""
 
     @property
     def key(self) -> Key:
@@ -216,7 +216,9 @@ class Model(ndb.Model):
         put_multi(recs)
 
     @classmethod
-    def get_by_id(cls: Type[_T_Model], identifier: str, **kwargs: Any) -> Optional[_T_Model]:
+    def get_by_id(
+        cls: Type[_T_Model], identifier: str, **kwargs: Any
+    ) -> Optional[_T_Model]:
         return cast(Any, super()).get_by_id(identifier, **kwargs)
 
     @classmethod
@@ -298,7 +300,7 @@ class Model(ndb.Model):
 
 class Client:
 
-    """ Wrapper for the ndb client instance singleton """
+    """Wrapper for the ndb client instance singleton"""
 
     _client = ndb.Client()
     _global_cache = ndb.RedisCache(memcache.get_redis_client())
@@ -308,20 +310,20 @@ class Client:
 
     @classmethod
     def get_context(cls):
-        """ Return the ndb client instance singleton """
+        """Return the ndb client instance singleton"""
         return cls._client.context(global_cache=cls._global_cache)
 
 
 class Context:
 
-    """ Wrapper for NDB context operations """
+    """Wrapper for NDB context operations"""
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def disable_cache() -> None:
-        """ Disable the NDB in-context cache """
+        """Disable the NDB in-context cache"""
         ctx = cast(Any, ndb).get_context()
         assert ctx is not None
         ctx.set_cache_policy(False)
@@ -329,14 +331,14 @@ class Context:
 
 class Unique:
 
-    """ Utility class for generation of unique id strings for keys """
+    """Utility class for generation of unique id strings for keys"""
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def id() -> str:
-        """ Generates unique id strings """
+        """Generates unique id strings"""
         return str(uuid.uuid1())  # Random UUID
 
 
@@ -346,7 +348,7 @@ def iter_q(
     limit: int = 0,
     projection: Optional[List[str]] = None,
 ) -> Iterator[_T]:
-    """ Generator for iterating through a query using a cursor """
+    """Generator for iterating through a query using a cursor"""
     if 0 < limit < chunk_size:
         # Don't fetch more than we want
         chunk_size = limit
@@ -369,18 +371,18 @@ def iter_q(
 
 
 def put_multi(recs: Iterable[Model]) -> None:
-    """ Type-safer call to ndb.put_multi() """
+    """Type-safer call to ndb.put_multi()"""
     cast(Any, ndb).put_multi(recs)
 
 
 def delete_multi(keys: Iterable[Key]) -> None:
-    """ Type-safer call to ndb.delete_multi() """
+    """Type-safer call to ndb.delete_multi()"""
     cast(Any, ndb).delete_multi(keys)
 
 
 class UserModel(Model):
 
-    """ Models an individual user """
+    """Models an individual user"""
 
     nickname = Model.Str()
 
@@ -435,7 +437,7 @@ class UserModel(Model):
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
     ) -> str:
-        """ Create a new user """
+        """Create a new user"""
         user: UserModel = cls(id=user_id)
         user.account = account
         user.email = email
@@ -451,19 +453,19 @@ class UserModel(Model):
 
     @classmethod
     def fetch(cls, user_id: str) -> Optional[UserModel]:
-        """ Fetch a user entity by id """
+        """Fetch a user entity by id"""
         return cls.get_by_id(user_id, use_cache=False, use_global_cache=False)
 
     @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
-        """ Attempt to fetch a user by OAuth2 account id,
-            prefixed by the authentication provider """
+        """Attempt to fetch a user by OAuth2 account id,
+        prefixed by the authentication provider"""
         q = cls.query(UserModel.account == account)
         return q.get()
 
     @classmethod
     def fetch_email(cls, email: str) -> Optional[UserModel]:
-        """ Attempt to fetch a user by email. """
+        """Attempt to fetch a user by email."""
         if not email:
             return None
         # Note that multiple records with the same e-mail may occur
@@ -480,7 +482,7 @@ class UserModel(Model):
 
     @classmethod
     def fetch_multi(cls, user_ids: Iterable[str]) -> List[UserModel]:
-        """ Fetch multiple user entities by id list """
+        """Fetch multiple user entities by id list"""
         # Google NDB/RPC doesn't allow more than 1000 entities per get_multi() call
         MAX_CHUNK = 1000
         result: List[UserModel] = []
@@ -499,12 +501,12 @@ class UserModel(Model):
         return result
 
     def user_id(self) -> str:
-        """ Return the ndb key of a user as a string """
+        """Return the ndb key of a user as a string"""
         return self.key.id()
 
     @classmethod
     def count(cls) -> int:
-        """ Return a count of user entities """
+        """Return a count of user entities"""
         # Beware: this seems to be EXTREMELY slow on Google Cloud Datastore
         return cls.query().count()
 
@@ -526,7 +528,7 @@ class UserModel(Model):
     def list_prefix(
         cls, prefix: str, max_len: int = 50, locale: Optional[str] = None
     ) -> Iterator[Dict[str, Any]]:
-        """ Query for a list of users having a name or nick with the given prefix """
+        """Query for a list of users having a name or nick with the given prefix"""
 
         if not prefix:
             # No prefix means nothing is returned
@@ -538,7 +540,7 @@ class UserModel(Model):
         def list_q(
             q: Query[UserModel], f: Callable[[UserModel], str]
         ) -> Iterator[Dict[str, Any]]:
-            """ Yield the results of a user query """
+            """Yield the results of a user query"""
             CHUNK_SIZE = 50
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
                 if not f(um).startswith(prefix):
@@ -589,11 +591,11 @@ class UserModel(Model):
     def list_similar_elo(
         cls, elo: int, max_len: int = 40, locale: Optional[str] = None
     ) -> List[str]:
-        """ List users with a similar (human) Elo rating """
+        """List users with a similar (human) Elo rating"""
         # Start with max_len users with a lower Elo rating
 
         def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
-            """ Generator for returning query result keys """
+            """Generator for returning query result keys"""
             assert max_len > 0
             counter = 0  # Number of results already returned
             for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
@@ -649,7 +651,7 @@ class UserModel(Model):
 
 class MoveModel(Model):
 
-    """ Models a single move in a Game """
+    """Models a single move in a Game"""
 
     coord = Model.Str()
     tiles = Model.Str()
@@ -660,7 +662,7 @@ class MoveModel(Model):
 
 class GameModel(Model):
 
-    """ Models a game between two users """
+    """Models a game between two users"""
 
     # The players
     player0 = Model.OptionalDbKey(kind=UserModel)
@@ -728,7 +730,7 @@ class GameModel(Model):
     manual_elo1_adj = Model.OptionalInt()
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
-        """ Set a player key property to point to a given user, or None """
+        """Set a player key property to point to a given user, or None"""
         k = None if user_id is None else Key(UserModel, user_id)
         if ix == 0:
             self.player0 = k
@@ -736,20 +738,20 @@ class GameModel(Model):
             self.player1 = k
 
     def player0_id(self) -> Optional[str]:
-        """ Return the user id of player 0, if any """
+        """Return the user id of player 0, if any"""
         if (p := self.player0) is None:
             return None
         return p.id()
 
     def player1_id(self) -> Optional[str]:
-        """ Return the user id of player 1, if any """
+        """Return the user id of player 1, if any"""
         if (p := self.player1) is None:
             return None
         return p.id()
 
     @classmethod
     def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
-        """ Fetch a game entity given its uuid """
+        """Fetch a game entity given its uuid"""
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
         # Default caching policy if caching is not explictly prohibited
@@ -759,13 +761,13 @@ class GameModel(Model):
     def list_finished_games(
         cls, user_id: str, versus: Optional[str] = None, max_len: int = 10
     ) -> List[Dict[str, Any]]:
-        """ Query for a list of recently finished games for the given user """
+        """Query for a list of recently finished games for the given user"""
         assert user_id is not None
         if user_id is None:
             return []
 
         def game_callback(gm: GameModel) -> Dict[str, Any]:
-            """ Map a game entity to a result dictionary with useful info about the game """
+            """Map a game entity to a result dictionary with useful info about the game"""
             game_uuid = gm.key.id()
             u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
             u1: Optional[str] = None if gm.player1 is None else gm.player1.id()
@@ -834,7 +836,7 @@ class GameModel(Model):
     def iter_live_games(
         cls, user_id: Optional[str], max_len: int = 10
     ) -> Iterator[Dict[str, Any]]:
-        """ Query for a list of active games for the given user """
+        """Query for a list of active games for the given user"""
         if user_id is None:
             return
         k = Key(UserModel, user_id)
@@ -846,7 +848,7 @@ class GameModel(Model):
         )
 
         def game_callback(gm: GameModel) -> Dict[str, Any]:
-            """ Map a game entity to a result tuple with useful info about the game """
+            """Map a game entity to a result tuple with useful info about the game"""
             game_uuid = gm.key.id()
             u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
             u1: Optional[str] = None if gm.player1 is None else gm.player1.id()
@@ -871,7 +873,7 @@ class GameModel(Model):
                 for m in gm.moves:
                     if m.coord:
                         # Normal tile move
-                        tc += len(m.tiles.replace(u"?", u""))
+                        tc += len(m.tiles.replace("?", ""))
             return dict(
                 uuid=game_uuid,
                 ts=gm.ts_last_move or gm.timestamp,
@@ -890,7 +892,7 @@ class GameModel(Model):
 
 class FavoriteModel(Model):
 
-    """ Models the fact that a user has marked another user as a favorite """
+    """Models the fact that a user has marked another user as a favorite"""
 
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
 
@@ -898,7 +900,7 @@ class FavoriteModel(Model):
     destuser = Model.DbKey(kind=UserModel)
 
     def set_dest(self, user_id: str) -> None:
-        """ Set a destination user key property """
+        """Set a destination user key property"""
         k = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
@@ -906,7 +908,7 @@ class FavoriteModel(Model):
     def list_favorites(
         cls, user_id: str, max_len: int = MAX_FAVORITES
     ) -> Iterator[str]:
-        """ Query for a list of favorite users for the given user """
+        """Query for a list of favorite users for the given user"""
         assert user_id is not None
         if user_id is None:
             return
@@ -920,7 +922,7 @@ class FavoriteModel(Model):
     def has_relation(
         cls, srcuser_id: Optional[str], destuser_id: Optional[str]
     ) -> bool:
-        """ Return True if destuser is a favorite of user """
+        """Return True if destuser is a favorite of user"""
         if srcuser_id is None or destuser_id is None:
             return False
         ks = Key(UserModel, srcuser_id)
@@ -932,14 +934,14 @@ class FavoriteModel(Model):
 
     @classmethod
     def add_relation(cls, src_id: str, dest_id: str) -> None:
-        """ Add a favorite relation between the two users """
+        """Add a favorite relation between the two users"""
         fm = FavoriteModel(parent=Key(UserModel, src_id))
         fm.set_dest(dest_id)
         fm.put()
 
     @classmethod
     def del_relation(cls, src_id: str, dest_id: str) -> None:
-        """ Delete a favorite relation between a source user and a destination user """
+        """Delete a favorite relation between a source user and a destination user"""
         ks = Key(UserModel, src_id)
         kd = Key(UserModel, dest_id)
         while True:
@@ -956,7 +958,7 @@ class FavoriteModel(Model):
 
 class ChallengeModel(Model):
 
-    """ Models a challenge issued by a user to another user """
+    """Models a challenge issued by a user to another user"""
 
     # The challenging (source) user is the parent/ancestor of the relation
 
@@ -970,7 +972,7 @@ class ChallengeModel(Model):
     timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
 
     def set_dest(self, user_id: Optional[str]) -> None:
-        """ Set a destination user key property """
+        """Set a destination user key property"""
         k = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
@@ -978,7 +980,7 @@ class ChallengeModel(Model):
     def has_relation(
         cls, srcuser_id: Optional[str], destuser_id: Optional[str]
     ) -> bool:
-        """ Return True if srcuser has issued a challenge to destuser """
+        """Return True if srcuser has issued a challenge to destuser"""
         if srcuser_id is None or destuser_id is None:
             return False
         ks = Key(UserModel, srcuser_id)
@@ -992,7 +994,7 @@ class ChallengeModel(Model):
     def find_relation(
         cls, srcuser_id: Optional[str], destuser_id: Optional[str]
     ) -> Tuple[bool, Optional[PrefsDict]]:
-        """ Return (found, prefs) where found is True if srcuser has challenged destuser """
+        """Return (found, prefs) where found is True if srcuser has challenged destuser"""
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
             return (False, None)
@@ -1013,7 +1015,7 @@ class ChallengeModel(Model):
     def add_relation(
         cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
     ) -> None:
-        """ Add a challenge relation between the two users """
+        """Add a challenge relation between the two users"""
         cm = ChallengeModel(parent=Key(UserModel, src_id))
         cm.set_dest(dest_id)
         cm.prefs = {} if prefs is None else prefs
@@ -1023,7 +1025,7 @@ class ChallengeModel(Model):
     def del_relation(
         cls, src_id: str, dest_id: str
     ) -> Tuple[bool, Optional[PrefsDict]]:
-        """ Delete a challenge relation between a source user and a destination user """
+        """Delete a challenge relation between a source user and a destination user"""
         ks = Key(UserModel, src_id)
         kd = Key(UserModel, dest_id)
         prefs: Optional[PrefsDict] = None
@@ -1045,8 +1047,8 @@ class ChallengeModel(Model):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: str, max_len: int=20) -> Iterator[ChallengeTuple]:
-        """ Query for a list of challenges issued by a particular user """
+    def list_issued(cls, user_id: str, max_len: int = 20) -> Iterator[ChallengeTuple]:
+        """Query for a list of challenges issued by a particular user"""
         assert user_id is not None
         if user_id is None:
             return
@@ -1055,7 +1057,7 @@ class ChallengeModel(Model):
         q: Query[ChallengeModel] = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
-            """ Map an issued challenge to a tuple of useful info """
+            """Map an issued challenge to a tuple of useful info"""
             id0: Optional[str] = None if cm.destuser is None else cm.destuser.id()
             return (id0, cm.prefs, cm.timestamp)
 
@@ -1066,7 +1068,7 @@ class ChallengeModel(Model):
     def list_received(
         cls, user_id: Optional[str], max_len: int = 20
     ) -> Iterator[ChallengeTuple]:
-        """ Query for a list of challenges issued to a particular user """
+        """Query for a list of challenges issued to a particular user"""
         assert user_id is not None
         if user_id is None:
             return
@@ -1077,7 +1079,7 @@ class ChallengeModel(Model):
         )
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
-            """ Map a received challenge to a tuple of useful info """
+            """Map a received challenge to a tuple of useful info"""
             p0 = cm.key.parent()
             id0: Optional[str] = None if p0 is None else p0.id()
             return (id0, cm.prefs, cm.timestamp)
@@ -1088,7 +1090,7 @@ class ChallengeModel(Model):
 
 class StatsModel(Model):
 
-    """ Models statistics about users """
+    """Models statistics about users"""
 
     # The user associated with this statistic or None if robot
     user = Model.OptionalDbKey(kind=UserModel)
@@ -1125,14 +1127,14 @@ class StatsModel(Model):
     MAX_STATS = 100
 
     def set_user(self, user_id: Optional[str], robot_level: int = 0) -> None:
-        """ Set the user key property """
+        """Set the user key property"""
         k = None if user_id is None else Key(UserModel, user_id)
         self.user = k
         self.robot_level = robot_level
 
     @classmethod
     def create(cls, user_id: Optional[str], robot_level: int = 0) -> StatsModel:
-        """ Create a fresh instance with default values """
+        """Create a fresh instance with default values"""
         sm = cls()
         sm.set_user(user_id, robot_level)
         sm.timestamp = None
@@ -1157,7 +1159,7 @@ class StatsModel(Model):
         return sm
 
     def copy_from(self, src: StatsModel) -> None:
-        """ Copy data from the src instance """
+        """Copy data from the src instance"""
         # user and robot_level are assumed to be in place already
         assert hasattr(self, "user")
         assert hasattr(self, "robot_level")
@@ -1182,7 +1184,7 @@ class StatsModel(Model):
         self.manual_losses = src.manual_losses
 
     def populate_dict(self, d: Dict[str, int]) -> None:
-        """ Copy statistics data to the given dict """
+        """Copy statistics data to the given dict"""
         d["elo"] = self.elo
         d["human_elo"] = self.human_elo
         d["manual_elo"] = self.manual_elo
@@ -1204,20 +1206,20 @@ class StatsModel(Model):
 
     @staticmethod
     def dict_key(d: StatsDict) -> str:
-        """ Return a dictionary key that works for human users and robots """
+        """Return a dictionary key that works for human users and robots"""
         if d["user"] is None:
             return "robot-" + str(d["robot_level"])
         return cast(str, d["user"])
 
     @staticmethod
     def user_id_from_key(k: Optional[str]) -> Tuple[Optional[str], int]:
-        """ Decompose a dictionary key into a (user_id, robot_level) tuple """
+        """Decompose a dictionary key into a (user_id, robot_level) tuple"""
         if k is not None and k.startswith("robot-"):
             return (None, int(k[6:]))
         return (k, 0)
 
     def fetch_user(self) -> Optional[UserModel]:
-        """ Fetch the user associated with a StatsModel instance """
+        """Fetch the user associated with a StatsModel instance"""
         if (user := self.user) is None:
             # Probably a robot
             return None
@@ -1322,7 +1324,7 @@ class StatsModel(Model):
     def list_elo(
         cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
     ) -> StatsResults:
-        """ Return the top Elo-rated users for all games (including robots) """
+        """Return the top Elo-rated users for all games (including robots)"""
 
         def _makedict(sm: StatsModel) -> StatsDict:
             return StatsDict(
@@ -1346,7 +1348,7 @@ class StatsModel(Model):
     def list_human_elo(
         cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
     ) -> StatsResults:
-        """ Return the top Elo-rated users for human-only games """
+        """Return the top Elo-rated users for human-only games"""
 
         def _makedict(sm: StatsModel) -> StatsDict:
             return StatsDict(
@@ -1370,7 +1372,7 @@ class StatsModel(Model):
     def list_manual_elo(
         cls, timestamp: Optional[datetime] = None, max_len: int = MAX_STATS
     ) -> StatsResults:
-        """ Return the top Elo-rated users for manual-only games """
+        """Return the top Elo-rated users for manual-only games"""
 
         def _makedict(sm: StatsModel) -> StatsDict:
             return StatsDict(
@@ -1395,13 +1397,13 @@ class StatsModel(Model):
 
     @classmethod
     def clear_cache(cls) -> None:
-        """ Reset the cache """
+        """Reset the cache"""
         cls._NB_CACHE = dict()
         cls._NB_CACHE_STATS = dict(hits=0, misses=0)
 
     @classmethod
     def log_cache_stats(cls) -> None:
-        """ Show cache statistics in the log """
+        """Show cache statistics in the log"""
         hits = cls._NB_CACHE_STATS["hits"]
         misses = cls._NB_CACHE_STATS["misses"]
         total = hits + misses
@@ -1420,7 +1422,7 @@ class StatsModel(Model):
     def newest_before(
         cls, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> StatsModel:
-        """ Returns the newest available stats record for the user at or before the given time """
+        """Returns the newest available stats record for the user at or before the given time"""
         cache = cls._NB_CACHE
         key = (user_id, robot_level)
         if ts:
@@ -1458,7 +1460,7 @@ class StatsModel(Model):
 
     @classmethod
     def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
-        """ Returns the newest available stats record for the user """
+        """Returns the newest available stats record for the user"""
         if user_id is None:
             return None
         k = Key(UserModel, user_id)
@@ -1474,15 +1476,13 @@ class StatsModel(Model):
 
     @classmethod
     def delete_ts(cls, timestamp: datetime) -> None:
-        """ Delete all stats records at a particular timestamp """
-        delete_multi(
-            cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True)
-        )
+        """Delete all stats records at a particular timestamp"""
+        delete_multi(cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True))
 
 
 class RatingModel(Model):
 
-    """ Models tables of user ratings """
+    """Models tables of user ratings"""
 
     # Typically "all" or "human"
     kind = Model.Str()
@@ -1527,7 +1527,7 @@ class RatingModel(Model):
 
     @classmethod
     def get_or_create(cls, kind: str, rank: int) -> RatingModel:
-        """ Get an existing entity or create a new one if it doesn't exist """
+        """Get an existing entity or create a new one if it doesn't exist"""
         k = Key(cls, kind + ":" + str(rank))
         rm = k.get()
         if rm is None:
@@ -1539,7 +1539,7 @@ class RatingModel(Model):
         return rm
 
     def assign(self, dict_args: StatsDict) -> None:
-        """ Populate attributes from a dict """
+        """Populate attributes from a dict"""
         for key, val in dict_args.items():
             if key == "user":
                 # Re-pack the user id into a key
@@ -1549,7 +1549,7 @@ class RatingModel(Model):
 
     @classmethod
     def list_rating(cls, kind: str) -> Iterator[Dict[str, Any]]:
-        """ Iterate through the rating table of a given kind, in ascending order by rank """
+        """Iterate through the rating table of a given kind, in ascending order by rank"""
         CHUNK_SIZE = 100
         q: Query[RatingModel] = cls.query(RatingModel.kind == kind).order(
             RatingModel.rank
@@ -1599,13 +1599,13 @@ class RatingModel(Model):
 
     @classmethod
     def delete_all(cls) -> None:
-        """ Delete all ratings records """
+        """Delete all ratings records"""
         delete_multi(cls.query().iter(keys_only=True))
 
 
 class ChatModel(Model):
 
-    """ Models chat communications between users """
+    """Models chat communications between users"""
 
     # The channel (conversation) identifier
     channel = Model.Str()
@@ -1624,7 +1624,7 @@ class ChatModel(Model):
     def list_conversation(
         cls, channel: str, maxlen: int = 250
     ) -> Iterator[Dict[str, Any]]:
-        """ Return the newest items in a conversation """
+        """Return the newest items in a conversation"""
         CHUNK_SIZE = 100
         q = cls.query(ChatModel.channel == channel).order(
             -cast(int, ChatModel.timestamp)
@@ -1640,7 +1640,7 @@ class ChatModel(Model):
 
     @classmethod
     def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
-        """ Returns True if there are unseen messages in the conversation """
+        """Returns True if there are unseen messages in the conversation"""
         CHUNK_SIZE = 40
         q = cls.query(ChatModel.channel == channel).order(
             -cast(int, ChatModel.timestamp)
@@ -1663,7 +1663,7 @@ class ChatModel(Model):
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
-        """ Adds a message to a chat conversation on a channel """
+        """Adds a message to a chat conversation on a channel"""
         cm = cls()
         cm.channel = channel
         cm.user = Key(UserModel, userid)
@@ -1676,7 +1676,7 @@ class ChatModel(Model):
 
 class ZombieModel(Model):
 
-    """ Models finished games that have not been seen by one of the players """
+    """Models finished games that have not been seen by one of the players"""
 
     # The zombie game
     game = Model.DbKey(kind=GameModel)
@@ -1684,16 +1684,16 @@ class ZombieModel(Model):
     player = Model.DbKey(kind=UserModel)
 
     def set_player(self, user_id: Optional[str]) -> None:
-        """ Set the player's user id """
+        """Set the player's user id"""
         self.player = None if user_id is None else Key(UserModel, user_id)
 
     def set_game(self, game_id: Optional[str]) -> None:
-        """ Set the game id """
+        """Set the game id"""
         self.game = None if game_id is None else Key(GameModel, game_id)
 
     @classmethod
     def add_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
-        """ Add a zombie game that has not been seen by the player in question """
+        """Add a zombie game that has not been seen by the player in question"""
         zm = cls()
         zm.set_game(game_id)
         zm.set_player(user_id)
@@ -1701,7 +1701,7 @@ class ZombieModel(Model):
 
     @classmethod
     def del_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
-        """ Delete a zombie game after the player has seen it """
+        """Delete a zombie game after the player has seen it"""
         kg = Key(GameModel, game_id)
         kp = Key(UserModel, user_id)
         q = cls.query(ZombieModel.game == kg).filter(ZombieModel.player == kp)
@@ -1713,7 +1713,7 @@ class ZombieModel(Model):
 
     @classmethod
     def list_games(cls, user_id: str) -> Iterator[Dict[str, Any]]:
-        """ List all zombie games for the given player """
+        """List all zombie games for the given player"""
         assert user_id is not None
         if user_id is None:
             return
@@ -1721,7 +1721,7 @@ class ZombieModel(Model):
         q = cls.query(ZombieModel.player == k)
 
         def z_callback(zm: ZombieModel) -> Optional[Dict[str, Any]]:
-            """ Map a ZombieModel entity to a game descriptor """
+            """Map a ZombieModel entity to a game descriptor"""
             if not zm.game:
                 return None
             gm = GameModel.fetch(zm.game.id())
@@ -1754,7 +1754,7 @@ class ZombieModel(Model):
 
 class PromoModel(Model):
 
-    """ Models promotions displayed to players """
+    """Models promotions displayed to players"""
 
     # The player that saw the promotion
     player = Model.DbKey(kind=UserModel)
@@ -1764,13 +1764,13 @@ class PromoModel(Model):
     timestamp = Model.Datetime(auto_now_add=True)
 
     def set_player(self, user_id: str) -> None:
-        """ Set the player's user id """
+        """Set the player's user id"""
         assert user_id is not None
         self.player = Key(UserModel, user_id)
 
     @classmethod
     def add_promotion(cls, user_id: str, promotion: str) -> None:
-        """ Add a zombie game that has not been seen by the player in question """
+        """Add a zombie game that has not been seen by the player in question"""
         pm = cls()
         pm.set_player(user_id)
         pm.promotion = promotion
@@ -1780,7 +1780,7 @@ class PromoModel(Model):
     def list_promotions(
         cls, user_id: Optional[str], promotion: str
     ) -> Iterator[datetime]:
-        """ Return a list of timestamps for when the given promotion has been displayed """
+        """Return a list of timestamps for when the given promotion has been displayed"""
         assert user_id is not None
         if user_id is None:
             return
@@ -1793,7 +1793,7 @@ class PromoModel(Model):
 
 class CompletionModel(Model):
 
-    """ Models the successful completion of stats or ratings runs """
+    """Models the successful completion of stats or ratings runs"""
 
     # The type of process that was completed, usually 'stats' or 'ratings'
     proctype = Model.Str()
@@ -1812,7 +1812,7 @@ class CompletionModel(Model):
 
     @classmethod
     def add_completion(cls, proctype: str, ts_from: datetime, ts_to: datetime) -> None:
-        """ Add a zombie game that has not been seen by the player in question """
+        """Add a zombie game that has not been seen by the player in question"""
         cm = cls()
         cm.proctype = proctype
         cm.ts_from = ts_from
@@ -1825,7 +1825,7 @@ class CompletionModel(Model):
     def add_failure(
         cls, proctype: str, ts_from: datetime, ts_to: datetime, reason: str
     ) -> None:
-        """ Add a zombie game that has not been seen by the player in question """
+        """Add a zombie game that has not been seen by the player in question"""
         cm = cls()
         cm.proctype = proctype
         cm.ts_from = ts_from
