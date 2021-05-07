@@ -98,8 +98,16 @@ def ndb_wsgi_middleware(wsgi_app):
 
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=[
-     "http://explo.300dev.pl", "http://localhost:19006"])
+
+# Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[
+        "http://explo.300dev.pl",
+        "http://localhost:19006",
+    ]
+)
 
 # Wrap the WSGI app to insert the NDB client context into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
