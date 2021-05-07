@@ -36,5 +36,9 @@
 		"files.watcherExclude": {
 			"**/venv/**": true
 		},
+		"python.analysis.extraPaths": [
+			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
+		],
+		"python.formatting.provider": "black",
 	}
 }

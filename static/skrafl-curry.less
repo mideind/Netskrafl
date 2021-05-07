@@ -1,0 +1,66 @@
+/*
+
+   Skrafl-curry.less
+
+   Curry theme template for netskrafl.is
+
+   Copyright (C) 2021 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU Affero General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
+
+*/
+
+@pure-blue: #78aee6;
+@hover-tab: @pure-blue;
+@board-background: lighten(#afb8bf, 2%); /* Pantone 7543 U */
+@double-word: desaturate(#f7d2d8, 10%); /* Pantone 698 U */
+@triple-word: desaturate(#ee4f68, 15%); /* Pantone 192 U */
+@double-letter: desaturate(@pure-blue, 10%); /* Pantone 284 U */
+@triple-letter: desaturate(#006db8, 15%); /* Pantone 300 U */
+@alert: #ee4f68; /* Pantone 192 U */
+@tile: lighten(#e4ad87, 5%); /* Pantone 721 U */
+@racktile: #fcce43; /* Pantone 7404 U */
+@player: @racktile;
+@freshtile: desaturate(darken(#7ad3b7, 5%), 5%); /* Pantone 337 U */
+@cell-border: #e8e8e8; /* #f2f2f2; */
+@neutral: #222222;
+@box-shadow: #333333;
+@hint: #666666;
+@blank-sel: #777777;
+@background: #d6d1c4; /* Pantone 7534 U */
+@pass-btn: #ffa03b; /* Pantone 137 U */
+@hover-link: @pass-btn; /* Pantone 137 U */
+@container: #fff1dc; /* Pantone 7506 U */
+@statsbackground: rgba(255, 255, 255, 0.95);
+@nav-btn: @pass-btn;
+@close-btn: @freshtile;
+@submit-btn: darken(@freshtile, 10%);
+@help-link: @double-letter;
+@focal: #ffffc8; /* Pale yellow */
+@chat-background: desaturate(lighten(@board-background, 10%), 10%);
+@chall-btn: @triple-letter;
+@score-manual: @double-letter;
+@tab-background: #f4f4f4;
+@almost-black: #202020;
+@clock-digits: @almost-black;
+@board-center: @almost-black;
+
+@theme1: #fcf0cd; /* fade(@racktile, 25%); */
+@theme2: #d8efe7; /* fade(@freshtile, 25%); */
+@theme3: #fce5cb; /* fade(@pass-btn, 25%); */
+@theme4: desaturate(darken(@theme2, 10%), 10%);
+@theme5: desaturate(darken(@theme3, 10%), 10%);
+@theme6: darken(#dededa, 5%);
+
+@font1: 'Open Sans';
+@font2: 'Helvetica Neue';
+@font3: 'Arial';
+@font4: sans-serif;
+@tile-font: 'Open Sans';
+
+@import 'main.less';
+@import 'portrait.less';
+@import 'landscape.less';
+@import 'fullscreen.less';

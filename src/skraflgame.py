@@ -58,7 +58,7 @@ from skrafldb import (
 
 class User:
 
-    """ Information about a human user including nickname and preferences """
+    """Information about a human user including nickname and preferences"""
 
     # Use a lock to avoid potential race conditions between the memcache and the database
     _lock = threading.Lock()
@@ -73,7 +73,7 @@ class User:
     DEFAULT_ELO = 1200
 
     def __init__(self, uid=None, account=None):
-        """ Initialize a fresh User instance """
+        """Initialize a fresh User instance"""
         self._user_id = uid
         self._account = account
         self._email = None
@@ -97,7 +97,7 @@ class User:
         # (User._NAMESPACE, above) should be incremented!
 
     def _init(self, um):
-        """ Obtain the properties from the database entity """
+        """Obtain the properties from the database entity"""
         self._account = um.account
         self._email = um.email
         self._nickname = um.nickname
@@ -115,7 +115,7 @@ class User:
         self._image = um.image
 
     def update(self):
-        """ Update the user's record in the database and in the memcache """
+        """Update the user's record in the database and in the memcache"""
         with User._lock:
             # Use a lock to avoid the scenaro where a user is fetched by another
             # request in the interval between a database update and a memcache update
@@ -147,35 +147,35 @@ class User:
             )
 
     def id(self):
-        """ Returns the id (database key) of the user """
+        """Returns the id (database key) of the user"""
         return self._user_id
 
     def nickname(self):
-        """ Returns the human-readable nickname of a user,
-            or userid if a nick is not available """
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
         return self._nickname or self._user_id
 
     def set_nickname(self, nickname):
-        """ Sets the human-readable nickname of a user """
+        """Sets the human-readable nickname of a user"""
         self._nickname = nickname
 
     @staticmethod
     def is_valid_nick(nick):
-        """ Check whether a nickname is valid and displayable """
+        """Check whether a nickname is valid and displayable"""
         if not nick:
             return False
         return nick[0:8] != u"https://" and nick[0:7] != u"http://"
 
     def human_elo(self):
-        """ Return the human-only Elo points of the user """
+        """Return the human-only Elo points of the user"""
         return self._human_elo or User.DEFAULT_ELO
 
     def is_inactive(self):
-        """ Return True if the user is marked as inactive """
+        """Return True if the user is marked as inactive"""
         return self._inactive
 
     def is_displayable(self):
-        """ Returns True if this user should appear in user lists """
+        """Returns True if this user should appear in user lists"""
         if self._inactive:
             # Inactive users are hidden
             return False
@@ -183,107 +183,107 @@ class User:
         return User.is_valid_nick(self._nickname)
 
     def get_pref(self, pref, default=None):
-        """ Retrieve a preference, or None if not found """
+        """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
         return self._preferences.get(pref, default)
 
     def set_pref(self, pref, value):
-        """ Set a preference to a value """
+        """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
     def full_name_from_prefs(prefs):
-        """ Returns the full name of a user from a dict of preferences """
+        """Returns the full name of a user from a dict of preferences"""
         if prefs is None:
             return u""
         fn = prefs.get(u"full_name")
         return u"" if fn is None else fn
 
     def full_name(self):
-        """ Returns the full name of a user """
+        """Returns the full name of a user"""
         fn = self.get_pref(u"full_name")
         return u"" if fn is None else fn
 
     def set_full_name(self, full_name):
-        """ Sets the full name of a user """
+        """Sets the full name of a user"""
         self.set_pref(u"full_name", full_name)
 
     def email(self):
-        """ Returns the e-mail address of a user """
+        """Returns the e-mail address of a user"""
         em = self.get_pref(u"email", self._email)
         return u"" if em is None else em
 
     def set_email(self, email):
-        """ Sets the e-mail address of a user """
+        """Sets the e-mail address of a user"""
         self.set_pref(u"email", email)
 
     def audio(self):
-        """ Returns True if the user wants audible signals """
+        """Returns True if the user wants audible signals"""
         em = self.get_pref(u"audio")
         # True by default
         return True if em is None else em
 
     def set_audio(self, audio):
-        """ Sets the audio preference of a user to True or False """
+        """Sets the audio preference of a user to True or False"""
         assert isinstance(audio, bool)
         self.set_pref(u"audio", audio)
 
     def image(self):
-        """ Returns the e-mail address of a user """
+        """Returns the e-mail address of a user"""
         em = self.get_pref(u"image", self._image)
         return u"" if em is None else em
 
     def set_image(self, image):
-        """ Sets the e-mail address of a user """
+        """Sets the e-mail address of a user"""
         self.set_pref(u"image", image)
 
     def fanfare(self):
-        """ Returns True if the user wants a fanfare sound when winning """
+        """Returns True if the user wants a fanfare sound when winning"""
         em = self.get_pref(u"fanfare")
         # True by default
         return True if em is None else em
 
     def set_fanfare(self, fanfare):
-        """ Sets the fanfare preference of a user to True or False """
+        """Sets the fanfare preference of a user to True or False"""
         assert isinstance(fanfare, bool)
         self.set_pref(u"fanfare", fanfare)
 
     def beginner(self):
-        """ Returns True if the user is a beginner so we show help panels, etc. """
+        """Returns True if the user is a beginner so we show help panels, etc."""
         em = self.get_pref(u"beginner")
         # True by default
         return True if em is None else em
 
     def set_beginner(self, beginner):
-        """ Sets the beginner state of a user to True or False """
+        """Sets the beginner state of a user to True or False"""
         assert isinstance(beginner, bool)
         self.set_pref(u"beginner", beginner)
 
     @staticmethod
     def fairplay_from_prefs(prefs):
-        """ Returns the fairplay preference of a user """
+        """Returns the fairplay preference of a user"""
         if prefs is None:
             return False
         fp = prefs.get(u"fairplay")
         return False if fp is None else fp
 
     def fairplay(self):
-        """ Returns True if the user has committed to a fair play statement """
+        """Returns True if the user has committed to a fair play statement"""
         em = self.get_pref(u"fairplay")
         # False by default
         return False if em is None else em
 
     def set_fairplay(self, state):
-        """ Sets the fairplay state of a user to True or False """
+        """Sets the fairplay state of a user to True or False"""
         assert isinstance(state, bool)
         self.set_pref(u"fairplay", state)
 
     @staticmethod
     def new_bag_from_prefs(prefs):
-        """ Returns the new bag preference of a user """
+        """Returns the new bag preference of a user"""
         if prefs is None:
             return False
         newbag = prefs.get(u"newbag")
@@ -291,38 +291,38 @@ class User:
         return True if newbag is None else newbag
 
     def new_bag(self):
-        """ Returns True if the user would like to play with the new bag """
+        """Returns True if the user would like to play with the new bag"""
         newbag = self.get_pref(u"newbag")
         # True by default
         return True if newbag is None else newbag
 
     def set_new_bag(self, state):
-        """ Sets the new bag preference of a user to True or False """
+        """Sets the new bag preference of a user to True or False"""
         assert isinstance(state, bool)
         self.set_pref(u"newbag", state)
 
     @staticmethod
     def friend_from_prefs(prefs):
-        """ Returns True if the user is a friend of Netskrafl """
+        """Returns True if the user is a friend of Netskrafl"""
         if prefs is None:
             return False
         friend = prefs.get(u"friend")
         return False if friend is None else friend
 
     def friend(self):
-        """ Returns True if the user is a friend of Netskrafl """
+        """Returns True if the user is a friend of Netskrafl"""
         friend = self.get_pref(u"friend")
         # False by default
         return False if friend is None else friend
 
     def set_friend(self, state):
-        """ Sets the friend status of a user to True or False """
+        """Sets the friend status of a user to True or False"""
         assert isinstance(state, bool)
         self.set_pref(u"friend", state)
 
     @staticmethod
     def has_paid_from_prefs(prefs):
-        """ Returns True if the user is a paying friend of Netskrafl """
+        """Returns True if the user is a paying friend of Netskrafl"""
         if prefs is None:
             return False
         if not User.friend_from_prefs(prefs):
@@ -332,7 +332,7 @@ class User:
         return False if has_paid is None else has_paid
 
     def has_paid(self):
-        """ Returns True if the user is a paying friend of Netskrafl """
+        """Returns True if the user is a paying friend of Netskrafl"""
         if not self.friend():
             # Must be a friend before being a paying friend
             return False
@@ -341,30 +341,30 @@ class User:
         return False if has_paid is None else has_paid
 
     def set_has_paid(self, state):
-        """ Sets the payment status of a user to True or False """
+        """Sets the payment status of a user to True or False"""
         assert isinstance(state, bool)
         self.set_pref(u"haspaid", state)
 
     def is_ready(self):
-        """ Returns True if the user is ready to accept challenges """
+        """Returns True if the user is ready to accept challenges"""
         return self._ready
 
     def set_ready(self, ready):
-        """ Sets the ready state of a user to True or False """
+        """Sets the ready state of a user to True or False"""
         assert isinstance(ready, bool)
         self._ready = ready
 
     def is_ready_timed(self):
-        """ Returns True if the user is ready for timed games """
+        """Returns True if the user is ready for timed games"""
         return self._ready_timed
 
     def set_ready_timed(self, ready):
-        """ Sets the whether a user is ready for timed games """
+        """Sets the whether a user is ready for timed games"""
         assert isinstance(ready, bool)
         self._ready_timed = ready
 
     def _load_favorites(self):
-        """ Loads favorites of this user from the database into a set in memory """
+        """Loads favorites of this user from the database into a set in memory"""
         if hasattr(self, "_favorites") and self._favorites:
             # Already have the favorites in memory
             return
@@ -373,50 +373,50 @@ class User:
         self._favorites.update(i)
 
     def add_favorite(self, destuser_id):
-        """ Add an A-favors-B relation between this user and the destuser """
+        """Add an A-favors-B relation between this user and the destuser"""
         self._load_favorites()
         self._favorites.add(destuser_id)
         FavoriteModel.add_relation(self.id(), destuser_id)
 
     def del_favorite(self, destuser_id):
-        """ Delete an A-favors-B relation between this user and the destuser """
+        """Delete an A-favors-B relation between this user and the destuser"""
         self._load_favorites()
         self._favorites.discard(destuser_id)
         FavoriteModel.del_relation(self.id(), destuser_id)
 
     def has_favorite(self, destuser_id):
-        """ Returns True if there is an A-favors-B relation between this user and the destuser """
+        """Returns True if there is an A-favors-B relation between this user and the destuser"""
         self._load_favorites()
         return destuser_id in self._favorites
 
     def has_challenge(self, destuser_id):
-        """ Returns True if this user has challenged destuser """
+        """Returns True if this user has challenged destuser"""
         # !!! TODO: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def find_challenge(self, srcuser_id):
-        """ Returns (found, prefs) """
+        """Returns (found, prefs)"""
         return ChallengeModel.find_relation(srcuser_id, self.id())
 
     def issue_challenge(self, destuser_id, prefs):
-        """ Issue a challenge to the destuser """
+        """Issue a challenge to the destuser"""
         ChallengeModel.add_relation(self.id(), destuser_id, prefs)
 
     def retract_challenge(self, destuser_id):
-        """ Retract a challenge previously issued to the destuser """
+        """Retract a challenge previously issued to the destuser"""
         ChallengeModel.del_relation(self.id(), destuser_id)
 
     def decline_challenge(self, srcuser_id):
-        """ Decline a challenge previously issued by the srcuser """
+        """Decline a challenge previously issued by the srcuser"""
         ChallengeModel.del_relation(srcuser_id, self.id())
 
     def accept_challenge(self, srcuser_id):
-        """ Decline a challenge previously issued by the srcuser """
+        """Decline a challenge previously issued by the srcuser"""
         # Delete the accepted challenge and return the associated preferences
         return ChallengeModel.del_relation(srcuser_id, self.id())
 
     def adjust_highest_score(self, score, game_uuid):
-        """ If this is the highest score of the player, modify it """
+        """If this is the highest score of the player, modify it"""
         if self._highest_score and self._highest_score >= score:
             # Not a new record
             return False
@@ -426,7 +426,7 @@ class User:
         return True
 
     def adjust_best_word(self, word, score, game_uuid):
-        """ If this is the highest scoring word of the player, modify it """
+        """If this is the highest scoring word of the player, modify it"""
         if self._best_word_score and self._best_word_score >= score:
             # Not a new record
             return False
@@ -438,7 +438,7 @@ class User:
 
     @classmethod
     def load_if_exists(cls, uid):
-        """ Load a user by id if she exists, otherwise return None """
+        """Load a user by id if she exists, otherwise return None"""
         if not uid:
             return None
         with User._lock:
@@ -450,13 +450,12 @@ class User:
                 return None
             u = cls(uid=uid)
             u._init(um)
-            memcache.add(uid, u, time=User._CACHE_EXPIRY,
-                         namespace=User._NAMESPACE)
+            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod
     def load_multi(cls, uids):
-        """ Load multiple users from persistent storage, given their user id """
+        """Load multiple users from persistent storage, given their user id"""
         user_list = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
@@ -468,7 +467,7 @@ class User:
 
     @classmethod
     def login_by_account(cls, account, name, email, image):
-        """ Log in a user via the given Google Account and return her user id """
+        """Log in a user via the given Google Account and return her user id"""
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
         if um is not None:
@@ -504,25 +503,25 @@ class User:
             email=email,
             nickname=nickname,
             image=image,
-            preferences=prefs
+            preferences=prefs,
         )
 
     def to_serializable(self):
-        """ Convert to JSON-serializable format """
+        """Convert to JSON-serializable format"""
         d = dict(**self.__dict__)
         del d["_favorites"]
         return d
 
     @classmethod
     def from_serializable(cls, j):
-        """ Create a fresh instance from a JSON-serialized object """
+        """Create a fresh instance from a JSON-serialized object"""
         u = cls(uid=j["_user_id"])
         u.__dict__ = j
         u._favorites = None
         return u
 
     def statistics(self):
-        """ Return a set of key statistics on the user """
+        """Return a set of key statistics on the user"""
         reply = dict()
         sm = StatsModel.newest_for_user(self.id())
         reply["result"] = Error.LEGAL
@@ -540,32 +539,27 @@ class User:
 
 
 # Tuple for storing move data within a Game (must be at outermost scope for pickling to work)
-MoveTuple = collections.namedtuple(
-    "MoveTuple", ["player", "move", "rack", "ts"])
+MoveTuple = collections.namedtuple("MoveTuple", ["player", "move", "rack", "ts"])
 
 
 class Game:
 
-    """ A wrapper class for a particular game that is in process
-        or completed. Contains inter alia a State instance.
+    """A wrapper class for a particular game that is in process
+    or completed. Contains inter alia a State instance.
     """
 
     # The available autoplayers (robots)
     AUTOPLAYERS = [
-        (
-            u"Fullsterkur",
-            u"Velur stigahæsta leik í hverri stöðu",
-            0
-        ),
+        (u"Fullsterkur", u"Velur stigahæsta leik í hverri stöðu", 0),
         (
             u"Miðlungur",
             u"Velur af handahófi einn af 8 stigahæstu leikjum í hverri stöðu",
-            8
+            8,
         ),
         (
             u"Amlóði",
             u"Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
-            15
+            15,
         ),
     ]
 
@@ -611,7 +605,7 @@ class Game:
         self._erroneous = False
 
     def _make_new(self, player0_id, player1_id, robot_level=0, prefs=None):
-        """ Initialize a new, fresh game """
+        """Initialize a new, fresh game"""
         self._preferences = prefs
         # If either player0_id or player1_id is None, this is a human-vs-autoplayer game
         self.player_ids = [player0_id, player1_id]
@@ -627,7 +621,7 @@ class Game:
 
     @classmethod
     def new(cls, player0_id, player1_id, robot_level=0, prefs=None):
-        """ Start and initialize a new game """
+        """Start and initialize a new game"""
         game = cls(Unique.id())  # Assign a new unique id to the game
         if randint(0, 1) == 1:
             # Randomize which player starts the game
@@ -642,20 +636,20 @@ class Game:
 
     @classmethod
     def load(cls, uuid, use_cache=True):
-        """ Load an already existing game from persistent storage """
+        """Load an already existing game from persistent storage"""
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
             return cls._load_locked(uuid, use_cache)
 
     def store(self):
-        """ Store the game state in persistent storage """
+        """Store the game state in persistent storage"""
         # Avoid race conditions by securing the lock before storing
         with Game._lock:
             self._store_locked()
 
     @classmethod
     def _load_locked(cls, uuid, use_cache=True):
-        """ Load an existing game from cache or persistent storage under lock """
+        """Load an existing game from cache or persistent storage under lock"""
 
         gm = GameModel.fetch(uuid, use_cache)
         if gm is None:
@@ -685,7 +679,7 @@ class Game:
         game.state = State(
             drawtiles=False,
             manual_wordcheck=game.manual_wordcheck(),
-            tileset=game.tileset
+            tileset=game.tileset,
         )
 
         # Load the initial racks
@@ -788,7 +782,7 @@ class Game:
         return game
 
     def _store_locked(self):
-        """ Store the game after having acquired the object lock """
+        """Store the game after having acquired the object lock"""
 
         assert self.uuid is not None
 
@@ -863,12 +857,12 @@ class Game:
                     u1.update()
 
     def id(self):
-        """ Returns the unique id of this game """
+        """Returns the unique id of this game"""
         return self.uuid
 
     @staticmethod
     def autoplayer_name(level):
-        """ Return the autoplayer name for a given level """
+        """Return the autoplayer name for a given level"""
         i = len(Game.AUTOPLAYERS)
         while i > 0:
             i -= 1
@@ -877,7 +871,7 @@ class Game:
         return Game.AUTOPLAYERS[0][0]  # Strongest player by default
 
     def player_nickname(self, index):
-        """ Returns the nickname of a player """
+        """Returns the nickname of a player"""
         u = (
             None
             if self.player_ids[index] is None
@@ -895,7 +889,7 @@ class Game:
         return nick
 
     def player_fullname(self, index):
-        """ Returns the full name of a player """
+        """Returns the full name of a player"""
         u = (
             None
             if self.player_ids[index] is None
@@ -915,73 +909,73 @@ class Game:
         return name
 
     def get_pref(self, pref):
-        """ Retrieve a preference, or None if not found """
+        """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
         return self._preferences.get(pref, None)
 
     def set_pref(self, pref, value):
-        """ Set a preference to a value """
+        """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
     def fairplay_from_prefs(prefs):
-        """ Returns the fairplay commitment specified by the given game preferences """
+        """Returns the fairplay commitment specified by the given game preferences"""
         return prefs is not None and prefs.get(u"fairplay", False)
 
     def get_fairplay(self):
-        """ True if this was originated as a fairplay game """
+        """True if this was originated as a fairplay game"""
         return self.get_pref(u"fairplay") or False
 
     def set_fairplay(self, state):
-        """ Set the fairplay commitment of this game """
+        """Set the fairplay commitment of this game"""
         self.set_pref(u"fairplay", state)
 
     @staticmethod
     def new_bag_from_prefs(prefs):
-        """ Returns true if the game preferences specify a new bag """
+        """Returns true if the game preferences specify a new bag"""
         return prefs is not None and prefs.get(u"newbag", False)
 
     def new_bag(self):
-        """ True if this game uses the new bag """
+        """True if this game uses the new bag"""
         return self.get_pref(u"newbag") or False
 
     def set_new_bag(self, state):
-        """ Configures the game as using the new bag """
+        """Configures the game as using the new bag"""
         self.set_pref(u"newbag", state)
 
     @staticmethod
     def manual_wordcheck_from_prefs(prefs):
-        """ Returns true if the game preferences specify a manual wordcheck """
+        """Returns true if the game preferences specify a manual wordcheck"""
         return prefs is not None and prefs.get(u"manual", False)
 
     def manual_wordcheck(self):
-        """ True if this game uses manual wordcheck """
+        """True if this game uses manual wordcheck"""
         if self.is_robot_game():
             # A robot game always uses automatic wordcheck
             return False
         return self.get_pref(u"manual") or False
 
     def set_manual_wordcheck(self, state):
-        """ Configures the game as using manual wordcheck """
+        """Configures the game as using manual wordcheck"""
         self.set_pref(u"manual", state)
 
     @staticmethod
     def tileset_from_prefs(prefs):
-        """ Returns the tileset specified by the given game preferences """
+        """Returns the tileset specified by the given game preferences"""
         new_bag = Game.new_bag_from_prefs(prefs)
         return NewTileSet if new_bag else OldTileSet
 
     @property
     def tileset(self):
-        """ Return the tile set used in this game """
+        """Return the tile set used in this game"""
         return NewTileSet if self.new_bag() else OldTileSet
 
     @property
     def net_moves(self):
-        """ Return a list of net moves, i.e. those that weren't successfully challenged """
+        """Return a list of net moves, i.e. those that weren't successfully challenged"""
         if not self.manual_wordcheck():
             # No challenges possible: just return the complete move list
             return self.moves
@@ -1000,25 +994,25 @@ class Game:
 
     @staticmethod
     def get_duration_from_prefs(prefs):
-        """ Return the duration given a dict of game preferences """
+        """Return the duration given a dict of game preferences"""
         return 0 if prefs is None else prefs.get(u"duration", 0)
 
     def get_duration(self):
-        """ Return the duration for each player in the game, e.g. 25 if 2x25 minute game """
+        """Return the duration for each player in the game, e.g. 25 if 2x25 minute game"""
         return self.get_pref(u"duration") or 0
 
     def set_duration(self, duration):
-        """ Set the duration for each player in the game, e.g. 25 if 2x25 minute game """
+        """Set the duration for each player in the game, e.g. 25 if 2x25 minute game"""
         self.set_pref(u"duration", duration)
 
     def is_overdue(self):
-        """ Return True if no move has been made in the game for OVERDUE_DAYS days """
+        """Return True if no move has been made in the game for OVERDUE_DAYS days"""
         ts_last_move = self.ts_last_move or self.timestamp
         delta = datetime.utcnow() - ts_last_move
         return delta >= timedelta(days=Game.OVERDUE_DAYS)
 
     def get_elapsed(self):
-        """ Return the elapsed time for both players, in seconds, as a tuple """
+        """Return the elapsed time for both players, in seconds, as a tuple"""
         elapsed = [0.0, 0.0]
         last_ts = self.timestamp
         for m in self.moves:
@@ -1033,23 +1027,22 @@ class Game:
         return tuple(elapsed)
 
     def time_info(self):
-        """ Returns a dict with timing information about this game """
+        """Returns a dict with timing information about this game"""
         return dict(duration=self.get_duration(), elapsed=self.get_elapsed())
 
     def overtime(self):
-        """ Return overtime for both players, in seconds """
+        """Return overtime for both players, in seconds"""
         overtime = [0, 0]
         duration = self.get_duration() * 60.0  # In seconds
         if duration > 0.0:
             # Timed game: calculate the overtime
             el = self.get_elapsed()
             for player in range(2):
-                overtime[player] = max(
-                    0.0, el[player] - duration)  # Never negative
+                overtime[player] = max(0.0, el[player] - duration)  # Never negative
         return tuple(overtime)
 
     def overtime_adjustment(self):
-        """ Return score adjustments due to overtime, as a tuple with two deltas """
+        """Return score adjustments due to overtime, as a tuple with two deltas"""
         overtime = self.overtime()
         adjustment = [0, 0]
         for player in range(2):
@@ -1064,7 +1057,7 @@ class Game:
         return tuple(adjustment)
 
     def is_over(self):
-        """ Return True if the game is over """
+        """Return True if the game is over"""
         if self._game_over:
             # Use the cached result if available and True
             return True
@@ -1083,7 +1076,7 @@ class Game:
         return False
 
     def winning_player(self):
-        """ Returns index of winning player, or -1 if game is tied or not over """
+        """Returns index of winning player, or -1 if game is tied or not over"""
         if not self.is_over():
             return -1
         sc = self.final_scores()
@@ -1094,7 +1087,7 @@ class Game:
         return -1
 
     def finalize_score(self):
-        """ Adjust the score at the end of the game, accounting for left tiles, overtime, etc. """
+        """Adjust the score at the end of the game, accounting for left tiles, overtime, etc."""
         assert self.is_over()
         # Final adjustments to score, including rack leave and overtime, if any
         overtime = self.overtime()
@@ -1107,11 +1100,11 @@ class Game:
         self.state.finalize_score(lost_on_overtime, self.overtime_adjustment())
 
     def final_scores(self):
-        """ Return the final score of the game after adjustments, if any """
+        """Return the final score of the game after adjustments, if any"""
         return self.state.final_scores()
 
     def allows_best_moves(self):
-        """ Returns True if this game supports full review (has stored racks, etc.) """
+        """Returns True if this game supports full review (has stored racks, etc.)"""
         if self.initial_racks[0] is None or self.initial_racks[1] is None:
             # This is an old game stored without rack information: can't display best moves
             return False
@@ -1119,23 +1112,22 @@ class Game:
         return self.is_over()
 
     def check_legality(self, move):
-        """ Check whether an incoming move from a client is legal and valid """
+        """Check whether an incoming move from a client is legal and valid"""
         return self.state.check_legality(move)
 
     def register_move(self, move):
-        """ Register a new move, updating the score and appending to the move list """
+        """Register a new move, updating the score and appending to the move list"""
         player_index = self.player_to_move()
         self.state.apply_move(move)
         self.ts_last_move = datetime.utcnow()
         mt = MoveTuple(
-            player_index, move, self.state.rack(
-                player_index), self.ts_last_move
+            player_index, move, self.state.rack(player_index), self.ts_last_move
         )
         self.moves.append(mt)
         self.last_move = None  # No response move yet
 
     def autoplayer_move(self):
-        """ Generate an AutoPlayer move and register it """
+        """Generate an AutoPlayer move and register it"""
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
         apl = AutoPlayer.create(self.state, self.robot_level)
@@ -1144,13 +1136,13 @@ class Game:
         self.last_move = move  # Store a response move
 
     def response_move(self):
-        """ Generate a response to a challenge move and register it """
+        """Generate a response to a challenge move and register it"""
         move = ResponseMove()
         self.register_move(move)
         self.last_move = move  # Store the response move
 
     def enum_tiles(self, state=None):
-        """ Enumerate all tiles on the board in a convenient form """
+        """Enumerate all tiles on the board in a convenient form"""
         if state is None:
             state = self.state
         for x, y, tile, letter in state.board().enum_tiles():
@@ -1158,16 +1150,16 @@ class Game:
                 Board.ROWIDS[x] + str(y + 1),
                 tile,
                 letter,
-                self.tileset.scores[tile]
+                self.tileset.scores[tile],
             )
 
     def state_after_move(self, move_number):
-        """ Return a game state after the indicated move, 0=beginning state """
+        """Return a game state after the indicated move, 0=beginning state"""
         # Initialize a fresh state object
         s = State(
             drawtiles=False,
             manual_wordcheck=self.manual_wordcheck(),
-            tileset=self.tileset
+            tileset=self.tileset,
         )
         # Set up the initial state
         for ix in range(2):
@@ -1187,46 +1179,46 @@ class Game:
         return s
 
     def display_bag(self, player_index):
-        """ Returns the bag as it should be displayed to the indicated player,
-            including the opponent's rack and sorted """
+        """Returns the bag as it should be displayed to the indicated player,
+        including the opponent's rack and sorted"""
         return self.state.display_bag(player_index)
 
     def num_moves(self):
-        """ Returns the number of moves in the game so far """
+        """Returns the number of moves in the game so far"""
         return len(self.moves)
 
     def is_erroneous(self):
-        """ Return True if this game object is incorrectly serialized """
+        """Return True if this game object is incorrectly serialized"""
         return self._erroneous
 
     def player_to_move(self):
-        """ Returns the index (0 or 1) of the player whose move it is """
+        """Returns the index (0 or 1) of the player whose move it is"""
         return self.state.player_to_move()
 
     def player_id_to_move(self):
-        """ Return the userid of the player whose turn it is, or None if autoplayer """
+        """Return the userid of the player whose turn it is, or None if autoplayer"""
         return self.player_ids[self.player_to_move()]
 
     def player_id(self, player_index):
-        """ Return the userid of the indicated player """
+        """Return the userid of the indicated player"""
         return self.player_ids[player_index]
 
     def my_turn(self, user_id):
-        """ Return True if it is the indicated player's turn to move """
+        """Return True if it is the indicated player's turn to move"""
         if self.is_over():
             return False
         return self.player_id_to_move() == user_id
 
     def is_autoplayer(self, player_index):
-        """ Return True if the player in question is an autoplayer """
+        """Return True if the player in question is an autoplayer"""
         return self.player_ids[player_index] is None
 
     def is_robot_game(self):
-        """ Return True if one of the players is an autoplayer """
+        """Return True if one of the players is an autoplayer"""
         return self.is_autoplayer(0) or self.is_autoplayer(1)
 
     def player_index(self, user_id):
-        """ Return the player index (0 or 1) of the given user, or None if not a player """
+        """Return the player index (0 or 1) of the given user, or None if not a player"""
         if self.player_ids[0] == user_id:
             return 0
         if self.player_ids[1] == user_id:
@@ -1234,19 +1226,17 @@ class Game:
         return None
 
     def has_player(self, user_id):
-        """ Return True if the indicated user is a player of this game """
+        """Return True if the indicated user is a player of this game"""
         return self.player_index(user_id) is not None
 
     def start_time(self):
-        """ Returns the timestamp of the game in a readable format """
+        """Returns the timestamp of the game in a readable format"""
         return (
-            u""
-            if self.timestamp is None
-            else Alphabet.format_timestamp(self.timestamp)
+            u"" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
         )
 
     def end_time(self):
-        """ Returns the time of the last move in a readable format """
+        """Returns the time of the last move in a readable format"""
         return (
             u""
             if self.ts_last_move is None
@@ -1254,7 +1244,7 @@ class Game:
         )
 
     def has_new_chat_msg(self, user_id):
-        """ Return True if there is a new chat message that the given user hasn't seen """
+        """Return True if there is a new chat message that the given user hasn't seen"""
         p = self.player_index(user_id)
         if p is None or self.is_autoplayer(1 - p):
             # The user is not a player of this game, or robot opponent: no chat
@@ -1264,7 +1254,7 @@ class Game:
         return ChatModel.check_conversation(u"game:" + self.id(), user_id)
 
     def _append_final_adjustments(self, movelist):
-        """ Appends final score adjustment transactions to the given movelist """
+        """Appends final score adjustment transactions to the given movelist"""
 
         # Lastplayer is the player who finished the game
         lastplayer = self.moves[-1].player if self.moves else 0
@@ -1286,8 +1276,7 @@ class Game:
                 # If losing player is still winning on points, add points to the
                 # winning player so that she leads by one point
                 if sc[ix] + adjustment[ix] >= sc[1 - ix]:
-                    adjustment[1 - ix] = sc[ix] + \
-                        adjustment[ix] + 1 - sc[1 - ix]
+                    adjustment[1 - ix] = sc[ix] + adjustment[ix] + 1 - sc[1 - ix]
             else:
                 # Normal end of game
                 opp_rack = self.state.rack(1 - lastplayer)
@@ -1308,39 +1297,35 @@ class Game:
                     movelist.append((lastplayer, (u"", u"--", 0)))
                 else:
                     # The game has ended by passes: each player gets her own rack subtracted
-                    movelist.append(
-                        (1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
-                    movelist.append(
-                        (lastplayer, (u"", last_rack, -1 * last_score)))
+                    movelist.append((1 - lastplayer, (u"", opp_rack, -1 * opp_score)))
+                    movelist.append((lastplayer, (u"", last_rack, -1 * last_score)))
 
             # If this is a timed game, add eventual overtime adjustment
             if tuple(adjustment) != (0, 0):
                 movelist.append(
-                    (1 - lastplayer, (u"", u"TIME",
-                                      adjustment[1 - lastplayer]))
+                    (1 - lastplayer, (u"", u"TIME", adjustment[1 - lastplayer]))
                 )
-                movelist.append(
-                    (lastplayer, (u"", u"TIME", adjustment[lastplayer])))
+                movelist.append((lastplayer, (u"", u"TIME", adjustment[lastplayer])))
 
         # Add a synthetic "game over" move
         movelist.append((1 - lastplayer, (u"", u"OVER", 0)))
 
     def get_final_adjustments(self):
-        """ Get a fresh list of the final adjustments made to the game score """
+        """Get a fresh list of the final adjustments made to the game score"""
         movelist = []
         self._append_final_adjustments(movelist)
         return movelist
 
     def is_challengeable(self):
-        """ Return True if the last move in the game is challengeable """
+        """Return True if the last move in the game is challengeable"""
         return self.state.is_challengeable()
 
     def is_last_challenge(self):
-        """ Return True if the last tile move has been made and is pending a challenge or pass """
+        """Return True if the last tile move has been made and is pending a challenge or pass"""
         return self.state.is_last_challenge()
 
     def client_state(self, player_index, lastmove=None, deep=False):
-        """ Create a package of information for the client about the current state """
+        """Create a package of information for the client about the current state"""
 
         reply = dict()
         num_moves = 1
@@ -1400,19 +1385,16 @@ class Game:
                 (m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]
             ]
             reply["fairplay"] = self.get_fairplay()
-            reply["autoplayer"] = [
-                self.is_autoplayer(0), self.is_autoplayer(1)]
-            reply["nickname"] = [self.player_nickname(
-                0), self.player_nickname(1)]
+            reply["autoplayer"] = [self.is_autoplayer(0), self.is_autoplayer(1)]
+            reply["nickname"] = [self.player_nickname(0), self.player_nickname(1)]
             reply["userid"] = [self.player_id(0), self.player_id(1)]
-            reply["fullname"] = [self.player_fullname(
-                0), self.player_fullname(1)]
+            reply["fullname"] = [self.player_fullname(0), self.player_fullname(1)]
             reply["overdue"] = self.is_overdue()
 
         return reply
 
     def bingoes(self):
-        """ Returns a tuple of lists of bingoes for both players """
+        """Returns a tuple of lists of bingoes for both players"""
         # List all bingoes in the game
         bingoes = [
             (m.player, m.move.summary(self.state))
@@ -1430,7 +1412,7 @@ class Game:
         return (bingo0, bingo1)
 
     def statistics(self):
-        """ Return a set of statistics on the game to be displayed by the client """
+        """Return a set of statistics on the game to be displayed by the client"""
         reply = dict()
         if self.is_over():
             # Indicate that the game is over (not really an error)
@@ -1453,10 +1435,8 @@ class Game:
         ncovers = [(m.player, m.move.num_covers()) for m in net_moves]
         bingoes = [(p, nc == Rack.MAX_TILES) for p, nc in ncovers]
         # Number of bingoes (net of successful challenges)
-        reply["bingoes0"] = sum(
-            [1 if p == 0 and bingo else 0 for p, bingo in bingoes])
-        reply["bingoes1"] = sum(
-            [1 if p == 1 and bingo else 0 for p, bingo in bingoes])
+        reply["bingoes0"] = sum([1 if p == 0 and bingo else 0 for p, bingo in bingoes])
+        reply["bingoes1"] = sum([1 if p == 1 and bingo else 0 for p, bingo in bingoes])
         # Number of tiles laid down (net of successful challenges)
         reply["tiles0"] = t0 = sum([nc if p == 0 else 0 for p, nc in ncovers])
         reply["tiles1"] = t1 = sum([nc if p == 1 else 0 for p, nc in ncovers])
@@ -1491,10 +1471,8 @@ class Game:
         reply["average0"] = (float(lsc0) / (t0 - b0)) if (t0 > b0) else 0.0
         reply["average1"] = (float(lsc1) / (t1 - b1)) if (t1 > b1) else 0.0
         # Calculate point multiple of tiles laid down (score / nominal points)
-        reply["multiple0"] = (float(cleanscore[0]) /
-                              lsc0) if (lsc0 > 0) else 0.0
-        reply["multiple1"] = (float(cleanscore[1]) /
-                              lsc1) if (lsc1 > 0) else 0.0
+        reply["multiple0"] = (float(cleanscore[0]) / lsc0) if (lsc0 > 0) else 0.0
+        reply["multiple1"] = (float(cleanscore[1]) / lsc1) if (lsc1 > 0) else 0.0
         # Calculate average score of each move
         reply["avgmove0"] = (float(cleanscore[0]) / m0) if (m0 > 0) else 0.0
         reply["avgmove1"] = (float(cleanscore[1]) / m1) if (m1 > 0) else 0.0
@@ -1517,14 +1495,10 @@ class Game:
             reply["overtime0"] = oa[0]
             reply["overtime1"] = oa[1]
             # Contribution of remaining tiles at the end of the game
-            reply["remaining0"] = sc[0] - \
-                cleanscore[0] - oa[0] - wrong_chall[0]
-            reply["remaining1"] = sc[1] - \
-                cleanscore[1] - oa[1] - wrong_chall[1]
+            reply["remaining0"] = sc[0] - cleanscore[0] - oa[0] - wrong_chall[0]
+            reply["remaining1"] = sc[1] - cleanscore[1] - oa[1] - wrong_chall[1]
         # Score ratios (percentages)
         totalsc = sc[0] + sc[1]
-        reply["ratio0"] = (float(sc[0]) / totalsc *
-                           100.0) if totalsc > 0 else 0.0
-        reply["ratio1"] = (float(sc[1]) / totalsc *
-                           100.0) if totalsc > 0 else 0.0
+        reply["ratio0"] = (float(sc[0]) / totalsc * 100.0) if totalsc > 0 else 0.0
+        reply["ratio1"] = (float(sc[1]) / totalsc * 100.0) if totalsc > 0 else 0.0
         return reply

@@ -129,7 +129,7 @@ class RedisWrapper:
         redis_port = redis_port or int(os.environ.get('REDISPORT', 6379))
         # Create a Redis client instance
         self._client = redis.Redis(
-            host="redis", port=redis_port, retry_on_timeout=True
+            host=redis_host, port=redis_port, retry_on_timeout=True
         )
 
     def get_redis_client(self):

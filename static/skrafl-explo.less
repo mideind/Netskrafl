@@ -1,0 +1,69 @@
+/*
+
+   Skrafl-explo.less
+
+   Explo theme template for netskrafl.is
+
+   Copyright (C) 2015-2020 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU General Public License, version 3, applies to this software.
+   For further information, see https://github.com/vthorsteinsson/Netskrafl
+
+   Note: SCRABBLE is a registered trademark. This software or its author
+   are in no way affiliated with or endorsed by the owners or licensees
+   of the SCRABBLE trademark.
+
+*/
+
+@pure-blue: #78aee6;
+@hover-tab: @pure-blue;
+@board-background: #DFDFE2;
+@double-letter: #83C8CE; /* Pantone 698 U */
+@triple-letter: #208C9F; /* Pantone 192 U */
+@double-word: #E4D09B;
+@triple-word: #FDC12C; /* Pantone 300 U */
+@alert:#AA3731; /* Pantone 192 U */
+@tile: lighten(#e4ad87, 5%); /* Pantone 721 U */
+@racktile: #fdc12c;
+@freshtile: #669256;
+@player: #167F92;
+@cell-border: #f8f8f8;
+@neutral: #222222;
+@box-shadow: #333333;
+@hint: #666666;
+@blank-sel: #777777;
+@background: #d6d1c4; /* Pantone 7534 U */
+@pass-btn: @racktile; /* Pantone 137 U */
+@hover-link: @pass-btn; /* Pantone 137 U */
+@container: #f8f8f8;
+@statsbackground: rgba(255, 255, 255, 0.95);
+@nav-btn: @pass-btn;
+@close-btn: @freshtile;
+@submit-btn: #669256;
+@help-link: #82C7CD;
+@focal: #ffffc8; /* Pale yellow */
+@chall-btn: #208C9F;
+@score-manual: #82C7CD;
+@tab-background: #f4f4f4;
+@almost-black: #202020;
+@clock-digits: @almost-black;
+@board-center: @almost-black;
+
+@theme1: #fcf0cd; /* fade(@racktile, 25%); */
+@theme2: #d8efe7; /* fade(@freshtile, 25%); */
+@theme3: #fce5cb; /* fade(@pass-btn, 25%); */
+@theme4: desaturate(darken(@theme2, 10%), 10%);
+@theme5: desaturate(darken(@theme3, 10%), 10%);
+@theme6: darken(#dededa, 5%);
+
+@font1: 'Barlow';
+@font2: 'Open Sans';
+@font3: 'Arial';
+@font4: sans-serif;
+@tile-font: 'Open Sans';
+
+@import 'main.less';
+@import 'portrait.less';
+@import 'landscape.less';
+@import 'fullscreen.less';
