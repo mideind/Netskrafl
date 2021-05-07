@@ -693,8 +693,8 @@ def _gamelist(cuid, include_zombies=True):
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
-            timed = Game.get_duration_from_prefs(
-                prefs)  # Time per player in minutes
+            # Time per player in minutes
+            timed = Game.get_duration_from_prefs(prefs)
             result.append(
                 {
                     "uuid": g["uuid"],
@@ -742,8 +742,8 @@ def _gamelist(cuid, include_zombies=True):
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
-        timed = Game.get_duration_from_prefs(
-            prefs)  # Time per player in minutes
+        # Time per player in minutes
+        timed = Game.get_duration_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -1021,8 +1021,7 @@ def warmup():
     # Use a random word to check ('upphitun' means warm-up)
     ok = "upphitun" in wdb
     logging.info(
-        "Warmup, instance {0}, ok is {1}".format(
-            os.environ.get("GAE_INSTANCE", ""), ok)
+        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
     )
     return "", 200, {}
 
@@ -1604,8 +1603,7 @@ def bestmoves():
     elif move_number < 0:
         move_number = 0
 
-    state = game.state_after_move(
-        move_number if move_number == 0 else move_number - 1)
+    state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
     best_moves = None
