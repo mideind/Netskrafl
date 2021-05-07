@@ -118,13 +118,14 @@
    }
    
    div.board-area {
+      margin-top: 0;
       height: 750px;
    }
-   
+
    div.board {
       position: absolute;
       top: 0;
-      left: 56px;
+      left: 88px;
       height: auto;
       margin: 0;
       background-color: @container;
@@ -137,6 +138,8 @@
       max-width: @board-cell-big;
       height: @board-cell-big;
       width: @board-cell-big;
+      border-width: 1px;
+      border-radius: 0;
    }
 
    table.board td.center {
@@ -145,11 +148,11 @@
    }
 
    table.board tr {
-      height: 35px; /* 32px + 2 * 1.5px */
+      height: 34px; /* 32px + 2 * 1.0px */
    }
 
    .rack table.board tr {
-      height: 35px; /* 32px + 2 * 1.5px */
+      height: 34px; /* 32px + 2 * 1.0px */
    }
 
    div.tile {

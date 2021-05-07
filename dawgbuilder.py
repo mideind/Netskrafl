@@ -919,16 +919,33 @@ def run_test() -> None:
 
 def run_twl06() -> None:
     """ Build a DAWG from the files listed """
-    # This creates a DAWG from a single file named TWL06.txt,
+    # This creates a DAWG from a single file named twl06.txt,
     # the Tournament Word List version 6
-    print("Starting DAWG build for TWL06.txt")
+    print("Starting DAWG build for twl06.txt")
     # Set the English-United States locale
     set_locale("en_US")
     db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
-        ["TWL06.txt"],  # Input files to be merged
-        "TWL06",  # Output file - full name will be TWL06.bin.dawg
+        ["twl06.txt"],  # Input files to be merged
+        "twl06",  # Output file - full name will be twl06.bin.dawg
+        "resources",  # Subfolder of input and output files
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
+def run_otcwl2014() -> None:
+    """ Build a DAWG from the files listed """
+    # This creates a DAWG from a single file named otcwl2014.txt
+    print("Starting DAWG build for otcwl2014.txt")
+    # Set the English-United States locale
+    set_locale("en_US")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["otcwl2014.txt"],  # Input files to be merged
+        "otcwl2014",  # Output file - full name will be otcwl2014.bin.dawg
         "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
@@ -1045,7 +1062,10 @@ if __name__ == "__main__":
     run_skrafl()
 
     # Build Tournament Word List v6 (TWL06)
-    # run_twl06()
+    run_twl06()
 
     # Build SOWPODS
-    # run_sowpods()
+    run_sowpods()
+
+    # Build OTCWL2014
+    run_otcwl2014()

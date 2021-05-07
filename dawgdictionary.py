@@ -197,7 +197,8 @@ class Wordbase:
         ("amlodi", IcelandicAlphabet),
         ("midlungur", IcelandicAlphabet),
         ("sowpods", EnglishAlphabet),
-        ("TWL06", EnglishAlphabet),
+        ("twl06", EnglishAlphabet),
+        ("otcwl2014", EnglishAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()

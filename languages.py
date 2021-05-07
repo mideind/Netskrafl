@@ -598,7 +598,7 @@ ALPHABETS: Dict[str, Alphabet] = {
 VOCABULARIES: Dict[str, str] = {
     "is": "ordalisti",
     "en": "sowpods",
-    "en_US": "TWL06",
+    "en_US": "otcwl2014",
     # Everything else presently defaults to 'ordalisti'
 }
 
