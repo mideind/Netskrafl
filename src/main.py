@@ -174,8 +174,7 @@ _FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 _FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
 
 # Valid token issuers for OAuth2 login
-_VALID_ISSUERS = frozenset(
-    ("accounts.google.com", "https://accounts.google.com"))
+_VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _PROJECT_ID, "PROJECT_ID environment variable not set"
@@ -376,8 +375,7 @@ def _process_move(game, movelist):
                 letter = tile
             m.add_cover(row, col, tile, letter)
     except Exception as e:
-        logging.info("Exception in _process_move(): {0}".format(
-            e).encode("latin-1"))
+        logging.info("Exception in _process_move(): {0}".format(e).encode("latin-1"))
         m = None
 
     # Process the move string here
@@ -1045,8 +1043,7 @@ def start():
 @app.route("/_ah/stop")
 def stop():
     """ App Engine is shutting down an instance """
-    logging.info("Stop, instance {0}".format(
-        os.environ.get("GAE_INSTANCE", "")))
+    logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))
     return "", 200, {}
 
 
@@ -1465,8 +1462,7 @@ def chatmsg():
         # as read confirmations
         # The message to be sent in JSON form via Firebase
         md = dict(
-            game=uuid, from_userid=user_id, msg=msg, ts=Alphabet.format_timestamp(
-                ts)
+            game=uuid, from_userid=user_id, msg=msg, ts=Alphabet.format_timestamp(ts)
         )
         msg = {}
         for p in range(0, 2):
@@ -1547,8 +1543,7 @@ def review():
     elif move_number < 0:
         move_number = 0
 
-    state = game.state_after_move(
-        move_number if move_number == 0 else move_number - 1)
+    state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
     best_moves = None
@@ -2051,8 +2046,7 @@ def board():
 
     # If a logged-in user is looking at the board, we create a Firebase
     # token in order to maintain presence info
-    firebase_token = None if user is None else firebase.create_custom_token(
-        user.id())
+    firebase_token = None if user is None else firebase.create_custom_token(user.id())
 
     if player_index is not None and not game.is_autoplayer(1 - player_index):
         # Load information about the opponent
@@ -2222,8 +2216,7 @@ def main():
 
         # The list_promotions call yields a list of timestamps
         if promo_to_show:
-            promos = sorted(
-                list(PromoModel.list_promotions(uid, promo_to_show)))
+            promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
             now = datetime.utcnow()
             if len(promos) >= _PROMO_COUNT:
                 # Already seen too many of these
@@ -2325,7 +2318,7 @@ def twoletters():
     })
 
 
-@ app.route("/faq")
+@app.route("/faq")
 def faq():
     """ Show help page. Authentication is not required. """
     user = session_user()
@@ -2333,8 +2326,8 @@ def faq():
     return render_template("nshelp.html", user=user, tab="faq")
 
 
-@ app.route("/page")
-@ auth_required()
+@app.route("/page")
+@auth_required()
 def page():
     """ Show single-page UI test """
     user = current_user()
@@ -2342,7 +2335,7 @@ def page():
     return render_template("page.html", user=user, firebase_token=firebase_token)
 
 
-@ app.route("/newbag")
+@app.route("/newbag")
 def newbag():
     """ Show help page. Authentication is not required. """
     user = session_user()
@@ -2350,13 +2343,13 @@ def newbag():
     return render_template("nshelp.html", user=user, tab="newbag")
 
 
-@ app.route("/login")
+@app.route("/login")
 def login():
     """ Handler for the login & greeting page """
     main_url = "/page" if _SINGLE_PAGE_UI else "/"
     if "user" in session:
         del session["user"]
-    return jsonify(ok=True)
+    return render_template("login.html", main_url=main_url)
 
 
 @app.route("/login_error")
@@ -2373,7 +2366,7 @@ def logout():
     return redirect(url_for("greet"))
 
 
-@ app.route("/oauth2callback", methods=["POST"])
+@app.route("/oauth2callback", methods=["POST"])
 def oauth2callback():
     """ The OAuth2 login flow POSTs to this callback when a user has
         signed in using a Google Account """
