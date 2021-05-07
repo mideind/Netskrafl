@@ -59,6 +59,7 @@ profile.bin
 *.sublime-project
 *.sublime-workspace
 *.code-workspace
+Netskrafl.code-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
 .vscode/

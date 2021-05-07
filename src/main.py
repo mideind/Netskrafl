@@ -100,6 +100,7 @@ def ndb_wsgi_middleware(wsgi_app):
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[
      "http://explo.300dev.pl", "http://localhost:19006"])
+
 # Wrap the WSGI app to insert the NDB client context into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)
 
@@ -1321,8 +1322,6 @@ def challenge():
     fairplay = rq.get_bool("fairplay")
     new_bag = rq.get_bool("newbag")
     manual = rq.get_bool("manual")
-    mode = rq.get_int("mode")
-
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -1338,7 +1337,6 @@ def challenge():
                 "fairplay": fairplay,
                 "newbag": new_bag,
                 "manual": manual,
-                "mode": mode
             },
         )
     elif action == "retract":
@@ -1572,7 +1570,15 @@ def review():
         # player 0, or the human player if player 0 is an autoplayer
         user_index = 1 if game.is_autoplayer(0) else 0
 
-    return jsonify(ok=True)
+    return render_template(
+        "review.html",
+        game=game,
+        state=state,
+        player_index=player_index,
+        user_index=user_index,
+        move_number=move_number,
+        best_moves=best_moves,
+    )
 
 
 @app.route("/bestmoves", methods=["POST"])
@@ -1796,7 +1802,7 @@ def userprefs():
             return redirect(from_url or url_for("main"))
 
     # Render the form with the current data and error messages, if any
-    return jsonify(ok=True)
+    return render_template("userprefs.html", uf=uf, err=err, from_url=from_url)
 
 
 @app.route("/loaduserprefs", methods=["POST"])
@@ -1868,7 +1874,9 @@ def wait():
     firebase_token = firebase.create_custom_token(user.id())
 
     # Go to the wait page
-    return jsonify(ok=True)
+    return render_template(
+        "wait.html", user=user, opp=opp_user, prefs=prefs, firebase_token=firebase_token
+    )
 
 
 @app.route("/newgame")
@@ -2087,7 +2095,17 @@ def board():
         # No need to clear other stuff on the /user/[user_id]/ path,
         # since we're not listening to it in board.html
 
-    return jsonify(ok=True)
+    return render_template(
+        "board.html",
+        game=game,
+        user=user,
+        opp=opp,
+        player_index=player_index,
+        zombie=bool(zombie),
+        time_info=game.time_info(),
+        og=ogd,  # OpenGraph data
+        firebase_token=firebase_token,
+    )
 
 
 @app.route("/gameover", methods=["POST"])
@@ -2134,7 +2152,7 @@ def friend():
             # Not a friend: nothing to cancel
             return redirect(url_for("main"))
         billing.cancel_friend(user)
-    return jsonify(ok=True)
+    return render_template("friend.html", user=user, action=action)
 
 
 @app.route("/promo", methods=["POST"])
@@ -2148,21 +2166,21 @@ def promo():
     VALID_PROMOS = {"friend", "krafla"}
     if key not in VALID_PROMOS:
         key = "error"
-    return jsonify(ok=True)
+    return render_template("promo-" + key + ".html", user=user)
 
 
 @app.route("/signup", methods=["GET"])
 @auth_required()
 def signup():
     """ Sign up as a friend, enter card info, etc. """
-    return jsonify(ok=True)
+    return render_template("signup.html", user=current_user())
 
 
 @app.route("/skilmalar", methods=["GET"])
 @auth_required()
 def skilmalar():
     """ Conditions """
-    return jsonify(ok=True)
+    return render_template("skilmalar.html", user=current_user())
 
 
 @app.route("/billing", methods=["GET", "POST"])
@@ -2228,7 +2246,13 @@ def main():
     msg = {"challenge": None, "move": None, "wait": None}
     firebase.send_message(msg, "user", uid)
 
-    return jsonify(ok=True)
+    return render_template(
+        "main.html",
+        user=user,
+        tab=tab,
+        firebase_token=firebase_token,
+        promo=promo_to_show,
+    )
 
 
 # pylint: disable=redefined-builtin
@@ -2237,7 +2261,7 @@ def help():
     """ Show help page, which does not require authentication """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return jsonify(ok=True)
+    return render_template("nshelp.html", user=user, tab=None)
 
 
 @app.route("/rawhelp")
@@ -2252,7 +2276,14 @@ def rawhelp():
             return "$$" + endpoint + "$$"
         return url_for(endpoint, **values)
 
-    return jsonify(ok=True)
+    return render_template("rawhelp.html", url_for=override_url_for)
+
+
+@app.route("/twoletter")
+def twoletter():
+    """ Show help page. Authentication is not required. """
+    user = session_user()
+    return render_template("nshelp.html", user=user, tab="twoletter")
 
 
 @app.route("/twoletters",  methods=["POST"])
@@ -2299,7 +2330,7 @@ def faq():
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return jsonify(ok=True)
+    return render_template("nshelp.html", user=user, tab="faq")
 
 
 @ app.route("/page")
@@ -2308,7 +2339,7 @@ def page():
     """ Show single-page UI test """
     user = current_user()
     firebase_token = firebase.create_custom_token(user.id())
-    return jsonify(ok=True)
+    return render_template("page.html", user=user, firebase_token=firebase_token)
 
 
 @ app.route("/newbag")
@@ -2316,7 +2347,7 @@ def newbag():
     """ Show help page. Authentication is not required. """
     user = session_user()
     # We tolerate a null (not logged in) user here
-    return jsonify(ok=True)
+    return render_template("nshelp.html", user=user, tab="newbag")
 
 
 @ app.route("/login")
@@ -2328,12 +2359,18 @@ def login():
     return jsonify(ok=True)
 
 
-@ app.route("/logout")
+@app.route("/login_error")
+def login_error():
+    """ An error during login: probably cookies or popups are not allowed """
+    return render_template("login-error.html")
+
+
+@app.route("/logout")
 def logout():
     """ Log the user out """
-    if "user" in session:
-        del session["user"]
-    return jsonify(ok=True)
+    session.pop("userid", None)
+    session.pop("user", None)
+    return redirect(url_for("greet"))
 
 
 @ app.route("/oauth2callback", methods=["POST"])
@@ -2453,7 +2490,7 @@ if running_local:
     @app.route("/admin/main")
     def admin_main():
         """ Show main administration page """
-        return jsonify(ok=True)
+        return render_template("admin.html")
 
 
 # noinspection PyUnusedLocal
