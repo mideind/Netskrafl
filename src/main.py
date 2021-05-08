@@ -26,6 +26,8 @@
 
 # pylint: disable=too-many-lines
 
+from typing import cast, Any
+
 import os
 import logging
 import threading
@@ -48,6 +50,9 @@ from flask import (
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+
+from authlib.integrations.flask_client import OAuth  # type: ignore
+from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
 import requests
 
@@ -150,6 +155,15 @@ app.config.update(
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
+)
+
+# Initialize the OAuth wrapper
+OAUTH_CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth = OAuth(app)
+cast(Any, oauth).register(
+    name='google',
+    server_metadata_url=OAUTH_CONF_URL,
+    client_kwargs={'scope': 'openid email profile'},
 )
 
 # Read secret session key from file
@@ -255,7 +269,7 @@ def auth_required(**error_kwargs):
                     return jsonify(**error_kwargs)
                 # Reply with a redirect
                 login_url = error_kwargs.get("login_url")
-                return redirect(login_url or url_for("login"))
+                return redirect(login_url or url_for("greet"))
             # We have an authenticated user: store in g.user
             # and call the route function
             g.user = u
@@ -2351,13 +2365,21 @@ def newbag():
     return render_template("nshelp.html", user=user, tab="newbag")
 
 
+@app.route("/greet")
+def greet():
+    """ Handler for the greeting page """
+    return render_template("login.html")
+
+
 @app.route("/login")
 def login():
-    """ Handler for the login & greeting page """
-    main_url = "/page" if _SINGLE_PAGE_UI else "/"
-    if "user" in session:
-        del session["user"]
-    return render_template("login.html", main_url=main_url)
+    """ Handler for the login sequence """
+    session.pop("userid", None)
+    session.pop("user", None)
+    redirect_uri = url_for('oauth2callback', _external=True)
+    g = cast(Any, oauth).google
+    assert g is not None
+    return g.authorize_redirect(redirect_uri)
 
 
 @app.route("/login_error")

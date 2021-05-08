@@ -13,3 +13,4 @@ flask_cors
 flask_socketio
 eventlet
 gevent-websocket
+authlib
