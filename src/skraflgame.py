@@ -311,12 +311,12 @@ class User:
         self.set_pref("audio", audio)
 
     def image(self) -> str:
-        """Returns the e-mail address of a user"""
-        return self.get_string_pref("image", self._image or "")
+        """Returns the URL of an image (photo/avatar) of a user"""
+        return self._image or ""
 
     def set_image(self, image: str) -> None:
-        """Sets the e-mail address of a user"""
-        self.set_pref("image", image)
+        """Sets the URL of an image (photo/avatar) of a user"""
+        self._image = image
 
     def fanfare(self) -> bool:
         """Returns True if the user wants a fanfare sound when winning"""
@@ -557,19 +557,13 @@ class User:
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
         if um is not None:
+            # We've seen this user account before
             if image and image != um.image:
+                # Use the opportunity to update the image, if different
                 um.image = image
-                um.put()
-            # We've seen this Google Account before: return the user id
-            # logging.info("Login: Known Google Account {0} email {1} name '{2}'"
-            #     .format(account, email, name)
-            # )
             if email and email != um.email:
                 # Use the opportunity to update the email, if different
                 # (This should probably not happen very often)
-                # logging.info("Login: Account {0}, updating email from {1} to {2}"
-                #     .format(account, um.email, email)
-                # )
                 um.email = email
             # Note the login timestamp
             um.last_login = datetime.utcnow()
@@ -587,6 +581,9 @@ class User:
                 #     .format(account, email, name)
                 # )
                 um.account = account
+                if image and image != um.image:
+                    # Use the opportunity to update the image, if different
+                    um.image = image
                 # Note the last login
                 um.last_login = datetime.utcnow()
                 return um.put().id()

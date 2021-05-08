@@ -8,7 +8,7 @@ export FIREBASE_SENDER_ID=970204261331
 export FIREBASE_APP_ID=1:970204261331:web:fce1615824c2e382ec9d26
 export SERVER_SOFTWARE=Development
 export OAUTHLIB_INSECURE_TRANSPORT=1
-export REDISHOST=brandur.mideind.is
+export REDISHOST=0.0.0.0
 export REDISPORT=6379
 
 python3 ./src/main.py

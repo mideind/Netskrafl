@@ -110,8 +110,8 @@ import billing
 import firebase
 from cache import memcache
 import skraflstats
-from google.cloud import storage
-from flask_cors import CORS
+from google.cloud import storage  # type: ignore
+from flask_cors import CORS  # type: ignore
 
 # Type definitions
 T = TypeVar("T")
