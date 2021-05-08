@@ -388,6 +388,8 @@ class UserModel(Model):
 
     email = Model.OptionalStr()
 
+    image = Model.OptionalStr()
+
     # OAuth2 account identifier (unfortunately different from GAE user id)
     # optionally prefixed by the authentication provider id (default: 'google:')
     account = Model.OptionalStr()
@@ -434,6 +436,7 @@ class UserModel(Model):
         account: str,
         email: str,
         nickname: str,
+        image: str,
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
     ) -> str:
@@ -441,6 +444,7 @@ class UserModel(Model):
         user: UserModel = cls(id=user_id)
         user.account = account
         user.email = email
+        user.image = image
         user.nickname = nickname  # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
@@ -558,6 +562,7 @@ class UserModel(Model):
                         ready_timed=um.ready_timed,
                         human_elo=um.human_elo,
                         manual_elo=um.manual_elo,
+                        image=um.image,
                     )
                     id_set.add(um.key.id())
 
@@ -1236,7 +1241,8 @@ class StatsModel(Model):
         """Returns the Elo ratings at the indicated time point (None = now),
         in descending order"""
 
-        max_fetch = int(max_len * 2.6)  # Currently this means a safety_buffer of 160
+        # Currently this means a safety_buffer of 160
+        max_fetch = int(max_len * 2.6)
         safety_buffer = max_fetch - max_len
         check_false_positives = True
 

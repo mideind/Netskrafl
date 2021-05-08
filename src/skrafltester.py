@@ -85,9 +85,11 @@ def test_move(state: State, movestring: str) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -102,9 +104,11 @@ def test_exchange(state: State, numtiles: int) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -118,9 +122,11 @@ def test_challenge(state: State) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -134,9 +140,11 @@ def test_response(state: State) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(
+            Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(
+        move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -152,7 +160,8 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
     # Initial, empty game state
     state = State(tileset=current_tileset(), drawtiles=True, board_type="standard")
 
-    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(
+        state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -227,7 +236,8 @@ def test_manual_game():
     )
 
     print("Manual game")
-    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(
+        state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -338,7 +348,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
 
     print(
         "Test completed, {0} games played in {1:.2f} seconds, "
-        "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
+        "{2:.2f} seconds per game".format(
+            num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player: int) -> None:

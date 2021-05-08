@@ -24,6 +24,7 @@ resources/salescloud_key.bin
 
 # Google OAuth client secret
 resources/client_secret*.txt
+resources/Explo Development-414318fa79b8.json
 
 # Private GAE services key
 resources/netskrafl-*.json
@@ -57,6 +58,7 @@ profile.bin
 *.sublime-project
 *.sublime-workspace
 *.code-workspace
+Netskrafl.code-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
 

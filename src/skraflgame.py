@@ -34,6 +34,7 @@ from typing import (
 )
 
 import threading
+# import logging
 
 from random import randint
 from datetime import datetime, timedelta
@@ -132,6 +133,7 @@ class User:
         self._best_word_game: Optional[str] = None
         # Set of favorite users, only loaded upon demand
         self._favorites: Optional[Set[str]] = None
+        self._image = ""
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -154,6 +156,7 @@ class User:
         self._best_word = um.best_word
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
+        self._image = um.image
 
     def update(self) -> None:
         """Update the user's record in the database and in the memcache"""
@@ -182,6 +185,7 @@ class User:
             um.best_word = self._best_word
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
+            um.image = self._image
             um.put()
 
             # Note: the namespace version should be incremented each time
@@ -305,6 +309,14 @@ class User:
         """Sets the audio preference of a user to True or False"""
         assert isinstance(audio, bool)
         self.set_pref("audio", audio)
+
+    def image(self) -> str:
+        """Returns the e-mail address of a user"""
+        return self.get_string_pref("image", self._image or "")
+
+    def set_image(self, image: str) -> None:
+        """Sets the e-mail address of a user"""
+        self.set_pref("image", image)
 
     def fanfare(self) -> bool:
         """Returns True if the user wants a fanfare sound when winning"""
@@ -539,12 +551,15 @@ class User:
 
     @classmethod
     def login_by_account(
-        cls, account: str, name: str, email: str, *, locale: Optional[str] = None
+        cls, account: str, name: str, email: str, image: str, *, locale: Optional[str] = None
     ):
         """Log in a user via the given Google Account and return her user id"""
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
         if um is not None:
+            if image and image != um.image:
+                um.image = image
+                um.put()
             # We've seen this Google Account before: return the user id
             # logging.info("Login: Known Google Account {0} email {1} name '{2}'"
             #     .format(account, email, name)
@@ -589,6 +604,7 @@ class User:
             account=account,
             email=email,
             nickname=nickname,
+            image=image,
             preferences=prefs,
             locale=locale,
         )

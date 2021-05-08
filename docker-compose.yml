@@ -1,0 +1,27 @@
+version: "3.6"
+services:
+  explo-server:
+    build:
+      context: ./
+      dockerfile: dockerfile
+    image: explo-server:latest
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: "./resources/Explo\ Development-414318fa79b8.json"
+      PROJECT_ID: "explo-dev"
+      CLIENT_ID: "970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com"
+      FIREBASE_API_KEY: "AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc"
+      FIREBASE_SENDER_ID: 970204261331
+      FIREBASE_APP_ID: "1:970204261331:web:fce1615824c2e382ec9d26"
+      SERVER_SOFTWARE: "Development"
+      OAUTHLIB_INSECURE_TRANSPORT: 1
+      REDISHOST: 10.128.0.3
+      REDISPORT: 6379
+      FLASK_APP: "main.py"
+      ENV FLASK_RUN_HOST: "0.0.0.0"
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"

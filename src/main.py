@@ -110,7 +110,8 @@ import billing
 import firebase
 from cache import memcache
 import skraflstats
-
+from google.cloud import storage
+from flask_cors import CORS
 
 # Type definitions
 T = TypeVar("T")
@@ -168,6 +169,19 @@ def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
 def jsonify(*args: Any, **kwargs: Any) -> str:
     return cast(str, flask_jsonify(*args, **kwargs))
 
+# Since we're running from the /src directory, reset Flask's
+# template and static folders to be relative from the base project directory
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
+
+# Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[
+        "http://explo.300dev.pl",
+        "http://localhost:19006",
+    ]
+)
 
 # Wrap the WSGI app to insert the NDB client context into each request
 setattr(app, "wsgi_app", ndb_wsgi_middleware(cast(Any, app).wsgi_app))
@@ -188,6 +202,13 @@ with open(
 ) as f_txt:
     _CLIENT_SECRET = f_txt.read().strip()
 
+# If you don't specify credentials when constructing the client, the
+# client library will look for credentials in the environment.
+storage_client = storage.Client()
+
+# Make an authenticated API request
+buckets = list(storage_client.list_buckets())
+
 assert _CLIENT_ID, "CLIENT_ID environment variable not set"
 assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 
@@ -200,7 +221,7 @@ assert _CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 flask_config = dict(
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SAMESITE="None",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
@@ -592,6 +613,26 @@ def fetch_users(
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
+def _get_online():
+    # Get the list of online users
+
+    # Start by looking in the cache
+    # !!! TODO: Cache the entire list including the user information,
+    # !!! only updating the favorite state (fav field) for the requesting user
+    online = memcache.get("live", namespace="userlist")
+
+    if not online:
+        # Not found: do a query
+        online = firebase.get_connected_users()  # Returns a set
+
+        # Store the result as a list in the cache with a lifetime of 10 minutes
+        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
+    else:
+        # Convert the cached list back into a set
+        online = set(online)
+    return online
+
+
 def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     """ Return a list of users matching the filter criteria """
 
@@ -620,6 +661,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "newbag": cuser is not None and cuser.new_bag(),
                     "ready": True,  # The robots are always ready for a challenge
                     "ready_timed": False,  # Timed games are not available for robots
+                    "live": True,  # robots are always online
                 }
             )
         # That's it; we're done (no sorting required)
@@ -633,21 +675,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20) if ch[0]]
         )
 
-    # Get the list of online users
-
-    # Start by looking in the cache
-    # TBD: Cache the entire list including the user information,
-    # only updating the favorite state (fav field) for the requesting user
-    online = memcache.get("live", namespace="userlist")
-    if online is None:
-        # Not found: do a query
-        online = firebase.get_connected_users()  # Returns a set
-        # Store the result as a list in the cache with a lifetime of 10 minutes
-        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
-    else:
-        # Convert the cached list back into a set
-        online = set(online)
-
+    online = _get_online()
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -676,6 +704,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "newbag": lu.new_bag(),
                         "ready": lu.is_ready() and not chall,
                         "ready_timed": lu.is_ready_timed() and not chall,
+                        "live": True,
+                        "image": lu.image()
                     }
                 )
 
@@ -699,10 +729,12 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "chall": chall,
                             "fairplay": fu.fairplay(),
                             "newbag": fu.new_bag(),
+                            "live": favid in online,
                             "ready": (fu.is_ready() and favid in online and not chall),
                             "ready_timed": (
                                 fu.is_ready_timed() and favid in online and not chall
                             ),
+                            "image": fu.image()
                         }
                     )
 
@@ -729,11 +761,13 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "fav": False if cuser is None else cuser.has_favorite(uid),
                             "chall": chall,
                             "fairplay": au.fairplay(),
+                            "live": uid in online,
                             "newbag": au.new_bag(),
                             "ready": (au.is_ready() and uid in online and not chall),
                             "ready_timed": (
                                 au.is_ready_timed() and uid in online and not chall
                             ),
+                            "image": au.image()
                         }
                     )
 
@@ -778,12 +812,14 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
+                        "live": uid in online,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
                         "newbag": User.new_bag_from_prefs(ud["prefs"]),
                         "ready": (ud["ready"] and uid in online and not chall),
                         "ready_timed": (
                             ud["ready_timed"] and uid in online and not chall
                         ),
+                        "image": ud["image"]
                     }
                 )
 
@@ -809,7 +845,12 @@ def _gamelist(
     result: List[Dict[str, Union[str, int, bool]]] = []
     if not cuid:
         return result
+
     now = datetime.utcnow()
+    online = _get_online()
+    cuser = current_user()
+    u: Optional[User] = None
+
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
     if include_zombies:
@@ -823,7 +864,8 @@ def _gamelist(
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
-            timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
+            # Time per player in minutes
+            timed = Game.get_duration_from_prefs(prefs)
             result.append(
                 {
                     "uuid": g["uuid"],
@@ -838,10 +880,15 @@ def _gamelist(
                     "my_turn": False,
                     "overdue": False,
                     "zombie": True,
-                    "fairplay": fairplay,
-                    "newbag": new_bag,
-                    "manual": manual,
+                    "prefs": {
+                        "fairplay": fairplay,
+                        "newbag": new_bag,
+                        "manual": manual,
+                    },
                     "timed": timed,
+                    "live": opp in online,
+                    "image": u.image(),
+                    "fav": False if cuser is None else cuser.has_favorite(opp),
                     "tile_count": 100,  # All tiles (100%) accounted for
                 }
             )
@@ -868,7 +915,8 @@ def _gamelist(
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
-        timed = Game.get_duration_from_prefs(prefs)  # Time per player in minutes
+        # Time per player in minutes
+        timed = Game.get_duration_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
@@ -898,11 +946,16 @@ def _gamelist(
                 "my_turn": g["my_turn"],
                 "overdue": overdue,
                 "zombie": False,
-                "fairplay": fairplay,
-                "newbag": new_bag,
-                "manual": manual,
+                "prefs": {
+                    "fairplay": fairplay,
+                    "newbag": new_bag,
+                    "manual": manual,
+                },
                 "timed": timed,
                 "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles()),
+                "live": opp in online,
+                "image":  "" if u is None else u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(opp),
             }
         )
     return result
@@ -1000,14 +1053,22 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
     result: List[Dict[str, Any]] = []
     if cuid is None:
         return result
+
+    cuser = current_user()
     # Obtain a list of recently finished games where the indicated user was a player
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
+
+    online = _get_online()
+
+    u: Optional[User] = None
+
     for g in rlist:
         opp = g["opp"]
         if opp is None:
             # Autoplayer opponent
+            u = None
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
@@ -1042,8 +1103,13 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
                 "days": int(days),
                 "hours": int(hours),
                 "minutes": int(minutes),
-                "duration": Game.get_duration_from_prefs(prefs),
-                "manual": Game.manual_wordcheck_from_prefs(prefs),
+                "prefs": {
+                    "duration": Game.get_duration_from_prefs(prefs),
+                    "manual": Game.manual_wordcheck_from_prefs(prefs),
+                },
+                "live": opp in online,
+                "image": "" if u is None else u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(opp),
             }
         )
     return result
@@ -1058,7 +1124,10 @@ def _challengelist() -> List[Dict[str, Any]]:
     """ Return a list of challenges issued or received by the current user """
 
     result: List[Dict[str, Any]] = []
-    cuid = current_user_id()
+    cuser = current_user()
+    assert cuser is not None
+    cuid = cuser.id()
+    assert cuid is not None
 
     def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
         """ Return True if the challenge is for a timed game """
@@ -1077,48 +1146,53 @@ def _challengelist() -> List[Dict[str, Any]]:
         assert c[0] is not None
         return _opponent_waiting(cuid, c[0])
 
-    if cuid is not None:
-
-        # List received challenges
-        received = list(ChallengeModel.list_received(cuid, max_len=20))
-        # List issued challenges
-        issued = list(ChallengeModel.list_issued(cuid, max_len=20))
-        # Multi-fetch all opponents involved
-        opponents = fetch_users(received + issued, lambda c: c[0])
-        # List the received challenges
-        for c in received:
-            uid = c[0]  # User id
-            if uid is not None:
-                u = opponents[uid]
-                nick = u.nickname()
-                result.append(
-                    {
-                        "received": True,
-                        "userid": uid,
-                        "opp": nick,
-                        "fullname": u.full_name(),
-                        "prefs": c[1],
-                        "ts": Alphabet.format_timestamp_short(c[2]),
-                        "opp_ready": False,
-                    }
-                )
-        # List the issued challenges
-        for c in issued:
-            uid = c[0]  # User id
-            if uid is not None:
-                u = opponents[uid]
-                nick = u.nickname()
-                result.append(
-                    {
-                        "received": False,
-                        "userid": uid,
-                        "opp": nick,
-                        "fullname": u.full_name(),
-                        "prefs": c[1],
-                        "ts": Alphabet.format_timestamp_short(c[2]),
-                        "opp_ready": opp_ready(c),
-                    }
-                )
+    online = _get_online()
+    # List received challenges
+    received = list(ChallengeModel.list_received(cuid, max_len=20))
+    # List issued challenges
+    issued = list(ChallengeModel.list_issued(cuid, max_len=20))
+    # Multi-fetch all opponents involved
+    opponents = fetch_users(received + issued, lambda c: c[0])
+    # List the received challenges
+    for c in received:
+        if not c[0]:
+            continue
+        u = opponents[c[0]]  # User id
+        nick = u.nickname()
+        result.append(
+            {
+                "received": True,
+                "userid": c[0],
+                "opp": nick,
+                "fullname": u.full_name(),
+                "prefs": c[1],
+                "ts": Alphabet.format_timestamp_short(c[2]),
+                "opp_ready": False,
+                "live": c[0] in online,
+                "image": u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(c[0]),
+            }
+        )
+    # List the issued challenges
+    for c in issued:
+        if not c[0]:
+            continue
+        u = opponents[c[0]]  # User id
+        nick = u.nickname()
+        result.append(
+            {
+                "received": False,
+                "userid": c[0],
+                "opp": nick,
+                "fullname": u.full_name(),
+                "prefs": c[1],
+                "ts": Alphabet.format_timestamp_short(c[2]),
+                "opp_ready": opp_ready(c),
+                "live": c[0] in online,
+                "image": u.image(),
+                "fav": False if cuser is None else cuser.has_favorite(c[0])
+            }
+        )
     return result
 
 
@@ -1798,7 +1872,9 @@ class UserForm:
         self.unfriend_url: str = url_for("friend", action=2)
         self.nickname: str = ""
         self.full_name: str = ""
+        self.id: str = ""
         self.email: str = ""
+        self.image: str = ""
         self.audio: bool = True
         self.fanfare: bool = True
         self.beginner: bool = True
@@ -1825,6 +1901,10 @@ class UserForm:
             pass
         self.locale = form.get("locale", "").strip() or "is_IS"
         try:
+            self.image = form["image"].strip()
+        except (TypeError, ValueError, KeyError):
+            pass
+        try:
             self.audio = "audio" in form  # State of the checkbox
             self.fanfare = "fanfare" in form
             self.beginner = "beginner" in form
@@ -1849,6 +1929,10 @@ class UserForm:
             pass
         self.locale = d.get("locale", "").strip() or "is_IS"
         try:
+            self.image = d.get("image", "").strip()
+        except (TypeError, ValueError, KeyError):
+            pass
+        try:
             self.audio = bool(d.get("audio", False))
             self.fanfare = bool(d.get("fanfare", False))
             self.beginner = bool(d.get("beginner", False))
@@ -1869,6 +1953,8 @@ class UserForm:
         self.newbag = usr.new_bag()
         self.friend = usr.friend()
         self.locale = usr.locale
+        self.id = current_user_id() or ""
+        self.image = usr.image()
 
     def validate(self) -> Dict[str, str]:
         """Check the current form data for validity
@@ -1906,6 +1992,7 @@ class UserForm:
         usr.set_fairplay(self.fairplay)
         usr.set_new_bag(self.newbag)
         usr.set_locale(self.locale)
+        usr.set_image(self.image)
         usr.update()
 
     def as_dict(self) -> UserPrefsType:
@@ -1989,7 +2076,9 @@ def wait() -> ResponseType:
     # Get the opponent id
     opp = request.args.get("opp", None)
     if opp is None or opp.startswith("robot-"):
-        return redirect(url_for("main", tab="2"))  # Go directly to opponents tab
+        # !!! TODO: Update for singlepage
+        # Go directly to opponents tab
+        return redirect(url_for("main", tab="2"))
 
     # Find the challenge being accepted
     found, prefs = user.find_challenge(opp)
@@ -2468,6 +2557,45 @@ def twoletter() -> ResponseType:
     return render_template("nshelp.html", user=user, tab="twoletter")
 
 
+@app.route("/twoletters",  methods=["POST"])
+def twoletters():
+    """ Show help page. Authentication is not required. """
+    user = session_user()
+
+    words = [
+        "að", "af", "ak", "an", "ar", "as", "at", "ax", "áa",
+        "áð", "ái", "ál", "ám", "án", "ár", "ás", "át", "bí", "bú", "bý", "bæ",
+        "dá", "do", "dó", "dý",
+        "eð", "ef", "eg", "ei", "ek", "el", "em", "en", "er", "es", "et", "ex", "ey",
+        "ég", "él", "ét",
+        "fa", "fá", "fé", "fæ", "gá", "ha", "há", "hí", "hó", "hý", "hæ",
+        "ið", "il", "im", "íð", "íl", "ím", "ís"
+        "já", "je", "jó", "jú", "ká", "ku", "kú",
+        "la", "lá", "lé", "ló", "lú", "lý", "læ",
+        "má", "mi", "mó", "mý",
+        "ná", "né", "nó", "nú", "ný", "næ",
+        "of", "og", "oj", "ok", "op", "or",
+        "óa", "óð", "óf", "ói", "ók", "ól", "óm", "ón", "óp", "ós", "óx",
+        "pí", "pu", "pú", "pæ",
+        "rá", "re", "ré", "rí", "ró", "rú", "rý", "ræ",
+        "sá", "sé", "sí", "so", "sú", "sý", "sæ",
+        "tá", "te", "té", "ti", "tí", "tó", "tý",
+        "um", "un",
+        "úa", "úð", "úf", "úi", "úr", "út",
+        "vá", "vé", "ví", "vó",
+        "yl", "ym", "yr", "ys",
+        "ýf", "ýg", "ýi", "ýk", "ýl", "ýr", "ýs", "ýt",
+        "þá", "þó", "þú", "þý",
+        "æð", "æf", "æg", "æi", "æl", "æp", "ær", "æs", "æt",
+        "öl", "ör", "ös", "öt", "öx"]
+    letters = [
+        'a', 'á', 'b', 'd', 'e', 'é', 'f', 'g', 'h', 'i', 'í', 'j', 'k', 'l', 'm', 'n', 'o', 'ó', 'p', 'r', 's', 't', 'u', 'ú', 'v', 'y', 'ý', 'þ', 'æ', 'ö']
+    return jsonify({
+        "words": words,
+        "letters": letters
+    })
+
+
 @app.route("/faq")
 def faq() -> ResponseType:
     """ Show help page. Authentication is not required. """
@@ -2531,10 +2659,15 @@ def oauth2callback() -> ResponseType:
     """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
 
+    # TODO: Where do we put this (if needed)?
+    # token = request.form.get("idToken", "") or request.json["idToken"]
+    # csrf_token = request.form.get("csrfToken", "") or request.json["csrfToken"]
+
     account: Optional[str] = None
     userid: Optional[str] = None
     idinfo: Dict[str, Any] = dict()
     email: Optional[str] = None
+    image: Optional[str] = None
     name: Optional[str] = None
     g = cast(Any, oauth).google
     assert g is not None
@@ -2551,16 +2684,20 @@ def oauth2callback() -> ResponseType:
         if account:
             # Full name of user
             name = idinfo.get("name", "")
+            # User image
+            image = idinfo.get("picture", "")
             # Make sure that the e-mail address is in lowercase
             email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
-            userid = User.login_by_account(account, name or "", email or "")
+            userid = User.login_by_account(account, name or "", email or "", image or "")
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"oauth2callback(): {e}")
         userid = None
+        # TODO: Return the following from API
+        # return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     if not userid:
         # Unable to obtain a properly authenticated user id for some reason
@@ -2696,6 +2833,6 @@ if not running_local:
 
 
 # Run a default Flask web server for testing if invoked directly as a main program
-
 if __name__ == "__main__":
-    app.run(host=host, debug=True, port=8080, use_debugger=True, threaded=False, processes=1)
+    app.run(debug=True, port=3000, use_debugger=True,
+        threaded=False, processes=1, host="0.0.0.0")

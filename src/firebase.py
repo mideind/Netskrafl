@@ -7,10 +7,8 @@
 
     The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
     This module implements a thin wrapper around the Google Firebase
     functionality used to send push notifications to clients.
-
 """
 
 from __future__ import annotations
@@ -38,7 +36,7 @@ assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
 # Select Firebase database URL depending on project ID
 _FIREBASE_DB: Mapping[str, str] = {
     "netskrafl": "https://netskrafl.firebaseio.com",
-    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
+    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app",
 }
 _FIREBASE_DB_URL: str = _FIREBASE_DB[_PROJECT_ID]
 
@@ -106,10 +104,8 @@ def _firebase_put(  # type: ignore
     path: str, message: Optional[str] = None
 ) -> Tuple[httplib2.Response, bytes]:
     """ Writes data to Firebase.
-
     An HTTP PUT writes an entire object at the given database path. Updates to
     fields cannot be performed without overwriting the entire object
-
     Args:
         path - the url to the Firebase object to write.
         value - a json string.
@@ -119,11 +115,9 @@ def _firebase_put(  # type: ignore
 
 def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Read the data at the given path.
-
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
     The response will contain the data being retrieved.
-
     Args:
         path - the url to the Firebase object to read.
     """
@@ -132,11 +126,9 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
 
 def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
     """ Update the data at the given path.
-
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
     The response will contain the data being retrieved.
-
     Args:
         path - the url to the Firebase object to read.
     """
@@ -145,10 +137,8 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
 
 def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
     """ Delete the data at the given path.
-
     An HTTP DELETE request allows deleting of the data at the given path.
     A successful request will be indicated by a 200 OK HTTP status code.
-
     Args:
         path - the url to the Firebase object to delete.
     """
@@ -177,7 +167,8 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
         # is returned in the status field
         return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
-        logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
+        logging.warning(
+            "Exception [{}] in firebase.send_message()".format(repr(e)))
         return False
 
 
@@ -192,7 +183,8 @@ def send_update(*args: str) -> bool:
 def check_wait(user_id: str, opp_id: str) -> bool:
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
-        url = "{}/user/{}/wait/{}.json".format(_FIREBASE_DB_URL, user_id, opp_id)
+        url = "{}/user/{}/wait/{}.json".format(
+            _FIREBASE_DB_URL, user_id, opp_id)
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
@@ -216,7 +208,8 @@ def check_presence(user_id: str) -> bool:
         return bool(msg)
     except httplib2.HttpLib2Error as e:
         logging.warning(
-            "Exception [{}] raised in firebase.check_presence()".format(repr(e))
+            "Exception [{}] raised in firebase.check_presence()".format(
+                repr(e))
         )
         return False
 
@@ -251,7 +244,6 @@ _firebase_app: Optional[App] = None
 
 def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     """ Create a secure token for the given id.
-
         This method is used to create secure custom JWT tokens to be passed to
         clients. It takes a unique id that will be used by Firebase's
         security rules to prevent unauthorized access. In this case, the uid will
