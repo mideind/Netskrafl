@@ -97,7 +97,9 @@ def ndb_wsgi_middleware(wsgi_app):
     return middleware
 
 
-app = Flask(__name__)
+# Since we're running from the /src directory, reset Flask's
+# template and static folders to be relative from the base project directory
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
 CORS(
@@ -2383,10 +2385,8 @@ def oauth2callback():
         # 500 - Internal server error
         return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
 
-#  or request.json['idToken']
-# or request.json['csrfToken']
-    token = request.form.get("idToken", "") or request.json['idToken']
-    csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
+    token = request.form.get("idToken", "") or request.json["idToken"]
+    csrf_token = request.form.get("csrfToken", "") or request.json["csrfToken"]
 
     if not token:
         # No authentication token included in the request
@@ -2509,7 +2509,7 @@ def server_error(e):
 if not running_local:
     # Start the Google Stackdriver debugger, if not running locally
     try:
-        import googleclouddebugger
+        import googleclouddebugger  # type: ignore
 
         googleclouddebugger.enable()
     except ImportError:
@@ -2519,4 +2519,4 @@ if not running_local:
 # Run a default Flask web server for testing if invoked directly as a main program
 if __name__ == "__main__":
     app.run(debug=True, port=3000, use_debugger=True,
-            threaded=False, processes=1, host="0.0.0.0")
+        threaded=False, processes=1, host="0.0.0.0")
