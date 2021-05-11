@@ -2,7 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block logo %}
@@ -29,7 +29,7 @@
 
       <div class="btn-thanks" title="Áfram"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-         onclick="window.location.href='{{ url_for("main") | safe }}'">
+         onclick="window.location.href='{{ url_for("web.main") | safe }}'">
          <span class="glyphicon glyphicon-ok"></span></div>
 
    </div>
@@ -52,12 +52,12 @@
 
       <div class="btn-cancel-no" title="Nei"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-         onclick="window.location.href='{{ url_for("userprefs") | safe }}'">
+         onclick="window.location.href='{{ url_for("web.userprefs") | safe }}'">
          <span class="glyphicon glyphicon-remove"></span> Nei</div>
 
       <div class="btn-cancel-yes" title="Já"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-         onclick="window.location.href='{{ url_for("friend", action=3) | safe }}'">
+         onclick="window.location.href='{{ url_for("web.friend", action=3) | safe }}'">
          <span class="glyphicon glyphicon-ok"></span> Já, vil hætta</div>
 
    </div>
@@ -73,7 +73,7 @@
 
       <div class="btn-thanks" title="Áfram"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-         onclick="window.location.href='{{ url_for("userprefs") | safe }}'">
+         onclick="window.location.href='{{ url_for("web.userprefs") | safe }}'">
          <span class="glyphicon glyphicon-ok"></span></div>
 
    </div>
@@ -82,7 +82,7 @@
 
 <!-- Display user identifier in upper right corner -->
 
-<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
 <span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
 </div>
 
@@ -157,7 +157,7 @@
          .data("param", null)
          .css("visibility", "hidden");
       $("#promo-content").html("");
-      window.location.href = "{{ url_for('main') | safe }}";
+      window.location.href = "{{ url_for('web.main') | safe }}";
    }
 
    function doRegisterSalesCloud(i,s,o,g,r,a,m) {

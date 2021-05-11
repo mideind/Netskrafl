@@ -29,16 +29,16 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
 
-_PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
+PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 
-assert _PROJECT_ID, "PROJECT_ID environment variable not defined"
+assert PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 # Select Firebase database URL depending on project ID
 _FIREBASE_DB: Mapping[str, str] = {
     "netskrafl": "https://netskrafl.firebaseio.com",
     "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app",
 }
-_FIREBASE_DB_URL: str = _FIREBASE_DB[_PROJECT_ID]
+_FIREBASE_DB_URL: str = _FIREBASE_DB[PROJECT_ID]
 
 _FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",

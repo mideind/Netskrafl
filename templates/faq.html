@@ -64,7 +64,7 @@ rel="noopener">Facebook-hópi Netskrafls</a>.</p>
 er í BÍN sjálfri</b> en má nálgast sérstaklega á vef BÍN.</li>
 <li>Spurnarmyndir sagna í <b>eintölu</b> (“<i>Borðaðirðu</i> kvöldmatinn snemma?”) sem <b>ekki
 eru í BÍN sjálfri</b> en nálgast má sérstaklega á vef BÍN.</li>
-<li>Orð sem eru á <a href="{{ url_for('twoletter') }}">tveggja stafa orðalista
+<li>Orð sem eru á <a href="{{ url_for('web.twoletter') }}">tveggja stafa orðalista
 Skraflfélags Íslands</a>, eins og hann var ákveðinn af Orðanefnd þess í
 september 2015.</li>
 <li>Örfá vel þekkt orð sem bætt hefur verið handvirkt við orðagrunn Netskrafls
@@ -80,7 +80,7 @@ vegna þess að þau vantar augljóslega í BÍN.</li>
 <li>Samsett orð sem ekki eru í BÍN.</li>
 <li>Spurnarmyndir sagna í <b>fleirtölu</b> (“<i>Borðuðuði</i> kvöldmatinn snemma?”).</li>
 <li>Tveggja stafa orð önnur en þau sem eru á
-<a href="{{ url_for('twoletter') }}">orðalista Skraflfélags Íslands</a>.</li>
+<a href="{{ url_for('web.twoletter') }}">orðalista Skraflfélags Íslands</a>.</li>
 <li>Örfáar orðmyndir sem hafa verið felldar niður handvirkt úr orðagrunni
 Netskrafls vegna þess að þær eru augljóslega villur í BÍN.</li>
 </ul>
@@ -125,7 +125,7 @@ eða það gæti verið nýkomið inn í BÍN. Þá kemur það inn í Netskrafl
 <ul>
 <li>Óbeygjanleg orð (smáorð, forsetningar, atviksorð).</li>
 <li>Spurnarmyndir sagna í eintölu (“<i>Fórstu</i> út að borða í kvöld?”).</li>
-<li>Tveggja stafa orð af <a href="{{ url_for('twoletter') }}">lista Skraflfélags
+<li>Tveggja stafa orð af <a href="{{ url_for('web.twoletter') }}">lista Skraflfélags
 Íslands</a>, sem eru ekki öll í BÍN.</li>
 <li>Örfá vel þekkt orð sem hefur verið bætt handvirkt við orðalista Netskrafls enda vantar þau augljóslega í BÍN.</li>
 </ul>
@@ -201,7 +201,7 @@ væntanlega þar með. Þú heldur þínum stigum hins vegar óskertum.</p>
 ekki birtist rauða stundaglasið einnig hjá þér. Ef þú opnar viðureignina með því að
 smella á hana sérðu rauðan hnapp neðst á síðunni, fyrir neðan borðið, sem á stendur
 “Þvinga til uppgjafar”.</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-1.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-1.png') }}"></p>
 <p>Ef þú smellir á hnappinn hefur þú sigrað með þvingaðri uppgjöf. Engin tímamörk
 eru á slíkri þvingun, ef stundaglasið er komið upp á annað borð.</p>
 </li>
@@ -215,10 +215,10 @@ leita að orðum, svo sem “skraflhjálp”, krossgátuorðabók og hjálpartæ
 (eldra skrafli á netinu). Innbyggðir möguleikar í Netskraflinu sjálfu, svo sem
 orðaleit jafnóðum og uppfletting í tveggja stafa orðalistanum, teljast ekki vera
 stafræn hjálpartæki í þessu sambandi.</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-2.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-2.png') }}"></p>
 <p>Hægt er að gangast undir heiðursmannasamkomulagið og virkja teiknið með því að
 smella á nafnið sitt í hægra horninu, opna með því
-<a href="{{ url_for('userprefs', tab=1) }}">upplýsingar um notanda</a> og velja þar
+<a href="{{ url_for('web.userprefs', tab=1) }}">upplýsingar um notanda</a> og velja þar
 til gerðan rofa (sjá mynd).</p>
 </li>
 
@@ -227,18 +227,18 @@ til gerðan rofa (sjá mynd).</p>
 <p>Ef þú smellir á miðjutáknið (björgunarhringinn
 <span class="glyphicon glyphicon-life-preserver"></span>) hægra megin við borðið og
 við hliðina á stigatöflunni, birtist listinn.</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-3.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-3.png') }}"></p>
 <p>Ef þú smellir svo á listann sjálfan skiptir hann milli þess að raðast
 eftir síðari stafnum og þeim fyrri.</p>
-<p>Þú getur einnig séð tveggja stafa orðalistann <a href="{{ url_for('twoletter') }}">hér</a>.</p>
+<p>Þú getur einnig séð tveggja stafa orðalistann <a href="{{ url_for('web.twoletter') }}">hér</a>.</p>
 </li>
 
 <li id="faq-12">Get ég losnað við lúðraþytinn sem heyrist þegar ég sigra í viðureign?
 
 <p>Já, þú getur slökkt á honum í stillingum.
-(Hægt er að <a href="{{ url_for('userprefs', tab=1) }}">opna stillingarnar</a> með því
+(Hægt er að <a href="{{ url_for('web.userprefs', tab=1) }}">opna stillingarnar</a> með því
 að smella á nafnið sitt efst í hægra horni síðunnar.)</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-4.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-4.png') }}"></p>
 <p>Myndin sýnir hvernig rofinn á að vera stilltur til að slökkva á lúðraþytinum.</p>
 </li>
 
@@ -246,9 +246,9 @@ að smella á nafnið sitt efst í hægra horni síðunnar.)</p>
 Hvernig fæ ég hann aftur upp?
 
 <p>Hann er opnaður í stillingunum. (Hægt er að
-<a href="{{ url_for('userprefs', tab=1) }}">opna stillingarnar</a> með því að smella
+<a href="{{ url_for('web.userprefs', tab=1) }}">opna stillingarnar</a> með því að smella
 á nafnið sitt efst í hægra horni síðunnar.)</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-5.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-5.png') }}"></p>
 <p>Myndin sýnir hvernig rofinn á að vera stilltur til að minnismiðinn sjáist.</p>
 </li>
 
@@ -321,7 +321,7 @@ raunverulegum niðurstöðum viðureigna.</p>
 <p>Þú sérð þín eigin Elo-stig undir flipanum <strong>Ferill</strong>.
 Þau eru einkennd með dökkblárri kórónu
 <span class="glyphicon glyphicon-crown"></span>.</p>
-<p class="help-center"><img src="{{ url_for('static', filename='Faq-6.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='Faq-6.png') }}"></p>
 <p>Elo-stigin eru vinstra megin, hjá kórónunni - þau eru 1170 í þessu dæmi. Leikmaðurinn hefur lokið 15
 viðureignum, unnið 40% þeirra og fengið að meðaltali 91 stig í hverri viðureign.</p>
 <p>Elo-stig 100 efstu leikmanna má sjá undir flipanum <strong>Andstæðingar</strong>
@@ -442,16 +442,16 @@ endurbót á eldri, upphaflega skraflpokanum sem fylgdi íslensku borðskrafli �
 væru því sem næst <strong>jafn ákjósanlegir</strong> í rekkanum. Jafnframt var gætt að
 jafnvægi milli sérhljóða og samhljóða, og að tíðni stafa endurspeglaði íslenskt
 ritmál.</p>
-<p>Nánar er fjallað um nýja pokann <a href="{{ url_for('newbag') }}">hér</a>.</p>
+<p>Nánar er fjallað um nýja pokann <a href="{{ url_for('web.newbag') }}">hér</a>.</p>
 <p>PDF skrá sem sýnir nýja pokann grafískt má
-<a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>.</p>
+<a href="{{ url_for('web.static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>.</p>
 </li>
 
 <li id="faq-25">Hvernig sé ég hvort viðureign fer fram með nýja pokanum?
 
 <p><i>Gamli (upphaflegi) pokinn er nú einungis notaður ef báðir leikmenn eru merktir honum.</i></p>
 <p>Nýi pokinn þekkist á því að hann er <strong>fölblár</strong> á litinn, neðst í hægra horni leikborðsins:</p>
-<p style="text-align:center"><img src="{{ url_for('static', filename='NewBagExample.png') }}"></p>
+<p style="text-align:center"><img src="{{ url_for('web.static', filename='NewBagExample.png') }}"></p>
 <p>Gamli pokinn er aftur á móti <b>ljósbrúnn</b>.</p>
 </li>
 
@@ -502,14 +502,14 @@ að gerast <b>vinir Netskrafls</b> og leggja lága upphæð, 490 kr. - andvirði
 <p>Þú ert &nbsp;<span class="glyphicon glyphicon-coffee-cup"></span>&nbsp; vinur Netskrafls. Kærar þakkir fyrir það!</p>
 {% else %}
 <p>Þú getur gerst &nbsp;<span class="glyphicon glyphicon-coffee-cup"></span>&nbsp; vinur Netskrafls
-með því að <a href="{{ url_for('friend', action=1) }}">smella hér</a>.</p>
+með því að <a href="{{ url_for('web.friend', action=1) }}">smella hér</a>.</p>
 {% endif %}
 {% endif %}
 </li>
 
 <li id="faq-28">Hvernig hætti ég að vera „vinur Netskrafls“?
 
-<p>Það er einfalt: þú <a href="{{ url_for('friend', action=2) }}">smellir hér</a> og staðfestir svo.
+<p>Það er einfalt: þú <a href="{{ url_for('web.friend', action=2) }}">smellir hér</a> og staðfestir svo.
 En það væri leitt að missa þig!</p>
 </li>
 
@@ -518,7 +518,7 @@ En það væri leitt að missa þig!</p>
 <p>Vinir Netskrafls geta skorað á aðra leikmenn í <b>keppnisham</b>.
 Í keppnisham er enginn grænn þumall sem segir til um hvort orð eru gild eða ekki. Leggja má niður
 hvaða orð sem er. Það er andstæðingsins að véfengja lögn sem hann telur ranga.</p>
-<p style="float:right;margin-top:0;padding-top:0;margin-right:0;padding-right:0;padding-left:6px;"><img src="{{ url_for('static', filename='ChallengeButton.png') }}"></p>
+<p style="float:right;margin-top:0;padding-top:0;margin-right:0;padding-right:0;padding-left:6px;"><img src="{{ url_for('web.static', filename='ChallengeButton.png') }}"></p>
 <p>Lögn andstæðings er véfengd með því að smella á dökkbláan hnapp með hvítu bannmerki.
 <span class="glyphicon glyphicon-play"></span></p>
 <p>Ef lögn andstæðings er ógild, þ.e. eitthvert orð sem hún myndar er ekki í orðagrunni Netskrafls, er hún
@@ -536,9 +536,9 @@ eru í samræmi við reglur Skraflfélags Íslands.</p>
 í <a href="#faq-29">keppnisham</a>, hvort sem þeir eru einnig Vinir Netskrafls eður ei.</p>
 <p>Keppnishamur er valinn með rofa í glugganum sem kemur upp þegar þú gefur út áskorun. Á myndinni
 sést hvernig rofinn á að vera stilltur fyrir keppnisham:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='ManualChallenge.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='ManualChallenge.png') }}"></p>
 <p>Áskorun í keppnisham er merkt með áberandi merki, ljósaperu á rauðum grunni:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='ManualLightbulb.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='ManualLightbulb.png') }}"></p>
 </li>
 
 <li id="faq-31">Innskráning tekst ekki. Hvað á ég að taka til bragðs?
@@ -561,25 +561,25 @@ a.m.k. með réttum stillingum.</p>
 </ul>
 
 <p><span class="glyphicon glyphicon-play"></span> Stilling vafra til að leyfa vefkökur</p>
-<p><img src="{{ url_for('static', filename='GoogleChromeLogo.png') }}" class="browserlogo"><b class="vcenter">Google Chrome</b></p>
+<p><img src="{{ url_for('web.static', filename='GoogleChromeLogo.png') }}" class="browserlogo"><b class="vcenter">Google Chrome</b></p>
 <p>Opnaðu nýjan flipa og sláðu inn eftirfarandi vefslóð: <b>chrome://settings/cookies</b></p>
 <p>Skrunaðu niður í eftirfarandi stillingu:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='CookieHelp1.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='CookieHelp1.png') }}"></p>
 <p>Smelltu á hnappinn <b>Add</b>.</p>
 <p>Sláðu inn <b>netskrafl.is</b> og merktu við <b>All cookies, on this site only</b>, eins og hér sést:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='CookieHelp2.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='CookieHelp2.png') }}"></p>
 <p>Smelltu á <b>Add</b>.</p>
-<p>Prófaðu <a href="{{ url_for('login') }}">innskráninguna</a> - nú ætti hún að virka.</p>
+<p>Prófaðu <a href="{{ url_for('web.login') }}">innskráninguna</a> - nú ætti hún að virka.</p>
 
-<p><img src="{{ url_for('static', filename='MozillaFirefoxLogo.png') }}" class="browserlogo"><b class="vcenter">Mozilla Firefox</b></p>
+<p><img src="{{ url_for('web.static', filename='MozillaFirefoxLogo.png') }}" class="browserlogo"><b class="vcenter">Mozilla Firefox</b></p>
 <p>Opnaðu nýjan flipa og sláðu inn eftirfarandi vefslóð: <b>about:preferences#privacy</b></p>
 <p>Skrunaðu niður í eftirfarandi stillingu:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='CookieHelp3.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='CookieHelp3.png') }}"></p>
 <p>Smelltu á hnappinn <b>Manage Exceptions...</b>.</p>
 <p>Í reitnum <b>Address of website</b>, sláðu inn <b>netskrafl.is</b> og smelltu svo á <b>Allow</b>, eins og hér sést:</p>
-<p class="help-center"><img src="{{ url_for('static', filename='CookieHelp4.png') }}"></p>
+<p class="help-center"><img src="{{ url_for('web.static', filename='CookieHelp4.png') }}"></p>
 <p>Smelltu á <b>Save Changes</b>.</p>
-<p>Prófaðu <a href="{{ url_for('login') }}">innskráninguna</a> - nú ætti hún að virka.</p>
+<p>Prófaðu <a href="{{ url_for('web.login') }}">innskráninguna</a> - nú ætti hún að virka.</p>
 </li>
 
 <p style="padding-bottom: 200px">&nbsp;</p>

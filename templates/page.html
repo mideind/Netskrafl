@@ -2,7 +2,7 @@
 {% extends "container-base.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}"
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}"
    rel="stylesheet" type="text/css" media="all">
 {% endblock %}
 
@@ -57,15 +57,15 @@
 
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
-   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='your-turn.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="you-win" preload="auto">
-   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="new-msg" preload="none">
-   <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='new-msg.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>
@@ -85,36 +85,36 @@ var $state = {
    // Array of supported emoticons in chat
    // Remember to change faq.html if this changes
    emoticons: [
-      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
-      { icon : ":-D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":-O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : ":-P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
-      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
-      { icon : ":D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : ":P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
+      { icon : ":-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":-D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":-P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "(y)", image : "{{ url_for('web.static', filename='thumb-up.png') }}" }
    ]
 };
 
 </script>
 
 <!-- !!! FIXME: Concatenate and minify the following scripts (plus mousetrap.min.js) -->
-<script src="{{ url_for('static', filename='js/channel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/game.js') }}"></script>
-<script src="{{ url_for('static', filename='js/page.js') }}"></script>
-<script src="{{ url_for('static', filename='js/util.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/channel.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/game.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/page.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/util.js') }}"></script>
 
-<script src="{{ url_for('static', filename='js/DragDropTouch.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script>
 
 <script>
 

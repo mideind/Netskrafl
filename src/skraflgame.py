@@ -324,7 +324,6 @@ class User:
 
     def set_fanfare(self, fanfare: bool) -> None:
         """Sets the fanfare preference of a user to True or False"""
-        assert isinstance(fanfare, bool)
         self.set_pref("fanfare", fanfare)
 
     def beginner(self) -> bool:
@@ -334,7 +333,6 @@ class User:
 
     def set_beginner(self, beginner: bool) -> None:
         """Sets the beginner state of a user to True or False"""
-        assert isinstance(beginner, bool)
         self.set_pref("beginner", beginner)
 
     @staticmethod
@@ -352,7 +350,6 @@ class User:
 
     def set_fairplay(self, state: bool) -> None:
         """Sets the fairplay state of a user to True or False"""
-        assert isinstance(state, bool)
         self.set_pref("fairplay", state)
 
     @staticmethod
@@ -371,7 +368,6 @@ class User:
 
     def set_new_bag(self, state: bool) -> None:
         """Sets the new bag preference of a user to True or False"""
-        assert isinstance(state, bool)
         self.set_pref("newbag", state)
 
     @staticmethod
@@ -389,7 +385,6 @@ class User:
 
     def set_friend(self, state: bool) -> None:
         """Sets the friend status of a user to True or False"""
-        assert isinstance(state, bool)
         self.set_pref("friend", state)
 
     @staticmethod
@@ -429,7 +424,6 @@ class User:
 
     def set_ready_timed(self, ready: bool) -> None:
         """Sets the whether a user is ready for timed games"""
-        assert isinstance(ready, bool)
         self._ready_timed = ready
 
     def _load_favorites(self) -> None:

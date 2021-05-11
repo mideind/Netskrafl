@@ -27,7 +27,7 @@
 
 <meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
 <meta property="og:description" content="{{ descr(og) | stripwhite }}" />
-<meta property="og:url" content="{{ url_for('board', game=game.id(), og=og.og, _external=True) | safe }}" />
+<meta property="og:url" content="{{ url_for('web.board', game=game.id(), og=og.og, _external=True) | safe }}" />
 <meta property="fb:app_id" content="622492364544510" />
 
 {% endif %}
@@ -35,7 +35,7 @@
 <meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
-<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
+<meta property="og:image" content="{{ url_for('web.static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
@@ -43,7 +43,7 @@
 {% endblock %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}"
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}"
    rel="stylesheet" type="text/css" media="all">
 {% endblock %}
 
@@ -104,7 +104,7 @@
    <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Wait placeholder -->
-<div class="waitmove"><img src="{{ url_for('static', filename='ajax-loader.gif') }}" border="0" width="16" height="16"/></div>
+<div class="waitmove"><img src="{{ url_for('web.static', filename='ajax-loader.gif') }}" border="0" width="16" height="16"/></div>
 
 <!-- Pass button -->
 <div class="submitpass" title="Pass"
@@ -124,7 +124,7 @@
 <!-- New game button -->
 <div class="submitnewgame" title="Nýr leikur"
    onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
-   onclick="window.location.href='{{ url_for('newgame') }}'">Nýr
+   onclick="window.location.href='{{ url_for('web.newgame') }}'">Nýr
    <span class="glyphicon glyphicon-play"></span></div>
 
 <!-- Notification that it's the opponent's turn -->
@@ -421,7 +421,7 @@
 {% endif %}
 
 <!-- Facebook share button -->
-<div class="fb-share" title="Deila á Facebook"><img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}"
+<div class="fb-share" title="Deila á Facebook"><img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png') }}"
    width="29" height="29"><br>Deila</div>
 
 <!-- A dialog to display promotions -->
@@ -438,15 +438,15 @@
 {%- if user and user.audio() -%}
 <!-- Audio resources -->
 <audio id="your-turn" preload="none">
-   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='your-turn.mp3') }}" type="audio/mpeg">
 </audio>
 <audio id="new-msg" preload="none">
-   <source src="{{ url_for('static', filename='new-msg.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='new-msg.mp3') }}" type="audio/mpeg">
 </audio>
 {% endif %}
 {%- if user and user.fanfare() -%}
 <audio id="you-win" preload="none">
-   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
 {%- endif -%}
 
@@ -459,9 +459,9 @@
 {%- block endscripts -%}
 <!-- Netskrafl client script -->
 {%- if dev_server %}
-<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+<script src="{{ url_for('web.static', filename='netskrafl.js') }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='netskrafl.min.js') }}"></script>
+<script src="{{ url_for('web.static', filename='netskrafl.min.js') }}"></script>
 {% endif -%}
 <script>
 
@@ -592,24 +592,24 @@
    /* Array of supported emoticons in chat */
    // Remember to change faq.html if this changes
    var emoticons = Array(
-      { icon : ":-)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
-      { icon : ":-D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";-)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":-(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":-o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":-O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":-p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : ":-P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "B-)", image : "{{ url_for('static', filename='icontexto_emoticons_16.png') }}" },
-      { icon : ":)", image : "{{ url_for('static', filename='icontexto_emoticons_03.png') }}" },
-      { icon : ":D", image : "{{ url_for('static', filename='icontexto_emoticons_02.png') }}" },
-      { icon : ";)", image : "{{ url_for('static', filename='icontexto_emoticons_04.png') }}" },
-      { icon : ":(", image : "{{ url_for('static', filename='icontexto_emoticons_12.png') }}" },
-      { icon : ":o", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":O", image : "{{ url_for('static', filename='icontexto_emoticons_10.png') }}" },
-      { icon : ":p", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : ":P", image : "{{ url_for('static', filename='icontexto_emoticons_14.png') }}" },
-      { icon : "(y)", image : "{{ url_for('static', filename='thumb-up.png') }}" }
+      { icon : ":-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":-D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":-P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "(y)", image : "{{ url_for('web.static', filename='thumb-up.png') }}" }
    );
 
    function replaceEmoticons(str) {
@@ -640,7 +640,7 @@
       /* Show the game review page */
 {% if user and user.has_paid() %}
       // Paying friend of Netskrafl: show the game review
-      window.location.href = "{{ url_for('review', game = game.id(), move = 0) | safe }}";
+      window.location.href = "{{ url_for('web.review', game = game.id(), move = 0) | safe }}";
 {% else %}
       // Not a paying friend: show a promotion overlay
       openPromoDialog("friend", registerSalesCloud);
@@ -649,12 +649,12 @@
 
    function navToUserprefs() {
       /* Show the user preferences page */
-      window.location.href = "{{ url_for('userprefs', from = url_for('board', game = game.id())) | safe }}";
+      window.location.href = "{{ url_for('web.userprefs', from = url_for('web.board', game = game.id())) | safe }}";
    }
 
    function gameUrl(uuid) {
       /* Return the URL for a game with a given uuid */
-      return "{{ url_for('board') | safe }}?game=" + uuid;
+      return "{{ url_for('web.board') | safe }}?game=" + uuid;
    }
 
    function fbShare() {
@@ -662,8 +662,8 @@
       /* Redirect to a Facebook URL - the JavaScript API doesn't work well on the iPad */
       window.location.href = "https://www.facebook.com/dialog/share?" +
          "app_id=622492364544510&display=popup&" +
-         "href={{ url_for('board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | urlencode}}&" +
-         "redirect_uri={{ url_for('board', game = game.id(), _external=True) | urlencode }}";
+         "href={{ url_for('web.board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | urlencode}}&" +
+         "redirect_uri={{ url_for('web.board', game = game.id(), _external=True) | urlencode }}";
    }
 
    function lateInit() {

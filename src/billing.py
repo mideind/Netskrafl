@@ -224,7 +224,7 @@ def handle(request: Request, uid: str) -> ResponseType:
             # !!! The signature from SalesCloud in this case does
             # !!! not agree with our calculation, so we leave it at that
             # return "<html><body>Invalid signature</body></html>", 403 # Forbidden
-        return redirect(url_for("friend", action=0))  # Redirect to a thank-you page
+        return redirect(url_for("web.friend", action=0))  # Redirect to a thank-you page
 
     # Begin by validating the request by checking its signature
     xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]

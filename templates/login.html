@@ -7,7 +7,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
 <meta property="og:description" content="Spilaðu skrafl á netinu" />
-<meta property="og:image" content="{{ url_for('static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
+<meta property="og:image" content="{{ url_for('web.static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="600" />
 <meta property="og:image:height" content="600" />
@@ -37,7 +37,7 @@
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
    </div>
-   <div id="board-pic"><img src="{{ url_for('static', filename='Board.png') }}" width="310" height="300"></div>
+   <div id="board-pic"><img src="{{ url_for('web.static', filename='Board.png') }}" width="310" height="300"></div>
    <div class="welcome">
       Netskrafl er vettvangur <b>yfir 20.000 íslenskra skraflara</b> á netinu.
    </div>
@@ -54,8 +54,8 @@
    </div>
    <div class="welcome">
       Þú getur alltaf
-      fengið <a href="{{ url_for('help') }}">hjálp</a> með því að
-      smella á <a href="{{ url_for('help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
+      fengið <a href="{{ url_for('web.help') }}">hjálp</a> með því að
+      smella á <a href="{{ url_for('web.help') }}">bláa&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign"></span> - merkið</a>
       hér til vinstri.
    </div>
    <div class="login-btn-large">Innskrá <span class="glyphicon glyphicon-play"></span></div>
@@ -64,7 +64,7 @@
 <div class="loginform-small">
    <!-- Small UI form -->
    <div id="logo-pic">
-      <img src="{{ url_for('static', filename='LoginLogo600.png') }}" width="300" height="300">
+      <img src="{{ url_for('web.static', filename='LoginLogo600.png') }}" width="300" height="300">
    </div>
    <div class="blurb">
       Skemmtilegt | skerpandi | ókeypis
@@ -81,7 +81,7 @@
 function initMain() {
    var loginFunc = function(ev) {
       $(ev.currentTarget).html("Skrái þig inn...");
-      window.location = "{{ url_for('login') }}";
+      window.location = "{{ url_for('web.login') }}";
    };
    $("div.login-btn-small").click(loginFunc);
    $("div.login-btn-large").click(loginFunc);

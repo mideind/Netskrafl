@@ -2,13 +2,13 @@
 {% extends "container.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block scripts %}
 
 <!-- Netskrafl client script -->
-<script src="{{ url_for('static', filename='netskrafl.js') }}"></script>
+<script src="{{ url_for('web.static', filename='netskrafl.js') }}"></script>
 
 <script>
 
@@ -104,14 +104,14 @@
 <div id="navprev" class="navbtn" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="navPrev(this)">
    <span id="nav-prev-visible"><span class="glyphicon glyphicon-chevron-left"></span> Fyrri</span>
-   <span id="nav-prev-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+   <span id="nav-prev-waiting"><img src="{{ url_for('web.static', filename='ajax-loader-passbtn.gif') }}"></span>
 </div>
 
 <!-- Next move button -->
 <div id="navnext" class="navbtn" onmouseover="buttonOver(this)"
    onmouseout="buttonOut(this)" onclick="navNext(this)">
    <span id="nav-next-visible">Næsti <span class="glyphicon glyphicon-chevron-right"></span></span>
-   <span id="nav-next-waiting"><img src="{{ url_for('static', filename='ajax-loader-passbtn.gif') }}"></span>
+   <span id="nav-next-waiting"><img src="{{ url_for('web.static', filename='ajax-loader-passbtn.gif') }}"></span>
 </div>
 
 {% if move_number > 0 %}
@@ -232,7 +232,7 @@ function navPrev(btn) {
    // Show animated GIF while waiting for page load
    $("#nav-prev-visible").css("display", "none");
    $("#nav-prev-waiting").css("display", "inline");
-   window.location.href='{{ url_for('review', game = game.id(), move = move_number - 1) | safe }}';
+   window.location.href='{{ url_for('web.review', game = game.id(), move = move_number - 1) | safe }}';
 }
 
 function navNext(btn) {
@@ -242,17 +242,17 @@ function navNext(btn) {
    // Show animated GIF while waiting for page load
    $("#nav-next-visible").css("display", "none");
    $("#nav-next-waiting").css("display", "inline");
-   window.location.href='{{ url_for('review', game = game.id(), move = move_number + 1) | safe }}';
+   window.location.href='{{ url_for('web.review', game = game.id(), move = move_number + 1) | safe }}';
 }
 
 function navFirst() {
    /* Display the first move */
-   window.location.href='{{ url_for('review', game = game.id(), move = 1) | safe }}';
+   window.location.href='{{ url_for('web.review', game = game.id(), move = 1) | safe }}';
 }
 
 function closeReview() {
    /* Go back to the main screen */
-   window.location.href='{{ url_for('main') | safe }}';
+   window.location.href='{{ url_for('web.main') | safe }}';
 }
 
 function gameTilescores() {
