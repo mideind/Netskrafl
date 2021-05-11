@@ -9,6 +9,11 @@
     For further information, see https://github.com/mideind/Netskrafl
 
 
+    This module implements web routes, i.e. URLs that return
+    responsive HTML/CSS/JScript content.
+
+    JSON-based client API entrypoints are implemented in api.py.
+
 """
 
 from __future__ import annotations
@@ -42,7 +47,6 @@ from flask import (
 )
 from werkzeug.urls import url_parse
 from werkzeug.wrappers import Response as WerkzeugResponse
-
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
 from basics import (
@@ -50,6 +54,7 @@ from basics import (
     auth_required,
     get_google_auth,
     session_user,
+    set_session_userid,
     RequestData,
     max_age,
     running_local,
@@ -73,6 +78,7 @@ import firebase
 from cache import memcache
 import skraflstats
 
+
 # Type definitions
 ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 RouteType = Callable[..., ResponseType]
@@ -92,6 +98,62 @@ _SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "FALSE").upper() == "TRUE"
 web = Blueprint(
     'web', __name__, static_folder="../static", template_folder="../templates"
 )
+
+
+def login_user() -> bool:
+    """ Log in a user after she is authenticated via OAuth """
+    # This function is called from /oauth2_web
+    # Note that a similar function is found in api.py
+    account: Optional[str] = None
+    userid: Optional[str] = None
+    idinfo: Dict[str, Any] = dict()
+    email: Optional[str] = None
+    image: Optional[str] = None
+    name: Optional[str] = None
+    g = get_google_auth()
+    try:
+        token: str = g.authorize_access_token()
+        idinfo = g.parse_id_token(token)
+        issuer = idinfo.get("iss", "")
+        if issuer not in VALID_ISSUERS:
+            logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
+            return False
+        # ID token is valid; extract the claims
+        # Get the user's Google Account ID
+        account = idinfo.get("sub")
+        if account:
+            # Full name of user
+            name = idinfo.get("name", "")
+            # User image
+            image = idinfo.get("picture", "")
+            # Make sure that the e-mail address is in lowercase
+            email = idinfo.get("email", "").lower()
+            # Attempt to find an associated user record in the datastore,
+            # or create a fresh user record if not found
+            userid = User.login_by_account(
+                account, name or "", email or "", image or ""
+            )
+    except (KeyError, ValueError, MismatchingStateError) as e:
+        # Something is wrong: we're not getting the same (random) state string back
+        # that we originally sent to the OAuth2 provider
+        logging.warning(f"login_user(): {e}")
+        userid = None
+
+    if not userid:
+        # Unable to obtain a properly authenticated user id for some reason
+        return False
+
+    # Authentication complete; user id obtained
+    set_session_userid(userid, idinfo)
+
+    if running_local:
+        logging.info(
+            "login_user() successfully recognized "
+            "account {0} userid {1} email {2} name '{3}'".format(
+                account, userid, email, name
+            )
+        )
+    return True
 
 
 @web.route("/_ah/warmup")
@@ -625,68 +687,14 @@ def logout() -> ResponseType:
     return redirect(url_for("web.greet"))
 
 
-@web.route("/oauth2callback")
+@web.route("/oauth2callback", methods=["GET"])
 def oauth2callback() -> ResponseType:
     """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
+    # Note that POSTs to this URL are handled in api.py
 
-    # TODO: Where do we put this (if needed)?
-    # token = request.form.get("idToken", "") or request.json["idToken"]
-    # csrf_token = request.form.get("csrfToken", "") or request.json["csrfToken"]
-
-    account: Optional[str] = None
-    userid: Optional[str] = None
-    idinfo: Dict[str, Any] = dict()
-    email: Optional[str] = None
-    image: Optional[str] = None
-    name: Optional[str] = None
-    g = get_google_auth()
-    try:
-        token: str = g.authorize_access_token()
-        idinfo = g.parse_id_token(token)
-        issuer = idinfo.get("iss", "")
-        if issuer not in VALID_ISSUERS:
-            logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
-            return redirect(url_for("web.login_error"))
-        # ID token is valid; extract the claims
-        # Get the user's Google Account ID
-        account = idinfo.get("sub")
-        if account:
-            # Full name of user
-            name = idinfo.get("name", "")
-            # User image
-            image = idinfo.get("picture", "")
-            # Make sure that the e-mail address is in lowercase
-            email = idinfo.get("email", "").lower()
-            # Attempt to find an associated user record in the datastore,
-            # or create a fresh user record if not found
-            userid = User.login_by_account(
-                account, name or "", email or "", image or ""
-            )
-    except (KeyError, ValueError, MismatchingStateError) as e:
-        # Something is wrong: we're not getting the same (random) state string back
-        # that we originally sent to the OAuth2 provider
-        logging.warning(f"oauth2callback(): {e}")
-        userid = None
-        # TODO: Return the following from API
-        # return jsonify({"status": "invalid", "msg": str(e)}), 401
-
-    if not userid:
-        # Unable to obtain a properly authenticated user id for some reason
+    if not login_user():
         return redirect(url_for("web.login_error"))
-
-    # Authentication complete; user id obtained
-    session["userid"] = {
-        "id": userid,
-    }
-    session["user"] = idinfo
-    session.permanent = True
-    logging.info(
-        "oauth2callback() successfully recognized "
-        "account {0} userid {1} email {2} name '{3}'".format(
-            account, userid, email, name
-        )
-    )
     main_url = url_for("web.page") if _SINGLE_PAGE_UI else url_for("web.main")
     return redirect(main_url)
 

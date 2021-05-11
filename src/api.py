@@ -42,6 +42,9 @@ from flask import (
     url_for,
 )
 
+from google.oauth2 import id_token  # type: ignore
+from google.auth.transport import requests as google_requests  # type: ignore
+
 from basics import (
     jsonify,
     auth_required,
@@ -49,7 +52,10 @@ from basics import (
     RequestData,
     current_user,
     current_user_id,
+    set_session_userid,
     running_local,
+    CLIENT_ID,
+    VALID_ISSUERS,
 )
 from cache import memcache
 from languages import (
@@ -245,6 +251,71 @@ class UserForm:
         return self.__dict__
 
 
+@api.route("/oauth2callback", methods=["POST"])
+def oauth2callback():
+    """ The OAuth2 login flow POSTs to this callback when a user has
+        signed in using a Google Account """
+    # Note that GETs to this URL are handled in api.py
+
+    # Note that a similar function is found in web.py, login_user()
+
+    if not CLIENT_ID:
+        # Something is wrong in the internal setup of the server
+        # (environment variable probably missing)
+        # 500 - Internal server error
+        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
+
+    # !!! TODO: Add CSRF token mechanism
+    # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
+    token: str = request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
+
+    if not token:
+        # No authentication token included in the request
+        # 400 - Bad Request
+        return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+
+    account: Optional[str] = None
+    userid: Optional[str] = None
+    idinfo: Dict[str, Any] = dict()
+    email: Optional[str] = None
+    image: Optional[str] = None
+    name: Optional[str] = None
+    try:
+        # Verify the token and extract its claims
+        idinfo = id_token.verify_oauth2_token(  # type: ignore
+            token, google_requests.Request(), CLIENT_ID
+        )
+        if idinfo["iss"] not in VALID_ISSUERS:
+            raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
+        # ID token is valid; extract the claims
+        # Get the user's Google Account ID
+        account = idinfo.get("sub")
+        if account:
+            # Full name of user
+            name = idinfo["name"]
+            # User image
+            image = idinfo["picture"]
+            # Make sure that the e-mail address is in lowercase
+            email = idinfo["email"].lower()
+            # Attempt to find an associated user record in the datastore,
+            # or create a fresh user record if not found
+            userid = User.login_by_account(account, name or "", email or "", image or "")
+
+    except (KeyError, ValueError) as e:
+        # Invalid token
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    if not userid:
+        # Unable to obtain the user id for some reason
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+
+    # Authentication complete; user id obtained
+    set_session_userid(userid, idinfo)
+    return jsonify({"status": "success"})
+
+
 def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
     """ Process a move coming in from the client """
 
@@ -377,17 +448,17 @@ def fetch_users(
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
-def _get_online():
+def _get_online() -> Set[str]:
     # Get the list of online users
 
     # Start by looking in the cache
     # !!! TODO: Cache the entire list including the user information,
     # !!! only updating the favorite state (fav field) for the requesting user
-    online = memcache.get("live", namespace="userlist")
+    online: Union[Set[str], List[str]] = memcache.get("live", namespace="userlist")
 
     if not online:
-        # Not found: do a query
-        online = firebase.get_connected_users()  # Returns a set
+        # Not found: do a query, which returns a set
+        online = firebase.get_connected_users()
 
         # Store the result as a list in the cache with a lifetime of 10 minutes
         memcache.set("live", list(online), time=10 * 60, namespace="userlist")

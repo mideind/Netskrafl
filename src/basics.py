@@ -8,6 +8,7 @@
     The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
+
     This module defines a number of basic entities that are used and shared
     by the main.py, api.py and web.py modules.
 
@@ -28,7 +29,6 @@ from typing import (
 )
 
 import os
-
 from functools import wraps
 
 from flask import (
@@ -124,6 +124,8 @@ def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
     return decorator
 
 
+# Module-scope OAuth instance,
+# only used by init_oauth() and get_google_auth()
 _oauth: Optional[OAuth] = None
 
 def init_oauth(app: Flask) -> None:
@@ -139,9 +141,18 @@ def init_oauth(app: Flask) -> None:
 
 
 def get_google_auth() -> Any:
-    """ Return a Google authentication provider """
+    """ Return a Google authentication provider interface """
     assert _oauth is not None
     return cast(Any, _oauth).google
+
+
+def set_session_userid(userid: str, idinfo: Dict[str, Any]) -> None:
+    """ Set the Flask session userid and idinfo attributes """
+    session["userid"] = {
+        "id": userid,
+    }
+    session["user"] = idinfo
+    session.permanent = True
 
 
 def session_user() -> Optional[User]:
@@ -265,4 +276,3 @@ class RequestData:
     def __getitem__(self, key: str) -> Any:
         """ Shortcut: allow indexing syntax with an empty string default """
         return self.q.get(key, "")
-

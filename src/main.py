@@ -8,6 +8,7 @@
     The GNU Affero General Public License, version 3, applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
+
     This Python >= 3.8 web server module uses the Flask framework
     to implement a crossword game.
 
@@ -18,9 +19,9 @@
 
     The web client code is found in netskrafl.js.
 
-    The web routes are defined in web.py.
+    The responsive web content routes are defined in web.py.
 
-    Client API entrypoints are defined in api.py.
+    JSON-based client API entrypoints are defined in api.py.
 
 """
 

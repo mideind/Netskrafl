@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict, cast
 
-import os
 import json
 import threading
 import logging
@@ -28,10 +27,8 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
+from basics import PROJECT_ID
 
-PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
-
-assert PROJECT_ID, "PROJECT_ID environment variable not defined"
 
 # Select Firebase database URL depending on project ID
 _FIREBASE_DB: Mapping[str, str] = {
