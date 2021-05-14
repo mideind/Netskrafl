@@ -292,11 +292,11 @@ def oauth2callback():
         account = idinfo.get("sub")
         if account:
             # Full name of user
-            name = idinfo["name"]
+            name = idinfo.get("name")
             # User image
-            image = idinfo["picture"]
+            image = idinfo.get("picture")
             # Make sure that the e-mail address is in lowercase
-            email = idinfo["email"].lower()
+            email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
             userid = User.login_by_account(account, name or "", email or "", image or "")
