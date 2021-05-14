@@ -182,7 +182,8 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
                 # No authenticated user
                 if error_kwargs and "login_url" not in error_kwargs:
                     # This is a JSON API: Reply with a JSON error code
-                    return jsonify(**error_kwargs)
+                    # and an HTTP status of 401 - Unauthorized
+                    return jsonify(**error_kwargs), 401
                 # This is probably a web route; reply with a redirect
                 # Check whether we're already coming from the
                 # login page, in which case we're screwed
