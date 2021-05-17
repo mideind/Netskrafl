@@ -102,7 +102,7 @@ web = Blueprint(
 
 def login_user() -> bool:
     """ Log in a user after she is authenticated via OAuth """
-    # This function is called from /oauth2_web
+    # This function is called from web.oauth2callback()
     # Note that a similar function is found in api.py
     account: Optional[str] = None
     userid: Optional[str] = None
@@ -691,7 +691,8 @@ def logout() -> ResponseType:
 def oauth2callback() -> ResponseType:
     """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
-    # Note that POSTs to this URL are handled in api.py
+
+    # Note that HTTP POSTs to /oauth2callback are handled in api.py
 
     if not login_user():
         return redirect(url_for("web.login_error"))

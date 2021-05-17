@@ -1614,6 +1614,9 @@ class ChatModel(Model):
     """Models chat communications between users"""
 
     # The channel (conversation) identifier
+    # This is a string, either of the form 'game:' + uuid for an in-game chat,
+    # or of the form 'user:' + user_id_1 + ':' + user_id_2
+    # where user_id_1 < user_id_2.
     channel = Model.Str()
 
     # The user originating this chat message
@@ -1665,19 +1668,48 @@ class ChatModel(Model):
     def add_msg(
         cls,
         channel: str,
-        userid: Optional[str],
+        from_user: str,
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
         """Adds a message to a chat conversation on a channel"""
         cm = cls()
         cm.channel = channel
-        cm.user = Key(UserModel, userid)
+        cm.user = Key(UserModel, from_user)
         cm.msg = msg
         cm.timestamp = timestamp or datetime.utcnow()
         cm.put()
         # Return the message timestamp
         return cm.timestamp
+
+    @classmethod
+    def add_msg_in_game(
+        cls,
+        game_uuid: str,
+        from_user: str,
+        msg: str,
+        timestamp: Optional[datetime] = None,
+    ) -> datetime:
+        """ Adds a message to an in-game conversation """
+        channel = f"game:{game_uuid}"
+        return cls.add_msg(channel, from_user, msg, timestamp)
+
+    @classmethod
+    def add_msg_between_users(
+        cls,
+        from_user: str,
+        to_user: str,
+        msg: str,
+        timestamp: Optional[datetime] = None,
+    ) -> datetime:
+        """ Adds a message to a chat conversation between two users """
+        # By convention, the lower user id comes before
+        # the higher one in the channel string
+        if from_user < to_user:
+            channel = f"user:{from_user}:{to_user}"
+        else:
+            channel = f"user:{to_user}:{from_user}"
+        return cls.add_msg(channel, from_user, msg, timestamp)
 
 
 class ZombieModel(Model):

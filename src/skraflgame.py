@@ -1527,7 +1527,7 @@ class Game:
 
     def client_state(
         self,
-        player_index: Optional[int],
+        player_index: Union[None, int],
         lastmove: Optional[MoveBase] = None,
         deep: bool = False,
     ) -> Dict[str, Any]:

@@ -33,7 +33,7 @@ from basics import PROJECT_ID
 # Select Firebase database URL depending on project ID
 _FIREBASE_DB: Mapping[str, str] = {
     "netskrafl": "https://netskrafl.firebaseio.com",
-    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app",
+    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
 }
 _FIREBASE_DB_URL: str = _FIREBASE_DB[PROJECT_ID]
 
@@ -247,7 +247,9 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     """
     global _firebase_app
     if _firebase_app is None:
-        _firebase_app = initialize_app()
+        _firebase_app = initialize_app(
+            options=dict(projectId=PROJECT_ID, databaseURL=_FIREBASE_DB_URL)
+        )
     attempts = 0
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:

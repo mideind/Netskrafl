@@ -255,9 +255,9 @@ class UserForm:
 def oauth2callback():
     """ The OAuth2 login flow POSTs to this callback when a user has
         signed in using a Google Account """
-    # Note that GETs to this URL are handled in api.py
 
-    # Note that a similar function is found in web.py, login_user()
+    # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
+    # this route is only for HTTP POSTs
 
     if not CLIENT_ID:
         # Something is wrong in the internal setup of the server
@@ -267,7 +267,9 @@ def oauth2callback():
 
     # !!! TODO: Add CSRF token mechanism
     # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
-    token: str = request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
+    token: str = (
+        request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
+    )
 
     if not token:
         # No authentication token included in the request
@@ -299,7 +301,9 @@ def oauth2callback():
             email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
-            userid = User.login_by_account(account, name or "", email or "", image or "")
+            userid = User.login_by_account(
+                account, name or "", email or "", image or ""
+            )
 
     except (KeyError, ValueError) as e:
         # Invalid token
@@ -312,6 +316,7 @@ def oauth2callback():
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
     # Authentication complete; user id obtained
+    # Set a session cookie
     set_session_userid(userid, idinfo)
     return jsonify({"status": "success"})
 
@@ -1146,7 +1151,7 @@ def wordcheck() -> str:
     words = rq.get_list("words")
     word = rq["word"]
 
-    if locale is not None:
+    if locale:
         set_game_locale(locale)
 
     # Check the words against the dictionary
@@ -1391,10 +1396,10 @@ def setuserpref() -> ResponseType:
 def onlinecheck() -> ResponseType:
     """ Check whether a particular user is online """
     rq = RequestData(request)
-    user_id = rq.get("user")
-    online = False
-    if user_id:
+    if (user_id := rq.get("user")) :
         online = firebase.check_presence(user_id)
+    else:
+        online = False
     return jsonify(online=online)
 
 
@@ -1438,6 +1443,10 @@ def cancelwait() -> ResponseType:
 def chatmsg() -> ResponseType:
     """ Send a chat message on a conversation channel """
 
+    user_id = current_user_id()
+    if not user_id:
+        return jsonify(ok=False)
+
     rq = RequestData(request)
     channel = rq.get("channel", "")
 
@@ -1446,37 +1455,65 @@ def chatmsg() -> ResponseType:
         return jsonify(ok=False)
 
     msg = rq.get("msg", "")
-    uuid = ""
-    user_id = current_user_id()
-    game: Optional[Game] = None
+    md: Dict[str, str]
+    send_msg: Dict[str, Dict[str, str]] = {}
+
     if channel.startswith("game:"):
+
+        # In-game chat
         # Send notifications to both players on the game channel
+        game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
             game = Game.load(uuid)
+        if game is None or not game.has_player(user_id):
+            # The logged-in user must be a player in the game
+            return jsonify(ok=False)
+        # Add a message entity to the data store and remember its timestamp
+        ts = ChatModel.add_msg_in_game(uuid, user_id, msg)
+        if msg:
+            # No need to send empty messages, which are to be interpreted
+            # as read confirmations
+            # The message to be sent in JSON form via Firebase
+            md = dict(
+                game=uuid,
+                from_userid=user_id,
+                msg=msg,
+                ts=Alphabet.format_timestamp(ts),
+            )
+            for p in range(0, 2):
+                # Send a Firebase notification to /game/[gameid]/[userid]/chat
+                pid = game.player_id(p)
+                if pid is not None:
+                    send_msg["game/" + uuid + "/" + pid + "/chat"] = md
+            if send_msg:
+                firebase.send_message(send_msg)
 
-    if game is None or not user_id or not game.has_player(user_id):
-        # The logged-in user must be a player in the game
-        return jsonify(ok=False)
+    elif channel.startswith("user:"):
 
-    # Add a message entity to the data store and remember its timestamp
-    ts = ChatModel.add_msg(channel, user_id, msg)
-
-    if msg:
-        # No need to send empty messages, which are to be interpreted
-        # as read confirmations
-        # The message to be sent in JSON form via Firebase
-        md: Dict[str, str] = dict(
-            game=uuid, from_userid=user_id, msg=msg, ts=Alphabet.format_timestamp(ts)
-        )
-        send_msg: Dict[str, Dict[str, str]] = {}
-        for p in range(0, 2):
-            # Send a Firebase notification to /game/[gameid]/[userid]/chat
-            pid = game.player_id(p)
-            if pid is not None:
-                send_msg["game/" + uuid + "/" + pid + "/chat"] = md
-        if send_msg:
+        # Chat between two users
+        opp_id = channel[5:][:36]  # The opponent id
+        if not opp_id:
+            return jsonify(ok=False)
+        # Add a message entity to the data store and remember its timestamp
+        ts = ChatModel.add_msg_between_users(user_id, opp_id, msg)
+        if msg:
+            # No need to send empty messages, which are to be interpreted
+            # as read confirmations
+            # The message to be sent in JSON form via Firebase
+            md = dict(
+                from_userid=user_id,
+                to_userid=opp_id,
+                msg=msg,
+                ts=Alphabet.format_timestamp(ts),
+            )
+            send_msg["user/" + user_id + "/chat"] = md
+            send_msg["user/" + opp_id + "/chat"] = md
             firebase.send_message(send_msg)
+
+    else:
+        # Invalid channel prefix
+        return jsonify(ok=False)
 
     return jsonify(ok=True)
 
@@ -1486,6 +1523,13 @@ def chatmsg() -> ResponseType:
 def chatload() -> ResponseType:
     """ Load all chat messages on a conversation channel """
 
+    # The channel can be either 'game:' + game uuid or
+    # 'user:' + user id
+    user_id = current_user_id()
+    if not user_id:
+        # Unknown current user
+        return jsonify(ok=False)
+
     rq = RequestData(request)
     channel = rq.get("channel", "")
 
@@ -1493,15 +1537,28 @@ def chatload() -> ResponseType:
         # We must have a valid channel
         return jsonify(ok=False)
 
-    user_id = current_user_id()
-    game: Optional[Game] = None
     if channel.startswith("game:"):
+        # In-game conversation
+        game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
             game = Game.load(uuid)
-
-    if game is None or not user_id or not game.has_player(user_id):
-        # The logged-in user must be a player in the game
+        if game is None or not game.has_player(user_id):
+            # The logged-in user must be a player in the game
+            return jsonify(ok=False)
+    elif channel.startswith("user:"):
+        # Conversation between users
+        opp_id = channel[5:][:36]  # The opponent id
+        if not opp_id:
+            return jsonify(ok=False)
+        # By convention, the lower user id comes before
+        # the higher one in the channel string
+        if opp_id < user_id:
+            channel = f"user:{opp_id}:{user_id}"
+        else:
+            channel = f"user:{user_id}:{opp_id}"
+    else:
+        # Unknown channel prefix
         return jsonify(ok=False)
 
     # Return the messages sorted in ascending timestamp order.
@@ -1513,7 +1570,7 @@ def chatload() -> ResponseType:
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
-        for cm in sorted(ChatModel.list_conversation(channel), key=lambda x: x["ts"])
+        for cm in ChatModel.list_conversation(channel)
     ]
 
     return jsonify(ok=True, messages=messages)
