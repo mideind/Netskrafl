@@ -1622,12 +1622,19 @@ class ChatModel(Model):
     # The user originating this chat message
     user = Model.DbKey(kind=UserModel)
 
+    # The recipient of the message
+    recipient = Model.OptionalDbKey(kind=UserModel)
+
     # The timestamp of this chat message
     timestamp = Model.Datetime(indexed=True, auto_now_add=True)
 
     # The actual message - by convention, an empty msg from a user means that
     # the user has seen all older messages
     msg = Model.Str()
+
+    def get_recipient(self) -> Optional[str]:
+        """ Return the user id of the message recipient """
+        return None if self.recipient is None else self.recipient.id()
 
     @classmethod
     def list_conversation(
@@ -1642,7 +1649,12 @@ class ChatModel(Model):
         for cm in iter_q(q, CHUNK_SIZE):
             if cm.msg:
                 # Don't return empty messages (read markers)
-                yield dict(user=cm.user.id(), ts=cm.timestamp, msg=cm.msg)
+                yield dict(
+                    user=cm.user.id(),
+                    recipient=cm.get_recipient(),
+                    ts=cm.timestamp,
+                    msg=cm.msg,
+                )
                 count += 1
                 if count >= maxlen:
                     break
@@ -1669,6 +1681,7 @@ class ChatModel(Model):
         cls,
         channel: str,
         from_user: str,
+        to_user: str,
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
@@ -1676,6 +1689,7 @@ class ChatModel(Model):
         cm = cls()
         cm.channel = channel
         cm.user = Key(UserModel, from_user)
+        cm.recipient = Key(UserModel, to_user)
         cm.msg = msg
         cm.timestamp = timestamp or datetime.utcnow()
         cm.put()
@@ -1687,12 +1701,13 @@ class ChatModel(Model):
         cls,
         game_uuid: str,
         from_user: str,
+        to_user: str,
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
         """ Adds a message to an in-game conversation """
         channel = f"game:{game_uuid}"
-        return cls.add_msg(channel, from_user, msg, timestamp)
+        return cls.add_msg(channel, from_user, to_user, msg, timestamp)
 
     @classmethod
     def add_msg_between_users(
@@ -1709,7 +1724,85 @@ class ChatModel(Model):
             channel = f"user:{from_user}:{to_user}"
         else:
             channel = f"user:{to_user}:{from_user}"
-        return cls.add_msg(channel, from_user, msg, timestamp)
+        return cls.add_msg(channel, from_user, to_user, msg, timestamp)
+
+    @classmethod
+    def chat_history(
+        cls,
+        for_user: str,
+        maxlen: int = 20,
+    ) -> Iterator[Dict[str, Any]]:
+        """ Return the chat history for a user """
+        CHUNK_SIZE = 50
+
+        # Create two queries, on the user and recipient fields,
+        # and interleave their results by timestamp
+        user = Key(UserModel, for_user)
+        q1 = cls.query(ChatModel.user == user).order(
+            -cast(int, ChatModel.timestamp)
+        )
+        q2 = cls.query(ChatModel.recipient == user).order(
+            -cast(int, ChatModel.timestamp)
+        )
+        # Count of unique counterparties that we have already returned
+        count = 0
+        # Set of opponents (chat counterparties) that we have already returned
+        returned: Set[str] = set()
+
+        i1 = iter_q(q1, CHUNK_SIZE)
+        i2 = iter_q(q2, CHUNK_SIZE)
+        c1 = next(i1, None)
+        c2 = next(i2, None)
+
+        def d(cm: ChatModel, opp: str) -> Dict[str, Any]:
+            """ Create a chat history entry to be returned """
+            nonlocal count
+            nonlocal returned
+            count += 1
+            returned.add(opp)
+            return dict(
+                user=opp,
+                ts=cm.timestamp,
+                # A chat message is unread if it was not originated by
+                # this user, and it is not an empty message (read marker)
+                # This function only sees the newest message in each thread,
+                # so a more fancy state check is not needed
+                unread=(cm.user != for_user) and cm.msg != "",
+            )
+
+        # We loop until both iterators are exhausted, or we have returned
+        # maxlen unique history entries
+        while (c1 or c2) and (count < maxlen):
+            pick: int = 0
+            if c1 and c2:
+                if c1.timestamp > c2.timestamp:
+                    # The first iterator has a newer message than the second
+                    pick = 1
+                else:
+                    # The second iterator has a newer message than the first
+                    pick = 2
+            elif c1:
+                pick = 1
+            elif c2:
+                pick = 2
+            if pick == 1:
+                assert c1 is not None
+                opp = c1.recipient
+                if opp and opp.id() not in returned:
+                    # Haven't returned this opponent/counterparty before: do it now
+                    yield d(c1, opp.id())
+                # Go to the next, older message
+                c1 = next(i1, None)
+            elif pick == 2:
+                assert c2 is not None
+                opp = c2.user
+                if opp.id() not in returned:
+                    # Haven't returned this opponent/counterparty before: do it now
+                    yield d(c2, opp.id())
+                # Go to the next, older message
+                c2 = next(i2, None)
+            else:
+                assert False
 
 
 class ZombieModel(Model):

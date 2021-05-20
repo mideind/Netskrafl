@@ -155,6 +155,12 @@ def set_session_userid(userid: str, idinfo: Dict[str, Any]) -> None:
     session.permanent = True
 
 
+def clear_session_userid() -> None:
+    """ Clears the Flask session userid and idinfo attributes """
+    session.pop("userid", None)
+    session.pop("user", None)
+
+
 def session_user() -> Optional[User]:
     """Return the user who is authenticated in the current session, if any.
     This can be called within any Flask request."""

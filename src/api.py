@@ -41,6 +41,7 @@ from flask import (
     request,
     url_for,
 )
+from flask.globals import current_app
 
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
@@ -53,6 +54,7 @@ from basics import (
     current_user,
     current_user_id,
     set_session_userid,
+    clear_session_userid,
     running_local,
     CLIENT_ID,
     VALID_ISSUERS,
@@ -267,14 +269,18 @@ def oauth2callback():
 
     # !!! TODO: Add CSRF token mechanism
     # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
-    token: str = (
-        request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
-    )
-
-    if not token:
-        # No authentication token included in the request
-        # 400 - Bad Request
-        return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+    token: str
+    testing: bool = current_app.config.get("TESTING", False)
+    
+    if testing:
+        # Testing only: there is no token in the request
+        token = ""
+    else:
+        token = request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
+        if not token:
+            # No authentication token included in the request
+            # 400 - Bad Request
+            return jsonify({"status": "invalid", "msg": "Missing token"}), 400
 
     account: Optional[str] = None
     userid: Optional[str] = None
@@ -283,12 +289,17 @@ def oauth2callback():
     image: Optional[str] = None
     name: Optional[str] = None
     try:
-        # Verify the token and extract its claims
-        idinfo = id_token.verify_oauth2_token(  # type: ignore
-            token, google_requests.Request(), CLIENT_ID
-        )
-        if idinfo["iss"] not in VALID_ISSUERS:
-            raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
+        if testing:
+            # Get the idinfo dictionary directly from the request
+            f = cast(Dict[str, str], request.form)
+            idinfo = dict(sub=f["sub"], name=f["name"], picture=f["picture"], email=f["email"])
+        else:
+            # Verify the token and extract its claims
+            idinfo = id_token.verify_oauth2_token(  # type: ignore
+                token, google_requests.Request(), CLIENT_ID
+            )
+            if idinfo["iss"] not in VALID_ISSUERS:
+                raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -318,6 +329,13 @@ def oauth2callback():
     # Authentication complete; user id obtained
     # Set a session cookie
     set_session_userid(userid, idinfo)
+    return jsonify({"status": "success"})
+
+
+@api.route("/logout", methods=["POST"])
+def logout() -> ResponseType:
+    """ Log the current user out """
+    clear_session_userid()
     return jsonify({"status": "success"})
 
 
@@ -1469,8 +1487,13 @@ def chatmsg() -> ResponseType:
         if game is None or not game.has_player(user_id):
             # The logged-in user must be a player in the game
             return jsonify(ok=False)
+        # Find out who the opponent is
+        if (opp := game.player_id(0)) == user_id:
+            opp = game.player_id(1)
+        if not opp:
+            return jsonify(ok=False)
         # Add a message entity to the data store and remember its timestamp
-        ts = ChatModel.add_msg_in_game(uuid, user_id, msg)
+        ts = ChatModel.add_msg_in_game(uuid, user_id, opp, msg)
         if msg:
             # No need to send empty messages, which are to be interpreted
             # as read confirmations
@@ -1478,6 +1501,7 @@ def chatmsg() -> ResponseType:
             md = dict(
                 game=uuid,
                 from_userid=user_id,
+                to_userid=opp,
                 msg=msg,
                 ts=Alphabet.format_timestamp(ts),
             )
@@ -1516,6 +1540,26 @@ def chatmsg() -> ResponseType:
         return jsonify(ok=False)
 
     return jsonify(ok=True)
+
+
+class UserCache:
+
+    """ A temporary cache for user lookups """
+
+    def __init__(self) -> None:
+        self._cache: Dict[str, Optional[User]] = {}
+
+    def full_name(self, user_id: str) -> str:
+        """ Return the full name of a user """
+        if (u := self._cache.get(user_id)) is None:
+            u = self._cache[user_id] = User.load_if_exists(user_id)
+        return "" if u is None else u.full_name()
+
+    def image(self, user_id: str) -> str:
+        """ Return the image for a user """
+        if (u := self._cache.get(user_id)) is None:
+            u = self._cache[user_id] = User.load_if_exists(user_id)
+        return "" if u is None else u.image()
 
 
 @api.route("/chatload", methods=["POST"])
@@ -1564,9 +1608,12 @@ def chatload() -> ResponseType:
     # Return the messages sorted in ascending timestamp order.
     # ChatModel.list_conversations returns them in descending
     # order since its maxlen limit cuts off the oldest messages.
+    uc = UserCache()
     messages: List[Dict[str, str]] = [
         dict(
-            from_userid=cm["user"],
+            from_userid=(uid := cm["user"]),
+            name=uc.full_name(uid),
+            image=uc.image(uid),
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
@@ -1574,6 +1621,35 @@ def chatload() -> ResponseType:
     ]
 
     return jsonify(ok=True, messages=messages)
+
+
+@api.route("/chathistory", methods=["POST"])
+@auth_required(ok=False)
+def chathistory() -> ResponseType:
+    """ Return the chat history, i.e. the set of recent,
+        distinct chat conversations for the logged-in user """
+
+    user_id = current_user_id()
+    if not user_id:
+        # Unknown current user
+        return jsonify(ok=False)
+
+    # Return the messages sorted in ascending timestamp order.
+    # ChatModel.list_conversations returns them in descending
+    # order since its maxlen limit cuts off the oldest messages.
+    uc = UserCache()
+    history: List[Dict[str, Any]] = [
+        dict(
+            user=(uid := cm["user"]),
+            name=uc.full_name(uid),
+            image=uc.image(uid),
+            ts=Alphabet.format_timestamp(cm["ts"]),
+            unread=cm["unread"],
+        )
+        for cm in ChatModel.chat_history(user_id)
+    ]
+
+    return jsonify(ok=True, history=history)
 
 
 @api.route("/bestmoves", methods=["POST"])

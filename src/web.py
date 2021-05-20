@@ -55,6 +55,7 @@ from basics import (
     get_google_auth,
     session_user,
     set_session_userid,
+    clear_session_userid,
     RequestData,
     max_age,
     running_local,
@@ -679,11 +680,10 @@ def login_error() -> ResponseType:
     return render_template("login-error.html")
 
 
-@web.route("/logout")
+@web.route("/logout", methods=["GET"])
 def logout() -> ResponseType:
     """ Log the user out """
-    session.pop("userid", None)
-    session.pop("user", None)
+    clear_session_userid()
     return redirect(url_for("web.greet"))
 
 
