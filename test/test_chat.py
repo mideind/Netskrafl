@@ -51,7 +51,7 @@ def client():
 
 def create_user(idx: int) -> str:
     """ Create a user instance for testing, if it doesn't already exist """
-    from skrafldb import UserModel, Client
+    from skrafldb import UserModel, ChatModel, Client
     from skraflgame import PrefsDict
 
     with Client.get_context():
@@ -62,6 +62,9 @@ def create_user(idx: int) -> str:
         image = ""
         locale = "en_US"
         prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
+        # Delete chat messages for this user
+        ChatModel.delete_for_user(account)
+        # Create a new user, if required
         return UserModel.create(
             user_id=account,
             account=account,
@@ -75,13 +78,13 @@ def create_user(idx: int) -> str:
 
 @pytest.fixture
 def u1() -> str:
-    """ Create a test user """
+    """ Create a test user with no chat messages """
     return create_user(1)
 
 
 @pytest.fixture
 def u2() -> str:
-    """ Create a test user """
+    """ Create a test user with no chat messages """
     return create_user(2)
 
 
@@ -113,7 +116,7 @@ def test_chat(client, u1, u2) -> None:
     assert "messages" in resp.json
     messages = resp.json["messages"]
     len_1 = len(messages)
-    assert len_1 > 0
+    assert len_1 == 2
     resp = client.post("/logout")
 
     # Chat messages from user 2 to user 1
@@ -154,9 +157,7 @@ def test_chat(client, u1, u2) -> None:
         else:
             assert m["name"] == "Test user 2"
 
-    resp = client.post(
-        "/chathistory"
-    )
+    resp = client.post("/chathistory")
 
     assert resp.json["ok"]
     assert "history" in resp.json

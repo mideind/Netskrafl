@@ -1804,6 +1804,19 @@ class ChatModel(Model):
             else:
                 assert False
 
+    @classmethod
+    def delete_for_user(cls, user_id: str) -> None:
+        """ Delete all ChatModel entries for a particular user """
+        user = Key(UserModel, user_id)
+
+        def keys_to_delete() -> Iterator[Key]:
+            for key in cls.query(ChatModel.user == user).iter(keys_only=True):
+                yield key
+            for key in cls.query(ChatModel.recipient == user).iter(keys_only=True):
+                yield key
+
+        delete_multi(keys_to_delete())
+
 
 class ZombieModel(Model):
 
