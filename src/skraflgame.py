@@ -102,7 +102,8 @@ class User:
 
     # Current namespace (schema) for memcached User objects
     # Upgraded from 4 to 5 after adding locale attribute
-    _NAMESPACE = "user:5"
+    # Upgraded from 5 to 6 after adding location attribute
+    _NAMESPACE = "user:6"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
@@ -133,7 +134,10 @@ class User:
         self._best_word_game: Optional[str] = None
         # Set of favorite users, only loaded upon demand
         self._favorites: Optional[Set[str]] = None
-        self._image = ""
+        self._image: str = ""
+        self._timestamp = datetime.utcnow()
+        # The user location is typically an ISO country code
+        self._location: str = ""
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -156,7 +160,9 @@ class User:
         self._best_word = um.best_word
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
-        self._image = um.image
+        self._image = um.image or ""
+        self._timestamp = um.timestamp
+        self._location = um.location or ""
 
     def update(self) -> None:
         """Update the user's record in the database and in the memcache"""
@@ -186,6 +192,8 @@ class User:
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
             um.image = self._image
+            um.location = self._location
+            # um.timestamp should not be set or updated
             um.put()
 
             # Note: the namespace version should be incremented each time
@@ -206,6 +214,10 @@ class User:
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
         self._nickname = nickname
+
+    def timestamp(self) -> datetime:
+        """ Creation date and time for this user """
+        return self._timestamp
 
     @staticmethod
     def is_valid_nick(nick: str) -> bool:
@@ -247,6 +259,15 @@ class User:
     def set_locale(self, locale: str) -> None:
         """Set the locale code for this user"""
         self._locale = locale
+
+    @property
+    def location(self) -> str:
+        """Get the location code for this user"""
+        return self._location or ""
+
+    def set_location(self, location: str) -> None:
+        """Set the location code for this user"""
+        self._location = location
 
     def get_pref(
         self, pref: str, default: Optional[PrefItem] = None
@@ -619,19 +640,25 @@ class User:
         reply: Dict[str, Any] = dict()
         user_id = self.id()
         assert user_id is not None
-        sm = StatsModel.newest_for_user(user_id)
         reply["result"] = Error.LEGAL
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["friend"] = self.friend()
-        if sm is not None:
-            sm.populate_dict(reply)
+        reply["locale"] = self.locale
+        reply["location"] = self.location
+        reply["timestamp"] = self.timestamp
+        reply["accepts_challenges"] = self.is_ready
+        reply["accepts_timed"] = self.is_ready_timed
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score
         reply["highest_score_game"] = self._highest_score_game
         reply["best_word"] = self._best_word
         reply["best_word_score"] = self._best_word_score
         reply["best_word_game"] = self._best_word_game
+        # Add Elo statistics
+        sm = StatsModel.newest_for_user(user_id)
+        if sm is not None:
+            sm.populate_dict(reply)
         return reply
 
 

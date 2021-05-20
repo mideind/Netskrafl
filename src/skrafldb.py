@@ -402,6 +402,8 @@ class UserModel(Model):
     inactive = Model.Bool()
     # The user's preferred locale, i.e. language and other settings
     locale = Model.OptionalStr(default="is_IS")
+    # The user's location (normally an ISO country code)
+    location = Model.OptionalStr(default="")
     # Preferences dictionary
     prefs = cast(PrefsDict, ndb.JsonProperty())
     # Creation time of the user entity
