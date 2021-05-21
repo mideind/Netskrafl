@@ -170,6 +170,53 @@ def test_chat(client, u1, u2) -> None:
         assert "image" in h
         assert "ts" in h
         assert "unread" in h
+    assert history[-1]["user"] == u1
+    assert not history[-1]["unread"]
+
+    resp = client.post("/logout")
+
+    # Go back to user 1
+
+    resp = login_user(client, 1)
+
+    resp = client.post("/chathistory")
+
+    assert resp.json["ok"]
+    assert "history" in resp.json
+    history = resp.json["history"]
+
+    for h in history:
+        assert "user" in h
+        assert "name" in h
+        assert "image" in h
+        assert "ts" in h
+        assert "unread" in h
+    assert history[-1]["user"] == u2
+    # Last message should be unread
+    assert history[-1]["unread"]
+
+    # Send a read marker
+    resp = client.post(
+        "/chatmsg", data=dict(channel="user:" + u2, msg="")
+    )
+
+    # Check the chat history again
+    resp = client.post("/chathistory")
+
+    assert resp.json["ok"]
+    assert "history" in resp.json
+    history = resp.json["history"]
+
+    for h in history:
+        assert "user" in h
+        assert "name" in h
+        assert "image" in h
+        assert "ts" in h
+        assert "unread" in h
+    assert history[-1]["user"] == u2
+    # Last message should no longer be unread
+    assert not history[-1]["unread"]
+
 
 
 def test_locale_assets(client, u1, u3_uk):

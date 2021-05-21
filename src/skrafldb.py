@@ -1740,9 +1740,11 @@ class ChatModel(Model):
         # Create two queries, on the user and recipient fields,
         # and interleave their results by timestamp
         user = Key(UserModel, for_user)
+        # Messages where this user is the originator
         q1 = cls.query(ChatModel.user == user).order(
             -cast(int, ChatModel.timestamp)
         )
+        # Messages where this user is the recipient
         q2 = cls.query(ChatModel.recipient == user).order(
             -cast(int, ChatModel.timestamp)
         )
@@ -1756,20 +1758,28 @@ class ChatModel(Model):
         c1 = next(i1, None)
         c2 = next(i2, None)
 
-        def d(cm: ChatModel, opp: str) -> Dict[str, Any]:
+        def d(cm: ChatModel, cm_prev: Optional[ChatModel], opp: str, opp_prev: Optional[str]) -> Dict[str, Any]:
             """ Create a chat history entry to be returned """
             nonlocal count
             nonlocal returned
             count += 1
             returned.add(opp)
+            last_msg = cm.msg
+            if not last_msg and cm_prev is not None and opp == opp_prev:
+                # The current message may be a read marker (empty string)
+                # so we return the previous message string in that case,
+                # if it is from the same conversation
+                last_msg = cm_prev.msg
+            sender = cm.user.id()
             return dict(
                 user=opp,
                 ts=cm.timestamp,
+                last_msg=last_msg,
                 # A chat message is unread if it was not originated by
                 # this user, and it is not an empty message (read marker)
                 # This function only sees the newest message in each thread,
                 # so a more fancy state check is not needed
-                unread=(cm.user != for_user) and cm.msg != "",
+                unread=(sender != for_user) and cm.msg != "",
             )
 
         # We loop until both iterators are exhausted, or we have returned
@@ -1788,27 +1798,33 @@ class ChatModel(Model):
             elif c2:
                 pick = 2
             if pick == 1:
+                # Pick a message where this user is the originator
                 assert c1 is not None
+                n1 = next(i1, None)
                 opp = c1.recipient
                 if opp and opp.id() not in returned:
                     # Haven't returned this opponent/counterparty before: do it now
-                    yield d(c1, opp.id())
-                # Go to the next, older message
-                c1 = next(i1, None)
+                    yield d(c1, n1, opp.id(), n1 and n1.recipient and n1.recipient.id())
+                # Go to the previous, older message
+                c1 = n1
             elif pick == 2:
+                # Pick a message where this user is the recipient
                 assert c2 is not None
+                n2 = next(i2, None)
                 opp = c2.user
                 if opp.id() not in returned:
                     # Haven't returned this opponent/counterparty before: do it now
-                    yield d(c2, opp.id())
-                # Go to the next, older message
-                c2 = next(i2, None)
+                    yield d(c2, n2, opp.id(), n2 and n2.user.id())
+                # Go to the previous, older message
+                c2 = n2
             else:
                 assert False
 
     @classmethod
     def delete_for_user(cls, user_id: str) -> None:
         """ Delete all ChatModel entries for a particular user """
+        if not user_id:
+            return
         user = Key(UserModel, user_id)
 
         def keys_to_delete() -> Iterator[Key]:

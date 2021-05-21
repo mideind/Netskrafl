@@ -1644,6 +1644,7 @@ def chathistory() -> ResponseType:
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
             image=uc.image(uid),
+            last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
         )
