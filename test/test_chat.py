@@ -15,6 +15,9 @@ from typing import Any, Dict
 
 import pytest
 
+from flask import Response
+
+
 
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
 
@@ -49,7 +52,7 @@ def client():
         yield client
 
 
-def create_user(idx: int) -> str:
+def create_user(idx: int, locale: str = "en_US") -> str:
     """ Create a user instance for testing, if it doesn't already exist """
     from skrafldb import UserModel, ChatModel, Client
     from skraflgame import PrefsDict
@@ -60,7 +63,6 @@ def create_user(idx: int) -> str:
         name = f"Test user {idx}"
         account = f"999999{idx}"
         image = ""
-        locale = "en_US"
         prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
         # Delete chat messages for this user
         ChatModel.delete_for_user(account)
@@ -88,22 +90,31 @@ def u2() -> str:
     return create_user(2)
 
 
+@pytest.fixture
+def u3_uk() -> str:
+    """ Create a test user in the en_UK locale """
+    return create_user(3, "en_UK")
+
+
+def login_user(client, idx: int) -> Response:
+    idinfo: Dict[str, Any] = dict(
+        sub=f"999999{idx}",
+        # Full name of user
+        name=f"Test user {idx}",
+        # User image
+        picture="",
+        # Make sure that the e-mail address is in lowercase
+        email=f"test{idx}@user.explo",
+    )
+    return client.post("/oauth2callback", data=idinfo)
+
+
 def test_chat(client, u1, u2) -> None:
     """ Test the chat functionality """
 
     # Chat messages from user 1 to user 2
 
-    idinfo: Dict[str, Any] = dict(
-        sub=u1,
-        # Full name of user
-        name="Test user 1",
-        # User image
-        picture="",
-        # Make sure that the e-mail address is in lowercase
-        email="test1@user.explo",
-    )
-
-    resp = client.post("/oauth2callback", data=idinfo)
+    resp = login_user(client, 1)
     resp = client.post(
         "/chatmsg", data=dict(channel="user:" + u2, msg="First chat message")
     )
@@ -121,17 +132,7 @@ def test_chat(client, u1, u2) -> None:
 
     # Chat messages from user 2 to user 1
 
-    idinfo = dict(
-        sub=u2,
-        # Full name of user
-        name="Test user 2",
-        # User image
-        picture="",
-        # Make sure that the e-mail address is in lowercase
-        email="test2@user.explo",
-    )
-
-    resp = client.post("/oauth2callback", data=idinfo)
+    resp = login_user(client, 2)
     resp = client.post(
         "/chatmsg", data=dict(channel="user:" + u1, msg="First chat message")
     )
@@ -169,3 +170,22 @@ def test_chat(client, u1, u2) -> None:
         assert "image" in h
         assert "ts" in h
         assert "unread" in h
+
+
+def test_locale_assets(client, u1, u3_uk):
+
+    # Test default en_US user
+    resp = login_user(client, 1)
+    resp = client.post("/locale_asset", data=dict(asset="test_english.html"))
+    assert resp.status_code == 200
+    assert resp.content_type == "text/html; charset=utf-8"
+    assert "American English" in resp.data.decode("utf-8")
+    resp = client.post("/logout")
+
+    # Test en_UK user
+    resp = login_user(client, 3)
+    resp = client.post("/locale_asset", data=dict(asset="test_english.html"))
+    assert resp.status_code == 200
+    assert resp.content_type == "text/html; charset=utf-8"
+    assert "generic English" in resp.data.decode("utf-8")
+    resp = client.post("/logout")

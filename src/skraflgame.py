@@ -646,9 +646,9 @@ class User:
         reply["friend"] = self.friend()
         reply["locale"] = self.locale
         reply["location"] = self.location
-        reply["timestamp"] = self.timestamp
-        reply["accepts_challenges"] = self.is_ready
-        reply["accepts_timed"] = self.is_ready_timed
+        reply["timestamp"] = self.timestamp()
+        reply["accepts_challenges"] = self.is_ready()
+        reply["accepts_timed"] = self.is_ready_timed()
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score
         reply["highest_score_game"] = self._highest_score_game

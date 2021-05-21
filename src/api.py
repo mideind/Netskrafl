@@ -15,6 +15,7 @@
 """
 
 from __future__ import annotations
+import os
 
 from typing import (
     Optional,
@@ -1831,10 +1832,28 @@ def gameover() -> ResponseType:
     return jsonify(result=Error.LEGAL)
 
 
-@api.route("/twoletters", methods=["POST"])
-def twoletters():
-    """ Show help page. Authentication is not required. """
-    # This is no longer supported - alphabets and two letter lists are now
-    # a property of the current game
-    assert False
-
+@api.route("/locale_asset", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def locale_asset() -> ResponseType:
+    """ Return static content, for the user's locale """
+    # For a locale such as en_US, we first try to serve from
+    # base_path/static/assets/en_US/asset_name, then
+    # base_path/static/assets/en/asset_name, and finally
+    # base_path/static/assets/asset_name
+    u = current_user()
+    assert u is not None
+    rq = RequestData(request)
+    asset = rq.get("asset")
+    if not asset:
+        return "", 404  # Not found
+    locale = u.locale or "en_US"
+    parts = locale.split("_")
+    static_folder = current_app.static_folder or "../static"
+    # Try en_US first, then en, then nothing
+    for ix in range(len(parts), -1, -1):
+        lc = "_".join(parts[0:ix])
+        fname = os.path.join(static_folder, "assets", lc, asset)
+        if os.path.isfile(fname):
+            # Found the static asset file: return it
+            return current_app.send_static_file(os.path.join("assets", lc, asset))
+    return "", 404  # Not found
