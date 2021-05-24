@@ -1219,21 +1219,28 @@ def userstats() -> str:
 
     cuser = current_user()
     assert cuser is not None
-    stats = user.statistics()
+
+    profile = user.profile()
 
     # Include info on whether this user is a favorite of the current user
     fav = False
     if uid != cuser.id():
         fav = cuser.has_favorite(uid)
-    stats["favorite"] = fav
+    profile["favorite"] = fav
 
     # Include info on whether the current user has challenged this user
     chall = False
     if uid != cuser.id():
         chall = cuser.has_challenge(uid)
-    stats["challenge"] = chall
+    profile["challenge"] = chall
 
-    return jsonify(stats)
+    # Include info on whether the current user has blocked this user
+    blocked = False
+    if uid != cuser.id():
+        blocked = cuser.has_blocked(uid)
+    profile["blocked"] = blocked
+
+    return jsonify(profile)
 
 
 @api.route("/userlist", methods=["POST"])
@@ -1719,6 +1726,27 @@ def bestmoves() -> ResponseType:
         player_rack=state.rack_details(player_index),
         best_moves=best_moves,
     )
+
+
+@api.route("/blockuser", methods=["POST"])
+@auth_required(ok = False)
+def blockuser() -> ResponseType:
+    """ Block or unblock another user """
+    user = current_user()
+    assert user is not None
+
+    rq = RequestData(request)
+    blocked_id = rq.get("blocked")
+    action = rq.get("action", "add")
+
+    ok = False
+    if blocked_id:
+        if action == "add":
+            ok = user.block(blocked_id)
+        elif action == "delete":
+            ok = user.unblock(blocked_id)
+
+    return jsonify(ok=ok)
 
 
 @api.route("/loaduserprefs", methods=["POST"])

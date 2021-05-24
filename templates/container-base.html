@@ -41,8 +41,13 @@
 {% block styles %}
 {% endblock %}
 
+{% if project_id == 'explo-dev' %}
+<link href="{{ url_for('web.static', filename='skrafl-explo.css') }}"
+   rel="stylesheet" type="text/css" media="all">
+{% else %}
 <link href="{{ url_for('web.static', filename='skrafl-curry.css') }}"
    rel="stylesheet" type="text/css" media="all">
+{% endif %}
 
 {% block style_overrides %}
 {% endblock %}

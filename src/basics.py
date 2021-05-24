@@ -82,9 +82,13 @@ assert CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 # Firebase configuration
 FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "")
+FIREBASE_APP_ID = os.environ.get("FIREBASE_APP_ID", "")
 
+assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
 assert FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
 assert FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
+assert FIREBASE_APP_ID, "FIREBASE_APP_ID environment variable not set"
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

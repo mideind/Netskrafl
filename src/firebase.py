@@ -27,15 +27,8 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
-from basics import PROJECT_ID
+from basics import PROJECT_ID, FIREBASE_DB_URL
 
-
-# Select Firebase database URL depending on project ID
-_FIREBASE_DB: Mapping[str, str] = {
-    "netskrafl": "https://netskrafl.firebaseio.com",
-    "explo-dev": "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app/",
-}
-_FIREBASE_DB_URL: str = _FIREBASE_DB[PROJECT_ID]
 
 _FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",
@@ -153,9 +146,9 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """
     try:
         if args:
-            url = "/".join((_FIREBASE_DB_URL,) + args) + ".json"
+            url = "/".join((FIREBASE_DB_URL,) + args) + ".json"
         else:
-            url = _FIREBASE_DB_URL + "/.json"
+            url = FIREBASE_DB_URL + "/.json"
         if message is None:
             response, _ = _firebase_delete(path=url)
         else:
@@ -181,7 +174,7 @@ def send_update(*args: str) -> bool:
 def check_wait(user_id: str, opp_id: str) -> bool:
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
-        url = "{}/user/{}/wait/{}.json".format(_FIREBASE_DB_URL, user_id, opp_id)
+        url = "{}/user/{}/wait/{}.json".format(FIREBASE_DB_URL, user_id, opp_id)
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
@@ -197,7 +190,7 @@ def check_wait(user_id: str, opp_id: str) -> bool:
 def check_presence(user_id: str) -> bool:
     """ Check whether the given user has at least one active connection """
     try:
-        url = "{}/connection/{}.json".format(_FIREBASE_DB_URL, user_id)
+        url = "{}/connection/{}.json".format(FIREBASE_DB_URL, user_id)
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
@@ -217,7 +210,7 @@ def get_connected_users() -> Set[str]:
     """ Return a set of all presently connected users """
     with _USERLIST_LOCK:
         # Serialize access to the connected user list
-        url = "{}/connection.json?shallow=true".format(_FIREBASE_DB_URL)
+        url = "{}/connection.json?shallow=true".format(FIREBASE_DB_URL)
         try:
             response, body = _firebase_get(path=url)
         except httplib2.HttpLib2Error as e:
@@ -248,7 +241,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     global _firebase_app
     if _firebase_app is None:
         _firebase_app = initialize_app(
-            options=dict(projectId=PROJECT_ID, databaseURL=_FIREBASE_DB_URL)
+            options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
         )
     attempts = 0
     MAX_ATTEMPTS = 2

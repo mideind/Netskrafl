@@ -38,6 +38,8 @@ os.environ[
 ] = "970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com"
 os.environ["FIREBASE_API_KEY"] = "AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc"
 os.environ["FIREBASE_SENDER_ID"] = "970204261331"
+os.environ["FIREBASE_DB_URL"] = "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app"
+os.environ["FIREBASE_APP_ID"] = "1:970204261331:web:fce1615824c2e382ec9d26"
 
 
 @pytest.fixture
@@ -218,7 +220,6 @@ def test_chat(client, u1, u2) -> None:
     assert not history[-1]["unread"]
 
 
-
 def test_locale_assets(client, u1, u3_uk):
 
     # Test default en_US user
@@ -235,4 +236,74 @@ def test_locale_assets(client, u1, u3_uk):
     assert resp.status_code == 200
     assert resp.content_type == "text/html; charset=utf-8"
     assert "generic English" in resp.data.decode("utf-8")
+    resp = client.post("/logout")
+
+
+def test_block(client, u1, u2):
+    resp = login_user(client, 1)
+
+    # User u1 blocks user u2
+    resp = client.post("/blockuser", data=dict(blocked=u2))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    # User u1 queries the user stats (profile) of user u2
+    resp = client.post("/userstats", data=dict(user=u2))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "blocked" in resp.json
+    # The 'blocked' attribute should be True
+    assert resp.json["blocked"]
+
+    # User u1 unblocks user u2
+    resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    # User u1 queries the user stats (profile) of user u2
+    resp = client.post("/userstats", data=dict(user=u2))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "blocked" in resp.json
+    # The 'blocked' attribute should now be False
+    assert not resp.json["blocked"]
+
+    # User u1 blocks user u2 twice
+    resp = client.post("/blockuser", data=dict(blocked=u2))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+    resp = client.post("/blockuser", data=dict(blocked=u2))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    # User u1 queries the user stats (profile) of user u2
+    resp = client.post("/userstats", data=dict(user=u2))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "blocked" in resp.json
+    # The 'blocked' attribute should be True
+    assert resp.json["blocked"]
+
+    # User u1 unblocks user u2
+    resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    # User u1 queries the user stats (profile) of user u2
+    resp = client.post("/userstats", data=dict(user=u2))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "blocked" in resp.json
+    # The 'blocked' attribute should now be False
+    assert not resp.json["blocked"]
+
     resp = client.post("/logout")

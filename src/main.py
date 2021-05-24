@@ -58,6 +58,8 @@ from basics import (
     CLIENT_SECRET,
     FIREBASE_API_KEY,
     FIREBASE_SENDER_ID,
+    FIREBASE_DB_URL,
+    FIREBASE_APP_ID,
 )
 from api import api
 from web import web
@@ -96,7 +98,7 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(cast(Any, app).wsgi_app))
 CORS(
     app,
     supports_credentials=True,
-    origins=["http://explo.300dev.pl", "http://localhost:19006"],
+    origins=["http://explo.300dev.pl", "http://localhost:19006", "http://127.0.0.1:19006"],
 )
 
 # Flask configuration
@@ -175,6 +177,8 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         client_id=CLIENT_ID,
         firebase_api_key=FIREBASE_API_KEY,
         firebase_sender_id=FIREBASE_SENDER_ID,
+        firebase_db_url=FIREBASE_DB_URL,
+        firebase_app_id=FIREBASE_APP_ID,
     )
 
 

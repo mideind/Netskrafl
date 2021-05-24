@@ -107,7 +107,7 @@
    div.rightcol {
       position: absolute;
       width: 302px;
-      top: 44px;
+      top: 38px;
       right: 12px;
       height: auto;
       left: auto;
@@ -119,6 +119,27 @@
       height: 420px;
    }
    
+   h3.playerleft,
+   h3.playerright {
+      position: absolute;
+      display: inline-block;
+      top: 0;
+      margin: 0;
+      height: 40px;
+      min-height: 40px;
+      font-size: 16px;
+      line-height: 24px;
+   }
+
+   h3.playerleft {
+      left: 0;
+   }
+
+   h3.playerright {
+      right: 0;
+      text-align: right;
+   }
+
    div.games,
    div.twoletter,
    div.chat {
@@ -313,7 +334,6 @@
       padding: 6px;
       padding-top: 9px;
       border-radius: 5px;
-      vertical-align: middle;
       cursor: pointer;
       .noselect;
    }
@@ -455,7 +475,7 @@
    }
    
    div.player-btn {
-      width: 141px;
+      // width: 141px;
       padding-top: 4px;
       color: @neutral;
       cursor: pointer;
@@ -468,10 +488,12 @@
 
    div.player-btn.left {
       padding-right: 2px;
+      padding-left: 2px;
    }
 
    div.player-btn.right {
       padding-left: 2px;
+      padding-right: 2px;
    }
 
    /*
@@ -845,7 +867,14 @@
       width: 88px; /* list-s0 + list-colon + list-s1 */
       max-width: 88px;
    }
-   
+
+   div#user-ok,
+   div#user-cancel,
+   div#user-logout,
+   div#user-friend {
+      position: absolute;
+   }
+
    div.user-cat span#break {
       display: none;
    }
@@ -1024,7 +1053,7 @@
       font-style: normal;
       font-weight: normal;
       color: @alert;
-      padding-right: 2px;
+      padding-right: 4px;
    }
    
    /* Show red flag by the id of the player whose move it is */

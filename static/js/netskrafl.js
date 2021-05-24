@@ -2247,7 +2247,7 @@ function loadGames() {
 function _selectTab(tabSel) {
    // The tab-board button is only visible and clickable when on a
    // small-format (mobile) screen
-   $("div.board-area").css("z-index", tabSel == "tab-board" ? "4" : "1");
+   $("div.board-area").css("z-index", tabSel == "tab-board" ? "4" : "-1");
    $("#tab-board").toggleClass("selected", tabSel == "tab-board");
    $("div.movelist-container").css("z-index", tabSel == "tab-movelist" ? "4" : "1");
    $("#tab-movelist").toggleClass("selected", tabSel == "tab-movelist");

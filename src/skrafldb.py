@@ -130,8 +130,17 @@ class Query(Generic[_T], ndb.Query):
         f: Callable[..., Query[_T]] = cast(Any, super()).filter
         return f(*args, **kwargs)
 
-    def fetch(self, *args: Any, **kwargs: Any) -> List[_T]:
-        f: Callable[..., List[_T]] = cast(Any, super()).fetch
+    @overload
+    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key]:
+        """ Special signature for a key-only fetch """
+        ...
+
+    @overload
+    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T]:
+        ...
+
+    def fetch(self, *args: Any, **kwargs: Any) -> Union[Sequence[Key], Sequence[_T]]:
+        f: Callable[..., Union[Sequence[Key], Sequence[_T]]] = cast(Any, super()).fetch
         return f(*args, **kwargs)
 
     def fetch_async(self, *args: Any, **kwargs: Any) -> Future[_T]:
@@ -143,7 +152,8 @@ class Query(Generic[_T], ndb.Query):
         return f(*args, **kwargs)
 
     @overload
-    def get(self, keys_only: Literal[True]) -> Optional[Key]:
+    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key]:
+        """ Special signature for a key-only get """
         ...
 
     @overload
@@ -158,7 +168,8 @@ class Query(Generic[_T], ndb.Query):
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True]) -> Iterable[Key]:
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key]:
+        """ Special signature for key-only iteration """
         ...
 
     @overload
@@ -849,9 +860,9 @@ class GameModel(Model):
         k = Key(UserModel, user_id)
         # pylint: disable=singleton-comparison
         q: Query[GameModel] = (
-            cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k))
-            .filter(GameModel.over == False)
-            .order(-cast(int, GameModel.ts_last_move))
+            cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(
+                GameModel.over == False
+            )
         )
 
         def game_callback(gm: GameModel) -> Dict[str, Any]:
@@ -976,7 +987,7 @@ class ChallengeModel(Model):
     prefs = cast(PrefsDict, ndb.JsonProperty())
 
     # The time of issuance
-    timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
+    timestamp = Model.Datetime(auto_now_add=True)
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """Set a destination user key property"""
@@ -1729,11 +1740,7 @@ class ChatModel(Model):
         return cls.add_msg(channel, from_user, to_user, msg, timestamp)
 
     @classmethod
-    def chat_history(
-        cls,
-        for_user: str,
-        maxlen: int = 20,
-    ) -> Iterator[Dict[str, Any]]:
+    def chat_history(cls, for_user: str, maxlen: int = 20,) -> Iterator[Dict[str, Any]]:
         """ Return the chat history for a user """
         CHUNK_SIZE = 50
 
@@ -1741,9 +1748,7 @@ class ChatModel(Model):
         # and interleave their results by timestamp
         user = Key(UserModel, for_user)
         # Messages where this user is the originator
-        q1 = cls.query(ChatModel.user == user).order(
-            -cast(int, ChatModel.timestamp)
-        )
+        q1 = cls.query(ChatModel.user == user).order(-cast(int, ChatModel.timestamp))
         # Messages where this user is the recipient
         q2 = cls.query(ChatModel.recipient == user).order(
             -cast(int, ChatModel.timestamp)
@@ -1758,7 +1763,12 @@ class ChatModel(Model):
         c1 = next(i1, None)
         c2 = next(i2, None)
 
-        def d(cm: ChatModel, cm_prev: Optional[ChatModel], opp: str, opp_prev: Optional[str]) -> Dict[str, Any]:
+        def d(
+            cm: ChatModel,
+            cm_prev: Optional[ChatModel],
+            opp: str,
+            opp_prev: Optional[str],
+        ) -> Dict[str, Any]:
             """ Create a chat history entry to be returned """
             nonlocal count
             nonlocal returned
@@ -1995,3 +2005,66 @@ class CompletionModel(Model):
         cm.success = False
         cm.reason = reason
         cm.put()
+
+
+class BlockModel(Model):
+
+    """Models the fact that a user has blocked another user"""
+
+    MAX_BLOCKS = 100  # The maximum number of blocked users per user
+
+    # The user who has blocked another user
+    blocker = Model.DbKey(kind=UserModel)
+    # The blocked user
+    blocked = Model.DbKey(kind=UserModel)
+    # Timestamp
+    timestamp = Model.Datetime(auto_now_add=True)
+
+    @classmethod
+    def list_blocked_users(
+        cls, user_id: str, max_len: int = MAX_BLOCKS
+    ) -> Iterator[str]:
+        """Query for a list of blocked users for the given user"""
+        if not user_id:
+            return
+        k = Key(UserModel, user_id)
+        q: Query[BlockModel] = cls.query(BlockModel.blocker == k)
+        for bm in q.fetch(limit=max_len):
+            yield bm.blocked.id()
+
+    @classmethod
+    def block_user(cls, blocker_id: str, blocked_id: str) -> bool:
+        """Add a block"""
+        if blocker_id and blocked_id:
+            bm = BlockModel()
+            bm.blocker = Key(UserModel, blocker_id)
+            bm.blocked = Key(UserModel, blocked_id)
+            bm.put()
+            return True
+        return False
+
+    @classmethod
+    def unblock_user(cls, blocker_id: str, blocked_id: str) -> bool:
+        """Remove a block"""
+        blocker = Key(UserModel, blocker_id)
+        blocked = Key(UserModel, blocked_id)
+        q: Query[BlockModel] = cls.query(
+            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
+        )
+        unblocked = False
+        # There might conceivably be more than one BlockModel entity
+        # for the same user pair; we delete them all
+        for bmk in q.fetch(keys_only=True, limit=cls.MAX_BLOCKS):
+            bmk.delete()
+            unblocked = True
+        return unblocked
+
+    @classmethod
+    def is_blocking(cls, blocker_id: str, blocked_id: str) -> bool:
+        """ Return True if the user blocker_id has blocked blocked_id """
+        blocker = Key(UserModel, blocker_id)
+        blocked = Key(UserModel, blocked_id)
+        q: Query[BlockModel] = cls.query(
+            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
+        )
+        return q.get(keys_only=True) is not None

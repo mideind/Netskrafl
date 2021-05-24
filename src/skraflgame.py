@@ -34,6 +34,7 @@ from typing import (
 )
 
 import threading
+
 # import logging
 
 from random import randint
@@ -44,6 +45,19 @@ from functools import cached_property
 from cache import memcache
 
 from languages import Alphabet, OldTileSet, NewTileSet, vocabulary_for_locale
+from skrafldb import (
+    PrefItem,
+    PrefsDict,
+    Unique,
+    UserModel,
+    GameModel,
+    MoveModel,
+    FavoriteModel,
+    ChallengeModel,
+    StatsModel,
+    ChatModel,
+    BlockModel,
+)
 from dawgdictionary import Wordbase
 from skraflmechanics import (
     State,
@@ -60,30 +74,13 @@ from skraflmechanics import (
     MoveSummaryTuple,
 )
 from skraflplayer import AutoPlayer
-from skrafldb import (
-    PrefItem,
-    PrefsDict,
-    Unique,
-    UserModel,
-    GameModel,
-    MoveModel,
-    FavoriteModel,
-    ChallengeModel,
-    StatsModel,
-    ChatModel,
-)
 
 # Type definitions
 StatsDict = Dict[str, Union[str, int, float, Tuple[int, int]]]
 # Tuple for storing move data within a Game
 MoveTuple = NamedTuple(
     "MoveTuple",
-    [
-        ("player", int),
-        ("move", MoveBase),
-        ("rack", str),
-        ("ts", datetime),
-    ],
+    [("player", int), ("move", MoveBase), ("rack", str), ("ts", datetime),],
 )
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
@@ -134,6 +131,8 @@ class User:
         self._best_word_game: Optional[str] = None
         # Set of favorite users, only loaded upon demand
         self._favorites: Optional[Set[str]] = None
+        # Set of blocked users, only loaded upon demand
+        self._blocks: Optional[Set[str]] = None
         self._image: str = ""
         self._timestamp = datetime.utcnow()
         # The user location is typically an ISO country code
@@ -480,6 +479,49 @@ class User:
         assert self._favorites is not None
         return destuser_id in self._favorites
 
+    def _load_blocks(self) -> None:
+        """Loads blocked users into a set in memory"""
+        if hasattr(self, "_blocks") and self._blocks:
+            # Already have the blocks in memory
+            return
+        sid = self.id()
+        assert sid is not None
+        self._blocks = set(BlockModel.list_blocked_users(sid))
+
+    def block(self, destuser_id: str) -> bool:
+        """Add an A-blocks-B relation between this user and the destuser"""
+        if not destuser_id:
+            return False
+        sid = self.id()
+        assert sid is not None
+        self._load_blocks()
+        assert self._blocks is not None
+        if not BlockModel.block_user(sid, destuser_id):
+            return False
+        self._blocks.add(destuser_id)
+        return True
+
+    def unblock(self, destuser_id: str) -> bool:
+        """Delete an A-favors-B relation between this user and the destuser"""
+        if not destuser_id:
+            return False
+        sid = self.id()
+        assert sid is not None
+        self._load_blocks()
+        assert self._blocks is not None
+        if not BlockModel.unblock_user(sid, destuser_id):
+            return False
+        self._blocks.discard(destuser_id)
+        return True
+
+    def has_blocked(self, destuser_id: str) -> bool:
+        """Returns True if there is an A-favors-B relation between this user and the destuser"""
+        if not destuser_id:
+            return False
+        self._load_blocks()
+        assert self._blocks is not None
+        return destuser_id in self._blocks
+
     def has_challenge(self, destuser_id: str) -> bool:
         """Returns True if this user has challenged destuser"""
         # TBD: Cache this in the user object to save NDB reads
@@ -566,7 +608,13 @@ class User:
 
     @classmethod
     def login_by_account(
-        cls, account: str, name: str, email: str, image: str, *, locale: Optional[str] = None
+        cls,
+        account: str,
+        name: str,
+        email: str,
+        image: str,
+        *,
+        locale: Optional[str] = None
     ):
         """Log in a user via the given Google Account and return her user id"""
         # First, see if the user account already exists under the Google account id
@@ -635,7 +683,7 @@ class User:
         u._favorites = None
         return u
 
-    def statistics(self) -> Dict[str, Any]:
+    def profile(self) -> Dict[str, Any]:
         """Return a set of key statistics on the user"""
         reply: Dict[str, Any] = dict()
         user_id = self.id()
@@ -669,11 +717,7 @@ class Game:
 
     # The available autoplayers (robots)
     AUTOPLAYERS = [
-        (
-            "Fullsterkur",
-            "Velur stigahæsta leik í hverri stöðu",
-            0,
-        ),
+        ("Fullsterkur", "Velur stigahæsta leik í hverri stöðu", 0,),
         (
             "Miðlungur",
             "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
