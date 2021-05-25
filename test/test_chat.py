@@ -5,27 +5,26 @@
     Tests for Netskrafl
     Copyright (C) 2021 Miðeind ehf.
 
-    This module tests the chat functionality.
+    This module tests several APIs by submitting HTTP requests
+    to the Netskrafl server.
 
 """
 
+from typing import Any, Dict
+
 import sys
 import os
-from typing import Any, Dict
 
 import pytest
 
 from flask import Response
 
 
-
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
-
 SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
 sys.path.append(SRC_PATH)
 
 # Set up the environment for Explo-dev testing
-
 os.environ[
     "GOOGLE_APPLICATION_CREDENTIALS"
 ] = "resources/Explo Development-414318fa79b8.json"
@@ -38,7 +37,9 @@ os.environ[
 ] = "970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com"
 os.environ["FIREBASE_API_KEY"] = "AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc"
 os.environ["FIREBASE_SENDER_ID"] = "970204261331"
-os.environ["FIREBASE_DB_URL"] = "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app"
+os.environ[
+    "FIREBASE_DB_URL"
+] = "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app"
 os.environ["FIREBASE_APP_ID"] = "1:970204261331:web:fce1615824c2e382ec9d26"
 
 
@@ -198,9 +199,7 @@ def test_chat(client, u1, u2) -> None:
     assert history[-1]["unread"]
 
     # Send a read marker
-    resp = client.post(
-        "/chatmsg", data=dict(channel="user:" + u2, msg="")
-    )
+    resp = client.post("/chatmsg", data=dict(channel="user:" + u2, msg=""))
 
     # Check the chat history again
     resp = client.post("/chathistory")
@@ -305,5 +304,31 @@ def test_block(client, u1, u2):
     assert "blocked" in resp.json
     # The 'blocked' attribute should now be False
     assert not resp.json["blocked"]
+
+    # User u1 disables chat
+    resp = client.post("/setuserpref", data=dict(chat_disabled=True))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "chat_disabled" in resp.json
+    assert resp.json["chat_disabled"]
+
+    # User u1 enables chat
+    resp = client.post("/setuserpref", data=dict(chat_disabled=False))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "chat_disabled" in resp.json
+    assert not resp.json["chat_disabled"]
 
     resp = client.post("/logout")

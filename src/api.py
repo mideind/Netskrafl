@@ -1394,25 +1394,24 @@ def setuserpref() -> ResponseType:
 
     rq = RequestData(request)
 
-    # Check for the beginner preference and convert it to bool if we can
-    beginner = rq.get_bool("beginner", None)
-    # Setting a new state for the beginner preference
-    if beginner is not None:
-        user.set_beginner(beginner)
+    # Loop through the various preference booleans and set them
+    # by calling the associated function on the User instance
+    prefs: List[Tuple[str, Callable[[bool], None]]] = [
+        ("beginner", user.set_beginner),
+        ("ready", user.set_ready),
+        ("ready_timed", user.set_ready_timed),
+        ("chat_disabled", user.disable_chat),
+    ]
 
-    # Check for the ready state and convert it to bool if we can
-    ready = rq.get_bool("ready", None)
-    # Setting a new state for the ready preference
-    if ready is not None:
-        user.set_ready(ready)
+    update = False
+    for s, func in prefs:
+        val = rq.get_bool(s, None)
+        if val is not None:
+            func(val)
+            update = True
 
-    # Check for the ready_timed state and convert it to bool if we can
-    ready_timed = rq.get_bool("ready_timed", None)
-    # Setting a new state for the ready_timed preference
-    if ready_timed is not None:
-        user.set_ready_timed(ready_timed)
-
-    user.update()
+    if update:
+        user.update()
 
     return jsonify(result=Error.LEGAL)
 

@@ -66,7 +66,6 @@ from languages import (
     current_board_type,
     set_game_locale,
 )
-from dawgdictionary import Wordbase
 from skraflplayer import AutoPlayer, MoveList
 from skraflgame import User, Game
 from skrafldb import (
@@ -93,7 +92,12 @@ _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # Set to True to make the single-page UI the default
-_SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "FALSE").upper() == "TRUE"
+_SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "false").lower() in {
+    "true",
+    "yes",
+    "on",
+    "1",
+}
 
 # Register the Flask blueprint for the web routes
 web = Blueprint(
@@ -155,35 +159,6 @@ def login_user() -> bool:
             )
         )
     return True
-
-
-@web.route("/_ah/warmup")
-def warmup() -> ResponseType:
-    """App Engine is starting a fresh instance - warm it up
-    by loading all vocabularies"""
-    ok = Wordbase.warmup()
-    logging.info(
-        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
-    )
-    return "", 200
-
-
-@web.route("/_ah/start")
-def start() -> ResponseType:
-    """ App Engine is starting a fresh instance """
-    logging.info(
-        "Start, version {0}, instance {1}".format(
-            os.environ.get("GAE_VERSION", ""), os.environ.get("GAE_INSTANCE", "")
-        )
-    )
-    return "", 200
-
-
-@web.route("/_ah/stop")
-def stop() -> ResponseType:
-    """ App Engine is shutting down an instance """
-    logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))
-    return "", 200
 
 
 @web.route("/review")

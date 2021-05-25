@@ -61,6 +61,7 @@ from basics import (
     FIREBASE_DB_URL,
     FIREBASE_APP_ID,
 )
+from dawgdictionary import Wordbase
 from api import api
 from web import web
 
@@ -201,6 +202,35 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
             while param_name in values:
                 param_name = "_" + param_name
             values[param_name] = static_file_hash(os.path.join(static_folder, filename))
+
+
+@app.route("/_ah/warmup")
+def warmup() -> ResponseType:
+    """App Engine is starting a fresh instance - warm it up
+    by loading all vocabularies"""
+    ok = Wordbase.warmup()
+    logging.info(
+        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
+    )
+    return "", 200
+
+
+@app.route("/_ah/start")
+def start() -> ResponseType:
+    """ App Engine is starting a fresh instance """
+    logging.info(
+        "Start, version {0}, instance {1}".format(
+            os.environ.get("GAE_VERSION", ""), os.environ.get("GAE_INSTANCE", "")
+        )
+    )
+    return "", 200
+
+
+@app.route("/_ah/stop")
+def stop() -> ResponseType:
+    """ App Engine is shutting down an instance """
+    logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))
+    return "", 200
 
 
 @app.errorhandler(500)

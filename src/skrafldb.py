@@ -425,6 +425,8 @@ class UserModel(Model):
     ready = Model.OptionalBool(default=False)
     # Ready for timed challenges?
     ready_timed = Model.OptionalBool(default=False)
+    # Chat disabled?
+    chat_disabled = Model.OptionalBool(default=False)
     # Elo points
     elo = Model.Int(default=0, indexed=True)
     # Elo points for human-only games

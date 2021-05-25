@@ -131,7 +131,8 @@ function createModel(settings) {
     handleUserMessage: handleUserMessage,
     handleMoveMessage: handleMoveMessage,
     updateScale: updateScale,
-    resetScale: resetScale
+    resetScale: resetScale,
+    setUserPref: setUserPref
   };
 
   function loadGame(uuid, funcComplete) {
@@ -420,6 +421,19 @@ function createModel(settings) {
         this.userErrors = result.err || null;
       }
     }.bind(this));
+  }
+
+  function setUserPref(pref) {
+    // Set a user preference
+    return m.request(
+      {
+        method: "POST",
+        url: "/setuserpref",
+        body: pref
+      }
+    ).then(function(result) {
+      // No response required
+    });
   }
 
   function newGame(oppid, reverse) {
@@ -786,6 +800,48 @@ function createView() {
     };
   }
 
+  function TogglerReady(initialVnode) {
+    // Toggle on left-hand side of main screen:
+    // User ready and willing to accept challenges
+
+    var model = initialVnode.attrs.model;
+
+    function toggleFunc(state) {
+      $state.ready = state;
+      model.setUserPref({ ready: state });
+    }
+
+    return {
+      view: function(vnode) {
+        return vwToggler(
+          "ready", $state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
+          "Tek við áskorunum!"
+        );
+      }
+    };
+  }
+
+  function TogglerReadyTimed(initialVnode) {
+    // Toggle on left-hand side of main screen:
+    // User ready and willing to accept timed challenges
+
+    var model = initialVnode.attrs.model;
+
+    function toggleFunc(state) {
+      $state.readyTimed = state;
+      model.setUserPref({ ready_timed: state });
+    }
+
+    return {
+      view: function(vnode) {
+        return vwToggler(
+          "timed", $state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
+          "Til í viðureign með klukku!"
+        );
+      }
+    };
+  }
+
   // Login screen
 
   function vwLogin(model, actions) {
@@ -963,52 +1019,6 @@ function createView() {
         sound.play();
     }
 
-    // A nice graphical toggler control
-
-    function vwToggler(id, state, tabindex, opt1, opt2, func) {
-
-      function doToggle(elemId, func) {
-        // Perform the toggling, on a mouse click or keyboard input (space bar)
-        var cls1 = document.querySelector("#" + elemId + " #opt1").classList;
-        var cls2 = document.querySelector("#" + elemId + " #opt2").classList;
-        cls1.toggle("selected");
-        cls2.toggle("selected");
-        if (func !== undefined && cls2.contains("selected"))
-          // Toggling the swith to ON and we have an associated function:
-          // call it
-          func();
-      }
-
-      return [
-        m("input.checkbox." + id,
-          {
-            type: "checkbox",
-            id: id,
-            name: id,
-            checked: state,
-            value: 'True'
-          }
-        ),
-        m(".toggler",
-          {
-            id: id + "-toggler",
-            tabindex: tabindex,
-            onclick: function(ev) {
-              doToggle(id + "-toggler", func);
-            },
-            onkeypress: function(ev) {
-              if (ev.keyCode === 0 || ev.keyCode == 32)
-                doToggle(id + "-toggler", func);
-            }
-          },
-          [
-            m(".option" + (state ? "" : ".selected"), { id: "opt1" }, opt1),
-            m(".option" + (state ? ".selected" : ""), { id: "opt2" }, opt2)
-          ]
-        )
-      ];
-    }
-
     function getToggle(elemId) {
       var cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
       return cls2.contains("selected");
@@ -1098,11 +1108,11 @@ function createView() {
                     m("span.caption", "Hljóðmerki:"),
                     vwToggler("audio", user.audio, 4,
                       glyph("volume-off"), glyph("volume-up"),
-                      function() { playAudio("your-turn"); }),
+                      function(state) { if (state) playAudio("your-turn"); }),
                     m("span.subcaption", "Lúðraþytur eftir sigur:"),
                     vwToggler("fanfare", user.fanfare, 5,
                       glyph("volume-off"), glyph("volume-up"),
-                      function() { playAudio("you-win"); })
+                      function(state) { if (state) playAudio("you-win"); })
                   ]
                 ),
                 m(".explain", 
@@ -2036,10 +2046,11 @@ function createView() {
     }
 
     return [
-      // vwNetskraflLogo(),
       m(LeftLogo), // No legend, scale up by 50%
       vwUserId.call(this),
       vwInfo(),
+      m(TogglerReady, { model: model }),
+      m(TogglerReadyTimed, { model: model }),
       m("main",
         m("div",
           {
@@ -4286,7 +4297,7 @@ function createView() {
             onclick: function (ev) {
               // Close the guide and set a preference not to see it again
               $state.beginner = false;
-              game.setUserPref({ beginner: false });
+              model.setUserPref({ beginner: false });
               ev.preventDefault();
             }
           },
@@ -4600,6 +4611,56 @@ function TextInput(initialVnode) {
     }
   };
 
+}
+
+// A nice graphical toggler control
+
+function vwToggler(id, state, tabindex, opt1, opt2, func, small, title) {
+
+  var togglerId = id + "-toggler";
+  var optionClass = ".option" + (small ? ".small" : "");
+
+  function doToggle() {
+    // Perform the toggling, on a mouse click or keyboard input (space bar)
+    var cls1 = document.querySelector("#" + togglerId + " #opt1").classList;
+    var cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
+    cls1.toggle("selected");
+    cls2.toggle("selected");
+    if (func !== undefined)
+      // Toggling the switch and we have an associated function:
+      // call it with the boolean state of the switch
+      func(cls2.contains("selected"));
+  }
+
+  return [
+    m("input.checkbox." + id,
+      {
+        type: "checkbox",
+        id: id,
+        name: id,
+        checked: state,
+        value: 'True'
+      }
+    ),
+    m(".toggler",
+      {
+        id: togglerId,
+        tabindex: tabindex,
+        title: title,
+        onclick: function(ev) {
+          doToggle();
+        },
+        onkeypress: function(ev) {
+          if (ev.keyCode === 0 || ev.keyCode == 32)
+            doToggle();
+        }
+      },
+      [
+        m(optionClass + (state ? "" : ".selected"), { id: "opt1" }, opt1),
+        m(optionClass + (state ? ".selected" : ""), { id: "opt2" }, opt2)
+      ]
+    )
+  ];
 }
 
 function MultiSelection(initialVnode) {

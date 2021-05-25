@@ -487,19 +487,6 @@ var Game = (function() {
     return false;
   };
 
-  Game.prototype.setUserPref = function(pref) {
-    // Set a user preference
-    return m.request(
-      {
-        method: "POST",
-        url: "/setuserpref",
-        body: pref
-      }
-    ).then(function(result) {
-      // No response required
-    });
-  };
-
   Game.prototype.placeMove = function(player, co, tiles, highlight) {
     // Place an entire move into the tiles dictionary
     var vec = toVector(co);

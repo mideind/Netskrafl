@@ -121,6 +121,7 @@ class User:
         self._preferences: PrefsDict = {}
         self._ready: bool = False
         self._ready_timed: bool = False
+        self._chat_disabled: bool = False
         self._elo = 0
         self._human_elo = 0
         self._manual_elo = 0
@@ -151,6 +152,7 @@ class User:
         self._preferences = um.prefs
         self._ready = False if um.ready is None else um.ready
         self._ready_timed = False if um.ready_timed is None else um.ready_timed
+        self._chat_disabled = False if um.chat_disabled is None else um.chat_disabled
         self._elo = um.elo
         self._human_elo = um.human_elo
         self._manual_elo = um.manual_elo
@@ -182,6 +184,7 @@ class User:
             um.prefs = self._preferences
             um.ready = self._ready
             um.ready_timed = self._ready_timed
+            um.chat_disabled = self._chat_disabled
             um.elo = self._elo
             um.human_elo = self._human_elo
             um.manual_elo = self._manual_elo
@@ -446,6 +449,14 @@ class User:
         """Sets the whether a user is ready for timed games"""
         self._ready_timed = ready
 
+    def chat_disabled(self) -> bool:
+        """Returns True if the user has disabled chat"""
+        return self._chat_disabled
+
+    def disable_chat(self, disabled: bool) -> None:
+        """Sets the ready state of a user to True or False"""
+        self._chat_disabled = disabled
+
     def _load_favorites(self) -> None:
         """Loads favorites of this user from the database into a set in memory"""
         if hasattr(self, "_favorites") and self._favorites:
@@ -697,6 +708,7 @@ class User:
         reply["timestamp"] = self.timestamp()
         reply["accepts_challenges"] = self.is_ready()
         reply["accepts_timed"] = self.is_ready_timed()
+        reply["chat_disabled"] = self.chat_disabled()
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score
         reply["highest_score_game"] = self._highest_score_game
