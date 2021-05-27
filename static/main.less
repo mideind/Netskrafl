@@ -33,7 +33,7 @@
 @btn-font-small: 18px;
 @btn-font-big: 22px;
 
-@wide-btn-width-big: 82px;
+@wide-btn-width-big: 78px;
 @wide-btn-width-small: 32px;
 
 @margin-small: 8px;
@@ -541,8 +541,13 @@ div.tile {
 }
 
 div.tile.wide {
-   margin-left: -3px;
-   padding-right: 3px;
+   // Wide tile in the rack
+   text-indent: -8px;
+}
+
+div.board div.tile.wide {
+   // Wide tile on the board
+   text-indent: -5px;
 }
 
 /* On small form factors, we have bigger tiles in the rack than on the board */
@@ -653,7 +658,7 @@ div.word-check {
    font-size: 22px;
    line-height: 42px;
    visibility: hidden;
-   border: 2px solid;
+   border: 1.5px solid;
    border-radius: 4px;
 }
 
@@ -670,11 +675,10 @@ div.score {
    font-size: 20px;
    font-weight: 700;
    line-height: 42px;
-   color: @board-background;
-   border-style: solid;
-   border-width: 2px;
+   color: @score-default;
+   border: 1.5px solid;
    border-radius: 4px;
-   border-color: @board-background;
+   border-color: @score-default;
 }
 
 .standard-button {
@@ -833,6 +837,11 @@ div.player {
    line-height: 16px;
    font-weight: 400;
    color: @cell-border;
+}
+
+div.scorewrapper {
+   background-color: transparent;
+   width: 100%;
 }
 
 div.scoreleft {
@@ -1199,7 +1208,7 @@ div.message {
    font-size: 14px;
    line-height: 26px;
    height: 28px;
-   background-color: @racktile;
+   background-color: @message-background;
    font-weight: 400;
 }
 
@@ -1835,10 +1844,19 @@ span.mobile-break {
 }
 
 .ui-state-hover,
-.ui-widget-content .ui-state-hover,
+.ui-widget-content .ui-state-hover
+{
+   background-color: @hover-tab;
+}
+
 .ui-state-focus,
 .ui-widget-content .ui-state-focus {
-   background-color: @hover-tab;
+   background-color: @tab-background;
+}
+
+.ui-state-active,
+.ui-widget-content .ui-state-active {
+   background-color: @tab-background;
 }
 
 div.fairplay {
@@ -2461,14 +2479,14 @@ div.movelist.noscroll {
 
 div.leftmove {
    text-align: left;
-   padding-left: 2px;
+   padding-left: 0px; // 2px;
    height: 20px;
    line-height: 18px;
 }
 
 div.rightmove {
    text-align: right;
-   padding-right: 2px;
+   padding-right: 0px; // 2px;
    height: 20px;
    line-height: 18px;
 }
@@ -2563,7 +2581,7 @@ div #gamestarted {
 }
 
 .autoplayercolor {
-   background-color: @freshtile;
+   background-color: @autoplayer;
 }
 
 .humangrad_left {
@@ -2571,7 +2589,7 @@ div #gamestarted {
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @freshtile);
+   background: linear-gradient(to right, @board-background, @board-background, @autoplayer);
 }
 
 .humangrad_right {
@@ -2579,7 +2597,7 @@ div #gamestarted {
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @freshtile, @board-background, @board-background);
+   background: linear-gradient(to right, @autoplayer, @board-background, @board-background);
 }
 
 span.score {
@@ -2596,15 +2614,15 @@ span.score {
 span.total {
    display: inline-block;
    width: 28px;
-   padding-left: 2px;
-   margin-left: 2px;
-   padding-right: 2px;
-   margin-right: 2px;
-   font-weight: 700;
+   padding-left: 3px;
+   margin-left: 0px; // 2px;
+   padding-right: 3px;
+   margin-right: 0px; // 2px;
+   font-weight: 400; // 700;
    text-align: right;
-   background-color: @board-background;
-   color: white;
-   line-height: 16px;
+   background-color: @message-background; // @total-background;
+   color: @blank-sel; // white;
+   line-height: 20px; // 16px;
 }
 
 span.highlight {
@@ -2695,8 +2713,8 @@ span.yesnobutton#force-resign {
 }
 
 div.score.word-good {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @word-good;
+   border-color: @word-good;
 }
 
 div.score.manual {
@@ -2757,8 +2775,8 @@ div.channel:before {
 }
 
 div.word-check.word-good {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @word-good;
+   border-color: @word-good;
    visibility: visible;
 }
 
@@ -4040,6 +4058,7 @@ div.toggler div.option {
    display: inline-block;
    width: 46px;
    height: 28px;
+   line-height: 28px;
    font-size: 21px;
    padding-top: 3px;
    padding-bottom: 3px;
@@ -4050,6 +4069,7 @@ div.toggler div.option {
 div.toggler div.option.small {
    width: 40px;
    height: 26px;
+   line-height: 26px;
    font-size: 20px;
    padding-top: 4px;
    padding-bottom: 2px;
@@ -4058,6 +4078,7 @@ div.toggler div.option.small {
 div.toggler div.option.x-small {
    width: 32px;
    height: 20px;
+   line-height: 20px;
    font-size: 15px;
    padding-top: 1px;
    padding-bottom: 3px;

@@ -2143,11 +2143,11 @@ function createView() {
           [
             m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
               m(".player", vwPlayerName(view, game, "left")),
-              m(".scoreleft", sc0),
+              m(".scorewrapper", m(".scoreleft", sc0)),
             ]),
             m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
               m(".player", vwPlayerName(view, game, "right")),
-              m(".scoreright", sc1),
+              m(".scorewrapper", m(".scoreright", sc1)),
             ]),
             m("h3.clockleft"),
             m("h3.clockright"),
@@ -3314,7 +3314,7 @@ function createView() {
         var attrs = {};
         if (t.tile == '?')
           classes.push("blanktile");
-        if (t.letter == 'z' || t.letter == 'q')
+        if (t.letter == 'z' || t.letter == 'q' || t.letter == 'x')
           // Wide letter: handle specially
           classes.push("wide");
         if (coord[0] == 'R' || t.draggable) {
@@ -3647,10 +3647,8 @@ function createView() {
       if (game.currentScore >= 50)
         sc.push("word-great");
     }
-    return m(
-      sc.join("."),
-      game.currentScore === undefined ? "?" : game.currentScore
-    );
+    var txt = (game.currentScore === undefined ? "?" : game.currentScore)
+    return m(sc.join("."), { title: txt }, txt);
   }
 
   function vwScoreReview(game, move) {

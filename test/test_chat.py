@@ -332,3 +332,31 @@ def test_block(client, u1, u2):
     assert not resp.json["chat_disabled"]
 
     resp = client.post("/logout")
+
+
+def test_report(client, u1, u2):
+    resp = login_user(client, 1)
+
+    # User u1 reports user u2
+    resp = client.post("/reportuser", data=dict(reported=u2, code=0, text="Genuine a**hole!"))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    resp = client.post("/logout")
+
+    resp = login_user(client, 2)
+
+    # User u2 reports user u1
+    resp = client.post("/reportuser", data=dict(reported=u1, code=1))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+
+    # User u2 reports nonexisting user (this currently works fine)
+    resp = client.post("/reportuser", data=dict(reported="xxx", code=1))
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == False
+
+    resp = client.post("/logout")

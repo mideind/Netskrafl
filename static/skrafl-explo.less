@@ -17,17 +17,22 @@
 */
 
 @pure-blue: #5699A5;
-@hover-tab: @pure-blue;
-@board-background: #DFDFE2;
-@double-letter: #83C8CE; /* Pantone 698 U */
-@triple-letter: #208C9F; /* Pantone 192 U */
+@double-letter: #83C8CE;
+@triple-letter: #208C9F;
 @double-word: #E4D09B;
-@triple-word: #FDC12C; /* Pantone 300 U */
-@alert:#AA3731; /* Pantone 192 U */
-@tile: lighten(#e4ad87, 5%); /* Pantone 721 U */
+@triple-word: #FDC12C;
+@message-background: #B9D9DC;
+@hover-tab: @pure-blue;
+@board-background: #dcd8d8;
+@rack-background: #f4f4f4;
+@total-background: @double-letter;
+@score-default: #aaaaaa;
+@alert:#AA3731;
+@tile: lighten(#e4ad87, 5%);
 @racktile: #fdc12c;
 @freshtile: #669256;
-@player: #167F92;
+@player: @racktile;
+@autoplayer: @freshtile;
 @cell-border: #f8f8f8;
 @neutral: #222222;
 @box-shadow: #333333;
@@ -42,9 +47,10 @@
 @nav-btn: @pass-btn;
 @close-btn: @freshtile;
 @submit-btn: #669256;
+@word-good: @submit-btn;
 @focal: #ffffc8; /* Pale yellow */
 @chall-btn: #208C9F;
-@score-manual: #82C7CD;
+@score-manual: @double-letter;
 @tab-background: #f4f4f4;
 @almost-black: #202020;
 @clock-digits: @almost-black;
@@ -62,6 +68,9 @@
 @font3: 'Arial';
 @font4: sans-serif;
 @tile-font: 'Open Sans';
+
+@twoletter-font-size: 17px;
+@twoletter-line-height: 23px;
 
 @import 'main.less';
 @import 'portrait.less';

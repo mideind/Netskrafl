@@ -11,6 +11,10 @@
 @pure-blue: #78aee6;
 @hover-tab: @pure-blue;
 @board-background: desaturate(#afb8bf, 40%); /* Pantone 7543 U */
+@rack-background: @board-background;
+@total-background: @board-background;
+@message-background: #B9D9DC;
+@score-default: @board-background;
 @double-word: desaturate(#f7d2d8, 40%); /* Pantone 698 U */
 @triple-word: desaturate(#ee4f68, 40%); /* Pantone 192 U */
 @double-letter: desaturate(@pure-blue, 40%); /* Pantone 284 U */
@@ -20,6 +24,7 @@
 @racktile: desaturate(#fcce43, 10%); /* Pantone 7404 U */
 @freshtile: desaturate(#7ad3b7, 10%); /* Pantone 337 U */
 @player: @racktile;
+@autoplayer: @freshtile;
 @cell-border: #e8e8e8; /* #f2f2f2; */
 @neutral: desaturate(#222222, 40%);
 @box-shadow: #333333;
@@ -33,6 +38,7 @@
 @nav-btn: @pass-btn;
 @close-btn: @freshtile;
 @submit-btn: darken(@freshtile, 10%);
+@word-good: @submit-btn;
 @help-link: @triple-letter;
 @focal: #ffffc8; /* Pale yellow */
 @chall-btn: @triple-letter;
@@ -56,6 +62,9 @@
 @font3: 'Arial';
 @font4: sans-serif;
 @tile-font: 'Open Sans';
+
+@twoletter-font-size: 14px;
+@twoletter-line-height: 20px;
 
 @import 'main.less';
 @import 'portrait.less';

@@ -57,6 +57,7 @@ from skrafldb import (
     StatsModel,
     ChatModel,
     BlockModel,
+    ReportModel,
 )
 from dawgdictionary import Wordbase
 from skraflmechanics import (
@@ -532,6 +533,14 @@ class User:
         self._load_blocks()
         assert self._blocks is not None
         return destuser_id in self._blocks
+
+    def report(self, destuser_id: str, code: int, text: str) -> bool:
+        """The current user is reporting another user"""
+        if not destuser_id:
+            return False
+        sid = self.id()
+        assert sid is not None
+        return ReportModel.report_user(sid, destuser_id, code, text)
 
     def has_challenge(self, destuser_id: str) -> bool:
         """Returns True if this user has challenged destuser"""

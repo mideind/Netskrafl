@@ -1748,6 +1748,30 @@ def blockuser() -> ResponseType:
     return jsonify(ok=ok)
 
 
+@api.route("/reportuser", methods=["POST"])
+@auth_required(ok = False)
+def reportuser() -> ResponseType:
+    """ Report another user """
+    user = current_user()
+    assert user is not None
+
+    rq = RequestData(request)
+    reported_id = rq.get("reported")
+    try:
+        # Reason code 0 means that we have free-form text;
+        # other reason codes have fixed meanings with no text
+        code = int(rq.get("code", 0))
+        text = str(rq.get("text", ""))
+    except ValueError:
+        return jsonify(ok=False)
+
+    ok = False
+    if reported_id:
+        ok = user.report(reported_id, code, text)
+
+    return jsonify(ok=ok)
+
+
 @api.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
 def loaduserprefs() -> ResponseType:

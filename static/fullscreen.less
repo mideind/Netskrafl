@@ -115,7 +115,7 @@
    
    div.right-area {
       display: block;
-      margin-top: 8px;
+      margin-top: 12px;
       height: 420px;
    }
    
@@ -147,17 +147,17 @@
    }
    
    div.board-area {
-      margin-top: 0;
+      margin: 0;
       height: 750px;
    }
 
    div.board {
       position: absolute;
       top: 0;
-      left: 88px;
+      left: 93px;
       height: auto;
       margin: 0;
-      background-color: @container;
+      // background-color: @container;
    }
    
    .board td {
@@ -204,9 +204,10 @@
    }
    
    div.tile.wide {
-      /* Wide character tile: Z, Q */
-      margin-left: -3px;
-      padding-right: 5px;
+      /* Wide character tile: Z, Q, X */
+      text-indent: -6px;
+      margin-left: 0;
+      padding-right: 2px;
    }
 
    /* On large UIs, tile size doesn't change while dragging */
@@ -232,13 +233,13 @@
 
    div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
-      right: 2px;
+      right: 1px;
       left: auto;
    }
 
    .rack div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
-      right: 2px;
+      right: 1px;
       left: auto;
    }
 
@@ -260,7 +261,7 @@
    
    div.bag {
       display: block;
-      bottom: 114px;
+      bottom: 94px;
    }
 
    div.rack-row {
@@ -273,13 +274,13 @@
       width: auto;
       float: none;
       top: auto;
-      bottom: 120px;
-      left: 217px;
+      bottom: 126px;
+      left: 241px;
       padding: 6px;
       border-width: 0;
       border-radius: 5px;
       margin: 0;
-      background-color: @board-background;
+      background-color: @rack-background;
    }
 
    div.rack-left {
@@ -306,8 +307,8 @@
       font-size: 26px;
       line-height: 45px;
       top: auto;
-      bottom: 256px;
-      left: 639px;
+      bottom: 273px;
+      left: 648px;
       border-radius: 5px;
    }
    
@@ -318,9 +319,10 @@
       font-size: 24px;
       line-height: 46px;
       top: auto;
-      bottom: 192px;
-      left: 639px;
+      bottom: 205px;
+      left: 648px;
       border-radius: 5px;
+      font-family: @tile-font;
    }
 
    .standard-button {
@@ -343,9 +345,9 @@
       width: @wide-btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 597px;
-      background-color: darken(@freshtile, 10%);
+      bottom: 130px;
+      left: 546px;
+      background-color: @submit-btn;
       font-size: 18px;
       line-height: 24px;
       font-weight: normal;
@@ -393,8 +395,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 79px;
+      bottom: 130px;
+      left: 101px;
       display: block;
    }
    
@@ -404,8 +406,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 145px;
+      bottom: 130px;
+      left: 167px;
       display: block;
    }
    
@@ -415,8 +417,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 145px;
+      bottom: 130px;
+      left: 167px;
       display: block;
    }
 
@@ -428,8 +430,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 524px;
+      bottom: 130px;
+      left: 546px;
       display: block;
    }
    
@@ -439,15 +441,15 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 590px;
+      bottom: 130px;
+      left: 612px;
       display: block;
    }
    
    div.fb-share {
       .submitbutton;
       display: block;
-      left: 122px;
+      left: 144px;
       height: 60px;
       /* bottom: 104px; */
       color: white;
@@ -462,16 +464,22 @@
       line-height: 24px;
    }
    
+   div.scorewrapper {
+      background-color: @message-background;
+   }
+   
    div.scoreleft {
       width: 145px;
       font-size: 24px;
-      line-height: 24px;
+      line-height: 32px;
+      color: @blank-sel;
    }
    
    div.scoreright {
       width: 145px;
       font-size: 24px;
-      line-height: 24px;
+      line-height: 32px;
+      color: @blank-sel;
    }
    
    div.player-btn {
@@ -613,9 +621,13 @@
       right: 12px;
    }
 
+   div#blank-form p {
+      padding-left: 15px;
+   }
+
    div.blank-rack {
-      top: 0;
-      left: 0;
+      top: 56px;
+      left: auto;
    }
 
    div#blank-form {
@@ -625,11 +637,15 @@
    div.modal-dialog {
       position: absolute;
    }
-   
+
+   div.modal-close {
+      position: absolute;
+   }
+
    .bottom-message {
       text-align: center;
       bottom: 70px;
-      left: 102px;
+      left: 126px;
       width: 512px;
       height: 28px;
       font-size: 16px;
@@ -1116,13 +1132,13 @@
    }
    
    div.twoletter-area {
-      font-size: 14px;
-      line-height: 20px;
+      font-size: @twoletter-font-size;
+      line-height: @twoletter-line-height;
    }
    
    div.twoletter-area.with-clock {
-      font-size: 13px;
-      line-height: 21px;
+      font-size: @twoletter-font-size - 1;
+      line-height: @twoletter-line-height + 1;
       margin-top: 3px;
    }
    

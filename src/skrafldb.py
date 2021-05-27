@@ -256,6 +256,11 @@ class Model(ndb.Model):
         return cast(Optional[str], ndb.StringProperty(required=False, default=default))
 
     @staticmethod
+    def Text() -> str:
+        """ Nonindexed string """
+        return cast(str, ndb.TextProperty(required=True))
+
+    @staticmethod
     def Bool() -> bool:
         return cast(bool, ndb.BooleanProperty(required=True))
 
@@ -2070,3 +2075,36 @@ class BlockModel(Model):
             ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
         )
         return q.get(keys_only=True) is not None
+
+
+class ReportModel(Model):
+
+    """Models the fact that a user has reported another user"""
+
+    # The user who is reporting another user
+    reporter = Model.DbKey(kind=UserModel)
+    # The reported user
+    reported = Model.DbKey(kind=UserModel)
+    # The reason code (0: Free format text explanation; >= 1: fixed reasons)
+    code = Model.Int()
+    # Free format text, if any
+    text = Model.Text()
+    # Timestamp
+    timestamp = Model.Datetime(auto_now_add=True)
+
+    @classmethod
+    def report_user(cls, reporter_id: str, reported_id: str, code: int, text: str) -> bool:
+        """Add a block"""
+        if reporter_id and reported_id:
+            rm = ReportModel()
+            rm.reporter = Key(UserModel, reporter_id)
+            rm.reported = Key(UserModel, reported_id)
+            if rm.reported.get() is None:
+                # The reported user does not exist
+                return False
+            rm.code = code
+            rm.text = text
+            rm.put()
+            return True
+        return False
+
