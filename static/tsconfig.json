@@ -1,0 +1,25 @@
+{
+  "files": [
+    "src/page.ts",
+    "src/game.ts",
+    "src/util.ts",
+    "src/channel.ts"
+  ],
+  "compilerOptions": {
+    "outDir": "built",
+    "target": "ES2015",
+    "module": "ES2015",
+    // "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true
+  },
+  "lib": [
+    "es2015",
+    "es2015.promise",
+    "dom"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Recommended"
+}

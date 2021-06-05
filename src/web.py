@@ -590,10 +590,10 @@ def rawhelp() -> ResponseType:
 
     def override_url_for(endpoint: str, **values: Any) -> str:
         """ Convert URLs from old-format plain ones to single-page fancy ones """
-        if endpoint in {"twoletter", "newbag", "userprefs"}:
+        if endpoint in {"web.twoletter", "web.newbag", "web.userprefs"}:
             # Insert special token that will be caught by client-side
             # code and converted to an action in the single-page UI
-            return "$$" + endpoint + "$$"
+            return "$$" + endpoint.split(".")[-1] + "$$"
         return url_for(endpoint, **values)
 
     return render_template("rawhelp.html", url_for=override_url_for)

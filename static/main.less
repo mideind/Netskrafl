@@ -2210,6 +2210,22 @@ div.racktile {
    100% { opacity: 1.0; }
 }
 
+@keyframes opacityBlink {
+   0% { opacity: 1.0; }
+   30% { opacity: 1.0; }
+   50% { opacity: 0.1; }
+   70% { opacity: 1.0; }
+   100% { opacity: 1.0; }
+}
+
+@-webkit-keyframes opacityBlink {
+   0% { opacity: 1.0; }
+   30% { opacity: 1.0; }
+   50% { opacity: 0.1; }
+   70% { opacity: 1.0; }
+   100% { opacity: 1.0; }
+}
+
 div.sel {
    animation: selBlink 1.2s infinite;
    -webkit-animation: selBlink 1.2s infinite;
@@ -2495,7 +2511,7 @@ div.reviewhdr {
    height: 18px;
    text-align: left;
    padding: 11px;
-   background-color: @pass-btn;
+   background-color: @review-hdr;
    color: white;
    font-weight: 400;
    font-size: 18px;
@@ -2504,7 +2520,7 @@ div.reviewhdr {
 
 span.movenumber {
    background-color: white;
-   color: @pass-btn;
+   color: @review-hdr;
    text-align: center;
    font-size: 16px;
    font-weight: 700;
@@ -2743,7 +2759,7 @@ div.score.word-great {
 }
 
 div.score.green {
-   color: black;
+   color: @review-score-green;
    border-color: black;
    background-color: @freshtile;
 }
@@ -2904,11 +2920,13 @@ div.navbtn {
 }
 
 div.navbtn#navnext {
-   left: 554px;
+   position: absolute;
+   left: 558px;
    font-weight: normal;
 }
 
 div.navbtn#navprev {
+   position: absolute;
    left: 84px;
    font-weight: normal;
 }
@@ -2939,6 +2957,7 @@ div.closebtn {
 
 #review-close
 {
+   position: absolute;
    right: 12px;
 }
 
@@ -3258,6 +3277,7 @@ span.fairplay-btn.large {
    border-width: 1px;
    border-color: white;
    border-style: solid;
+   padding-bottom: 8px;
 }
 
 span.manual-btn {
@@ -3858,7 +3878,8 @@ h1#accept-nick {
 }
 
 .blink {
-   opacity: 0.1;
+   animation: opacityBlink 1.0s infinite;
+   -webkit-animation: opacityBlink 1.0s infinite;
 }
 
 a.opp-ready:link,

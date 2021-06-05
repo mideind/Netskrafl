@@ -38,6 +38,15 @@ module.exports = function (grunt) {
          }
       },
 
+      ts: {
+         default : {
+           tsconfig: 'static/tsconfig.json',
+           options: {
+              rootDir: "static"
+           }
+         }
+      },
+
       concat: {
          netskrafl_js: {
             src: [
@@ -108,6 +117,11 @@ module.exports = function (grunt) {
       },
 
       watch: {
+         ts: {
+            files: ['static/src/*.ts'],
+            tasks: ['ts'],
+            options: { spawn: false }
+         },
          concat: {
             files: ['static/js/*.js'],
             tasks: ['concat']
@@ -148,7 +162,7 @@ module.exports = function (grunt) {
    require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
 
    grunt.registerTask('default', ['watch']);
-   grunt.registerTask('make', ['concat', 'uglify', 'less']);
+   grunt.registerTask('make', ['ts', 'concat', 'uglify', 'less']);
 
    function startsWith(s, t) {
       return s.lastIndexOf(t, 0) === 0;

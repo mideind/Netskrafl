@@ -1,10 +1,10 @@
 /*
 
-	Game.js
+	Game.ts
 
 	The Game class, as used in the single-page UI
 
-  Copyright (C) 2015-2019 Miðeind ehf.
+  Copyright (C) 2021 Miðeind ehf.
   Author: Vilhjalmur Thorsteinsson
 
   The GNU Affero General Public License, version 3, applies to this software.
@@ -12,24 +12,24 @@
 
 */
 
-/* global m:false, $state:false */
+export { Game, coord, toVector };
 
-/* eslint-disable no-unused-vars */
+import { m } from "./mithril.js";
 
 // Global constants
-var ROWIDS = "ABCDEFGHIJKLMNO";
-var BOARD_SIZE = ROWIDS.length;
-var RACK_SIZE = 7;
-var MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
+const ROWIDS = "ABCDEFGHIJKLMNO";
+const BOARD_SIZE = ROWIDS.length;
+const RACK_SIZE = 7;
+const MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
 
-function coord(row, col) {
+function coord(row: number, col: number): string {
   // Return the co-ordinate string for the given 0-based row and col
   if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE)
     return null;
   return ROWIDS[row] + (col + 1);
 }
 
-function toVector(co) {
+function toVector(co: string): { col: number, row: number, dx: number, dy: number } {
   // Convert a co-ordinate string to a 0-based row, col and direction vector
   var dx = 0, dy = 0;
   var col = 0;
@@ -48,10 +48,10 @@ function toVector(co) {
   return { col: col, row: row, dx: dx, dy: dy };
 }
 
-function forEachElement(selector, func) {
+function forEachElement(selector: string, func: (elem: Element) => void) {
   // Emulate jQuery's $.each()
-  var elems = document.querySelectorAll(selector);
-  var i = 0;
+  const elems = document.querySelectorAll(selector);
+  let i = 0;
   if (elems)
     for (; i < elems.length; i++)
       func(elems[i]);
@@ -73,7 +73,7 @@ var LocalStorage = (function() {
 
   var _hasLocal = null; // Is HTML5 local storage supported by the browser?
 
-  function hasLocalStorage() {
+  function hasLocalStorage(): boolean {
     // Return true if HTML5 local storage is supported by the browser
     if (_hasLocal === null)
       try {
@@ -86,23 +86,23 @@ var LocalStorage = (function() {
     return _hasLocal;
   }
 
-  function LocalStorage(uuid) {
+  function LocalStorage(uuid: string) {
 
     // Constructor for local storage associated with a particular game
 
     var prefix = "game." + uuid;
 
     return {
-      getLocalTile: function(ix) {
+      getLocalTile: function(ix: number) {
         return window.localStorage[prefix + ".tile." + ix + ".t"];
       },
-      getLocalTileSq: function(ix) {
+      getLocalTileSq: function(ix: number) {
         return window.localStorage[prefix + ".tile." + ix + ".sq"];
       },
-      setLocalTile: function(ix, t) {
+      setLocalTile: function(ix: number, t: string) {
         window.localStorage[prefix + ".tile." + ix + ".t"] = t;
       },
-      setLocalTileSq: function(ix, sq) {
+      setLocalTileSq: function(ix: number, sq: string) {
         window.localStorage[prefix + ".tile." + ix + ".sq"] = sq;
       },
       clearTiles: function() {
@@ -118,11 +118,11 @@ var LocalStorage = (function() {
       },
       saveTiles: function(tilesPlaced) {
         // Save tile locations in local storage
-        var i, sq, tile;
+        let i;
         for (i = 0; i < tilesPlaced.length; i++) {
           // Store this placed tile in local storage
-          sq = tilesPlaced[i].sq;
-          tile = tilesPlaced[i].tile;
+          let sq = tilesPlaced[i].sq;
+          let tile = tilesPlaced[i].tile;
           // Set the placed tile's square
           this.setLocalTileSq(i + 1, sq);
           // Set the letter (or ?+letter if undefined)
@@ -149,7 +149,7 @@ var LocalStorage = (function() {
     };
   }
 
-  function NoLocalStorage(uuid) {
+  function NoLocalStorage(uuid: string) {
     // Constructor for a dummy local storage instance,
     // when no local storage is available
     return {
@@ -172,13 +172,11 @@ var LocalStorage = (function() {
 
 var Game = (function() {
 
-  "use strict";
-
   // Constants
 
-  var GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
+  const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
-  var BOARD = {
+  const BOARD = {
     standard: {
       WORDSCORE: [
         "3      3      3",
@@ -253,7 +251,7 @@ var Game = (function() {
     }
   };
 
-  function Game(uuid, game) {
+  function Game(uuid: string, game) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
@@ -298,7 +296,7 @@ var Game = (function() {
     this.clockText0 = "";
     this.clockText1 = "";
     // Create a local storage object for this game
-    this.localStorage = new LocalStorage(uuid);
+    this.localStorage = LocalStorage(uuid);
     // Note: the following attributes have Python naming conventions,
     // since they are copied directly from JSON-encoded Python objects
     this.tile_scores = {};
@@ -383,20 +381,20 @@ var Game = (function() {
       this.resetClock();
   };
 
-  Game.prototype.notifyUserChange = function() {
+  Game.prototype.notifyUserChange = function(newNick: string) {
     // The user information may have been changed:
     // perform any updates that may be necessary
     if (this.player !== undefined)
       // The player nickname may have been changed
-      this.nickname[this.player] = $state.userNick;
+      this.nickname[this.player] = newNick;
   };
 
-  Game.prototype.setSelectedTab = function(sel) {
+  Game.prototype.setSelectedTab = function(sel: number) {
     // Set the currently selected tab
     this.sel = sel;
   };
 
-  Game.prototype.tilescore = function(tile) {
+  Game.prototype.tilescore = function(tile: string) {
     // Note: The Python naming convention of tile_score is intentional
     return this.tile_scores[tile];
   };
@@ -406,7 +404,7 @@ var Game = (function() {
     return this.two_letter_words;
   };
 
-  Game.prototype.isTimed = function() {
+  Game.prototype.isTimed = function(): boolean {
     // Return True if this is a timed game
     return this.time_info && this.time_info.duration >= 1.0;
   };
@@ -461,7 +459,7 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.calcTimeToGo = function(player) {
+  Game.prototype.calcTimeToGo = function(player: 0 | 1) {
     /* Return the time left for a player in a nice MM:SS format */
     var gameTime = this.time_info
     var elapsed = gameTime.elapsed[player];
@@ -500,7 +498,7 @@ var Game = (function() {
        ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
   };
 
-  Game.prototype.displayScore = function(player) {
+  Game.prototype.displayScore = function(player: 0 | 1): number {
     // Return the score to be displayed, which is the current
     // actual game score minus accrued time penalty, if any, in a timed game
     return Math.max(
@@ -566,7 +564,7 @@ var Game = (function() {
     });
   };
 
-  Game.prototype.sendMessage = function(msg) {
+  Game.prototype.sendMessage = function(msg: string) {
     // Send a chat message
     return m.request(
       {
@@ -574,7 +572,7 @@ var Game = (function() {
         url: "/chatmsg",
         body: { channel: "game:" + this.uuid, msg: msg }
       }
-    ).then(function(result) {
+    ).then((result) => {
       // The updated chat comes in via a Firebase notification
     });
   };
@@ -586,7 +584,7 @@ var Game = (function() {
     this.chatShown = true;
   };
 
-  Game.prototype.addChatMessage = function(from_userid, msg, ts) {
+  Game.prototype.addChatMessage = function(from_userid: string, msg: string, ts) {
     // Add a new chat message to the message list
     if (this.messages !== null) {
       // Do not add messages unless the message list has been
@@ -600,7 +598,7 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.markChatShown = function() {
+  Game.prototype.markChatShown = function(): boolean {
     // Note that the user has seen all pending chat messages
     if (!this.chatShown) {
       this.chatShown = true;
@@ -609,7 +607,7 @@ var Game = (function() {
     return false;
   };
 
-  Game.prototype.placeMove = function(player, co, tiles, highlight) {
+  Game.prototype.placeMove = function(player: 0 | 1, co: string, tiles: string, highlight: boolean) {
     // Place an entire move into the tiles dictionary
     let vec = toVector(co);
     let col = vec.col;
@@ -657,7 +655,7 @@ var Game = (function() {
     this.rack = rack;
   };
 
-  Game.prototype.placeTiles = function(move, noHighlight) {
+  Game.prototype.placeTiles = function(move: number, noHighlight: boolean) {
     // Make a tile dictionary for the game.
     // If move is given, it is an index of the
     // last move in the move list that should be
@@ -668,7 +666,7 @@ var Game = (function() {
     let sq;
     let last = (move !== undefined) ? move : mlist.length;
 
-    function successfullyChallenged(ix) {
+    function successfullyChallenged(ix: number): boolean {
       // Was the move with index ix successfully challenged?
       if (ix + 2 >= last)
         // The move list is too short for a response move
@@ -727,7 +725,7 @@ var Game = (function() {
     }
   };
 
-  Game.prototype._moveTile = function(from, to) {
+  Game.prototype._moveTile = function(from: string, to: string) {
     // Low-level function to move a tile between cells/slots
     if (from == to)
       // Nothing to do
@@ -769,7 +767,7 @@ var Game = (function() {
     this.tiles[to] = fromTile;
   };
 
-  Game.prototype.moveTile = function(from, to) {
+  Game.prototype.moveTile = function(from: string, to: string) {
     // High-level function to move a tile between cells/slots
     this._moveTile(from, to);
     // Clear error message, if any
@@ -780,7 +778,7 @@ var Game = (function() {
     this.saveTiles();
   };
 
-  Game.prototype.attemptMove = function(from, to) {
+  Game.prototype.attemptMove = function(from: string, to: string) {
     if (to == from)
       // No move
       return;
@@ -804,7 +802,7 @@ var Game = (function() {
     this.askingForBlank = null;
   };
 
-  Game.prototype.placeBlank = function(letter) {
+  Game.prototype.placeBlank = function(letter: string) {
     // Assign a meaning to a blank tile that is being placed on the board
     if (this.askingForBlank === null)
       return;
@@ -817,10 +815,10 @@ var Game = (function() {
     this.askingForBlank = null;
   };
 
-  Game.prototype.tilesPlaced = function() {
+  Game.prototype.tilesPlaced = function(): string[] {
     // Return a list of coordinates of tiles that the user has
     // placed on the board by dragging from the rack
-    let r = [];
+    let r: string[] = [];
     for (let sq in this.tiles)
       if (this.tiles.hasOwnProperty(sq) &&
         sq[0] != 'R' && this.tiles[sq].draggable)
@@ -895,21 +893,21 @@ var Game = (function() {
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  Game.prototype.confirmPass = function(yes) {
+  Game.prototype.confirmPass = function(yes: boolean) {
     // Handle reply to pass confirmation prompt
     this.showingDialog = null;
     if (yes)
       this.sendMove([ "pass" ]);
   };
 
-  Game.prototype.confirmChallenge = function(yes) {
+  Game.prototype.confirmChallenge = function(yes: boolean) {
     // Handle reply to challenge confirmation prompt
     this.showingDialog = null;
     if (yes)
       this.sendMove([ "chall" ]);
   };
 
-  Game.prototype.confirmExchange = function(yes) {
+  Game.prototype.confirmExchange = function(yes: boolean) {
     // Handle reply to exchange confirmation prompt
     let exch = "";
     this.showingDialog = null;
@@ -926,7 +924,7 @@ var Game = (function() {
       this.sendMove([ "exch=" + exch ]);
   };
 
-  Game.prototype.confirmResign = function(yes) {
+  Game.prototype.confirmResign = function(yes: boolean) {
     // Handle reply to resignation confirmation prompt
     this.showingDialog = null;
     if (yes)
@@ -970,7 +968,7 @@ var Game = (function() {
   Game.prototype.saveTiles = function() {
     // Save the current unglued tile configuration to local storage
     var tp = [];
-    var sq, t, tile;
+    var sq: string, t, tile: string;
     var tilesPlaced = this.tilesPlaced();
     for (let i = 0; i < tilesPlaced.length; i++) {
       sq = tilesPlaced[i];
@@ -996,7 +994,7 @@ var Game = (function() {
     if (!savedTiles.length)
       // Nothing to do
       return;
-    var sq, saved_sq, tile;
+    var tile;
     var savedLetters = [];
     var rackLetters = [];
     var rackTiles = {};
@@ -1024,12 +1022,12 @@ var Game = (function() {
     // cases, for instance multiple instances of the same letter tile,
     // that make this code less than straightforward.
     for (let i = 0; i < savedTiles.length; i++) {
-      saved_sq = savedTiles[i].sq;
+      let saved_sq = savedTiles[i].sq;
       if (!(saved_sq in this.tiles)) {
         // The saved destination square is empty:
         // find the tile in the saved rack and move it there
         tile = savedTiles[i].tile;
-        for (sq in rackTiles)
+        for (let sq in rackTiles)
           if (rackTiles.hasOwnProperty(sq) &&
             rackTiles[sq].tile == tile.charAt(0)) {
             // Found the tile (or its equivalent) in the rack: move it
@@ -1050,7 +1048,7 @@ var Game = (function() {
     }
     // Allocate any remaining tiles to free slots in the rack
     let j = 1;
-    for (sq in rackTiles)
+    for (let sq in rackTiles)
       if (rackTiles.hasOwnProperty(sq)) {
         // Look for a free slot in the rack
         while(("R" + j) in this.tiles)
@@ -1126,21 +1124,21 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.wordScore = function(row, col) {
+  Game.prototype.wordScore = function(row: number, col: number): number {
     // Return the word score multiplier at the given coordinate
     // on the game's board
     var wsc = BOARD[this.board_type].WORDSCORE;
     return parseInt(wsc[row].charAt(col)) || 1;
   };
 
-  Game.prototype.letterScore = function(row, col) {
+  Game.prototype.letterScore = function(row: number, col: number): number {
     // Return the letter score multiplier at the given coordinate
     // on the game's board
     var lsc = BOARD[this.board_type].LETTERSCORE;
     return parseInt(lsc[row].charAt(col)) || 1;
   };
 
-  Game.prototype.squareType = function(row, col) {
+  Game.prototype.squareType = function(row: number, col: number): string {
     // Return the square type, or "" if none
     var wsc = this.wordScore(row, col);
     if (wsc == 2)
@@ -1155,7 +1153,7 @@ var Game = (function() {
     return ""; // Plain square
   };
 
-  Game.prototype.squareClass = function(coord) {
+  Game.prototype.squareClass = function(coord: string): string {
     // Given a coordinate in string form, return the square's type/class
     if (!coord || coord[0] == "R")
       return undefined;
@@ -1163,7 +1161,7 @@ var Game = (function() {
     return this.squareType(vec.row, vec.col) || undefined;
   };
 
-  Game.prototype.tileAt = function(row, col) {
+  Game.prototype.tileAt = function(row: number, col: number) {
     return this.tiles[coord(row, col)] || null;
   };
 

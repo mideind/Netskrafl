@@ -353,7 +353,7 @@ def test_report(client, u1, u2):
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
-    # User u2 reports nonexisting user (this currently works fine)
+    # User u2 reports nonexisting user (which should return ok=False)
     resp = client.post("/reportuser", data=dict(reported="xxx", code=1))
     assert resp.status_code == 200
     assert "ok" in resp.json

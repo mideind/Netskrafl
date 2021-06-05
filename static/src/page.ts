@@ -1,6 +1,6 @@
 /*
 
-	Page.js
+	Page.ts
 
 	Single page UI for Explo using the Mithril library
 
@@ -18,32 +18,32 @@
 
 */
 
-/* global m:false, Promise:false, $state:false, Game:false,
-   loginFirebase, attachFirebaseListener, detachFirebaseListener,
-   toVector, coord, registerSalesCloud, setTimeout, addPinchZoom
-*/
+export { main };
 
-/* eslint-disable indent */
-/* eslint-disable no-console */
-/* eslint-disable no-unused-vars */
-
-var main = (function() {
-
-"use strict";
+import { Game, coord, toVector } from "./game.js";
+import { addPinchZoom, registerSalesCloud } from "./util.js";
+import { attachFirebaseListener, detachFirebaseListener, loginFirebase } from "./channel.js";
+import {
+  m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
+} from "./mithril.js";
 
 // Constants
 
-var RACK_SIZE = 7;
-var BAG_TILES_PER_LINE = 19;
-var BLANK_TILES_PER_LINE = 6;
-var ROUTE_PREFIX = "/page#!";
-var ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
-var BOARD_PREFIX = "/board?game=";
-var BOARD_PREFIX_LEN = BOARD_PREFIX.length;
-var MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
+const RACK_SIZE = 7;
+const BAG_TILES_PER_LINE = 19;
+const BLANK_TILES_PER_LINE = 6;
+const ROUTE_PREFIX = "/page#!";
+const ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
+const BOARD_PREFIX = "/board?game=";
+const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
+const MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 
-function main() {
+var $state: any;
+
+function main(state: any) {
   // The main UI entry point, called from page.html
+
+  $state = state;
 
   let
     settings = getSettings(),
@@ -143,7 +143,7 @@ function createModel(settings) {
       url: "/gamestate",
       body: { game: uuid }
     })
-    .then((result) => {
+    .then((result: any) => {
       if (this.game !== null)
         // We have a prior game in memory:
         // clean it up before allocating the new one
@@ -409,7 +409,7 @@ function createModel(settings) {
         $state.newBag = this.user.newbag;
         // Give the game instance a chance to update its state
         if (this.game !== null)
-          this.game.notifyUserChange($state.userNick);
+          this.game.notifyUserChange();
         // Complete: call success function
         if (successFunc !== undefined)
           successFunc();
@@ -574,42 +574,17 @@ function createView() {
   // Additionally, a view instance has a current dialog window stack.
 
   // Map of available dialogs
-  var dialogViews = {
+  const dialogViews = {
     "userprefs":
-      function(model, actions, args) {
-        return vwUserPrefs.call(this, model, actions);
-      },
+      (view, model, actions) => vwUserPrefs.call(view, model, actions),
     "userinfo":
-      function(model, actions, args) {
-        return vwUserInfo.call(this, model, actions, args);
-      },
+      (view, model, actions, args) => vwUserInfo.call(view, model, actions, args),
     "challenge":
-      function(model, actions, args) {
-        return vwChallenge.call(this, model, actions, args);
-      },
+      (view, model, actions, args) => vwChallenge.call(view, model, actions, args),
     "promo":
-      function(model, actions, args) {
-        return vwPromo.call(this, model, actions, args);
-      },
+      (view, model, actions, args) => vwPromo.call(view, model, actions, args),
     "spinner":
-      function(model, actions, args) {
-        return vwSpinner.call(this, model, actions);
-      }
-  };
-
-  return {
-    appView: vwApp,
-    dialogStack: [],
-    dialogViews: dialogViews,
-    pushDialog: pushDialog,
-    popDialog: popDialog,
-    popAllDialogs: popAllDialogs,
-    notifyMediaChange: notifyMediaChange,
-    notifyChatMessage: notifyChatMessage,
-    startSpinner: startSpinner,
-    stopSpinner: stopSpinner,
-    isDialogShown: isDialogShown,
-    showUserInfo: showUserInfo
+      () => vwSpinner(),
   };
 
   function vwApp(model, actions) {
@@ -651,17 +626,17 @@ function createView() {
       if (v === undefined)
         console.log("Unknown dialog name: " + dialog.name);
       else
-        views.push(v.call(this, model, actions, dialog.args));
+        views.push(v(this, model, actions, dialog.args));
     }
     // Overlay a spinner, if active
     if (model.spinners > 0)
-      views.push(vwSpinner.call(this, model, actions));
+      views.push(vwSpinner());
     return views;
   }
 
   // Dialog support
 
-  function pushDialog(dialogName, dialogArgs) {
+  function pushDialog(dialogName: string, dialogArgs: any) {
     this.dialogStack.push({ name: dialogName, args: dialogArgs });
     m.redraw(); // Ensure that the dialog is shown
   }
@@ -682,6 +657,14 @@ function createView() {
 
   function isDialogShown() {
     return this.dialogStack.length > 0;
+  }
+
+  function startSpinner() {
+    this.pushDialog("spinner");
+  }
+
+  function stopSpinner() {
+    this.popDialog();
   }
 
   function notifyMediaChange(model) {
@@ -710,7 +693,7 @@ function createView() {
     m.redraw();
   }
 
-  function showUserInfo(userid, nick, fullname) {
+  function showUserInfo(userid: string, nick: string, fullname: string) {
     // Show a user info dialog
     this.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
   }
@@ -762,7 +745,7 @@ function createView() {
     );
   }
 
-  function ExploLogo(initialVnode) {
+  const ExploLogo: ComponentFunc<{ scale: number; legend: string; }> = function(initialVnode) {
 
     // The Explo logo, with or without the legend ('explo')
 
@@ -770,7 +753,7 @@ function createView() {
     var legend = initialVnode.attrs.legend;
 
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         return m("img",
           legend ?
             {
@@ -787,11 +770,11 @@ function createView() {
         );
       }
     };
-  }
+  };
 
-  function LeftLogo(initialVnode) {
+  const LeftLogo: ComponentFunc<{}> = function (initialVnode) {
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         return m(".logo",
           m(m.route.Link,
             { href: '/main', class: "nodecorate" },
@@ -800,48 +783,77 @@ function createView() {
         );
       }
     };
-  }
+  };
 
-  function TogglerReady(initialVnode) {
+  const TogglerReady: ComponentFunc<{model: any}> = function(initialVnode) {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
 
     var model = initialVnode.attrs.model;
 
-    function toggleFunc(state) {
+    function toggleFunc(state: boolean) {
       $state.ready = state;
       model.setUserPref({ ready: state });
     }
 
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         return vwToggler(
           "ready", $state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
           "Tek við áskorunum!"
         );
       }
     };
-  }
+  };
 
-  function TogglerReadyTimed(initialVnode) {
+  const TogglerReadyTimed: ComponentFunc<{ model: any }> = function(initialVnode) {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept timed challenges
 
     var model = initialVnode.attrs.model;
 
-    function toggleFunc(state) {
+    function toggleFunc(state: boolean) {
       $state.readyTimed = state;
       model.setUserPref({ ready_timed: state });
     }
 
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         return vwToggler(
           "timed", $state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
           "Til í viðureign með klukku!"
         );
       }
     };
+  };
+
+  function vwDialogButton(id: string, title: string, func: EventHandler,
+    content: VnodeChildren, tabindex: number) {
+    // Create a .modal-close dialog button
+    var attrs: VnodeAttrs = {
+      id: id,
+      onclick: func,
+      title: title
+    };
+    if (tabindex !== undefined)
+      attrs.tabindex = tabindex;
+    return m(DialogButton, attrs, content);
+  }
+
+  function blinker() {
+    // Toggle the 'over' class on all elements having the 'blinking' class
+    var blinkers = document.getElementsByClassName('blinking');
+    for (let i = 0; i < blinkers.length; i++)
+      blinkers[i].classList.toggle("over");
+  }
+
+  function vwSpinner() {
+    // Show a spinner wait box
+    return m(
+      ".modal-dialog",
+      { id: 'spinner-dialog', style: { visibility: 'visible' } },
+      m("div", { id: "user-load", style: { display: "block" } })
+    );
   }
 
   // Login screen
@@ -899,7 +911,7 @@ function createView() {
             m("button.login",
               {
                 type: 'submit',
-                onclick: function(ev) {
+                onclick: (ev) => {
                   window.location.href = "/page";
                 }
               },
@@ -928,7 +940,7 @@ function createView() {
             m("button.login",
               {
                 type: 'submit',
-                onclick: function(ev) {
+                onclick: (ev) => {
                   window.location.href = "/page";
                 }
               },
@@ -944,7 +956,7 @@ function createView() {
 
   // A control that rigs up a tabbed view of raw HTML
 
-  function vwTabsFromHtml(html, id, tabNumber, createFunc) {
+  function vwTabsFromHtml(html: string, id: string, tabNumber: number, createFunc) {
     // The function assumes that 'this' is the current view object
     if (!html)
       return "";
@@ -1008,20 +1020,20 @@ function createView() {
     var err = model.userErrors || { };
     var view = this;
 
-    function vwErrMsg(propname) {
+    function vwErrMsg(propname: string) {
       // Show a validation error message returned from the server
       return err.hasOwnProperty(propname) ?
         m(".errinput", [ glyph("arrow-up"), nbsp(), err[propname] ]) : "";
     }
 
-    function playAudio(elemId) {
+    function playAudio(elemId: string) {
       // Play an audio file
-      var sound = document.getElementById(elemId);
+      const sound = document.getElementById(elemId) as HTMLMediaElement;
       if (sound)
         sound.play();
     }
 
-    function getToggle(elemId) {
+    function getToggle(elemId: string) {
       var cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
       return cls2.contains("selected");
     }
@@ -1041,9 +1053,9 @@ function createView() {
       model.saveUser(() => { view.popDialog(); });
     }
 
-    function initFocus(vnode) {
+    function initFocus(vnode: Vnode) {
       // Set the focus on the nickname field when the dialog is displayed
-      vnode.dom.querySelector("#nickname").focus();
+      (vnode.dom.querySelector("#nickname") as HTMLElement).focus();
     }
 
     return m(".modal-dialog",
@@ -1124,7 +1136,7 @@ function createView() {
                 m(".dialog-spacer",
                   [
                     m("span.caption", "Sýna reitagildi:"),
-                    vwToggler("beginner", user.beginner, "6",
+                    vwToggler("beginner", user.beginner, 6,
                       nbsp(), glyph("ok")),
                     m(".subexplain",
                       [
@@ -1169,14 +1181,14 @@ function createView() {
             (ev) => { view.popDialog(); ev.preventDefault(); },
             glyph("remove"), 10),
           vwDialogButton("user-logout", "Skrá mig út",
-            function(ev) {
+            (ev) => {
               window.location.href = user.logout_url;
               ev.preventDefault();
             },
             [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
             vwDialogButton("user-unfriend", "Hætta sem vinur",
-              function(ev) {
+              (ev) => {
                 window.location.href = user.unfriend_url;
                 ev.preventDefault();
               },
@@ -1187,6 +1199,7 @@ function createView() {
               (ev) => {
                 // Invoke the friend promo dialog
                 view.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
+                ev.preventDefault();
               },
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
             )
@@ -1348,7 +1361,7 @@ function createView() {
               tabindex: 9,
               onclick: (ev) => {
                 // Issue a new challenge
-                var duration = document.querySelector("div.chall-time.selected").id.slice(6);
+                var duration: string|number = document.querySelector("div.chall-time.selected").id.slice(6);
                 if (duration == "none")
                   duration = 0;
                 else
@@ -1700,7 +1713,7 @@ function createView() {
           return m("div",
             {
               id: showReceived ? 'chall-received' : 'chall-sent',
-              oninit: function(vnode) {
+              oninit: (vnode) => {
                 if (model.challengeList === null)
                   model.loadChallengeList();
               }
@@ -1911,9 +1924,10 @@ function createView() {
           return m(EloPage, { id: "elolist", model: model, view: view });
         // Show normal user list
         var list = [];
-        if (model.userList === undefined)
+        if (model.userList === undefined) {
           // We are loading a fresh user list
-          ;
+          /* pass */
+        }
         else
         if (model.userList === null || model.userListCriteria.query != listType)
           model.loadUserList({ query: listType, spec: "" }, true);
@@ -2069,9 +2083,9 @@ function createView() {
     var apl1 = game && game.autoplayer[1];
     var nick0 = game ? game.nickname[0] : "";
     var nick1 = game ? game.nickname[1] : "";
-    var player = game ? game.player : 0;
-    var localturn = game ? game.localturn : false;
-    var tomove;
+    var player: number = game ? game.player : 0;
+    var localturn: boolean = game ? game.localturn : false;
+    var tomove: string;
     var gameover = game ? game.over : true;
 
     function lookAtPlayer(player, side, ev) {
@@ -2101,7 +2115,7 @@ function createView() {
       if (apl0)
         // Player 0 is a robot (autoplayer)
         return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
-      tomove = gameover || (localturn ^ (player === 0)) ? "" : ".tomove";
+      tomove = gameover || (localturn !== (player === 0)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
         { id: "player-0", onclick: (ev) => lookAtPlayer(player, 0, ev) },
         [ m("span.left-to-move"), nick0 ]
@@ -2112,12 +2126,112 @@ function createView() {
       if (apl1)
         // Player 1 is a robot (autoplayer)
         return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
-      tomove = gameover || (localturn ^ (player === 1)) ? "" : ".tomove";
+      tomove = gameover || (localturn !== (player === 1)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
         { id: "player-1", onclick: (ev) => lookAtPlayer(player, 1, ev) },
         [ m("span.right-to-move"), nick1 ]
       );
     }
+  }
+
+  function vwTwoLetter(initialVnode) {
+
+    // The two-letter-word list tab
+    let page = 0;
+    let game = initialVnode.attrs.game;
+    let twoLetters = game.twoLetterWords();
+
+    function renderWord(bold, w) {
+      // For the first two-letter word in each group,
+      // render the former letter in bold
+      if (!bold)
+        return m(".twoletter-word", w);
+      if (page == 0)
+        return m(".twoletter-word", [ m("b", w[0]), w[1] ]);
+      else
+        return m(".twoletter-word", [ w[0], m("b", w[1]) ]);
+    }
+
+    return {
+      view: (vnode) => {
+        let twoLetterWords = twoLetters[page];
+        let twoLetterList = [];
+        for (let i = 0; i < twoLetterWords.length; i++) {
+          let twl = twoLetterWords[i][1];
+          let sublist = [];
+          for (let j = 0; j < twl.length; j++)
+            sublist.push(renderWord(j == 0, twl[j]));
+          twoLetterList.push(
+            m(".twoletter-group", sublist)
+          );
+        }
+        return m(".twoletter",
+          {
+            // Switch between pages when clicked
+            onclick: () => { page = 1 - page; },
+            style: "z-index: 6" // Appear on top of board on mobile
+          },
+          // Show the requested page
+          m(".twoletter-area" + (game.isTimed() ? ".with-clock" : ""),
+            {
+              title: page == 0 ?
+                "Smelltu til að raða eftir seinni staf" :
+                "Smelltu til að raða eftir fyrri staf"
+            },
+            twoLetterList
+          )
+        );
+      }
+    };
+  }
+
+  function buttonState(game) {
+    // Calculate a set of booleans describing the state of the game
+    let s: any = {};
+    s.tilesPlaced = game.tilesPlaced().length > 0;
+    s.gameOver = game.over;
+    s.congratulate = game.congratulate;
+    s.localTurn = game.localturn;
+    s.gameIsManual = game.manual;
+    s.challengeAllowed = game.chall;
+    s.lastChallenge = game.last_chall;
+    s.showingDialog = game.showingDialog !== null;
+    s.exchangeAllowed = game.xchg;
+    s.wordGood = game.wordGood;
+    s.wordBad = game.wordBad;
+    s.canPlay = false;
+    s.tardyOpponent = !s.localTurn && !s.gameOver && game.overdue;
+    s.showResign = false;
+    s.showExchange = false;
+    s.showPass = false;
+    s.showRecall = false;
+    s.showScramble = false;
+    s.showMove = false;
+    s.showChallenge = false;
+    s.showChallengeInfo = false;
+    if (s.localTurn && !s.gameOver) {
+      // This player's turn
+      if (s.lastChallenge) {
+        s.showChallenge = true;
+        s.showPass = true;
+        s.showChallengeInfo = true;
+      }
+      else {
+        s.showMove = s.tilesPlaced;
+        s.showExchange = !s.tilesPlaced;
+        s.showPass = !s.tilesPlaced;
+        s.showResign = !s.tilesPlaced;
+        s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
+      }
+    }
+    if (s.showMove && (s.wordGood || s.gameIsManual))
+      s.canPlay = true;
+    if (!s.gameOver)
+      if (s.tilesPlaced)
+        s.showRecall = true;
+      else
+        s.showScramble = true;
+    return s;
   }
 
   // Game screen
@@ -2128,6 +2242,35 @@ function createView() {
     var game = model.game;
     var view = this;
 
+    function vwBeginner() {
+      // Show the board color guide
+      return m(".board-help",
+        { title: 'Hvernig reitirnir margfalda stigin' },
+        [
+          m(".board-help-close[title='Loka þessari hjálp']",
+            {
+              onclick: (ev) => {
+                // Close the guide and set a preference not to see it again
+                $state.beginner = false;
+                model.setUserPref({ beginner: false });
+                ev.preventDefault();
+              }
+            },
+            glyph("remove")
+          ),
+          m(".board-colors",
+            [
+              m(".board-color[id='triple-word']", ["3 x", m("br"), "orð"] ),
+              m(".board-color[id='double-word']", ["2 x", m("br"), "orð"] ),
+              m(".board-color[id='triple-letter']", ["3 x", m("br"), "stafur"] ),
+              m(".board-color[id='double-letter']", ["2 x", m("br"), "stafur"] ),
+              m(".board-color[id='single-letter']", ["1 x", m("br"), "stafur"] )
+            ]
+          )
+        ]
+      );
+    }
+
     function vwRightColumn() {
       // A container for the right-side header and area components
 
@@ -2137,7 +2280,7 @@ function createView() {
           // Not a timed game
           return m.fragment({}, []);
 
-        function vwClockFace(cls, txt, runningOut, blinking) {
+        function vwClockFace(cls: string, txt: string, runningOut: boolean, blinking: boolean) {
           return m("h3." + cls
             + (runningOut ? ".running-out" : "")
             + (blinking ? ".blink" : ""),
@@ -2208,7 +2351,7 @@ function createView() {
       function vwRightMessage() {
         // Display a status message in the mobile UI
         var s = buttonState(game);
-        var msg = "";
+        var msg: string|Array<any> = "";
         var player = game.player;
         var opp = game.nickname[1 - player];
         var move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
@@ -2303,19 +2446,19 @@ function createView() {
       {
         // Allow tiles to be dropped on the background,
         // thereby transferring them back to the rack
-        ondragenter: function(ev) {
+        ondragenter: (ev) => {
           ev.preventDefault();
           ev.dataTransfer.dropEffect = 'move';
           ev.redraw = false;
           return false;
         },
-        ondragover: function(ev) {
+        ondragover: (ev) => {
           // This is necessary to allow a drop
           ev.preventDefault();
           ev.redraw = false;
           return false;
         },
-        ondrop: function(ev) {
+        ondrop: (ev) => {
           ev.stopPropagation();
           // Move the tile from the board back to the rack
           var from = ev.dataTransfer.getData("text");
@@ -2340,7 +2483,7 @@ function createView() {
         ),
         // The left margin stuff: back button, square color help, info/help button
         m(BackButton),
-        $state.beginner ? vwBeginner(game) : "",
+        $state.beginner ? vwBeginner() : "",
         vwInfo()
       ]
     );
@@ -2477,7 +2620,7 @@ function createView() {
     return m.fragment({}, r);
   }
 
-  function vwTab(game, tabid, title, icon, func, alert) {
+  function vwTab(game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
     // A clickable tab for the right-side area content
     var sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
@@ -2485,7 +2628,7 @@ function createView() {
         id: "tab-" + tabid,
         className: alert ? "alert" : "",
         title: title,
-        onclick: function(ev) {
+        onclick: () => {
           // Select this tab
           if (game && game.sel != tabid) {
             game.sel = tabid;
@@ -2639,7 +2782,7 @@ function createView() {
                 disabled: (numMessages >= MAX_CHAT_MESSAGES),
                 oncreate: focus,
                 onupdate: focus,
-                onkeypress: function(ev) { if (ev.key == "Enter") sendMessage(); }
+                onkeypress: (ev) => { if (ev.key == "Enter") sendMessage(); }
               }
             ),
             m(DialogButton,
@@ -2813,21 +2956,16 @@ function createView() {
     var movelist = document.querySelectorAll("div.movelist .move");
     if (!movelist || !movelist.length)
       return;
-    var target = movelist[movelist.length - 1];
-    var parent = target.parentNode;
+    var target = movelist[movelist.length - 1] as HTMLElement;
+    var parent = target.parentNode as HTMLElement;
     var len = parent.getAttribute("data-len");
-    if (!len) {
-      len = 0;
-    }
-    else {
-      len = parseInt(len);
-    }
-    if (movelist.length > len) {
+    var intLen = (!len) ? 0 : parseInt(len);
+    if (movelist.length > intLen) {
       // The list has grown since we last updated it:
       // scroll to the bottom and mark its length
       parent.scrollTop = target.offsetTop;
     }
-    parent.setAttribute("data-len", movelist.length);
+    parent.setAttribute("data-len", movelist.length.toString());
   }
 
   function vwMove(game, move, info) {
@@ -2961,17 +3099,17 @@ function createView() {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
       playerColor = "1";
     }
-    var attribs = { title: title };
+    var attribs: VnodeAttrs = { title: title };
     if ($state.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual)
         // Tile move and not a manual game: allow word lookup
-        attribs.onclick = function() { window.open('http://malid.is/leit/' + tiles, 'malid'); };
+        attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
       // Highlight the move on the board while hovering over it
-      attribs.onmouseout = function() {
+      attribs.onmouseout = () => {
         move.highlighted = false;
         highlightMove(rawCoord, tiles, playerColor, false);
       };
-      attribs.onmouseover = function() {
+      attribs.onmouseover = () => {
         move.highlighted = true;
         highlightMove(rawCoord, tiles, playerColor, true);
       };
@@ -3078,9 +3216,9 @@ function createView() {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
       playerColor = "1";
     }
-    var attribs = { title: title };
+    var attribs: VnodeAttrs = { title: title };
     // Word lookup
-    attribs.onclick = () => { window.open('http://malid.is/leit/' + word, 'malid'); };
+    attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
       move.highlighted = true;
@@ -3340,7 +3478,7 @@ function createView() {
         // A single tile, on the board or in the rack
         let t = game.tiles[coord];
         let classes = [ ".tile" ];
-        let attrs = {};
+        let attrs: VnodeAttrs = {};
         if (t.tile == '?')
           classes.push("blanktile");
         if (t.letter == 'z' || t.letter == 'q' || t.letter == 'x')
@@ -3416,7 +3554,7 @@ function createView() {
     };
   }
 
-  function ReviewTile(initialVnode) {
+  const ReviewTile: ComponentFunc<{ coord: string, game: any }> = (initialVnode) => {
     // Return a td element that wraps an 'inert' tile in a review screen
     return {
       view: (vnode) => {
@@ -3431,9 +3569,9 @@ function createView() {
         );
       }
     };
-  }
+  };
 
-  function DropTarget(initialVnode) {
+  const DropTarget: ComponentFunc<{ model: any; coord: string; }> = function(initialVnode) {
     // Return a td element that is a target for dropping tiles
     return {
       view: (vnode) => {
@@ -3456,13 +3594,13 @@ function createView() {
             ondragenter: (ev) => {
               ev.preventDefault();
               ev.dataTransfer.dropEffect = 'move';
-              ev.currentTarget.classList.add("over");
+              (ev.currentTarget as HTMLElement).classList.add("over");
               ev.redraw = false;
               return false;
             },
             ondragleave: (ev) => {
               ev.preventDefault();
-              ev.currentTarget.classList.remove("over");
+              (ev.currentTarget as HTMLElement).classList.remove("over");
               ev.redraw = false;
               return false;
             },
@@ -3474,7 +3612,7 @@ function createView() {
             },
             ondrop: (ev) => {
               ev.stopPropagation();
-              ev.currentTarget.classList.remove("over");
+              (ev.currentTarget as HTMLElement).classList.remove("over");
               // Move the tile from the source to the destination
               var from = ev.dataTransfer.getData("text");
               game.attemptMove(from, coord);
@@ -3489,7 +3627,7 @@ function createView() {
                 ev.stopPropagation();
                 game.attemptMove(game.selectedSq, coord);
                 game.selectedSq = null;
-                ev.currentTarget.classList.remove("sel");
+                (ev.currentTarget as HTMLElement).classList.remove("sel");
                 model.updateScale();
                 return false;
               }
@@ -3498,10 +3636,10 @@ function createView() {
               // If a tile is selected, show a red selection square
               // around this square when the mouse is over it
               if (game.selectedSq !== null)
-                ev.currentTarget.classList.add("sel");
+                (ev.currentTarget as HTMLElement).classList.add("sel");
             },
             onmouseout: (ev) => {
-              ev.currentTarget.classList.remove("sel");
+              (ev.currentTarget as HTMLElement).classList.remove("sel");
             }
           },
           vnode.children
@@ -3510,7 +3648,7 @@ function createView() {
     };
   }
 
-  function Board(initialVnode) {
+  const Board: ComponentFunc<{ model: any; }> = function(initialVnode) {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
 
     function colid() {
@@ -3573,7 +3711,7 @@ function createView() {
       view: (vnode) => {
         let model = vnode.attrs.model;
         let scale = model.boardScale || 1.0;
-        let attrs = { };
+        let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, () => zoomIn(model), () => zoomOut(model));
         if (scale != 1.0)
@@ -3586,7 +3724,7 @@ function createView() {
     };
   }
 
-  function Rack(initialVnode) {
+  const Rack: ComponentFunc<{ model: any; }> = function(initialVnode) {
     // A rack of 7 tiles
     return {
       view: (vnode) => {
@@ -3721,18 +3859,22 @@ function createView() {
       // No stats yet loaded: do it now
       game.loadStats();
 
-    function fmt(p, digits, value) {
+    function fmt(p: string, digits?: number, value?: string | number) : string {
       var txt = value;
       if (txt === undefined && game.stats)
           txt = game.stats[p];
       if (txt === undefined)
         return "";
-      if (digits !== undefined && digits > 0)
-        txt = txt.toFixed(digits).replace(".", ","); // Convert decimal point to comma
+      if (typeof txt == "number") {
+        if (digits !== undefined && digits > 0)
+          txt = txt.toFixed(digits).replace(".", ","); // Convert decimal point to comma
+        else
+          txt = txt.toString();
+      }
       return txt;
     }
 
-    var leftPlayerColor, rightPlayerColor;
+    var leftPlayerColor: string, rightPlayerColor: string;
 
     if (game.player == 1) {
       rightPlayerColor = "humancolor";
@@ -3893,10 +4035,12 @@ function createView() {
     );
   }
 
-  function makeButton(cls, disabled, func, title, children, id) {
+  function makeButton(
+    cls: string, disabled: boolean, func: () => void, title: string, children?: any, id?: string
+  ) {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
-    let attr = {
+    let attr: VnodeAttrs = {
       onmouseout: buttonOut,
       onmouseover: buttonOver,
       title: title
@@ -3914,55 +4058,6 @@ function createView() {
     return m("." + cls + (disabled ? ".disabled" : ""),
       attr, children // children may be omitted
     );
-  }
-
-  function buttonState(game) {
-    // Calculate a set of booleans describing the state of the game
-    let s = {};
-    s.tilesPlaced = game.tilesPlaced().length > 0;
-    s.gameOver = game.over;
-    s.congratulate = game.congratulate;
-    s.localTurn = game.localturn;
-    s.gameIsManual = game.manual;
-    s.challengeAllowed = game.chall;
-    s.lastChallenge = game.last_chall;
-    s.showingDialog = game.showingDialog !== null;
-    s.exchangeAllowed = game.xchg;
-    s.wordGood = game.wordGood;
-    s.wordBad = game.wordBad;
-    s.canPlay = false;
-    s.tardyOpponent = !s.localTurn && !s.gameOver && game.overdue;
-    s.showResign = false;
-    s.showExchange = false;
-    s.showPass = false;
-    s.showRecall = false;
-    s.showScramble = false;
-    s.showMove = false;
-    s.showChallenge = false;
-    s.showChallengeInfo = false;
-    if (s.localTurn && !s.gameOver) {
-      // This player's turn
-      if (s.lastChallenge) {
-        s.showChallenge = true;
-        s.showPass = true;
-        s.showChallengeInfo = true;
-      }
-      else {
-        s.showMove = s.tilesPlaced;
-        s.showExchange = !s.tilesPlaced;
-        s.showPass = !s.tilesPlaced;
-        s.showResign = !s.tilesPlaced;
-        s.showChallenge = !s.tilesPlaced && s.gameIsManual && s.challengeAllowed;
-      }
-    }
-    if (s.showMove && (s.wordGood || s.gameIsManual))
-      s.canPlay = true;
-    if (!s.gameOver)
-      if (s.tilesPlaced)
-        s.showRecall = true;
-      else
-        s.showScramble = true;
-    return s;
   }
 
   function vwButtons(model) {
@@ -4266,121 +4361,20 @@ function createView() {
     return r;
   }
 
-  function vwTwoLetter(initialVnode) {
-
-    // The two-letter-word list tab
-    let page = 0;
-    let game = initialVnode.attrs.game;
-    let twoLetters = game.twoLetterWords();
-
-    function renderWord(bold, w) {
-      // For the first two-letter word in each group,
-      // render the former letter in bold
-      if (!bold)
-        return m(".twoletter-word", w);
-      if (page == 0)
-        return m(".twoletter-word", [ m("b", w[0]), w[1] ]);
-      else
-        return m(".twoletter-word", [ w[0], m("b", w[1]) ]);
-    }
-
-    return {
-      view: (vnode) => {
-        let twoLetterWords = twoLetters[page];
-        let twoLetterList = [];
-        for (let i = 0; i < twoLetterWords.length; i++) {
-          let twl = twoLetterWords[i][1];
-          let sublist = [];
-          for (let j = 0; j < twl.length; j++)
-            sublist.push(renderWord(j == 0, twl[j]));
-          twoLetterList.push(
-            m(".twoletter-group", sublist)
-          );
-        }
-        return m(".twoletter",
-          {
-            // Switch between pages when clicked
-            onclick: () => { page = 1 - page; },
-            style: "z-index: 6" // Appear on top of board on mobile
-          },
-          // Show the requested page
-          m(".twoletter-area" + (game.isTimed() ? ".with-clock" : ""),
-            {
-              title: page == 0 ?
-                "Smelltu til að raða eftir seinni staf" :
-                "Smelltu til að raða eftir fyrri staf"
-            },
-            twoLetterList
-          )
-        );
-      }
-    };
-  }
-
-  function vwBeginner(game) {
-    // Show the board color guide
-    return m(".board-help",
-      { title: 'Hvernig reitirnir margfalda stigin' },
-      [
-        m(".board-help-close[title='Loka þessari hjálp']",
-          {
-            onclick: (ev) => {
-              // Close the guide and set a preference not to see it again
-              $state.beginner = false;
-              model.setUserPref({ beginner: false });
-              ev.preventDefault();
-            }
-          },
-          glyph("remove")
-        ),
-        m(".board-colors",
-          [
-            m(".board-color[id='triple-word']", ["3 x", m("br"), "orð"] ),
-            m(".board-color[id='double-word']", ["2 x", m("br"), "orð"] ),
-            m(".board-color[id='triple-letter']", ["3 x", m("br"), "stafur"] ),
-            m(".board-color[id='double-letter']", ["2 x", m("br"), "stafur"] ),
-            m(".board-color[id='single-letter']", ["1 x", m("br"), "stafur"] )
-          ]
-        )
-      ]
-    );
-  }
-
-  function vwDialogButton(id, title, func, content, tabindex) {
-    // Create a .modal-close dialog button
-    var attrs = {
-      id: id,
-      onclick: func,
-      title: title
-    };
-    if (tabindex !== undefined)
-      attrs.tabindex = tabindex;
-    return m(DialogButton, attrs, content);
-  }
-
-  function blinker() {
-    // Toggle the 'over' class on all elements having the 'blinking' class
-    var blinkers = document.getElementsByClassName('blinking');
-    for (let i = 0; i < blinkers.length; i++)
-      blinkers[i].classList.toggle("over");
-  }
-
-  function vwSpinner(model, actions) {
-    // Show a spinner wait box
-    return m(
-      ".modal-dialog",
-      { id: 'spinner-dialog', style: { visibility: 'visible' } },
-      m("div", { id: "user-load", style: { display: "block" } })
-    );
-  }
-
-  function startSpinner() {
-    this.pushDialog("spinner");
-  }
-
-  function stopSpinner() {
-    this.popDialog();
-  }
+  return {
+    appView: vwApp,
+    dialogStack: [],
+    dialogViews: dialogViews,
+    pushDialog: pushDialog,
+    popDialog: popDialog,
+    popAllDialogs: popAllDialogs,
+    notifyMediaChange: notifyMediaChange,
+    notifyChatMessage: notifyChatMessage,
+    startSpinner: startSpinner,
+    stopSpinner: stopSpinner,
+    isDialogShown: isDialogShown,
+    showUserInfo: showUserInfo
+  };
 
 } // createView
 
@@ -4400,7 +4394,7 @@ function createActions(model, view) {
     detachListenerFromGame: detachListenerFromGame,
   };
 
-  function onNavigateTo(routeName, params) {
+  function onNavigateTo(routeName: string, params) {
     // We have navigated to a new route
     // If navigating to something other than help,
     // we need to have a logged-in user
@@ -4426,7 +4420,7 @@ function createActions(model, view) {
         // Different game than we had before: load it
         model.loadGame(params.uuid, undefined); // No funcComplete
       if (model.game !== null) {
-        var move = params.move;
+        let move = params.move;
         // Start with move number 0 by default
         move = (!move) ? 0 : parseInt(move);
         if (isNaN(move) || move < 0)
@@ -4521,8 +4515,8 @@ function createActions(model, view) {
     }
   }
 
-  function mediaMinWidth667(mql) {
-     if (mql.matches) {
+  function mediaMinWidth667(this: MediaQueryList, ev?: MediaQueryListEvent) {
+     if (this.matches) {
         // Take action when min-width exceeds 667
         // (usually because of rotation from portrait to landscape)
         // The board tab is not visible, so the movelist is default
@@ -4536,8 +4530,8 @@ function createActions(model, view) {
      }
   }
 
-  function mediaMinWidth768(mql) {
-    if (mql.matches) {
+  function mediaMinWidth768(this: MediaQueryList, ev?: MediaQueryListEvent) {
+    if (this.matches) {
       onFullScreen();
     }
     else {
@@ -4546,18 +4540,18 @@ function createActions(model, view) {
   }
 
   function initMediaListener() {
-     // Install listener functions for media changes
-     var mql;
-     mql = window.matchMedia("(min-width: 667px)");
-     if (mql) {
-        mediaMinWidth667(mql);
-        mql.addEventListener("change", mediaMinWidth667);
-     }
-     mql = window.matchMedia("(min-width: 768px)");
-     if (mql) {
-        mediaMinWidth768(mql);
-        mql.addEventListener("change", mediaMinWidth768);
-     }
+    // Install listener functions for media changes
+    var mql: MediaQueryList;
+    mql = window.matchMedia("(min-width: 667px)");
+    if (mql) {
+      mediaMinWidth667.call(mql);
+      mql.addEventListener("change", mediaMinWidth667);
+    }
+    mql = window.matchMedia("(min-width: 768px)");
+    if (mql) {
+      mediaMinWidth768.call(mql);
+      mql.addEventListener("change", mediaMinWidth768);
+    }
   }
 
   function initFirebaseListener() {
@@ -4576,7 +4570,7 @@ function createActions(model, view) {
       detachFirebaseListener('user/' + $state.userId);
   }
 
-  function attachListenerToGame(uuid) {
+  function attachListenerToGame(uuid: string) {
     // Listen to Firebase events on the /game/[gameId]/[userId] path
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     // New moves
@@ -4585,7 +4579,7 @@ function createActions(model, view) {
     attachFirebaseListener(basepath + "chat", onChatMessage);
   }
 
-  function detachListenerFromGame(uuid) {
+  function detachListenerFromGame(uuid: string) {
     // Stop listening to Firebase events on the /game/[gameId]/[userId] path
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     detachFirebaseListener(basepath + "move");
@@ -4616,14 +4610,20 @@ function createRouteResolver(model, actions, view) {
 
 // General-purpose Mithril components
 
-function TextInput(initialVnode) {
+const TextInput: ComponentFunc<{
+  initialValue: string;
+  class: string;
+  maxlength: number;
+  id: string;
+  tabindex: number;
+}> = function(initialVnode) {
 
   // Generic text input field
 
   let text = initialVnode.attrs.initialValue + "";
   let cls = initialVnode.attrs.class;
   if (cls)
-    cls = "." + cls.split().join(".");
+    cls = "." + cls.split(" ").join(".");
   else
     cls = "";
 
@@ -4636,7 +4636,7 @@ function TextInput(initialVnode) {
           maxlength: vnode.attrs.maxlength,
           tabindex: vnode.attrs.tabindex,
           value: text,
-          oninput: (ev) => { text = ev.target.value + ""; }
+          oninput: (ev) => { text = (ev.target as HTMLInputElement).value + ""; }
         }
       );
     }
@@ -4646,7 +4646,7 @@ function TextInput(initialVnode) {
 
 // A nice graphical toggler control
 
-function vwToggler(id, state, tabindex, opt1, opt2, func, small, title) {
+function vwToggler(id: string, state: boolean, tabindex: number, opt1, opt2, func?: Function, small?: boolean, title?: string) {
 
   var togglerId = id + "-toggler";
   var optionClass = ".option" + (small ? ".small" : "");
@@ -4680,7 +4680,7 @@ function vwToggler(id, state, tabindex, opt1, opt2, func, small, title) {
         title: title,
         onclick: () => doToggle(),
         onkeypress: (ev) => {
-          if (ev.keyCode === 0 || ev.keyCode == 32)
+          if (ev.key == " ")
             doToggle();
         }
       },
@@ -4692,7 +4692,11 @@ function vwToggler(id, state, tabindex, opt1, opt2, func, small, title) {
   ];
 }
 
-function MultiSelection(initialVnode) {
+const MultiSelection: ComponentFunc<{
+  initialSelection: number;
+  defaultClass: string;
+  selectedClass: string;
+}> = function(initialVnode) {
 
   // A multiple-selection div where users can click on child nodes
   // to select them, giving them an addional selection class,
@@ -4711,9 +4715,9 @@ function MultiSelection(initialVnode) {
             // to the parent div. Find which child originated the
             // click (possibly in descendant nodes) and set
             // the current selection accordingly.
-            let childNodes = vnode.dom.childNodes;
+            let childNodes = vnode.dom.childNodes as NodeListOf<HTMLElement>;
             for (let i = 0; i < childNodes.length; i++)
-              if (childNodes[i].contains(ev.target))
+              if (childNodes[i].contains(ev.target as Node))
                 sel = i;
             ev.stopPropagation();
           }
@@ -4731,9 +4735,9 @@ function MultiSelection(initialVnode) {
     }
   };
 
-}
+};
 
-function OnlinePresence(initialVnode) {
+const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = function(initialVnode) {
 
   // Shows an icon in grey or green depending on whether a given user
   // is online or not
@@ -4748,7 +4752,7 @@ function OnlinePresence(initialVnode) {
       url: "/onlinecheck",
       body: { user: userId }
     })
-    .then((json) => { online = json && json.online; });
+    .then((json: any) => { online = json && json.online; });
   }
 
   return {
@@ -4765,7 +4769,7 @@ function OnlinePresence(initialVnode) {
     }
   };
 
-}
+};
 
 function EloPage(initialVnode) {
 
@@ -4826,231 +4830,245 @@ function EloPage(initialVnode) {
     }
   };
 
-}
+};
 
-var EloList = {
+const EloList: ComponentFunc<{ view: any; model: any; id: string; sel: number; }> = function(initialVnode) {
 
-  view: (vnode) => {
+  return {
 
-    function itemize(item, i) {
+    view: (vnode) => {
 
-      // Generate a list item about a user in an Elo ranking table
+      function itemize(item, i: number) {
 
-      function rankStr(rank, ref) {
-         // Return a rank string or dash if no rank or not meaningful
-         // (i.e. if the reference, such as the number of games, is zero)
-         if (rank === 0 || (ref !== undefined && ref === 0))
-            return "--";
-         return rank.toString();
+        // Generate a list item about a user in an Elo ranking table
+
+        function rankStr(rank: number, ref?: number): string {
+          // Return a rank string or dash if no rank or not meaningful
+          // (i.e. if the reference, such as the number of games, is zero)
+          if (rank === 0 || (ref !== undefined && ref === 0))
+              return "--";
+          return rank.toString();
+        }
+
+        var isRobot = item.userid.indexOf("robot-") === 0;
+        var nick = item.nick;
+        var ch = "";
+        var info = nbsp();
+        var newbag = item.newbag;
+        if (item.userid != $state.userId && !item.inactive)
+          ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
+        if (isRobot) {
+          nick = m("span", [ glyph("cog"), nbsp(), nick ]);
+          newbag = $state.newBag; // Imitates the logged-in user
+        }
+        else
+        if (item.userid != $state.userId)
+          info = m("span.usr-info",
+            {
+              onclick: () => {
+                vnode.attrs.view.showUserInfo(item.userid, item.nick, item.fullname);
+              }
+            }
+          );
+        if (item.fairplay && !isRobot)
+          nick = m("span",
+            [ m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick ]);
+
+        return m(".listitem",
+          {
+            key: vnode.attrs.sel + i,
+            className : (i % 2 === 0 ? "oddlist" : "evenlist")
+          },
+          [
+            m("span.list-ch", ch),
+            m("span.list-rank.bold", rankStr(item.rank)),
+            m("span.list-rank-no-mobile", rankStr(item.rank_yesterday)),
+            m("span.list-rank-no-mobile", rankStr(item.rank_week_ago)),
+            m("span.list-nick-elo", { title: item.fullname }, nick),
+            m("span.list-elo.bold", item.elo),
+            m("span.list-elo-no-mobile", rankStr(item.elo_yesterday, item.games_yesterday)),
+            m("span.list-elo-no-mobile", rankStr(item.elo_week_ago, item.games_week_ago)),
+            m("span.list-elo-no-mobile", rankStr(item.elo_month_ago, item.games_month_ago)),
+            m("span.list-games.bold", item.games >= 100000 ? Math.round(item.games / 1000) + "K" : item.games),
+            m("span.list-ratio", item.ratio + "%"),
+            m("span.list-avgpts", item.avgpts),
+            m("span.list-info", { title: "Skoða feril" }, info),
+            m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, newbag))
+          ]
+        );
       }
 
-      var isRobot = item.userid.indexOf("robot-") === 0;
-      var nick = item.nick;
-      var ch = "";
-      var info = nbsp();
-      var newbag = item.newbag;
-      if (item.userid != $state.userId && !item.inactive)
-        ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
-      if (isRobot) {
-        nick = m("span", [ glyph("cog"), nbsp(), nick ]);
-        newbag = $state.newBag; // Imitates the logged-in user
+      var model = vnode.attrs.model;
+      var list = [];
+      if (model.userList === undefined) {
+        // Loading in progress
+        // pass
       }
       else
-      if (item.userid != $state.userId)
-        info = m("span.usr-info",
-          {
-            onclick: () => {
-              vnode.attrs.view.showUserInfo(item.userid, item.nick, item.fullname);
-            }
-          }
-        );
-      if (item.fairplay && !isRobot)
-        nick = m("span",
-          [ m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick ]);
-
-      return m(".listitem",
-        {
-          key: vnode.attrs.sel + i,
-          className : (i % 2 === 0 ? "oddlist" : "evenlist")
-        },
-        [
-          m("span.list-ch", ch),
-          m("span.list-rank.bold", rankStr(item.rank)),
-          m("span.list-rank-no-mobile", rankStr(item.rank_yesterday)),
-          m("span.list-rank-no-mobile", rankStr(item.rank_week_ago)),
-          m("span.list-nick-elo", { title: item.fullname }, nick),
-          m("span.list-elo.bold", item.elo),
-          m("span.list-elo-no-mobile", rankStr(item.elo_yesterday, item.games_yesterday)),
-          m("span.list-elo-no-mobile", rankStr(item.elo_week_ago, item.games_week_ago)),
-          m("span.list-elo-no-mobile", rankStr(item.elo_month_ago, item.games_month_ago)),
-          m("span.list-games.bold", item.games >= 100000 ? Math.round(item.games / 1000) + "K" : item.games),
-          m("span.list-ratio", item.ratio + "%"),
-          m("span.list-avgpts", item.avgpts),
-          m("span.list-info", { title: "Skoða feril" }, info),
-          m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, newbag))
-        ]
-      );
-    }
-
-    var model = vnode.attrs.model;
-    var list = [];
-    if (model.userList === undefined)
-      ; // Loading in progress
-    else
-    if (model.userList === null || model.userListCriteria.query != "elo" ||
-      model.userListCriteria.spec != vnode.attrs.sel)
-      // We're not showing the correct list: request a new one
-      model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
-    else
-      list = model.userList;
-    return m("div", { id: vnode.attrs.id }, list.map(itemize));
-  }
-
-};
-
-var RecentList = {
-
-  // Shows a list of recent games, stored in vnode.attrs.recentList
-
-  view: (vnode) => {
-
-    function itemize(item, i) {
-
-      // Generate a list item about a recently completed game
-
-      function durationDescription() {
-        // Format the game duration
-        var duration = "";
-        if (item.duration === 0) {
-          if (item.days || item.hours || item.minutes) {
-            if (item.days > 1)
-              duration = item.days.toString() + " dagar";
-            else
-            if (item.days == 1)
-              duration = "1 dagur";
-            if (item.hours > 0) {
-              if (duration.length)
-                duration += " og ";
-              duration += item.hours.toString() + " klst";
-            }
-            if (item.days === 0) {
-              if (duration.length)
-                duration += " og ";
-              if (item.minutes == 1)
-                duration += "1 mínúta";
-              else
-                duration += item.minutes.toString() + " mínútur";
-            }
-          }
-        }
-        else
-          // This was a timed game
-          duration = [
-            m("span.timed-btn", { title: 'Viðureign með klukku' }),
-            " 2 x " + item.duration + " mínútur"
-          ];
-        return duration;
+      if (model.userList === null || model.userListCriteria.query != "elo" ||
+        model.userListCriteria.spec != vnode.attrs.sel) {
+        // We're not showing the correct list: request a new one
+        model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
       }
-
-      // Show the Elo point adjustments resulting from the game
-      var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
-      var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
-      var eloAdjClass, eloAdjHumanClass;
-      // Find out the appropriate class to use depending on the adjustment sign
-      if (item.elo_adj !== null)
-        if (item.elo_adj > 0) {
-          eloAdj = "+" + eloAdj;
-          eloAdjClass = "elo-win";
-        }
-        else
-        if (item.elo_adj < 0)
-          eloAdjClass = "elo-loss";
-        else {
-          eloAdjClass = "elo-neutral";
-          eloAdj = glyph("stroller", { title: 'Byrjandi' });
-        }
-      if (item.human_elo_adj !== null)
-        if (item.human_elo_adj > 0) {
-          eloAdjHuman = "+" + eloAdjHuman;
-          eloAdjHumanClass = "elo-win";
-        }
-        else
-        if (item.human_elo_adj < 0)
-          eloAdjHumanClass = "elo-loss";
-        else {
-          eloAdjHumanClass = "elo-neutral";
-          eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
-        }
-      eloAdj = m("span",
-        { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
-        eloAdj
-      );
-      eloAdjHuman = m("span",
-        { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman == "" ? " invisible" : "") },
-        eloAdjHuman
-      );
-
-      return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
-        m(m.route.Link,
-          // Clicking on the link opens up the game
-          { href: "/game/" + item.url.slice(-36) },
-          [
-            m("span.list-win",
-              item.sc0 >= item.sc1 ?
-                glyph("bookmark", { title: item.sc0 == item.sc1 ? "Jafntefli" : "Sigur" }) :
-                glyphGrayed("bookmark", { title: "Tap" })
-            ),
-            m("span.list-ts-short", item.ts_last_move),
-            m("span.list-nick",
-              item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : item.opp
-            ),
-            m("span.list-s0", item.sc0),
-            m("span.list-colon", ":"),
-            m("span.list-s1", item.sc1),
-            m("span.list-elo-adj", eloAdjHuman),
-            m("span.list-elo-adj", eloAdj),
-            m("span.list-duration", durationDescription()),
-            m("span.list-manual",
-              item.manual ? { title: "Keppnishamur" } : { },
-              glyph("lightbulb", undefined, !item.manual)
-            )
-          ]
-        )
-      );
+      else {
+        list = model.userList;
+      }
+      return m("div", { id: vnode.attrs.id }, list.map(itemize));
     }
 
-    let list = vnode.attrs.recentList;
-    return m("div", { id: vnode.attrs.id }, !list ? "" : list.map(itemize));
-  }
-
+  };
 };
 
-function UserInfoDialog(initialVnode) {
+const RecentList: ComponentFunc<{ recentList: any; id: string; }> = function(initialVnode) {
+  // Shows a list of recent games, stored in vnode.attrs.recentList
+  
+  function itemize(item, i: number) {
+
+    // Generate a list item about a recently completed game
+
+    function durationDescription() {
+      // Format the game duration
+      var duration: string | any[] = "";
+      if (item.duration === 0) {
+        if (item.days || item.hours || item.minutes) {
+          if (item.days > 1)
+            duration = item.days.toString() + " dagar";
+          else
+          if (item.days == 1)
+            duration = "1 dagur";
+          if (item.hours > 0) {
+            if (duration.length)
+              duration += " og ";
+            duration += item.hours.toString() + " klst";
+          }
+          if (item.days === 0) {
+            if (duration.length)
+              duration += " og ";
+            if (item.minutes == 1)
+              duration += "1 mínúta";
+            else
+              duration += item.minutes.toString() + " mínútur";
+          }
+        }
+      }
+      else
+        // This was a timed game
+        duration = [
+          m("span.timed-btn", { title: 'Viðureign með klukku' }),
+          " 2 x " + item.duration + " mínútur"
+        ];
+      return duration;
+    }
+
+    // Show the Elo point adjustments resulting from the game
+    var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
+    var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
+    var eloAdjClass, eloAdjHumanClass;
+    // Find out the appropriate class to use depending on the adjustment sign
+    if (item.elo_adj !== null)
+      if (item.elo_adj > 0) {
+        eloAdj = "+" + eloAdj;
+        eloAdjClass = "elo-win";
+      }
+      else
+      if (item.elo_adj < 0)
+        eloAdjClass = "elo-loss";
+      else {
+        eloAdjClass = "elo-neutral";
+        eloAdj = glyph("stroller", { title: 'Byrjandi' });
+      }
+    if (item.human_elo_adj !== null)
+      if (item.human_elo_adj > 0) {
+        eloAdjHuman = "+" + eloAdjHuman;
+        eloAdjHumanClass = "elo-win";
+      }
+      else
+      if (item.human_elo_adj < 0)
+        eloAdjHumanClass = "elo-loss";
+      else {
+        eloAdjHumanClass = "elo-neutral";
+        eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
+      }
+    eloAdj = m("span",
+      { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
+      eloAdj
+    );
+    eloAdjHuman = m("span",
+      { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman == "" ? " invisible" : "") },
+      eloAdjHuman
+    );
+
+    return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
+      m(m.route.Link,
+        // Clicking on the link opens up the game
+        { href: "/game/" + item.url.slice(-36) },
+        [
+          m("span.list-win",
+            item.sc0 >= item.sc1 ?
+              glyph("bookmark", { title: item.sc0 == item.sc1 ? "Jafntefli" : "Sigur" }) :
+              glyphGrayed("bookmark", { title: "Tap" })
+          ),
+          m("span.list-ts-short", item.ts_last_move),
+          m("span.list-nick",
+            item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : item.opp
+          ),
+          m("span.list-s0", item.sc0),
+          m("span.list-colon", ":"),
+          m("span.list-s1", item.sc1),
+          m("span.list-elo-adj", eloAdjHuman),
+          m("span.list-elo-adj", eloAdj),
+          m("span.list-duration", durationDescription()),
+          m("span.list-manual",
+            item.manual ? { title: "Keppnishamur" } : { },
+            glyph("lightbulb", undefined, !item.manual)
+          )
+        ]
+      )
+    );
+  }
+
+  return {
+
+    view: (vnode) => {
+      let list = vnode.attrs.recentList;
+      return m("div", { id: vnode.attrs.id }, !list ? "" : list.map(itemize));
+    }
+
+  };
+};
+
+const UserInfoDialog: ComponentFunc<{
+  model: any;
+  view: any;
+  userid: string;
+  nick: string;
+  fullname: string;
+}> = function(initialVnode) {
 
   // A dialog showing the track record of a given user, including
   // recent games and total statistics
 
-  var stats = { };
+  var stats: { favorite?: boolean; friend?: boolean } = {};
   var recentList = [];
   var versusAll = true; // Show games against all opponents or just the current user?
 
-  function _updateStats(vnode) {
+  function _updateStats(vnode: typeof initialVnode) {
     // Fetch the statistics of the given user
     vnode.attrs.model.loadUserStats(vnode.attrs.userid,
-      function(json) {
+      (json: any) => {
         if (json && json.result === 0)
           stats = json;
         else
-          stats = { };
+          stats = {};
       }
     );
   }
 
-  function _updateRecentList(vnode) {
+  function _updateRecentList(vnode: typeof initialVnode) {
     // Fetch the recent game list of the given user
     vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
       versusAll ? null : $state.userId,
-      function(json) {
+      (json: any) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
         else
@@ -5059,7 +5077,7 @@ function UserInfoDialog(initialVnode) {
     );
   }
 
-  function _setVersus(vnode, vsState) {
+  function _setVersus(vnode: typeof initialVnode, vsState: boolean) {
     if (versusAll != vsState) {
       versusAll = vsState;
       _updateRecentList(vnode);
@@ -5160,151 +5178,160 @@ function UserInfoDialog(initialVnode) {
 
 }
 
-var BestDisplay = {
-
+const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = function(initialVnode) {
   // Display the best words and best games played for a given user
 
-  view: (vnode) => {
-    // Populate the highest score/best word field
-    let json = vnode.attrs.ownStats || { };
-    let best = [];
-    if (json.highest_score) {
-      best.push("Hæsta skor ");
-      best.push(m("b",
-        m(m.route.Link,
-          { href: "/game/" + json.highest_score_game },
-          json.highest_score
-        )
-      ));
+  return {
+
+    view: (vnode) => {
+      // Populate the highest score/best word field
+      let json = vnode.attrs.ownStats || { };
+      let best = [];
+      if (json.highest_score) {
+        best.push("Hæsta skor ");
+        best.push(m("b",
+          m(m.route.Link,
+            { href: "/game/" + json.highest_score_game },
+            json.highest_score
+          )
+        ));
+      }
+      if (json.best_word) {
+        if (best.length)
+          if (vnode.attrs.myself)
+            best.push(m("br")); // Own stats: Line break between parts
+          else
+            best.push(" | "); // Opponent stats: Divider bar between parts
+        let bw = json.best_word;
+        let s = [];
+        // Make sure blank tiles get a different color
+        for (let i = 0; i < bw.length; i++)
+          if (bw[i] == '?') {
+            s.push(m("span.blanktile", bw[i+1]));
+            i += 1;
+          }
+          else
+            s.push(bw[i]);
+        best.push("Besta orð ");
+        best.push(m("span.best-word", s));
+        best.push(", ");
+        best.push(m("b",
+          m(m.route.Link,
+            { href: "/game/" + json.best_word_game },
+            json.best_word_score
+          )
+        ));
+        best.push(" stig");
+      }
+      return m("p", { id: vnode.attrs.id }, best);
     }
-    if (json.best_word) {
-      if (best.length)
-        if (vnode.attrs.myself)
-          best.push(m("br")); // Own stats: Line break between parts
-        else
-          best.push(" | "); // Opponent stats: Divider bar between parts
-      let bw = json.best_word;
-      let s = [];
-      // Make sure blank tiles get a different color
-      for (let i = 0; i < bw.length; i++)
-        if (bw[i] == '?') {
-          s.push(m("span.blanktile", bw[i+1]));
-          i += 1;
-        }
-        else
-          s.push(bw[i]);
-      best.push("Besta orð ");
-      best.push(m("span.best-word", s));
-      best.push(", ");
-      best.push(m("b",
-        m(m.route.Link,
-          { href: "/game/" + json.best_word_game },
-          json.best_word_score
-        )
-      ));
-      best.push(" stig");
-    }
-    return m("p", { id: vnode.attrs.id }, best);
-  }
 
-};
+  };
+}
 
-var StatsDisplay = {
-
+const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = function(initialVnode) {
   // Display key statistics, provided via the ownStats attribute
 
-  oninit: (vnode) => {
-    this.sel = 1;
-  },
+  return {
 
-  view: (vnode) => {
+    oninit: (vnode) => {
+      this.sel = 1;
+    },
 
-    function vwStat(val, icon, suffix) {
-      // Display a user statistics figure, eventually with an icon
-      var txt = (val === undefined) ? "" : val.toString();
-      if (suffix !== undefined)
-        txt += suffix;
-      return icon ? [ glyph(icon), nbsp(), txt ] : txt;
+    view: (vnode) => {
+
+      function vwStat(val: number, icon?: string, suffix?: string): string | any[] {
+        // Display a user statistics figure, eventually with an icon
+        var txt = (val === undefined) ? "" : val.toString();
+        if (suffix !== undefined)
+          txt += suffix;
+        return icon ? [ glyph(icon), nbsp(), txt ] : txt;
+      }
+
+      // Display statistics about this user
+      var s = vnode.attrs.ownStats;
+      var winRatio = 0, winRatioHuman = 0;
+      if (s !== undefined && s !== null) {
+        if (s.games > 0)
+          winRatio = Math.round(100.0 * s.wins / s.games);
+        if (s.human_games > 0)
+          winRatioHuman = Math.round(100.0 * s.human_wins / s.human_games);
+      }
+      var avgScore = 0, avgScoreHuman = 0;
+      if (s !== undefined && s !== null) {
+        if (s.games > 0)
+          avgScore = Math.round(s.score / s.games);
+        if (s.human_games > 0)
+          avgScoreHuman = Math.round(s.human_score / s.human_games);
+      }
+
+      return m("div", { id: vnode.attrs.id },
+        [
+          m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
+            [
+              m(".option.small" + (this.sel == 1 ? ".selected" : ""),
+                { id: 'opt1', onclick: (ev) => { this.sel = 1; ev.preventDefault(); } },
+                glyph("user")
+              ),
+              m(".option.small" + (this.sel == 2 ? ".selected" : ""),
+                { id: 'opt2', onclick: (ev) => { this.sel = 2; ev.preventDefault(); } },
+                glyph("cog")
+              )
+            ]
+          ),
+          this.sel == 1 ? m("div",
+            { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block"} },
+            [
+              m(".stats-fig", { title: 'Elo-stig' },
+                s ? vwStat(s.human_elo, "crown") : ""),
+              m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+                s ? vwStat(s.human_games, "th") : ""),
+              m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+                vwStat(winRatioHuman, "bookmark", "%")),
+              m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+                vwStat(avgScoreHuman, "dashboard"))
+            ]
+          ) : "",
+          this.sel == 2 ? m("div",
+            { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block"} },
+            [
+              m(".stats-fig", { title: 'Elo-stig' },
+                s ? vwStat(s.elo, "crown") : ""),
+              m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+                s ? vwStat(s.games, "th") : ""),
+              m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+                vwStat(winRatio, "bookmark", "%")),
+              m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+                vwStat(avgScore, "dashboard"))
+            ]
+          ) : ""
+        ]
+      );
     }
 
-    // Display statistics about this user
-    var s = vnode.attrs.ownStats;
-    var winRatio = 0, winRatioHuman = 0;
-    if (s !== undefined && s !== null) {
-      if (s.games > 0)
-        winRatio = Math.round(100.0 * s.wins / s.games);
-      if (s.human_games > 0)
-        winRatioHuman = Math.round(100.0 * s.human_wins / s.human_games);
-    }
-    var avgScore = 0, avgScoreHuman = 0;
-    if (s !== undefined && s !== null) {
-      if (s.games > 0)
-        avgScore = Math.round(s.score / s.games);
-      if (s.human_games > 0)
-        avgScoreHuman = Math.round(s.human_score / s.human_games);
-    }
-
-    return m("div", { id: vnode.attrs.id },
-      [
-        m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
-          [
-            m(".option.small" + (this.sel == 1 ? ".selected" : ""),
-              { id: 'opt1', onclick: (ev) => { this.sel = 1; ev.preventDefault(); } },
-              glyph("user")
-            ),
-            m(".option.small" + (this.sel == 2 ? ".selected" : ""),
-              { id: 'opt2', onclick: (ev) => { this.sel = 2; ev.preventDefault(); } },
-              glyph("cog")
-            )
-          ]
-        ),
-        this.sel == 1 ? m("div",
-          { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block"} },
-          [
-            m(".stats-fig", { title: 'Elo-stig' },
-              s ? vwStat(s.human_elo, "crown") : ""),
-            m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
-              s ? vwStat(s.human_games, "th") : ""),
-            m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
-              vwStat(winRatioHuman, "bookmark", "%")),
-            m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
-              vwStat(avgScoreHuman, "dashboard"))
-          ]
-        ) : "",
-        this.sel == 2 ? m("div",
-          { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block"} },
-          [
-            m(".stats-fig", { title: 'Elo-stig' },
-              s ? vwStat(s.elo, "crown") : ""),
-            m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
-              s ? vwStat(s.games, "th") : ""),
-            m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
-              vwStat(winRatio, "bookmark", "%")),
-            m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
-              vwStat(avgScore, "dashboard"))
-          ]
-        ) : ""
-      ]
-    );
-  }
-
+  };
 };
 
-function PromoDialog(initialVnode) {
+const PromoDialog: ComponentFunc<{
+  model: any;
+  view: any;
+  kind: string;
+  initFunc: () => void;
+}> = function(initialVnode) {
 
   // A dialog showing promotional content fetched from the server
 
   let html = "";
 
-  function _fetchContent(vnode) {
+  function _fetchContent(vnode: typeof initialVnode) {
     // Fetch the content
     vnode.attrs.model.loadPromoContent(
       vnode.attrs.kind, (contentHtml) => { html = contentHtml; }
     );
   }
 
-  function _onUpdate(appView, initFunc, vnode) {
-    var noButtons = vnode.dom.getElementsByClassName("btn-promo-no");
+  function _onUpdate(appView, initFunc: () => void, vnode: Vnode) {
+    var noButtons = vnode.dom.getElementsByClassName("btn-promo-no") as HTMLCollectionOf<HTMLElement>;
     // Override onclick, onmouseover and onmouseout for No buttons
     for (let i = 0; i < noButtons.length; i++) {
       noButtons[i].onclick = () => appView.popDialog();
@@ -5312,7 +5339,7 @@ function PromoDialog(initialVnode) {
       noButtons[i].onmouseout = buttonOut;
     }
     // Override onmouseover and onmouseout for Yes buttons
-    var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes");
+    var yesButtons = vnode.dom.getElementsByClassName("btn-promo-yes") as HTMLCollectionOf<HTMLElement>;
     for (let i = 0; i < yesButtons.length; i++) {
       yesButtons[i].onmouseover = buttonOver;
       yesButtons[i].onmouseout = buttonOut;
@@ -5323,6 +5350,7 @@ function PromoDialog(initialVnode) {
   }
 
   return {
+
     oninit: _fetchContent,
 
     view: (vnode) => {
@@ -5344,15 +5372,15 @@ function PromoDialog(initialVnode) {
     }
   };
 
-}
+};
 
-function SearchButton(vnode) {
+const SearchButton: ComponentFunc<{ model: any; }> = function(initialVnode) {
 
   // A combination of a button and pattern entry field
   // for user search
 
   let spec = ""; // The current search pattern
-  let model = vnode.attrs.model;
+  let model = initialVnode.attrs.model;
   let promise;
 
   function newSearch() {
@@ -5386,7 +5414,7 @@ function SearchButton(vnode) {
         // result property has at that time. It will be true
         // unless the promise has been "cancelled" by setting
         // its result property to false.
-        setTimeout(function() { resolve(newP.result); }, 800);
+        setTimeout(() => { resolve(newP.result); }, 800);
       })
     };
     promise = newP;
@@ -5401,6 +5429,7 @@ function SearchButton(vnode) {
   }
 
   return {
+
     view: (vnode) => {
       let sel = model.userListCriteria ? model.userListCriteria.query : "robots";
       return m(".user-cat[id='user-search']",
@@ -5409,7 +5438,7 @@ function SearchButton(vnode) {
             {
               id: 'search',
               className: (sel == "search" ? "shown" : ""),
-              onclick: (ev) => {
+              onclick: () => {
                 // Reset the search pattern when clicking the search icon
                 spec = "";
                 newSearch();
@@ -5426,9 +5455,9 @@ function SearchButton(vnode) {
               maxlength: 16,
               placeholder: 'Einkenni eða nafn',
               value: spec,
-              onfocus: (ev) => newSearch(),
+              onfocus: () => newSearch(),
               oninput: (ev) => {
-                spec = ev.target.value + "";
+                spec = (ev.target as HTMLInputElement).value + "";
                 newSearch();
               }
             }
@@ -5437,28 +5466,28 @@ function SearchButton(vnode) {
       );
     }
   };
-}
+};
 
-var DialogButton = {
-
-  view: (vnode) => {
-    let attrs = {
-      onmouseout: buttonOut,
-      onmouseover: buttonOver
-    };
-    for (let a in vnode.attrs)
-      if (vnode.attrs.hasOwnProperty(a))
-        attrs[a] = vnode.attrs[a];
-    return m(".modal-close", attrs, vnode.children);
-  }
-
+const DialogButton: ComponentFunc<{}> = function(initialVnode) {
+  return {
+    view: (vnode) => {
+      let attrs: VnodeAttrs = {
+        onmouseout: buttonOut,
+        onmouseover: buttonOver
+      };
+      for (let a in vnode.attrs)
+        if (vnode.attrs.hasOwnProperty(a))
+          attrs[a] = vnode.attrs[a];
+      return m(".modal-close", attrs, vnode.children);
+    }
+  };
 };
 
 // Utility functions
 
-function escapeHtml(string) {
+function escapeHtml(string: string): string {
    /* Utility function to properly encode a string into HTML */
-  var entityMap = {
+  const entityMap = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -5469,38 +5498,40 @@ function escapeHtml(string) {
   return String(string).replace(/[&<>"'/]/g, (s) => entityMap[s]);
 }
 
-function replaceEmoticons(str) {
+function replaceEmoticons(str: string): string {
   // Replace all emoticon shortcuts in the string str with a corresponding image URL
   let emoticons = $state.emoticons;
   for (let i = 0; i < emoticons.length; i++)
     if (str.indexOf(emoticons[i].icon) >= 0) {
       // The string contains the emoticon: prepare to replace all occurrences
       let img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
-      // Re the following trick, see http://stackoverflow.com/questions/1144783/
+      // Re the following trick, see https://stackoverflow.com/questions/1144783/
       // replacing-all-occurrences-of-a-string-in-javascript
       str = str.split(emoticons[i].icon).join(img);
     }
   return str;
 }
 
-function getInput(id) {
+function getInput(id: string): string {
   // Return the current value of a text input field
-  return document.getElementById(id).value;
+  const elem = document.getElementById(id) as HTMLInputElement;
+  return elem.value;
 }
 
-function setInput(id, val) {
+function setInput(id: string, val: string) {
   // Set the current value of a text input field
-  document.getElementById(id).value = val;
+  const elem = document.getElementById(id) as HTMLInputElement;
+  elem.value = val;
 }
 
 // Utility functions to set up tabbed views
 
-function updateTabVisibility(vnode) {
+function updateTabVisibility(vnode: Vnode) {
   // Shows the tab that is currently selected,
   // i.e. the one whose index is in vnode.state.selected
-  var selected = vnode.state.selected;
+  var selected: number = vnode.state.selected;
   var lis = vnode.state.lis;
-  vnode.state.ids.map(function(id, i) {
+  vnode.state.ids.map((id: string, i: number) => {
       document.getElementById(id).setAttribute("style", "display: " +
         (i == selected ? "block" : "none"));
       lis[i].classList.toggle("ui-tabs-active", i == selected);
@@ -5509,13 +5540,13 @@ function updateTabVisibility(vnode) {
   );
 }
 
-function selectTab(vnode, i) {
+function selectTab(vnode: Vnode, i: number) {
   // Selects the tab with the given index under the tab control vnode
   vnode.state.selected = i;
   updateTabVisibility(vnode);
 }
 
-function makeTabs(id, createFunc, wireHrefs, vnode) {
+function makeTabs(id: string, createFunc, wireHrefs: boolean, vnode: Vnode) {
   // When the tabs are displayed for the first time, wire'em up
   var tabdiv = document.getElementById(id);
   if (!tabdiv)
@@ -5526,8 +5557,8 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   var tabul = document.querySelector("#" + id + " > ul");
   tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
   tabul.setAttribute("role", "tablist");
-  var tablist = document.querySelectorAll("#" + id + " > ul > li > a");
-  var tabitems = document.querySelectorAll("#" + id + " > ul > li");
+  var tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
+  var tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
   var ids = [];
   var lis = []; // The <li> elements
   // Iterate over the <a> elements inside the <li> elements inside the <ul>
@@ -5542,8 +5573,12 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
     lis.push(tabitems[i]);
     tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
     tabitems[i].setAttribute("role", "tab");
-    tabitems[i].onmouseover = (ev) => ev.currentTarget.classList.toggle("ui-state-hover", true);
-    tabitems[i].onmouseout = (ev) => ev.currentTarget.classList.toggle("ui-state-hover", false);
+    tabitems[i].onmouseover = (ev) => {
+      (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", true);
+    };
+    tabitems[i].onmouseout = (ev) => {
+      (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", false);
+    };
     // Find the tab's content <div>
     let tabcontent = document.getElementById(ids[i]);
     // Decorate it
@@ -5618,11 +5653,11 @@ function makeTabs(id, createFunc, wireHrefs, vnode) {
   updateTabVisibility(vnode);
 }
 
-function updateSelection(vnode) {
+function updateSelection(vnode: Vnode) {
   // Select a tab according to the ?tab= query parameter in the current route
   var tab = m.route.param("tab");
   if (tab !== undefined)
-    selectTab(vnode, tab);
+    selectTab(vnode, parseInt(tab) || 0);
 }
 
 // Get values from a URL query string
@@ -5637,18 +5672,18 @@ function getUrlVars(url) {
    return vars;
 }
 
-function buttonOver(ev) {
-  var clist = ev.currentTarget.classList;
+function buttonOver(ev: Event) {
+  const clist = (ev.currentTarget as HTMLElement).classList;
   if (clist !== undefined && !clist.contains("disabled"))
     clist.add("over");
-  ev.redraw = false;
+  (ev as MithrilEvent).redraw = false;
 }
 
-function buttonOut(ev) {
-  var clist = ev.currentTarget.classList;
+function buttonOut(ev: Event) {
+  const clist = (ev.currentTarget as HTMLElement).classList;
   if (clist !== undefined)
     clist.remove("over");
-  ev.redraw = false;
+  (ev as MithrilEvent).redraw = false;
 }
 
 function stopPropagation(ev) {
@@ -5656,16 +5691,16 @@ function stopPropagation(ev) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon, attrs, grayed) {
+function glyph(icon: string, attrs?: object, grayed?: boolean) {
   return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs);
 }
 
-function glyphGrayed(icon, attrs) {
+function glyphGrayed(icon: string, attrs?: object) {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 
 // Utility function: inserts non-breaking space
-function nbsp(n) {
+function nbsp(n?: number) {
   if (!n || n == 1)
     return m.trust("&nbsp;");
   var r = [];
@@ -5673,8 +5708,3 @@ function nbsp(n) {
     r.push(m.trust("&nbsp;"));
   return r;
 }
-
-return main;
-
-} ());
-

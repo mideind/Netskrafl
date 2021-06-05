@@ -31,6 +31,14 @@
       -webkit-animation-fill-mode: forwards;
    }
 
+   h3.clockleft, h3.clockright {
+      display: inline-block;
+   }
+
+   div.clockface {
+      display: block;
+   }
+
 </style>
 
 {% endblock %}
@@ -70,9 +78,9 @@
 
 <script>
 
-// Global state, filled in by the server
+// Global state, filled in by the server and passed to the page.main() function
 
-var $state = {
+const $state = {
    userId: "{{ '' if user == None else user.id() }}",
    userNick: "{{ '' if user == None else user.nickname() }}",
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},
@@ -110,11 +118,7 @@ var $state = {
 
 </script>
 
-<!-- !!! FIXME: Concatenate and minify the following scripts (plus mousetrap.min.js) -->
-<script src="{{ url_for('web.static', filename='js/channel.js') }}"></script>
-<script src="{{ url_for('web.static', filename='js/game.js') }}"></script>
-<script src="{{ url_for('web.static', filename='js/page.js') }}"></script>
-<script src="{{ url_for('web.static', filename='js/util.js') }}"></script>
+<!-- !!! FIXME: Concatenate and minify all scripts -->
 
 <script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script>
 
@@ -122,36 +126,25 @@ var $state = {
 
 // Register a Progressive Web App service worker
 if ('serviceWorker' in navigator) {
-   navigator.serviceWorker.register('service-worker.js')
-      .then(function(reg) {
+   navigator.serviceWorker.register("/service-worker.js") // Note: No path here
+      .then((reg) => {
          // Successfully registered
-      }).catch(function(err) {
+      }).catch((err) => {
          // Service worker not available
       });
 }
 
-window.addEventListener("DOMContentLoaded", main); // main() is located in page.js
-
-// SalesCloud stuff
-function doRegisterSalesCloud(i,s,o,g,r,a,m) {
-  i.SalesCloudObject=r;
-  i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments);};
-  i[r].l=1*new Date();
-  a=s.createElement(o);
-  m=s.getElementsByTagName(o)[0];
-  a.src=g;
-  m.parentNode.insertBefore(a,m);
+function init() {
+   // Import the single-page app code and call its main function
+   import("{{ url_for('web.static', filename='built/page.js') }}").then((page) => {
+      page.main($state);
+   })
+   .catch((e) => console.log(`Exception: ${e}`));
 }
 
-function registerSalesCloud() {
-  doRegisterSalesCloud(
-     window,
-     document,
-     'script',
-     'https://cdn.salescloud.is/js/salescloud.min.js',
-     'salescloud'
-  );
-}
+// Once the DOM is ready, call the init function
+// to initialize the single-page app
+window.addEventListener("DOMContentLoaded", init);
 
 </script>
 

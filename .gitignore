@@ -1,6 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+.tscache/
+.baseDir.ts
 
 # C extensions
 *.so
@@ -44,9 +46,10 @@ static/main.js
 static/wait.js
 
 # Minified JavaScript
-static/netskrafl.min.js
-static/main.min.js
-static/wait.min.js
+static/*.min.js
+
+# JavaScript built from TypeScript
+static/built/
 
 # Python package folders required for AppEngine
 lib/

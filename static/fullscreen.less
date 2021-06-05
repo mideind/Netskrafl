@@ -305,7 +305,7 @@
       width: 48px;
       height: 48px;
       font-size: 26px;
-      line-height: 45px;
+      line-height: 48px;
       top: auto;
       bottom: 273px;
       left: 648px;
@@ -317,9 +317,9 @@
       width: 48px;
       height: 48px;
       font-size: 24px;
-      line-height: 46px;
+      line-height: 48px;
       top: auto;
-      bottom: 205px;
+      bottom: 206px;
       left: 648px;
       border-radius: 5px;
       font-family: @tile-font;
@@ -463,7 +463,31 @@
       font-size: 16px;
       line-height: 24px;
    }
-   
+
+   div.gamestats div.player {
+      padding: 0;
+      display: inline-block;
+   }
+
+   div.gamestats div.player div.robot-btn {
+      display: inline;
+      position: relative;
+      line-height: 56px;
+      top: -8px;
+   }
+
+   div.gamestats div.player div.robot-btn.left {
+      padding-left: 12px;
+   }
+
+   div.gamestats div.player div.robot-btn.right {
+      padding-right: 12px;
+   }
+
+   div.gamestats div.player.humancolor {
+      color: black;
+   }
+
    div.scorewrapper {
       background-color: @message-background;
    }
@@ -599,6 +623,10 @@
       display: none;
    }
 
+   div.right-area.with-clock {
+      margin-top: 52px;
+   }
+
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;
@@ -608,7 +636,12 @@
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;
    }
-   
+
+   h3.clockleft, h3.clockright {
+      margin-top: 2px;
+      margin-bottom: 0;
+   }
+
    div.movelist-container div.bag {
       display: none;
    }
@@ -802,10 +835,11 @@
    }
    
    div.fairplay {
-      top: 44px;
+      bottom: 2px;
       font-size: 28px;
       line-height: 28px;
       display: block;
+      text-indent: 4px;
    }
 
    span.list-opp {

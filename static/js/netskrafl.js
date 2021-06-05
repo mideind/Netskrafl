@@ -367,22 +367,20 @@ function updateClock() {
    var locp = localPlayer();
    // If less than 30 seconds remaining, blink
    if (runningOut0 && txt0 >= "00:00" && txt0 <= "00:30" && locp === 0) {
-      $("h3.clockleft").toggleClass("blink");
       blinking0 = true;
    }
    if (runningOut1 && txt1 >= "00:00" && txt1 <= "00:30" && locp === 1) {
-      $("h3.clockright").toggleClass("blink");
       blinking1 = true;
    }
    // Remove blinking once we're into overtime
    if (txt0.charAt(0) == "-" && blinking0) {
-      $("h3.clockleft").removeClass("blink");
       blinking0 = false;
    }
    if (txt1.charAt(0) == "-" && blinking1) {
-      $("h3.clockright").removeClass("blink");
       blinking1 = false;
    }
+   $("h3.clockleft").toggleClass("blink", blinking0);
+   $("h3.clockright").toggleClass("blink", blinking1);
    if (gameOver || penaltyLeft !== 0 || penaltyRight !== 0)
       // If we are applying an overtime penalty to the scores, update them in real-time
       updateScores();

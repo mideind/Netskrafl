@@ -122,6 +122,11 @@ class Query(Generic[_T], ndb.Query):
 
     """A type-safer wrapper around ndb.Query"""
 
+    # Be careful with this class: It is included for type checking only.
+    # At run-time, query instances will typically be of type ndb.Query,
+    # not of this class. Functionality included here will thus rarely
+    # be invoked, if at all.
+
     def order(self, *args: Any, **kwargs: Any) -> Query[_T]:
         f: Callable[..., Query[_T]] = cast(Any, super()).order
         return f(*args, **kwargs)
@@ -143,9 +148,9 @@ class Query(Generic[_T], ndb.Query):
         f: Callable[..., Union[Sequence[Key], Sequence[_T]]] = cast(Any, super()).fetch
         return f(*args, **kwargs)
 
-    def fetch_async(self, *args: Any, **kwargs: Any) -> Future[_T]:
+    def fetch_async(self, limit: Optional[int]=None, **kwargs: Any) -> Future[_T]:  # type: ignore
         f: Callable[..., Future[_T]] = cast(Any, super()).fetch_async
-        return f(*args, **kwargs)
+        return f(limit=limit, **kwargs)
 
     def fetch_page(self, *args: Any, **kwargs: Any) -> Tuple[Iterable[_T], int, bool]:
         f: Callable[..., Tuple[Iterable[_T], int, bool]] = cast(Any, super()).fetch_page
@@ -160,7 +165,7 @@ class Query(Generic[_T], ndb.Query):
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T]:
         ...
 
-    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key, _T]:
+    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key, _T]:  # type: ignore
         f: Callable[..., Union[None, Key, _T]] = cast(Any, super()).get
         return f(*args, **kwargs)
 
@@ -176,7 +181,7 @@ class Query(Generic[_T], ndb.Query):
     def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T]:
         ...
 
-    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T]]:
+    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T]]:  # type: ignore
         f: Callable[..., Union[Iterable[Key], Iterable[_T]]] = cast(Any, super()).iter
         return f(*args, **kwargs)
 
@@ -847,7 +852,7 @@ class GameModel(Model):
         q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
 
         # Issue two asynchronous queries in parallel
-        qf = (q0.fetch_async(max_len), q1.fetch_async(max_len))
+        qf = (q0.fetch_async(limit=max_len), q1.fetch_async(limit=max_len))
         # Wait for both of them to finish
         Future.wait_all(qf)
 
@@ -1232,9 +1237,10 @@ class StatsModel(Model):
     @staticmethod
     def dict_key(d: StatsDict) -> str:
         """Return a dictionary key that works for human users and robots"""
-        if d["user"] is None:
-            return "robot-" + str(d["robot_level"])
-        return cast(str, d["user"])
+        d_user = d.get("user")
+        if d_user is None:
+            return "robot-" + str(d.get("robot_level", 0))
+        return d_user
 
     @staticmethod
     def user_id_from_key(k: Optional[str]) -> Tuple[Optional[str], int]:
