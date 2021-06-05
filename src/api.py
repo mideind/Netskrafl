@@ -18,8 +18,10 @@ from __future__ import annotations
 import os
 
 from typing import (
+    Literal,
     Optional,
     Dict,
+    TypedDict,
     Mapping,
     Union,
     List,
@@ -91,6 +93,7 @@ from skrafldb import (
     UserModel,
     FavoriteModel,
     GameModel,
+    StatsModel,
     RatingModel,
 )
 import firebase
@@ -99,6 +102,17 @@ import firebase
 T = TypeVar("T")
 UserPrefsType = Dict[str, Union[str, bool]]
 GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
+
+
+class StatsSummaryDict(TypedDict):
+
+    """ A summary of statistics for a player at a given point in time """
+
+    ts: str  # An ISO-formatted time stamp
+    elo: int
+    human_elo: int
+    manual_elo: int
+
 
 # Maximum number of online users to display
 MAX_ONLINE = 80
@@ -272,12 +286,14 @@ def oauth2callback():
     # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
     token: str
     testing: bool = current_app.config.get("TESTING", False)
-    
+
     if testing:
         # Testing only: there is no token in the request
         token = ""
     else:
-        token = request.form.get("idToken", "") or cast(Any, request).json.get("idToken", "")
+        token = request.form.get("idToken", "") or cast(Any, request).json.get(
+            "idToken", ""
+        )
         if not token:
             # No authentication token included in the request
             # 400 - Bad Request
@@ -293,7 +309,9 @@ def oauth2callback():
         if testing:
             # Get the idinfo dictionary directly from the request
             f = cast(Dict[str, str], request.form)
-            idinfo = dict(sub=f["sub"], name=f["name"], picture=f["picture"], email=f["email"])
+            idinfo = dict(
+                sub=f["sub"], name=f["name"], picture=f["picture"], email=f["email"]
+            )
         else:
             # Verify the token and extract its claims
             idinfo = id_token.verify_oauth2_token(  # type: ignore
@@ -1240,6 +1258,51 @@ def userstats() -> str:
         blocked = cuser.has_blocked(uid)
     profile["blocked"] = blocked
 
+    if uid == cuser.id():
+        # If current user, include a list of users blocked by this user
+        profile["list_blocked"] = cuser.list_blocked()
+        # Also, include a 30-day history of Elo scores
+        now = datetime.utcnow()
+        # Time at midnight, i.e. start of the current day
+        now = datetime(year=now.year, month=now.month, day=now.day)
+        # We will return a 30-day history
+        PERIOD: Literal[30] = 30
+        # Initialize the list of day slots
+        result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
+        # The enumeration is youngest-first
+        for sm in StatsModel.last_for_user(uid, days=PERIOD):
+            age = (now - sm.timestamp).days
+            ts_iso = sm.timestamp.isoformat()
+            if age >= PERIOD:
+                # It's an entry older than we need
+                if result[PERIOD - 1] is not None:
+                    # We've already filled our list
+                    break
+                # Assign the oldest entry, if we don't yet have a value for it
+                age = PERIOD - 1
+                ts_iso = (now - timedelta(days=age)).isoformat()
+            result[age] = StatsSummaryDict(
+                ts=ts_iso, elo=sm.elo, human_elo=sm.human_elo, manual_elo=sm.manual_elo,
+            )
+        # Fill all day slots in the result list
+        # Create a beginning sentinel entry to fill empty day slots
+        prev = StatsSummaryDict(
+            ts=(now - timedelta(days=31)).isoformat(),
+            elo=1200,
+            human_elo=1200,
+            manual_elo=1200,
+        )
+        # Enumerate in reverse order (oldest first)
+        for ix in reversed(range(PERIOD)):
+            if (r := result[ix]) is None:
+                # No entry for this day: duplicate the previous entry
+                p = prev.copy()
+                p["ts"] = (now - timedelta(days=ix)).isoformat()
+                result[ix] = p
+            else:
+                prev = r
+        profile[f"elo_{PERIOD}_days"] = result
+
     return jsonify(profile)
 
 
@@ -1728,7 +1791,7 @@ def bestmoves() -> ResponseType:
 
 
 @api.route("/blockuser", methods=["POST"])
-@auth_required(ok = False)
+@auth_required(ok=False)
 def blockuser() -> ResponseType:
     """ Block or unblock another user """
     user = current_user()
@@ -1749,7 +1812,7 @@ def blockuser() -> ResponseType:
 
 
 @api.route("/reportuser", methods=["POST"])
-@auth_required(ok = False)
+@auth_required(ok=False)
 def reportuser() -> ResponseType:
     """ Report another user """
     user = current_user()

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import (
     Dict,
+    TypedDict,
     Any,
     Optional,
     List,
@@ -85,6 +86,15 @@ MoveTuple = NamedTuple(
 )
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
+
+
+class UserSummaryDict(TypedDict):
+
+    """ Summary data about a user """
+
+    uid: str
+    nick: str
+    name: str
 
 
 class User:
@@ -534,6 +544,19 @@ class User:
         assert self._blocks is not None
         return destuser_id in self._blocks
 
+    def list_blocked(self) -> List[UserSummaryDict]:
+        """Returns a list of users blocked by this user"""
+        self._load_blocks()
+        assert self._blocks is not None
+        result: List[UserSummaryDict] = []
+        for uid in self._blocks:
+            u = User.load_if_exists(uid)
+            if u is not None:
+                result.append(
+                    UserSummaryDict(uid=uid, nick=u.nickname(), name=u.full_name())
+                )
+        return result
+
     def report(self, destuser_id: str, code: int, text: str) -> bool:
         """The current user is reporting another user"""
         if not destuser_id:
@@ -712,6 +735,7 @@ class User:
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["friend"] = self.friend()
+        reply["has_paid"] = self.has_paid()
         reply["locale"] = self.locale
         reply["location"] = self.location
         reply["timestamp"] = self.timestamp()

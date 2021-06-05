@@ -14,6 +14,7 @@ from typing import Any, Dict
 
 import sys
 import os
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -256,6 +257,19 @@ def test_block(client, u1, u2):
     # The 'blocked' attribute should be True
     assert resp.json["blocked"]
 
+    # There should be an entry in the list_blocked list
+    # of user u1's profile
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "list_blocked" in resp.json
+    b = resp.json["list_blocked"]
+    assert len(b) == 1
+    assert b[0]["uid"] == u2
+    assert b[0]["nick"] == "testuser2"
+    assert b[0]["name"] == "Test user 2"
+
     # User u1 unblocks user u2
     resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
     assert resp.status_code == 200
@@ -270,6 +284,15 @@ def test_block(client, u1, u2):
     assert "blocked" in resp.json
     # The 'blocked' attribute should now be False
     assert not resp.json["blocked"]
+    # There should be no entry in the list_blocked list
+    # of user u1's profile
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "list_blocked" in resp.json
+    b = resp.json["list_blocked"]
+    assert len(b) == 0
 
     # User u1 blocks user u2 twice
     resp = client.post("/blockuser", data=dict(blocked=u2))
@@ -289,6 +312,17 @@ def test_block(client, u1, u2):
     assert "blocked" in resp.json
     # The 'blocked' attribute should be True
     assert resp.json["blocked"]
+    # There should be a single entry in the list_blocked list
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "list_blocked" in resp.json
+    b = resp.json["list_blocked"]
+    assert len(b) == 1
+    assert b[0]["uid"] == u2
+    assert b[0]["nick"] == "testuser2"
+    assert b[0]["name"] == "Test user 2"
 
     # User u1 unblocks user u2
     resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
@@ -304,6 +338,20 @@ def test_block(client, u1, u2):
     assert "blocked" in resp.json
     # The 'blocked' attribute should now be False
     assert not resp.json["blocked"]
+    # There should be no entry in the list_blocked list
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+    assert "list_blocked" in resp.json
+    b = resp.json["list_blocked"]
+    assert len(b) == 0
+
+    resp = client.post("/logout")
+
+
+def test_disable_chat(client, u1, u2):
+    resp = login_user(client, 1)
 
     # User u1 disables chat
     resp = client.post("/setuserpref", data=dict(chat_disabled=True))
@@ -358,5 +406,88 @@ def test_report(client, u1, u2):
     assert resp.status_code == 200
     assert "ok" in resp.json
     assert resp.json["ok"] == False
+
+    resp = client.post("/logout")
+
+
+def test_elo_history(client, u1):
+    resp = login_user(client, 1)
+
+    # Insert some stats
+    from skrafldb import StatsModel, Client
+
+    with Client.get_context():
+        StatsModel.delete_user(u1)
+
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+
+    assert "elo_30_days" in resp.json
+    assert len(resp.json["elo_30_days"]) == 30
+    now = datetime.utcnow()
+    now = datetime(year=now.year, month=now.month, day=now.day)
+
+    for ix, sm in enumerate(resp.json["elo_30_days"]):
+        ts = datetime.fromisoformat(sm["ts"])
+        assert (now - ts).days == ix
+        assert sm["elo"] == 1200
+        assert sm["human_elo"] == 1200
+        assert sm["manual_elo"] == 1200
+
+    with Client.get_context():
+
+        sm = StatsModel.create(u1)
+        sm.timestamp = now - timedelta(days=35)
+        sm.elo = 1210
+        sm.human_elo = 1220
+        sm.manual_elo = 1230
+        sm.put()
+        sm = StatsModel.create(u1)
+        sm.timestamp = now - timedelta(days=15)
+        sm.elo = 1240
+        sm.human_elo = 1250
+        sm.manual_elo = 1260
+        sm.put()
+        sm = StatsModel.create(u1)
+        sm.timestamp = now - timedelta(days=5)
+        sm.elo = 1270
+        sm.human_elo = 1280
+        sm.manual_elo = 1290
+        sm.put()
+
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert "result" in resp.json
+    assert resp.json["result"] == 0
+
+    assert "elo_30_days" in resp.json
+    slist = resp.json["elo_30_days"]
+    assert len(slist) == 30
+
+    for ix in reversed(range(16, 30)):
+        sm = slist[ix]
+        ts = datetime.fromisoformat(sm["ts"])
+        assert (now - ts).days == ix
+        assert sm["elo"] == 1210
+        assert sm["human_elo"] == 1220
+        assert sm["manual_elo"] == 1230
+
+    for ix in reversed(range(6, 16)):
+        sm = slist[ix]
+        ts = datetime.fromisoformat(sm["ts"])
+        assert (now - ts).days == ix
+        assert sm["elo"] == 1240
+        assert sm["human_elo"] == 1250
+        assert sm["manual_elo"] == 1260
+
+    for ix in reversed(range(0, 6)):
+        sm = slist[ix]
+        ts = datetime.fromisoformat(sm["ts"])
+        assert (now - ts).days == ix
+        assert sm["elo"] == 1270
+        assert sm["human_elo"] == 1280
+        assert sm["manual_elo"] == 1290
 
     resp = client.post("/logout")

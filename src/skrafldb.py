@@ -103,6 +103,9 @@ ChallengeTuple = Tuple[Optional[str], Optional[PrefsDict], datetime]
 
 
 class StatsDict(TypedDict):
+
+    """ Summarized result from a StatsModel query """
+
     user: Optional[str]
     robot_level: int
     timestamp: datetime
@@ -1507,9 +1510,39 @@ class StatsModel(Model):
         return sm
 
     @classmethod
+    def last_for_user(cls, user_id: str, days: int) -> List[StatsModel]:
+        """Returns stats for the last N days for a given user"""
+        if not user_id or days <= 0:
+            return []
+        k = Key(UserModel, user_id)
+        now = datetime.utcnow()
+        q = (
+            cls.query(
+                ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)
+            )
+            .filter(StatsModel.timestamp <= now)
+            .order(-cast(int, StatsModel.timestamp))
+        )
+        # Return the StatsModel entries in ascending order by timestamp
+        return list(q.fetch(limit=days))
+
+    @classmethod
     def delete_ts(cls, timestamp: datetime) -> None:
         """Delete all stats records at a particular timestamp"""
         delete_multi(cls.query(StatsModel.timestamp == timestamp).iter(keys_only=True))
+
+    @classmethod
+    def delete_user(cls, user_id: str) -> None:
+        """Delete all stats records for a particular user"""
+        if not user_id:
+            return
+        k = Key(UserModel, user_id)
+        delete_multi(
+            cls.query(
+                ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)
+            )
+            .iter(keys_only=True)
+        )
 
 
 class RatingModel(Model):
