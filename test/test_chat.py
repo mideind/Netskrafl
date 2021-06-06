@@ -491,3 +491,31 @@ def test_elo_history(client, u1):
         assert sm["manual_elo"] == 1290
 
     resp = client.post("/logout")
+
+
+def test_image(client, u1):
+    """ Test image setting and getting """
+    resp = login_user(client, 1)
+
+    resp = client.post("/image", data=b"1234", content_type="image/jpeg; charset=utf-8")
+    assert resp.status_code == 200
+
+    resp = client.get("/image")
+    assert resp.status_code == 200
+    assert resp.mimetype == "image/jpeg"
+    assert resp.content_length == 4
+    assert resp.get_data(as_text=False) == b"1234"
+
+    image_url = "https://lh3.googleusercontent.com/a/AATXAJxmLaM_8c61i_EeyptXynOG1SL7b-BSt7uBz8Hg=s96-c"
+    resp = client.post("/image",
+        data=image_url,
+        content_type="text/plain; charset=utf-8"
+    )
+    assert resp.status_code == 200
+
+    resp = client.get("/image", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.location == image_url
+
+    resp = client.post("/logout")
+

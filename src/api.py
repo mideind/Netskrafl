@@ -15,10 +15,8 @@
 """
 
 from __future__ import annotations
-import os
 
 from typing import (
-    Literal,
     Optional,
     Dict,
     TypedDict,
@@ -34,6 +32,7 @@ from typing import (
     cast,
 )
 
+import os
 import logging
 import threading
 import random
@@ -42,12 +41,14 @@ from datetime import datetime, timedelta
 from flask import (
     Blueprint,
     request,
+    Response,
     url_for,
 )
 from flask.globals import current_app
 
 from google.oauth2 import id_token  # type: ignore
-from google.auth.transport import requests as google_requests  # type: ignore
+from google.auth.transport import requests as google_requests
+from werkzeug.utils import redirect  # type: ignore
 
 from basics import (
     jsonify,
@@ -1266,7 +1267,7 @@ def userstats() -> str:
         # Time at midnight, i.e. start of the current day
         now = datetime(year=now.year, month=now.month, day=now.day)
         # We will return a 30-day history
-        PERIOD: Literal[30] = 30
+        PERIOD = 30
         # Initialize the list of day slots
         result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
         # The enumeration is youngest-first
@@ -1304,6 +1305,49 @@ def userstats() -> str:
         profile[f"elo_{PERIOD}_days"] = result
 
     return jsonify(profile)
+
+
+@api.route("/image", methods=["GET", "POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def image() -> ResponseType:
+    """ Set (POST) or get (GET) the image of a user """
+    rq = RequestData(request)
+    cuid = current_user_id()
+    assert cuid is not None
+    uid = rq.get("uid") or cuid
+    if request.method == "POST" and uid != cuid:
+        # Can't update another user's image
+        return "Not authorized", 403  # Forbidden
+    um = UserModel.fetch(uid)
+    if not um:
+        return "User not found", 404  # Not found
+    if request.method == "GET":
+        # Get image for user
+        image, image_blob = um.get_image()
+        if image_blob:
+            # We have the image as a bytes object: return it
+            mimetype = image or "image/jpeg"
+            return Response(image_blob, mimetype=mimetype)
+        if not image:
+           return "Image not found", 404  # Not found
+        # Assume that this is a URL: redirect to it
+        return redirect(image)
+    # Method is POST: update image for current user
+    mimetype = request.mimetype
+    if mimetype == "text/plain":
+        # Assume that an image URL is being set
+        if (request.content_length or 0) > 256:
+           return "URL too long", 400  # Bad request
+        url = request.get_data(as_text=True).strip()
+        if url.startswith("https://"):
+            # Looks superficially legit
+            um.set_image(url, None)
+            return "OK", 200
+        return "Invalid URL", 400  # Bad request
+    elif mimetype.startswith("image/"):
+        um.set_image(mimetype, request.get_data(as_text=False))
+        return "OK", 200
+    return "Unrecognized MIME type", 400
 
 
 @api.route("/userlist", methods=["POST"])

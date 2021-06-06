@@ -269,6 +269,16 @@ class Model(ndb.Model):
         return cast(str, ndb.TextProperty(required=True))
 
     @staticmethod
+    def Blob() -> bytes:
+        """ Nonindexed byte string """
+        return cast(bytes, ndb.BlobProperty(required=True))
+
+    @staticmethod
+    def OptionalBlob(default: Optional[bytes] = None) -> Optional[bytes]:
+        """ Nonindexed byte string, optional """
+        return cast(Optional[bytes], ndb.BlobProperty(required=False, default=default))
+
+    @staticmethod
     def Bool() -> bool:
         return cast(bool, ndb.BooleanProperty(required=True))
 
@@ -412,7 +422,10 @@ class UserModel(Model):
 
     email = Model.OptionalStr()
 
+    # A user image can be either a URL
+    # or a complete JPEG image stored in a BLOB
     image = Model.OptionalStr()
+    image_blob = Model.OptionalBlob()
 
     # OAuth2 account identifier (unfortunately different from GAE user id)
     # optionally prefixed by the authentication provider id (default: 'google:')
@@ -473,6 +486,7 @@ class UserModel(Model):
         user.account = account
         user.email = email
         user.image = image
+        user.image_blob = None
         user.nickname = nickname  # Default to the same nickname
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
@@ -491,13 +505,13 @@ class UserModel(Model):
     @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Attempt to fetch a user by OAuth2 account id,
-        prefixed by the authentication provider"""
+        eventually prefixed by the authentication provider"""
         q = cls.query(UserModel.account == account)
         return q.get()
 
     @classmethod
     def fetch_email(cls, email: str) -> Optional[UserModel]:
-        """Attempt to fetch a user by email."""
+        """Attempt to fetch a user by email"""
         if not email:
             return None
         # Note that multiple records with the same e-mail may occur
@@ -535,6 +549,18 @@ class UserModel(Model):
     def user_id(self) -> str:
         """Return the ndb key of a user as a string"""
         return self.key.id()
+
+    def get_image(self) -> Tuple[Optional[str], Optional[bytes]]:
+        """ Obtain image data about the user, consisting of
+            a string and a BLOB (bytes) """
+        return self.image, self.image_blob
+
+    def set_image(self, image: Optional[str], image_blob: Optional[bytes]) -> None:
+        """ Obtain image data about the user, consisting of
+            a string and a BLOB (bytes) """
+        self.image = image
+        self.image_blob = image_blob
+        self.put()
 
     @classmethod
     def count(cls) -> int:

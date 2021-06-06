@@ -716,6 +716,7 @@ class User:
         """Convert to JSON-serializable format"""
         d: Dict[str, Any] = dict(**self.__dict__)
         del d["_favorites"]
+        del d["_blocks"]
         return d
 
     @classmethod
@@ -724,6 +725,7 @@ class User:
         u = cls(uid=j["_user_id"])
         u.__dict__ = j
         u._favorites = None
+        u._blocks = None
         return u
 
     def profile(self) -> Dict[str, Any]:

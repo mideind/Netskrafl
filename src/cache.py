@@ -216,7 +216,8 @@ class RedisWrapper:
 # emulating a part of the memcache API.
 
 # If we're running on the local
-# development server (GAE emulator), connect to a local Redis server.
+# development server (GAE emulator),
+# connect to a local Redis server.
 if os.environ.get("SERVER_SOFTWARE", "").startswith("Development"):
     memcache = RedisWrapper(redis_host="127.0.0.1")
 else:
