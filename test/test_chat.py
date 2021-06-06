@@ -497,15 +497,19 @@ def test_image(client, u1):
     """ Test image setting and getting """
     resp = login_user(client, 1)
 
+    # Set the image by POSTing the JPEG or PNG content (BLOB) directly
     resp = client.post("/image", data=b"1234", content_type="image/jpeg; charset=utf-8")
     assert resp.status_code == 200
 
+    # Retrieve the image of the currently logged-in user
     resp = client.get("/image")
     assert resp.status_code == 200
     assert resp.mimetype == "image/jpeg"
     assert resp.content_length == 4
+    # Retrieve the original BLOB
     assert resp.get_data(as_text=False) == b"1234"
 
+    # Set an image URL: note the text/plain MIME type
     image_url = "https://lh3.googleusercontent.com/a/AATXAJxmLaM_8c61i_EeyptXynOG1SL7b-BSt7uBz8Hg=s96-c"
     resp = client.post("/image",
         data=image_url,
@@ -513,8 +517,11 @@ def test_image(client, u1):
     )
     assert resp.status_code == 200
 
+    # Get the image (follow_redirects specified for emphasis, it
+    # is False by default)
     resp = client.get("/image", follow_redirects=False)
     assert resp.status_code == 302
+    # Retrieve the URL from the Location header
     assert resp.location == image_url
 
     resp = client.post("/logout")

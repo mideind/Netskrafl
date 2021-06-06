@@ -47,7 +47,7 @@ from flask import (
 from flask.globals import current_app
 
 from google.oauth2 import id_token  # type: ignore
-from google.auth.transport import requests as google_requests
+from google.auth.transport import requests as google_requests  # type: ignore
 from werkzeug.utils import redirect  # type: ignore
 
 from basics import (
