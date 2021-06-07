@@ -584,7 +584,7 @@ var Game = (function() {
     this.chatShown = true;
   };
 
-  Game.prototype.addChatMessage = function(from_userid: string, msg: string, ts) {
+  Game.prototype.addChatMessage = function(from_userid: string, msg: string, ts: string) {
     // Add a new chat message to the message list
     if (this.messages !== null) {
       // Do not add messages unless the message list has been

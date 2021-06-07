@@ -38,7 +38,24 @@ const BOARD_PREFIX = "/board?game=";
 const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 const MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 
+// Global state
 var $state: any;
+
+// Basic Mithril routing settings
+type Path = { name: string; route: string; mustLogin: boolean; };
+type Paths = Path[];
+interface Settings {
+  paths: Paths;
+  defaultRoute: string;
+}
+
+// Possible URL parameters that are passed to routes
+interface Params {
+  uuid?: string;
+  move?: string;
+  tab?: string;
+  faq?: string;
+}
 
 function main(state: any) {
   // The main UI entry point, called from page.html
@@ -47,10 +64,10 @@ function main(state: any) {
 
   let
     settings = getSettings(),
-    model = createModel(settings),
-    view = createView(),
-    actions = createActions(model, view),
-    routeResolver = createRouteResolver(model, actions, view),
+    model = new Model(settings),
+    view = new View(),
+    actions = new Actions(model, view),
+    routeResolver = createRouteResolver(actions),
     defaultRoute = settings.defaultRoute,
     root = document.getElementById("container");
 
@@ -58,10 +75,10 @@ function main(state: any) {
   m.route(root, defaultRoute, routeResolver);
 }
 
-function getSettings() {
+function getSettings(): Settings {
   // Returns an app-wide settings object
   let
-    paths = [
+    paths: Paths = [
       { name: "main", route: "/main", mustLogin: true },
       { name: "login", route: "/login", mustLogin: false },
       { name: "help", route: "/help", mustLogin: false },
@@ -74,68 +91,49 @@ function getSettings() {
   };
 }
 
-function createModel(settings) {
+class Model {
 
-  return {
-    paths: settings.paths.slice(),
-    // The routeName will be "login", "main", "game"...
-    routeName: undefined,
-    // Eventual parameters within the route URL, such as the game uuid
-    params: undefined,
-    // The current game being displayed, if any
-    game: null,
-    // The current game list
-    gameList: null,
-    // The current challenge list
-    challengeList: null,
-    // Recent games
-    recentList: null,
-    // The currently displayed user list
-    userListCriteria: null,
-    userList: null,
-    // The user's own statistics
-    ownStats: null,
-    // The current user information being edited, if any
-    user: null,
-    userErrors: null,
-    // The help screen contents
-    helpHTML: null,
-    // Outstanding requests
-    spinners: 0,
-    // The index of the game move being reviewed, if any
-    reviewMove: null,
-    // The best moves available at this stage, if reviewing game
-    bestMoves: null,
-    // The index of the best move being highlighted, if reviewing game
-    highlightedMove: null,
-    // The current scaling of the board
-    boardScale: 1.0,
-    // Model methods
-    loadGame: loadGame,
-    loadGameList: loadGameList,
-    loadChallengeList: loadChallengeList,
-    loadRecentList: loadRecentList,
-    loadUserRecentList: loadUserRecentList,
-    loadUserList: loadUserList,
-    loadOwnStats: loadOwnStats,
-    loadUserStats: loadUserStats,
-    loadPromoContent: loadPromoContent,
-    loadBestMoves: loadBestMoves,
-    loadHelp: loadHelp,
-    loadUser: loadUser,
-    saveUser: saveUser,
-    newGame: newGame,
-    modifyChallenge: modifyChallenge,
-    markFavorite: markFavorite,
-    addChatMessage: addChatMessage,
-    handleUserMessage: handleUserMessage,
-    handleMoveMessage: handleMoveMessage,
-    updateScale: updateScale,
-    resetScale: resetScale,
-    setUserPref: setUserPref
-  };
+  // A class for the underlying data model, displayed by the View
 
-  function loadGame(uuid, funcComplete) {
+  paths: Paths = [];
+  // The routeName will be "login", "main", "game"...
+  routeName?: string = undefined;
+  // Eventual parameters within the route URL, such as the game uuid
+  params?: Params = undefined;
+  // The current game being displayed, if any
+  game?: any = null;
+  // The current game list
+  gameList?: any[] = null;
+  // The current challenge list
+  challengeList?: any[] = null;
+  // Recent games
+  recentList?: any[] = null;
+  // The currently displayed user list
+  userListCriteria?: { query: string; spec: string; } = null;
+  userList?: any[] = null;
+  // The user's own statistics
+  ownStats: any = null;
+  // The current user information being edited, if any
+  user: any = null;
+  userErrors: any = null;
+  // The help screen contents
+  helpHTML?: string = null;
+  // Outstanding requests
+  spinners: number = 0;
+  // The index of the game move being reviewed, if any
+  reviewMove?: number = null;
+  // The best moves available at this stage, if reviewing game
+  bestMoves?: any[] = null;
+  // The index of the best move being highlighted, if reviewing game
+  highlightedMove?: number = null;
+  // The current scaling of the board
+  boardScale: number = 1.0;
+
+  constructor(settings: Settings) {
+    this.paths = settings.paths.slice();
+  }
+
+  loadGame(uuid: string, funcComplete: () => void) {
     // Fetch a game state from the server, given a uuid
     // console.log("Initiating load of game " + uuid);
     m.request({
@@ -143,7 +141,7 @@ function createModel(settings) {
       url: "/gamestate",
       body: { game: uuid }
     })
-    .then((result: any) => {
+    .then((result: { ok: boolean; game: any; }) => {
       if (this.game !== null)
         // We have a prior game in memory:
         // clean it up before allocating the new one
@@ -169,14 +167,14 @@ function createModel(settings) {
     });
   }
 
-  function loadGameList() {
+  loadGameList() {
     // Load the list of currently active games for this user
     this.gameList = undefined; // Loading in progress
     m.request({
       method: "POST",
       url: "/gamelist"
     })
-    .then((json) => {
+    .then((json: { result: number; gamelist: any; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.gameList = null;
@@ -186,14 +184,14 @@ function createModel(settings) {
     });
   }
 
-  function loadChallengeList() {
+  loadChallengeList() {
     // Load the list of current challenges (received and issued)
     this.challengeList = []; // Prevent concurrent loading
     m.request({
       method: "POST",
       url: "/challengelist"
     })
-    .then((json) => {
+    .then((json: { result: number; challengelist: any; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.challengeList = null;
@@ -203,7 +201,7 @@ function createModel(settings) {
     });
   }
 
-  function loadRecentList() {
+  loadRecentList() {
     // Load the list of recent games for this user
     this.recentList = []; // Prevent concurrent loading
     m.request({
@@ -211,7 +209,7 @@ function createModel(settings) {
       url: "/recentlist",
       body: { versus: null, count: 40 }
     })
-    .then((json) => {
+    .then((json: { result: number; recentlist: any; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.recentList = null;
@@ -221,7 +219,7 @@ function createModel(settings) {
     });
   }
 
-  function loadUserRecentList(userid, versus, readyFunc) {
+  loadUserRecentList(userid: string, versus: string, readyFunc: (json: any) => void) {
     // Load the list of recent games for the given user
     m.request({
       method: "POST",
@@ -231,7 +229,10 @@ function createModel(settings) {
     .then(readyFunc);
   }
 
-  function loadUserList(criteria, activateSpinner) {
+  loadUserList(
+    criteria: { query: string; spec: string; },
+    activateSpinner: boolean
+  ) {
     // Load a list of users according to the given criteria
     if (criteria.query == "search" && criteria.spec == "") {
       // Optimize by not sending an empty search query to the server,
@@ -248,7 +249,7 @@ function createModel(settings) {
       // all underlying controls
       this.spinners++;
     var url = "/userlist";
-    var data = criteria;
+    var data: { query?: string; spec?: string; kind?: string; } = criteria;
     if (criteria.query == "elo") {
       // Kludge to make the Elo rating list appear as
       // just another type of user list
@@ -260,7 +261,7 @@ function createModel(settings) {
       url: url,
       body: data
     })
-    .then((json) => {
+    .then((json: { result: number; userlist: any; rating: any; }) => {
       if (activateSpinner)
         // Remove spinner overlay, if present
         this.spinners--;
@@ -275,7 +276,7 @@ function createModel(settings) {
     });
   }
 
-  function loadOwnStats() {
+  loadOwnStats() {
     // Load statistics for the current user
     this.ownStats = { };
     m.request({
@@ -283,7 +284,7 @@ function createModel(settings) {
       url: "/userstats",
       body: { } // Current user is implicit
     })
-    .then((json) => {
+    .then((json: { result: number; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.ownStats = null;
@@ -293,7 +294,7 @@ function createModel(settings) {
     });
   }
 
-  function loadUserStats(userid, readyFunc) {
+  loadUserStats(userid: string, readyFunc: (json: any) => void) {
     // Load statistics for the given user
     m.request({
       method: "POST",
@@ -303,19 +304,19 @@ function createModel(settings) {
     .then(readyFunc);
   }
 
-  function loadPromoContent(key, readyFunc) {
+  loadPromoContent(key: string, readyFunc: (html: string) => void) {
     // Load HTML content for promo dialog
     m.request({
       method: "POST",
       url: "/promo",
       body: { key: key },
       responseType: "text",
-      deserialize: function(str) { return str; }
+      deserialize: (str: string) => str
     })
     .then(readyFunc);
   }
 
-  function loadBestMoves(move) {
+  loadBestMoves(move: number) {
     // Load the best moves available at a given state in a game
     if (!this.game || !this.game.uuid)
       return;
@@ -335,7 +336,7 @@ function createModel(settings) {
       url: "/bestmoves",
       body: { game: this.game.uuid, move: move }
     })
-    .then((json) => {
+    .then((json: { result: number; move_number: number; best_moves: any; player_rack: string; }) => {
       this.highlightedMove = null;
       if (!json || json.result !== 0) {
         this.reviewMove = null;
@@ -351,7 +352,7 @@ function createModel(settings) {
     });
   }
 
-  function loadHelp() {
+  loadHelp() {
     // Load the help screen HTML from the server
     // (this is done the first time the help is displayed)
     if (this.helpHTML !== null)
@@ -360,12 +361,12 @@ function createModel(settings) {
       method: "GET",
       url: "/rawhelp",
       responseType: "text",
-      deserialize: function(str) { return str; }
+      deserialize: (str: string) => str
     })
-    .then((result) => { this.helpHTML = result; });
+    .then((result: string) => { this.helpHTML = result; });
   }
 
-  function loadUser(activateSpinner) {
+  loadUser(activateSpinner: boolean) {
     // Fetch the preferences of the currently logged in user, if any
     this.user = undefined;
     if (activateSpinner)
@@ -376,7 +377,7 @@ function createModel(settings) {
       method: "POST",
       url: "/loaduserprefs"
     })
-    .then((result) => {
+    .then((result: { ok: boolean; userprefs: any; }) => {
       if (activateSpinner)
         this.spinners--;
       if (!result.ok) {
@@ -392,14 +393,14 @@ function createModel(settings) {
     });
   }
 
-  function saveUser(successFunc) {
+  saveUser(successFunc: () => void) {
     // Update the preferences of the currently logged in user, if any
     m.request({
       method: "POST",
       url: "/saveuserprefs",
       body: this.user
     })
-    .then((result) => {
+    .then((result: { ok: boolean; err?: string; }) => {
       if (result.ok) {
         // User preferences modified successfully on the server:
         // update the state variables that we're caching
@@ -425,7 +426,7 @@ function createModel(settings) {
     });
   }
 
-  function setUserPref(pref) {
+  setUserPref(pref: object) {
     // Set a user preference
     return m.request(
       {
@@ -433,19 +434,17 @@ function createModel(settings) {
         url: "/setuserpref",
         body: pref
       }
-    ).then(function(result) {
-      // No response required
-    });
+    ).then(() => {}); // No result required or expected
   }
 
-  function newGame(oppid, reverse) {
+  newGame(oppid: string, reverse: boolean) {
     // Ask the server to initiate a new game against the given opponent
     m.request({
       method: "POST",
       url: "/initgame",
       body: { opp: oppid, rev: reverse }
     })
-    .then((json) => {
+    .then((json: { ok: boolean; uuid: string; }) => {
       if (json.ok) {
         // Go to the newly created game
         m.route.set("/game/" + json.uuid);
@@ -453,30 +452,30 @@ function createModel(settings) {
     });
   }
 
-  function modifyChallenge(parameters) {
+  modifyChallenge(parameters: object) {
     // Reject or retract a challenge
     m.request({
       method: "POST",
       url: "/challenge",
       body: parameters
     })
-    .then((json) => {
+    .then((json: { result: number }) => {
       if (json.result === 0)
         this.loadChallengeList();
     });
   }
 
-  function markFavorite(userId, status) {
+  markFavorite(userId: string, status: boolean) {
     // Mark or de-mark a user as a favorite
     m.request({
       method: "POST",
       url: "/favorite",
       body: { destuser: userId, action: status ? "add" : "delete" }
     })
-    .then(function() {});
+    .then(() => {});
   }
 
-  function addChatMessage(game, from_userid, msg, ts) {
+  addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
     // Add a chat message to the game's chat message list
     if (this.game && this.game.uuid == game) {
       this.game.addChatMessage(from_userid, msg, ts);
@@ -485,14 +484,14 @@ function createModel(settings) {
     return false;
   }
 
-  function handleUserMessage(json) {
+  handleUserMessage(json: any) {
     // Handle an incoming Firebase user message
     this.challengeList = null; // Reload challenge list
     this.gameList = null; // Reload game list
     m.redraw();
   }
 
-  function handleMoveMessage(json) {
+  handleMoveMessage(json: any) {
     // Handle an incoming Firebase move message
     if (this.game) {
       this.game.update(json);
@@ -500,7 +499,7 @@ function createModel(settings) {
     }
   }
 
-  function resetScale() {
+  resetScale() {
     // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
     this.boardScale = 1.0;
     var boardParent = document.getElementById("board-parent");
@@ -511,11 +510,11 @@ function createModel(settings) {
       boardParent.scrollTo(0, 0);
   }
 
-  function updateScale() {
+  updateScale() {
 
     // Update the board scale (zoom)
 
-    function scrollIntoView(sq) {
+    function scrollIntoView(sq: string) {
       // Scroll a square above and to the left of the placed tile into view
       var offset = 3;
       var vec = toVector(sq);
@@ -563,55 +562,76 @@ function createModel(settings) {
     }
   }
 
+} // class Model
+
+type DialogFunc = (view: View, model: Model, actions: any, args: any) => void;
+
+interface DialogViews {
+  userprefs: DialogFunc;
+  userinfo: DialogFunc;
+  challenge: DialogFunc;
+  promo: DialogFunc;
+  spinner: DialogFunc;
 }
 
-function createView() {
+interface Dialog {
+  name: string;
+  args: any;
+}
 
-  // Start a blinker interval function
-  window.setInterval(blinker, 500);
+class View {
 
-  // The view interface exposes only the vwApp view function.
-  // Additionally, a view instance has a current dialog window stack.
+  private dialogStack: Dialog[] = [];
 
   // Map of available dialogs
-  const dialogViews = {
-    "userprefs":
-      (view, model, actions) => vwUserPrefs.call(view, model, actions),
-    "userinfo":
-      (view, model, actions, args) => vwUserInfo.call(view, model, actions, args),
-    "challenge":
-      (view, model, actions, args) => vwChallenge.call(view, model, actions, args),
-    "promo":
-      (view, model, actions, args) => vwPromo.call(view, model, actions, args),
-    "spinner":
-      () => vwSpinner(),
+  private static dialogViews: DialogViews = {
+    userprefs:
+      (view, model, actions) => view.vwUserPrefs(model, actions),
+    userinfo:
+      (view, model, actions, args) => view.vwUserInfo(model, actions, args),
+    challenge:
+      (view, model, actions, args) => view.vwChallenge(model, actions, args),
+    promo:
+      (view, model, actions, args) => view.vwPromo(model, actions, args),
+    spinner:
+      (view) => view.vwSpinner(),
   };
 
-  function vwApp(model, actions) {
+  constructor() {
+
+    // Start a blinker interval function
+    window.setInterval(this.blinker, 500);
+
+    // The view interface exposes only the vwApp view function.
+    // Additionally, a view instance has a current dialog window stack.
+
+  }
+
+  appView(model: Model, actions: Actions) {
     // Select the view based on the current route
     // Display the appropriate content for the route,
     // also considering active dialogs
-    var views = [];
+    var views: any[] = [];
     switch (model.routeName) {
       case "login":
-        views.push(vwLogin.call(this, model, actions));
+        views.push(this.vwLogin());
         break;
       case "main":
-        views.push(vwMain.call(this, model, actions));
+        views.push(this.vwMain(model, actions));
         break;
       case "game":
-        views.push(vwGame.call(this, model));
+        views.push(this.vwGame(model));
         break;
       case "review":
-        views.push(vwReview.call(this, model, actions));
+        views.push(this.vwReview(model, actions));
         break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
         // A route parameter of ?tab=N goes directly to tab N (0-based)
         views.push(
-          vwHelp.call(this, model, actions,
-            m.route.param("tab"),
-            m.route.param("faq")
+          this.vwHelp(model,
+            parseInt(m.route.param("tab") || ""),
+            parseInt(m.route.param("faq") || "")
           )
         );
         break;
@@ -621,8 +641,8 @@ function createView() {
     }
     // Push any open dialogs
     for (let i = 0; i < this.dialogStack.length; i++) {
-      var dialog = this.dialogStack[i];
-      var v = this.dialogViews[dialog.name];
+      let dialog = this.dialogStack[i];
+      let v: DialogFunc = View.dialogViews[dialog.name];
       if (v === undefined)
         console.log("Unknown dialog name: " + dialog.name);
       else
@@ -630,44 +650,44 @@ function createView() {
     }
     // Overlay a spinner, if active
     if (model.spinners > 0)
-      views.push(vwSpinner());
+      views.push(this.vwSpinner());
     return views;
   }
 
   // Dialog support
 
-  function pushDialog(dialogName: string, dialogArgs: any) {
+  pushDialog(dialogName: string, dialogArgs?: any) {
     this.dialogStack.push({ name: dialogName, args: dialogArgs });
     m.redraw(); // Ensure that the dialog is shown
   }
 
-  function popDialog() {
+  popDialog() {
     if (this.dialogStack.length > 0) {
       this.dialogStack.pop();
       m.redraw();
     }
   }
 
-  function popAllDialogs() {
+  popAllDialogs() {
     if (this.dialogStack.length > 0) {
       this.dialogStack = [];
       m.redraw();
     }
   }
 
-  function isDialogShown() {
+  isDialogShown() {
     return this.dialogStack.length > 0;
   }
 
-  function startSpinner() {
+  startSpinner() {
     this.pushDialog("spinner");
   }
 
-  function stopSpinner() {
+  stopSpinner() {
     this.popDialog();
   }
 
-  function notifyMediaChange(model) {
+  notifyMediaChange(model: Model) {
     // The view is changing, between mobile and fullscreen
     // and/or between portrait and landscape: ensure that
     // we don't end up with a selected game tab that is not visible
@@ -676,7 +696,7 @@ function createView() {
         // In this case, there is no board tab:
         // show the movelist
         model.game.sel = "movelist";
-        scrollMovelistToBottom();
+        this.scrollMovelistToBottom();
       }
       else {
         // Mobile: we default to the board tab
@@ -688,19 +708,19 @@ function createView() {
     this.popAllDialogs();
   }
 
-  function notifyChatMessage() {
+  notifyChatMessage() {
     // A fresh chat message has arrived
     m.redraw();
   }
 
-  function showUserInfo(userid: string, nick: string, fullname: string) {
+  showUserInfo(userid: string, nick: string, fullname: string) {
     // Show a user info dialog
     this.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
   }
 
   // Globally available controls
 
-  function vwInfo() {
+  vwInfo() {
     // Info icon, invoking the help screen
     return m(".info",
       { title: "Upplýsingar og hjálp" },
@@ -711,7 +731,7 @@ function createView() {
     );
   }
 
-  function vwUserId() {
+  vwUserId() {
     // User identifier at top right, opens user preferences
     if ($state.userId == "")
       // Don't show the button if there is no logged-in user
@@ -729,7 +749,7 @@ function createView() {
     );
   }
 
-  function vwNetskraflLogo() {
+  vwNetskraflLogo() {
     // The Netskrafl logo
     return m(".logo",
       m(m.route.Link,
@@ -745,47 +765,7 @@ function createView() {
     );
   }
 
-  const ExploLogo: ComponentFunc<{ scale: number; legend: string; }> = function(initialVnode) {
-
-    // The Explo logo, with or without the legend ('explo')
-
-    var scale = initialVnode.attrs.scale || 1.0;
-    var legend = initialVnode.attrs.legend;
-
-    return {
-      view: (vnode) => {
-        return m("img",
-          legend ?
-            {
-              alt: 'Explo',
-              width: 89 * scale, height: 40 * scale,
-              src: '/static/explo-logo.svg'
-            }
-          :
-            {
-              alt: 'Explo',
-              width: 23 * scale, height: 40 * scale,
-              src: '/static/explo-logo-only.svg'
-            }
-        );
-      }
-    };
-  };
-
-  const LeftLogo: ComponentFunc<{}> = function (initialVnode) {
-    return {
-      view: (vnode) => {
-        return m(".logo",
-          m(m.route.Link,
-            { href: '/main', class: "nodecorate" },
-            m(ExploLogo, { legend: false, scale: 1.5 })
-          )
-        );
-      }
-    };
-  };
-
-  const TogglerReady: ComponentFunc<{model: any}> = function(initialVnode) {
+  TogglerReady: ComponentFunc<{model: Model}> = (initialVnode) => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
 
@@ -797,7 +777,7 @@ function createView() {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         return vwToggler(
           "ready", $state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
           "Tek við áskorunum!"
@@ -806,7 +786,7 @@ function createView() {
     };
   };
 
-  const TogglerReadyTimed: ComponentFunc<{ model: any }> = function(initialVnode) {
+  TogglerReadyTimed: ComponentFunc<{ model: Model }> = (initialVnode) => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept timed challenges
 
@@ -827,8 +807,10 @@ function createView() {
     };
   };
 
-  function vwDialogButton(id: string, title: string, func: EventHandler,
-    content: VnodeChildren, tabindex: number) {
+  vwDialogButton(
+    id: string, title: string, func: EventHandler,
+    content: VnodeChildren, tabindex: number
+  ) {
     // Create a .modal-close dialog button
     var attrs: VnodeAttrs = {
       id: id,
@@ -840,14 +822,14 @@ function createView() {
     return m(DialogButton, attrs, content);
   }
 
-  function blinker() {
+  blinker() {
     // Toggle the 'over' class on all elements having the 'blinking' class
     var blinkers = document.getElementsByClassName('blinking');
     for (let i = 0; i < blinkers.length; i++)
       blinkers[i].classList.toggle("over");
   }
 
-  function vwSpinner() {
+  vwSpinner() {
     // Show a spinner wait box
     return m(
       ".modal-dialog",
@@ -858,14 +840,16 @@ function createView() {
 
   // Login screen
 
-  function vwLogin(model, actions) {
+  vwLogin() {
     // Login dialog
+
+    let view = this;
 
     function vwLoginLarge() {
       // Full screen version of login page
       return [
-        vwNetskraflLogo(),
-        vwInfo(),
+        view.vwNetskraflLogo(),
+        view.vwInfo(),
         m(".loginform-large",
         [
           m(".loginhdr", "Velkomin í Netskrafl!"),
@@ -911,7 +895,7 @@ function createView() {
             m("button.login",
               {
                 type: 'submit',
-                onclick: (ev) => {
+                onclick: () => {
                   window.location.href = "/page";
                 }
               },
@@ -940,7 +924,7 @@ function createView() {
             m("button.login",
               {
                 type: 'submit',
-                onclick: (ev) => {
+                onclick: () => {
                   window.location.href = "/page";
                 }
               },
@@ -956,15 +940,14 @@ function createView() {
 
   // A control that rigs up a tabbed view of raw HTML
 
-  function vwTabsFromHtml(html: string, id: string, tabNumber: number, createFunc) {
+  vwTabsFromHtml(html: string, id: string, tabNumber: number, createFunc: (vnode: Vnode) => void) {
     // The function assumes that 'this' is the current view object
     if (!html)
       return "";
-    let view = this;
     return m("div",
       {
         oninit: (vnode) => { vnode.state.selected = tabNumber || 1; },
-        oncreate: makeTabs.bind(view, id, createFunc, true)
+        oncreate: (vnode) => { this.makeTabs(id, createFunc, true, vnode); }
         /* onupdate: updateSelection */
       },
       m.trust(html)
@@ -973,27 +956,27 @@ function createView() {
 
   // Help screen
 
-  function vwHelp(model, actions, tabNumber, faqNumber) {
+  vwHelp(model: Model, tabNumber: number, faqNumber: number) {
 
-    function wireQuestions(vnode) {
+    function wireQuestions(vnode: Vnode) {
       // Clicking on a question brings the corresponding answer into view
       // This is achieved by wiring up all contained a[href="#faq-*"] links
 
-      function showAnswer(href, ev) {
+      function showAnswer(ev: Event, href: string) {
         // this points to the vnode
-        this.state.selected = 1; // FAQ tab
-        this.dom.querySelector(href).scrollIntoView();
+        vnode.state.selected = 1; // FAQ tab
+        vnode.dom.querySelector(href).scrollIntoView();
         ev.preventDefault();
       }
 
-      var anchors = vnode.dom.querySelectorAll("a");
+      let anchors = vnode.dom.querySelectorAll("a");
       for (let i = 0; i < anchors.length; i++) {
-        var href = anchors[i].getAttribute("href");
+        let href = anchors[i].getAttribute("href");
         if (href.slice(0, 5) == "#faq-")
           // This is a direct link to a question: wire it up
-          anchors[i].onclick = showAnswer.bind(vnode, href);
+          anchors[i].onclick = (ev) => { showAnswer(ev, href); };
       }
-      if (faqNumber !== undefined) {
+      if (faqNumber !== undefined && !isNaN(faqNumber)) {
         // Go to the FAQ tab and scroll the requested question into view
         selectTab(vnode, 1);
         vnode.state.selected = 1; // FAQ tab
@@ -1005,16 +988,16 @@ function createView() {
     return [
       // vwNetskraflLogo(),
       m(LeftLogo),
-      vwUserId.call(this),
+      this.vwUserId(),
       m("main",
-        vwTabsFromHtml.call(this, model.helpHTML, "tabs", tabNumber, wireQuestions)
+        this.vwTabsFromHtml(model.helpHTML, "tabs", tabNumber, wireQuestions)
       )
     ];
   }
 
   // User preferences screen
 
-  function vwUserPrefsDialog(model) {
+  vwUserPrefsDialog(model: Model) {
 
     var user = model.user;
     var err = model.userErrors || { };
@@ -1176,18 +1159,18 @@ function createView() {
               ]
             )
           ),
-          vwDialogButton("user-ok", "Vista", validate, glyph("ok"), 9),
-          vwDialogButton("user-cancel", "Hætta við",
-            (ev) => { view.popDialog(); ev.preventDefault(); },
+          this.vwDialogButton("user-ok", "Vista", validate, glyph("ok"), 9),
+          this.vwDialogButton("user-cancel", "Hætta við",
+            (ev) => { this.popDialog(); ev.preventDefault(); },
             glyph("remove"), 10),
-          vwDialogButton("user-logout", "Skrá mig út",
+          this.vwDialogButton("user-logout", "Skrá mig út",
             (ev) => {
               window.location.href = user.logout_url;
               ev.preventDefault();
             },
             [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
           user.friend ?
-            vwDialogButton("user-unfriend", "Hætta sem vinur",
+            this.vwDialogButton("user-unfriend", "Hætta sem vinur",
               (ev) => {
                 window.location.href = user.unfriend_url;
                 ev.preventDefault();
@@ -1195,7 +1178,7 @@ function createView() {
               [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ], 12
             )
           :
-            vwDialogButton("user-friend", "Gerast vinur",
+            this.vwDialogButton("user-friend", "Gerast vinur",
               (ev) => {
                 // Invoke the friend promo dialog
                 view.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
@@ -1208,16 +1191,16 @@ function createView() {
     );
   }
 
-  function vwUserPrefs(model, actions) {
+  vwUserPrefs(model: Model, actions) {
     if (model.user === null)
       model.loadUser(true); // Activate spinner while loading
     if (!model.user)
       // Nothing to edit (the spinner should be showing in this case)
       return "";
-    return vwUserPrefsDialog.call(this, model);
+    return this.vwUserPrefsDialog(model);
   }
 
-  function vwUserInfo(model, actions, args) {
+  vwUserInfo(model: Model, actions, args: { userid: string; nick: string; fullname: string; }) {
     return m(UserInfoDialog,
       {
         model: model,
@@ -1229,7 +1212,7 @@ function createView() {
     );
   }
 
-  function vwPromo(model, actions, args) {
+  vwPromo(model: Model, actions, args: { kind: string; initFunc: () => void; }) {
     return m(PromoDialog,
       {
         model: model,
@@ -1240,7 +1223,7 @@ function createView() {
     );
   }
 
-  function vwChallenge(model, actions, item) {
+  vwChallenge(model: Model, actions, item) {
     // Show a dialog box for a new challenge being issued
     var manual = $state.hasPaid; // If paying user, allow manual challenges
     var fairPlay = item.fairplay && $state.fairPlay; // Both users are fair-play
@@ -1390,7 +1373,7 @@ function createView() {
 
   // Main screen
 
-  function vwMain(model, actions) {
+  vwMain(model: Model, actions) {
     // Main screen with tabs
 
     var view = this;
@@ -1402,12 +1385,12 @@ function createView() {
         var numChallenges = 0;
         if (model.gameList)
           // Sum up games where it's the player's turn, as well as zombie games
-          numGames = model.gameList.reduce(function(acc, item) {
+          numGames = model.gameList.reduce((acc: number, item) => {
             return acc + (item.my_turn || item.zombie ? 1 : 0);
           }, 0);
         if (model.challengeList)
           // Sum up received challenges
-          numChallenges = model.challengeList.reduce(function(acc, item) {
+          numChallenges = model.challengeList.reduce((acc: number, item) => {
             return acc + (item.received ? 1 : 0);
           }, 0);
         return m("ul",
@@ -1448,7 +1431,7 @@ function createView() {
         );
       }
 
-      function showUserInfo(userid, nick, fullname) {
+      function showUserInfo(userid: string, nick: string, fullname: string) {
         view.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
       }
 
@@ -1460,7 +1443,7 @@ function createView() {
 
             if (!model.gameList)
               return "";
-            return model.gameList.map(function(item, i) {
+            return model.gameList.map((item, i: number) => {
 
               // Show a list item about a game in progress (or recently finished)
 
@@ -1470,8 +1453,8 @@ function createView() {
               }
 
               function vwTurn() {
-                var turnText;
-                var flagClass;
+                var turnText: string;
+                var flagClass: string;
                 if (item.my_turn) {
                   turnText = "Þú átt leik";
                   flagClass = "";
@@ -1530,7 +1513,7 @@ function createView() {
                       m("span.usr-info",
                         {
                           title: "Skoða feril",
-                          onclick: function(ev) {
+                          onclick: () => {
                             // Show opponent track record
                             showUserInfo(item.oppid, item.opp, item.fullname);
                           },
@@ -1626,15 +1609,15 @@ function createView() {
         ];
       }
 
-      function vwChallenges(showReceived) {
+      function vwChallenges(showReceived: boolean) {
 
         function vwList() {
 
-          function itemize(item, i) {
+          function itemize(item, i: number) {
 
             // Generate a list item about a pending challenge (issued or received)
 
-            function challengeDescription(json) {
+            function challengeDescription(json: { duration?: number; }) {
                /* Return a human-readable string describing a challenge
                   according to the enclosed preferences */
                if (!json || json.duration === undefined || json.duration === 0)
@@ -1643,7 +1626,7 @@ function createView() {
                return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
             }
 
-            function markChallenge(ev) {
+            function markChallenge(ev: Event) {
               // Clicked the icon at the beginning of the line,
               // to decline a received challenge or retract an issued challenge
               var action = item.received ? "decline" : "retract";
@@ -1651,7 +1634,7 @@ function createView() {
               ev.preventDefault();
             }
 
-            function clickReceived(ev) {
+            function clickReceived(ev: Event) {
               // Clicked the hotspot area to accept a received challenge
               if (item.received)
                 // Ask the server to create a new game and route to it
@@ -1660,7 +1643,7 @@ function createView() {
             }
 
             // var oppReady = !item.received && item.opp_ready;
-            var descr = challengeDescription(item.prefs);
+            let descr = challengeDescription(item.prefs);
 
             return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
               [
@@ -1692,7 +1675,7 @@ function createView() {
                   {
                     title: "Skoða feril",
                     // Show opponent track record
-                    onclick: function(ev) { showUserInfo(item.userid, item.opp, item.fullname); }
+                    onclick: (ev) => { showUserInfo(item.userid, item.opp, item.fullname); }
                   },
                   m("span.usr-info", "")
                 ),
@@ -1702,18 +1685,18 @@ function createView() {
             );
           }
 
-          var cList;
+          let cList: any[];
           if (!model.challengeList)
             cList = [];
           else
             cList = showReceived ?
-              model.challengeList.filter(function(item) { return item.received; }) :
-              model.challengeList.filter(function(item) { return !item.received; });
+              model.challengeList.filter((item) => item.received) :
+              model.challengeList.filter((item) => !item.received);
 
           return m("div",
             {
               id: showReceived ? 'chall-received' : 'chall-sent',
-              oninit: (vnode) => {
+              oninit: () => {
                 if (model.challengeList === null)
                   model.loadChallengeList();
               }
@@ -1789,7 +1772,7 @@ function createView() {
         ];
       }
 
-      function vwUserButton(id, icon, text) {
+      function vwUserButton(id: string, icon: string, text: string) {
         // Select the type of user list (robots, fav, alike, elo)
         var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
         var spec = (id == "elo") ? "human" : "";
@@ -1797,7 +1780,7 @@ function createView() {
           {
             className: (id == sel ? "shown" : ""),
             id: id,
-            onclick: function(ev) {
+            onclick: (ev) => {
               model.loadUserList({ query: id, spec: spec }, true);
               ev.preventDefault();
             }
@@ -1810,7 +1793,7 @@ function createView() {
 
         function vwUserList(listType, list) {
 
-          function itemize(item, i) {
+          function itemize(item, i: number) {
 
             // Generate a list item about a user
 
@@ -1870,7 +1853,7 @@ function createView() {
                 return m("a",
                   {
                     href: "",
-                    onclick: function(ev) { model.newGame(item.userid, false); ev.preventDefault(); }
+                    onclick: (ev) => { model.newGame(item.userid, false); ev.preventDefault(); }
                   },
                   [
                     m("span.list-nick", [ glyph("cog"), nbsp(), item.nick ]),
@@ -1890,7 +1873,7 @@ function createView() {
                 m("span.list-ch",
                   {
                     title: "Skora á",
-                    onclick: function(ev) {
+                    onclick: (ev) => {
                       issueChallenge();
                       ev.preventDefault();
                     }
@@ -1918,12 +1901,12 @@ function createView() {
           return m("div", { id: "userlist" }, list.map(itemize));
         }
 
-        var listType = model.userListCriteria ? model.userListCriteria.query : "robots";
+        let listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
           return m(EloPage, { id: "elolist", model: model, view: view });
         // Show normal user list
-        var list = [];
+        let list: any[] = [];
         if (model.userList === undefined) {
           // We are loading a fresh user list
           /* pass */
@@ -1933,7 +1916,7 @@ function createView() {
           model.loadUserList({ query: listType, spec: "" }, true);
         else
           list = model.userList;
-        var nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
+        let nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
           listType == "search" && model.userListCriteria.spec !== "";
         return [
           m(".listitem.listheader",
@@ -2060,14 +2043,14 @@ function createView() {
 
     return [
       m(LeftLogo), // No legend, scale up by 50%
-      vwUserId.call(this),
-      vwInfo(),
-      m(TogglerReady, { model: model }),
-      m(TogglerReadyTimed, { model: model }),
+      this.vwUserId(),
+      this.vwInfo(),
+      m(this.TogglerReady, { model: model }),
+      m(this.TogglerReadyTimed, { model: model }),
       m("main",
         m("div",
           {
-            oncreate: makeTabs.bind(this, "main-tabs", undefined, false),
+            oncreate: (vnode) => { this.makeTabs("main-tabs", undefined, false, vnode); },
             onupdate: updateSelection
           },
           vwMainTabs()
@@ -2076,19 +2059,20 @@ function createView() {
     ];
   }
 
-  function vwPlayerName(view, game, side) {
+  vwPlayerName(game, side: string) {
     // Displays a player name, handling both human and robot players
     // as well as left and right side, and local and remote colors
+    let view = this;
     var apl0 = game && game.autoplayer[0];
     var apl1 = game && game.autoplayer[1];
     var nick0 = game ? game.nickname[0] : "";
     var nick1 = game ? game.nickname[1] : "";
-    var player: number = game ? game.player : 0;
+    var player: 0 | 1 = game ? game.player : 0;
     var localturn: boolean = game ? game.localturn : false;
     var tomove: string;
     var gameover = game ? game.over : true;
 
-    function lookAtPlayer(player, side, ev) {
+    function lookAtPlayer(ev: Event, player: number, side: number) {
       if (!$state.uiFullscreen)
         // Don't do anything on mobile, and allow the click
         // to propagate to the parent
@@ -2117,7 +2101,7 @@ function createView() {
         return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
       tomove = gameover || (localturn !== (player === 0)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
-        { id: "player-0", onclick: (ev) => lookAtPlayer(player, 0, ev) },
+        { id: "player-0", onclick: (ev) => lookAtPlayer(ev, player, 0) },
         [ m("span.left-to-move"), nick0 ]
       );
     }
@@ -2128,20 +2112,20 @@ function createView() {
         return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
       tomove = gameover || (localturn !== (player === 1)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
-        { id: "player-1", onclick: (ev) => lookAtPlayer(player, 1, ev) },
+        { id: "player-1", onclick: (ev) => lookAtPlayer(ev, player, 1) },
         [ m("span.right-to-move"), nick1 ]
       );
     }
   }
 
-  function vwTwoLetter(initialVnode) {
+  vwTwoLetter(initialVnode) {
 
     // The two-letter-word list tab
     let page = 0;
     let game = initialVnode.attrs.game;
     let twoLetters = game.twoLetterWords();
 
-    function renderWord(bold, w) {
+    function renderWord(bold: boolean, w: string) {
       // For the first two-letter word in each group,
       // render the former letter in bold
       if (!bold)
@@ -2185,7 +2169,7 @@ function createView() {
     };
   }
 
-  function buttonState(game) {
+  buttonState(game) {
     // Calculate a set of booleans describing the state of the game
     let s: any = {};
     s.tilesPlaced = game.tilesPlaced().length > 0;
@@ -2236,7 +2220,7 @@ function createView() {
 
   // Game screen
 
-  function vwGame(model) {
+  vwGame(model: Model) {
     // A view of a game, in-progress or finished
 
     var game = model.game;
@@ -2305,11 +2289,11 @@ function createView() {
         return m(".heading",
           [
             m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
-              m(".player", vwPlayerName(view, game, "left")),
+              m(".player", view.vwPlayerName(game, "left")),
               m(".scorewrapper", m(".scoreleft", sc0)),
             ]),
             m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
-              m(".player", vwPlayerName(view, game, "right")),
+              m(".player", view.vwPlayerName(game, "right")),
               m(".scorewrapper", m(".scoreright", sc1)),
             ]),
             vwClock(),
@@ -2328,21 +2312,21 @@ function createView() {
         var component = null;
         switch (sel) {
           case "movelist":
-            component = vwMovelist.call(view, game);
+            component = view.vwMovelist(game);
             break;
           case "twoletter":
-            component = m(vwTwoLetter, { game: game } );
+            component = m(view.vwTwoLetter, { game: game } );
             break;
           case "chat":
-            component = vwChat(game);
+            component = view.vwChat(game);
             break;
           case "games":
-            component = vwGames(game);
+            component = view.vwGames(game);
             break;
           default:
             break;
         }
-        var tabgrp = vwTabGroup(game);
+        var tabgrp = view.vwTabGroup(game);
         return m(".right-area" + (game.isTimed() ? ".with-clock" : ""),
           component ? [ tabgrp, component ] : [ tabgrp ]
         );
@@ -2350,8 +2334,8 @@ function createView() {
 
       function vwRightMessage() {
         // Display a status message in the mobile UI
-        var s = buttonState(game);
-        var msg: string|Array<any> = "";
+        var s = view.buttonState(game);
+        var msg: string | any[] = "";
         var player = game.player;
         var opp = game.nickname[1 - player];
         var move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
@@ -2438,7 +2422,7 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
+      return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
 
     var bag = game ? game.bag : "";
     var newbag = game ? game.newbag : true;
@@ -2473,26 +2457,26 @@ function createView() {
         m("main",
           m(".game-container",
             [
-              m(MobileHeader),
+              m(this.MobileHeader),
               vwRightColumn(),
-              m(BoardArea, { model: model }),
-              $state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
-              game.askingForBlank ? m(BlankDialog, { game: game }) : ""
+              m(this.BoardArea, { model: model }),
+              $state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
+              game.askingForBlank ? m(this.BlankDialog, { game: game }) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
-        m(BackButton),
+        m(this.BackButton),
         $state.beginner ? vwBeginner() : "",
-        vwInfo()
+        this.vwInfo()
       ]
     );
   }
 
-  function MobileHeader(initialVnode) {
+  MobileHeader(initialVnode) {
     // The header on a mobile screen
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         return m(".header", [
             m(".header-logo",
               m(m.route.Link,
@@ -2512,13 +2496,13 @@ function createView() {
 
   // Review screen
 
-  function vwReview(model, actions) {
+  vwReview(model: Model, actions) {
     // A review of a finished game
 
+    let view = this;
     let game = model.game;
     let move = model.reviewMove;
     let bestMoves = model.bestMoves || [];
-    let view = this;
 
     function vwRightColumn() {
       // A container for the right-side header and area components
@@ -2554,12 +2538,12 @@ function createView() {
           [
             m(".leftplayer", [
               m(".player" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-                vwPlayerName(view, game, "left")),
+                view.vwPlayerName(game, "left")),
               m(".scoreleft", sc0),
             ]),
             m(".rightplayer", [
               m(".player" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-                vwPlayerName(view, game, "right")),
+                view.vwPlayerName(game, "right")),
               m(".scoreright", sc1),
             ]),
             m(".fairplay",
@@ -2571,7 +2555,7 @@ function createView() {
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", vwBestMoves.call(view, model, move, bestMoves));
+        return m(".right-area", view.vwBestMoves(model, move, bestMoves));
       }
 
       return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
@@ -2579,38 +2563,38 @@ function createView() {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(BackButton) ]);
+      return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
 
     // Create a list of major elements that we're showing
     let r = [];
     r.push(vwRightColumn());
-    r.push(m(BoardReview, { model: model, move: move }));
+    r.push(m(this.BoardReview, { model: model, move: move }));
     if (move === null)
       // Only show the stats overlay if move is null.
       // This means we don't show the overlay if move is 0.
-      r.push(vwStatsReview(game));
+      r.push(this.vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
         m("main", m(".game-container", r)),
-        m(BackButton), // Button to go back to main screen
-        vwInfo() // Help button
+        m(this.BackButton), // Button to go back to main screen
+        this.vwInfo() // Help button
       ]
     );
   }
 
-  function vwTabGroup(game) {
+  vwTabGroup(game) {
     // A group of clickable tabs for the right-side area content
     var showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     var r = [
-      vwTab(game, "board", "Borðið", "grid"),
-      vwTab(game, "movelist", "Leikir", "show-lines"),
-      vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
-      vwTab(game, "games", "Viðureignir", "flag")
+      this.vwTab(game, "board", "Borðið", "grid"),
+      this.vwTab(game, "movelist", "Leikir", "show-lines"),
+      this.vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
+      this.vwTab(game, "games", "Viðureignir", "flag")
     ];
     if (showchat)
       // Add chat tab
-      r.push(vwTab(game, "chat", "Spjall", "conversation",
-        function() {
+      r.push(this.vwTab(game, "chat", "Spjall", "conversation",
+        () => {
           // The tab has been clicked
           if (game.markChatShown())
             m.redraw();
@@ -2620,7 +2604,7 @@ function createView() {
     return m.fragment({}, r);
   }
 
-  function vwTab(game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
+  vwTab(game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
     // A clickable tab for the right-side area content
     var sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
@@ -2641,10 +2625,10 @@ function createView() {
     );
   }
 
-  function vwChat(game) {
+  vwChat(game) {
     // The chat tab
 
-    function decodeTimestamp(ts) {
+    function decodeTimestamp(ts: string) {
        // Parse and split an ISO timestamp string, formatted as YYYY-MM-DD HH:MM:SS
        return {
           year: parseInt(ts.substr(0, 4)),
@@ -2656,21 +2640,21 @@ function createView() {
        };
     }
 
-    function dateFromTimestamp(ts) {
+    function dateFromTimestamp(ts: string) {
        // Create a JavaScript millisecond-based representation of an ISO timestamp
        var dcTs = decodeTimestamp(ts);
        return Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
           dcTs.hour, dcTs.minute, dcTs.second);
     }
 
-    function timeDiff(dtFrom, dtTo) {
+    function timeDiff(dtFrom: number, dtTo: number) {
        // Return the difference between two JavaScript time points, in seconds
        return Math.round((dtTo - dtFrom) / 1000.0);
     }
 
     var dtLastMsg = null;
 
-    function makeTimestamp(ts) {
+    function makeTimestamp(ts: string) {
       // Decode the ISO format timestamp we got from the server
       var dtTs = dateFromTimestamp(ts);
       var result = null;
@@ -2734,7 +2718,7 @@ function createView() {
       }
     }
 
-    function focus(vnode) {
+    function focus(vnode: Vnode) {
       // Put the focus on the DOM object associated with the vnode
       vnode.dom.focus();
     }
@@ -2748,7 +2732,6 @@ function createView() {
     }
 
     var numMessages = (game && game.messages) ? game.messages.length : 0;
-    var uuid = game ? game.uuid : "";
 
     if (game && game.messages === null)
       // No messages loaded yet: kick off async message loading
@@ -2789,7 +2772,7 @@ function createView() {
               {
                 id: "chat-send",
                 title: "Senda",
-                onclick: function(ev) { sendMessage(); }
+                onclick: (ev) => { sendMessage(); }
               },
               glyph("chat")
             )
@@ -2799,10 +2782,10 @@ function createView() {
     );
   }
 
-  function vwMovelist(game) {
+  vwMovelist(game) {
     // The move list tab
 
-    var view = this;
+    let view = this;
 
     function movelist() {
       var mlist = game ? game.moves : []; // All moves made so far in the game
@@ -2820,7 +2803,7 @@ function createView() {
         else
           rightTotal = Math.max(rightTotal + score, 0);
         r.push(
-          vwMove.call(view, game, move,
+          view.vwMove(game, move,
             {
               key: i.toString(),
               leftTotal: leftTotal, rightTotal: rightTotal,
@@ -2838,25 +2821,25 @@ function createView() {
       [
         m(".movelist",
           {
-            onupdate: scrollMovelistToBottom
+            onupdate: this.scrollMovelistToBottom
           },
           movelist()
         ),
-        !$state.uiFullscreen ? m(Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
+        !$state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
       ]
     );
   }
 
-  function vwBestMoves(model, move, bestMoves) {
+  vwBestMoves(model: Model, move: number, bestMoves: any[]) {
     // List of best moves, in a game review
 
-    var view = this;
+    let view = this;
     var game = model.game;
 
-    function bestHeader(co, tiles, score) {
+    function bestHeader(co: string, tiles, score: number) {
       // Generate the header of the best move list
       var wrdclass = "wordmove";
-      var dispText;
+      var dispText: string | any[];
       if (co.length > 0) {
         // Regular move
         dispText = [
@@ -2932,7 +2915,7 @@ function createView() {
         tiles = mlist[i][1][1];
         score = mlist[i][1][2];
         r.push(
-          vwBestMove.call(view, model, move, i, mlist[i],
+          view.vwBestMove(model, move, i, mlist[i],
             {
               key: i.toString(),
               player: player, co: co, tiles: tiles, score: score
@@ -2950,7 +2933,7 @@ function createView() {
     );
   }
 
-  function scrollMovelistToBottom() {
+  scrollMovelistToBottom() {
     // If the length of the move list has changed,
     // scroll the last move into view
     var movelist = document.querySelectorAll("div.movelist .move");
@@ -2968,12 +2951,12 @@ function createView() {
     parent.setAttribute("data-len", movelist.length.toString());
   }
 
-  function vwMove(game, move, info) {
+  vwMove(game, move, info) {
     // Displays a single move
 
-    var view = this;
+    let view = this;
 
-    function highlightMove(co, tiles, playerColor, show) {
+    function highlightMove(co: string, tiles, playerColor, show: boolean) {
        /* Highlight a move's tiles when hovering over it in the move list */
        var vec = toVector(co);
        var col = vec.col;
@@ -2991,13 +2974,13 @@ function createView() {
     }
 
     var player = info.player;
-    var co = info.co;
-    var tiles = info.tiles;
+    var co: string = info.co;
+    var tiles: string = info.tiles;
     var score = info.score;
     var leftTotal = info.leftTotal;
     var rightTotal = info.rightTotal;
 
-    function gameOverMove(tiles) {
+    function gameOverMove(tiles: string) {
       // Add a 'game over' div at the bottom of the move list
       // of a completed game. The div includes a button to
       // open a review of the game, if the user is a friend of Explo.
@@ -3037,7 +3020,7 @@ function createView() {
       else
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
-        var numtiles = tiles.slice(5).length;
+        let numtiles = tiles.slice(5).length;
         tiles = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
         score = "";
       }
@@ -3092,14 +3075,14 @@ function createView() {
     var title = (tileMoveIncrement > 0 && !game.manual) ? "Smelltu til að fletta upp" : "";
     var playerColor = "0";
     var lcp = game.player;
-    var cls;
+    var cls: string;
     if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
       playerColor = "1";
     }
-    var attribs: VnodeAttrs = { title: title };
+    let attribs: VnodeAttrs = { title: title };
     if ($state.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual)
         // Tile move and not a manual game: allow word lookup
@@ -3136,17 +3119,16 @@ function createView() {
     }
   }
 
-  function vwBestMove(model, moveIndex, bestMoveIndex, move, info) {
+  vwBestMove(model: Model, moveIndex: number, bestMoveIndex: number, move, info) {
     // Displays a move in a list of best available moves
 
-    var view = this;
     var game = model.game;
     var player = info.player;
     var co = info.co;
     var tiles = info.tiles;
     var score = info.score;
 
-    function highlightMove(co, tiles, playerColor, show) {
+    function highlightMove(co: string, tiles, playerColor, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the best move list */
       var vec = toVector(co);
       var col = vec.col;
@@ -3248,7 +3230,7 @@ function createView() {
     }
   }
 
-  function vwGames(game) {
+  vwGames(game) {
     // The game list tab
 
     function games() {
@@ -3302,10 +3284,10 @@ function createView() {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  function Bag(initialVnode) {
+  Bag: ComponentFunc<{ bag: string; newbag: string; }> = (initialVnode) => {
     // The bag of tiles
 
-    function tiles(bag) {
+    function tiles(bag: string) {
       var r = [];
       var ix = 0;
       var count = bag.length;
@@ -3327,7 +3309,7 @@ function createView() {
     }
 
     return {
-      view: function(vnode) {
+      view: (vnode) => {
         var bag = vnode.attrs.bag;
         var newbag = vnode.attrs.newbag;
         var cls = "";
@@ -3344,7 +3326,7 @@ function createView() {
     };
   }
 
-  function BlankDialog(initialVnode) {
+  BlankDialog: ComponentFunc<{ game: any; }> = (initialVnode) => {
     // A dialog for choosing the meaning of a blank tile
 
     var game = initialVnode.attrs.game;
@@ -3409,7 +3391,7 @@ function createView() {
     };
   }
 
-  function BackButton(initialVnode) {
+  BackButton: ComponentFunc<{}> = (initialVnode) => {
     // Icon for going back to the main screen
     return {
       view: (vnode) => {
@@ -3426,50 +3408,50 @@ function createView() {
     };
   }
 
-  function BoardArea(initialVnode) {
+  BoardArea: ComponentFunc<{ model: Model; }> = (initialVnode) => {
     // Collection of components in the board (left-side) area
+    let model = initialVnode.attrs.model;
     return {
       view: (vnode) => {
-        var model = vnode.attrs.model;
-        var game = model.game;
-        var r = [];
-        if (game) {
-          r = [
-            m(Board, { model: model }),
-            m(Rack, { model: model }),
-            vwButtons(model),
-            vwErrors(game),
-            vwCongrats(game)
-          ];
-          r = r.concat(vwDialogs(game));
-        }
-        return m(".board-area", r);
-      }
-    };
-  }
-
-  function BoardReview(initialVnode) {
-    // The board area within a game review screen
-    return {
-      view: (vnode) => {
-        let model = vnode.attrs.model;
         let game = model.game;
         let r = [];
         if (game) {
           r = [
-            m(Board, { model: model }),
-            m(Rack, { model: model }),
+            m(this.Board, { model: model }),
+            m(this.Rack, { model: model }),
+            this.vwButtons(model),
+            this.vwErrors(game),
+            this.vwCongrats(game)
           ];
-          if (vnode.attrs.move !== null)
-            // Don't show navigation buttons if currently at overview (move==null)
-            r.push(vwButtonsReview(model, vnode.attrs.move));
+          r = r.concat(this.vwDialogs(game));
         }
         return m(".board-area", r);
       }
     };
   }
 
-  function Tile(initialVnode) {
+  BoardReview: ComponentFunc<{ model: Model; move: number; }> = (initialVnode) => {
+    // The board area within a game review screen
+    let model = initialVnode.attrs.model;
+    return {
+      view: (vnode) => {
+        let game = model.game;
+        let r = [];
+        if (game) {
+          r = [
+            m(this.Board, { model: model }),
+            m(this.Rack, { model: model }),
+          ];
+          if (vnode.attrs.move !== null)
+            // Don't show navigation buttons if currently at overview (move==null)
+            r.push(this.vwButtonsReview(model, vnode.attrs.move));
+        }
+        return m(".board-area", r);
+      }
+    };
+  }
+
+  Tile: ComponentFunc<{ game: any; coord: string; opponent: string; }> = (initialVnode) => {
     return {
       view: (vnode) => {
         let game = vnode.attrs.game;
@@ -3554,7 +3536,7 @@ function createView() {
     };
   }
 
-  const ReviewTile: ComponentFunc<{ coord: string, game: any }> = (initialVnode) => {
+  ReviewTile: ComponentFunc<{ coord: string, game: any }> = (initialVnode) => {
     // Return a td element that wraps an 'inert' tile in a review screen
     return {
       view: (vnode) => {
@@ -3571,7 +3553,7 @@ function createView() {
     };
   };
 
-  const DropTarget: ComponentFunc<{ model: any; coord: string; }> = function(initialVnode) {
+  DropTarget: ComponentFunc<{ model: Model; coord: string; }> = (initialVnode) => {
     // Return a td element that is a target for dropping tiles
     return {
       view: (vnode) => {
@@ -3648,8 +3630,10 @@ function createView() {
     };
   }
 
-  const Board: ComponentFunc<{ model: any; }> = function(initialVnode) {
+  Board: ComponentFunc<{ model: Model; }> = (initialVnode) => {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
+
+    let view = this;
 
     function colid() {
       // The column identifier row
@@ -3660,7 +3644,7 @@ function createView() {
       return m("tr.colid", r);
     }
 
-    function row(model, rowid) {
+    function row(model: Model, rowid: string) {
       // Each row of the board
       let r = [];
       let game = model.game;
@@ -3677,16 +3661,16 @@ function createView() {
               ondragover: (ev) => ev.stopPropagation(),
               ondrop: (ev) => ev.stopPropagation()
             },
-            m(Tile, { game: game, coord: coord })
+            m(view.Tile, { game: game, coord: coord })
           ));
         else
           // Empty square which is a drop target
-          r.push(m(DropTarget, { model: model, coord: coord }));
+          r.push(m(view.DropTarget, { model: model, coord: coord }));
       }
       return m("tr", r);
     }
 
-    function allrows(model) {
+    function allrows(model: Model) {
       // Return a list of all rows on the board
       let r = [];
       r.push(colid());
@@ -3696,11 +3680,11 @@ function createView() {
       return r;
     }
 
-    function zoomIn(model) {
+    function zoomIn(model: Model) {
       model.boardScale = 1.5;
     }
 
-    function zoomOut(model) {
+    function zoomOut(model: Model) {
       if (model.boardScale != 1.0) {
         model.boardScale = 1.0;
         setTimeout(model.resetScale);
@@ -3724,8 +3708,9 @@ function createView() {
     };
   }
 
-  const Rack: ComponentFunc<{ model: any; }> = function(initialVnode) {
+  Rack: ComponentFunc<{ model: Model; }> = (initialVnode) => {
     // A rack of 7 tiles
+    let view = this;
     return {
       view: (vnode) => {
         let model = vnode.attrs.model;
@@ -3743,47 +3728,47 @@ function createView() {
             // We have a tile in this rack slot, but it is a drop target anyway
             if (review) {
               r.push(
-                m(ReviewTile, { game: game, coord: coord },
-                  m(Tile, { game: game, coord: coord, opponent: opponent })
+                m(view.ReviewTile, { game: game, coord: coord },
+                  m(view.Tile, { game: game, coord: coord, opponent: opponent })
                 )
               );
             }
             else {
               r.push(
-                m(DropTarget, { model: model, coord: coord },
-                  m(Tile, { game: game, coord: coord })
+                m(view.DropTarget, { model: model, coord: coord },
+                  m(view.Tile, { game: game, coord: coord })
                 )
               );
             }
           }
           else
           if (review)
-            r.push(m(ReviewTile, { game: game, coord: coord }));
+            r.push(m(view.ReviewTile, { game: game, coord: coord }));
           else
-            r.push(m(DropTarget, { model: model, coord: coord }));
+            r.push(m(view.DropTarget, { model: model, coord: coord }));
         }
         return m(".rack-row", [
-          m(".rack-left", vwRackLeftButtons(model)),
+          m(".rack-left", view.vwRackLeftButtons(model)),
           m(".rack", m("table.board", m("tbody", m("tr", r)))),
-          m(".rack-right", vwRackRightButtons(model))
+          m(".rack-right", view.vwRackRightButtons(model))
         ]);
       }
     };
-  }
+  };
 
-  function vwRackLeftButtons(model) {
+  vwRackLeftButtons(model: Model) {
     // The button to the left of the rack in the mobile UI
-    var s = buttonState(model.game);
+    var s = this.buttonState(model.game);
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
-      return makeButton(
+      return this.makeButton(
         "recallbtn", false,
         () => { model.game.resetRack(); model.updateScale(); },
         "Færa stafi aftur í rekka", glyph("down-arrow")
       );
     if (s.showScramble && !s.showingDialog)
       // Show a 'Scramble rack' button
-      return makeButton(
+      return this.makeButton(
         "scramblebtn", false,
         () => { model.game.rescrambleRack(); },
         "Stokka upp rekka", glyph("random")
@@ -3791,12 +3776,12 @@ function createView() {
     return [];
   }
 
-  function vwRackRightButtons(model) {
+  vwRackRightButtons(model: Model) {
     // The button to the right of the rack in the mobile UI
-    var s = buttonState(model.game);
+    var s = this.buttonState(model.game);
     if (s.canPlay && !s.showingDialog)
       // Show a 'Submit move' button, with a Play icon
-      return makeButton(
+      return this.makeButton(
         "submitmove", false,
         () => { model.game.submitMove(); model.updateScale(); },
         "Leika", glyph("play")
@@ -3804,7 +3789,7 @@ function createView() {
     return [];
   }
 
-  function vwScore(game) {
+  vwScore(game) {
     // Shows the score of the current word
     let sc = [ ".score" ];
     if (game.manual)
@@ -3819,7 +3804,7 @@ function createView() {
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  function vwScoreReview(game, move) {
+  vwScoreReview(game, move) {
     // Shows the score of the current move within a game review screen
     let mv = move ? game.moves[move - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
@@ -3837,7 +3822,7 @@ function createView() {
     return m(sc.join("."), score.toString());
   }
 
-  function vwScoreDiff(model, move) {
+  vwScoreDiff(model: Model, move: number) {
     // Shows the score of the current move within a game review screen
     var game = model.game;
     var sc = [ ".scorediff" ];
@@ -3853,7 +3838,7 @@ function createView() {
     );
   }
 
-  function vwStatsReview(game) {
+  vwStatsReview(game) {
     // Shows the game statistics overlay
     if (game.stats === null)
       // No stats yet loaded: do it now
@@ -3874,7 +3859,7 @@ function createView() {
       return txt;
     }
 
-    var leftPlayerColor: string, rightPlayerColor: string;
+    let leftPlayerColor: string, rightPlayerColor: string;
 
     if (game.player == 1) {
       rightPlayerColor = "humancolor";
@@ -4035,7 +4020,7 @@ function createView() {
     );
   }
 
-  function makeButton(
+  makeButton(
     cls: string, disabled: boolean, func: () => void, title: string, children?: any, id?: string
   ) {
     // Create a button element, wrapping the disabling logic
@@ -4060,17 +4045,17 @@ function createView() {
     );
   }
 
-  function vwButtons(model) {
+  vwButtons(model: Model) {
     // The set of buttons below the game board, alongside the rack
     let game = model.game;
-    let s = buttonState(game);
+    let s = this.buttonState(game);
     let r = [];
     r.push(m(".word-check" +
       (s.wordGood ? ".word-good" : "") +
       (s.wordBad ? ".word-bad" : "")));
     if (s.showChallenge)
       r.push(
-        makeButton(
+        this.makeButton(
           "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitChallenge(),
           'Véfenging (röng kostar 10 stig)'
@@ -4080,7 +4065,7 @@ function createView() {
       r.push(m(".chall-info"));
     if (s.showRecall)
       r.push(
-        makeButton(
+        this.makeButton(
           "recallbtn", false,
           () => { game.resetRack(); model.updateScale(); },
           "Færa stafi aftur í rekka", glyph("down-arrow")
@@ -4088,14 +4073,14 @@ function createView() {
       );
     if (s.showScramble)
       r.push(
-        makeButton("scramblebtn", s.showingDialog,
+        this.makeButton("scramblebtn", s.showingDialog,
           () => game.rescrambleRack(),
           "Stokka upp rekka", glyph("random")
         )
       );
     if (s.showMove)
       r.push(
-        makeButton(
+        this.makeButton(
           "submitmove", !s.tilesPlaced || s.showingDialog,
           () => game.submitMove(), // No need to updateScale() here
           "Leika", [ "Leika", nbsp(), glyph("play") ]
@@ -4103,7 +4088,7 @@ function createView() {
       );
     if (s.showPass)
       r.push(
-        makeButton(
+        this.makeButton(
           "submitpass", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitPass(),
           "Pass", glyph("forward")
@@ -4111,7 +4096,7 @@ function createView() {
       );
     if (s.showExchange)
       r.push(
-        makeButton(
+        this.makeButton(
           "submitexchange", s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           () => game.submitExchange(),
           "Skipta stöfum", glyph("refresh")
@@ -4119,7 +4104,7 @@ function createView() {
       );
     if (s.showResign)
       r.push(
-        makeButton(
+        this.makeButton(
           "submitresign", s.showingDialog,
           () => game.submitResign(),
           "Gefa viðureign", glyph("fire")
@@ -4153,7 +4138,7 @@ function createView() {
       );
     }
     if (s.tilesPlaced)
-      r.push(vwScore(game));
+      r.push(this.vwScore(game));
     // Is the server processing a move?
     if (game.moveInProgress)
       r.push(
@@ -4169,12 +4154,12 @@ function createView() {
     return r;
   }
 
-  function vwButtonsReview(model, move) {
+  vwButtonsReview(model: Model, move: number) {
     // The navigation buttons below the board on the review screen
     let game = model.game;
     let r = [];
     r.push(
-      makeButton(
+      this.makeButton(
         "navbtn", !move,
         function(move) {
           // Navigate to previous move
@@ -4192,7 +4177,7 @@ function createView() {
       )
     );
     r.push(
-      makeButton(
+      this.makeButton(
         "navbtn", (!move) || (move + 1 >= game.moves.length),
         function(move) {
           // Navigate to next move
@@ -4212,14 +4197,14 @@ function createView() {
     // Show the score difference between an actual move and
     // a particular move on the best move list
     if (model.highlightedMove !== null)
-      r.push(vwScoreDiff(model, move));
-    r.push(vwScoreReview(game, move));
+      r.push(this.vwScoreDiff(model, move));
+    r.push(this.vwScoreReview(game, move));
     return r;
   }
 
-  function vwErrors(game) {
+  vwErrors(game) {
     // Error messages, selectively displayed
-    var msg = game.currentMessage || "";
+    var msg: string = game.currentMessage || "";
     var errorMessages = {
       1: "Enginn stafur lagður niður",
       2: "Fyrsta orð verður að liggja um byrjunarreitinn",
@@ -4256,7 +4241,7 @@ function createView() {
     return "";
   }
 
-  function vwCongrats(game) {
+  vwCongrats(game) {
     // Congratulations message when a game has been won
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
@@ -4269,7 +4254,7 @@ function createView() {
       : "";
   }
 
-  function vwDialogs(game) {
+  vwDialogs(game) {
     // Show prompt dialogs below game board, if any
     let r = [];
     if (game.showingDialog === null)
@@ -4361,43 +4346,132 @@ function createView() {
     return r;
   }
 
-  return {
-    appView: vwApp,
-    dialogStack: [],
-    dialogViews: dialogViews,
-    pushDialog: pushDialog,
-    popDialog: popDialog,
-    popAllDialogs: popAllDialogs,
-    notifyMediaChange: notifyMediaChange,
-    notifyChatMessage: notifyChatMessage,
-    startSpinner: startSpinner,
-    stopSpinner: stopSpinner,
-    isDialogShown: isDialogShown,
-    showUserInfo: showUserInfo
-  };
+  makeTabs(id: string, createFunc: (vnode: Vnode) => void, wireHrefs: boolean, vnode: Vnode) {
+    // When the tabs are displayed for the first time, wire'em up
+    var tabdiv = document.getElementById(id);
+    if (!tabdiv)
+      return;
+    // Add bunch of jQueryUI compatible classes
+    tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
+    var tabul = document.querySelector("#" + id + " > ul");
+    tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
+    tabul.setAttribute("role", "tablist");
+    var tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
+    var tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
+    var ids = [];
+    var lis = []; // The <li> elements
+    // Iterate over the <a> elements inside the <li> elements inside the <ul>
+    for (let i = 0; i < tablist.length; i++) {
+      ids.push(tablist[i].getAttribute("href").slice(1));
+      // Decorate the <a> elements
+      tablist[i].onclick = (ev) => { selectTab(vnode, i); ev.preventDefault(); };
+      tablist[i].setAttribute("href", null);
+      tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
+      tablist[i].setAttribute("role", "presentation");
+      // Also decorate the <li> elements
+      lis.push(tabitems[i]);
+      tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
+      tabitems[i].setAttribute("role", "tab");
+      tabitems[i].onmouseover = (ev) => {
+        (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", true);
+      };
+      tabitems[i].onmouseout = (ev) => {
+        (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", false);
+      };
+      // Find the tab's content <div>
+      let tabcontent = document.getElementById(ids[i]);
+      // Decorate it
+      tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
+      tabcontent.setAttribute("role", "tabpanel");
+    }
+    // Save the list of tab identifiers
+    vnode.state.ids = ids;
+    // Save the list of <li> elements
+    vnode.state.lis = lis;
+    // Select the first tab by default
+    vnode.state.selected = 0;
+    if (wireHrefs) {
+      // Wire all hrefs that point to single-page URLs
+      let clickURL = (ev: Event, href: string) => {
+        var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+        var qix = uri.indexOf("?");
+        var route = (qix >= 0) ? uri.slice(0, qix) : uri;
+        var qparams = uri.slice(route.length + 1);
+        var params = qparams.length ? getUrlVars(qparams) : { };
+        m.route.set(route, params);
+        if (window.history)
+          window.history.pushState({}, "", href); // Enable the back button
+        ev.preventDefault();
+      };
+      let clickUserPrefs = (ev: Event) => {
+        if ($state.userId != "")
+          // Don't show the userprefs if no user logged in
+          this.pushDialog("userprefs");
+        ev.preventDefault();
+      };
+      let clickTwoLetter = (ev: Event) => {
+        selectTab(vnode, 2); // Select tab number 2
+        ev.preventDefault();
+      };
+      let clickNewBag = (ev: Event) => {
+        selectTab(vnode, 3); // Select tab number 3
+        ev.preventDefault();
+      };
+      let anchors = tabdiv.querySelectorAll("a");
+      for (let i = 0; i < anchors.length; i++) {
+        let a = anchors[i];
+        let href = a.getAttribute("href");
+        if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
+          // Single-page URL: wire it up (as if it had had an m.route.Link on it)
+          a.onclick = (ev) => clickURL(ev, href);
+        }
+        else
+        if (href && href == "$$userprefs$$") {
+          // Special marker indicating that this link invokes
+          // a user preference dialog
+          a.onclick = clickUserPrefs;
+        }
+        else
+        if (href && href == "$$twoletter$$") {
+          // Special marker indicating that this link invokes
+          // the two-letter word list or the opponents tab
+          a.onclick = clickTwoLetter;
+        }
+        else
+        if (href && href == "$$newbag$$") {
+          // Special marker indicating that this link invokes
+          // the explanation of the new bag
+          a.onclick = clickNewBag;
+        }
+      }
+    }
+    // If a createFunc was specified, run it now
+    if (createFunc)
+      createFunc(vnode);
+    // Finally, make the default tab visible and hide the others
+    updateTabVisibility(vnode);
+  }
 
-} // createView
+} // class View
 
-function createActions(model, view) {
+class Actions {
 
-  initMediaListener();
-  initFirebaseListener();
-  attachListenerToUser();
+  model: Model;
+  view: View;
 
-  return {
-    onNavigateTo: onNavigateTo,
-    onFullScreen: onFullScreen,
-    onMobileScreen: onMobileScreen,
-    onMoveMessage: onMoveMessage,
-    onChatMessage: onChatMessage,
-    attachListenerToGame: attachListenerToGame,
-    detachListenerFromGame: detachListenerFromGame,
-  };
+  constructor(model: Model, view: View) {
+    this.model = model;
+    this.view = view;
+    this.initMediaListener();
+    this.initFirebaseListener();
+    this.attachListenerToUser();
+  }
 
-  function onNavigateTo(routeName: string, params) {
+  onNavigateTo(routeName: string, params: Params) {
     // We have navigated to a new route
     // If navigating to something other than help,
     // we need to have a logged-in user
+    let model = this.model;
     model.routeName = routeName;
     model.params = params;
     if (routeName == "game") {
@@ -4420,7 +4494,7 @@ function createActions(model, view) {
         // Different game than we had before: load it
         model.loadGame(params.uuid, undefined); // No funcComplete
       if (model.game !== null) {
-        let move = params.move;
+        let move: string | number = params.move;
         // Start with move number 0 by default
         move = (!move) ? 0 : parseInt(move);
         if (isNaN(move) || move < 0)
@@ -4451,19 +4525,19 @@ function createActions(model, view) {
     }
   }
 
-  function onMoveMessage(json) {
+  onMoveMessage(json: any) {
     // Handle a move message from Firebase
     console.log("Move message received: " + JSON.stringify(json));
-    model.handleMoveMessage(json);
+    this.model.handleMoveMessage(json);
   }
 
-  function onUserMessage(json) {
+  onUserMessage(json: any) {
     // Handle a user message from Firebase
     console.log("User message received: " + JSON.stringify(json));
-    model.handleUserMessage(json);
+    this.model.handleUserMessage(json);
   }
 
-  function onChatMessage(json) {
+  onChatMessage(json: { from_userid: string; game: any; msg: string; ts: string; }) {
     // Handle an incoming chat message
     console.log("Chat message received: " + JSON.stringify(json));
     if (json.from_userid != $state.userId) {
@@ -4476,123 +4550,139 @@ function createActions(model, view) {
       }
       */
     }
-    if (model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
+    if (this.model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
       // A chat message was successfully added
-      view.notifyChatMessage();
+      this.view.notifyChatMessage();
     }
   }
 
-  function onFullScreen() {
+  onFullScreen() {
     // Take action when min-width exceeds 768
     if (!$state.uiFullscreen) {
       $state.uiFullscreen = true;
-      view.notifyMediaChange(model);
+      this.view.notifyMediaChange(this.model);
       m.redraw();
     }
   }
 
-  function onMobileScreen () {
+  onMobileScreen () {
     if ($state.uiFullscreen) {
       $state.uiFullscreen = false;
-      view.notifyMediaChange(model);
+      this.view.notifyMediaChange(this.model);
       m.redraw();
     }
   }
 
-  function onLandscapeScreen() {
+  onLandscapeScreen() {
     if (!$state.uiLandscape) {
       $state.uiLandscape = true;
-      view.notifyMediaChange(model);
+      this.view.notifyMediaChange(this.model);
       m.redraw();
     }
   }
 
-  function onPortraitScreen() {
+  onPortraitScreen() {
     if ($state.uiLandscape) {
       $state.uiLandscape = false;
-      view.notifyMediaChange(model);
+      this.view.notifyMediaChange(this.model);
       m.redraw();
     }
   }
 
-  function mediaMinWidth667(this: MediaQueryList, ev?: MediaQueryListEvent) {
-     if (this.matches) {
+  mediaMinWidth667(mql: MediaQueryList) {
+     if (mql.matches) {
         // Take action when min-width exceeds 667
         // (usually because of rotation from portrait to landscape)
         // The board tab is not visible, so the movelist is default
-        onLandscapeScreen();
+        this.onLandscapeScreen();
      }
      else {
         // min-width is below 667
         // (usually because of rotation from landscape to portrait)
         // Make sure the board tab is selected
-        onPortraitScreen();
+        this.onPortraitScreen();
      }
   }
 
-  function mediaMinWidth768(this: MediaQueryList, ev?: MediaQueryListEvent) {
-    if (this.matches) {
-      onFullScreen();
+  mediaMinWidth768(mql: MediaQueryList) {
+    if (mql.matches) {
+      this.onFullScreen();
     }
     else {
-      onMobileScreen();
+      this.onMobileScreen();
     }
   }
 
-  function initMediaListener() {
+  initMediaListener() {
     // Install listener functions for media changes
-    var mql: MediaQueryList;
-    mql = window.matchMedia("(min-width: 667px)");
+    let mql: MediaQueryList = window.matchMedia("(min-width: 667px)");
+    let view = this;
     if (mql) {
-      mediaMinWidth667.call(mql);
-      mql.addEventListener("change", mediaMinWidth667);
+      this.mediaMinWidth667(mql);
+      mql.addEventListener("change",
+        function(ev: MediaQueryListEvent) {
+          view.mediaMinWidth667(this);
+        }
+      );
     }
     mql = window.matchMedia("(min-width: 768px)");
     if (mql) {
-      mediaMinWidth768.call(mql);
-      mql.addEventListener("change", mediaMinWidth768);
+      this.mediaMinWidth768(mql);
+      mql.addEventListener("change",
+        function(ev: MediaQueryListEvent) {
+          view.mediaMinWidth768(this);
+        }
+      );
     }
   }
 
-  function initFirebaseListener() {
+  initFirebaseListener() {
     // Sign into Firebase with the token passed from the server
     loginFirebase($state.firebaseToken);
   }
 
-  function attachListenerToUser() {
+  attachListenerToUser() {
     if ($state.userId)
-      attachFirebaseListener('user/' + $state.userId, onUserMessage);
+      attachFirebaseListener('user/' + $state.userId, (json) => this.onUserMessage(json));
   }
 
-  function detachListenerFromUser() {
+  detachListenerFromUser() {
     // Stop listening to Firebase notifications for the current user
     if ($state.userId)
       detachFirebaseListener('user/' + $state.userId);
   }
 
-  function attachListenerToGame(uuid: string) {
+  attachListenerToGame(uuid: string) {
     // Listen to Firebase events on the /game/[gameId]/[userId] path
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     // New moves
-    attachFirebaseListener(basepath + "move", onMoveMessage);
+    attachFirebaseListener(basepath + "move", (json) => this.onMoveMessage(json));
     // New chat messages
-    attachFirebaseListener(basepath + "chat", onChatMessage);
+    attachFirebaseListener(basepath + "chat", (json) => this.onChatMessage(json));
   }
 
-  function detachListenerFromGame(uuid: string) {
+  detachListenerFromGame(uuid: string) {
     // Stop listening to Firebase events on the /game/[gameId]/[userId] path
     var basepath = 'game/' + uuid + "/" + $state.userId + "/";
     detachFirebaseListener(basepath + "move");
     detachFirebaseListener(basepath + "chat");
   }
 
-} // createActions
+} // class Actions
 
-function createRouteResolver(model, actions, view) {
+function createRouteResolver(actions: Actions) {
+
+  // Return a map of routes to onmatch and render functions
+
+  let model = actions.model;
+  let view = actions.view;
+
   return model.paths.reduce((acc, item) => {
     acc[item.route] = {
-      onmatch: (params, route) => {
-        // Automatically close all dialogs when navigating to a new route
+
+      // Navigating to a new route
+      onmatch: (params: Params, route: string) => {
+        // Automatically close all dialogs
         view.popAllDialogs();
         if ($state.userId == "" && item.mustLogin)
           // Attempting to navigate to a new path that
@@ -4602,7 +4692,10 @@ function createRouteResolver(model, actions, view) {
         else
           actions.onNavigateTo(item.name, params);
       },
+
+      // Render a view on a model
       render: () => view.appView(model, actions)
+
     };
     return acc;
   }, {});
@@ -4610,13 +4703,53 @@ function createRouteResolver(model, actions, view) {
 
 // General-purpose Mithril components
 
+const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVnode) => {
+
+  // The Explo logo, with or without the legend ('explo')
+
+  var scale = initialVnode.attrs.scale || 1.0;
+  var legend = initialVnode.attrs.legend;
+
+  return {
+    view: (vnode) => {
+      return m("img",
+        legend ?
+          {
+            alt: 'Explo',
+            width: 89 * scale, height: 40 * scale,
+            src: '/static/explo-logo.svg'
+          }
+        :
+          {
+            alt: 'Explo',
+            width: 23 * scale, height: 40 * scale,
+            src: '/static/explo-logo-only.svg'
+          }
+      );
+    }
+  };
+};
+
+const LeftLogo: ComponentFunc<{}> = () => {
+  return {
+    view: () => {
+      return m(".logo",
+        m(m.route.Link,
+          { href: '/main', class: "nodecorate" },
+          m(ExploLogo, { legend: false, scale: 1.5 })
+        )
+      );
+    }
+  };
+};
+
 const TextInput: ComponentFunc<{
   initialValue: string;
   class: string;
   maxlength: number;
   id: string;
   tabindex: number;
-}> = function(initialVnode) {
+}> = (initialVnode) => {
 
   // Generic text input field
 
@@ -4696,7 +4829,7 @@ const MultiSelection: ComponentFunc<{
   initialSelection: number;
   defaultClass: string;
   selectedClass: string;
-}> = function(initialVnode) {
+}> = (initialVnode) => {
 
   // A multiple-selection div where users can click on child nodes
   // to select them, giving them an addional selection class,
@@ -4737,7 +4870,7 @@ const MultiSelection: ComponentFunc<{
 
 };
 
-const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = function(initialVnode) {
+const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = (initialVnode) => {
 
   // Shows an icon in grey or green depending on whether a given user
   // is online or not
@@ -4771,7 +4904,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = function(
 
 };
 
-function EloPage(initialVnode) {
+const EloPage: ComponentFunc<{ model: Model; view: View; id: string; key: string; }> = (initialVnode) => {
 
   // Show the header of an Elo ranking list and then the list itself
 
@@ -4832,7 +4965,12 @@ function EloPage(initialVnode) {
 
 };
 
-const EloList: ComponentFunc<{ view: any; model: any; id: string; sel: number; }> = function(initialVnode) {
+const EloList: ComponentFunc<{
+  view: View;
+  model: Model;
+  id: string;
+  sel: number;
+}> = (initialVnode) => {
 
   return {
 
@@ -4906,9 +5044,9 @@ const EloList: ComponentFunc<{ view: any; model: any; id: string; sel: number; }
       }
       else
       if (model.userList === null || model.userListCriteria.query != "elo" ||
-        model.userListCriteria.spec != vnode.attrs.sel) {
+        model.userListCriteria.spec != vnode.attrs.sel.toString()) {
         // We're not showing the correct list: request a new one
-        model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
+        model.loadUserList({ query: "elo", spec: vnode.attrs.sel.toString() }, true);
       }
       else {
         list = model.userList;
@@ -4919,7 +5057,7 @@ const EloList: ComponentFunc<{ view: any; model: any; id: string; sel: number; }
   };
 };
 
-const RecentList: ComponentFunc<{ recentList: any; id: string; }> = function(initialVnode) {
+const RecentList: ComponentFunc<{ recentList: any; id: string; }> = (initialVnode) => {
   // Shows a list of recent games, stored in vnode.attrs.recentList
   
   function itemize(item, i: number) {
@@ -5038,12 +5176,12 @@ const RecentList: ComponentFunc<{ recentList: any; id: string; }> = function(ini
 };
 
 const UserInfoDialog: ComponentFunc<{
-  model: any;
-  view: any;
+  model: Model;
+  view: View;
   userid: string;
   nick: string;
   fullname: string;
-}> = function(initialVnode) {
+}> = (initialVnode) => {
 
   // A dialog showing the track record of a given user, including
   // recent games and total statistics
@@ -5055,7 +5193,7 @@ const UserInfoDialog: ComponentFunc<{
   function _updateStats(vnode: typeof initialVnode) {
     // Fetch the statistics of the given user
     vnode.attrs.model.loadUserStats(vnode.attrs.userid,
-      (json: any) => {
+      (json: { result: number; favorite?: boolean; friend?: boolean; }) => {
         if (json && json.result === 0)
           stats = json;
         else
@@ -5068,7 +5206,7 @@ const UserInfoDialog: ComponentFunc<{
     // Fetch the recent game list of the given user
     vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
       versusAll ? null : $state.userId,
-      (json: any) => {
+      (json: { result: number; recentlist: any} ) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
         else
@@ -5178,7 +5316,7 @@ const UserInfoDialog: ComponentFunc<{
 
 }
 
-const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = function(initialVnode) {
+const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = (initialVnode) => {
   // Display the best words and best games played for a given user
 
   return {
@@ -5229,14 +5367,12 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
   };
 }
 
-const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = function(initialVnode) {
+const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnode) => {
   // Display key statistics, provided via the ownStats attribute
 
-  return {
+  let sel = 1;
 
-    oninit: (vnode) => {
-      this.sel = 1;
-    },
+  return {
 
     view: (vnode) => {
 
@@ -5269,17 +5405,17 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = function(ini
         [
           m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
             [
-              m(".option.small" + (this.sel == 1 ? ".selected" : ""),
-                { id: 'opt1', onclick: (ev) => { this.sel = 1; ev.preventDefault(); } },
+              m(".option.small" + (sel == 1 ? ".selected" : ""),
+                { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },
                 glyph("user")
               ),
-              m(".option.small" + (this.sel == 2 ? ".selected" : ""),
-                { id: 'opt2', onclick: (ev) => { this.sel = 2; ev.preventDefault(); } },
+              m(".option.small" + (sel == 2 ? ".selected" : ""),
+                { id: 'opt2', onclick: (ev) => { sel = 2; ev.preventDefault(); } },
                 glyph("cog")
               )
             ]
           ),
-          this.sel == 1 ? m("div",
+          sel == 1 ? m("div",
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block"} },
             [
               m(".stats-fig", { title: 'Elo-stig' },
@@ -5292,7 +5428,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = function(ini
                 vwStat(avgScoreHuman, "dashboard"))
             ]
           ) : "",
-          this.sel == 2 ? m("div",
+          sel == 2 ? m("div",
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block"} },
             [
               m(".stats-fig", { title: 'Elo-stig' },
@@ -5313,11 +5449,11 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = function(ini
 };
 
 const PromoDialog: ComponentFunc<{
-  model: any;
-  view: any;
+  model: Model;
+  view: View;
   kind: string;
   initFunc: () => void;
-}> = function(initialVnode) {
+}> = (initialVnode) => {
 
   // A dialog showing promotional content fetched from the server
 
@@ -5330,11 +5466,11 @@ const PromoDialog: ComponentFunc<{
     );
   }
 
-  function _onUpdate(appView, initFunc: () => void, vnode: Vnode) {
+  function _onUpdate(vnode: Vnode, view: View, initFunc: () => void) {
     var noButtons = vnode.dom.getElementsByClassName("btn-promo-no") as HTMLCollectionOf<HTMLElement>;
     // Override onclick, onmouseover and onmouseout for No buttons
     for (let i = 0; i < noButtons.length; i++) {
-      noButtons[i].onclick = () => appView.popDialog();
+      noButtons[i].onclick = () => view.popDialog();
       noButtons[i].onmouseover = buttonOver;
       noButtons[i].onmouseout = buttonOut;
     }
@@ -5354,7 +5490,7 @@ const PromoDialog: ComponentFunc<{
     oninit: _fetchContent,
 
     view: (vnode) => {
-      let appView = vnode.attrs.view;
+      let view = vnode.attrs.view;
       let initFunc = vnode.attrs.initFunc;
       return m(".modal-dialog",
         { id: "promo-dialog", style: { visibility: "visible" } },
@@ -5363,7 +5499,7 @@ const PromoDialog: ComponentFunc<{
           m("div",
             {
               id: "promo-content",
-              onupdate: (vnode) => _onUpdate(appView, initFunc, vnode)
+              onupdate: (vnode) => _onUpdate(vnode, view, initFunc)
             },
             m.trust(html)
           )
@@ -5374,7 +5510,7 @@ const PromoDialog: ComponentFunc<{
 
 };
 
-const SearchButton: ComponentFunc<{ model: any; }> = function(initialVnode) {
+const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
   // A combination of a button and pattern entry field
   // for user search
@@ -5409,7 +5545,7 @@ const SearchButton: ComponentFunc<{ model: any; }> = function(initialVnode) {
     // convoluted route to associate a boolean result with it.
     let newP = {
       result: true,
-      p: new Promise(function(resolve, reject) {
+      p: new Promise((resolve) => {
         // After 800 milliseconds, resolve to whatever value the
         // result property has at that time. It will be true
         // unless the promise has been "cancelled" by setting
@@ -5418,7 +5554,7 @@ const SearchButton: ComponentFunc<{ model: any; }> = function(initialVnode) {
       })
     };
     promise = newP;
-    promise.p.then((value) => {
+    promise.p.then((value: boolean) => {
       if (value) {
         // Successfully resolved, without cancellation:
         // issue the search query to the server as it now stands
@@ -5468,7 +5604,7 @@ const SearchButton: ComponentFunc<{ model: any; }> = function(initialVnode) {
   };
 };
 
-const DialogButton: ComponentFunc<{}> = function(initialVnode) {
+const DialogButton: ComponentFunc<{}> = (initialVnode) => {
   return {
     view: (vnode) => {
       let attrs: VnodeAttrs = {
@@ -5546,113 +5682,6 @@ function selectTab(vnode: Vnode, i: number) {
   updateTabVisibility(vnode);
 }
 
-function makeTabs(id: string, createFunc, wireHrefs: boolean, vnode: Vnode) {
-  // When the tabs are displayed for the first time, wire'em up
-  var tabdiv = document.getElementById(id);
-  if (!tabdiv)
-    return;
-  var view = this;
-  // Add bunch of jQueryUI compatible classes
-  tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
-  var tabul = document.querySelector("#" + id + " > ul");
-  tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
-  tabul.setAttribute("role", "tablist");
-  var tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
-  var tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
-  var ids = [];
-  var lis = []; // The <li> elements
-  // Iterate over the <a> elements inside the <li> elements inside the <ul>
-  for (let i = 0; i < tablist.length; i++) {
-    ids.push(tablist[i].getAttribute("href").slice(1));
-    // Decorate the <a> elements
-    tablist[i].onclick = (ev) => { selectTab(vnode, i); ev.preventDefault(); };
-    tablist[i].setAttribute("href", null);
-    tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
-    tablist[i].setAttribute("role", "presentation");
-    // Also decorate the <li> elements
-    lis.push(tabitems[i]);
-    tabitems[i].setAttribute("class", "ui-state-default ui-corner-top");
-    tabitems[i].setAttribute("role", "tab");
-    tabitems[i].onmouseover = (ev) => {
-      (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", true);
-    };
-    tabitems[i].onmouseout = (ev) => {
-      (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", false);
-    };
-    // Find the tab's content <div>
-    let tabcontent = document.getElementById(ids[i]);
-    // Decorate it
-    tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
-    tabcontent.setAttribute("role", "tabpanel");
-  }
-  // Save the list of tab identifiers
-  vnode.state.ids = ids;
-  // Save the list of <li> elements
-  vnode.state.lis = lis;
-  // Select the first tab by default
-  vnode.state.selected = 0;
-  if (wireHrefs) {
-    // Wire all hrefs that point to single-page URLs
-    let clickURL = function(href, ev) {
-      var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-      var qix = uri.indexOf("?");
-      var route = (qix >= 0) ? uri.slice(0, qix) : uri;
-      var qparams = uri.slice(route.length + 1);
-      var params = qparams.length ? getUrlVars(qparams) : { };
-      m.route.set(route, params);
-      if (window.history)
-        window.history.pushState({}, "", href); // Enable the back button
-      ev.preventDefault();
-    };
-    let clickUserPrefs = function(ev) {
-      if ($state.userId != "")
-        // Don't show the userprefs if no user logged in
-        this.pushDialog("userprefs");
-      ev.preventDefault();
-    };
-    let clickTwoLetter = function(ev) {
-      selectTab(this, 2); // Select tab number 2
-      ev.preventDefault();
-    };
-    let clickNewBag = function(ev) {
-      selectTab(this, 3); // Select tab number 3
-      ev.preventDefault();
-    };
-    let anchors = tabdiv.querySelectorAll("a");
-    for (let i = 0; i < anchors.length; i++) {
-      let a = anchors[i];
-      let href = a.getAttribute("href");
-      if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
-        // Single-page URL: wire it up (as if it had had an m.route.Link on it)
-        a.onclick = clickURL.bind(null, href);
-      }
-      else
-      if (href && href == "$$userprefs$$") {
-        // Special marker indicating that this link invokes
-        // a user preference dialog
-        a.onclick = clickUserPrefs.bind(view);
-      }
-      else
-      if (href && href == "$$twoletter$$") {
-        // Special marker indicating that this link invokes
-        // the two-letter word list or the opponents tab
-        a.onclick = clickTwoLetter.bind(vnode);
-      }
-      else
-      if (href && href == "$$newbag$$") {
-        // Special marker indicating that this link invokes
-        // the explanation of the new bag
-        a.onclick = clickNewBag.bind(vnode);
-      }
-    }
-  }
-  // If a createFunc was specified, run it now
-  if (createFunc)
-    createFunc(vnode);
-  // Finally, make the default tab visible and hide the others
-  updateTabVisibility(vnode);
-}
-
 function updateSelection(vnode: Vnode) {
   // Select a tab according to the ?tab= query parameter in the current route
   var tab = m.route.param("tab");
@@ -5661,9 +5690,9 @@ function updateSelection(vnode: Vnode) {
 }
 
 // Get values from a URL query string
-function getUrlVars(url) {
+function getUrlVars(url: string) {
    let hashes = url.split('&');
-   let vars = { };
+   let vars: Params = { };
    for (let i = 0; i < hashes.length; i++) {
       let hash = hashes[i].split('=');
       if (hash.length == 2)
@@ -5686,7 +5715,7 @@ function buttonOut(ev: Event) {
   (ev as MithrilEvent).redraw = false;
 }
 
-function stopPropagation(ev) {
+function stopPropagation(ev: Event) {
   ev.stopPropagation();
 }
 
