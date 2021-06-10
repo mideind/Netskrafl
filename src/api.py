@@ -1033,6 +1033,7 @@ def _challengelist() -> List[Dict[str, Any]]:
         nick = u.nickname()
         result.append(
             {
+                "key": c[3],  # ChallengeModel entity key
                 "received": True,
                 "userid": c[0],
                 "opp": nick,
@@ -1053,6 +1054,7 @@ def _challengelist() -> List[Dict[str, Any]]:
         nick = u.nickname()
         result.append(
             {
+                "key": c[3],  # ChallengeModel entity key
                 "received": False,
                 "userid": c[0],
                 "opp": nick,
@@ -1458,6 +1460,8 @@ def challenge() -> ResponseType:
     fairplay = rq.get_bool("fairplay")
     new_bag = rq.get_bool("newbag")
     manual = rq.get_bool("manual")
+    # Fetch an optional key of the challenge being acted on
+    key = rq.get("key")
 
     # Ensure that the duration is reasonable
     if duration < 0:
@@ -1476,13 +1480,13 @@ def challenge() -> ResponseType:
             },
         )
     elif action == "retract":
-        user.retract_challenge(destuser)
+        user.retract_challenge(destuser, key=key)
     elif action == "decline":
         # Decline challenge previously made by the destuser (really srcuser)
-        user.decline_challenge(destuser)
+        user.decline_challenge(destuser, key=key)
     elif action == "accept":
         # Accept a challenge previously made by the destuser (really srcuser)
-        user.accept_challenge(destuser)
+        user.accept_challenge(destuser, key=key)
     # Notify the destination user via a
     # Firebase notification to /user/[user_id]/challenge
     # main.html listens to this

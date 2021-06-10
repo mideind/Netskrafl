@@ -99,7 +99,12 @@ _T = TypeVar("_T")
 
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
-ChallengeTuple = Tuple[Optional[str], Optional[PrefsDict], datetime]
+ChallengeTuple = Tuple[
+    Optional[str],  # Challenged user
+    Optional[PrefsDict],  # Parameters of the challenge
+    datetime,  # Timestamp of the challenge
+    str,  # Key of the ChallengeModel entity
+]
 
 
 class StatsDict(TypedDict):
@@ -151,7 +156,7 @@ class Query(Generic[_T], ndb.Query):
         f: Callable[..., Union[Sequence[Key], Sequence[_T]]] = cast(Any, super()).fetch
         return f(*args, **kwargs)
 
-    def fetch_async(self, limit: Optional[int]=None, **kwargs: Any) -> Future[_T]:  # type: ignore
+    def fetch_async(self, limit: Optional[int] = None, **kwargs: Any) -> Future[_T]:  # type: ignore
         f: Callable[..., Future[_T]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
 
@@ -1028,7 +1033,7 @@ class ChallengeModel(Model):
     prefs = cast(PrefsDict, ndb.JsonProperty())
 
     # The time of issuance
-    timestamp = Model.Datetime(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """Set a destination user key property"""
@@ -1082,11 +1087,19 @@ class ChallengeModel(Model):
 
     @classmethod
     def del_relation(
-        cls, src_id: str, dest_id: str
+        cls, src_id: str, dest_id: str, key: Optional[str]
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Delete a challenge relation between a source user and a destination user"""
         ks = Key(UserModel, src_id)
         kd = Key(UserModel, dest_id)
+        if key:
+            # We have the key of a particular challenge: operate on it directly
+            cm = ChallengeModel.get_by_id(key, parent=ks)
+            if cm is not None and cm.destuser == kd:
+                cm.key.delete()
+                return (True, cm.prefs)
+            return (False, None)
+        # We don't have a key: query by source and destination user
         prefs: Optional[PrefsDict] = None
         found = False
         while True:
@@ -1118,7 +1131,7 @@ class ChallengeModel(Model):
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """Map an issued challenge to a tuple of useful info"""
             id0: Optional[str] = None if cm.destuser is None else cm.destuser.id()
-            return (id0, cm.prefs, cm.timestamp)
+            return (id0, cm.prefs, cm.timestamp, cm.key.id())
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
@@ -1141,7 +1154,7 @@ class ChallengeModel(Model):
             """Map a received challenge to a tuple of useful info"""
             p0 = cm.key.parent()
             id0: Optional[str] = None if p0 is None else p0.id()
-            return (id0, cm.prefs, cm.timestamp)
+            return (id0, cm.prefs, cm.timestamp, cm.key.id())
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
@@ -1543,9 +1556,7 @@ class StatsModel(Model):
         k = Key(UserModel, user_id)
         now = datetime.utcnow()
         q = (
-            cls.query(
-                ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)
-            )
+            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k))
             .filter(StatsModel.timestamp <= now)
             .order(-cast(int, StatsModel.timestamp))
         )
@@ -1564,10 +1575,9 @@ class StatsModel(Model):
             return
         k = Key(UserModel, user_id)
         delete_multi(
-            cls.query(
-                ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)
+            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)).iter(
+                keys_only=True
             )
-            .iter(keys_only=True)
         )
 
 
@@ -2158,7 +2168,9 @@ class ReportModel(Model):
     timestamp = Model.Datetime(auto_now_add=True)
 
     @classmethod
-    def report_user(cls, reporter_id: str, reported_id: str, code: int, text: str) -> bool:
+    def report_user(
+        cls, reporter_id: str, reported_id: str, code: int, text: str
+    ) -> bool:
         """Add a block"""
         if reporter_id and reported_id:
             rm = ReportModel()

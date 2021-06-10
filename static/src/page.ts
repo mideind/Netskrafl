@@ -94,6 +94,30 @@ interface GameListItem {
   ts: string;
 }
 
+interface ChallengeListItem {
+  key: string;
+  received: boolean;
+  userid: string;
+  opp: string;
+  fullname: string;
+  prefs: any;
+  ts: string;
+  opp_ready: boolean;
+  live: boolean;
+  image: string;
+  fav: boolean;
+}
+type ChallengeAction = "issue" | "retract" | "decline" | "accept";
+interface ChallengeParameters {
+  action: ChallengeAction;
+  destuser: string;
+  duration?: number;
+  fairplay?: boolean;
+  newbag?: boolean;
+  manual?: boolean;
+  key?: string;
+}
+
 interface UserErrors {
   nickname?: string;
   full_name?: string;
@@ -148,7 +172,7 @@ class Model {
   // The current game list
   gameList?: GameListItem[] = null;
   // The current challenge list
-  challengeList?: any[] = null;
+  challengeList?: ChallengeListItem[] = null;
   // Recent games
   recentList?: any[] = null;
   // The currently displayed user list
@@ -235,7 +259,7 @@ class Model {
       method: "POST",
       url: "/challengelist"
     })
-    .then((json: { result: number; challengelist: any; }) => {
+    .then((json: { result: number; challengelist: ChallengeListItem[]; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.challengeList = null;
@@ -496,14 +520,14 @@ class Model {
     });
   }
 
-  modifyChallenge(parameters: object) {
+  modifyChallenge(parameters: ChallengeParameters) {
     // Reject or retract a challenge
     m.request({
       method: "POST",
       url: "/challenge",
       body: parameters
     })
-    .then((json: { result: number }) => {
+    .then((json: { result: number; }) => {
       if (json.result === 0)
         this.loadChallengeList();
     });
@@ -1657,7 +1681,7 @@ class View {
 
         function vwList() {
 
-          function itemize(item, i: number) {
+          function itemize(item: ChallengeListItem, i: number) {
 
             // Generate a list item about a pending challenge (issued or received)
 
@@ -1673,8 +1697,8 @@ class View {
             function markChallenge(ev: Event) {
               // Clicked the icon at the beginning of the line,
               // to decline a received challenge or retract an issued challenge
-              var action = item.received ? "decline" : "retract";
-              model.modifyChallenge({ destuser: item.userid, action: action });
+              let action: ChallengeAction = item.received ? "decline" : "retract";
+              model.modifyChallenge({ destuser: item.userid, action: action, key: item.key });
               ev.preventDefault();
             }
 
@@ -1729,7 +1753,7 @@ class View {
             );
           }
 
-          let cList: any[];
+          let cList: ChallengeListItem[];
           if (!model.challengeList)
             cList = [];
           else
@@ -1881,6 +1905,8 @@ class View {
               if (item.chall) {
                 // Retracting challenge
                 item.chall = false;
+                // Note: the effect of this is to retract all challenges
+                // that this user has issued to the destination user
                 model.modifyChallenge({ destuser: item.userid, action: "retract" });
               }
               else

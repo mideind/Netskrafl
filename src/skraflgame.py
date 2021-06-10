@@ -114,7 +114,8 @@ class User:
     # Current namespace (schema) for memcached User objects
     # Upgraded from 4 to 5 after adding locale attribute
     # Upgraded from 5 to 6 after adding location attribute
-    _NAMESPACE = "user:6"
+    # Upgraded from 6 to 7 after adding timestamp with conversion to/from isoformat
+    _NAMESPACE = "user:7"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
@@ -599,24 +600,24 @@ class User:
         assert sid is not None
         ChallengeModel.add_relation(sid, destuser_id, prefs)
 
-    def retract_challenge(self, destuser_id: str) -> None:
+    def retract_challenge(self, destuser_id: str, *, key: Optional[str] = None) -> None:
         """Retract a challenge previously issued to the destuser"""
         sid = self.id()
         assert sid is not None
-        ChallengeModel.del_relation(sid, destuser_id)
+        ChallengeModel.del_relation(sid, destuser_id, key)
 
-    def decline_challenge(self, srcuser_id: str) -> None:
+    def decline_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> None:
         """Decline a challenge previously issued by the srcuser"""
         sid = self.id()
         assert sid is not None
-        ChallengeModel.del_relation(srcuser_id, sid)
+        ChallengeModel.del_relation(srcuser_id, sid, key)
 
-    def accept_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
+    def accept_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> Tuple[bool, Optional[PrefsDict]]:
         """Decline a challenge previously issued by the srcuser"""
         # Delete the accepted challenge and return the associated preferences
         sid = self.id()
         assert sid is not None
-        return ChallengeModel.del_relation(srcuser_id, sid)
+        return ChallengeModel.del_relation(srcuser_id, sid, key)
 
     def adjust_highest_score(self, score: int, game_uuid: str) -> bool:
         """If this is the highest score of the player, modify it"""
@@ -736,6 +737,7 @@ class User:
         d: Dict[str, Any] = dict(**self.__dict__)
         del d["_favorites"]
         del d["_blocks"]
+        d["_timestamp"] = self._timestamp.isoformat()
         return d
 
     @classmethod
@@ -745,6 +747,7 @@ class User:
         u.__dict__ = j
         u._favorites = None
         u._blocks = None
+        u._timestamp = datetime.fromisoformat(j["_timestamp"])
         return u
 
     def profile(self) -> Dict[str, Any]:
