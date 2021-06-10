@@ -1311,7 +1311,7 @@ def userstats() -> str:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def image() -> ResponseType:
     """ Set (POST) or get (GET) the image of a user """
-    rq = RequestData(request)
+    rq = RequestData(request, use_args=True)
     cuid = current_user_id()
     assert cuid is not None
     uid = rq.get("uid") or cuid

@@ -43,6 +43,8 @@ from datetime import datetime, timedelta
 from itertools import groupby
 from functools import cached_property
 
+from flask.helpers import url_for
+
 from cache import memcache
 
 from languages import Alphabet, OldTileSet, NewTileSet, vocabulary_for_locale
@@ -95,6 +97,7 @@ class UserSummaryDict(TypedDict):
     uid: str
     nick: str
     name: str
+    image: str
 
 
 class User:
@@ -146,6 +149,7 @@ class User:
         # Set of blocked users, only loaded upon demand
         self._blocks: Optional[Set[str]] = None
         self._image: str = ""
+        self._has_image_blob: bool = False
         self._timestamp = datetime.utcnow()
         # The user location is typically an ISO country code
         self._location: str = ""
@@ -173,6 +177,7 @@ class User:
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
         self._image = um.image or ""
+        self._has_image_blob = bool(um.image_blob)
         self._timestamp = um.timestamp
         self._location = um.location or ""
 
@@ -205,6 +210,8 @@ class User:
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
             um.image = self._image
+            if not self._has_image_blob:
+                um.image_blob = None
             um.location = self._location
             # um.timestamp should not be set or updated
             um.put()
@@ -346,11 +353,21 @@ class User:
 
     def image(self) -> str:
         """Returns the URL of an image (photo/avatar) of a user"""
+        if not self._user_id:
+            return ""
+        if self._has_image_blob:
+            # We have a stored BLOB for this user: return a URL to it
+            return url_for("api.image", uid=self._user_id)
+        # We have a stored URL: return it
         return self._image or ""
 
     def set_image(self, image: str) -> None:
         """Sets the URL of an image (photo/avatar) of a user"""
+        # Note: For associating a user with an image BLOB,
+        # refer to the /image endpoint in api.py.
+        # This call erases any BLOB already associated with the user!
         self._image = image
+        self._has_image_blob = False
 
     def fanfare(self) -> bool:
         """Returns True if the user wants a fanfare sound when winning"""
@@ -553,7 +570,9 @@ class User:
             u = User.load_if_exists(uid)
             if u is not None:
                 result.append(
-                    UserSummaryDict(uid=uid, nick=u.nickname(), name=u.full_name())
+                    UserSummaryDict(
+                        uid=uid, nick=u.nickname(), name=u.full_name(), image=u.image()
+                    )
                 )
         return result
 
@@ -736,11 +755,13 @@ class User:
         reply["result"] = Error.LEGAL
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
+        reply["image"] = self.image()
         reply["friend"] = self.friend()
         reply["has_paid"] = self.has_paid()
         reply["locale"] = self.locale
         reply["location"] = self.location
-        reply["timestamp"] = self.timestamp()
+        # Format the user timestamp as YYYY-MM-DD HH:MM:SS
+        reply["timestamp"] = Alphabet.format_timestamp(self.timestamp())
         reply["accepts_challenges"] = self.is_ready()
         reply["accepts_timed"] = self.is_ready_timed()
         reply["chat_disabled"] = self.chat_disabled()

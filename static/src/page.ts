@@ -20,9 +20,13 @@
 
 export { main };
 
-import { Game, coord, toVector } from "./game.js";
+import { Game, coord, toVector, RackTile, Move } from "./game.js";
 import { addPinchZoom, registerSalesCloud } from "./util.js";
-import { attachFirebaseListener, detachFirebaseListener, loginFirebase } from "./channel.js";
+
+import {
+  attachFirebaseListener, detachFirebaseListener, loginFirebase
+} from "./channel.js";
+
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
 } from "./mithril.js";
@@ -39,7 +43,22 @@ const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 const MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
 
 // Global state
-var $state: any;
+interface GlobalState {
+  userId : string;
+  userNick: string;
+  beginner: boolean;
+  fairPlay: boolean;
+  newBag: boolean;
+  hasPaid: boolean;
+  ready: boolean;
+  readyTimed: boolean;
+  uiFullscreen: boolean;
+  uiLandscape: boolean;
+  firebaseToken: string;
+  emoticons: { icon: string; image: string; }[];
+}
+
+var $state: GlobalState;
 
 // Basic Mithril routing settings
 type Path = { name: string; route: string; mustLogin: boolean; };
@@ -57,7 +76,31 @@ interface Params {
   faq?: string;
 }
 
-function main(state: any) {
+// Items in a game list
+interface GameListItem {
+  uuid: string;
+  fullname: string;
+  my_turn: boolean;
+  timed: boolean;
+  manual: boolean;
+  zombie: boolean;
+  overdue: boolean;
+  oppid: string;
+  opp: string;
+  sc0: number;
+  sc1: number;
+  url: string;
+  tile_count: number;
+  ts: string;
+}
+
+interface UserErrors {
+  nickname?: string;
+  full_name?: string;
+  email?: string;
+}
+
+function main(state: GlobalState) {
   // The main UI entry point, called from page.html
 
   $state = state;
@@ -101,9 +144,9 @@ class Model {
   // Eventual parameters within the route URL, such as the game uuid
   params?: Params = undefined;
   // The current game being displayed, if any
-  game?: any = null;
+  game: Game = null;
   // The current game list
-  gameList?: any[] = null;
+  gameList?: GameListItem[] = null;
   // The current challenge list
   challengeList?: any[] = null;
   // Recent games
@@ -115,7 +158,7 @@ class Model {
   ownStats: any = null;
   // The current user information being edited, if any
   user: any = null;
-  userErrors: any = null;
+  userErrors: UserErrors = null;
   // The help screen contents
   helpHTML?: string = null;
   // Outstanding requests
@@ -123,7 +166,7 @@ class Model {
   // The index of the game move being reviewed, if any
   reviewMove?: number = null;
   // The best moves available at this stage, if reviewing game
-  bestMoves?: any[] = null;
+  bestMoves?: Move[] = null;
   // The index of the best move being highlighted, if reviewing game
   highlightedMove?: number = null;
   // The current scaling of the board
@@ -167,14 +210,15 @@ class Model {
     });
   }
 
-  loadGameList() {
+  loadGameList(includeZombies: boolean = true) {
     // Load the list of currently active games for this user
     this.gameList = undefined; // Loading in progress
     m.request({
       method: "POST",
-      url: "/gamelist"
+      url: "/gamelist",
+      body: { zombie: includeZombies }
     })
-    .then((json: { result: number; gamelist: any; }) => {
+    .then((json: { result: number; gamelist: GameListItem[]; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.gameList = null;
@@ -336,7 +380,7 @@ class Model {
       url: "/bestmoves",
       body: { game: this.game.uuid, move: move }
     })
-    .then((json: { result: number; move_number: number; best_moves: any; player_rack: string; }) => {
+    .then((json: { result: number; move_number: number; best_moves: Move[]; player_rack: RackTile[]; }) => {
       this.highlightedMove = null;
       if (!json || json.result !== 0) {
         this.reviewMove = null;
@@ -400,7 +444,7 @@ class Model {
       url: "/saveuserprefs",
       body: this.user
     })
-    .then((result: { ok: boolean; err?: string; }) => {
+    .then((result: { ok: boolean; err?: UserErrors; }) => {
       if (result.ok) {
         // User preferences modified successfully on the server:
         // update the state variables that we're caching
@@ -410,7 +454,7 @@ class Model {
         $state.newBag = this.user.newbag;
         // Give the game instance a chance to update its state
         if (this.game !== null)
-          this.game.notifyUserChange();
+          this.game.notifyUserChange(this.user.nickname);
         // Complete: call success function
         if (successFunc !== undefined)
           successFunc();
@@ -695,12 +739,12 @@ class View {
       if ($state.uiFullscreen || $state.uiLandscape) {
         // In this case, there is no board tab:
         // show the movelist
-        model.game.sel = "movelist";
+        model.game.setSelectedTab("movelist");
         this.scrollMovelistToBottom();
       }
       else {
         // Mobile: we default to the board tab
-        model.game.sel = "board";
+        model.game.setSelectedTab("board");
       }
     }
     // When switching between landscape and portrait,
@@ -2059,7 +2103,7 @@ class View {
     ];
   }
 
-  vwPlayerName(game, side: string) {
+  vwPlayerName(game: Game, side: string) {
     // Displays a player name, handling both human and robot players
     // as well as left and right side, and local and remote colors
     let view = this;
@@ -2067,7 +2111,7 @@ class View {
     var apl1 = game && game.autoplayer[1];
     var nick0 = game ? game.nickname[0] : "";
     var nick1 = game ? game.nickname[1] : "";
-    var player: 0 | 1 = game ? game.player : 0;
+    var player: number = game ? game.player : 0;
     var localturn: boolean = game ? game.localturn : false;
     var tomove: string;
     var gameover = game ? game.over : true;
@@ -2118,7 +2162,7 @@ class View {
     }
   }
 
-  vwTwoLetter(initialVnode) {
+  vwTwoLetter: ComponentFunc<{ game: Game; }> = (initialVnode) => {
 
     // The two-letter-word list tab
     let page = 0;
@@ -2167,9 +2211,9 @@ class View {
         );
       }
     };
-  }
+  };
 
-  buttonState(game) {
+  buttonState(game: Game) {
     // Calculate a set of booleans describing the state of the game
     let s: any = {};
     s.tilesPlaced = game.tilesPlaced().length > 0;
@@ -2321,7 +2365,7 @@ class View {
             component = view.vwChat(game);
             break;
           case "games":
-            component = view.vwGames(game);
+            component = view.vwGames(model);
             break;
           default:
             break;
@@ -2424,8 +2468,8 @@ class View {
       // No associated game
       return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
 
-    var bag = game ? game.bag : "";
-    var newbag = game ? game.newbag : true;
+    let bag = game ? game.bag : "";
+    let newbag = game ? game.newbag : true;
     return m("div", // Removing this div messes up Mithril
       {
         // Allow tiles to be dropped on the background,
@@ -2473,10 +2517,10 @@ class View {
     );
   }
 
-  MobileHeader(initialVnode) {
+  MobileHeader() {
     // The header on a mobile screen
     return {
-      view: (vnode) => {
+      view: () => {
         return m(".header", [
             m(".header-logo",
               m(m.route.Link,
@@ -2496,7 +2540,7 @@ class View {
 
   // Review screen
 
-  vwReview(model: Model, actions) {
+  vwReview(model: Model, actions: Actions) {
     // A review of a finished game
 
     let view = this;
@@ -2582,7 +2626,7 @@ class View {
     );
   }
 
-  vwTabGroup(game) {
+  vwTabGroup(game: Game) {
     // A group of clickable tabs for the right-side area content
     var showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     var r = [
@@ -2604,7 +2648,7 @@ class View {
     return m.fragment({}, r);
   }
 
-  vwTab(game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
+  vwTab(game: Game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
     // A clickable tab for the right-side area content
     var sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
@@ -2625,7 +2669,7 @@ class View {
     );
   }
 
-  vwChat(game) {
+  vwChat(game: Game) {
     // The chat tab
 
     function decodeTimestamp(ts: string) {
@@ -2652,7 +2696,7 @@ class View {
        return Math.round((dtTo - dtFrom) / 1000.0);
     }
 
-    var dtLastMsg = null;
+    let dtLastMsg: number = null;
 
     function makeTimestamp(ts: string) {
       // Decode the ISO format timestamp we got from the server
@@ -2665,7 +2709,7 @@ class View {
         var dtNow = new Date().getTime();
         var dtToday = dtNow - dtNow % ONE_DAY; // Start of today (00:00 UTC)
         var dtYesterday = dtToday - ONE_DAY; // Start of yesterday
-        var strTs;
+        var strTs: string;
         if (dtTs < dtYesterday)
            // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
            strTs = ts.slice(0, -3);
@@ -2711,10 +2755,10 @@ class View {
     function scrollChatToBottom() {
       // Scroll the last chat message into view
       var chatlist = document.querySelectorAll("#chat-area .chat-msg");
-      var target;
+      var target: HTMLElement;
       if (chatlist.length) {
-        target = chatlist[chatlist.length - 1];
-        target.parentNode.scrollTop = target.offsetTop;
+        target = chatlist[chatlist.length - 1] as HTMLElement;
+        (target.parentNode as HTMLElement).scrollTop = target.offsetTop;
       }
     }
 
@@ -2782,7 +2826,7 @@ class View {
     );
   }
 
-  vwMovelist(game) {
+  vwMovelist(game: Game) {
     // The move list tab
 
     let view = this;
@@ -2830,7 +2874,7 @@ class View {
     );
   }
 
-  vwBestMoves(model: Model, move: number, bestMoves: any[]) {
+  vwBestMoves(model: Model, move: number, bestMoves: Move[]) {
     // List of best moves, in a game review
 
     let view = this;
@@ -2897,20 +2941,20 @@ class View {
     }
 
     function bestMoveList() {
-      var r = [];
+      let r = [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
       if (!move || move > game.moves.length)
         return r;
       // Prepend a header that describes the move being reviewed
-      var m = game.moves[move - 1];
-      var co = m[1][0];
-      var tiles = m[1][1];
-      var score = m[1][2];
+      let m = game.moves[move - 1];
+      let co = m[1][0];
+      let tiles = m[1][1];
+      let score = m[1][2];
       r.push(bestHeader(co, tiles, score));
-      var mlist = bestMoves;
+      let mlist = bestMoves;
       for (let i = 0; i < mlist.length; i++) {
-        var player = mlist[i][0];
+        let player = mlist[i][0];
         co = mlist[i][1][0];
         tiles = mlist[i][1][1];
         score = mlist[i][1][2];
@@ -2936,13 +2980,13 @@ class View {
   scrollMovelistToBottom() {
     // If the length of the move list has changed,
     // scroll the last move into view
-    var movelist = document.querySelectorAll("div.movelist .move");
+    let movelist = document.querySelectorAll("div.movelist .move");
     if (!movelist || !movelist.length)
       return;
-    var target = movelist[movelist.length - 1] as HTMLElement;
-    var parent = target.parentNode as HTMLElement;
-    var len = parent.getAttribute("data-len");
-    var intLen = (!len) ? 0 : parseInt(len);
+    let target = movelist[movelist.length - 1] as HTMLElement;
+    let parent = target.parentNode as HTMLElement;
+    let len = parent.getAttribute("data-len");
+    let intLen = (!len) ? 0 : parseInt(len);
     if (movelist.length > intLen) {
       // The list has grown since we last updated it:
       // scroll to the bottom and mark its length
@@ -2951,21 +2995,21 @@ class View {
     parent.setAttribute("data-len", movelist.length.toString());
   }
 
-  vwMove(game, move, info) {
+  vwMove(game: Game, move, info) {
     // Displays a single move
 
     let view = this;
 
-    function highlightMove(co: string, tiles, playerColor, show: boolean) {
+    function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
        /* Highlight a move's tiles when hovering over it in the move list */
-       var vec = toVector(co);
-       var col = vec.col;
-       var row = vec.row;
+       let vec = toVector(co);
+       let col = vec.col;
+       let row = vec.row;
        for (let i = 0; i < tiles.length; i++) {
-          var tile = tiles[i];
+          let tile = tiles[i];
           if (tile == '?')
              continue;
-          var sq = coord(row, col);
+          let sq = coord(row, col);
           if (game.tiles.hasOwnProperty(sq))
             game.tiles[sq].highlight = show ? playerColor : undefined;
           col += vec.dx;
@@ -2973,12 +3017,12 @@ class View {
        }
     }
 
-    var player = info.player;
-    var co: string = info.co;
-    var tiles: string = info.tiles;
-    var score = info.score;
-    var leftTotal = info.leftTotal;
-    var rightTotal = info.rightTotal;
+    let player = info.player;
+    let co: string = info.co;
+    let tiles: string = info.tiles;
+    let score = info.score;
+    let leftTotal = info.leftTotal;
+    let rightTotal = info.rightTotal;
 
     function gameOverMove(tiles: string) {
       // Add a 'game over' div at the bottom of the move list
@@ -3006,9 +3050,9 @@ class View {
     }
 
     // Add a single move to the move list
-    var wrdclass = "wordmove";
-    var rawCoord = co;
-    var tileMoveIncrement = 0; // +1 for tile moves, -1 for successful challenges
+    let wrdclass = "wordmove";
+    let rawCoord = co;
+    let tileMoveIncrement = 0; // +1 for tile moves, -1 for successful challenges
     if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
@@ -3072,15 +3116,15 @@ class View {
       // Game over message at bottom of move list
       return gameOverMove(tiles);
     // Normal game move
-    var title = (tileMoveIncrement > 0 && !game.manual) ? "Smelltu til að fletta upp" : "";
-    var playerColor = "0";
-    var lcp = game.player;
-    var cls: string;
+    let title = (tileMoveIncrement > 0 && !game.manual) ? "Smelltu til að fletta upp" : "";
+    let playerColor: 0 | 1 = 0;
+    let lcp = game.player;
+    let cls: string;
     if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
-      playerColor = "1";
+      playerColor = 1;
     }
     let attribs: VnodeAttrs = { title: title };
     if ($state.uiFullscreen && tileMoveIncrement > 0) {
@@ -3122,18 +3166,18 @@ class View {
   vwBestMove(model: Model, moveIndex: number, bestMoveIndex: number, move, info) {
     // Displays a move in a list of best available moves
 
-    var game = model.game;
-    var player = info.player;
-    var co = info.co;
-    var tiles = info.tiles;
-    var score = info.score;
+    let game = model.game;
+    let player = info.player;
+    let co = info.co;
+    let tiles = info.tiles;
+    let score = info.score;
 
-    function highlightMove(co: string, tiles, playerColor, show: boolean) {
+    function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the best move list */
-      var vec = toVector(co);
-      var col = vec.col;
-      var row = vec.row;
-      var nextBlank = false;
+      let vec = toVector(co);
+      let col = vec.col;
+      let row = vec.row;
+      let nextBlank = false;
       // If we're highlighting a move, show all moves leading up to it on the board
       if (show) {
         model.highlightedMove = bestMoveIndex;
@@ -3182,23 +3226,23 @@ class View {
     }
 
     // Add a single move to the move list
-    var rawCoord = co;
+    let rawCoord = co;
     // Normal tile move
     co = "(" + co + ")";
     // Note: String.replace() will not work here since there may be two question marks in the string
-    var word = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
+    let word = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
     // Normal game move
-    var title = "Smelltu til að fletta upp";
-    var playerColor = "0";
-    var lcp = game.player;
-    var cls;
+    let title = "Smelltu til að fletta upp";
+    let playerColor: 0 | 1 = 0;
+    let lcp = game.player;
+    let cls: string;
     if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
-      playerColor = "1";
+      playerColor = 1;
     }
-    var attribs: VnodeAttrs = { title: title };
+    let attribs: VnodeAttrs = { title: title };
     // Word lookup
     attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
@@ -3230,33 +3274,39 @@ class View {
     }
   }
 
-  vwGames(game) {
+  vwGames(model: Model) {
     // The game list tab
 
     function games() {
-      var r = [];
+      let r = [];
       // var numMyTurns = 0;
-      if (game.gamelist === null)
+      let gameList = model.gameList;
+      if (gameList === undefined) {
+        // Game list is being loaded
+      }
+      else
+      if (gameList === null)
         // No games to show now, but we'll load them
         // and they will be automatically refreshed when ready
-        game.loadGames();
+        model.loadGameList();
       else {
-        var numGames = game.gamelist.length;
-        var gameId = game ? game.uuid : "";
+        let numGames = gameList.length;
+        let game = model.game;
+        let gameId = game ? game.uuid : "";
         for (let i = 0; i < numGames; i++) {
-          var item = game.gamelist[i];
+          let item = gameList[i];
           if (item.uuid == gameId)
             continue; // Don't show this game
           if (!item.my_turn && !item.zombie)
             continue; // Only show pending games
-          var opp;
+          var opp: any[];
           if (item.oppid === null)
             // Mark robots with a cog icon
             opp = [ glyph("cog"), nbsp(), item.opp ];
           else
             opp = [ item.opp ];
-          var winLose = item.sc0 < item.sc1 ? ".losing" : "";
-          var title = "Staðan er " + item.sc0 + ":" + item.sc1;
+          let winLose = item.sc0 < item.sc1 ? ".losing" : "";
+          let title = "Staðan er " + item.sc0 + ":" + item.sc1;
           // Add the game-timed class if the game is a timed game.
           // These will not be displayed in the mobile UI.
           r.push(
@@ -3288,12 +3338,12 @@ class View {
     // The bag of tiles
 
     function tiles(bag: string) {
-      var r = [];
-      var ix = 0;
-      var count = bag.length;
+      let r = [];
+      let ix = 0;
+      let count = bag.length;
       while (count > 0) {
         // Rows
-        var cols = [];
+        let cols = [];
         // Columns: max BAG_TILES_PER_LINE tiles per row
         for (let i = 0; i < BAG_TILES_PER_LINE && count > 0; i++) {
           let tile = bag[ix++];
@@ -3310,9 +3360,9 @@ class View {
 
     return {
       view: (vnode) => {
-        var bag = vnode.attrs.bag;
-        var newbag = vnode.attrs.newbag;
-        var cls = "";
+        let bag = vnode.attrs.bag;
+        let newbag = vnode.attrs.newbag;
+        let cls = "";
         if (bag.length <= RACK_SIZE)
           cls += ".empty";
         else
@@ -3326,16 +3376,16 @@ class View {
     };
   }
 
-  BlankDialog: ComponentFunc<{ game: any; }> = (initialVnode) => {
+  BlankDialog: ComponentFunc<{ game: Game; }> = (initialVnode) => {
     // A dialog for choosing the meaning of a blank tile
 
-    var game = initialVnode.attrs.game;
+    let game = initialVnode.attrs.game;
 
     function blankLetters() {
-      var legalLetters = game.alphabet;
-      var len = legalLetters.length;
-      var ix = 0;
-      var r = [];
+      let legalLetters = game.alphabet;
+      let len = legalLetters.length;
+      let ix = 0;
+      let r = [];
 
       while (len > 0) {
         /* Rows */
@@ -3451,7 +3501,8 @@ class View {
     };
   }
 
-  Tile: ComponentFunc<{ game: any; coord: string; opponent: string; }> = (initialVnode) => {
+  Tile: ComponentFunc<{ game: Game; coord: string; opponent: boolean; }> = (initialVnode) => {
+    // Display a tile on the board or in the rack
     return {
       view: (vnode) => {
         let game = vnode.attrs.game;
@@ -3467,12 +3518,8 @@ class View {
           // Wide letter: handle specially
           classes.push("wide");
         if (coord[0] == 'R' || t.draggable) {
-          if (opponent)
-            // Showing the opponent's rack
-            classes.push("freshtile");
-          else
-            // Showing the player's rack
-            classes.push("racktile");
+          // Rack tile, or at least a draggable one
+          classes.push(opponent ? "freshtile" : "racktile");
           if (coord[0] == 'R' && game.showingDialog == "exchange") {
             // Rack tile, and we're showing the exchange dialog
             if (t.xchg)
@@ -3481,13 +3528,14 @@ class View {
             // Exchange dialog is live: add a click handler for the
             // exchange state
             attrs.onclick = (ev) => {
-              // Toggle the exchange status
+              // Toggle the exchange status of this tile
               t.xchg = !t.xchg;
               ev.preventDefault();
             };
           }
         }
         if (t.freshtile) {
+          // A fresh tile that has just been played by the opponent
           classes.push("freshtile");
           // Make fresh tiles appear sequentally by animation
           let ANIMATION_STEP = 150; // Milliseconds
@@ -3536,7 +3584,7 @@ class View {
     };
   }
 
-  ReviewTile: ComponentFunc<{ coord: string, game: any }> = (initialVnode) => {
+  ReviewTile: ComponentFunc<{ coord: string, game: Game; }> = (initialVnode) => {
     // Return a td element that wraps an 'inert' tile in a review screen
     return {
       view: (vnode) => {
@@ -3596,7 +3644,7 @@ class View {
               ev.stopPropagation();
               (ev.currentTarget as HTMLElement).classList.remove("over");
               // Move the tile from the source to the destination
-              var from = ev.dataTransfer.getData("text");
+              let from = ev.dataTransfer.getData("text");
               game.attemptMove(from, coord);
               model.updateScale();
               return false;
@@ -3661,7 +3709,7 @@ class View {
               ondragover: (ev) => ev.stopPropagation(),
               ondrop: (ev) => ev.stopPropagation()
             },
-            m(view.Tile, { game: game, coord: coord })
+            m(view.Tile, { game: game, coord: coord, opponent: false })
           ));
         else
           // Empty square which is a drop target
@@ -3736,7 +3784,7 @@ class View {
             else {
               r.push(
                 m(view.DropTarget, { model: model, coord: coord },
-                  m(view.Tile, { game: game, coord: coord })
+                  m(view.Tile, { game: game, coord: coord, opponent: false })
                 )
               );
             }
@@ -3789,7 +3837,7 @@ class View {
     return [];
   }
 
-  vwScore(game) {
+  vwScore(game: Game) {
     // Shows the score of the current word
     let sc = [ ".score" ];
     if (game.manual)
@@ -3800,11 +3848,11 @@ class View {
       if (game.currentScore >= 50)
         sc.push("word-great");
     }
-    let txt = (game.currentScore === undefined ? "?" : game.currentScore)
+    let txt = (game.currentScore === undefined ? "?" : game.currentScore.toString())
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(game, move) {
+  vwScoreReview(game: Game, move?: number) {
     // Shows the score of the current move within a game review screen
     let mv = move ? game.moves[move - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
@@ -3824,11 +3872,11 @@ class View {
 
   vwScoreDiff(model: Model, move: number) {
     // Shows the score of the current move within a game review screen
-    var game = model.game;
-    var sc = [ ".scorediff" ];
-    var mv = move ? game.moves[move - 1] : undefined;
-    var score = mv ? mv[1][2] : undefined;
-    var bestScore = model.bestMoves[model.highlightedMove][1][2];
+    let game = model.game;
+    let sc = [ ".scorediff" ];
+    let mv = move ? game.moves[move - 1] : undefined;
+    let score = mv ? mv[1][2] : undefined;
+    let bestScore = model.bestMoves[model.highlightedMove][1][2];
     if (score >= bestScore)
       sc.push("posdiff");
     return m(
@@ -3838,7 +3886,7 @@ class View {
     );
   }
 
-  vwStatsReview(game) {
+  vwStatsReview(game: Game) {
     // Shows the game statistics overlay
     if (game.stats === null)
       // No stats yet loaded: do it now
@@ -4202,7 +4250,7 @@ class View {
     return r;
   }
 
-  vwErrors(game) {
+  vwErrors(game: Game) {
     // Error messages, selectively displayed
     var msg: string = game.currentMessage || "";
     var errorMessages = {
@@ -4241,7 +4289,7 @@ class View {
     return "";
   }
 
-  vwCongrats(game) {
+  vwCongrats(game: Game) {
     // Congratulations message when a game has been won
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
@@ -4254,7 +4302,7 @@ class View {
       : "";
   }
 
-  vwDialogs(game) {
+  vwDialogs(game: Game) {
     // Show prompt dialogs below game board, if any
     let r = [];
     if (game.showingDialog === null)
@@ -4537,7 +4585,7 @@ class Actions {
     this.model.handleUserMessage(json);
   }
 
-  onChatMessage(json: { from_userid: string; game: any; msg: string; ts: string; }) {
+  onChatMessage(json: { from_userid: string; game: string; msg: string; ts: string; }) {
     // Handle an incoming chat message
     console.log("Chat message received: " + JSON.stringify(json));
     if (json.from_userid != $state.userId) {

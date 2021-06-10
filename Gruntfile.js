@@ -42,7 +42,7 @@ module.exports = function (grunt) {
          default : {
            tsconfig: 'static/tsconfig.json',
            options: {
-              rootDir: "static"
+              rootDir: "static/src"
            }
          }
       },

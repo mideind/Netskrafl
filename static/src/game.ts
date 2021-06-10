@@ -12,15 +12,121 @@
 
 */
 
-export { Game, coord, toVector };
+export { Game, coord, toVector, RackTile, Move };
 
 import { m } from "./mithril.js";
+
+interface TileData {
+  player: 0 | 1;
+  tile: string;
+  letter: string;
+  score: number;
+  freshtile: boolean;
+  draggable: boolean;
+  review?: boolean;
+  index: number;
+  xchg: boolean;
+  highlight?: 0 | 1;
+}
+type TileDict = { [index: string]: TileData; };
+type RackTile = [string, number]; // tile, score
+interface SavedTile {
+  sq: string;
+  tile: string;
+}
+type TileScoreDict = { [index: string]: number; };
+
+type Move = [0 | 1, [string, string, number]]; // player, [coord, tiles, score]
+type MoveDetail = [string];
+
+interface Message {
+  from_userid: string;
+  msg: string;
+  ts: string;
+}  
 
 // Global constants
 const ROWIDS = "ABCDEFGHIJKLMNO";
 const BOARD_SIZE = ROWIDS.length;
 const RACK_SIZE = 7;
 const MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
+
+const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
+
+const BOARD = {
+  standard: {
+    WORDSCORE: [
+      "3      3      3",
+      " 2           2 ",
+      "  2         2  ",
+      "   2       2   ",
+      "    2     2    ",
+      "               ",
+      "               ",
+      "3      2      3",
+      "               ",
+      "               ",
+      "    2     2    ",
+      "   2       2   ",
+      "  2         2  ",
+      " 2           2 ",
+      "3      3      3"
+    ],
+    LETTERSCORE: [
+      "   2       2   ",
+      "     3   3     ",
+      "      2 2      ",
+      "2      2      2",
+      "               ",
+      " 3   3   3   3 ",
+      "  2   2 2   2  ",
+      "   2       2   ",
+      "  2   2 2   2  ",
+      " 3   3   3   3 ",
+      "               ",
+      "2      2      2",
+      "      2 2      ",
+      "     3   3     ",
+      "   2       2   "
+    ]
+  },
+  explo: {
+    WORDSCORE: [
+      "3      3      3",
+      "        2      ",
+      "  2      2     ",
+      "   2           ",
+      "    2          ",
+      "     2      2  ",
+      "      2      2 ",
+      "3             3",
+      " 2      2      ",
+      "  2      2     ",
+      "          2    ",
+      "           2   ",
+      "     2         ",
+      "      2        ",
+      "3      3      3"
+    ],
+    LETTERSCORE: [
+      "    2      2   ",
+      " 3   2       3 ",
+      "      3     2  ",
+      "       2  3   2",
+      "2          3   ",
+      " 2       2     ",
+      "  3     2      ",
+      "   2       2   ",
+      "      2     3  ",
+      "     2   2   2 ",
+      "   3          2",
+      "2   3  2       ",
+      "  2     3   2  ",
+      " 3       2   3 ",
+      "   2      2    "
+    ]
+  }
+};
 
 function coord(row: number, col: number): string {
   // Return the co-ordinate string for the given 0-based row and col
@@ -48,16 +154,7 @@ function toVector(co: string): { col: number, row: number, dx: number, dy: numbe
   return { col: col, row: row, dx: dx, dy: dy };
 }
 
-function forEachElement(selector: string, func: (elem: Element) => void) {
-  // Emulate jQuery's $.each()
-  const elems = document.querySelectorAll(selector);
-  let i = 0;
-  if (elems)
-    for (; i < elems.length; i++)
-      func(elems[i]);
-}
-
-function arrayEqual(a, b) {
+function arrayEqual(a: any[], b: any[]): boolean {
   // Return true if arrays a and b are equal
   if (a.length != b.length)
     return false;
@@ -67,247 +164,215 @@ function arrayEqual(a, b) {
   return true;
 }
 
-// A wrapper class around HTML5 local storage, if available
+// An interface around HTML5 local storage functionality, if available
 
-var LocalStorage = (function() {
+interface LocalStorage {
+  getLocalTile: (ix: number) => string;
+  getLocalTileSq: (ix: number) => string;
+  setLocalTile: (ix: number, t: string) => void;
+  setLocalTileSq: (ix: number, sq: string) => void;
+  clearTiles: () => void;
+  saveTiles: (tilesPlaced: SavedTile[]) => void;
+  loadTiles: () => SavedTile[];
+}
 
-  var _hasLocal = null; // Is HTML5 local storage supported by the browser?
+let _hasLocal = null; // Is HTML5 local storage supported by the browser?
 
-  function hasLocalStorage(): boolean {
-    // Return true if HTML5 local storage is supported by the browser
-    if (_hasLocal === null)
-      try {
-        _hasLocal = ('localStorage' in window) &&
-          (window.localStorage !== null) &&
-          (window.localStorage !== undefined);
-      } catch (e) {
-        _hasLocal = false;
-      }
-    return _hasLocal;
-  }
-
-  function LocalStorage(uuid: string) {
-
-    // Constructor for local storage associated with a particular game
-
-    var prefix = "game." + uuid;
-
-    return {
-      getLocalTile: function(ix: number) {
-        return window.localStorage[prefix + ".tile." + ix + ".t"];
-      },
-      getLocalTileSq: function(ix: number) {
-        return window.localStorage[prefix + ".tile." + ix + ".sq"];
-      },
-      setLocalTile: function(ix: number, t: string) {
-        window.localStorage[prefix + ".tile." + ix + ".t"] = t;
-      },
-      setLocalTileSq: function(ix: number, sq: string) {
-        window.localStorage[prefix + ".tile." + ix + ".sq"] = sq;
-      },
-      clearTiles: function() {
-        // Clean up local storage when game is over
-        try {
-          for (let i = 1; i <= RACK_SIZE; i++) {
-            window.localStorage.removeItem(prefix + ".tile." + i + ".sq");
-            window.localStorage.removeItem(prefix + ".tile." + i + ".t");
-          }
-        }
-        catch (e) {
-        }
-      },
-      saveTiles: function(tilesPlaced) {
-        // Save tile locations in local storage
-        let i;
-        for (i = 0; i < tilesPlaced.length; i++) {
-          // Store this placed tile in local storage
-          let sq = tilesPlaced[i].sq;
-          let tile = tilesPlaced[i].tile;
-          // Set the placed tile's square
-          this.setLocalTileSq(i + 1, sq);
-          // Set the letter (or ?+letter if undefined)
-          this.setLocalTile(i + 1, tile);
-        }
-        // Erase all remaining positions in local storage
-        for (; i < RACK_SIZE; i++) {
-          this.setLocalTileSq(i + 1, "");
-          this.setLocalTile(i + 1, "");
-        }
-      },
-      loadTiles: function() {
-        // Return the saved tile locations
-        var sq, tile;
-        var tp = [];
-        for (let i = 0; i < RACK_SIZE; i++) {
-          sq = this.getLocalTileSq(i + 1);
-          tile = this.getLocalTile(i + 1);
-          if (sq && tile)
-            tp.push({sq: sq, tile: tile});
-        }
-        return tp;
-      }
-    };
-  }
-
-  function NoLocalStorage(uuid: string) {
-    // Constructor for a dummy local storage instance,
-    // when no local storage is available
-    return {
-      clearTiles: function () {
-      },
-      saveTiles: function (tilesPlaced) {
-      },
-      loadTiles: function () {
-      }
-    };
-  }
-
-  // Choose and return a constructor function depending on
-  // whether HTML5 local storage is available
-  return hasLocalStorage() ? LocalStorage : NoLocalStorage;
-
-} ());
-
-// A class for games
-
-var Game = (function() {
-
-  // Constants
-
-  const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
-
-  const BOARD = {
-    standard: {
-      WORDSCORE: [
-        "3      3      3",
-        " 2           2 ",
-        "  2         2  ",
-        "   2       2   ",
-        "    2     2    ",
-        "               ",
-        "               ",
-        "3      2      3",
-        "               ",
-        "               ",
-        "    2     2    ",
-        "   2       2   ",
-        "  2         2  ",
-        " 2           2 ",
-        "3      3      3"
-      ],
-      LETTERSCORE: [
-        "   2       2   ",
-        "     3   3     ",
-        "      2 2      ",
-        "2      2      2",
-        "               ",
-        " 3   3   3   3 ",
-        "  2   2 2   2  ",
-        "   2       2   ",
-        "  2   2 2   2  ",
-        " 3   3   3   3 ",
-        "               ",
-        "2      2      2",
-        "      2 2      ",
-        "     3   3     ",
-        "   2       2   "
-      ]
-    },
-    explo: {
-      WORDSCORE: [
-        "3      3      3",
-        "        2      ",
-        "  2      2     ",
-        "   2           ",
-        "    2          ",
-        "     2      2  ",
-        "      2      2 ",
-        "3             3",
-        " 2      2      ",
-        "  2      2     ",
-        "          2    ",
-        "           2   ",
-        "     2         ",
-        "      2        ",
-        "3      3      3"
-      ],
-      LETTERSCORE: [
-        "    2      2   ",
-        " 3   2       3 ",
-        "      3     2  ",
-        "       2  3   2",
-        "2          3   ",
-        " 2       2     ",
-        "  3     2      ",
-        "   2       2   ",
-        "      2     3  ",
-        "     2   2   2 ",
-        "   3          2",
-        "2   3  2       ",
-        "  2     3   2  ",
-        " 3       2   3 ",
-        "   2      2    "
-      ]
+function hasLocalStorage(): boolean {
+  // Return true if HTML5 local storage is supported by the browser
+  if (_hasLocal === null)
+    try {
+      _hasLocal = ('localStorage' in window) &&
+        (window.localStorage !== null) &&
+        (window.localStorage !== undefined);
+    } catch (e) {
+      _hasLocal = false;
     }
-  };
+  return _hasLocal;
+}
 
-  function Game(uuid: string, game) {
+class LocalStorageImpl {
+
+  _prefix: string;
+
+  constructor(uuid: string) {
+    // Constructor for local storage associated with a particular game
+    this._prefix = "game." + uuid;
+  }
+
+  getLocalTile(ix: number) {
+      return window.localStorage[this._prefix + ".tile." + ix + ".t"];
+  }
+
+  getLocalTileSq(ix: number) {
+    return window.localStorage[this._prefix + ".tile." + ix + ".sq"];
+  }
+
+  setLocalTile(ix: number, t: string) {
+    window.localStorage[this._prefix + ".tile." + ix + ".t"] = t;
+  }
+
+  setLocalTileSq(ix: number, sq: string) {
+    window.localStorage[this._prefix + ".tile." + ix + ".sq"] = sq;
+  }
+
+  clearTiles() {
+    // Clean up local storage when game is over
+    try {
+      for (let i = 1; i <= RACK_SIZE; i++) {
+        window.localStorage.removeItem(this._prefix + ".tile." + i + ".sq");
+        window.localStorage.removeItem(this._prefix + ".tile." + i + ".t");
+      }
+    }
+    catch (e) {
+    }
+  }
+
+  saveTiles(tilesPlaced: SavedTile[]) {
+    // Save tile locations in local storage
+    let i: number;
+    for (i = 0; i < tilesPlaced.length; i++) {
+      // Store this placed tile in local storage
+      let sq = tilesPlaced[i].sq;
+      let tile = tilesPlaced[i].tile;
+      // Set the placed tile's square
+      this.setLocalTileSq(i + 1, sq);
+      // Set the letter (or ?+letter if undefined)
+      this.setLocalTile(i + 1, tile);
+    }
+    // Erase all remaining positions in local storage
+    for (; i < RACK_SIZE; i++) {
+      this.setLocalTileSq(i + 1, "");
+      this.setLocalTile(i + 1, "");
+    }
+  }
+
+  loadTiles() {
+    // Return the saved tile locations
+    let sq: string, tile: string;
+    let tp: SavedTile[] = [];
+    for (let i = 0; i < RACK_SIZE; i++) {
+      sq = this.getLocalTileSq(i + 1);
+      tile = this.getLocalTile(i + 1);
+      if (sq && tile)
+        tp.push({sq: sq, tile: tile});
+    }
+    return tp;
+  }
+
+} // class LocalStorageImpl
+
+class NoLocalStorageImpl {
+
+  // This class is used if the browser does not implement local storage
+
+  constructor() { }
+
+  getLocalTile(ix: number) { return ""; }
+
+  getLocalTileSq(ix: number) { return ""; }
+
+  setLocalTile(ix: number, t: string) { }
+
+  setLocalTileSq(ix: number, sq: string) { }
+
+  clearTiles() { }
+
+  saveTiles(tilesPlaced: SavedTile[]) { }
+
+  loadTiles(): SavedTile[] { return []; }
+
+} // class NoLocalStorageImpl
+
+class Game {
+
+  // A class that represents a Game instance on the client
+
+  uuid: string;
+
+  locale = "is_IS";
+  alphabet = "";
+  tile_scores: TileScoreDict = {};
+  // Default to the standard board for the Icelandic locale
+  board_type = "standard";
+  centerSquare = "H8";
+  centerCoord: [number, number] = [7, 7]; // row, col
+  two_letter_words: string[][] = [[], []];
+
+  userid: [string, string] = ["", ""];
+  nickname: [string, string] = ["", ""];
+  fullname: [string, string] = ["", ""];
+  autoplayer: [boolean, boolean] = [false, false];
+
+  scores: [number, number] = [0, 0];
+  moves: Move[] = [];
+  newmoves: Move[] = [];
+  lastmove: MoveDetail[] = undefined;
+  tiles: TileDict = {};
+  rack: RackTile[] = [];
+  bag = "";
+  localturn: boolean = false;
+  player: number = undefined;
+  stats = null; // Game review statistics
+
+  over: boolean = false;
+  manual: boolean = false;
+  fairplay: boolean = false;
+  newbag: boolean = true;
+  zombie: boolean = false; // !!! FIXME
+  overdue: boolean = false; // > 14 days since last move without reply from opponent
+  currentScore: number = undefined;
+
+  messages: Message[] = null;
+  wordBad: boolean = false;
+  wordGood: boolean = false;
+  xchg: boolean = false; // Exchange allowed?
+  chall: boolean = false; // Challenge allowed?
+  last_chall: boolean = false; // True if last move laid down and asking for challenge
+  succ_chall: boolean = false;
+  showingDialog: string = null; // Below-the-board dialog (question)
+  moveInProgress: boolean = false; // Is the server processing a move?
+  askingForBlank: { from: string; to: string; } = null;
+  currentError: string = null;
+  currentMessage: string = null;
+  isFresh: boolean = false;
+  numTileMoves: number = 0;
+  chatShown: boolean = true; // False if the user has not seen all chat messages
+  congratulate: boolean = false; // Show congratulation message if true
+  selectedSq: string = null; // Currently selected (blinking) square
+  sel: string = "movelist"; // By default, show the movelist tab
+
+  // Timed game clock stuff
+  interval: number = null; // Game clock interval timer
+  time_info = null; // Information about elapsed time
+  penalty0 = 0;
+  penalty1 = 0;
+  timeBase: Date = null; // Game time base
+  runningOut0 = false;
+  runningOut1 = false;
+  blinking0 = false;
+  blinking1 = false;
+  clockText0 = "";
+  clockText1 = "";
+
+  // Create a local storage object for this game
+  localStorage: LocalStorage = null;
+
+  constructor(uuid: string, game: any) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
     // console.log("Game " + uuid + " loaded");
-    this.zombie = false; // !!! FIXME
-    this.gamelist = null; // No gamelist loaded yet
-    this.messages = null;
-    this.wordBad = false;
-    this.wordGood = false;
-    this.currentScore = undefined;
-    this.showingDialog = null; // No dialog presently shown
-    this.moveInProgress = false; // Is the server processing a move?
-    this.askingForBlank = null;
-    this.currentError = null;
-    this.currentMessage = null;
-    this.isFresh = false;
-    this.numTileMoves = 0;
-    this.chatShown = true; // False if the user has not seen all chat messages
-    this.congratulate = false; // Show congratulation message if true
-    this.selectedSq = null; // Currently selected (blinking) square
-    this.sel = "movelist"; // By default, show the movelist tab
-    this.moves = [];
-    this.tiles = {};
-    this.lastmove = undefined;
-    this.autoplayer = [false, false];
-    this.scores = [0, 0];
-    this.bag = "";
-    this.locale = "is_IS";
-    this.alphabet = "";
-    this.stats = null; // Game review statistics
-    // Timed game clock stuff
-    this.interval = null; // Game clock interval timer
-    this.time_info = null; // Information about elapsed time
+
+    // Choose and return a constructor function depending on
+    // whether HTML5 local storage is available
+    this.localStorage = hasLocalStorage() ? new LocalStorageImpl(uuid) : new NoLocalStorageImpl();
+
     this.time_info = { duration: 1.0, elapsed: [25.0, 15.0]}; // !!! DEBUG!
-    this.penalty0 = 0;
-    this.penalty1 = 0;
-    this.timeBase = null; // Game time base
-    this.runningOut0 = false;
-    this.runningOut1 = false;
-    this.blinking0 = false;
-    this.blinking1 = false;
-    this.clockText0 = "";
-    this.clockText1 = "";
-    // Create a local storage object for this game
-    this.localStorage = LocalStorage(uuid);
-    // Note: the following attributes have Python naming conventions,
-    // since they are copied directly from JSON-encoded Python objects
-    this.tile_scores = {};
-    // Default to the standard board for the Icelandic locale
-    this.board_type = "standard";
-    this.centerSquare = "H8";
-    this.centerCoord = [7, 7]; // row, col
-    this.two_letter_words = [[], []];
+
     // Load previously saved tile positions from
     // local storage, if any
-    var savedTiles = this.localStorage.loadTiles();
+    let savedTiles = this.localStorage.loadTiles();
     this.init(game);
     // Put tiles in the same position as they were
     // when the player left the game
@@ -317,7 +382,7 @@ var Game = (function() {
       this.startClock();
   }
 
-  Game.prototype.init = function(game) {
+  init(game: any) {
     // Initialize the game state with data from the server
     // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
@@ -353,7 +418,7 @@ var Game = (function() {
       this.placeTiles();
   };
 
-  Game.prototype.update = function(game) {
+  update(game: any) {
     // Update the game state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
@@ -381,7 +446,7 @@ var Game = (function() {
       this.resetClock();
   };
 
-  Game.prototype.notifyUserChange = function(newNick: string) {
+  notifyUserChange(newNick: string) {
     // The user information may have been changed:
     // perform any updates that may be necessary
     if (this.player !== undefined)
@@ -389,27 +454,27 @@ var Game = (function() {
       this.nickname[this.player] = newNick;
   };
 
-  Game.prototype.setSelectedTab = function(sel: number) {
+  setSelectedTab(sel: string) {
     // Set the currently selected tab
     this.sel = sel;
   };
 
-  Game.prototype.tilescore = function(tile: string) {
-    // Note: The Python naming convention of tile_score is intentional
+  tilescore(tile: string) {
+    // Note: The Python naming convention of tile_scores is intentional
     return this.tile_scores[tile];
   };
 
-  Game.prototype.twoLetterWords = function() {
+  twoLetterWords() {
     // Note: The Python naming convention of two_letter_words is intentional
     return this.two_letter_words;
   };
 
-  Game.prototype.isTimed = function(): boolean {
+  isTimed(): boolean {
     // Return True if this is a timed game
     return this.time_info && this.time_info.duration >= 1.0;
   };
 
-  Game.prototype.updateClock = function() {
+  updateClock() {
     var txt0 = this.calcTimeToGo(0);
     var txt1 = this.calcTimeToGo(1);
     this.clockText0 = txt0;
@@ -421,9 +486,9 @@ var Game = (function() {
     this.blinking0 = (this.runningOut0 && txt0 >= "00:00" && txt0 <= "00:30" && this.player == 0);
     this.blinking1 = (this.runningOut1 && txt1 >= "00:00" && txt1 <= "00:30" && this.player == 1);
     m.redraw();
-  };
+  }
 
-  Game.prototype.resetClock = function() {
+  resetClock() {
     // Set a new time base after receiving an update from the server
     this.timeBase = new Date();
     this.updateClock();
@@ -438,9 +503,9 @@ var Game = (function() {
       this.runningOut0 = false;
       this.runningOut1 = false;
     }
-  };
+  }
 
-  Game.prototype.startClock = function() {
+  startClock() {
     // Start the clock running, after loading a timed game
     this.resetClock();
     if (!this.interval) {
@@ -449,17 +514,17 @@ var Game = (function() {
         500 // milliseconds, i.e. 0.5 seconds
       );
     }
-  };
+  }
 
-  Game.prototype.cleanup = function () {
+  cleanup() {
     /* Clean up any resources owned by this game object */
     if (this.interval) {
       window.clearInterval(this.interval);
       this.interval = null;
     }
-  };
+  }
 
-  Game.prototype.calcTimeToGo = function(player: 0 | 1) {
+  calcTimeToGo(player: 0 | 1) {
     /* Return the time left for a player in a nice MM:SS format */
     var gameTime = this.time_info
     var elapsed = gameTime.elapsed[player];
@@ -496,33 +561,17 @@ var Game = (function() {
     }
     return (timeToGo < 0.0 ? "-" : "") +
        ("0" + min.toString()).slice(-2) + ":" + ("0" + sec.toString()).slice(-2);
-  };
+  }
 
-  Game.prototype.displayScore = function(player: 0 | 1): number {
+  displayScore(player: 0 | 1): number {
     // Return the score to be displayed, which is the current
     // actual game score minus accrued time penalty, if any, in a timed game
     return Math.max(
       this.scores[player] + (player == 0 ? this.penalty0 : this.penalty1), 0
     )
-  };
+  }
 
-  Game.prototype.loadGames = function() {
-    // Load the list of other games being played by this player
-    return m.request(
-      {
-        method: "POST",
-        url: "/gamelist",
-        body: { zombie: false }
-      }
-    ).then((result) => {
-      if (!result || result.result !== 0)
-        this.gamelist = [];
-      else
-        this.gamelist = result.gamelist;
-    });
-  };
-
-  Game.prototype.loadMessages = function() {
+  loadMessages() {
     // Load chat messages for this game
     this.messages = []; // Prevent double loading
     return m.request(
@@ -542,9 +591,9 @@ var Game = (function() {
       // !!! marker
       this.chatShown = this.messages.length === 0;
     });
-  };
+  }
 
-  Game.prototype.loadStats = function() {
+  loadStats() {
     // Load statistics about a game
     this.stats = undefined; // Error/in-progress status
     return m.request(
@@ -553,7 +602,7 @@ var Game = (function() {
         url: "/gamestats",
         body: { game: this.uuid }
       }
-    ).then((json) => {
+    ).then((json: { result: number; }) => {
       // Save the incoming game statistics in the stats property
       if (!json || json.result === undefined)
         return;
@@ -562,9 +611,9 @@ var Game = (function() {
       // Success: assign the stats
       this.stats = json;
     });
-  };
+  }
 
-  Game.prototype.sendMessage = function(msg: string) {
+  sendMessage(msg: string) {
     // Send a chat message
     return m.request(
       {
@@ -572,19 +621,19 @@ var Game = (function() {
         url: "/chatmsg",
         body: { channel: "game:" + this.uuid, msg: msg }
       }
-    ).then((result) => {
+    ).then(() => {
       // The updated chat comes in via a Firebase notification
     });
-  };
+  }
 
-  Game.prototype.sendChatSeenMarker = function() {
+  sendChatSeenMarker() {
     // Send a 'chat message seen' marker to the server
     this.sendMessage("");
     // The user has now seen all chat messages
     this.chatShown = true;
-  };
+  }
 
-  Game.prototype.addChatMessage = function(from_userid: string, msg: string, ts: string) {
+  addChatMessage(from_userid: string, msg: string, ts: string) {
     // Add a new chat message to the message list
     if (this.messages !== null) {
       // Do not add messages unless the message list has been
@@ -596,18 +645,18 @@ var Game = (function() {
         // We have a new chat message that the user hasn't seen yet
         this.chatShown = false;
     }
-  };
+  }
 
-  Game.prototype.markChatShown = function(): boolean {
+  markChatShown(): boolean {
     // Note that the user has seen all pending chat messages
     if (!this.chatShown) {
       this.chatShown = true;
       return true;
     }
     return false;
-  };
+  }
 
-  Game.prototype.placeMove = function(player: 0 | 1, co: string, tiles: string, highlight: boolean) {
+  placeMove(player: 0 | 1, co: string, tiles: string, highlight: boolean) {
     // Place an entire move into the tiles dictionary
     let vec = toVector(co);
     let col = vec.col;
@@ -648,14 +697,14 @@ var Game = (function() {
       row += vec.dy;
       nextBlank = false;
     }
-  };
+  }
 
-  Game.prototype.setRack = function(rack) {
+  setRack(rack: RackTile[]) {
     // Set the current rack
     this.rack = rack;
-  };
+  }
 
-  Game.prototype.placeTiles = function(move: number, noHighlight: boolean) {
+  placeTiles(move?: number, noHighlight?: boolean) {
     // Make a tile dictionary for the game.
     // If move is given, it is an index of the
     // last move in the move list that should be
@@ -663,7 +712,7 @@ var Game = (function() {
     this.tiles = {};
     this.numTileMoves = 0;
     let mlist = this.moves;
-    let sq;
+    let sq: string;
     let last = (move !== undefined) ? move : mlist.length;
 
     function successfullyChallenged(ix: number): boolean {
@@ -697,10 +746,10 @@ var Game = (function() {
     }
     // If it's our turn, mark the opponent's last move
     // The type of this.lastmove corresponds to DetailTuple on the server side
-    mlist = this.lastmove;
-    if (mlist !== undefined && mlist.length && this.localturn)
-      for (let i = 0; i < mlist.length; i++) {
-        sq = mlist[i][0];
+    let dlist = this.lastmove;
+    if (dlist !== undefined && dlist.length && this.localturn)
+      for (let i = 0; i < dlist.length; i++) {
+        sq = dlist[i][0];
         if (!(sq in this.tiles))
           throw "Tile from lastmove not in square " + sq;
         this.tiles[sq].freshtile = true;
@@ -713,7 +762,7 @@ var Game = (function() {
       let letter = (tile == '?') ? ' ' : tile;
       let tscore = this.rack[i][1];
       this.tiles[sq] = {
-        player: this.player,
+        player: this.player ? 1 : 0,
         tile: tile,
         letter: letter,
         score: tscore,
@@ -725,7 +774,7 @@ var Game = (function() {
     }
   };
 
-  Game.prototype._moveTile = function(from: string, to: string) {
+  private _moveTile(from: string, to: string) {
     // Low-level function to move a tile between cells/slots
     if (from == to)
       // Nothing to do
@@ -767,7 +816,7 @@ var Game = (function() {
     this.tiles[to] = fromTile;
   };
 
-  Game.prototype.moveTile = function(from: string, to: string) {
+  moveTile(from: string, to: string) {
     // High-level function to move a tile between cells/slots
     this._moveTile(from, to);
     // Clear error message, if any
@@ -778,7 +827,7 @@ var Game = (function() {
     this.saveTiles();
   };
 
-  Game.prototype.attemptMove = function(from: string, to: string) {
+  attemptMove(from: string, to: string) {
     if (to == from)
       // No move
       return;
@@ -797,12 +846,12 @@ var Game = (function() {
     this.moveTile(from, to);
   };
 
-  Game.prototype.cancelBlankDialog = function() {
+  cancelBlankDialog() {
     // Cancel the dialog asking for the meaning of the blank tile
     this.askingForBlank = null;
   };
 
-  Game.prototype.placeBlank = function(letter: string) {
+  placeBlank(letter: string) {
     // Assign a meaning to a blank tile that is being placed on the board
     if (this.askingForBlank === null)
       return;
@@ -815,7 +864,7 @@ var Game = (function() {
     this.askingForBlank = null;
   };
 
-  Game.prototype.tilesPlaced = function(): string[] {
+  tilesPlaced(): string[] {
     // Return a list of coordinates of tiles that the user has
     // placed on the board by dragging from the rack
     let r: string[] = [];
@@ -827,7 +876,7 @@ var Game = (function() {
     return r;
   };
 
-  Game.prototype.sendMove = function(moves) {
+  sendMove(moves: any[]) {
     // Send a move to the server
     this.moveInProgress = true;
     return m.request(
@@ -849,7 +898,7 @@ var Game = (function() {
     );
   };
 
-  Game.prototype.submitMove = function() {
+  submitMove() {
     // Send a tile move to the server
     let t = this.tilesPlaced();
     let moves = [];
@@ -863,19 +912,19 @@ var Game = (function() {
       this.sendMove(moves);
   };
 
-  Game.prototype.submitPass = function() {
+  submitPass() {
     // Show a pass confirmation prompt
     this.showingDialog = "pass";
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  Game.prototype.submitChallenge = function() {
+  submitChallenge = function() {
     // Show a challenge confirmation prompt
     this.showingDialog = "chall";
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  Game.prototype.submitExchange = function() {
+  submitExchange = function() {
     // Show an exchange prompt
     this.showingDialog = "exchange";
     this.selectedSq = null; // Currently selected (blinking) square
@@ -887,27 +936,27 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.submitResign = function() {
+  submitResign() {
     // Show a resign prompt
     this.showingDialog = "resign";
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  Game.prototype.confirmPass = function(yes: boolean) {
+  confirmPass(yes: boolean) {
     // Handle reply to pass confirmation prompt
     this.showingDialog = null;
     if (yes)
       this.sendMove([ "pass" ]);
   };
 
-  Game.prototype.confirmChallenge = function(yes: boolean) {
+  confirmChallenge(yes: boolean) {
     // Handle reply to challenge confirmation prompt
     this.showingDialog = null;
     if (yes)
       this.sendMove([ "chall" ]);
   };
 
-  Game.prototype.confirmExchange = function(yes: boolean) {
+  confirmExchange(yes: boolean) {
     // Handle reply to exchange confirmation prompt
     let exch = "";
     this.showingDialog = null;
@@ -924,21 +973,22 @@ var Game = (function() {
       this.sendMove([ "exch=" + exch ]);
   };
 
-  Game.prototype.confirmResign = function(yes: boolean) {
+  confirmResign(yes: boolean) {
     // Handle reply to resignation confirmation prompt
     this.showingDialog = null;
     if (yes)
       this.sendMove([ "rsgn" ]);
   };
 
-  Game.prototype.rescrambleRack = function() {
+  rescrambleRack() {
     // Reorder the rack randomly. Bound to the Backspace key.
     this.selectedSq = null; // Currently selected (blinking) square
     if (this.showingDialog !== null)
+      // Already showing a bottom-of-page dialog
       return;
     this._resetRack();
-    var array = [];
-    var rackTileId;
+    let array: TileData[] = [];
+    let rackTileId: string;
     for (let i = 1; i <= RACK_SIZE; i++) {
       rackTileId = "R" + i;
       if (rackTileId in this.tiles)
@@ -946,7 +996,7 @@ var Game = (function() {
       else
         array.push(null);
     }
-    var currentIndex = array.length, temporaryValue, randomIndex;
+    let currentIndex = array.length, temporaryValue: TileData, randomIndex: number;
     // Fisher-Yates (Knuth) shuffle algorithm
     while (0 !== currentIndex) {
       randomIndex = Math.floor(Math.random() * currentIndex);
@@ -955,21 +1005,26 @@ var Game = (function() {
       array[currentIndex] = array[randomIndex];
       array[randomIndex] = temporaryValue;
     }
+    // Fill the resulting rack from left to right
+    let empty = 0; // Destination rack cell
     for (let i = 1; i <= RACK_SIZE; i++) {
-      rackTileId = "R" + i;
-      if (array[i-1] === null)
-        delete this.tiles[rackTileId];
-      else
-        this.tiles[rackTileId] = array[i-1];
+      if (array[i-1] !== null)
+        // Nonempty result cell: copy it
+        this.tiles["R" + (i - empty)] = array[i-1];
+      else {
+        // Empty result cell: empty a rack cell from the right-hand side
+        delete this.tiles["R" + (RACK_SIZE - empty)];
+        empty++;
+      }
     }
     this.saveTiles();
   };
 
-  Game.prototype.saveTiles = function() {
+  saveTiles() {
     // Save the current unglued tile configuration to local storage
-    var tp = [];
-    var sq: string, t, tile: string;
-    var tilesPlaced = this.tilesPlaced();
+    let sq: string, t: TileData, tile: string;
+    let tp: { sq: string; tile: string; }[] = [];
+    let tilesPlaced = this.tilesPlaced();
     for (let i = 0; i < tilesPlaced.length; i++) {
       sq = tilesPlaced[i];
       t = this.tiles[sq];
@@ -988,16 +1043,16 @@ var Game = (function() {
     this.localStorage.saveTiles(tp);
   };
 
-  Game.prototype.restoreTiles = function(savedTiles) {
+  restoreTiles(savedTiles: { sq: string; tile: string}[]) {
     // Restore the tile positions that were previously stored
     // in local storage
     if (!savedTiles.length)
       // Nothing to do
       return;
-    var tile;
-    var savedLetters = [];
-    var rackLetters = [];
-    var rackTiles = {};
+    let tile: string;
+    let savedLetters: string[] = [];
+    let rackLetters: string[] = [];
+    let rackTiles: TileDict = {};
     // First, check that the saved tiles match the current rack
     for (let i = 0; i < savedTiles.length; i++)
       savedLetters.push(savedTiles[i].tile.charAt(0));
@@ -1064,16 +1119,16 @@ var Game = (function() {
     this.updateScore();
   };
 
-  Game.prototype._resetRack = function() {
+  _resetRack() {
     // Recall all unglued tiles into the rack
-    var t = this.tilesPlaced();
+    let t = this.tilesPlaced();
     if (t.length) {
       let i = 1;
       for (let j = 0; j < t.length; j++) {
         // Find a free slot in the rack
         while (("R" + i) in this.tiles)
           i++;
-        var sq = "R" + i;
+        let sq = "R" + i;
         // Recall the tile
         this.tiles[sq] = this.tiles[t[j]];
         delete this.tiles[t[j]];
@@ -1089,16 +1144,16 @@ var Game = (function() {
     this.currentError = null;
   };
 
-  Game.prototype.resetRack = function() {
+  resetRack() {
     // Recall all unglued tiles into the rack
     this.selectedSq = null; // Currently selected (blinking) square
     this._resetRack();
     this.saveTiles();
   };
 
-  Game.prototype.updateScore = function() {
+  updateScore() {
     // Re-calculate the current word score
-    var scoreResult = this.calcScore();
+    let scoreResult = this.calcScore();
     this.wordGood = false;
     this.wordBad = false;
     if (scoreResult === undefined)
@@ -1113,7 +1168,7 @@ var Game = (function() {
             url: "/wordcheck",
             body: { locale: this.locale, word: scoreResult.word, words: scoreResult.words }
           }
-        ).then((result) => {
+        ).then((result: { word: string; ok: boolean; }) => {
             if (result && result.word == wordToCheck) {
               this.wordGood = result.ok;
               this.wordBad = !result.ok;
@@ -1124,28 +1179,28 @@ var Game = (function() {
     }
   };
 
-  Game.prototype.wordScore = function(row: number, col: number): number {
+  wordScore(row: number, col: number): number {
     // Return the word score multiplier at the given coordinate
     // on the game's board
-    var wsc = BOARD[this.board_type].WORDSCORE;
+    let wsc = BOARD[this.board_type].WORDSCORE;
     return parseInt(wsc[row].charAt(col)) || 1;
   };
 
-  Game.prototype.letterScore = function(row: number, col: number): number {
+  letterScore(row: number, col: number): number {
     // Return the letter score multiplier at the given coordinate
     // on the game's board
-    var lsc = BOARD[this.board_type].LETTERSCORE;
+    let lsc = BOARD[this.board_type].LETTERSCORE;
     return parseInt(lsc[row].charAt(col)) || 1;
   };
 
-  Game.prototype.squareType = function(row: number, col: number): string {
+  squareType(row: number, col: number): string {
     // Return the square type, or "" if none
-    var wsc = this.wordScore(row, col);
+    let wsc = this.wordScore(row, col);
     if (wsc == 2)
       return "dw"; // Double word
     if (wsc == 3)
       return "tw"; // Triple word
-    var lsc = this.letterScore(row, col);
+    let lsc = this.letterScore(row, col);
     if (lsc == 2)
       return "dl"; // Double letter
     if (lsc == 3)
@@ -1153,7 +1208,7 @@ var Game = (function() {
     return ""; // Plain square
   };
 
-  Game.prototype.squareClass = function(coord: string): string {
+  squareClass(coord: string): string {
     // Given a coordinate in string form, return the square's type/class
     if (!coord || coord[0] == "R")
       return undefined;
@@ -1161,24 +1216,24 @@ var Game = (function() {
     return this.squareType(vec.row, vec.col) || undefined;
   };
 
-  Game.prototype.tileAt = function(row: number, col: number) {
+  tileAt(row: number, col: number) {
     return this.tiles[coord(row, col)] || null;
   };
 
-  Game.prototype.calcScore = function() {
+  calcScore() {
     // Calculate the score for the tiles that have been laid on the board in the current move
-    var score = 0, crossScore = 0;
-    var wsc = 1;
-    var minrow = BOARD_SIZE, mincol = BOARD_SIZE;
-    var maxrow = 0, maxcol = 0;
-    var numtiles = 0, numcrosses = 0;
-    var word = "";
-    var words = [];
+    let score = 0, crossScore = 0;
+    let wsc = 1;
+    let minrow = BOARD_SIZE, mincol = BOARD_SIZE;
+    let maxrow = 0, maxcol = 0;
+    let numtiles = 0, numcrosses = 0;
+    let word = "";
+    let words: string[] = [];
     this.tilesPlaced().forEach((sq) => {
       // Tile on the board
-      var row = ROWIDS.indexOf(sq.charAt(0));
-      var col = parseInt(sq.slice(1)) - 1;
-      var t = this.tiles[sq];
+      let row = ROWIDS.indexOf(sq.charAt(0));
+      let col = parseInt(sq.slice(1)) - 1;
+      let t = this.tiles[sq];
       score += t.score * this.letterScore(row, col);
       numtiles++;
       wsc *= this.wordScore(row, col);
@@ -1196,8 +1251,8 @@ var Game = (function() {
     if (minrow != maxrow && mincol != maxcol)
       // Not a pure horizontal or vertical move
       return undefined;
-    var x = mincol, y = minrow;
-    var dx = 0, dy = 0;
+    let x = mincol, y = minrow;
+    let dx: -1 | 0 | 1 = 0, dy: -1 | 0 | 1 = 0;
     if (minrow != maxrow)
       dy = 1; // Vertical
     else
@@ -1212,12 +1267,12 @@ var Game = (function() {
       x -= dx;
       y -= dy;
     }
-    var t;
+    let t: TileData;
     // Find the end of the word
     while ((t = this.tileAt(y, x)) !== null) {
       if (t.draggable) {
         // Add score for cross words
-        var csc = this.calcCrossScore(y, x, 1 - dy, 1 - dx);
+        let csc = this.calcCrossScore(y, x, 1 - dy, 1 - dx);
         if (csc.score >= 0) {
           // There was a cross word there (it can score 0 if blank)
           crossScore += csc.score;
@@ -1237,7 +1292,7 @@ var Game = (function() {
     }
     if (this.numTileMoves === 0) {
       // First move that actually lays down tiles must go through center square
-      var c = this.centerCoord;
+      let c = this.centerCoord;
       if (null === this.tileAt(c[0], c[1]))
         // No tile in the center square
         return undefined;
@@ -1257,21 +1312,21 @@ var Game = (function() {
       score: score * wsc + crossScore + (numtiles == RACK_SIZE ? 50 : 0) };
   };
 
-  Game.prototype.calcCrossScore = function(oy, ox, dy, dx) {
+  calcCrossScore(oy: number, ox: number, dy: number, dx: number) {
     // Calculate the score contribution of a cross word
-    var score = 0;
-    var hascross = false;
-    var x = ox, y = oy;
-    var word = "";
+    let score = 0;
+    let hascross = false;
+    let x = ox, y = oy;
+    let word = "";
     // Find the beginning of the word
     while (this.tileAt(y - dy, x - dx) !== null) {
       x -= dx;
       y -= dy;
     }
-    var t;
+    let t: TileData;
     // Find the end of the word
     while ((t = this.tileAt(y, x)) !== null) {
-      var sc = t.score;
+      let sc = t.score;
       if (x == ox && y == oy)
         sc *= this.letterScore(y, x);
       else
@@ -1286,7 +1341,5 @@ var Game = (function() {
     return { score: score * this.wordScore(oy, ox), word: word };
   };
 
-  return Game;
-
-} ());
+} // class Game
 

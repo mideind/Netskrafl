@@ -237,7 +237,7 @@ class RequestData:
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))
 
-    def __init__(self, rq: Request) -> None:
+    def __init__(self, rq: Request, *, use_args: bool = False) -> None:
         # If JSON data is present, assume this is a JSON request
         self.q: Dict[str, Any] = cast(Any, rq).get_json(silent=True)
         self.using_json = True
@@ -246,7 +246,11 @@ class RequestData:
             self.q = rq.form
             self.using_json = False
             if not self.q:
-                self.q = dict()
+                # As a last resort, and if permitted, fall back to URL arguments
+                if use_args:
+                    self.q = rq.args
+                else:
+                    self.q = dict()
 
     def get(self, key: str, default: Any = None) -> Any:
         """ Obtain an arbitrary data item from the request """

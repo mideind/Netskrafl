@@ -155,6 +155,6 @@ interface Component<T> {
 
 type ComponentFunc<T> = (vnode: CustomVnode<T>) => Component<T>;
 
-type VnodeChildren = string | number | Vnode | Vnode[];
+type VnodeChildren = string | string[] | number | Vnode | Vnode[];
 
 type mAttrs = VnodeAttrs; //  | any;

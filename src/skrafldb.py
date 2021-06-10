@@ -556,7 +556,7 @@ class UserModel(Model):
         return self.image, self.image_blob
 
     def set_image(self, image: Optional[str], image_blob: Optional[bytes]) -> None:
-        """ Obtain image data about the user, consisting of
+        """ Set image data about the user, consisting of
             a string and a BLOB (bytes) """
         self.image = image
         self.image_blob = image_blob
