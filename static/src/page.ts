@@ -94,6 +94,23 @@ interface GameListItem {
   ts: string;
 }
 
+// Items in a list of recent games
+interface RecentListItem {
+  opp: string;
+  opp_is_robot: boolean;
+  sc0: number;
+  sc1: number;
+  ts_last_move: string;
+  manual: boolean;
+  duration: number;
+  days: number;
+  hours: number;
+  minutes: number;
+  elo_adj: number;
+  human_elo_adj: number;
+  url: string;
+}
+
 interface ChallengeListItem {
   key: string;
   received: boolean;
@@ -174,7 +191,7 @@ class Model {
   // The current challenge list
   challengeList?: ChallengeListItem[] = null;
   // Recent games
-  recentList?: any[] = null;
+  recentList?: RecentListItem[] = null;
   // The currently displayed user list
   userListCriteria?: { query: string; spec: string; } = null;
   userList?: any[] = null;
@@ -277,7 +294,7 @@ class Model {
       url: "/recentlist",
       body: { versus: null, count: 40 }
     })
-    .then((json: { result: number; recentlist: any; }) => {
+    .then((json: { result: number; recentlist: RecentListItem[]; }) => {
       if (!json || json.result !== 0) {
         // An error occurred
         this.recentList = null;
@@ -2636,7 +2653,7 @@ class View {
       return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
 
     // Create a list of major elements that we're showing
-    let r = [];
+    let r: any[] = [];
     r.push(vwRightColumn());
     r.push(m(this.BoardReview, { model: model, move: move }));
     if (move === null)
@@ -2904,12 +2921,12 @@ class View {
     // List of best moves, in a game review
 
     let view = this;
-    var game = model.game;
+    let game = model.game;
 
-    function bestHeader(co: string, tiles, score: number) {
+    function bestHeader(co: string, tiles: string, score: number) {
       // Generate the header of the best move list
-      var wrdclass = "wordmove";
-      var dispText: string | any[];
+      let wrdclass = "wordmove";
+      let dispText: string | any[];
       if (co.length > 0) {
         // Regular move
         dispText = [
@@ -2948,14 +2965,17 @@ class View {
         else
         if (tiles == "OVER") {
           /* Game over */
-          dispText = "Leik lokið";
+          dispText = "Viðureign lokið";
           wrdclass = "gameover";
         }
         else {
           // The rack leave at the end of the game (which is always in lowercase
           // and thus cannot be confused with the above abbreviations)
-          wrdclass = "wordmove";
-          dispText = tiles;
+          wrdclass = "othermove";
+          if (tiles == "--")
+            dispText = "Stafaleif: (engin)";
+          else
+            dispText = ["Stafaleif: ", m("i", tiles)];
         }
       }
       return m(".reviewhdr",
@@ -2967,7 +2987,7 @@ class View {
     }
 
     function bestMoveList() {
-      let r = [];
+      let r: any[] = [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
       if (!move || move > game.moves.length)
@@ -3512,15 +3532,16 @@ class View {
     return {
       view: (vnode) => {
         let game = model.game;
-        let r = [];
+        let r: any[] = [];
         if (game) {
           r = [
             m(this.Board, { model: model }),
             m(this.Rack, { model: model }),
           ];
-          if (vnode.attrs.move !== null)
+          let move = vnode.attrs.move;
+          if (move !== null)
             // Don't show navigation buttons if currently at overview (move==null)
-            r.push(this.vwButtonsReview(model, vnode.attrs.move));
+            r.push(this.vwButtonsReview(model, move));
         }
         return m(".board-area", r);
       }
@@ -3882,7 +3903,8 @@ class View {
     // Shows the score of the current move within a game review screen
     let mv = move ? game.moves[move - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
-    if (score === undefined)
+    if (score === undefined || (mv[1][0] == "" && mv[1][1] == "OVER"))
+      // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
     let sc = [ ".score" ];
     if (move > 0) {
@@ -3903,13 +3925,12 @@ class View {
     let mv = move ? game.moves[move - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
     let bestScore = model.bestMoves[model.highlightedMove][1][2];
+    let diff = (score - bestScore).toString();
+    if (diff[0] != "-" && diff[0] != "0")
+      diff = "+" + diff;
     if (score >= bestScore)
       sc.push("posdiff");
-    return m(
-      sc.join("."),
-      { style: { visibility: "visible" }},
-      (score - bestScore).toString()
-    );
+    return m(sc.join("."), { style: { visibility: "visible" }}, diff);
   }
 
   vwStatsReview(game: Game) {
@@ -4231,20 +4252,21 @@ class View {
   vwButtonsReview(model: Model, move: number) {
     // The navigation buttons below the board on the review screen
     let game = model.game;
+    let numMoves = game.moves.length;
     let r = [];
     r.push(
       this.makeButton(
-        "navbtn", !move,
-        function(move) {
+        "navbtn", !move, // Disabled if at move 0 (initial review dialog)
+        () => {
           // Navigate to previous move
           m.route.set(
             "/review/" + game.uuid,
-            { move: Math.max(move - 1, 0) }
+            { move: move ? move - 1 : 0 }
           );
-        }.bind(null, move || 0),
+        },
         "Sjá fyrri leik",
         m("span",
-          { id: "nav-next-visible" },
+          { id: "nav-prev-visible" },
           [ glyph("chevron-left"), " Fyrri" ]
         ),
         "navprev"
@@ -4252,17 +4274,17 @@ class View {
     );
     r.push(
       this.makeButton(
-        "navbtn", (!move) || (move + 1 >= game.moves.length),
-        function(move) {
+        "navbtn", (!move) || (move >= numMoves),
+        () => {
           // Navigate to next move
           m.route.set(
             "/review/" + game.uuid,
-            { move: move + 1 }
+            { move: (move || 0) + 1 }
           );
-        }.bind(null, move || 0),
+        },
         "Sjá næsta leik",
         m("span",
-          { id: "nav-prev-visible" },
+          { id: "nav-next-visible" },
           [ "Næsti ", glyph("chevron-right") ]
         ),
         "navnext"
@@ -4564,16 +4586,20 @@ class Actions {
         // !!! This may cause an extra detach - we assume that's OK
         this.detachListenerFromGame(model.game.uuid);
       }
+      // Find out which move we should show in the review
+      let moveParam: string = params.move || "0";
+      // Start with move number 0 by default
+      let move = parseInt(moveParam);
+      if (isNaN(move) || !move || move < 0)
+        move = 0;
       if (model.game === null || model.game.uuid != params.uuid)
-        // Different game than we had before: load it
-        model.loadGame(params.uuid, undefined); // No funcComplete
+          // Different game than we had before: load it, and then
+          // fetch the best moves
+          model.loadGame(params.uuid, () => model.loadBestMoves(move));
+      else
       if (model.game !== null) {
-        let move: string | number = params.move;
-        // Start with move number 0 by default
-        move = (!move) ? 0 : parseInt(move);
-        if (isNaN(move) || move < 0)
-          move = 0;
-        // Load the best moves and show them once they're available
+        // Already have the right game loaded:
+        // Fetch the best moves and show them once they're available
         model.loadBestMoves(move);
       }
     }
@@ -5131,17 +5157,18 @@ const EloList: ComponentFunc<{
   };
 };
 
-const RecentList: ComponentFunc<{ recentList: any; id: string; }> = (initialVnode) => {
+const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = (initialVnode) => {
   // Shows a list of recent games, stored in vnode.attrs.recentList
   
-  function itemize(item, i: number) {
+  function itemize(item: RecentListItem, i: number) {
 
     // Generate a list item about a recently completed game
 
     function durationDescription() {
       // Format the game duration
-      var duration: string | any[] = "";
-      if (item.duration === 0) {
+      let duration: string | any[] = "";
+      if (!item.duration) {
+        // Regular (non-timed) game
         if (item.days || item.hours || item.minutes) {
           if (item.days > 1)
             duration = item.days.toString() + " dagar";
@@ -5163,12 +5190,13 @@ const RecentList: ComponentFunc<{ recentList: any; id: string; }> = (initialVnod
           }
         }
       }
-      else
+      else {
         // This was a timed game
         duration = [
           m("span.timed-btn", { title: 'Viðureign með klukku' }),
           " 2 x " + item.duration + " mínútur"
         ];
+      }
       return duration;
     }
 
@@ -5260,9 +5288,9 @@ const UserInfoDialog: ComponentFunc<{
   // A dialog showing the track record of a given user, including
   // recent games and total statistics
 
-  var stats: { favorite?: boolean; friend?: boolean } = {};
-  var recentList = [];
-  var versusAll = true; // Show games against all opponents or just the current user?
+  let stats: { favorite?: boolean; friend?: boolean } = {};
+  let recentList: RecentListItem[] = [];
+  let versusAll = true; // Show games against all opponents or just the current user?
 
   function _updateStats(vnode: typeof initialVnode) {
     // Fetch the statistics of the given user
@@ -5280,7 +5308,7 @@ const UserInfoDialog: ComponentFunc<{
     // Fetch the recent game list of the given user
     vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
       versusAll ? null : $state.userId,
-      (json: { result: number; recentlist: any} ) => {
+      (json: { result: number; recentlist: RecentListItem[]; } ) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
         else

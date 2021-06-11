@@ -396,16 +396,17 @@ def board() -> ResponseType:
     uuid = request.args.get("game", None)
     # Requesting a look at a newly finished game
     zombie = request.args.get("zombie", None)
+    og: Optional[int] = None
     try:
         # If the og argument is present, it indicates that OpenGraph data
         # should be included in the page header, from the point of view of
         # the player that the argument represents (i.e. og=0 or og=1).
         # If og=-1, OpenGraph data should be included but from a neutral
         # (third party) point of view.
-        og = request.args.get("og", None)
-        if og is not None:
+        ogstr = request.args.get("og", None)
+        if ogstr is not None:
             # This should be a player index: -1 (third party), 0 or 1
-            og = int(og)  # May throw an exception
+            og = int(ogstr)  # May throw an exception
             if og < -1:
                 og = -1
             elif og > 1:

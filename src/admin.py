@@ -76,7 +76,7 @@ def admin_setfriend() -> str:
     uid = request.args.get("uid", "")
     state = request.args.get("state", "1")  # Default: set as friend
     try:
-        state = bool(int(state))
+        bstate = bool(int(state))
     except Exception:
         return "<html><body><p>Invalid state string: '{0}'</p></body></html>".format(
             state
@@ -85,12 +85,12 @@ def admin_setfriend() -> str:
     if u is None:
         return "<html><body><p>Unknown user id '{0}'</p></body></html>".format(uid)
     was_friend = u.friend()
-    u.set_friend(state)
-    u.set_has_paid(state)
+    u.set_friend(bstate)
+    u.set_has_paid(bstate)
     u.update()
-    logging.info("Friend state of user {0} manually set to {1}".format(uid, state))
+    logging.info("Friend state of user {0} manually set to {1}".format(uid, bstate))
     return "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>".format(
-        uid, state, was_friend
+        uid, bstate, was_friend
     )
 
 

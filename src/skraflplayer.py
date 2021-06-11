@@ -495,7 +495,7 @@ class ExtendRightNavigator(Navigator):
         self._stack: List[Tuple[str, int, bool]] = []
         self._wildcard_in_rack = "?" in rack
         # Cache the initial check we do when pushing into an edge
-        self._last_check = None
+        self._last_check: Optional[int] = None
         self._letter_bit = current_alphabet().letter_bit
 
     def _check(self, ch: str) -> int:

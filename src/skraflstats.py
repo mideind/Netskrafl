@@ -396,14 +396,15 @@ def _create_ratings() -> None:
 
             # pylint: disable=cell-var-from-loop
             def _augment(prop: str) -> None:
-                sm[prop + "_yesterday"] = (
-                    t_yesterday[key][prop] if key in t_yesterday else 0
+                asm = cast(Any, sm)  # Type checking hack
+                asm[prop + "_yesterday"] = (
+                    t_yesterday[key][prop] if key in t_yesterday else 0  # type: ignore
                 )
-                sm[prop + "_week_ago"] = (
-                    t_week_ago[key][prop] if key in t_week_ago else 0
+                asm[prop + "_week_ago"] = (
+                    t_week_ago[key][prop] if key in t_week_ago else 0  # type: ignore
                 )
-                sm[prop + "_month_ago"] = (
-                    t_month_ago[key][prop] if key in t_month_ago else 0
+                asm[prop + "_month_ago"] = (
+                    t_month_ago[key][prop] if key in t_month_ago else 0  # type: ignore
                 )
 
             _augment("rank")

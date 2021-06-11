@@ -48,7 +48,7 @@ from flask.globals import current_app
 
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
-from werkzeug.utils import redirect  # type: ignore
+from werkzeug.utils import redirect
 
 from basics import (
     jsonify,
@@ -270,7 +270,7 @@ class UserForm:
 
 
 @api.route("/oauth2callback", methods=["POST"])
-def oauth2callback():
+def oauth2callback() -> ResponseType:
     """ The OAuth2 login flow POSTs to this callback when a user has
         signed in using a Google Account """
 
@@ -550,13 +550,14 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     if cuid:
         challenges.update(
             # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20) if ch[0]]
+            [cid for ch in ChallengeModel.list_issued(cuid, max_len=20) if (cid := ch[0]) is not None]
         )
 
     online = _get_online()
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
+        iter_online: Iterable[str]
         if len(online) > MAX_ONLINE:
             iter_online = random.sample(list(online), MAX_ONLINE)
         else:
@@ -729,7 +730,9 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
-    if include_zombies:
+    ts0 = datetime.utcnow()
+    logging.info(f"gamelist: listing zombies, start {ts0}")
+    if include_zombies:  # !!! FIXME: This seems to be very slow, at least if the zombie list is empty
         for g in ZombieModel.list_games(cuid):
             opp = g["opp"]  # User id of opponent
             u = User.load_if_exists(opp)
@@ -772,13 +775,22 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         # i.e. most recently completed games first
         result.sort(key=lambda x: cast(str, x["ts"]), reverse=True)
 
+    ts1 = datetime.utcnow()
+    logging.info(f"gamelist: listing zombies, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
+    ts0 = ts1
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len=50))
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
     # Multi-fetch the opponents in the game list
+    ts1 = datetime.utcnow()
+    logging.info(f"gamelist: iter live games, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
+    ts0 = ts1
     opponents = fetch_users(i, lambda g: g["opp"])
+    ts1 = datetime.utcnow()
+    logging.info(f"gamelist: fetch users, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
+    ts0 = ts1
     # Iterate through the game list
     for g in i:
         if g is None:
@@ -830,6 +842,8 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 "fav": False if cuser is None else cuser.has_favorite(opp),
             }
         )
+    ts1 = datetime.utcnow()
+    logging.info(f"gamelist: result assembled, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
     return result
 
 
@@ -1027,44 +1041,44 @@ def _challengelist() -> List[Dict[str, Any]]:
     opponents = fetch_users(received + issued, lambda c: c[0])
     # List the received challenges
     for c in received:
-        if not c[0]:
+        if not (oppid := c[0]):
             continue
-        u = opponents[c[0]]  # User id
+        u = opponents[oppid]
         nick = u.nickname()
         result.append(
             {
                 "key": c[3],  # ChallengeModel entity key
                 "received": True,
-                "userid": c[0],
+                "userid": oppid,
                 "opp": nick,
                 "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp_short(c[2]),
                 "opp_ready": False,
-                "live": c[0] in online,
+                "live": oppid in online,
                 "image": u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(c[0]),
+                "fav": False if cuser is None else cuser.has_favorite(oppid),
             }
         )
     # List the issued challenges
     for c in issued:
-        if not c[0]:
+        if not (oppid := c[0]):
             continue
-        u = opponents[c[0]]  # User id
+        u = opponents[oppid]  # User id
         nick = u.nickname()
         result.append(
             {
                 "key": c[3],  # ChallengeModel entity key
                 "received": False,
-                "userid": c[0],
+                "userid": oppid,
                 "opp": nick,
                 "fullname": u.full_name(),
                 "prefs": c[1],
                 "ts": Alphabet.format_timestamp_short(c[2]),
                 "opp_ready": opp_ready(c),
-                "live": c[0] in online,
+                "live": oppid in online,
                 "image": u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(c[0]),
+                "fav": False if cuser is None else cuser.has_favorite(oppid),
             }
         )
     return result
@@ -1297,7 +1311,8 @@ def userstats() -> str:
         )
         # Enumerate in reverse order (oldest first)
         for ix in reversed(range(PERIOD)):
-            if (r := result[ix]) is None:
+            r = result[ix]
+            if r is None:
                 # No entry for this day: duplicate the previous entry
                 p = prev.copy()
                 p["ts"] = (now - timedelta(days=ix)).isoformat()
@@ -1532,7 +1547,7 @@ def setuserpref() -> ResponseType:
 def onlinecheck() -> ResponseType:
     """ Check whether a particular user is online """
     rq = RequestData(request)
-    if (user_id := rq.get("user")) :
+    if (user_id := rq.get("user")):
         online = firebase.check_presence(user_id)
     else:
         online = False
@@ -1797,17 +1812,29 @@ def bestmoves() -> ResponseType:
     # Switch to the game's locale
     set_game_locale(game.locale)
 
-    move_number = rq.get_int("move")
-    if move_number > game.num_moves():
-        move_number = game.num_moves()
+    # move_number is the actual index into the game's move list
+    # rq_move_number is the requested index, which can include the
+    # final adjustment moves (rack leave, overtime adjustment, game over)
+    move_number = rq_move_number = rq.get_int("move")
+    final_adjustments = game.get_final_adjustments()
+    num_moves = game.num_moves()
+    max_index = num_moves + len(final_adjustments)
+
+    if move_number > num_moves:
+        move_number = num_moves
     elif move_number < 0:
         move_number = 0
+
+    if rq_move_number > max_index:
+        rq_move_number = max_index
+    elif rq_move_number < 0:
+        rq_move_number = 0
 
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
     best_moves: Optional[List[Tuple[int, SummaryTuple]]] = None
-    if game.allows_best_moves():
+    if game.allows_best_moves() and rq_move_number <= move_number:
 
         # Serialize access to the following section
         with autoplayer_lock:
@@ -1828,12 +1855,19 @@ def bestmoves() -> ResponseType:
         # player 0, or the human player if player 0 is an autoplayer
         user_index = 1 if game.is_autoplayer(0) else 0
 
+    # If we're showing an adjustment move, i.e. rack leave, overtime or 'game over',
+    # return an empty player rack
+    if rq_move_number > move_number:
+        player_rack = []
+    else:
+        player_rack = state.rack_details(player_index)
+
     return jsonify(
         result=Error.LEGAL,
-        move_number=move_number,
+        move_number=rq_move_number,
         player_index=player_index,
         user_index=user_index,
-        player_rack=state.rack_details(player_index),
+        player_rack=player_rack,
         best_moves=best_moves,
     )
 

@@ -496,12 +496,12 @@ class NewEnglishTileSet(TileSet):
     alphabet = EnglishAlphabet
 
     scores = {
-        "t": 1,
         "i": 1,
         "o": 1,
         "s": 1,
         "a": 1,
         "e": 1,
+        "t": 2,
         "h": 2,
         "y": 2,
         "m": 2,
@@ -510,18 +510,18 @@ class NewEnglishTileSet(TileSet):
         "n": 2,
         "l": 2,
         "r": 2,
+        "p": 2,
         "k": 3,
-        "w": 3,
-        "p": 3,
         "b": 3,
         "g": 3,
         "c": 3,
-        "f": 4,
+        "f": 3,
+        "w": 4,
         "x": 5,
         "v": 5,
         "j": 6,
         "z": 6,
-        "q": 15,
+        "q": 12,
         "?": 0,
     }
 
@@ -561,6 +561,13 @@ class NewEnglishTileSet(TileSet):
 # Number of tiles in bag
 NewEnglishTileSet.BAG_SIZE = NewEnglishTileSet.num_tiles()
 assert NewEnglishTileSet.BAG_SIZE == EnglishTileSet.BAG_SIZE
+# Sanity check tile count
+assert sum(t[1] for t in NewEnglishTileSet.bag_tiles) == 100
+# Sanity check total points in bag
+assert (
+    sum(t[1] * NewEnglishTileSet.scores[t[0]] for t in NewEnglishTileSet.bag_tiles)
+    == 187
+)
 
 # Mapping of locale code to tileset
 

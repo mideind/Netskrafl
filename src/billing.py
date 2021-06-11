@@ -233,7 +233,7 @@ def handle(request: Request, uid: str) -> ResponseType:
     payload = b""
     try:
         # Do not accept request bodies larger than 2K
-        if int(request.headers.get("Content-length", 0)) < 2048:
+        if int(cast(int, request.headers.get("Content-length", 0))) < 2048:
             payload = request.get_data(cache=False, as_text=False)
     except Exception as ex:
         # Something wrong with the Content-length header or the request body

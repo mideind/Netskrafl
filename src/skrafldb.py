@@ -753,7 +753,7 @@ class GameModel(Model):
     timestamp = Model.Datetime(auto_now_add=True)
 
     # The timestamp of the last move in the game
-    ts_last_move = Model.OptionalDatetime()
+    ts_last_move = Model.OptionalDatetime(indexed=True)
 
     # The moves so far
     moves = cast(
@@ -961,7 +961,7 @@ class FavoriteModel(Model):
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
 
     # The originating (source) user is the parent/ancestor of the relation
-    destuser = Model.DbKey(kind=UserModel)
+    destuser = Model.OptionalDbKey(kind=UserModel)
 
     def set_dest(self, user_id: str) -> None:
         """Set a destination user key property"""
@@ -1027,7 +1027,7 @@ class ChallengeModel(Model):
     # The challenging (source) user is the parent/ancestor of the relation
 
     # The challenged user
-    destuser = Model.DbKey(kind=UserModel)
+    destuser = Model.OptionalDbKey(kind=UserModel)
 
     # The parameters of the challenge (time, bag type, etc.)
     prefs = cast(PrefsDict, ndb.JsonProperty())
@@ -1209,7 +1209,7 @@ class StatsModel(Model):
         """Create a fresh instance with default values"""
         sm = cls()
         sm.set_user(user_id, robot_level)
-        sm.timestamp = None
+        sm.timestamp = datetime.utcnow()
         sm.elo = 1200
         sm.human_elo = 1200
         sm.manual_elo = 1200
@@ -1939,11 +1939,11 @@ class ZombieModel(Model):
 
     def set_player(self, user_id: Optional[str]) -> None:
         """Set the player's user id"""
-        self.player = None if user_id is None else Key(UserModel, user_id)
+        self.player = cast(Key, None) if user_id is None else Key(UserModel, user_id)
 
     def set_game(self, game_id: Optional[str]) -> None:
         """Set the game id"""
-        self.game = None if game_id is None else Key(GameModel, game_id)
+        self.game = cast(Key, None) if game_id is None else Key(GameModel, game_id)
 
     @classmethod
     def add_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
@@ -2001,7 +2001,7 @@ class ZombieModel(Model):
                 sc1=sc1,
             )
 
-        for zm in q.fetch():
+        for zm in list(q.fetch()):
             if (zd := z_callback(zm)) is not None:
                 yield zd
 
