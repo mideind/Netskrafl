@@ -20,55 +20,55 @@ declare function m(cls: mClass, attrs: mAttrs, children: VnodeChildren): any;
 declare function m(cls: ComponentFunc<T>, attrs: T, children?: VnodeChildren): any;
 
 declare namespace m {
-    export { hyperscript as m };
-    import trust_1 = hyperscript.trust;
-    export { trust_1 as trust };
-    import fragment_1 = hyperscript.fragment;
-    export { fragment_1 as fragment };
-    import mount_1 = mount;
-    export { mount_1 as mount };
-    export function route(root: HTMLElement, defaultRoute: string, routes: any): any;
-    export namespace route {
-        const SKIP: {};
-        function set(path0: string, data?: any, options?: any): void;
-        function get(): any;
-        const prefix: string;
-        namespace Link {
-            function view(vnode5: any): any;
-        }
-        function param(key4: string): string;
+  export { hyperscript as m };
+  import trust_1 = hyperscript.trust;
+  export { trust_1 as trust };
+  import fragment_1 = hyperscript.fragment;
+  export { fragment_1 as fragment };
+  import mount_1 = mount;
+  export { mount_1 as mount };
+  export function route(root: HTMLElement, defaultRoute: string, routes: any): any;
+  export namespace route {
+    const SKIP: {};
+    function set(path0: string, data?: any, options?: any): void;
+    function get(): any;
+    const prefix: string;
+    namespace Link {
+      function view(vnode5: any): any;
     }
-    export { render };
-    import redraw_1 = redraw;
-    export { redraw_1 as redraw };
-    import request_1 = request;
-    export { request_1 as request };
-    import jsonp_1 = jsonp;
-    export { jsonp_1 as jsonp };
-    export { parseQueryString };
-    export { buildQueryString };
-    export { parsePathname };
-    export { buildPathname };
-    export { Vnode as vnode };
+    function param(key4: string): string;
+  }
+  export { render };
+  import redraw_1 = redraw;
+  export { redraw_1 as redraw };
+  import request_1 = request;
+  export { request_1 as request };
+  import jsonp_1 = jsonp;
+  export { jsonp_1 as jsonp };
+  export { parseQueryString };
+  export { buildQueryString };
+  export { parsePathname };
+  export { buildPathname };
+  export { Vnode as vnode };
 }
 declare function hyperscript(selector: any, ...args: any[]): any;
 declare namespace hyperscript {
-    function trust(html: string): Vnode;
-    function fragment(...args: any[]): any;
+  function trust(html: string): Vnode;
+  function fragment(...args: any[]): any;
 }
 declare function mount(root: HTMLElement, component: any): void;
 declare function render(dom: HTMLElement, vnodes: any, redraw: boolean): void;
 declare function redraw(): void;
 declare namespace redraw {
-    export { sync };
+  export { sync };
 }
 declare function request(url: string, args: any): any;
 declare function jsonp(url: string, args: any): any;
 declare function parseQueryString(string: any): {};
 declare function buildQueryString(object: any): string;
 declare function parsePathname(url: string): {
-    path: string;
-    params: {};
+  path: string;
+  params: {};
 };
 declare function buildPathname(template: any, params: any): any;
 
@@ -157,4 +157,4 @@ type ComponentFunc<T> = (vnode: CustomVnode<T>) => Component<T>;
 
 type VnodeChildren = string | string[] | number | Vnode | Vnode[];
 
-type mAttrs = VnodeAttrs; //  | any;
+type mAttrs = VnodeAttrs;

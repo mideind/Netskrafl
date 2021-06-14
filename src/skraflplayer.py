@@ -641,14 +641,12 @@ class AutoPlayer:
         return AutoPlayer(state)
 
     def __init__(self, state: State) -> None:
-
         # List of valid, candidate moves
         self._candidates: List[MoveBase] = []
         self._state = state
         self._board = state.board()
         # The rack that the autoplayer has to work with
         self._rack = state.player_rack().contents()
-
         # Calculate a bit pattern representation of the rack
         if "?" in self._rack:
             # Wildcard in rack: all letters allowed
@@ -899,6 +897,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
 
     """This subclass of AutoPlayer uses a MiniMax algorithm to
     select a move to play from the list of valid moves.
+    Currently, this is not used in Netskrafl.
     """
 
     def __init__(self, state: State) -> None:
@@ -967,8 +966,8 @@ class AutoPlayer_MiniMax(AutoPlayer):
         min_score: Optional[float] = None
 
         # pylint: disable=superfluous-parens
-
         print("Looking at {0} top scoring candidate moves".format(NUM_CANDIDATES))
+
         # Look at the top scoring candidates
         for m, score in scored_candidates[0:NUM_CANDIDATES]:
 

@@ -20,7 +20,7 @@
 
 export { main };
 
-import { Game, coord, toVector, RackTile, Move } from "./game.js";
+import { Game, coord, toVector, RackTile, Move, ServerGame } from "./game.js";
 import { addPinchZoom, registerSalesCloud } from "./util.js";
 
 import {
@@ -135,10 +135,57 @@ interface ChallengeParameters {
   key?: string;
 }
 
+interface UserListItem {
+  rank: number;
+  rank_yesterday: number;
+  rank_week_ago: number;
+  userid: string;
+  nick: string;
+  fullname: string;
+  newbag: boolean;
+  inactive: boolean;
+  chall: boolean;
+  fairplay: boolean;
+  ratio: number;
+  avgpts: number;
+  games: number;
+  games_yesterday: number;
+  games_week_ago: number;
+  games_month_ago: number;
+  elo: number;
+  elo_yesterday: number;
+  elo_week_ago: number;
+  elo_month_ago: number;
+}
+
 interface UserErrors {
   nickname?: string;
   full_name?: string;
   email?: string;
+}
+
+interface UserPrefs {
+  nickname: string;
+  full_name: string;
+  email: string;
+  beginner: boolean;
+  fairplay: boolean;
+  newbag: boolean;
+  audio: boolean;
+  fanfare: boolean;
+  logout_url: string;
+  unfriend_url: string;
+  friend: boolean;
+}
+
+interface MoveInfo {
+  key: string;
+  leftTotal: number;
+  rightTotal: number;
+  player: 0 | 1;
+  co: string;
+  tiles: string;
+  score: number;
 }
 
 function main(state: GlobalState) {
@@ -161,7 +208,7 @@ function main(state: GlobalState) {
 
 function getSettings(): Settings {
   // Returns an app-wide settings object
-  let
+  const
     paths: Paths = [
       { name: "main", route: "/main", mustLogin: true },
       { name: "login", route: "/login", mustLogin: false },
@@ -198,7 +245,7 @@ class Model {
   // The user's own statistics
   ownStats: any = null;
   // The current user information being edited, if any
-  user: any = null;
+  user: UserPrefs = null;
   userErrors: UserErrors = null;
   // The help screen contents
   helpHTML?: string = null;
@@ -225,7 +272,7 @@ class Model {
       url: "/gamestate",
       body: { game: uuid }
     })
-    .then((result: { ok: boolean; game: any; }) => {
+    .then((result: { ok: boolean; game: ServerGame; }) => {
       if (this.game !== null)
         // We have a prior game in memory:
         // clean it up before allocating the new one
@@ -401,11 +448,11 @@ class Model {
     .then(readyFunc);
   }
 
-  loadBestMoves(move: number) {
+  loadBestMoves(moveIndex: number) {
     // Load the best moves available at a given state in a game
     if (!this.game || !this.game.uuid)
       return;
-    if (!move) {
+    if (!moveIndex) {
       this.reviewMove = null;
       this.bestMoves = null;
       this.highlightedMove = null;
@@ -419,7 +466,7 @@ class Model {
     m.request({
       method: "POST",
       url: "/bestmoves",
-      body: { game: this.game.uuid, move: move }
+      body: { game: this.game.uuid, move: moveIndex }
     })
     .then((json: { result: number; move_number: number; best_moves: Move[]; player_rack: RackTile[]; }) => {
       this.highlightedMove = null;
@@ -432,7 +479,7 @@ class Model {
       this.bestMoves = json.best_moves;
       this.game.setRack(json.player_rack);
       // Populate the board cells with only the tiles
-      // laid down up and until the indicated move
+      // laid down up and until the indicated moveIndex
       this.game.placeTiles(this.reviewMove);
     });
   }
@@ -462,7 +509,7 @@ class Model {
       method: "POST",
       url: "/loaduserprefs"
     })
-    .then((result: { ok: boolean; userprefs: any; }) => {
+    .then((result: { ok: boolean; userprefs: UserPrefs; }) => {
       if (activateSpinner)
         this.spinners--;
       if (!result.ok) {
@@ -1084,9 +1131,9 @@ class View {
 
   vwUserPrefsDialog(model: Model) {
 
-    var user = model.user;
-    var err = model.userErrors || { };
-    var view = this;
+    let user = model.user;
+    let err = model.userErrors || { };
+    let view = this;
 
     function vwErrMsg(propname: string) {
       // Show a validation error message returned from the server
@@ -1102,7 +1149,7 @@ class View {
     }
 
     function getToggle(elemId: string) {
-      var cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
+      let cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
       return cls2.contains("selected");
     }
 
@@ -2243,7 +2290,7 @@ class View {
             style: "z-index: 6" // Appear on top of board on mobile
           },
           // Show the requested page
-          m(".twoletter-area" + (game.isTimed() ? ".with-clock" : ""),
+          m(".twoletter-area" + (game.showClock() ? ".with-clock" : ""),
             {
               title: page == 0 ?
                 "Smelltu til að raða eftir seinni staf" :
@@ -2280,6 +2327,10 @@ class View {
     s.showMove = false;
     s.showChallenge = false;
     s.showChallengeInfo = false;
+    if (game.moveInProgress)
+      // While a move is in progress (en route to the server)
+      // no buttons are shown
+      return s;
     if (s.localTurn && !s.gameOver) {
       // This player's turn
       if (s.lastChallenge) {
@@ -2347,8 +2398,8 @@ class View {
 
       function vwClock() {
         // Show clock data if this is a timed game
-        if (!game.isTimed())
-          // Not a timed game
+        if (!game.showClock())
+          // Not a timed game, or a game that is completed
           return m.fragment({}, []);
 
         function vwClockFace(cls: string, txt: string, runningOut: boolean, blinking: boolean) {
@@ -2414,7 +2465,7 @@ class View {
             break;
         }
         var tabgrp = view.vwTabGroup(game);
-        return m(".right-area" + (game.isTimed() ? ".with-clock" : ""),
+        return m(".right-area" + (game.showClock() ? ".with-clock" : ""),
           component ? [ tabgrp, component ] : [ tabgrp ]
         );
       }
@@ -2509,10 +2560,10 @@ class View {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
+      return m("div", [ m("main", m(".game-container")), m(LeftLogo) ]);
 
-    let bag = game ? game.bag : "";
-    let newbag = game ? game.newbag : true;
+    let bag = game.bag;
+    let newbag = game.newbag;
     return m("div", // Removing this div messes up Mithril
       {
         // Allow tiles to be dropped on the background,
@@ -2553,7 +2604,7 @@ class View {
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
-        m(this.BackButton),
+        m(LeftLogo),
         $state.beginner ? vwBeginner() : "",
         this.vwInfo()
       ]
@@ -2588,7 +2639,7 @@ class View {
 
     let view = this;
     let game = model.game;
-    let move = model.reviewMove;
+    let moveIndex = model.reviewMove;
     let bestMoves = model.bestMoves || [];
 
     function vwRightColumn() {
@@ -2601,10 +2652,10 @@ class View {
         let player = game.player;
         let sc0 = "";
         let sc1 = "";
-        if (move) {
+        if (moveIndex) {
           let s0 = 0;
           let s1 = 0;
-          for (let i = 0; i < move; i++) {
+          for (let i = 0; i < moveIndex; i++) {
             // Add up the scores until and including this move
             let m = game.moves[i];
             if (i % 2 == 0)
@@ -2642,7 +2693,7 @@ class View {
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", view.vwBestMoves(model, move, bestMoves));
+        return m(".right-area", view.vwBestMoves(model, moveIndex, bestMoves));
       }
 
       return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
@@ -2650,20 +2701,20 @@ class View {
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(this.BackButton) ]);
+      return m("div", [ m("main", m(".game-container")), m(LeftLogo) ]);
 
     // Create a list of major elements that we're showing
     let r: any[] = [];
     r.push(vwRightColumn());
-    r.push(m(this.BoardReview, { model: model, move: move }));
-    if (move === null)
-      // Only show the stats overlay if move is null.
+    r.push(m(this.BoardReview, { model: model, moveIndex: moveIndex }));
+    if (moveIndex === null)
+      // Only show the stats overlay if moveIndex is null.
       // This means we don't show the overlay if move is 0.
       r.push(this.vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
         m("main", m(".game-container", r)),
-        m(this.BackButton), // Button to go back to main screen
+        m(LeftLogo), // Button to go back to main screen
         this.vwInfo() // Help button
       ]
     );
@@ -2833,7 +2884,7 @@ class View {
         // key: uuid
       },
       [
-        m(".chat-area" + (game.isTimed() ? ".with-clock" : ""),
+        m(".chat-area" + (game.showClock() ? ".with-clock" : ""),
           {
             id: 'chat-area',
             // Make sure that we see the bottom-most chat message
@@ -2875,16 +2926,13 @@ class View {
     let view = this;
 
     function movelist() {
-      var mlist = game ? game.moves : []; // All moves made so far in the game
-      var r = [];
-      var leftTotal = 0;
-      var rightTotal = 0;
+      let mlist = game ? game.moves : []; // All moves made so far in the game
+      let r = [];
+      let leftTotal = 0;
+      let rightTotal = 0;
       for (let i = 0; i < mlist.length; i++) {
-        var move = mlist[i];
-        var player = move[0];
-        var co = move[1][0];
-        var tiles = move[1][1];
-        var score = move[1][2];
+        let move = mlist[i];
+        let [ player, [ co, tiles, score ] ] = move;
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
@@ -2902,8 +2950,8 @@ class View {
       return r;
     }
 
-    var bag = game ? game.bag : "";
-    var newbag = game ? game.newbag : true;
+    let bag = game ? game.bag : "";
+    let newbag = game ? game.newbag : true;
     return m(".movelist-container",
       [
         m(".movelist",
@@ -2917,7 +2965,7 @@ class View {
     );
   }
 
-  vwBestMoves(model: Model, move: number, bestMoves: Move[]) {
+  vwBestMoves(model: Model, moveIndex: number, bestMoves: Move[]) {
     // List of best moves, in a game review
 
     let view = this;
@@ -2943,8 +2991,8 @@ class View {
         else
         if (tiles.indexOf("EXCH") === 0) {
           /* Exchange move - we don't show the actual tiles exchanged, only their count */
-          var numtiles = tiles.slice(5).length;
-          dispText = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+          let numtiles = tiles.slice(5).length;
+          dispText = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
         }
         else
         if (tiles == "RSGN")
@@ -2958,9 +3006,14 @@ class View {
         if (tiles == "RESP") {
           /* Challenge response */
           if (score < 0)
-             dispText = "Lögn óleyfileg";
+             dispText = "Óleyfileg lögn";
           else
              dispText = "Röng véfenging";
+        }
+        else
+        if (tiles == "TIME") {
+          /* Score adjustment for time */
+          dispText = "Umframtími";
         }
         else
         if (tiles == "OVER") {
@@ -2980,35 +3033,33 @@ class View {
       }
       return m(".reviewhdr",
         [
-          m("span.movenumber", "#" + move),
+          m("span.movenumber", "#" + moveIndex),
           m("span", { class: wrdclass }, dispText)
         ]
       );
     }
 
     function bestMoveList() {
-      let r: any[] = [];
+      let r: VnodeChildren = [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
-      if (!move || move > game.moves.length)
+      if (!moveIndex || moveIndex > game.moves.length)
         return r;
       // Prepend a header that describes the move being reviewed
-      let m = game.moves[move - 1];
+      let m = game.moves[moveIndex - 1];
       let co = m[1][0];
       let tiles = m[1][1];
       let score = m[1][2];
       r.push(bestHeader(co, tiles, score));
       let mlist = bestMoves;
       for (let i = 0; i < mlist.length; i++) {
-        let player = mlist[i][0];
-        co = mlist[i][1][0];
-        tiles = mlist[i][1][1];
-        score = mlist[i][1][2];
+        let [ player, [co, tiles, score] ] = mlist[i];
         r.push(
-          view.vwBestMove(model, move, i, mlist[i],
+          view.vwBestMove(model, moveIndex, i, mlist[i],
             {
               key: i.toString(),
-              player: player, co: co, tiles: tiles, score: score
+              player: player, co: co, tiles: tiles,
+              score: score, leftTotal: 0, rightTotal: 0
             }
           )
         );
@@ -3041,7 +3092,7 @@ class View {
     parent.setAttribute("data-len", movelist.length.toString());
   }
 
-  vwMove(game: Game, move, info) {
+  vwMove(game: Game, move: Move, info: MoveInfo) {
     // Displays a single move
 
     let view = this;
@@ -3066,7 +3117,7 @@ class View {
     let player = info.player;
     let co: string = info.co;
     let tiles: string = info.tiles;
-    let score = info.score;
+    let score: string | number = info.score;
     let leftTotal = info.leftTotal;
     let rightTotal = info.rightTotal;
 
@@ -3111,7 +3162,7 @@ class View {
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
         let numtiles = tiles.slice(5).length;
-        tiles = "Skipti um " + numtiles.toString() + (numtiles == 1 ? " staf" : " stafi");
+        tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
         score = "";
       }
       else
@@ -3179,11 +3230,11 @@ class View {
         attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
       // Highlight the move on the board while hovering over it
       attribs.onmouseout = () => {
-        move.highlighted = false;
+        move["highlighted"] = false;
         highlightMove(rawCoord, tiles, playerColor, false);
       };
       attribs.onmouseover = () => {
-        move.highlighted = true;
+        move["highlighted"] = true;
         highlightMove(rawCoord, tiles, playerColor, true);
       };
     }
@@ -3192,7 +3243,7 @@ class View {
       return m(".move.leftmove." + cls, attribs,
         [
           m("span.total", leftTotal),
-          m("span.score" + (move.highlighted ? ".highlight" : ""), score),
+          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
           m("span." + wrdclass, [ m("i", tiles), nbsp(), co ])
         ]
       );
@@ -3202,14 +3253,14 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span." + wrdclass, [ co, nbsp(), m("i", tiles) ]),
-          m("span.score" + (move.highlighted ? ".highlight" : ""), score),
+          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
           m("span.total", rightTotal)
         ]
       );
     }
   }
 
-  vwBestMove(model: Model, moveIndex: number, bestMoveIndex: number, move, info) {
+  vwBestMove(model: Model, moveIndex: number, bestMoveIndex: number, move: Move, info: MoveInfo) {
     // Displays a move in a list of best available moves
 
     let game = model.game;
@@ -3293,18 +3344,18 @@ class View {
     attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
-      move.highlighted = true;
+      move["highlighted"] = true;
       highlightMove(rawCoord, tiles, playerColor, true);
     };
     attribs.onmouseout = () => {
-      move.highlighted = false;
+      move["highlighted"] = false;
       highlightMove(rawCoord, tiles, playerColor, false);
     };
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.score" + (move.highlighted ? ".highlight" : ""), score),
+          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
           m("span.wordmove", [ m("i", word), nbsp(), co ])
         ]
       );
@@ -3314,7 +3365,7 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span.wordmove", [ co, nbsp(), m("i", word) ]),
-          m("span.score" + (move.highlighted ? ".highlight" : ""), score)
+          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score)
         ]
       );
     }
@@ -3487,23 +3538,6 @@ class View {
     };
   }
 
-  BackButton: ComponentFunc<{}> = (initialVnode) => {
-    // Icon for going back to the main screen
-    return {
-      view: (vnode) => {
-        return m(".logo-back", 
-          m(m.route.Link,
-            {
-              href: "/page",
-              class: "backlink"
-            },
-            m(ExploLogo, { legend: false, scale: 1.5 })
-          )
-        );
-      }
-    };
-  }
-
   BoardArea: ComponentFunc<{ model: Model; }> = (initialVnode) => {
     // Collection of components in the board (left-side) area
     let model = initialVnode.attrs.model;
@@ -3526,7 +3560,7 @@ class View {
     };
   }
 
-  BoardReview: ComponentFunc<{ model: Model; move: number; }> = (initialVnode) => {
+  BoardReview: ComponentFunc<{ model: Model; moveIndex: number; }> = (initialVnode) => {
     // The board area within a game review screen
     let model = initialVnode.attrs.model;
     return {
@@ -3538,10 +3572,10 @@ class View {
             m(this.Board, { model: model }),
             m(this.Rack, { model: model }),
           ];
-          let move = vnode.attrs.move;
-          if (move !== null)
+          let moveIndex = vnode.attrs.moveIndex;
+          if (moveIndex !== null)
             // Don't show navigation buttons if currently at overview (move==null)
-            r.push(this.vwButtonsReview(model, move));
+            r.push(this.vwButtonsReview(model, moveIndex));
         }
         return m(".board-area", r);
       }
@@ -3899,16 +3933,16 @@ class View {
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(game: Game, move?: number) {
+  vwScoreReview(game: Game, moveIndex?: number) {
     // Shows the score of the current move within a game review screen
-    let mv = move ? game.moves[move - 1] : undefined;
+    let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
     if (score === undefined || (mv[1][0] == "" && mv[1][1] == "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
     let sc = [ ".score" ];
-    if (move > 0) {
-      if (move % 2 == game.player)
+    if (moveIndex > 0) {
+      if (moveIndex % 2 == game.player)
         // Opponent move: show in green
         sc.push("green");
       else
@@ -3918,11 +3952,11 @@ class View {
     return m(sc.join("."), score.toString());
   }
 
-  vwScoreDiff(model: Model, move: number) {
+  vwScoreDiff(model: Model, moveIndex: number) {
     // Shows the score of the current move within a game review screen
     let game = model.game;
     let sc = [ ".scorediff" ];
-    let mv = move ? game.moves[move - 1] : undefined;
+    let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
     let bestScore = model.bestMoves[model.highlightedMove][1][2];
     let diff = (score - bestScore).toString();
@@ -4116,7 +4150,7 @@ class View {
   }
 
   makeButton(
-    cls: string, disabled: boolean, func: () => void, title: string, children?: any, id?: string
+    cls: string, disabled: boolean, func: () => void, title: string, children?: VnodeChildren, id?: string
   ) {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
@@ -4249,19 +4283,19 @@ class View {
     return r;
   }
 
-  vwButtonsReview(model: Model, move: number) {
+  vwButtonsReview(model: Model, moveIndex: number) {
     // The navigation buttons below the board on the review screen
     let game = model.game;
     let numMoves = game.moves.length;
-    let r = [];
+    let r: VnodeChildren = [];
     r.push(
       this.makeButton(
-        "navbtn", !move, // Disabled if at move 0 (initial review dialog)
+        "navbtn", !moveIndex, // Disabled if at moveIndex 0 (initial review dialog)
         () => {
-          // Navigate to previous move
+          // Navigate to previous moveIndex
           m.route.set(
             "/review/" + game.uuid,
-            { move: move ? move - 1 : 0 }
+            { move: moveIndex ? moveIndex - 1 : 0 }
           );
         },
         "Sjá fyrri leik",
@@ -4274,12 +4308,12 @@ class View {
     );
     r.push(
       this.makeButton(
-        "navbtn", (!move) || (move >= numMoves),
+        "navbtn", (!moveIndex) || (moveIndex >= numMoves),
         () => {
-          // Navigate to next move
+          // Navigate to next moveIndex
           m.route.set(
             "/review/" + game.uuid,
-            { move: (move || 0) + 1 }
+            { move: (moveIndex || 0) + 1 }
           );
         },
         "Sjá næsta leik",
@@ -4290,18 +4324,18 @@ class View {
         "navnext"
       )
     );
-    // Show the score difference between an actual move and
-    // a particular move on the best move list
+    // Show the score difference between an actual moveIndex and
+    // a particular moveIndex on the best moveIndex list
     if (model.highlightedMove !== null)
-      r.push(this.vwScoreDiff(model, move));
-    r.push(this.vwScoreReview(game, move));
+      r.push(this.vwScoreDiff(model, moveIndex));
+    r.push(this.vwScoreReview(game, moveIndex));
     return r;
   }
 
   vwErrors(game: Game) {
     // Error messages, selectively displayed
-    var msg: string = game.currentMessage || "";
-    var errorMessages = {
+    let msg: string = game.currentMessage || "";
+    let errorMessages: { [key: string]: VnodeChildren } = {
       1: "Enginn stafur lagður niður",
       2: "Fyrsta orð verður að liggja um byrjunarreitinn",
       3: "Orð verður að vera samfellt á borðinu",
@@ -4807,8 +4841,8 @@ const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVn
 
   // The Explo logo, with or without the legend ('explo')
 
-  var scale = initialVnode.attrs.scale || 1.0;
-  var legend = initialVnode.attrs.legend;
+  const scale = initialVnode.attrs.scale || 1.0;
+  const legend = initialVnode.attrs.legend;
 
   return {
     view: (vnode) => {
@@ -4879,15 +4913,17 @@ const TextInput: ComponentFunc<{
 
 // A nice graphical toggler control
 
-function vwToggler(id: string, state: boolean, tabindex: number, opt1, opt2, func?: Function, small?: boolean, title?: string) {
+function vwToggler(id: string, state: boolean, tabindex: number,
+  opt1: VnodeChildren, opt2: VnodeChildren, func?: Function,
+  small?: boolean, title?: string) {
 
-  var togglerId = id + "-toggler";
-  var optionClass = ".option" + (small ? ".small" : "");
+  const togglerId = id + "-toggler";
+  const optionClass = ".option" + (small ? ".small" : "");
 
   function doToggle() {
     // Perform the toggling, on a mouse click or keyboard input (space bar)
-    var cls1 = document.querySelector("#" + togglerId + " #opt1").classList;
-    var cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
+    const cls1 = document.querySelector("#" + togglerId + " #opt1").classList;
+    const cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
     cls1.toggle("selected");
     cls2.toggle("selected");
     if (func !== undefined)
@@ -4936,8 +4972,8 @@ const MultiSelection: ComponentFunc<{
   // typically .selected
 
   let sel = initialVnode.attrs.initialSelection || 0;
-  let defaultClass = initialVnode.attrs.defaultClass || "";
-  let selectedClass = initialVnode.attrs.selectedClass || "selected";
+  const defaultClass = initialVnode.attrs.defaultClass || "";
+  const selectedClass = initialVnode.attrs.selectedClass || "selected";
 
   return {
     view: (vnode) => {
@@ -4975,9 +5011,9 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = (initialV
   // Shows an icon in grey or green depending on whether a given user
   // is online or not
 
-  var online = false;
-  var id = initialVnode.attrs.id;
-  var userId = initialVnode.attrs.userId;
+  let online = false;
+  const id = initialVnode.attrs.id;
+  const userId = initialVnode.attrs.userId;
 
   function _update() {
     m.request({
@@ -4985,7 +5021,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = (initialV
       url: "/onlinecheck",
       body: { user: userId }
     })
-    .then((json: any) => { online = json && json.online; });
+    .then((json: { online: boolean; }) => { online = json && json.online; });
   }
 
   return {
@@ -5076,7 +5112,7 @@ const EloList: ComponentFunc<{
 
     view: (vnode) => {
 
-      function itemize(item, i: number) {
+      function itemize(item: UserListItem, i: number) {
 
         // Generate a list item about a user in an Elo ranking table
 
@@ -5088,11 +5124,11 @@ const EloList: ComponentFunc<{
           return rank.toString();
         }
 
-        var isRobot = item.userid.indexOf("robot-") === 0;
-        var nick = item.nick;
-        var ch = "";
-        var info = nbsp();
-        var newbag = item.newbag;
+        const isRobot = item.userid.indexOf("robot-") === 0;
+        let nick: VnodeChildren = item.nick;
+        let ch = "";
+        let info = nbsp();
+        let newbag = item.newbag;
         if (item.userid != $state.userId && !item.inactive)
           ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
         if (isRobot) {
@@ -5136,8 +5172,8 @@ const EloList: ComponentFunc<{
         );
       }
 
-      var model = vnode.attrs.model;
-      var list = [];
+      const model = vnode.attrs.model;
+      let list: UserListItem[] = [];
       if (model.userList === undefined) {
         // Loading in progress
         // pass
@@ -5618,8 +5654,8 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
   // for user search
 
   let spec = ""; // The current search pattern
-  let model = initialVnode.attrs.model;
-  let promise;
+  const model = initialVnode.attrs.model;
+  let promise: { result: boolean; p: Promise<boolean>; } = undefined;
 
   function newSearch() {
     // There may have been a change of search parameters: react
@@ -5647,7 +5683,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
     // convoluted route to associate a boolean result with it.
     let newP = {
       result: true,
-      p: new Promise((resolve) => {
+      p: new Promise<boolean>((resolve) => {
         // After 800 milliseconds, resolve to whatever value the
         // result property has at that time. It will be true
         // unless the promise has been "cancelled" by setting
@@ -5738,7 +5774,7 @@ function escapeHtml(string: string): string {
 
 function replaceEmoticons(str: string): string {
   // Replace all emoticon shortcuts in the string str with a corresponding image URL
-  let emoticons = $state.emoticons;
+  const emoticons = $state.emoticons;
   for (let i = 0; i < emoticons.length; i++)
     if (str.indexOf(emoticons[i].icon) >= 0) {
       // The string contains the emoticon: prepare to replace all occurrences
@@ -5767,8 +5803,8 @@ function setInput(id: string, val: string) {
 function updateTabVisibility(vnode: Vnode) {
   // Shows the tab that is currently selected,
   // i.e. the one whose index is in vnode.state.selected
-  var selected: number = vnode.state.selected;
-  var lis = vnode.state.lis;
+  const selected: number = vnode.state.selected;
+  const lis = vnode.state.lis;
   vnode.state.ids.map((id: string, i: number) => {
       document.getElementById(id).setAttribute("style", "display: " +
         (i == selected ? "block" : "none"));
@@ -5831,10 +5867,10 @@ function glyphGrayed(icon: string, attrs?: object) {
 }
 
 // Utility function: inserts non-breaking space
-function nbsp(n?: number) {
+function nbsp(n?: number): VnodeChildren {
   if (!n || n == 1)
     return m.trust("&nbsp;");
-  var r = [];
+  let r: Vnode[] = [];
   for (let i = 0; i < n; i++)
     r.push(m.trust("&nbsp;"));
   return r;

@@ -197,7 +197,8 @@ def cancel_friend(user: User) -> bool:
 def handle(request: Request, uid: str) -> ResponseType:
     """ Handle an incoming request to the /billing URL path """
 
-    if request.method != "POST":
+    method: str = cast(Any, request).method
+    if method != "POST":
         # This is probably an incoming redirect from the SalesCloud IFRAME
         # after completing a payment form
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
@@ -207,7 +208,7 @@ def handle(request: Request, uid: str) -> ResponseType:
         if not uid:
             logging.warning("uid is empty in billing.handle()")
         if not request_valid(
-            request.method,
+            method,
             request.base_url,
             uid.encode("ascii"),  # Payload
             xsc_date,
@@ -227,20 +228,21 @@ def handle(request: Request, uid: str) -> ResponseType:
         return redirect(url_for("web.friend", action=0))  # Redirect to a thank-you page
 
     # Begin by validating the request by checking its signature
-    xsc_key = request.headers.get("X-SalesCloud-Access-Key", "")[0:256]
-    xsc_date = request.headers.get("X-SalesCloud-Date", "")[0:256]
-    xsc_digest = request.headers.get("X-SalesCloud-Signature", "")[0:256]
+    headers: Dict[str, str] = cast(Any, request).headers
+    xsc_key = headers.get("X-SalesCloud-Access-Key", "")[0:256]
+    xsc_date = headers.get("X-SalesCloud-Date", "")[0:256]
+    xsc_digest = headers.get("X-SalesCloud-Signature", "")[0:256]
     payload = b""
     try:
         # Do not accept request bodies larger than 2K
-        if int(cast(int, request.headers.get("Content-length", 0))) < 2048:
+        if int(headers.get("Content-length", 0)) < 2048:
             payload = request.get_data(cache=False, as_text=False)
     except Exception as ex:
         # Something wrong with the Content-length header or the request body
         logging.error("Exception when obtaining payload: {0}".format(ex))
     # pylint: disable=bad-continuation
     if not request_valid(
-        request.method, request.url, payload, xsc_date, xsc_key, xsc_digest
+        method, request.url, payload, xsc_date, xsc_key, xsc_digest
     ):
         logging.error("Invalid signature received")
         return jsonify(ok=False, reason="Invalid signature"), 403  # Forbidden

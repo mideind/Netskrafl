@@ -13,13 +13,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence, Tuple, Set, Dict, cast
+from typing import Any, Mapping, Optional, Sequence, List, Union, Tuple, Set, Dict, cast
 
+import os
 import json
 import threading
 import logging
 import socket
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httplib2  # type: ignore
 
@@ -27,14 +28,26 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
-from basics import PROJECT_ID, FIREBASE_DB_URL
+from cache import memcache
 
+# App Engine (and Firebase) project id
+# Note that this is not imported from basics.py by design,
+# in order to avoid dependency cycles
+
+PROJECT_ID = os.environ.get("PROJECT_ID", "")
+assert PROJECT_ID, "PROJECT_ID environment variable not set"
+
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "")
+assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
 
 _FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",
     "https://www.googleapis.com/auth/userinfo.email",
 ]
 _TIMEOUT: int = 15  # Seconds
+
+_LIFETIME_MEMORY_CACHE = 1  # Minutes
+_LIFETIME_REDIS_CACHE = 10  # Minutes
 
 _HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
 
@@ -256,3 +269,40 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
                 raise
         attempts += 1
     assert False, "Unexpected fall out of loop in firebase.create_custom_token()"
+
+
+_online_cache: Optional[Set[str]] = None
+_online_ts: Optional[datetime] = None
+
+
+def online_users() -> Set[str]:
+    """Obtain a set of online users, by their user ids"""
+
+    global _online_cache, _online_ts
+
+    # First, use a per-process in-memory cache, having a lifetime of 1 minute
+    now = datetime.utcnow()
+    if (
+        _online_ts is not None
+        and _online_cache is not None
+        and _online_ts > now - timedelta(minutes=_LIFETIME_MEMORY_CACHE)
+    ):
+        return _online_cache
+
+    # Second, use the distributed Redis cache, having a lifetime of 10 minutes
+    online: Union[Set[str], List[str]] = memcache.get("live", namespace="userlist")
+
+    if not online:
+        # Not found: do a Firebase query, which returns a set
+        online = get_connected_users()
+        # Store the result as a list in the Redis cache with a lifetime of 10 minutes
+        memcache.set(
+            "live", list(online), time=_LIFETIME_REDIS_CACHE * 60, namespace="userlist"
+        )
+    else:
+        # Convert the cached list back into a set
+        online = set(online)
+
+    _online_cache = online
+    _online_ts = now
+    return online

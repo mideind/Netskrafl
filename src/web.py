@@ -253,10 +253,11 @@ def userprefs():
     if from_url and cast(Any, url_parse(from_url)).netloc != "":
         from_url = None
 
-    if request.method == "GET":
+    method: str = cast(Any, request).method
+    if method == "GET":
         # Entering the form for the first time: load the user data
         uf.init_from_user(user)
-    elif request.method == "POST":
+    elif method == "POST":
         # Attempting to submit modified data: retrieve it and validate
         uf.init_from_form(request.form)
         err = uf.validate()
@@ -755,10 +756,11 @@ def main() -> ResponseType:
 @web.route("/stats/run", methods=["GET", "POST"])
 def stats_run() -> ResponseType:
     """ Start a task to calculate Elo points for games """
-    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    headers: Dict[str, str] = cast(Any, request).headers
+    task_queue_name = headers.get("X-AppEngine-QueueName", "")
     task_queue = task_queue_name != ""
     cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
     if not any((task_queue, cloud_scheduler, cron_job, running_local)):
         # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403
@@ -777,10 +779,11 @@ def stats_run() -> ResponseType:
 @web.route("/stats/ratings", methods=["GET", "POST"])
 def stats_ratings() -> ResponseType:
     """ Start a task to calculate top Elo rankings """
-    task_queue_name = request.headers.get("X-AppEngine-QueueName", "")
+    headers: Dict[str, str] = cast(Any, request).headers
+    task_queue_name = headers.get("X-AppEngine-QueueName", "")
     task_queue = task_queue_name != ""
     cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = request.headers.get("X-Appengine-Cron", "") == "true"
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
     if not any((task_queue, cloud_scheduler, cron_job, running_local)):
         # Only allow bona fide Google Cloud Scheduler or Task Queue requests
         return "Restricted URL", 403

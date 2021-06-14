@@ -12,7 +12,7 @@
 
 */
 
-export { Game, coord, toVector, RackTile, Move };
+export { Game, coord, toVector, RackTile, Move, ServerGame };
 
 import { m } from "./mithril.js";
 
@@ -36,7 +36,11 @@ interface SavedTile {
 }
 type TileScoreDict = { [index: string]: number; };
 
-type Move = [0 | 1, [string, string, number]]; // player, [coord, tiles, score]
+type Move = [
+  player: 0 | 1,
+  summary: [coord: string, tiles: string, score: number],
+  highlighted?: boolean
+];
 type MoveDetail = [string];
 
 interface Message {
@@ -45,11 +49,21 @@ interface Message {
   ts: string;
 }  
 
+interface ServerGame {
+  result: number;
+  msg: string;
+  newmoves: Move[];
+  two_letter_words: string[][];
+  num_moves: number;
+  // A lot of other properties are also sent from the server,
+  // but they are copied using key/value enumeration
+}
+
 // Global constants
 const ROWIDS = "ABCDEFGHIJKLMNO";
 const BOARD_SIZE = ROWIDS.length;
 const RACK_SIZE = 7;
-const MAX_OVERTIME = 10 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
+const MAX_OVERTIME = 1 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
 
 const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
@@ -333,7 +347,7 @@ class Game {
   showingDialog: string = null; // Below-the-board dialog (question)
   moveInProgress: boolean = false; // Is the server processing a move?
   askingForBlank: { from: string; to: string; } = null;
-  currentError: string = null;
+  currentError: string | number = null;
   currentMessage: string = null;
   isFresh: boolean = false;
   numTileMoves: number = 0;
@@ -358,7 +372,7 @@ class Game {
   // Create a local storage object for this game
   localStorage: LocalStorage = null;
 
-  constructor(uuid: string, game: any) {
+  constructor(uuid: string, game: ServerGame) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
@@ -368,7 +382,7 @@ class Game {
     // whether HTML5 local storage is available
     this.localStorage = hasLocalStorage() ? new LocalStorageImpl(uuid) : new NoLocalStorageImpl();
 
-    this.time_info = { duration: 1.0, elapsed: [25.0, 15.0]}; // !!! DEBUG!
+    // this.time_info = { duration: 1.0, elapsed: [25.0, 15.0]};
 
     // Load previously saved tile positions from
     // local storage, if any
@@ -382,7 +396,7 @@ class Game {
       this.startClock();
   }
 
-  init(game: any) {
+  init(game: ServerGame) {
     // Initialize the game state with data from the server
     // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
@@ -418,7 +432,7 @@ class Game {
       this.placeTiles();
   };
 
-  update(game: any) {
+  update(game: ServerGame) {
     // Update the game state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
@@ -443,8 +457,34 @@ class Game {
     }
     this.saveTiles();
     if (this.isTimed())
+      // The call to resetClock() clears any outstanding interval timers
+      // if the game is now over
       this.resetClock();
   };
+
+  refresh() {
+    // Force a refresh of the current game state from the server
+    // Before calling refresh(), this.moveInProgress is typically
+    // set to true, so we reset it here
+    if (!this.uuid) {
+      this.moveInProgress = false;
+      return;
+    }
+    m.request({
+      method: "POST",
+      url: "/gamestate",
+      body: { game: this.uuid }
+    })
+    .then((result: { ok: boolean; game: ServerGame; }) => {
+      if (!result.ok) {
+        // console.log("Game " + uuid + " could not be loaded");
+      }
+      else {
+        this.update(result.game);
+      }
+      this.moveInProgress = false;
+    });
+  }
 
   notifyUserChange(newNick: string) {
     // The user information may have been changed:
@@ -473,6 +513,19 @@ class Game {
     // Return True if this is a timed game
     return this.time_info && this.time_info.duration >= 1.0;
   };
+
+  showClock(): boolean {
+    // Return true if the clock should be shown in the right-hand column
+    if (!this.isTimed())
+      // Only show the clock for a timed game, obviously
+      return false;
+    if (!this.over)
+      // If the game is still ongoing, always show the clock
+      return true;
+    // If the game is over, only show the clock if there is something to
+    // show, i.e. at least one clock text
+    return !!this.clockText0 || !!this.clockText1;
+  }
 
   updateClock() {
     var txt0 = this.calcTimeToGo(0);
@@ -517,7 +570,7 @@ class Game {
   }
 
   cleanup() {
-    /* Clean up any resources owned by this game object */
+    // Clean up any resources owned by this game object
     if (this.interval) {
       window.clearInterval(this.interval);
       this.interval = null;
@@ -535,10 +588,14 @@ class Game {
       elapsed += (now.getTime() - this.timeBase.getTime()) / 1000;
       if (elapsed - gameTime.duration * 60.0 > MAX_OVERTIME) {
         // 10 minutes overtime has passed:
-        // The player has lost - do this the brute force way and refresh the page
-        // to get the server's final verdict
-        // !!! TODO
-        // reloadInterval = window.setInterval(reloadPage, 500);  // Do this in half a sec
+        // The player has lost - do this the brute force way and
+        // reload the game from the server to get the server's final verdict
+        if (!this.moveInProgress) {
+          this.moveInProgress = true;
+          let timer = window.setInterval(
+            () => { this.refresh(); window.clearInterval(timer); }, 500
+          ); // Do this in half a sec
+        }
       }
     }
     // The overtime is max 10 minutes - at that point you lose
@@ -580,7 +637,7 @@ class Game {
         url: "/chatload",
         body: { channel: "game:" + this.uuid }
       }
-    ).then((result) => {
+    ).then((result: { ok: boolean; messages: Message[]; }) => {
       if (result.ok)
         this.messages = result.messages || [];
       else
@@ -876,7 +933,7 @@ class Game {
     return r;
   };
 
-  sendMove(moves: any[]) {
+  sendMove(moves: string[]) {
     // Send a move to the server
     this.moveInProgress = true;
     return m.request(
@@ -885,12 +942,12 @@ class Game {
         url: "/submitmove",
         body: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
       }
-    ).then((result) => {
+    ).then((result: ServerGame) => {
         this.moveInProgress = false;
         // The update() function also handles error results
         this.update(result);
       }
-    ).catch((e) => {
+    ).catch((e: string) => {
         this.moveInProgress = false;
         this.currentError = "server";
         this.currentMessage = e;
@@ -901,7 +958,7 @@ class Game {
   submitMove() {
     // Send a tile move to the server
     let t = this.tilesPlaced();
-    let moves = [];
+    let moves: string[] = [];
     this.selectedSq = null; // Currently selected (blinking) square
     for (let i = 0; i < t.length; i++) {
       let sq = t[i];
@@ -918,13 +975,13 @@ class Game {
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  submitChallenge = function() {
+  submitChallenge() {
     // Show a challenge confirmation prompt
     this.showingDialog = "chall";
     this.selectedSq = null; // Currently selected (blinking) square
   };
 
-  submitExchange = function() {
+  submitExchange() {
     // Show an exchange prompt
     this.showingDialog = "exchange";
     this.selectedSq = null; // Currently selected (blinking) square
@@ -1162,6 +1219,7 @@ class Game {
       this.currentScore = scoreResult.score;
       var wordToCheck = scoreResult.word;
       if (!this.manual) {
+        // Check the word that has been laid down
         m.request(
           {
             method: "POST",

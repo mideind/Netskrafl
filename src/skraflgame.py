@@ -48,6 +48,7 @@ from flask.helpers import url_for
 from cache import memcache
 
 from languages import Alphabet, OldTileSet, NewTileSet, vocabulary_for_locale
+from firebase import online_users
 from skrafldb import (
     PrefItem,
     PrefsDict,
@@ -98,6 +99,16 @@ class UserSummaryDict(TypedDict):
     nick: str
     name: str
     image: str
+    locale: str
+    location: str
+    elo: int
+    human_elo: int
+    manual_elo: int
+    ready: bool
+    ready_timed: bool
+    fairplay: bool
+    favorite: bool
+    live: bool
 
 
 class User:
@@ -246,6 +257,10 @@ class User:
         if not nick:
             return False
         return nick[0:8] != "https://" and nick[0:7] != "http://"
+
+    def elo(self) -> int:
+        """Return the overall (human and robot) Elo points of the user"""
+        return self._elo or User.DEFAULT_ELO
 
     def human_elo(self) -> int:
         """Return the human-only Elo points of the user"""
@@ -555,27 +570,54 @@ class User:
         return True
 
     def has_blocked(self, destuser_id: str) -> bool:
-        """Returns True if there is an A-favors-B relation between this user and the destuser"""
+        """Returns True if there is an A-favors-B relation between
+            this user and the destuser"""
         if not destuser_id:
             return False
         self._load_blocks()
         assert self._blocks is not None
         return destuser_id in self._blocks
 
-    def list_blocked(self) -> List[UserSummaryDict]:
-        """Returns a list of users blocked by this user"""
-        self._load_blocks()
-        assert self._blocks is not None
+    def _summary_list(
+        self, uids: Iterable[str], *, is_favorite: bool = False
+    ) -> List[UserSummaryDict]:
+        """Return a list of summary data about a set of users"""
         result: List[UserSummaryDict] = []
-        for uid in self._blocks:
+        online = online_users()
+        for uid in uids:
             u = User.load_if_exists(uid)
             if u is not None:
                 result.append(
                     UserSummaryDict(
-                        uid=uid, nick=u.nickname(), name=u.full_name(), image=u.image()
+                        uid=uid,
+                        nick=u.nickname(),
+                        name=u.full_name(),
+                        image=u.image(),
+                        locale=u.locale,
+                        location=u.location,
+                        elo=u.elo(),
+                        human_elo=u.human_elo(),
+                        manual_elo=u.manual_elo(),
+                        ready=u.is_ready(),
+                        ready_timed=u.is_ready_timed(),
+                        fairplay=u.fairplay(),
+                        favorite=is_favorite or self.has_favorite(uid),
+                        live=uid in online,
                     )
                 )
         return result
+
+    def list_blocked(self) -> List[UserSummaryDict]:
+        """Returns a list of users blocked by this user"""
+        self._load_blocks()
+        assert self._blocks is not None
+        return self._summary_list(self._blocks)
+
+    def list_favorites(self) -> List[UserSummaryDict]:
+        """Returns a list of users that this user favors"""
+        self._load_favorites()
+        assert self._favorites is not None
+        return self._summary_list(self._favorites, is_favorite=True)
 
     def report(self, destuser_id: str, code: int, text: str) -> bool:
         """The current user is reporting another user"""
@@ -612,7 +654,9 @@ class User:
         assert sid is not None
         ChallengeModel.del_relation(srcuser_id, sid, key)
 
-    def accept_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> Tuple[bool, Optional[PrefsDict]]:
+    def accept_challenge(
+        self, srcuser_id: str, *, key: Optional[str] = None
+    ) -> Tuple[bool, Optional[PrefsDict]]:
         """Decline a challenge previously issued by the srcuser"""
         # Delete the accepted challenge and return the associated preferences
         sid = self.id()
@@ -806,7 +850,8 @@ class Game:
     UNDEFINED_NAME = "[Ónefndur]"
 
     # The maximum overtime in a game, after which a player automatically loses
-    MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
+    # MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
+    MAX_OVERTIME = 1 * 60.0  # 10 minutes, in seconds  !!! DEBUG - FIXME
 
     # After this number of days the game becomes overdue and the
     # waiting player can force the tardy opponent to resign

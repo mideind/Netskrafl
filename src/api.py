@@ -286,7 +286,8 @@ def oauth2callback() -> ResponseType:
     # !!! TODO: Add CSRF token mechanism
     # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
     token: str
-    testing: bool = current_app.config.get("TESTING", False)
+    config = cast(Any, current_app).config
+    testing: bool = config.get("TESTING", False)
 
     if testing:
         # Testing only: there is no token in the request
@@ -491,26 +492,6 @@ def fetch_users(
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
-def _get_online() -> Set[str]:
-    # Get the list of online users
-
-    # Start by looking in the cache
-    # !!! TODO: Cache the entire list including the user information,
-    # !!! only updating the favorite state (fav field) for the requesting user
-    online: Union[Set[str], List[str]] = memcache.get("live", namespace="userlist")
-
-    if not online:
-        # Not found: do a query, which returns a set
-        online = firebase.get_connected_users()
-
-        # Store the result as a list in the cache with a lifetime of 10 minutes
-        memcache.set("live", list(online), time=10 * 60, namespace="userlist")
-    else:
-        # Convert the cached list back into a set
-        online = set(online)
-    return online
-
-
 def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     """ Return a list of users matching the filter criteria """
 
@@ -553,7 +534,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             [cid for ch in ChallengeModel.list_issued(cuid, max_len=20) if (cid := ch[0]) is not None]
         )
 
-    online = _get_online()
+    online = firebase.online_users()
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -724,7 +705,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         return result
 
     now = datetime.utcnow()
-    online = _get_online()
+    online = firebase.online_users()
     cuser = current_user()
     u: Optional[User] = None
 
@@ -946,7 +927,7 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
 
-    online = _get_online()
+    online = firebase.online_users()
 
     u: Optional[User] = None
 
@@ -1032,7 +1013,7 @@ def _challengelist() -> List[Dict[str, Any]]:
         assert c[0] is not None
         return _opponent_waiting(cuid, c[0])
 
-    online = _get_online()
+    online = firebase.online_users()
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
     # List issued challenges
@@ -1276,7 +1257,9 @@ def userstats() -> str:
     profile["blocked"] = blocked
 
     if uid == cuser.id():
-        # If current user, include a list of users blocked by this user
+        # If current user, include a list of favorite users
+        profile["list_favorites"] = cuser.list_favorites()
+        # Also, include a list of blocked users
         profile["list_blocked"] = cuser.list_blocked()
         # Also, include a 30-day history of Elo scores
         now = datetime.utcnow()
@@ -1329,16 +1312,17 @@ def userstats() -> str:
 def image() -> ResponseType:
     """ Set (POST) or get (GET) the image of a user """
     rq = RequestData(request, use_args=True)
+    method: str = cast(Any, request).method
     cuid = current_user_id()
     assert cuid is not None
     uid = rq.get("uid") or cuid
-    if request.method == "POST" and uid != cuid:
+    if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
     um = UserModel.fetch(uid)
     if not um:
         return "User not found", 404  # Not found
-    if request.method == "GET":
+    if method == "GET":
         # Get image for user
         image, image_blob = um.get_image()
         if image_blob:

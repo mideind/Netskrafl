@@ -140,7 +140,7 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
     app.secret_key = f.read()
 
 # Load the Flask configuration
-app.config.update(**flask_config)
+cast(Any, app).config.update(**flask_config)
 
 # Register the Flask blueprints for the api and web routes
 app.register_blueprint(api)

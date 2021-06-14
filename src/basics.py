@@ -161,15 +161,17 @@ def set_session_userid(userid: str, idinfo: Dict[str, Any]) -> None:
 
 def clear_session_userid() -> None:
     """ Clears the Flask session userid and idinfo attributes """
-    session.pop("userid", None)
-    session.pop("user", None)
+    sess = cast(Dict[str, Any], session)
+    sess.pop("userid", None)
+    sess.pop("user", None)
 
 
 def session_user() -> Optional[User]:
     """Return the user who is authenticated in the current session, if any.
     This can be called within any Flask request."""
     u = None
-    if (user := session.get("userid")) is not None:
+    sess = cast(Dict[str, Any], session)
+    if (user := sess.get("userid")) is not None:
         userid = user.get("id")
         u = User.load_if_exists(userid)
     return u
@@ -291,3 +293,4 @@ class RequestData:
     def __getitem__(self, key: str) -> Any:
         """ Shortcut: allow indexing syntax with an empty string default """
         return self.q.get(key, "")
+
