@@ -55,7 +55,7 @@ interface ServerGame {
   newmoves: Move[];
   two_letter_words: string[][];
   num_moves: number;
-  // A lot of other properties are also sent from the server,
+  // Several other properties are also sent from the server,
   // but they are copied using key/value enumeration
 }
 
@@ -63,9 +63,13 @@ interface ServerGame {
 const ROWIDS = "ABCDEFGHIJKLMNO";
 const BOARD_SIZE = ROWIDS.length;
 const RACK_SIZE = 7;
-const MAX_OVERTIME = 1 * 60.0; /* Maximum overtime before a player loses the game, 10 minutes in seconds */
+// Maximum overtime before a player loses the game, 10 minutes in seconds
+const MAX_OVERTIME = 1 * 60.0; // FIXME / DEBUG !!!
 
 const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
+
+const START_SQUARE = { explo: "D4", standard: "H8" };
+const START_COORD = { explo: [3, 3], standard: [7, 7] };
 
 const BOARD = {
   standard: {
@@ -108,12 +112,12 @@ const BOARD = {
     WORDSCORE: [
       "3      3      3",
       "        2      ",
-      "  2      2     ",
+      "         2     ",
       "   2           ",
       "    2          ",
       "     2      2  ",
       "      2      2 ",
-      "3             3",
+      "3      2      3",
       " 2      2      ",
       "  2      2     ",
       "          2    ",
@@ -125,14 +129,14 @@ const BOARD = {
     LETTERSCORE: [
       "    2      2   ",
       " 3   2       3 ",
-      "      3     2  ",
+      "  2   3     2  ",
       "       2  3   2",
       "2          3   ",
       " 2       2     ",
       "  3     2      ",
       "   2       2   ",
       "      2     3  ",
-      "     2   2   2 ",
+      "     2       2 ",
       "   3          2",
       "2   3  2       ",
       "  2     3   2  ",
@@ -309,8 +313,8 @@ class Game {
   tile_scores: TileScoreDict = {};
   // Default to the standard board for the Icelandic locale
   board_type = "standard";
-  centerSquare = "H8";
-  centerCoord: [number, number] = [7, 7]; // row, col
+  startSquare = "H8";
+  startCoord: [number, number] = [7, 7]; // row, col
   two_letter_words: string[][] = [[], []];
 
   userid: [string, string] = ["", ""];
@@ -372,22 +376,19 @@ class Game {
   // Create a local storage object for this game
   localStorage: LocalStorage = null;
 
-  constructor(uuid: string, game: ServerGame) {
+  constructor(uuid: string, srvGame: ServerGame) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
-    // console.log("Game " + uuid + " loaded");
 
     // Choose and return a constructor function depending on
     // whether HTML5 local storage is available
     this.localStorage = hasLocalStorage() ? new LocalStorageImpl(uuid) : new NoLocalStorageImpl();
 
-    // this.time_info = { duration: 1.0, elapsed: [25.0, 15.0]};
-
     // Load previously saved tile positions from
     // local storage, if any
     let savedTiles = this.localStorage.loadTiles();
-    this.init(game);
+    this.init(srvGame);
     // Put tiles in the same position as they were
     // when the player left the game
     this.restoreTiles(savedTiles);
@@ -396,33 +397,33 @@ class Game {
       this.startClock();
   }
 
-  init(game: ServerGame) {
+  init(srvGame: ServerGame) {
     // Initialize the game state with data from the server
     // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
-    this.over = game.result == GAME_OVER;
-    if (this.over || game.result === 0)
+    this.over = srvGame.result == GAME_OVER;
+    if (this.over || srvGame.result === 0)
       this.currentError = this.currentMessage = null;
     else {
-      // Nonzero game.result: something is wrong
-      this.currentError = game.result || "server";
-      this.currentMessage = game.msg || "";
+      // Nonzero srvGame.result: something is wrong
+      this.currentError = srvGame.result || "server";
+      this.currentMessage = srvGame.msg || "";
       return;
     }
-    // Copy game JSON properties over to this object
-    for (let key in game)
-      if (game.hasOwnProperty(key))
-        this[key] = game[key];
-    if (game.newmoves !== undefined && game.newmoves.length > 0)
+    // Copy srvGame JSON properties over to this object
+    for (let key in srvGame)
+      if (srvGame.hasOwnProperty(key))
+        this[key] = srvGame[key];
+    if (srvGame.newmoves) {
       // Add the newmoves list, if any, to the list of moves
-      this.moves = this.moves.concat(game.newmoves);
+      this.moves = this.moves.concat(srvGame.newmoves);
+    }
     // Don't keep the new moves lying around
     this.newmoves = undefined;
     this.localturn = !this.over && ((this.moves.length % 2) == this.player);
     this.isFresh = true;
-    this.two_letter_words = game.two_letter_words || [[], []];
-    this.centerSquare = this.board_type == "explo" ? "C3" : "H8";
-    this.centerCoord = this.board_type == "explo" ? [2, 2] : [7, 7];
+    this.startSquare = START_SQUARE[this.board_type];
+    this.startCoord = START_COORD[this.board_type];
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)
@@ -432,19 +433,20 @@ class Game {
       this.placeTiles();
   };
 
-  update(game: ServerGame) {
-    // Update the game state with data from the server,
+  update(srvGame: ServerGame) {
+    // Update the srvGame state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
-    if (game.num_moves !== undefined && game.num_moves <= this.moves.length)
-      // This is probably a starting notification from Firebase,
+    if (srvGame.result != GAME_OVER && srvGame.num_moves !== undefined &&
+      srvGame.num_moves <= this.moves.length)
+      // This is probably a starting notification from Firebase on an ongoing srvGame,
       // not adding a new move but repeating the last move made: ignore it
       return;
     // Stop highlighting the previous opponent move, if any
     for (let sq in this.tiles)
       if (this.tiles.hasOwnProperty(sq))
         this.tiles[sq].freshtile = false;
-    this.init(game);
+    this.init(srvGame);
     if (this.currentError === null) {
       if (this.succ_chall) {
         // Successful challenge: reset the rack
@@ -458,7 +460,7 @@ class Game {
     this.saveTiles();
     if (this.isTimed())
       // The call to resetClock() clears any outstanding interval timers
-      // if the game is now over
+      // if the srvGame is now over
       this.resetClock();
   };
 
@@ -579,30 +581,32 @@ class Game {
 
   calcTimeToGo(player: 0 | 1) {
     /* Return the time left for a player in a nice MM:SS format */
-    var gameTime = this.time_info
-    var elapsed = gameTime.elapsed[player];
-    var gameOver = this.over;
+    let gameTime = this.time_info;
+    let elapsed = gameTime.elapsed[player];
+    let gameOver = this.over;
     if (!gameOver && (this.moves.length % 2) == player) {
       // This player's turn: add the local elapsed time
-      var now = new Date();
+      let now = new Date();
       elapsed += (now.getTime() - this.timeBase.getTime()) / 1000;
       if (elapsed - gameTime.duration * 60.0 > MAX_OVERTIME) {
-        // 10 minutes overtime has passed:
-        // The player has lost - do this the brute force way and
-        // reload the game from the server to get the server's final verdict
+        // 10 minutes overtime has passed: The client now believes
+        // that the player has lost. Refresh the game from the server
+        // to get its final verdict.
         if (!this.moveInProgress) {
           this.moveInProgress = true;
-          let timer = window.setInterval(
-            () => { this.refresh(); window.clearInterval(timer); }, 500
-          ); // Do this in half a sec
+          // Refresh from the server in half a sec, to be a little
+          // more confident that it agrees with us
+          window.setTimeout(
+            () => { this.refresh(); }, 500
+          );
         }
       }
     }
     // The overtime is max 10 minutes - at that point you lose
-    var timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -MAX_OVERTIME);
-    var absTime = Math.abs(timeToGo);
-    var min = Math.floor(absTime / 60.0);
-    var sec = Math.floor(absTime - min * 60.0);
+    let timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -MAX_OVERTIME);
+    let absTime = Math.abs(timeToGo);
+    let min = Math.floor(absTime / 60.0);
+    let sec = Math.floor(absTime - min * 60.0);
     if (gameOver) {
       // We already got a correct score from the server
       this.penalty0 = 0;
@@ -719,6 +723,7 @@ class Game {
     let col = vec.col;
     let row = vec.row;
     let nextBlank = false;
+    let index = 0;
     for (let i = 0; i < tiles.length; i++) {
       let tile = tiles[i];
       if (tile == '?') {
@@ -739,7 +744,7 @@ class Game {
           score: tscore,
           draggable: false,
           freshtile: false,
-          index: 0, // Index of this tile within the move, for animation purposes
+          index: index, // Index of this tile within the move, for animation purposes
           xchg: false,
         };
         if (highlight) {
@@ -748,6 +753,7 @@ class Game {
             this.tiles[sq].highlight = 0; // Local player color
           else
             this.tiles[sq].highlight = 1; // Remote player color
+          index++;
         }
       }
       col += vec.dx;
@@ -769,44 +775,44 @@ class Game {
     this.tiles = {};
     this.numTileMoves = 0;
     let mlist = this.moves;
-    let sq: string;
-    let last = (move !== undefined) ? move : mlist.length;
+    // We highlight the last move placed (a) if we're in a game
+    // review (move !== undefined) or (b) if this is a normal game
+    // view, we don't have an explicit this.lastmove (which is treated
+    // separately) and the last move is an opponent move.
+    let highlightReview = (move !== undefined);
+    let highlightLast = !highlightReview && !this.lastmove && this.localturn;
+    let highlight = !noHighlight && (highlightLast || highlightReview);
+    let last = highlightReview ? move : mlist.length;
 
     function successfullyChallenged(ix: number): boolean {
       // Was the move with index ix successfully challenged?
       if (ix + 2 >= last)
         // The move list is too short for a response move
         return false;
-      let mv = mlist[ix + 2];
-      let co = mv[1][0];
-      let tiles = mv[1][1];
+      let [ _, [ co, tiles, score ] ] = mlist[ix + 2];
       if (co != "")
         // The player's next move is a normal tile move
         return false;
-      let score = mv[1][2];
       // Return true if this was a challenge response with a negative score
       // (i.e. a successful challenge)
       return (tiles == "RESP") && (score < 0);
     }
 
+    // Loop through the move list, placing each move
     for (let i = 0; i < last; i++) {
-      let mv = mlist[i];
-      let player = mv[0];
-      let co = mv[1][0];
-      let tiles = mv[1][1];
+      let [ player, [co, tiles] ] = mlist[i];
       if (co != "" && !successfullyChallenged(i)) {
         // Unchallenged tile move: place it on the board
-        let highlight = (move !== undefined) && (i == move - 1) && !noHighlight;
-        this.placeMove(player, co, tiles, highlight);
+        this.placeMove(player, co, tiles, (i == last - 1) && highlight);
         this.numTileMoves++;
       }
     }
     // If it's our turn, mark the opponent's last move
     // The type of this.lastmove corresponds to DetailTuple on the server side
     let dlist = this.lastmove;
-    if (dlist !== undefined && dlist.length && this.localturn)
+    if (dlist && this.localturn)
       for (let i = 0; i < dlist.length; i++) {
-        sq = dlist[i][0];
+        let sq = dlist[i][0];
         if (!(sq in this.tiles))
           throw "Tile from lastmove not in square " + sq;
         this.tiles[sq].freshtile = true;
@@ -814,7 +820,7 @@ class Game {
       }
     // Also put the rack tiles into this.tiles
     for (let i = 0; i < this.rack.length; i++) {
-      sq = 'R' + (i + 1);
+      let sq = 'R' + (i + 1);
       let tile = this.rack[i][0];
       let letter = (tile == '?') ? ' ' : tile;
       let tscore = this.rack[i][1];
@@ -1349,10 +1355,10 @@ class Game {
       y += dy;
     }
     if (this.numTileMoves === 0) {
-      // First move that actually lays down tiles must go through center square
-      let c = this.centerCoord;
+      // First move that actually lays down tiles must go through start square
+      let c = this.startCoord;
       if (null === this.tileAt(c[0], c[1]))
-        // No tile in the center square
+        // No tile in the start square
         return undefined;
     }
     else

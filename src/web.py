@@ -100,9 +100,12 @@ _SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "false").lower() in {
 }
 
 # Register the Flask blueprint for the web routes
-web = Blueprint(
+web_blueprint = Blueprint(
     'web', __name__, static_folder="../static", template_folder="../templates"
 )
+# The following cast can be removed once Flask's typing becomes
+# more robust and/or compatible with Pylance
+web = cast(Any, web_blueprint)
 
 
 def login_user() -> bool:
@@ -644,8 +647,8 @@ def greet() -> ResponseType:
 @web.route("/login")
 def login() -> ResponseType:
     """ Handler for the login sequence """
-    session.pop("userid", None)
-    session.pop("user", None)
+    cast(Any, session).pop("userid", None)
+    cast(Any, session).pop("user", None)
     redirect_uri = url_for("web.oauth2callback", _external=True)
     g = get_google_auth()
     return g.authorize_redirect(redirect_uri)

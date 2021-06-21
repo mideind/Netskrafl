@@ -22,7 +22,7 @@ from flask import jsonify
 from flask import request
 
 from languages import Alphabet
-from skrafldb import ndb, iter_q, Query, UserModel, GameModel
+from skrafldb import Client, iter_q, Query, UserModel, GameModel
 from skraflgame import User, Game
 
 
@@ -38,7 +38,7 @@ def deferred_update() -> None:
     CHUNK_SIZE = 200
     scan = 0
     count = 0
-    with ndb.Client().context():
+    with Client.get_context():
         try:
             q: Query[UserModel] = UserModel.query()
             for um in iter_q(q, chunk_size=CHUNK_SIZE):

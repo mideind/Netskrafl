@@ -63,12 +63,12 @@ _WSC = {
     "explo": [
         "3      3      3",
         "        2      ",
-        "  2      2     ",
+        "         2     ",
         "   2           ",
         "    2          ",
         "     2      2  ",
         "      2      2 ",
-        "3             3",
+        "3      2      3",
         " 2      2      ",
         "  2      2     ",
         "          2    ",
@@ -100,14 +100,14 @@ _LSC = {
     "explo": [
         "    2      2   ",
         " 3   2       3 ",
-        "      3     2  ",
+        "  2   3     2  ",
         "       2  3   2",
         "2          3   ",
         " 2       2     ",
         "  3     2      ",
         "   2       2   ",
         "      2     3  ",
-        "     2   2   2 ",
+        "     2       2 ",
         "   3          2",
         "2   3  2       ",
         "  2     3   2  ",
@@ -177,8 +177,8 @@ class Board:
     def start_square(self) -> Tuple[int, int]:
         """ Return the starting square of this board as a (row, col) tuple """
         if self._board_type == "explo":
-            # For 'explo', the starting square is C3
-            return (2, 2)
+            # For 'explo', the starting square is D4
+            return (3, 3)
         # For the standard board, the starting square is H8
         return (Board.SIZE // 2, Board.SIZE // 2)
 
@@ -854,7 +854,7 @@ class Error:
 
     LEGAL = 0
     NULL_MOVE = 1
-    FIRST_MOVE_NOT_IN_CENTER = 2
+    FIRST_MOVE_NOT_THROUGH_START = 2
     DISJOINT = 3
     NOT_ADJACENT = 4
     SQUARE_ALREADY_OCCUPIED = 5
@@ -888,7 +888,7 @@ class Error:
         return [
             "LEGAL",
             "NULL_MOVE",
-            "FIRST_MOVE_NOT_IN_CENTER",
+            "FIRST_MOVE_NOT_THROUGH_START",
             "DISJOINT",
             "NOT_ADJACENT",
             "SQUARE_ALREADY_OCCUPIED",
@@ -1291,7 +1291,7 @@ class Move(MoveBase):
                 if (c.row, c.col) == ssq:
                     break
             else:
-                return Error.FIRST_MOVE_NOT_IN_CENTER
+                return Error.FIRST_MOVE_NOT_THROUGH_START
         else:
             # Must be adjacent to something already on the board
             if not any([board.has_adjacent(c.row, c.col) for c in self._covers]):

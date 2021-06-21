@@ -350,7 +350,7 @@ class Client:
     @classmethod
     def get_context(cls):
         """Return the ndb client instance singleton"""
-        return cls._client.context(global_cache=cls._global_cache)
+        return cast(Any, cls._client).context(global_cache=cls._global_cache)
 
 
 class Context:
@@ -1725,7 +1725,7 @@ class ChatModel(Model):
 
     # The actual message - by convention, an empty msg from a user means that
     # the user has seen all older messages
-    msg = Model.Str()
+    msg = Model.Text()
 
     def get_recipient(self) -> Optional[str]:
         """ Return the user id of the message recipient """

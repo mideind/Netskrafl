@@ -1,8 +1,8 @@
 /*
 
-	Page.ts
+  Page.ts
 
-	Single page UI for Explo using the Mithril library
+  Single page UI for Explo using the Mithril library
 
   Copyright (C) 2021 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
@@ -18,18 +18,25 @@
 
 */
 
-export { main };
-
-import { Game, coord, toVector, RackTile, Move, ServerGame } from "./game.js";
-import { addPinchZoom, registerSalesCloud } from "./util.js";
+export { main, View, DialogButton, OnlinePresence, glyph };
 
 import {
-  attachFirebaseListener, detachFirebaseListener, loginFirebase
-} from "./channel.js";
+  Model, GlobalState, getSettings,
+  UserListItem, ChallengeListItem, RecentListItem,
+  ChallengeAction, MoveInfo, Params
+} from "./model.js";
+
+import { Game, coord, toVector, Move } from "./game.js";
+
+import { addPinchZoom, registerSalesCloud } from "./util.js";
+
+import { Actions, createRouteResolver } from "./actions.js";
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
 } from "./mithril.js";
+
+import { WaitDialog, AcceptDialog } from "./wait.js";
 
 // Constants
 
@@ -40,163 +47,16 @@ const ROUTE_PREFIX = "/page#!";
 const ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 const BOARD_PREFIX = "/board?game=";
 const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
-const MAX_CHAT_MESSAGES = 250; // Max number of chat messages per game
-
-// Global state
-interface GlobalState {
-  userId : string;
-  userNick: string;
-  beginner: boolean;
-  fairPlay: boolean;
-  newBag: boolean;
-  hasPaid: boolean;
-  ready: boolean;
-  readyTimed: boolean;
-  uiFullscreen: boolean;
-  uiLandscape: boolean;
-  firebaseToken: string;
-  emoticons: { icon: string; image: string; }[];
-}
-
-var $state: GlobalState;
-
-// Basic Mithril routing settings
-type Path = { name: string; route: string; mustLogin: boolean; };
-type Paths = Path[];
-interface Settings {
-  paths: Paths;
-  defaultRoute: string;
-}
-
-// Possible URL parameters that are passed to routes
-interface Params {
-  uuid?: string;
-  move?: string;
-  tab?: string;
-  faq?: string;
-}
-
-// Items in a game list
-interface GameListItem {
-  uuid: string;
-  fullname: string;
-  my_turn: boolean;
-  timed: boolean;
-  manual: boolean;
-  zombie: boolean;
-  overdue: boolean;
-  oppid: string;
-  opp: string;
-  sc0: number;
-  sc1: number;
-  url: string;
-  tile_count: number;
-  ts: string;
-}
-
-// Items in a list of recent games
-interface RecentListItem {
-  opp: string;
-  opp_is_robot: boolean;
-  sc0: number;
-  sc1: number;
-  ts_last_move: string;
-  manual: boolean;
-  duration: number;
-  days: number;
-  hours: number;
-  minutes: number;
-  elo_adj: number;
-  human_elo_adj: number;
-  url: string;
-}
-
-interface ChallengeListItem {
-  key: string;
-  received: boolean;
-  userid: string;
-  opp: string;
-  fullname: string;
-  prefs: any;
-  ts: string;
-  opp_ready: boolean;
-  live: boolean;
-  image: string;
-  fav: boolean;
-}
-type ChallengeAction = "issue" | "retract" | "decline" | "accept";
-interface ChallengeParameters {
-  action: ChallengeAction;
-  destuser: string;
-  duration?: number;
-  fairplay?: boolean;
-  newbag?: boolean;
-  manual?: boolean;
-  key?: string;
-}
-
-interface UserListItem {
-  rank: number;
-  rank_yesterday: number;
-  rank_week_ago: number;
-  userid: string;
-  nick: string;
-  fullname: string;
-  newbag: boolean;
-  inactive: boolean;
-  chall: boolean;
-  fairplay: boolean;
-  ratio: number;
-  avgpts: number;
-  games: number;
-  games_yesterday: number;
-  games_week_ago: number;
-  games_month_ago: number;
-  elo: number;
-  elo_yesterday: number;
-  elo_week_ago: number;
-  elo_month_ago: number;
-}
-
-interface UserErrors {
-  nickname?: string;
-  full_name?: string;
-  email?: string;
-}
-
-interface UserPrefs {
-  nickname: string;
-  full_name: string;
-  email: string;
-  beginner: boolean;
-  fairplay: boolean;
-  newbag: boolean;
-  audio: boolean;
-  fanfare: boolean;
-  logout_url: string;
-  unfriend_url: string;
-  friend: boolean;
-}
-
-interface MoveInfo {
-  key: string;
-  leftTotal: number;
-  rightTotal: number;
-  player: 0 | 1;
-  co: string;
-  tiles: string;
-  score: number;
-}
+// Max number of chat messages per game
+const MAX_CHAT_MESSAGES = 250;
 
 function main(state: GlobalState) {
   // The main UI entry point, called from page.html
 
-  $state = state;
-
   let
     settings = getSettings(),
-    model = new Model(settings),
-    view = new View(),
+    model = new Model(settings, state),
+    view = new View(model),
     actions = new Actions(model, view),
     routeResolver = createRouteResolver(actions),
     defaultRoute = settings.defaultRoute,
@@ -206,497 +66,7 @@ function main(state: GlobalState) {
   m.route(root, defaultRoute, routeResolver);
 }
 
-function getSettings(): Settings {
-  // Returns an app-wide settings object
-  const
-    paths: Paths = [
-      { name: "main", route: "/main", mustLogin: true },
-      { name: "login", route: "/login", mustLogin: false },
-      { name: "help", route: "/help", mustLogin: false },
-      { name: "game", route: "/game/:uuid", mustLogin: true },
-      { name: "review", route: "/review/:uuid", mustLogin: true }
-    ];
-  return {
-    paths: paths,
-    defaultRoute: paths[0].route
-  };
-}
-
-class Model {
-
-  // A class for the underlying data model, displayed by the View
-
-  paths: Paths = [];
-  // The routeName will be "login", "main", "game"...
-  routeName?: string = undefined;
-  // Eventual parameters within the route URL, such as the game uuid
-  params?: Params = undefined;
-  // The current game being displayed, if any
-  game: Game = null;
-  // The current game list
-  gameList?: GameListItem[] = null;
-  // The current challenge list
-  challengeList?: ChallengeListItem[] = null;
-  // Recent games
-  recentList?: RecentListItem[] = null;
-  // The currently displayed user list
-  userListCriteria?: { query: string; spec: string; } = null;
-  userList?: any[] = null;
-  // The user's own statistics
-  ownStats: any = null;
-  // The current user information being edited, if any
-  user: UserPrefs = null;
-  userErrors: UserErrors = null;
-  // The help screen contents
-  helpHTML?: string = null;
-  // Outstanding requests
-  spinners: number = 0;
-  // The index of the game move being reviewed, if any
-  reviewMove?: number = null;
-  // The best moves available at this stage, if reviewing game
-  bestMoves?: Move[] = null;
-  // The index of the best move being highlighted, if reviewing game
-  highlightedMove?: number = null;
-  // The current scaling of the board
-  boardScale: number = 1.0;
-
-  constructor(settings: Settings) {
-    this.paths = settings.paths.slice();
-  }
-
-  loadGame(uuid: string, funcComplete: () => void) {
-    // Fetch a game state from the server, given a uuid
-    // console.log("Initiating load of game " + uuid);
-    m.request({
-      method: "POST",
-      url: "/gamestate",
-      body: { game: uuid }
-    })
-    .then((result: { ok: boolean; game: ServerGame; }) => {
-      if (this.game !== null)
-        // We have a prior game in memory:
-        // clean it up before allocating the new one
-        this.game.cleanup();
-      this.game = null;
-      this.reviewMove = null;
-      this.bestMoves = null;
-      this.highlightedMove = null;
-      this.boardScale = 1.0;
-      if (!result.ok) {
-        // console.log("Game " + uuid + " could not be loaded");
-      }
-      else {
-        this.game = new Game(uuid, result.game);
-        // Successfully loaded: call the completion function, if given
-        // (this usually attaches the Firebase event listener)
-        if (funcComplete !== undefined)
-          funcComplete();
-        if (!$state.uiFullscreen)
-          // Mobile UI: show board tab
-          this.game.setSelectedTab("board");
-      }
-    });
-  }
-
-  loadGameList(includeZombies: boolean = true) {
-    // Load the list of currently active games for this user
-    this.gameList = undefined; // Loading in progress
-    m.request({
-      method: "POST",
-      url: "/gamelist",
-      body: { zombie: includeZombies }
-    })
-    .then((json: { result: number; gamelist: GameListItem[]; }) => {
-      if (!json || json.result !== 0) {
-        // An error occurred
-        this.gameList = null;
-        return;
-      }
-      this.gameList = json.gamelist || [];
-    });
-  }
-
-  loadChallengeList() {
-    // Load the list of current challenges (received and issued)
-    this.challengeList = []; // Prevent concurrent loading
-    m.request({
-      method: "POST",
-      url: "/challengelist"
-    })
-    .then((json: { result: number; challengelist: ChallengeListItem[]; }) => {
-      if (!json || json.result !== 0) {
-        // An error occurred
-        this.challengeList = null;
-        return;
-      }
-      this.challengeList = json.challengelist;
-    });
-  }
-
-  loadRecentList() {
-    // Load the list of recent games for this user
-    this.recentList = []; // Prevent concurrent loading
-    m.request({
-      method: "POST",
-      url: "/recentlist",
-      body: { versus: null, count: 40 }
-    })
-    .then((json: { result: number; recentlist: RecentListItem[]; }) => {
-      if (!json || json.result !== 0) {
-        // An error occurred
-        this.recentList = null;
-        return;
-      }
-      this.recentList = json.recentlist;
-    });
-  }
-
-  loadUserRecentList(userid: string, versus: string, readyFunc: (json: any) => void) {
-    // Load the list of recent games for the given user
-    m.request({
-      method: "POST",
-      url: "/recentlist",
-      body: { user: userid, versus: versus, count: 40 }
-    })
-    .then(readyFunc);
-  }
-
-  loadUserList(
-    criteria: { query: string; spec: string; },
-    activateSpinner: boolean
-  ) {
-    // Load a list of users according to the given criteria
-    if (criteria.query == "search" && criteria.spec == "") {
-      // Optimize by not sending an empty search query to the server,
-      // since it always returns an empty list
-      this.userList = [];
-      this.userListCriteria = criteria;
-      m.redraw(); // Call this explicitly as we're not calling m.request()
-      return;
-    }
-    this.userList = undefined;
-    this.userListCriteria = undefined; // Marker to prevent concurrent loading
-    if (activateSpinner)
-      // This will show a spinner overlay, disabling clicks on
-      // all underlying controls
-      this.spinners++;
-    var url = "/userlist";
-    var data: { query?: string; spec?: string; kind?: string; } = criteria;
-    if (criteria.query == "elo") {
-      // Kludge to make the Elo rating list appear as
-      // just another type of user list
-      url = "/rating";
-      data = { kind: criteria.spec };
-    }
-    m.request({
-      method: "POST",
-      url: url,
-      body: data
-    })
-    .then((json: { result: number; userlist: any; rating: any; }) => {
-      if (activateSpinner)
-        // Remove spinner overlay, if present
-        this.spinners--;
-      if (!json || json.result !== 0) {
-        // An error occurred
-        this.userList = null;
-        this.userListCriteria = null;
-        return;
-      }
-      this.userList = json.userlist || json.rating;
-      this.userListCriteria = criteria;
-    });
-  }
-
-  loadOwnStats() {
-    // Load statistics for the current user
-    this.ownStats = { };
-    m.request({
-      method: "POST",
-      url: "/userstats",
-      body: { } // Current user is implicit
-    })
-    .then((json: { result: number; }) => {
-      if (!json || json.result !== 0) {
-        // An error occurred
-        this.ownStats = null;
-        return;
-      }
-      this.ownStats = json;
-    });
-  }
-
-  loadUserStats(userid: string, readyFunc: (json: any) => void) {
-    // Load statistics for the given user
-    m.request({
-      method: "POST",
-      url: "/userstats",
-      body: { user: userid }
-    })
-    .then(readyFunc);
-  }
-
-  loadPromoContent(key: string, readyFunc: (html: string) => void) {
-    // Load HTML content for promo dialog
-    m.request({
-      method: "POST",
-      url: "/promo",
-      body: { key: key },
-      responseType: "text",
-      deserialize: (str: string) => str
-    })
-    .then(readyFunc);
-  }
-
-  loadBestMoves(moveIndex: number) {
-    // Load the best moves available at a given state in a game
-    if (!this.game || !this.game.uuid)
-      return;
-    if (!moveIndex) {
-      this.reviewMove = null;
-      this.bestMoves = null;
-      this.highlightedMove = null;
-      this.game.setRack([]);
-      this.game.placeTiles(0);
-      return;
-    }
-    // Don't display navigation buttons while fetching
-    // best moves
-    this.reviewMove = 0;
-    m.request({
-      method: "POST",
-      url: "/bestmoves",
-      body: { game: this.game.uuid, move: moveIndex }
-    })
-    .then((json: { result: number; move_number: number; best_moves: Move[]; player_rack: RackTile[]; }) => {
-      this.highlightedMove = null;
-      if (!json || json.result !== 0) {
-        this.reviewMove = null;
-        this.bestMoves = null;
-        return;
-      }
-      this.reviewMove = json.move_number;
-      this.bestMoves = json.best_moves;
-      this.game.setRack(json.player_rack);
-      // Populate the board cells with only the tiles
-      // laid down up and until the indicated moveIndex
-      this.game.placeTiles(this.reviewMove);
-    });
-  }
-
-  loadHelp() {
-    // Load the help screen HTML from the server
-    // (this is done the first time the help is displayed)
-    if (this.helpHTML !== null)
-      return; // Already loaded
-    m.request({
-      method: "GET",
-      url: "/rawhelp",
-      responseType: "text",
-      deserialize: (str: string) => str
-    })
-    .then((result: string) => { this.helpHTML = result; });
-  }
-
-  loadUser(activateSpinner: boolean) {
-    // Fetch the preferences of the currently logged in user, if any
-    this.user = undefined;
-    if (activateSpinner)
-      // This will show a spinner overlay, disabling clicks on
-      // all underlying controls
-      this.spinners++;
-    m.request({
-      method: "POST",
-      url: "/loaduserprefs"
-    })
-    .then((result: { ok: boolean; userprefs: UserPrefs; }) => {
-      if (activateSpinner)
-        this.spinners--;
-      if (!result.ok) {
-        // console.log("Unable to load user preferences");
-        this.user = null;
-        this.userErrors = null;
-      }
-      else {
-        // console.log("User preferences loaded");
-        this.user = result.userprefs;
-        this.userErrors = null;
-      }
-    });
-  }
-
-  saveUser(successFunc: () => void) {
-    // Update the preferences of the currently logged in user, if any
-    m.request({
-      method: "POST",
-      url: "/saveuserprefs",
-      body: this.user
-    })
-    .then((result: { ok: boolean; err?: UserErrors; }) => {
-      if (result.ok) {
-        // User preferences modified successfully on the server:
-        // update the state variables that we're caching
-        $state.userNick = this.user.nickname;
-        $state.beginner = this.user.beginner;
-        $state.fairPlay = this.user.fairplay;
-        $state.newBag = this.user.newbag;
-        // Give the game instance a chance to update its state
-        if (this.game !== null)
-          this.game.notifyUserChange(this.user.nickname);
-        // Complete: call success function
-        if (successFunc !== undefined)
-          successFunc();
-        // Reset errors
-        this.userErrors = null;
-        // Ensure that a fresh instance is loaded next time
-        this.user = null;
-      }
-      else {
-        // Error saving user prefs: show details, if available
-        this.userErrors = result.err || null;
-      }
-    });
-  }
-
-  setUserPref(pref: object) {
-    // Set a user preference
-    return m.request(
-      {
-        method: "POST",
-        url: "/setuserpref",
-        body: pref
-      }
-    ).then(() => {}); // No result required or expected
-  }
-
-  newGame(oppid: string, reverse: boolean) {
-    // Ask the server to initiate a new game against the given opponent
-    m.request({
-      method: "POST",
-      url: "/initgame",
-      body: { opp: oppid, rev: reverse }
-    })
-    .then((json: { ok: boolean; uuid: string; }) => {
-      if (json.ok) {
-        // Go to the newly created game
-        m.route.set("/game/" + json.uuid);
-      }
-    });
-  }
-
-  modifyChallenge(parameters: ChallengeParameters) {
-    // Reject or retract a challenge
-    m.request({
-      method: "POST",
-      url: "/challenge",
-      body: parameters
-    })
-    .then((json: { result: number; }) => {
-      if (json.result === 0)
-        this.loadChallengeList();
-    });
-  }
-
-  markFavorite(userId: string, status: boolean) {
-    // Mark or de-mark a user as a favorite
-    m.request({
-      method: "POST",
-      url: "/favorite",
-      body: { destuser: userId, action: status ? "add" : "delete" }
-    })
-    .then(() => {});
-  }
-
-  addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
-    // Add a chat message to the game's chat message list
-    if (this.game && this.game.uuid == game) {
-      this.game.addChatMessage(from_userid, msg, ts);
-      return true;
-    }
-    return false;
-  }
-
-  handleUserMessage(json: any) {
-    // Handle an incoming Firebase user message
-    this.challengeList = null; // Reload challenge list
-    this.gameList = null; // Reload game list
-    m.redraw();
-  }
-
-  handleMoveMessage(json: any) {
-    // Handle an incoming Firebase move message
-    if (this.game) {
-      this.game.update(json);
-      m.redraw();
-    }
-  }
-
-  resetScale() {
-    // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
-    this.boardScale = 1.0;
-    var boardParent = document.getElementById("board-parent");
-    var board = boardParent.children[0];
-    if (board)
-      board.setAttribute("style", "transform: scale(1.0)");
-    if (boardParent)
-      boardParent.scrollTo(0, 0);
-  }
-
-  updateScale() {
-
-    // Update the board scale (zoom)
-
-    function scrollIntoView(sq: string) {
-      // Scroll a square above and to the left of the placed tile into view
-      var offset = 3;
-      var vec = toVector(sq);
-      var row = Math.max(0, vec.row - offset);
-      var col = Math.max(0, vec.col - offset);
-      var c = coord(row, col);
-      var el = document.getElementById("sq_" + c);
-      var boardParent = document.getElementById("board-parent");
-      var board = boardParent.children[0];
-      // The following seems to be needed to ensure that
-      // the transform and hence the size of the board has been 
-      // updated in the browser, before calculating the client rects
-      if (board)
-        board.setAttribute("style", "transform: scale(1.5)");
-      var elRect = el.getBoundingClientRect();
-      var boardRect = boardParent.getBoundingClientRect();
-      boardParent.scrollTo(
-        {
-          left: elRect.left - boardRect.left,
-          top: elRect.top - boardRect.top,
-          behavior: "smooth"
-        }
-      );
-    }
-
-    if (!this.game || $state.uiFullscreen || this.game.moveInProgress) {
-      // No game or we're in full screen mode: always 100% scale
-      // Also, as soon as a move is being processed by the server, we zoom out
-      this.boardScale = 1.0; // Needs to be done before setTimeout() call
-      setTimeout(this.resetScale);
-      return;
-    }
-    var tp = this.game.tilesPlaced();
-    var numTiles = tp.length;
-    if (numTiles == 1 && this.boardScale == 1.0) {
-      // Laying down first tile: zoom in & position
-      this.boardScale = 1.5;
-      setTimeout(() => scrollIntoView(tp[0]));
-    }
-    else
-    if (numTiles == 0 && this.boardScale > 1.0) {
-      // Removing only remaining tile: zoom out
-      this.boardScale = 1.0; // Needs to be done before setTimeout() call
-      setTimeout(this.resetScale);
-    }
-  }
-
-} // class Model
-
-type DialogFunc = (view: View, model: Model, actions: any, args: any) => void;
+type DialogFunc = (view: View, args: any) => m.vnode;
 
 interface DialogViews {
   userprefs: DialogFunc;
@@ -704,6 +74,8 @@ interface DialogViews {
   challenge: DialogFunc;
   promo: DialogFunc;
   spinner: DialogFunc;
+  wait: DialogFunc;
+  accept: DialogFunc;
 }
 
 interface Dialog {
@@ -713,23 +85,36 @@ interface Dialog {
 
 class View {
 
+  // The model that the view is attached to
+  model: Model;
+
+  // The currently displayed dialogs
   private dialogStack: Dialog[] = [];
 
   // Map of available dialogs
   private static dialogViews: DialogViews = {
     userprefs:
-      (view, model, actions) => view.vwUserPrefs(model, actions),
+      (view) => view.vwUserPrefs(),
     userinfo:
-      (view, model, actions, args) => view.vwUserInfo(model, actions, args),
+      (view, args) => view.vwUserInfo(args),
     challenge:
-      (view, model, actions, args) => view.vwChallenge(model, actions, args),
+      (view, args) => view.vwChallenge(args),
     promo:
-      (view, model, actions, args) => view.vwPromo(model, actions, args),
+      (view, args) => view.vwPromo(args),
+    wait:
+      (view, args) => view.vwWait(args),
+    accept:
+      (view, args) => view.vwAccept(args),
     spinner:
       (view) => view.vwSpinner(),
   };
 
-  constructor() {
+  // The current scaling of the board
+  boardScale: number = 1.0;
+
+  constructor(model: Model) {
+
+    this.model = model;
 
     // Start a blinker interval function
     window.setInterval(this.blinker, 500);
@@ -739,29 +124,30 @@ class View {
 
   }
 
-  appView(model: Model, actions: Actions) {
+  appView(): m.vnode[] {
     // Select the view based on the current route
     // Display the appropriate content for the route,
     // also considering active dialogs
-    var views: any[] = [];
+    const model = this.model;
+    let views: any[] = [];
     switch (model.routeName) {
       case "login":
         views.push(this.vwLogin());
         break;
       case "main":
-        views.push(this.vwMain(model, actions));
+        views.push(this.vwMain());
         break;
       case "game":
-        views.push(this.vwGame(model));
+        views.push(this.vwGame());
         break;
       case "review":
-        views.push(this.vwReview(model, actions));
+        views.push(this.vwReview());
         break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
         // A route parameter of ?tab=N goes directly to tab N (0-based)
         views.push(
-          this.vwHelp(model,
+          this.vwHelp(
             parseInt(m.route.param("tab") || ""),
             parseInt(m.route.param("faq") || "")
           )
@@ -778,7 +164,7 @@ class View {
       if (v === undefined)
         console.log("Unknown dialog name: " + dialog.name);
       else
-        views.push(v(this, model, actions, dialog.args));
+        views.push(v(this, dialog.args));
     }
     // Overlay a spinner, if active
     if (model.spinners > 0)
@@ -819,12 +205,13 @@ class View {
     this.popDialog();
   }
 
-  notifyMediaChange(model: Model) {
+  notifyMediaChange() {
     // The view is changing, between mobile and fullscreen
     // and/or between portrait and landscape: ensure that
     // we don't end up with a selected game tab that is not visible
+    const model = this.model;
     if (model.game) {
-      if ($state.uiFullscreen || $state.uiLandscape) {
+      if (model.state.uiFullscreen || model.state.uiLandscape) {
         // In this case, there is no board tab:
         // show the movelist
         model.game.setSelectedTab("movelist");
@@ -845,14 +232,88 @@ class View {
     m.redraw();
   }
 
+  resetScale() {
+    // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
+    this.boardScale = 1.0;
+    var boardParent = document.getElementById("board-parent");
+    var board = boardParent.children[0];
+    if (board)
+      board.setAttribute("style", "transform: scale(1.0)");
+    if (boardParent)
+      boardParent.scrollTo(0, 0);
+  }
+
+  updateScale(game: Game) {
+
+    const model = this.model;
+
+    // Update the board scale (zoom)
+
+    function scrollIntoView(sq: string) {
+      // Scroll a square above and to the left of the placed tile into view
+      const offset = 3;
+      let vec = toVector(sq);
+      let row = Math.max(0, vec.row - offset);
+      let col = Math.max(0, vec.col - offset);
+      let c = coord(row, col);
+      let el = document.getElementById("sq_" + c);
+      let boardParent = document.getElementById("board-parent");
+      let board = boardParent.children[0];
+      // The following seems to be needed to ensure that
+      // the transform and hence the size of the board has been 
+      // updated in the browser, before calculating the client rects
+      if (board)
+        board.setAttribute("style", "transform: scale(1.5)");
+      let elRect = el.getBoundingClientRect();
+      let boardRect = boardParent.getBoundingClientRect();
+      boardParent.scrollTo(
+        {
+          left: elRect.left - boardRect.left,
+          top: elRect.top - boardRect.top,
+          behavior: "smooth"
+        }
+      );
+    }
+
+    if (!game || model.state.uiFullscreen || game.moveInProgress) {
+      // No game or we're in full screen mode: always 100% scale
+      // Also, as soon as a move is being processed by the server, we zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
+      return;
+    }
+    let tp = game.tilesPlaced();
+    let numTiles = tp.length;
+    if (numTiles == 1 && this.boardScale == 1.0) {
+      // Laying down first tile: zoom in & position
+      this.boardScale = 1.5;
+      setTimeout(() => scrollIntoView(tp[0]));
+    }
+    else
+    if (numTiles == 0 && this.boardScale > 1.0) {
+      // Removing only remaining tile: zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
+    }
+  }
+
   showUserInfo(userid: string, nick: string, fullname: string) {
     // Show a user info dialog
     this.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
   }
 
+  showFriendPromo() {
+    // Show a friendship promotion
+    this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
+  }
+
+  showAcceptDialog(oppId: string, oppNick: string) {
+    this.pushDialog("accept", { oppId: oppId, oppNick: oppNick });
+  }
+
   // Globally available controls
 
-  vwInfo() {
+  vwInfo(): m.vnode {
     // Info icon, invoking the help screen
     return m(".info",
       { title: "Upplýsingar og hjálp" },
@@ -863,9 +324,10 @@ class View {
     );
   }
 
-  vwUserId() {
+  vwUserId(): m.vnode | string {
     // User identifier at top right, opens user preferences
-    if ($state.userId == "")
+    const model = this.model;
+    if (model.state.userId == "")
       // Don't show the button if there is no logged-in user
       return "";
     return m(".userid",
@@ -877,15 +339,15 @@ class View {
           ev.preventDefault();
         }
       },
-      [ glyph("address-book"), nbsp(), $state.userNick ]
+      [ glyph("address-book"), nbsp(), model.state.userNick ]
     );
   }
 
-  vwNetskraflLogo() {
+  vwNetskraflLogo(): m.vnode {
     // The Netskrafl logo
     return m(".logo",
       m(m.route.Link,
-        { href: '/main', class: "nodecorate" }, 
+        { href: '/main', class: "nodecorate" },
         m("img",
           {
             alt: 'Netskrafl',
@@ -897,42 +359,42 @@ class View {
     );
   }
 
-  TogglerReady: ComponentFunc<{model: Model}> = (initialVnode) => {
+  TogglerReady: ComponentFunc<{}> = (initialVnode) => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
 
-    var model = initialVnode.attrs.model;
+    const model = this.model;
 
     function toggleFunc(state: boolean) {
-      $state.ready = state;
+      model.state.ready = state;
       model.setUserPref({ ready: state });
     }
 
     return {
       view: () => {
         return vwToggler(
-          "ready", $state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
+          "ready", model.state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
           "Tek við áskorunum!"
         );
       }
     };
   };
 
-  TogglerReadyTimed: ComponentFunc<{ model: Model }> = (initialVnode) => {
+  TogglerReadyTimed: ComponentFunc<{}> = (initialVnode) => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept timed challenges
 
-    var model = initialVnode.attrs.model;
+    const model = this.model;
 
     function toggleFunc(state: boolean) {
-      $state.readyTimed = state;
+      model.state.readyTimed = state;
       model.setUserPref({ ready_timed: state });
     }
 
     return {
       view: (vnode) => {
         return vwToggler(
-          "timed", $state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
+          "timed", model.state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
           "Til í viðureign með klukku!"
         );
       }
@@ -942,9 +404,9 @@ class View {
   vwDialogButton(
     id: string, title: string, func: EventHandler,
     content: VnodeChildren, tabindex: number
-  ) {
+  ): m.vnode {
     // Create a .modal-close dialog button
-    var attrs: VnodeAttrs = {
+    let attrs: VnodeAttrs = {
       id: id,
       onclick: func,
       title: title
@@ -956,12 +418,12 @@ class View {
 
   blinker() {
     // Toggle the 'over' class on all elements having the 'blinking' class
-    var blinkers = document.getElementsByClassName('blinking');
+    let blinkers = document.getElementsByClassName('blinking');
     for (let i = 0; i < blinkers.length; i++)
       blinkers[i].classList.toggle("over");
   }
 
-  vwSpinner() {
+  vwSpinner(): m.vnode {
     // Show a spinner wait box
     return m(
       ".modal-dialog",
@@ -972,77 +434,79 @@ class View {
 
   // Login screen
 
-  vwLogin() {
+  vwLogin(): m.vnode {
     // Login dialog
 
-    let view = this;
+    const view = this;
+    const model = this.model;
 
-    function vwLoginLarge() {
+    function vwLoginLarge(): m.vnode {
       // Full screen version of login page
-      return [
+      return m.fragment({}, [
         view.vwNetskraflLogo(),
         view.vwInfo(),
         m(".loginform-large",
-        [
-          m(".loginhdr", "Velkomin í Netskrafl!"),
-          m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-          m("div", { id: "board-pic" },
-            m("img",
-              {
-                width: 310, height: 300,
-                src: '/static/Board.png'
-              }
-            )
-          ),
-          m(".welcome",
-            [
-              "Netskrafl er vettvangur ",
-              m("b", "yfir 20.000 íslenskra skraflara"),
-              " á netinu."
-            ]
-          ),
-          m(".welcome", 
-            "Netskrafl notar Google Accounts innskráningu, þá " +
-            "sömu og er notuð m.a. í Gmail."
-          ),
-          m(".welcome", 
-            "Netskrafl safnar hvorki persónuupplýsingum né geymir þær."
-          ),
-          m(".welcome",
-            [
-              "Þú getur alltaf fengið ",
-              m(m.route.Link,
-                { href: '/help' },
-                "hjálp"
-              ),
-              " með því að smella á ",
-              m(m.route.Link,
-                { href: '/help' },
-                [ "bláa", nbsp(), nbsp(), glyph("info-sign"), " - merkið" ]
-              ),
-              " hér til vinstri."
-            ]
-          ),
-          m("div", { style: { float: "right" } },
-            m("button.login",
-              {
-                type: 'submit',
-                onclick: () => {
-                  window.location.href = "/page";
+          [
+            m(".loginhdr", "Velkomin í Netskrafl!"),
+            m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
+            m("div", { id: "board-pic" },
+              m("img",
+                {
+                  width: 310, height: 300,
+                  src: '/static/Board.png'
                 }
-              },
-              [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
+              )
+            ),
+            m(".welcome",
+              [
+                "Netskrafl er vettvangur ",
+                m("b", "yfir 20.000 íslenskra skraflara"),
+                " á netinu."
+              ]
+            ),
+            m(".welcome",
+              "Netskrafl notar Google Accounts innskráningu, þá " +
+              "sömu og er notuð m.a. í Gmail."
+            ),
+            m(".welcome",
+              "Netskrafl safnar hvorki persónuupplýsingum né geymir þær."
+            ),
+            m(".welcome",
+              [
+                "Þú getur alltaf fengið ",
+                m(m.route.Link,
+                  { href: '/help' },
+                  "hjálp"
+                ),
+                " með því að smella á ",
+                m(m.route.Link,
+                  { href: '/help' },
+                  ["bláa", nbsp(), nbsp(), glyph("info-sign"), " - merkið"]
+                ),
+                " hér til vinstri."
+              ]
+            ),
+            m("div", { style: { float: "right" } },
+              m("button.login",
+                {
+                  type: 'submit',
+                  onclick: () => {
+                    window.location.href = "/page";
+                  }
+                },
+                [glyph("ok"), nbsp(), nbsp(), "Skrá mig inn"]
+              )
             )
-          )
-        ]
-      )];
+          ]
+        )]
+      );
     }
 
-    function vwLoginSmall() {
+    function vwLoginSmall(): m.vnode {
       // Mobile version of login page
       return m(".loginform-small",
         [
-          m("div", 
+          m("div",
             { id: "logo-pic" },
             m("img",
               {
@@ -1052,7 +516,7 @@ class View {
             )
           ),
           m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-          m("div", { style: { "text-align": "center" } }, 
+          m("div", { style: { "text-align": "center" } },
             m("button.login",
               {
                 type: 'submit',
@@ -1060,14 +524,14 @@ class View {
                   window.location.href = "/page";
                 }
               },
-              [ glyph("ok"), nbsp(), nbsp(), "Skrá mig inn" ]
+              [glyph("ok"), nbsp(), nbsp(), "Skrá mig inn"]
             )
           )
         ]
       );
     }
 
-    return $state.uiFullscreen ? vwLoginLarge() : vwLoginSmall();
+    return model.state.uiFullscreen ? vwLoginLarge() : vwLoginSmall();
   }
 
   // A control that rigs up a tabbed view of raw HTML
@@ -1088,7 +552,9 @@ class View {
 
   // Help screen
 
-  vwHelp(model: Model, tabNumber: number, faqNumber: number) {
+  vwHelp(tabNumber: number, faqNumber: number): m.vnode[] {
+
+    const model = this.model;
 
     function wireQuestions(vnode: Vnode) {
       // Clicking on a question brings the corresponding answer into view
@@ -1129,16 +595,17 @@ class View {
 
   // User preferences screen
 
-  vwUserPrefsDialog(model: Model) {
+  vwUserPrefsDialog() {
 
+    const model = this.model;
     let user = model.user;
-    let err = model.userErrors || { };
+    let err = model.userErrors || {};
     let view = this;
 
     function vwErrMsg(propname: string) {
       // Show a validation error message returned from the server
       return err.hasOwnProperty(propname) ?
-        m(".errinput", [ glyph("arrow-up"), nbsp(), err[propname] ]) : "";
+        m(".errinput", [glyph("arrow-up"), nbsp(), err[propname]]) : "";
     }
 
     function playAudio(elemId: string) {
@@ -1181,8 +648,8 @@ class View {
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'user-form' },
         [
-          m(".loginhdr", [ glyph("address-book"), " Upplýsingar um leikmann" ]),
-          m("div", 
+          m(".loginhdr", [glyph("address-book"), " Upplýsingar um leikmann"]),
+          m("div",
             m("form", { action: '', id: 'frm1', method: 'post', name: 'frm1' },
               [
                 m(".dialog-spacer",
@@ -1237,14 +704,14 @@ class View {
                     m("span.caption", "Hljóðmerki:"),
                     vwToggler("audio", user.audio, 4,
                       glyph("volume-off"), glyph("volume-up"),
-                      function(state) { if (state) playAudio("your-turn"); }),
+                      function (state) { if (state) playAudio("your-turn"); }),
                     m("span.subcaption", "Lúðraþytur eftir sigur:"),
                     vwToggler("fanfare", user.fanfare, 5,
                       glyph("volume-off"), glyph("volume-up"),
-                      function(state) { if (state) playAudio("you-win"); })
+                      function (state) { if (state) playAudio("you-win"); })
                   ]
                 ),
-                m(".explain", 
+                m(".explain",
                   "Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur " +
                   "leikur og þegar sigur vinnst"
                 ),
@@ -1300,42 +767,42 @@ class View {
               window.location.href = user.logout_url;
               ev.preventDefault();
             },
-            [ glyph("log-out"), nbsp(), "Skrá mig út" ], 11),
+            [glyph("log-out"), nbsp(), "Skrá mig út"], 11),
           user.friend ?
             this.vwDialogButton("user-unfriend", "Hætta sem vinur",
               (ev) => {
                 window.location.href = user.unfriend_url;
                 ev.preventDefault();
               },
-              [ glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!" ], 12
+              [glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!"], 12
             )
-          :
+            :
             this.vwDialogButton("user-friend", "Gerast vinur",
               (ev) => {
                 // Invoke the friend promo dialog
-                view.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
+                view.showFriendPromo();
                 ev.preventDefault();
               },
-              [ glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls" ], 12
+              [glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls"], 12
             )
         ]
       )
     );
   }
 
-  vwUserPrefs(model: Model, actions) {
+  vwUserPrefs() {
+    const model = this.model;
     if (model.user === null)
       model.loadUser(true); // Activate spinner while loading
     if (!model.user)
       // Nothing to edit (the spinner should be showing in this case)
       return "";
-    return this.vwUserPrefsDialog(model);
+    return this.vwUserPrefsDialog();
   }
 
-  vwUserInfo(model: Model, actions, args: { userid: string; nick: string; fullname: string; }) {
+  vwUserInfo(args: { userid: string; nick: string; fullname: string; }) {
     return m(UserInfoDialog,
       {
-        model: model,
         view: this,
         userid: args.userid,
         nick: args.nick,
@@ -1344,10 +811,9 @@ class View {
     );
   }
 
-  vwPromo(model: Model, actions, args: { kind: string; initFunc: () => void; }) {
+  vwPromo(args: { kind: string; initFunc: () => void; }) {
     return m(PromoDialog,
       {
-        model: model,
         view: this,
         kind: args.kind,
         initFunc: args.initFunc
@@ -1355,24 +821,44 @@ class View {
     );
   }
 
-  vwChallenge(model: Model, actions, item) {
+  vwWait(args: { oppId: string; oppNick: string; oppName: string; duration: number; }) {
+    return m(WaitDialog, {
+      view: this,
+      oppId: args.oppId,
+      oppNick: args.oppNick,
+      oppName: args.oppName,
+      duration: args.duration
+    });
+  }
+
+  vwAccept(args: { oppId: string; oppNick: string; }) {
+    return m(AcceptDialog, {
+      view: this,
+      oppId: args.oppId,
+      oppNick: args.oppNick
+    });
+  }
+
+  vwChallenge(item: UserListItem) {
     // Show a dialog box for a new challenge being issued
-    var manual = $state.hasPaid; // If paying user, allow manual challenges
-    var fairPlay = item.fairplay && $state.fairPlay; // Both users are fair-play
-    var oldBag = !item.newbag && !$state.newBag; // Neither user wants new bag
+    const model = this.model;
+    const state = model.state;
+    const manual = state.hasPaid; // If paying user, allow manual challenges
+    const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
+    const oldBag = !item.newbag && !state.newBag; // Neither user wants new bag
     return m(".modal-dialog",
-      { id: 'chall-dialog', style: { visibility: 'visible' } }, 
+      { id: 'chall-dialog', style: { visibility: 'visible' } },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
         [
-          m(".chall-hdr", 
-            m("table", 
-              m("tbody", 
+          m(".chall-hdr",
+            m("table",
+              m("tbody",
                 m("tr",
                   [
                     m("td", m("h1.chall-icon", glyph("hand-right"))),
                     m("td.l-border",
                       [
-                        m(OnlinePresence, { id: "chall-online", userId : item.userid }),
+                        m(OnlinePresence, { id: "chall-online", userId: item.userid }),
                         m("h1", item.nick),
                         m("h2", item.fullname)
                       ]
@@ -1386,27 +872,27 @@ class View {
             [
               m(".promo-fullscreen",
                 [
-                  m("p", [ m("strong", "Ný áskorun"), " - veldu lengd viðureignar:" ]),
+                  m("p", [m("strong", "Ný áskorun"), " - veldu lengd viðureignar:"]),
                   m(MultiSelection,
                     { initialSelection: 0, defaultClass: 'chall-time' },
                     [
                       m("div", { id: 'chall-none', tabindex: 1 },
                         "Viðureign án klukku"
                       ),
-                      m("div", { id: 'chall-10', tabindex: 2 },
-                        [ glyph("time"), "2 x 10 mínútur" ]
+                      m("div", { id: 'chall-1', tabindex: 2 }, // FIXME!!!
+                        [glyph("time"), "2 x 1 mínútur"]
                       ),
                       m("div", { id: 'chall-15', tabindex: 3 },
-                        [ glyph("time"), "2 x 15 mínútur" ]
+                        [glyph("time"), "2 x 15 mínútur"]
                       ),
                       m("div", { id: 'chall-20', tabindex: 4 },
-                        [ glyph("time"), "2 x 20 mínútur" ]
+                        [glyph("time"), "2 x 20 mínútur"]
                       ),
                       m("div", { id: 'chall-25', tabindex: 5 },
-                        [ glyph("time"), "2 x 25 mínútur" ]
+                        [glyph("time"), "2 x 25 mínútur"]
                       ),
                       m("div", { id: 'chall-30', tabindex: 6 },
-                        [ glyph("time"), "2 x 30 mínútur" ]
+                        [glyph("time"), "2 x 30 mínútur"]
                       )
                     ]
                   )
@@ -1446,12 +932,12 @@ class View {
             ]
           ) : "",
           oldBag ? m("div", { id: "chall-oldbag" },
-            m("table", 
+            m("table",
               m("tr",
                 [
                   m("td", glyph("exclamation-sign")),
                   m("td",
-                    [ "Viðureign með", m("br"), m("strong", "gamla skraflpokanum") ]
+                    ["Viðureign með", m("br"), m("strong", "gamla skraflpokanum")]
                   )
                 ]
               )
@@ -1474,9 +960,9 @@ class View {
               id: "chall-ok",
               title: "Skora á",
               tabindex: 9,
-              onclick: (ev) => {
+              onclick: (ev: Event) => {
                 // Issue a new challenge
-                var duration: string|number = document.querySelector("div.chall-time.selected").id.slice(6);
+                let duration: string | number = document.querySelector("div.chall-time.selected").id.slice(6);
                 if (duration == "none")
                   duration = 0;
                 else
@@ -1505,16 +991,17 @@ class View {
 
   // Main screen
 
-  vwMain(model: Model, actions) {
+  vwMain(): m.vnode[] {
     // Main screen with tabs
 
-    var view = this;
+    const view = this;
+    const model = this.model;
 
     function vwMainTabs() {
 
       function vwMainTabHeader() {
-        var numGames = 0;
-        var numChallenges = 0;
+        let numGames = 0;
+        let numChallenges = 0;
         if (model.gameList)
           // Sum up games where it's the player's turn, as well as zombie games
           numGames = model.gameList.reduce((acc: number, item) => {
@@ -1527,7 +1014,7 @@ class View {
           }, 0);
         return m("ul",
           [
-            m("li", 
+            m("li",
               m("a[href='#tabs-1']",
                 [
                   glyph("th"), m("span.tab-legend", "Viðureignir"),
@@ -1538,25 +1025,28 @@ class View {
                 ]
               )
             ),
-            m("li", 
+            m("li",
               m("a[href='#tabs-2']",
                 [
                   glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
                   m("span.opp-ready",
-                    { id: 'numchallenges', style: numChallenges ? 'display: inline-block' : '' },
+                    {
+                      id: "numchallenges",
+                      style: numChallenges ? 'display: inline-block' : ''
+                    },
                     numChallenges
                   )
                 ]
               )
             ),
-            m("li", 
+            m("li",
               m("a[href='#tabs-3']",
-                [ glyph("user"), m("span.tab-legend", "Andstæðingar") ]
+                [glyph("user"), m("span.tab-legend", "Andstæðingar")]
               )
             ),
-            m("li.no-mobile-list", 
+            m("li.no-mobile-list",
               m("a[href='#tabs-4']",
-                [ glyph("bookmark"), m("span.tab-legend", "Ferill") ]
+                [glyph("bookmark"), m("span.tab-legend", "Ferill")]
               )
             )
           ]
@@ -1580,7 +1070,7 @@ class View {
               // Show a list item about a game in progress (or recently finished)
 
               function vwOpp() {
-                var arg = item.oppid === null ? [ glyph("cog"), nbsp(), item.opp ] : item.opp;
+                var arg = item.oppid === null ? [glyph("cog"), nbsp(), item.opp] : item.opp;
                 return m("span.list-opp", { title: item.fullname }, arg);
               }
 
@@ -1592,14 +1082,14 @@ class View {
                   flagClass = "";
                 }
                 else
-                if (item.zombie) {
-                  turnText = "Viðureign lokið";
-                  flagClass = ".zombie";
-                }
-                else {
-                  turnText = item.opp + " á leik";
-                  flagClass = ".grayed";
-                }
+                  if (item.zombie) {
+                    turnText = "Viðureign lokið";
+                    flagClass = ".zombie";
+                  }
+                  else {
+                    turnText = item.opp + " á leik";
+                    flagClass = ".grayed";
+                  }
                 return m("span.list-myturn",
                   m("span.glyphicon.glyphicon-flag" + flagClass, { title: turnText })
                 );
@@ -1682,7 +1172,7 @@ class View {
                   "Ef þig vantar einhvern til að skrafla við, veldu flipann ",
                   m(m.route.Link,
                     { href: "/main?tab=2" },
-                    [ glyph("user"), nbsp(), "Andstæðingar" ]
+                    [glyph("user"), nbsp(), "Andstæðingar"]
                   ),
                   " og skoraðu á tölvuþjarka - ",
                   glyph("cog"), nbsp(), m("b", "Amlóða"),
@@ -1701,7 +1191,7 @@ class View {
                   " vinstra megin við nafn andstæðingsins."
                 ]
               ),
-              m("p", 
+              m("p",
                 "Tölvuþjarkarnir eru ætíð reiðubúnir að skrafla og viðureign við þá " +
                 " hefst strax. Aðrir leikmenn þurfa að samþykkja áskorun áður en viðureign hefst."
               ),
@@ -1713,7 +1203,7 @@ class View {
                   "teiknið hér til vinstri."
                 ]
               ),
-              m("p.no-mobile-block", 
+              m("p.no-mobile-block",
                 "Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á " +
                 "örvarmerkið efst vinstra megin við skraflborðið."
               )
@@ -1724,8 +1214,8 @@ class View {
         return [
           m(".listitem.listheader",
             [
-              m("span.list-myturn", glyphGrayed("flag", { title: 'Átt þú leik?' } )),
-              m("span.list-overdue", 
+              m("span.list-myturn", glyphGrayed("flag", { title: 'Átt þú leik?' })),
+              m("span.list-overdue",
                 glyphGrayed("hourglass", { title: 'Langt frá síðasta leik?' })
               ),
               m("span.list-ts-short", "Síðasti leikur"),
@@ -1750,31 +1240,54 @@ class View {
             // Generate a list item about a pending challenge (issued or received)
 
             function challengeDescription(json: { duration?: number; }) {
-               /* Return a human-readable string describing a challenge
-                  according to the enclosed preferences */
-               if (!json || json.duration === undefined || json.duration === 0)
-                  /* Normal unbounded (untimed) game */
-                  return "Venjuleg ótímabundin viðureign";
-               return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
+              /* Return a human-readable string describing a challenge
+                 according to the enclosed preferences */
+              if (!json || json.duration === undefined || json.duration === 0)
+                /* Normal unbounded (untimed) game */
+                return "Venjuleg ótímabundin viðureign";
+              return "Með klukku, 2 x " + json.duration.toString() + " mínútur";
             }
 
             function markChallenge(ev: Event) {
               // Clicked the icon at the beginning of the line,
               // to decline a received challenge or retract an issued challenge
-              let action: ChallengeAction = item.received ? "decline" : "retract";
+              const action: ChallengeAction = item.received ? "decline" : "retract";
               model.modifyChallenge({ destuser: item.userid, action: action, key: item.key });
               ev.preventDefault();
             }
 
-            function clickReceived(ev: Event) {
+            function clickChallenge(ev: Event) {
               // Clicked the hotspot area to accept a received challenge
-              if (item.received)
-                // Ask the server to create a new game and route to it
-                model.newGame(item.userid, false);
               ev.preventDefault();
+              if (!model.moreGamesAllowed()) {
+                // User must be a friend to be able to accept more challenges
+                view.showFriendPromo();
+                return;
+              }
+              if (item.received) {
+                if (item.prefs && item.prefs.duration !== undefined && item.prefs.duration > 0)
+                  // Timed game: display a modal wait dialog
+                  view.pushDialog("wait", {
+                    oppId: item.userid,
+                    oppNick: item.opp,
+                    oppName: item.fullname,
+                    duration: item.prefs.duration
+                  });
+                else
+                  // Ask the server to create a new game and route to it
+                  model.newGame(item.userid, false);
+              }
+              else {
+                // Clicking on a sent challenge, i.e. a timed game
+                // where the opponent is waiting and ready to start
+                view.showAcceptDialog(item.userid, item.opp);
+              }
             }
 
-            // var oppReady = !item.received && item.opp_ready;
+            let oppReady = !item.received && item.opp_ready &&
+              item.prefs && item.prefs.duration !== undefined &&
+              item.prefs.duration > 0;
+            let clickable = item.received || oppReady;
             let descr = challengeDescription(item.prefs);
 
             return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
@@ -1786,11 +1299,12 @@ class View {
                     :
                     glyph("hand-right", { title: "Afturkalla" })
                 ),
-                m(item.received ? "a" : "span",
-                  {
+                m(clickable ? "a" : "span",
+                  clickable ? {
                     href: "#",
-                    onclick: clickReceived
-                  },
+                    onclick: clickChallenge,
+                    class: oppReady ? "opp-ready" : ""
+                  } : {},
                   [
                     m("span.list-ts", item.ts),
                     m("span.list-nick", { title: item.fullname }, item.opp),
@@ -1807,7 +1321,10 @@ class View {
                   {
                     title: "Skoða feril",
                     // Show opponent track record
-                    onclick: (ev) => { showUserInfo(item.userid, item.opp, item.fullname); }
+                    onclick: (ev) => {
+                      showUserInfo(item.userid, item.opp, item.fullname);
+                      ev.preventDefault();
+                    }
                   },
                   m("span.usr-info", "")
                 ),
@@ -1817,10 +1334,8 @@ class View {
             );
           }
 
-          let cList: ChallengeListItem[];
-          if (!model.challengeList)
-            cList = [];
-          else
+          let cList: ChallengeListItem[] = [];
+          if (model.challengeList)
             cList = showReceived ?
               model.challengeList.filter((item) => item.received) :
               model.challengeList.filter((item) => !item.received);
@@ -1906,8 +1421,8 @@ class View {
 
       function vwUserButton(id: string, icon: string, text: string) {
         // Select the type of user list (robots, fav, alike, elo)
-        var sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-        var spec = (id == "elo") ? "human" : "";
+        const sel = model.userListCriteria ? model.userListCriteria.query : "robots";
+        const spec = (id == "elo") ? "human" : "";
         return m("span",
           {
             className: (id == sel ? "shown" : ""),
@@ -1917,20 +1432,20 @@ class View {
               ev.preventDefault();
             }
           },
-          [ glyph(icon, { style: { padding: 0 } }), nbsp(), text ]
+          [glyph(icon, { style: { padding: 0 } }), nbsp(), text]
         );
       }
 
       function vwUserList() {
 
-        function vwUserList(listType, list) {
+        function vwList(list: UserListItem[]) {
 
-          function itemize(item, i: number) {
+          function itemize(item: UserListItem, i: number) {
 
             // Generate a list item about a user
 
-            var isRobot = item.userid.indexOf("robot-") === 0;
-            var fullname = [];
+            const isRobot = item.userid.indexOf("robot-") === 0;
+            let fullname: any[] = [];
 
             // Online and accepting challenges
             if (item.ready && !isRobot) {
@@ -1974,12 +1489,12 @@ class View {
                 model.modifyChallenge({ destuser: item.userid, action: "retract" });
               }
               else
-              if (isRobot)
-                // Challenging a robot: game starts immediately
-                model.newGame(item.userid, false);
-              else
-                // Challenging a user: show a challenge dialog
-                view.pushDialog("challenge", item);
+                if (isRobot)
+                  // Challenging a robot: game starts immediately
+                  model.newGame(item.userid, false);
+                else
+                  // Challenging a user: show a challenge dialog
+                  view.pushDialog("challenge", item);
             }
 
             function userLink() {
@@ -1987,10 +1502,14 @@ class View {
                 return m("a",
                   {
                     href: "",
-                    onclick: (ev) => { model.newGame(item.userid, false); ev.preventDefault(); }
+                    onclick: (ev) => {
+                      // Start a new game against the robot
+                      model.newGame(item.userid, false);
+                      ev.preventDefault();
+                    }
                   },
                   [
-                    m("span.list-nick", [ glyph("cog"), nbsp(), item.nick ]),
+                    m("span.list-nick", [glyph("cog"), nbsp(), item.nick]),
                     m("span.list-fullname-robot", fullname)
                   ]
                 );
@@ -2035,23 +1554,25 @@ class View {
           return m("div", { id: "userlist" }, list.map(itemize));
         }
 
-        let listType = model.userListCriteria ? model.userListCriteria.query : "robots";
+        // The type of list to show; by default it's 'robots'
+        const listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return m(EloPage, { id: "elolist", model: model, view: view });
+          return m(EloPage, { id: "elolist", view: view });
         // Show normal user list
-        let list: any[] = [];
+        let list: UserListItem[] = [];
         if (model.userList === undefined) {
           // We are loading a fresh user list
           /* pass */
         }
         else
-        if (model.userList === null || model.userListCriteria.query != listType)
-          model.loadUserList({ query: listType, spec: "" }, true);
-        else
-          list = model.userList;
-        let nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
+          if (model.userList === null || model.userListCriteria.query != listType)
+            model.loadUserList({ query: listType, spec: "" }, true);
+          else
+            list = model.userList;
+        const nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
           listType == "search" && model.userListCriteria.spec !== "";
+        const robotList = listType == "robots";
         return [
           m(".listitem.listheader",
             [
@@ -2059,30 +1580,30 @@ class View {
               m("span.list-fav", glyph("star-empty", { title: 'Uppáhald' })),
               m("span.list-nick", "Einkenni"),
               m("span.list-fullname", "Nafn og merki"),
-              listType == "robots" ? "" : m("span.list-human-elo[id='usr-list-elo']", "Elo"),
-              listType == "robots" ? "" : m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
-              listType == "robots" ? "" : m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
+              robotList ? "" : m("span.list-human-elo[id='usr-list-elo']", "Elo"),
+              robotList ? "" : m("span.list-info-hdr[id='usr-list-info']", "Ferill"),
+              robotList ? "" : m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' }))
             ]
           ),
-          vwUserList(listType, list),
+          vwList(list),
           // Show indicator if search didn't find any users matching the criteria
           nothingFound ?
             m("div",
-                { id: "user-no-match", style: { display: "block" } },
-                [
-                  glyph("search"),
-                  " ",
-                  m("span", { id: "search-prefix" }, model.userListCriteria.spec),
-                  " finnst ekki"
-                ]
-              )
+              { id: "user-no-match", style: { display: "block" } },
+              [
+                glyph("search"),
+                " ",
+                m("span", { id: "search-prefix" }, model.userListCriteria.spec),
+                " finnst ekki"
+              ]
+            )
             : ""
         ];
       }
 
       function vwStats() {
         // View the user's own statistics summary
-        var ownStats = model.ownStats;
+        const ownStats = model.ownStats;
         if (model.ownStats === null)
           model.loadOwnStats();
         return m(StatsDisplay, { id: 'own-stats', ownStats: ownStats });
@@ -2090,7 +1611,7 @@ class View {
 
       function vwBest() {
         // View the user's own best game and word scores
-        var ownStats = model.ownStats;
+        const ownStats = model.ownStats;
         if (model.ownStats === null)
           model.loadOwnStats();
         return m(BestDisplay, { id: 'own-best', ownStats: ownStats, myself: true });
@@ -2179,8 +1700,8 @@ class View {
       m(LeftLogo), // No legend, scale up by 50%
       this.vwUserId(),
       this.vwInfo(),
-      m(this.TogglerReady, { model: model }),
-      m(this.TogglerReadyTimed, { model: model }),
+      m(this.TogglerReady),
+      m(this.TogglerReadyTimed),
       m("main",
         m("div",
           {
@@ -2196,18 +1717,19 @@ class View {
   vwPlayerName(game: Game, side: string) {
     // Displays a player name, handling both human and robot players
     // as well as left and right side, and local and remote colors
-    let view = this;
-    var apl0 = game && game.autoplayer[0];
-    var apl1 = game && game.autoplayer[1];
-    var nick0 = game ? game.nickname[0] : "";
-    var nick1 = game ? game.nickname[1] : "";
-    var player: number = game ? game.player : 0;
-    var localturn: boolean = game ? game.localturn : false;
-    var tomove: string;
-    var gameover = game ? game.over : true;
+    const view = this;
+    const state = this.model.state;
+    let apl0 = game && game.autoplayer[0];
+    let apl1 = game && game.autoplayer[1];
+    let nick0 = game ? game.nickname[0] : "";
+    let nick1 = game ? game.nickname[1] : "";
+    let player: number = game ? game.player : 0;
+    let localturn: boolean = game ? game.localturn : false;
+    let tomove: string;
+    let gameover = game ? game.over : true;
 
     function lookAtPlayer(ev: Event, player: number, side: number) {
-      if (!$state.uiFullscreen)
+      if (!state.uiFullscreen)
         // Don't do anything on mobile, and allow the click
         // to propagate to the parent
         return;
@@ -2218,11 +1740,11 @@ class View {
           view.pushDialog("userprefs");
         }
         else
-        if (!game.autoplayer[side]) {
-          // The player is clicking on the opponent:
-          // show the opponent's track record, if not an autoplayer
-          view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
-        }
+          if (!game.autoplayer[side]) {
+            // The player is clicking on the opponent:
+            // show the opponent's track record, if not an autoplayer
+            view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
+          }
       }
       ev.stopPropagation();
       ev.preventDefault();
@@ -2232,22 +1754,22 @@ class View {
       // Left side player
       if (apl0)
         // Player 0 is a robot (autoplayer)
-        return m(".robot-btn.left", [ glyph("cog"), nbsp(), nick0 ]);
+        return m(".robot-btn.left", [glyph("cog"), nbsp(), nick0]);
       tomove = gameover || (localturn !== (player === 0)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.left" + tomove : ".robot-btn.left",
         { id: "player-0", onclick: (ev) => lookAtPlayer(ev, player, 0) },
-        [ m("span.left-to-move"), nick0 ]
+        [m("span.left-to-move"), nick0]
       );
     }
     else {
       // Right side player
       if (apl1)
         // Player 1 is a robot (autoplayer)
-        return m(".robot-btn.right", [ glyph("cog"), nbsp(), nick1 ]);
+        return m(".robot-btn.right", [glyph("cog"), nbsp(), nick1]);
       tomove = gameover || (localturn !== (player === 1)) ? "" : ".tomove";
       return m((player === 0 || player === 1) ? ".player-btn.right" + tomove : ".robot-btn.right",
         { id: "player-1", onclick: (ev) => lookAtPlayer(ev, player, 1) },
-        [ m("span.right-to-move"), nick1 ]
+        [m("span.right-to-move"), nick1]
       );
     }
   }
@@ -2265,9 +1787,9 @@ class View {
       if (!bold)
         return m(".twoletter-word", w);
       if (page == 0)
-        return m(".twoletter-word", [ m("b", w[0]), w[1] ]);
+        return m(".twoletter-word", [m("b", w[0]), w[1]]);
       else
-        return m(".twoletter-word", [ w[0], m("b", w[1]) ]);
+        return m(".twoletter-word", [w[0], m("b", w[1])]);
     }
 
     return {
@@ -2358,11 +1880,13 @@ class View {
 
   // Game screen
 
-  vwGame(model: Model) {
+  vwGame() {
     // A view of a game, in-progress or finished
 
-    var game = model.game;
-    var view = this;
+    const view = this;
+    const model = this.model;
+    const game = model.game;
+    const state = model.state;
 
     function vwBeginner() {
       // Show the board color guide
@@ -2373,7 +1897,7 @@ class View {
             {
               onclick: (ev) => {
                 // Close the guide and set a preference not to see it again
-                $state.beginner = false;
+                state.beginner = false;
                 model.setUserPref({ beginner: false });
                 ev.preventDefault();
               }
@@ -2382,11 +1906,11 @@ class View {
           ),
           m(".board-colors",
             [
-              m(".board-color[id='triple-word']", ["3 x", m("br"), "orð"] ),
-              m(".board-color[id='double-word']", ["2 x", m("br"), "orð"] ),
-              m(".board-color[id='triple-letter']", ["3 x", m("br"), "stafur"] ),
-              m(".board-color[id='double-letter']", ["2 x", m("br"), "stafur"] ),
-              m(".board-color[id='single-letter']", ["1 x", m("br"), "stafur"] )
+              m(".board-color[id='triple-word']", ["3 x", m("br"), "orð"]),
+              m(".board-color[id='double-word']", ["2 x", m("br"), "orð"]),
+              m(".board-color[id='triple-letter']", ["3 x", m("br"), "stafur"]),
+              m(".board-color[id='double-letter']", ["2 x", m("br"), "stafur"]),
+              m(".board-color[id='single-letter']", ["1 x", m("br"), "stafur"])
             ]
           )
         ]
@@ -2420,10 +1944,10 @@ class View {
       function vwRightHeading() {
         // The right-side heading on the game screen
 
-        var fairplay = game ? game.fairplay : false;
-        var player = game ? game.player : 0;
-        var sc0 = game ? game.displayScore(0).toString() : "";
-        var sc1 = game ? game.displayScore(1).toString() : "";
+        const fairplay = game ? game.fairplay : false;
+        const player = game ? game.player : 0;
+        const sc0 = game ? game.displayScore(0).toString() : "";
+        const sc1 = game ? game.displayScore(1).toString() : "";
         return m(".heading",
           [
             m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
@@ -2437,7 +1961,7 @@ class View {
             vwClock(),
             m(".fairplay",
               { style: { visibility: fairplay ? "visible" : "hidden" } },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
             // m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
           ]
         );
@@ -2445,39 +1969,39 @@ class View {
 
       function vwRightArea() {
         // A container for the tabbed right-side area components
-        var sel = (game && game.sel) ? game.sel : "movelist";
+        const sel = (game && game.sel) ? game.sel : "movelist";
         // Show the chat tab unless the opponent is an autoplayer
-        var component = null;
+        let component = null;
         switch (sel) {
           case "movelist":
             component = view.vwMovelist(game);
             break;
           case "twoletter":
-            component = m(view.vwTwoLetter, { game: game } );
+            component = m(view.vwTwoLetter, { game: game });
             break;
           case "chat":
             component = view.vwChat(game);
             break;
           case "games":
-            component = view.vwGames(model);
+            component = view.vwGames();
             break;
           default:
             break;
         }
-        var tabgrp = view.vwTabGroup(game);
+        const tabgrp = view.vwTabGroup(game);
         return m(".right-area" + (game.showClock() ? ".with-clock" : ""),
-          component ? [ tabgrp, component ] : [ tabgrp ]
+          component ? [tabgrp, component] : [tabgrp]
         );
       }
 
       function vwRightMessage() {
         // Display a status message in the mobile UI
-        var s = view.buttonState(game);
-        var msg: string | any[] = "";
-        var player = game.player;
-        var opp = game.nickname[1 - player];
-        var move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
-        var mtype = move ? move[1][1] : undefined;
+        let s = view.buttonState(game);
+        let msg: string | any[] = "";
+        let player = game.player;
+        let opp = game.nickname[1 - player];
+        let move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
+        let mtype = move ? move[1][1] : undefined;
         if (s.congratulate) {
           // This player won
           if (mtype == "RSGN")
@@ -2486,84 +2010,84 @@ class View {
             msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
         }
         else
-        if (s.gameOver) {
-          // This player lost
-          msg = "Game over!";
-        }
-        else
-        if (!s.localTurn) {
-          // It's the opponent's turn
-          msg = ["It's ", opp, "'s turn. Plan your next move!"];
-        }
-        else
-        if (s.tilesPlaced > 0) {
-          if (game.currentScore === undefined) {
-            if (move === undefined)
-              msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
-            else
-              msg = "Tiles must be consecutive.";
+          if (s.gameOver) {
+            // This player lost
+            msg = "Game over!";
           }
           else
-          if (game.wordGood === false) {
-            msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
-          }
-          else {
-            msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
-          }
-        }
-        else
-        if (move === undefined) {
-          // Initial move
-          msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
-        }
-        else {
-          var co = move[1][0];
-          var tiles = mtype;
-          var score = move[1][2];
-          if (co == "") {
-            // Not a regular tile move
-            if (tiles == "PASS")
-              msg = [opp, " passed."];
-            else
-            if (tiles.indexOf("EXCH") === 0) {
-              var numtiles = tiles.slice(5).length;
-              msg = [
-                opp, " exchanged ",
-                numtiles.toString(),
-                (numtiles == 1 ? " tile" : " tiles"),
-                "."
-              ];
+            if (!s.localTurn) {
+              // It's the opponent's turn
+              msg = ["It's ", opp, "'s turn. Plan your next move!"];
             }
             else
-            if (tiles == "CHALL")
-              msg = [opp, " challenged your move."];
-            else
-            if (tiles == "RESP") {
-              if (score < 0)
-                msg = [opp, " successfully challenged your move."];
+              if (s.tilesPlaced > 0) {
+                if (game.currentScore === undefined) {
+                  if (move === undefined)
+                    msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
+                  else
+                    msg = "Tiles must be consecutive.";
+                }
+                else
+                  if (game.wordGood === false) {
+                    msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
+                  }
+                  else {
+                    msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
+                  }
+              }
               else
-                msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
-            }
-          }
-          else {
-            // Regular tile move
-            tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
-            msg = [opp, " played ", m("strong", tiles),
-              " for ", m("strong", score.toString()), " points"];
-          }
-        }
+                if (move === undefined) {
+                  // Initial move
+                  msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
+                }
+                else {
+                  var co = move[1][0];
+                  var tiles = mtype;
+                  var score = move[1][2];
+                  if (co == "") {
+                    // Not a regular tile move
+                    if (tiles == "PASS")
+                      msg = [opp, " passed."];
+                    else
+                      if (tiles.indexOf("EXCH") === 0) {
+                        var numtiles = tiles.slice(5).length;
+                        msg = [
+                          opp, " exchanged ",
+                          numtiles.toString(),
+                          (numtiles == 1 ? " tile" : " tiles"),
+                          "."
+                        ];
+                      }
+                      else
+                        if (tiles == "CHALL")
+                          msg = [opp, " challenged your move."];
+                        else
+                          if (tiles == "RESP") {
+                            if (score < 0)
+                              msg = [opp, " successfully challenged your move."];
+                            else
+                              msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
+                          }
+                  }
+                  else {
+                    // Regular tile move
+                    tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
+                    msg = [opp, " played ", m("strong", tiles),
+                      " for ", m("strong", score.toString()), " points"];
+                  }
+                }
         return m(".message", msg);
       }
 
-      return m(".rightcol", [ vwRightHeading(), vwRightArea(), vwRightMessage() ]);
+      return m(".rightcol", [vwRightHeading(), vwRightArea(), vwRightMessage()]);
     }
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(LeftLogo) ]);
+      return m("div", [m("main", m(".game-container")), m(LeftLogo)]);
 
-    let bag = game.bag;
-    let newbag = game.newbag;
+    const bag = game.bag;
+    const newbag = game.newbag;
     return m("div", // Removing this div messes up Mithril
       {
         // Allow tiles to be dropped on the background,
@@ -2583,10 +2107,10 @@ class View {
         ondrop: (ev) => {
           ev.stopPropagation();
           // Move the tile from the board back to the rack
-          var from = ev.dataTransfer.getData("text");
+          let from = ev.dataTransfer.getData("text");
           // Move to the first available slot in the rack
           game.attemptMove(from, "R1");
-          model.updateScale();
+          this.updateScale(game);
           return false;
         }
       },
@@ -2597,15 +2121,15 @@ class View {
             [
               m(this.MobileHeader),
               vwRightColumn(),
-              m(this.BoardArea, { model: model }),
-              $state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
+              m(this.BoardArea),
+              state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
               game.askingForBlank ? m(this.BlankDialog, { game: game }) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
         m(LeftLogo),
-        $state.beginner ? vwBeginner() : "",
+        state.beginner ? vwBeginner() : "",
         this.vwInfo()
       ]
     );
@@ -2616,17 +2140,17 @@ class View {
     return {
       view: () => {
         return m(".header", [
-            m(".header-logo",
-              m(m.route.Link,
-                {
-                  href: "/page",
-                  class: "backlink"
-                },
-                m(ExploLogo, { legend: true, scale: 1.0 })
-              )
-            ),
-            m(".header-button")
-          ]
+          m(".header-logo",
+            m(m.route.Link,
+              {
+                href: "/page",
+                class: "backlink"
+              },
+              m(ExploLogo, { legend: true, scale: 1.0 })
+            )
+          ),
+          m(".header-button")
+        ]
         );
       }
     };
@@ -2634,11 +2158,13 @@ class View {
 
   // Review screen
 
-  vwReview(model: Model, actions: Actions) {
+  vwReview() {
     // A review of a finished game
 
-    let view = this;
-    let game = model.game;
+    const view = this;
+    const model = this.model;
+    const game = model.game;
+    const state = model.state;
     let moveIndex = model.reviewMove;
     let bestMoves = model.bestMoves || [];
 
@@ -2670,7 +2196,7 @@ class View {
           {
             // On mobile only: If the header is clicked, go to the main screen
             onclick: (ev) => {
-              if (!$state.uiFullscreen) m.route.set("/main");
+              if (!state.uiFullscreen) { m.route.set("/main"); ev.preventDefault(); }
             }
           },
           [
@@ -2686,27 +2212,27 @@ class View {
             ]),
             m(".fairplay",
               { style: { visibility: fairplay ? "visible" : "hidden" } },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" } ))
+              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
           ]
         );
       }
 
       function vwRightArea() {
         // A container for the list of best possible moves
-        return m(".right-area", view.vwBestMoves(model, moveIndex, bestMoves));
+        return m(".right-area", view.vwBestMoves(moveIndex, bestMoves));
       }
 
-      return m(".rightcol", [ vwRightHeading(), vwRightArea() ]);
+      return m(".rightcol", [vwRightHeading(), vwRightArea()]);
     }
 
     if (game === undefined || game === null)
       // No associated game
-      return m("div", [ m("main", m(".game-container")), m(LeftLogo) ]);
+      return m("div", [m("main", m(".game-container")), m(LeftLogo)]);
 
     // Create a list of major elements that we're showing
-    let r: any[] = [];
+    let r: m.vnode[] = [];
     r.push(vwRightColumn());
-    r.push(m(this.BoardReview, { model: model, moveIndex: moveIndex }));
+    r.push(m(this.BoardReview, { moveIndex: moveIndex }));
     if (moveIndex === null)
       // Only show the stats overlay if moveIndex is null.
       // This means we don't show the overlay if move is 0.
@@ -2722,8 +2248,8 @@ class View {
 
   vwTabGroup(game: Game) {
     // A group of clickable tabs for the right-side area content
-    var showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
-    var r = [
+    let showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
+    let r: any[] = [
       this.vwTab(game, "board", "Borðið", "grid"),
       this.vwTab(game, "movelist", "Leikir", "show-lines"),
       this.vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
@@ -2744,7 +2270,7 @@ class View {
 
   vwTab(game: Game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
     // A clickable tab for the right-side area content
-    var sel = (game && game.sel) ? game.sel : "movelist";
+    const sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
       {
         id: "tab-" + tabid,
@@ -2766,74 +2292,90 @@ class View {
   vwChat(game: Game) {
     // The chat tab
 
+    const model = this.model;
+
     function decodeTimestamp(ts: string) {
-       // Parse and split an ISO timestamp string, formatted as YYYY-MM-DD HH:MM:SS
-       return {
-          year: parseInt(ts.substr(0, 4)),
-          month: parseInt(ts.substr(5, 2)),
-          day: parseInt(ts.substr(8, 2)),
-          hour: parseInt(ts.substr(11, 2)),
-          minute: parseInt(ts.substr(14, 2)),
-          second: parseInt(ts.substr(17, 2))
-       };
+      // Parse and split an ISO timestamp string, formatted as YYYY-MM-DD HH:MM:SS
+      return {
+        year: parseInt(ts.substr(0, 4)),
+        month: parseInt(ts.substr(5, 2)),
+        day: parseInt(ts.substr(8, 2)),
+        hour: parseInt(ts.substr(11, 2)),
+        minute: parseInt(ts.substr(14, 2)),
+        second: parseInt(ts.substr(17, 2))
+      };
     }
 
     function dateFromTimestamp(ts: string) {
-       // Create a JavaScript millisecond-based representation of an ISO timestamp
-       var dcTs = decodeTimestamp(ts);
-       return Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
-          dcTs.hour, dcTs.minute, dcTs.second);
+      // Create a JavaScript millisecond-based representation of an ISO timestamp
+      var dcTs = decodeTimestamp(ts);
+      return Date.UTC(dcTs.year, dcTs.month - 1, dcTs.day,
+        dcTs.hour, dcTs.minute, dcTs.second);
     }
 
     function timeDiff(dtFrom: number, dtTo: number) {
-       // Return the difference between two JavaScript time points, in seconds
-       return Math.round((dtTo - dtFrom) / 1000.0);
+      // Return the difference between two JavaScript time points, in seconds
+      return Math.round((dtTo - dtFrom) / 1000.0);
     }
 
     let dtLastMsg: number = null;
 
     function makeTimestamp(ts: string) {
       // Decode the ISO format timestamp we got from the server
-      var dtTs = dateFromTimestamp(ts);
-      var result = null;
+      let dtTs = dateFromTimestamp(ts);
+      let result = null;
       if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
         // If 5 minutes or longer interval between messages,
         // insert a time
-        var ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours expressed in milliseconds
-        var dtNow = new Date().getTime();
-        var dtToday = dtNow - dtNow % ONE_DAY; // Start of today (00:00 UTC)
-        var dtYesterday = dtToday - ONE_DAY; // Start of yesterday
-        var strTs: string;
+        const ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours expressed in milliseconds
+        const dtNow = new Date().getTime();
+        let dtToday = dtNow - dtNow % ONE_DAY; // Start of today (00:00 UTC)
+        let dtYesterday = dtToday - ONE_DAY; // Start of yesterday
+        let strTs: string;
         if (dtTs < dtYesterday)
-           // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
-           strTs = ts.slice(0, -3);
+          // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
+          strTs = ts.slice(0, -3);
         else
-        if (dtTs < dtToday)
-           // Yesterday
-           strTs = "Í gær " + ts.substr(11, 5);
-        else
-           // Today
-           strTs = ts.substr(11, 5);
+          if (dtTs < dtToday)
+            // Yesterday
+            strTs = "Í gær " + ts.substr(11, 5);
+          else
+            // Today
+            strTs = ts.substr(11, 5);
         result = m(".chat-ts", strTs);
       }
       dtLastMsg = dtTs;
       return result;
     }
 
-    var player = game ? game.player : 0;
+    const player = game ? game.player : 0;
+
+    function replaceEmoticons(str: string): string {
+      // Replace all emoticon shortcuts in the string str with a corresponding image URL
+      const emoticons = model.state.emoticons;
+      for (let i = 0; i < emoticons.length; i++)
+        if (str.indexOf(emoticons[i].icon) >= 0) {
+          // The string contains the emoticon: prepare to replace all occurrences
+          let img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+          // Re the following trick, see https://stackoverflow.com/questions/1144783/
+          // replacing-all-occurrences-of-a-string-in-javascript
+          str = str.split(emoticons[i].icon).join(img);
+        }
+      return str;
+    }
 
     function chatMessages() {
-      var r = [];
+      let r = [];
       if (game && game.messages) {
-        var mlist = game.messages;
+        let mlist = game.messages;
         for (let i = 0; i < mlist.length; i++) {
-          var p = player;
-          if (mlist[i].from_userid != $state.userId)
+          let p = player;
+          if (mlist[i].from_userid != model.state.userId)
             p = 1 - p;
-          var mTs = makeTimestamp(mlist[i].ts);
+          let mTs = makeTimestamp(mlist[i].ts);
           if (mTs)
             r.push(mTs);
-          var escMsg = escapeHtml(mlist[i].msg);
+          let escMsg = escapeHtml(mlist[i].msg);
           escMsg = replaceEmoticons(escMsg);
           r.push(m(".chat-msg" +
             (p === 0 ? ".left" : ".right") +
@@ -2848,8 +2390,8 @@ class View {
 
     function scrollChatToBottom() {
       // Scroll the last chat message into view
-      var chatlist = document.querySelectorAll("#chat-area .chat-msg");
-      var target: HTMLElement;
+      let chatlist = document.querySelectorAll("#chat-area .chat-msg");
+      let target: HTMLElement;
       if (chatlist.length) {
         target = chatlist[chatlist.length - 1] as HTMLElement;
         (target.parentNode as HTMLElement).scrollTop = target.offsetTop;
@@ -2862,14 +2404,14 @@ class View {
     }
 
     function sendMessage() {
-      var msg = getInput("msg").trim();
+      let msg = getInput("msg").trim();
       if (game && msg.length > 0) {
         game.sendMessage(msg);
         setInput("msg", "");
       }
     }
 
-    var numMessages = (game && game.messages) ? game.messages.length : 0;
+    let numMessages = (game && game.messages) ? game.messages.length : 0;
 
     if (game && game.messages === null)
       // No messages loaded yet: kick off async message loading
@@ -2910,7 +2452,7 @@ class View {
               {
                 id: "chat-send",
                 title: "Senda",
-                onclick: (ev) => { sendMessage(); }
+                onclick: (ev: Event) => { sendMessage(); ev.preventDefault(); }
               },
               glyph("chat")
             )
@@ -2923,7 +2465,9 @@ class View {
   vwMovelist(game: Game) {
     // The move list tab
 
-    let view = this;
+    const view = this;
+    const model = this.model;
+    const state = model.state;
 
     function movelist() {
       let mlist = game ? game.moves : []; // All moves made so far in the game
@@ -2932,7 +2476,7 @@ class View {
       let rightTotal = 0;
       for (let i = 0; i < mlist.length; i++) {
         let move = mlist[i];
-        let [ player, [ co, tiles, score ] ] = move;
+        let [player, [co, tiles, score]] = move;
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
@@ -2960,16 +2504,17 @@ class View {
           },
           movelist()
         ),
-        !$state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
+        !state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
       ]
     );
   }
 
-  vwBestMoves(model: Model, moveIndex: number, bestMoves: Move[]) {
+  vwBestMoves(moveIndex: number, bestMoves: Move[]) {
     // List of best moves, in a game review
 
-    let view = this;
-    let game = model.game;
+    const view = this;
+    const model = this.model;
+    const game = model.game;
 
     function bestHeader(co: string, tiles: string, score: number) {
       // Generate the header of the best move list
@@ -2989,47 +2534,47 @@ class View {
           /* Pass move */
           dispText = "Pass";
         else
-        if (tiles.indexOf("EXCH") === 0) {
-          /* Exchange move - we don't show the actual tiles exchanged, only their count */
-          let numtiles = tiles.slice(5).length;
-          dispText = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
-        }
-        else
-        if (tiles == "RSGN")
-          /* Resigned from game */
-          dispText = "Gaf viðureign";
-        else
-        if (tiles == "CHALL")
-          /* Challenge issued */
-          dispText = "Véfengdi lögn";
-        else
-        if (tiles == "RESP") {
-          /* Challenge response */
-          if (score < 0)
-             dispText = "Óleyfileg lögn";
+          if (tiles.indexOf("EXCH") === 0) {
+            /* Exchange move - we don't show the actual tiles exchanged, only their count */
+            let numtiles = tiles.slice(5).length;
+            dispText = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
+          }
           else
-             dispText = "Röng véfenging";
-        }
-        else
-        if (tiles == "TIME") {
-          /* Score adjustment for time */
-          dispText = "Umframtími";
-        }
-        else
-        if (tiles == "OVER") {
-          /* Game over */
-          dispText = "Viðureign lokið";
-          wrdclass = "gameover";
-        }
-        else {
-          // The rack leave at the end of the game (which is always in lowercase
-          // and thus cannot be confused with the above abbreviations)
-          wrdclass = "othermove";
-          if (tiles == "--")
-            dispText = "Stafaleif: (engin)";
-          else
-            dispText = ["Stafaleif: ", m("i", tiles)];
-        }
+            if (tiles == "RSGN")
+              /* Resigned from game */
+              dispText = "Gaf viðureign";
+            else
+              if (tiles == "CHALL")
+                /* Challenge issued */
+                dispText = "Véfengdi lögn";
+              else
+                if (tiles == "RESP") {
+                  /* Challenge response */
+                  if (score < 0)
+                    dispText = "Óleyfileg lögn";
+                  else
+                    dispText = "Röng véfenging";
+                }
+                else
+                  if (tiles == "TIME") {
+                    /* Score adjustment for time */
+                    dispText = "Umframtími";
+                  }
+                  else
+                    if (tiles == "OVER") {
+                      /* Game over */
+                      dispText = "Viðureign lokið";
+                      wrdclass = "gameover";
+                    }
+                    else {
+                      // The rack leave at the end of the game (which is always in lowercase
+                      // and thus cannot be confused with the above abbreviations)
+                      wrdclass = "othermove";
+                      if (tiles == "--")
+                        dispText = "Stafaleif: (engin)";
+                      else
+                        dispText = ["Stafaleif: ", m("i", tiles)];
+                    }
       }
       return m(".reviewhdr",
         [
@@ -3053,9 +2598,9 @@ class View {
       r.push(bestHeader(co, tiles, score));
       let mlist = bestMoves;
       for (let i = 0; i < mlist.length; i++) {
-        let [ player, [co, tiles, score] ] = mlist[i];
+        let [player, [co, tiles, score]] = mlist[i];
         r.push(
-          view.vwBestMove(model, moveIndex, i, mlist[i],
+          view.vwBestMove(moveIndex, i, mlist[i],
             {
               key: i.toString(),
               player: player, co: co, tiles: tiles,
@@ -3095,23 +2640,24 @@ class View {
   vwMove(game: Game, move: Move, info: MoveInfo) {
     // Displays a single move
 
-    let view = this;
+    const view = this;
+    const state = this.model.state;
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
-       /* Highlight a move's tiles when hovering over it in the move list */
-       let vec = toVector(co);
-       let col = vec.col;
-       let row = vec.row;
-       for (let i = 0; i < tiles.length; i++) {
-          let tile = tiles[i];
-          if (tile == '?')
-             continue;
-          let sq = coord(row, col);
-          if (game.tiles.hasOwnProperty(sq))
-            game.tiles[sq].highlight = show ? playerColor : undefined;
-          col += vec.dx;
-          row += vec.dy;
-       }
+      /* Highlight a move's tiles when hovering over it in the move list */
+      let vec = toVector(co);
+      let col = vec.col;
+      let row = vec.row;
+      for (let i = 0; i < tiles.length; i++) {
+        let tile = tiles[i];
+        if (tile == '?')
+          continue;
+        let sq = coord(row, col);
+        if (game.tiles.hasOwnProperty(sq))
+          game.tiles[sq].highlight = show ? playerColor : undefined;
+        col += vec.dx;
+        row += vec.dy;
+      }
     }
 
     let player = info.player;
@@ -3131,12 +2677,12 @@ class View {
           m("span.statsbutton",
             {
               onclick: (ev) => {
-                if (true || $state.hasPaid) // !!! FIXME
+                if (true || state.hasPaid) // !!! FIXME
                   // Show the game review
                   m.route.set("/review/" + game.uuid);
                 else
                   // Show a friend promotion dialog
-                  view.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
+                  view.showFriendPromo();
                 ev.preventDefault();
               }
             },
@@ -3159,48 +2705,48 @@ class View {
         score = "";
       }
       else
-      if (tiles.indexOf("EXCH") === 0) {
-        /* Exchange move - we don't show the actual tiles exchanged, only their count */
-        let numtiles = tiles.slice(5).length;
-        tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
-        score = "";
-      }
-      else
-      if (tiles == "RSGN")
-        /* Resigned from game */
-        tiles = " Gaf viðureign "; // Extra space intentional
-      else
-      if (tiles == "CHALL") {
-        /* Challenge issued */
-        tiles = " Véfengdi lögn "; // Extra space intentional
-        score = "";
-      }
-      else
-      if (tiles == "RESP") {
-        /* Challenge response */
-        if (score < 0) {
-          tiles = " Óleyfileg lögn "; // Extra space intentional
-          tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
+        if (tiles.indexOf("EXCH") === 0) {
+          /* Exchange move - we don't show the actual tiles exchanged, only their count */
+          let numtiles = tiles.slice(5).length;
+          tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
+          score = "";
         }
         else
-          tiles = " Röng véfenging "; // Extra space intentional
-      }
-      else
-      if (tiles == "TIME") {
-        /* Overtime adjustment */
-        tiles = " Umframtími "; // Extra spaces intentional
-      }
-      else
-      if (tiles == "OVER") {
-        /* Game over */
-        tiles = "Viðureign lokið";
-        wrdclass = "gameover";
-      }
-      else {
-        /* The rack leave at the end of the game (which is always in lowercase
-           and thus cannot be confused with the above abbreviations) */
-        wrdclass = "wordmove";
-      }
+          if (tiles == "RSGN")
+            /* Resigned from game */
+            tiles = " Gaf viðureign "; // Extra space intentional
+          else
+            if (tiles == "CHALL") {
+              /* Challenge issued */
+              tiles = " Véfengdi lögn "; // Extra space intentional
+              score = "";
+            }
+            else
+              if (tiles == "RESP") {
+                /* Challenge response */
+                if (score < 0) {
+                  tiles = " Óleyfileg lögn "; // Extra space intentional
+                  tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
+                }
+                else
+                  tiles = " Röng véfenging "; // Extra space intentional
+              }
+              else
+                if (tiles == "TIME") {
+                  /* Overtime adjustment */
+                  tiles = " Umframtími "; // Extra spaces intentional
+                }
+                else
+                  if (tiles == "OVER") {
+                    /* Game over */
+                    tiles = "Viðureign lokið";
+                    wrdclass = "gameover";
+                  }
+                  else {
+                    /* The rack leave at the end of the game (which is always in lowercase
+                       and thus cannot be confused with the above abbreviations) */
+                    wrdclass = "wordmove";
+                  }
     }
     else {
       // Normal tile move
@@ -3224,7 +2770,7 @@ class View {
       playerColor = 1;
     }
     let attribs: VnodeAttrs = { title: title };
-    if ($state.uiFullscreen && tileMoveIncrement > 0) {
+    if (state.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual)
         // Tile move and not a manual game: allow word lookup
         attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
@@ -3244,7 +2790,7 @@ class View {
         [
           m("span.total", leftTotal),
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
-          m("span." + wrdclass, [ m("i", tiles), nbsp(), co ])
+          m("span." + wrdclass, [m("i", tiles), nbsp(), co])
         ]
       );
     }
@@ -3252,7 +2798,7 @@ class View {
       // Move by right side player
       return m(".move.rightmove." + cls, attribs,
         [
-          m("span." + wrdclass, [ co, nbsp(), m("i", tiles) ]),
+          m("span." + wrdclass, [co, nbsp(), m("i", tiles)]),
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
           m("span.total", rightTotal)
         ]
@@ -3260,10 +2806,11 @@ class View {
     }
   }
 
-  vwBestMove(model: Model, moveIndex: number, bestMoveIndex: number, move: Move, info: MoveInfo) {
+  vwBestMove(moveIndex: number, bestMoveIndex: number, move: Move, info: MoveInfo) {
     // Displays a move in a list of best available moves
 
-    let game = model.game;
+    const model = this.model;
+    const game = model.game;
     let player = info.player;
     let co = info.co;
     let tiles = info.tiles;
@@ -3356,7 +2903,7 @@ class View {
       return m(".move.leftmove." + cls, attribs,
         [
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
-          m("span.wordmove", [ m("i", word), nbsp(), co ])
+          m("span.wordmove", [m("i", word), nbsp(), co])
         ]
       );
     }
@@ -3364,15 +2911,17 @@ class View {
       // Move by right side player
       return m(".move.rightmove." + cls, attribs,
         [
-          m("span.wordmove", [ co, nbsp(), m("i", word) ]),
+          m("span.wordmove", [co, nbsp(), m("i", word)]),
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score)
         ]
       );
     }
   }
 
-  vwGames(model: Model) {
+  vwGames() {
     // The game list tab
+
+    const model = this.model;
 
     function games() {
       let r = [];
@@ -3399,9 +2948,9 @@ class View {
           var opp: any[];
           if (item.oppid === null)
             // Mark robots with a cog icon
-            opp = [ glyph("cog"), nbsp(), item.opp ];
+            opp = [glyph("cog"), nbsp(), item.opp];
           else
-            opp = [ item.opp ];
+            opp = [item.opp];
           let winLose = item.sc0 < item.sc1 ? ".losing" : "";
           let title = "Staðan er " + item.sc0 + ":" + item.sc1;
           // Add the game-timed class if the game is a timed game.
@@ -3445,8 +2994,8 @@ class View {
         for (let i = 0; i < BAG_TILES_PER_LINE && count > 0; i++) {
           let tile = bag[ix++];
           if (tile == "?")
-             // Show wildcard tiles '?' as blanks
-             tile = "&nbsp;";
+            // Show wildcard tiles '?' as blanks
+            tile = "&nbsp;";
           cols.push(m("td", m.trust(tile)));
           count--;
         }
@@ -3463,8 +3012,8 @@ class View {
         if (bag.length <= RACK_SIZE)
           cls += ".empty";
         else
-        if (newbag)
-          cls += ".new";
+          if (newbag)
+            cls += ".new";
         return m(".bag",
           { title: 'Flísar sem eftir eru í pokanum' },
           m("table.bag-content" + cls, tiles(bag))
@@ -3524,7 +3073,7 @@ class View {
                 {
                   id: 'blank-close',
                   title: 'Hætta við',
-                  onclick: (ev) => {
+                  onclick: (ev: Event) => {
                     ev.preventDefault();
                     game.cancelBlankDialog();
                   }
@@ -3538,18 +3087,18 @@ class View {
     };
   }
 
-  BoardArea: ComponentFunc<{ model: Model; }> = (initialVnode) => {
+  BoardArea: ComponentFunc<{}> = (initialVnode) => {
     // Collection of components in the board (left-side) area
-    let model = initialVnode.attrs.model;
+    const model = this.model;
     return {
       view: (vnode) => {
-        let game = model.game;
-        let r = [];
+        const game = model.game;
+        let r: m.vnode[] = [];
         if (game) {
           r = [
-            m(this.Board, { model: model }),
-            m(this.Rack, { model: model }),
-            this.vwButtons(model),
+            m(this.Board),
+            m(this.Rack),
+            this.vwButtons(),
             this.vwErrors(game),
             this.vwCongrats(game)
           ];
@@ -3560,22 +3109,22 @@ class View {
     };
   }
 
-  BoardReview: ComponentFunc<{ model: Model; moveIndex: number; }> = (initialVnode) => {
+  BoardReview: ComponentFunc<{ moveIndex: number; }> = (initialVnode) => {
     // The board area within a game review screen
-    let model = initialVnode.attrs.model;
+    const model = this.model;
     return {
       view: (vnode) => {
-        let game = model.game;
-        let r: any[] = [];
+        const game = model.game;
+        let r: m.vnode[] = [];
         if (game) {
           r = [
-            m(this.Board, { model: model }),
-            m(this.Rack, { model: model }),
+            m(this.Board),
+            m(this.Rack),
           ];
           let moveIndex = vnode.attrs.moveIndex;
           if (moveIndex !== null)
             // Don't show navigation buttons if currently at overview (move==null)
-            r.push(this.vwButtonsReview(model, moveIndex));
+            r = r.concat(r, this.vwButtonsReview(moveIndex));
         }
         return m(".board-area", r);
       }
@@ -3591,7 +3140,7 @@ class View {
         let opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
         let t = game.tiles[coord];
-        let classes = [ ".tile" ];
+        let classes = [".tile"];
         let attrs: VnodeAttrs = {};
         if (t.tile == '?')
           classes.push("blanktile");
@@ -3659,7 +3208,7 @@ class View {
           }
         }
         return m(classes.join("."), attrs,
-          [ t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score) ]
+          [t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score)]
         );
       }
     };
@@ -3682,20 +3231,20 @@ class View {
     };
   };
 
-  DropTarget: ComponentFunc<{ model: Model; coord: string; }> = (initialVnode) => {
+  DropTarget: ComponentFunc<{ coord: string; }> = (initialVnode) => {
     // Return a td element that is a target for dropping tiles
+    const model = this.model;
     return {
       view: (vnode) => {
-        let model = vnode.attrs.model;
-        let coord = vnode.attrs.coord;
-        let game = model.game;
+        const coord = vnode.attrs.coord;
+        const game = model.game;
         let cls = "";
         // Mark the cell with the 'blinking' class if it is the drop
         // target of a pending blank tile dialog
         if (game.askingForBlank !== null && game.askingForBlank.to == coord)
           cls += ".blinking";
-        if (coord == game.centerSquare)
-          // Unoccupied center square, first move
+        if (coord == game.startSquare)
+          // Unoccupied start square, first move
           cls += ".center";
         return m("td" + cls,
           {
@@ -3727,7 +3276,7 @@ class View {
               // Move the tile from the source to the destination
               let from = ev.dataTransfer.getData("text");
               game.attemptMove(from, coord);
-              model.updateScale();
+              this.updateScale(game);
               return false;
             },
             onclick: (ev) => {
@@ -3739,7 +3288,7 @@ class View {
                 game.attemptMove(game.selectedSq, coord);
                 game.selectedSq = null;
                 (ev.currentTarget as HTMLElement).classList.remove("sel");
-                model.updateScale();
+                this.updateScale(game);
                 return false;
               }
             },
@@ -3759,23 +3308,24 @@ class View {
     };
   }
 
-  Board: ComponentFunc<{ model: Model; }> = (initialVnode) => {
+  Board: ComponentFunc<{}> = (initialVnode) => {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
 
-    let view = this;
+    const view = this;
+    const model = this.model;
 
     function colid() {
       // The column identifier row
-      let r = [];
+      let r: VnodeChildren = [];
       r.push(m("td"));
       for (let col = 1; col <= 15; col++)
         r.push(m("td", col.toString()));
       return m("tr.colid", r);
     }
 
-    function row(model: Model, rowid: string) {
+    function row(rowid: string) {
       // Each row of the board
-      let r = [];
+      let r: VnodeChildren = [];
       let game = model.game;
       r.push(m("td.rowid", /* { key: "R" + rowid }, */ rowid));
       for (let col = 1; col <= 15; col++) {
@@ -3794,57 +3344,56 @@ class View {
           ));
         else
           // Empty square which is a drop target
-          r.push(m(view.DropTarget, { model: model, coord: coord }));
+          r.push(m(view.DropTarget, { coord: coord }));
       }
       return m("tr", r);
     }
 
-    function allrows(model: Model) {
+    function allrows() {
       // Return a list of all rows on the board
-      let r = [];
+      let r: VnodeChildren = [];
       r.push(colid());
       let rows = "ABCDEFGHIJKLMNO";
       for (let i = 0; i < rows.length; i++)
-        r.push(row(model, rows[i]));
+        r.push(row(rows[i]));
       return r;
     }
 
-    function zoomIn(model: Model) {
-      model.boardScale = 1.5;
+    function zoomIn() {
+      view.boardScale = 1.5;
     }
 
-    function zoomOut(model: Model) {
-      if (model.boardScale != 1.0) {
-        model.boardScale = 1.0;
-        setTimeout(model.resetScale);
+    function zoomOut() {
+      if (view.boardScale != 1.0) {
+        view.boardScale = 1.0;
+        setTimeout(view.resetScale);
       }
     }
 
     return {
       view: (vnode) => {
-        let model = vnode.attrs.model;
-        let scale = model.boardScale || 1.0;
+        let scale = view.boardScale || 1.0;
         let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
-        addPinchZoom(attrs, () => zoomIn(model), () => zoomOut(model));
+        addPinchZoom(attrs, zoomIn, zoomOut);
         if (scale != 1.0)
           attrs.style = "transform: scale(" + scale + ")";
         return m(".board",
           { id: "board-parent" },
-          m("table.board", attrs, m("tbody", allrows(model)))
+          m("table.board", attrs, m("tbody", allrows()))
         );
       }
     };
   }
 
-  Rack: ComponentFunc<{ model: Model; }> = (initialVnode) => {
+  Rack: ComponentFunc<{}> = (initialVnode) => {
     // A rack of 7 tiles
-    let view = this;
+    const view = this;
+    const model = this.model;
     return {
       view: (vnode) => {
-        let model = vnode.attrs.model;
-        let game = model.game;
-        let r = [];
+        const game = model.game;
+        let r: VnodeChildren = [];
         // If review==true, this is a review rack
         // that is not a drop target and whose color reflects the
         // currently shown move.
@@ -3864,55 +3413,59 @@ class View {
             }
             else {
               r.push(
-                m(view.DropTarget, { model: model, coord: coord },
+                m(view.DropTarget, { coord: coord },
                   m(view.Tile, { game: game, coord: coord, opponent: false })
                 )
               );
             }
           }
           else
-          if (review)
-            r.push(m(view.ReviewTile, { game: game, coord: coord }));
-          else
-            r.push(m(view.DropTarget, { model: model, coord: coord }));
+            if (review)
+              r.push(m(view.ReviewTile, { game: game, coord: coord }));
+            else
+              r.push(m(view.DropTarget, { coord: coord }));
         }
         return m(".rack-row", [
-          m(".rack-left", view.vwRackLeftButtons(model)),
+          m(".rack-left", view.vwRackLeftButtons()),
           m(".rack", m("table.board", m("tbody", m("tr", r)))),
-          m(".rack-right", view.vwRackRightButtons(model))
+          m(".rack-right", view.vwRackRightButtons())
         ]);
       }
     };
   };
 
-  vwRackLeftButtons(model: Model) {
+  vwRackLeftButtons() {
     // The button to the left of the rack in the mobile UI
-    var s = this.buttonState(model.game);
+    const model = this.model;
+    const game = model.game;
+    const s = this.buttonState(game);
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
       return this.makeButton(
         "recallbtn", false,
-        () => { model.game.resetRack(); model.updateScale(); },
+        () => { game.resetRack(); this.updateScale(game); },
         "Færa stafi aftur í rekka", glyph("down-arrow")
       );
     if (s.showScramble && !s.showingDialog)
       // Show a 'Scramble rack' button
       return this.makeButton(
         "scramblebtn", false,
-        () => { model.game.rescrambleRack(); },
+        () => { game.rescrambleRack(); },
         "Stokka upp rekka", glyph("random")
       );
     return [];
   }
 
-  vwRackRightButtons(model: Model) {
+  vwRackRightButtons() {
     // The button to the right of the rack in the mobile UI
-    var s = this.buttonState(model.game);
+    const model = this.model;
+    const game = model.game;
+    const s = this.buttonState(game);
     if (s.canPlay && !s.showingDialog)
       // Show a 'Submit move' button, with a Play icon
       return this.makeButton(
         "submitmove", false,
-        () => { model.game.submitMove(); model.updateScale(); },
+        () => { game.submitMove(); this.updateScale(game); },
         "Leika", glyph("play")
       );
     return [];
@@ -3920,15 +3473,15 @@ class View {
 
   vwScore(game: Game) {
     // Shows the score of the current word
-    let sc = [ ".score" ];
+    let sc = [".score"];
     if (game.manual)
       sc.push("manual");
     else
-    if (game.wordGood) {
-      sc.push("word-good");
-      if (game.currentScore >= 50)
-        sc.push("word-great");
-    }
+      if (game.wordGood) {
+        sc.push("word-good");
+        if (game.currentScore >= 50)
+          sc.push("word-great");
+      }
     let txt = (game.currentScore === undefined ? "?" : game.currentScore.toString())
     return m(sc.join("."), { title: txt }, txt);
   }
@@ -3940,7 +3493,7 @@ class View {
     if (score === undefined || (mv[1][0] == "" && mv[1][1] == "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
-    let sc = [ ".score" ];
+    let sc = [".score"];
     if (moveIndex > 0) {
       if (moveIndex % 2 == game.player)
         // Opponent move: show in green
@@ -3952,10 +3505,11 @@ class View {
     return m(sc.join("."), score.toString());
   }
 
-  vwScoreDiff(model: Model, moveIndex: number) {
+  vwScoreDiff(moveIndex: number) {
     // Shows the score of the current move within a game review screen
-    let game = model.game;
-    let sc = [ ".scorediff" ];
+    const model = this.model;
+    const game = model.game;
+    let sc = [".scorediff"];
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     let score = mv ? mv[1][2] : undefined;
     let bestScore = model.bestMoves[model.highlightedMove][1][2];
@@ -3964,7 +3518,7 @@ class View {
       diff = "+" + diff;
     if (score >= bestScore)
       sc.push("posdiff");
-    return m(sc.join("."), { style: { visibility: "visible" }}, diff);
+    return m(sc.join("."), { style: { visibility: "visible" } }, diff);
   }
 
   vwStatsReview(game: Game) {
@@ -3973,10 +3527,10 @@ class View {
       // No stats yet loaded: do it now
       game.loadStats();
 
-    function fmt(p: string, digits?: number, value?: string | number) : string {
+    function fmt(p: string, digits?: number, value?: string | number): string {
       var txt = value;
       if (txt === undefined && game.stats)
-          txt = game.stats[p];
+        txt = game.stats[p];
       if (txt === undefined)
         return "";
       if (typeof txt == "number") {
@@ -4004,19 +3558,19 @@ class View {
       [
         m("div", { style: { position: "relative", width: "100%" } },
           [
-            m(".player", { class: leftPlayerColor, style: { width: "50%" } }, 
+            m(".player", { class: leftPlayerColor, style: { width: "50%" } },
               m(".robot-btn.left",
                 game.autoplayer[0] ?
-                  [ glyph("cog"), nbsp(), game.nickname[0] ]
-                :
+                  [glyph("cog"), nbsp(), game.nickname[0]]
+                  :
                   game.nickname[0]
               )
             ),
             m(".player", { class: rightPlayerColor, style: { width: "50%", "text-align": "right" } },
               m(".robot-btn.right",
                 game.autoplayer[1] ?
-                  [ glyph("cog"), nbsp(), game.nickname[1] ]
-                :
+                  [glyph("cog"), nbsp(), game.nickname[1]]
+                  :
                   game.nickname[1]
               )
             )
@@ -4051,7 +3605,7 @@ class View {
         m(".statscol", { style: { clear: "left" } },
           [
             m("p",
-              [ "Fjöldi leikja: ", m("span", fmt("moves0")) ]
+              ["Fjöldi leikja: ", m("span", fmt("moves0"))]
             ),
             m("p",
               [
@@ -4093,7 +3647,7 @@ class View {
         m(".statscol",
           [
             m("p",
-              [ "Fjöldi leikja: ", m("span", fmt("moves1")) ]
+              ["Fjöldi leikja: ", m("span", fmt("moves1"))]
             ),
             m("p",
               [
@@ -4143,14 +3697,14 @@ class View {
             onmouseover: buttonOver,
             onmouseout: buttonOut
           },
-          [ glyph("play"), " Rekja" ]
+          [glyph("play"), " Rekja"]
         )
       ]
     );
   }
 
   makeButton(
-    cls: string, disabled: boolean, func: () => void, title: string, children?: VnodeChildren, id?: string
+    cls: string, disabled: boolean, func: () => void, title: string, children?: m.vnode[], id?: string
   ) {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
@@ -4174,11 +3728,12 @@ class View {
     );
   }
 
-  vwButtons(model: Model) {
+  vwButtons() {
     // The set of buttons below the game board, alongside the rack
-    let game = model.game;
-    let s = this.buttonState(game);
-    let r = [];
+    const model = this.model;
+    const game = model.game;
+    const s = this.buttonState(game);
+    let r: m.vnode[] = [];
     r.push(m(".word-check" +
       (s.wordGood ? ".word-good" : "") +
       (s.wordBad ? ".word-bad" : "")));
@@ -4196,7 +3751,7 @@ class View {
       r.push(
         this.makeButton(
           "recallbtn", false,
-          () => { game.resetRack(); model.updateScale(); },
+          () => { game.resetRack(); this.updateScale(game); },
           "Færa stafi aftur í rekka", glyph("down-arrow")
         )
       );
@@ -4212,7 +3767,7 @@ class View {
         this.makeButton(
           "submitmove", !s.tilesPlaced || s.showingDialog,
           () => game.submitMove(), // No need to updateScale() here
-          "Leika", [ "Leika", nbsp(), glyph("play") ]
+          "Leika", ["Leika", nbsp(), glyph("play")]
         )
       );
     if (s.showPass)
@@ -4275,7 +3830,7 @@ class View {
           m("img",
             {
               src: '/static/ajax-loader.gif', border: 0,  // !!! FIXME: Incorrect GIF
-              width: 16, height:16
+              width: 16, height: 16
             }
           )
         )
@@ -4283,11 +3838,12 @@ class View {
     return r;
   }
 
-  vwButtonsReview(model: Model, moveIndex: number) {
+  vwButtonsReview(moveIndex: number) {
     // The navigation buttons below the board on the review screen
-    let game = model.game;
-    let numMoves = game.moves.length;
-    let r: VnodeChildren = [];
+    const model = this.model;
+    const game = model.game;
+    const numMoves = game.moves.length;
+    let r: m.vnode[] = [];
     r.push(
       this.makeButton(
         "navbtn", !moveIndex, // Disabled if at moveIndex 0 (initial review dialog)
@@ -4301,7 +3857,7 @@ class View {
         "Sjá fyrri leik",
         m("span",
           { id: "nav-prev-visible" },
-          [ glyph("chevron-left"), " Fyrri" ]
+          [glyph("chevron-left"), " Fyrri"]
         ),
         "navprev"
       )
@@ -4319,7 +3875,7 @@ class View {
         "Sjá næsta leik",
         m("span",
           { id: "nav-next-visible" },
-          [ "Næsti ", glyph("chevron-right") ]
+          ["Næsti ", glyph("chevron-right")]
         ),
         "navnext"
       )
@@ -4327,12 +3883,12 @@ class View {
     // Show the score difference between an actual moveIndex and
     // a particular moveIndex on the best moveIndex list
     if (model.highlightedMove !== null)
-      r.push(this.vwScoreDiff(model, moveIndex));
+      r.push(this.vwScoreDiff(moveIndex));
     r.push(this.vwScoreReview(game, moveIndex));
     return r;
   }
 
-  vwErrors(game: Game) {
+  vwErrors(game: Game): m.vnode | string {
     // Error messages, selectively displayed
     let msg: string = game.currentMessage || "";
     let errorMessages: { [key: string]: VnodeChildren } = {
@@ -4342,8 +3898,8 @@ class View {
       4: "Orð verður að tengjast orði sem fyrir er",
       5: "Reitur þegar upptekinn",
       6: "Ekki má vera eyða í orði",
-      7: [ "'", m("span.errword", msg), "' finnst ekki í orðasafni" ],
-      8: [ "'", m("span.errword", msg), "' finnst ekki í orðasafni" ],
+      7: ["'", m("span.errword", msg), "' finnst ekki í orðasafni"],
+      8: ["'", m("span.errword", msg), "' finnst ekki í orðasafni"],
       9: "Of margir stafir lagðir niður",
       10: "Stafur er ekki í rekkanum",
       11: "Of fáir stafir eftir, skipting ekki leyfð",
@@ -4371,7 +3927,7 @@ class View {
     return "";
   }
 
-  vwCongrats(game: Game) {
+  vwCongrats(game: Game): m.vnode {
     // Congratulations message when a game has been won
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
@@ -4386,7 +3942,7 @@ class View {
 
   vwDialogs(game: Game) {
     // Show prompt dialogs below game board, if any
-    let r = [];
+    let r: m.vnode[] = [];
     if (game.showingDialog === null)
       return r;
     if (game.showingDialog == "chall-info")
@@ -4402,11 +3958,11 @@ class View {
           glyph("exclamation-sign"), nbsp(), "Viltu gefa leikinn?", nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmResign(true) },
-            [ glyph("ok"), " Já" ]
+            [glyph("ok"), " Já"]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmResign(false) },
-            [ glyph("remove"), " Nei" ]
+            [glyph("remove"), " Nei"]
           )
         ]
       ));
@@ -4417,11 +3973,11 @@ class View {
           m("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
           nbsp(), m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [ glyph("ok"), " Já" ]
+            [glyph("ok"), " Já"]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [ glyph("remove"), " Nei" ]
+            [glyph("remove"), " Nei"]
           )
         ]
       ));
@@ -4433,11 +3989,11 @@ class View {
           nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [ glyph("ok"), " Já" ]
+            [glyph("ok"), " Já"]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [ glyph("remove"), " Nei" ]
+            [glyph("remove"), " Nei"]
           )
         ]
       ));
@@ -4464,12 +4020,12 @@ class View {
           m("span.mobile-break", m("br")),
           m("span.yesnobutton",
             { onclick: () => game.confirmChallenge(true) },
-            [ glyph("ok"), " Já" ]
+            [glyph("ok"), " Já"]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton",
             { onclick: () => game.confirmChallenge(false) },
-            [ glyph("remove"), " Nei" ]
+            [glyph("remove"), " Nei"]
           )
         ]
       ));
@@ -4478,18 +4034,18 @@ class View {
 
   makeTabs(id: string, createFunc: (vnode: Vnode) => void, wireHrefs: boolean, vnode: Vnode) {
     // When the tabs are displayed for the first time, wire'em up
-    var tabdiv = document.getElementById(id);
+    let tabdiv = document.getElementById(id);
     if (!tabdiv)
       return;
     // Add bunch of jQueryUI compatible classes
     tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
-    var tabul = document.querySelector("#" + id + " > ul");
+    let tabul = document.querySelector("#" + id + " > ul");
     tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
     tabul.setAttribute("role", "tablist");
-    var tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
-    var tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
-    var ids = [];
-    var lis = []; // The <li> elements
+    let tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
+    let tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
+    let ids: string[] = [];
+    let lis: HTMLElement[] = []; // The <li> elements
     // Iterate over the <a> elements inside the <li> elements inside the <ul>
     for (let i = 0; i < tablist.length; i++) {
       ids.push(tablist[i].getAttribute("href").slice(1));
@@ -4522,28 +4078,29 @@ class View {
     vnode.state.selected = 0;
     if (wireHrefs) {
       // Wire all hrefs that point to single-page URLs
-      let clickURL = (ev: Event, href: string) => {
-        var uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-        var qix = uri.indexOf("?");
-        var route = (qix >= 0) ? uri.slice(0, qix) : uri;
-        var qparams = uri.slice(route.length + 1);
-        var params = qparams.length ? getUrlVars(qparams) : { };
+      const model = this.model;
+      const clickURL = (ev: Event, href: string) => {
+        let uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+        let qix = uri.indexOf("?");
+        let route = (qix >= 0) ? uri.slice(0, qix) : uri;
+        let qparams = uri.slice(route.length + 1);
+        let params = qparams.length ? getUrlVars(qparams) : {};
         m.route.set(route, params);
         if (window.history)
           window.history.pushState({}, "", href); // Enable the back button
         ev.preventDefault();
       };
-      let clickUserPrefs = (ev: Event) => {
-        if ($state.userId != "")
+      const clickUserPrefs = (ev: Event) => {
+        if (model.state.userId != "")
           // Don't show the userprefs if no user logged in
           this.pushDialog("userprefs");
         ev.preventDefault();
       };
-      let clickTwoLetter = (ev: Event) => {
+      const clickTwoLetter = (ev: Event) => {
         selectTab(vnode, 2); // Select tab number 2
         ev.preventDefault();
       };
-      let clickNewBag = (ev: Event) => {
+      const clickNewBag = (ev: Event) => {
         selectTab(vnode, 3); // Select tab number 3
         ev.preventDefault();
       };
@@ -4556,23 +4113,23 @@ class View {
           a.onclick = (ev) => clickURL(ev, href);
         }
         else
-        if (href && href == "$$userprefs$$") {
-          // Special marker indicating that this link invokes
-          // a user preference dialog
-          a.onclick = clickUserPrefs;
-        }
-        else
-        if (href && href == "$$twoletter$$") {
-          // Special marker indicating that this link invokes
-          // the two-letter word list or the opponents tab
-          a.onclick = clickTwoLetter;
-        }
-        else
-        if (href && href == "$$newbag$$") {
-          // Special marker indicating that this link invokes
-          // the explanation of the new bag
-          a.onclick = clickNewBag;
-        }
+          if (href && href == "$$userprefs$$") {
+            // Special marker indicating that this link invokes
+            // a user preference dialog
+            a.onclick = clickUserPrefs;
+          }
+          else
+            if (href && href == "$$twoletter$$") {
+              // Special marker indicating that this link invokes
+              // the two-letter word list or the opponents tab
+              a.onclick = clickTwoLetter;
+            }
+            else
+              if (href && href == "$$newbag$$") {
+                // Special marker indicating that this link invokes
+                // the explanation of the new bag
+                a.onclick = clickNewBag;
+              }
       }
     }
     // If a createFunc was specified, run it now
@@ -4583,257 +4140,6 @@ class View {
   }
 
 } // class View
-
-class Actions {
-
-  model: Model;
-  view: View;
-
-  constructor(model: Model, view: View) {
-    this.model = model;
-    this.view = view;
-    this.initMediaListener();
-    this.initFirebaseListener();
-    this.attachListenerToUser();
-  }
-
-  onNavigateTo(routeName: string, params: Params) {
-    // We have navigated to a new route
-    // If navigating to something other than help,
-    // we need to have a logged-in user
-    let model = this.model;
-    model.routeName = routeName;
-    model.params = params;
-    if (routeName == "game") {
-      // New game route: initiate loading of the game into the model
-      if (model.game !== null) {
-        this.detachListenerFromGame(model.game.uuid);
-      }
-      // Load the game, and attach it to the Firebase listener once it's loaded
-      model.loadGame(params.uuid, () => this.attachListenerToGame(params.uuid));
-    }
-    else
-    if (routeName == "review") {
-      // A game review: detach listener, if any, and load
-      // new game if necessary
-      if (model.game !== null) {
-        // !!! This may cause an extra detach - we assume that's OK
-        this.detachListenerFromGame(model.game.uuid);
-      }
-      // Find out which move we should show in the review
-      let moveParam: string = params.move || "0";
-      // Start with move number 0 by default
-      let move = parseInt(moveParam);
-      if (isNaN(move) || !move || move < 0)
-        move = 0;
-      if (model.game === null || model.game.uuid != params.uuid)
-          // Different game than we had before: load it, and then
-          // fetch the best moves
-          model.loadGame(params.uuid, () => model.loadBestMoves(move));
-      else
-      if (model.game !== null) {
-        // Already have the right game loaded:
-        // Fetch the best moves and show them once they're available
-        model.loadBestMoves(move);
-      }
-    }
-    else {
-      // Not a game route: delete the previously loaded game, if any
-      if (model.game !== null) {
-        this.detachListenerFromGame(model.game.uuid);
-        model.game.cleanup();
-        model.game = null;
-      }
-      if (routeName == "help") {
-        // Make sure that the help HTML is loaded upon first use
-        model.loadHelp();
-      }
-      else
-      if (routeName == "main") {
-        // Force reload of lists
-        model.gameList = null;
-        model.userListCriteria = null;
-        model.userList = null;
-        model.challengeList = null;
-      }
-    }
-  }
-
-  onMoveMessage(json: any) {
-    // Handle a move message from Firebase
-    console.log("Move message received: " + JSON.stringify(json));
-    this.model.handleMoveMessage(json);
-  }
-
-  onUserMessage(json: any) {
-    // Handle a user message from Firebase
-    console.log("User message received: " + JSON.stringify(json));
-    this.model.handleUserMessage(json);
-  }
-
-  onChatMessage(json: { from_userid: string; game: string; msg: string; ts: string; }) {
-    // Handle an incoming chat message
-    console.log("Chat message received: " + JSON.stringify(json));
-    if (json.from_userid != $state.userId) {
-      // The message is from the remote user
-      // Put an alert on the chat tab if it is not selected
-      /*
-      if (markChatMsg()) {
-         // The message was seen: inform the server
-         sendChatSeenMarker();
-      }
-      */
-    }
-    if (this.model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
-      // A chat message was successfully added
-      this.view.notifyChatMessage();
-    }
-  }
-
-  onFullScreen() {
-    // Take action when min-width exceeds 768
-    if (!$state.uiFullscreen) {
-      $state.uiFullscreen = true;
-      this.view.notifyMediaChange(this.model);
-      m.redraw();
-    }
-  }
-
-  onMobileScreen () {
-    if ($state.uiFullscreen) {
-      $state.uiFullscreen = false;
-      this.view.notifyMediaChange(this.model);
-      m.redraw();
-    }
-  }
-
-  onLandscapeScreen() {
-    if (!$state.uiLandscape) {
-      $state.uiLandscape = true;
-      this.view.notifyMediaChange(this.model);
-      m.redraw();
-    }
-  }
-
-  onPortraitScreen() {
-    if ($state.uiLandscape) {
-      $state.uiLandscape = false;
-      this.view.notifyMediaChange(this.model);
-      m.redraw();
-    }
-  }
-
-  mediaMinWidth667(mql: MediaQueryList) {
-     if (mql.matches) {
-        // Take action when min-width exceeds 667
-        // (usually because of rotation from portrait to landscape)
-        // The board tab is not visible, so the movelist is default
-        this.onLandscapeScreen();
-     }
-     else {
-        // min-width is below 667
-        // (usually because of rotation from landscape to portrait)
-        // Make sure the board tab is selected
-        this.onPortraitScreen();
-     }
-  }
-
-  mediaMinWidth768(mql: MediaQueryList) {
-    if (mql.matches) {
-      this.onFullScreen();
-    }
-    else {
-      this.onMobileScreen();
-    }
-  }
-
-  initMediaListener() {
-    // Install listener functions for media changes
-    let mql: MediaQueryList = window.matchMedia("(min-width: 667px)");
-    let view = this;
-    if (mql) {
-      this.mediaMinWidth667(mql);
-      mql.addEventListener("change",
-        function(ev: MediaQueryListEvent) {
-          view.mediaMinWidth667(this);
-        }
-      );
-    }
-    mql = window.matchMedia("(min-width: 768px)");
-    if (mql) {
-      this.mediaMinWidth768(mql);
-      mql.addEventListener("change",
-        function(ev: MediaQueryListEvent) {
-          view.mediaMinWidth768(this);
-        }
-      );
-    }
-  }
-
-  initFirebaseListener() {
-    // Sign into Firebase with the token passed from the server
-    loginFirebase($state.firebaseToken);
-  }
-
-  attachListenerToUser() {
-    if ($state.userId)
-      attachFirebaseListener('user/' + $state.userId, (json) => this.onUserMessage(json));
-  }
-
-  detachListenerFromUser() {
-    // Stop listening to Firebase notifications for the current user
-    if ($state.userId)
-      detachFirebaseListener('user/' + $state.userId);
-  }
-
-  attachListenerToGame(uuid: string) {
-    // Listen to Firebase events on the /game/[gameId]/[userId] path
-    var basepath = 'game/' + uuid + "/" + $state.userId + "/";
-    // New moves
-    attachFirebaseListener(basepath + "move", (json) => this.onMoveMessage(json));
-    // New chat messages
-    attachFirebaseListener(basepath + "chat", (json) => this.onChatMessage(json));
-  }
-
-  detachListenerFromGame(uuid: string) {
-    // Stop listening to Firebase events on the /game/[gameId]/[userId] path
-    var basepath = 'game/' + uuid + "/" + $state.userId + "/";
-    detachFirebaseListener(basepath + "move");
-    detachFirebaseListener(basepath + "chat");
-  }
-
-} // class Actions
-
-function createRouteResolver(actions: Actions) {
-
-  // Return a map of routes to onmatch and render functions
-
-  let model = actions.model;
-  let view = actions.view;
-
-  return model.paths.reduce((acc, item) => {
-    acc[item.route] = {
-
-      // Navigating to a new route
-      onmatch: (params: Params, route: string) => {
-        // Automatically close all dialogs
-        view.popAllDialogs();
-        if ($state.userId == "" && item.mustLogin)
-          // Attempting to navigate to a new path that
-          // requires a login, but the user hasn't logged
-          // in: go to the login route
-          m.route.set("/login");
-        else
-          actions.onNavigateTo(item.name, params);
-      },
-
-      // Render a view on a model
-      render: () => view.appView(model, actions)
-
-    };
-    return acc;
-  }, {});
-}
 
 // General-purpose Mithril components
 
@@ -4853,7 +4159,7 @@ const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVn
             width: 89 * scale, height: 40 * scale,
             src: '/static/explo-logo.svg'
           }
-        :
+          :
           {
             alt: 'Explo',
             width: 23 * scale, height: 40 * scale,
@@ -5006,28 +4312,35 @@ const MultiSelection: ComponentFunc<{
 
 };
 
-const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = (initialVnode) => {
+const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boolean; }> = (initialVnode) => {
 
   // Shows an icon in grey or green depending on whether a given user
-  // is online or not
+  // is online or not. If attrs.online is given (i.e. not undefined),
+  // that value is used and displayed; otherwise the server is asked.
 
-  let online = false;
-  const id = initialVnode.attrs.id;
-  const userId = initialVnode.attrs.userId;
+  const attrs = initialVnode.attrs;
+  const askServer = attrs.online === undefined;
+  let online = attrs.online ? true : false;
+  const id = attrs.id;
+  const userId = attrs.userId;
 
   function _update() {
-    m.request({
-      method: "POST",
-      url: "/onlinecheck",
-      body: { user: userId }
-    })
-    .then((json: { online: boolean; }) => { online = json && json.online; });
+    if (askServer)
+      m.request({
+        method: "POST",
+        url: "/onlinecheck",
+        body: { user: userId }
+      })
+      .then((json: { online: boolean; }) => { online = json && json.online; });
   }
 
   return {
     oninit: _update,
 
     view: (vnode) => {
+      if (!askServer)
+        // Display the state of the online attribute as-is
+        online = vnode.attrs.online;
       return m("span",
         {
           id: id,
@@ -5040,7 +4353,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; }> = (initialV
 
 };
 
-const EloPage: ComponentFunc<{ model: Model; view: View; id: string; key: string; }> = (initialVnode) => {
+const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initialVnode) => {
 
   // Show the header of an Elo ranking list and then the list itself
 
@@ -5091,7 +4404,6 @@ const EloPage: ComponentFunc<{ model: Model; view: View; id: string; key: string
           {
             id: vnode.attrs.id,
             sel: sel,
-            model: vnode.attrs.model,
             view: vnode.attrs.view
           }
         )
@@ -5103,10 +4415,12 @@ const EloPage: ComponentFunc<{ model: Model; view: View; id: string; key: string
 
 const EloList: ComponentFunc<{
   view: View;
-  model: Model;
   id: string;
   sel: number;
 }> = (initialVnode) => {
+
+  const model = initialVnode.attrs.view.model;
+  const state = model.state;
 
   return {
 
@@ -5120,7 +4434,7 @@ const EloList: ComponentFunc<{
           // Return a rank string or dash if no rank or not meaningful
           // (i.e. if the reference, such as the number of games, is zero)
           if (rank === 0 || (ref !== undefined && ref === 0))
-              return "--";
+            return "--";
           return rank.toString();
         }
 
@@ -5129,29 +4443,29 @@ const EloList: ComponentFunc<{
         let ch = "";
         let info = nbsp();
         let newbag = item.newbag;
-        if (item.userid != $state.userId && !item.inactive)
+        if (item.userid != state.userId && !item.inactive)
           ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
         if (isRobot) {
-          nick = m("span", [ glyph("cog"), nbsp(), nick ]);
-          newbag = $state.newBag; // Imitates the logged-in user
+          nick = m("span", [glyph("cog"), nbsp(), nick]);
+          newbag = state.newBag; // Imitates the logged-in user
         }
         else
-        if (item.userid != $state.userId)
-          info = m("span.usr-info",
-            {
-              onclick: () => {
-                vnode.attrs.view.showUserInfo(item.userid, item.nick, item.fullname);
+          if (item.userid != state.userId)
+            info = m("span.usr-info",
+              {
+                onclick: () => {
+                  vnode.attrs.view.showUserInfo(item.userid, item.nick, item.fullname);
+                }
               }
-            }
-          );
+            );
         if (item.fairplay && !isRobot)
           nick = m("span",
-            [ m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick ]);
+            [m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick]);
 
         return m(".listitem",
           {
             key: vnode.attrs.sel + i,
-            className : (i % 2 === 0 ? "oddlist" : "evenlist")
+            className: (i % 2 === 0 ? "oddlist" : "evenlist")
           },
           [
             m("span.list-ch", ch),
@@ -5172,21 +4486,20 @@ const EloList: ComponentFunc<{
         );
       }
 
-      const model = vnode.attrs.model;
       let list: UserListItem[] = [];
       if (model.userList === undefined) {
         // Loading in progress
         // pass
       }
       else
-      if (model.userList === null || model.userListCriteria.query != "elo" ||
-        model.userListCriteria.spec != vnode.attrs.sel.toString()) {
-        // We're not showing the correct list: request a new one
-        model.loadUserList({ query: "elo", spec: vnode.attrs.sel.toString() }, true);
-      }
-      else {
-        list = model.userList;
-      }
+        if (model.userList === null || model.userListCriteria.query != "elo" ||
+          model.userListCriteria.spec != vnode.attrs.sel.toString()) {
+          // We're not showing the correct list: request a new one
+          model.loadUserList({ query: "elo", spec: vnode.attrs.sel.toString() }, true);
+        }
+        else {
+          list = model.userList;
+        }
       return m("div", { id: vnode.attrs.id }, list.map(itemize));
     }
 
@@ -5195,7 +4508,7 @@ const EloList: ComponentFunc<{
 
 const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = (initialVnode) => {
   // Shows a list of recent games, stored in vnode.attrs.recentList
-  
+
   function itemize(item: RecentListItem, i: number) {
 
     // Generate a list item about a recently completed game
@@ -5209,8 +4522,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           if (item.days > 1)
             duration = item.days.toString() + " dagar";
           else
-          if (item.days == 1)
-            duration = "1 dagur";
+            if (item.days == 1)
+              duration = "1 dagur";
           if (item.hours > 0) {
             if (duration.length)
               duration += " og ";
@@ -5237,9 +4550,9 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
     }
 
     // Show the Elo point adjustments resulting from the game
-    var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
-    var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
-    var eloAdjClass, eloAdjHumanClass;
+    let eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
+    let eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
+    let eloAdjClass: string, eloAdjHumanClass: string;
     // Find out the appropriate class to use depending on the adjustment sign
     if (item.elo_adj !== null)
       if (item.elo_adj > 0) {
@@ -5247,24 +4560,24 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         eloAdjClass = "elo-win";
       }
       else
-      if (item.elo_adj < 0)
-        eloAdjClass = "elo-loss";
-      else {
-        eloAdjClass = "elo-neutral";
-        eloAdj = glyph("stroller", { title: 'Byrjandi' });
-      }
+        if (item.elo_adj < 0)
+          eloAdjClass = "elo-loss";
+        else {
+          eloAdjClass = "elo-neutral";
+          eloAdj = glyph("stroller", { title: 'Byrjandi' });
+        }
     if (item.human_elo_adj !== null)
       if (item.human_elo_adj > 0) {
         eloAdjHuman = "+" + eloAdjHuman;
         eloAdjHumanClass = "elo-win";
       }
       else
-      if (item.human_elo_adj < 0)
-        eloAdjHumanClass = "elo-loss";
-      else {
-        eloAdjHumanClass = "elo-neutral";
-        eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
-      }
+        if (item.human_elo_adj < 0)
+          eloAdjHumanClass = "elo-loss";
+        else {
+          eloAdjHumanClass = "elo-neutral";
+          eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
+        }
     eloAdj = m("span",
       { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
       eloAdj
@@ -5286,7 +4599,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           ),
           m("span.list-ts-short", item.ts_last_move),
           m("span.list-nick",
-            item.opp_is_robot ? [ glyph("cog"), nbsp(), item.opp ] : item.opp
+            item.opp_is_robot ? [glyph("cog"), nbsp(), item.opp] : item.opp
           ),
           m("span.list-s0", item.sc0),
           m("span.list-colon", ":"),
@@ -5295,7 +4608,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           m("span.list-elo-adj", eloAdj),
           m("span.list-duration", durationDescription()),
           m("span.list-manual",
-            item.manual ? { title: "Keppnishamur" } : { },
+            item.manual ? { title: "Keppnishamur" } : {},
             glyph("lightbulb", undefined, !item.manual)
           )
         ]
@@ -5314,7 +4627,6 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
 };
 
 const UserInfoDialog: ComponentFunc<{
-  model: Model;
   view: View;
   userid: string;
   nick: string;
@@ -5324,13 +4636,14 @@ const UserInfoDialog: ComponentFunc<{
   // A dialog showing the track record of a given user, including
   // recent games and total statistics
 
+  const model = initialVnode.attrs.view.model;
   let stats: { favorite?: boolean; friend?: boolean } = {};
   let recentList: RecentListItem[] = [];
   let versusAll = true; // Show games against all opponents or just the current user?
 
   function _updateStats(vnode: typeof initialVnode) {
     // Fetch the statistics of the given user
-    vnode.attrs.model.loadUserStats(vnode.attrs.userid,
+    model.loadUserStats(vnode.attrs.userid,
       (json: { result: number; favorite?: boolean; friend?: boolean; }) => {
         if (json && json.result === 0)
           stats = json;
@@ -5342,9 +4655,9 @@ const UserInfoDialog: ComponentFunc<{
 
   function _updateRecentList(vnode: typeof initialVnode) {
     // Fetch the recent game list of the given user
-    vnode.attrs.model.loadUserRecentList(vnode.attrs.userid,
-      versusAll ? null : $state.userId,
-      (json: { result: number; recentlist: RecentListItem[]; } ) => {
+    model.loadUserRecentList(vnode.attrs.userid,
+      versusAll ? null : model.state.userId,
+      (json: { result: number; recentlist: RecentListItem[]; }) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
         else
@@ -5386,7 +4699,7 @@ const UserInfoDialog: ComponentFunc<{
                     onclick: (ev) => {
                       // Toggle the favorite setting
                       stats.favorite = !stats.favorite;
-                      vnode.attrs.model.markFavorite(vnode.attrs.userid, stats.favorite);
+                      model.markFavorite(vnode.attrs.userid, stats.favorite);
                       ev.preventDefault();
                     }
                   },
@@ -5442,7 +4755,7 @@ const UserInfoDialog: ComponentFunc<{
               {
                 id: 'usr-info-close',
                 title: 'Loka',
-                onclick: () => { vnode.attrs.view.popDialog(); }
+                onclick: (ev: Event) => { vnode.attrs.view.popDialog(); ev.preventDefault(); }
               },
               glyph("ok")
             )
@@ -5461,7 +4774,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
 
     view: (vnode) => {
       // Populate the highest score/best word field
-      let json = vnode.attrs.ownStats || { };
+      let json = vnode.attrs.ownStats || {};
       let best = [];
       if (json.highest_score) {
         best.push("Hæsta skor ");
@@ -5483,7 +4796,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
         // Make sure blank tiles get a different color
         for (let i = 0; i < bw.length; i++)
           if (bw[i] == '?') {
-            s.push(m("span.blanktile", bw[i+1]));
+            s.push(m("span.blanktile", bw[i + 1]));
             i += 1;
           }
           else
@@ -5519,7 +4832,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
         var txt = (val === undefined) ? "" : val.toString();
         if (suffix !== undefined)
           txt += suffix;
-        return icon ? [ glyph(icon), nbsp(), txt ] : txt;
+        return icon ? [glyph(icon), nbsp(), txt] : txt;
       }
 
       // Display statistics about this user
@@ -5554,7 +4867,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             ]
           ),
           sel == 1 ? m("div",
-            { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block"} },
+            { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: 'Elo-stig' },
                 s ? vwStat(s.human_elo, "crown") : ""),
@@ -5567,7 +4880,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             ]
           ) : "",
           sel == 2 ? m("div",
-            { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block"} },
+            { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: 'Elo-stig' },
                 s ? vwStat(s.elo, "crown") : ""),
@@ -5587,7 +4900,6 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 };
 
 const PromoDialog: ComponentFunc<{
-  model: Model;
   view: View;
   kind: string;
   initFunc: () => void;
@@ -5595,16 +4907,18 @@ const PromoDialog: ComponentFunc<{
 
   // A dialog showing promotional content fetched from the server
 
+  const view = initialVnode.attrs.view;
+  const model = view.model;
   let html = "";
 
   function _fetchContent(vnode: typeof initialVnode) {
     // Fetch the content
-    vnode.attrs.model.loadPromoContent(
+    model.loadPromoContent(
       vnode.attrs.kind, (contentHtml) => { html = contentHtml; }
     );
   }
 
-  function _onUpdate(vnode: Vnode, view: View, initFunc: () => void) {
+  function _onUpdate(vnode: Vnode, initFunc: () => void) {
     var noButtons = vnode.dom.getElementsByClassName("btn-promo-no") as HTMLCollectionOf<HTMLElement>;
     // Override onclick, onmouseover and onmouseout for No buttons
     for (let i = 0; i < noButtons.length; i++) {
@@ -5628,7 +4942,6 @@ const PromoDialog: ComponentFunc<{
     oninit: _fetchContent,
 
     view: (vnode) => {
-      let view = vnode.attrs.view;
       let initFunc = vnode.attrs.initFunc;
       return m(".modal-dialog",
         { id: "promo-dialog", style: { visibility: "visible" } },
@@ -5637,7 +4950,7 @@ const PromoDialog: ComponentFunc<{
           m("div",
             {
               id: "promo-content",
-              onupdate: (vnode) => _onUpdate(vnode, view, initFunc)
+              onupdate: (vnode) => _onUpdate(vnode, initFunc)
             },
             m.trust(html)
           )
@@ -5742,7 +5055,9 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
   };
 };
 
-const DialogButton: ComponentFunc<{}> = (initialVnode) => {
+const DialogButton: ComponentFunc<{
+  id: string; title: string; tabindex: number; onclick: EventHandler;
+}> = (initialVnode) => {
   return {
     view: (vnode) => {
       let attrs: VnodeAttrs = {
@@ -5760,7 +5075,7 @@ const DialogButton: ComponentFunc<{}> = (initialVnode) => {
 // Utility functions
 
 function escapeHtml(string: string): string {
-   /* Utility function to properly encode a string into HTML */
+  /* Utility function to properly encode a string into HTML */
   const entityMap = {
     "&": "&amp;",
     "<": "&lt;",
@@ -5770,20 +5085,6 @@ function escapeHtml(string: string): string {
     "/": '&#x2F;'
   };
   return String(string).replace(/[&<>"'/]/g, (s) => entityMap[s]);
-}
-
-function replaceEmoticons(str: string): string {
-  // Replace all emoticon shortcuts in the string str with a corresponding image URL
-  const emoticons = $state.emoticons;
-  for (let i = 0; i < emoticons.length; i++)
-    if (str.indexOf(emoticons[i].icon) >= 0) {
-      // The string contains the emoticon: prepare to replace all occurrences
-      let img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
-      // Re the following trick, see https://stackoverflow.com/questions/1144783/
-      // replacing-all-occurrences-of-a-string-in-javascript
-      str = str.split(emoticons[i].icon).join(img);
-    }
-  return str;
 }
 
 function getInput(id: string): string {
@@ -5806,11 +5107,11 @@ function updateTabVisibility(vnode: Vnode) {
   const selected: number = vnode.state.selected;
   const lis = vnode.state.lis;
   vnode.state.ids.map((id: string, i: number) => {
-      document.getElementById(id).setAttribute("style", "display: " +
-        (i == selected ? "block" : "none"));
-      lis[i].classList.toggle("ui-tabs-active", i == selected);
-      lis[i].classList.toggle("ui-state-active", i == selected);
-    }
+    document.getElementById(id).setAttribute("style", "display: " +
+      (i == selected ? "block" : "none"));
+    lis[i].classList.toggle("ui-tabs-active", i == selected);
+    lis[i].classList.toggle("ui-state-active", i == selected);
+  }
   );
 }
 
@@ -5829,14 +5130,14 @@ function updateSelection(vnode: Vnode) {
 
 // Get values from a URL query string
 function getUrlVars(url: string) {
-   let hashes = url.split('&');
-   let vars: Params = { };
-   for (let i = 0; i < hashes.length; i++) {
-      let hash = hashes[i].split('=');
-      if (hash.length == 2)
-        vars[hash[0]] = decodeURIComponent(hash[1]);
-   }
-   return vars;
+  let hashes = url.split('&');
+  let vars: Params = {};
+  for (let i = 0; i < hashes.length; i++) {
+    let hash = hashes[i].split('=');
+    if (hash.length == 2)
+      vars[hash[0]] = decodeURIComponent(hash[1]);
+  }
+  return vars;
 }
 
 function buttonOver(ev: Event) {
@@ -5867,11 +5168,11 @@ function glyphGrayed(icon: string, attrs?: object) {
 }
 
 // Utility function: inserts non-breaking space
-function nbsp(n?: number): VnodeChildren {
+function nbsp(n?: number): m.vnode {
   if (!n || n == 1)
     return m.trust("&nbsp;");
-  let r: Vnode[] = [];
+  let r: m.vnode[] = [];
   for (let i = 0; i < n; i++)
     r.push(m.trust("&nbsp;"));
-  return r;
+  return m.fragment({}, r);
 }

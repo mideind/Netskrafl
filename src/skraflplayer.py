@@ -208,7 +208,7 @@ class Axis:
 
     def mark_anchor(self, index: int) -> None:
         """Force the indicated square to be an anchor. Used in first move
-        to mark the center square."""
+        to mark the start square."""
         self._sq[index].mark_anchor()
 
     def init_crosschecks(self) -> None:

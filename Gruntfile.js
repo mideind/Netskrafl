@@ -85,6 +85,10 @@ module.exports = function (grunt) {
             src: 'static/built/channel.js',
             dest: 'static/built/channel.min.js'
          },
+         wait_js: {
+            src: 'static/built/wait.js',
+            dest: 'static/built/wait.min.js'
+         },
          util_js: {
             src: 'static/built/util.js',
             dest: 'static/built/util.min.js'
@@ -150,6 +154,11 @@ module.exports = function (grunt) {
          uglify_util: {
             files: ['static/built/util.js'],
             tasks: ['uglify:util_js'],
+            options: { spawn: false }
+         },
+         uglify_wait: {
+            files: ['static/built/wait.js'],
+            tasks: ['uglify:wait_js'],
             options: { spawn: false }
          },
          less: {

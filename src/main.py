@@ -17,7 +17,7 @@
 
     The User and Game classes are found in skraflgame.py.
 
-    The web client code is found in netskrafl.js.
+    The web client code is found in static/src/page.ts and static/src/game.ts.
 
     The responsive web content routes are defined in web.py.
 
@@ -62,8 +62,8 @@ from basics import (
     FIREBASE_APP_ID,
 )
 from dawgdictionary import Wordbase
-from api import api
-from web import web
+from api import api_blueprint
+from web import web_blueprint
 
 
 if running_local:
@@ -90,10 +90,13 @@ if running_local:
 # Since we're running from the /src directory, reset Flask's
 # static folder to be relative from the base project directory
 app = Flask(__name__, static_folder="../static")
+# The following cast to Any can be removed once Flask typing becomes
+# more robust and/or compatible with Pylance
+cast_app = cast(Any, app)
 
 # Wrap the WSGI app to insert the Google App Engine NDB client context
 # into each request
-setattr(app, "wsgi_app", ndb_wsgi_middleware(cast(Any, app).wsgi_app))
+setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
 CORS(
@@ -112,7 +115,8 @@ flask_config = dict(
     DEBUG=running_local,
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
-    # Be careful! Setting COOKIE_SAMESITE to "None" diables web login (OAuth2 flow)
+    # Be careful! Setting COOKIE_SAMESITE to "None"
+    # disables web login (OAuth2 flow)
     SESSION_COOKIE_SAMESITE="Lax",
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
@@ -140,17 +144,17 @@ with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as
     app.secret_key = f.read()
 
 # Load the Flask configuration
-cast(Any, app).config.update(**flask_config)
+cast_app.config.update(**flask_config)
 
 # Register the Flask blueprints for the api and web routes
-app.register_blueprint(api)
-app.register_blueprint(web)
+app.register_blueprint(api_blueprint)
+app.register_blueprint(web_blueprint)
 
 # Initialize the OAuth wrapper
 init_oauth(app)
 
 
-@app.template_filter("stripwhite")  # type: ignore
+@app.template_filter("stripwhite")
 def stripwhite(s: str) -> str:
     """ Flask/Jinja2 template filter to strip out consecutive whitespace """
     # Convert all consecutive runs of whitespace of 1 char or more into a single space
@@ -168,7 +172,7 @@ def add_headers(response: Response) -> Response:
     return response
 
 
-@app.context_processor  # type: ignore
+@app.context_processor
 def inject_into_context() -> Dict[str, Union[bool, str]]:
     """ Inject variables and functions into all Flask contexts """
     return dict(
@@ -184,7 +188,7 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 
 
 # Flask cache busting for static .css and .js files
-@app.url_defaults  # type: ignore
+@cast_app.url_defaults
 def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     """Add a ?h=XXX parameter to URLs for static .js and .css files,
     where XXX is calculated from the file timestamp"""
@@ -195,8 +199,8 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")
-        if filename and filename.endswith((".js", ".css")):
-            static_folder = web.static_folder or "."
+        if filename and filename.endswith((".js", ".css")) and not filename.startswith("built/"):
+            static_folder = web_blueprint.static_folder or "."
             param_name = "h"
             # Add underscores in front of the param name until it is unique
             while param_name in values:
@@ -204,7 +208,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
             values[param_name] = static_file_hash(os.path.join(static_folder, filename))
 
 
-@app.route("/_ah/warmup")
+@cast_app.route("/_ah/warmup")
 def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
@@ -215,7 +219,7 @@ def warmup() -> ResponseType:
     return "", 200
 
 
-@app.route("/_ah/start")
+@cast_app.route("/_ah/start")
 def start() -> ResponseType:
     """ App Engine is starting a fresh instance """
     logging.info(
@@ -226,7 +230,7 @@ def start() -> ResponseType:
     return "", 200
 
 
-@app.route("/_ah/stop")
+@cast_app.route("/_ah/stop")
 def stop() -> ResponseType:
     """ App Engine is shutting down an instance """
     logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))

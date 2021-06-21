@@ -11,13 +11,13 @@ export {
   Component, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
 };
 
-type mClass = string | ComponentFunc<> | typeof Link;
+type mClass = string | typeof Link;
 
-declare function m(cls: mClass): any;
-declare function m(cls: mClass, attrs: mAttrs): any;
-declare function m(cls: mClass, children: VnodeChildren): any;
-declare function m(cls: mClass, attrs: mAttrs, children: VnodeChildren): any;
 declare function m(cls: ComponentFunc<T>, attrs: T, children?: VnodeChildren): any;
+declare function m(cls: mClass, attrs: mAttrs, children: VnodeChildren): any;
+declare function m(cls: mClass, children: VnodeChildren): any;
+declare function m(cls: mClass, attrs: mAttrs): any;
+declare function m(cls: mClass): any;
 
 declare namespace m {
   export { hyperscript as m };

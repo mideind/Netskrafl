@@ -18,7 +18,7 @@
 @navbar-height: 83px;
 @mobile-height-net: (@mobile-height - @navbar-height);
 
-@board-cell-big: 32px;
+@board-cell-big: 30px;
 @board-cell-small: 21px;
 
 @rack-cell-big: 32px;
@@ -429,27 +429,27 @@ tr.colid td {
    background-color: @triple-letter;
 }
 
-table.board td.dw {
+table.board td.dw:empty {
    /* Double word score */
    background-color: @double-word;
 }
 
-table.board td.tw {
+table.board td.tw:empty {
    /* Triple word score */
    background-color: @triple-word;
 }
 
-table.board td.dl {
+table.board td.dl:empty {
    /* Double letter score */
    background-color: @double-letter;
 }
 
-table.board td.tl {
+table.board td.tl:empty {
    /* Triple letter score */
    background-color: @triple-letter;
 }
 
-table.board td.center {
+table.board td.center:empty {
    font-family: 'Glyphicons Regular';
    text-align: center;
    font-size: 17px;
@@ -457,8 +457,8 @@ table.board td.center {
    color: @board-center;
 }
 
-table.board td.center:before {
-   content: "\E050"; /* Star */
+table.board td.center:empty::before {
+   content: "\E473"; /* Target */
 }
 
 table.board {
@@ -577,12 +577,14 @@ div.tile.ui-draggable-dragging {
    border-color: @cell-border;
    border-width: 1.5px;
    border-radius: 2px;
-   box-shadow: inset 0px 0px 3px 1px #afb7ca87;
+   // box-shadow: inset 0px 0px 3px 1px #afb7ca87;
 }
 
 .rack td {
    min-width: @rack-cell-small;
    width: @rack-cell-small + 2px;
+   border-width: 0px;
+   box-shadow: 2px 2px 4px 0 #afb7cad0;
 }
 
 tr.colid {
@@ -763,7 +765,7 @@ div.recallbtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @racktile;
+   background-color: @recall-btn;
    display: none;
 }
 
@@ -789,7 +791,7 @@ div.submitexchange {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @freshtile;
+   background-color: @exchange-btn;
    display: none;
 }
 
@@ -1039,15 +1041,14 @@ div.login-btn-large {
    font-weight: 400;
    width: 160px;
    color: white;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    margin: 0;
    margin-top: 12px;
    margin-left: 6px;
    padding: 6px;
-   padding-top: 9px;
-   padding-bottom: 9px;
+   padding-top: 8px;
+   padding-bottom: 12px;
    border-radius: 5px;
-   vertical-align: middle;
    cursor: pointer;
    float: right;
 }
@@ -1066,7 +1067,7 @@ div.login-btn-small {
    font-size: 19px;
    font-weight: 400;
    color: white;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    margin-left: auto;
    margin-right: auto;
    margin-top: 12px;
@@ -1222,7 +1223,7 @@ div.movelist-container {
    left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - 3 * @margin-small;
-   background-color: @board-background;
+   background-color: @background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
    z-index: 6;
@@ -1325,10 +1326,11 @@ div.opp-turn {
 
 div#congrats {
    .bottom-message;
+   display: none; /* Only displayed on fullscreen */
 }
 
 div#congrats span.glyphicon-bookmark {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.resign {
@@ -1353,7 +1355,7 @@ div.chall {
 
 div.chall-info {
    .bold-bottom-message;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    bottom: 70px;
    width: @mobile-width - 2 * @margin-small - 48px;
    padding: 0 24px 4px;
@@ -1361,7 +1363,7 @@ div.chall-info {
 
 div.exchange {
    .bold-bottom-message;
-   background-color: darken(@freshtile, 10%);
+   background-color: @exchange-btn;
 }
 
 div.gameinfo {
@@ -1381,7 +1383,7 @@ input.chat-txt {
    height: 24px;
    font-weight: normal;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 1px;
    border-radius: 3px;
    margin-top: 1px;
@@ -1455,7 +1457,7 @@ div.twoletter-word {
 }
 
 div.twoletter-word b {
-   background-color: darken(@freshtile, 5%);
+   background-color: @close-btn;
    color: white;
    padding-left: 2px;
    padding-right: 2px;
@@ -1608,7 +1610,7 @@ div.tilecount {
 div.tc {
    display: inline-block;
    text-align: left;
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div.tc.losing {
@@ -1920,7 +1922,7 @@ div#manual-toggler {
 div#chall-ok {
    right: 12px;
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#chall-cancel {
@@ -1976,7 +1978,7 @@ div.btn-promo-yes {
    bottom: 48px;
    right: 232px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-promo-no {
@@ -1986,7 +1988,7 @@ div.btn-promo-no {
    bottom: 3 * @margin-small;
    right: 3 * @margin-small;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.challenge {
@@ -2333,7 +2335,7 @@ div.fairplay {
    position: absolute;
    width: 100%;
    text-align: center;
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.games-item {
@@ -2601,19 +2603,19 @@ div #gamestarted {
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, @player, @board-background, @board-background);
+   background: linear-gradient(to right, @player, @background, @background);
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @autoplayer);
+   background: linear-gradient(to right, @background, @background, @autoplayer);
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @player);
+   background: linear-gradient(to right, @background, @background, @player);
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @autoplayer, @board-background, @board-background);
+   background: linear-gradient(to right, @autoplayer, @background, @background);
 }
 
 span.score {
@@ -2716,7 +2718,7 @@ div.pass-last span.yesnobutton {
 }
 
 div.exchange span.yesnobutton {
-   color: darken(@freshtile, 10%);
+   color: @exchange-btn;
 }
 
 div.chall span.yesnobutton {
@@ -2744,23 +2746,23 @@ div.score.manual {
 }
 
 @keyframes colorPulse {
-   0% {color: @freshtile;}
+   0% {color: @word-good;}
    40% {color: @alert; transform: scale(1.05);}
    60% {color: @alert; transform: scale(1.05);}
-   100% {color: @freshtile;}
+   100% {color: @word-good;}
 }
 
 @-webkit-keyframes colorPulse {
-   0% {color: @freshtile;}
+   0% {color: @word-good;}
    40% {color: @alert; transform: scale(1.05);}
    60% {color: @alert; transform: scale(1.05);}
-   100% {color: @freshtile;}
+   100% {color: @word-good;}
 }
 
 div.score.word-great {
    animation: colorPulse 1.5s infinite;
    -webkit-animation: colorPulse 1.5s infinite;
-   border-color: darken(@freshtile, 10%);
+   border-color: @word-good;
 }
 
 div.score.green {
@@ -2913,7 +2915,7 @@ div.scorediff {
 }
 
 div.posdiff {
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.navbtn {
@@ -2975,7 +2977,7 @@ span#total0, span#total1 {
 }
 
 div#promo-content h2 {
-   color: darken(@freshtile, 10%);
+   color: @close-btn;
 }
 
 div#promo-content h2 span.glyphicon-coffee-cup,
@@ -2994,7 +2996,7 @@ div.btn-krafla-yes {
    bottom: 48px;
    right: 48px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-thanks {
@@ -3004,7 +3006,7 @@ div.btn-thanks {
    bottom: 24px;
    right: 24px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-cancel-yes {
@@ -3024,7 +3026,7 @@ div.btn-cancel-no {
    bottom: 24px;
    right: 208px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 .tabbed-page a:link, .tabbed-page a:visited {
@@ -3189,7 +3191,7 @@ div.user-cat span {
    cursor: pointer;
    padding-left: 4px;
    padding-top: 1px;
-   padding-bottom: 1px;
+   padding-bottom: 4px;
    padding-right: 6px;
    margin: 2px;
    .noselect;
@@ -3211,7 +3213,7 @@ span.versus-cat span {
    cursor: pointer;
    padding-left: 6px;
    padding-top: 1px;
-   padding-bottom: 1px;
+   padding-bottom: 4px;
    padding-right: 6px;
    margin: 2px;
    .noselect;
@@ -3266,10 +3268,10 @@ span.fairplay-btn {
    .glyphicon;
    font-size: 15px;
    line-height: 15px;
-   top: 0px;
+   top: -2px;
    cursor: default;
    color: white;
-   background-color: @freshtile;
+   background-color: @close-btn;
    border-radius: 5px;
    padding: 4px;
    margin: 0 4px 0 0;
@@ -3284,7 +3286,7 @@ span.fairplay-btn.large {
    border-width: 1px;
    border-color: white;
    border-style: solid;
-   padding-bottom: 8px;
+   padding-bottom: 6px;
 }
 
 span.manual-btn {
@@ -3335,11 +3337,11 @@ span.elo-btn.invisible {
 }
 
 span.elo-btn.elo-win {
-   background-color: lighten(@freshtile, 10%); /* darken 10% fade 65% */
+   background-color: lighten(@freshtile, 10%);
 }
 
 span.elo-btn.elo-loss {
-   background-color: lighten(@triple-word, 15%); /* fade 65% */
+   background-color: lighten(@triple-word, 15%);
 }
 
 span.elo-btn.elo-neutral {
@@ -3375,7 +3377,7 @@ span.usr-info {
    top: 0px;
    cursor: pointer;
    color: white;
-   background-color: @freshtile;
+   background-color: @close-btn;
    border-radius: 5px;
    padding: 4px;
    margin: 0;
@@ -3406,7 +3408,7 @@ p span.glyphicon.glyphicon-flag,
 #recentlist span.glyphicon.glyphicon-bookmark,
 #usr-recent span.glyphicon.glyphicon-bookmark,
 #gamelist span.glyphicon.glyphicon-bookmark {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 span.glyphicon.glyphicon-lightbulb.grayed {
@@ -3466,12 +3468,12 @@ div.modal-close {
 
 div#usr-info-close {
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#load-game {
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#wait-cancel {
@@ -3562,6 +3564,8 @@ h2#usr-info-fullname {
 span.vbar {
    color: @background;
    font-size: 2em;
+   padding-left: 10px;
+   padding-right: 10px;
 }
 
 h1.usr-info-icon {
@@ -3570,7 +3574,7 @@ h1.usr-info-icon {
 }
 
 h1.usr-info-icon span.glyphicon-coffee-cup {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.usr-info-fav {
@@ -3668,8 +3672,8 @@ div.stats-games {
 }
 
 div.stats-win-ratio {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @close-btn;
+   border-color: @close-btn;
 }
 
 div.stats-avg-score {
@@ -3740,13 +3744,13 @@ div.chall-time {
    font-size: 20px;
    font-weight: 700;
    line-height: 22px;
-   background-color: @board-background;
+   background-color: #cccccc;
    color: white;
    cursor: pointer;
 }
 
 div.chall-time.selected {
-   background-color: @racktile;
+   background-color: @pass-btn;
    color: black;
 }
 
@@ -3755,7 +3759,7 @@ div.chall-time:hover {
 }
 
 div.chall-time.selected:hover {
-   background-color: @racktile;
+   background-color: @double-word;
 }
 
 div.chall-time span.glyphicon-time {
@@ -3778,7 +3782,7 @@ span#chall-online:before {
 }
 
 span#chall-online.online {
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#chall-newbag {
@@ -3836,7 +3840,7 @@ div#user-logout {
 div#user-friend {
    left: 180px;
    width: 280px; /* Override */
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div#user-unfriend {
@@ -3845,9 +3849,9 @@ div#user-unfriend {
    padding-top: 6px;
    border-style: solid;
    border-width: 2px;
-   border-color: darken(@freshtile, 10%);
+   border-color: @close-btn;
    background-color: white;
-   color: darken(@freshtile, 10%);
+   color: @close-btn;
 }
 
 div#user-unfriend span.glyphicon-coffee-cup {
@@ -3863,7 +3867,7 @@ div#user-cancel {
 div#user-ok {
    right: 12px; /* 12 */
    width: 72px; /* Override */
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div#accept-form {
@@ -3985,7 +3989,7 @@ input.text {
    font-weight: 700;
    height: 32px;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 2px;
    border-radius: 5px;
    margin-bottom: 4px;
@@ -3998,7 +4002,7 @@ input.text {
 input.text:focus {
    background-color: @focal;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 2px;
    border-radius: 5px;
    outline-style: none;
@@ -4035,7 +4039,7 @@ button[type="submit"] {
    width: 322px;
    border-width: 0;
    border-radius: 5px;
-   background-color: @freshtile;
+   background-color: @close-btn;
    margin-top: 20px;
    margin-left: 0;
    margin-right: 0;
@@ -4065,7 +4069,7 @@ input[type="checkbox"] {
 }
 
 div.toggler {
-   background-color: fade(@board-background, 50%);
+   background-color: @message-background;
    color: white;
    margin-top: 9px;
    margin-bottom: 3px;
@@ -4077,7 +4081,6 @@ div.toggler {
 }
 
 div.toggler:focus {
-   /* background-color: fade(@freshtile, 40%); */
    outline-style: none;
    border: yellow solid 2px;
 }
@@ -4117,7 +4120,7 @@ div.toggler div.option.selected {
 }
 
 div#fairplay-toggler div.option.selected {
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div #radioset {

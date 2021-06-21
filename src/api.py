@@ -124,7 +124,10 @@ MAX_ONLINE = 80
 autoplayer_lock = threading.Lock()
 
 # Register the Flask blueprint for the APIs
-api = Blueprint('api', __name__)
+api_blueprint = Blueprint('api', __name__)
+# The cast to Any can be removed when Flask typing becomes more robust
+# and/or compatible with Pylance
+api = cast(Any, api_blueprint)
 
 
 class UserForm:
@@ -1000,7 +1003,7 @@ def _challengelist() -> List[Dict[str, Any]]:
         """ Return True if the challenge is for a timed game """
         if prefs is None:
             return False
-        return prefs.get("duration", 0) > 0
+        return int(prefs.get("duration", 0)) > 0
 
     def opp_ready(c: ChallengeTuple):
         """Returns True if this is a timed challenge
@@ -1488,7 +1491,6 @@ def challenge() -> ResponseType:
         user.accept_challenge(destuser, key=key)
     # Notify the destination user via a
     # Firebase notification to /user/[user_id]/challenge
-    # main.html listens to this
     firebase.send_update("user", destuser, "challenge")
 
     return jsonify(result=Error.LEGAL)
@@ -1538,6 +1540,42 @@ def onlinecheck() -> ResponseType:
     return jsonify(online=online)
 
 
+@api.route("/initwait", methods=["POST"])
+@auth_required(online=False, waiting=False)
+def initwait() -> ResponseType:
+    """ Initialize a wait for a timed game to start """
+
+    user = current_user()
+
+    # Get the opponent id
+    rq = RequestData(request)
+    opp = rq.get("opp")
+    if opp is None or user is None:
+        return jsonify(online=False, waiting=False)
+
+    # Find the challenge being accepted
+    found, prefs = user.find_challenge(opp)
+    if not found or prefs is None or not int(prefs.get("duration", 0)) > 0:
+        # No timed challenge existed between the users
+        return jsonify(online=False, waiting=False)
+
+    opp_user = User.load_if_exists(opp)
+    if opp_user is None:
+        # Opponent id not found
+        return jsonify(online=False, waiting=False)
+
+    # Notify the opponent of a change in the challenge list
+    # via a Firebase notification to /user/[user_id]/challenge
+    uid = user.id() or ""
+    msg = {
+        "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
+        "user/" + uid + "/wait/" + opp: True,
+    }
+    firebase.send_message(msg)
+    online = firebase.check_presence(uid)
+    return jsonify(online=online, waiting=True)
+
+
 @api.route("/waitcheck", methods=["POST"])
 @auth_required(waiting=False)
 def waitcheck() -> ResponseType:
@@ -1557,15 +1595,15 @@ def waitcheck() -> ResponseType:
 def cancelwait() -> ResponseType:
     """ A wait on a challenge has been cancelled """
     rq = RequestData(request)
-    user_id = rq.get("user")
     opp_id = rq.get("opp")
+    cuid = current_user_id()
 
-    if not user_id or not opp_id:
+    if not opp_id or not cuid:
         return jsonify(ok=False)
 
     # Delete the current wait and force update of the opponent's challenge list
     msg = {
-        "user/" + user_id + "/wait/" + opp_id: None,
+        "user/" + cuid + "/wait/" + opp_id: None,
         "user/" + opp_id: {"challenge": datetime.utcnow().isoformat()},
     }
     firebase.send_message(msg)
@@ -1736,8 +1774,9 @@ def chatload() -> ResponseType:
         )
         for cm in ChatModel.list_conversation(channel)
     ]
-
-    return jsonify(ok=True, messages=messages)
+    # Return the message list in reverse order (oldest first)
+    # using Python's [::-1] syntax
+    return jsonify(ok=True, messages=messages[::-1])
 
 
 @api.route("/chathistory", methods=["POST"])
@@ -1751,9 +1790,8 @@ def chathistory() -> ResponseType:
         # Unknown current user
         return jsonify(ok=False)
 
-    # Return the messages sorted in ascending timestamp order.
-    # ChatModel.list_conversations returns them in descending
-    # order since its maxlen limit cuts off the oldest messages.
+    # The chat history is ordered in reverse timestamp
+    # order, i.e. the newest entry comes first
     uc = UserCache()
     history: List[Dict[str, Any]] = [
         dict(
@@ -1958,7 +1996,7 @@ def initgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale,)
+        prefs = dict(newbag=user.new_bag(), locale=user.locale)
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)

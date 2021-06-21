@@ -12,14 +12,7 @@
 
 */
 
-/*
-   global firebase:false
-*/
-
-/* eslint-disable no-console */
-/* eslint-disable no-unused-vars */
-
-export { loginFirebase, initPresence, attachFirebaseListener, detachFirebaseListener };
+export { loginFirebase, attachFirebaseListener, detachFirebaseListener };
 
 declare namespace firebase {
   export { auth, database };
@@ -28,7 +21,7 @@ declare namespace firebase {
 var auth: any;
 var database: any;
 
-function loginFirebase(token: string, onLoginFunc?: () => void) {
+function loginFirebase(token: string, userId: string, onLoginFunc?: () => void) {
    // Log in to Firebase using the provided custom token
    if (onLoginFunc !== undefined) {
       // Register our login function to execute once the user login is done
@@ -39,13 +32,14 @@ function loginFirebase(token: string, onLoginFunc?: () => void) {
                if (onLoginFunc !== undefined)
                   onLoginFunc();
             } else {
-               // No user is signed in.
+               // No user is signed in
             }
          }
       );
    }
    firebase.auth()
       .signInWithCustomToken(token)
+      .then(() => initPresence(userId))
       .catch((error) => {
          console.log('Firebase login failed, error code: ', error.code);
          console.log('Error message: ', error.message);
@@ -54,12 +48,12 @@ function loginFirebase(token: string, onLoginFunc?: () => void) {
 
 function initPresence(userId: string) {
    // Ensure that this user connection is recorded in Firebase
-   var db = firebase.database();
-   var connectedRef = db.ref('.info/connected');
+   const db = firebase.database();
+   const connectedRef = db.ref('.info/connected');
    // Create a unique connection entry for this user
-   var connectionPath = 'connection/' + userId;
-   var userRef = db.ref(connectionPath).push();
-   connectedRef.on('value', (snap) => {
+   const connectionPath = 'connection/' + userId;
+   const userRef = db.ref(connectionPath).push();
+   connectedRef.on('value', (snap: any) => {
       if (snap.val()) {
          // We're connected (or reconnected)
          // When I disconnect, remove this entry
@@ -73,11 +67,11 @@ function initPresence(userId: string) {
    });
 }
 
-function attachFirebaseListener(path: string, func: (json) => void) {
+function attachFirebaseListener(path: string, func: (json: any) => void) {
    // Attach a message listener to a Firebase path
    firebase.database()
       .ref(path)
-      .on('value', (data) => {
+      .on('value', (data: any) => {
          if (!data)
             return;
          var json = data.val();

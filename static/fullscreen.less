@@ -163,17 +163,16 @@
    .board td {
       min-height: @board-cell-big;
       min-width: @board-cell-big;
-      max-height: @board-cell-big;
-      max-width: @board-cell-big;
       height: @board-cell-big;
       width: @board-cell-big;
-      border-width: 1px;
+      border-width: 2px;
       border-radius: 0;
+      box-shadow: none;
    }
 
-   table.board td.center {
-      font-size: 28px;
-      line-height: 32px;
+   table.board td.center:empty {
+      font-size: 23px;
+      line-height: 23px;
    }
 
    table.board tr {
@@ -186,7 +185,7 @@
 
    div.tile {
       font-size: 25px;
-      line-height: 26px;
+      line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
       margin: 0;
@@ -196,7 +195,7 @@
 
    .rack div.tile {
       font-size: 25px;
-      line-height: 26px;
+      line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
       padding-top: 2px;
@@ -298,8 +297,17 @@
       max-width: @board-cell-big;
       height: @board-cell-big;
       width: @board-cell-big;
+      border-color: @cell-border;
+      background-color: @cell-border;
+      box-shadow: 2px 2px 4px 0 #afb7cad0;
    }
-   
+
+   .rack td:empty {
+      border-color: @container;
+      background-color: @container;
+      box-shadow: none;
+   }
+
    div.word-check {
       display: block;
       width: 48px;
@@ -485,31 +493,33 @@
    }
 
    div.gamestats div.player.humancolor {
-      color: black;
+      color: white;
    }
 
    div.scorewrapper {
       background-color: @message-background;
    }
-   
+
    div.scoreleft {
       width: 145px;
       font-size: 24px;
       line-height: 32px;
-      color: @blank-sel;
+      font-weight: 700;
+      color: @score-hdr;
    }
-   
+
    div.scoreright {
       width: 145px;
       font-size: 24px;
       line-height: 32px;
-      color: @blank-sel;
+      font-weight: 700;
+      color: @score-hdr;
    }
-   
+
    div.player-btn {
-      // width: 141px;
+      margin-top: 4px;
       padding-top: 4px;
-      color: @neutral;
+      color: white;
       cursor: pointer;
    }
 
@@ -702,6 +712,7 @@
    
    div#congrats {
       .bottom-message;
+      display: block;
    }
    
    div.resign {
@@ -1088,11 +1099,12 @@
    
    div#wait-form {
       .std-form;
-      top: 56px;
+      top: 160px;
+      padding-top: 16px;
       left: auto;
       right: 202px;
       width: 504px;
-      height: 544px;
+      height: 400px;
    }
    
    span.left-to-move,

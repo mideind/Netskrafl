@@ -1731,7 +1731,7 @@ class Game:
             num_moves = 2  # One new move to be added to move list
         elif lastmove is not None:
             # The indicated move should be included in the client state
-            # (used when notifying an opponent of a new move through a channel)
+            # (used when notifying an opponent of a new move through Firebase)
             lm = lastmove
         if lm is not None:
             reply["lastmove"] = lm.details(self.state)
@@ -1755,7 +1755,7 @@ class Game:
             assert player_index is not None
             # ...but in a last-challenge state
             last_chall = self.state.is_last_challenge()
-            reply["result"] = 0  # Indicate no error
+            reply["result"] = Error.LEGAL  # No error
             reply["xchg"] = False if last_chall else self.state.is_exchange_allowed()
             reply["chall"] = self.state.is_challengeable()
             reply["last_chall"] = last_chall
@@ -1768,29 +1768,37 @@ class Game:
         reply["num_moves"] = len(self.moves)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
-        reply["succ_chall"] = succ_chall
+        reply["succ_chall"] = succ_chall  # Successful challenge
         reply["player"] = player_index  # Can be None if the game is over
-        reply["newbag"] = self.new_bag()
-        reply["manual"] = self.manual_wordcheck()
-        reply["locale"] = self.locale
-        reply["alphabet"] = self.tileset.alphabet.order
-        reply["tile_scores"] = self.tileset.scores
-        reply["board_type"] = self.board_type
-        reply["two_letter_words"] = self.two_letter_words
         if self.get_duration():
             # Timed game: send information about elapsed time
             reply["time_info"] = self.time_info()
+        # If deep=False, only the information above this line
+        # is sent to the client. This applies to /submitmove responses
+        # in a robot game, and updates sent via Firebase notifications
+        # in human-vs-human games.
+        # The /gamestate endpoint, in contrast, uses deep=True to obtain
+        # the entire state of a game.
         if deep:
-            # Send all moves
+            # Send all moves so far to the client
             reply["moves"] = [
                 (m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]
             ]
-            reply["fairplay"] = self.get_fairplay()
+            # Player information
             reply["autoplayer"] = [self.is_autoplayer(0), self.is_autoplayer(1)]
             reply["nickname"] = [self.player_nickname(0), self.player_nickname(1)]
             reply["userid"] = [self.player_id(0), self.player_id(1)]
             reply["fullname"] = [self.player_fullname(0), self.player_fullname(1)]
+            # Constant state
+            reply["fairplay"] = self.get_fairplay()
+            reply["newbag"] = self.new_bag()
+            reply["manual"] = self.manual_wordcheck()
             reply["overdue"] = self.is_overdue()
+            reply["locale"] = self.locale
+            reply["alphabet"] = self.tileset.alphabet.order
+            reply["tile_scores"] = self.tileset.scores
+            reply["board_type"] = self.board_type
+            reply["two_letter_words"] = self.two_letter_words
 
         return reply
 

@@ -1,8 +1,11 @@
 {
   "files": [
     "src/page.ts",
+    "src/model.ts",
+    "src/actions.ts",
     "src/game.ts",
     "src/util.ts",
+    "src/wait.ts",
     "src/channel.ts"
   ],
   "compilerOptions": {
