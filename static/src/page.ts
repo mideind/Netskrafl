@@ -129,7 +129,7 @@ class View {
     // Display the appropriate content for the route,
     // also considering active dialogs
     const model = this.model;
-    let views: any[] = [];
+    let views: m.vnode[] = [];
     switch (model.routeName) {
       case "login":
         views.push(this.vwLogin());
@@ -552,7 +552,7 @@ class View {
 
   // Help screen
 
-  vwHelp(tabNumber: number, faqNumber: number): m.vnode[] {
+  vwHelp(tabNumber: number, faqNumber: number): m.vnode {
 
     const model = this.model;
 
@@ -583,14 +583,14 @@ class View {
     }
 
     // Output literal HTML obtained from rawhelp.html on the server
-    return [
+    return m.fragment({}, [
       // vwNetskraflLogo(),
       m(LeftLogo),
       this.vwUserId(),
       m("main",
         this.vwTabsFromHtml(model.helpHTML, "tabs", tabNumber, wireQuestions)
       )
-    ];
+    ]);
   }
 
   // User preferences screen
@@ -991,7 +991,7 @@ class View {
 
   // Main screen
 
-  vwMain(): m.vnode[] {
+  vwMain(): m.vnode {
     // Main screen with tabs
 
     const view = this;
@@ -1696,7 +1696,7 @@ class View {
       );
     }
 
-    return [
+    return m.fragment({}, [
       m(LeftLogo), // No legend, scale up by 50%
       this.vwUserId(),
       this.vwInfo(),
@@ -1711,7 +1711,7 @@ class View {
           vwMainTabs()
         )
       )
-    ];
+    ]);
   }
 
   vwPlayerName(game: Game, side: string) {
@@ -2158,7 +2158,7 @@ class View {
 
   // Review screen
 
-  vwReview() {
+  vwReview(): m.vnode {
     // A review of a finished game
 
     const view = this;
@@ -2233,9 +2233,8 @@ class View {
     let r: m.vnode[] = [];
     r.push(vwRightColumn());
     r.push(m(this.BoardReview, { moveIndex: moveIndex }));
-    if (moveIndex === null)
-      // Only show the stats overlay if moveIndex is null.
-      // This means we don't show the overlay if move is 0.
+    if (moveIndex === 0)
+      // Only show the stats overlay if moveIndex is 0
       r.push(this.vwStatsReview(game));
     return m("div", // Removing this div messes up Mithril
       [
@@ -2500,7 +2499,7 @@ class View {
       [
         m(".movelist",
           {
-            onupdate: this.scrollMovelistToBottom
+            onupdate: () => { this.scrollMovelistToBottom(); }
           },
           movelist()
         ),
@@ -2612,11 +2611,7 @@ class View {
       return r;
     }
 
-    return m(".movelist-container",
-      [
-        m(".movelist.bestmoves", bestMoveList())
-      ]
-    );
+    return m(".movelist-container", [ m(".movelist.bestmoves", bestMoveList()) ]);
   }
 
   scrollMovelistToBottom() {
@@ -3096,8 +3091,8 @@ class View {
         let r: m.vnode[] = [];
         if (game) {
           r = [
-            m(this.Board),
-            m(this.Rack),
+            m(this.Board, { review: false }),
+            m(this.Rack, { review: false }),
             this.vwButtons(),
             this.vwErrors(game),
             this.vwCongrats(game)
@@ -3118,24 +3113,25 @@ class View {
         let r: m.vnode[] = [];
         if (game) {
           r = [
-            m(this.Board),
-            m(this.Rack),
+            m(this.Board, { review: true }),
+            m(this.Rack, { review: true }),
           ];
           let moveIndex = vnode.attrs.moveIndex;
           if (moveIndex !== null)
             // Don't show navigation buttons if currently at overview (move==null)
-            r = r.concat(r, this.vwButtonsReview(moveIndex));
+            r = r.concat(this.vwButtonsReview(moveIndex));
         }
         return m(".board-area", r);
       }
     };
   }
 
-  Tile: ComponentFunc<{ game: Game; coord: string; opponent: boolean; }> = (initialVnode) => {
+  Tile: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
     // Display a tile on the board or in the rack
+    const model = this.model;
     return {
       view: (vnode) => {
-        let game = vnode.attrs.game;
+        let game = model.game;
         let coord = vnode.attrs.coord;
         let opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
@@ -3167,8 +3163,10 @@ class View {
         if (t.freshtile) {
           // A fresh tile that has just been played by the opponent
           classes.push("freshtile");
-          // Make fresh tiles appear sequentally by animation
-          let ANIMATION_STEP = 150; // Milliseconds
+        }
+        if (t.index) {
+          // Make fresh or highlighted tiles appear sequentally by animation
+          const ANIMATION_STEP = 150; // Milliseconds
           let delay = (t.index * ANIMATION_STEP).toString() + "ms";
           attrs.style = "animation-delay: " + delay + "; " +
             "-webkit-animation-delay: " + delay + ";";
@@ -3190,9 +3188,8 @@ class View {
             // Make the tile draggable, unless we're showing a dialog
             attrs.draggable = "true";
             attrs.ondragstart = (ev) => {
-              // ev.dataTransfer.effectAllowed = "copyMove";
               game.selectedSq = null;
-              ev.dataTransfer.effectAllowed = "move";
+              ev.dataTransfer.effectAllowed = "move"; // "copyMove"
               ev.dataTransfer.setData("text", coord);
               ev.redraw = false;
             };
@@ -3214,19 +3211,19 @@ class View {
     };
   }
 
-  ReviewTile: ComponentFunc<{ coord: string, game: Game; }> = (initialVnode) => {
-    // Return a td element that wraps an 'inert' tile in a review screen
+  ReviewTile: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+    // Return a td element that wraps an 'inert' tile in a review screen.
+    // If the opponent flag is true, we put an '.opp' class on the td
+    const model = this.model;
     return {
       view: (vnode) => {
         let coord = vnode.attrs.coord;
-        return m("td",
-          {
-            key: coord,
-            id: "sq_" + coord,
-            class: vnode.attrs.game.squareClass(coord)
-          },
-          vnode.children
-        );
+        let cls = model.game.squareClass(coord) || "";
+        if (cls)
+          cls = "." + cls;
+        if (vnode.attrs.opponent)
+          cls += ".opp";
+        return m("td" + cls, { id: "sq_" + coord }, vnode.children);
       }
     };
   };
@@ -3238,7 +3235,9 @@ class View {
       view: (vnode) => {
         const coord = vnode.attrs.coord;
         const game = model.game;
-        let cls = "";
+        let cls = game.squareClass(coord) || "";
+        if (cls)
+          cls = "." + cls;
         // Mark the cell with the 'blinking' class if it is the drop
         // target of a pending blank tile dialog
         if (game.askingForBlank !== null && game.askingForBlank.to == coord)
@@ -3248,9 +3247,7 @@ class View {
           cls += ".center";
         return m("td" + cls,
           {
-            key: coord,
             id: "sq_" + coord,
-            class: game.squareClass(coord),
             ondragenter: (ev) => {
               ev.preventDefault();
               ev.dataTransfer.dropEffect = 'move';
@@ -3308,52 +3305,57 @@ class View {
     };
   }
 
-  Board: ComponentFunc<{}> = (initialVnode) => {
+  Board: ComponentFunc<{ review: boolean; }> = (initialVnode) => {
     // The game board, a 15x15 table plus row (A-O) and column (1-15) identifiers
 
     const view = this;
     const model = this.model;
+    const review = initialVnode.attrs.review;
 
-    function colid() {
+    function colid(): m.vnode {
       // The column identifier row
-      let r: VnodeChildren = [];
+      let r: m.vnode[] = [];
       r.push(m("td"));
       for (let col = 1; col <= 15; col++)
         r.push(m("td", col.toString()));
       return m("tr.colid", r);
     }
 
-    function row(rowid: string) {
+    function row(rowid: string): m.vnode {
       // Each row of the board
-      let r: VnodeChildren = [];
+      let r: m.vnode[] = [];
       let game = model.game;
-      r.push(m("td.rowid", /* { key: "R" + rowid }, */ rowid));
+      r.push(m("td.rowid", { key: "R" + rowid }, rowid));
       for (let col = 1; col <= 15; col++) {
         let coord = rowid + col.toString();
         if (game && (coord in game.tiles))
           // There is a tile in this square: render it
           r.push(m("td",
             {
-              // key: coord,
+              key: coord,
               id: "sq_" + coord,
               class: game.squareClass(coord),
               ondragover: (ev) => ev.stopPropagation(),
               ondrop: (ev) => ev.stopPropagation()
             },
-            m(view.Tile, { game: game, coord: coord, opponent: false })
+            m(view.Tile, { coord: coord, opponent: false })
           ));
         else
+        if (review)
+          // Inert empty square
+          r.push(m(view.ReviewTile, { key: coord, coord: coord, opponent: false }));
+        else
           // Empty square which is a drop target
-          r.push(m(view.DropTarget, { coord: coord }));
+          r.push(m(view.DropTarget, { key: coord, coord: coord }));
       }
       return m("tr", r);
     }
 
-    function allrows() {
+    function allrows(): m.vnode[] {
       // Return a list of all rows on the board
-      let r: VnodeChildren = [];
+      let r: m.vnode[] = [];
       r.push(colid());
-      let rows = "ABCDEFGHIJKLMNO";
+      const rows = "ABCDEFGHIJKLMNO";
       for (let i = 0; i < rows.length; i++)
         r.push(row(rows[i]));
       return r;
@@ -3386,18 +3388,18 @@ class View {
     };
   }
 
-  Rack: ComponentFunc<{}> = (initialVnode) => {
+  Rack: ComponentFunc<{ review: boolean; }> = (initialVnode) => {
     // A rack of 7 tiles
     const view = this;
     const model = this.model;
+    const review = initialVnode.attrs.review;
     return {
       view: (vnode) => {
         const game = model.game;
-        let r: VnodeChildren = [];
+        let r: m.vnode[] = [];
         // If review==true, this is a review rack
         // that is not a drop target and whose color reflects the
         // currently shown move.
-        let review = model.reviewMove !== null;
         // If opponent==true, we're showing the opponent's rack
         let opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
         for (let i = 1; i <= RACK_SIZE; i++) {
@@ -3406,24 +3408,26 @@ class View {
             // We have a tile in this rack slot, but it is a drop target anyway
             if (review) {
               r.push(
-                m(view.ReviewTile, { game: game, coord: coord },
-                  m(view.Tile, { game: game, coord: coord, opponent: opponent })
+                m(view.ReviewTile, { coord: coord, opponent: opponent },
+                  m(view.Tile, { coord: coord, opponent: opponent })
                 )
               );
             }
             else {
               r.push(
                 m(view.DropTarget, { coord: coord },
-                  m(view.Tile, { game: game, coord: coord, opponent: false })
+                  m(view.Tile, { coord: coord, opponent: false })
                 )
               );
             }
           }
           else
-            if (review)
-              r.push(m(view.ReviewTile, { game: game, coord: coord }));
-            else
-              r.push(m(view.DropTarget, { coord: coord }));
+          if (review) {
+            r.push(m(view.ReviewTile, { coord: coord, opponent: false }));
+          }
+          else {
+            r.push(m(view.DropTarget, { coord: coord }));
+          }
         }
         return m(".rack-row", [
           m(".rack-left", view.vwRackLeftButtons()),
@@ -3486,11 +3490,13 @@ class View {
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(game: Game, moveIndex?: number) {
+  vwScoreReview(game: Game, moveIndex: number): m.vnode {
     // Shows the score of the current move within a game review screen
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
-    let score = mv ? mv[1][2] : undefined;
-    if (score === undefined || (mv[1][0] == "" && mv[1][1] == "OVER"))
+    if (mv === undefined)
+      return undefined;
+    let [ _, [ coord, tiles, score ] ] = mv;
+    if (score === undefined || (coord == "" && tiles == "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
     let sc = [".score"];
@@ -3521,7 +3527,7 @@ class View {
     return m(sc.join("."), { style: { visibility: "visible" } }, diff);
   }
 
-  vwStatsReview(game: Game) {
+  vwStatsReview(game: Game): m.vnode {
     // Shows the game statistics overlay
     if (game.stats === null)
       // No stats yet loaded: do it now
@@ -3691,7 +3697,7 @@ class View {
             id: "review-close",
             onclick: (ev) => {
               // Navigate to move #1
-              m.route.set("/review/" + game.uuid, { move: 1 });
+              setTimeout(() => { m.route.set("/review/" + game.uuid, { move: 1 }); });
               ev.preventDefault();
             },
             onmouseover: buttonOver,
@@ -3704,8 +3710,9 @@ class View {
   }
 
   makeButton(
-    cls: string, disabled: boolean, func: () => void, title: string, children?: m.vnode[], id?: string
-  ) {
+    cls: string, disabled: boolean, func: () => void,
+    title: string, children?: m.vnode[], id?: string
+  ): m.vnode {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
     let attr: VnodeAttrs = {
@@ -3728,7 +3735,7 @@ class View {
     );
   }
 
-  vwButtons() {
+  vwButtons(): m.vnode[] {
     // The set of buttons below the game board, alongside the rack
     const model = this.model;
     const game = model.game;

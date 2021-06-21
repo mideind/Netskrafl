@@ -455,17 +455,17 @@ class Model {
     // Load the best moves available at a given state in a game
     if (!this.game || !this.game.uuid)
       return;
-    if (!moveIndex) {
-      this.reviewMove = null;
-      this.bestMoves = null;
-      this.highlightedMove = null;
-      this.game.setRack([]);
-      this.game.placeTiles(0);
-      return;
-    }
-    // Don't display navigation buttons while fetching
-    // best moves
-    this.reviewMove = 0;
+      if (!moveIndex) {
+        // No moves to load, but display summary
+        this.reviewMove = 0;
+        this.bestMoves = null;
+        this.highlightedMove = null;
+        this.game.setRack([]);
+        this.game.placeTiles(0);
+        return;
+      }
+    // Don't display navigation buttons while fetching best moves
+    this.reviewMove = null;
     m.request({
       method: "POST",
       url: "/bestmoves",

@@ -53,7 +53,10 @@ class Actions {
         this.detachListenerFromGame(model.game.uuid);
       }
       // Load the game, and attach it to the Firebase listener once it's loaded
-      model.loadGame(params.uuid, () => this.attachListenerToGame(params.uuid));
+      model.loadGame(params.uuid, () => {
+        this.attachListenerToGame(params.uuid);
+        setTimeout(this.view.scrollMovelistToBottom);
+      });
     }
     else
     if (routeName == "review") {
@@ -72,7 +75,10 @@ class Actions {
       if (model.game === null || model.game.uuid != params.uuid)
         // Different game than we had before: load it, and then
         // fetch the best moves
-        model.loadGame(params.uuid, () => model.loadBestMoves(move));
+        model.loadGame(params.uuid, () => {
+          model.loadBestMoves(move);
+          setTimeout(this.view.scrollMovelistToBottom);
+        });
       else
         if (model.game !== null) {
           // Already have the right game loaded:
