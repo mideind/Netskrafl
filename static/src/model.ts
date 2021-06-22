@@ -221,6 +221,8 @@ class Model {
   // The current challenge list
   challengeList: ChallengeListItem[] = null;
   loadingChallengeList = false;
+  // Number of opponents who are ready and waiting for a timed game
+  oppReady = 0;
   // Recent games
   recentList: RecentListItem[] = null;
   loadingRecentList = false;
@@ -326,6 +328,12 @@ class Model {
       }
       this.challengeList = json.challengelist || [];
       this.loadingChallengeList = false;
+      // Count opponents who are ready and waiting for timed games
+      this.oppReady = 0;
+      for (let ch of this.challengeList) {
+        if (ch.opp_ready)
+          this.oppReady++;
+      }
     })
     .catch(() => { this.loadingChallengeList = false; });
   }

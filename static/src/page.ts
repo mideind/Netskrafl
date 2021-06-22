@@ -313,17 +313,6 @@ class View {
 
   // Globally available controls
 
-  vwInfo(): m.vnode {
-    // Info icon, invoking the help screen
-    return m(".info",
-      { title: "Upplýsingar og hjálp" },
-      m(m.route.Link,
-        { href: "/help", class: "iconlink" },
-        glyph("info-sign")
-      )
-    );
-  }
-
   vwUserId(): m.vnode | string {
     // User identifier at top right, opens user preferences
     const model = this.model;
@@ -444,7 +433,7 @@ class View {
       // Full screen version of login page
       return m.fragment({}, [
         view.vwNetskraflLogo(),
-        view.vwInfo(),
+        m(Info),
         m(".loginform-large",
           [
             m(".loginhdr", "Velkomin í Netskrafl!"),
@@ -663,7 +652,7 @@ class View {
                         id: "nickname"
                       }
                     ),
-                    nbsp(), m("span", { style: { color: "red" } }, "*")
+                    nbsp(), m("span.asterisk", "*")
                   ]
                 ),
                 m(".explain", "Verður að vera útfyllt"),
@@ -701,7 +690,7 @@ class View {
                 vwErrMsg("email"),
                 m(".dialog-spacer",
                   [
-                    m("span.caption", "Hljóðmerki:"),
+                    m("span.caption.sub", "Hljóðmerki:"),
                     vwToggler("audio", user.audio, 4,
                       glyph("volume-off"), glyph("volume-up"),
                       function (state) { if (state) playAudio("your-turn"); }),
@@ -717,7 +706,7 @@ class View {
                 ),
                 m(".dialog-spacer",
                   [
-                    m("span.caption", "Sýna reitagildi:"),
+                    m("span.caption.sub", "Sýna reitagildi:"),
                     vwToggler("beginner", user.beginner, 6,
                       nbsp(), glyph("ok")),
                     m(".subexplain",
@@ -731,7 +720,7 @@ class View {
                 ),
                 m(".dialog-spacer",
                   [
-                    m("span.caption", "Nýi skraflpokinn:"),
+                    m("span.caption.sub", "Nýi skraflpokinn:"),
                     vwToggler("newbag", user.newbag, 7, nbsp(), glyph("shopping-bag")),
                     m(".subexplain",
                       [
@@ -743,7 +732,7 @@ class View {
                 ),
                 m(".dialog-spacer",
                   [
-                    m("span.caption", "Án hjálpartækja:"),
+                    m("span.caption.sub", "Án hjálpartækja:"),
                     vwToggler("fairplay", user.fairplay, 8, nbsp(), glyph("edit")),
                     m(".subexplain",
                       [
@@ -1008,10 +997,13 @@ class View {
             return acc + (item.my_turn || item.zombie ? 1 : 0);
           }, 0);
         if (model.challengeList)
-          // Sum up received challenges
-          numChallenges = model.challengeList.reduce((acc: number, item) => {
-            return acc + (item.received ? 1 : 0);
-          }, 0);
+          // Sum up received challenges and issued timed challenges where
+          // the opponent is ready
+          numChallenges = model.oppReady + model.challengeList.reduce(
+            (acc: number, item) => {
+              return acc + (item.received ? 1 : 0);
+            }, 0
+          );
         return m("ul",
           [
             m("li",
@@ -1019,7 +1011,10 @@ class View {
                 [
                   glyph("th"), m("span.tab-legend", "Viðureignir"),
                   m("span",
-                    { id: 'numgames', style: numGames ? 'display: inline-block' : '' },
+                    {
+                      id: 'numgames',
+                      style: numGames ? 'display: inline-block' : ''
+                    },
                     numGames
                   )
                 ]
@@ -1029,7 +1024,8 @@ class View {
               m("a[href='#tabs-2']",
                 [
                   glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
-                  m("span.opp-ready",
+                  // Blink if we have timed games where the opponent is ready
+                  m("span" + (model.oppReady ? ".opp-ready" : ""),
                     {
                       id: "numchallenges",
                       style: numChallenges ? 'display: inline-block' : ''
@@ -1699,7 +1695,7 @@ class View {
     return m.fragment({}, [
       m(LeftLogo), // No legend, scale up by 50%
       this.vwUserId(),
-      this.vwInfo(),
+      m(Info),
       m(this.TogglerReady),
       m(this.TogglerReadyTimed),
       m("main",
@@ -1980,7 +1976,7 @@ class View {
             component = m(view.vwTwoLetter, { game: game });
             break;
           case "chat":
-            component = view.vwChat(game);
+            component = view.vwChat();
             break;
           case "games":
             component = view.vwGames();
@@ -2123,14 +2119,14 @@ class View {
               vwRightColumn(),
               m(this.BoardArea),
               state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
-              game.askingForBlank ? m(this.BlankDialog, { game: game }) : ""
+              game.askingForBlank ? m(this.BlankDialog) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
         m(LeftLogo),
         state.beginner ? vwBeginner() : "",
-        this.vwInfo()
+        m(Info)
       ]
     );
   }
@@ -2240,7 +2236,7 @@ class View {
       [
         m("main", m(".game-container", r)),
         m(LeftLogo), // Button to go back to main screen
-        this.vwInfo() // Help button
+        m(Info) // Help button
       ]
     );
   }
@@ -2288,10 +2284,11 @@ class View {
     );
   }
 
-  vwChat(game: Game) {
+  vwChat() {
     // The chat tab
 
     const model = this.model;
+    const game = model.game;
 
     function decodeTimestamp(ts: string) {
       // Parse and split an ISO timestamp string, formatted as YYYY-MM-DD HH:MM:SS
@@ -2783,7 +2780,7 @@ class View {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.total", leftTotal),
+          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), leftTotal),
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
           m("span." + wrdclass, [m("i", tiles), nbsp(), co])
         ]
@@ -2795,7 +2792,7 @@ class View {
         [
           m("span." + wrdclass, [co, nbsp(), m("i", tiles)]),
           m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
-          m("span.total", rightTotal)
+          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), rightTotal)
         ]
       );
     }
@@ -3017,12 +3014,12 @@ class View {
     };
   }
 
-  BlankDialog: ComponentFunc<{ game: Game; }> = (initialVnode) => {
+  BlankDialog: ComponentFunc<{}> = (initialVnode) => {
     // A dialog for choosing the meaning of a blank tile
 
-    let game = initialVnode.attrs.game;
+    const model = this.model;
 
-    function blankLetters() {
+    function blankLetters(game: Game) {
       let legalLetters = game.alphabet;
       let len = legalLetters.length;
       let ix = 0;
@@ -3053,6 +3050,7 @@ class View {
 
     return {
       view: (vnode) => {
+        const game = model.game;
         return m(".modal-dialog",
           {
             id: 'blank-dialog',
@@ -3062,7 +3060,7 @@ class View {
             [
               m("p", "Hvaða staf táknar auða flísin?"),
               m(".rack.blank-rack",
-                m("table.board", { id: 'blank-meaning' }, blankLetters())
+                m("table.board", { id: 'blank-meaning' }, blankLetters(game))
               ),
               m(DialogButton,
                 {
@@ -3095,7 +3093,7 @@ class View {
             m(this.Rack, { review: false }),
             this.vwButtons(),
             this.vwErrors(game),
-            this.vwCongrats(game)
+            this.vwCongrats()
           ];
           r = r.concat(this.vwDialogs(game));
         }
@@ -3342,7 +3340,7 @@ class View {
           ));
         else
         if (review)
-          // Inert empty square
+          // Empty, inert square
           r.push(m(view.ReviewTile, { key: coord, coord: coord, opponent: false }));
         else
           // Empty square which is a drop target
@@ -3934,8 +3932,9 @@ class View {
     return "";
   }
 
-  vwCongrats(game: Game): m.vnode {
+  vwCongrats(): m.vnode {
     // Congratulations message when a game has been won
+    const game = this.model.game;
     return game.congratulate ?
       m("div", { id: "congrats", style: { visibility: "visible" } },
         [
@@ -5078,6 +5077,21 @@ const DialogButton: ComponentFunc<{
     }
   };
 };
+
+const Info: ComponentFunc<{}> = (initialVnode) => {
+  // Info icon, invoking the help screen
+  return {
+    view: (vnode) => {
+      return m(".info",
+        { title: "Upplýsingar og hjálp" },
+        m(m.route.Link,
+          { href: "/help", class: "iconlink" },
+          glyph("info-sign")
+        )
+      );
+    }
+  };
+}
 
 // Utility functions
 

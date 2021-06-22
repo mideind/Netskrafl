@@ -17,22 +17,25 @@
 */
 
 @pure-blue: #5699A5;
-@double-letter: #83C8CE;
-@triple-letter: #208C9F;
-@double-word: #E4D09B;
-@triple-word: #FDC12C;
+@double-letter: #9ED5DA;
+@triple-letter: #21A4B6;
+@double-word: #F8D992;
+@triple-word: #F9B32D;
 @message-background: #B9D9DC;
 @hover-tab: @pure-blue;
-// @board-background: #dcd8d8;
 @board-background: #E4EAF0;
 @rack-background: #f4f4f4;
 @total-background: @double-letter;
 @score-default: #aaaaaa;
-@alert:#AA3731;
+@alert: #B6676D;
 @almost-black: #202020;
+@grey: #CFCFCF;
+@light-green: #D8E3D2;
+@light-orange: #F7F0DE;
+@light-red: #F1DBDA;
 
-@tile: #F9E5E6; // lighten(#e4ad87, 5%);
-@racktile: @rack-background;
+@tile: #F9E5E6;
+@racktile: white; // @rack-background;
 @freshtile: #B6676D;
 
 // @racktile: #fdc12c;
@@ -40,28 +43,27 @@
 @player: #208C9F;
 @autoplayer: @freshtile;
 
-@cell-border: #f8f8f8;
+@cell-border: white;
 @neutral: #222222;
 @box-shadow: #333333;
 @hint: #666666;
 @blank-sel: #777777;
-@score-hdr: @blank-sel;
-@background: #d6d1c4; /* Pantone 7534 U */
-@pass-btn: #fdc12c; /* Pantone 137 U */
+@score-hdr: white;
+@pass-btn: @triple-word; /* Pantone 137 U */
 @help-link: #5699A5;
 @hover-link: @pass-btn; /* Pantone 137 U */
-@container: #e8e8e8;
+@container: #f8f8f8;
 @statsbackground: rgba(255, 255, 255, 0.95);
 @close-btn: #72a55f;
 @nav-btn: @close-btn;
-@submit-btn: @close-btn; // #669256;
+@submit-btn: @close-btn;
 @exchange-btn: @close-btn;
 @word-good: @submit-btn;
 @focal: #ffffc8; /* Pale yellow */
-@chall-btn: #208C9F;
+@chall-btn: @triple-letter;
 @recall-btn: @pass-btn;
 @score-manual: @double-letter;
-@tab-background: #f4f4f4;
+@tab-background: @rack-background;
 @clock-digits: @almost-black;
 @board-center: white;
 @review-hdr: @close-btn;
@@ -82,6 +84,12 @@
 
 @twoletter-font-size: 17px;
 @twoletter-line-height: 23px;
+@twoletter: @light-red;
+@gamelist: @light-green;
+@background: @board-background; /* Movelist background */
+
+@move-autoplayer: #d8c8ce;
+@move-player: #B9D9DC;
 
 @import 'main.less';
 @import 'portrait.less';

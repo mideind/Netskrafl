@@ -24,7 +24,7 @@ import { View, glyph, DialogButton, OnlinePresence } from "./page.js";
 import { attachFirebaseListener, detachFirebaseListener } from "./channel.js";
 
 const WaitDialog: ComponentFunc<{
-  view: View; model: Model; oppId: string; oppNick: string; oppName: string; duration: number;
+  view: View; oppId: string; oppNick: string; oppName: string; duration: number;
 }> = (initialVnode) => {
 
   // A dialog that is shown while the user waits for the opponent,
@@ -32,12 +32,13 @@ const WaitDialog: ComponentFunc<{
 
   const attrs = initialVnode.attrs;
   const view = attrs.view;
+  const model = view.model;
   const duration = attrs.duration;
   const oppId = attrs.oppId;
   let oppNick = attrs.oppNick;
   let oppName = attrs.oppName;
   let oppOnline = false;
-  const userId = attrs.model.state.userId;
+  const userId = model.state.userId;
   // Firebase path
   const path = 'user/' + userId + "/wait/" + oppId;
   // Flag set when the new game has been initiated
@@ -139,7 +140,7 @@ const WaitDialog: ComponentFunc<{
 };
 
 const AcceptDialog: ComponentFunc<{
-  view: View; model: Model; oppId: string; oppNick: string;
+  view: View; oppId: string; oppNick: string;
 }> = (initialVnode) => {
 
   // A dialog that is shown (usually briefly) while
@@ -147,8 +148,8 @@ const AcceptDialog: ComponentFunc<{
   // is linked up with her opponent and a new game is started
 
   const attrs = initialVnode.attrs;
-  const model = attrs.model;
   const view = attrs.view;
+  const model = view.model;
   const oppId = attrs.oppId;
   let oppNick = attrs.oppNick;
   let oppReady = true;
