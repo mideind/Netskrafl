@@ -6,7 +6,8 @@
     "src/game.ts",
     "src/util.ts",
     "src/wait.ts",
-    "src/channel.ts"
+    "src/channel.ts",
+    "src/logo.ts"
   ],
   "compilerOptions": {
     "outDir": "built",

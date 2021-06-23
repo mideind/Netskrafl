@@ -24,7 +24,6 @@
 @message-background: #B9D9DC;
 @hover-tab: @pure-blue;
 @board-background: #E4EAF0;
-@rack-background: #f4f4f4;
 @total-background: @double-letter;
 @score-default: #aaaaaa;
 @alert: #B6676D;
@@ -62,18 +61,18 @@
 @focal: #ffffc8; /* Pale yellow */
 @chall-btn: @triple-letter;
 @recall-btn: @pass-btn;
+@scramble-btn: @triple-letter;
 @score-manual: @double-letter;
-@tab-background: @rack-background;
 @clock-digits: @almost-black;
 @board-center: white;
 @review-hdr: @close-btn;
 @review-score-green: white;
 
-@theme1: #fcf0cd; /* fade(@racktile, 25%); */
-@theme2: #d8efe7; /* fade(@freshtile, 25%); */
-@theme3: #fce5cb; /* fade(@pass-btn, 25%); */
+@theme1: @light-orange;
+@theme2: @board-background; // Light blue
+@theme3: @light-green;
 @theme4: desaturate(darken(@theme2, 10%), 10%);
-@theme5: desaturate(darken(@theme3, 10%), 10%);
+@theme5: @light-orange;
 @theme6: darken(#dededa, 5%);
 
 @font1: 'Barlow';
@@ -84,9 +83,16 @@
 
 @twoletter-font-size: 17px;
 @twoletter-line-height: 23px;
-@twoletter: @light-red;
-@gamelist: @light-green;
+@twoletter: @light-green;
+@gamelist: @light-red;
 @background: @board-background; /* Movelist background */
+@rack-background: @board-background;
+@rack-empty: #f4f4f4;
+@rack-empty-border: #dddddd;
+@tab-background: #ededf2;
+@chat-msg-remote: @light-red;
+@flag-to-move: @triple-word;
+@heading-background: @double-letter;
 
 @move-autoplayer: #d8c8ce;
 @move-player: #B9D9DC;

@@ -309,8 +309,8 @@
    }
 
    .rack td:empty {
-      border-color: @container;
-      background-color: @container;
+      border-color: @rack-empty-border;
+      background-color: @rack-empty;
       box-shadow: none;
    }
 
@@ -1011,13 +1011,21 @@
    }
    
    div#spinner-dialog div#user-load {
-      top: (768px - 48px) / 2;
-      left: (1024px - 48px) / 2;
+      top: (768px - 48px) * 0.5;
+      left: (1024px - 48px) * 0.5;
       width: 48px;
       height: 48px;
       background-size: 48px 48px;
    }
-   
+
+   @full-animated-spinner-left: (1024px - 80px) * 0.5;
+   @full-animated-spinner-top: (768px - 224px) * 0.5;
+
+   div.animated-spinner {
+      left: @full-animated-spinner-left;
+      top: @full-animated-spinner-top;
+   }
+
    div#promo-form {
       left: auto;
       top: 16px;
@@ -1120,7 +1128,7 @@
       font-family: 'Glyphicons Regular';
       font-style: normal;
       font-weight: normal;
-      color: @alert;
+      color: @flag-to-move;
       padding-right: 4px;
    }
    

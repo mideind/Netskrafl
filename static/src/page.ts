@@ -38,6 +38,8 @@ import {
 
 import { WaitDialog, AcceptDialog } from "./wait.js";
 
+import { AnimatedExploLogo } from "./logo.js";
+
 // Constants
 
 const RACK_SIZE = 7;
@@ -73,7 +75,6 @@ interface DialogViews {
   userinfo: DialogFunc;
   challenge: DialogFunc;
   promo: DialogFunc;
-  spinner: DialogFunc;
   wait: DialogFunc;
   accept: DialogFunc;
 }
@@ -104,9 +105,7 @@ class View {
     wait:
       (view, args) => view.vwWait(args),
     accept:
-      (view, args) => view.vwAccept(args),
-    spinner:
-      (view) => view.vwSpinner(),
+      (view, args) => view.vwAccept(args)
   };
 
   // The current scaling of the board
@@ -167,8 +166,8 @@ class View {
         views.push(v(this, dialog.args));
     }
     // Overlay a spinner, if active
-    if (model.spinners > 0)
-      views.push(this.vwSpinner());
+    if (model.spinners)
+      views.push(m(this.Spinner));
     return views;
   }
 
@@ -198,11 +197,12 @@ class View {
   }
 
   startSpinner() {
-    this.pushDialog("spinner");
+    this.model.spinners++;
   }
 
   stopSpinner() {
-    this.popDialog();
+    if (this.model.spinners)
+      this.model.spinners--;
   }
 
   notifyMediaChange() {
@@ -412,14 +412,33 @@ class View {
       blinkers[i].classList.toggle("over");
   }
 
-  vwSpinner(): m.vnode {
-    // Show a spinner wait box
-    return m(
-      ".modal-dialog",
-      { id: 'spinner-dialog', style: { visibility: 'visible' } },
-      m("div", { id: "user-load", style: { display: "block" } })
-    );
-  }
+  Spinner: ComponentFunc<{}> = (initialVnode) => {
+    // Show a spinner wait box, after an initial delay
+    const INITIAL_DELAY = 250; // milliseconds
+    return {
+      ival: 0,
+      show: false,
+      oninit: function(vnode) {
+        this.ival = setTimeout(() => { this.show = true; this.ival = 0; }, INITIAL_DELAY);
+      },
+      onremove: function(vnode) {
+        if (this.ival)
+          clearTimeout(this.ival);
+        this.ival = 0;
+      },
+      view: function(vnode) {
+        if (!this.show)
+          return undefined;
+        return m(
+          ".modal-dialog",
+          { id: 'spinner-dialog', style: { visibility: 'visible' } },
+          m("div.animated-spinner",
+            m(AnimatedExploLogo, { msStepTime: 200, width: 120, withCircle: true })
+          )
+        );
+      }
+    };
+  };
 
   // Login screen
 
@@ -1963,7 +1982,7 @@ class View {
         );
       }
 
-      function vwRightArea() {
+      function vwRightArea(): m.vnode {
         // A container for the tabbed right-side area components
         const sel = (game && game.sel) ? game.sel : "movelist";
         // Show the chat tab unless the opponent is an autoplayer
@@ -1984,13 +2003,13 @@ class View {
           default:
             break;
         }
-        const tabgrp = view.vwTabGroup(game);
+        const tabgrp = view.vwTabGroup();
         return m(".right-area" + (game.showClock() ? ".with-clock" : ""),
           component ? [tabgrp, component] : [tabgrp]
         );
       }
 
-      function vwRightMessage() {
+      function vwRightMessage(): m.vnode {
         // Display a status message in the mobile UI
         let s = view.buttonState(game);
         let msg: string | any[] = "";
@@ -2037,9 +2056,9 @@ class View {
                   msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
                 }
                 else {
-                  var co = move[1][0];
-                  var tiles = mtype;
-                  var score = move[1][2];
+                  let co = move[1][0];
+                  let tiles = mtype;
+                  let score = move[1][2];
                   if (co == "") {
                     // Not a regular tile move
                     if (tiles == "PASS")
@@ -2231,7 +2250,7 @@ class View {
     r.push(m(this.BoardReview, { moveIndex: moveIndex }));
     if (moveIndex === 0)
       // Only show the stats overlay if moveIndex is 0
-      r.push(this.vwStatsReview(game));
+      r.push(this.vwStatsReview());
     return m("div", // Removing this div messes up Mithril
       [
         m("main", m(".game-container", r)),
@@ -2241,18 +2260,19 @@ class View {
     );
   }
 
-  vwTabGroup(game: Game) {
+  vwTabGroup(): m.vnode {
     // A group of clickable tabs for the right-side area content
+    const game = this.model.game;
     let showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
-    let r: any[] = [
-      this.vwTab(game, "board", "Borðið", "grid"),
-      this.vwTab(game, "movelist", "Leikir", "show-lines"),
-      this.vwTab(game, "twoletter", "Tveggja stafa orð", "life-preserver"),
-      this.vwTab(game, "games", "Viðureignir", "flag")
+    let r: m.vnode[] = [
+      this.vwTab("board", "Borðið", "grid"),
+      this.vwTab("movelist", "Leikir", "show-lines"),
+      this.vwTab("twoletter", "Tveggja stafa orð", "life-preserver"),
+      this.vwTab("games", "Viðureignir", "flag")
     ];
     if (showchat)
       // Add chat tab
-      r.push(this.vwTab(game, "chat", "Spjall", "conversation",
+      r.push(this.vwTab("chat", "Spjall", "conversation",
         () => {
           // The tab has been clicked
           if (game.markChatShown())
@@ -2263,8 +2283,9 @@ class View {
     return m.fragment({}, r);
   }
 
-  vwTab(game: Game, tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
+  vwTab(tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
     // A clickable tab for the right-side area content
+    const game = this.model.game;
     const sel = (game && game.sel) ? game.sel : "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
       {
@@ -3240,7 +3261,7 @@ class View {
         // target of a pending blank tile dialog
         if (game.askingForBlank !== null && game.askingForBlank.to == coord)
           cls += ".blinking";
-        if (coord == game.startSquare)
+        if (coord == game.startSquare && model.game.localturn)
           // Unoccupied start square, first move
           cls += ".center";
         return m("td" + cls,
@@ -3436,7 +3457,7 @@ class View {
     };
   };
 
-  vwRackLeftButtons() {
+  vwRackLeftButtons(): m.vnode {
     // The button to the left of the rack in the mobile UI
     const model = this.model;
     const game = model.game;
@@ -3455,10 +3476,10 @@ class View {
         () => { game.rescrambleRack(); },
         "Stokka upp rekka", glyph("random")
       );
-    return [];
+    return undefined;
   }
 
-  vwRackRightButtons() {
+  vwRackRightButtons(): m.vnode {
     // The button to the right of the rack in the mobile UI
     const model = this.model;
     const game = model.game;
@@ -3470,11 +3491,12 @@ class View {
         () => { game.submitMove(); this.updateScale(game); },
         "Leika", glyph("play")
       );
-    return [];
+    return undefined;
   }
 
-  vwScore(game: Game) {
+  vwScore(): m.vnode {
     // Shows the score of the current word
+    const game = this.model.game;
     let sc = [".score"];
     if (game.manual)
       sc.push("manual");
@@ -3488,8 +3510,9 @@ class View {
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(game: Game, moveIndex: number): m.vnode {
+  vwScoreReview(moveIndex: number): m.vnode {
     // Shows the score of the current move within a game review screen
+    const game = this.model.game;
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     if (mv === undefined)
       return undefined;
@@ -3509,7 +3532,7 @@ class View {
     return m(sc.join("."), score.toString());
   }
 
-  vwScoreDiff(moveIndex: number) {
+  vwScoreDiff(moveIndex: number): m.vnode {
     // Shows the score of the current move within a game review screen
     const model = this.model;
     const game = model.game;
@@ -3525,8 +3548,9 @@ class View {
     return m(sc.join("."), { style: { visibility: "visible" } }, diff);
   }
 
-  vwStatsReview(game: Game): m.vnode {
+  vwStatsReview(): m.vnode {
     // Shows the game statistics overlay
+    const game = this.model.game;
     if (game.stats === null)
       // No stats yet loaded: do it now
       game.loadStats();
@@ -3827,7 +3851,7 @@ class View {
       );
     }
     if (s.tilesPlaced)
-      r.push(this.vwScore(game));
+      r.push(this.vwScore());
     // Is the server processing a move?
     if (game.moveInProgress)
       r.push(
@@ -3889,7 +3913,7 @@ class View {
     // a particular moveIndex on the best moveIndex list
     if (model.highlightedMove !== null)
       r.push(this.vwScoreDiff(moveIndex));
-    r.push(this.vwScoreReview(game, moveIndex));
+    r.push(this.vwScoreReview(moveIndex));
     return r;
   }
 
@@ -4227,7 +4251,7 @@ const TextInput: ComponentFunc<{
 
 function vwToggler(id: string, state: boolean, tabindex: number,
   opt1: VnodeChildren, opt2: VnodeChildren, func?: Function,
-  small?: boolean, title?: string) {
+  small?: boolean, title?: string): m.vnode {
 
   const togglerId = id + "-toggler";
   const optionClass = ".option" + (small ? ".small" : "");
@@ -4244,7 +4268,7 @@ function vwToggler(id: string, state: boolean, tabindex: number,
       func(cls2.contains("selected"));
   }
 
-  return [
+  return m.fragment({}, [
     m("input.checkbox." + id,
       {
         type: "checkbox",
@@ -4270,7 +4294,7 @@ function vwToggler(id: string, state: boolean, tabindex: number,
         m(optionClass + (state ? ".selected" : ""), { id: "opt2" }, opt2)
       ]
     )
-  ];
+  ]);
 }
 
 const MultiSelection: ComponentFunc<{
@@ -4367,7 +4391,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
 
   return {
     view: (vnode) => {
-      return [
+      return m.fragment({}, [
         m(".listitem.listheader", { key: vnode.attrs.key },
           [
             m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
@@ -4413,7 +4437,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
             view: vnode.attrs.view
           }
         )
-      ];
+      ]);
     }
   };
 

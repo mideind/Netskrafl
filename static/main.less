@@ -459,6 +459,7 @@ table.board td.center:empty {
 
 table.board td.center:empty::before {
    content: "\E473"; /* Target */
+   animation: opacityBlink 1.5s infinite;
 }
 
 table.board {
@@ -778,7 +779,7 @@ div.scramblebtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @double-letter;
+   background-color: @scramble-btn;
    display: none;
 }
 
@@ -940,7 +941,7 @@ div.player-btn.right.tomove {
 div.heading {
    position: relative;
    width: 100%;
-   background-color: @board-background;
+   background-color: @heading-background;
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
@@ -1267,7 +1268,20 @@ div.modal-dialog {
 }
 
 div.modal-dialog#spinner-dialog {
-   background-color: rgba(0, 0, 0, 0.0);
+   background-color: rgba(255, 255, 255, 0.4);
+}
+
+@animated-spinner-left: (@mobile-width - 80px) * 0.5;
+@animated-spinner-top: (@mobile-height - 120px) * 0.5;
+
+div.animated-spinner {
+   position: absolute;
+   left: @animated-spinner-left;
+   top: @animated-spinner-top;
+}
+
+svg circle.shadow {
+   filter: drop-shadow(0px 3px 3px rgba(0, 0, 0, 0.4));
 }
 
 .std-form {
@@ -1284,7 +1298,7 @@ div.modal-dialog#spinner-dialog {
 div#blank-form {
    .std-form;
    top: 124px;
-   right: (375px - 274px - 24px) / 2;
+   right: (375px - 274px - 24px) * 0.5;
    width: 274px;
    height: 400px;
 }
@@ -1414,7 +1428,7 @@ div.modal-close#chat-send {
    margin: 0 0 2px 8px;
    padding-top: 4px;
    padding-bottom: 0;
-   background-color: @double-letter;
+   background-color: @triple-letter;
    color: white;
 }
 
@@ -1938,8 +1952,8 @@ div.user-cat#user-headings span {
 div#user-load {
    display: none;
    position: absolute;
-   top: @mobile-height / 2 - 12px;
-   left: @mobile-width / 2 - 12px;
+   top: @mobile-height * 0.5 - 12px;
+   left: @mobile-width * 0.5 - 12px;
    width: 24px;
    height: 24px;
    z-index: 10;
@@ -1951,7 +1965,7 @@ div#user-load {
 div#promo-form {
    .std-form;
    top: 64px;
-   left: @margin-small * 3 / 2;
+   left: @margin-small * 3 * 0.5;
    width: @mobile-width - 2 * @margin-small;
    height: 364px;
    line-height: 1.5em;
@@ -2075,14 +2089,14 @@ div.games-item {
 div#wait-form {
    .std-form;
    top: @margin-small;
-   left: @margin-small / 2;
+   left: @margin-small * 0.5;
    width: @mobile-width - 5 * @margin-small;
    height: @mobile-height-net - 8 * @margin-small;
 }
 
 span.move-indicator {
    .glyphicon;
-   color: @alert;
+   color: @flag-to-move;
    margin-right: 6px;
 }
 
@@ -2475,7 +2489,7 @@ div.chat-msg.local {
 }
 
 div.chat-msg.remote {
-   background-color: lighten(@freshtile,18%);
+   background-color: @chat-msg-remote;
 }
 
 div.chat-msg img {
@@ -2900,7 +2914,7 @@ div.board-color#double-letter {
 
 div.board-color#single-letter {
    background-color: @board-background;
-   color: white;
+   color: black;
 }
 
 div.scorediff {
@@ -3227,7 +3241,7 @@ span.versus-cat span {
 }
 
 span.versus-cat span.shown {
-   background-color: fade(@double-letter, 30%);
+   background-color: fade(@double-letter, 20%);
    border-radius: 5px;
 }
 
@@ -3244,7 +3258,7 @@ span.ready-btn {
    top: 0;
    cursor: default;
    color: white;
-   background-color: @double-letter;
+   background-color: @triple-letter;
    border-radius: 5px;
    padding: 4px;
    margin: 0 4px 0 0;

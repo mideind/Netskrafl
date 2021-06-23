@@ -17,8 +17,6 @@ export { WaitDialog, AcceptDialog };
 
 import { m, ComponentFunc } from "./mithril.js";
 
-import { Model } from "./model.js";
-
 import { View, glyph, DialogButton, OnlinePresence } from "./page.js";
 
 import { attachFirebaseListener, detachFirebaseListener } from "./channel.js";

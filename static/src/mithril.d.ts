@@ -149,8 +149,11 @@ interface CustomVnode<T> extends Vnode {
 }
 
 interface Component<T> {
-  view: (vnode: CustomVnode<T>) => any;
+  view: (vnode: CustomVnode<T>) => m.vnode;
   oninit?: (vnode: CustomVnode<T>) => void;
+  oncreate?: (vnode: CustomVnode<T>) => void;
+  onupdate?: (vnode: CustomVnode<T>) => void;
+  onremove?: (vnode: CustomVnode<T>) => void;
 }
 
 type ComponentFunc<T> = (vnode: CustomVnode<T>) => Component<T>;

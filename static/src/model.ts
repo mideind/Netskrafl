@@ -291,12 +291,15 @@ class Model {
       return;
     this.loadingGameList = true; // Loading in progress
     this.gameList = [];
+    this.spinners++;
     m.request({
       method: "POST",
       url: "/gamelist",
       body: { zombie: includeZombies }
     })
     .then((json: { result: number; gamelist: GameListItem[]; }) => {
+      if (this.spinners)
+        this.spinners--;
       if (!json || json.result !== 0) {
         // An error occurred
         this.gameList = null;
@@ -306,7 +309,7 @@ class Model {
       this.gameList = json.gamelist || [];
       this.loadingGameList = false;
     })
-    .catch(() => { this.loadingGameList = false; });
+    .catch(() => { this.loadingGameList = false; if (this.spinners) this.spinners--; });
   }
 
   loadChallengeList() {
@@ -405,7 +408,7 @@ class Model {
       body: data
     })
     .then((json: { result: number; userlist: any; rating: any; }) => {
-      if (activateSpinner)
+      if (activateSpinner && this.spinners)
         // Remove spinner overlay, if present
         this.spinners--;
       if (!json || json.result !== 0) {
@@ -416,6 +419,11 @@ class Model {
       }
       this.userList = json.userlist || json.rating;
       this.userListCriteria = criteria;
+    })
+    .catch(() => {
+      if (activateSpinner && this.spinners)
+        // Remove spinner overlay, if present
+        this.spinners--;
     });
   }
 
@@ -521,7 +529,7 @@ class Model {
       url: "/loaduserprefs"
     })
     .then((result: { ok: boolean; userprefs: UserPrefs; }) => {
-      if (activateSpinner)
+      if (activateSpinner && this.spinners)
         this.spinners--;
       if (!result.ok) {
         this.user = null;
@@ -531,6 +539,10 @@ class Model {
         this.user = result.userprefs;
         this.userErrors = null;
       }
+    })
+    .catch(() => {
+      if (activateSpinner && this.spinners)
+        this.spinners--;
     });
   }
 
