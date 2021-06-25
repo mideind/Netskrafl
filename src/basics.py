@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from typing import (
+    Literal,
     Optional,
     Dict,
     Union,
@@ -26,6 +27,7 @@ from typing import (
     Callable,
     Tuple,
     cast,
+    overload,
 )
 
 import os
@@ -265,7 +267,19 @@ class RequestData:
         except (TypeError, ValueError):
             return default
 
-    def get_bool(self, key: str, default: T = cast(Any, False)) -> Union[bool, T]:
+    @overload
+    def get_bool(self, key: str) -> bool:
+        ...
+
+    @overload
+    def get_bool(self, key: str, default: bool) -> bool:
+        ...
+
+    @overload
+    def get_bool(self, key: str, default: Literal[None]) -> Union[bool, None]:
+        ...
+
+    def get_bool(self, key: str, default: Optional[bool] = None) -> Union[bool, None]:
         """ Obtain a boolean data item from the request """
         try:
             val = self.q.get(key, default)

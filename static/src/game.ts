@@ -694,7 +694,7 @@ class Game {
     this.chatShown = true;
   }
 
-  addChatMessage(from_userid: string, msg: string, ts: string) {
+  addChatMessage(from_userid: string, msg: string, ts: string, ownMessage: boolean) {
     // Add a new chat message to the message list
     if (this.messages !== null) {
       // Do not add messages unless the message list has been
@@ -702,7 +702,7 @@ class Game {
       // we skip the initial chat message update that happens
       // immediately as we add a listener to the chat path.
       this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
-      if (this.sel != "chat" && msg != "")
+      if (this.sel != "chat" && msg != "" && !ownMessage)
         // We have a new chat message that the user hasn't seen yet
         this.chatShown = false;
     }

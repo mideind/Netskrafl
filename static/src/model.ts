@@ -309,7 +309,11 @@ class Model {
       this.gameList = json.gamelist || [];
       this.loadingGameList = false;
     })
-    .catch(() => { this.loadingGameList = false; if (this.spinners) this.spinners--; });
+    .catch(() => {
+      this.loadingGameList = false;
+      if (this.spinners)
+        this.spinners--;
+    });
   }
 
   loadChallengeList() {
@@ -637,7 +641,8 @@ class Model {
   addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
     // Add a chat message to the game's chat message list
     if (this.game && this.game.uuid == game) {
-      this.game.addChatMessage(from_userid, msg, ts);
+      this.game.addChatMessage(from_userid, msg, ts, from_userid == this.state.userId);
+      // Returning true triggers a redraw
       return true;
     }
     return false;
@@ -651,11 +656,9 @@ class Model {
       if (this.userListCriteria)
         // We are showing a user list: reload it
         this.loadUserList(this.userListCriteria, false);
+      // Reload game list
+      this.loadGameList();
     }
-    /*
-    this.gameList = null; // Reload game list
-    m.redraw();
-    */
   }
 
   handleMoveMessage(json: ServerGame) {

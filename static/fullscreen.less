@@ -381,6 +381,10 @@
 
    div.waitmove {
       .submitbutton;
+      border-style: solid;
+      border-width: 1px;
+      border-color: @close-btn;
+      background-color: white;
    }
 
    div.submitmove {
@@ -525,13 +529,14 @@
    div.player-btn {
       margin-top: 4px;
       padding-top: 4px;
+      width: 136px;
       color: white;
       cursor: pointer;
    }
 
    div.player-btn:hover {
       background-color: white;
-      color: @neutral;
+      color: black;
    }
 
    div.player-btn.left {
@@ -543,13 +548,6 @@
       padding-left: 2px;
       padding-right: 2px;
    }
-
-   /*
-   div.player-btn.left.tomove,
-   div.player-btn.right.tomove {
-      color: @neutral;
-   }
-   */
 
    div.robot-btn {
       width: 141px;

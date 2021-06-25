@@ -123,16 +123,6 @@ class Actions {
   onChatMessage(json: { from_userid: string; game: string; msg: string; ts: string; }) {
     // Handle an incoming chat message
     console.log("Chat message received: " + JSON.stringify(json));
-    if (json.from_userid != this.model.state.userId) {
-      // The message is from the remote user
-      // Put an alert on the chat tab if it is not selected
-      /*
-      if (markChatMsg()) {
-         // The message was seen: inform the server
-         sendChatSeenMarker();
-      }
-      */
-    }
     if (this.model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
       // A chat message was successfully added
       this.view.notifyChatMessage();

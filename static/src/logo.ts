@@ -86,7 +86,10 @@ const AnimatedExploLogo: ComponentFunc<{
       r.push(footer);
       return m("div",
         {
-          style: { transform: `scale(${scale})` }
+          style: {
+            "transform": `scale(${scale})`,
+            "transform-origin": "top"
+          }
         },
         m.trust(r.join("\n"))
       );

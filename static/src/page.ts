@@ -86,6 +86,9 @@ interface Dialog {
 
 class View {
 
+  // The View class exposes the vwApp view function.
+  // Each instance maintains a current dialog window stack.
+
   // The model that the view is attached to
   model: Model;
 
@@ -118,15 +121,12 @@ class View {
     // Start a blinker interval function
     window.setInterval(this.blinker, 500);
 
-    // The view interface exposes only the vwApp view function.
-    // Additionally, a view instance has a current dialog window stack.
-
   }
 
   appView(): m.vnode[] {
-    // Select the view based on the current route
-    // Display the appropriate content for the route,
-    // also considering active dialogs
+    // Returns a view based on the current route.
+    // Displays the appropriate content for the route,
+    // also considering active dialogs.
     const model = this.model;
     let views: m.vnode[] = [];
     switch (model.routeName) {
@@ -290,11 +290,11 @@ class View {
       setTimeout(() => scrollIntoView(tp[0]));
     }
     else
-    if (numTiles == 0 && this.boardScale > 1.0) {
-      // Removing only remaining tile: zoom out
-      this.boardScale = 1.0; // Needs to be done before setTimeout() call
-      setTimeout(this.resetScale);
-    }
+      if (numTiles == 0 && this.boardScale > 1.0) {
+        // Removing only remaining tile: zoom out
+        this.boardScale = 1.0; // Needs to be done before setTimeout() call
+        setTimeout(this.resetScale);
+      }
   }
 
   showUserInfo(userid: string, nick: string, fullname: string) {
@@ -311,7 +311,7 @@ class View {
     this.pushDialog("accept", { oppId: oppId, oppNick: oppNick });
   }
 
-  // Globally available controls
+  // Globally available view functions
 
   vwUserId(): m.vnode | string {
     // User identifier at top right, opens user preferences
@@ -328,7 +328,7 @@ class View {
           ev.preventDefault();
         }
       },
-      [ glyph("address-book"), nbsp(), model.state.userNick ]
+      [glyph("address-book"), nbsp(), model.state.userNick]
     );
   }
 
@@ -408,8 +408,8 @@ class View {
   blinker() {
     // Toggle the 'over' class on all elements having the 'blinking' class
     let blinkers = document.getElementsByClassName('blinking');
-    for (let i = 0; i < blinkers.length; i++)
-      blinkers[i].classList.toggle("over");
+    for (let b of blinkers)
+      b.classList.toggle("over");
   }
 
   Spinner: ComponentFunc<{}> = (initialVnode) => {
@@ -418,15 +418,15 @@ class View {
     return {
       ival: 0,
       show: false,
-      oninit: function(vnode) {
+      oninit: function (vnode) {
         this.ival = setTimeout(() => { this.show = true; this.ival = 0; }, INITIAL_DELAY);
       },
-      onremove: function(vnode) {
+      onremove: function (vnode) {
         if (this.ival)
           clearTimeout(this.ival);
         this.ival = 0;
       },
-      view: function(vnode) {
+      view: function (vnode) {
         if (!this.show)
           return undefined;
         return m(
@@ -544,7 +544,9 @@ class View {
 
   // A control that rigs up a tabbed view of raw HTML
 
-  vwTabsFromHtml(html: string, id: string, tabNumber: number, createFunc: (vnode: Vnode) => void) {
+  vwTabsFromHtml(
+    html: string, id: string, tabNumber: number, createFunc: (vnode: Vnode) => void
+  ): m.vnode | string {
     // The function assumes that 'this' is the current view object
     if (!html)
       return "";
@@ -798,17 +800,17 @@ class View {
     );
   }
 
-  vwUserPrefs() {
+  vwUserPrefs(): m.vnode {
     const model = this.model;
     if (model.user === null)
       model.loadUser(true); // Activate spinner while loading
     if (!model.user)
       // Nothing to edit (the spinner should be showing in this case)
-      return "";
+      return m.fragment({}, []);
     return this.vwUserPrefsDialog();
   }
 
-  vwUserInfo(args: { userid: string; nick: string; fullname: string; }) {
+  vwUserInfo(args: { userid: string; nick: string; fullname: string; }): m.vnode {
     return m(UserInfoDialog,
       {
         view: this,
@@ -819,7 +821,7 @@ class View {
     );
   }
 
-  vwPromo(args: { kind: string; initFunc: () => void; }) {
+  vwPromo(args: { kind: string; initFunc: () => void; }): m.vnode {
     return m(PromoDialog,
       {
         view: this,
@@ -829,7 +831,7 @@ class View {
     );
   }
 
-  vwWait(args: { oppId: string; oppNick: string; oppName: string; duration: number; }) {
+  vwWait(args: { oppId: string; oppNick: string; oppName: string; duration: number; }): m.vnode {
     return m(WaitDialog, {
       view: this,
       oppId: args.oppId,
@@ -839,7 +841,7 @@ class View {
     });
   }
 
-  vwAccept(args: { oppId: string; oppNick: string; }) {
+  vwAccept(args: { oppId: string; oppNick: string; }): m.vnode {
     return m(AcceptDialog, {
       view: this,
       oppId: args.oppId,
@@ -847,7 +849,7 @@ class View {
     });
   }
 
-  vwChallenge(item: UserListItem) {
+  vwChallenge(item: UserListItem): m.vnode {
     // Show a dialog box for a new challenge being issued
     const model = this.model;
     const state = model.state;
@@ -1007,7 +1009,7 @@ class View {
 
     function vwMainTabs() {
 
-      function vwMainTabHeader() {
+      function vwMainTabHeader(): m.vnode {
         let numGames = 0;
         let numChallenges = 0;
         if (model.gameList)
@@ -1074,9 +1076,9 @@ class View {
 
       function vwGamelist() {
 
-        function vwList() {
+        function vwList(): m.vnode[] {
 
-          function viewGameList() {
+          function viewGameList(): m.vnode[] | string {
 
             if (!model.gameList)
               return "";
@@ -1084,12 +1086,12 @@ class View {
 
               // Show a list item about a game in progress (or recently finished)
 
-              function vwOpp() {
-                var arg = item.oppid === null ? [glyph("cog"), nbsp(), item.opp] : item.opp;
+              function vwOpp(): m.vnode {
+                let arg = item.oppid === null ? [glyph("cog"), nbsp(), item.opp] : item.opp;
                 return m("span.list-opp", { title: item.fullname }, arg);
               }
 
-              function vwTurn() {
+              function vwTurn(): m.vnode {
                 var turnText: string;
                 var flagClass: string;
                 if (item.my_turn) {
@@ -1110,7 +1112,7 @@ class View {
                 );
               }
 
-              function vwOverdue() {
+              function vwOverdue(): m.vnode {
                 if (item.overdue)
                   return glyph("hourglass",
                     { title: item.my_turn ? "Er að renna út á tíma" : "Getur þvingað fram uppgjöf" }
@@ -1118,14 +1120,14 @@ class View {
                 return glyphGrayed("hourglass");
               }
 
-              function vwTileCount() {
-                var winLose = item.sc0 < item.sc1 ? ".losing" : "";
+              function vwTileCount(): m.vnode {
+                const winLose = item.sc0 < item.sc1 ? ".losing" : "";
                 return m(".tilecount",
                   m(".tc" + winLose, { style: { width: item.tile_count.toString() + "%" } })
                 );
               }
 
-              function gameUUID() {
+              function gameUUID(): string {
                 // Convert old-style /board?game=UUID URL to UUID
                 if (item.url.slice(0, BOARD_PREFIX_LEN) == BOARD_PREFIX)
                   return item.url.slice(BOARD_PREFIX_LEN);
@@ -1175,7 +1177,7 @@ class View {
           return m("div", { id: 'gamelist' }, viewGameList());
         }
 
-        function vwHint() {
+        function vwHint(): m.vnode | string {
           // Show some help if the user has no games in progress
           if (model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
             // Either we have games in progress or the game list is being loaded
@@ -1299,11 +1301,11 @@ class View {
               }
             }
 
-            let oppReady = !item.received && item.opp_ready &&
+            const oppReady = !item.received && item.opp_ready &&
               item.prefs && item.prefs.duration !== undefined &&
               item.prefs.duration > 0;
-            let clickable = item.received || oppReady;
-            let descr = challengeDescription(item.prefs);
+            const clickable = item.received || oppReady;
+            const descr = challengeDescription(item.prefs);
 
             return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
               [
@@ -1399,9 +1401,9 @@ class View {
           ];
       }
 
-      function vwRecentList() {
+      function vwRecentList(): m.vnode[] {
 
-        function vwList() {
+        function vwList(): m.vnode {
           if (model.recentList === null)
             model.loadRecentList();
           return m(RecentList,
@@ -1434,7 +1436,7 @@ class View {
         ];
       }
 
-      function vwUserButton(id: string, icon: string, text: string) {
+      function vwUserButton(id: string, icon: string, text: string): m.vnode {
         // Select the type of user list (robots, fav, alike, elo)
         const sel = model.userListCriteria ? model.userListCriteria.query : "robots";
         const spec = (id == "elo") ? "human" : "";
@@ -1512,7 +1514,7 @@ class View {
                   view.pushDialog("challenge", item);
             }
 
-            function userLink() {
+            function userLink(): m.vnode | m.vnode[] {
               if (isRobot)
                 return m("a",
                   {
@@ -1581,10 +1583,10 @@ class View {
           /* pass */
         }
         else
-          if (model.userList === null || model.userListCriteria.query != listType)
-            model.loadUserList({ query: listType, spec: "" }, true);
-          else
-            list = model.userList;
+        if (model.userList === null || model.userListCriteria.query != listType)
+          model.loadUserList({ query: listType, spec: "" }, true);
+        else
+          list = model.userList;
         const nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
           listType == "search" && model.userListCriteria.spec !== "";
         const robotList = listType == "robots";
@@ -1729,11 +1731,12 @@ class View {
     ]);
   }
 
-  vwPlayerName(game: Game, side: string) {
+  vwPlayerName(side: string) {
     // Displays a player name, handling both human and robot players
     // as well as left and right side, and local and remote colors
     const view = this;
     const state = this.model.state;
+    const game = this.model.game;
     let apl0 = game && game.autoplayer[0];
     let apl1 = game && game.autoplayer[1];
     let nick0 = game ? game.nickname[0] : "";
@@ -1789,12 +1792,11 @@ class View {
     }
   }
 
-  vwTwoLetter: ComponentFunc<{ game: Game; }> = (initialVnode) => {
+  vwTwoLetter: ComponentFunc<{}> = (initialVnode) => {
 
     // The two-letter-word list tab
+    const model = this.model;
     let page = 0;
-    let game = initialVnode.attrs.game;
-    let twoLetters = game.twoLetterWords();
 
     function renderWord(bold: boolean, w: string) {
       // For the first two-letter word in each group,
@@ -1809,6 +1811,8 @@ class View {
 
     return {
       view: (vnode) => {
+        const game = model.game;
+        const twoLetters = game.twoLetterWords();
         let twoLetterWords = twoLetters[page];
         let twoLetterList = [];
         for (let i = 0; i < twoLetterWords.length; i++) {
@@ -1966,11 +1970,11 @@ class View {
         return m(".heading",
           [
             m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
-              m(".player", view.vwPlayerName(game, "left")),
+              m(".player", view.vwPlayerName("left")),
               m(".scorewrapper", m(".scoreleft", sc0)),
             ]),
             m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
-              m(".player", view.vwPlayerName(game, "right")),
+              m(".player", view.vwPlayerName("right")),
               m(".scorewrapper", m(".scoreright", sc1)),
             ]),
             vwClock(),
@@ -1989,7 +1993,7 @@ class View {
         let component = null;
         switch (sel) {
           case "movelist":
-            component = view.vwMovelist(game);
+            component = view.vwMovelist();
             break;
           case "twoletter":
             component = m(view.vwTwoLetter, { game: game });
@@ -2183,14 +2187,14 @@ class View {
     let moveIndex = model.reviewMove;
     let bestMoves = model.bestMoves || [];
 
-    function vwRightColumn() {
+    function vwRightColumn(): m.vnode {
       // A container for the right-side header and area components
 
-      function vwRightHeading() {
+      function vwRightHeading(): m.vnode {
         // The right-side heading on the game screen
 
-        let fairplay = game.fairplay;
-        let player = game.player;
+        const fairplay = game.fairplay;
+        const player = game.player;
         let sc0 = "";
         let sc1 = "";
         if (moveIndex) {
@@ -2217,12 +2221,12 @@ class View {
           [
             m(".leftplayer", [
               m(".player" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-                view.vwPlayerName(game, "left")),
+                view.vwPlayerName("left")),
               m(".scoreleft", sc0),
             ]),
             m(".rightplayer", [
               m(".player" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-                view.vwPlayerName(game, "right")),
+                view.vwPlayerName("right")),
               m(".scoreright", sc1),
             ]),
             m(".fairplay",
@@ -2232,7 +2236,7 @@ class View {
         );
       }
 
-      function vwRightArea() {
+      function vwRightArea(): m.vnode {
         // A container for the list of best possible moves
         return m(".right-area", view.vwBestMoves(moveIndex, bestMoves));
       }
@@ -2434,8 +2438,6 @@ class View {
       // No messages loaded yet: kick off async message loading
       // for the current game
       game.loadMessages();
-    else
-      game.markChatShown();
 
     return m(".chat",
       {
@@ -2479,16 +2481,17 @@ class View {
     );
   }
 
-  vwMovelist(game: Game) {
+  vwMovelist(): m.vnode {
     // The move list tab
 
     const view = this;
     const model = this.model;
+    const game = model.game;
     const state = model.state;
 
-    function movelist() {
+    function movelist(): m.vnode[] {
       let mlist = game ? game.moves : []; // All moves made so far in the game
-      let r = [];
+      let r: m.vnode[] = [];
       let leftTotal = 0;
       let rightTotal = 0;
       for (let i = 0; i < mlist.length; i++) {
@@ -2499,7 +2502,7 @@ class View {
         else
           rightTotal = Math.max(rightTotal + score, 0);
         r.push(
-          view.vwMove(game, move,
+          view.vwMove(move,
             {
               key: i.toString(),
               leftTotal: leftTotal, rightTotal: rightTotal,
@@ -2533,7 +2536,7 @@ class View {
     const model = this.model;
     const game = model.game;
 
-    function bestHeader(co: string, tiles: string, score: number) {
+    function bestHeader(co: string, tiles: string, score: number): m.vnode {
       // Generate the header of the best move list
       let wrdclass = "wordmove";
       let dispText: string | any[];
@@ -2551,47 +2554,47 @@ class View {
           /* Pass move */
           dispText = "Pass";
         else
-          if (tiles.indexOf("EXCH") === 0) {
-            /* Exchange move - we don't show the actual tiles exchanged, only their count */
-            let numtiles = tiles.slice(5).length;
-            dispText = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
-          }
+        if (tiles.indexOf("EXCH") === 0) {
+          /* Exchange move - we don't show the actual tiles exchanged, only their count */
+          let numtiles = tiles.slice(5).length;
+          dispText = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
+        }
+        else
+        if (tiles == "RSGN")
+          /* Resigned from game */
+          dispText = "Gaf viðureign";
+        else
+        if (tiles == "CHALL")
+          /* Challenge issued */
+          dispText = "Véfengdi lögn";
+        else
+        if (tiles == "RESP") {
+          /* Challenge response */
+          if (score < 0)
+            dispText = "Óleyfileg lögn";
           else
-            if (tiles == "RSGN")
-              /* Resigned from game */
-              dispText = "Gaf viðureign";
-            else
-              if (tiles == "CHALL")
-                /* Challenge issued */
-                dispText = "Véfengdi lögn";
-              else
-                if (tiles == "RESP") {
-                  /* Challenge response */
-                  if (score < 0)
-                    dispText = "Óleyfileg lögn";
-                  else
-                    dispText = "Röng véfenging";
-                }
-                else
-                  if (tiles == "TIME") {
-                    /* Score adjustment for time */
-                    dispText = "Umframtími";
-                  }
-                  else
-                    if (tiles == "OVER") {
-                      /* Game over */
-                      dispText = "Viðureign lokið";
-                      wrdclass = "gameover";
-                    }
-                    else {
-                      // The rack leave at the end of the game (which is always in lowercase
-                      // and thus cannot be confused with the above abbreviations)
-                      wrdclass = "othermove";
-                      if (tiles == "--")
-                        dispText = "Stafaleif: (engin)";
-                      else
-                        dispText = ["Stafaleif: ", m("i", tiles)];
-                    }
+            dispText = "Röng véfenging";
+        }
+        else
+        if (tiles == "TIME") {
+          /* Score adjustment for time */
+          dispText = "Umframtími";
+        }
+        else
+        if (tiles == "OVER") {
+          /* Game over */
+          dispText = "Viðureign lokið";
+          wrdclass = "gameover";
+        }
+        else {
+          // The rack leave at the end of the game (which is always in lowercase
+          // and thus cannot be confused with the above abbreviations)
+          wrdclass = "othermove";
+          if (tiles == "--")
+            dispText = "Stafaleif: (engin)";
+          else
+            dispText = ["Stafaleif: ", m("i", tiles)];
+        }
       }
       return m(".reviewhdr",
         [
@@ -2601,8 +2604,8 @@ class View {
       );
     }
 
-    function bestMoveList() {
-      let r: VnodeChildren = [];
+    function bestMoveList(): m.vnode[] {
+      let r: m.vnode[] = [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
       if (!moveIndex || moveIndex > game.moves.length)
@@ -2629,7 +2632,7 @@ class View {
       return r;
     }
 
-    return m(".movelist-container", [ m(".movelist.bestmoves", bestMoveList()) ]);
+    return m(".movelist-container", [m(".movelist.bestmoves", bestMoveList())]);
   }
 
   scrollMovelistToBottom() {
@@ -2650,10 +2653,11 @@ class View {
     parent.setAttribute("data-len", movelist.length.toString());
   }
 
-  vwMove(game: Game, move: Move, info: MoveInfo) {
+  vwMove(move: Move, info: MoveInfo) {
     // Displays a single move
 
     const view = this;
+    const game = this.model.game;
     const state = this.model.state;
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
@@ -2680,7 +2684,7 @@ class View {
     let leftTotal = info.leftTotal;
     let rightTotal = info.rightTotal;
 
-    function gameOverMove(tiles: string) {
+    function gameOverMove(tiles: string): m.vnode {
       // Add a 'game over' div at the bottom of the move list
       // of a completed game. The div includes a button to
       // open a review of the game, if the user is a friend of Explo.
@@ -2718,48 +2722,48 @@ class View {
         score = "";
       }
       else
-        if (tiles.indexOf("EXCH") === 0) {
-          /* Exchange move - we don't show the actual tiles exchanged, only their count */
-          let numtiles = tiles.slice(5).length;
-          tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
-          score = "";
+      if (tiles.indexOf("EXCH") === 0) {
+        /* Exchange move - we don't show the actual tiles exchanged, only their count */
+        let numtiles = tiles.slice(5).length;
+        tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
+        score = "";
+      }
+      else
+      if (tiles == "RSGN")
+        /* Resigned from game */
+        tiles = " Gaf viðureign "; // Extra space intentional
+      else
+      if (tiles == "CHALL") {
+        /* Challenge issued */
+        tiles = " Véfengdi lögn "; // Extra space intentional
+        score = "";
+      }
+      else
+      if (tiles == "RESP") {
+        /* Challenge response */
+        if (score < 0) {
+          tiles = " Óleyfileg lögn "; // Extra space intentional
+          tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
         }
         else
-          if (tiles == "RSGN")
-            /* Resigned from game */
-            tiles = " Gaf viðureign "; // Extra space intentional
-          else
-            if (tiles == "CHALL") {
-              /* Challenge issued */
-              tiles = " Véfengdi lögn "; // Extra space intentional
-              score = "";
-            }
-            else
-              if (tiles == "RESP") {
-                /* Challenge response */
-                if (score < 0) {
-                  tiles = " Óleyfileg lögn "; // Extra space intentional
-                  tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
-                }
-                else
-                  tiles = " Röng véfenging "; // Extra space intentional
-              }
-              else
-                if (tiles == "TIME") {
-                  /* Overtime adjustment */
-                  tiles = " Umframtími "; // Extra spaces intentional
-                }
-                else
-                  if (tiles == "OVER") {
-                    /* Game over */
-                    tiles = "Viðureign lokið";
-                    wrdclass = "gameover";
-                  }
-                  else {
-                    /* The rack leave at the end of the game (which is always in lowercase
-                       and thus cannot be confused with the above abbreviations) */
-                    wrdclass = "wordmove";
-                  }
+          tiles = " Röng véfenging "; // Extra space intentional
+      }
+      else
+      if (tiles == "TIME") {
+        /* Overtime adjustment */
+        tiles = " Umframtími "; // Extra spaces intentional
+      }
+      else
+      if (tiles == "OVER") {
+        /* Game over */
+        tiles = "Viðureign lokið";
+        wrdclass = "gameover";
+      }
+      else {
+        /* The rack leave at the end of the game (which is always in lowercase
+            and thus cannot be confused with the above abbreviations) */
+        wrdclass = "wordmove";
+      }
     }
     else {
       // Normal tile move
@@ -2937,7 +2941,7 @@ class View {
     const model = this.model;
 
     function games() {
-      let r = [];
+      let r: m.vnode[] = [];
       // var numMyTurns = 0;
       let gameList = model.gameList;
       if (gameList === undefined) {
@@ -2996,8 +3000,8 @@ class View {
   Bag: ComponentFunc<{ bag: string; newbag: string; }> = (initialVnode) => {
     // The bag of tiles
 
-    function tiles(bag: string) {
-      let r = [];
+    function tiles(bag: string): m.vnode[] {
+      let r: m.vnode[] = [];
       let ix = 0;
       let count = bag.length;
       while (count > 0) {
@@ -3040,11 +3044,11 @@ class View {
 
     const model = this.model;
 
-    function blankLetters(game: Game) {
+    function blankLetters(game: Game): m.vnode[] {
       let legalLetters = game.alphabet;
       let len = legalLetters.length;
       let ix = 0;
-      let r = [];
+      let r: m.vnode[] = [];
 
       while (len > 0) {
         /* Rows */
@@ -3360,12 +3364,12 @@ class View {
             m(view.Tile, { coord: coord, opponent: false })
           ));
         else
-        if (review)
-          // Empty, inert square
-          r.push(m(view.ReviewTile, { key: coord, coord: coord, opponent: false }));
-        else
-          // Empty square which is a drop target
-          r.push(m(view.DropTarget, { key: coord, coord: coord }));
+          if (review)
+            // Empty, inert square
+            r.push(m(view.ReviewTile, { key: coord, coord: coord, opponent: false }));
+          else
+            // Empty square which is a drop target
+            r.push(m(view.DropTarget, { key: coord, coord: coord }));
       }
       return m("tr", r);
     }
@@ -3441,12 +3445,12 @@ class View {
             }
           }
           else
-          if (review) {
-            r.push(m(view.ReviewTile, { coord: coord, opponent: false }));
-          }
-          else {
-            r.push(m(view.DropTarget, { coord: coord }));
-          }
+            if (review) {
+              r.push(m(view.ReviewTile, { coord: coord, opponent: false }));
+            }
+            else {
+              r.push(m(view.DropTarget, { coord: coord }));
+            }
         }
         return m(".rack-row", [
           m(".rack-left", view.vwRackLeftButtons()),
@@ -3516,7 +3520,7 @@ class View {
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     if (mv === undefined)
       return undefined;
-    let [ _, [ coord, tiles, score ] ] = mv;
+    let [_, [coord, tiles, score]] = mv;
     if (score === undefined || (coord == "" && tiles == "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
@@ -3856,11 +3860,8 @@ class View {
     if (game.moveInProgress)
       r.push(
         m(".waitmove", { style: { display: "block" } },
-          m("img",
-            {
-              src: '/static/ajax-loader.gif', border: 0,  // !!! FIXME: Incorrect GIF
-              width: 16, height: 16
-            }
+          m(".animated-waitmove",
+            m(AnimatedExploLogo, { msStepTime: 100, width: 38, withCircle: false })
           )
         )
       );
@@ -4361,7 +4362,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
         url: "/onlinecheck",
         body: { user: userId }
       })
-      .then((json: { online: boolean; }) => { online = json && json.online; });
+        .then((json: { online: boolean; }) => { online = json && json.online; });
   }
 
   return {
