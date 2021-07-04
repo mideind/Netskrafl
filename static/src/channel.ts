@@ -26,11 +26,10 @@ function loginFirebase(token: string, userId: string, onLoginFunc?: () => void) 
    if (onLoginFunc !== undefined) {
       // Register our login function to execute once the user login is done
       firebase.auth().onAuthStateChanged(
-         (user) => {
+         (user: boolean) => {
             if (user) {
                // User is signed in
-               if (onLoginFunc !== undefined)
-                  onLoginFunc();
+               onLoginFunc();
             } else {
                // No user is signed in
             }
@@ -40,7 +39,7 @@ function loginFirebase(token: string, userId: string, onLoginFunc?: () => void) 
    firebase.auth()
       .signInWithCustomToken(token)
       .then(() => initPresence(userId))
-      .catch((error) => {
+      .catch((error: { code: string; message: string; }) => {
          console.log('Firebase login failed, error code: ', error.code);
          console.log('Error message: ', error.message);
       });
@@ -74,7 +73,7 @@ function attachFirebaseListener(path: string, func: (json: any) => void) {
       .on('value', (data: any) => {
          if (!data)
             return;
-         var json = data.val();
+         let json = data.val();
          if (json)
             func(json);
       });

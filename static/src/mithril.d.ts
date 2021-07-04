@@ -8,61 +8,45 @@
 
 export {
   m, Vnode, CustomVnode, VnodeAttrs,
-  Component, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
+  Component, ComponentFunc, EventHandler, MithrilEvent,
+  VnodeChildren
 };
 
 type mClass = string | typeof Link;
 
-declare function m(cls: ComponentFunc<T>, attrs: T, children?: VnodeChildren): any;
-declare function m(cls: mClass, attrs: mAttrs, children: VnodeChildren): any;
-declare function m(cls: mClass, children: VnodeChildren): any;
-declare function m(cls: mClass, attrs: mAttrs): any;
-declare function m(cls: mClass): any;
+declare function m(cls: ComponentFunc<T>, attrs: T, children?: VnodeChildren): Vnode;
+declare function m(cls: mClass, attrs: mAttrs, children: VnodeChildren): Vnode;
+declare function m(cls: mClass, children: VnodeChildren): Vnode;
+declare function m(cls: mClass, attrs: mAttrs): Vnode;
+declare function m(cls: mClass): Vnode;
 
 declare namespace m {
-  export { hyperscript as m };
-  import trust_1 = hyperscript.trust;
-  export { trust_1 as trust };
-  import fragment_1 = hyperscript.fragment;
-  export { fragment_1 as fragment };
-  import mount_1 = mount;
-  export { mount_1 as mount };
+  export { render, request, redraw, jsonp, trust, fragment, mount };
+  export { parseQueryString, buildQueryString };
+  export { parsePathname, buildPathname };
+  export { Vnode as vnode };
   export function route(root: HTMLElement, defaultRoute: string, routes: any): any;
   export namespace route {
     const SKIP: {};
-    function set(path0: string, data?: any, options?: any): void;
+    function set(path: string, data?: any, options?: any): void;
     function get(): any;
     const prefix: string;
     namespace Link {
-      function view(vnode5: any): any;
+      function view(vnode: any): any;
     }
-    function param(key4: string): string;
+    function param(key: string): string;
   }
-  export { render };
-  import redraw_1 = redraw;
-  export { redraw_1 as redraw };
-  import request_1 = request;
-  export { request_1 as request };
-  import jsonp_1 = jsonp;
-  export { jsonp_1 as jsonp };
-  export { parseQueryString };
-  export { buildQueryString };
-  export { parsePathname };
-  export { buildPathname };
-  export { Vnode as vnode };
 }
-declare function hyperscript(selector: any, ...args: any[]): any;
-declare namespace hyperscript {
-  function trust(html: string): Vnode;
-  function fragment(...args: any[]): any;
-}
-declare function mount(root: HTMLElement, component: any): void;
-declare function render(dom: HTMLElement, vnodes: any, redraw: boolean): void;
+
+declare function trust(html: string): Vnode;
+declare function fragment(arg: {}, ...args: VnodeChildren): Vnode;
+declare function mount(root: HTMLElement, component: Vnode): void;
+declare function render(dom: HTMLElement, vnodes: VnodeChildren, redraw: boolean): void;
 declare function redraw(): void;
 declare namespace redraw {
-  export { sync };
+  export function sync(): void;
 }
-declare function request(url: string, args: any): any;
+declare function request(args: RequestArgs): Promise<any>;
 declare function jsonp(url: string, args: any): any;
 declare function parseQueryString(string: any): {};
 declare function buildQueryString(object: any): string;
@@ -71,6 +55,14 @@ declare function parsePathname(url: string): {
   params: {};
 };
 declare function buildPathname(template: any, params: any): any;
+
+interface RequestArgs {
+  method: "GET" | "POST";
+  url: string;
+  body?: any;
+  responseType?: string;
+  deserialize?: (string) => string;
+};
 
 interface Vnode {
   tag: string;
@@ -86,8 +78,6 @@ interface Vnode {
   normalize: (node: any) => any;
   normalizeChildren: (input: any) => any;
 }
-
-declare function sync(): void;
 
 interface MithrilEvent extends Event {
   redraw: boolean;
@@ -158,7 +148,6 @@ interface Component<T> {
 
 type ComponentFunc<T> = (vnode: CustomVnode<T>) => Component<T>;
 
-type VnodeItem = string | number | Vnode;
-type VnodeChildren = VnodeItem | VnodeItem[];
+type VnodeChildren = string | number | Vnode | VnodeChildren[];
 
 type mAttrs = VnodeAttrs;

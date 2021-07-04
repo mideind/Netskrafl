@@ -154,7 +154,7 @@ class View {
         break;
       default:
         // console.log("Unknown route name: " + model.routeName);
-        return m("div", "Þessi vefslóð er ekki rétt");
+        return [ m("div", "Þessi vefslóð er ekki rétt") ];
     }
     // Push any open dialogs
     for (let i = 0; i < this.dialogStack.length; i++) {
@@ -1074,9 +1074,9 @@ class View {
         view.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
       }
 
-      function vwGamelist() {
+      function vwGamelist(): m.vnode[] {
 
-        function vwList(): m.vnode[] {
+        function vwList(): m.vnode {
 
           function viewGameList(): m.vnode[] | string {
 
@@ -1177,11 +1177,11 @@ class View {
           return m("div", { id: 'gamelist' }, viewGameList());
         }
 
-        function vwHint(): m.vnode | string {
+        function vwHint(): m.vnode {
           // Show some help if the user has no games in progress
           if (model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
             // Either we have games in progress or the game list is being loaded
-            return "";
+            return undefined;
           return m(".hint", { style: { display: "block" } },
             [
               m("p",
@@ -1248,7 +1248,7 @@ class View {
         ];
       }
 
-      function vwChallenges(showReceived: boolean) {
+      function vwChallenges(showReceived: boolean): m.vnode[] {
 
         function vwList() {
 
@@ -1453,7 +1453,7 @@ class View {
         );
       }
 
-      function vwUserList() {
+      function vwUserList(): m.vnode[] {
 
         function vwList(list: UserListItem[]) {
 
@@ -1462,7 +1462,7 @@ class View {
             // Generate a list item about a user
 
             const isRobot = item.userid.indexOf("robot-") === 0;
-            let fullname: any[] = [];
+            let fullname: VnodeChildren = [];
 
             // Online and accepting challenges
             if (item.ready && !isRobot) {
@@ -1481,7 +1481,7 @@ class View {
             }
             fullname.push(item.fullname);
 
-            function fav() {
+            function fav(): m.vnode {
               if (isRobot)
                 return m("span.list-fav", { style: { cursor: "default" } }, glyph("star-empty"));
               return m("span.list-fav",
@@ -1514,7 +1514,7 @@ class View {
                   view.pushDialog("challenge", item);
             }
 
-            function userLink(): m.vnode | m.vnode[] {
+            function userLink(): m.vnode {
               if (isRobot)
                 return m("a",
                   {
@@ -1531,11 +1531,11 @@ class View {
                   ]
                 );
               else
-                return [
+                return m.fragment({}, [
                   m("span.list-nick", item.nick),
                   m("span.list-fullname", fullname),
                   m("span.list-human-elo", item.human_elo)
-                ];
+                ]);
             }
 
             return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
@@ -1575,7 +1575,7 @@ class View {
         const listType = model.userListCriteria ? model.userListCriteria.query : "robots";
         if (listType == "elo")
           // Show Elo list
-          return m(EloPage, { id: "elolist", view: view });
+          return [ m(EloPage, { id: "elolist", view: view }) ];
         // Show normal user list
         let list: UserListItem[] = [];
         if (model.userList === undefined) {
@@ -1614,11 +1614,11 @@ class View {
                 " finnst ekki"
               ]
             )
-            : ""
+            : undefined
         ];
       }
 
-      function vwStats() {
+      function vwStats(): m.vnode {
         // View the user's own statistics summary
         const ownStats = model.ownStats;
         if (model.ownStats === null)
@@ -1626,7 +1626,7 @@ class View {
         return m(StatsDisplay, { id: 'own-stats', ownStats: ownStats });
       }
 
-      function vwBest() {
+      function vwBest(): m.vnode {
         // View the user's own best game and word scores
         const ownStats = model.ownStats;
         if (model.ownStats === null)
@@ -1722,7 +1722,9 @@ class View {
       m("main",
         m("div",
           {
-            oncreate: (vnode) => { this.makeTabs("main-tabs", undefined, false, vnode); },
+            oncreate: (vnode) => {
+              this.makeTabs("main-tabs", undefined, false, vnode);
+            },
             onupdate: updateSelection
           },
           vwMainTabs()
@@ -1945,7 +1947,7 @@ class View {
           // Not a timed game, or a game that is completed
           return m.fragment({}, []);
 
-        function vwClockFace(cls: string, txt: string, runningOut: boolean, blinking: boolean) {
+        function vwClockFace(cls: string, txt: string, runningOut: boolean, blinking: boolean): m.vnode {
           return m("h3." + cls
             + (runningOut ? ".running-out" : "")
             + (blinking ? ".blink" : ""),
@@ -3111,7 +3113,7 @@ class View {
     return {
       view: (vnode) => {
         const game = model.game;
-        let r: m.vnode[] = [];
+        let r: VnodeChildren = [];
         if (game) {
           r = [
             m(this.Board, { review: false }),
@@ -3737,7 +3739,7 @@ class View {
 
   makeButton(
     cls: string, disabled: boolean, func: () => void,
-    title: string, children?: m.vnode[], id?: string
+    title: string, children?: VnodeChildren, id?: string
   ): m.vnode {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
@@ -3918,7 +3920,7 @@ class View {
     return r;
   }
 
-  vwErrors(game: Game): m.vnode | string {
+  vwErrors(game: Game): m.vnode {
     // Error messages, selectively displayed
     let msg: string = game.currentMessage || "";
     let errorMessages: { [key: string]: VnodeChildren } = {
@@ -3954,7 +3956,7 @@ class View {
         ]
       );
     }
-    return "";
+    return undefined;
   }
 
   vwCongrats(): m.vnode {
@@ -3968,7 +3970,7 @@ class View {
           m("strong", "Til hamingju með sigurinn!")
         ]
       )
-      : "";
+      : undefined;
   }
 
   vwDialogs(game: Game) {
@@ -4471,7 +4473,7 @@ const EloList: ComponentFunc<{
 
         const isRobot = item.userid.indexOf("robot-") === 0;
         let nick: VnodeChildren = item.nick;
-        let ch = "";
+        let ch = nbsp();
         let info = nbsp();
         let newbag = item.newbag;
         if (item.userid != state.userId && !item.inactive)
@@ -4581,8 +4583,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
     }
 
     // Show the Elo point adjustments resulting from the game
-    let eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
-    let eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";
+    let eloAdj: m.vnode | string = item.elo_adj ? item.elo_adj.toString() : "";
+    let eloAdjHuman: m.vnode | string = item.human_elo_adj ? item.human_elo_adj.toString() : "";
     let eloAdjClass: string, eloAdjHumanClass: string;
     // Find out the appropriate class to use depending on the adjustment sign
     if (item.elo_adj !== null)
@@ -4591,24 +4593,24 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         eloAdjClass = "elo-win";
       }
       else
-        if (item.elo_adj < 0)
-          eloAdjClass = "elo-loss";
-        else {
-          eloAdjClass = "elo-neutral";
-          eloAdj = glyph("stroller", { title: 'Byrjandi' });
-        }
+      if (item.elo_adj < 0)
+        eloAdjClass = "elo-loss";
+      else {
+        eloAdjClass = "elo-neutral";
+        eloAdj = glyph("stroller", { title: 'Byrjandi' });
+      }
     if (item.human_elo_adj !== null)
       if (item.human_elo_adj > 0) {
         eloAdjHuman = "+" + eloAdjHuman;
         eloAdjHumanClass = "elo-win";
       }
       else
-        if (item.human_elo_adj < 0)
-          eloAdjHumanClass = "elo-loss";
-        else {
-          eloAdjHumanClass = "elo-neutral";
-          eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
-        }
+      if (item.human_elo_adj < 0)
+        eloAdjHumanClass = "elo-loss";
+      else {
+        eloAdjHumanClass = "elo-neutral";
+        eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
+      }
     eloAdj = m("span",
       { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
       eloAdj
@@ -5205,11 +5207,11 @@ function stopPropagation(ev: Event) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon: string, attrs?: object, grayed?: boolean) {
+function glyph(icon: string, attrs?: object, grayed?: boolean): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs);
 }
 
-function glyphGrayed(icon: string, attrs?: object) {
+function glyphGrayed(icon: string, attrs?: object): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 

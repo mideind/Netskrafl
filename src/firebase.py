@@ -248,9 +248,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
     """ Create a secure token for the given id.
         This method is used to create secure custom JWT tokens to be passed to
         clients. It takes a unique id that will be used by Firebase's
-        security rules to prevent unauthorized access. In this case, the uid will
-        be the channel id which is a combination of a user id and a game id.
-    """
+        security rules to prevent unauthorized access. """
     global _firebase_app
     if _firebase_app is None:
         _firebase_app = initialize_app(

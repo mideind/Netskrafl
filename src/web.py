@@ -641,7 +641,7 @@ def newbag() -> ResponseType:
 @web.route("/greet")
 def greet() -> ResponseType:
     """ Handler for the greeting page """
-    return render_template("login.html")
+    return render_template("login.html", single_page=_SINGLE_PAGE_UI)
 
 
 @web.route("/login")
