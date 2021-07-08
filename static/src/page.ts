@@ -4357,14 +4357,15 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
   const id = attrs.id;
   const userId = attrs.userId;
 
-  function _update() {
-    if (askServer)
-      m.request({
+  async function _update() {
+    if (askServer) {
+      const json: { online: boolean; } = await m.request({
         method: "POST",
         url: "/onlinecheck",
         body: { user: userId }
-      })
-        .then((json: { online: boolean; }) => { online = json && json.online; });
+      });
+      online = json && json.online;
+    }
   }
 
   return {

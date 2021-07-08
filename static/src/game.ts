@@ -399,7 +399,6 @@ class Game {
 
   init(srvGame: ServerGame) {
     // Initialize the game state with data from the server
-    // !!! FIXME: If the last move was by the opponent, highlight it
     // Check whether the game is over, or whether there was an error
     this.over = srvGame.result == GAME_OVER;
     if (this.over || srvGame.result === 0)
@@ -464,28 +463,30 @@ class Game {
       this.resetClock();
   };
 
-  refresh() {
+  async refresh() {
     // Force a refresh of the current game state from the server
     // Before calling refresh(), this.moveInProgress is typically
     // set to true, so we reset it here
-    if (!this.uuid) {
-      this.moveInProgress = false;
-      return;
-    }
-    m.request({
-      method: "POST",
-      url: "/gamestate",
-      body: { game: this.uuid }
-    })
-    .then((result: { ok: boolean; game: ServerGame; }) => {
-      if (!result.ok) {
+    try {
+      if (!this.uuid)
+        return;
+      const result: { ok: boolean; game: ServerGame; } = await m.request({
+        method: "POST",
+        url: "/gamestate",
+        body: { game: this.uuid }
+      });
+      if (!result?.ok) {
         // console.log("Game " + uuid + " could not be loaded");
       }
       else {
         this.update(result.game);
       }
+    }
+    catch(e) {
+    }
+    finally {
       this.moveInProgress = false;
-    });
+    }
   }
 
   notifyUserChange(newNick: string) {
@@ -632,16 +633,17 @@ class Game {
     )
   }
 
-  loadMessages() {
+  async loadMessages() {
     // Load chat messages for this game
     this.messages = []; // Prevent double loading
-    return m.request(
-      {
-        method: "POST",
-        url: "/chatload",
-        body: { channel: "game:" + this.uuid }
-      }
-    ).then((result: { ok: boolean; messages: Message[]; }) => {
+    try {
+      const result = await m.request(
+        {
+          method: "POST",
+          url: "/chatload",
+          body: { channel: "game:" + this.uuid }
+        }
+      );
       if (result.ok)
         this.messages = result.messages || [];
       else
@@ -651,19 +653,23 @@ class Game {
       // !!! opponent that comes after the last message-seen
       // !!! marker
       this.chatShown = this.messages.length === 0;
-    });
+    }
+    catch (e) {
+      // Just leave this.messages as an empty list
+    }
   }
 
-  loadStats() {
+  async loadStats() {
     // Load statistics about a game
     this.stats = undefined; // Error/in-progress status
-    return m.request(
-      {
-        method: "POST",
-        url: "/gamestats",
-        body: { game: this.uuid }
-      }
-    ).then((json: { result: number; }) => {
+    try {
+      const json = await m.request(
+        {
+          method: "POST",
+          url: "/gamestats",
+          body: { game: this.uuid }
+        }
+      );
       // Save the incoming game statistics in the stats property
       if (!json || json.result === undefined)
         return;
@@ -671,20 +677,27 @@ class Game {
         return;
       // Success: assign the stats
       this.stats = json;
-    });
+    }
+    catch(e) {
+      // Just leave this.stats undefined
+    }
   }
 
-  sendMessage(msg: string) {
+  async sendMessage(msg: string) {
     // Send a chat message
-    return m.request(
-      {
-        method: "POST",
-        url: "/chatmsg",
-        body: { channel: "game:" + this.uuid, msg: msg }
-      }
-    ).then(() => {
-      // The updated chat comes in via a Firebase notification
-    });
+    try {
+      await m.request(
+        {
+          method: "POST",
+          url: "/chatmsg",
+          body: { channel: "game:" + this.uuid, msg: msg }
+        }
+      );
+    }
+    catch(e) {
+      // No big deal
+      // A TODO might be to add some kind of error icon to the UI
+    }
   }
 
   sendChatSeenMarker() {
@@ -939,26 +952,26 @@ class Game {
     return r;
   };
 
-  sendMove(moves: string[]) {
+  async sendMove(moves: string[]) {
     // Send a move to the server
     this.moveInProgress = true;
-    return m.request(
-      {
-        method: "POST",
-        url: "/submitmove",
-        body: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
-      }
-    ).then((result: ServerGame) => {
-        this.moveInProgress = false;
-        // The update() function also handles error results
-        this.update(result);
-      }
-    ).catch((e: string) => {
-        this.moveInProgress = false;
-        this.currentError = "server";
-        this.currentMessage = e;
-      }
-    );
+    try {
+      const result = await m.request(
+        {
+          method: "POST",
+          url: "/submitmove",
+          body: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
+        }
+      );
+      // The update() function also handles error results
+      this.update(result);
+    } catch (e) {
+      this.currentError = "server";
+      this.currentMessage = e;
+    }
+    finally {
+      this.moveInProgress = false;
+    }
   };
 
   submitMove() {
@@ -1214,7 +1227,7 @@ class Game {
     this.saveTiles();
   };
 
-  updateScore() {
+  async updateScore() {
     // Re-calculate the current word score
     let scoreResult = this.calcScore();
     this.wordGood = false;
@@ -1223,22 +1236,27 @@ class Game {
       this.currentScore = undefined;
     else {
       this.currentScore = scoreResult.score;
-      var wordToCheck = scoreResult.word;
+      let wordToCheck = scoreResult.word;
       if (!this.manual) {
+        // This is not a manual-wordcheck game:
         // Check the word that has been laid down
-        m.request(
-          {
+        try {
+          const result: { word: string; ok: boolean; } = await m.request({
             method: "POST",
             url: "/wordcheck",
-            body: { locale: this.locale, word: scoreResult.word, words: scoreResult.words }
-          }
-        ).then((result: { word: string; ok: boolean; }) => {
-            if (result && result.word == wordToCheck) {
-              this.wordGood = result.ok;
-              this.wordBad = !result.ok;
+            body: {
+              locale: this.locale,
+              word: scoreResult.word,
+              words: scoreResult.words
             }
+          });
+          if (result?.word == wordToCheck) {
+            this.wordGood = result.ok;
+            this.wordBad = !result.ok;
           }
-        );
+        }
+        catch(e) {
+        }
       }
     }
   };

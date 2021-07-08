@@ -42,21 +42,43 @@ const WaitDialog: ComponentFunc<{
   // Flag set when the new game has been initiated
   let pointOfNoReturn = false;
 
-  return {
-    oninit: () => {
-      // Initiate an online check on the opponent
-      m.request({
+  async function updateOnline() {
+    // Initiate an online check on the opponent
+    try {
+      const json: { online: boolean; waiting: boolean; } = await m.request({
         method: "POST",
         url: "/initwait",
         body: { opp: oppId }
-      })
-      .then((json: { online: boolean; waiting: boolean; }) => {
-        // If json.waiting is false, the initiation failed
-        // and there is really no point in continuing to wait
-        if (json && json.online && json.waiting)
-          // The user is online
-          oppOnline = true;
       });
+      // If json.waiting is false, the initiation failed
+      // and there is really no point in continuing to wait
+      if (json && json.online && json.waiting)
+        // The user is online
+        oppOnline = true;
+    }
+    catch(e) {
+    }
+  }
+
+  async function cancelWait() {
+    // Cancel a pending wait for a timed game
+    try {
+      await m.request({
+        method: "POST",
+        url: "/cancelwait",
+        body: {
+          user: userId,
+          opp: oppId
+        }
+      });
+    }
+    catch(e) {
+    }
+  }
+
+  return {
+    oninit: () => {
+      updateOnline();
       // Attach a Firebase listener to the wait path
       attachFirebaseListener(path, (json: true | { game: string }) => {
         if (json !== true && json.game) {
@@ -107,7 +129,7 @@ const WaitDialog: ComponentFunc<{
                 title: "Hætta við",
                 // onmouseover: buttonOver,
                 // onmouseout: buttonOut,
-                onclick: (ev) => {
+                onclick: (ev: MouseEvent) => {
                   // Cancel the wait status and navigate back to the main page
                   if (pointOfNoReturn) {
                     // Actually, it's too late to cancel
@@ -115,15 +137,7 @@ const WaitDialog: ComponentFunc<{
                     return;
                   }
                   detachFirebaseListener(path);
-                  m.request({
-                    method: "POST",
-                    url: "/cancelwait",
-                    body: {
-                      user: userId,
-                      opp: oppId
-                    }
-                  })
-                  .then(() => {});
+                  cancelWait();
                   view.popDialog();
                   ev.preventDefault();
                 }
@@ -152,27 +166,31 @@ const AcceptDialog: ComponentFunc<{
   let oppNick = attrs.oppNick;
   let oppReady = true;
 
-  return {
-    oninit: () => {
-      // Initiate a wait status check on the opponent
-      m.request({
+  async function waitCheck() {
+    // Initiate a wait status check on the opponent
+    try {
+      const json: { waiting: boolean; } = await m.request({
         method: "POST",
         url: "/waitcheck",
         body: { user: oppId }
-      })
-      .then((json: { waiting: boolean; }) => {
-        if (json && json.waiting) {
-          // Both players are now ready: Start the timed game.
-          // The newGame() call switches to a new route (/game),
-          // and all open dialogs are thereby closed automatically.
-          model.newGame(oppId, true);
-        }
-        else
-          // Something didn't check out: keep the dialog open
-          // until the user manually closes it
-          oppReady = false;
       });
-    },
+      if (json?.waiting) {
+        // Both players are now ready: Start the timed game.
+        // The newGame() call switches to a new route (/game),
+        // and all open dialogs are thereby closed automatically.
+        model.newGame(oppId, true);
+      }
+      else
+        // Something didn't check out: keep the dialog open
+        // until the user manually closes it
+        oppReady = false;
+    }
+    catch(e) {
+    }
+  }
+
+  return {
+    oninit: () => waitCheck(),
     view: () => {
       return m(".modal-dialog",
         { id: "accept-dialog", style: { visibility: "visible" } },
@@ -203,7 +221,7 @@ const AcceptDialog: ComponentFunc<{
               {
                 id: 'accept-cancel',
                 title: 'Reyna síðar',
-                onclick: (ev: Event) => {
+                onclick: (ev: MouseEvent) => {
                   // Abort mission
                   view.popDialog();
                   ev.preventDefault();

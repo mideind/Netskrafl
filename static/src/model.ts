@@ -251,14 +251,14 @@ class Model {
     this.state = state;
   }
 
-  loadGame(uuid: string, funcComplete: () => void) {
+  async loadGame(uuid: string, funcComplete: () => void) {
     // Fetch a game state from the server, given the game's UUID
-    m.request({
-      method: "POST",
-      url: "/gamestate",
-      body: { game: uuid }
-    })
-    .then((result: { ok: boolean; game: ServerGame; }) => {
+    try {
+      const result: { ok: boolean; game: ServerGame; } = await m.request({
+        method: "POST",
+        url: "/gamestate",
+        body: { game: uuid }
+      });
       if (this.game !== null)
         // We have a prior game in memory:
         // clean it up before allocating the new one
@@ -267,7 +267,7 @@ class Model {
       this.reviewMove = null;
       this.bestMoves = null;
       this.highlightedMove = null;
-      if (!result.ok) {
+      if (!result?.ok) {
         // console.log("Game " + uuid + " could not be loaded");
       }
       else {
@@ -281,10 +281,13 @@ class Model {
           // Mobile UI: show board tab
           this.game.setSelectedTab("board");
       }
-    });
+    }
+    catch(e) {
+      // If new game cannot be loaded, keep the old one in place
+    }
   }
 
-  loadGameList(includeZombies: boolean = true) {
+  async loadGameList(includeZombies: boolean = true) {
     // Load the list of currently active games for this user
     if (this.loadingGameList)
       // Already loading
@@ -292,94 +295,99 @@ class Model {
     this.loadingGameList = true; // Loading in progress
     this.gameList = [];
     this.spinners++;
-    m.request({
-      method: "POST",
-      url: "/gamelist",
-      body: { zombie: includeZombies }
-    })
-    .then((json: { result: number; gamelist: GameListItem[]; }) => {
-      if (this.spinners)
-        this.spinners--;
+    try {
+      const json: { result: number; gamelist: GameListItem[]; } = await m.request({
+        method: "POST",
+        url: "/gamelist",
+        body: { zombie: includeZombies }
+      });
       if (!json || json.result !== 0) {
         // An error occurred
         this.gameList = null;
-        this.loadingGameList = false;
         return;
       }
       this.gameList = json.gamelist || [];
-      this.loadingGameList = false;
-    })
-    .catch(() => {
+    }
+    catch(e) {
+      this.gameList = null;
+    }
+    finally {
       this.loadingGameList = false;
       if (this.spinners)
         this.spinners--;
-    });
+    }
   }
 
-  loadChallengeList() {
+  async loadChallengeList() {
     // Load the list of current challenges (received and issued)
     if (this.loadingChallengeList)
       return;
     this.loadingChallengeList = true;
     this.challengeList = [];
-    m.request({
-      method: "POST",
-      url: "/challengelist"
-    })
-    .then((json: { result: number; challengelist: ChallengeListItem[]; }) => {
+    try {
+      const json: { result: number; challengelist: ChallengeListItem[]; } = await m.request({
+        method: "POST",
+        url: "/challengelist"
+      });
       if (!json || json.result !== 0) {
         // An error occurred
         this.challengeList = null;
-        this.loadingChallengeList = false;
         return;
       }
       this.challengeList = json.challengelist || [];
-      this.loadingChallengeList = false;
       // Count opponents who are ready and waiting for timed games
       this.oppReady = 0;
       for (let ch of this.challengeList) {
         if (ch.opp_ready)
           this.oppReady++;
       }
-    })
-    .catch(() => { this.loadingChallengeList = false; });
+    }
+    catch(e) {
+      this.challengeList = null;
+    }
+    finally {
+      this.loadingChallengeList = false;
+    }
   }
 
-  loadRecentList() {
+  async loadRecentList() {
     // Load the list of recent games for this user
     if (this.loadingRecentList)
       return;
     this.loadingRecentList = true; // Prevent concurrent loading
     this.recentList = [];
-    m.request({
-      method: "POST",
-      url: "/recentlist",
-      body: { versus: null, count: 40 }
-    })
-    .then((json: { result: number; recentlist: RecentListItem[]; }) => {
+    try {
+      const json: { result: number; recentlist: RecentListItem[]; } = await m.request({
+        method: "POST",
+        url: "/recentlist",
+        body: { versus: null, count: 40 }
+      });
       if (!json || json.result !== 0) {
         // An error occurred
         this.recentList = null;
-        this.loadingRecentList = false;
         return;
       }
       this.recentList = json.recentlist || [];
+    }
+    catch(e) {
+      this.recentList = null;
+    }
+    finally {
       this.loadingRecentList = false;
-    })
-    .catch(() => { this.loadingRecentList = false; });
+    }
   }
 
-  loadUserRecentList(userid: string, versus: string, readyFunc: (json: any) => void) {
+  async loadUserRecentList(userid: string, versus: string, readyFunc: (json: any) => void) {
     // Load the list of recent games for the given user
-    m.request({
+    const json: any = await m.request({
       method: "POST",
       url: "/recentlist",
       body: { user: userid, versus: versus, count: 40 }
-    })
-    .then(readyFunc);
+    });
+    readyFunc(json);
   }
 
-  loadUserList(
+  async loadUserList(
     criteria: { query: string; spec: string; },
     activateSpinner: boolean
   ) {
@@ -406,15 +414,12 @@ class Model {
       url = "/rating";
       data = { kind: criteria.spec };
     }
-    m.request({
-      method: "POST",
-      url: url,
-      body: data
-    })
-    .then((json: { result: number; userlist: any; rating: any; }) => {
-      if (activateSpinner && this.spinners)
-        // Remove spinner overlay, if present
-        this.spinners--;
+    try {
+      const json: { result: number; userlist: any; rating: any; } = await m.request({
+        method: "POST",
+        url: url,
+        body: data
+      });
       if (!json || json.result !== 0) {
         // An error occurred
         this.userList = null;
@@ -423,75 +428,98 @@ class Model {
       }
       this.userList = json.userlist || json.rating;
       this.userListCriteria = criteria;
-    })
-    .catch(() => {
+    }
+    catch(e) {
+      this.userList = null;
+      this.userListCriteria = null;
+    }
+    finally {
       if (activateSpinner && this.spinners)
         // Remove spinner overlay, if present
         this.spinners--;
-    });
+    }
   }
 
-  loadOwnStats() {
+  async loadOwnStats() {
     // Load statistics for the current user
     this.ownStats = {};
-    m.request({
-      method: "POST",
-      url: "/userstats",
-      body: {} // Current user is implicit
-    })
-    .then((json: { result: number; }) => {
+    try {
+      const json: { result: number; } = await m.request({
+        method: "POST",
+        url: "/userstats",
+        body: {} // Current user is implicit
+      });
       if (!json || json.result !== 0) {
         // An error occurred
         this.ownStats = null;
         return;
       }
       this.ownStats = json;
-    });
+    }
+    catch(e) {
+      this.ownStats = null;
+    }
   }
 
-  loadUserStats(userid: string, readyFunc: (json: any) => void) {
+  async loadUserStats(userid: string, readyFunc: (json: any) => void) {
     // Load statistics for the given user
-    m.request({
-      method: "POST",
-      url: "/userstats",
-      body: { user: userid }
-    })
-    .then(readyFunc);
+    try {
+      const json: any = await m.request({
+        method: "POST",
+        url: "/userstats",
+        body: { user: userid }
+      });
+      readyFunc(json);
+    }
+    catch(e) {
+      // No need to do anything
+    }
   }
 
-  loadPromoContent(key: string, readyFunc: (html: string) => void) {
+  async loadPromoContent(key: string, readyFunc: (html: string) => void) {
     // Load HTML content for promo dialog
-    m.request({
-      method: "POST",
-      url: "/promo",
-      body: { key: key },
-      responseType: "text",
-      deserialize: (str: string) => str
-    })
-    .then(readyFunc);
+    try {
+      const html: string = await m.request({
+        method: "POST",
+        url: "/promo",
+        body: { key: key },
+        responseType: "text",
+        deserialize: (str: string) => str
+      });
+      readyFunc(html);
+    }
+    catch(e) {
+      // No need to do anything
+    }
   }
 
-  loadBestMoves(moveIndex: number) {
+  async loadBestMoves(moveIndex: number) {
     // Load the best moves available at a given state in a game
     if (!this.game || !this.game.uuid)
       return;
-      if (!moveIndex) {
-        // No moves to load, but display summary
-        this.reviewMove = 0;
-        this.bestMoves = null;
-        this.highlightedMove = null;
-        this.game.setRack([]);
-        this.game.placeTiles(0);
-        return;
-      }
+    if (!moveIndex) {
+      // No moves to load, but display summary
+      this.reviewMove = 0;
+      this.bestMoves = null;
+      this.highlightedMove = null;
+      this.game.setRack([]);
+      this.game.placeTiles(0);
+      return;
+    }
     // Don't display navigation buttons while fetching best moves
     this.reviewMove = null;
-    m.request({
-      method: "POST",
-      url: "/bestmoves",
-      body: { game: this.game.uuid, move: moveIndex }
-    })
-    .then((json: { result: number; move_number: number; best_moves: Move[]; player_rack: RackTile[]; }) => {
+    try {
+      type BestMoves = {
+        result: number;
+        move_number: number;
+        best_moves: Move[];
+        player_rack: RackTile[];
+      };
+      const json: BestMoves = await m.request({
+        method: "POST",
+        url: "/bestmoves",
+        body: { game: this.game.uuid, move: moveIndex }
+      });
       this.highlightedMove = null;
       if (!json || json.result !== 0) {
         this.reviewMove = null;
@@ -504,38 +532,45 @@ class Model {
       // Populate the board cells with only the tiles
       // laid down up and until the indicated moveIndex
       this.game.placeTiles(this.reviewMove);
-    });
+    }
+    catch(e) {
+      this.highlightedMove = null;
+      this.reviewMove = null;
+      this.bestMoves = null;
+    }
   }
 
-  loadHelp() {
+  async loadHelp() {
     // Load the help screen HTML from the server
     // (this is done the first time the help is displayed)
     if (this.helpHTML !== null)
       return; // Already loaded
-    m.request({
-      method: "GET",
-      url: "/rawhelp",
-      responseType: "text",
-      deserialize: (str: string) => str
-    })
-    .then((result: string) => { this.helpHTML = result; });
+    try {
+      const result: string = await m.request({
+        method: "GET",
+        url: "/rawhelp",
+        responseType: "text",
+        deserialize: (str: string) => str
+      });
+      this.helpHTML = result;
+    } catch(e) {
+      this.helpHTML = "";
+    }
   }
 
-  loadUser(activateSpinner: boolean) {
+  async loadUser(activateSpinner: boolean) {
     // Fetch the preferences of the currently logged in user, if any
     this.user = undefined;
     if (activateSpinner)
       // This will show a spinner overlay, disabling clicks on
       // all underlying controls
       this.spinners++;
-    m.request({
-      method: "POST",
-      url: "/loaduserprefs"
-    })
-    .then((result: { ok: boolean; userprefs: UserPrefs; }) => {
-      if (activateSpinner && this.spinners)
-        this.spinners--;
-      if (!result.ok) {
+    try {
+      const result: { ok: boolean; userprefs: UserPrefs; } = await m.request({
+        method: "POST",
+        url: "/loaduserprefs"
+      });
+      if (!result || !result.ok) {
         this.user = null;
         this.userErrors = null;
       }
@@ -543,22 +578,26 @@ class Model {
         this.user = result.userprefs;
         this.userErrors = null;
       }
-    })
-    .catch(() => {
+    }
+    catch(e) {
+      this.user = null;
+      this.userErrors = null;
+    }
+    finally {
       if (activateSpinner && this.spinners)
         this.spinners--;
-    });
+    }
   }
 
-  saveUser(successFunc: () => void) {
+  async saveUser(successFunc: () => void) {
     // Update the preferences of the currently logged in user, if any
-    m.request({
-      method: "POST",
-      url: "/saveuserprefs",
-      body: this.user
-    })
-    .then((result: { ok: boolean; err?: UserErrors; }) => {
-      if (result.ok) {
+    try {
+      const result: { ok: boolean; err?: UserErrors; } = await m.request({
+        method: "POST",
+        url: "/saveuserprefs",
+        body: this.user
+      });
+      if (result?.ok) {
         // User preferences modified successfully on the server:
         // update the state variables that we're caching
         const state = this.state;
@@ -582,60 +621,77 @@ class Model {
         // Error saving user prefs: show details, if available
         this.userErrors = result.err || null;
       }
-    });
+    }
+    catch(e) {
+      this.userErrors = null;
+    }
   }
 
-  setUserPref(pref: object) {
+  async setUserPref(pref: object) {
     // Set a user preference
-    return m.request(
-      {
-        method: "POST",
-        url: "/setuserpref",
-        body: pref
-      }
-    ).then(() => { }); // No result required or expected
+    try {
+      await m.request(
+        {
+          method: "POST",
+          url: "/setuserpref",
+          body: pref
+        }
+      ); // No result required or expected
+    } catch (e) {
+      // A future TODO might be to signal an error in the UI
+    }
   }
 
-  newGame(oppid: string, reverse: boolean) {
+  async newGame(oppid: string, reverse: boolean) {
     // Ask the server to initiate a new game against the given opponent
-    m.request({
-      method: "POST",
-      url: "/initgame",
-      body: { opp: oppid, rev: reverse }
-    })
-    .then((json: { ok: boolean; uuid: string; }) => {
-      if (json.ok) {
+    try {
+      const json: { ok: boolean; uuid: string; } = await m.request({
+        method: "POST",
+        url: "/initgame",
+        body: { opp: oppid, rev: reverse }
+      });
+      if (json?.ok) {
         // Go to the newly created game
         m.route.set("/game/" + json.uuid);
       }
-    });
+    }
+    catch(e) {
+      // No need to do anything
+    }
   }
 
-  modifyChallenge(parameters: ChallengeParameters) {
+  async modifyChallenge(parameters: ChallengeParameters) {
     // Reject or retract a challenge
-    m.request({
-      method: "POST",
-      url: "/challenge",
-      body: parameters
-    })
-    .then((json: { result: number; }) => {
-      if (json.result === 0) {
+    try {
+      const json: { result: number; } = await m.request({
+        method: "POST",
+        url: "/challenge",
+        body: parameters
+      });
+      if (json?.result === 0) {
         this.loadChallengeList();
         if (this.userListCriteria)
           // We are showing a user list: reload it
           this.loadUserList(this.userListCriteria, false);
       }
-    });
+    }
+    catch(e) {
+      // A future TODO is to indicate an error in the UI
+    }
   }
 
-  markFavorite(userId: string, status: boolean) {
+  async markFavorite(userId: string, status: boolean) {
     // Mark or de-mark a user as a favorite
-    m.request({
-      method: "POST",
-      url: "/favorite",
-      body: { destuser: userId, action: status ? "add" : "delete" }
-    })
-    .then(() => { });
+    try {
+      await m.request({
+        method: "POST",
+        url: "/favorite",
+        body: { destuser: userId, action: status ? "add" : "delete" }
+      });
+    }
+    catch(e) {
+      // No need to do anything here - a future TODO is to indicate an error in the UI
+    }
   }
 
   addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
