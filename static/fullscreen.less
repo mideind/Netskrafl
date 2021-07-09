@@ -86,7 +86,15 @@
       width: 504px;
       height: 276px;
    }
+
+   div.try-again {
+      width: auto;
+   }
    
+   div.get-help {
+      width: auto;
+   }
+
    div.board-help {
       display: block;
       z-index: 2;
@@ -99,7 +107,7 @@
    div.rightcol {
       position: absolute;
       width: 302px;
-      top: 44px;
+      top: 38px;
       right: 12px;
       height: auto;
       left: auto;
@@ -107,10 +115,31 @@
    
    div.right-area {
       display: block;
-      margin-top: 8px;
+      margin-top: 12px;
       height: 420px;
    }
    
+   h3.playerleft,
+   h3.playerright {
+      position: absolute;
+      display: inline-block;
+      top: 0;
+      margin: 0;
+      height: 40px;
+      min-height: 40px;
+      font-size: 16px;
+      line-height: 24px;
+   }
+
+   h3.playerleft {
+      left: 0;
+   }
+
+   h3.playerright {
+      right: 0;
+      text-align: right;
+   }
+
    div.games,
    div.twoletter,
    div.chat {
@@ -118,33 +147,32 @@
    }
    
    div.board-area {
-      margin-top: 0;
+      margin: 0;
       height: 750px;
    }
 
    div.board {
       position: absolute;
       top: 0;
-      left: 88px;
+      left: 93px;
       height: auto;
       margin: 0;
-      background-color: @container;
+      // background-color: @container;
    }
    
    .board td {
       min-height: @board-cell-big;
       min-width: @board-cell-big;
-      max-height: @board-cell-big;
-      max-width: @board-cell-big;
       height: @board-cell-big;
       width: @board-cell-big;
-      border-width: 1px;
+      border-width: 2px;
       border-radius: 0;
+      box-shadow: none;
    }
 
-   table.board td.center {
-      font-size: 28px;
-      line-height: 32px;
+   table.board td.center:empty {
+      font-size: 23px;
+      line-height: 23px;
    }
 
    table.board tr {
@@ -157,7 +185,7 @@
 
    div.tile {
       font-size: 25px;
-      line-height: 26px;
+      line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
       margin: 0;
@@ -167,7 +195,7 @@
 
    .rack div.tile {
       font-size: 25px;
-      line-height: 26px;
+      line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
       padding-top: 2px;
@@ -175,9 +203,10 @@
    }
    
    div.tile.wide {
-      /* Wide character tile: Z, Q */
-      margin-left: -3px;
-      padding-right: 5px;
+      /* Wide character tile: Z, Q, X */
+      text-indent: -6px;
+      margin-left: 0;
+      padding-right: 2px;
    }
 
    /* On large UIs, tile size doesn't change while dragging */
@@ -203,13 +232,13 @@
 
    div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
-      right: 2px;
+      right: 1px;
       left: auto;
    }
 
    .rack div.tile.wide div.letterscore {
       /* Adjust letter score position for wide tiles */
-      right: 2px;
+      right: 1px;
       left: auto;
    }
 
@@ -231,7 +260,7 @@
    
    div.bag {
       display: block;
-      bottom: 114px;
+      bottom: 94px;
    }
 
    div.rack-row {
@@ -244,13 +273,13 @@
       width: auto;
       float: none;
       top: auto;
-      bottom: 120px;
-      left: 217px;
+      bottom: 126px;
+      left: 241px;
       padding: 6px;
       border-width: 0;
       border-radius: 5px;
       margin: 0;
-      background-color: @board-background;
+      background-color: @rack-background;
    }
 
    div.rack-left {
@@ -268,17 +297,32 @@
       max-width: @board-cell-big;
       height: @board-cell-big;
       width: @board-cell-big;
+      border-color: @cell-border;
+      background-color: @cell-border;
+      box-shadow: 2px 2px 4px 0 #afb7cad0;
    }
-   
+
+   .rack td.opp {
+      // Opponent's rack tile in a game review
+      border-color: @freshtile;
+      background-color: @freshtile;
+   }
+
+   .rack td:empty {
+      border-color: @rack-empty-border;
+      background-color: @rack-empty;
+      box-shadow: none;
+   }
+
    div.word-check {
       display: block;
       width: 48px;
       height: 48px;
       font-size: 26px;
-      line-height: 45px;
+      line-height: 48px;
       top: auto;
-      bottom: 256px;
-      left: 639px;
+      bottom: 273px;
+      left: 648px;
       border-radius: 5px;
    }
    
@@ -287,11 +331,12 @@
       width: 48px;
       height: 48px;
       font-size: 24px;
-      line-height: 46px;
+      line-height: 48px;
       top: auto;
-      bottom: 192px;
-      left: 639px;
+      bottom: 206px;
+      left: 648px;
       border-radius: 5px;
+      font-family: @tile-font;
    }
 
    .standard-button {
@@ -305,7 +350,6 @@
       padding: 6px;
       padding-top: 9px;
       border-radius: 5px;
-      vertical-align: middle;
       cursor: pointer;
       .noselect;
    }
@@ -315,9 +359,9 @@
       width: @wide-btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 597px;
-      background-color: darken(@freshtile, 10%);
+      bottom: 130px;
+      left: 546px;
+      background-color: @submit-btn;
       font-size: 18px;
       line-height: 24px;
       font-weight: normal;
@@ -337,6 +381,10 @@
 
    div.waitmove {
       .submitbutton;
+      border-style: solid;
+      border-width: 1px;
+      border-color: @close-btn;
+      background-color: white;
    }
 
    div.submitmove {
@@ -365,8 +413,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 79px;
+      bottom: 130px;
+      left: 101px;
       display: block;
    }
    
@@ -376,8 +424,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 145px;
+      bottom: 130px;
+      left: 167px;
       display: block;
    }
    
@@ -387,8 +435,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 145px;
+      bottom: 130px;
+      left: 167px;
       display: block;
    }
 
@@ -400,8 +448,8 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 524px;
+      bottom: 130px;
+      left: 546px;
       display: block;
    }
    
@@ -411,15 +459,15 @@
       width: @btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 125px;
-      left: 590px;
+      bottom: 130px;
+      left: 612px;
       display: block;
    }
    
    div.fb-share {
       .submitbutton;
       display: block;
-      left: 122px;
+      left: 144px;
       height: 60px;
       /* bottom: 104px; */
       color: white;
@@ -433,45 +481,73 @@
       font-size: 16px;
       line-height: 24px;
    }
-   
+
+   div.gamestats div.player {
+      padding: 0;
+      display: inline-block;
+   }
+
+   div.gamestats div.player div.robot-btn {
+      display: inline;
+      position: relative;
+      line-height: 56px;
+      top: -8px;
+   }
+
+   div.gamestats div.player div.robot-btn.left {
+      padding-left: 12px;
+   }
+
+   div.gamestats div.player div.robot-btn.right {
+      padding-right: 12px;
+   }
+
+   div.gamestats div.player.humancolor {
+      color: white;
+   }
+
+   div.scorewrapper {
+      background-color: @message-background;
+   }
+
    div.scoreleft {
       width: 145px;
       font-size: 24px;
-      line-height: 24px;
+      line-height: 32px;
+      font-weight: 700;
+      color: @score-hdr;
    }
-   
+
    div.scoreright {
       width: 145px;
       font-size: 24px;
-      line-height: 24px;
+      line-height: 32px;
+      font-weight: 700;
+      color: @score-hdr;
    }
-   
+
    div.player-btn {
-      width: 141px;
+      margin-top: 4px;
       padding-top: 4px;
-      color: @neutral;
+      width: 136px;
+      color: white;
       cursor: pointer;
    }
 
    div.player-btn:hover {
       background-color: white;
-      color: @neutral;
+      color: black;
    }
 
    div.player-btn.left {
       padding-right: 2px;
+      padding-left: 2px;
    }
 
    div.player-btn.right {
       padding-left: 2px;
+      padding-right: 2px;
    }
-
-   /*
-   div.player-btn.left.tomove,
-   div.player-btn.right.tomove {
-      color: @neutral;
-   }
-   */
 
    div.robot-btn {
       width: 141px;
@@ -561,6 +637,10 @@
       display: none;
    }
 
+   div.right-area.with-clock {
+      margin-top: 52px;
+   }
+
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;
@@ -570,7 +650,12 @@
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 380px;
    }
-   
+
+   h3.clockleft, h3.clockright {
+      margin-top: 2px;
+      margin-bottom: 0;
+   }
+
    div.movelist-container div.bag {
       display: none;
    }
@@ -583,9 +668,13 @@
       right: 12px;
    }
 
+   div#blank-form p {
+      padding-left: 15px;
+   }
+
    div.blank-rack {
-      top: 0;
-      left: 0;
+      top: 56px;
+      left: auto;
    }
 
    div#blank-form {
@@ -595,11 +684,15 @@
    div.modal-dialog {
       position: absolute;
    }
-   
+
+   div.modal-close {
+      position: absolute;
+   }
+
    .bottom-message {
       text-align: center;
       bottom: 70px;
-      left: 102px;
+      left: 126px;
       width: 512px;
       height: 28px;
       font-size: 16px;
@@ -623,6 +716,7 @@
    
    div#congrats {
       .bottom-message;
+      display: block;
    }
    
    div.resign {
@@ -756,10 +850,11 @@
    }
    
    div.fairplay {
-      top: 44px;
+      bottom: 2px;
       font-size: 28px;
       line-height: 28px;
       display: block;
+      text-indent: 4px;
    }
 
    span.list-opp {
@@ -837,7 +932,14 @@
       width: 88px; /* list-s0 + list-colon + list-s1 */
       max-width: 88px;
    }
-   
+
+   div#user-ok,
+   div#user-cancel,
+   div#user-logout,
+   div#user-friend {
+      position: absolute;
+   }
+
    div.user-cat span#break {
       display: none;
    }
@@ -907,13 +1009,21 @@
    }
    
    div#spinner-dialog div#user-load {
-      top: (768px - 48px) / 2;
-      left: (1024px - 48px) / 2;
+      top: (768px - 48px) * 0.5;
+      left: (1024px - 48px) * 0.5;
       width: 48px;
       height: 48px;
       background-size: 48px 48px;
    }
-   
+
+   @full-animated-spinner-left: (1024px - 80px) * 0.5;
+   @full-animated-spinner-top: (768px - 224px) * 0.5;
+
+   div.animated-spinner {
+      left: @full-animated-spinner-left;
+      top: @full-animated-spinner-top;
+   }
+
    div#promo-form {
       left: auto;
       top: 16px;
@@ -1001,11 +1111,12 @@
    
    div#wait-form {
       .std-form;
-      top: 56px;
+      top: 160px;
+      padding-top: 16px;
       left: auto;
       right: 202px;
       width: 504px;
-      height: 544px;
+      height: 400px;
    }
    
    span.left-to-move,
@@ -1015,8 +1126,8 @@
       font-family: 'Glyphicons Regular';
       font-style: normal;
       font-weight: normal;
-      color: @alert;
-      padding-right: 2px;
+      color: @flag-to-move;
+      padding-right: 4px;
    }
    
    /* Show red flag by the id of the player whose move it is */
@@ -1079,13 +1190,13 @@
    }
    
    div.twoletter-area {
-      font-size: 14px;
-      line-height: 20px;
+      font-size: @twoletter-font-size;
+      line-height: @twoletter-line-height;
    }
    
    div.twoletter-area.with-clock {
-      font-size: 13px;
-      line-height: 21px;
+      font-size: @twoletter-font-size - 1;
+      line-height: @twoletter-line-height + 1;
       margin-top: 3px;
    }
    

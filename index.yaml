@@ -26,6 +26,18 @@ indexes:
   - name: timestamp
     direction: desc
 
+- kind: ChatModel
+  properties:
+  - name: user
+  - name: timestamp
+    direction: desc
+
+- kind: ChatModel
+  properties:
+  - name: recipient
+  - name: timestamp
+    direction: desc
+
 - kind: GameModel
   properties:
   - name: over

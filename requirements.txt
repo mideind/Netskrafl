@@ -6,7 +6,12 @@ requests
 firebase-admin
 redis==3.3.11
 google-cloud-ndb>=1.3.0
-google-python-cloud-debugger; sys_platform == 'linux'
+google-python-cloud-debugger; sys_platform == 'osx' or sys_platform == 'linux'
 protobuf
 googleapis_common_protos
 google-cloud-logging
+flask_cors
+flask_socketio
+eventlet
+gevent-websocket
+authlib

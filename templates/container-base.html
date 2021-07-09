@@ -23,15 +23,15 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=XBz9pj9XYx">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=XBz9pj9XYx">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=XBz9pj9XYx">
-<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icon.png') }}">
-<link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('static', filename='icon-256.png') }}">
-<link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icon-512.png') }}">
+<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('web.static', filename='icon.png') }}">
+<link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('web.static', filename='icon-256.png') }}">
+<link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('web.static', filename='icon-512.png') }}">
 
 <link rel="mask-icon" href="/safari-pinned-tab.svg?v=XBz9pj9XYx" color="#c79c57">
 <link rel="shortcut icon" href="/favicon.ico?v=XBz9pj9XYx">
 
 <!-- Progressive Web App manifest -->
-<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="manifest" href="{{ url_for('web.static', filename='manifest.json') }}">
 
 <title>Netskrafl</title>
 
@@ -41,8 +41,13 @@
 {% block styles %}
 {% endblock %}
 
-<link href="{{ url_for('static', filename='skrafl-curry.css') }}"
+{% if project_id == 'explo-dev' %}
+<link href="{{ url_for('web.static', filename='skrafl-explo.css') }}"
    rel="stylesheet" type="text/css" media="all">
+{% else %}
+<link href="{{ url_for('web.static', filename='skrafl-curry.css') }}"
+   rel="stylesheet" type="text/css" media="all">
+{% endif %}
 
 {% block style_overrides %}
 {% endblock %}
@@ -72,7 +77,7 @@
 
 {% block info %}
       <div class="info" title="Upplýsingar og hjálp">
-         <a class="iconlink" href="{{ url_for('help') }}">
+         <a class="iconlink" href="{{ url_for('web.help') }}">
             <span class="glyphicon glyphicon-info-sign"></span>
          </a>
       </div>
@@ -91,7 +96,7 @@
 {% endblock %}
 
 <!-- Mousetrap global keyboard handler -->
-<script src="{{ url_for('static', filename='mousetrap.min.js') }}"></script>
+<script src="{{ url_for('web.static', filename='mousetrap.min.js') }}"></script>
 
 {% if not dev_server %}
 <!-- Google Analytics -->

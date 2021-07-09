@@ -11,6 +11,10 @@
 @pure-blue: #78aee6;
 @hover-tab: @pure-blue;
 @board-background: desaturate(#afb8bf, 40%); /* Pantone 7543 U */
+@rack-background: @board-background;
+@total-background: @board-background;
+@message-background: #B9D9DC;
+@score-default: @board-background;
 @double-word: desaturate(#f7d2d8, 40%); /* Pantone 698 U */
 @triple-word: desaturate(#ee4f68, 40%); /* Pantone 192 U */
 @double-letter: desaturate(@pure-blue, 40%); /* Pantone 284 U */
@@ -20,11 +24,13 @@
 @racktile: desaturate(#fcce43, 10%); /* Pantone 7404 U */
 @freshtile: desaturate(#7ad3b7, 10%); /* Pantone 337 U */
 @player: @racktile;
+@autoplayer: @freshtile;
 @cell-border: #e8e8e8; /* #f2f2f2; */
 @neutral: desaturate(#222222, 40%);
 @box-shadow: #333333;
 @hint: #666666;
 @blank-sel: #777777;
+@score-hdr: @blank-sel;
 @background: desaturate(#d6d1c4, 40%); /* Pantone 7534 U */
 @pass-btn: desaturate(#ffa03b, 40%); /* Pantone 137 U */
 @hover-link: @pass-btn; /* Pantone 137 U */
@@ -33,6 +39,9 @@
 @nav-btn: @pass-btn;
 @close-btn: @freshtile;
 @submit-btn: darken(@freshtile, 10%);
+@recall-btn: @racktile;
+@exchange-btn: @freshtile;
+@word-good: @submit-btn;
 @help-link: @triple-letter;
 @focal: #ffffc8; /* Pale yellow */
 @chall-btn: @triple-letter;
@@ -43,6 +52,14 @@
 @almost-black: #202020;
 @clock-digits: @almost-black;
 @board-center: @almost-black;
+@review-hdr: @pass-btn;
+@review-score-green: black;
+@rack-empty: @container;
+@rack-empty-border: @container;
+@chat-msg-remote: lighten(@freshtile,18%);
+@flag-to-move: @alert;
+@heading-background: @board-background;
+@scramble-btn: @double-letter;
 
 @theme1: fade(@racktile, 10%);
 @theme2: fade(@freshtile, 10%);
@@ -56,6 +73,14 @@
 @font3: 'Arial';
 @font4: sans-serif;
 @tile-font: 'Open Sans';
+
+@twoletter-font-size: 14px;
+@twoletter-line-height: 20px;
+@twoletter: @theme4;
+@gamelist: @theme6;
+
+@move-autoplayer: @autoplayer;
+@move-player: @player;
 
 @import 'main.less';
 @import 'portrait.less';

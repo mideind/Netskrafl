@@ -24,21 +24,22 @@ module.exports = function (grunt) {
                undef: true,
                validthis: true,
                unused: false,
-               maxlen: 120,
-               predef: ['$', 'm', 'document', 'window', 'alert', 'console', 'Mousetrap',
-                  'localPlayer', 'placeTiles', 'initBag', 'initMoveList',
-                  'gameId', 'userId', 'opponentId', 'jQuery', 'newgameUrl', 'waitUrl',
-                  'goToGame', 'cancelWait', 'lateInit', 'initialGameTime', 'goog',
-                  'replaceEmoticons', 'gameIsZombie', 'fbShare', 'localStorage',
-                  'gameIsFairplay', 'fairPlay', 'navToUserprefs', 'opponentInfo',
-                  'gameUrl', 'gameUsesNewBag', 'newBag', 'gameIsManual', '$state',
-                  'firebase'
-               ]
+               maxlen: 120
             }
          }
       },
 
+      ts: {
+         default : {
+           tsconfig: 'static/tsconfig.json',
+           options: {
+              rootDir: "static/src"
+           }
+         }
+      },
+
       concat: {
+         /*
          netskrafl_js: {
             src: [
                'static/js/common.js',
@@ -68,20 +69,29 @@ module.exports = function (grunt) {
             ],
             dest: 'static/wait.js',
          }
+         */
       },
 
       uglify: {
-         netskrafl_js: {
-            src: 'static/netskrafl.js',
-            dest: 'static/netskrafl.min.js'
+         page_js: {
+            src: 'static/built/page.js',
+            dest: 'static/built/page.min.js'
          },
-         main_js: {
-            src: 'static/main.js',
-            dest: 'static/main.min.js'
+         game_js: {
+            src: 'static/built/game.js',
+            dest: 'static/built/game.min.js'
+         },
+         channel_js: {
+            src: 'static/built/channel.js',
+            dest: 'static/built/channel.min.js'
          },
          wait_js: {
-            src: 'static/wait.js',
-            dest: 'static/wait.min.js'
+            src: 'static/built/wait.js',
+            dest: 'static/built/wait.min.js'
+         },
+         util_js: {
+            src: 'static/built/util.js',
+            dest: 'static/built/util.min.js'
          }
       },
 
@@ -108,27 +118,46 @@ module.exports = function (grunt) {
       },
 
       watch: {
+         ts: {
+            files: ['static/src/*.ts'],
+            tasks: ['ts'],
+            options: { spawn: false }
+         },
+         /*
          concat: {
             files: ['static/js/*.js'],
             tasks: ['concat']
          },
+         */
+         /*
          jshint: {
             files: ['static/js/*.js'],
             tasks: ['jshint'],
             options: { spawn: false }
          },
-         uglify_netskrafl: {
-            files: ['static/netskrafl.js'],
-            tasks: ['uglify:netskrafl_js'],
+         */
+         uglify_page: {
+            files: ['static/built/page.js'],
+            tasks: ['uglify:page_js'],
             options: { spawn: false }
          },
-         uglify_main: {
-            files: ['static/main.js'],
-            tasks: ['uglify:main_js'],
+         uglify_game: {
+            files: ['static/built/game.js'],
+            tasks: ['uglify:game_js'],
+            options: { spawn: false }
+         },
+         uglify_channel: {
+            files: ['static/built/channel.js'],
+            tasks: ['uglify:channel_js'],
+            options: { spawn: false }
+         },
+         uglify_util: {
+            files: ['static/built/util.js'],
+            tasks: ['uglify:util_js'],
             options: { spawn: false }
          },
          uglify_wait: {
-            files: ['static/wait.js'],
+            files: ['static/built/wait.js'],
             tasks: ['uglify:wait_js'],
             options: { spawn: false }
          },
@@ -148,7 +177,7 @@ module.exports = function (grunt) {
    require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
 
    grunt.registerTask('default', ['watch']);
-   grunt.registerTask('make', ['concat', 'uglify', 'less']);
+   grunt.registerTask('make', ['ts', /* 'concat', */ 'uglify', 'less']);
 
    function startsWith(s, t) {
       return s.lastIndexOf(t, 0) === 0;
@@ -157,8 +186,10 @@ module.exports = function (grunt) {
    // On watch events configure jshint:all to only run on changed file
    grunt.event.on('watch', function(action, filepath) {
       console.log("watch: " + filepath);
+      /*
       if (startsWith(filepath, "static/js/") || startsWith(filepath, "static\\js\\"))
          grunt.config('jshint.all.src', [ filepath ]);
+      */
    });
 
 };

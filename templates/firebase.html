@@ -1,16 +1,18 @@
 <!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.2/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.2/firebase-database.js"></script>
 <script>
   // Initialize Firebase
-  var firebaseConfig = {
+  // (see https://firebase.google.com/docs/web/setup)
+  const firebaseConfig = {
     apiKey: "{{ firebase_api_key }}",
     authDomain: "{{ project_id }}.firebaseapp.com",
-    databaseURL: "https://{{ project_id }}.firebaseio.com",
+    databaseURL: "{{ firebase_db_url }}",
     projectId: "{{ project_id }}",
     storageBucket: "{{ project_id }}.appspot.com",
-    messagingSenderId: "{{ firebase_sender_id }}"
+    messagingSenderId: "{{ firebase_sender_id }}",
+    appId: "{{ firebase_app_id }}"
   };
   firebase.initializeApp(firebaseConfig);
 </script>

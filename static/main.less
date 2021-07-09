@@ -18,7 +18,7 @@
 @navbar-height: 83px;
 @mobile-height-net: (@mobile-height - @navbar-height);
 
-@board-cell-big: 32px;
+@board-cell-big: 30px;
 @board-cell-small: 21px;
 
 @rack-cell-big: 32px;
@@ -33,7 +33,7 @@
 @btn-font-small: 18px;
 @btn-font-big: 22px;
 
-@wide-btn-width-big: 82px;
+@wide-btn-width-big: 78px;
 @wide-btn-width-small: 32px;
 
 @margin-small: 8px;
@@ -369,17 +369,17 @@ div.bag {
 table.bag-content td {
    width: 12px;
    height: 17px;
-   background-color: @tile;
+   background-color: @double-letter; // Color for old bag - seldom used
    overflow: hidden;
    cursor: default;
 }
 
 table.bag-content.new td {
-   background-color: @double-letter;
+   background-color: @tile;
 }
 
 table.bag-content.empty td {
-   background-color: @freshtile;
+   background-color: @freshtile; // Opponent's color
 }
 
 td.over {
@@ -429,27 +429,27 @@ tr.colid td {
    background-color: @triple-letter;
 }
 
-table.board td.dw {
+table.board td.dw:empty {
    /* Double word score */
    background-color: @double-word;
 }
 
-table.board td.tw {
+table.board td.tw:empty {
    /* Triple word score */
    background-color: @triple-word;
 }
 
-table.board td.dl {
+table.board td.dl:empty {
    /* Double letter score */
    background-color: @double-letter;
 }
 
-table.board td.tl {
+table.board td.tl:empty {
    /* Triple letter score */
    background-color: @triple-letter;
 }
 
-table.board td.center {
+table.board td.center:empty {
    font-family: 'Glyphicons Regular';
    text-align: center;
    font-size: 17px;
@@ -457,8 +457,9 @@ table.board td.center {
    color: @board-center;
 }
 
-table.board td.center:before {
-   content: "\E050"; /* Star */
+table.board td.center:empty::before {
+   content: "\E473"; /* Target */
+   animation: opacityBlink 1.5s infinite;
 }
 
 table.board {
@@ -541,8 +542,13 @@ div.tile {
 }
 
 div.tile.wide {
-   margin-left: -3px;
-   padding-right: 3px;
+   // Wide tile in the rack
+   text-indent: -8px;
+}
+
+div.board div.tile.wide {
+   // Wide tile on the board
+   text-indent: -5px;
 }
 
 /* On small form factors, we have bigger tiles in the rack than on the board */
@@ -572,12 +578,14 @@ div.tile.ui-draggable-dragging {
    border-color: @cell-border;
    border-width: 1.5px;
    border-radius: 2px;
-   box-shadow: inset 0px 0px 3px 1px #afb7ca87;
+   // box-shadow: inset 0px 0px 3px 1px #afb7ca87;
 }
 
 .rack td {
    min-width: @rack-cell-small;
    width: @rack-cell-small + 2px;
+   border-width: 0px;
+   box-shadow: 2px 2px 4px 0 #afb7cad0;
 }
 
 tr.colid {
@@ -653,7 +661,7 @@ div.word-check {
    font-size: 22px;
    line-height: 42px;
    visibility: hidden;
-   border: 2px solid;
+   border: 1.5px solid;
    border-radius: 4px;
 }
 
@@ -670,11 +678,10 @@ div.score {
    font-size: 20px;
    font-weight: 700;
    line-height: 42px;
-   color: @board-background;
-   border-style: solid;
-   border-width: 2px;
+   color: @score-default;
+   border: 1.5px solid;
    border-radius: 4px;
-   border-color: @board-background;
+   border-color: @score-default;
 }
 
 .standard-button {
@@ -686,7 +693,6 @@ div.score {
    padding: 6px;
    padding-top: 9px;
    border-radius: 5px;
-   vertical-align: middle;
    cursor: pointer;
    .noselect;
 }
@@ -716,6 +722,14 @@ div.waitmove {
    .submitbutton;
    display: none;
    z-index: 10;
+}
+
+div.animated-waitmove {
+   position: absolute;
+   top: 4px;
+   left: -2px;
+   width: 100%;
+   height: 100%;
 }
 
 div.login-buttons {
@@ -760,7 +774,7 @@ div.recallbtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @racktile;
+   background-color: @recall-btn;
    display: none;
 }
 
@@ -773,7 +787,7 @@ div.scramblebtn {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @double-letter;
+   background-color: @scramble-btn;
    display: none;
 }
 
@@ -786,7 +800,7 @@ div.submitexchange {
    .standard-button;
    width: @btn-width-small;
    height: @btn-height-small;
-   background-color: @freshtile;
+   background-color: @exchange-btn;
    display: none;
 }
 
@@ -834,6 +848,11 @@ div.player {
    line-height: 16px;
    font-weight: 400;
    color: @cell-border;
+}
+
+div.scorewrapper {
+   background-color: transparent;
+   width: 100%;
 }
 
 div.scoreleft {
@@ -909,6 +928,7 @@ div.player-btn {
    border-width: 0;
    white-space: nowrap;
    overflow: hidden;
+   text-overflow: ellipsis;
    background-color: transparent;
    color: white;
 }
@@ -927,10 +947,15 @@ div.player-btn.right.tomove {
    color: white;
 }
 
+div.player-btn.left.tomove:hover,
+div.player-btn.right.tomove:hover {
+   color: black;
+}
+
 div.heading {
    position: relative;
    width: 100%;
-   background-color: @board-background;
+   background-color: @heading-background;
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
@@ -971,7 +996,6 @@ div.heading {
 
    div.player-btn {
       display: inline-block;
-      line-height: auto;
    }
 
    div.robot-btn {
@@ -1031,15 +1055,14 @@ div.login-btn-large {
    font-weight: 400;
    width: 160px;
    color: white;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    margin: 0;
    margin-top: 12px;
    margin-left: 6px;
    padding: 6px;
-   padding-top: 9px;
-   padding-bottom: 9px;
+   padding-top: 8px;
+   padding-bottom: 12px;
    border-radius: 5px;
-   vertical-align: middle;
    cursor: pointer;
    float: right;
 }
@@ -1058,7 +1081,7 @@ div.login-btn-small {
    font-size: 19px;
    font-weight: 400;
    color: white;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    margin-left: auto;
    margin-right: auto;
    margin-top: 12px;
@@ -1150,12 +1173,12 @@ div.right-tab#tab-movelist {
 
 div.right-tab#tab-twoletter {
    left: 148px;
-   background-color: @theme4;
+   background-color: @twoletter;
 }
 
 div.right-tab#tab-games {
    left: 218px;
-   background-color: @theme6;
+   background-color: @gamelist;
 }
 
 div.right-tab#tab-chat {
@@ -1200,7 +1223,7 @@ div.message {
    font-size: 14px;
    line-height: 26px;
    height: 28px;
-   background-color: @racktile;
+   background-color: @message-background;
    font-weight: 400;
 }
 
@@ -1214,7 +1237,7 @@ div.movelist-container {
    left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - 3 * @margin-small;
-   background-color: @board-background;
+   background-color: @background;
    padding-top: @margin-small;
    padding-bottom: @margin-small;
    z-index: 6;
@@ -1258,7 +1281,20 @@ div.modal-dialog {
 }
 
 div.modal-dialog#spinner-dialog {
-   background-color: rgba(0, 0, 0, 0.0);
+   background-color: rgba(255, 255, 255, 0.4);
+}
+
+@animated-spinner-left: (@mobile-width - 80px) * 0.5;
+@animated-spinner-top: (@mobile-height - 120px) * 0.5;
+
+div.animated-spinner {
+   position: absolute;
+   left: @animated-spinner-left;
+   top: @animated-spinner-top;
+}
+
+svg circle.shadow {
+   filter: drop-shadow(0px 3px 3px rgba(0, 0, 0, 0.4));
 }
 
 .std-form {
@@ -1275,7 +1311,7 @@ div.modal-dialog#spinner-dialog {
 div#blank-form {
    .std-form;
    top: 124px;
-   right: (375px - 274px - 24px) / 2;
+   right: (375px - 274px - 24px) * 0.5;
    width: 274px;
    height: 400px;
 }
@@ -1317,10 +1353,11 @@ div.opp-turn {
 
 div#congrats {
    .bottom-message;
+   display: none; /* Only displayed on fullscreen */
 }
 
 div#congrats span.glyphicon-bookmark {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.resign {
@@ -1345,7 +1382,7 @@ div.chall {
 
 div.chall-info {
    .bold-bottom-message;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
    bottom: 70px;
    width: @mobile-width - 2 * @margin-small - 48px;
    padding: 0 24px 4px;
@@ -1353,7 +1390,7 @@ div.chall-info {
 
 div.exchange {
    .bold-bottom-message;
-   background-color: darken(@freshtile, 10%);
+   background-color: @exchange-btn;
 }
 
 div.gameinfo {
@@ -1373,7 +1410,7 @@ input.chat-txt {
    height: 24px;
    font-weight: normal;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 1px;
    border-radius: 3px;
    margin-top: 1px;
@@ -1404,7 +1441,7 @@ div.modal-close#chat-send {
    margin: 0 0 2px 8px;
    padding-top: 4px;
    padding-bottom: 0;
-   background-color: @double-letter;
+   background-color: @triple-letter;
    color: white;
 }
 
@@ -1414,7 +1451,7 @@ div.twoletter {
    left: 0px;
    width: 100%;
    height: 100%;
-   background-color: @theme4;
+   background-color: @twoletter;
    overflow: hidden;
    z-index: 3;
 }
@@ -1447,7 +1484,7 @@ div.twoletter-word {
 }
 
 div.twoletter-word b {
-   background-color: darken(@freshtile, 5%);
+   background-color: @close-btn;
    color: white;
    padding-left: 2px;
    padding-right: 2px;
@@ -1472,7 +1509,8 @@ div.tabbed-page {
    top: 0;
    width: @mobile-width;
    height: @mobile-height-net;
-   overflow: auto;
+   overflow-x: hidden;
+   overflow-y: auto; // hidden?
    font-size: 13px;
    line-height: 23px;
 }
@@ -1600,7 +1638,7 @@ div.tilecount {
 div.tc {
    display: inline-block;
    text-align: left;
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div.tc.losing {
@@ -1828,6 +1866,27 @@ span.mobile-break {
    padding-right: 6px;
    padding-top: 4px;
    padding-bottom: 4px;
+   background-color: @tab-background;
+}
+
+.ui-widget-content {
+   background-color: @tab-background;
+}
+
+.ui-state-hover,
+.ui-widget-content .ui-state-hover
+{
+   background-color: @hover-tab;
+}
+
+.ui-state-focus,
+.ui-widget-content .ui-state-focus {
+   background-color: @tab-background;
+}
+
+.ui-state-active,
+.ui-widget-content .ui-state-active {
+   background-color: @tab-background;
 }
 
 div.fairplay {
@@ -1891,7 +1950,7 @@ div#manual-toggler {
 div#chall-ok {
    right: 12px;
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#chall-cancel {
@@ -1907,8 +1966,8 @@ div.user-cat#user-headings span {
 div#user-load {
    display: none;
    position: absolute;
-   top: @mobile-height / 2 - 12px;
-   left: @mobile-width / 2 - 12px;
+   top: @mobile-height * 0.5 - 12px;
+   left: @mobile-width * 0.5 - 12px;
    width: 24px;
    height: 24px;
    z-index: 10;
@@ -1920,7 +1979,7 @@ div#user-load {
 div#promo-form {
    .std-form;
    top: 64px;
-   left: @margin-small * 3 / 2;
+   left: @margin-small * 3 * 0.5;
    width: @mobile-width - 2 * @margin-small;
    height: 364px;
    line-height: 1.5em;
@@ -1947,7 +2006,7 @@ div.btn-promo-yes {
    bottom: 48px;
    right: 232px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-promo-no {
@@ -1957,7 +2016,7 @@ div.btn-promo-no {
    bottom: 3 * @margin-small;
    right: 3 * @margin-small;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.challenge {
@@ -2028,7 +2087,7 @@ div.games {
    left: 0;
    width: 100%;
    height: @mobile-height-net - @board-top - @margin-small - 24px;
-   background-color: @theme6;
+   background-color: @gamelist;
    overflow: auto;
    z-index: 2;
    padding-top: 12px;
@@ -2044,14 +2103,14 @@ div.games-item {
 div#wait-form {
    .std-form;
    top: @margin-small;
-   left: @margin-small / 2;
+   left: @margin-small * 0.5;
    width: @mobile-width - 5 * @margin-small;
    height: @mobile-height-net - 8 * @margin-small;
 }
 
 span.move-indicator {
    .glyphicon;
-   color: @alert;
+   color: @flag-to-move;
    margin-right: 6px;
 }
 
@@ -2181,6 +2240,22 @@ div.racktile {
    100% { opacity: 1.0; }
 }
 
+@keyframes opacityBlink {
+   0% { opacity: 1.0; }
+   25% { opacity: 1.0; }
+   75% { opacity: 1.0; }
+   80% { opacity: 0.1; }
+   100% { opacity: 0.1; }
+}
+
+@-webkit-keyframes opacityBlink {
+   0% { opacity: 1.0; }
+   25% { opacity: 1.0; }
+   75% { opacity: 1.0; }
+   80% { opacity: 0.1; }
+   100% { opacity: 0.1; }
+}
+
 div.sel {
    animation: selBlink 1.2s infinite;
    -webkit-animation: selBlink 1.2s infinite;
@@ -2288,7 +2363,7 @@ div.fairplay {
    position: absolute;
    width: 100%;
    text-align: center;
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.games-item {
@@ -2428,7 +2503,7 @@ div.chat-msg.local {
 }
 
 div.chat-msg.remote {
-   background-color: lighten(@freshtile,18%);
+   background-color: @chat-msg-remote;
 }
 
 div.chat-msg img {
@@ -2450,14 +2525,14 @@ div.movelist.noscroll {
 
 div.leftmove {
    text-align: left;
-   padding-left: 2px;
+   padding-left: 0px; // 2px;
    height: 20px;
    line-height: 18px;
 }
 
 div.rightmove {
    text-align: right;
-   padding-right: 2px;
+   padding-right: 0px; // 2px;
    height: 20px;
    line-height: 18px;
 }
@@ -2466,7 +2541,7 @@ div.reviewhdr {
    height: 18px;
    text-align: left;
    padding: 11px;
-   background-color: @pass-btn;
+   background-color: @review-hdr;
    color: white;
    font-weight: 400;
    font-size: 18px;
@@ -2475,14 +2550,14 @@ div.reviewhdr {
 
 span.movenumber {
    background-color: white;
-   color: @pass-btn;
+   color: @review-hdr;
    text-align: center;
    font-size: 16px;
    font-weight: 700;
    margin-top: 0;
    margin-bottom: 0;
    margin-left: 0px;
-   margin-right: 4px;
+   margin-right: 8px;
    padding-top: 2px;
    padding-bottom: 2px;
    padding-left: 12px;
@@ -2552,23 +2627,23 @@ div #gamestarted {
 }
 
 .autoplayercolor {
-   background-color: @freshtile;
+   background-color: @autoplayer;
 }
 
 .humangrad_left {
-   background: linear-gradient(to right, @player, @board-background, @board-background);
+   background: linear-gradient(to right, @move-player, @background, @background);
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @freshtile);
+   background: linear-gradient(to right, @background, @background, @move-autoplayer);
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @board-background, @board-background, @player);
+   background: linear-gradient(to right, @background, @background, @move-player);
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @freshtile, @board-background, @board-background);
+   background: linear-gradient(to right, @move-autoplayer, @background, @background);
 }
 
 span.score {
@@ -2585,15 +2660,22 @@ span.score {
 span.total {
    display: inline-block;
    width: 28px;
-   padding-left: 2px;
-   margin-left: 2px;
-   padding-right: 2px;
-   margin-right: 2px;
+   padding-left: 3px;
+   margin-left: 0px; // 2px;
+   padding-right: 3px;
+   margin-right: 0px; // 2px;
    font-weight: 700;
    text-align: right;
-   background-color: @board-background;
    color: white;
-   line-height: 16px;
+   line-height: 20px; // 16px;
+}
+
+span.total.human {
+   background-color: @move-player;
+}
+
+span.total.autoplayer {
+   background-color: @move-autoplayer;
 }
 
 span.highlight {
@@ -2616,6 +2698,11 @@ span.wordmove {
 span.othermove {
    text-transform: none;
    padding-left: 3px;
+}
+
+span.othermove i {
+   font-weight: bold;
+   text-transform: uppercase;
 }
 
 div.error p {
@@ -2666,7 +2753,7 @@ div.pass-last span.yesnobutton {
 }
 
 div.exchange span.yesnobutton {
-   color: darken(@freshtile, 10%);
+   color: @exchange-btn;
 }
 
 div.chall span.yesnobutton {
@@ -2684,8 +2771,8 @@ span.yesnobutton#force-resign {
 }
 
 div.score.word-good {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @word-good;
+   border-color: @word-good;
 }
 
 div.score.manual {
@@ -2694,27 +2781,27 @@ div.score.manual {
 }
 
 @keyframes colorPulse {
-   0% {color: @freshtile;}
+   0% {color: @word-good;}
    40% {color: @alert; transform: scale(1.05);}
    60% {color: @alert; transform: scale(1.05);}
-   100% {color: @freshtile;}
+   100% {color: @word-good;}
 }
 
 @-webkit-keyframes colorPulse {
-   0% {color: @freshtile;}
+   0% {color: @word-good;}
    40% {color: @alert; transform: scale(1.05);}
    60% {color: @alert; transform: scale(1.05);}
-   100% {color: @freshtile;}
+   100% {color: @word-good;}
 }
 
 div.score.word-great {
    animation: colorPulse 1.5s infinite;
    -webkit-animation: colorPulse 1.5s infinite;
-   border-color: darken(@freshtile, 10%);
+   border-color: @word-good;
 }
 
 div.score.green {
-   color: black;
+   color: @review-score-green;
    border-color: black;
    background-color: @freshtile;
 }
@@ -2746,8 +2833,8 @@ div.channel:before {
 }
 
 div.word-check.word-good {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @word-good;
+   border-color: @word-good;
    visibility: visible;
 }
 
@@ -2841,7 +2928,7 @@ div.board-color#double-letter {
 
 div.board-color#single-letter {
    background-color: @board-background;
-   color: white;
+   color: black;
 }
 
 div.scorediff {
@@ -2859,10 +2946,11 @@ div.scorediff {
    visibility: hidden;
    padding-top: 3px;
    padding-bottom: 2px;
+   font-family: @tile-font, @font3, @font4;
 }
 
 div.posdiff {
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.navbtn {
@@ -2871,15 +2959,18 @@ div.navbtn {
    width: 100px;
    height: 30px;
    bottom: 130px;
+   line-height: 24px;
    background-color: @nav-btn;
 }
 
 div.navbtn#navnext {
-   left: 554px;
+   position: absolute;
+   left: 558px;
    font-weight: normal;
 }
 
 div.navbtn#navprev {
+   position: absolute;
    left: 84px;
    font-weight: normal;
 }
@@ -2910,6 +3001,7 @@ div.closebtn {
 
 #review-close
 {
+   position: absolute;
    right: 12px;
 }
 
@@ -2920,7 +3012,7 @@ span#total0, span#total1 {
 }
 
 div#promo-content h2 {
-   color: darken(@freshtile, 10%);
+   color: @close-btn;
 }
 
 div#promo-content h2 span.glyphicon-coffee-cup,
@@ -2939,7 +3031,7 @@ div.btn-krafla-yes {
    bottom: 48px;
    right: 48px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-thanks {
@@ -2949,7 +3041,7 @@ div.btn-thanks {
    bottom: 24px;
    right: 24px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div.btn-cancel-yes {
@@ -2969,7 +3061,7 @@ div.btn-cancel-no {
    bottom: 24px;
    right: 208px;
    top: auto;
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 .tabbed-page a:link, .tabbed-page a:visited {
@@ -3031,7 +3123,7 @@ div.userid {
    padding: 6px 10px 4px 6px;
    margin: 0;
    z-index: 5;
-   color: @board-background;
+   color: @help-link;
    background-color: white;
    border-radius: 5px;
    cursor: pointer;
@@ -3134,7 +3226,7 @@ div.user-cat span {
    cursor: pointer;
    padding-left: 4px;
    padding-top: 1px;
-   padding-bottom: 1px;
+   padding-bottom: 4px;
    padding-right: 6px;
    margin: 2px;
    .noselect;
@@ -3156,14 +3248,14 @@ span.versus-cat span {
    cursor: pointer;
    padding-left: 6px;
    padding-top: 1px;
-   padding-bottom: 1px;
+   padding-bottom: 4px;
    padding-right: 6px;
    margin: 2px;
    .noselect;
 }
 
 span.versus-cat span.shown {
-   background-color: fade(@double-letter, 30%);
+   background-color: fade(@double-letter, 20%);
    border-radius: 5px;
 }
 
@@ -3180,7 +3272,7 @@ span.ready-btn {
    top: 0;
    cursor: default;
    color: white;
-   background-color: @double-letter;
+   background-color: @triple-letter;
    border-radius: 5px;
    padding: 4px;
    margin: 0 4px 0 0;
@@ -3211,10 +3303,10 @@ span.fairplay-btn {
    .glyphicon;
    font-size: 15px;
    line-height: 15px;
-   top: 0px;
+   top: -2px;
    cursor: default;
    color: white;
-   background-color: @freshtile;
+   background-color: @close-btn;
    border-radius: 5px;
    padding: 4px;
    margin: 0 4px 0 0;
@@ -3229,6 +3321,7 @@ span.fairplay-btn.large {
    border-width: 1px;
    border-color: white;
    border-style: solid;
+   padding-bottom: 6px;
 }
 
 span.manual-btn {
@@ -3279,11 +3372,11 @@ span.elo-btn.invisible {
 }
 
 span.elo-btn.elo-win {
-   background-color: lighten(@freshtile, 10%); /* darken 10% fade 65% */
+   background-color: lighten(@freshtile, 10%);
 }
 
 span.elo-btn.elo-loss {
-   background-color: lighten(@triple-word, 15%); /* fade 65% */
+   background-color: lighten(@triple-word, 15%);
 }
 
 span.elo-btn.elo-neutral {
@@ -3319,7 +3412,7 @@ span.usr-info {
    top: 0px;
    cursor: pointer;
    color: white;
-   background-color: @freshtile;
+   background-color: @close-btn;
    border-radius: 5px;
    padding: 4px;
    margin: 0;
@@ -3350,7 +3443,7 @@ p span.glyphicon.glyphicon-flag,
 #recentlist span.glyphicon.glyphicon-bookmark,
 #usr-recent span.glyphicon.glyphicon-bookmark,
 #gamelist span.glyphicon.glyphicon-bookmark {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 span.glyphicon.glyphicon-lightbulb.grayed {
@@ -3410,12 +3503,12 @@ div.modal-close {
 
 div#usr-info-close {
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#load-game {
    width: 72px; /* Override */
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#wait-cancel {
@@ -3506,6 +3599,8 @@ h2#usr-info-fullname {
 span.vbar {
    color: @background;
    font-size: 2em;
+   padding-left: 10px;
+   padding-right: 10px;
 }
 
 h1.usr-info-icon {
@@ -3514,7 +3609,7 @@ h1.usr-info-icon {
 }
 
 h1.usr-info-icon span.glyphicon-coffee-cup {
-   color: @freshtile;
+   color: @close-btn;
 }
 
 div.usr-info-fav {
@@ -3612,8 +3707,8 @@ div.stats-games {
 }
 
 div.stats-win-ratio {
-   color: darken(@freshtile, 10%);
-   border-color: darken(@freshtile, 10%);
+   color: @close-btn;
+   border-color: @close-btn;
 }
 
 div.stats-avg-score {
@@ -3684,13 +3779,13 @@ div.chall-time {
    font-size: 20px;
    font-weight: 700;
    line-height: 22px;
-   background-color: @board-background;
+   background-color: #cccccc;
    color: white;
    cursor: pointer;
 }
 
 div.chall-time.selected {
-   background-color: @racktile;
+   background-color: @pass-btn;
    color: black;
 }
 
@@ -3699,7 +3794,7 @@ div.chall-time:hover {
 }
 
 div.chall-time.selected:hover {
-   background-color: @racktile;
+   background-color: @double-word;
 }
 
 div.chall-time span.glyphicon-time {
@@ -3722,7 +3817,7 @@ span#chall-online:before {
 }
 
 span#chall-online.online {
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div#chall-newbag {
@@ -3780,7 +3875,7 @@ div#user-logout {
 div#user-friend {
    left: 180px;
    width: 280px; /* Override */
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div#user-unfriend {
@@ -3789,9 +3884,9 @@ div#user-unfriend {
    padding-top: 6px;
    border-style: solid;
    border-width: 2px;
-   border-color: darken(@freshtile, 10%);
+   border-color: @close-btn;
    background-color: white;
-   color: darken(@freshtile, 10%);
+   color: @close-btn;
 }
 
 div#user-unfriend span.glyphicon-coffee-cup {
@@ -3807,7 +3902,7 @@ div#user-cancel {
 div#user-ok {
    right: 12px; /* 12 */
    width: 72px; /* Override */
-   background-color: darken(@freshtile, 10%);
+   background-color: @close-btn;
 }
 
 div#accept-form {
@@ -3829,7 +3924,13 @@ h1#accept-nick {
 }
 
 .blink {
-   opacity: 0.1;
+   animation: opacityBlink 1.0s infinite;
+   -webkit-animation: opacityBlink 1.0s infinite;
+}
+
+.opp-ready {
+   animation: opacityBlink 1.0s infinite;
+   -webkit-animation: opacityBlink 1.0s infinite;
 }
 
 a.opp-ready:link,
@@ -3887,9 +3988,20 @@ span.subcaption {
    display: inline-block;
    position: relative;
    vertical-align: top;
-   top: 10px;
+   top: 16px;
    margin-left: 18px;
    margin-right: 6px;
+}
+
+span.caption.sub {
+   top: 16px;
+}
+
+span.asterisk {
+   color: red;
+   font-size: 1.4em;
+   font-weight: bold;
+   margin-left: 4px;
 }
 
 div.explain {
@@ -3928,7 +4040,7 @@ input.text {
    font-weight: 700;
    height: 32px;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 2px;
    border-radius: 5px;
    margin-bottom: 4px;
@@ -3941,7 +4053,7 @@ input.text {
 input.text:focus {
    background-color: @focal;
    border-style: solid;
-   border-color: @freshtile;
+   border-color: @close-btn;
    border-width: 2px;
    border-radius: 5px;
    outline-style: none;
@@ -3978,7 +4090,7 @@ button[type="submit"] {
    width: 322px;
    border-width: 0;
    border-radius: 5px;
-   background-color: @freshtile;
+   background-color: @close-btn;
    margin-top: 20px;
    margin-left: 0;
    margin-right: 0;
@@ -4008,7 +4120,7 @@ input[type="checkbox"] {
 }
 
 div.toggler {
-   background-color: fade(@board-background, 50%);
+   background-color: @message-background;
    color: white;
    margin-top: 9px;
    margin-bottom: 3px;
@@ -4020,7 +4132,6 @@ div.toggler {
 }
 
 div.toggler:focus {
-   /* background-color: fade(@freshtile, 40%); */
    outline-style: none;
    border: yellow solid 2px;
 }
@@ -4029,6 +4140,7 @@ div.toggler div.option {
    display: inline-block;
    width: 46px;
    height: 28px;
+   line-height: 28px;
    font-size: 21px;
    padding-top: 3px;
    padding-bottom: 3px;
@@ -4039,6 +4151,7 @@ div.toggler div.option {
 div.toggler div.option.small {
    width: 40px;
    height: 26px;
+   line-height: 26px;
    font-size: 20px;
    padding-top: 4px;
    padding-bottom: 2px;
@@ -4047,6 +4160,7 @@ div.toggler div.option.small {
 div.toggler div.option.x-small {
    width: 32px;
    height: 20px;
+   line-height: 20px;
    font-size: 15px;
    padding-top: 1px;
    padding-bottom: 3px;
@@ -4057,7 +4171,7 @@ div.toggler div.option.selected {
 }
 
 div#fairplay-toggler div.option.selected {
-   background-color: @freshtile;
+   background-color: @close-btn;
 }
 
 div #radioset {
