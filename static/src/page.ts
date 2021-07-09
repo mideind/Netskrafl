@@ -157,8 +157,7 @@ class View {
         return [ m("div", "Þessi vefslóð er ekki rétt") ];
     }
     // Push any open dialogs
-    for (let i = 0; i < this.dialogStack.length; i++) {
-      let dialog = this.dialogStack[i];
+    for (let dialog of this.dialogStack) {
       let v: DialogFunc = View.dialogViews[dialog.name];
       if (v === undefined)
         console.log("Unknown dialog name: " + dialog.name);
@@ -577,12 +576,12 @@ class View {
         ev.preventDefault();
       }
 
-      let anchors = vnode.dom.querySelectorAll("a");
-      for (let i = 0; i < anchors.length; i++) {
-        let href = anchors[i].getAttribute("href");
+      const anchors = vnode.dom.querySelectorAll("a");
+      for (let anchor of anchors) {
+        let href = anchor.getAttribute("href");
         if (href.slice(0, 5) == "#faq-")
           // This is a direct link to a question: wire it up
-          anchors[i].onclick = (ev) => { showAnswer(ev, href); };
+          anchor.onclick = (ev) => { showAnswer(ev, href); };
       }
       if (faqNumber !== undefined && !isNaN(faqNumber)) {
         // Go to the FAQ tab and scroll the requested question into view
@@ -1800,7 +1799,7 @@ class View {
     const model = this.model;
     let page = 0;
 
-    function renderWord(bold: boolean, w: string) {
+    function renderWord(bold: boolean, w: string): m.vnode {
       // For the first two-letter word in each group,
       // render the former letter in bold
       if (!bold)
@@ -1815,11 +1814,11 @@ class View {
       view: (vnode) => {
         const game = model.game;
         const twoLetters = game.twoLetterWords();
-        let twoLetterWords = twoLetters[page];
+        const twoLetterWords = twoLetters[page];
         let twoLetterList = [];
-        for (let i = 0; i < twoLetterWords.length; i++) {
-          let twl = twoLetterWords[i][1];
-          let sublist = [];
+        for (let tw of twoLetterWords) {
+          let twl = tw[1];
+          let sublist: m.vnode[] = [];
           for (let j = 0; j < twl.length; j++)
             sublist.push(renderWord(j == 0, twl[j]));
           twoLetterList.push(
@@ -2071,7 +2070,7 @@ class View {
                       msg = [opp, " passed."];
                     else
                       if (tiles.indexOf("EXCH") === 0) {
-                        var numtiles = tiles.slice(5).length;
+                        const numtiles = tiles.slice(5).length;
                         msg = [
                           opp, " exchanged ",
                           numtiles.toString(),
@@ -2376,49 +2375,47 @@ class View {
     function replaceEmoticons(str: string): string {
       // Replace all emoticon shortcuts in the string str with a corresponding image URL
       const emoticons = model.state.emoticons;
-      for (let i = 0; i < emoticons.length; i++)
-        if (str.indexOf(emoticons[i].icon) >= 0) {
+      for (const emoticon of emoticons)
+        if (str.indexOf(emoticon.icon) >= 0) {
           // The string contains the emoticon: prepare to replace all occurrences
-          let img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+          let img = "<img src='" + emoticon.image + "' height='32' width='32'>";
           // Re the following trick, see https://stackoverflow.com/questions/1144783/
           // replacing-all-occurrences-of-a-string-in-javascript
-          str = str.split(emoticons[i].icon).join(img);
+          str = str.split(emoticon.icon).join(img);
         }
       return str;
     }
 
-    function chatMessages() {
-      let r = [];
-      if (game && game.messages) {
-        let mlist = game.messages;
-        for (let i = 0; i < mlist.length; i++) {
-          let p = player;
-          if (mlist[i].from_userid != model.state.userId)
-            p = 1 - p;
-          let mTs = makeTimestamp(mlist[i].ts);
-          if (mTs)
-            r.push(mTs);
-          let escMsg = escapeHtml(mlist[i].msg);
-          escMsg = replaceEmoticons(escMsg);
-          r.push(m(".chat-msg" +
-            (p === 0 ? ".left" : ".right") +
-            (p === player ? ".local" : ".remote"),
-            // { key: i },
-            m.trust(escMsg))
-          );
-        }
+    function chatMessages(): m.vnode[] {
+      let r: m.vnode[] = [];
+      if (!game || !game.messages)
+        return r;
+      for (const msg of game.messages) {
+        let p = player;
+        if (msg.from_userid != model.state.userId)
+          p = 1 - p;
+        const mTs = makeTimestamp(msg.ts);
+        if (mTs)
+          r.push(mTs);
+        let escMsg = escapeHtml(msg.msg);
+        escMsg = replaceEmoticons(escMsg);
+        r.push(m(".chat-msg" +
+          (p === 0 ? ".left" : ".right") +
+          (p === player ? ".local" : ".remote"),
+          // { key: i },
+          m.trust(escMsg))
+        );
       }
       return r;
     }
 
     function scrollChatToBottom() {
       // Scroll the last chat message into view
-      let chatlist = document.querySelectorAll("#chat-area .chat-msg");
-      let target: HTMLElement;
-      if (chatlist.length) {
-        target = chatlist[chatlist.length - 1] as HTMLElement;
-        (target.parentNode as HTMLElement).scrollTop = target.offsetTop;
-      }
+      const chatlist = document.querySelectorAll("#chat-area .chat-msg");
+      if (!chatlist.length)
+        return;
+      const target: HTMLElement = chatlist[chatlist.length - 1] as HTMLElement;
+      (target.parentNode as HTMLElement).scrollTop = target.offsetTop;
     }
 
     function focus(vnode: Vnode) {
@@ -2434,7 +2431,7 @@ class View {
       }
     }
 
-    let numMessages = (game && game.messages) ? game.messages.length : 0;
+    const numMessages = (game && game.messages) ? game.messages.length : 0;
 
     if (game && game.messages === null)
       // No messages loaded yet: kick off async message loading
@@ -2664,14 +2661,13 @@ class View {
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the move list */
-      let vec = toVector(co);
+      const vec = toVector(co);
       let col = vec.col;
       let row = vec.row;
-      for (let i = 0; i < tiles.length; i++) {
-        let tile = tiles[i];
+      for (const tile of tiles) {
         if (tile == '?')
           continue;
-        let sq = coord(row, col);
+        const sq = coord(row, col);
         if (game.tiles.hasOwnProperty(sq))
           game.tiles[sq].highlight = show ? playerColor : undefined;
         col += vec.dx;
@@ -2846,8 +2842,7 @@ class View {
         model.highlightedMove = bestMoveIndex;
         game.placeTiles(moveIndex - 1, true); // No highlight
       }
-      for (let i = 0; i < tiles.length; i++) {
-        let tile = tiles[i];
+      for (let tile of tiles) {
         if (tile == "?") {
           nextBlank = true;
           continue;
@@ -2856,7 +2851,7 @@ class View {
         let letter = tile;
         if (nextBlank)
           tile = '?';
-        let tscore = game.tilescore(tile);
+        const tscore = game.tilescore(tile);
         if (show) {
           if (!(sq in game.tiles)) {
             // Showing a tile that was not already on the board
@@ -3008,7 +3003,7 @@ class View {
       let count = bag.length;
       while (count > 0) {
         // Rows
-        let cols = [];
+        let cols: m.vnode[] = [];
         // Columns: max BAG_TILES_PER_LINE tiles per row
         for (let i = 0; i < BAG_TILES_PER_LINE && count > 0; i++) {
           let tile = bag[ix++];
@@ -3381,8 +3376,8 @@ class View {
       let r: m.vnode[] = [];
       r.push(colid());
       const rows = "ABCDEFGHIJKLMNO";
-      for (let i = 0; i < rows.length; i++)
-        r.push(row(rows[i]));
+      for (const rw of rows)
+        r.push(row(rw));
       return r;
     }
 
