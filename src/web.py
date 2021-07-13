@@ -545,7 +545,10 @@ def promo() -> ResponseType:
     """ Return promotional HTML corresponding to a given key (category) """
     user = session_user()
     if user is None:
-        return "<p>Notandi er ekki innskráður</p>"  # Unauthorized
+        lang = request.accept_languages.best_match(("is", "en"), "en")
+        if lang == "is":
+            return "<p>Notandi er ekki innskráður</p>"  # Unauthorized
+        return "<p>User not logged in</p>"
     rq = RequestData(request)
     key = rq.get("key", "")
     VALID_PROMOS = {"friend", "krafla"}
@@ -842,5 +845,8 @@ if running_local:
 @web.errorhandler(404)
 def page_not_found(e: Union[int, Exception]) -> ResponseType:
     """ Return a custom 404 error """
-    return "Þessi vefslóð er ekki rétt", 404
+    lang = request.accept_languages.best_match(("is", "en"), "en")
+    if lang == "is":
+        return "Þessi vefslóð er ekki rétt", 404
+    return "This URL is not recognized", 404
 

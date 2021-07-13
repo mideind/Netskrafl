@@ -84,7 +84,7 @@ from skraflmechanics import (
     SummaryTuple,
 )
 from skraflplayer import AutoPlayer
-from skraflgame import User, Game
+from skraflgame import User, Game, AUTOPLAYERS
 from skrafldb import (
     ChatModel,
     ZombieModel,
@@ -509,8 +509,15 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     cuid = None if cuser is None else cuser.id()
 
     if query == "robots":
-        # Return the list of available autoplayers
-        for r in Game.AUTOPLAYERS:
+        # Return the list of available autoplayers for the user's locale
+        locale = "en" if cuser is None else cuser.locale
+        apl = AUTOPLAYERS.get(locale)
+        if apl is None:
+            if "_" in locale:
+                apl = AUTOPLAYERS.get(locale.split("_")[0])
+            if apl is None:
+                apl = AUTOPLAYERS["en"]
+        for r in apl:
             result.append(
                 {
                     "userid": "robot-" + str(r[2]),
@@ -821,10 +828,11 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         manual = Game.manual_wordcheck_from_prefs(prefs)
         # Time per player in minutes
         timed = Game.get_duration_from_prefs(prefs)
+        locale = Game.locale_from_prefs(prefs)
         fullname = ""
         if opp is None:
             # Autoplayer opponent
-            nick = Game.autoplayer_name(g["robot_level"])
+            nick = Game.autoplayer_name(g["robot_level"], locale)
         else:
             # Human opponent
             u = opponents[opp]  # Was User.load(opp)
@@ -892,7 +900,11 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
             break
         inactive = False
         if uid.startswith("robot-"):
-            nick = Game.autoplayer_name(int(uid[6:]))
+            # Assume that the user id has the format robot-level-locale,
+            # for instance robot-15-en. If the locale is missing, use "is".
+            a = uid.split("-")
+            lc = a[2] if len(a) >= 3 else "is"
+            nick = Game.autoplayer_name(int(uid[6:]), lc)
             fullname = nick
             chall = False
             fairplay = False
@@ -967,11 +979,15 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
     u: Optional[User] = None
 
     for g in rlist:
+
+        prefs = g["prefs"]
+        locale = Game.locale_from_prefs(prefs)
+
         opp = g["opp"]
         if opp is None:
             # Autoplayer opponent
             u = None
-            nick = Game.autoplayer_name(g["robot_level"])
+            nick = Game.autoplayer_name(g["robot_level"], locale)
         else:
             # Human opponent
             u = opponents[opp]  # Was User.load(opp)
@@ -980,8 +996,6 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
         # Calculate the duration of the game in days, hours, minutes
         ts_start = g["ts"]
         ts_end = g["ts_last_move"]
-
-        prefs = g["prefs"]
 
         if (ts_start is None) or (ts_end is None):
             days, hours, minutes = (0, 0, 0)

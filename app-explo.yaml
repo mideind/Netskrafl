@@ -8,7 +8,7 @@
 #
 
 runtime: python38
-entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
+entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
 
 #instance_class: B4
 instance_class: B2
@@ -30,6 +30,9 @@ env_variables:
   # as required by the Firebase client JS code
   FIREBASE_API_KEY: AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc
   FIREBASE_SENDER_ID: 970204261331
+  FIREBASE_DB_URL: https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app
+  FIREBASE_APP_ID: 1:970204261331:web:fce1615824c2e382ec9d26
+  SINGLE_PAGE: TRUE
 
 inbound_services:
 - warmup

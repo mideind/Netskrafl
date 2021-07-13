@@ -888,8 +888,8 @@ class View {
                       m("div", { id: 'chall-none', tabindex: 1 },
                         "Viðureign án klukku"
                       ),
-                      m("div", { id: 'chall-1', tabindex: 2 }, // FIXME!!!
-                        [glyph("time"), "2 x 1 mínútur"]
+                      m("div", { id: 'chall-10', tabindex: 2 },
+                        [glyph("time"), "2 x 10 mínútur"]
                       ),
                       m("div", { id: 'chall-15', tabindex: 3 },
                         [glyph("time"), "2 x 15 mínútur"]
@@ -2692,7 +2692,7 @@ class View {
           m("span.statsbutton",
             {
               onclick: (ev) => {
-                if (true || state.hasPaid) // !!! FIXME
+                if (state.hasPaid)
                   // Show the game review
                   m.route.set("/review/" + game.uuid);
                 else

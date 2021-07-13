@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import (
     Dict,
+    Type,
     TypedDict,
     Any,
     Optional,
@@ -47,7 +48,7 @@ from flask.helpers import url_for
 
 from cache import memcache
 
-from languages import Alphabet, OldTileSet, NewTileSet, vocabulary_for_locale
+from languages import Alphabet, OldTileSet, NewTileSet, TileSet, vocabulary_for_locale
 from firebase import online_users
 from skrafldb import (
     PrefItem,
@@ -89,6 +90,47 @@ MoveTuple = NamedTuple(
 )
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
+
+AutoplayerTuple = Tuple[str, str, int]
+AutoplayerList = List[AutoplayerTuple]
+
+# The available autoplayers (robots)
+AUTOPLAYERS: Dict[str, AutoplayerList] = {
+    "is": [
+        (
+            "Fullsterkur", "Velur stigahæsta leik í hverri stöðu", 0,
+        ),
+        (
+            "Miðlungur",
+            "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
+            8,
+        ),
+        (
+            "Amlóði",
+            "Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
+            15,
+        ),
+    ],
+    "en": [
+        (
+            "Steel", "Always plays the highest-scoring move", 0,
+        ),
+        (
+            "Wood",
+            "Picks one of 10 top-scoring moves",
+            8,
+        ),
+        (
+            "Cotton",
+            "Picks one of 20 top-scoring moves",
+            15,
+        ),
+    ]
+}
+
+# The default nickname to display if a player has an unreadable nick
+# (for instance a default Google nick with a https:// prefix)
+UNDEFINED_NAME: Dict[str, str] = { "is": "[Ónefndur]", "en": "[Unknown]" }
 
 
 class UserSummaryDict(TypedDict):
@@ -830,25 +872,6 @@ class Game:
     """A wrapper class for a particular game that is in process
     or completed. Contains inter alia a State instance."""
 
-    # The available autoplayers (robots)
-    AUTOPLAYERS = [
-        ("Fullsterkur", "Velur stigahæsta leik í hverri stöðu", 0,),
-        (
-            "Miðlungur",
-            "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
-            8,
-        ),
-        (
-            "Amlóði",
-            "Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
-            15,
-        ),
-    ]
-
-    # The default nickname to display if a player has an unreadable nick
-    # (for instance a default Google nick with a https:// prefix)
-    UNDEFINED_NAME = "[Ónefndur]"
-
     # The maximum overtime in a game, after which a player automatically loses
     # MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
     MAX_OVERTIME = 1 * 60.0  # 10 minutes, in seconds  !!! DEBUG - FIXME
@@ -1168,14 +1191,23 @@ class Game:
         return self._preferences
 
     @staticmethod
-    def autoplayer_name(level: int) -> str:
+    def autoplayer_name(level: int, locale: str) -> str:
         """Return the autoplayer name for a given level"""
-        i = len(Game.AUTOPLAYERS)
+        apl = AUTOPLAYERS.get(locale)
+        if apl is None:
+            if "_" in locale:
+                # Lookup the major locale, i.e. "en" if "en_US"
+                apl = AUTOPLAYERS.get(locale.split("_")[0])
+            if apl is None:
+                # Fall back to English
+                apl = AUTOPLAYERS.get("en")
+        assert apl is not None
+        i = len(apl)
         while i > 0:
             i -= 1
-            if level >= Game.AUTOPLAYERS[i][2]:
-                return Game.AUTOPLAYERS[i][0]
-        return Game.AUTOPLAYERS[0][0]  # Strongest player by default
+            if level >= apl[i][2]:
+                return apl[i][0]
+        return apl[0][0]  # Strongest player by default
 
     def player_nickname(self, index: int) -> str:
         """Returns the nickname of a player"""
@@ -1186,14 +1218,20 @@ class Game:
         )
         if u is None:
             # This is an autoplayer
-            nick = Game.autoplayer_name(self.robot_level)
+            nick = Game.autoplayer_name(self.robot_level, self.locale)
         else:
             # This is a human user
             nick = u.nickname()
             if nick[0:8] == "https://":
                 # Raw name (path) from Google Accounts:
                 # use a more readable version
-                nick = Game.UNDEFINED_NAME
+                locale = self.locale
+                nick = UNDEFINED_NAME.get(locale, "")
+                if not nick:
+                    if "_" in locale:
+                        nick = UNDEFINED_NAME.get(locale.split("_")[0], "")
+                    if not nick:
+                        nick = UNDEFINED_NAME["en"]
         return nick
 
     def player_fullname(self, index: int) -> str:
@@ -1205,7 +1243,7 @@ class Game:
         )
         if u is None:
             # This is an autoplayer
-            name = Game.autoplayer_name(self.robot_level)
+            name = Game.autoplayer_name(self.robot_level, self.locale)
         else:
             # This is a human user
             name = u.full_name().strip()
@@ -1214,7 +1252,13 @@ class Game:
                 if name[0:8] == "https://":
                     # Raw name (path) from Google Accounts:
                     # use a more readable version
-                    name = Game.UNDEFINED_NAME
+                    locale = self.locale
+                    name = UNDEFINED_NAME.get(locale, "")
+                    if not name:
+                        if "_" in locale:
+                            name = UNDEFINED_NAME.get(locale.split("_")[0], "")
+                        if not name:
+                            name = UNDEFINED_NAME["en"]
         return name
 
     def get_pref(self, pref: str) -> Union[None, str, int, bool]:
@@ -1277,13 +1321,20 @@ class Game:
         """Return the type of the board used in this game"""
         return cast(str, self.get_pref("board_type")) or "standard"
 
+    @staticmethod
+    def locale_from_prefs(prefs: Optional[PrefsDict]) -> str:
+        """Return the locale specified by the given game preferences"""
+        if prefs is None:
+            return "is_IS"
+        return cast(str, prefs.get("locale", "is_IS"))
+
     @property
     def locale(self) -> str:
         """Return the locale of this game"""
         return cast(str, self.get_pref("locale")) or "is_IS"
 
     @staticmethod
-    def tileset_from_prefs(prefs: Optional[PrefsDict]):
+    def tileset_from_prefs(prefs: Optional[PrefsDict]) -> Type[TileSet]:
         """Returns the tileset specified by the given game preferences"""
         if prefs is None:
             # Stay backwards compatible with old version
