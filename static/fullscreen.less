@@ -824,20 +824,19 @@
    .no-mobile-inline {
       display: inline;
    }
-   
+
    .no-mobile-inline-block {
       display: inline-block;
    }
-   
+
    .no-mobile-list {
       display: list-item;
    }
-   
+
    .tab-legend {
-      display: inline;
-      padding-left: 12px;
+      font-weight: bold;
    }
-   
+
    .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
       min-width: auto;
       padding-left: 1em;
@@ -863,11 +862,12 @@
    }
    
    span.list-nick,
-   span.list-nick-elo {
+   span.list-nick-elo,
+   div#tabs-3 span.list-nick {
       width: 220px;
       max-width: 220px;
    }
-   
+
    span.list-fullname-robot {
       width: 486px; /* list-fullname + list-human-elo (+6 for margin-right) + list-info-hdr */
       max-width: 486px;
@@ -895,7 +895,7 @@
    span.list-elo-no-mobile {
       display: inline-block;
    }
-   
+
    span.list-tc {
       width: 100px;
       max-width: 100px;
@@ -1166,8 +1166,10 @@
    }
    
    div#own-toggler {
+      position: relative;
       margin-top: 7px;
       margin-right: 8px;
+      top: auto;
    }
    
    p#own-best {
@@ -1180,6 +1182,7 @@
    div#own-stats {
       margin-top: 16px;
       margin-bottom: 24px;
+      height: 48px;
    }
    
    div.help-container {

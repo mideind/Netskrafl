@@ -1320,9 +1320,9 @@ div#blank-form {
    position: absolute;
    text-align: right;
    display: block;
-   bottom: @margin-small;
-   left: @margin-small;
-   width: @mobile-width - 2 * @margin-small - 8px;
+   bottom: 0;
+   left: 0;
+   width: @mobile-width - 2 * @margin-small - 6px;
    height: 52px;
    font-size: 14px;
    line-height: 26px;
@@ -1335,7 +1335,6 @@ div#blank-form {
    .bottom-message;
    text-align: center;
    font-weight: 700;
-   bottom: @margin-small;
    color: white;
 }
 
@@ -1847,6 +1846,7 @@ span.mobile-break {
 
 .tab-legend {
    display: none;
+   font-weight: normal;
 }
 
 .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
@@ -2136,9 +2136,9 @@ div.hint {
 
 div.stats-box {
    width: 224px;
-   position: relative;
-   top: -44px;
-   left: 198px;
+   position: absolute;
+   top: 0px;
+   right: -62px;
 }
 
 div.stats-fig {
@@ -2165,6 +2165,8 @@ div.stats-fig {
 
 div#own-toggler {
    width: 80px; /* Two small toggle buttons of 40px each */
+   position: absolute;
+   top: 2px;
    margin-top: 0;
    margin-right: 8px;
 }
@@ -2172,14 +2174,15 @@ div#own-toggler {
 p#own-best {
    display: inline-block;
    position: absolute;
-   left: 34px;
-   top: 68px;
+   left: 40px;
+   top: 70px;
    text-align: right;
    font-size: 0.85em;
 }
 
 div#own-stats {
-   margin-top: 8px;
+   position: relative;
+   margin-top: 2px;
    margin-bottom: 32px;
    height: 48px;
    width: 100%;

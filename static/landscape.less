@@ -18,7 +18,12 @@
    div.tabbed-page {
       width: 100%;
    }
-   
+
+   .tab-legend {
+      display: inline;
+      padding-left: 12px;
+   }
+
    div.help-container {
       width: 100%;
    }
@@ -176,11 +181,33 @@
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 224px;
    }
-   
+
    div.movelist-container div.bag {
       display: none;
    }
-   
+
+   div.stats-box {
+      width: 448px;
+      left: 90px;
+   }
+
+   div#own-stats {
+      height: 16px;
+   }
+
+   p#own-best {
+      left: auto;
+      right: 6px;
+      top: 32px;
+      text-align: right;
+      font-size: 0.85em;
+   }
+
+   div #chall-sent,
+   div #chall-received {
+      height: 3 * 36px; /* 3 lines @ 36px each */
+   }
+
    div.games,
    div.twoletter,
    div.chat {
@@ -191,9 +218,41 @@
       height: 288px;
    }
 
-   span.list-fullname-robot, span.list-chall {
-      width: 100%;
-      max-width: 100%;
+   span.list-chall {
+      width: 240px;
+      max-width: 240px;
+   }
+
+   span.list-fullname-robot {
+      width: 320px;
+      max-width: 320px;
+   }
+
+   span.list-opp {
+      width: 180px;
+      max-width: 180px;
+   }
+
+   div#tabs-1 span.list-ts-short,
+   div#tabs-1 span.list-manual,
+   div#tabs-4 span.list-ts-short {
+      // List of current or recent games: display time stamp when in landscape
+      display: inline-block;
+   }
+
+   div#tabs-2 span.list-ts {
+      // List of challenges: display time stamp when in landscape
+      display: inline-block;
+   }
+
+   div#tabs-3 span.list-nick {
+      width: 180px;
+      max-width: 180px;
+   }
+
+   div#tabs-4 span.list-nick {
+      width: 220px;
+      max-width: 220px;
    }
 
    div#blank-form {
