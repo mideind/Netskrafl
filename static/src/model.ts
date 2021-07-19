@@ -24,7 +24,6 @@ export {
 
 import { Game, ServerGame, Move, RackTile  } from "./game.js";
 
-// import { m } from "./mithril.js";
 import { m } from "mithril";
 
 // Maximum number of concurrent games per user
@@ -403,10 +402,11 @@ class Model {
     }
     this.userList = undefined;
     this.userListCriteria = undefined; // Marker to prevent concurrent loading
-    if (activateSpinner)
+    if (activateSpinner) {
       // This will show a spinner overlay, disabling clicks on
       // all underlying controls
       this.spinners++;
+    }
     var url = "/userlist";
     var data: { query?: string; spec?: string; kind?: string; } = criteria;
     if (criteria.query == "elo") {
@@ -509,6 +509,8 @@ class Model {
     }
     // Don't display navigation buttons while fetching best moves
     this.reviewMove = null;
+    // ...but do display a spinner, if this takes too long
+    this.spinners++;
     try {
       type BestMoves = {
         result: number;
@@ -539,6 +541,10 @@ class Model {
       this.reviewMove = null;
       this.bestMoves = null;
     }
+    finally {
+      if (this.spinners)
+        this.spinners--;
+    }
   }
 
   async loadHelp() {
@@ -562,10 +568,11 @@ class Model {
   async loadUser(activateSpinner: boolean) {
     // Fetch the preferences of the currently logged in user, if any
     this.user = undefined;
-    if (activateSpinner)
+    if (activateSpinner) {
       // This will show a spinner overlay, disabling clicks on
       // all underlying controls
       this.spinners++;
+    }
     try {
       const result: { ok: boolean; userprefs: UserPrefs; } = await m.request({
         method: "POST",

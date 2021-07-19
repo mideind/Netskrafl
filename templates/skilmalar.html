@@ -6,7 +6,11 @@
 {% endblock %}
 
 {% block logo %}
-{% include 'back.html' %}
+{% include 'logo-explo.html' %}
+{% endblock %}
+
+{% block info %}
+   <!-- No info button -->
 {% endblock %}
 
 {% block content %}
@@ -17,7 +21,7 @@
    <div>
       <h2>Skilmálar</h2>
       <p><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>Vinir Netskrafls</b> velja að
-      greiða frjáls framlög til rekstrar vefsins að upphæð 490 kr. á mánuði.
+      greiða frjáls framlög til rekstrar vefjarins að upphæð 490 kr. á mánuði.
       Framlag er skuldfært af greiðslukorti (kredit- eða debetkorti) til eins mánaðar í senn.
       <b>Skuldfært framlag fæst ekki endurgreitt.</b></p>
       <p>Segja má upp áskrift að
@@ -39,12 +43,6 @@
 
    </div>
 </div>
-</div>
-
-<!-- Display user identifier in upper right corner -->
-
-<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
-<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
 </div>
 
 {% endblock %}

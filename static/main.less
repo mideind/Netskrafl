@@ -2707,10 +2707,12 @@ span.othermove {
    padding-left: 3px;
 }
 
+/*
 span.othermove i {
    font-weight: bold;
    text-transform: uppercase;
 }
+*/
 
 div.error p {
    display: inline;
@@ -2963,7 +2965,7 @@ div.posdiff {
 div.navbtn {
    .standard-button;
    top: auto;
-   width: 100px;
+   width: 90px;
    height: 30px;
    bottom: 130px;
    line-height: 24px;
@@ -2972,13 +2974,13 @@ div.navbtn {
 
 div.navbtn#navnext {
    position: absolute;
-   left: 558px;
+   left: 550px;
    font-weight: normal;
 }
 
 div.navbtn#navprev {
    position: absolute;
-   left: 84px;
+   left: 108px;
    font-weight: normal;
 }
 
@@ -3043,6 +3045,7 @@ div.btn-krafla-yes {
 
 div.btn-thanks {
    .standard-button;
+   position: absolute;
    width: 96px;
    height: 28px;
    bottom: 24px;
@@ -3379,15 +3382,15 @@ span.elo-btn.invisible {
 }
 
 span.elo-btn.elo-win {
-   background-color: lighten(@freshtile, 10%);
+   background-color: @elo-win;
 }
 
 span.elo-btn.elo-loss {
-   background-color: lighten(@triple-word, 15%);
+   background-color: @elo-loss;
 }
 
 span.elo-btn.elo-neutral {
-   background-color: lighten(@double-letter, 5%);
+   background-color: @elo-neutral;
 }
 
 span.elo-hdr-left {

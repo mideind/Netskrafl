@@ -80,12 +80,13 @@ class Actions {
           model.loadBestMoves(move);
           setTimeout(this.view.scrollMovelistToBottom);
         });
-      else
+      else {
         if (model.game !== null) {
           // Already have the right game loaded:
           // Fetch the best moves and show them once they're available
           model.loadBestMoves(move);
         }
+      }
     }
     else {
       // Not a game route: delete the previously loaded game, if any

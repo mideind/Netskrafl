@@ -200,8 +200,9 @@ class View {
   }
 
   stopSpinner() {
-    if (this.model.spinners)
+    if (this.model.spinners) {
       this.model.spinners--;
+    }
   }
 
   notifyMediaChange() {
@@ -413,12 +414,14 @@ class View {
 
   Spinner: ComponentFunc<{}> = (initialVnode) => {
     // Show a spinner wait box, after an initial delay
-    const INITIAL_DELAY = 250; // milliseconds
+    const INITIAL_DELAY = 800; // milliseconds
     return {
       ival: 0,
       show: false,
       oninit: function (vnode) {
-        this.ival = setTimeout(() => { this.show = true; this.ival = 0; }, INITIAL_DELAY);
+        this.ival = setTimeout(() => {
+          this.show = true; this.ival = 0; m.redraw();
+        }, INITIAL_DELAY);
       },
       onremove: function (vnode) {
         if (this.ival)

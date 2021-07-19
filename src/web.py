@@ -625,7 +625,7 @@ def faq() -> ResponseType:
 @web.route("/page")
 @auth_required()
 def page() -> ResponseType:
-    """ Show single-page UI test """
+    """ Show single-page UI """
     user = current_user()
     assert user is not None
     uid = user.id() or ""
