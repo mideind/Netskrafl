@@ -95,7 +95,7 @@ from cache import memcache
 
 
 # Type definitions
-_T = TypeVar("_T")
+_T = TypeVar("_T", covariant=True)
 
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]

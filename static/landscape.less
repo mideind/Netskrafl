@@ -4,17 +4,17 @@
 @media all and (min-width: @mobile-height) {
 
    /* Mobile screen, landscape mode */
-   
+
    div.container {
       width: @mobile-height; /* Reference width */
       height: @mobile-width; /* Reference height */
       overflow-y: hidden;
    }
-   
+
    div.game-container {
       height: @mobile-height;
    }
-   
+
    div.tabbed-page {
       width: 100%;
    }
@@ -27,7 +27,7 @@
    div.help-container {
       width: 100%;
    }
-   
+
    /* Paragraphs of help text that should be centered on screens that are wide enough */
    p.help-center {
       text-align: center;
@@ -43,7 +43,7 @@
       left: 50%;
       width: 50%;
    }
-   
+
    div.board-area {
       position: absolute;
       top: 0;
@@ -54,20 +54,20 @@
       padding-top: 0;
       background-color: transparent;
    }
-   
+
    @rightcol-width: @mobile-height - @board-size - 3 * @margin-small;
    @rightcol-left: @board-size + 2 * @margin-small;
    @rack-top: 70px + 3 * @margin-small;
    @button-top: @rack-top + 48px + 2 * @margin-small;
    @submit-left: 259px + @mobile-height - @mobile-width;
-   
+
    div.rightcol {
       width: @rightcol-width;
       top: @margin-small;
       left: @rightcol-left;
       height: 70px;
    }
-   
+
    div.rack {
       display: none;
       /*
@@ -75,47 +75,47 @@
       top: @rack-top;
       */
    }
-   
+
    div.recallbtn {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
       top: @button-top;
    }
-   
+
    div.scramblebtn {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
       top: @button-top;
    }
-   
+
    div.submitexchange {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 1;
       top: @button-top;
    }
-   
+
    div.submitpass {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 2;
       top: @button-top;
    }
-   
+
    div.submitresign {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 3;
       top: @button-top;
    }
-   
+
    div.submitmove {
       left: @submit-left;
       top: @button-top;
    }
-   
+
    div.waitmove {
       left: @submit-left;
       top: @button-top;
    }
-   
+
    div.submitnewgame {
       left: @submit-left;
       top: @button-top;
    }
-   
+
    h3.playerleft {
       width: 50%;
       padding: 0;
@@ -124,7 +124,7 @@
       font-size: 14px;
       line-height: 22px;
    }
-   
+
    h3.playerright {
       width: 50%;
       padding: 0;
@@ -133,7 +133,7 @@
       font-size: 14px;
       line-height: 22px;
    }
-   
+
    h3.scoreleft {
       top: 36px;
       left: 0;
@@ -144,7 +144,7 @@
       font-size: 22px;
       line-height: 22px;
    }
-   
+
    h3.scoreright {
       top: 36px;
       right: 0;
@@ -155,28 +155,28 @@
       font-size: 22px;
       line-height: 22px;
    }
-   
+
    div.right-tab {
       display: none;
    }
-   
+
    div.opp-turn {
       display: none;
    }
-   
+
    div.movelist-container {
       height: 272px;
    }
-   
+
    div.movelist {
       height: 272px;
    }
-   
+
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 224px;
    }
-   
+
    div.right-area.with-clock div.movelist {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
       height: 224px;
@@ -213,7 +213,7 @@
    div.chat {
       display: none;
    }
-   
+
    div.right-area {
       height: 288px;
    }

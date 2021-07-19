@@ -34,7 +34,7 @@ import { Actions, createRouteResolver } from "./actions.js";
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
-} from "./mithril.js";
+} from "mithril";
 
 import { WaitDialog, AcceptDialog } from "./wait.js";
 

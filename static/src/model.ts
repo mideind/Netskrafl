@@ -24,7 +24,8 @@ export {
 
 import { Game, ServerGame, Move, RackTile  } from "./game.js";
 
-import { m } from "./mithril.js";
+// import { m } from "./mithril.js";
+import { m } from "mithril";
 
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;

@@ -123,29 +123,31 @@ const $state = {
 
 <script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script>
 
+<script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
+{% if dev_server %}
+<script src="{{ url_for('web.static', filename='built/explo.js') }}"></script>
+{% else %}
+<script src="{{ url_for('web.static', filename='built/explo.min.js') }}"></script>
+{% endif %}
+
 <script>
 
-// Register a Progressive Web App service worker
-if ('serviceWorker' in navigator) {
-   navigator.serviceWorker.register("/service-worker.js") // Note: No path here
-      .then((reg) => {
-         // Successfully registered
-      }).catch((err) => {
-         // Service worker not available
-      });
+function init_amd() {
+
+   // Wrap the Mithril library in an AMD/requireJS module definition
+   define("mithril", ["require", "exports"], function (require, exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.m = globalThis.m;
+   });
+
+   // Import the single-page app code and call its main function in the page module
+   require(["page"], (page) => { page.main($state); });
 }
 
-function init() {
-   // Import the single-page app code and call its main function
-   import("{{ url_for('web.static', filename='built/page.js') }}").then((page) => {
-      page.main($state);
-   })
-   .catch((e) => console.log(`Exception: ${e}`));
-}
-
-// Once the DOM is ready, call the init function
+// Once the DOM is ready, call the init_amd() function
 // to initialize the single-page app
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener("DOMContentLoaded", init_amd);
 
 </script>
 

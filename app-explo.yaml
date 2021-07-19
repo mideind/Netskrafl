@@ -82,12 +82,6 @@ handlers:
   upload: static/mstile-150x150.png
   expiration: "1d 0h"
 
-# Web manifest
-- url: /site.webmanifest
-  static_files: static/site.webmanifest
-  upload: static/site.webmanifest
-  expiration: "1d 0h"
-
 # Safari pinned tab
 - url: /safari-pinned-tab.svg
   static_files: static/safari-pinned-tab.svg
@@ -113,9 +107,9 @@ handlers:
   expiration: "1d 0h"
 
 # Image files that can be cached
-- url: /static/(.*\.(gif|png|jpg))(\?.*)?$
+- url: /static/(.*\.(gif|png|jpg|svg))(\?.*)?$
   static_files: static/\1
-  upload: static/.*\.(gif|png|jpg)$
+  upload: static/.*\.(gif|png|jpg|svg)$
   expiration: "1d 0h"
 
 # CSS files that can be cached
@@ -129,6 +123,13 @@ handlers:
 - url: /static/(.*\.min\.js)(\?.*)?$
   static_files: static/\1
   upload: static/.*\.min\.js$
+  mime_type: application/javascript
+  expiration: "0d 1h" # Was "1d 0h"
+
+# Catchall for JavaScript
+- url: /static/built/(.*\.min\.js)(\?.*)?$
+  static_files: static/built/\1
+  upload: static/built/.*\.min\.js$
   mime_type: application/javascript
   expiration: "0d 1h" # Was "1d 0h"
 

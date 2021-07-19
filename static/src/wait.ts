@@ -15,7 +15,8 @@
 
 export { WaitDialog, AcceptDialog };
 
-import { m, ComponentFunc } from "./mithril.js";
+// import { m, ComponentFunc } from "./mithril.js";
+import { m, ComponentFunc } from "mithril";
 
 import { View, glyph, DialogButton, OnlinePresence } from "./page.js";
 

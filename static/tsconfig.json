@@ -1,18 +1,16 @@
 {
-  "files": [
-    "src/page.ts",
-    "src/model.ts",
-    "src/actions.ts",
-    "src/game.ts",
-    "src/util.ts",
-    "src/wait.ts",
-    "src/channel.ts",
-    "src/logo.ts"
+  "include": [
+    "src/*.ts"
+  ],
+  "exclude": [
+    "src/*.d.ts"
   ],
   "compilerOptions": {
-    "outDir": "built",
+    // Generate a single, concatenated .js file
+    "outFile": "built/explo.js",
+    "baseUrl": "./built",
     "target": "ES2015",
-    "module": "ES2015",
+    "module": "amd",
     // "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

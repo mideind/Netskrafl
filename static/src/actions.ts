@@ -20,7 +20,8 @@ import { Model, Params } from "./model.js";
 
 import { View } from "./page.js";
 
-import { m } from "./mithril.js";
+// import { m } from "./mithril.js";
+import { m } from "mithril";
 
 import {
   attachFirebaseListener, detachFirebaseListener, loginFirebase

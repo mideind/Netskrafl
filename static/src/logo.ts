@@ -14,7 +14,8 @@
 
 export { AnimatedExploLogo };
 
-import { m, ComponentFunc } from "./mithril.js";
+//import { m, ComponentFunc } from "./mithril.js";
+import { m, ComponentFunc } from "mithril";
 
 // SVG code for logo
 const header = `<svg width="134" height="134" viewBox="-32 -8 134 134" fill="none" xmlns="http://www.w3.org/2000/svg">`;
