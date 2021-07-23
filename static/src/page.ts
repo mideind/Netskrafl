@@ -26,7 +26,7 @@ import {
   ChallengeAction, MoveInfo, Params
 } from "./model.js";
 
-import { Game, coord, toVector, Move } from "./game.js";
+import { Game, gameUrl, coord, toVector, Move } from "./game.js";
 
 import { addPinchZoom, registerSalesCloud } from "./util.js";
 
@@ -47,8 +47,6 @@ const BAG_TILES_PER_LINE = 19;
 const BLANK_TILES_PER_LINE = 6;
 const ROUTE_PREFIX = "/page#!";
 const ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
-const BOARD_PREFIX = "/board?game=";
-const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 // Max number of chat messages per game
 const MAX_CHAT_MESSAGES = 250;
 
@@ -229,6 +227,7 @@ class View {
 
   notifyChatMessage() {
     // A fresh chat message has arrived
+    // and has been added to the chat message list
     m.redraw();
   }
 
@@ -1094,11 +1093,10 @@ class View {
               }
 
               function vwTurn(): m.vnode {
-                var turnText: string;
-                var flagClass: string;
+                let turnText = "";
+                let flagClass = "";
                 if (item.my_turn) {
                   turnText = "Þú átt leik";
-                  flagClass = "";
                 }
                 else
                   if (item.zombie) {
@@ -1129,18 +1127,10 @@ class View {
                 );
               }
 
-              function gameUUID(): string {
-                // Convert old-style /board?game=UUID URL to UUID
-                if (item.url.slice(0, BOARD_PREFIX_LEN) == BOARD_PREFIX)
-                  return item.url.slice(BOARD_PREFIX_LEN);
-                // Otherwise, assume that item.url contains the UUID
-                return item.url;
-              }
-
               return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
                 [
                   m(m.route.Link,
-                    { href: "/game/" + gameUUID() },
+                    { href: gameUrl(item.url) },
                     [
                       vwTurn(),
                       m("span.list-overdue", vwOverdue()),
@@ -1992,9 +1982,9 @@ class View {
 
       function vwRightArea(): m.vnode {
         // A container for the tabbed right-side area components
-        const sel = (game && game.sel) ? game.sel : "movelist";
+        const sel = game?.sel || "movelist";
         // Show the chat tab unless the opponent is an autoplayer
-        let component = null;
+        let component: m.vnode = null;
         switch (sel) {
           case "movelist":
             component = view.vwMovelist();
@@ -2031,74 +2021,59 @@ class View {
             msg = [m("strong", [opp, " resigned!"]), " Congratulations."];
           else
             msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
-        }
-        else
-          if (s.gameOver) {
-            // This player lost
-            msg = "Game over!";
-          }
-          else
-            if (!s.localTurn) {
-              // It's the opponent's turn
-              msg = ["It's ", opp, "'s turn. Plan your next move!"];
-            }
+        } else if (s.gameOver) {
+          // This player lost
+          msg = "Game over!";
+        } else if (!s.localTurn) {
+          // It's the opponent's turn
+          msg = ["It's ", opp, "'s turn. Plan your next move!"];
+        } else if (s.tilesPlaced > 0) {
+          if (game.currentScore === undefined) {
+            if (move === undefined)
+              msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
             else
-              if (s.tilesPlaced > 0) {
-                if (game.currentScore === undefined) {
-                  if (move === undefined)
-                    msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
-                  else
-                    msg = "Tiles must be consecutive.";
-                }
-                else
-                  if (game.wordGood === false) {
-                    msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
-                  }
-                  else {
-                    msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
-                  }
-              }
+              msg = "Tiles must be consecutive.";
+          } else if (game.wordGood === false) {
+            msg = ["Move is not valid, but would score ", m("strong", game.currentScore.toString()), " points."];
+          } else {
+            msg = ["Valid move, score ", m("strong", game.currentScore.toString()), " points."];
+          }
+        } else if (move === undefined) {
+          // Initial move
+          msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
+        }
+        else {
+          let co = move[1][0];
+          let tiles = mtype;
+          let score = move[1][2];
+          if (co == "") {
+            // Not a regular tile move
+            if (tiles == "PASS")
+              msg = [opp, " passed."];
+            else if (tiles.indexOf("EXCH") === 0) {
+              const numtiles = tiles.slice(5).length;
+              msg = [
+                opp, " exchanged ",
+                numtiles.toString(),
+                (numtiles == 1 ? " tile" : " tiles"),
+                "."
+              ];
+            } else if (tiles == "CHALL") {
+              msg = [opp, " challenged your move."];
+            } else if (tiles == "RESP") {
+              if (score < 0)
+                msg = [opp, " successfully challenged your move."];
               else
-                if (move === undefined) {
-                  // Initial move
-                  msg = [m("strong", "You start!"), " Cover the ", glyph("star"), " asterisk with your move."];
-                }
-                else {
-                  let co = move[1][0];
-                  let tiles = mtype;
-                  let score = move[1][2];
-                  if (co == "") {
-                    // Not a regular tile move
-                    if (tiles == "PASS")
-                      msg = [opp, " passed."];
-                    else
-                      if (tiles.indexOf("EXCH") === 0) {
-                        const numtiles = tiles.slice(5).length;
-                        msg = [
-                          opp, " exchanged ",
-                          numtiles.toString(),
-                          (numtiles == 1 ? " tile" : " tiles"),
-                          "."
-                        ];
-                      }
-                      else
-                        if (tiles == "CHALL")
-                          msg = [opp, " challenged your move."];
-                        else
-                          if (tiles == "RESP") {
-                            if (score < 0)
-                              msg = [opp, " successfully challenged your move."];
-                            else
-                              msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
-                          }
-                  }
-                  else {
-                    // Regular tile move
-                    tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
-                    msg = [opp, " played ", m("strong", tiles),
-                      " for ", m("strong", score.toString()), " points"];
-                  }
-                }
+                msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
+            }
+          }
+          else {
+            // Regular tile move
+            tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
+            msg = [opp, " played ", m("strong", tiles),
+              " for ", m("strong", score.toString()), " points"];
+          }
+        }
         return m(".message", msg);
       }
 
@@ -2278,20 +2253,24 @@ class View {
       this.vwTab("twoletter", "Tveggja stafa orð", "life-preserver"),
       this.vwTab("games", "Viðureignir", "flag")
     ];
-    if (showchat)
+    if (showchat) {
       // Add chat tab
       r.push(this.vwTab("chat", "Spjall", "conversation",
         () => {
           // The tab has been clicked
           if (game.markChatShown())
+            // ...and now the user has seen all chat messages up until now
             m.redraw();
         },
-        !game.chatShown) // Show chat icon in red if chat messages are unseen
+        // Show chat icon in red if any chat messages have not been seen
+        // and the chat tab is not already selected
+        !game.chatSeen && game.sel != "chat")
       );
+    }
     return m.fragment({}, r);
   }
 
-  vwTab(tabid: string, title: string, icon: string, func?: Function, alert?: boolean) {
+  vwTab(tabid: string, title: string, icon: string, funcSel?: () => void, alert?: boolean) {
     // A clickable tab for the right-side area content
     const game = this.model.game;
     const sel = (game && game.sel) ? game.sel : "movelist";
@@ -2300,20 +2279,21 @@ class View {
         id: "tab-" + tabid,
         className: alert ? "alert" : "",
         title: title,
-        onclick: () => {
+        onclick: (ev) => {
           // Select this tab
           if (game && game.sel != tabid) {
             game.sel = tabid;
-            if (func !== undefined)
-              func();
+            if (funcSel !== undefined)
+              funcSel();
           }
+          ev.preventDefault();
         }
       },
       glyph(icon)
     );
   }
 
-  vwChat() {
+  vwChat(): m.vnode {
     // The chat tab
 
     const model = this.model;
@@ -2345,10 +2325,10 @@ class View {
 
     let dtLastMsg: number = null;
 
-    function makeTimestamp(ts: string) {
+    function makeTimestamp(ts: string): m.vnode {
       // Decode the ISO format timestamp we got from the server
       let dtTs = dateFromTimestamp(ts);
-      let result = null;
+      let result: m.vnode = null;
       if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
         // If 5 minutes or longer interval between messages,
         // insert a time
@@ -2357,16 +2337,16 @@ class View {
         let dtToday = dtNow - dtNow % ONE_DAY; // Start of today (00:00 UTC)
         let dtYesterday = dtToday - ONE_DAY; // Start of yesterday
         let strTs: string;
-        if (dtTs < dtYesterday)
+        if (dtTs < dtYesterday) {
           // Older than today or yesterday: Show full timestamp YYYY-MM-DD HH:MM
           strTs = ts.slice(0, -3);
-        else
-          if (dtTs < dtToday)
-            // Yesterday
-            strTs = "Í gær " + ts.substr(11, 5);
-          else
-            // Today
-            strTs = ts.substr(11, 5);
+        } else if (dtTs < dtToday) {
+          // Yesterday
+          strTs = "Í gær " + ts.substr(11, 5);
+        } else {
+          // Today
+          strTs = ts.substr(11, 5);
+        }
         result = m(".chat-ts", strTs);
       }
       dtLastMsg = dtTs;
@@ -2391,7 +2371,7 @@ class View {
 
     function chatMessages(): m.vnode[] {
       let r: m.vnode[] = [];
-      if (!game || !game.messages)
+      if (game?.chatLoading || !game.messages)
         return r;
       for (const msg of game.messages) {
         let p = player;
@@ -2434,12 +2414,7 @@ class View {
       }
     }
 
-    const numMessages = (game && game.messages) ? game.messages.length : 0;
-
-    if (game && game.messages === null)
-      // No messages loaded yet: kick off async message loading
-      // for the current game
-      game.loadMessages();
+    const numMessages = game?.messages ? game.messages.length : 0;
 
     return m(".chat",
       {
@@ -2454,7 +2429,8 @@ class View {
             oncreate: scrollChatToBottom,
             onupdate: scrollChatToBottom
           },
-          chatMessages()),
+          chatMessages()
+        ),
         m(".chat-input",
           [
             m("input.chat-txt",
@@ -2935,12 +2911,12 @@ class View {
     }
   }
 
-  vwGames() {
+  vwGames(): m.vnode {
     // The game list tab
 
     const model = this.model;
 
-    function games() {
+    function games(): m.vnode[] {
       let r: m.vnode[] = [];
       // var numMyTurns = 0;
       let gameList = model.gameList;
@@ -2962,7 +2938,7 @@ class View {
             continue; // Don't show this game
           if (!item.my_turn && !item.zombie)
             continue; // Only show pending games
-          var opp: any[];
+          let opp: VnodeChildren;
           if (item.oppid === null)
             // Mark robots with a cog icon
             opp = [glyph("cog"), nbsp(), item.opp];
@@ -2976,7 +2952,7 @@ class View {
             m(".games-item" + (item.timed ? ".game-timed" : ""),
               { key: item.uuid, title: title },
               m(m.route.Link,
-                { href: "/game/" + item.url.slice(-36), }, // !!! TO BE FIXED
+                { href: gameUrl(item.url) },
                 [
                   m(".at-top-left", m(".tilecount", m(".oc", opp))),
                   m(".at-top-left",
@@ -3843,7 +3819,10 @@ class View {
               {
                 id: 'force-resign',
                 style: { display: "inline" },
-                onclick: (ev) => ev.preventDefault(), // !!! FIXME: Implement forced resignation
+                onclick: (ev) => {
+                  ev.preventDefault();
+                  game.forceResign();
+                },
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
                 title: '14 dagar liðnir án leiks'
@@ -4251,7 +4230,7 @@ const TextInput: ComponentFunc<{
 // A nice graphical toggler control
 
 function vwToggler(id: string, state: boolean, tabindex: number,
-  opt1: VnodeChildren, opt2: VnodeChildren, func?: Function,
+  opt1: VnodeChildren, opt2: VnodeChildren, funcToggle?: (state: boolean) => void,
   small?: boolean, title?: string): m.vnode {
 
   const togglerId = id + "-toggler";
@@ -4263,10 +4242,10 @@ function vwToggler(id: string, state: boolean, tabindex: number,
     const cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
     cls1.toggle("selected");
     cls2.toggle("selected");
-    if (func !== undefined)
+    if (funcToggle !== undefined)
       // Toggling the switch and we have an associated function:
       // call it with the boolean state of the switch
-      func(cls2.contains("selected"));
+      funcToggle(cls2.contains("selected"));
   }
 
   return m.fragment({}, [
@@ -4284,11 +4263,8 @@ function vwToggler(id: string, state: boolean, tabindex: number,
         id: togglerId,
         tabindex: tabindex,
         title: title,
-        onclick: () => doToggle(),
-        onkeypress: (ev) => {
-          if (ev.key == " ")
-            doToggle();
-        }
+        onclick: (ev) => { doToggle(); ev.preventDefault(); },
+        onkeypress: (ev) => { if (ev.key == " ") doToggle(); }
       },
       [
         m(optionClass + (state ? "" : ".selected"), { id: "opt1" }, opt1),
@@ -4622,7 +4598,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
     return m(".listitem" + (i % 2 === 0 ? ".oddlist" : ".evenlist"),
       m(m.route.Link,
         // Clicking on the link opens up the game
-        { href: "/game/" + item.url.slice(-36) },
+        { href: gameUrl(item.url) },
         [
           m("span.list-win",
             item.sc0 >= item.sc1 ?

@@ -12,7 +12,7 @@
 
    body {
       position: initial;
-      overflow: initial;
+      overflow-y: hidden;
       height: initial;
       width: initial;
    }
@@ -184,7 +184,7 @@
    }
 
    div.tile {
-      font-size: 25px;
+      font-size: 24px;
       line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
@@ -194,7 +194,7 @@
    }
 
    .rack div.tile {
-      font-size: 25px;
+      font-size: 24px;
       line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
@@ -212,8 +212,8 @@
    /* On large UIs, tile size doesn't change while dragging */
 
    div.tile.ui-draggable-dragging {
-      font-size: 25px;
-      line-height: 26px;
+      font-size: 24px;
+      line-height: 25px;
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
    }
@@ -691,7 +691,7 @@
 
    .bottom-message {
       text-align: center;
-      bottom: 70px;
+      bottom: 83px;
       left: 126px;
       width: 512px;
       height: 28px;
@@ -789,7 +789,7 @@
       left: 110px;
       top: 12px;
       width: 900px;
-      height: 744px;
+      height: 673px; // This leaves an 83px margin on an iPad for the browser UI
       font-size: 13px;
       line-height: 23px;
    }
@@ -1077,11 +1077,11 @@
    div #userlist,
    div #gamelist,
    div #elolist {
-      height: 540px; /* 15 lines @ 36px each */
+      height: 14 * 36px; /* 14 lines @ 36px each */
    }
 
    div #recentlist {
-      height: 468px; /* 13 lines @ 36px each */
+      height: 12 * 36px; /* 12 lines @ 36px each */
    }
 
    div #usr-recent {

@@ -52,8 +52,8 @@ function initPresence(userId: string) {
    // Create a unique connection entry for this user
    const connectionPath = 'connection/' + userId;
    const userRef = db.ref(connectionPath).push();
-   connectedRef.on('value', (snap: any) => {
-      if (snap.val()) {
+   connectedRef.on('value', (snapshot: any) => {
+      if (snapshot.val()) {
          // We're connected (or reconnected)
          // When I disconnect, remove this entry
          userRef.onDisconnect().remove();
@@ -66,16 +66,22 @@ function initPresence(userId: string) {
    });
 }
 
-function attachFirebaseListener(path: string, func: (json: any) => void) {
+function attachFirebaseListener(
+   path: string, func: (json: any, firstAttach: boolean) => void
+) {
    // Attach a message listener to a Firebase path
+   let cnt = 0;
    firebase.database()
       .ref(path)
-      .on('value', (data: any) => {
-         if (!data)
-            return;
-         let json = data.val();
-         if (json)
-            func(json);
+      .on('value', function(snapshot: any) {
+         // Note: we need function() here for proper closure
+         // The cnt variable is used to tell the listener whether it's being
+         // called upon the first attach or upon a later data change
+         cnt++;
+         const json = snapshot.val();
+         if (json) {
+            func(json, cnt == 1);
+         }
       });
 }
 

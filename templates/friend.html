@@ -6,7 +6,11 @@
 {% endblock %}
 
 {% block logo %}
-{% include 'back.html' %}
+{% include 'logo-explo.html' %}
+{% endblock %}
+
+{% block info %}
+   <!-- No info button -->
 {% endblock %}
 
 {% block content %}
@@ -78,12 +82,6 @@
 
    </div>
 </div>
-</div>
-
-<!-- Display user identifier in upper right corner -->
-
-<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
-<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
 </div>
 
 {% endblock %}

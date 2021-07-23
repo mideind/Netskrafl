@@ -115,6 +115,29 @@ class StatsSummaryDict(TypedDict):
     manual_elo: int
 
 
+class ChatMessageDict(TypedDict):
+
+    """ A chat message as returned by the /chatload endpoint """
+
+    from_userid: str
+    name: str
+    image: str
+    msg: str
+    ts: str  # An ISO-formatted time stamp
+
+
+class ChatHistoryDict(TypedDict):
+
+    """ A chat history entry as returned by the /chathistory endpoint """
+
+    user: str
+    name: str
+    image: str
+    last_msg: str
+    ts: str  # An ISO-formatted time stamp
+    unread: bool
+
+
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
@@ -124,7 +147,7 @@ MAX_ONLINE = 80
 autoplayer_lock = threading.Lock()
 
 # Register the Flask blueprint for the APIs
-api_blueprint = Blueprint('api', __name__)
+api_blueprint = Blueprint("api", __name__)
 # The cast to Any can be removed when Flask typing becomes more robust
 # and/or compatible with Pylance
 api = cast(Any, api_blueprint)
@@ -363,8 +386,13 @@ def logout() -> ResponseType:
     return jsonify({"status": "success"})
 
 
-def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
-    """ Process a move coming in from the client """
+def _process_move(
+    game: Game, movelist: Iterable[str], *, force_resign: bool = False
+) -> ResponseType:
+    """ Process a move coming in from the client.
+        If force_resign is True, it is actually the opponent of the
+        tardy player who is initiating the move, so we send the
+        Firebase notification to the opposite (tardy) player in that case. """
 
     assert game is not None
 
@@ -375,6 +403,9 @@ def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
         # serialized from the datastore
         return jsonify(result=Error.GAME_NOT_FOUND)
 
+    # Note that in the case of a forced resignation,
+    # player_index is the index of the tardy opponent of the player
+    # that is initiating the resignation
     player_index = game.player_to_move()
 
     # Parse the move from the movestring we got back
@@ -435,6 +466,8 @@ def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
 
         # If it's the autoplayer's move, respond immediately
         # (can be a bit time consuming if rack has one or two blank tiles)
+        # Note that if force_resign is True, opponent is the id
+        # of the player who initiates the resignation (not the tardy player)
         opponent = game.player_id_to_move()
 
         is_over = game.is_over()
@@ -457,6 +490,15 @@ def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
         # Make sure the new game state is persistently recorded
         game.store()
 
+        opponent_index = 1 - player_index
+
+        if force_resign:
+            # Reverse the opponent and the player_index, since we want
+            # to notify the tardy opponent, not the player who forced the resignation
+            # Make sure that opponent is the tardy player
+            opponent_index = player_index
+            opponent = game.player_id(opponent_index)
+
         # If the game is now over, and the opponent is human, add it to the
         # zombie game list so that the opponent has a better chance to notice
         # the result
@@ -468,7 +510,7 @@ def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
         # Send a game update to the opponent, if human, including
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
-        client_state = game.client_state(1 - player_index, m)
+        client_state = game.client_state(opponent_index, m)
         msg_dict: Dict[str, Any] = {
             "game/" + game_id + "/" + opponent + "/move": client_state,
             "user/" + opponent: {"move": datetime.utcnow().isoformat()},
@@ -476,7 +518,7 @@ def _process_move(game: Game, movelist: Iterable[str]) -> ResponseType:
         firebase.send_message(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
-    return jsonify(game.client_state(player_index))
+    return jsonify(game.client_state(1 - opponent_index))
 
 
 def fetch_users(
@@ -541,7 +583,11 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     if cuid:
         challenges.update(
             # ch[0] is the identifier of the challenged user
-            [cid for ch in ChallengeModel.list_issued(cuid, max_len=20) if (cid := ch[0]) is not None]
+            [
+                cid
+                for ch in ChallengeModel.list_issued(cuid, max_len=20)
+                if (cid := ch[0]) is not None
+            ]
         )
 
     online = firebase.online_users()
@@ -670,7 +716,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "newbag": user.new_bag(),
                     "ready": user.is_ready() and not chall,
                     "ready_timed": user.is_ready_timed() and not chall,
-                    "image": user.image()
+                    "image": user.image(),
                 }
             )
 
@@ -750,12 +796,14 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     online = firebase.online_users()
     cuser = current_user()
     u: Optional[User] = None
+    ts0: datetime = now
+    ts1: datetime
 
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
-    ts0 = datetime.utcnow()
-    logging.info(f"gamelist: listing zombies, start {ts0}")
-    if include_zombies:  # !!! FIXME: This seems to be very slow, at least if the zombie list is empty
+    if running_local:
+        logging.info(f"gamelist: listing zombies, start {ts0}")
+    if include_zombies:
         for g in ZombieModel.list_games(cuid):
             opp = g["opp"]  # User id of opponent
             u = User.load_if_exists(opp)
@@ -798,22 +846,31 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         # i.e. most recently completed games first
         result.sort(key=lambda x: cast(str, x["ts"]), reverse=True)
 
-    ts1 = datetime.utcnow()
-    logging.info(f"gamelist: listing zombies, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
-    ts0 = ts1
+    if running_local:
+        ts1 = datetime.utcnow()
+        logging.info(
+            f"gamelist: listing zombies, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
+        )
+        ts0 = ts1
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len=50))
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
     # Multi-fetch the opponents in the game list
-    ts1 = datetime.utcnow()
-    logging.info(f"gamelist: iter live games, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
-    ts0 = ts1
+    if running_local:
+        ts1 = datetime.utcnow()
+        logging.info(
+            f"gamelist: iter live games, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
+        )
+        ts0 = ts1
     opponents = fetch_users(i, lambda g: g["opp"])
-    ts1 = datetime.utcnow()
-    logging.info(f"gamelist: fetch users, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
-    ts0 = ts1
+    if running_local:
+        ts1 = datetime.utcnow()
+        logging.info(
+            f"gamelist: fetch users, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
+        )
+        ts0 = ts1
     # Iterate through the game list
     for g in i:
         if g is None:
@@ -866,8 +923,11 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 "fav": False if cuser is None else cuser.has_favorite(opp),
             }
         )
-    ts1 = datetime.utcnow()
-    logging.info(f"gamelist: result assembled, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}")
+    if running_local:
+        ts1 = datetime.utcnow()
+        logging.info(
+            f"gamelist: result assembled, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
+        )
     return result
 
 
@@ -1170,13 +1230,13 @@ def gamestate() -> ResponseType:
 
     rq = RequestData(request)
     uuid = rq.get("game")
+    delete_zombie = rq.get_bool("delete_zombie", False)
 
     user_id = current_user_id()
-    assert user_id is not None
 
     game = Game.load(uuid) if uuid else None
 
-    if game is None:
+    if game is None or user_id is None:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
@@ -1185,6 +1245,10 @@ def gamestate() -> ResponseType:
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
         return jsonify(ok=False)
+
+    # If we are being asked to remove the game's zombie status, do it
+    if delete_zombie:
+        ZombieModel.del_game(uuid, user_id)
 
     # Switch to the game's locale for the client state info
     set_game_locale(game.locale)
@@ -1220,7 +1284,7 @@ def forceresign() -> ResponseType:
         return jsonify(result=Error.GAME_NOT_OVERDUE)
 
     # Send in a resign move on behalf of the opponent
-    return _process_move(game, ["rsgn"])
+    return _process_move(game, ["rsgn"], force_resign=True)
 
 
 @api.route("/wordcheck", methods=["POST"])
@@ -1378,8 +1442,8 @@ def image() -> ResponseType:
             # We have the image as a bytes object: return it
             mimetype = image or "image/jpeg"
             return Response(image_blob, mimetype=mimetype)
-        if not image:
-           return "Image not found", 404  # Not found
+        if not image or image.startswith("/image"):
+            return "Image not found", 404  # Not found
         # Assume that this is a URL: redirect to it
         return redirect(image)
     # Method is POST: update image for current user
@@ -1387,7 +1451,7 @@ def image() -> ResponseType:
     if mimetype == "text/plain":
         # Assume that an image URL is being set
         if (request.content_length or 0) > 256:
-           return "URL too long", 400  # Bad request
+            return "URL too long", 400  # Bad request
         url = request.get_data(as_text=True).strip()
         if url.startswith("https://"):
             # Looks superficially legit
@@ -1579,7 +1643,7 @@ def setuserpref() -> ResponseType:
 def onlinecheck() -> ResponseType:
     """ Check whether a particular user is online """
     rq = RequestData(request)
-    if (user_id := rq.get("user")):
+    if (user_id := rq.get("user")) :
         online = firebase.check_presence(user_id)
     else:
         online = False
@@ -1810,8 +1874,8 @@ def chatload() -> ResponseType:
     # ChatModel.list_conversations returns them in descending
     # order since its maxlen limit cuts off the oldest messages.
     uc = UserCache()
-    messages: List[Dict[str, str]] = [
-        dict(
+    messages: List[ChatMessageDict] = [
+        ChatMessageDict(
             from_userid=(uid := cm["user"]),
             name=uc.full_name(uid),
             image=uc.image(uid),
@@ -1820,9 +1884,22 @@ def chatload() -> ResponseType:
         )
         for cm in ChatModel.list_conversation(channel)
     ]
-    # Return the message list in reverse order (oldest first)
-    # using Python's [::-1] syntax
-    return jsonify(ok=True, messages=messages[::-1])
+    # Check whether the user has already seen the newest chat message
+    # (which may be a read marker, i.e. an empty message)
+    seen = True
+    for m in messages:
+        from_userid = m["from_userid"]
+        if from_userid != user_id and not m["msg"]:
+            # Read marker from the other user: not significant
+            continue
+        # This is either a read marker from this user,
+        # or a proper message from either user.
+        seen = from_userid == user_id
+        break
+    # Return the message list in reverse order (oldest first) and
+    # remove empty messages (read markers) from the list
+    messages = [m for m in messages[::-1] if m["msg"]]
+    return jsonify(ok=True, seen=seen, messages=messages)
 
 
 @api.route("/chathistory", methods=["POST"])
@@ -1839,8 +1916,8 @@ def chathistory() -> ResponseType:
     # The chat history is ordered in reverse timestamp
     # order, i.e. the newest entry comes first
     uc = UserCache()
-    history: List[Dict[str, Any]] = [
-        dict(
+    history: List[ChatHistoryDict] = [
+        ChatHistoryDict(
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
             image=uc.image(uid),
@@ -2079,22 +2156,6 @@ def initgame() -> ResponseType:
 
     # Return the uuid of the new game
     return jsonify(ok=True, uuid=game.id())
-
-
-@api.route("/gameover", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def gameover() -> ResponseType:
-    """A player has seen a game finish: remove it from
-    the zombie list, if it is there"""
-    cuid = current_user_id()
-    rq = RequestData(request)
-    game_id = rq.get("game")
-    user_id = rq.get("player")
-    if not game_id or cuid != user_id:
-        # A user can only remove her own games from the zombie list
-        return jsonify(result=Error.GAME_NOT_FOUND)
-    ZombieModel.del_game(game_id, user_id)
-    return jsonify(result=Error.LEGAL)
 
 
 @api.route("/locale_asset", methods=["POST"])

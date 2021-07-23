@@ -558,11 +558,18 @@ class UserModel(Model):
     def get_image(self) -> Tuple[Optional[str], Optional[bytes]]:
         """ Obtain image data about the user, consisting of
             a string and a BLOB (bytes) """
-        return self.image, self.image_blob
+        image = self.image
+        if image and image.startswith("/image?"):
+            # Wrong URL in the database: act as if no URL is stored
+            image = None
+        return image, self.image_blob
 
     def set_image(self, image: Optional[str], image_blob: Optional[bytes]) -> None:
         """ Set image data about the user, consisting of
             a string and a BLOB (bytes) """
+        if image and image.startswith("/image?"):
+            # Attempting to set the URL of the image API endpoint: not allowed
+            image = None
         self.image = image
         self.image_blob = image_blob
         self.put()
@@ -1742,34 +1749,18 @@ class ChatModel(Model):
         )
         count = 0
         for cm in iter_q(q, CHUNK_SIZE):
+            # Note: this also returns empty messages (read markers)
+            yield dict(
+                user=cm.user.id(),
+                recipient=cm.get_recipient(),
+                ts=cm.timestamp,
+                msg=cm.msg,
+            )
             if cm.msg:
-                # Don't return empty messages (read markers)
-                yield dict(
-                    user=cm.user.id(),
-                    recipient=cm.get_recipient(),
-                    ts=cm.timestamp,
-                    msg=cm.msg,
-                )
+                # We don't count read markers when comparing to maxlen
                 count += 1
                 if count >= maxlen:
                     break
-
-    @classmethod
-    def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
-        """Returns True if there are unseen messages in the conversation"""
-        CHUNK_SIZE = 40
-        q = cls.query(ChatModel.channel == channel).order(
-            -cast(int, ChatModel.timestamp)
-        )
-        for cm in iter_q(q, CHUNK_SIZE):
-            if (cm.user.id() != userid) and cm.msg:
-                # Found a message originated by the other user
-                return True
-            if (cm.user.id() == userid) and not cm.msg:
-                # Found an 'already seen' indicator (empty message) from the querying user
-                return False
-        # Gone through the whole thread without finding an unseen message
-        return False
 
     @classmethod
     def add_msg(

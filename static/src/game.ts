@@ -12,7 +12,7 @@
 
 */
 
-export { Game, coord, toVector, RackTile, Move, ServerGame };
+export { Game, gameUrl, coord, toVector, RackTile, Move, ServerGame };
 
 // import { m } from "./mithril.js";
 import { m } from "mithril";
@@ -59,6 +59,10 @@ interface ServerGame {
   // Several other properties are also sent from the server,
   // but they are copied using key/value enumeration
 }
+
+// Old-style (non-single-page) game URL prefix
+const BOARD_PREFIX = "/board?game=";
+const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 
 // Global constants
 const ROWIDS = "ABCDEFGHIJKLMNO";
@@ -181,6 +185,23 @@ function arrayEqual(a: any[], b: any[]): boolean {
     if (a[i] != b[i])
       return false;
   return true;
+}
+
+function gameUrl(url: string): string {
+  // Convert old-style game URL to new-style single-page URL
+  // The URL format is "/board?game=ed27b9f0-d429-11eb-8bc7-d43d7ee303b2&zombie=1"
+  if (url.slice(0, BOARD_PREFIX_LEN) == BOARD_PREFIX)
+    // Cut off "/board?game="
+    url = url.slice(BOARD_PREFIX_LEN);
+  // Isolate the game UUID
+  const uuid = url.slice(0, 36);
+  // Isolate the other parameters, if any
+  let params = url.slice(36);
+  // Start parameter section of URL with a ? sign
+  if (params.length > 0 && params.charAt(0) == "&")
+    params = "?" + params.slice(1);
+  // Return the single-page URL, to be consumed by m.route.Link()
+  return "/game/" + uuid + params;
 }
 
 // An interface around HTML5 local storage functionality, if available
@@ -342,7 +363,7 @@ class Game {
   overdue: boolean = false; // > 14 days since last move without reply from opponent
   currentScore: number = undefined;
 
-  messages: Message[] = null;
+  messages: Message[] = null; // Chat messages associated with this game
   wordBad: boolean = false;
   wordGood: boolean = false;
   xchg: boolean = false; // Exchange allowed?
@@ -356,7 +377,8 @@ class Game {
   currentMessage: string = null;
   isFresh: boolean = false;
   numTileMoves: number = 0;
-  chatShown: boolean = true; // False if the user has not seen all chat messages
+  chatLoading: boolean = false; // True while the chat messages are being loaded
+  chatSeen: boolean = true; // False if the user has not seen all chat messages
   congratulate: boolean = false; // Show congratulation message if true
   selectedSq: string = null; // Currently selected (blinking) square
   sel: string = "movelist"; // By default, show the movelist tab
@@ -384,7 +406,8 @@ class Game {
 
     // Choose and return a constructor function depending on
     // whether HTML5 local storage is available
-    this.localStorage = hasLocalStorage() ? new LocalStorageImpl(uuid) : new NoLocalStorageImpl();
+    this.localStorage = hasLocalStorage() ?
+      new LocalStorageImpl(uuid) : new NoLocalStorageImpl();
 
     // Load previously saved tile positions from
     // local storage, if any
@@ -396,6 +419,8 @@ class Game {
     if (!this.over && this.isTimed())
       // Ongoing timed game: start the clock
       this.startClock();
+    // Kick off loading of chat messages
+    this.loadMessages();
   }
 
   init(srvGame: ServerGame) {
@@ -437,11 +462,6 @@ class Game {
     // Update the srvGame state with data from the server,
     // either after submitting a move to the server or
     // after receiving a move notification via the Firebase listener
-    if (srvGame.result != GAME_OVER && srvGame.num_moves !== undefined &&
-      srvGame.num_moves <= this.moves.length)
-      // This is probably a starting notification from Firebase on an ongoing srvGame,
-      // not adding a new move but repeating the last move made: ignore it
-      return;
     // Stop highlighting the previous opponent move, if any
     for (let sq in this.tiles)
       if (this.tiles.hasOwnProperty(sq))
@@ -636,7 +656,11 @@ class Game {
 
   async loadMessages() {
     // Load chat messages for this game
-    this.messages = []; // Prevent double loading
+    if (this.chatLoading)
+      // Already loading
+      return;
+    this.chatLoading = true;
+    this.messages = [];
     try {
       const result = await m.request(
         {
@@ -649,14 +673,17 @@ class Game {
         this.messages = result.messages || [];
       else
         this.messages = [];
-      // !!! FIXME: The following is too simplistic;
-      // !!! we should check for a new message from the
-      // !!! opponent that comes after the last message-seen
-      // !!! marker
-      this.chatShown = this.messages.length === 0;
+      // Note whether the user has seen all chat messages
+      if (result.seen === undefined)
+        this.chatSeen = true;
+      else
+        this.chatSeen = result.seen;
     }
     catch (e) {
       // Just leave this.messages as an empty list
+    }
+    finally {
+      this.chatLoading = false;
     }
   }
 
@@ -705,27 +732,31 @@ class Game {
     // Send a 'chat message seen' marker to the server
     this.sendMessage("");
     // The user has now seen all chat messages
-    this.chatShown = true;
+    this.chatSeen = true;
   }
 
   addChatMessage(from_userid: string, msg: string, ts: string, ownMessage: boolean) {
-    // Add a new chat message to the message list
-    if (this.messages !== null) {
-      // Do not add messages unless the message list has been
-      // properly initialized from the server. This means that
-      // we skip the initial chat message update that happens
-      // immediately as we add a listener to the chat path.
-      this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
-      if (this.sel != "chat" && msg != "" && !ownMessage)
-        // We have a new chat message that the user hasn't seen yet
-        this.chatShown = false;
+    // Add a new chat message, received via a Firebase notification,
+    // to the message list
+    if (this.chatLoading || msg == "")
+      // Loading of the message list is underway: assume that this message
+      // will be contained in the list, once it has been read
+      return;
+    this.messages.push({ from_userid: from_userid, msg: msg, ts: ts });
+    if (this.sel == "chat") {
+      // Chat already open, so the player has seen the message: send a read receipt
+      this.sendChatSeenMarker();
+    } else if (!ownMessage) {
+      // Chat not open, and we have a new chat message from the other player:
+      // note that this player hasn't seen it
+      this.chatSeen = false;
     }
   }
 
   markChatShown(): boolean {
     // Note that the user has seen all pending chat messages
-    if (!this.chatShown) {
-      this.chatShown = true;
+    if (!this.chatSeen) {
+      this.sendChatSeenMarker();
       return true;
     }
     return false;
@@ -957,11 +988,33 @@ class Game {
     // Send a move to the server
     this.moveInProgress = true;
     try {
-      const result = await m.request(
+      const result: ServerGame = await m.request(
         {
           method: "POST",
           url: "/submitmove",
           body: { moves: moves, mcount: this.moves.length, uuid: this.uuid }
+        }
+      );
+      // The update() function also handles error results
+      this.update(result);
+    } catch (e) {
+      this.currentError = "server";
+      this.currentMessage = e;
+    }
+    finally {
+      this.moveInProgress = false;
+    }
+  };
+
+  async forceResign() {
+    // Force resignation by a tardy opponent
+    this.moveInProgress = true;
+    try {
+      const result: ServerGame = await m.request(
+        {
+          method: "POST",
+          url: "/forceresign",
+          body: { mcount: this.moves.length, game: this.uuid }
         }
       );
       // The update() function also handles error results

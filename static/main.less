@@ -14,6 +14,7 @@
 
 @mobile-width: 375px;
 @mobile-height: 667px;
+@mobile-height-tall: 720px;
 
 @navbar-height: 83px;
 @mobile-height-net: (@mobile-height - @navbar-height);
@@ -292,10 +293,16 @@ body {
    padding: 0;
    margin: 0;
    background-color: @container;
+   // Full height is 667px - we subtract 83px for browser navbar
    height: @mobile-height-net;
    width: 100%;
    overflow-x: auto;
    touch-action: none;
+}
+
+p {
+   margin-top: 14px;
+   margin-bottom: 14px;
 }
 
 div.container {
@@ -303,7 +310,7 @@ div.container {
    top: 0;
    left: 0;
    width: @mobile-width; /* Reference width */
-   height: @mobile-height-net; /* Full height is 667px - we subtract 83px for browser navbar */
+   height: 100%;
    overflow-x: hidden;
    overflow-y: auto;
    margin: 0 auto; /* Horizontal align center */
@@ -891,10 +898,10 @@ div.robot-btn {
    display: block;
    position: relative;
    top: 0; left: 0;
+   width: 126px;
    margin-left: 0px;
    margin-right: 2px;
    padding-top: 6px;
-   width: 126px;
    height: 28px;
    min-height: 28px;
    border-width: 0px;
@@ -917,10 +924,10 @@ div.player-btn {
    display: block;
    position: relative;
    top: 0; left: 0;
+   width: 128px;
    margin-left: 2px;
    margin-right: 2px;
    padding-top: 6px;
-   width: 128px;
    height: 28px;
    line-height: 20px;
    min-height: 28px;
@@ -933,11 +940,13 @@ div.player-btn {
    color: white;
 }
 
-div.player-btn.left, div.robot-btn.left {
+div.player-btn.left,
+div.robot-btn.left {
    padding-left: 44px;
 }
 
-div.player-btn.right, div.robot-btn.right {
+div.player-btn.right,
+div.robot-btn.right {
    padding-right: 44px;
 }
 
@@ -962,62 +971,16 @@ div.heading {
    height: 32px;
 }
 
-@media (min-height: 736px) {
-
-   // Tall mobile phones: use two lines to display the header
-
-   div.player {
-      display: block;
-      padding-left: 4px;
-      padding-right: 4px;
-      height: 32px;
-      min-height: 32px;
-      font-size: 16px;
-      line-height: 16px;
-      font-weight: 400;
-      color: @cell-border;
-   }
-
-   div.scoreleft {
-      display: inline-block;
-      position: relative;
-      left: auto;
-      top: auto;
-      padding-left: 8px;
-   }
-
-   div.scoreright {
-      display: inline-block;
-      position: relative;
-      right: auto;
-      top: auto;
-      padding-right: 8px;
-   }
-
-   div.player-btn {
-      display: inline-block;
-   }
-
-   div.robot-btn {
-      display: inline-block;
-   }
-
-   div.player-btn.left, div.robot-btn.left {
-      padding-left: 4px;
-   }
-
-   div.player-btn.right, div.robot-btn.right {
-      padding-right: 4px;
-   }
-
-   div.heading {
-      height: auto;
-   }
-
-   div.header {
-      height: 60px - @margin-small;
-   }
-
+div.tabbed-page {
+   position: absolute;
+   left: 0;
+   top: 0;
+   width: @mobile-width;
+   height: @mobile-height-net;
+   overflow-x: hidden;
+   overflow-y: auto; // hidden?
+   font-size: 13px;
+   line-height: 23px;
 }
 
 div.loginform-small {
@@ -1500,18 +1463,6 @@ div#ready-toggler {
 
 div#timed-toggler {
    display: none;
-}
-
-div.tabbed-page {
-   position: absolute;
-   left: 0;
-   top: 0;
-   width: @mobile-width;
-   height: @mobile-height-net;
-   overflow-x: hidden;
-   overflow-y: auto; // hidden?
-   font-size: 13px;
-   line-height: 23px;
 }
 
 div.help-container img {
@@ -2506,7 +2457,7 @@ div.chat-msg.right {
 }
 
 div.chat-msg.local {
-   background-color: lighten(@racktile,18%);
+   background-color: @chat-msg-local;
 }
 
 div.chat-msg.remote {
@@ -2777,6 +2728,7 @@ span.yesnobutton#force-resign {
    display: none;
    background-color: @alert;
    color: white;
+   padding-bottom: 4px;
 }
 
 div.score.word-good {
@@ -3608,7 +3560,7 @@ h2#usr-info-fullname {
 }
 
 span.vbar {
-   color: @background;
+   color: @silhouette;
    font-size: 2em;
    padding-left: 10px;
    padding-right: 10px;
@@ -3616,7 +3568,7 @@ span.vbar {
 
 h1.usr-info-icon {
    display: inline;
-   color: @background;
+   color: @silhouette;
 }
 
 h1.usr-info-icon span.glyphicon-coffee-cup {
@@ -3874,7 +3826,7 @@ div#user-form {
    top: 20px;
    right: 64px;
    width: 736px;
-   height: 676px;
+   height: 642px;
    background-color: @dialog-background;
 }
 
@@ -4349,3 +4301,93 @@ div.signup-header {
    left: 110px;
    width: 900px;
 }
+
+@media (min-height: 736px) {
+
+   // Tall mobile phones: use two lines to display the header
+
+   body,
+   div.tabbed-page {
+      height: @mobile-height-tall;
+   }
+
+   div.player {
+      display: block;
+      padding-left: 4px;
+      padding-right: 4px;
+      height: 32px;
+      min-height: 32px;
+      font-size: 16px;
+      line-height: 16px;
+      font-weight: 400;
+      color: @cell-border;
+   }
+
+   div.scoreleft {
+      display: inline-block;
+      position: relative;
+      left: auto;
+      top: auto;
+      padding-left: 8px;
+   }
+
+   div.scoreright {
+      display: inline-block;
+      position: relative;
+      right: auto;
+      top: auto;
+      padding-right: 8px;
+   }
+
+   div.player-btn {
+      display: inline-block;
+   }
+
+   div.robot-btn {
+      display: inline-block;
+   }
+
+   div.player-btn.left, div.robot-btn.left {
+      padding-left: 4px;
+   }
+
+   div.player-btn.right, div.robot-btn.right {
+      padding-right: 4px;
+   }
+
+   div.heading {
+      height: auto;
+   }
+
+   div.header {
+      height: 60px - @margin-small;
+   }
+
+   div #userlist,
+   div #elolist {
+      height: 14 * 36px; /* 14 lines @ 36px each */
+   }
+
+   div #gamelist {
+      height: 16 * 36px; /* 16 lines @ 36px each */
+   }
+
+   div #recentlist {
+      height: 14 * 36px; /* 14 lines @ 36px each */
+   }
+
+   div #usr-recent {
+      height: 15 * 36px; /* 15 lines @ 36px each */
+   }
+
+   div #chall-sent,
+   div #chall-received {
+      height: 8 * 36px; /* 8 lines @ 36px each */
+   }
+
+   div.games {
+      height: @mobile-height-tall - @board-top - @margin-small - 24px;
+   }
+
+}
+

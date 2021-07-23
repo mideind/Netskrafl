@@ -45,6 +45,7 @@ interface Params {
   move?: string;
   tab?: string;
   faq?: string;
+  zombie?: string;
 }
 
 // Items in a game list
@@ -251,13 +252,18 @@ class Model {
     this.state = state;
   }
 
-  async loadGame(uuid: string, funcComplete: () => void) {
-    // Fetch a game state from the server, given the game's UUID
+  async loadGame(uuid: string, funcComplete: () => void, deleteZombie: boolean = false) {
+    // Fetch a game state from the server, given the game's UUID.
+    // If deleteZombie is true, we are loading a zombie game for
+    // inspection, so we tell the server to remove the zombie marker.
     try {
       const result: { ok: boolean; game: ServerGame; } = await m.request({
         method: "POST",
         url: "/gamestate",
-        body: { game: uuid }
+        body: {
+          game: uuid,
+          delete_zombie: deleteZombie
+        }
       });
       if (this.game !== null)
         // We have a prior game in memory:
@@ -725,9 +731,9 @@ class Model {
     }
   }
 
-  handleMoveMessage(json: ServerGame) {
+  handleMoveMessage(json: ServerGame, firstAttach: boolean) {
     // Handle an incoming Firebase move message
-    if (this.game) {
+    if (!firstAttach && this.game) {
       this.game.update(json);
       m.redraw();
     }

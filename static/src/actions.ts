@@ -26,6 +26,7 @@ import { m } from "mithril";
 import {
   attachFirebaseListener, detachFirebaseListener, loginFirebase
 } from "./channel.js";
+import { ServerGame } from "./game.js";
 
 class Actions {
 
@@ -53,11 +54,17 @@ class Actions {
       if (model.game !== null) {
         this.detachListenerFromGame(model.game.uuid);
       }
+      // If opening this game as a zombie, remove zombie status
+      const deleteZombie = params.zombie === "1";
       // Load the game, and attach it to the Firebase listener once it's loaded
-      model.loadGame(params.uuid, () => {
-        this.attachListenerToGame(params.uuid);
-        setTimeout(this.view.scrollMovelistToBottom);
-      });
+      model.loadGame(
+        params.uuid,
+        () => {
+          this.attachListenerToGame(params.uuid);
+          setTimeout(this.view.scrollMovelistToBottom);
+        },
+        deleteZombie
+      );
     }
     else
     if (routeName == "review") {
@@ -110,10 +117,10 @@ class Actions {
     }
   }
 
-  onMoveMessage(json: any) {
+  onMoveMessage(json: ServerGame, firstAttach: boolean) {
     // Handle a move message from Firebase
     console.log("Move message received: " + JSON.stringify(json));
-    this.model.handleMoveMessage(json);
+    this.model.handleMoveMessage(json, firstAttach);
   }
 
   onUserMessage(json: any) {
@@ -122,12 +129,19 @@ class Actions {
     this.model.handleUserMessage(json);
   }
 
-  onChatMessage(json: { from_userid: string; game: string; msg: string; ts: string; }) {
+  onChatMessage(
+    json: { from_userid: string; game: string; msg: string; ts: string; },
+    firstAttach: boolean
+  ) {
     // Handle an incoming chat message
-    console.log("Chat message received: " + JSON.stringify(json));
-    if (this.model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
-      // A chat message was successfully added
-      this.view.notifyChatMessage();
+    if (firstAttach)
+      console.log("First attach of chat: " + JSON.stringify(json));
+    else {
+      console.log("Chat message received: " + JSON.stringify(json));
+      if (this.model.addChatMessage(json.game, json.from_userid, json.msg, json.ts)) {
+        // A chat message was successfully added
+        this.view.notifyChatMessage();
+      }
     }
   }
 
@@ -239,9 +253,13 @@ class Actions {
     let state = this.model.state;
     const basepath = 'game/' + uuid + "/" + state.userId + "/";
     // New moves
-    attachFirebaseListener(basepath + "move", (json) => this.onMoveMessage(json));
+    attachFirebaseListener(basepath + "move",
+      (json, firstAttach) => this.onMoveMessage(json, firstAttach)
+    );
     // New chat messages
-    attachFirebaseListener(basepath + "chat", (json) => this.onChatMessage(json));
+    attachFirebaseListener(basepath + "chat",
+      (json, firstAttach) => this.onChatMessage(json, firstAttach)
+    );
   }
 
   detachListenerFromGame(uuid: string) {
