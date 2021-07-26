@@ -24,21 +24,21 @@ import {
   Model, GlobalState, getSettings,
   UserListItem, ChallengeListItem, RecentListItem,
   ChallengeAction, MoveInfo, Params
-} from "./model.js";
+} from "model";
 
-import { Game, gameUrl, coord, toVector, Move } from "./game.js";
+import { Game, gameUrl, coord, toVector, Move } from "game";
 
-import { addPinchZoom, registerSalesCloud } from "./util.js";
+import { addPinchZoom, registerSalesCloud } from "util";
 
-import { Actions, createRouteResolver } from "./actions.js";
+import { Actions, createRouteResolver } from "actions";
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
 } from "mithril";
 
-import { WaitDialog, AcceptDialog } from "./wait.js";
+import { WaitDialog, AcceptDialog } from "wait";
 
-import { AnimatedExploLogo } from "./logo.js";
+import { AnimatedExploLogo } from "logo";
 
 // Constants
 

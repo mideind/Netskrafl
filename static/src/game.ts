@@ -14,7 +14,6 @@
 
 export { Game, gameUrl, coord, toVector, RackTile, Move, ServerGame };
 
-// import { m } from "./mithril.js";
 import { m } from "mithril";
 
 interface TileData {

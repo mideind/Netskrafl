@@ -15,12 +15,11 @@
 
 export { WaitDialog, AcceptDialog };
 
-// import { m, ComponentFunc } from "./mithril.js";
 import { m, ComponentFunc } from "mithril";
 
-import { View, glyph, DialogButton, OnlinePresence } from "./page.js";
+import { View, glyph, DialogButton, OnlinePresence } from "page";
 
-import { attachFirebaseListener, detachFirebaseListener } from "./channel.js";
+import { attachFirebaseListener, detachFirebaseListener } from "channel";
 
 const WaitDialog: ComponentFunc<{
   view: View; oppId: string; oppNick: string; oppName: string; duration: number;

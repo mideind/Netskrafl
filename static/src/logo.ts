@@ -14,7 +14,6 @@
 
 export { AnimatedExploLogo };
 
-//import { m, ComponentFunc } from "./mithril.js";
 import { m, ComponentFunc } from "mithril";
 
 // SVG code for logo

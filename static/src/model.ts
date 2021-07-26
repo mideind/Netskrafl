@@ -22,7 +22,7 @@ export {
   ChallengeAction, MoveInfo, Params
 };
 
-import { Game, ServerGame, Move, RackTile  } from "./game.js";
+import { Game, ServerGame, Move, RackTile  } from "game";
 
 import { m } from "mithril";
 

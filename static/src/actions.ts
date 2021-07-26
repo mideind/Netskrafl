@@ -16,17 +16,17 @@
 
 export { Actions, createRouteResolver };
 
-import { Model, Params } from "./model.js";
+import { Model, Params } from "model";
 
-import { View } from "./page.js";
+import { View } from "page";
 
-// import { m } from "./mithril.js";
 import { m } from "mithril";
 
 import {
   attachFirebaseListener, detachFirebaseListener, loginFirebase
-} from "./channel.js";
-import { ServerGame } from "./game.js";
+} from "channel";
+
+import { ServerGame } from "game";
 
 class Actions {
 
@@ -109,10 +109,13 @@ class Actions {
       else
       if (routeName == "main") {
         // Force reload of lists
+        // !!! TBD: This may not be necessary,
+        // !!! if all Firebase notifications are acted upon
         model.gameList = null;
         model.userListCriteria = null;
         model.userList = null;
         model.challengeList = null;
+        model.recentList = null;
       }
     }
   }
