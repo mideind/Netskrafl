@@ -38,7 +38,7 @@ import {
 
 import { WaitDialog, AcceptDialog } from "wait";
 
-import { AnimatedExploLogo } from "logo";
+import { ExploLogo, AnimatedExploLogo } from "logo";
 
 // Constants
 
@@ -53,7 +53,7 @@ const MAX_CHAT_MESSAGES = 250;
 function main(state: GlobalState) {
   // The main UI entry point, called from page.html
 
-  let
+  const
     settings = getSettings(),
     model = new Model(settings, state),
     view = new View(model),
@@ -889,21 +889,8 @@ class View {
     function vwMainTabs() {
 
       function vwMainTabHeader(): m.vnode {
-        let numGames = 0;
-        let numChallenges = 0;
-        if (model.gameList)
-          // Sum up games where it's the player's turn, as well as zombie games
-          numGames = model.gameList.reduce((acc: number, item) => {
-            return acc + (item.my_turn || item.zombie ? 1 : 0);
-          }, 0);
-        if (model.challengeList)
-          // Sum up received challenges and issued timed challenges where
-          // the opponent is ready
-          numChallenges = model.oppReady + model.challengeList.reduce(
-            (acc: number, item) => {
-              return acc + (item.received ? 1 : 0);
-            }, 0
-          );
+        const numGames = model.numGames;
+        const numChallenges = model.numChallenges;
         return m("ul",
           [
             m("li",
@@ -1049,7 +1036,7 @@ class View {
 
         function vwHint(): m.vnode {
           // Show some help if the user has no games in progress
-          if (model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
+          if (model.loadingGameList || model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
             // Either we have games in progress or the game list is being loaded
             return undefined;
           return m(".hint", { style: { display: "block" } },
@@ -2796,54 +2783,51 @@ class View {
 
     function games(): m.vnode[] {
       let r: m.vnode[] = [];
-      // var numMyTurns = 0;
+      if (model.loadingGameList)
+        return r;
       let gameList = model.gameList;
-      if (gameList === undefined) {
+      if (gameList === undefined)
         // Game list is being loaded
-      }
-      else
-      if (gameList === null)
+        return r;
+      if (gameList === null) {
         // No games to show now, but we'll load them
         // and they will be automatically refreshed when ready
         model.loadGameList();
-      else {
-        let numGames = gameList.length;
-        let game = model.game;
-        let gameId = game ? game.uuid : "";
-        for (let i = 0; i < numGames; i++) {
-          let item = gameList[i];
-          if (item.uuid == gameId)
-            continue; // Don't show this game
-          if (!item.my_turn && !item.zombie)
-            continue; // Only show pending games
-          let opp: VnodeChildren;
-          if (item.oppid === null)
-            // Mark robots with a cog icon
-            opp = [glyph("cog"), nbsp(), item.opp];
-          else
-            opp = [item.opp];
-          let winLose = item.sc0 < item.sc1 ? ".losing" : "";
-          let title = "Staðan er " + item.sc0 + ":" + item.sc1;
-          // Add the game-timed class if the game is a timed game.
-          // These will not be displayed in the mobile UI.
-          r.push(
-            m(".games-item" + (item.timed ? ".game-timed" : ""),
-              { key: item.uuid, title: title },
-              m(m.route.Link,
-                { href: gameUrl(item.url) },
-                [
-                  m(".at-top-left", m(".tilecount", m(".oc", opp))),
-                  m(".at-top-left",
-                    m(".tilecount.trans",
-                      m(".tc" + winLose, { style: { width: item.tile_count.toString() + "%" } }, opp)
-                    )
+        return r;
+      }
+      let game = model.game;
+      let gameId = game ? game.uuid : "";
+      for (let item of gameList) {
+        if (item.uuid == gameId)
+          continue; // Don't show this game
+        if (!item.my_turn && !item.zombie)
+          continue; // Only show pending games
+        let opp: VnodeChildren;
+        if (item.oppid === null)
+          // Mark robots with a cog icon
+          opp = [glyph("cog"), nbsp(), item.opp];
+        else
+          opp = [item.opp];
+        let winLose = item.sc0 < item.sc1 ? ".losing" : "";
+        let title = "Staðan er " + item.sc0 + ":" + item.sc1;
+        // Add the game-timed class if the game is a timed game.
+        // These will not be displayed in the mobile UI.
+        r.push(
+          m(".games-item" + (item.timed ? ".game-timed" : ""),
+            { key: item.uuid, title: title },
+            m(m.route.Link,
+              { href: gameUrl(item.url) },
+              [
+                m(".at-top-left", m(".tilecount", m(".oc", opp))),
+                m(".at-top-left",
+                  m(".tilecount.trans",
+                    m(".tc" + winLose, { style: { width: item.tile_count.toString() + "%" } }, opp)
                   )
-                ]
-              )
+                )
+              ]
             )
-          );
-          // numMyTurns++;
-        }
+          )
+        );
       }
       return r;
     }
@@ -4030,33 +4014,6 @@ class View {
 } // class View
 
 // General-purpose Mithril components
-
-const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVnode) => {
-
-  // The Explo logo, with or without the legend ('explo')
-
-  const scale = initialVnode.attrs.scale || 1.0;
-  const legend = initialVnode.attrs.legend;
-
-  return {
-    view: (vnode) => {
-      return m("img",
-        legend ?
-          {
-            alt: 'Netskrafl',
-            width: 89 * scale, height: 40 * scale,
-            src: '/static/explo-logo.svg'
-          }
-          :
-          {
-            alt: 'Netskrafl',
-            width: 23 * scale, height: 40 * scale,
-            src: '/static/explo-logo-only.svg'
-          }
-      );
-    }
-  };
-};
 
 const LeftLogo: ComponentFunc<{}> = () => {
   return {

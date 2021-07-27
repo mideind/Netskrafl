@@ -43,6 +43,10 @@ type Move = [
 ];
 type MoveDetail = [string];
 
+interface MoveListener {
+  notifyMove: () => void;
+}
+
 interface Message {
   from_userid: string;
   msg: string;
@@ -398,10 +402,14 @@ class Game {
   // Create a local storage object for this game
   localStorage: LocalStorage = null;
 
-  constructor(uuid: string, srvGame: ServerGame) {
+  // Plug-in point for parties that want to watch moves being made in the game
+  moveListener: MoveListener;
+
+  constructor(uuid: string, srvGame: ServerGame, moveListener: MoveListener) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
+    this.moveListener = moveListener;
 
     // Choose and return a constructor function depending on
     // whether HTML5 local storage is available
@@ -996,6 +1004,9 @@ class Game {
       );
       // The update() function also handles error results
       this.update(result);
+      // Notify eventual listeners that a (local) move has been made
+      if (this.moveListener)
+        this.moveListener.notifyMove();
     } catch (e) {
       this.currentError = "server";
       this.currentMessage = e;

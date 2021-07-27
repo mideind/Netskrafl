@@ -23,7 +23,7 @@ import { AnimatedExploLogo, NetskraflLegend } from "logo";
 function main($state: { loginUrl: string; }) {
   // Mount the Mithril component tree as a child of the div.container element
   // on the login page (login-explo.html)
-  const root = document.querySelector("div#container") as HTMLElement;
+  const root = document.getElementById("container");
   m.mount(root,
     {
       view: () => { return m(LoginForm, { loginUrl: $state.loginUrl }); }

@@ -1,5 +1,4 @@
 # type: ignore
-
 """
 
     Tests for Netskrafl

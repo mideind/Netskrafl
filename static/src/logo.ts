@@ -12,7 +12,7 @@
 
 */
 
-export { AnimatedExploLogo, NetskraflLegend };
+export { ExploLogo, AnimatedExploLogo, NetskraflLegend };
 
 import { m, ComponentFunc } from "mithril";
 
@@ -197,3 +197,29 @@ const NetskraflLegend: ComponentFunc<{
   };
 };
 
+const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVnode) => {
+
+  // The Explo logo, with or without the legend ('explo' or 'Netskrafl')
+
+  const scale = initialVnode.attrs.scale || 1.0;
+  const legend = initialVnode.attrs.legend;
+
+  return {
+    view: (vnode) => {
+      return m("img",
+        legend ?
+          {
+            alt: 'Netskrafl',
+            width: 89 * scale, height: 40 * scale,
+            src: '/static/explo-logo.svg'
+          }
+          :
+          {
+            alt: 'Netskrafl',
+            width: 23 * scale, height: 40 * scale,
+            src: '/static/explo-logo-only.svg'
+          }
+      );
+    }
+  };
+};

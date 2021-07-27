@@ -193,7 +193,6 @@ function getSettings(): Settings {
   const
     paths: Paths = [
       { name: "main", route: "/main", mustLogin: true },
-      { name: "login", route: "/login", mustLogin: false },
       { name: "help", route: "/help", mustLogin: false },
       { name: "game", route: "/game/:uuid", mustLogin: true },
       { name: "review", route: "/review/:uuid", mustLogin: true }
@@ -218,9 +217,13 @@ class Model {
   game: Game = null;
   // The current game list
   gameList: GameListItem[] = null;
+  // Number of games where it's the player's turn, plus count of zombie games
+  numGames = 0;
   loadingGameList = false;
   // The current challenge list
   challengeList: ChallengeListItem[] = null;
+  // Sum up received challenges and issued timed challenges where the opponent is ready
+  numChallenges = 0;
   loadingChallengeList = false;
   // Number of opponents who are ready and waiting for a timed game
   oppReady = 0;
@@ -278,7 +281,7 @@ class Model {
       }
       else {
         // Create a new game instance and load the state into it
-        this.game = new Game(uuid, result.game);
+        this.game = new Game(uuid, result.game, this);
         // Successfully loaded: call the completion function, if given
         // (this usually attaches the Firebase event listener)
         if (funcComplete !== undefined)
@@ -287,8 +290,7 @@ class Model {
           // Mobile UI: show board tab
           this.game.setSelectedTab("board");
       }
-    }
-    catch(e) {
+    } catch(e) {
       // If new game cannot be loaded, keep the old one in place
     }
   }
@@ -300,6 +302,7 @@ class Model {
       return;
     this.loadingGameList = true; // Loading in progress
     this.gameList = [];
+    this.numGames = 0;
     this.spinners++;
     try {
       const json: { result: number; gamelist: GameListItem[]; } = await m.request({
@@ -313,11 +316,14 @@ class Model {
         return;
       }
       this.gameList = json.gamelist || [];
-    }
-    catch(e) {
+      if (this.gameList)
+        // Sum up games where it's the player's turn, as well as zombie games
+        this.numGames = this.gameList.reduce(
+          (acc, item) => acc + (item.my_turn || item.zombie ? 1 : 0), 0
+        );
+    } catch(e) {
       this.gameList = null;
-    }
-    finally {
+    } finally {
       this.loadingGameList = false;
       if (this.spinners)
         this.spinners--;
@@ -330,6 +336,8 @@ class Model {
       return;
     this.loadingChallengeList = true;
     this.challengeList = [];
+    this.numChallenges = 0;
+    this.oppReady = 0;
     try {
       const json: { result: number; challengelist: ChallengeListItem[]; } = await m.request({
         method: "POST",
@@ -342,16 +350,20 @@ class Model {
       }
       this.challengeList = json.challengelist || [];
       // Count opponents who are ready and waiting for timed games
-      this.oppReady = 0;
       for (let ch of this.challengeList) {
         if (ch.opp_ready)
           this.oppReady++;
       }
-    }
-    catch(e) {
+      this.numChallenges = this.oppReady;
+      if (this.challengeList)
+        // Sum up received challenges and issued timed challenges where
+        // the opponent is ready
+        this.numChallenges += this.challengeList.reduce(
+          (acc, item) => acc + (item.received ? 1 : 0), 0
+        );
+    } catch(e) {
       this.challengeList = null;
-    }
-    finally {
+    } finally {
       this.loadingChallengeList = false;
     }
   }
@@ -374,11 +386,9 @@ class Model {
         return;
       }
       this.recentList = json.recentlist || [];
-    }
-    catch(e) {
+    } catch(e) {
       this.recentList = null;
-    }
-    finally {
+    } finally {
       this.loadingRecentList = false;
     }
   }
@@ -435,12 +445,10 @@ class Model {
       }
       this.userList = json.userlist || json.rating;
       this.userListCriteria = criteria;
-    }
-    catch(e) {
+    } catch(e) {
       this.userList = null;
       this.userListCriteria = null;
-    }
-    finally {
+    } finally {
       if (activateSpinner && this.spinners)
         // Remove spinner overlay, if present
         this.spinners--;
@@ -462,8 +470,7 @@ class Model {
         return;
       }
       this.ownStats = json;
-    }
-    catch(e) {
+    } catch(e) {
       this.ownStats = null;
     }
   }
@@ -477,8 +484,7 @@ class Model {
         body: { user: userid }
       });
       readyFunc(json);
-    }
-    catch(e) {
+    } catch(e) {
       // No need to do anything
     }
   }
@@ -494,8 +500,7 @@ class Model {
         deserialize: (str: string) => str
       });
       readyFunc(html);
-    }
-    catch(e) {
+    } catch(e) {
       // No need to do anything
     }
   }
@@ -541,13 +546,11 @@ class Model {
       // Populate the board cells with only the tiles
       // laid down up and until the indicated moveIndex
       this.game.placeTiles(this.reviewMove);
-    }
-    catch(e) {
+    } catch(e) {
       this.highlightedMove = null;
       this.reviewMove = null;
       this.bestMoves = null;
-    }
-    finally {
+    } finally {
       if (this.spinners)
         this.spinners--;
     }
@@ -592,12 +595,10 @@ class Model {
         this.user = result.userprefs;
         this.userErrors = null;
       }
-    }
-    catch(e) {
+    } catch(e) {
       this.user = null;
       this.userErrors = null;
-    }
-    finally {
+    } finally {
       if (activateSpinner && this.spinners)
         this.spinners--;
     }
@@ -635,8 +636,7 @@ class Model {
         // Error saving user prefs: show details, if available
         this.userErrors = result.err || null;
       }
-    }
-    catch(e) {
+    } catch(e) {
       this.userErrors = null;
     }
   }
@@ -668,8 +668,7 @@ class Model {
         // Go to the newly created game
         m.route.set("/game/" + json.uuid);
       }
-    }
-    catch(e) {
+    } catch(e) {
       // No need to do anything
     }
   }
@@ -688,8 +687,7 @@ class Model {
           // We are showing a user list: reload it
           this.loadUserList(this.userListCriteria, false);
       }
-    }
-    catch(e) {
+    } catch(e) {
       // A future TODO is to indicate an error in the UI
     }
   }
@@ -702,8 +700,7 @@ class Model {
         url: "/favorite",
         body: { destuser: userId, action: status ? "add" : "delete" }
       });
-    }
-    catch(e) {
+    } catch(e) {
       // No need to do anything here - a future TODO is to indicate an error in the UI
     }
   }
@@ -720,6 +717,7 @@ class Model {
 
   handleUserMessage(json: any) {
     // Handle an incoming Firebase user message
+    let invalidateGameList = false;
     if (json.challenge) {
       // Reload challenge list
       this.loadChallengeList();
@@ -727,7 +725,18 @@ class Model {
         // We are showing a user list: reload it
         this.loadUserList(this.userListCriteria, false);
       // Reload game list
-      this.loadGameList();
+      // !!! FIXME: It is strictly speaking not necessary to reload
+      // !!! the game list unless this is an acceptance of a challenge
+      // !!! (issuance or rejection don't cause the game list to change)
+      invalidateGameList = true;
+    } else if (json.move) {
+      // A move has been made in one of this user's games:
+      // invalidate the game list (will be loaded upon next display)
+      invalidateGameList = true;
+    }
+    if (invalidateGameList && !this.loadingGameList) {
+      this.gameList = null;
+      m.redraw();
     }
   }
 
@@ -736,6 +745,14 @@ class Model {
     if (!firstAttach && this.game) {
       this.game.update(json);
       m.redraw();
+    }
+  }
+
+  notifyMove() {
+    // A move has been made in the game:
+    // invalidate the game list, since it may have changed
+    if (!this.loadingGameList) {
+      this.gameList = null;
     }
   }
 
