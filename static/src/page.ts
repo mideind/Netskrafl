@@ -328,22 +328,6 @@ class View {
     );
   }
 
-  vwNetskraflLogo(): m.vnode {
-    // The Netskrafl logo
-    return m(".logo",
-      m(m.route.Link,
-        { href: '/main', class: "nodecorate" },
-        m("img",
-          {
-            alt: 'Netskrafl',
-            width: 46, height: 400,
-            src: '/static/Netskrafl.png'
-          }
-        )
-      )
-    );
-  }
-
   TogglerReady: ComponentFunc<{}> = (initialVnode) => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
@@ -490,7 +474,6 @@ class View {
 
     // Output literal HTML obtained from rawhelp.html on the server
     return m.fragment({}, [
-      // vwNetskraflLogo(),
       m(LeftLogo),
       this.vwUserId(),
       m("main",
@@ -4060,13 +4043,13 @@ const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVn
       return m("img",
         legend ?
           {
-            alt: 'Explo',
+            alt: 'Netskrafl',
             width: 89 * scale, height: 40 * scale,
             src: '/static/explo-logo.svg'
           }
           :
           {
-            alt: 'Explo',
+            alt: 'Netskrafl',
             width: 23 * scale, height: 40 * scale,
             src: '/static/explo-logo-only.svg'
           }
@@ -4081,7 +4064,7 @@ const LeftLogo: ComponentFunc<{}> = () => {
       return m(".logo",
         m(m.route.Link,
           { href: '/main', class: "nodecorate" },
-          m(ExploLogo, { legend: false, scale: 1.5 })
+          m(ExploLogo, { legend: false, scale: 1.6 })
         )
       );
     }

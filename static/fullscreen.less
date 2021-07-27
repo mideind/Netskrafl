@@ -49,24 +49,6 @@
       top: 8px;
    }
 
-   div.logo-back {
-      display: block;
-      position: absolute;
-      top: 38px;
-      left: 26px;
-      width: 50px;
-      height: 50px;
-      font-size: 20px;
-      text-align: center;
-   }
-
-   div.logo-back div.circle {
-      height: 40px;
-      width: 40px;
-      color: #fff1dc;
-      background-color: #0e6aaa;
-   }
-
    div.info {
       display: block;
       position: absolute;
@@ -76,6 +58,10 @@
       height: 50px;
       font-size: 40px;
       text-align: center;
+   }
+
+   div.info:hover {
+      animation: expand 0.4s;
    }
 
    div.login-error {
@@ -480,11 +466,15 @@
       min-height: 40px;
       font-size: 16px;
       line-height: 24px;
+      width: 100%;
+      padding-left: 0;
+      padding-right: 0;
    }
 
    div.gamestats div.player {
       padding: 0;
       display: inline-block;
+      width: auto;
    }
 
    div.gamestats div.player div.robot-btn {
@@ -529,7 +519,7 @@
    div.player-btn {
       margin-top: 4px;
       padding-top: 4px;
-      width: 136px;
+      width: auto;
       color: white;
       cursor: pointer;
    }
@@ -540,17 +530,27 @@
    }
 
    div.player-btn.left {
+      padding-left: 8px;
       padding-right: 2px;
-      padding-left: 2px;
    }
 
    div.player-btn.right {
       padding-left: 2px;
-      padding-right: 2px;
+      padding-right: 8px;
    }
 
    div.robot-btn {
-      width: 141px;
+      width: auto;
+   }
+
+   div.robot-btn.left {
+      padding-left: 8px;
+      padding-right: 2px;
+   }
+
+   div.robot-btn.right {
+      padding-left: 2px;
+      padding-right: 8px;
    }
 
    div.gamestats div.robot-btn {
@@ -566,7 +566,7 @@
    }
 
    div.login-logo {
-      margin-top: 40px;
+      margin-top: 16px;
       margin-left: auto;
    }
 

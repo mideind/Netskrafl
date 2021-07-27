@@ -350,7 +350,10 @@ div.logo {
    top: 28px;
    left: 28px;
    width: 46px;
-   height: 400px;
+}
+
+div.logo:hover {
+   animation: expand 0.4s;
 }
 
 div.rightcol {
@@ -499,10 +502,6 @@ table.board tr {
 
 .rack table.board tr {
    height: 28px;
-}
-
-div.logo-back {
-   display: none;
 }
 
 div.info {
@@ -1005,7 +1004,7 @@ div.loginform-large {
 }
 
 div.login-logo {
-   margin-top: 140px;
+   margin-top: 120px;
    margin-left: 100px;
 }
 
@@ -1022,6 +1021,18 @@ div#logo-pic {
 
 div.loginform-small div#logo-pic {
    padding-top: 0;
+}
+
+@keyframes expand {
+   0% { transform: scale(1.0); }
+   40% { transform: scale(1.05); }
+   100% { transform: scale(1.0); }
+}
+
+@-webkit-keyframes expand {
+   0% { transform: scale(1.0); }
+   40% { transform: scale(1.05); }
+   100% { transform: scale(1.0); }
 }
 
 div.login-btn-large {
@@ -1044,6 +1055,7 @@ div.login-btn-large {
 
 div.login-btn-large:hover {
    background-color: @pass-btn;
+   animation: expand 0.4s;
 }
 
 div.login-btn-large span {
