@@ -101,7 +101,7 @@ _SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "false").lower() in {
 
 # Register the Flask blueprint for the web routes
 web_blueprint = Blueprint(
-    'web', __name__, static_folder="../static", template_folder="../templates"
+    "web", __name__, static_folder="../static", template_folder="../templates"
 )
 # The following cast can be removed once Flask's typing becomes
 # more robust and/or compatible with Pylance
@@ -644,7 +644,10 @@ def newbag() -> ResponseType:
 @web.route("/greet")
 def greet() -> ResponseType:
     """ Handler for the greeting page """
-    return render_template("login.html", single_page=_SINGLE_PAGE_UI)
+    return render_template(
+        "login-explo.html",
+        single_page=_SINGLE_PAGE_UI,
+    )
 
 
 @web.route("/login")

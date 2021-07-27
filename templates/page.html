@@ -6,43 +6,6 @@
    rel="stylesheet" type="text/css" media="all">
 {% endblock %}
 
-{% block style_overrides %}
-
-<style>
-
-   @keyframes fresh-appear {
-      0% { opacity: 0.0; }
-      100% { opacity: 1.0; }
-   }
-   @-webkit-keyframes fresh-appear {
-      0% { opacity: 0.0; }
-      100% { opacity: 1.0; }
-   }
-
-   .freshtile {
-      opacity: 0.0;
-      animation-name: fresh-appear;
-      animation-duration: 100ms;
-      animation-delay: 0s;
-      animation-fill-mode: forwards;
-      -webkit-animation-name: fresh-appear;
-      -webkit-animation-duration: 100ms;
-      -webkit-animation-delay: 0s;
-      -webkit-animation-fill-mode: forwards;
-   }
-
-   h3.clockleft, h3.clockright {
-      display: inline-block;
-   }
-
-   div.clockface {
-      display: block;
-   }
-
-</style>
-
-{% endblock %}
-
 {% block content %}
 {%- endblock -%}
 

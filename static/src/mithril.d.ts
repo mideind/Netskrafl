@@ -40,7 +40,7 @@ declare namespace m {
 
 declare function trust(html: string): Vnode;
 declare function fragment(arg: {}, ...args: VnodeChildren): Vnode;
-declare function mount(root: HTMLElement, component: Vnode): void;
+declare function mount(root: HTMLElement, component: ComponentFunc<T> | Component<T>): void;
 declare function render(dom: HTMLElement, vnodes: VnodeChildren, redraw: boolean): void;
 declare function redraw(): void;
 declare namespace redraw {

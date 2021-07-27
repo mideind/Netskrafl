@@ -281,22 +281,16 @@ function createRouteResolver(actions: Actions) {
 
   let model = actions.model;
   let view = actions.view;
-  let state = model.state;
+  // let state = model.state;
 
   return model.paths.reduce((acc, item) => {
     acc[item.route] = {
 
-      // Navigating to a new route
-      onmatch: (params: Params, route: string) => {
+      // Navigating to a new route (passed in the second parameter)
+      onmatch: (params: Params, _: string) => {
         // Automatically close all dialogs
         view.popAllDialogs();
-        if (state.userId == "" && item.mustLogin)
-          // Attempting to navigate to a new path that
-          // requires a login, but the user hasn't logged
-          // in: go to the login route
-          m.route.set("/login");
-        else
-          actions.onNavigateTo(item.name, params);
+        actions.onNavigateTo(item.name, params);
       },
 
       // Render a view on a model

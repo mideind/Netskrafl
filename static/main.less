@@ -765,6 +765,7 @@ div.get-help {
    top: 12px;
    left: 0;
    right: auto;
+   width: 128px;
    padding: 10px;
    background-color: @triple-letter;
 }
@@ -996,10 +997,21 @@ div.loginform-large {
    display: none;
    position: absolute;
    left: 220px;
-   top: 36px;
+   right: 120px;
+   top: 44px;
    width: auto;
    max-width: 740px;
    padding: 0;
+}
+
+div.login-logo {
+   margin-top: 140px;
+   margin-left: 100px;
+}
+
+div.login-legend {
+   margin-left: 50px;
+   margin-top: 40px;
 }
 
 div#logo-pic {
@@ -1018,7 +1030,7 @@ div.login-btn-large {
    font-weight: 400;
    width: 160px;
    color: white;
-   background-color: @close-btn;
+   background-color: @pure-blue;
    margin: 0;
    margin-top: 12px;
    margin-left: 6px;
@@ -1047,7 +1059,7 @@ div.login-btn-small {
    background-color: @close-btn;
    margin-left: auto;
    margin-right: auto;
-   margin-top: 12px;
+   margin-top: 80px;
    padding: 6px;
    padding-top: 9px;
    padding-bottom: 9px;
@@ -1069,7 +1081,7 @@ div.blurb {
 
 div.login-error {
    padding: 12px;
-   margin-top: 16px;
+   margin-top: 160px;
    margin-left: 8px;
    margin-right: 16px;
    background-color: white;
@@ -1277,6 +1289,7 @@ div#blank-form {
    right: (375px - 274px - 24px) * 0.5;
    width: 274px;
    height: 400px;
+   background-color: @rack-background;
 }
 
 .bottom-message {
@@ -2247,9 +2260,27 @@ div.xchgsel {
    color: @blank-sel;
 }
 
+@keyframes fresh-appear {
+   0% { opacity: 0.0; }
+   100% { opacity: 1.0; }
+}
+@-webkit-keyframes fresh-appear {
+   0% { opacity: 0.0; }
+   100% { opacity: 1.0; }
+}
+
 div.freshtile {
    color: @cell-border;
    background-color: @freshtile;
+   opacity: 0.0;
+   animation-name: fresh-appear;
+   animation-duration: 100ms;
+   animation-delay: 0s;
+   animation-fill-mode: forwards;
+   -webkit-animation-name: fresh-appear;
+   -webkit-animation-duration: 100ms;
+   -webkit-animation-delay: 0s;
+   -webkit-animation-fill-mode: forwards;
 }
 
 div.highlight0 {
@@ -2272,7 +2303,7 @@ div.highlight1.dim {
 }
 
 .clock {
-   display: none;
+   display: inline-block;
    position: absolute;
    top: 82px;
    width: 147px;
@@ -2306,7 +2337,7 @@ h3.clockright.running-out {
 }
 
 div.clockface {
-   display: none;
+   display: block;
    position: absolute;
    top: 84px;
    width: 100%;

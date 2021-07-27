@@ -128,9 +128,6 @@ class View {
     const model = this.model;
     let views: m.vnode[] = [];
     switch (model.routeName) {
-      case "login":
-        views.push(this.vwLogin());
-        break;
       case "main":
         views.push(this.vwMain());
         break;
@@ -440,108 +437,6 @@ class View {
       }
     };
   };
-
-  // Login screen
-
-  vwLogin(): m.vnode {
-    // Login dialog
-
-    const view = this;
-    const model = this.model;
-
-    function vwLoginLarge(): m.vnode {
-      // Full screen version of login page
-      return m.fragment({}, [
-        view.vwNetskraflLogo(),
-        m(Info),
-        m(".loginform-large",
-          [
-            m(".loginhdr", "Velkomin í Netskrafl!"),
-            m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-            m("div", { id: "board-pic" },
-              m("img",
-                {
-                  width: 310, height: 300,
-                  src: '/static/Board.png'
-                }
-              )
-            ),
-            m(".welcome",
-              [
-                "Netskrafl er vettvangur ",
-                m("b", "yfir 20.000 íslenskra skraflara"),
-                " á netinu."
-              ]
-            ),
-            m(".welcome",
-              "Netskrafl notar Google Accounts innskráningu, þá " +
-              "sömu og er notuð m.a. í Gmail."
-            ),
-            m(".welcome",
-              "Netskrafl safnar hvorki persónuupplýsingum né geymir þær."
-            ),
-            m(".welcome",
-              [
-                "Þú getur alltaf fengið ",
-                m(m.route.Link,
-                  { href: '/help' },
-                  "hjálp"
-                ),
-                " með því að smella á ",
-                m(m.route.Link,
-                  { href: '/help' },
-                  ["bláa", nbsp(), nbsp(), glyph("info-sign"), " - merkið"]
-                ),
-                " hér til vinstri."
-              ]
-            ),
-            m("div", { style: { float: "right" } },
-              m("button.login",
-                {
-                  type: 'submit',
-                  onclick: () => {
-                    window.location.href = "/page";
-                  }
-                },
-                [glyph("ok"), nbsp(), nbsp(), "Skrá mig inn"]
-              )
-            )
-          ]
-        )]
-      );
-    }
-
-    function vwLoginSmall(): m.vnode {
-      // Mobile version of login page
-      return m(".loginform-small",
-        [
-          m("div",
-            { id: "logo-pic" },
-            m("img",
-              {
-                height: 375, width: 375,
-                src: '/static/LoginLogo750.png'
-              }
-            )
-          ),
-          m(".blurb", "Skemmtilegt | skerpandi | ókeypis"),
-          m("div", { style: { "text-align": "center" } },
-            m("button.login",
-              {
-                type: 'submit',
-                onclick: () => {
-                  window.location.href = "/page";
-                }
-              },
-              [glyph("ok"), nbsp(), nbsp(), "Skrá mig inn"]
-            )
-          )
-        ]
-      );
-    }
-
-    return model.state.uiFullscreen ? vwLoginLarge() : vwLoginSmall();
-  }
 
   // A control that rigs up a tabbed view of raw HTML
 
