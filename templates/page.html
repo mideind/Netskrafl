@@ -43,7 +43,7 @@
 
 // Global state, filled in by the server and passed to the page.main() function
 
-const $state = {
+var $state = {
    userId: "{{ '' if user == None else user.id() }}",
    userNick: "{{ '' if user == None else user.nickname() }}",
    userFullname: "{{ '' if user == None else user.full_name() }}",
@@ -101,11 +101,11 @@ function init_amd() {
    define("mithril", ["require", "exports"], function (require, exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.m = globalThis.m;
+      exports.m = window.m;
    });
 
    // Import the single-page app code and call its main function in the page module
-   require(["page"], (page) => { page.main($state); });
+   require(["page"], function(page) { page.main($state); });
 }
 
 // Once the DOM is ready, call the init_amd() function

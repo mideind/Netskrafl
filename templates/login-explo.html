@@ -59,7 +59,7 @@
 
 // Global state, passed by the server from this template
 // into the client script
-const $state = {
+var $state = {
    loginUrl: "{{ url_for('web.login') | safe }}"
 };
 
@@ -69,11 +69,11 @@ function init_amd() {
    define("mithril", ["require", "exports"], function (require, exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.m = globalThis.m;
+      exports.m = window.m;
    });
 
    // Import the login page code and call its main function
-   require(["login"], (login) => { login.main($state); });
+   require(["login"], function(login) { login.main($state); });
 }
 
 // Once the DOM is ready, call the init_amd() function

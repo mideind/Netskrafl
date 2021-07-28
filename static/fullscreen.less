@@ -31,6 +31,10 @@
       display: none;
    }
 
+   div.heading {
+      height: auto;
+   }
+
    div.logo {
       display: block;
    }
@@ -462,8 +466,7 @@
    }
 
    div.player {
-      height: 40px;
-      min-height: 40px;
+      height: 36px;
       font-size: 16px;
       line-height: 24px;
       width: 100%;
@@ -501,7 +504,11 @@
    }
 
    div.scoreleft {
+      position: relative;
       width: 145px;
+      height: auto;
+      top: auto;
+      left: auto;
       font-size: 24px;
       line-height: 32px;
       font-weight: 700;
@@ -509,7 +516,11 @@
    }
 
    div.scoreright {
+      position: relative;
       width: 145px;
+      height: auto;
+      top: auto;
+      left: auto;
       font-size: 24px;
       line-height: 32px;
       font-weight: 700;
@@ -823,6 +834,11 @@
       background-color: @tab-background;
    }
 
+   div#tabs > div[role=tabpanel],
+   div#main-tabs > div[role=tabpanel] {
+      height: 657px;
+   }
+
    .ui-widget-header .ui-state-active {
       background-color: @tab-background;
    }
@@ -863,7 +879,7 @@
    }
 
    div.fairplay {
-      bottom: 2px;
+      bottom: 1px;
       font-size: 28px;
       line-height: 28px;
       display: block;

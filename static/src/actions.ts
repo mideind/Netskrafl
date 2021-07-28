@@ -211,12 +211,27 @@ class Actions {
 
   initMediaListener() {
     // Install listener functions for media changes
+
+    function addEventListener(mql: MediaQueryList, func: (ev: MediaQueryListEvent) => void) {
+      // Hack to make addEventListener work on older Safari platforms
+      try {
+        // Chrome & Firefox
+        mql.addEventListener('change', func);
+      } catch (e1) {
+        try {
+          // Safari
+          mql.addListener(func);
+        } catch (e2) {
+          console.error(e2);
+        }
+      }
+    }
+
     let mql: MediaQueryList = window.matchMedia("(min-width: 667px)");
     let view = this;
     if (mql) {
       this.mediaMinWidth667(mql);
-      mql.addEventListener("change",
-        function (ev: MediaQueryListEvent) {
+      addEventListener(mql, function (ev: MediaQueryListEvent) {
           view.mediaMinWidth667(this);
         }
       );
@@ -224,8 +239,7 @@ class Actions {
     mql = window.matchMedia("(min-width: 768px)");
     if (mql) {
       this.mediaMinWidth768(mql);
-      mql.addEventListener("change",
-        function (ev: MediaQueryListEvent) {
+      addEventListener(mql, function (ev: MediaQueryListEvent) {
           view.mediaMinWidth768(this);
         }
       );

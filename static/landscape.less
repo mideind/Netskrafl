@@ -5,6 +5,11 @@
 
    /* Mobile screen, landscape mode */
 
+   body {
+      height: 100%;
+      overflow-y: hidden;
+   }
+
    div.container {
       width: @mobile-height; /* Reference width */
       height: @mobile-width; /* Reference height */
@@ -239,6 +244,11 @@
    span.list-opp {
       width: 180px;
       max-width: 180px;
+   }
+
+   div#tabs > div[role=tabpanel],
+   div#main-tabs > div[role=tabpanel] {
+      height: 326px;
    }
 
    div#tabs-1 span.list-ts-short,
