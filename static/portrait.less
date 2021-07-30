@@ -1,7 +1,22 @@
+/*
+
+   Portrait.less
+
+   Style sheet template for netskrafl.is
+
+   Copyright (C) 2021 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU Affero General Public License, version 3, applies to this software.
+   For further information, see https://github.com/mideind/Netskrafl
+
+   See main.less for explanations of the style sheet structure.
+
+*/
 
 /* ================= MOBILE PORTRAIT UI, LARGE ENOUGH TO BE NON-SCROLLABLE =============== */
 
-@media all and (min-width: @mobile-width) and (max-width: @mobile-height) and (min-height: @mobile-height-net) {
+@media all and (max-width: 1024px) and (min-height: @mobile-height-net) {
 
    /* On sufficiently large mobile screens, keep the body fixed (unscrollable) */
    body {
@@ -14,4 +29,84 @@
       overflow: hidden;
    }
 }
- 
+
+/* ================= MOBILE PORTRAIT UI, EXTRA TALL =============== */
+
+@media all and (max-width: 1024px) and (min-height: 632px) { /* iPhone X or taller */
+
+   /* Tall mobile phones: use two lines to display the header */
+
+   body, div.tabbed-page {
+      height: @mobile-height-tall-net;
+   }
+
+   div#tabs > div[role=tabpanel],
+   div#main-tabs > div[role=tabpanel] {
+      height: 584px;
+   }
+
+   div.scoreleft {
+      display: inline-block;
+      position: relative;
+      left: auto;
+      top: auto;
+      padding-left: 8px;
+   }
+
+   div.scoreright {
+      display: inline-block;
+      position: relative;
+      right: auto;
+      top: auto;
+      padding-right: 8px;
+   }
+
+   div.player-btn {
+      display: inline-block;
+   }
+
+   div.robot-btn {
+      display: inline-block;
+   }
+
+   div.player-btn.left, div.robot-btn.left {
+      padding-left: 4px;
+   }
+
+   div.player-btn.right, div.robot-btn.right {
+      padding-right: 4px;
+   }
+
+   div.heading {
+      height: auto;
+   }
+
+   div.fairplay {
+      top: 20px;
+   }
+
+   div #userlist, div #elolist {
+      height: 14 * 36px; /* 14 lines @ 36px each */
+   }
+
+   div #gamelist {
+      height: 16 * 36px; /* 16 lines @ 36px each */
+   }
+
+   div #recentlist {
+      height: 14 * 36px; /* 14 lines @ 36px each */
+   }
+
+   div #usr-recent {
+      height: 15 * 36px; /* 15 lines @ 36px each */
+   }
+
+   div #chall-sent, div #chall-received {
+      height: 8 * 36px; /* 8 lines @ 36px each */
+   }
+
+   div.games {
+      height: @games-height;
+   }
+
+}

@@ -1828,19 +1828,33 @@ class View {
         const sc1 = game ? game.displayScore(1).toString() : "";
         return m(".heading",
           [
-            m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
-              m(".player", view.vwPlayerName("left")),
-              m(".scorewrapper", m(".scoreleft", sc0)),
-            ]),
-            m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
-              m(".player", view.vwPlayerName("right")),
-              m(".scorewrapper", m(".scoreright", sc1)),
+            // The header-logo is not displayed in fullscreen
+            m(".logowrapper",
+              m(".header-logo",
+                m(m.route.Link,
+                  {
+                    href: "/page",
+                    class: "backlink"
+                  },
+                  m(ExploLogo, { legend: false, scale: 1.0 })
+                )
+              )
+            ),
+            m(".playerwrapper", [
+              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+                m(".player", view.vwPlayerName("left")),
+                m(".scorewrapper", m(".scoreleft", sc0)),
+              ]),
+              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+                m(".player", view.vwPlayerName("right")),
+                m(".scorewrapper", m(".scoreright", sc1)),
+              ]),
+              m(".fairplay",
+                { style: { visibility: fairplay ? "visible" : "hidden" } },
+                m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" })
+              )
             ]),
             vwClock(),
-            m(".fairplay",
-              { style: { visibility: fairplay ? "visible" : "hidden" } },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
-            // m(".home", m(".circle", glyph("home", { title: "Aftur í aðalskjá" })))
           ]
         );
       }
@@ -1982,7 +1996,6 @@ class View {
         m("main",
           m(".game-container",
             [
-              m(this.MobileHeader),
               vwRightColumn(),
               m(this.BoardArea),
               state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
@@ -1996,27 +2009,6 @@ class View {
         m(Info)
       ]
     );
-  }
-
-  MobileHeader() {
-    // The header on a mobile screen
-    return {
-      view: () => {
-        return m(".header", [
-          m(".header-logo",
-            m(m.route.Link,
-              {
-                href: "/page",
-                class: "backlink"
-              },
-              m(ExploLogo, { legend: true, scale: 1.0 })
-            )
-          ),
-          m(".header-button")
-        ]
-        );
-      }
-    };
   }
 
   // Review screen

@@ -216,7 +216,7 @@ class Actions {
       // Hack to make addEventListener work on older Safari platforms
       try {
         // Chrome & Firefox
-        mql.addEventListener('change', func);
+        mql.addEventListener('change', func, { passive: true });
       } catch (e1) {
         try {
           // Safari

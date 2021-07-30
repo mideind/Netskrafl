@@ -1,3 +1,18 @@
+/*
+
+   Landscape.less
+
+   Style sheet template for netskrafl.is
+
+   Copyright (C) 2021 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU Affero General Public License, version 3, applies to this software.
+   For further information, see https://github.com/mideind/Netskrafl
+
+   See main.less for explanations of the style sheet structure.
+
+*/
 
 /* ================= MOBILE LANDSCAPE UI ====================== */
 
@@ -14,10 +29,6 @@
       width: @mobile-height; /* Reference width */
       height: @mobile-width; /* Reference height */
       overflow-y: hidden;
-   }
-
-   div.game-container {
-      height: @mobile-height;
    }
 
    div.tabbed-page {
@@ -38,8 +49,17 @@
       text-align: center;
    }
 
-   div.header {
+   div.heading div.header-logo {
       display: none;
+   }
+
+   div.logowrapper {
+      width: 0%;
+   }
+
+   div.playerwrapper {
+      width: 100%;
+      padding-top: 0;
    }
 
    div.login-btn-small {
@@ -52,6 +72,7 @@
    div.board-area {
       position: absolute;
       top: 0;
+      padding-top: 6px;
    }
 
    div.board {
@@ -161,6 +182,10 @@
       line-height: 22px;
    }
 
+   div.player {
+      min-height: 32px;
+   }
+
    div.player-btn {
       width: 92px;
    }
@@ -178,11 +203,11 @@
    }
 
    div.movelist-container {
-      height: 272px;
+      height: 300px;
    }
 
    div.movelist {
-      height: 272px;
+      height: 100%;
    }
 
    div.right-area.with-clock div.movelist-container {
@@ -228,7 +253,8 @@
    }
 
    div.right-area {
-      height: 288px;
+      top: 8px;
+      height: 316px;
    }
 
    span.list-chall {

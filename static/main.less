@@ -8,16 +8,26 @@
    Author: Vilhjalmur Thorsteinsson
 
    The GNU Affero General Public License, version 3, applies to this software.
-   For further information, see https://github.com/vthorsteinsson/Netskrafl
+   For further information, see https://github.com/mideind/Netskrafl
+
+   This style sheet defines the base, mobile-first UI, in portrait mode.
+
+   Deviations for a mobile portrait UI are found in portrait.less.
+
+   Deviations for a mobile landscape UI are found in landscape.less.
+
+   Deviations for a full-screen (>= iPad) UI are found in fullscreen.less.
 
 */
 
 @mobile-width: 375px;
+/* @mobile-width: 360px; */
 @mobile-height: 667px;
 @mobile-height-tall: 720px;
 
-@navbar-height: 83px;
-@mobile-height-net: (@mobile-height - @navbar-height);
+@navbar-height: 115px;
+@mobile-height-net: @mobile-height - @navbar-height;
+@mobile-height-tall-net: @mobile-height-tall - @navbar-height;
 
 @board-cell-big: 30px;
 @board-cell-small: 21px;
@@ -49,6 +59,8 @@
 @rack-top: @board-top + @board-size + @vertical-space;
 @rack-height: 48px;
 @btn-top: @rack-top + @rack-height + @vertical-space;
+
+@games-height: @mobile-height-tall - @board-top - @margin-small - 24px;
 
 @font-face {
    font-family: 'Glyphicons Regular';
@@ -293,7 +305,7 @@ body {
    padding: 0;
    margin: 0;
    background-color: @container;
-   // Full height is 667px - we subtract 83px for browser navbar
+   /* Full height is 667px - we subtract 115px for browser chrome, top and bottom */
    height: @mobile-height-net;
    width: 100%;
    overflow-x: auto;
@@ -321,22 +333,16 @@ div.game-container {
    top: 0;
    left: 0;
    width: 100%;
-   height: @mobile-height-net;
+   height: 100%;
    overflow-x: hidden;
    overflow-y: hidden;
-}
-
-div.header {
-   height: 56px - @margin-small;
-   margin-top: @margin-small;
-   margin-left: @margin-small;
-   margin-right: @margin-small;
 }
 
 div.header-logo {
    display: block;
    float: left;
    padding-left: 4px;
+   padding-top: 12px;
 }
 
 div.header-button {
@@ -358,8 +364,21 @@ div.logo:hover {
 
 div.rightcol {
    position: relative;
-   width: @mobile-width - 2 * @margin-small;
-   left: @margin-small;
+   width: @mobile-width - 2 * @margin-small + 1;
+   left: @margin-small - 1;
+}
+
+div.logowrapper {
+   display: inline-block;
+   width: 10%;
+   vertical-align: top;
+}
+
+div.playerwrapper {
+   display: inline-block;
+   position: relative;
+   width: 90%;
+   padding-top: 4px;
 }
 
 div.bag {
@@ -379,7 +398,7 @@ div.bag {
 table.bag-content td {
    width: 12px;
    height: 17px;
-   background-color: @double-letter; // Color for old bag - seldom used
+   background-color: @double-letter; /* Color for old bag - seldom used */
    overflow: hidden;
    cursor: default;
 }
@@ -389,7 +408,7 @@ table.bag-content.new td {
 }
 
 table.bag-content.empty td {
-   background-color: @freshtile; // Opponent's color
+   background-color: @freshtile; /* Opponent's color */
 }
 
 td.over {
@@ -486,8 +505,10 @@ div.board table.board {
    transform-origin: 0 0;
    transform-box: view-box;
    touch-action: pan-x pan-y;
-   // !!! Scrolling into view doesn't seem to work with this transition enabled
-   // transition: transform .2s ease-in-out;
+   /*
+   !!! Scrolling into view doesn't seem to work with this transition enabled
+   transition: transform .2s ease-in-out;
+   */
 }
 
 table.board tr {
@@ -517,9 +538,11 @@ div.bag {
 }
 
 div.board-area {
-   position: relative;
-   margin: @margin-small;
-   margin-left: (@margin-small - 1);
+   position: absolute;
+   margin-left: @margin-small;
+   top: 99px;
+   padding-top: 4px;
+   background-color: @container;
 }
 
 div.board {
@@ -548,12 +571,12 @@ div.tile {
 }
 
 div.tile.wide {
-   // Wide tile in the rack
+   /* Wide tile in the rack */
    text-indent: -6px;
 }
 
 div.board div.tile.wide {
-   // Wide tile on the board
+   /* Wide tile on the board */
    text-indent: -4px;
 }
 
@@ -584,7 +607,7 @@ div.tile.ui-draggable-dragging {
    border-color: @cell-border;
    border-width: 1.5px;
    border-radius: 2px;
-   // box-shadow: inset 0px 0px 3px 1px #afb7ca87;
+   /* box-shadow: inset 0px 0px 3px 1px #afb7ca87; */
 }
 
 .rack td {
@@ -755,6 +778,7 @@ div.try-again {
    left: auto;
    right: 0;
    padding: 10px;
+   font-size: 16px;
 }
 
 div.get-help {
@@ -766,6 +790,7 @@ div.get-help {
    right: auto;
    width: 128px;
    padding: 10px;
+   font-size: 16px;
    background-color: @triple-letter;
 }
 
@@ -787,7 +812,7 @@ div.recallbtn {
 
 div.rack-left div.recallbtn {
    display: block;
-   margin-right: auto; // Left-align the button
+   margin-right: auto; /* Left-align the button */
 }
 
 div.scramblebtn {
@@ -800,7 +825,7 @@ div.scramblebtn {
 
 div.rack-left div.scramblebtn {
    display: block;
-   margin-right: auto; // Left-align the button
+   margin-right: auto; /* Left-align the button */
 }
 
 div.submitexchange {
@@ -834,7 +859,7 @@ div.submitmove {
 
 div.rack-right div.submitmove {
    display: block;
-   margin-left: auto; // Right-align the button
+   margin-left: auto; /* Right-align the button */
 }
 
 div.submitmove.error-shown {
@@ -849,10 +874,10 @@ div.player {
    display: block;
    padding-left: 4px;
    padding-right: 4px;
-   height: 32px;
-   min-height: 32px;
-   font-size: 16px;
-   line-height: 16px;
+   height: 26px;
+   min-height: 26px;
+   font-size: 14px;
+   line-height: 14px;
    font-weight: 400;
    color: @cell-border;
 }
@@ -865,10 +890,10 @@ div.scorewrapper {
 div.scoreleft {
    display: block;
    width: 42px;
-   height: 30px;
+   height: 26px;
    padding-left: 4px;
    font-size: 22px;
-   line-height: 22px;
+   line-height: 23px;
    font-weight: 400;
    text-align: left;
    color: white;
@@ -881,10 +906,10 @@ div.scoreleft {
 div.scoreright {
    display: block;
    width: 42px;
-   height: 30px;
+   height: 26px;
    padding-right: 4px;
    font-size: 22px;
-   line-height: 22px;
+   line-height: 23px;
    font-weight: 400;
    text-align: right;
    color: white;
@@ -952,7 +977,6 @@ div.robot-btn.right {
 
 div.player-btn.left.tomove,
 div.player-btn.right.tomove {
-   // color: @alert;
    color: white;
 }
 
@@ -964,7 +988,7 @@ div.player-btn.right.tomove:hover {
 div.heading {
    position: relative;
    width: 100%;
-   background-color: @heading-background;
+   /* background-color: @container; */
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
@@ -978,7 +1002,7 @@ div.tabbed-page {
    width: @mobile-width;
    height: @mobile-height-net;
    overflow-x: hidden;
-   overflow-y: auto; // hidden?
+   overflow-y: auto; /* hidden? */
    font-size: 13px;
    line-height: 23px;
 }
@@ -1120,12 +1144,14 @@ div.leftplayer {
    display: inline-block;
    width: 50%;
    text-align: left;
+   border-radius: 4px 0 0 4px;
 }
 
 div.rightplayer {
    display: inline-block;
    width: 50%;
    text-align: right;
+   border-radius: 0 4px 4px 0;
 }
 
 div.right-tab {
@@ -1146,6 +1172,7 @@ div.right-tab {
    opacity: 0.6;
    z-index: 0;
    cursor: pointer;
+   box-shadow: 2px 2px 4px 0 #afb7cad0;
 }
 
 div.right-tab#tab-board {
@@ -1188,8 +1215,9 @@ div.right-tab.alert > span.glyphicon {
 }
 
 div.right-area {
-   display: none;
+   /* display: none; */
    position: relative;
+   top: 40px;
    left: 0;
    height: @mobile-height-net - @board-top - @margin-small;
    width: 100%;
@@ -1228,6 +1256,7 @@ div.movelist-container {
    padding-top: @margin-small;
    padding-bottom: @margin-small;
    z-index: 6;
+   border-radius: 4px 4px 0 0;
 }
 
 div.movelist {
@@ -1271,7 +1300,7 @@ div.modal-dialog#spinner-dialog {
    background-color: rgba(255, 255, 255, 0.4);
 }
 
-@animated-spinner-left: (@mobile-width - 80px) * 0.5;
+@animated-spinner-left: (@mobile-width - 90px) * 0.5;
 @animated-spinner-top: (@mobile-height - 120px) * 0.5;
 
 div.animated-spinner {
@@ -1441,6 +1470,7 @@ div.twoletter {
    background-color: @twoletter;
    overflow: hidden;
    z-index: 3;
+   border-radius: 4px 4px 0 0;
 }
 
 div.twoletter-area {
@@ -1865,10 +1895,6 @@ span.mobile-break {
    background-color: @tab-background;
 }
 
-div.fairplay {
-   display: none;
-}
-
 div.user-cat span#break {
    display: inline;
 }
@@ -2072,6 +2098,7 @@ div.games {
    z-index: 2;
    padding-top: 12px;
    padding-bottom: 12px;
+   border-radius: 4px 4px 0 0;
 }
 
 div.games-item {
@@ -2276,6 +2303,7 @@ div.xchgsel {
    0% { opacity: 0.0; }
    100% { opacity: 1.0; }
 }
+
 @-webkit-keyframes fresh-appear {
    0% { opacity: 0.0; }
    100% { opacity: 1.0; }
@@ -2360,8 +2388,8 @@ div.clockface {
 }
 
 div.fairplay {
-   display: none;
    position: absolute;
+   top: 10px;
    width: 100%;
    text-align: center;
    color: @close-btn;
@@ -2455,6 +2483,7 @@ div.chat {
    height: 100%;
    background-color: @theme5;
    z-index: 1;
+   border-radius: 4px 4px 0 0;
 }
 
 div.chat-area.with-clock {
@@ -2526,14 +2555,14 @@ div.movelist.noscroll {
 
 div.leftmove {
    text-align: left;
-   padding-left: 0px; // 2px;
+   padding-left: 0px;
    height: 20px;
    line-height: 18px;
 }
 
 div.rightmove {
    text-align: right;
-   padding-right: 0px; // 2px;
+   padding-right: 0px;
    height: 20px;
    line-height: 18px;
 }
@@ -2662,13 +2691,13 @@ span.total {
    display: inline-block;
    width: 28px;
    padding-left: 3px;
-   margin-left: 0px; // 2px;
+   margin-left: 0px;
    padding-right: 3px;
-   margin-right: 0px; // 2px;
+   margin-right: 0px;
    font-weight: 700;
    text-align: right;
    color: white;
-   line-height: 20px; // 16px;
+   line-height: 20px;
 }
 
 span.total.human {
@@ -3152,14 +3181,6 @@ div.listitem {
    /* text-overflow: ellipsis; */
    white-space: nowrap;
 }
-
-/*
-.listitem a,
-.listitem a span,
-.listitem span {
-   vertical-align: top;
-}
-*/
 
 .listheader > span {
    top: 0;
@@ -4028,7 +4049,6 @@ div.subexplain {
    margin-left: 18px;
    margin-right: 6px;
    font-size: 14px;
-   // font-style: italic;
    color: @hint;
 }
 
@@ -4344,93 +4364,3 @@ div.signup-header {
    left: 110px;
    width: 900px;
 }
-
-@media (min-height: 736px) {
-
-   // Tall mobile phones: use two lines to display the header
-
-   body,
-   div.tabbed-page {
-      height: @mobile-height-tall;
-   }
-
-   div.player {
-      display: block;
-      padding-left: 4px;
-      padding-right: 4px;
-      height: 32px;
-      min-height: 32px;
-      font-size: 16px;
-      line-height: 16px;
-      font-weight: 400;
-      color: @cell-border;
-   }
-
-   div.scoreleft {
-      display: inline-block;
-      position: relative;
-      left: auto;
-      top: auto;
-      padding-left: 8px;
-   }
-
-   div.scoreright {
-      display: inline-block;
-      position: relative;
-      right: auto;
-      top: auto;
-      padding-right: 8px;
-   }
-
-   div.player-btn {
-      display: inline-block;
-   }
-
-   div.robot-btn {
-      display: inline-block;
-   }
-
-   div.player-btn.left, div.robot-btn.left {
-      padding-left: 4px;
-   }
-
-   div.player-btn.right, div.robot-btn.right {
-      padding-right: 4px;
-   }
-
-   div.heading {
-      height: auto;
-   }
-
-   div.header {
-      height: 60px - @margin-small;
-   }
-
-   div #userlist,
-   div #elolist {
-      height: 14 * 36px; /* 14 lines @ 36px each */
-   }
-
-   div #gamelist {
-      height: 16 * 36px; /* 16 lines @ 36px each */
-   }
-
-   div #recentlist {
-      height: 14 * 36px; /* 14 lines @ 36px each */
-   }
-
-   div #usr-recent {
-      height: 15 * 36px; /* 15 lines @ 36px each */
-   }
-
-   div #chall-sent,
-   div #chall-received {
-      height: 8 * 36px; /* 8 lines @ 36px each */
-   }
-
-   div.games {
-      height: @mobile-height-tall - @board-top - @margin-small - 24px;
-   }
-
-}
-

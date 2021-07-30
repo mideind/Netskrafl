@@ -8,7 +8,7 @@
   Author: Vilhjalmur Thorsteinsson
 
   The GNU Affero General Public License, version 3, applies to this software.
-  For further information, see https://github.com/vthorsteinsson/Netskrafl
+  For further information, see https://github.com/mideind/Netskrafl
 
 */
 

@@ -7,7 +7,7 @@
   Copyright (C) 2021 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
-  The GNU General Public License, version 3, applies to this software.
+  The GNU Affero General Public License, version 3, applies to this software.
   For further information, see https://github.com/mideind/Netskrafl
 
   The following code is mostly copied from
@@ -51,7 +51,7 @@ function pointermove_handler(funcZoomIn: ZoomFunc, funcZoomOut: ZoomFunc, ev: Po
   // distance is decreasing (zoom out), the color is changed to "lightblue".
   //
   // Find this event in the cache and update its record with this event
-  for (var i = 0; i < evCache.length; i++) {
+  for (let i = 0; i < evCache.length; i++) {
     if (ev.pointerId == evCache[i].pointerId) {
       evCache[i] = ev;
       break;
@@ -61,7 +61,7 @@ function pointermove_handler(funcZoomIn: ZoomFunc, funcZoomOut: ZoomFunc, ev: Po
   // If two pointers are down, check for pinch gestures
   if (evCache.length == 2) {
     // Calculate the distance between the two pointers
-    var curDistance = Math.sqrt(
+    const curDistance = Math.sqrt(
       Math.pow(evCache[0].clientX - evCache[1].clientX, 2) +
       Math.pow(evCache[0].clientY - evCache[1].clientY, 2)
     );

@@ -1,7 +1,22 @@
+/*
+
+   Fullscreen.less
+
+   Style sheet template for netskrafl.is
+
+   Copyright (C) 2021 Miðeind ehf.
+   Author: Vilhjalmur Thorsteinsson
+
+   The GNU Affero General Public License, version 3, applies to this software.
+   For further information, see https://github.com/mideind/Netskrafl
+
+   See main.less for explanations of the style sheet structure.
+
+*/
 
 /* ================= FULL-SCREEN (NON-MOBILE) UI ====================== */
 
-@media all and (min-width: 768px) {
+@media all and (min-width: 1024px) {
 
    /* Large screen (iPad and larger) */
 
@@ -27,12 +42,9 @@
       height: 768px;
    }
 
-   div.header {
-      display: none;
-   }
-
    div.heading {
       height: auto;
+      background-color: @heading-background;
    }
 
    div.logo {
@@ -105,6 +117,7 @@
 
    div.right-area {
       display: block;
+      top: 0;
       margin-top: 12px;
       height: 420px;
    }
@@ -134,6 +147,7 @@
    div.twoletter,
    div.chat {
       display: block;
+      border-radius: 0;
    }
 
    div.board-area {
@@ -551,6 +565,8 @@
    }
 
    div.robot-btn {
+      margin-top: 4px;
+      padding-top: 4px;
       width: auto;
    }
 
@@ -628,6 +644,10 @@
       z-index: 2;
    }
 
+   div.right-tab#tab-board {
+      display: none;
+   }
+
    div.right-tab#tab-movelist {
       top: 0;
       left: -40px;
@@ -652,6 +672,7 @@
       padding-top: 0;
       padding-bottom: 0;
       height: 420px;
+      border-radius: 0;
    }
 
    div.movelist {
@@ -879,7 +900,7 @@
    }
 
    div.fairplay {
-      bottom: 1px;
+      top: 38px;
       font-size: 28px;
       line-height: 28px;
       display: block;

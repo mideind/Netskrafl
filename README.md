@@ -138,7 +138,7 @@ Contact me via GitHub for queries or information regarding Netskrafl.
 
 Please contact me if you have plans for using Netskrafl as a basis for your
 own game website and prefer not to operate under the conditions of the
-GNU Affero GPL v3 license (see below).
+GNU Affero General Public License v3 (see below).
 
 ### License
 
