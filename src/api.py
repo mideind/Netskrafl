@@ -780,7 +780,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             # First by readiness
             0 if x["ready"] else 1 if x["ready_timed"] else 2,
             # Then by nickname
-            current_alphabet().sortkey_nocase(x["nick"]),
+            current_alphabet().sortkey_nocase(x["nick"]),  # !!! FIXME
         )
     )
     return result

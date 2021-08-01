@@ -158,10 +158,12 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
-    def sort_by_prefix(l: List[Tuple[str, Optional[_DawgNode]]]) -> List[Tuple[str, Optional[_DawgNode]]]:
+    def sort_by_prefix(
+        l: List[Tuple[str, Optional[_DawgNode]]]
+    ) -> List[Tuple[str, Optional[_DawgNode]]]:
         """ Return a list of (prefix, node) tuples sorted by prefix """
-        f = current_alphabet().sortkey
-        return sorted(l, key=lambda x: f(x[0]))
+        sortkey = current_alphabet().sortkey
+        return sorted(l, key=lambda x: sortkey(x[0]))
 
     @staticmethod
     def stringify_edges(edges: DawgDict) -> str:
@@ -424,8 +426,12 @@ class _Dawg:
         # Start with the root edges
         sortfunc = _DawgNode.sort_by_prefix
         for prefix, nd in sortfunc(list(self._root.items())):
-            assert nd is not None
-            packer.edge(nd.id, prefix)
+            if nd is None:
+                # This can happen in Polish, where only one
+                # word (ęsi) starts with the letter ę
+                packer.edge(0, prefix)
+            else:
+                packer.edge(nd.id, prefix)
         for node in self._unique_nodes_values:
             if node is not None:
                 packer.node_start(node.id, node.final, len(node.edges))
@@ -599,13 +605,21 @@ class DawgBuilder:
     class _InFile:
         """ InFile represents a single sorted input file. """
 
-        def __init__(self, relpath: str, fname: str) -> None:
+        def __init__(
+            self,
+            relpath: str,
+            fname: str,
+            input_filter: Optional[Callable[[str], str]] = None,
+        ) -> None:
             self._eof: bool = False
             self._nxt: Optional[str] = None
             self._key: Optional[List[int]] = None  # Sortkey for self._nxt
             self._sortkey = current_alphabet().sortkey
+            self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin: Optional[IO[str]] = codecs.open(fpath, mode="r", encoding="utf-8")
+            self._fin: Optional[IO[str]] = codecs.open(
+                fpath, mode="r", encoding="utf-8"
+            )
             print("Opened input file {0}".format(fpath))
             self._init()
 
@@ -616,6 +630,7 @@ class DawgBuilder:
         def read_word(self) -> bool:
             """ Read lines until we have a legal word or EOF """
             assert self._fin is not None
+            f = self._input_filter
             while True:
                 try:
                     line = next(self._fin).strip()
@@ -623,6 +638,10 @@ class DawgBuilder:
                     # We're done with this file
                     self._eof = True
                     return False
+                if not line:
+                    continue
+                if f is not None:
+                    line = f(line)
                 if line and len(line) < MAXLEN:
                     # Valid word
                     self._nxt = line
@@ -655,10 +674,15 @@ class DawgBuilder:
             self._list: List[str] = []
             self._index = 0
             self._sortkey = current_alphabet().sortkey
+            f = self._input_filter
             assert self._fin is not None
             try:
                 for line in self._fin:
                     line = line.strip()
+                    if not line:
+                        continue
+                    if f is not None:
+                        line = f(line)
                     if line and len(line) < MAXLEN:
                         # Valid word
                         self._list.append(line)
@@ -690,6 +714,7 @@ class DawgBuilder:
         inputs: List[str],
         removals: Optional[str],
         word_filter: Optional[Callable[[str], bool]],
+        input_filter: Optional[Callable[[str], str]] = None,
     ) -> None:
         """Load word lists into the DAWG from one or more static text files,
         assumed to be located in the relpath subdirectory.
@@ -718,9 +743,9 @@ class DawgBuilder:
         # to be pre-sorted. Other input files are sorted in memory before
         # being used.
         infiles = [
-            DawgBuilder._InFile(relpath, f)
+            DawgBuilder._InFile(relpath, f, input_filter=input_filter)
             if ix == 0
-            else DawgBuilder._InFileToBeSorted(relpath, f)
+            else DawgBuilder._InFileToBeSorted(relpath, f, input_filter=input_filter)
             for ix, f in enumerate(inputs)
         ]
         # Open the removal file, if any
@@ -770,12 +795,13 @@ class DawgBuilder:
                 # of order, display a warning
                 if lastkey > key:
                     print(
-                        u'Warning: input files should be in ascending order, but "{0}" > "{1}"'.format(
+                        'Warning: input files should be in ascending order, but "{0}" > "{1}"'.format(
                             lastword, word
                         )
                     )
                 else:
                     # Identical to previous word
+                    print(f"Duplicate word: {word}")
                     duplicates += 1
             elif word_filter is None or word_filter(word):
                 # This word passes the filter: check the removal list, if any
@@ -848,7 +874,8 @@ class DawgBuilder:
         output: str,
         relpath: str = "resources",
         word_filter: Optional[Callable[[str], bool]] = None,
-        removals: Optional[str]=None,
+        removals: Optional[str] = None,
+        input_filter: Optional[Callable[[str], str]] = None,
     ):
         """Build a DAWG from input file(s) and write it to the output file(s)
         (potentially in multiple formats).
@@ -865,7 +892,7 @@ class DawgBuilder:
             # Nothing to do
             print("No inputs or no output: Nothing to do")
             return
-        self._load(relpath, inputs, removals, word_filter)
+        self._load(relpath, inputs, removals, word_filter, input_filter)
         # print("Dumping...")
         # self._dawg.dump()
         print("Outputting...")
@@ -970,6 +997,31 @@ def run_sowpods() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
+def run_osps37() -> None:
+    """ Build a DAWG from the files listed """
+    # This creates a DAWG from a single file named osps37.txt,
+    # containing the Polish word list.
+    print("Starting DAWG build for osps37.txt")
+
+    def input_filter(line: str) -> str:
+        """ Return the first word in a line, lowercased """
+        a = line.split()
+        return a[0].lower()
+
+    # Set the generic Polish locale
+    set_locale("pl")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["osps37.txt"],  # Input files to be merged
+        "osps37",  # Output file - full name will be osps37.bin.dawg
+        "resources",  # Subfolder of input and output files
+        input_filter=input_filter,
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
 def run_skrafl() -> None:
     """ Build a DAWG from the files listed """
     # This creates a DAWG from the full database of Icelandic words in
@@ -1069,3 +1121,6 @@ if __name__ == "__main__":
 
     # Build OTCWL2014
     run_otcwl2014()
+
+    # Build Polish OSPS37
+    run_osps37()

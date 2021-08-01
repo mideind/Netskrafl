@@ -37,69 +37,76 @@ from contextvars import ContextVar
 
 class Alphabet(abc.ABC):
 
-    """Base class for alphabets particular to languages,
-    i.e. the letters used in a game"""
-
-    LCMAP = [i for i in range(0, 256)]
+    """ Base class for alphabets particular to languages,
+        i.e. the letters used in a game """
 
     # The following are overridden in derived classes
     order = ""
     upper = ""
-    all_tiles = ""
     full_order = ""
     full_upper = ""
 
     def __init__(self):
+        # Sanity checks
+        assert len(self.order) == len(self.upper)
+        assert len(self.full_order) == len(self.full_upper)
+        assert len(self.full_order) >= len(self.order)
+
+        # All tiles including wildcard '?' and end marker '|'
+        self.all_tiles = self.order + "?|"
+
         # Map letters to bits
         self.letter_bit = {letter: 1 << ix for ix, letter in enumerate(self.order)}
 
-        lcmap = self.LCMAP[:]
+        # Ordinal value of first upper case character of alphabet
+        self.ord_first = ord(self.full_upper[0])
+        assert self.ord_first <= ord(self.full_order[0])
+        self.ord_offset = len(self.full_upper)
 
-        def rotate(letter: int, sort_after: int) -> None:
-            """Modifies the lcmap so that the letter is sorted
-            after the indicated letter"""
-            sort_as = lcmap[sort_after] + 1
-            letter_val = lcmap[letter]
-            # We only support the case where a letter is moved
-            # forward in the sort order
-            if letter_val > sort_as:
-                for i in range(0, 256):
-                    if sort_as <= lcmap[i] < letter_val:
-                        lcmap[i] += 1
-            lcmap[letter] = sort_as
-
-        def adjust(s: str) -> None:
-            """Ensure that the sort order in the lcmap is
-            in ascending order as in s"""
-            # This does not need to be terribly efficient as the code is
-            # only run once, during initialization
-            for i in range(1, len(s) - 1):
-                rotate(ord(s[i]), ord(s[i - 1]))
-
-        adjust(self.full_upper)  # Uppercase adjustment
-        adjust(self.full_order)  # Lowercase adjustment
-
-        # Now we have a case-sensitive sorting map: copy it
-        self._lcmap = lcmap[:]
-
-        # Create a case-insensitive sorting map, where the lower case
-        # characters have the same sort value as the upper case ones
-        for i, c in enumerate(self.full_order):
-            lcmap[ord(c)] = lcmap[ord(self.full_upper[i])]
-
-        # Store the case-insensitive sorting map
-        self._lcmap_nocase = lcmap
-
+        # Map both lower and upper case (full) alphabets
+        # to consecutive sort values, starting with ord(first_char_of_alphabet)
+        self.sortval_map = {ord(c): self.ord_first + ix for ix, c in enumerate(self.full_order)}
+        self.sortval_map.update({ord(c): self.ord_first + ix for ix, c in enumerate(self.full_upper)})
+ 
         # Assemble a decoding dictionary where encoded indices are mapped to
         # characters, eventually with a suffixed vertical bar '|' to denote finality
         self.coding = {i: c for i, c in enumerate(self.order)}
         self.coding.update({i | 0x80: c + "|" for i, c in enumerate(self.order)})
 
+    def sortkey(self, lstr: str) -> List[int]:
+        """ Key function for locale-based sorting """
+        # Note: this only works for lowercase strings that
+        # contain letters from the bag (plus '?')
+        o = self.all_tiles
+        return [o.index(c) for c in lstr]
+
+    def sortval(self, c: str) -> int:
+        """ Sort value for any character, with correct ordering
+            for the current alphabet, case-insensitive """
+        o = ord(c)
+        if o < self.ord_first:
+            # A 'low' ordinal below our alphabet: return it as-is
+            return o
+        v = self.sortval_map.get(o)
+        if v is not None:
+            # Alphabetic character: return its sort value
+            return v
+        # A 'high' ordinal outside the alphabet: return it
+        # after adding an offset so we're sure it doesn't
+        # interfere with the alphabet's sort values
+        # (note that we know that ord(c) >= self.ord_first)
+        return self.ord_offset + o
+
+    def sortkey_nocase(self, lstr: str) -> List[int]:
+        """ Return a case-insensitive sort key for the given string """ 
+        return [self.sortval(c) for c in lstr]
+
     def bit_pattern(self, word: str) -> int:
         """Return a pattern of bits indicating which letters
         are present in the word"""
         bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
-        return functools.reduce(bitwise_or, [self.letter_bit[c] for c in word], 0)
+        lbit = self.letter_bit
+        return functools.reduce(bitwise_or, (lbit[c] for c in word), 0)
 
     def bit_of(self, c: str) -> int:
         """ Returns the bit corresponding to a character in the alphabet """
@@ -109,24 +116,6 @@ class Alphabet(abc.ABC):
         """Return a bit pattern where the bits for all letters
         in the Alphabet are set"""
         return 2 ** len(self.order) - 1
-
-    def lowercase(self, ch: str) -> str:
-        """ Convert an uppercase character to lowercase """
-        return self.full_order[self.full_upper.index(ch)]
-
-    def tolower(self, s: str) -> str:
-        """ Return the argument string converted to lowercase """
-        return "".join([self.lowercase(c) if c in self.full_upper else c for c in s])
-
-    def sort(self, l: List[str]) -> None:
-        """Sort a list in-place by lexicographic ordering
-        according to this Alphabet"""
-        l.sort(key=self.sortkey)
-
-    def sorted(self, l: List[str]) -> List[str]:
-        """Return a list sorted by lexicographic ordering
-        according to this Alphabet"""
-        return sorted(l, key=self.sortkey)
 
     def string_subtract(self, a: str, b: str) -> str:
         """ Subtract all letters in b from a, counting each instance separately """
@@ -140,14 +129,6 @@ class Alphabet(abc.ABC):
                 if lcount[ix] > 0
             ]
         )
-
-    def sortkey(self, lstr: str) -> List[int]:
-        """ Key function for locale-based sorting """
-        return [self._lcmap[ord(c)] if ord(c) <= 255 else 256 for c in lstr]
-
-    def sortkey_nocase(self, lstr: str) -> List[int]:
-        """ Key function for locale-based sorting, case-insensitive """
-        return [self._lcmap_nocase[ord(c)] if ord(c) <= 255 else 256 for c in lstr]
 
     # noinspection PyUnusedLocal
     @staticmethod
@@ -176,8 +157,6 @@ class _IcelandicAlphabet(Alphabet):
     order = "aábdðeéfghiíjklmnoóprstuúvxyýþæö"
     # Upper case version of the order string
     upper = "AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ"
-    # All tiles including wildcard '?'
-    all_tiles = order + "?"
 
     # Sort ordering of all valid letters
     full_order = "aábcdðeéfghiíjklmnoópqrstuúvwxyýzþæö"
@@ -195,8 +174,6 @@ class _EnglishAlphabet(Alphabet):
     order = "abcdefghijklmnopqrstuvwxyz"
     # Upper case version of the order string
     upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    # All tiles including wildcard '?'
-    all_tiles = order + "?"
 
     # Sort ordering of all valid letters
     full_order = order
@@ -205,6 +182,22 @@ class _EnglishAlphabet(Alphabet):
 
 
 EnglishAlphabet = _EnglishAlphabet()
+
+
+class _PolishAlphabet(Alphabet):
+
+    """ The Polish alphabet """ 
+
+    order = "aąbcćdeęfghijklłmnńoóprsśtuwyzźż"
+    upper = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ"
+
+    # Sort ordering of all valid letters
+    full_order = "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż"
+    # Upper case version of the full order string
+    full_upper = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ"
+
+
+PolishAlphabet = _PolishAlphabet()
 
 
 class TileSet(abc.ABC):
@@ -569,11 +562,98 @@ assert (
     == 187
 )
 
+class PolishTileSet(TileSet):
+
+    """ Polish tile set """
+
+    alphabet = PolishAlphabet
+
+    scores = {
+        "a": 1,
+        "ą": 5,
+        "b": 3,
+        "c": 2,
+        "ć": 6,
+        "d": 2,
+        "e": 1,
+        "ę": 5,
+        "f": 5,
+        "g": 3,
+        "h": 3,
+        "i": 1,
+        "j": 3,
+        "k": 3,
+        "l": 2,
+        "ł": 3,
+        "m": 2,
+        "n": 1,
+        "ń": 7,
+        "o": 1,
+        "ó": 5,
+        "p": 2,
+        "r": 1,
+        "s": 1,
+        "ś": 5,
+        "t": 2,
+        "u": 3,
+        "w": 1,
+        "y": 2,
+        "z": 1,
+        "ź": 9,
+        "ż": 5,
+        "?": 0,
+    }
+
+    bag_tiles = [
+        ("a", 9),
+        ("ą", 1),
+        ("b", 2),
+        ("c", 3),
+        ("ć", 1),
+        ("d", 3),
+        ("e", 7),
+        ("ę", 1),
+        ("f", 1),
+        ("g", 2),
+        ("h", 2),
+        ("i", 8),
+        ("j", 2),
+        ("k", 3),
+        ("l", 3),
+        ("ł", 2),
+        ("m", 3),
+        ("n", 5),
+        ("ń", 1),
+        ("o", 6),
+        ("ó", 1),
+        ("p", 3),
+        ("r", 4),
+        ("s", 4),
+        ("ś", 1),
+        ("t", 3),
+        ("u", 2),
+        ("w", 4),
+        ("y", 4),
+        ("z", 5),
+        ("ź", 1),
+        ("ż", 1),
+        ("?", 2),  # Blank tiles
+    ]
+
+    BAG_SIZE: int = 0
+
+
+# Number of tiles in bag
+PolishTileSet.BAG_SIZE = PolishTileSet.num_tiles()
+assert PolishTileSet.BAG_SIZE == 100
+
 # Mapping of locale code to tileset
 
 TILESETS: Dict[str, Type[TileSet]] = {
     "is": NewTileSet,
     "is_IS": NewTileSet,
+    "pl": PolishTileSet,
+    "pl_PL": PolishTileSet,
     "en": NewEnglishTileSet,
     "en_AU": NewEnglishTileSet,
     "en_BZ": NewEnglishTileSet,
@@ -597,6 +677,7 @@ TILESETS: Dict[str, Type[TileSet]] = {
 ALPHABETS: Dict[str, Alphabet] = {
     "is": IcelandicAlphabet,
     "en": EnglishAlphabet,
+    "pl": PolishAlphabet,
     # Everything else presently defaults to IcelandicAlphabet
 }
 
@@ -606,6 +687,7 @@ VOCABULARIES: Dict[str, str] = {
     "is": "ordalisti",
     "en": "sowpods",
     "en_US": "otcwl2014",
+    "pl": "osps37",
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -622,6 +704,7 @@ LANGUAGES: Dict[str, str] = {
     "is": "is",
     "en_US": "en",
     "en_GB": "en",
+    "pl": "pl",
     # Everything else defaults to 'en'
 }
 

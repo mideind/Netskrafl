@@ -72,6 +72,7 @@ from languages import (
     Alphabet,
     IcelandicAlphabet,
     EnglishAlphabet,
+    PolishAlphabet,
     current_alphabet,
     current_vocabulary,
 )
@@ -81,6 +82,10 @@ from languages import (
 IterTuple = Tuple[str, int]
 PrefixNodes = Tuple[IterTuple, ...]
 TwoLetterListTuple = Tuple[List[str], List[str]]
+
+
+# Base project directory path
+BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
 
 
 class PackedDawgDictionary:
@@ -199,6 +204,7 @@ class Wordbase:
         ("sowpods", EnglishAlphabet),
         ("twl06", EnglishAlphabet),
         ("otcwl2014", EnglishAlphabet),
+        ("osps37", PolishAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()
@@ -219,7 +225,8 @@ class Wordbase:
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
         """ Load a dictionary from a binary DAWG file """
-        bname = os.path.abspath(os.path.join("resources", resource + ".bin.dawg"))
+
+        bname = os.path.abspath(os.path.join(BASE_PATH, "resources", resource + ".bin.dawg"))
         # Load packed binary file
         logging.info(
             "Instance {0} loading DAWG from binary file {1}".format(
@@ -417,7 +424,8 @@ class PermutationNavigator(Navigator):
 
     def done(self) -> None:
         """ Called when the whole navigation is done """
-        self._result.sort(key=lambda x: (-len(x), current_alphabet().sortkey(x)))
+        sortkey = current_alphabet().sortkey
+        self._result.sort(key=lambda x: (-len(x), sortkey(x)))
 
     def result(self) -> List[str]:
         """ Return the list of results accumulated during the navigation """
@@ -482,7 +490,8 @@ class MatchNavigator(Navigator):
     def done(self) -> None:
         """ Called when the whole navigation is done """
         if self._sort:
-            self._result.sort(key=current_alphabet().sortkey)
+            sortkey = current_alphabet().sortkey
+            self._result.sort(key=sortkey)
 
     def result(self) -> List[str]:
         """ Return the list of results accumulated during the navigation """
