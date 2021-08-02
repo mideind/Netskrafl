@@ -17,7 +17,7 @@
         [-n number_of_games_to_run (default 4)]
         [-o minimax|autoplayer (to choose opponent, default minimax)]
         [-s (to run silently, i.e. only with ending summary)]
-        [-l locale (is_IS for Icelandic, en_US or en_GB for English)]
+        [-l locale (is_IS for Icelandic, en_US or en_GB for English, pl_PL for Polish)]
 
 """
 
@@ -34,6 +34,7 @@ from languages import (
     set_locale,
     current_tileset,
     current_vocabulary,
+    current_board_type,
 )
 from skraflmechanics import (
     State,
@@ -44,7 +45,12 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import AutoPlayer, AutoPlayer_Common, AutoPlayer_Medium, AutoPlayer_MiniMax
+from skraflplayer import (
+    AutoPlayer,
+    AutoPlayer_Common,
+    AutoPlayer_Medium,
+    AutoPlayer_MiniMax,
+)
 
 
 PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
@@ -85,11 +91,9 @@ def test_move(state: State, movestring: str) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(
-            Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(
-        move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -104,11 +108,9 @@ def test_exchange(state: State, numtiles: int) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(
-            Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(
-        move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -122,11 +124,9 @@ def test_challenge(state: State) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(
-            Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(
-        move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -140,11 +140,9 @@ def test_response(state: State) -> bool:
     if isinstance(legal, tuple):
         legal, msg = legal
     if legal != Error.LEGAL:
-        print("Play is not legal, code {0} {1}".format(
-            Error.errortext(legal), msg))
+        print("Play is not legal, code {0} {1}".format(Error.errortext(legal), msg))
         return False
-    print("Play {0} is legal and scores {1} points".format(
-        move, state.score(move)))
+    print("Play {0} is legal and scores {1} points".format(move, state.score(move)))
     state.apply_move(move)
     print(state.__str__())
     return True
@@ -158,10 +156,11 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
     # on behalf of the player.
 
     # Initial, empty game state
-    state = State(tileset=current_tileset(), drawtiles=True, board_type="standard")
+    state = State(
+        tileset=current_tileset(), drawtiles=True, board_type=current_board_type()
+    )
 
-    print("After initial draw, bag contains {0} tiles".format(
-        state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -236,8 +235,7 @@ def test_manual_game():
     )
 
     print("Manual game")
-    print("After initial draw, bag contains {0} tiles".format(
-        state.bag().num_tiles()))
+    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
     print("Bag contents are:\n{0}".format(state.bag().contents()))
     print("Rack 0 is {0}".format(state.rack(0)))
     print("Rack 1 is {0}".format(state.rack(1)))
@@ -348,8 +346,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
 
     print(
         "Test completed, {0} games played in {1:.2f} seconds, "
-        "{2:.2f} seconds per game".format(
-            num_games, t1 - t0, (t1 - t0) / num_games)
+        "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
 
     def reportscore(player: int) -> None:
@@ -386,7 +383,7 @@ class Usage(Exception):
         self.msg = msg
 
 
-def main(argv: Optional[List[str]]=None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """ Guido van Rossum's pattern for a Python main function """
 
     if argv is None:

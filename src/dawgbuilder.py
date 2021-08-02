@@ -1110,6 +1110,10 @@ def run_skrafl() -> None:
 
 if __name__ == "__main__":
 
+    # Build Polish OSPS37
+    run_osps37()
+    exit(0)
+
     # Build the whole Icelandic Netskrafl word database by default
     run_skrafl()
 
@@ -1121,6 +1125,3 @@ if __name__ == "__main__":
 
     # Build OTCWL2014
     run_otcwl2014()
-
-    # Build Polish OSPS37
-    run_osps37()

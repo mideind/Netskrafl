@@ -42,7 +42,6 @@ import threading
 from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
-from functools import cached_property
 
 from flask.helpers import url_for
 
@@ -890,6 +889,8 @@ class Game:
         # Flag for erroneous games, i.e. ones that are incorrectly stored
         # in the NDB datastore
         self._erroneous = False
+        # Cached two-letter word list
+        self._two_letter_words: Optional[TwoLetterGroupTuple] = None
 
     def _make_new(
         self,
@@ -1331,18 +1332,20 @@ class Game:
         """ Return the tile set used in this game """
         return Game.tileset_from_prefs(self._preferences)
 
-    @cached_property
+    @property
     def two_letter_words(self) -> TwoLetterGroupTuple:
         """ Return the two-letter list that applies to this game,
             as a tuple of two lists, one grouped by first letter, and
             the other grouped by the second (last) letter """
-        vocab = vocabulary_for_locale(self.locale)
-        tw0, tw1 = Wordbase.two_letter_words(vocab)
-        gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
-        return (
-            [(key, list(grp)) for key, grp in gr0],
-            [(key, list(grp)) for key, grp in gr1],
-        )
+        if self._two_letter_words is None:
+            vocab = vocabulary_for_locale(self.locale)
+            tw0, tw1 = Wordbase.two_letter_words(vocab)
+            gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+            self._two_letter_words = (
+                [(key, list(grp)) for key, grp in gr0],
+                [(key, list(grp)) for key, grp in gr1],
+            )
+        return self._two_letter_words
 
     @property
     def net_moves(self) -> List[MoveTuple]:

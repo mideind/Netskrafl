@@ -25,7 +25,6 @@ from typing import Callable, List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
-from functools import cached_property
 
 from dawgdictionary import Wordbase
 from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
@@ -172,15 +171,19 @@ class Board:
             self._board_type = copy._board_type or "standard"
         self._wordscore = _WORDSCORE[self._board_type]
         self._letterscore = _LETTERSCORE[self._board_type]
+        self._start_square: Optional[Tuple[int, int]] = None
 
-    @cached_property
+    @property
     def start_square(self) -> Tuple[int, int]:
         """ Return the starting square of this board as a (row, col) tuple """
-        if self._board_type == "explo":
-            # For 'explo', the starting square is D4
-            return (3, 3)
-        # For the standard board, the starting square is H8
-        return (Board.SIZE // 2, Board.SIZE // 2)
+        if self._start_square is None:
+            if self._board_type == "explo":
+                # For 'explo', the starting square is D4
+                self._start_square = (3, 3)
+            else:
+                # For the standard board, the starting square is H8
+                self._start_square = (Board.SIZE // 2, Board.SIZE // 2)
+        return self._start_square
 
     @property
     def board_type(self) -> str:

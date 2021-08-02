@@ -17,13 +17,14 @@ import os
 import time
 
 from dawgdictionary import PackedDawgDictionary
-from languages import IcelandicAlphabet
+from languages import IcelandicAlphabet, PolishAlphabet
 
 
 class DawgTester:
 
-    def __init__(self):
+    def __init__(self, fname: str, relpath: str):
         self._dawg: Optional[PackedDawgDictionary] = None
+        self._fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
 
     def _test(self, word: str) -> None:
         assert self._dawg is not None
@@ -40,16 +41,18 @@ class DawgTester:
             # Tests the __contains__ operator
             print("Error: \"{0}\" was found".format(word))
 
-    def run(self, fname: str, relpath: str):
-        """ Load a DawgDictionary and test its functionality """
 
-        print("DawgDictionary tester")
-        print("Author: Vilhjálmur Þorsteinsson\n")
+class DawgTesterIcelandic(DawgTester):
+
+    def __init__(self):
+        super().__init__("ordalisti", "resources")
+
+    def run(self):
+        """ Load a DawgDictionary and test its functionality """
 
         t0 = time.time()
         self._dawg = PackedDawgDictionary(IcelandicAlphabet)
-        fpath = os.path.abspath(os.path.join(relpath, fname + ".bin.dawg"))
-        self._dawg.load(fpath)
+        self._dawg.load(self._fpath)
         t1 = time.time()
 
         print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
@@ -343,12 +346,73 @@ class DawgTester:
         self._dawg = None
 
 
+class DawgTesterPolish(DawgTester):
+
+    def __init__(self):
+        print("Testing Polish dictionary")
+        super().__init__("osps37", "resources")
+
+    def run(self) -> None:
+
+        t0 = time.time()
+        self._dawg = PackedDawgDictionary(PolishAlphabet)
+        self._dawg.load(self._fpath)
+        t1 = time.time()
+
+        print("DAWG loaded in {0:.2f} seconds".format(t1 - t0))
+
+        smallwords = [
+            "aa", "ad", "ag", "aj", "al", "am", "ar", "as", "at", "au", "aż",
+            "ba", "be", "bi", "bo", "bu", "by",
+            "ce", "ci", "co",
+            "da", "de", "do", "dy",
+            "ee", "ef", "eh", "ej", "el", "eł", "em", "en", "eń", "er", "es", "eś", "et", "ew", "ez",
+            "fa", "fe", "fi", "fu",
+            "gę", "go",
+            "ha", "he", "hę", "hi", "hm", "ho", "hu",
+            "id", "ii", "ił", "im", "in", "iw", "iż",
+            "ja", "ją", "je",
+            "ka", "ki", "ko", "ku",
+            "la", "li", "lu",
+            "ma", "mą", "me", "mi", "mu", "my",
+            "na", "ni", "no", "ny",
+            "od", "oj", "ok", "om", "on", "oń", "oo", "op", "or", "os", "oś", "ot", "oz", "oż",
+            "ód", "ós", "ów",
+            "pa", "pe", "pi", "po",
+            "re", "ro",
+            "są", "se", "si", "su",
+            "ta", "tą", "te", "tę", "to", "ts", "tu", "ty",
+            "ud", "uf", "ul", "ut", "uu",
+            "we", "wu", "wy",
+            "yy",
+            "za", "ze",
+            "że",
+        ]
+
+        print("Checking small words:")
+
+        # Check all possible two-letter combinations, allowing only those in the list
+        for first in PolishAlphabet.order:
+            for second in PolishAlphabet.order:
+                word = first + second
+                if word in smallwords:
+                    self._test_true(word)
+                else:
+                    self._test_false(word)
+
+
 def test():
     # Test navivation in the DAWG
-    dt = DawgTester()
-    dt.run("ordalisti", "resources")
+    dt = DawgTesterIcelandic()
+    dt.run()
+    dt = DawgTesterPolish()
+    dt.run()
 
 
 if __name__ == '__main__':
+
+    print("DawgDictionary tester")
+    print("Copyright (C) 2021 Miðeind ehf")
+    print("Author: Vilhjálmur Þorsteinsson\n")
 
     test()

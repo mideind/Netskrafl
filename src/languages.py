@@ -52,8 +52,8 @@ class Alphabet(abc.ABC):
         assert len(self.full_order) == len(self.full_upper)
         assert len(self.full_order) >= len(self.order)
 
-        # All tiles including wildcard '?' and end marker '|'
-        self.all_tiles = self.order + "?|"
+        # All tiles including wildcard '?'
+        self.all_tiles = self.order + "?"
 
         # Map letters to bits
         self.letter_bit = {letter: 1 << ix for ix, letter in enumerate(self.order)}
@@ -78,7 +78,7 @@ class Alphabet(abc.ABC):
         # Note: this only works for lowercase strings that
         # contain letters from the bag (plus '?')
         o = self.all_tiles
-        return [o.index(c) for c in lstr]
+        return [o.index(c) for c in lstr if c != "|"]
 
     def sortval(self, c: str) -> int:
         """ Sort value for any character, with correct ordering
