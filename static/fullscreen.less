@@ -44,7 +44,7 @@
 
    div.heading {
       height: auto;
-      background-color: @heading-background;
+      /* background-color: @heading-background; */
    }
 
    div.logo {
@@ -68,7 +68,7 @@
    div.info {
       display: block;
       position: absolute;
-      top: 576px;
+      top: 574px;
       left: 28px;
       width: 50px;
       height: 50px;
@@ -231,6 +231,7 @@
 
    .rack div.letterscore {
       right: 0px;
+      bottom: 1px;
       left: auto;
    }
 
@@ -264,7 +265,7 @@
 
    div.bag {
       display: block;
-      bottom: 94px;
+      bottom: 108px;
    }
 
    div.rack-row {
@@ -277,7 +278,7 @@
       width: auto;
       float: none;
       top: auto;
-      bottom: 126px;
+      bottom: 132px;
       left: 241px;
       padding: 6px;
       border-width: 0;
@@ -411,61 +412,53 @@
 
    /* To the left of the rack */
 
-   div.submitresign {
+   .bottom-button {
+      display: block;
       position: absolute;
+      top: auto;
+      bottom: 136px;
+   }
+
+   div.submitresign {
+      .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
-      top: auto;
-      bottom: 130px;
       left: 101px;
-      display: block;
    }
 
    div.submitexchange {
-      position: absolute;
+      .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
-      top: auto;
-      bottom: 130px;
       left: 167px;
-      display: block;
    }
 
    div.recallbtn {
-      position: absolute;
+      .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
-      top: auto;
-      bottom: 130px;
       left: 167px;
-      display: block;
    }
 
    /* To the right of the rack */
 
    div.scramblebtn {
-      position: absolute;
+      .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
-      top: auto;
-      bottom: 130px;
       left: 546px;
-      display: block;
    }
 
    div.submitpass {
-      position: absolute;
+      .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
-      top: auto;
-      bottom: 130px;
       left: 612px;
-      display: block;
    }
 
    div.fb-share {
@@ -900,7 +893,7 @@
    }
 
    div.fairplay {
-      top: 38px;
+      top: 41px;
       font-size: 28px;
       line-height: 28px;
       display: block;
