@@ -33,7 +33,7 @@
 @board-cell-small: 21px;
 
 @rack-cell-big: 32px;
-@rack-cell-small: 29px;
+@rack-cell-small: 36px;
 
 @btn-height-big: 30px;
 @btn-width-big: 40px;
@@ -263,6 +263,12 @@
 .glyphicon-home:before {
    content: "\E021";
 }
+.glyphicon-target:before {
+   content: "\E473";
+}
+.glyphicon-ban-circle:before {
+   content: "\E200";
+}
 
 .noselect {
    -webkit-user-select: none;
@@ -338,11 +344,19 @@ div.game-container {
    overflow-y: hidden;
 }
 
+@media all and (max-width: 360px) {
+   /* Hack to squeeze the content on 360 pixel wide phones */
+   div.container {
+      transform: scale(0.96, 1.0); /* 0.96 = 360/375 */
+      transform-origin: left top;
+   }
+}
+
 div.header-logo {
    display: block;
    float: left;
-   padding-left: 4px;
-   padding-top: 12px;
+   padding-left: 5px;
+   padding-top: 14px;
 }
 
 div.header-button {
@@ -517,13 +531,13 @@ table.board tr {
 }
 
 .rack table.board {
-   border-spacing: 4px;
+   border-spacing: 8px;
    margin-left: auto;
    margin-right: auto;
 }
 
 .rack table.board tr {
-   height: 28px;
+   height: @rack-cell-small;
 }
 
 div.info {
@@ -541,7 +555,7 @@ div.bag {
 div.board-area {
    position: absolute;
    margin-left: @margin-small;
-   top: 99px;
+   top: 66px;
    padding-top: 4px;
    background-color: @container;
 }
@@ -549,6 +563,7 @@ div.board-area {
 div.board {
    background-color: @container;
    overflow: auto;
+   width: @board-size + 1px;
 }
 
 div.tile {
@@ -584,10 +599,12 @@ div.board div.tile.wide {
 /* On small form factors, we have bigger tiles in the rack than on the board */
 
 .rack div.tile {
-   font-size: 21px;
-   line-height: 27px;
+   font-size: 26px;
+   line-height: 33px;
    height: @rack-cell-small;
    width: @rack-cell-small;
+   margin-left: -2px;
+   padding-right: 2px;
 }
 
 /* While dragging a tile, show it in the rack form factor */
@@ -613,7 +630,7 @@ div.tile.ui-draggable-dragging {
 
 .rack td {
    min-width: @rack-cell-small;
-   width: @rack-cell-small + 2px;
+   width: @rack-cell-small;
    border-width: 0px;
    box-shadow: 2px 2px 4px 0 #afb7cad0;
 }
@@ -629,7 +646,8 @@ td.rowid {
 div.rack-row {
    display: block;
    width: 100%;
-   margin-top: 12px;
+   margin-top: 8px;
+   height: 52px;
 }
 
 div.rack-left {
@@ -641,16 +659,19 @@ div.rack-left {
 
 div.rack-right {
    display: block;
-   width: 14%;
+   width: 0%;
    height: 1px;
    float: left;
 }
 
 div.rack {
    display: block;
+   position: relative;
    padding: 0;
-   width: 72%;
+   width: 86%;
    float: left;
+   top: -6px;
+   left: -1px;
 }
 
 div.letterscore {
@@ -669,9 +690,9 @@ div.letterscore {
 }
 
 .rack div.letterscore {
-   left: 19px;
+   left: 25px;
    right: auto;
-   bottom: 2px;
+   bottom: 3px;
    font-size: 9px;
    line-height: 9px;
 }
@@ -751,16 +772,21 @@ div.fb-share:hover {
 
 div.waitmove {
    .submitbutton;
-   display: none;
    z-index: 10;
+   border-style: solid;
+   border-width: 1px;
+   border-color: @close-btn;
+   background-color: white;
+   margin-right: 1px;
+   float: right;
+   width: 96px;
 }
 
 div.animated-waitmove {
-   position: absolute;
-   top: 4px;
-   left: -2px;
-   width: 100%;
-   height: 100%;
+   position: relative;
+   display: inline-block;
+   width: 40px;
+   top: -4px;
 }
 
 div.login-buttons {
@@ -830,28 +856,50 @@ div.rack-left div.scramblebtn {
    margin-right: auto; /* Left-align the button */
 }
 
-div.submitexchange {
+div.buttons {
+   position: relative;
+   height: 54px;
+}
+
+@bottom-button-width: 67px;
+@bottom-button-margin: 25px;
+
+.bottom-button {
    .standard-button;
-   width: @btn-width-small;
+   position: absolute;
+   top: 0;
+   background-color: #fcfcfc;
+   border: 1.5px solid #dddddd;
+   width: @bottom-button-width;
    height: @btn-height-small;
-   background-color: @exchange-btn;
-   display: none;
+}   
+
+div.submitresign {
+   .bottom-button;
+   color: @alert;
+   left: 0 * (@bottom-button-width + @bottom-button-margin);
+}
+
+div.submitexchange {
+   .bottom-button;
+   color: @exchange-btn;
+   left: 1 * (@bottom-button-width + @bottom-button-margin);
 }
 
 div.submitpass {
-   .standard-button;
-   width: @btn-width-small;
-   height: @btn-height-small;
-   background-color: @pass-btn;
-   display: none;
+   .bottom-button;
+   color: @pass-btn;
+   left: 2 * (@bottom-button-width + @bottom-button-margin);
 }
 
-div.submitresign {
-   .standard-button;
-   width: @btn-width-small;
-   height: @btn-height-small;
-   background-color: @alert;
-   display: none;
+div.challenge {
+   .bottom-button;
+   left: 3 * (@bottom-button-width + @bottom-button-margin);
+   color: @chall-btn;
+}
+
+div.challenge.disabled {
+   border-color: @background;
 }
 
 div.submitmove {
@@ -876,10 +924,9 @@ div.player {
    display: block;
    padding-left: 4px;
    padding-right: 4px;
-   height: 26px;
-   min-height: 26px;
+   height: 30px;
+   min-height: 30px;
    font-size: 14px;
-   line-height: 14px;
    font-weight: 400;
    color: @cell-border;
 }
@@ -895,7 +942,7 @@ div.scoreleft {
    height: 26px;
    padding-left: 4px;
    font-size: 22px;
-   line-height: 23px;
+   line-height: 27px;
    font-weight: 400;
    text-align: left;
    color: white;
@@ -911,7 +958,7 @@ div.scoreright {
    height: 26px;
    padding-right: 4px;
    font-size: 22px;
-   line-height: 23px;
+   line-height: 27px;
    font-weight: 400;
    text-align: right;
    color: white;
@@ -923,14 +970,13 @@ div.scoreright {
 
 div.robot-btn {
    display: block;
-   position: relative;
-   top: 0; left: 0;
-   width: 126px;
+   position: absolute;
    margin-left: 0px;
    margin-right: 2px;
-   padding-top: 6px;
+   padding-top: 3px;
    height: 28px;
    min-height: 28px;
+   line-height: 20px;
    border-width: 0px;
    white-space: nowrap;
    overflow: hidden;
@@ -949,17 +995,15 @@ div.gamestats div.robot-btn {
 
 div.player-btn {
    display: block;
-   position: relative;
-   top: 0; left: 0;
-   width: 128px;
+   position: absolute;
    margin-left: 2px;
    margin-right: 2px;
-   padding-top: 6px;
-   height: 28px;
-   line-height: 20px;
-   min-height: 28px;
-   border-radius: 5px;
+   padding-top: 3px;
+   height: 30px;
+   min-height: 30px;
+   line-height: 22px;
    border-width: 0;
+   border-radius: 5px;
    white-space: nowrap;
    overflow: hidden;
    text-overflow: ellipsis;
@@ -969,12 +1013,14 @@ div.player-btn {
 
 div.player-btn.left,
 div.robot-btn.left {
-   padding-left: 44px;
+   padding-left: 38px;
+   padding-right: 12px;
 }
 
 div.player-btn.right,
 div.robot-btn.right {
-   padding-right: 44px;
+   padding-left: 10px; /* Note: purposefully a bit asymmetric with the left button */
+   padding-right: 38px;
 }
 
 div.player-btn.left.tomove,
@@ -994,7 +1040,7 @@ div.heading {
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
-   height: 32px;
+   height: 36px;
 }
 
 div.tabbed-page {
@@ -1058,6 +1104,16 @@ div.loginform-small div#logo-pic {
 @-webkit-keyframes expand {
    0% { transform: scale(1.0); }
    40% { transform: scale(1.05); }
+   100% { transform: scale(1.0); }
+}
+
+@keyframes slidein {
+   0% { transform: scale(0.0); }
+   100% { transform: scale(1.0); }
+}
+
+@-webkit-keyframes slidein {
+   0% { transform: scale(0.0); }
    100% { transform: scale(1.0); }
 }
 
@@ -1158,17 +1214,17 @@ div.rightplayer {
 
 div.right-tab {
    position: absolute;
-   top: -32px;
+   top: -28px;
    height: 34px;
    min-height: 34px;
-   width: 64px;
-   min-width: 64px;
+   width: 55px;
+   min-width: 55px;
    overflow: visible;
    visibility: visible;
    text-align: center;
    vertical-align: middle;
-   padding-top: 6px;
-   font-size: 18px;
+   padding-top: 4px;
+   font-size: 16px;
    line-height: 18px;
    border-radius: 5px;
    opacity: 0.6;
@@ -1178,27 +1234,27 @@ div.right-tab {
 }
 
 div.right-tab#tab-board {
-   left: 8px;
+   left: 8px + 28px;
    background-color: @container;
 }
 
 div.right-tab#tab-movelist {
-   left: 78px;
+   left: 78px + 23px;
    background-color: @background;
 }
 
 div.right-tab#tab-twoletter {
-   left: 148px;
+   left: 148px + 18px;
    background-color: @twoletter;
 }
 
 div.right-tab#tab-games {
-   left: 218px;
+   left: 218px + 13px;
    background-color: @gamelist;
 }
 
 div.right-tab#tab-chat {
-   left: 288px;
+   left: 288px + 8px;
    background-color: @theme5;
 }
 
@@ -1219,7 +1275,7 @@ div.right-tab.alert > span.glyphicon {
 div.right-area {
    /* display: none; */
    position: relative;
-   top: 40px;
+   top: 30px;
    left: 0;
    height: @mobile-height-net - @board-top - @margin-small;
    width: 100%;
@@ -1253,10 +1309,10 @@ div.movelist-container {
    top: 0;
    left: 0;
    width: 100%;
-   height: @mobile-height-net - @board-top - 3 * @margin-small;
+   height: 466px - @margin-small;
    background-color: @background;
    padding-top: @margin-small;
-   padding-bottom: @margin-small;
+   padding-bottom: 0;
    z-index: 6;
    border-radius: 4px 4px 0 0;
 }
@@ -1266,7 +1322,7 @@ div.movelist {
    padding: 0;
    overflow: auto;
    width: 100%;
-   height: @mobile-height-net - @board-top - 3 * @margin-small - 100px;
+   height: 350px; // Plus div.bag (108 px) = 458 px + margin-small = 466 px
 }
 
 div.movelist.bestmoves {
@@ -1279,8 +1335,10 @@ div.movelist-container div.bag {
    position: relative;
    left: 0;
    margin: 0;
-   padding: 4px 28px 0 27px;
-   height: 104px;
+   padding-top: 4px;
+   padding-left: 27px;
+   width: 100%;
+   height: 104px; // Total of 108 px
 }
 
 div.game-timed {
@@ -1329,10 +1387,10 @@ svg circle.shadow {
 div#blank-form {
    .std-form;
    top: 124px;
-   right: (375px - 274px - 24px) * 0.5;
+   right: (375px - 274px - 28px) * 0.5;
    width: 274px;
    height: 400px;
-   background-color: @rack-background;
+   /* background-color: @rack-background; */
 }
 
 .bottom-message {
@@ -1341,20 +1399,23 @@ div#blank-form {
    display: block;
    bottom: 0;
    left: 0;
-   width: @mobile-width - 2 * @margin-small - 6px;
+   width: @mobile-width - 2 * @margin-small - 8px;
    height: 52px;
    font-size: 14px;
    line-height: 26px;
    margin: 0;
    padding: 0 4px 4px;
    visibility: hidden;
+   transform-origin: left top;
+   animation: slidein 0.4s;
 }
 
 .bold-bottom-message {
    .bottom-message;
    text-align: center;
-   font-weight: 700;
+   // font-weight: 700;
    color: white;
+   border-radius: 4px;
 }
 
 div.error {
@@ -1363,10 +1424,18 @@ div.error {
 }
 
 div.opp-turn {
-   .bottom-message;
-   display: none;
-   left: @margin-small * 2 + @btn-width-small + 8px;
-   width: @mobile-width - 4 * @margin-small - @btn-width-small - 8px;
+   display: block;
+   padding-top: 10px;
+   width: 246px;
+}
+
+div.opp-turn.flashing {
+   color: @alert;
+   transition: 0.1s;
+   transform: scale(1.10);
+   transform-origin: center left;
+   animation: redBlink 0.4s;
+   animation-iteration-count: 2;
 }
 
 div#congrats {
@@ -1395,7 +1464,7 @@ div.pass-last {
 
 div.chall {
    .bold-bottom-message;
-   background-color: @alert;
+   background-color: @chall-btn;
 }
 
 div.chall-info {
@@ -1409,6 +1478,50 @@ div.chall-info {
 div.exchange {
    .bold-bottom-message;
    background-color: @exchange-btn;
+}
+
+div.submitmove#move-mobile {
+   display: block;
+   float: right;
+   margin-right: 1px;
+   width: 96px;
+   font-weight: normal;
+   color: black;
+   background-color: @tile;
+   text-align: left;
+   text-indent: 6px;
+}
+
+div.submitmove#move-mobile.word-good {
+   background-color: @close-btn;
+   color: white;
+}
+
+@keyframes colorPulseMobile {
+   0% { transform: scale(1.0); }
+   40% { transform: scale(1.30); }
+   60% { transform: scale(1.30); }
+   100% { transform: scale(1.0); }
+}
+
+@-webkit-keyframes colorPulseMobile {
+   0% { transform: scale(1.0); }
+   40% { transform: scale(1.30); }
+   60% { transform: scale(1.30); }
+   100% { transform: scale(1.0); }
+}
+
+div.submitmove#move-mobile.word-great span.score-mobile {
+   display: inline-block;
+   /* font-weight: 700; */
+   animation: colorPulseMobile 1.5s infinite;
+   -webkit-animation: colorPulseMobile 1.5s infinite;
+}
+
+div.submitmove#move-mobile span.glyphicon {
+   position: absolute;
+   top: 12px;
+   right: 10px;
 }
 
 div.gameinfo {
@@ -1442,7 +1555,7 @@ div.chat-area {
    position: absolute;
    top: 6px;
    left: 6px;
-   height: 420px;
+   height: 402px;
    width: 368px - @btn-spacing-small;
    padding: 6px;
    overflow: auto;
@@ -1468,7 +1581,7 @@ div.twoletter {
    top: 0px;
    left: 0px;
    width: 100%;
-   height: 100%;
+   height: 466px;
    background-color: @twoletter;
    overflow: hidden;
    z-index: 3;
@@ -1479,8 +1592,8 @@ div.twoletter-area {
    position: absolute;
    top: 0; right: 0;
    height: 100%;
-   font-size: 15px;
-   line-height: 24px;
+   font-size: 18px;
+   line-height: 25px;
    text-align: right;
    padding-left: 14px;
    padding-right: 10px;
@@ -2027,36 +2140,6 @@ div.btn-promo-no {
    background-color: @close-btn;
 }
 
-div.challenge {
-   position: absolute;
-   width: @wide-btn-width-small - 1;
-   height: 37px;
-   text-align: center;
-   vertical-align: middle;
-   top: @btn-top;
-   bottom: auto;
-   left: 268px;
-   color: white;
-   background-color: @chall-btn;
-   font-family: 'Glyphicons Regular';
-   font-style: normal;
-   font-weight: normal;
-   font-size: 22px;
-   line-height: 37px;
-   display: none;
-   border: 2px solid @chall-btn;
-   border-radius: 5px;
-   cursor: pointer;
-}
-
-div.challenge:before {
-   content: "\E200"; /* glyphicon-ban-circle */
-}
-
-div.challenge.disabled {
-   border-color: @background;
-}
-
 div #userlist,
 div #elolist {
    height: 396px; /* 11 lines @ 36px each */
@@ -2094,7 +2177,7 @@ div.games {
    top: 0;
    left: 0;
    width: 100%;
-   height: @mobile-height-net - @board-top - @margin-small - 24px;
+   height: 466px - 12px - 12px;
    background-color: @gamelist;
    overflow: auto;
    z-index: 2;
@@ -2120,7 +2203,7 @@ div#wait-form {
 span.move-indicator {
    .glyphicon;
    color: @flag-to-move;
-   margin-right: 6px;
+   margin-right: 4px;
 }
 
 span.move-indicator:before {
@@ -2294,7 +2377,7 @@ div.xchg {
 
 div.xchgsel {
    color: white;
-   background-color: @alert;
+   background-color: @exchange-btn;
 }
 
 .blanktile {
@@ -2482,7 +2565,7 @@ div.chat {
    top: 0px;
    left: 0px;
    width: 100%;
-   height: 100%;
+   height: 466px;
    background-color: @theme5;
    z-index: 1;
    border-radius: 4px 4px 0 0;
@@ -2773,7 +2856,7 @@ span.yesnobutton {
    padding-bottom: 2px;
    padding-left: 12px;
    padding-right: 12px;
-   border-radius: 5px;
+   border-radius: 4px;
    cursor: pointer;
 }
 
@@ -2791,7 +2874,7 @@ div.exchange span.yesnobutton {
 }
 
 div.chall span.yesnobutton {
-   color: @alert;
+   color: @chall-btn;
 }
 
 span.closebtn {
@@ -3336,7 +3419,7 @@ span.fairplay-btn {
    color: white;
    background-color: @close-btn;
    border-radius: 5px;
-   padding: 4px;
+   padding: 2px;
    margin: 0 4px 0 0;
 }
 
@@ -3345,11 +3428,11 @@ span.fairplay-btn:before {
 }
 
 span.fairplay-btn.large {
-   font-size: 18px;
+   font-size: 16px;
    border-width: 1px;
    border-color: white;
    border-style: solid;
-   padding-bottom: 6px;
+   padding-bottom: 4px;
 }
 
 span.manual-btn {
@@ -3522,6 +3605,7 @@ div#user-no-match span#search-prefix {
 
 div.modal-close {
    .standard-button;
+   position: absolute;
    width: 36px;
    height: 28px;
    bottom: 12px;

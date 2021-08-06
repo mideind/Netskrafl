@@ -18,6 +18,27 @@
 
 @media all and (min-width: 1024px) {
 
+   // Redefine @tab-background
+   @tab-background: #ededf2;
+
+   .ui-tabs .ui-tabs-panel {
+      background-color: @tab-background;
+   }
+
+   .ui-widget-content {
+      background-color: @tab-background;
+   }
+
+   .ui-state-focus,
+   .ui-widget-content .ui-state-focus {
+      background-color: @tab-background;
+   }
+
+   .ui-state-active,
+   .ui-widget-content .ui-state-active {
+      background-color: @tab-background;
+   }
+
    /* Large screen (iPad and larger) */
 
    html {
@@ -122,32 +143,15 @@
       height: 420px;
    }
 
-   h3.playerleft,
-   h3.playerright {
-      position: absolute;
-      display: inline-block;
-      top: 0;
-      margin: 0;
-      height: 40px;
-      min-height: 40px;
-      font-size: 16px;
-      line-height: 24px;
-   }
-
-   h3.playerleft {
-      left: 0;
-   }
-
-   h3.playerright {
-      right: 0;
-      text-align: right;
-   }
-
    div.games,
    div.twoletter,
    div.chat {
       display: block;
       border-radius: 0;
+   }
+
+   div.twoletter, div.chat {
+      height: 420px;
    }
 
    div.board-area {
@@ -159,6 +163,7 @@
       position: absolute;
       top: 0;
       left: 93px;
+      width: auto;
       height: auto;
       margin: 0;
       // background-color: @container;
@@ -181,6 +186,14 @@
 
    table.board tr {
       height: 34px; /* 32px + 2 * 1.0px */
+   }
+
+   .rack table.board {
+      border-spacing: 4px;
+   }
+
+   .blank-rack table.board {
+      border-spacing: 8px;
    }
 
    .rack table.board tr {
@@ -269,6 +282,7 @@
    }
 
    div.rack-row {
+      height: auto;
       margin: 0;
    }
 
@@ -319,6 +333,11 @@
       box-shadow: none;
    }
 
+   div.buttons {
+      position: static;
+      height: auto;
+   }
+
    div.word-check {
       display: block;
       width: 48px;
@@ -364,7 +383,7 @@
       width: @wide-btn-width-big;
       height: @btn-height-big;
       top: auto;
-      bottom: 130px;
+      bottom: 136px;
       left: 546px;
       background-color: @submit-btn;
       font-size: 18px;
@@ -386,6 +405,7 @@
 
    div.waitmove {
       .submitbutton;
+      float: none;
       border-style: solid;
       border-width: 1px;
       border-color: @close-btn;
@@ -427,12 +447,20 @@
       left: 101px;
    }
 
+   div.submitresign.disabled {
+      background-color: @background;
+   }
+
    div.submitexchange {
       .bottom-button;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
       left: 167px;
+   }
+
+   div.submitexchange.disabled {
+      background-color: @background;
    }
 
    div.recallbtn {
@@ -461,6 +489,10 @@
       left: 612px;
    }
 
+   div.submitpass.disabled {
+      background-color: @background;
+   }
+
    div.fb-share {
       .submitbutton;
       display: block;
@@ -473,6 +505,7 @@
    }
 
    div.player {
+      display: inline-block;
       height: 36px;
       font-size: 16px;
       line-height: 24px;
@@ -535,6 +568,7 @@
    }
 
    div.player-btn {
+      position: relative;
       margin-top: 4px;
       padding-top: 4px;
       width: auto;
@@ -548,13 +582,13 @@
    }
 
    div.player-btn.left {
-      padding-left: 8px;
+      padding-left: 6px;
       padding-right: 2px;
    }
 
    div.player-btn.right {
       padding-left: 2px;
-      padding-right: 8px;
+      padding-right: 4px; /* Note: purposefully asymmetric with the .left case */
    }
 
    div.robot-btn {
@@ -564,13 +598,13 @@
    }
 
    div.robot-btn.left {
-      padding-left: 8px;
+      padding-left: 6px;
       padding-right: 2px;
    }
 
    div.robot-btn.right {
       padding-left: 2px;
-      padding-right: 8px;
+      padding-right: 4px;
    }
 
    div.gamestats div.robot-btn {
@@ -697,6 +731,8 @@
 
    div.movelist-container div.bag {
       display: none;
+      padding: 4px 28px 0 27px;
+      width: auto;
    }
 
    div.game-timed {
@@ -714,6 +750,7 @@
    div.blank-rack {
       top: 56px;
       left: auto;
+      background-color: transparent;
    }
 
    div#blank-form {
@@ -721,10 +758,6 @@
    }
 
    div.modal-dialog {
-      position: absolute;
-   }
-
-   div.modal-close {
       position: absolute;
    }
 
@@ -742,6 +775,8 @@
 
    .bold-bottom-message {
       .bottom-message;
+      font-weight: 700;
+      border-radius: 0;
    }
 
    div.error {
@@ -1101,13 +1136,17 @@
    }
 
    div.challenge {
+      display: none;
       width: 48px;
       height: 48px;
       top: auto;
       bottom: 204px;
       left: 644px;
-      font-size: 26px;
-      line-height: 46px;
+      vertical-align: middle;
+      color: white;
+      background-color: @chall-btn;
+      border: 2px solid @chall-btn;
+      border-radius: 5px;
    }
 
    div.over {

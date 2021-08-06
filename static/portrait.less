@@ -49,7 +49,7 @@
       display: inline-block;
       position: relative;
       left: auto;
-      top: auto;
+      top: -2px;
       padding-left: 8px;
    }
 
@@ -57,16 +57,24 @@
       display: inline-block;
       position: relative;
       right: auto;
-      top: auto;
+      top: -2px;
       padding-right: 8px;
    }
 
    div.player-btn {
       display: inline-block;
+      position: relative;
+      top: 0; left: 0;
+      padding-top: 4px;
+      width: 128px;
    }
 
    div.robot-btn {
       display: inline-block;
+      position: relative;
+      top: 0; left: 0;
+      padding-top: 4px;
+      width: 128px;
    }
 
    div.player-btn.left, div.robot-btn.left {
@@ -82,7 +90,56 @@
    }
 
    div.fairplay {
-      top: 20px;
+      top: 21px;
+   }
+
+   span.fairplay-btn {
+      padding: 4px;
+   }
+
+   span.fairplay-btn:before {
+      content: "\E151"; /* edit */
+   }
+   
+   span.fairplay-btn.large {
+      font-size: 18px;
+      padding-bottom: 6px;
+   }
+
+   div.right-area {
+      top: 40px;
+   }
+
+   div.right-tab {
+      top: -32px;
+      width: 64px;
+      min-width: 64px;
+      padding-top: 6px;
+      font-size: 18px;
+   }
+
+   div.right-tab#tab-board {
+      left: 8px;
+   }
+   
+   div.right-tab#tab-movelist {
+      left: 78px;
+   }
+   
+   div.right-tab#tab-twoletter {
+      left: 148px;
+   }
+   
+   div.right-tab#tab-games {
+      left: 218px;
+   }
+   
+   div.right-tab#tab-chat {
+      left: 288px;
+   }
+
+   div.board-area {
+      top: 103px;
    }
 
    div #userlist, div #elolist {
@@ -105,8 +162,24 @@
       height: 8 * 36px; /* 8 lines @ 36px each */
    }
 
+   div.chat, div.twoletter {
+      height: 470px;
+   }
+
    div.games {
-      height: @games-height;
+      height: 470px - 12px - 12px;
+   }
+
+   div.movelist-container {
+      height: 470px - 8px;
+   }
+
+   div.movelist {
+      height: 354px;
+   }
+
+   div.rack-row {
+      margin-top: 12px;
    }
 
 }

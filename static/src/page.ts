@@ -1725,6 +1725,7 @@ class View {
     s.showRecall = false;
     s.showScramble = false;
     s.showMove = false;
+    s.showMoveMobile = false; // Versatile move button for mobile UI
     s.showChallenge = false;
     s.showChallengeInfo = false;
     if (game.moveInProgress)
@@ -1749,10 +1750,12 @@ class View {
     if (s.showMove && (s.wordGood || s.gameIsManual))
       s.canPlay = true;
     if (!s.gameOver)
-      if (s.tilesPlaced)
+      if (s.tilesPlaced) {
         s.showRecall = true;
-      else
+        s.showMoveMobile = true;
+      } else {
         s.showScramble = true;
+      }
     return s;
   }
 
@@ -1909,7 +1912,7 @@ class View {
         } else if (s.tilesPlaced > 0) {
           if (game.currentScore === undefined) {
             if (move === undefined)
-              msg = ["Your first move must cover the ", glyph("star"), " asterisk."];
+              msg = ["Your first move must cover the ", glyph("target"), " start square."];
             else
               msg = "Tiles must be consecutive.";
           } else if (game.wordGood === false) {
@@ -1956,7 +1959,11 @@ class View {
         return m(".message", msg);
       }
 
-      return m(".rightcol", [vwRightHeading(), vwRightArea(), vwRightMessage()]);
+      return m(".rightcol", [
+        vwRightHeading(),
+        vwRightArea(),
+        /* vwRightMessage(), */
+      ]);
     }
 
     if (game === undefined || game === null)
@@ -2138,7 +2145,7 @@ class View {
         title: title,
         onclick: (ev) => {
           // Select this tab
-          if (game && game.sel != tabid) {
+          if (game && game.sel != tabid && game.showingDialog === null) {
             game.sel = tabid;
             if (funcSel !== undefined)
               funcSel();
@@ -2984,11 +2991,11 @@ class View {
     const model = this.model;
     return {
       view: (vnode) => {
-        let game = model.game;
-        let coord = vnode.attrs.coord;
-        let opponent = vnode.attrs.opponent;
+        const game = model.game;
+        const coord = vnode.attrs.coord;
+        const opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
-        let t = game.tiles[coord];
+        const t = game.tiles[coord];
         let classes = [".tile"];
         let attrs: VnodeAttrs = {};
         if (t.tile == '?')
@@ -3020,15 +3027,15 @@ class View {
         if (t.index) {
           // Make fresh or highlighted tiles appear sequentally by animation
           const ANIMATION_STEP = 150; // Milliseconds
-          let delay = (t.index * ANIMATION_STEP).toString() + "ms";
+          const delay = (t.index * ANIMATION_STEP).toString() + "ms";
           attrs.style = "animation-delay: " + delay + "; " +
             "-webkit-animation-delay: " + delay + ";";
         }
         if (coord == game.selectedSq)
           classes.push("sel"); // Blinks red
         if (t.highlight !== undefined) {
-          // highlight0 is the local player color (yellow/orange)
-          // highlight1 is the remote player color (green)
+          // highlight0 is the local player color
+          // highlight1 is the remote player color
           classes.push("highlight" + t.highlight);
           /*
           if (t.player == parseInt(t.highlight))
@@ -3070,7 +3077,7 @@ class View {
     const model = this.model;
     return {
       view: (vnode) => {
-        let coord = vnode.attrs.coord;
+        const coord = vnode.attrs.coord;
         let cls = model.game.squareClass(coord) || "";
         if (cls)
           cls = "." + cls;
@@ -3124,7 +3131,7 @@ class View {
               ev.stopPropagation();
               (ev.currentTarget as HTMLElement).classList.remove("over");
               // Move the tile from the source to the destination
-              let from = ev.dataTransfer.getData("text");
+              const from = ev.dataTransfer.getData("text");
               game.attemptMove(from, coord);
               this.updateScale(game);
               return false;
@@ -3283,48 +3290,45 @@ class View {
             }
         }
         return m(".rack-row", [
-          m(".rack-left", view.vwRackLeftButtons()),
-          m(".rack", m("table.board", m("tbody", m("tr", r)))),
-          m(".rack-right", view.vwRackRightButtons())
+          m(".rack-left", view.vwButtonsLeftOfRack()),
+          m(".rack", m("table.board", m("tbody", m("tr", r))))
         ]);
       }
     };
   };
 
-  vwRackLeftButtons(): m.vnode {
+  vwRecallButton(): m.vnode {
+    // Create a tile recall button
+    const model = this.model;
+    const game = model.game;
+    return this.makeButton(
+      "recallbtn", false,
+      () => { game.resetRack(); this.updateScale(game); },
+      "Færa stafi aftur í rekka", glyph("down-arrow")
+    );
+  }
+
+  vwScrambleButton(disabled: boolean): m.vnode {
+    // Show a 'Scramble rack' button
+    const model = this.model;
+    const game = model.game;
+    return this.makeButton(
+      "scramblebtn", disabled,
+      () => { game.rescrambleRack(); },
+      "Stokka upp rekka", glyph("random")
+    );
+  }
+
+  vwButtonsLeftOfRack(): m.vnode {
     // The button to the left of the rack in the mobile UI
     const model = this.model;
     const game = model.game;
     const s = this.buttonState(game);
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
-      return this.makeButton(
-        "recallbtn", false,
-        () => { game.resetRack(); this.updateScale(game); },
-        "Færa stafi aftur í rekka", glyph("down-arrow")
-      );
+      return this.vwRecallButton();
     if (s.showScramble && !s.showingDialog)
-      // Show a 'Scramble rack' button
-      return this.makeButton(
-        "scramblebtn", false,
-        () => { game.rescrambleRack(); },
-        "Stokka upp rekka", glyph("random")
-      );
-    return undefined;
-  }
-
-  vwRackRightButtons(): m.vnode {
-    // The button to the right of the rack in the mobile UI
-    const model = this.model;
-    const game = model.game;
-    const s = this.buttonState(game);
-    if (s.canPlay && !s.showingDialog)
-      // Show a 'Submit move' button, with a Play icon
-      return this.makeButton(
-        "submitmove", false,
-        () => { game.submitMove(); this.updateScale(game); },
-        "Leika", glyph("play")
-      );
+      return this.vwScrambleButton(false);
     return undefined;
   }
 
@@ -3567,16 +3571,17 @@ class View {
 
   makeButton(
     cls: string, disabled: boolean, func: () => void,
-    title: string, children?: VnodeChildren, id?: string
+    title?: string, children?: VnodeChildren, id?: string
   ): m.vnode {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
     let attr: VnodeAttrs = {
       onmouseout: buttonOut,
       onmouseover: buttonOver,
-      title: title
     };
-    if (id !== undefined)
+    if (title)
+      attr.title = title;
+    if (id)
       attr.id = id;
     if (disabled)
       attr.onclick = (ev) => ev.preventDefault();
@@ -3591,8 +3596,9 @@ class View {
     );
   }
 
-  vwButtons(): m.vnode[] {
-    // The set of buttons below the game board, alongside the rack
+  vwButtons(): m.vnode {
+    // The set of buttons below the game board, alongside the rack (fullscreen view)
+    // or below the rack (mobile view)
     const model = this.model;
     const game = model.game;
     const s = this.buttonState(game);
@@ -3600,40 +3606,72 @@ class View {
     r.push(m(".word-check" +
       (s.wordGood ? ".word-good" : "") +
       (s.wordBad ? ".word-bad" : "")));
-    if (s.showChallenge)
+    if (s.showChallenge) {
+      // Show a button that allows the player to challenge the opponent's
+      // last move
       r.push(
         this.makeButton(
           "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitChallenge(),
-          'Véfenging (röng kostar 10 stig)'
+          'Véfenging (röng kostar 10 stig)', glyph("ban-circle")
         )
       );
+    }
     if (s.showChallengeInfo)
       r.push(m(".chall-info"));
     if (s.showRecall)
-      r.push(
-        this.makeButton(
-          "recallbtn", false,
-          () => { game.resetRack(); this.updateScale(game); },
-          "Færa stafi aftur í rekka", glyph("down-arrow")
-        )
-      );
+      // Show button to recall tiles from the board into the rack
+      r.push(this.vwRecallButton());
     if (s.showScramble)
-      r.push(
-        this.makeButton("scramblebtn", s.showingDialog,
-          () => game.rescrambleRack(),
-          "Stokka upp rekka", glyph("random")
-        )
-      );
-    if (s.showMove)
+      // Show button to scramble (randomly reorder) the rack tiles
+      r.push(this.vwScrambleButton(s.showingDialog));
+    if (s.showMove) {
+      // "Plain" move button for fullscreen
       r.push(
         this.makeButton(
           "submitmove", !s.tilesPlaced || s.showingDialog,
-          () => game.submitMove(), // No need to updateScale() here
-          "Leika", ["Leika", nbsp(), glyph("play")]
+          () => { game.submitMove(); this.updateScale(game); },
+          "Leika", ["Leika", glyph("play")]
         )
       );
+    }
+    if (s.showMoveMobile) {
+      // Move button on mobile, which also shows the score
+      // and whether the move is good or bad
+      let classes: string[] = ["submitmove"];
+      if (game.manual) {
+        classes.push("manual")
+      } else if (s.wordGood) {
+        classes.push("word-good");
+        if (game.currentScore >= 50)
+          classes.push("word-great");
+      } else if (s.wordBad) {
+        classes.push("word-bad");
+      }
+      const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
+      let legend: VnodeChildren[] = [m("span.score-mobile", text)];
+      if (s.canPlay)
+        legend.push(glyph("play"));
+      else
+        legend.push(glyph("remove"));
+      const action = s.canPlay
+        ? () => { game.submitMove(); this.updateScale(game); }
+        : () => {
+          // Make the 'opp-turn' flash, to remind the user that it's not her turn
+          const el = document.querySelector("div.opp-turn") as HTMLElement;
+          if (el) {
+            el.classList.toggle("flashing", true);
+            setTimeout(() => el.classList.toggle("flashing", false), 1200);
+          }
+        };
+      r.push(
+        this.makeButton(
+          classes.join("."), s.showingDialog, action, text, legend, "move-mobile"
+        )
+      );
+    }
     if (s.showPass)
+      // Pass move
       r.push(
         this.makeButton(
           "submitpass", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
@@ -3642,6 +3680,7 @@ class View {
         )
       );
     if (s.showExchange)
+      // Exchange tiles from the rack
       r.push(
         this.makeButton(
           "submitexchange", s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
@@ -3650,6 +3689,7 @@ class View {
         )
       );
     if (s.showResign)
+      // Resign the game
       r.push(
         this.makeButton(
           "submitresign", s.showingDialog,
@@ -3688,17 +3728,19 @@ class View {
       );
     }
     if (s.tilesPlaced)
+      // Show the score of the current move (not visible on mobile)
       r.push(this.vwScore());
     // Is the server processing a move?
-    if (game.moveInProgress)
+    if (game.moveInProgress) {
       r.push(
-        m(".waitmove", { style: { display: "block" } },
+        m(".waitmove", { title: "" },
           m(".animated-waitmove",
             m(AnimatedExploLogo, { msStepTime: 100, width: 38, withCircle: false })
           )
         )
       );
-    return r;
+    }
+    return m(".buttons", r);
   }
 
   vwButtonsReview(moveIndex: number) {

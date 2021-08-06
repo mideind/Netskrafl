@@ -53,8 +53,8 @@ var $state = {
    hasPaid: {{ 'true' if user and user.has_paid() else 'false' }},
    ready: {{ 'true' if user and user.is_ready() else 'false' }},
    readyTimed: {{ 'true' if user and user.is_ready_timed() else 'false' }},
-   uiFullscreen: true,
-   uiLandscape: true,
+   uiFullscreen: undefined,
+   uiLandscape: undefined,
    firebaseToken: "{{ firebase_token }}",
    // Array of supported emoticons in chat
    // Remember to change faq.html if this changes

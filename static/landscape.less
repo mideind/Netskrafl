@@ -62,6 +62,10 @@
       padding-top: 0;
    }
 
+   div.fairplay {
+      top: 8px;
+   }
+
    div.login-btn-small {
       position: fixed;
       top: 128px;
@@ -107,29 +111,47 @@
       top: @button-top;
    }
 
+   div.rack-left div.recallbtn {
+      display: none;
+   }
+
    div.scramblebtn {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
       top: @button-top;
    }
 
-   div.submitexchange {
-      left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 1;
+   .bottom-btn-landscape {
       top: @button-top;
+      display: none;
+      border-width: 0;
+      color: white;
+   }
+
+   div.submitexchange {
+      .bottom-btn-landscape;
+      left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 1;
+      background-color: @exchange-btn;
    }
 
    div.submitpass {
+      .bottom-btn-landscape;
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 2;
-      top: @button-top;
+      background-color: @pass-btn;
    }
 
    div.submitresign {
+      .bottom-btn-landscape;
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 3;
-      top: @button-top;
+      background-color: @alert;
    }
 
    div.submitmove {
       left: @submit-left;
       top: @button-top;
+   }
+
+   div.submitmove#move-mobile {
+      display: none;
    }
 
    div.waitmove {
@@ -142,56 +164,22 @@
       top: @button-top;
    }
 
-   h3.playerleft {
-      width: 50%;
-      padding: 0;
-      height: 36px;
-      min-height: 36px;
-      font-size: 14px;
-      line-height: 22px;
-   }
-
-   h3.playerright {
-      width: 50%;
-      padding: 0;
-      height: 36px;
-      min-height: 36px;
-      font-size: 14px;
-      line-height: 22px;
-   }
-
-   h3.scoreleft {
-      top: 36px;
-      left: 0;
-      width: @rightcol-width - 6px;
-      margin-top: 4px;
-      margin-bottom: 4px;
-      padding-left: 6px;
-      font-size: 22px;
-      line-height: 22px;
-   }
-
-   h3.scoreright {
-      top: 36px;
-      right: 0;
-      width: @rightcol-width - 6px;
-      margin-top: 4px;
-      margin-bottom: 4px;
-      padding-right: 6px;
-      font-size: 22px;
-      line-height: 22px;
-   }
-
    div.player {
-      min-height: 32px;
+      min-height: 36px;
    }
 
    div.player-btn {
-      width: 92px;
+      width: 84px;
+      padding-top: 6px;
    }
 
    div.robot-btn {
-      width: 90px;
+      width: 84px;
+      padding-top: 6px;
+   }
+
+   div.scoreleft, div.scoreright {
+      top: 3px;
    }
 
    div.right-tab {
@@ -204,6 +192,7 @@
 
    div.movelist-container {
       height: 300px;
+      padding-bottom: 8px;
    }
 
    div.movelist {

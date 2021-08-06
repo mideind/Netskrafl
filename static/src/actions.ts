@@ -160,7 +160,7 @@ class Actions {
 
   onMobileScreen() {
     let state = this.model.state;
-    if (state.uiFullscreen) {
+    if (state.uiFullscreen !== false) {
       state.uiFullscreen = false;
       this.view.notifyMediaChange();
       m.redraw();
@@ -178,7 +178,7 @@ class Actions {
 
   onPortraitScreen() {
     let state = this.model.state;
-    if (state.uiLandscape) {
+    if (state.uiLandscape !== false) {
       state.uiLandscape = false;
       this.view.notifyMediaChange();
       m.redraw();
