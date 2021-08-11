@@ -118,6 +118,9 @@ AUTOPLAYERS: Dict[str, AutoplayerList] = {
 # (for instance a default Google nick with a https:// prefix)
 UNDEFINED_NAME: Dict[str, str] = {"is": "[Ónefndur]", "en": "[Unknown]"}
 
+# Should we use memcache (in practice Redis) to cache user data?
+USE_MEMCACHE = False
+
 
 class UserSummaryDict(TypedDict):
 
@@ -258,9 +261,13 @@ class User:
 
             # Note: the namespace version should be incremented each time
             # that the class properties change
-            memcache.set(
-                self._user_id, self, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE
-            )
+            if USE_MEMCACHE:
+                memcache.set(
+                    self._user_id,
+                    self,
+                    time=User._CACHE_EXPIRY,
+                    namespace=User._NAMESPACE,
+                )
 
     def id(self) -> Optional[str]:
         """ Returns the id (database key) of the user """
@@ -719,15 +726,17 @@ class User:
         if not uid:
             return None
         with User._lock:
-            u = memcache.get(uid, namespace=User._NAMESPACE)
-            if u is not None:
-                return u
+            if USE_MEMCACHE:
+                u = memcache.get(uid, namespace=User._NAMESPACE)
+                if u is not None:
+                    return u
             um = UserModel.fetch(uid)
             if um is None:
                 return None
             u = cls(uid=uid)
             u._init(um)
-            memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
+            if USE_MEMCACHE:
+                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod

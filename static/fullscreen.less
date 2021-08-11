@@ -156,6 +156,7 @@
 
    div.board-area {
       margin: 0;
+      /* width should not be set here */
       height: 750px;
    }
 
@@ -465,6 +466,7 @@
 
    div.recallbtn {
       .bottom-button;
+      background-color: @recall-btn-fullscreen;
       font-size: @btn-font-big;
       width: @btn-width-big;
       height: @btn-height-big;
@@ -592,6 +594,7 @@
    }
 
    div.robot-btn {
+      position: relative;
       margin-top: 4px;
       padding-top: 4px;
       width: auto;
@@ -762,6 +765,7 @@
    }
 
    .bottom-message {
+      position: absolute;
       text-align: center;
       bottom: 83px;
       left: 126px;

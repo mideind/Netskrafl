@@ -2267,7 +2267,9 @@ class View {
 
     function focus(vnode: Vnode) {
       // Put the focus on the DOM object associated with the vnode
-      vnode.dom.focus();
+      if (!this.isDialogShown())
+        // Don't hijack the focus from a dialog overlay
+        vnode.dom.focus();
     }
 
     function sendMessage() {
@@ -2306,7 +2308,9 @@ class View {
                 disabled: (numMessages >= MAX_CHAT_MESSAGES),
                 oncreate: focus,
                 onupdate: focus,
-                onkeypress: (ev) => { if (ev.key == "Enter") sendMessage(); }
+                onkeypress: (ev: KeyboardEvent) => {
+                  if (ev.key == "Enter") { sendMessage(); ev.preventDefault(); }
+                }
               }
             ),
             m(DialogButton,
@@ -4133,7 +4137,7 @@ function vwToggler(id: string, state: boolean, tabindex: number,
         tabindex: tabindex,
         title: title,
         onclick: (ev) => { doToggle(); ev.preventDefault(); },
-        onkeypress: (ev) => { if (ev.key == " ") doToggle(); }
+        onkeypress: (ev) => { if (ev.key == " ") { doToggle(); ev.preventDefault(); } }
       },
       [
         m(optionClass + (state ? "" : ".selected"), { id: "opt1" }, opt1),
