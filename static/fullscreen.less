@@ -21,21 +21,64 @@
    // Redefine @tab-background
    @tab-background: #ededf2;
 
+   .ui-helper-reset {
+      line-height: 36px; // This determines the height of the tab row
+   }
+
    .ui-tabs .ui-tabs-panel {
       background-color: @tab-background;
+      padding: 1em 1.4em;
    }
 
    .ui-widget-content {
+      border: 2px solid #fcfdfd;
       background-color: @tab-background;
    }
 
-   .ui-state-focus,
-   .ui-widget-content .ui-state-focus {
+   .ui-widget-header {
+      background-color: #d1d6da;
+   }
+
+   .ui-widget-header .ui-state-active {
       background-color: @tab-background;
+   }
+
+   .ui-state-default,
+   .ui-widget-content .ui-state-default {
+	   border: 2px solid #fcfdfd;
    }
 
    .ui-state-active,
    .ui-widget-content .ui-state-active {
+      border: 2px solid #fcfdfd;
+      background-color: @tab-background;
+   }
+
+   .ui-state-hover,
+   .ui-widget-content .ui-state-hover,
+   .ui-state-focus,
+   .ui-widget-content .ui-state-focus {
+      border: 2px solid #fcfdfd;
+   }
+
+  .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+      min-width: auto;
+      padding-left: 1em;
+      padding-right: 1em;
+      text-align: left;
+   }
+
+   .ui-tabs .ui-tabs-nav .ui-tabs-anchor.sp {
+      /* Override tab width */
+      min-width: 82px;
+   }
+
+   .ui-tabs .ui-tabs-nav li {
+      box-shadow: none;
+   }
+
+   .ui-tabs .ui-tabs-nav li.ui-tabs-active {
+      padding-bottom: 1px;
       background-color: @tab-background;
    }
 
@@ -70,6 +113,10 @@
 
    div.logo {
       display: block;
+   }
+
+   div#main-tabs div.header-logo {
+      display: none;
    }
 
    div.circle {
@@ -890,10 +937,7 @@
    div#tabs > div[role=tabpanel],
    div#main-tabs > div[role=tabpanel] {
       height: 657px;
-   }
-
-   .ui-widget-header .ui-state-active {
-      background-color: @tab-background;
+      top: 0;
    }
 
    div.userid {
@@ -920,15 +964,8 @@
       font-weight: bold;
    }
 
-   .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
-      min-width: auto;
-      padding-left: 1em;
-      padding-right: 1em;
-      text-align: left;
-   }
-
-   .ui-tabs .ui-tabs-panel {
-      padding: 1em 1.4em;
+   span#numgames {
+      margin-top: 10px;
    }
 
    div.fairplay {
@@ -1262,7 +1299,7 @@
    p#own-best {
       left: auto;
       right: 30px;
-      top: 66px;
+      top: 26px;
       font-size: 1.0em;
    }
 

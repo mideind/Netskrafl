@@ -20,6 +20,8 @@
 
 */
 
+@import 'jquery-ui.less';
+
 @mobile-width: 375px;
 /* @mobile-width: 360px; */
 @mobile-height: 667px;
@@ -384,14 +386,14 @@ div.rightcol {
 
 div.logowrapper {
    display: inline-block;
-   width: 10%;
+   width: 11%;
    vertical-align: top;
 }
 
 div.playerwrapper {
    display: inline-block;
    position: relative;
-   width: 90%;
+   width: 89%;
    padding-top: 4px;
 }
 
@@ -555,8 +557,8 @@ div.bag {
 div.board-area {
    position: absolute;
    margin-left: @margin-small;
-   top: 66px;
-   padding-top: 4px;
+   top: 68px;
+   padding-top: 6px;
    background-color: @container;
 }
 
@@ -861,8 +863,8 @@ div.buttons {
    height: 54px;
 }
 
-@bottom-button-width: 67px;
-@bottom-button-margin: 25px;
+@bottom-button-width: 66px;
+@bottom-button-margin: 29px;
 
 .bottom-button {
    .standard-button;
@@ -871,7 +873,7 @@ div.buttons {
    background-color: #fcfcfc;
    border: 1.5px solid #dddddd;
    width: @bottom-button-width;
-   height: @btn-height-small;
+   height: @btn-height-small - 2;
 }   
 
 div.submitresign {
@@ -1040,7 +1042,7 @@ div.heading {
    top: 0; left: 0;
    padding-left: 0;
    padding-right: 0;
-   height: 36px;
+   height: 38px;
 }
 
 div.tabbed-page {
@@ -1049,8 +1051,7 @@ div.tabbed-page {
    top: 0;
    width: @mobile-width;
    height: @mobile-height-net;
-   overflow-x: hidden;
-   overflow-y: auto; /* hidden? */
+   overflow: hidden;
    font-size: 13px;
    line-height: 23px;
 }
@@ -1226,35 +1227,38 @@ div.right-tab {
    padding-top: 4px;
    font-size: 16px;
    line-height: 18px;
-   border-radius: 5px;
+   border-radius: 6px;
    opacity: 0.6;
    z-index: 0;
    cursor: pointer;
    box-shadow: 2px 2px 4px 0 #afb7cad0;
 }
 
+@right-tab-margin: 41px;
+@right-tab-width: 65px;
+
 div.right-tab#tab-board {
-   left: 8px + 28px;
+   left: @right-tab-margin + 0 * @right-tab-width;
    background-color: @container;
 }
 
 div.right-tab#tab-movelist {
-   left: 78px + 23px;
+   left: @right-tab-margin + 1 * @right-tab-width;
    background-color: @background;
 }
 
 div.right-tab#tab-twoletter {
-   left: 148px + 18px;
+   left: @right-tab-margin + 2 * @right-tab-width;
    background-color: @twoletter;
 }
 
 div.right-tab#tab-games {
-   left: 218px + 13px;
+   left: @right-tab-margin + 3 * @right-tab-width;
    background-color: @gamelist;
 }
 
 div.right-tab#tab-chat {
-   left: 288px + 8px;
+   left: @right-tab-margin + 4 * @right-tab-width;
    background-color: @theme5;
 }
 
@@ -1360,8 +1364,8 @@ div.modal-dialog#spinner-dialog {
    background-color: rgba(255, 255, 255, 0.4);
 }
 
-@animated-spinner-left: (@mobile-width - 90px) * 0.5;
-@animated-spinner-top: (@mobile-height - 120px) * 0.5;
+@animated-spinner-left: (@mobile-width - 92px) * 0.5;
+@animated-spinner-top: (@mobile-height - 124px) * 0.5;
 
 div.animated-spinner {
    position: absolute;
@@ -1650,7 +1654,15 @@ div#main-tabs {
 
 div#tabs > div[role=tabpanel],
 div#main-tabs > div[role=tabpanel] {
+   position: relative;
+   top: -8px;
    height: 504px;
+}
+
+div#main-tabs div.header-logo {
+   padding-left: 14px;
+   padding-right: 8px;
+   padding-top: 7px;
 }
 
 div#tabs {
@@ -1970,46 +1982,6 @@ span.mobile-break {
    font-weight: normal;
 }
 
-.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
-   min-width: 91px;
-   padding-left: 12px;
-   padding-right: 12px;
-   text-align: center;
-}
-
-.ui-tabs .ui-tabs-nav .ui-tabs-anchor.sp {
-   /* Single page version */
-   min-width: 61px;
-}
-
-.ui-tabs .ui-tabs-panel {
-   padding-left: 6px;
-   padding-right: 6px;
-   padding-top: 4px;
-   padding-bottom: 4px;
-   background-color: @tab-background;
-}
-
-.ui-widget-content {
-   background-color: @tab-background;
-}
-
-.ui-state-hover,
-.ui-widget-content .ui-state-hover
-{
-   background-color: @hover-tab;
-}
-
-.ui-state-focus,
-.ui-widget-content .ui-state-focus {
-   background-color: @tab-background;
-}
-
-.ui-state-active,
-.ui-widget-content .ui-state-active {
-   background-color: @tab-background;
-}
-
 div.user-cat span#break {
    display: inline;
 }
@@ -2263,7 +2235,7 @@ p#own-best {
    display: inline-block;
    position: absolute;
    left: 40px;
-   top: 70px;
+   top: 26px;
    text-align: right;
    font-size: 0.85em;
 }
@@ -3209,7 +3181,7 @@ a.ui-tabs-anchor:link, a.ui-tabs-anchor:visited {
    margin-left: 6px;
    padding-left: 5px;
    padding-right: 5px;
-   margin-top: 2px;
+   margin-top: 16px;
    vertical-align: top;
 }
 

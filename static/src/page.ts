@@ -888,39 +888,44 @@ class View {
 
     function vwMainTabs() {
 
-      function vwMainTabHeader(): m.vnode {
+      function vwMainTabHeader(): m.vnode[] {
         const numGames = model.numGames;
         const numChallenges = model.numChallenges;
-        return m("ul",
-          [
+        return [
+          m(".header-logo",
+            m(m.route.Link,
+              {
+                href: "/page",
+                class: "backlink"
+              },
+              m(ExploLogo, { legend: false, scale: 1.0 })
+            )
+          ),
+          m("ul", [
             m("li",
-              m("a[href='#tabs-1']",
-                [
-                  glyph("th"), m("span.tab-legend", "Viðureignir"),
-                  m("span",
-                    {
-                      id: 'numgames',
-                      style: numGames ? 'display: inline-block' : ''
-                    },
-                    numGames
-                  )
-                ]
-              )
+              m("a[href='#tabs-1']", [
+                glyph("th"), m("span.tab-legend", "Viðureignir"),
+                m("span",
+                  {
+                    id: 'numgames',
+                    style: numGames ? 'display: inline-block' : ''
+                  },
+                  numGames
+                )
+              ])
             ),
             m("li",
-              m("a[href='#tabs-2']",
-                [
-                  glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
-                  // Blink if we have timed games where the opponent is ready
-                  m("span" + (model.oppReady ? ".opp-ready" : ""),
-                    {
-                      id: "numchallenges",
-                      style: numChallenges ? 'display: inline-block' : ''
-                    },
-                    numChallenges
-                  )
-                ]
-              )
+              m("a[href='#tabs-2']", [
+                glyph("hand-right"), m("span.tab-legend", "Áskoranir"),
+                // Blink if we have timed games where the opponent is ready
+                m("span" + (model.oppReady ? ".opp-ready" : ""),
+                  {
+                    id: "numchallenges",
+                    style: numChallenges ? 'display: inline-block' : ''
+                  },
+                  numChallenges
+                )
+              ])
             ),
             m("li",
               m("a[href='#tabs-3']",
@@ -932,8 +937,8 @@ class View {
                 [glyph("bookmark"), m("span.tab-legend", "Ferill")]
               )
             )
-          ]
-        );
+          ])
+        ];
       }
 
       function showUserInfo(userid: string, nick: string, fullname: string) {
@@ -2160,6 +2165,7 @@ class View {
   vwChat(): m.vnode {
     // The chat tab
 
+    const view = this;
     const model = this.model;
     const game = model.game;
 
@@ -2267,7 +2273,7 @@ class View {
 
     function focus(vnode: Vnode) {
       // Put the focus on the DOM object associated with the vnode
-      if (!this.isDialogShown())
+      if (!view.isDialogShown())
         // Don't hijack the focus from a dialog overlay
         vnode.dom.focus();
     }
@@ -2306,8 +2312,8 @@ class View {
                 name: "msg",
                 maxlength: 254,
                 disabled: (numMessages >= MAX_CHAT_MESSAGES),
-                oncreate: focus,
-                onupdate: focus,
+                oncreate: (vnode) => { focus(vnode); },
+                onupdate: (vnode) => { focus(vnode); },
                 onkeypress: (ev: KeyboardEvent) => {
                   if (ev.key == "Enter") { sendMessage(); ev.preventDefault(); }
                 }
