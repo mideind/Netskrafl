@@ -209,8 +209,8 @@ class View {
       if (model.state.uiFullscreen || model.state.uiLandscape) {
         // In this case, there is no board tab:
         // show the movelist
-        model.game.setSelectedTab("movelist");
-        this.scrollMovelistToBottom();
+        if (model.game.setSelectedTab("movelist"))
+          setTimeout(this.scrollMovelistToBottom);
       }
       else {
         // Mobile: we default to the board tab
@@ -2142,7 +2142,7 @@ class View {
   vwTab(tabid: string, title: string, icon: string, funcSel?: () => void, alert?: boolean) {
     // A clickable tab for the right-side area content
     const game = this.model.game;
-    const sel = (game && game.sel) ? game.sel : "movelist";
+    const sel = game?.sel || "movelist";
     return m(".right-tab" + (sel == tabid ? ".selected" : ""),
       {
         id: "tab-" + tabid,
@@ -2150,10 +2150,15 @@ class View {
         title: title,
         onclick: (ev) => {
           // Select this tab
-          if (game && game.sel != tabid && game.showingDialog === null) {
-            game.sel = tabid;
-            if (funcSel !== undefined)
-              funcSel();
+          if (game && game.showingDialog === null) {
+            if (game.setSelectedTab(tabid)) {
+              // A new tab was actually selected
+              if (funcSel !== undefined) {
+                funcSel();
+              }
+              if (tabid == "movelist")
+                setTimeout(this.scrollMovelistToBottom);
+            }
           }
           ev.preventDefault();
         }
@@ -2372,7 +2377,7 @@ class View {
       [
         m(".movelist",
           {
-            onupdate: () => { this.scrollMovelistToBottom(); }
+            onupdate: () => { setTimeout(this.scrollMovelistToBottom); }
           },
           movelist()
         ),
@@ -2965,7 +2970,7 @@ class View {
             m(this.Rack, { review: false }),
             this.vwButtons(),
             this.vwErrors(game),
-            this.vwCongrats()
+            this.vwGameOver()
           ];
           r = r.concat(this.vwDialogs(game));
         }
@@ -3842,18 +3847,29 @@ class View {
     return undefined;
   }
 
-  vwCongrats(): m.vnode {
-    // Congratulations message when a game has been won
+  vwGameOver(): m.vnode {
+    // Show message at end of game, either congratulating a win or
+    // solemnly informing the player that the game is over
     const game = this.model.game;
-    return game.congratulate ?
-      m("div", { id: "congrats", style: { visibility: "visible" } },
+    if (game.congratulate)
+      return m("div", { id: "congrats" },
         [
           glyph("bookmark"),
           " ",
           m("strong", "Til hamingju með sigurinn!")
         ]
-      )
-      : undefined;
+      );
+    else if (game.over) {
+      return m("div", { id: "gameover" },
+        [
+          glyph("info-sign"),
+          " ",
+          m("strong", "Viðureigninni er lokið")
+        ]
+      );
+    }
+    else
+      return undefined;
   }
 
   vwDialogs(game: Game) {

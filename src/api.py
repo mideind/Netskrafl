@@ -70,6 +70,7 @@ from languages import (
     set_game_locale,
     current_lc,
     current_alphabet,
+    current_language,
     SUPPORTED_LOCALES,
 )
 from dawgdictionary import Wordbase
@@ -151,6 +152,28 @@ api_blueprint = Blueprint("api", __name__)
 # The cast to Any can be removed when Flask typing becomes more robust
 # and/or compatible with Pylance
 api = cast(Any, api_blueprint)
+
+VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
+    "is": {
+        "NICK_MISSING": "Notandi verður að hafa einkenni",
+        "NICK_MUST_BEGIN_WITH_LETTER": "Einkenni verður að byrja á bókstaf",
+        "NICK_TOO_LONG": "Einkenni má ekki vera lengra en 15 stafir",
+        "NICK_NO_QUOTES": "Einkenni má ekki innihalda gæsalappir",
+        "NAME_NO_QUOTES": "Nafn má ekki innihalda gæsalappir",
+        "EMAIL_NO_AT": "Tölvupóstfang verður að innihalda @-merki",
+        "LOCALE_UNKNOWN": "Óþekkt staðfang (locale)",
+    },
+    "en": {
+        "NICK_MISSING": "User nickname missing",
+        "NICK_MUST_BEGIN_WITH_LETTER": "Nickname must start with a letter",
+        "NICK_TOO_LONG": "Nickname must not be longer than 15 characters",
+        "NICK_NO_QUOTES": "Nickname cannot contain double quotes",
+        "NAME_NO_QUOTES": "Name cannot contain double quotes",
+        "EMAIL_NO_AT": "E-mail address must contain @ sign",
+        "LOCALE_UNKNOWN": "Unknown locale",
+    },
+    # !!! TODO: Add Polish here
+}
 
 
 class UserForm:
@@ -251,6 +274,15 @@ class UserForm:
         self.id = current_user_id() or ""
         self.image = usr.image()
 
+    @staticmethod
+    def error_msg(key: str) -> str:
+        """ Return a validation error message, in the appropriate language """
+        lang = current_language()
+        if lang not in VALIDATION_ERRORS:
+            # Default to English
+            lang = "en"
+        return VALIDATION_ERRORS[lang].get(key, "")
+
     def validate(self) -> Dict[str, str]:
         """Check the current form data for validity
         and return a dict of errors, if any"""
@@ -258,22 +290,22 @@ class UserForm:
         # pylint: disable=bad-continuation
         alphabet = current_alphabet()
         if not self.nickname:
-            errors["nickname"] = "Notandi verður að hafa einkenni"
+            errors["nickname"] = self.error_msg("NICK_MISSING")
         elif (
             self.nickname[0] not in alphabet.full_order
             and self.nickname[0] not in alphabet.full_upper
         ):
-            errors["nickname"] = "Einkenni verður að byrja á bókstaf"
+            errors["nickname"] = self.error_msg("NICK_MUST_BEGIN_WITH_LETTER")
         elif len(self.nickname) > 15:
-            errors["nickname"] = "Einkenni má ekki vera lengra en 15 stafir"
+            errors["nickname"] = self.error_msg("NICK_TOO_LONG")
         elif '"' in self.nickname:
-            errors["nickname"] = "Einkenni má ekki innihalda gæsalappir"
+            errors["nickname"] = self.error_msg("NICK_NO_QUOTES")
         if '"' in self.full_name:
-            errors["full_name"] = "Nafn má ekki innihalda gæsalappir"
+            errors["full_name"] = self.error_msg("NAME_NO_QUOTES")
         if self.email and "@" not in self.email:
-            errors["email"] = "Tölvupóstfang verður að innihalda @-merki"
+            errors["email"] = self.error_msg("EMAIL_NO_AT")
         if self.locale not in SUPPORTED_LOCALES:
-            errors["locale"] = "Óþekkt staðfang (locale)"
+            errors["locale"] = self.error_msg("LOCALE_UNKNOWN")
         return errors
 
     def store(self, usr: User) -> None:

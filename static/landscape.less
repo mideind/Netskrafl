@@ -192,7 +192,8 @@
 
    div.movelist-container {
       height: 300px;
-      padding-bottom: 8px;
+      padding-top: 0px;
+      padding-bottom: 0px;
    }
 
    div.movelist {
@@ -201,15 +202,14 @@
 
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
-      height: 224px;
-   }
-
-   div.right-area.with-clock div.movelist {
-      /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
-      height: 224px;
+      height: 260px;
    }
 
    div.movelist-container div.bag {
+      display: none;
+   }
+
+   div#gameover {
       display: none;
    }
 

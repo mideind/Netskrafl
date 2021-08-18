@@ -870,10 +870,11 @@ div.buttons {
    .standard-button;
    position: absolute;
    top: 0;
+   padding-top: 8px;
    background-color: #fcfcfc;
    border: 1.5px solid #dddddd;
    width: @bottom-button-width;
-   height: @btn-height-small - 2;
+   height: @btn-height-small - 3;
 }   
 
 div.submitresign {
@@ -1394,7 +1395,7 @@ div#blank-form {
    right: (375px - 274px - 28px) * 0.5;
    width: 274px;
    height: 400px;
-   /* background-color: @rack-background; */
+   background-color: @rack-background;
 }
 
 .bottom-message {
@@ -1442,13 +1443,19 @@ div.opp-turn.flashing {
    animation-iteration-count: 2;
 }
 
-div#congrats {
+div#congrats, div#gameover {
    .bottom-message;
-   display: none; /* Only displayed on fullscreen */
+   visibility: visible;
+   width: 100%;
+   text-align: center;
 }
 
 div#congrats span.glyphicon-bookmark {
    color: @close-btn;
+}
+
+div#gameover span.glyphicon-info-sign {
+   color: @triple-letter;
 }
 
 div.resign {

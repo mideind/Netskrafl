@@ -525,9 +525,12 @@ class Game {
       this.nickname[this.player] = newNick;
   };
 
-  setSelectedTab(sel: string) {
-    // Set the currently selected tab
+  setSelectedTab(sel: string): boolean {
+    // Set the currently selected tab; return true if it was actually changed
+    if (this.sel == sel)
+      return false;
     this.sel = sel;
+    return true;
   };
 
   tilescore(tile: string) {
