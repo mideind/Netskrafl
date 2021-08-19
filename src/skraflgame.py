@@ -47,7 +47,14 @@ from flask.helpers import url_for
 
 from cache import memcache
 
-from languages import Alphabet, OldTileSet, NewTileSet, TileSet, vocabulary_for_locale
+from languages import (
+    Alphabet,
+    OldTileSet,
+    NewTileSet,
+    TileSet,
+    vocabulary_for_locale,
+    set_game_locale,
+)
 from firebase import online_users
 from skrafldb import (
     PrefItem,
@@ -947,11 +954,14 @@ class Game:
         return game
 
     @classmethod
-    def load(cls, uuid: str, use_cache: bool = True) -> Optional[Game]:
-        """ Load an already existing game from persistent storage """
+    def load(
+        cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
+    ) -> Optional[Game]:
+        """ Load an already existing game from persistent storage.
+            If set_locale is True, set the current thread's locale to the game locale. """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
-            return cls._load_locked(uuid, use_cache)
+            return cls._load_locked(uuid, use_cache=use_cache, set_locale=set_locale)
 
     def store(self) -> None:
         """ Store the game state in persistent storage """
@@ -960,7 +970,9 @@ class Game:
             self._store_locked()
 
     @classmethod
-    def _load_locked(cls, uuid: str, use_cache: bool = True) -> Optional[Game]:
+    def _load_locked(
+        cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
+    ) -> Optional[Game]:
         """ Load an existing game from cache or persistent storage under lock """
 
         gm = GameModel.fetch(uuid, use_cache)
@@ -978,7 +990,7 @@ class Game:
             # If no last move timestamp, default to the start of the game
             game.ts_last_move = game.timestamp
 
-        # Initialize the preferences
+        # Initialize the preferences (this sets the locale, tileset, etc.)
         game._preferences = gm.prefs
 
         # A player_id of None means that the player is an autoplayer (robot)
@@ -986,6 +998,13 @@ class Game:
         game.player_ids[1] = gm.player1_id()
 
         game.robot_level = gm.robot_level
+
+        if set_locale:
+            # If asked to do so, set the current thread's game locale
+            # before loading the moves. This is needed because challenge
+            # moves consult the dictionary from the current locale to
+            # determine the validity of the challenge and hence its score.
+            set_game_locale(game.locale)
 
         # Initialize a fresh, empty state with no tiles drawn into the racks
         game.state = State(

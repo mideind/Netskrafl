@@ -350,7 +350,7 @@ div.game-container {
    /* Hack to squeeze the content on 360 pixel wide phones */
    div.container {
       transform: scale(0.96, 1.0); /* 0.96 = 360/375 */
-      transform-origin: left top;
+      transform-origin: left top; // center top does not work
    }
 }
 
@@ -380,8 +380,8 @@ div.logo:hover {
 
 div.rightcol {
    position: relative;
-   width: @mobile-width - 2 * @margin-small + 1;
-   left: @margin-small - 1;
+   width: @mobile-width - 2 * @margin-small + 3;
+   left: @margin-small - 2;
 }
 
 div.logowrapper {
@@ -864,7 +864,7 @@ div.buttons {
 }
 
 @bottom-button-width: 66px;
-@bottom-button-margin: 29px;
+@bottom-button-margin: 27px;
 
 .bottom-button {
    .standard-button;
@@ -1501,6 +1501,10 @@ div.submitmove#move-mobile {
    background-color: @tile;
    text-align: left;
    text-indent: 6px;
+}
+
+div.submitmove#move-mobile.manual {
+   background-color: @manual-move-button;
 }
 
 div.submitmove#move-mobile.word-good {
@@ -3393,12 +3397,12 @@ span.fairplay-btn {
    .glyphicon;
    font-size: 15px;
    line-height: 15px;
-   top: -2px;
+   top: 0px;
    cursor: default;
    color: white;
    background-color: @close-btn;
    border-radius: 5px;
-   padding: 2px;
+   padding: 4px;
    margin: 0 4px 0 0;
 }
 
@@ -3407,10 +3411,13 @@ span.fairplay-btn:before {
 }
 
 span.fairplay-btn.large {
+   /* This is shown in the board header */
+   top: -2px;
    font-size: 16px;
    border-width: 1px;
    border-color: white;
    border-style: solid;
+   padding: 2px;
    padding-bottom: 4px;
 }
 

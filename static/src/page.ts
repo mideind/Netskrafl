@@ -33,7 +33,8 @@ import { addPinchZoom, registerSalesCloud } from "util";
 import { Actions, createRouteResolver } from "actions";
 
 import {
-  m, Vnode, VnodeAttrs, ComponentFunc, EventHandler, MithrilEvent, VnodeChildren
+  m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
+  MithrilEvent, MithrilDragEvent, VnodeChildren
 } from "mithril";
 
 import { WaitDialog, AcceptDialog } from "wait";
@@ -728,154 +729,176 @@ class View {
     });
   }
 
-  vwChallenge(item: UserListItem): m.vnode {
+  ChallengeDialog: ComponentFunc<{ item: UserListItem; }> = (initialVnode) => {
     // Show a dialog box for a new challenge being issued
+    const item = initialVnode.attrs.item;
     const model = this.model;
     const state = model.state;
     const manual = state.hasPaid; // If paying user, allow manual challenges
     const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
     const oldBag = !item.newbag && !state.newBag; // Neither user wants new bag
-    return m(".modal-dialog",
-      { id: 'chall-dialog', style: { visibility: 'visible' } },
-      m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
-        [
-          m(".chall-hdr",
-            m("table",
-              m("tbody",
-                m("tr",
-                  [
-                    m("td", m("h1.chall-icon", glyph("hand-right"))),
-                    m("td.l-border",
+    let manualChallenge = false;
+    return {
+      view: (vnode) => {
+        return m(".modal-dialog",
+          { id: 'chall-dialog', style: { visibility: 'visible' } },
+          m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
+            [
+              m(".chall-hdr",
+                m("table",
+                  m("tbody",
+                    m("tr",
                       [
-                        m(OnlinePresence, { id: "chall-online", userId: item.userid }),
-                        m("h1", item.nick),
-                        m("h2", item.fullname)
+                        m("td", m("h1.chall-icon", glyph("hand-right"))),
+                        m("td.l-border",
+                          [
+                            m(OnlinePresence, { id: "chall-online", userId: item.userid }),
+                            m("h1", item.nick),
+                            m("h2", item.fullname)
+                          ]
+                        )
                       ]
                     )
-                  ]
+                  )
                 )
-              )
-            )
-          ),
-          m("div", { style: { "text-align": "center" } },
-            [
-              m(".promo-fullscreen",
+              ),
+              m("div", { style: { "text-align": "center" } },
                 [
-                  m("p", [m("strong", "Ný áskorun"), " - veldu lengd viðureignar:"]),
-                  m(MultiSelection,
-                    { initialSelection: 0, defaultClass: 'chall-time' },
+                  m(".promo-fullscreen",
                     [
-                      m("div", { id: 'chall-none', tabindex: 1 },
+                      m("p", [m("strong", "Ný áskorun"), " - veldu lengd viðureignar:"]),
+                      m(MultiSelection,
+                        { initialSelection: 0, defaultClass: 'chall-time' },
+                        [
+                          m("div", { id: 'chall-none', tabindex: 1 },
+                            "Viðureign án klukku"
+                          ),
+                          m("div", { id: 'chall-10', tabindex: 2 },
+                            [glyph("time"), "2 x 10 mínútur"]
+                          ),
+                          m("div", { id: 'chall-15', tabindex: 3 },
+                            [glyph("time"), "2 x 15 mínútur"]
+                          ),
+                          m("div", { id: 'chall-20', tabindex: 4 },
+                            [glyph("time"), "2 x 20 mínútur"]
+                          ),
+                          m("div", { id: 'chall-25', tabindex: 5 },
+                            [glyph("time"), "2 x 25 mínútur"]
+                          ),
+                          m("div", { id: 'chall-30', tabindex: 6 },
+                            [glyph("time"), "2 x 30 mínútur"]
+                          )
+                        ]
+                      )
+                    ]
+                  ),
+                  m(".promo-mobile",
+                    [
+                      m("p", m("strong", "Ný áskorun")),
+                      m(".chall-time.selected", { id: 'extra-none', tabindex: 1 },
                         "Viðureign án klukku"
-                      ),
-                      m("div", { id: 'chall-10', tabindex: 2 },
-                        [glyph("time"), "2 x 10 mínútur"]
-                      ),
-                      m("div", { id: 'chall-15', tabindex: 3 },
-                        [glyph("time"), "2 x 15 mínútur"]
-                      ),
-                      m("div", { id: 'chall-20', tabindex: 4 },
-                        [glyph("time"), "2 x 20 mínútur"]
-                      ),
-                      m("div", { id: 'chall-25', tabindex: 5 },
-                        [glyph("time"), "2 x 25 mínútur"]
-                      ),
-                      m("div", { id: 'chall-30', tabindex: 6 },
-                        [glyph("time"), "2 x 30 mínútur"]
                       )
                     ]
                   )
                 ]
               ),
-              m(".promo-mobile",
+              manual ? m("div", { id: "chall-manual" },
                 [
-                  m("p", m("strong", "Ný áskorun")),
-                  m(".chall-time.selected", { id: 'extra-none', tabindex: 1 },
-                    "Viðureign án klukku"
+                  m("span.caption.wide",
+                    [
+                      "Nota ", m("strong", "handvirka véfengingu"),
+                      m("br"), "(\"keppnishamur\")"
+                    ]
+                  ),
+                  m(".toggler[id='manual-toggler'][tabindex='7']",
+                    [
+                      m(".option",
+                        {
+                          className: manualChallenge ? "" : "selected",
+                          onclick: () => { manualChallenge = false; }
+                        },
+                        m("span", nbsp())
+                      ),
+                      m(".option",
+                        {
+                          className: manualChallenge ? "selected" : "",
+                          onclick: () => { manualChallenge = true; }
+                        },
+                        glyph("lightbulb")
+                      )
+                    ]
                   )
                 ]
-              )
-            ]
-          ),
-          manual ? m("div", { id: "chall-manual" },
-            [
-              m("span.caption.wide",
+              ) : "",
+              fairPlay ? m("div", { id: "chall-fairplay" },
                 [
-                  "Nota ", m("strong", "handvirka véfengingu"),
-                  m("br"), "(\"keppnishamur\")"
+                  "Báðir leikmenn lýsa því yfir að þeir skrafla ",
+                  m("strong", "án stafrænna hjálpartækja"),
+                  " af nokkru tagi."
                 ]
-              ),
-              m(".toggler[id='manual-toggler'][tabindex='7']",
-                [
-                  m(".option.selected[id='opt1']", m("span", nbsp())),
-                  m(".option[id='opt2']", glyph("lightbulb"))
-                ]
-              )
-            ]
-          ) : "",
-          fairPlay ? m("div", { id: "chall-fairplay" },
-            [
-              "Báðir leikmenn lýsa því yfir að þeir skrafla ",
-              m("strong", "án stafrænna hjálpartækja"),
-              " af nokkru tagi."
-            ]
-          ) : "",
-          oldBag ? m("div", { id: "chall-oldbag" },
-            m("table",
-              m("tr",
-                [
-                  m("td", glyph("exclamation-sign")),
-                  m("td",
-                    ["Viðureign með", m("br"), m("strong", "gamla skraflpokanum")]
+              ) : "",
+              oldBag ? m("div", { id: "chall-oldbag" },
+                m("table",
+                  m("tr",
+                    [
+                      m("td", glyph("exclamation-sign")),
+                      m("td",
+                        ["Viðureign með", m("br"), m("strong", "gamla skraflpokanum")]
+                      )
+                    ]
                   )
-                ]
-              )
-            )
-          ) : "",
-          m(DialogButton,
-            {
-              id: "chall-cancel",
-              title: "Hætta við",
-              tabindex: 8,
-              onclick: (ev) => {
-                this.popDialog();
-                ev.preventDefault();
-              }
-            },
-            glyph("remove")
-          ),
-          m(DialogButton,
-            {
-              id: "chall-ok",
-              title: "Skora á",
-              tabindex: 9,
-              onclick: (ev: Event) => {
-                // Issue a new challenge
-                let duration: string | number = document.querySelector("div.chall-time.selected").id.slice(6);
-                if (duration == "none")
-                  duration = 0;
-                else
-                  duration = parseInt(duration);
-                item.chall = true;
-                model.modifyChallenge(
-                  {
-                    destuser: item.userid,
-                    action: "issue",
-                    duration: duration,
-                    fairplay: fairPlay,
-                    newbag: !oldBag,
-                    manual: manual
+                )
+              ) : "",
+              m(DialogButton,
+                {
+                  id: "chall-cancel",
+                  title: "Hætta við",
+                  tabindex: 8,
+                  onclick: (ev: Event) => {
+                    this.popDialog();
+                    ev.preventDefault();
                   }
-                );
-                this.popDialog();
-                ev.preventDefault();
-              }
-            },
-            glyph("ok")
+                },
+                glyph("remove")
+              ),
+              m(DialogButton,
+                {
+                  id: "chall-ok",
+                  title: "Skora á",
+                  tabindex: 9,
+                  onclick: (ev: Event) => {
+                    // Issue a new challenge
+                    let duration: string | number = document.querySelector("div.chall-time.selected").id.slice(6);
+                    if (duration == "none")
+                      duration = 0;
+                    else
+                      duration = parseInt(duration);
+                    item.chall = true;
+                    model.modifyChallenge(
+                      {
+                        destuser: item.userid,
+                        action: "issue",
+                        duration: duration,
+                        fairplay: fairPlay,
+                        newbag: !oldBag,
+                        manual: manualChallenge
+                      }
+                    );
+                    this.popDialog();
+                    ev.preventDefault();
+                  }
+                },
+                glyph("ok")
+              )
+            ]
           )
-        ]
-      )
-    );
+        );
+      }
+    }
+  };
+
+  vwChallenge(item: UserListItem) : m.vnode {
+    return m(this.ChallengeDialog, { item: item });
   }
 
   // Main screen
@@ -1996,7 +2019,7 @@ class View {
         ondrop: (ev) => {
           ev.stopPropagation();
           // Move the tile from the board back to the rack
-          let from = ev.dataTransfer.getData("text");
+          const from = ev.dataTransfer.getData("text");
           // Move to the first available slot in the rack
           game.attemptMove(from, "R1");
           this.updateScale(game);
@@ -2381,7 +2404,8 @@ class View {
           },
           movelist()
         ),
-        !state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "" // Visible on mobile
+        // Show the bag here on mobile
+        state.uiFullscreen ? "" : m(this.Bag, { bag: bag, newbag: newbag })
       ]
     );
   }
@@ -2644,8 +2668,8 @@ class View {
     }
     let attribs: VnodeAttrs = { title: title };
     if (state.uiFullscreen && tileMoveIncrement > 0) {
-      if (!game.manual)
-        // Tile move and not a manual game: allow word lookup
+      if (!game.manual && game.locale == "is_IS")
+        // Tile move and not a manual game: allow word lookup for Icelandic
         attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
       // Highlight the move on the board while hovering over it
       attribs.onmouseout = () => {
@@ -2759,8 +2783,9 @@ class View {
       playerColor = 1;
     }
     let attribs: VnodeAttrs = { title: title };
-    // Word lookup
-    attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
+    // Word lookup, if Icelandic game
+    if (game.locale == "is_IS")
+      attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
       move["highlighted"] = true;
@@ -3062,13 +3087,18 @@ class View {
           if (t.draggable) {
             // Make the tile draggable, unless we're showing a dialog
             attrs.draggable = "true";
-            attrs.ondragstart = (ev) => {
+            attrs.ondragstart = (ev: MithrilDragEvent) => {
               game.selectedSq = null;
+              // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", true);
               ev.dataTransfer.effectAllowed = "move"; // "copyMove"
               ev.dataTransfer.setData("text", coord);
               ev.redraw = false;
             };
-            attrs.onclick = (ev) => {
+            attrs.ondragend = (ev: MithrilDragEvent) => {
+              // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", false);
+              ev.redraw = false;
+            };
+            attrs.onclick = (ev: MouseEvent) => {
               // When clicking a tile, make it selected (blinking)
               if (coord == game.selectedSq)
                 // Clicking again: deselect
@@ -3654,6 +3684,7 @@ class View {
       // Move button on mobile, which also shows the score
       // and whether the move is good or bad
       let classes: string[] = ["submitmove"];
+      let wordIsPlayable = game.currentScore !== undefined;
       if (game.manual) {
         classes.push("manual")
       } else if (s.wordGood) {
@@ -3662,16 +3693,23 @@ class View {
           classes.push("word-great");
       } else if (s.wordBad) {
         classes.push("word-bad");
+        wordIsPlayable = false;
       }
       const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
       let legend: VnodeChildren[] = [m("span.score-mobile", text)];
-      if (s.canPlay)
+      if (s.canPlay && wordIsPlayable)
         legend.push(glyph("play"));
       else
         legend.push(glyph("remove"));
-      const action = s.canPlay
-        ? () => { game.submitMove(); this.updateScale(game); }
-        : () => {
+      let action: () => void;
+      if (s.canPlay) {
+        if (wordIsPlayable)
+          action = () => { game.submitMove(); this.updateScale(game); };
+        else
+          action = () => { /* TODO: Add some kind of feedback? */ };
+      }
+      else {
+        action = () => {
           // Make the 'opp-turn' flash, to remind the user that it's not her turn
           const el = document.querySelector("div.opp-turn") as HTMLElement;
           if (el) {
@@ -3679,6 +3717,7 @@ class View {
             setTimeout(() => el.classList.toggle("flashing", false), 1200);
           }
         };
+      }
       r.push(
         this.makeButton(
           classes.join("."), s.showingDialog, action, text, legend, "move-mobile"
@@ -5070,10 +5109,6 @@ function buttonOut(ev: Event) {
   if (clist !== undefined)
     clist.remove("over");
   (ev as MithrilEvent).redraw = false;
-}
-
-function stopPropagation(ev: Event) {
-  ev.stopPropagation();
 }
 
 // Glyphicon utility function: inserts a glyphicon span

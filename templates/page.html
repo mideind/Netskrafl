@@ -50,7 +50,7 @@ var $state = {
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},
    fairPlay: {{ 'true' if user and user.fairplay() else 'false' }},
    newBag: {{ 'false' if user and not user.new_bag() else 'true' }},
-   hasPaid: {{ 'true' if user and user.has_paid() else 'false' }},
+   hasPaid: true, // {{ 'true' if user and user.has_paid() else 'false' }},
    ready: {{ 'true' if user and user.is_ready() else 'false' }},
    readyTimed: {{ 'true' if user and user.is_ready_timed() else 'false' }},
    uiFullscreen: undefined,

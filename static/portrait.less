@@ -16,7 +16,7 @@
 
 /* ================= MOBILE PORTRAIT UI, LARGE ENOUGH TO BE NON-SCROLLABLE =============== */
 
-@media all and (max-width: 1024px) and (min-height: @mobile-height-net) {
+@media all and (max-width: 1023px) and (min-height: @mobile-height-net) {
 
    /* On sufficiently large mobile screens, keep the body fixed (unscrollable) */
    body {
@@ -32,7 +32,7 @@
 
 /* ================= MOBILE PORTRAIT UI, EXTRA TALL =============== */
 
-@media all and (max-width: 1024px) and (min-height: 632px) { /* iPhone X or taller */
+@media all and (max-width: 1023px) and (min-height: 632px) { /* iPhone X or taller */
 
    /* Tall mobile phones: use two lines to display the header */
 
@@ -50,16 +50,16 @@
       display: inline-block;
       position: relative;
       left: auto;
-      top: -2px;
-      padding-left: 8px;
+      top: -4px;
+      padding-left: 10px;
    }
 
    div.scoreright {
       display: inline-block;
       position: relative;
       right: auto;
-      top: -2px;
-      padding-right: 8px;
+      top: -4px;
+      padding-right: 10px;
    }
 
    div.player-btn {
@@ -94,16 +94,10 @@
       top: 21px;
    }
 
-   span.fairplay-btn {
-      padding: 4px;
-   }
-
-   span.fairplay-btn:before {
-      content: "\E151"; /* edit */
-   }
-   
    span.fairplay-btn.large {
+      /* This is shown in the board header */
       font-size: 18px;
+      padding: 4px;
       padding-bottom: 6px;
    }
 
@@ -164,23 +158,40 @@
    }
 
    div.chat, div.twoletter {
-      height: 470px;
+      height: 474px;
    }
 
    div.games {
-      height: 470px - 12px - 12px;
+      height: 474px - 12px - 12px;
    }
 
    div.movelist-container {
-      height: 470px - 8px;
+      height: 474px - 8px;
    }
 
    div.movelist {
-      height: 354px;
+      height: 474px - 8px - (104px + 4px);
    }
 
    div.rack-row {
       margin-top: 12px;
+   }
+
+}
+
+@media all and (min-width: 414px) and (max-width: 1023px) and (min-height: 652px) {
+
+   /* iPhone 11 or larger: scale the UI to appear larger on the screen */
+
+   body {
+      height: 652px;
+   }
+
+   div.container {
+      transform: scale(1.10); // Approximately 414 / 375
+      transform-origin: center top;
+      margin-top: 4px;
+      height: 100%;
    }
 
 }

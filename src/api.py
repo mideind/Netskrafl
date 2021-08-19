@@ -812,7 +812,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             # First by readiness
             0 if x["ready"] else 1 if x["ready_timed"] else 2,
             # Then by nickname
-            current_alphabet().sortkey_nocase(x["nick"]),  # !!! FIXME
+            current_alphabet().sortkey_nocase(x["nick"]),
         )
     )
     return result
@@ -1216,7 +1216,7 @@ def submitmove() -> ResponseType:
     movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
 
-    game = None if uuid is None else Game.load(uuid, use_cache=False)
+    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
 
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
@@ -1228,9 +1228,6 @@ def submitmove() -> ResponseType:
 
     if game.player_id_to_move() != current_user_id():
         return jsonify(result=Error.WRONG_USER)
-
-    # Switch to the game's locale before processing the move
-    set_game_locale(game.locale)
 
     # Process the movestring
     # Try twice in case of timeout or other exception
@@ -1266,7 +1263,7 @@ def gamestate() -> ResponseType:
 
     user_id = current_user_id()
 
-    game = Game.load(uuid) if uuid else None
+    game = Game.load(uuid, set_locale=True) if uuid else None
 
     if game is None or user_id is None:
         # We must have a logged-in user and a valid game
@@ -1282,9 +1279,6 @@ def gamestate() -> ResponseType:
     if delete_zombie:
         ZombieModel.del_game(uuid, user_id)
 
-    # Switch to the game's locale for the client state info
-    set_game_locale(game.locale)
-
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
 
@@ -1298,7 +1292,7 @@ def forceresign() -> ResponseType:
     uuid = rq.get("game")
     movecount = rq.get_int("mcount", -1)
 
-    game = None if uuid is None else Game.load(uuid, use_cache=False)
+    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
 
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
@@ -1350,7 +1344,7 @@ def gamestats() -> str:
     game = None
 
     if uuid is not None:
-        game = Game.load(uuid)
+        game = Game.load(uuid, set_locale=True)
         # Check whether the game is still in progress
         if (game is not None) and not game.is_over():
             # Don't allow looking at the stats in this case
@@ -1358,9 +1352,6 @@ def gamestats() -> str:
 
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Switch to the game's locale
-    set_game_locale(game.locale)
 
     return jsonify(game.statistics())
 
@@ -1780,7 +1771,7 @@ def chatmsg() -> ResponseType:
         game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
-            game = Game.load(uuid)
+            game = Game.load(uuid, set_locale=True)
         if game is None or not game.has_player(user_id):
             # The logged-in user must be a player in the game
             return jsonify(ok=False)
@@ -1883,7 +1874,7 @@ def chatload() -> ResponseType:
         game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
-            game = Game.load(uuid)
+            game = Game.load(uuid, set_locale=True)
         if game is None or not game.has_player(user_id):
             # The logged-in user must be a player in the game
             return jsonify(ok=False)
@@ -1980,14 +1971,11 @@ def bestmoves() -> ResponseType:
 
     uuid = rq.get("game")
     # Attempt to load the game whose id is in the URL query string
-    game: Optional[Game] = None if uuid is None else Game.load(uuid)
+    game: Optional[Game] = None if uuid is None else Game.load(uuid, set_locale=True)
 
     if game is None or not game.is_over():
         # The game is not found or still in progress: abort
         return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Switch to the game's locale
-    set_game_locale(game.locale)
 
     # move_number is the actual index into the game's move list
     # rq_move_number is the requested index, which can include the

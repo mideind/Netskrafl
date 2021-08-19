@@ -72,7 +72,7 @@ const ROWIDS = "ABCDEFGHIJKLMNO";
 const BOARD_SIZE = ROWIDS.length;
 const RACK_SIZE = 7;
 // Maximum overtime before a player loses the game, 10 minutes in seconds
-const MAX_OVERTIME = 1 * 60.0; // FIXME / DEBUG !!!
+const MAX_OVERTIME = 10 * 60.0;
 
 const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 

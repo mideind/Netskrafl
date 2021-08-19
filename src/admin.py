@@ -127,7 +127,7 @@ def admin_loadgame() -> str:
 
     if uuid:
         # Attempt to load the game whose id is in the URL query string
-        game = Game.load(uuid)
+        game = Game.load(uuid, set_locale=True)
 
     if game is not None and game.state is not None:
         now = datetime.utcnow()

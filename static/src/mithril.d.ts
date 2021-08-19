@@ -8,7 +8,8 @@
 
 export {
   m, Vnode, CustomVnode, VnodeAttrs,
-  Component, ComponentFunc, EventHandler, MithrilEvent,
+  Component, ComponentFunc, EventHandler,
+  MithrilEvent, MithrilDragEvent,
   VnodeChildren
 };
 
@@ -99,6 +100,7 @@ interface VnodeAttrs {
   oninput?: EventHandler;
   onkeypress?: (ev?: KeyboardEvent) => void;
   ondragstart?: (ev?: MithrilDragEvent) => void | boolean;
+  ondragend?: (ev?: MithrilDragEvent) => void | boolean;
   ondragenter?: (ev?: MithrilDragEvent) => void | boolean;
   ondragleave?: (ev?: MithrilDragEvent) => void | boolean;
   ondragover?: (ev?: MithrilDragEvent) => void | boolean;
