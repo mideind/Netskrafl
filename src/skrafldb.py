@@ -97,6 +97,8 @@ from cache import memcache
 # Type definitions
 _T = TypeVar("_T", covariant=True)
 
+_T_Model = TypeVar("_T_Model", bound="Model")
+
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
 ChallengeTuple = Tuple[
@@ -126,7 +128,7 @@ class StatsDict(TypedDict):
 StatsResults = List[StatsDict]
 
 
-class Query(Generic[_T], ndb.Query):
+class Query(Generic[_T_Model], ndb.Query):
 
     """A type-safer wrapper around ndb.Query"""
 
@@ -135,62 +137,72 @@ class Query(Generic[_T], ndb.Query):
     # not of this class. Functionality included here will thus rarely
     # be invoked, if at all.
 
-    def order(self, *args: Any, **kwargs: Any) -> Query[_T]:
-        f: Callable[..., Query[_T]] = cast(Any, super()).order
+    def order(self, *args: Any, **kwargs: Any) -> Query[_T_Model]:
+        f: Callable[..., Query[_T_Model]] = cast(Any, super()).order
         return f(*args, **kwargs)
 
-    def filter(self, *args: Any, **kwargs: Any) -> Query[_T]:
-        f: Callable[..., Query[_T]] = cast(Any, super()).filter
+    def filter(self, *args: Any, **kwargs: Any) -> Query[_T_Model]:
+        f: Callable[..., Query[_T_Model]] = cast(Any, super()).filter
         return f(*args, **kwargs)
 
     @overload
-    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key]:
+    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:  # type: ignore
         """ Special signature for a key-only fetch """
         ...
 
     @overload
-    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T]:
+    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]:
         ...
 
-    def fetch(self, *args: Any, **kwargs: Any) -> Union[Sequence[Key], Sequence[_T]]:
-        f: Callable[..., Union[Sequence[Key], Sequence[_T]]] = cast(Any, super()).fetch
+    def fetch(
+        self, *args: Any, **kwargs: Any
+    ) -> Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]:
+        f: Callable[..., Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]] = cast(
+            Any, super()
+        ).fetch
         return f(*args, **kwargs)
 
-    def fetch_async(self, limit: Optional[int] = None, **kwargs: Any) -> Future[_T]:  # type: ignore
-        f: Callable[..., Future[_T]] = cast(Any, super()).fetch_async
+    def fetch_async(self, limit: Optional[int] = None, **kwargs: Any) -> Future[_T_Model]:  # type: ignore
+        f: Callable[..., Future[_T_Model]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
 
-    def fetch_page(self, *args: Any, **kwargs: Any) -> Tuple[Iterable[_T], int, bool]:
-        f: Callable[..., Tuple[Iterable[_T], int, bool]] = cast(Any, super()).fetch_page
+    def fetch_page(
+        self, *args: Any, **kwargs: Any
+    ) -> Tuple[Iterable[_T_Model], int, bool]:
+        f: Callable[..., Tuple[Iterable[_T_Model], int, bool]] = cast(
+            Any, super()
+        ).fetch_page
         return f(*args, **kwargs)
 
     @overload
-    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key]:
+    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:  # type: ignore
         """ Special signature for a key-only get """
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T]:
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
         ...
 
-    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key, _T]:  # type: ignore
-        f: Callable[..., Union[None, Key, _T]] = cast(Any, super()).get
+    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:  # type: ignore
+        f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
         return f(*args, **kwargs)
 
     def count(self, *args: Any, **kwargs: Any) -> int:
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key]:
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:  # type: ignore
         """ Special signature for key-only iteration """
         ...
 
     @overload
-    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T]:
+    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]:
         ...
 
-    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T]]:  # type: ignore
-        f: Callable[..., Union[Iterable[Key], Iterable[_T]]] = cast(Any, super()).iter
+    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T_Model]]:  # type: ignore
+        f: Callable[..., Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]] = cast(
+            Any, super()
+        ).iter
         return f(*args, **kwargs)
 
 
@@ -207,21 +219,21 @@ class Future(Generic[_T], ndb.Future):
         cast(Any, ndb.Future).wait_all(futures)
 
 
-class Key(ndb.Key):
+class Key(Generic[_T_Model], ndb.Key):
 
     """A type-safer wrapper around ndb.Key"""
 
     def id(self) -> str:
         return cast(str, super().id())
 
-    def parent(self) -> Optional[Key]:
-        return cast(Optional[Key], super().parent())
+    def parent(self) -> Optional[Key[_T_Model]]:
+        return cast(Optional[Key[_T_Model]], super().parent())
+
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
+        return cast(Optional[_T_Model], super().get(*args, **kwargs))  # type: ignore
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
         cast(Any, super()).delete(*args, **kwargs)
-
-
-_T_Model = TypeVar("_T_Model", bound="Model")
 
 
 class Model(ndb.Model):
@@ -229,10 +241,10 @@ class Model(ndb.Model):
     """A type-safer wrapper around ndb.Model"""
 
     @property
-    def key(self) -> Key:
-        return cast(Key, cast(Any, super()).key)
+    def key(self) -> Key[_T_Model]:
+        return cast(Key[_T_Model], cast(Any, super()).key)
 
-    def put(self, **kwargs: Any) -> Key:
+    def put(self, **kwargs: Any) -> Key[_T_Model]:
         return cast(Any, super()).put(**kwargs)
 
     @classmethod
@@ -250,13 +262,17 @@ class Model(ndb.Model):
         return cast(Query[_T_Model], cast(Any, super()).query(*args, **kwargs))
 
     @staticmethod
-    def DbKey(kind: Type[_T_Model], indexed: bool = True) -> Key:
-        return cast(Key, ndb.KeyProperty(kind=kind, required=True, indexed=indexed))
+    def DbKey(kind: Type[_T_Model], indexed: bool = True) -> Key[_T_Model]:
+        return cast(
+            Key[_T_Model], ndb.KeyProperty(kind=kind, required=True, indexed=indexed)
+        )
 
     @staticmethod
-    def OptionalDbKey(kind: Type[_T_Model], indexed: bool = True) -> Optional[Key]:
+    def OptionalDbKey(
+        kind: Type[_T_Model], indexed: bool = True
+    ) -> Optional[Key[_T_Model]]:
         return cast(
-            Optional[Key],
+            Optional[Key[_T_Model]],
             ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
         )
 
@@ -382,11 +398,11 @@ class Unique:
 
 
 def iter_q(
-    q: Query[_T],
+    q: Query[_T_Model],
     chunk_size: int = 50,
     limit: int = 0,
     projection: Optional[List[str]] = None,
-) -> Iterator[_T]:
+) -> Iterator[_T_Model]:
     """Generator for iterating through a query using a cursor"""
     if 0 < limit < chunk_size:
         # Don't fetch more than we want
@@ -409,12 +425,12 @@ def iter_q(
         )
 
 
-def put_multi(recs: Iterable[Model]) -> None:
+def put_multi(recs: Iterable[_T_Model]) -> None:
     """Type-safer call to ndb.put_multi()"""
     cast(Any, ndb).put_multi(recs)
 
 
-def delete_multi(keys: Iterable[Key]) -> None:
+def delete_multi(keys: Iterable[Key[_T_Model]]) -> None:
     """Type-safer call to ndb.delete_multi()"""
     cast(Any, ndb).delete_multi(keys)
 
@@ -541,7 +557,7 @@ class UserModel(Model):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys = [Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
+            keys: List[Key[UserModel]] = [Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
             len_keys = len(keys)
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
@@ -635,8 +651,7 @@ class UserModel(Model):
         counter = 0
 
         # Return users with nicknames matching the prefix
-        q: Query[UserModel]
-        q = cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc)
+        q = cast(Query[UserModel], cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc))
         q = cls.filter_locale(q, locale)
 
         for ud in list_q(q, lambda um: um.nick_lc or ""):
@@ -647,7 +662,7 @@ class UserModel(Model):
                 return
 
         # Return users with full names matching the prefix
-        q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
+        q = cast(Query[UserModel], cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc))
         q = cls.filter_locale(q, locale)
 
         um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
@@ -680,15 +695,14 @@ class UserModel(Model):
                         return
 
         # Descending order
-        q: Query[UserModel]
-        q = cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo)
+        q = cast(Query[UserModel], cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo))
         q = cls.filter_locale(q, locale)
         lower = list(fetch(q, max_len))
         # Convert to an ascending list
         lower.reverse()
         # Repeat the query for same or higher rating
         # Ascending order
-        q = cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo)
+        q = cast(Query[UserModel], cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo))
         q = cls.filter_locale(q, locale)
         higher = list(fetch(q, max_len))
         # Concatenate the upper part of the lower range with the
@@ -802,7 +816,7 @@ class GameModel(Model):
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
-        k = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
         if ix == 0:
             self.player0 = k
         elif ix == 1:
@@ -871,14 +885,11 @@ class GameModel(Model):
                 prefs=gm.prefs,
             )
 
-        k = Key(UserModel, user_id)
-
-        q0: Query[GameModel]
-        q1: Query[GameModel]
+        k: Key[UserModel] = Key(UserModel, user_id)
 
         if versus:
             # Add a filter on the opponent
-            v = Key(UserModel, versus)
+            v: Key[UserModel] = Key(UserModel, versus)
             q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
             q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
         else:
@@ -910,9 +921,9 @@ class GameModel(Model):
         """Query for a list of active games for the given user"""
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         # pylint: disable=singleton-comparison
-        q: Query[GameModel] = (
+        q = (
             cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(
                 GameModel.over == False
             )
@@ -972,7 +983,7 @@ class FavoriteModel(Model):
 
     def set_dest(self, user_id: str) -> None:
         """Set a destination user key property"""
-        k = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
@@ -983,8 +994,8 @@ class FavoriteModel(Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
-        q: Query[FavoriteModel] = cls.query(ancestor=k)
+        k: Optional[Key[UserModel]] = Key(UserModel, user_id)
+        q = cls.query(ancestor=k)
         for fm in q.fetch(max_len, read_consistency=cast(Any, ndb).EVENTUAL):
             if fm.destuser is not None:
                 yield fm.destuser.id()
@@ -996,11 +1007,9 @@ class FavoriteModel(Model):
         """Return True if destuser is a favorite of user"""
         if srcuser_id is None or destuser_id is None:
             return False
-        ks = Key(UserModel, srcuser_id)
-        kd = Key(UserModel, destuser_id)
-        q: Query[FavoriteModel] = cls.query(ancestor=ks).filter(
-            FavoriteModel.destuser == kd
-        )
+        ks: Key[UserModel] = Key(UserModel, srcuser_id)
+        kd: Key[UserModel] = Key(UserModel, destuser_id)
+        q = cls.query(ancestor=ks).filter(FavoriteModel.destuser == kd)
         return q.get(keys_only=True) is not None
 
     @classmethod
@@ -1013,14 +1022,12 @@ class FavoriteModel(Model):
     @classmethod
     def del_relation(cls, src_id: str, dest_id: str) -> None:
         """Delete a favorite relation between a source user and a destination user"""
-        ks = Key(UserModel, src_id)
-        kd = Key(UserModel, dest_id)
+        ks: Key[UserModel] = Key(UserModel, src_id)
+        kd: Key[UserModel] = Key(UserModel, dest_id)
         while True:
             # There might conceivably be more than one relation,
             # so repeat the query/delete cycle until we don't find any more
-            q: Query[FavoriteModel] = cls.query(ancestor=ks).filter(
-                FavoriteModel.destuser == kd
-            )
+            q = cls.query(ancestor=ks).filter(FavoriteModel.destuser == kd)
             fmk = q.get(keys_only=True)
             if fmk is None:
                 return
@@ -1044,7 +1051,7 @@ class ChallengeModel(Model):
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """Set a destination user key property"""
-        k = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
@@ -1054,9 +1061,9 @@ class ChallengeModel(Model):
         """Return True if srcuser has issued a challenge to destuser"""
         if srcuser_id is None or destuser_id is None:
             return False
-        ks = Key(UserModel, srcuser_id)
-        kd = Key(UserModel, destuser_id)
-        q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
+        ks: Key[UserModel] = Key(UserModel, srcuser_id)
+        kd: Key[UserModel] = Key(UserModel, destuser_id)
+        q = cls.query(ancestor=ks).filter(
             ChallengeModel.destuser == kd
         )
         return q.get(keys_only=True) is not None
@@ -1069,11 +1076,9 @@ class ChallengeModel(Model):
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
             return (False, None)
-        ks = Key(UserModel, srcuser_id)
-        kd = Key(UserModel, destuser_id)
-        q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
-            ChallengeModel.destuser == kd
-        )
+        ks: Key[UserModel] = Key(UserModel, srcuser_id)
+        kd: Key[UserModel] = Key(UserModel, destuser_id)
+        q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
         cm = q.get()
         if cm is None:
             # Not found
@@ -1097,8 +1102,8 @@ class ChallengeModel(Model):
         cls, src_id: str, dest_id: str, key: Optional[str]
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Delete a challenge relation between a source user and a destination user"""
-        ks = Key(UserModel, src_id)
-        kd = Key(UserModel, dest_id)
+        ks: Key[UserModel] = Key(UserModel, src_id)
+        kd: Key[UserModel] = Key(UserModel, dest_id)
         if key:
             # We have the key of a particular challenge: operate on it directly
             cm = ChallengeModel.get_by_id(key, parent=ks)
@@ -1112,9 +1117,7 @@ class ChallengeModel(Model):
         while True:
             # There might conceivably be more than one relation,
             # so repeat the query/delete cycle until we don't find any more
-            q: Query[ChallengeModel] = cls.query(ancestor=ks).filter(
-                ChallengeModel.destuser == kd
-            )
+            q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
             cm = q.get()
             if cm is None:
                 # Return the preferences of the challenge, if any
@@ -1131,9 +1134,9 @@ class ChallengeModel(Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         # List issued challenges in ascending order by timestamp (oldest first)
-        q: Query[ChallengeModel] = cls.query(ancestor=k).order(ChallengeModel.timestamp)
+        q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """Map an issued challenge to a tuple of useful info"""
@@ -1151,11 +1154,9 @@ class ChallengeModel(Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         # List received challenges in ascending order by timestamp (oldest first)
-        q: Query[ChallengeModel] = cls.query(ChallengeModel.destuser == k).order(
-            ChallengeModel.timestamp
-        )
+        q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """Map a received challenge to a tuple of useful info"""
@@ -1207,7 +1208,7 @@ class StatsModel(Model):
 
     def set_user(self, user_id: Optional[str], robot_level: int = 0) -> None:
         """Set the user key property"""
-        k = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
         self.user = k
         self.robot_level = robot_level
 
@@ -1330,7 +1331,7 @@ class StatsModel(Model):
         # Use descending Elo order
         # Ndb doesn't allow us to put an inequality filter on the timestamp here
         # so we need to fetch irrespective of timestamp and manually filter
-        q: Query[StatsModel] = cls.query().order(-prop)
+        q = cls.query().order(-prop)
 
         result: Dict[str, StatsDict] = dict()
         CHUNK_SIZE = 100
@@ -1544,7 +1545,7 @@ class StatsModel(Model):
         """Returns the newest available stats record for the user"""
         if user_id is None:
             return None
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         # Use a common query structure and index for humans and robots
         q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)).order(
             -cast(int, StatsModel.timestamp)
@@ -1560,7 +1561,7 @@ class StatsModel(Model):
         """Returns stats for the last N days for a given user"""
         if not user_id or days <= 0:
             return []
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         now = datetime.utcnow()
         q = (
             cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k))
@@ -1580,7 +1581,7 @@ class StatsModel(Model):
         """Delete all stats records for a particular user"""
         if not user_id:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         delete_multi(
             cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)).iter(
                 keys_only=True
@@ -1636,7 +1637,7 @@ class RatingModel(Model):
     @classmethod
     def get_or_create(cls, kind: str, rank: int) -> RatingModel:
         """Get an existing entity or create a new one if it doesn't exist"""
-        k = Key(cls, kind + ":" + str(rank))
+        k: Key[RatingModel] = Key(cls, kind + ":" + str(rank))
         rm = k.get()
         if rm is None:
             # Did not already exist in the database:
@@ -1659,9 +1660,7 @@ class RatingModel(Model):
     def list_rating(cls, kind: str) -> Iterator[Dict[str, Any]]:
         """Iterate through the rating table of a given kind, in ascending order by rank"""
         CHUNK_SIZE = 100
-        q: Query[RatingModel] = cls.query(RatingModel.kind == kind).order(
-            RatingModel.rank
-        )
+        q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
         for rm in iter_q(q, CHUNK_SIZE, limit=100):
             v: Dict[str, Union[str, Optional[int]]] = dict(
                 rank=rm.rank,
@@ -1819,7 +1818,7 @@ class ChatModel(Model):
 
         # Create two queries, on the user and recipient fields,
         # and interleave their results by timestamp
-        user = Key(UserModel, for_user)
+        user: Key[UserModel] = Key(UserModel, for_user)
         # Messages where this user is the originator
         q1 = cls.query(ChatModel.user == user).order(-cast(int, ChatModel.timestamp))
         # Messages where this user is the recipient
@@ -1908,13 +1907,13 @@ class ChatModel(Model):
         """ Delete all ChatModel entries for a particular user """
         if not user_id:
             return
-        user = Key(UserModel, user_id)
+        user: Key[UserModel] = Key(UserModel, user_id)
 
-        def keys_to_delete() -> Iterator[Key]:
+        def keys_to_delete() -> Iterator[Key[ChatModel]]:
             for key in cls.query(ChatModel.user == user).iter(keys_only=True):
-                yield key
+                yield cast(Key[ChatModel], key)
             for key in cls.query(ChatModel.recipient == user).iter(keys_only=True):
-                yield key
+                yield cast(Key[ChatModel], key)
 
         delete_multi(keys_to_delete())
 
@@ -1930,11 +1929,15 @@ class ZombieModel(Model):
 
     def set_player(self, user_id: Optional[str]) -> None:
         """Set the player's user id"""
-        self.player = cast(Key, None) if user_id is None else Key(UserModel, user_id)
+        self.player = (
+            cast(Key[UserModel], None) if user_id is None else Key(UserModel, user_id)
+        )
 
     def set_game(self, game_id: Optional[str]) -> None:
         """Set the game id"""
-        self.game = cast(Key, None) if game_id is None else Key(GameModel, game_id)
+        self.game = (
+            cast(Key[GameModel], None) if game_id is None else Key(GameModel, game_id)
+        )
 
     @classmethod
     def add_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
@@ -1947,8 +1950,8 @@ class ZombieModel(Model):
     @classmethod
     def del_game(cls, game_id: Optional[str], user_id: Optional[str]) -> None:
         """Delete a zombie game after the player has seen it"""
-        kg = Key(GameModel, game_id)
-        kp = Key(UserModel, user_id)
+        kg: Key[GameModel] = Key(GameModel, game_id)
+        kp: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ZombieModel.game == kg).filter(ZombieModel.player == kp)
         zmk = q.get(keys_only=True)
         if not zmk:
@@ -1962,7 +1965,7 @@ class ZombieModel(Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ZombieModel.player == k)
 
         def z_callback(zm: ZombieModel) -> Optional[Dict[str, Any]]:
@@ -2029,7 +2032,7 @@ class PromoModel(Model):
         assert user_id is not None
         if user_id is None:
             return
-        k = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
 
         for pm in q.fetch(projection=["timestamp"]):
@@ -2100,8 +2103,8 @@ class BlockModel(Model):
         """Query for a list of blocked users for the given user"""
         if not user_id:
             return
-        k = Key(UserModel, user_id)
-        q: Query[BlockModel] = cls.query(BlockModel.blocker == k)
+        k: Key[UserModel] = Key(UserModel, user_id)
+        q = cls.query(BlockModel.blocker == k)
         for bm in q.fetch(limit=max_len):
             yield bm.blocked.id()
 
@@ -2119,9 +2122,9 @@ class BlockModel(Model):
     @classmethod
     def unblock_user(cls, blocker_id: str, blocked_id: str) -> bool:
         """Remove a block"""
-        blocker = Key(UserModel, blocker_id)
-        blocked = Key(UserModel, blocked_id)
-        q: Query[BlockModel] = cls.query(
+        blocker: Key[UserModel] = Key(UserModel, blocker_id)
+        blocked: Key[UserModel] = Key(UserModel, blocked_id)
+        q = cls.query(
             ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
         )
         unblocked = False
@@ -2135,9 +2138,9 @@ class BlockModel(Model):
     @classmethod
     def is_blocking(cls, blocker_id: str, blocked_id: str) -> bool:
         """ Return True if the user blocker_id has blocked blocked_id """
-        blocker = Key(UserModel, blocker_id)
-        blocked = Key(UserModel, blocked_id)
-        q: Query[BlockModel] = cls.query(
+        blocker: Key[UserModel] = Key(UserModel, blocker_id)
+        blocked: Key[UserModel] = Key(UserModel, blocked_id)
+        q = cls.query(
             ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
         )
         return q.get(keys_only=True) is not None
