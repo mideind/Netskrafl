@@ -28,12 +28,19 @@ interface TileData {
   xchg: boolean;
   highlight?: 0 | 1;
 }
+
 type TileDict = { [index: string]: TileData; };
-type RackTile = [string, number]; // tile, score
+
+type RackTile = [
+  tile: string,
+  score: number
+];
+
 interface SavedTile {
   sq: string;
   tile: string;
 }
+
 type TileScoreDict = { [index: string]: number; };
 
 type Move = [
@@ -41,6 +48,7 @@ type Move = [
   summary: [coord: string, tiles: string, score: number],
   highlighted?: boolean
 ];
+
 type MoveDetail = [string];
 
 interface MoveListener {
@@ -434,9 +442,9 @@ class Game {
     // Initialize the game state with data from the server
     // Check whether the game is over, or whether there was an error
     this.over = srvGame.result == GAME_OVER;
-    if (this.over || srvGame.result === 0)
+    if (this.over || srvGame.result === 0) {
       this.currentError = this.currentMessage = null;
-    else {
+    } else {
       // Nonzero srvGame.result: something is wrong
       this.currentError = srvGame.result || "server";
       this.currentMessage = srvGame.msg || "";
@@ -456,6 +464,8 @@ class Game {
     this.isFresh = true;
     this.startSquare = START_SQUARE[this.board_type];
     this.startCoord = START_COORD[this.board_type];
+    // If the game is over and this player has more points than
+    // the opponent, congratulations are in order
     this.congratulate = this.over && this.player !== undefined &&
       (this.scores[this.player] > this.scores[1 - this.player]);
     if (this.currentError === null)

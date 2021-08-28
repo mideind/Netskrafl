@@ -4,9 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui, user-scalable=no">
+{% if project_id == 'netskrafl' %}
+<meta name="description" content="Spilaðu skrafl á netinu!">
+<meta name="application-name" content="Netskrafl">
+{% else %}
 <meta name="description" content="The crossword game for modern times">
 <meta name="application-name" content="Explo">
-
+{% endif %}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#d6d1c4">
@@ -30,10 +34,11 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg?v=XBz9pj9XYx" color="#d6d1c4">
 <link rel="shortcut icon" href="/favicon.ico?v=XBz9pj9XYx">
 
-<!-- Progressive Web App manifest -->
-<!-- <link rel="manifest" href="{{ url_for('web.static', filename='manifest.json') }}"> -->
-
+{% if project_id == 'netskrafl' %}
+<title>Netskrafl</title>
+{% else %}
 <title>Explo</title>
+{% endif %}
 
 <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,700italic'
    rel='stylesheet' type='text/css' media="all">
@@ -64,20 +69,24 @@
 
    <div class="container" id="container">
 
+{% if project_id == 'netskrafl' %}
+
+      <noscript>
+         <p>Netskrafl notar JavaScript, sem hefur verið tekið úr sambandi
+         á þessum vefrápara. Þú þarft að leyfa JavaScript með stillingu
+         á vefráparanum til að geta notað Netskrafl.</p>
+      </noscript>
+
+{% else %}
+
       <noscript>
          <p>Explo uses JavaScript, which has been disabled on your web browser.
          You need to allow JavaScript in your browser to be able to play Explo.</p>
       </noscript>
 
-{% block logo %}
-{% endblock %}
+{% endif %}
 
-{% block info %}
-      <div class="info" title="Upplýsingar og hjálp">
-         <a class="iconlink" href="{{ url_for('web.help') }}">
-            <span class="glyphicon glyphicon-info-sign"></span>
-         </a>
-      </div>
+{% block logo %}
 {% endblock %}
 
 {% block content %}
@@ -85,10 +94,12 @@
 
    </div> <!-- container -->
 
-{%- block media -%}
-{%- endblock -%}
-{%- block startscripts -%}
-{%- endblock -%}
+{% block media %}
+{% endblock %}
+
+{% block startscripts %}
+{% endblock %}
+
 {% block libscripts %}
 {% endblock %}
 

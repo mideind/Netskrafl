@@ -388,27 +388,28 @@
 
    div.word-check {
       display: block;
-      width: 48px;
-      height: 48px;
+      width: 46px;
+      height: 46px;
       font-size: 26px;
-      line-height: 48px;
+      line-height: 46px;
       top: auto;
       bottom: 273px;
-      left: 648px;
+      left: 649px;
       border-radius: 5px;
    }
 
    div.score {
       display: block;
-      width: 48px;
-      height: 48px;
+      width: 46px;
+      height: 46px;
       font-size: 24px;
-      line-height: 48px;
+      line-height: 46px;
       top: auto;
-      bottom: 206px;
-      left: 648px;
+      bottom: 211px;
+      left: 649px;
       border-radius: 5px;
       font-family: @tile-font;
+      .noselect;
    }
 
    .standard-button {
@@ -466,8 +467,8 @@
    }
 
    div.submitmove span.glyphicon-play {
-      top: 3px;
-      left: 3px;
+      top: 4px;
+      left: 6px;
    }
 
    div.submitmove.error-shown {
@@ -589,12 +590,13 @@
    }
 
    div.scorewrapper {
-      background-color: @message-background;
+      background-color: @score-background;
    }
 
    div.scoreleft {
       position: relative;
-      width: 145px;
+      width: 144px;
+      padding-left: 6px;
       height: auto;
       top: auto;
       left: auto;
@@ -606,7 +608,7 @@
 
    div.scoreright {
       position: relative;
-      width: 145px;
+      width: 144px;
       height: auto;
       top: auto;
       left: auto;
@@ -631,13 +633,13 @@
    }
 
    div.player-btn.left {
-      padding-left: 6px;
+      padding-left: 2px;
       padding-right: 2px;
    }
 
    div.player-btn.right {
       padding-left: 2px;
-      padding-right: 4px; /* Note: purposefully asymmetric with the .left case */
+      padding-right: 6px;
    }
 
    div.robot-btn {
@@ -1174,17 +1176,21 @@
    }
 
    div.challenge {
-      display: none;
       width: 48px;
       height: 48px;
       top: auto;
-      bottom: 204px;
-      left: 644px;
-      vertical-align: middle;
+      bottom: 211px;
+      left: 649px;
+      text-align: center;
+      font-size: 26px;
+      line-height: 48px;
+      font-weight: 700;
       color: white;
       background-color: @chall-btn;
-      border: 2px solid @chall-btn;
-      border-radius: 5px;
+      padding: 0;
+      border: 0px;
+      cursor: pointer;
+      .noselect;
    }
 
    div.over {

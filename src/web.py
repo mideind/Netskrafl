@@ -29,11 +29,7 @@ from typing import (
     cast,
 )
 
-import os
 import logging
-import random
-
-from datetime import datetime, timedelta
 
 from flask import (
     Blueprint,
@@ -61,7 +57,7 @@ from basics import (
     VALID_ISSUERS,
 )
 from skraflgame import User
-from skrafldb import PromoModel
+# from skrafldb import PromoModel
 import billing
 import firebase
 from cache import memcache
@@ -76,17 +72,9 @@ GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
 
 # Promotion parameters
 # A promo check is done randomly, but on average every 1 out of N times
-_PROMO_FREQUENCY = 8
-_PROMO_COUNT = 2  # Max number of times that the same promo is displayed
-_PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
-
-# Set to True to make the single-page UI the default
-_SINGLE_PAGE_UI = os.environ.get("SINGLE_PAGE", "false").lower() in {
-    "true",
-    "yes",
-    "on",
-    "1",
-}
+# _PROMO_FREQUENCY = 8
+# _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
+# _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # Register the Flask blueprint for the web routes
 web_blueprint = Blueprint(
@@ -235,15 +223,6 @@ def handle_billing() -> ResponseType:
     return billing.handle(request, uid)
 
 
-# pylint: disable=redefined-builtin
-@web.route("/help")
-def help() -> ResponseType:
-    """ Show help page, which does not require authentication """
-    user = session_user()
-    # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab=None)
-
-
 @web.route("/rawhelp")
 def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
@@ -259,21 +238,6 @@ def rawhelp() -> ResponseType:
     return render_template("rawhelp.html", url_for=override_url_for)
 
 
-@web.route("/twoletter")
-def twoletter() -> ResponseType:
-    """ Show help page. Authentication is not required. """
-    user = session_user()
-    return render_template("nshelp.html", user=user, tab="twoletter")
-
-
-@web.route("/faq")
-def faq() -> ResponseType:
-    """ Show help page. Authentication is not required. """
-    user = session_user()
-    # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab="faq")
-
-
 @web.route("/page")
 @auth_required()
 def page() -> ResponseType:
@@ -285,21 +249,10 @@ def page() -> ResponseType:
     return render_template("page.html", user=user, firebase_token=firebase_token)
 
 
-@web.route("/newbag")
-def newbag() -> ResponseType:
-    """ Show help page. Authentication is not required. """
-    user = session_user()
-    # We tolerate a null (not logged in) user here
-    return render_template("nshelp.html", user=user, tab="newbag")
-
-
 @web.route("/greet")
 def greet() -> ResponseType:
     """ Handler for the greeting page """
-    return render_template(
-        "login-explo.html",
-        single_page=_SINGLE_PAGE_UI,
-    )
+    return render_template("login-explo.html")
 
 
 @web.route("/login")
@@ -334,8 +287,7 @@ def oauth2callback() -> ResponseType:
 
     if not login_user():
         return redirect(url_for("web.login_error"))
-    main_url = url_for("web.page") if _SINGLE_PAGE_UI else url_for("web.main")
-    return redirect(main_url)
+    return redirect(url_for("web.page"))
 
 
 @web.route("/service-worker.js")
@@ -349,65 +301,8 @@ def service_worker() -> ResponseType:
 def main() -> ResponseType:
     """ Handler for the main (index) page """
 
-    if _SINGLE_PAGE_UI:
-        # Redirect to the single page UI
-        return redirect(url_for("web.page"))
-
-    user = current_user()
-    assert user is not None
-
-    # Initial tab to show, if any
-    tab = request.args.get("tab", None)
-
-    uid = user.id() or ""
-
-    # Create a Firebase token for the logged-in user
-    # to enable refreshing of the client page when
-    # the user state changes (game moves made, challenges
-    # issued or accepted, etc.)
-    firebase_token = firebase.create_custom_token(uid)
-
-    # Promotion display logic
-    promo_to_show = None
-    promos: List[datetime] = []
-    if random.randint(1, _PROMO_FREQUENCY) == 1:
-        # Once every N times, check whether this user may be due for
-        # a promotion display
-
-        # promo = 'krafla' # Un-comment this to enable promo
-
-        # The list_promotions call yields a list of timestamps
-        if promo_to_show:
-            promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
-            now = datetime.utcnow()
-            if len(promos) >= _PROMO_COUNT:
-                # Already seen too many of these
-                promo_to_show = None
-            elif promos and (now - promos[-1] < _PROMO_INTERVAL):
-                # Less than one interval since last promo was displayed:
-                # don't display this one
-                promo_to_show = None
-
-    if promo_to_show:
-        # Note the fact that we have displayed this promotion to this user
-        logging.info(
-            "Displaying promo {1} to user {0} who has already seen it {2} times".format(
-                uid, promo_to_show, len(promos)
-            )
-        )
-        PromoModel.add_promotion(uid, promo_to_show)
-
-    # Get earlier challenge, move and wait notifications out of the way
-    msg = {"challenge": None, "move": None, "wait": None}
-    firebase.send_message(msg, "user", uid)
-
-    return render_template(
-        "main.html",
-        user=user,
-        tab=tab,
-        firebase_token=firebase_token,
-        promo=promo_to_show,
-    )
+    # Redirect to the single page UI
+    return redirect(url_for("web.page"))
 
 
 # Cloud Scheduler routes - requests are only accepted when originated

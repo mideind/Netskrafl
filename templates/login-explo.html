@@ -3,14 +3,15 @@
 
 {% block opengraph %}
 
-<meta property="og:locale" content="is_IS" />
 <meta property="og:type" content="website" />
+{% if project_id == 'netskrafl' %}
+<meta property="og:locale" content="is_IS" />
 <meta property="og:site_name" content="Netskrafl" />
 <meta property="og:description" content="Spilaðu skrafl á netinu" />
-<meta property="og:image" content="{{ url_for('web.static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
-<meta property="og:image:type" content="image/jpeg" />
-<meta property="og:image:width" content="600" />
-<meta property="og:image:height" content="600" />
+{% else %}
+<meta property="og:site_name" content="Explo">
+<meta property="og:description" content="The crossword game for modern times">
+{% endif %}
 
 {% endblock %}
 
@@ -37,10 +38,6 @@
 
 {% block logo %}
 <!-- No logo -->
-{% endblock %}
-
-{% block info %}
-<!-- No info button -->
 {% endblock %}
 
 {% block content %}

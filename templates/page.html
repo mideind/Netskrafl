@@ -1,9 +1,21 @@
 
 {% extends "container-base-explo.html" %}
 
+{% block opengraph %}
+
+<meta property="og:type" content="website" />
+{% if project_id == 'netskrafl' %}
+<meta property="og:locale" content="is_IS" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:description" content="Spilaðu skrafl á netinu" />
+{% else %}
+<meta property="og:site_name" content="Explo">
+<meta property="og:description" content="The crossword game for modern times">
+{% endif %}
+
+{% endblock %}
+
 {% block styles %}
-<!-- <link href="<< url_for('web.static', filename='jquery-ui.css') >>"
-   rel="stylesheet" type="text/css" media="all"> -->
 {% endblock %}
 
 {% block content %}
