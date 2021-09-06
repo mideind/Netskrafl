@@ -924,7 +924,13 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             nick = Game.autoplayer_name(g["robot_level"], locale)
         else:
             # Human opponent
-            u = opponents[opp]  # Was User.load(opp)
+            try:
+                u = opponents[opp]
+            except KeyError:
+                # This should not happen, but try to cope nevertheless
+                u = User.load_if_exists(opp)
+                if u is None:
+                    continue
             nick = u.nickname()
             fullname = u.full_name()
             delta = now - ts
@@ -1082,7 +1088,12 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
             nick = Game.autoplayer_name(g["robot_level"], locale)
         else:
             # Human opponent
-            u = opponents[opp]  # Was User.load(opp)
+            try:
+                u = opponents[opp]
+            except KeyError:
+                u = User.load_if_exists(opp)
+                if u is None:
+                    continue
             nick = u.nickname()
 
         # Calculate the duration of the game in days, hours, minutes
