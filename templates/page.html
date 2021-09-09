@@ -59,6 +59,7 @@ var $state = {
    userId: "{{ '' if user == None else user.id() }}",
    userNick: "{{ '' if user == None else user.nickname() }}",
    userFullname: "{{ '' if user == None else user.full_name() }}",
+   isExplo: {{ 'false' if project_id == 'netskrafl' else 'true' }},
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},
    fairPlay: {{ 'true' if user and user.fairplay() else 'false' }},
    newBag: {{ 'false' if user and not user.new_bag() else 'true' }},

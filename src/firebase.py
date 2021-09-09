@@ -51,14 +51,20 @@ _LIFETIME_REDIS_CACHE = 10  # Minutes
 
 _HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
 
+_USERLIST_LOCK = threading.Lock()
+
 # Initialize thread-local storage
 _tls = threading.local()
 
+_firebase_app: Optional[App] = None
+_firebase_app_lock = threading.Lock()
 
-def _get_http() -> httplib2.Http:
+
+def _get_http() -> Optional[httplib2.Http]:
     """ Provides an authorized HTTP object, one per thread """
-    if not hasattr(_tls, "_HTTP") or _tls._HTTP is None:
-        http: httplib2.Http = cast(Any, httplib2).Http(timeout=_TIMEOUT)
+    http: Optional[httplib2.Http] = getattr(_tls, "_HTTP", None)
+    if http is None:
+        http = cast(Any, httplib2).Http(timeout=_TIMEOUT)
         # Use application default credentials to make the Firebase calls
         # https://firebase.google.com/docs/reference/rest/database/user-auth
         creds = (
@@ -69,7 +75,7 @@ def _get_http() -> httplib2.Http:
         creds.authorize(http)
         creds.refresh(http)
         _tls._HTTP = http
-    return _tls._HTTP
+    return http
 
 
 def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
@@ -82,7 +88,9 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
         try:
             kw: Dict[str, Any] = kwargs.copy()
             kw["headers"] = _HEADERS
-            response, content = cast(Any, _get_http()).request(*args, **kw)
+            if (http := _get_http()) is None:
+                raise ValueError("Unable to obtain http object")
+            response, content = cast(Any, http).request(*args, **kw)
             assert isinstance(content, bytes)
             return response, content
         except ConnectionError:
@@ -103,6 +111,16 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
         attempts += 1
     # Should not get here
     assert False, "Unexpected fall out of loop in firebase._request()"
+
+
+def _init_firebase_app():
+    """ Initialize a global Firebase app instance """
+    global _firebase_app
+    with _firebase_app_lock:
+        if _firebase_app is None:
+            _firebase_app = initialize_app(
+                options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
+            )
 
 
 def _firebase_put(  # type: ignore
@@ -216,9 +234,6 @@ def check_presence(user_id: str) -> bool:
         return False
 
 
-_USERLIST_LOCK = threading.Lock()
-
-
 def get_connected_users() -> Set[str]:
     """ Return a set of all presently connected users """
     with _USERLIST_LOCK:
@@ -241,19 +256,13 @@ def get_connected_users() -> Set[str]:
         return set(msg.keys())
 
 
-_firebase_app: Optional[App] = None
-
-
-def create_custom_token(uid: str, valid_minutes: int = 60) -> bytes:
+def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     """ Create a secure token for the given id.
         This method is used to create secure custom JWT tokens to be passed to
         clients. It takes a unique id that will be used by Firebase's
         security rules to prevent unauthorized access. """
-    global _firebase_app
-    if _firebase_app is None:
-        _firebase_app = initialize_app(
-            options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
-        )
+    # Make sure that the Firebase app instance has been initialized
+    _init_firebase_app()
     attempts = 0
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:

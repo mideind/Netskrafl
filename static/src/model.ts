@@ -24,7 +24,7 @@ export {
 
 import { Game, ServerGame, Move, RackTile  } from "game";
 
-import { m } from "mithril";
+import { m, RequestArgs } from "mithril";
 
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;
@@ -176,6 +176,7 @@ interface GlobalState {
   userId: string;
   userNick: string;
   userFullname: string;
+  isExplo: boolean;
   beginner: boolean;
   fairPlay: boolean;
   newBag: boolean;
@@ -659,11 +660,22 @@ class Model {
   async newGame(oppid: string, reverse: boolean) {
     // Ask the server to initiate a new game against the given opponent
     try {
-      const json: { ok: boolean; uuid: string; } = await m.request({
+      var rqBody: {
+        opp: string;
+        rev: boolean;
+        board_type?: string
+      } = { opp: oppid, rev: reverse };
+      if (this.state.isExplo) {
+        // On an Explo client, always use the Explo board,
+        // regardless of the user's locale setting
+        rqBody.board_type = "explo";
+      }
+      const rq: RequestArgs = {
         method: "POST",
         url: "/initgame",
-        body: { opp: oppid, rev: reverse }
-      });
+        body: rqBody
+      };
+      const json: { ok: boolean; uuid: string; } = await m.request(rq);
       if (json?.ok) {
         // Go to the newly created game
         m.route.set("/game/" + json.uuid);

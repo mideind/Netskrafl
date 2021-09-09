@@ -10,7 +10,7 @@ export {
   m, Vnode, CustomVnode, VnodeAttrs,
   Component, ComponentFunc, EventHandler,
   MithrilEvent, MithrilDragEvent,
-  VnodeChildren
+  VnodeChildren, RequestArgs
 };
 
 type mClass = string | typeof Link;

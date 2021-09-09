@@ -418,6 +418,20 @@ def logout() -> ResponseType:
     return jsonify({"status": "success"})
 
 
+@api.route("/firebase_token", methods=["POST"])
+@auth_required(ok=False)
+def firebase_token() -> ResponseType:
+    """ Obtain a custom Firebase token for the current logged-in user """
+    cuid = current_user_id()
+    if not cuid:
+        return jsonify(ok=False)
+    try:
+        token = firebase.create_custom_token(cuid)
+        return jsonify(ok=True, token=token)
+    except:
+        return jsonify(ok=False)
+
+
 def _process_move(
     game: Game, movelist: Iterable[str], *, force_resign: bool = False
 ) -> ResponseType:
