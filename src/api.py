@@ -427,7 +427,10 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
     try:
         token = firebase.create_custom_token(cuid)
-        return jsonify(ok=True, token=token)
+        # !!! TODO: Temporary hack to accommodate client
+        # Correct code for future use:
+        # return jsonify(ok=True, token=token)
+        return jsonify(ok=True, id=token, token=token)
     except:
         return jsonify(ok=False)
 
