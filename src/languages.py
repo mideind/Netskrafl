@@ -27,12 +27,15 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Type, NamedTuple, Callable, Any
+from typing import Dict, List, Optional, Tuple, Type, NamedTuple, Callable, TypeVar, overload
 
 import abc
 import functools
 from datetime import datetime
 from contextvars import ContextVar
+
+
+_T = TypeVar("_T")
 
 
 class Alphabet(abc.ABC):
@@ -65,9 +68,13 @@ class Alphabet(abc.ABC):
 
         # Map both lower and upper case (full) alphabets
         # to consecutive sort values, starting with ord(first_char_of_alphabet)
-        self.sortval_map = {ord(c): self.ord_first + ix for ix, c in enumerate(self.full_order)}
-        self.sortval_map.update({ord(c): self.ord_first + ix for ix, c in enumerate(self.full_upper)})
- 
+        self.sortval_map = {
+            ord(c): self.ord_first + ix for ix, c in enumerate(self.full_order)
+        }
+        self.sortval_map.update(
+            {ord(c): self.ord_first + ix for ix, c in enumerate(self.full_upper)}
+        )
+
         # Assemble a decoding dictionary where encoded indices are mapped to
         # characters, eventually with a suffixed vertical bar '|' to denote finality
         self.coding = {i: c for i, c in enumerate(self.order)}
@@ -98,12 +105,12 @@ class Alphabet(abc.ABC):
         return self.ord_offset + o
 
     def sortkey_nocase(self, lstr: str) -> List[int]:
-        """ Return a case-insensitive sort key for the given string """ 
+        """ Return a case-insensitive sort key for the given string """
         return [self.sortval(c) for c in lstr]
 
     def bit_pattern(self, word: str) -> int:
-        """Return a pattern of bits indicating which letters
-        are present in the word"""
+        """ Return a pattern of bits indicating which letters
+            are present in the word """
         bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
         lbit = self.letter_bit
         return functools.reduce(bitwise_or, (lbit[c] for c in word), 0)
@@ -113,8 +120,8 @@ class Alphabet(abc.ABC):
         return self.letter_bit[c]
 
     def all_bits_set(self) -> int:
-        """Return a bit pattern where the bits for all letters
-        in the Alphabet are set"""
+        """ Return a bit pattern where the bits for all letters
+            in the Alphabet are set """
         return 2 ** len(self.order) - 1
 
     def string_subtract(self, a: str, b: str) -> str:
@@ -186,7 +193,7 @@ EnglishAlphabet = _EnglishAlphabet()
 
 class _PolishAlphabet(Alphabet):
 
-    """ The Polish alphabet """ 
+    """ The Polish alphabet """
 
     order = "aąbcćdeęfghijklłmnńoóprsśtuwyzźż"
     upper = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ"
@@ -562,6 +569,7 @@ assert (
     == 187
 )
 
+
 class PolishTileSet(TileSet):
 
     """ Polish tile set """
@@ -681,13 +689,14 @@ ALPHABETS: Dict[str, Alphabet] = {
     # Everything else presently defaults to IcelandicAlphabet
 }
 
-# Mapping of locale code to vocabulary
+# Mapping of locale code to vocabulary,
+# also via dictionary subset category ('common' = common vocabulary, etc.)
 
-VOCABULARIES: Dict[str, str] = {
-    "is": "ordalisti",
-    "en": "sowpods",
-    "en_US": "otcwl2014",
-    "pl": "osps37",
+VOCABULARIES: Dict[str, Dict[str, str]] = {
+    "is": {"main": "ordalisti", "common": "amlodi", "medium": "midlungur"},
+    "en": {"main": "sowpods"},
+    "en_US": {"main": "otcwl2014"},
+    "pl": {"main": "osps37"},
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -717,17 +726,13 @@ SUPPORTED_LOCALES = frozenset(
     | LANGUAGES.keys()
 )
 
-Locale = NamedTuple(
-    "Locale",
-    [
-        ("lc", str),
-        ("language", str),
-        ("alphabet", Alphabet),
-        ("tileset", Type[TileSet]),
-        ("vocabulary", str),
-        ("board_type", str),
-    ],
-)
+class Locale(NamedTuple):
+    lc: str
+    language: str
+    alphabet: Alphabet
+    tileset: Type[TileSet]
+    vocabulary: str
+    board_type: str
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
@@ -743,10 +748,17 @@ current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tile
 current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
 current_board_type: Callable[[], str] = lambda: current_locale.get().board_type
 
+@overload
+def dget(d: Dict[str, _T], key: str) -> Optional[_T]:
+    ...
 
-def dget(d: Dict[str, Any], key: str, default: Any) -> Any:
-    """Retrieve value from dictionary by locale code, as precisely as possible,
-    i.e. trying 'is_IS' first, then 'is', before giving up"""
+@overload
+def dget(d: Dict[str, _T], key: str, default: _T) -> _T:
+    ...
+
+def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
+    """ Retrieve value from dictionary by locale code, as precisely as possible,
+        i.e. trying 'is_IS' first, then 'is', before giving up """
     val = d.get(key)
     while val is None:
         key = "".join(key.split("_")[0:-1])
@@ -767,9 +779,16 @@ def tileset_for_locale(lc: str) -> Type[TileSet]:
     return dget(TILESETS, lc, default_locale.tileset)
 
 
-def vocabulary_for_locale(lc: str) -> str:
-    """ Return the identifier of the vocabulary for the given locale """
-    return dget(VOCABULARIES, lc, default_locale.vocabulary)
+def vocabulary_for_locale(lc: str, category: str = "main") -> str:
+    """ Return the name of the vocabulary for the given locale,
+        i.e. 'ordalisti' for is_IS. This can further include a
+        category, such as 'common' or 'medium' for constraining
+        vocabularies. """
+    d = dget(VOCABULARIES, lc)
+    if d is None:
+        d = dget(VOCABULARIES, default_locale.lc)
+        assert d is not None
+    return d.get(category, "")
 
 
 def board_type_for_locale(lc: str) -> str:
@@ -796,9 +815,9 @@ def set_locale(lc: str) -> None:
 
 
 def set_game_locale(lc: str) -> None:
-    """Override the current thread's locale context to correspond to a
-    particular game's locale. This doesn't change the UI language,
-    which remains tied to the logged-in user."""
+    """ Override the current thread's locale context to correspond to a
+        particular game's locale. This doesn't change the UI language,
+        which remains tied to the logged-in user. """
     locale = Locale(
         lc=lc,
         language=current_language(),

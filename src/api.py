@@ -82,10 +82,10 @@ from skraflmechanics import (
     ResignMove,
     ChallengeMove,
     Error,
-    SummaryTuple,
 )
+from skrafluser import User
+from skraflgame import BestMoveList, Game
 from skraflplayer import AutoPlayer
-from skraflgame import User, Game, AUTOPLAYERS
 from skrafldb import (
     ChatModel,
     ZombieModel,
@@ -142,8 +142,13 @@ class ChatHistoryDict(TypedDict):
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
-# To try to finish requests as soon as possible and avoid DeadlineExceeded
-# exceptions, run the AutoPlayer move generator serially and exclusively
+# Maximum number of best moves to return from /bestmoves
+# This is set to 19 moves because that number is what fits
+# in the move list of the fullscreen web version
+MAX_BEST_MOVES = 19
+
+# To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
+# exceptions, run the AutoPlayer move generators serially and exclusively
 # within an instance
 autoplayer_lock = threading.Lock()
 
@@ -595,25 +600,19 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         """ Return a string representation of an Elo score, or a hyphen if none """
         return str(elo) if elo else "-"
 
-    # We will be returning a list of human players
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
 
     if query == "robots":
         # Return the list of available autoplayers for the user's locale
         locale = "en" if cuser is None else cuser.locale
-        apl = AUTOPLAYERS.get(locale)
-        if apl is None:
-            if "_" in locale:
-                apl = AUTOPLAYERS.get(locale.split("_")[0])
-            if apl is None:
-                apl = AUTOPLAYERS["en"]
-        for r in apl:
+        aplist = AutoPlayer.for_locale(locale)
+        for r in aplist:
             result.append(
                 {
-                    "userid": "robot-" + str(r[2]),
-                    "nick": r[0],
-                    "fullname": r[1],
+                    "userid": "robot-" + str(r.level),
+                    "nick": r.name,
+                    "fullname": r.description,
                     "human_elo": elo_str(None),
                     "fav": False,
                     "chall": False,
@@ -938,7 +937,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         fullname = ""
         if opp is None:
             # Autoplayer opponent
-            nick = Game.autoplayer_name(g["robot_level"], locale)
+            nick = AutoPlayer.name(locale, g["robot_level"])
         else:
             # Human opponent
             try:
@@ -1019,7 +1018,7 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
             # for instance robot-15-en. If the locale is missing, use "is".
             a = uid.split("-")
             lc = a[2] if len(a) >= 3 else "is"
-            nick = Game.autoplayer_name(int(uid[6:]), lc)
+            nick = AutoPlayer.name(lc, int(uid[6:]))
             fullname = nick
             chall = False
             fairplay = False
@@ -1102,7 +1101,7 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
         if opp is None:
             # Autoplayer opponent
             u = None
-            nick = Game.autoplayer_name(g["robot_level"], locale)
+            nick = AutoPlayer.name(locale, g["robot_level"])
         else:
             # Human opponent
             try:
@@ -1193,7 +1192,8 @@ def _challengelist() -> List[Dict[str, Any]]:
     for c in received:
         if not (oppid := c[0]):
             continue
-        u = opponents[oppid]
+        if (u := opponents.get(oppid)) is None:  # User id
+            continue
         nick = u.nickname()
         result.append(
             {
@@ -1214,7 +1214,8 @@ def _challengelist() -> List[Dict[str, Any]]:
     for c in issued:
         if not (oppid := c[0]):
             continue
-        u = opponents[oppid]  # User id
+        if (u := opponents.get(oppid)) is None:  # User id
+            continue
         nick = u.nickname()
         result.append(
             {
@@ -2023,21 +2024,15 @@ def bestmoves() -> ResponseType:
     elif rq_move_number < 0:
         rq_move_number = 0
 
+    best_moves: BestMoveList = []
+
     state = game.state_after_move(move_number if move_number == 0 else move_number - 1)
     player_index = state.player_to_move()
 
-    best_moves: Optional[List[Tuple[int, SummaryTuple]]] = None
-    if game.allows_best_moves() and rq_move_number <= move_number:
-
+    if rq_move_number <= move_number:
         # Serialize access to the following section
         with autoplayer_lock:
-
-            # Show best moves if available and it is proper to do so (i.e. the game is finished)
-            apl = AutoPlayer(state)
-            # Ask for max 19 moves because that is what fits on screen
-            best_moves = [
-                (player_index, m.summary(state)) for m, _ in apl.generate_best_moves(19)
-            ]
+            best_moves = game.best_moves(state, MAX_BEST_MOVES)
 
     uid = user.id()
     if uid is not None and game.has_player(uid):

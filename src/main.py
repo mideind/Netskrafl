@@ -15,7 +15,8 @@
     The actual game logic is found in skraflplayer.py and
     skraflmechanics.py.
 
-    The User and Game classes are found in skraflgame.py.
+    The User and Game classes are found in skrafluser.py and skraflgame.py,
+    respectively.
 
     The web client code is found in static/src/page.ts and static/src/game.ts.
 
@@ -49,7 +50,8 @@ from flask_cors import CORS  # type: ignore
 
 from basics import (
     running_local,
-    host, port,
+    host,
+    port,
     ndb_wsgi_middleware,
     init_oauth,
     ResponseType,
@@ -70,20 +72,20 @@ if running_local:
     # Configure logging
     dictConfig(
         {
-            'version': 1,
-            'formatters': {
-                'default': {
-                    'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+            "version": 1,
+            "formatters": {
+                "default": {
+                    "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
                 }
             },
-            'handlers': {
-                'wsgi': {
-                    'class': 'logging.StreamHandler',
-                    'stream': 'ext://flask.logging.wsgi_errors_stream',
-                    'formatter': 'default',
+            "handlers": {
+                "wsgi": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://flask.logging.wsgi_errors_stream",
+                    "formatter": "default",
                 }
             },
-            'root': {'level': 'INFO', 'handlers': ['wsgi']},
+            "root": {"level": "INFO", "handlers": ["wsgi"]},
         }
     )
 
@@ -102,7 +104,11 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 CORS(
     app,
     supports_credentials=True,
-    origins=["http://explo.300dev.pl", "http://localhost:19006", "http://127.0.0.1:19006"],
+    origins=[
+        "http://explo.300dev.pl",
+        "http://localhost:19006",
+        "http://127.0.0.1:19006",
+    ],
 )
 
 # Flask configuration
@@ -199,7 +205,11 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")
-        if filename and filename.endswith((".js", ".css")) and not filename.startswith("built/"):
+        if (
+            filename
+            and filename.endswith((".js", ".css"))
+            and not filename.startswith("built/")
+        ):
             static_folder = web_blueprint.static_folder or "."
             param_name = "h"
             # Add underscores in front of the param name until it is unique
@@ -222,10 +232,10 @@ def warmup() -> ResponseType:
 @cast_app.route("/_ah/start")
 def start() -> ResponseType:
     """ App Engine is starting a fresh instance """
+    version = os.environ.get("GAE_VERSION", "N/A")
+    instance = os.environ.get("GAE_INSTANCE", "N/A")
     logging.info(
-        "Start, version {0}, instance {1}".format(
-            os.environ.get("GAE_VERSION", ""), os.environ.get("GAE_INSTANCE", "")
-        )
+        f"Start: version {version}, instance {instance}"
     )
     return "", 200
 
@@ -233,14 +243,15 @@ def start() -> ResponseType:
 @cast_app.route("/_ah/stop")
 def stop() -> ResponseType:
     """ App Engine is shutting down an instance """
-    logging.info("Stop, instance {0}".format(os.environ.get("GAE_INSTANCE", "")))
+    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    logging.info(f"Stop: instance {instance}")
     return "", 200
 
 
 @app.errorhandler(500)
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """ Return a custom 500 error """
-    return "Eftirfarandi villa kom upp: {}".format(e), 500
+    return f"<html><body><p>Eftirfarandi villa kom upp: {e}</p></body></html>", 500
 
 
 if not running_local:

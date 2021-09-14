@@ -44,7 +44,7 @@ Language-specific tile sets, bags and vocabularies are handled in ```languages.p
 
 The main Flask web server is in ```netskrafl.py```.
 
-The Game and User classes are found in ```skraflgame.py```.
+The Game and User classes are found in ```skraflgame.py``` and ```skrafluser.py```, respectively.
 
 The persistence layer, using the schemaless App Engine NDB database, is in ```skrafldb.py```.
 

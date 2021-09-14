@@ -49,7 +49,7 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
 from languages import set_locale
-from skraflgame import User
+from skrafluser import User
 from skrafldb import Client
 
 # Type definitions
@@ -113,8 +113,8 @@ def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
 
 
 def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
-    """Caching decorator for Flask - augments response
-    with a max-age cache header"""
+    """ Caching decorator for Flask - augments response
+        with a max-age cache header """
 
     def decorator(f: RouteType) -> RouteType:
         @wraps(f)
@@ -134,15 +134,16 @@ def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
 # only used by init_oauth() and get_google_auth()
 _oauth: Optional[OAuth] = None
 
+
 def init_oauth(app: Flask) -> None:
     """ Initialize the OAuth wrapper """
-    OAUTH_CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+    OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
     global _oauth
     _oauth = OAuth(app)
     cast(Any, _oauth).register(
-        name='google',
+        name="google",
         server_metadata_url=OAUTH_CONF_URL,
-        client_kwargs={'scope': 'openid email profile'},
+        client_kwargs={"scope": "openid email profile"},
     )
 
 
@@ -169,8 +170,8 @@ def clear_session_userid() -> None:
 
 
 def session_user() -> Optional[User]:
-    """Return the user who is authenticated in the current session, if any.
-    This can be called within any Flask request."""
+    """ Return the user who is authenticated in the current session, if any.
+        This can be called within any Flask request. """
     u = None
     sess = cast(Dict[str, Any], session)
     if (user := sess.get("userid")) is not None:
@@ -180,11 +181,11 @@ def session_user() -> Optional[User]:
 
 
 def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
-    """Decorator for routes that require an authenticated user.
-    Call with no parameters to redirect unauthenticated requests
-    to url_for("web.login"), or login_url="..." to redirect to that URL,
-    or any other kwargs to return a JSON reply to unauthenticated
-    requests, containing those kwargs (via jsonify())."""
+    """ Decorator for routes that require an authenticated user.
+        Call with no parameters to redirect unauthenticated requests
+        to url_for("web.login"), or login_url="..." to redirect to that URL,
+        or any other kwargs to return a JSON reply to unauthenticated
+        requests, containing those kwargs (via jsonify()). """
 
     def wrap(func: RouteType) -> RouteType:
         @wraps(func)
@@ -221,22 +222,22 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
 
 
 def current_user() -> Optional[User]:
-    """Return the currently logged in user. Only valid within route functions
-    decorated with @auth_required."""
+    """ Return the currently logged in user. Only valid within route functions
+        decorated with @auth_required. """
     return g.get("user")
 
 
 def current_user_id() -> Optional[str]:
-    """Return the id of the currently logged in user. Only valid within route
-    functions decorated with @auth_required."""
+    """ Return the id of the currently logged in user. Only valid within route
+        functions decorated with @auth_required. """
     u = g.get("user")
     return None if u is None else u.id()
 
 
 class RequestData:
 
-    """Wraps the Flask request object to allow error-checked retrieval of query
-    parameters either from JSON or from form-encoded POST data"""
+    """ Wraps the Flask request object to allow error-checked retrieval of query
+        parameters either from JSON or from form-encoded POST data """
 
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))

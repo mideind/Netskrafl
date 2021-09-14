@@ -51,10 +51,7 @@ def _deserialize_dt(args: DateTimeTuple) -> datetime:
 
 
 _serializers: Mapping[Tuple[str, str], Tuple[SerializerFunc, SerializerFunc]] = {
-    ("datetime", "datetime"): (
-        _serialize_dt,
-        _deserialize_dt,
-    )
+    ("datetime", "datetime"): (_serialize_dt, _deserialize_dt,)
 }
 
 
@@ -87,14 +84,14 @@ def serialize(obj: Any) -> Dict[str, Any]:
 
 
 def _dumps(obj: Any) -> str:
-    """Returns the given object in JSON format, using the custom serializer
-    for composite objects"""
+    """ Returns the given object in JSON format, using the custom serializer
+        for composite objects """
     return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
 def _loads(j: str) -> Any:
-    """Return an instance of a serializable class,
-    initialized from a JSON string"""
+    """ Return an instance of a serializable class,
+        initialized from a JSON string """
     if j is None:
         return None
     d: Union[int, str, List[Any], Dict[str, str]] = json.loads(j)
@@ -130,8 +127,8 @@ def _loads(j: str) -> Any:
 
 class RedisWrapper:
 
-    """Wrapper class around the Redis client,
-    making it appear as a simplified memcache instance"""
+    """ Wrapper class around the Redis client,
+        making it appear as a simplified memcache instance """
 
     def __init__(
         self, redis_host: Optional[str] = None, redis_port: Optional[int] = None
@@ -151,8 +148,8 @@ class RedisWrapper:
     def _call_with_retry(
         self, func: Callable[..., Any], errval: Any, *args: Any, **kwargs: Any
     ) -> Any:
-        """Call a client function, attempting one retry
-        upon a connection error"""
+        """ Call a client function, attempting one retry
+            upon a connection error """
         attempts = 0
         while attempts < 2:
             try:
@@ -174,9 +171,9 @@ class RedisWrapper:
         time: Optional[int] = None,
         namespace: Optional[str] = None,
     ) -> Any:
-        """Add a value to the cache, under the given key
-        and within the given namespace, with an optional
-        expiry time in seconds"""
+        """ Add a value to the cache, under the given key
+            and within the given namespace, with an optional
+            expiry time in seconds """
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
@@ -191,14 +188,14 @@ class RedisWrapper:
         time: Optional[int] = None,
         namespace: Optional[str] = None,
     ) -> Any:
-        """Set a value in the cache, under the given key
-        and within the given namespace, with an optional
-        expiry time in seconds. This is an alias for self.add()."""
+        """ Set a value in the cache, under the given key
+            and within the given namespace, with an optional
+            expiry time in seconds. This is an alias for self.add(). """
         return self.add(key, value, time, namespace)
 
     def get(self, key: str, namespace: Optional[str] = None) -> Any:
-        """Fetch a value from the cache, under the given key and within
-        the given namespace. Returns None if the key is not found."""
+        """ Fetch a value from the cache, under the given key and within
+            the given namespace. Returns None if the key is not found. """
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key

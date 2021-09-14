@@ -226,7 +226,9 @@ class Wordbase:
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
         """ Load a dictionary from a binary DAWG file """
 
-        bname = os.path.abspath(os.path.join(BASE_PATH, "resources", resource + ".bin.dawg"))
+        bname = os.path.abspath(
+            os.path.join(BASE_PATH, "resources", resource + ".bin.dawg")
+        )
         # Load packed binary file
         logging.info(
             "Instance {0} loading DAWG from binary file {1}".format(
@@ -242,16 +244,21 @@ class Wordbase:
 
     @staticmethod
     def dawg() -> PackedDawgDictionary:
-        """Return the main dictionary DAWG object, associated with the
-        current thread, i.e. the current user's locale"""
+        """ Return the main dictionary DAWG object, associated with the
+            current thread, i.e. the current user's (or game's) locale """
         return Wordbase._dawg[current_vocabulary()]
+
+    @staticmethod
+    def dawg_for_vocab(vocab: str) -> Optional[PackedDawgDictionary]:
+        """ Return the DAWG object associated with the given vocabulary """
+        return Wordbase._dawg.get(vocab)
 
     @staticmethod
     def two_letter_words(
         vocabulary: Optional[str] = None,
     ) -> Tuple[List[str], List[str]]:
-        """Return the two letter word list associated with the
-        current vocabulary"""
+        """ Return the two letter word list associated with the
+            current vocabulary """
         dawg = Wordbase._dawg.get(vocabulary or current_vocabulary())
         return ([], []) if dawg is None else dawg.two_letter_words()
 

@@ -47,8 +47,7 @@ from skraflmechanics import (
 )
 from skraflplayer import (
     AutoPlayer,
-    AutoPlayer_Common,
-    AutoPlayer_Medium,
+    AutoPlayer_Custom,
     AutoPlayer_MiniMax,
 )
 
@@ -286,19 +285,19 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
 
     def autoplayer_creator(state: State) -> AutoPlayer:
         """ Create a normal autoplayer instance """
-        return AutoPlayer(state)
+        return AutoPlayer(0, state)
 
     def common_creator(state: State) -> AutoPlayer:
         """ Create a common autoplayer instance """
-        return AutoPlayer_Common(state)
+        return AutoPlayer_Custom(15, state, pick_from=20)
 
     def medium_creator(state: State) -> AutoPlayer:
         """ Create a medium autoplayer instance """
-        return AutoPlayer_Medium(state)
+        return AutoPlayer_Custom(8, state, pick_from=10)
 
     def minimax_creator(state: State) -> AutoPlayer:
         """ Create a minimax autoplayer instance """
-        return AutoPlayer_MiniMax(state)
+        return AutoPlayer_MiniMax(0, state)
 
     players: PlayerList = cast(PlayerList, [None, None])
     if opponent == "amlodi":

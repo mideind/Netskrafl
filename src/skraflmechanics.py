@@ -21,19 +21,28 @@
 
 from __future__ import annotations
 
-from typing import Callable, List, Tuple, Iterator, Union, Optional, Type
+from typing import Callable, List, NamedTuple, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
 
 from dawgdictionary import Wordbase
-from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale
+from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale, vocabulary_for_locale
 
 
 # Type definitions
 SummaryTuple = Tuple[str, str, int]
 MoveSummaryTuple = Tuple[int, SummaryTuple]
 DetailTuple = Tuple[str, str, str, int]
+
+class Cover(NamedTuple):
+
+    """ Represents a covering of a square by a tile """
+
+    row: int
+    col: int
+    tile: str
+    letter: str
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
 # _DEBUG_MANUAL_WORDCHECK = True
@@ -538,6 +547,7 @@ class State:
             self._manual_wordcheck = manual_wordcheck
             self._board_type = board_type or "standard"
             self._locale = locale or "is_IS"
+            self._vocabulary = vocabulary_for_locale(self._locale)
             # The score a challenge would get if made (0 if not challengeable)
             self._challenge_score = 0
             # The rack before the last challengeable move
@@ -570,6 +580,7 @@ class State:
             self._tileset = copy._tileset
             self._locale = copy._locale
             self._board_type = copy._board_type
+            self._vocabulary = copy._vocabulary
             self._bag = Bag(tileset=None, copy=copy._bag)
 
     def load_board(self, board: Board) -> None:
@@ -616,13 +627,18 @@ class State:
 
     @property
     def board_type(self) -> str:
-        """ The type of the board being used """
+        """ The type of the board being used ('standard' or 'explo') """
         return self._board_type
 
     @property
     def locale(self) -> str:
         """ The locale being used """
         return self._locale
+
+    @property
+    def vocabulary(self) -> str:
+        """ The vocabulary being used ('ordalisti', 'sowpods', 'osps37', etc.) """
+        return self._vocabulary
 
     def score(self, move: MoveBase) -> int:
         """ Calculate the score of the move """
@@ -831,19 +847,6 @@ class State:
             )
             + "\n'{0}' vs '{1}'".format(self.rack(0), self.rack(1))
         )
-
-
-class Cover:
-
-    """ Represents a covering of a square by a tile """
-
-    # pylint: disable=too-few-public-methods
-
-    def __init__(self, row: int, col: int, tile: str, letter: str) -> None:
-        self.row = row
-        self.col = col
-        self.tile = tile
-        self.letter = letter
 
 
 class Error:

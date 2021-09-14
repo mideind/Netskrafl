@@ -56,7 +56,7 @@ from basics import (
     running_local,
     VALID_ISSUERS,
 )
-from skraflgame import User
+from skrafluser import User
 # from skrafldb import PromoModel
 import billing
 import firebase

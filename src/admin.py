@@ -23,7 +23,8 @@ from flask import request
 
 from languages import Alphabet
 from skrafldb import Client, iter_q, Query, UserModel, GameModel
-from skraflgame import User, Game
+from skrafluser import User
+from skraflgame import Game
 
 
 def admin_usercount() -> str:

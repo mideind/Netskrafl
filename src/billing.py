@@ -33,7 +33,7 @@ import werkzeug.wrappers
 
 import requests
 
-from skraflgame import User
+from skrafluser import User
 
 
 ResponseType = Union[
@@ -48,8 +48,8 @@ def jsonify(*args: Any, **kwargs: Any) -> str:
 
 class _Secret:
 
-    """A wrapper for private and public key data used
-    in communications with SalesCloud"""
+    """ A wrapper for private and public key data used
+        in communications with SalesCloud """
 
     _SC_SECRET_KEY: Optional[bytes] = None
     _SC_CLIENT_UUID: Optional[str] = None
@@ -105,8 +105,8 @@ def request_valid(
     xsc_digest: str,
     max_time: float = 100.0,
 ) -> bool:
-    """Validate an incoming request against our secret key. All parameters
-    are assumed to be strings (str) except payload, which is bytes."""
+    """ Validate an incoming request against our secret key. All parameters
+        are assumed to be strings (str) except payload, which is bytes."""
 
     # Sanity check
     if not all((method, url, payload, xsc_date, xsc_key, xsc_digest)):
@@ -241,9 +241,7 @@ def handle(request: Request, uid: str) -> ResponseType:
         # Something wrong with the Content-length header or the request body
         logging.error("Exception when obtaining payload: {0}".format(ex))
     # pylint: disable=bad-continuation
-    if not request_valid(
-        method, request.url, payload, xsc_date, xsc_key, xsc_digest
-    ):
+    if not request_valid(method, request.url, payload, xsc_date, xsc_key, xsc_digest):
         logging.error("Invalid signature received")
         return jsonify(ok=False, reason="Invalid signature"), 403  # Forbidden
 
@@ -276,9 +274,7 @@ def handle(request: Request, uid: str) -> ResponseType:
         user = User.load_if_exists(customer) if customer else None
         if user is None:
             logging.error(
-                "Unknown or illegal user id: '{0}'".format(
-                    customer or "[None]"
-                )
+                "Unknown or illegal user id: '{0}'".format(customer or "[None]")
             )
             logging.info(
                 "Original JSON from SalesCloud was:\n{0}".format(

@@ -47,7 +47,8 @@ from skrafldb import (
     iter_q,
     StatsDict,
 )
-from skraflgame import Game, User
+from skrafluser import User
+from skraflgame import Game
 
 
 # The K constant used in the Elo calculation
