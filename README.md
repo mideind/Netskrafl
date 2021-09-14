@@ -138,7 +138,7 @@ Contact me via GitHub for queries or information regarding Netskrafl.
 
 Please contact me if you have plans for using Netskrafl as a basis for your
 own game website and prefer not to operate under the conditions of the
-GNU Affero General Public License v3 (see below).
+CC-BY-NC 4.0 license (see below).
 
 ### License
 
@@ -146,18 +146,11 @@ GNU Affero General Public License v3 (see below).
 
 *Copyright © 2021 Miðeind ehf.*
 
-This set of programs is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
+This set of programs is licensed under the *Creative Commons*
+*Attribution-NonCommercial 4.0 International Public License* (CC-BY-NC 4.0).
 
-This set of programs is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-The full text of the GNU Affero General Public License is available here:
-[https://www.gnu.org/licenses/agpl-3.0.en.html](https://www.gnu.org/licenses/agpl-3.0.en.html).
+The full text of the license is available here:
+[https://creativecommons.org/licenses/by-nc/4.0/legalcode](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
 
 ### Included third party software
 

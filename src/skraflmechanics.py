@@ -5,7 +5,8 @@
     Copyright (C) 2021 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    The GNU Affero General Public License, version 3, applies to this software.
+    The Creative Commons Attribution-NonCommercial 4.0
+    International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
     This module contains classes that implement various
