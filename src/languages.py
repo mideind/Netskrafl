@@ -689,14 +689,13 @@ ALPHABETS: Dict[str, Alphabet] = {
     # Everything else presently defaults to IcelandicAlphabet
 }
 
-# Mapping of locale code to vocabulary,
-# also via dictionary subset category ('common' = common vocabulary, etc.)
+# Mapping of locale code to (main) vocabulary
 
-VOCABULARIES: Dict[str, Dict[str, str]] = {
-    "is": {"main": "ordalisti", "common": "amlodi", "medium": "midlungur"},
-    "en": {"main": "sowpods"},
-    "en_US": {"main": "otcwl2014"},
-    "pl": {"main": "osps37"},
+VOCABULARIES: Dict[str, str] = {
+    "is": "ordalisti",
+    "en": "sowpods",
+    "en_US": "otcwl2014",
+    "pl": "osps37",
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -779,16 +778,10 @@ def tileset_for_locale(lc: str) -> Type[TileSet]:
     return dget(TILESETS, lc, default_locale.tileset)
 
 
-def vocabulary_for_locale(lc: str, category: str = "main") -> str:
-    """ Return the name of the vocabulary for the given locale,
-        i.e. 'ordalisti' for is_IS. This can further include a
-        category, such as 'common' or 'medium' for constraining
-        vocabularies. """
-    d = dget(VOCABULARIES, lc)
-    if d is None:
-        d = dget(VOCABULARIES, default_locale.lc)
-        assert d is not None
-    return d.get(category, "")
+def vocabulary_for_locale(lc: str) -> str:
+    """ Return the name of the main vocabulary for the given locale,
+        i.e. 'ordalisti' for is_IS. """
+    return dget(VOCABULARIES, lc, default_locale.vocabulary)
 
 
 def board_type_for_locale(lc: str) -> str:

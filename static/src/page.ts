@@ -1754,6 +1754,7 @@ class View {
     s.showScramble = false;
     s.showMove = false;
     s.showMoveMobile = false; // Versatile move button for mobile UI
+    s.showForceResignMobile = false; // Force resignation button for mobile UI
     s.showChallenge = false;
     s.showChallengeInfo = false;
     if (game.moveInProgress)
@@ -1783,6 +1784,9 @@ class View {
         s.showMoveMobile = true;
       } else {
         s.showScramble = true;
+        if (s.tardyOpponent)
+          // Not showing the move button: show the Force resignation button
+          s.showForceResignMobile = true;
       }
     return s;
   }
@@ -2083,26 +2087,20 @@ class View {
           sc1 = s1.toString();
         }
         return m(".heading",
-          {
-            // On mobile only: If the header is clicked, go to the main screen
-            onclick: (ev) => {
-              if (!state.uiFullscreen) { m.route.set("/main"); ev.preventDefault(); }
-            }
-          },
           [
-            m(".leftplayer", [
-              m(".player" + (player == 1 ? ".autoplayercolor" : ".humancolor"),
-                view.vwPlayerName("left")),
-              m(".scoreleft", sc0),
-            ]),
-            m(".rightplayer", [
-              m(".player" + (player == 1 ? ".humancolor" : ".autoplayercolor"),
-                view.vwPlayerName("right")),
-              m(".scoreright", sc1),
-            ]),
-            m(".fairplay",
-              { style: { visibility: fairplay ? "visible" : "hidden" } },
-              m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
+            m(".playerwrapper", [
+              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+                m(".player", view.vwPlayerName("left")),
+                m(".scorewrapper", m(".scoreleft", sc0)),
+              ]),
+              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+                m(".player", view.vwPlayerName("right")),
+                m(".scorewrapper", m(".scoreright", sc1)),
+              ]),
+              m(".fairplay",
+                { style: { visibility: fairplay ? "visible" : "hidden" } },
+                m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
+            ])
           ]
         );
       }
@@ -3681,7 +3679,7 @@ class View {
       );
     }
     if (s.showMoveMobile) {
-      // Move button on mobile, which also shows the score
+      // Submit-Move button on mobile, which also shows the score
       // and whether the move is good or bad
       let classes: string[] = ["submitmove"];
       let wordIsPlayable = game.currentScore !== undefined;
@@ -3724,25 +3722,42 @@ class View {
         )
       );
     }
-    if (s.showPass)
+    if (s.showForceResignMobile) {
+      // Force resignation button (only shown on mobile,
+      // and only if submit move button is not shown)
+      r.push(
+        this.makeButton(
+          "force-resign",
+          s.showingDialog,
+          () => { game.forceResign(); },
+          "Þvinga til uppgjafar",
+          "Þvinga til uppgjafar"
+        )
+      );
+    }
+    if (s.showPass) {
       // Pass move
       r.push(
         this.makeButton(
-          "submitpass", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
+          "submitpass",
+          (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitPass(),
           "Pass", glyph("forward")
         )
       );
-    if (s.showExchange)
+    }
+    if (s.showExchange) {
       // Exchange tiles from the rack
       r.push(
         this.makeButton(
-          "submitexchange", s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
+          "submitexchange",
+          s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           () => game.submitExchange(),
           "Skipta stöfum", glyph("refresh")
         )
       );
-    if (s.showResign)
+    }
+    if (s.showResign) {
       // Resign the game
       r.push(
         this.makeButton(
@@ -3751,7 +3766,8 @@ class View {
           "Gefa viðureign", glyph("fire")
         )
       );
-    if (!s.gameOver && !s.localTurn) {
+    }
+    if (!s.gameOver && !s.localTurn && !game.moveInProgress) {
       // Indicate that it is the opponent's turn; offer to force a resignation
       // if the opponent hasn't moved for 14 days
       r.push(
@@ -3763,10 +3779,11 @@ class View {
             m("strong", game.nickname[1 - game.player]),
             " á leik",
             nbsp(),
+            // The following inline button is only
+            // displayed in the fullscreen UI
             s.tardyOpponent ? m("span.yesnobutton",
               {
                 id: 'force-resign',
-                style: { display: "inline" },
                 onclick: (ev) => {
                   ev.preventDefault();
                   game.forceResign();
@@ -3787,7 +3804,7 @@ class View {
     // Is the server processing a move?
     if (game.moveInProgress) {
       r.push(
-        m(".waitmove", { title: "" },
+        m(".waitmove",
           m(".animated-waitmove",
             m(AnimatedExploLogo, { msStepTime: 100, width: 38, withCircle: false })
           )
@@ -3876,7 +3893,11 @@ class View {
     };
 
     if (game.currentError in errorMessages) {
-      return m(".error", { style: { visibility: "visible" } },
+      return m(".error",
+        {
+          style: { visibility: "visible" },
+          onclick: (ev) => { game.resetError(); ev.preventDefault(); }
+        },
         [
           glyph("exclamation-sign"),
           errorMessages[game.currentError]

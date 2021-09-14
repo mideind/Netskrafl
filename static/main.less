@@ -1408,7 +1408,7 @@ div#blank-form {
    display: block;
    bottom: 0;
    left: 0;
-   width: @mobile-width - 2 * @margin-small - 8px;
+   width: @mobile-width - 2 * @margin-small - 7px;
    height: 52px;
    font-size: 14px;
    line-height: 26px;
@@ -1430,6 +1430,7 @@ div#blank-form {
 div.error {
    .bold-bottom-message;
    background-color: @alert;
+   cursor: pointer;
 }
 
 div.opp-turn {
@@ -1541,6 +1542,21 @@ div.submitmove#move-mobile span.glyphicon {
    position: absolute;
    top: 12px;
    right: 10px;
+}
+
+div.force-resign {
+   .submitbutton;
+   display: block;
+   float: right;
+   padding-top: 3px;
+   padding-bottom: 12px;
+   margin-right: 1px;
+   width: 96px;
+   text-align: center;
+   font-weight: normal;
+   font-size: 13px;
+   color: white;
+   background-color: @alert;
 }
 
 div.gameinfo {
@@ -2869,10 +2885,8 @@ span.closebtn {
 }
 
 span.yesnobutton#force-resign {
+   // Only displayed in fullscreen
    display: none;
-   background-color: @alert;
-   color: white;
-   padding-bottom: 4px;
 }
 
 div.score.word-good {
@@ -3063,7 +3077,7 @@ div.navbtn {
    top: auto;
    width: 90px;
    height: 30px;
-   bottom: 130px;
+   bottom: 136px;
    line-height: 24px;
    background-color: @nav-btn;
 }
@@ -3076,7 +3090,7 @@ div.navbtn#navnext {
 
 div.navbtn#navprev {
    position: absolute;
-   left: 108px;
+   left: 110px;
    font-weight: normal;
 }
 

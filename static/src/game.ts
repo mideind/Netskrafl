@@ -1297,6 +1297,11 @@ class Game {
     this.currentError = null;
   };
 
+  resetError() {
+    // Reset the current error message, if any
+    this.currentError = this.currentMessage = null;
+  }
+
   resetRack() {
     // Recall all unglued tiles into the rack
     this.selectedSq = null; // Currently selected (blinking) square

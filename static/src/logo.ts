@@ -147,7 +147,7 @@ const AnimatedExploLogo: ComponentFunc<{
           "transform-origin": "left top"
         }
       };
-      if (className)
+      if (className !== undefined && className !== null)
         attribs.class = className;
       return m("div", attribs, m.trust(r.join("\n")));
     }

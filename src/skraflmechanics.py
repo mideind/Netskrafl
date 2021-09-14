@@ -27,13 +27,20 @@ import abc
 from random import SystemRandom
 
 from dawgdictionary import Wordbase
-from languages import TileSet, Alphabet, current_alphabet, alphabet_for_locale, vocabulary_for_locale
+from languages import (
+    TileSet,
+    Alphabet,
+    current_alphabet,
+    alphabet_for_locale,
+    vocabulary_for_locale,
+)
 
 
 # Type definitions
 SummaryTuple = Tuple[str, str, int]
 MoveSummaryTuple = Tuple[int, SummaryTuple]
 DetailTuple = Tuple[str, str, str, int]
+
 
 class Cover(NamedTuple):
 
@@ -43,6 +50,7 @@ class Cover(NamedTuple):
     col: int
     tile: str
     letter: str
+
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
 # _DEBUG_MANUAL_WORDCHECK = True

@@ -136,7 +136,7 @@
    div.info {
       display: block;
       position: absolute;
-      top: 574px;
+      top: 576px;
       left: 28px;
       width: 50px;
       height: 50px;
@@ -386,6 +386,17 @@
       height: auto;
    }
 
+   span.yesnobutton#force-resign {
+      display: inline;
+      background-color: @alert;
+      color: white;
+      padding-bottom: 4px;
+   }
+
+   div.force-resign {
+      display: none;
+   }
+
    div.word-check {
       display: block;
       width: 46px;
@@ -591,6 +602,7 @@
 
    div.scorewrapper {
       background-color: @score-background;
+      min-height: 32px;
    }
 
    div.scoreleft {
@@ -721,6 +733,7 @@
       font-size: 20px;
       line-height: 20px;
       z-index: 2;
+      box-shadow: none;
    }
 
    div.right-tab#tab-board {
