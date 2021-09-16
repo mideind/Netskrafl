@@ -8,10 +8,10 @@
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
+  International Public License (CC-BY-NC 4.0) applies to this software.
   For further information, see https://github.com/mideind/Netskrafl
 
-  The following code is mostly copied from
+  The following code is based on
   https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events/Pinch_zoom_gestures
 
 */

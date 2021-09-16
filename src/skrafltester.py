@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 
     Skrafltester
@@ -10,6 +9,7 @@
     The Creative Commons Attribution-NonCommercial 4.0
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
+
 
     This program implements a testing function for the
     functionality in skraflmechanics.py and skraflplayer.py
