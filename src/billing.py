@@ -28,8 +28,9 @@ from datetime import datetime
 import hashlib
 import hmac
 
-from flask import redirect, jsonify as flask_jsonify, url_for, Request
+from flask import redirect, jsonify as flask_jsonify, url_for
 import flask.wrappers
+from flask.wrappers import Request
 import werkzeug.wrappers
 
 import requests

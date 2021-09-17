@@ -3675,7 +3675,7 @@ class View {
         this.makeButton(
           "submitmove", !s.tilesPlaced || s.showingDialog,
           () => { game.submitMove(); this.updateScale(game); },
-          "Leika", ["Leika", glyph("play")]
+          "Leika", ["Leika", glyph("right-arrow")]
         )
       );
     }
@@ -3697,7 +3697,7 @@ class View {
       const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
       let legend: VnodeChildren[] = [m("span.score-mobile", text)];
       if (s.canPlay && wordIsPlayable)
-        legend.push(glyph("play"));
+        legend.push(glyph("right-arrow"));
       else
         legend.push(glyph("remove"));
       let action: () => void;

@@ -39,9 +39,9 @@ from flask import (
     redirect,
     url_for,
     request,
-    Response,
     session,
 )
+from flask.wrappers import Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 

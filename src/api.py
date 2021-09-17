@@ -42,9 +42,9 @@ from datetime import datetime, timedelta
 from flask import (
     Blueprint,
     request,
-    Response,
     url_for,
 )
+from flask.wrappers import Response
 from flask.globals import current_app
 
 from google.oauth2 import id_token  # type: ignore

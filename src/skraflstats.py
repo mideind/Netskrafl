@@ -35,7 +35,7 @@ import gc
 from datetime import datetime, timedelta
 from threading import Thread
 
-from flask import Request
+from flask.wrappers import Request
 
 from skrafldb import (
     ndb,

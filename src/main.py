@@ -43,10 +43,8 @@ import logging
 from datetime import timedelta
 from logging.config import dictConfig
 
-from flask import (
-    Flask,
-    Response,
-)
+from flask import Flask
+from flask.wrappers import Response
 from flask_cors import CORS  # type: ignore
 
 from basics import (

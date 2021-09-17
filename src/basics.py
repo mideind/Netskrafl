@@ -40,12 +40,11 @@ from flask import (
     jsonify as flask_jsonify,
     url_for,
     request,
-    Request,
     make_response,
-    Response,
     g,
     session,
 )
+from flask.wrappers import Request, Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
