@@ -21,6 +21,7 @@ from typing import (
     Literal,
     Optional,
     Dict,
+    TypedDict,
     Union,
     List,
     Any,
@@ -56,6 +57,13 @@ from skrafldb import Client
 T = TypeVar("T")
 ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 RouteType = Callable[..., ResponseType]
+
+class UserIdDict(TypedDict):
+    iss: str
+    sub: str
+    name: str
+    picture: str
+    email: str
 
 # Are we running in a local development environment or on a GAE server?
 running_local: bool = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
@@ -153,7 +161,7 @@ def get_google_auth() -> Any:
     return cast(Any, _oauth).google
 
 
-def set_session_userid(userid: str, idinfo: Dict[str, Any]) -> None:
+def set_session_userid(userid: str, idinfo: UserIdDict) -> None:
     """ Set the Flask session userid and idinfo attributes """
     session["userid"] = {
         "id": userid,

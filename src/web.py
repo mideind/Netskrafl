@@ -46,6 +46,7 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
 from basics import (
+    UserIdDict,
     current_user,
     auth_required,
     get_google_auth,
@@ -58,6 +59,7 @@ from basics import (
     VALID_ISSUERS,
 )
 from skrafluser import User
+
 # from skrafldb import PromoModel
 import billing
 import firebase
@@ -92,28 +94,35 @@ def login_user() -> bool:
     # Note that a similar function is found in api.py
     account: Optional[str] = None
     userid: Optional[str] = None
-    idinfo: Dict[str, Any] = dict()
+    idinfo: Optional[UserIdDict] = None
     email: Optional[str] = None
     image: Optional[str] = None
     name: Optional[str] = None
     g = get_google_auth()
     try:
-        token: str = g.authorize_access_token()
-        idinfo = g.parse_id_token(token)
-        issuer = idinfo.get("iss", "")
-        if issuer not in VALID_ISSUERS:
-            logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
-            return False
-        # ID token is valid; extract the claims
-        # Get the user's Google Account ID
-        account = idinfo.get("sub")
+        token: Dict[str, Union[str, int]] = g.authorize_access_token()
+        if "id_token" in token:
+            idinfo = g.parse_id_token(token)
+            if idinfo is None:
+                return False
+            issuer = idinfo.get("iss", "")
+            if issuer not in VALID_ISSUERS:
+                logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
+                return False
+            # ID token is valid; extract the claims
+            # Get the user's Google Account ID
+            account = idinfo.get("sub")
+            if account:
+                # Full name of user
+                name = idinfo.get("name", "")
+                # User image
+                image = idinfo.get("picture", "")
+                # Make sure that the e-mail address is in lowercase
+                email = idinfo.get("email", "").lower()
+        else:
+            pass
+            # account = g.userinfo()
         if account:
-            # Full name of user
-            name = idinfo.get("name", "")
-            # User image
-            image = idinfo.get("picture", "")
-            # Make sure that the e-mail address is in lowercase
-            email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
             userid = User.login_by_account(
@@ -125,7 +134,7 @@ def login_user() -> bool:
         logging.warning(f"login_user(): {e}")
         userid = None
 
-    if not userid:
+    if not userid or idinfo is None:
         # Unable to obtain a properly authenticated user id for some reason
         return False
 

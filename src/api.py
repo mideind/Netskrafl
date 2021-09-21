@@ -47,6 +47,8 @@ from flask import (
 from flask.wrappers import Response
 from flask.globals import current_app
 
+import requests
+import cachecontrol  # type: ignore
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
 from werkzeug.utils import redirect
@@ -56,6 +58,7 @@ from basics import (
     auth_required,
     ResponseType,
     RequestData,
+    UserIdDict,
     current_user,
     current_user_id,
     set_session_userid,
@@ -158,6 +161,12 @@ api_blueprint = Blueprint("api", __name__)
 # The cast to Any can be removed when Flask typing becomes more robust
 # and/or compatible with Pylance
 api = cast(Any, api_blueprint)
+
+# Establish a cached session to communicate with the Google API
+session = requests.session()
+cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
+google_request = google_requests.Request(session=cached_session)
+
 
 VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     "is": {
@@ -367,22 +376,28 @@ def oauth2callback() -> ResponseType:
 
     account: Optional[str] = None
     userid: Optional[str] = None
-    idinfo: Dict[str, Any] = dict()
+    idinfo: Optional[UserIdDict] = None
     email: Optional[str] = None
     image: Optional[str] = None
     name: Optional[str] = None
+
     try:
         if testing:
             # Get the idinfo dictionary directly from the request
             f = cast(Dict[str, str], request.form)
-            idinfo = dict(
-                sub=f["sub"], name=f["name"], picture=f["picture"], email=f["email"]
+            idinfo = UserIdDict(
+                iss="accounts.google.com",
+                sub=f["sub"],
+                name=f["name"],
+                picture=f["picture"],
+                email=f["email"],
             )
         else:
             # Verify the token and extract its claims
             idinfo = id_token.verify_oauth2_token(  # type: ignore
-                token, google_requests.Request(), CLIENT_ID
+                token, google_request, CLIENT_ID
             )
+            assert idinfo is not None
             if idinfo["iss"] not in VALID_ISSUERS:
                 raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
@@ -413,6 +428,35 @@ def oauth2callback() -> ResponseType:
 
     # Authentication complete; user id obtained
     # Set a session cookie
+    set_session_userid(userid, idinfo)
+    return jsonify({"status": "success"})
+
+
+@api.route("/oauth_fb", methods=["POST"])
+def oauth_fb() -> ResponseType:
+    """ Facebook authentication """
+    rq = RequestData(request)
+    user: Optional[Dict[str, str]] = rq.get("user")
+    if user is None or not (account := user.get("id", "")):
+        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+    # !!! TODO: Extract and validate Facebook access token
+    name=user.get("full_name", "")
+    image=user.get("image", "")
+    email=user.get("email", "").lower()
+    # Make sure that Facebook account ids are different from Google/OAuth ones
+    # by prefixing them with 'fb:'
+    account = "fb:" + account
+    # Login or create the user in the Explo user model
+    userid = User.login_by_account(account, name, email, image, locale=None)  # !!! TODO: locale
+    # Emulate the OAuth idinfo
+    idinfo = UserIdDict(
+        iss="accounts.facebook.com",
+        sub=account,
+        name=name,
+        picture=image,
+        email=email,
+    )
+    # Set the Flask session token
     set_session_userid(userid, idinfo)
     return jsonify({"status": "success"})
 
