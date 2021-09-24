@@ -66,6 +66,8 @@ from basics import (
     running_local,
     CLIENT_ID,
     VALID_ISSUERS,
+    FACEBOOK_APP_SECRET,
+    FACEBOOK_APP_ID,
 )
 from cache import memcache
 from languages import (
@@ -167,6 +169,10 @@ session = requests.session()
 cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
 google_request = google_requests.Request(session=cached_session)
 
+# URL to validate Facebook login token, in /oauth_fb endpoint
+FACEBOOK_TOKEN_VALIDATION_URL = (
+    "https://graph.facebook.com/debug_token?input_token={0}&access_token={1}|{2}"
+)
 
 VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     "is": {
@@ -439,22 +445,62 @@ def oauth_fb() -> ResponseType:
     user: Optional[Dict[str, str]] = rq.get("user")
     if user is None or not (account := user.get("id", "")):
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
-    # !!! TODO: Extract and validate Facebook access token
-    name=user.get("full_name", "")
-    image=user.get("image", "")
-    email=user.get("email", "").lower()
+    token = user.get("token", "")
+    # Validate the Facebook token
+    if not token or len(token) > 256 or not token.isalnum():
+        return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
+    r = requests.get(
+        FACEBOOK_TOKEN_VALIDATION_URL.format(
+            token, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
+        )
+    )
+    if r.status_code != 200:
+        # Error from the Facebook API: communicate it back to the client
+        msg = ""
+        try:
+            msg = cast(Any, r).json()["error"]["message"]
+            msg = f": {msg}"
+        except (KeyError, ValueError):
+            pass
+        return (
+            jsonify({"status": "invalid", "msg": f"Unable to verify Facebook token{msg}"}),
+            401,
+        )
+    # So far, so good: double check that token data are as expected
+    name = user.get("full_name", "")
+    image = user.get("image", "")
+    email = user.get("email", "").lower()
+    response: Dict[str, Any] = cast(Any, r).json()
+    if not response or not (rd := response.get("data")):
+        return (
+            jsonify(
+                {"status": "invalid", "msg": "Invalid format of Facebook token data"}
+            ),
+            401,
+        )
+    if (
+        FACEBOOK_APP_ID != rd.get("app_id")
+        or "USER" != rd.get("type")
+        or not rd.get("is_valid")
+    ):
+        return (
+            jsonify({"status": "invalid", "msg": "Facebook token data mismatch"}),
+            401,
+        )
+    if account != rd.get("user_id"):
+        return (
+            jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
+            401,
+        )
     # Make sure that Facebook account ids are different from Google/OAuth ones
     # by prefixing them with 'fb:'
     account = "fb:" + account
     # Login or create the user in the Explo user model
-    userid = User.login_by_account(account, name, email, image, locale=None)  # !!! TODO: locale
+    # !!! TODO: locale
+    userid = User.login_by_account(account, name, email, image, locale=None)
     # Emulate the OAuth idinfo
     idinfo = UserIdDict(
-        iss="accounts.facebook.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
+        iss="accounts.facebook.com", sub=account, name=name, picture=image, email=email,
     )
     # Set the Flask session token
     set_session_userid(userid, idinfo)
@@ -477,7 +523,7 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
     try:
         token = firebase.create_custom_token(cuid)
-        # !!! TODO: Temporary hack to accommodate client
+        # !!! TODO: Temporary hack to accommodate app client
         # Correct code for future use:
         # return jsonify(ok=True, token=token)
         return jsonify(ok=True, id=token, token=token)

@@ -89,6 +89,12 @@ with open(os.path.abspath(os.path.join("resources", CLIENT_SECRET_FILE)), "r") a
 assert CLIENT_ID, "CLIENT_ID environment variable not set"
 assert CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 
+# Facebook app token, for login verification calls to the graph API
+FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
+FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "")
+assert FACEBOOK_APP_SECRET, "FACEBOOK_APP_SECRET environment variable not set"
+assert FACEBOOK_APP_ID, "FACEBOOK_APP_ID environment variable not set"
+
 # Firebase configuration
 FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
 FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
