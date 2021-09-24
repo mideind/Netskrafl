@@ -24,8 +24,9 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
-# Google OAuth client secret
+# Client secrets, including Google and Facebook authentication secrets
 resources/client_secret*.txt
+resources/client_secret*.json
 resources/Explo Development-414318fa79b8.json
 
 # Private GAE services key

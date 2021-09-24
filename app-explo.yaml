@@ -24,14 +24,8 @@ env_variables:
   # REDISHOST is automatically set to 'localhost' (in cache.py)
   REDISHOST: 10.194.164.243
   REDISPORT: 6379
-  CLIENT_ID: 970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com
   PROJECT_ID: explo-dev
-  # The following API key is not a secret - it is sent to clients in cleartext
-  # as required by the Firebase client JS code
-  FIREBASE_API_KEY: AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc
-  FIREBASE_SENDER_ID: 970204261331
-  FIREBASE_DB_URL: https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app
-  FIREBASE_APP_ID: 1:970204261331:web:fce1615824c2e382ec9d26
+  # Single page UI
   SINGLE_PAGE: TRUE
 
 inbound_services:

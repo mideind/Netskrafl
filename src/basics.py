@@ -37,6 +37,7 @@ from functools import wraps
 
 from flask import (
     Flask,
+    json,
     redirect,
     jsonify as flask_jsonify,
     url_for,
@@ -75,36 +76,37 @@ port: str = os.environ.get("SERVER_PORT", "8080")
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
-# client_id and client_secret for Google Sign-In
-CLIENT_ID = os.environ.get("CLIENT_ID", "")
+# Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
-    "netskrafl": "client_secret.txt",
-    "explo-dev": "client_secret_explo.txt",
-}.get(PROJECT_ID, "client_secret.txt")
+    "netskrafl": "client_secret.json",
+    "explo-dev": "client_secret_explo.json",
+}.get(PROJECT_ID, "client_secret.json")
 
-# Read client secret key from file
-with open(os.path.abspath(os.path.join("resources", CLIENT_SECRET_FILE)), "r") as f_txt:
-    CLIENT_SECRET = f_txt.read().strip()
+# Read client secrets (some of which aren't really that secret) from JSON file
+with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
+    j = json.loads(f.read())
+    assert j is not None
 
-assert CLIENT_ID, "CLIENT_ID environment variable not set"
-assert CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
+    CLIENT_ID = j.get("CLIENT_ID", "")
+    CLIENT_SECRET = j.get("CLIENT_SECRET", "")
+    assert CLIENT_ID, "CLIENT_ID environment variable not set"
+    assert CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
 
-# Facebook app token, for login verification calls to the graph API
-FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
-FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "")
-assert FACEBOOK_APP_SECRET, "FACEBOOK_APP_SECRET environment variable not set"
-assert FACEBOOK_APP_ID, "FACEBOOK_APP_ID environment variable not set"
+    # Facebook app token, for login verification calls to the graph API
+    FACEBOOK_APP_ID = j.get("FACEBOOK_APP_ID", "")
+    FACEBOOK_APP_SECRET = j.get("FACEBOOK_APP_SECRET", "")
+    assert FACEBOOK_APP_SECRET, "FACEBOOK_APP_SECRET environment variable not set"
+    assert FACEBOOK_APP_ID, "FACEBOOK_APP_ID environment variable not set"
 
-# Firebase configuration
-FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
-FIREBASE_SENDER_ID = os.environ.get("FIREBASE_SENDER_ID", "")
-FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "")
-FIREBASE_APP_ID = os.environ.get("FIREBASE_APP_ID", "")
-
-assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
-assert FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
-assert FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
-assert FIREBASE_APP_ID, "FIREBASE_APP_ID environment variable not set"
+    # Firebase configuration
+    FIREBASE_API_KEY = j.get("FIREBASE_API_KEY", "")
+    FIREBASE_SENDER_ID = j.get("FIREBASE_SENDER_ID", "")
+    FIREBASE_DB_URL = j.get("FIREBASE_DB_URL", "")
+    FIREBASE_APP_ID = j.get("FIREBASE_APP_ID", "")
+    assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
+    assert FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
+    assert FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
+    assert FIREBASE_APP_ID, "FIREBASE_APP_ID environment variable not set"
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

@@ -4,7 +4,6 @@ export PROJECT_ID=netskrafl
 export REDISHOST=127.0.0.1
 export REDISPORT=6379
 export CLIENT_ID=62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
-export CLIENT_SECRET=fYrSNk7MwNYDqH3U8YCFUEac
 export FIREBASE_API_KEY=AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
 export FIREBASE_SENDER_ID=62474854399
 export SERVER_SOFTWARE=Development
