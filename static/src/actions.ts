@@ -127,10 +127,10 @@ class Actions {
     this.model.handleMoveMessage(json, firstAttach);
   }
 
-  onUserMessage(json: any) {
+  onUserMessage(json: any, firstAttach: boolean) {
     // Handle a user message from Firebase
     console.log("User message received: " + JSON.stringify(json));
-    this.model.handleUserMessage(json);
+    this.model.handleUserMessage(json, firstAttach);
   }
 
   onChatMessage(
@@ -256,7 +256,9 @@ class Actions {
   attachListenerToUser() {
     let state = this.model.state;
     if (state.userId)
-      attachFirebaseListener('user/' + state.userId, (json) => this.onUserMessage(json));
+      attachFirebaseListener('user/' + state.userId,
+        (json, firstAttach) => this.onUserMessage(json, firstAttach)
+      );
   }
 
   detachListenerFromUser() {

@@ -728,8 +728,10 @@ class Model {
     return false;
   }
 
-  handleUserMessage(json: any) {
+  handleUserMessage(json: any, firstAttach: boolean) {
     // Handle an incoming Firebase user message
+    if (firstAttach)
+      return;
     let invalidateGameList = false;
     if (json.challenge) {
       // Reload challenge list

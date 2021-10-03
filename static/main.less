@@ -2549,20 +2549,26 @@ div #gamestarted {
    background-color: @autoplayer;
 }
 
+/* Scores in move list */
+
 .humangrad_left {
-   background: linear-gradient(to right, @move-player, @background, @background);
+   // background: linear-gradient(to right, @move-player, @background, @background);
+   color: @player;
 }
 
 .autoplayergrad_right {
-   background: linear-gradient(to right, @background, @background, @move-autoplayer);
+   // background: linear-gradient(to right, @background, @background, @move-autoplayer);
+   color: @autoplayer;
 }
 
 .humangrad_right {
-   background: linear-gradient(to right, @background, @background, @move-player);
+   // background: linear-gradient(to right, @background, @background, @move-player);
+   color: @player;
 }
 
 .autoplayergrad_left {
-   background: linear-gradient(to right, @move-autoplayer, @background, @background);
+   // background: linear-gradient(to right, @move-autoplayer, @background, @background);
+   color: @autoplayer;
 }
 
 span.score {
@@ -2574,6 +2580,7 @@ span.score {
    margin-right: 2px;
    font-weight: 700;
    text-align: right;
+   line-height: 20px;
 }
 
 span.total {
@@ -2589,16 +2596,42 @@ span.total {
    line-height: 20px;
 }
 
+div.leftmove span.total {
+   border-left-width: 0px; // 6px;
+   border-left-style: solid;
+}
+
+div.rightmove span.total {
+  border-right-width: 0px; // 6px;
+  border-right-style: solid;
+}
+
 span.total.human {
    background-color: @move-player;
+}
+
+div.leftmove span.total.human {
+   border-left-color: @player;
+}
+
+div.rightmove span.total.human {
+   border-right-color: @player;
 }
 
 span.total.autoplayer {
    background-color: @move-autoplayer;
 }
 
+div.leftmove span.total.autoplayer {
+   border-left-color: @autoplayer;
+}
+
+div.rightmove span.total.autoplayer {
+   border-right-color: @autoplayer;
+}
+
 span.highlight {
-   background-color: @alert;
+   background-color: @close-btn;
    color: white;
 }
 
@@ -2618,13 +2651,6 @@ span.othermove {
    text-transform: none;
    padding-left: 3px;
 }
-
-/*
-span.othermove i {
-   font-weight: bold;
-   text-transform: uppercase;
-}
-*/
 
 div.error p {
    display: inline;
@@ -3667,12 +3693,12 @@ div.chall-hdr h2 {
    line-height: 24px;
    margin-top: 6px;
    margin-bottom: 4px;
-   color: darken(@background, 10%);
+   color: @player; // darken(@background, 10%);
 }
 
 h1.chall-icon {
    display: block;
-   color: darken(@background, 10%);
+   color: @player; // darken(@background, 10%);
    margin-right: 12px;
    margin-top: 0;
    margin-bottom: 0;

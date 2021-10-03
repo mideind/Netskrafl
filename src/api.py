@@ -463,7 +463,9 @@ def oauth_fb() -> ResponseType:
         except (KeyError, ValueError):
             pass
         return (
-            jsonify({"status": "invalid", "msg": f"Unable to verify Facebook token{msg}"}),
+            jsonify(
+                {"status": "invalid", "msg": f"Unable to verify Facebook token{msg}"}
+            ),
             401,
         )
     # So far, so good: double check that token data are as expected
@@ -670,12 +672,11 @@ def fetch_users(
     ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
 ) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
-    # Make a list of user ids by applying the uid_func to ulist entries (!= None)
-    uids: List[str] = []
-    for u in ulist:
-        uid = None if u is None else uid_func(u)
-        if uid:
-            uids.append(uid)
+    # Make a set of user ids by applying the uid_func
+    # to ulist entries (!= None)
+    uids: Set[str] = set(
+        uid for u in ulist if (uid := (u is not None) and uid_func(u))
+    )
     # No need for a special case for an empty list
     user_objects = User.load_multi(uids)
     # Return a dictionary mapping user ids to users
@@ -767,7 +768,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
     elif query == "fav":
         # Return favorites of the current user
         if cuid is not None:
-            i = FavoriteModel.list_favorites(cuid)
+            i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
             for fu in fusers:

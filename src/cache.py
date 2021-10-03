@@ -40,7 +40,7 @@ _modules: Dict[str, ModuleType] = dict()
 
 DateTimeTuple = Tuple[int, int, int, int, int, int]
 SerializerFunc = Callable[..., Any]
-
+SerializerFuncTuple = Tuple[SerializerFunc, SerializerFunc]
 
 def _serialize_dt(dt: datetime) -> DateTimeTuple:
     return (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -50,7 +50,7 @@ def _deserialize_dt(args: DateTimeTuple) -> datetime:
     return datetime(*args)
 
 
-_serializers: Mapping[Tuple[str, str], Tuple[SerializerFunc, SerializerFunc]] = {
+_serializers: Mapping[Tuple[str, str], SerializerFuncTuple] = {
     ("datetime", "datetime"): (_serialize_dt, _deserialize_dt,)
 }
 
@@ -94,7 +94,7 @@ def _loads(j: str) -> Any:
         initialized from a JSON string """
     if j is None:
         return None
-    d: Union[int, str, List[Any], Dict[str, str]] = json.loads(j)
+    d: Union[int, str, List[Any], Dict[str, Any]] = json.loads(j)
     if not isinstance(d, dict):
         # This is a primitive object (number, string, list)
         return d

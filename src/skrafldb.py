@@ -98,7 +98,7 @@ from cache import memcache
 # Type definitions
 _T = TypeVar("_T", covariant=True)
 
-_T_Model = TypeVar("_T_Model", bound="Model")
+_T_Model = TypeVar("_T_Model", bound="ndb.Model")
 
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
@@ -237,7 +237,7 @@ class Key(Generic[_T_Model], ndb.Key):
         cast(Any, super()).delete(*args, **kwargs)
 
 
-class Model(ndb.Model):
+class Model(Generic[_T_Model], ndb.Model):
 
     """A type-safer wrapper around ndb.Model"""
 
@@ -436,7 +436,7 @@ def delete_multi(keys: Iterable[Key[_T_Model]]) -> None:
     cast(Any, ndb).delete_multi(keys)
 
 
-class UserModel(Model):
+class UserModel(Model["UserModel"]):
 
     """Models an individual user"""
 
@@ -558,7 +558,9 @@ class UserModel(Model):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys: List[Key[UserModel]] = [Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]]
+            keys: List[Key[UserModel]] = [
+                Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]
+            ]
             len_keys = len(keys)
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
@@ -652,7 +654,7 @@ class UserModel(Model):
         counter = 0
 
         # Return users with nicknames matching the prefix
-        q = cast(Query[UserModel], cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc))
+        q = cls.query(cast(str, UserModel.nick_lc) >= prefix).order(UserModel.nick_lc)
         q = cls.filter_locale(q, locale)
 
         for ud in list_q(q, lambda um: um.nick_lc or ""):
@@ -663,7 +665,7 @@ class UserModel(Model):
                 return
 
         # Return users with full names matching the prefix
-        q = cast(Query[UserModel], cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc))
+        q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
         q = cls.filter_locale(q, locale)
 
         um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
@@ -696,14 +698,14 @@ class UserModel(Model):
                         return
 
         # Descending order
-        q = cast(Query[UserModel], cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo))
+        q = cls.query(UserModel.human_elo < elo).order(-UserModel.human_elo)
         q = cls.filter_locale(q, locale)
         lower = list(fetch(q, max_len))
         # Convert to an ascending list
         lower.reverse()
         # Repeat the query for same or higher rating
         # Ascending order
-        q = cast(Query[UserModel], cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo))
+        q = cls.query(UserModel.human_elo >= elo).order(UserModel.human_elo)
         q = cls.filter_locale(q, locale)
         higher = list(fetch(q, max_len))
         # Concatenate the upper part of the lower range with the
@@ -735,7 +737,7 @@ class UserModel(Model):
         return result
 
 
-class MoveModel(Model):
+class MoveModel(Model["MoveModel"]):
 
     """Models a single move in a Game"""
 
@@ -746,7 +748,7 @@ class MoveModel(Model):
     timestamp = Model.OptionalDatetime()
 
 
-class GameModel(Model):
+class GameModel(Model["GameModel"]):
 
     """Models a game between two users"""
 
@@ -817,7 +819,9 @@ class GameModel(Model):
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(
+            UserModel, user_id
+        )
         if ix == 0:
             self.player0 = k
         elif ix == 1:
@@ -848,8 +852,7 @@ class GameModel(Model):
         cls, user_id: str, versus: Optional[str] = None, max_len: int = 10
     ) -> List[Dict[str, Any]]:
         """Query for a list of recently finished games for the given user"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return []
 
         def game_callback(gm: GameModel) -> Dict[str, Any]:
@@ -920,14 +923,12 @@ class GameModel(Model):
         cls, user_id: Optional[str], max_len: int = 10
     ) -> Iterator[Dict[str, Any]]:
         """Query for a list of active games for the given user"""
-        if user_id is None:
+        if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         # pylint: disable=singleton-comparison
-        q = (
-            cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(
-                GameModel.over == False
-            )
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(
+            GameModel.over == False
         )
 
         def game_callback(gm: GameModel) -> Dict[str, Any]:
@@ -973,7 +974,7 @@ class GameModel(Model):
             yield game_callback(gm)
 
 
-class FavoriteModel(Model):
+class FavoriteModel(Model["FavoriteModel"]):
 
     """Models the fact that a user has marked another user as a favorite"""
 
@@ -984,7 +985,9 @@ class FavoriteModel(Model):
 
     def set_dest(self, user_id: str) -> None:
         """Set a destination user key property"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if not user_id else Key(
+            UserModel, user_id
+        )
         self.destuser = k
 
     @classmethod
@@ -992,8 +995,7 @@ class FavoriteModel(Model):
         cls, user_id: str, max_len: int = MAX_FAVORITES
     ) -> Iterator[str]:
         """Query for a list of favorite users for the given user"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k: Optional[Key[UserModel]] = Key(UserModel, user_id)
         q = cls.query(ancestor=k)
@@ -1006,7 +1008,7 @@ class FavoriteModel(Model):
         cls, srcuser_id: Optional[str], destuser_id: Optional[str]
     ) -> bool:
         """Return True if destuser is a favorite of user"""
-        if srcuser_id is None or destuser_id is None:
+        if not srcuser_id or not destuser_id:
             return False
         ks: Key[UserModel] = Key(UserModel, srcuser_id)
         kd: Key[UserModel] = Key(UserModel, destuser_id)
@@ -1035,7 +1037,7 @@ class FavoriteModel(Model):
             fmk.delete()
 
 
-class ChallengeModel(Model):
+class ChallengeModel(Model["ChallengeModel"]):
 
     """Models a challenge issued by a user to another user"""
 
@@ -1052,7 +1054,9 @@ class ChallengeModel(Model):
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """Set a destination user key property"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(
+            UserModel, user_id
+        )
         self.destuser = k
 
     @classmethod
@@ -1064,9 +1068,7 @@ class ChallengeModel(Model):
             return False
         ks: Key[UserModel] = Key(UserModel, srcuser_id)
         kd: Key[UserModel] = Key(UserModel, destuser_id)
-        q = cls.query(ancestor=ks).filter(
-            ChallengeModel.destuser == kd
-        )
+        q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
         return q.get(keys_only=True) is not None
 
     @classmethod
@@ -1169,7 +1171,7 @@ class ChallengeModel(Model):
             yield ch_callback(cm)
 
 
-class StatsModel(Model):
+class StatsModel(Model["StatsModel"]):
 
     """Models statistics about users"""
 
@@ -1209,7 +1211,9 @@ class StatsModel(Model):
 
     def set_user(self, user_id: Optional[str], robot_level: int = 0) -> None:
         """Set the user key property"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(UserModel, user_id)
+        k: Optional[Key[UserModel]] = None if user_id is None else Key(
+            UserModel, user_id
+        )
         self.user = k
         self.robot_level = robot_level
 
@@ -1590,7 +1594,7 @@ class StatsModel(Model):
         )
 
 
-class RatingModel(Model):
+class RatingModel(Model["RatingModel"]):
 
     """Models tables of user ratings"""
 
@@ -1711,7 +1715,7 @@ class RatingModel(Model):
         delete_multi(cls.query().iter(keys_only=True))
 
 
-class ChatModel(Model):
+class ChatModel(Model["ChatModel"]):
 
     """Models chat communications between users"""
 
@@ -1912,14 +1916,14 @@ class ChatModel(Model):
 
         def keys_to_delete() -> Iterator[Key[ChatModel]]:
             for key in cls.query(ChatModel.user == user).iter(keys_only=True):
-                yield cast(Key[ChatModel], key)
+                yield key
             for key in cls.query(ChatModel.recipient == user).iter(keys_only=True):
-                yield cast(Key[ChatModel], key)
+                yield key
 
         delete_multi(keys_to_delete())
 
 
-class ZombieModel(Model):
+class ZombieModel(Model["ZombieModel"]):
 
     """Models finished games that have not been seen by one of the players"""
 
@@ -2001,7 +2005,7 @@ class ZombieModel(Model):
                 yield zd
 
 
-class PromoModel(Model):
+class PromoModel(Model["PromoModel"]):
 
     """Models promotions displayed to players"""
 
@@ -2040,7 +2044,7 @@ class PromoModel(Model):
             yield pm.timestamp
 
 
-class CompletionModel(Model):
+class CompletionModel(Model["CompletionModel"]):
 
     """Models the successful completion of stats or ratings runs"""
 
@@ -2084,7 +2088,7 @@ class CompletionModel(Model):
         cm.put()
 
 
-class BlockModel(Model):
+class BlockModel(Model["BlockModel"]):
 
     """Models the fact that a user has blocked another user"""
 
@@ -2147,7 +2151,7 @@ class BlockModel(Model):
         return q.get(keys_only=True) is not None
 
 
-class ReportModel(Model):
+class ReportModel(Model["ReportModel"]):
 
     """Models the fact that a user has reported another user"""
 
