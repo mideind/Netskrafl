@@ -1052,7 +1052,9 @@ class View {
                   m("span.list-s1", item.sc1),
                   m("span.list-tc", vwTileCount()),
                   m("span.list-manual",
-                    item.manual ? glyph("lightbulb", { title: "Keppnishamur" }) : glyphGrayed("lightbulb")
+                    item.manual
+                    ? glyph("lightbulb", { title: "Keppnishamur" })
+                    : glyphGrayed("lightbulb")
                   )
                 ]
               );
@@ -1066,7 +1068,8 @@ class View {
 
         function vwHint(): m.vnode {
           // Show some help if the user has no games in progress
-          if (model.loadingGameList || model.gameList === undefined || (model.gameList !== null && model.gameList.length > 0))
+          if (model.loadingGameList || model.gameList === undefined ||
+            (model.gameList !== null && model.gameList.length > 0))
             // Either we have games in progress or the game list is being loaded
             return undefined;
           return m(".hint", { style: { display: "block" } },

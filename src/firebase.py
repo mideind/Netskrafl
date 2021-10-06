@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Sequence, List, Union, Tuple, Set, Dict, cast
 
-import os
 import json
 import threading
 import logging
@@ -31,17 +30,9 @@ from oauth2client.client import GoogleCredentials  # type: ignore
 
 from firebase_admin import App, initialize_app, auth  # type: ignore
 
+from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
 
-# App Engine (and Firebase) project id
-# Note that this is not imported from basics.py by design,
-# in order to avoid dependency cycles
-
-PROJECT_ID = os.environ.get("PROJECT_ID", "")
-assert PROJECT_ID, "PROJECT_ID environment variable not set"
-
-FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "")
-assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
 
 _FIREBASE_SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/firebase.database",
@@ -182,12 +173,12 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
         if args:
             url = "/".join((FIREBASE_DB_URL,) + args) + ".json"
         else:
-            url = FIREBASE_DB_URL + "/.json"
+            url = f"{FIREBASE_DB_URL}/.json"
         if message is None:
             response, _ = _firebase_delete(path=url)
         else:
             response, _ = _firebase_patch(
-                path=url + "?print=silent", message=json.dumps(message)
+                path=f"{url}?print=silent", message=json.dumps(message)
             )
         # If all is well and good, "200" (OK) or "204" (No Content)
         # is returned in the status field
@@ -208,32 +199,28 @@ def send_update(*args: str) -> bool:
 def check_wait(user_id: str, opp_id: str) -> bool:
     """ Return True if the user user_id is waiting for the opponent opponent_id """
     try:
-        url = "{}/user/{}/wait/{}.json".format(FIREBASE_DB_URL, user_id, opp_id)
+        url = f"{FIREBASE_DB_URL}/user/{user_id}/wait/{opp_id}.json"
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
         return msg is True  # Return False if msg is dict, None or False
     except httplib2.HttpLib2Error as e:
-        logging.warning(
-            "Exception [{}] raised in firebase.check_wait()".format(repr(e))
-        )
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.check_wait()")
         return False
 
 
 def check_presence(user_id: str) -> bool:
     """ Check whether the given user has at least one active connection """
     try:
-        url = "{}/connection/{}.json".format(FIREBASE_DB_URL, user_id)
+        url = f"{FIREBASE_DB_URL}/connection/{user_id}.json"
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
         return bool(msg)
     except httplib2.HttpLib2Error as e:
-        logging.warning(
-            "Exception [{}] raised in firebase.check_presence()".format(repr(e))
-        )
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.check_presence()")
         return False
 
 
@@ -241,14 +228,12 @@ def get_connected_users() -> Set[str]:
     """ Return a set of all presently connected users """
     with _USERLIST_LOCK:
         # Serialize access to the connected user list
-        url = "{}/connection.json?shallow=true".format(FIREBASE_DB_URL)
+        url = f"{FIREBASE_DB_URL}/connection.json?shallow=true"
         try:
             response, body = _firebase_get(path=url)
         except httplib2.HttpLib2Error as e:
             logging.warning(
-                "Exception [{}] raised in firebase.get_connected_users()".format(
-                    repr(e)
-                )
+                f"Exception [{repr(e)}] raised in firebase.get_connected_users()"
             )
             return set()
         if response["status"] != "200":

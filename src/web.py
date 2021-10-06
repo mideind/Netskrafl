@@ -221,10 +221,9 @@ def signup() -> ResponseType:
 
 
 @web.route("/skilmalar", methods=["GET"])
-@auth_required()
 def skilmalar() -> ResponseType:
-    """ Conditions """
-    return render_template("skilmalar.html", user=current_user())
+    """ Terms & conditions """
+    return render_template("skilmalar.html")
 
 
 @web.route("/billing", methods=["GET", "POST"])

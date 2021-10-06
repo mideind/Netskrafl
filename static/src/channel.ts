@@ -17,7 +17,7 @@ export {
    loginFirebase, attachFirebaseListener, detachFirebaseListener, logEvent
 };
 
-import { GlobalState } from "./model";
+import { GlobalState } from "model";
 
 declare namespace firebase {
   export { auth, database, analytics };

@@ -26,7 +26,7 @@ export {
 import { Game, ServerGame, Move, RackTile  } from "game";
 
 import { m, RequestArgs } from "mithril";
-import { logEvent } from "./channel";
+import { logEvent } from "channel";
 
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;
