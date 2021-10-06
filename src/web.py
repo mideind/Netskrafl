@@ -45,20 +45,20 @@ from flask.wrappers import Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
+from config import running_local, VALID_ISSUERS
 from basics import (
     UserIdDict,
     current_user,
     auth_required,
     get_google_auth,
+    session_idinfo,
     session_user,
     set_session_userid,
     clear_session_userid,
     RequestData,
     max_age,
-    running_local,
-    VALID_ISSUERS,
 )
-from skrafluser import User
+from skrafluser import User, UserLoginDict
 
 # from skrafldb import PromoModel
 import billing
@@ -92,6 +92,7 @@ def login_user() -> bool:
     """ Log in a user after she is authenticated via OAuth """
     # This function is called from web.oauth2callback()
     # Note that a similar function is found in api.py
+    uld: Optional[UserLoginDict] = None
     account: Optional[str] = None
     userid: Optional[str] = None
     idinfo: Optional[UserIdDict] = None
@@ -122,19 +123,24 @@ def login_user() -> bool:
         else:
             pass
             # account = g.userinfo()
-        if account:
+        if idinfo and account:
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
-            userid = User.login_by_account(
-                account, name or "", email or "", image or ""
-            )
+            uld = User.login_by_account(account, name or "", email or "", image or "")
+            userid = uld["user_id"]
+            # Save the stuff we want to keep around
+            # in the user session
+            idinfo["method"] = "Google"
+            idinfo["account"] = uld["account"]
+            idinfo["new"] = uld["new"]
+            idinfo["locale"] = uld["locale"]
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"login_user(): {e}")
         userid = None
 
-    if not userid or idinfo is None:
+    if not userid or idinfo is None or uld is None:
         # Unable to obtain a properly authenticated user id for some reason
         return False
 
@@ -255,8 +261,17 @@ def page() -> ResponseType:
     user = current_user()
     assert user is not None
     uid = user.id() or ""
+    idinfo = session_idinfo()
     firebase_token = firebase.create_custom_token(uid)
-    return render_template("page.html", user=user, firebase_token=firebase_token)
+    # We return information about the login method to the client,
+    # as well as whether this is a new user signing in for the first time
+    return render_template(
+        "page.html",
+        user=user,
+        firebase_token=firebase_token,
+        method="" if idinfo is None else idinfo.get("method", ""),
+        new=False if idinfo is None else idinfo.get("new", False),
+    )
 
 
 @web.route("/greet")

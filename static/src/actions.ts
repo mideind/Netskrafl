@@ -24,7 +24,7 @@ import { View } from "page";
 import { m } from "mithril";
 
 import {
-  attachFirebaseListener, detachFirebaseListener, loginFirebase
+  attachFirebaseListener, detachFirebaseListener, logEvent, loginFirebase
 } from "channel";
 
 import { ServerGame } from "game";
@@ -66,6 +66,8 @@ class Actions {
         },
         deleteZombie
       );
+      if (model.game !== null && model.game !== undefined)
+        logEvent("game_open", { locale: model.game.locale, uuid: params.uuid });
     }
     else
     if (routeName == "review") {
@@ -95,6 +97,8 @@ class Actions {
           model.loadBestMoves(move);
         }
       }
+      if (model.game !== null && model.game !== undefined)
+        logEvent("game_review", { locale: model.game.locale, uuid: params.uuid });
     }
     else {
       // Not a game route: delete the previously loaded game, if any
@@ -106,6 +110,7 @@ class Actions {
       if (routeName == "help") {
         // Make sure that the help HTML is loaded upon first use
         model.loadHelp();
+        logEvent("help", { locale: model.state.locale });
       }
       else
       if (routeName == "main") {
@@ -249,8 +254,7 @@ class Actions {
 
   initFirebaseListener() {
     // Sign into Firebase with the token passed from the server
-    let state = this.model.state;
-    loginFirebase(state.firebaseToken, state.userId);
+    loginFirebase(this.model.state);
   }
 
   attachListenerToUser() {

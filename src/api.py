@@ -50,9 +50,17 @@ from flask.globals import current_app
 import requests
 import cachecontrol  # type: ignore
 from google.oauth2 import id_token  # type: ignore
+from google.auth.exceptions import GoogleAuthError  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
 from werkzeug.utils import redirect
 
+from config import (
+    running_local,
+    CLIENT_ID,
+    DEFAULT_LOCALE,
+    FACEBOOK_APP_SECRET,
+    FACEBOOK_APP_ID,
+)
 from basics import (
     jsonify,
     auth_required,
@@ -63,11 +71,6 @@ from basics import (
     current_user_id,
     set_session_userid,
     clear_session_userid,
-    running_local,
-    CLIENT_ID,
-    VALID_ISSUERS,
-    FACEBOOK_APP_SECRET,
-    FACEBOOK_APP_ID,
 )
 from cache import memcache
 from languages import (
@@ -89,7 +92,7 @@ from skraflmechanics import (
     ChallengeMove,
     Error,
 )
-from skrafluser import User
+from skrafluser import User, UserLoginDict
 from skraflgame import BestMoveList, Game
 from skraflplayer import AutoPlayer
 from skrafldb import (
@@ -238,7 +241,7 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
-        self.locale = form.get("locale", "").strip() or "is_IS"
+        self.locale = form.get("locale", "").strip() or DEFAULT_LOCALE
         try:
             self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
@@ -266,7 +269,7 @@ class UserForm:
             self.email = d.get("email", "").strip()
         except (TypeError, ValueError):
             pass
-        self.locale = d.get("locale", "").strip() or "is_IS"
+        self.locale = d.get("locale", "").strip() or DEFAULT_LOCALE
         try:
             self.image = d.get("image", "").strip()
         except (TypeError, ValueError, KeyError):
@@ -380,6 +383,7 @@ def oauth2callback() -> ResponseType:
             # 400 - Bad Request
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
 
+    uld: Optional[UserLoginDict] = None
     account: Optional[str] = None
     userid: Optional[str] = None
     idinfo: Optional[UserIdDict] = None
@@ -397,6 +401,10 @@ def oauth2callback() -> ResponseType:
                 name=f["name"],
                 picture=f["picture"],
                 email=f["email"],
+                method="Test",
+                account=f["sub"],
+                locale=DEFAULT_LOCALE,
+                new=False,
             )
         else:
             # Verify the token and extract its claims
@@ -404,8 +412,6 @@ def oauth2callback() -> ResponseType:
                 token, google_request, CLIENT_ID
             )
             assert idinfo is not None
-            if idinfo["iss"] not in VALID_ISSUERS:
-                raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -418,16 +424,26 @@ def oauth2callback() -> ResponseType:
             email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
-            userid = User.login_by_account(
-                account, name or "", email or "", image or ""
-            )
+            # !!! TODO: Assign locale
+            locale = DEFAULT_LOCALE
+            uld = User.login_by_account(account, name or "", email or "", image or "", locale=locale)
+            # Store login data where we'll find it again, and return
+            # some of it back to the client
+            userid = uld["user_id"]
+            uld["method"] = idinfo["method"] = "Google"
+            idinfo["account"] = uld["account"]
+            idinfo["locale"] = uld["locale"]
+            idinfo["new"] = uld["new"]
 
     except (KeyError, ValueError) as e:
         # Invalid token
         # 401 - Unauthorized
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
-    if not userid:
+    except GoogleAuthError as e:
+        return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    if not userid or uld is None:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
@@ -435,7 +451,8 @@ def oauth2callback() -> ResponseType:
     # Authentication complete; user id obtained
     # Set a session cookie
     set_session_userid(userid, idinfo)
-    return jsonify({"status": "success"})
+    # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
 
 
 @api.route("/oauth_fb", methods=["POST"])
@@ -498,15 +515,27 @@ def oauth_fb() -> ResponseType:
     # by prefixing them with 'fb:'
     account = "fb:" + account
     # Login or create the user in the Explo user model
-    # !!! TODO: locale
-    userid = User.login_by_account(account, name, email, image, locale=None)
+    # !!! TODO: send locale from client in request
+    locale = rq.get("locale") or DEFAULT_LOCALE
+    uld = User.login_by_account(account, name, email, image, locale=None)
+    userid = uld.get("user_id") or ""
+    uld["method"] = "Facebook"
     # Emulate the OAuth idinfo
     idinfo = UserIdDict(
-        iss="accounts.facebook.com", sub=account, name=name, picture=image, email=email,
+        iss="accounts.facebook.com",
+        sub=account,
+        name=name,
+        picture=image,
+        email=email,
+        method="Facebook",
+        account=account,
+        locale=locale,
+        new=uld.get("new") or False,
     )
     # Set the Flask session token
     set_session_userid(userid, idinfo)
-    return jsonify({"status": "success"})
+    # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
 
 
 @api.route("/logout", methods=["POST"])
@@ -674,9 +703,7 @@ def fetch_users(
     """ Return a dictionary of users found in the ulist """
     # Make a set of user ids by applying the uid_func
     # to ulist entries (!= None)
-    uids: Set[str] = set(
-        uid for u in ulist if (uid := (u is not None) and uid_func(u))
-    )
+    uids: Set[str] = set(uid for u in ulist if (uid := (u is not None) and uid_func(u)))
     # No need for a special case for an empty list
     user_objects = User.load_multi(uids)
     # Return a dictionary mapping user ids to users
@@ -2307,7 +2334,7 @@ def locale_asset() -> ResponseType:
     asset = rq.get("asset")
     if not asset:
         return "", 404  # Not found
-    locale = u.locale or "en_US"
+    locale = u.locale or DEFAULT_LOCALE
     parts = locale.split("_")
     static_folder = current_app.static_folder or "../static"
     # Try en_US first, then en, then nothing

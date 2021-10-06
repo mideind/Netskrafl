@@ -47,20 +47,24 @@ from flask import Flask
 from flask.wrappers import Response
 from flask_cors import CORS  # type: ignore
 
-from basics import (
+from config import (
+    DEFAULT_LOCALE,
     running_local,
     host,
     port,
-    ndb_wsgi_middleware,
-    init_oauth,
-    ResponseType,
     PROJECT_ID,
     CLIENT_ID,
     CLIENT_SECRET,
+    MEASUREMENT_ID,
     FIREBASE_API_KEY,
     FIREBASE_SENDER_ID,
     FIREBASE_DB_URL,
     FIREBASE_APP_ID,
+)
+from basics import (
+    ndb_wsgi_middleware,
+    init_oauth,
+    ResponseType,
 )
 from dawgdictionary import Wordbase
 from api import api_blueprint
@@ -185,10 +189,12 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         dev_server=running_local,
         project_id=PROJECT_ID,
         client_id=CLIENT_ID,
+        default_locale=DEFAULT_LOCALE,
         firebase_api_key=FIREBASE_API_KEY,
         firebase_sender_id=FIREBASE_SENDER_ID,
         firebase_db_url=FIREBASE_DB_URL,
         firebase_app_id=FIREBASE_APP_ID,
+        measurement_id=MEASUREMENT_ID,
     )
 
 

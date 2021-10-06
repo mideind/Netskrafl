@@ -52,11 +52,6 @@
 
 <script>
 
-function getCookie(name) {
-   var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-   return v ? v[2] : null;
-}
-
 function initMain() {
    $("div.try-again").click(
       function() {
@@ -65,7 +60,7 @@ function initMain() {
    );
    $("div.get-help").click(
       function() {
-         window.location.assign("{{ url_for('web.faq') }}#faq-31");
+         window.location.assign("{{ url_for('web.page') }}/help#faq-31");
       }
    );
 }

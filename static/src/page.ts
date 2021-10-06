@@ -869,7 +869,8 @@ class View {
                   tabindex: 9,
                   onclick: (ev: Event) => {
                     // Issue a new challenge
-                    let duration: string | number = document.querySelector("div.chall-time.selected").id.slice(6);
+                    let duration: string | number =
+                      document.querySelector("div.chall-time.selected").id.slice(6);
                     if (duration == "none")
                       duration = 0;
                     else
@@ -1155,7 +1156,8 @@ class View {
               // Clicked the icon at the beginning of the line,
               // to decline a received challenge or retract an issued challenge
               const action: ChallengeAction = item.received ? "decline" : "retract";
-              model.modifyChallenge({ destuser: item.userid, action: action, key: item.key });
+              const param = { destuser: item.userid, action: action, key: item.key };
+              model.modifyChallenge(param);
               ev.preventDefault();
             }
 
@@ -1383,7 +1385,7 @@ class View {
               );
             }
 
-            function issueChallenge() {
+            function modifyChallenge() {
               if (item.chall) {
                 // Retracting challenge
                 item.chall = false;
@@ -1391,13 +1393,13 @@ class View {
                 // that this user has issued to the destination user
                 model.modifyChallenge({ destuser: item.userid, action: "retract" });
               }
-              else
-                if (isRobot)
+              else if (isRobot) {
                   // Challenging a robot: game starts immediately
                   model.newGame(item.userid, false);
-                else
+              } else {
                   // Challenging a user: show a challenge dialog
                   view.pushDialog("challenge", item);
+              }
             }
 
             function userLink(): m.vnode {
@@ -1430,7 +1432,7 @@ class View {
                   {
                     title: "Skora á",
                     onclick: (ev) => {
-                      issueChallenge();
+                      modifyChallenge();
                       ev.preventDefault();
                     }
                   },

@@ -41,6 +41,14 @@ from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
 
+from config import running_local
+
+# !!! TODO: Remove this debugging hack
+if running_local:
+    DEFAULT_LOCALE = "is_IS"
+else:
+    from config import DEFAULT_LOCALE
+
 from languages import (
     Alphabet,
     OldTileSet,
@@ -545,13 +553,13 @@ class Game:
     def locale_from_prefs(prefs: Optional[PrefsDict]) -> str:
         """ Return the locale specified by the given game preferences """
         if prefs is None:
-            return "is_IS"
-        return cast(str, prefs.get("locale", "is_IS"))
+            return DEFAULT_LOCALE
+        return cast(str, prefs.get("locale", DEFAULT_LOCALE))
 
     @property
     def locale(self) -> str:
         """ Return the locale of this game """
-        return cast(str, self.get_pref("locale")) or "is_IS"
+        return cast(str, self.get_pref("locale")) or DEFAULT_LOCALE
 
     @staticmethod
     def tileset_from_prefs(prefs: Optional[PrefsDict]) -> Type[TileSet]:
@@ -559,7 +567,7 @@ class Game:
         if prefs is None:
             # Stay backwards compatible with old version
             return OldTileSet
-        lc = cast(str, prefs.get("locale", "is_IS"))
+        lc = cast(str, prefs.get("locale", DEFAULT_LOCALE))
         if lc == "is_IS":
             # For Icelandic, there are two bags:
             # select one by preference setting

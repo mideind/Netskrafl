@@ -26,6 +26,7 @@ export {
 import { Game, ServerGame, Move, RackTile  } from "game";
 
 import { m, RequestArgs } from "mithril";
+import { logEvent } from "./channel";
 
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;
@@ -177,7 +178,10 @@ interface GlobalState {
   userId: string;
   userNick: string;
   userFullname: string;
+  locale: string;
   isExplo: boolean;
+  loginMethod: string;
+  newUser: boolean;
   beginner: boolean;
   fairPlay: boolean;
   newBag: boolean;
@@ -678,6 +682,14 @@ class Model {
       };
       const json: { ok: boolean; uuid: string; } = await m.request(rq);
       if (json?.ok) {
+        // Log the new game event
+        logEvent("new_game",
+          {
+            uuid: json.uuid,
+            timed: reverse,
+            locale: this.state.locale
+          }
+        );
         // Go to the newly created game
         m.route.set("/game/" + json.uuid);
       }
@@ -695,6 +707,16 @@ class Model {
         body: parameters
       });
       if (json?.result === 0) {
+        // Log the change of challenge status (issue/decline/retract/accept)
+        var p: any = { locale: this.state.locale };
+        if (parameters.duration !== undefined)
+          p.duration = parameters.duration;
+        if (parameters.fairplay !== undefined)
+          p.fairplay = parameters.fairplay;
+        if (parameters.manual !== undefined)
+          p.manual = parameters.manual;
+        logEvent("challenge_" + parameters.action, p);
+        // Reload list of challenges from server
         this.loadChallengeList();
         if (this.userListCriteria)
           // We are showing a user list: reload it

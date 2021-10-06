@@ -34,6 +34,7 @@ from flask.helpers import url_for
 
 from cache import memcache
 
+from config import DEFAULT_LOCALE
 from languages import Alphabet
 from firebase import online_users
 from skrafldb import (
@@ -72,6 +73,17 @@ class UserSummaryDict(TypedDict):
     live: bool
 
 
+class UserLoginDict(TypedDict, total=False):
+
+    """ Summary data about a login event """
+
+    user_id: str
+    account: str
+    method: str
+    locale: str
+    new: bool
+
+
 # Should we use memcache (in practice Redis) to cache user data?
 USE_MEMCACHE = False
 
@@ -108,7 +120,7 @@ class User:
         self._email: Optional[str] = None
         self._nickname = ""
         self._inactive: bool = False
-        self._locale = locale or "is_IS"
+        self._locale = locale or DEFAULT_LOCALE
         self._preferences: PrefsDict = {}
         self._ready: bool = False
         self._ready_timed: bool = False
@@ -140,7 +152,7 @@ class User:
         self._email = um.email
         self._nickname = um.nickname
         self._inactive = um.inactive
-        self._locale = um.locale or "is_IS"
+        self._locale = um.locale or DEFAULT_LOCALE
         self._preferences = um.prefs
         self._ready = False if um.ready is None else um.ready
         self._ready_timed = False if um.ready_timed is None else um.ready_timed
@@ -173,7 +185,7 @@ class User:
             um.nick_lc = self._nickname.lower()
             um.name_lc = self.full_name().lower()
             um.inactive = self._inactive
-            um.locale = self._locale or "is_IS"
+            um.locale = self._locale or DEFAULT_LOCALE
             um.prefs = self._preferences
             um.ready = self._ready
             um.ready_timed = self._ready_timed
@@ -259,7 +271,7 @@ class User:
     @property
     def locale(self) -> str:
         """ Get the locale code for this user """
-        return self._locale or "is_IS"
+        return self._locale or DEFAULT_LOCALE
 
     def set_locale(self, locale: str) -> None:
         """ Set the locale code for this user """
@@ -694,7 +706,7 @@ class User:
         image: str,
         *,
         locale: Optional[str] = None
-    ):
+    ) -> UserLoginDict:
         """ Log in a user via the given Google Account and return her user id """
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
@@ -712,7 +724,14 @@ class User:
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
-            return um.user_id()
+            # !!! TODO: Return the entire UserModel object to avoid re-loading it
+            uld = UserLoginDict(
+                user_id=um.user_id(),
+                account=um.account or account,
+                locale=um.locale or DEFAULT_LOCALE,
+                new=False,
+            )
+            return uld
         # We haven't seen this Google Account before: try to match by email
         if email:
             um = UserModel.fetch_email(email)
@@ -725,14 +744,21 @@ class User:
                     um.image = image
                 # Note the last login
                 um.last_login = datetime.utcnow()
-                return um.put().id()
+                user_id = um.put().id()
+                uld = UserLoginDict(
+                    user_id=user_id,
+                    account=um.account,
+                    locale=um.locale or DEFAULT_LOCALE,
+                    new=False,
+                )
+                return uld
         # No match by account id or email: create a new user,
         # with the account id as user id.
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
         prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
-        return UserModel.create(
+        user_id = UserModel.create(
             user_id=account,
             account=account,
             email=email,
@@ -741,6 +767,14 @@ class User:
             preferences=prefs,
             locale=locale,
         )
+        # Create a user login event object and return it
+        uld = UserLoginDict(
+            user_id=user_id,
+            account=account,
+            locale=locale or DEFAULT_LOCALE,
+            new=True,
+        )
+        return uld
 
     def to_serializable(self) -> Dict[str, Any]:
         """ Convert to JSON-serializable format """

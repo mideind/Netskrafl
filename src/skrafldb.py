@@ -92,6 +92,7 @@ from datetime import datetime
 
 from google.cloud import ndb  # type: ignore
 
+from config import DEFAULT_LOCALE
 from cache import memcache
 
 
@@ -460,7 +461,7 @@ class UserModel(Model["UserModel"]):
     # Is the user no longer active/enabled?
     inactive = Model.Bool()
     # The user's preferred locale, i.e. language and other settings
-    locale = Model.OptionalStr(default="is_IS")
+    locale = Model.OptionalStr(default=DEFAULT_LOCALE)
     # The user's location (normally an ISO country code)
     location = Model.OptionalStr(default="")
     # Preferences dictionary
@@ -515,7 +516,7 @@ class UserModel(Model["UserModel"]):
         user.prefs = preferences or {}  # Default to no preferences
         user.ready = False  # Not ready for new challenges unless explicitly set
         user.ready_timed = False  # Not ready for timed games unless explicitly set
-        user.locale = locale or "is_IS"
+        user.locale = locale or DEFAULT_LOCALE
         user.last_login = datetime.utcnow()
         return user.put().id()
 

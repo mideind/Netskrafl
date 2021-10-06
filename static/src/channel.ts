@@ -13,30 +13,52 @@
 
 */
 
-export { loginFirebase, attachFirebaseListener, detachFirebaseListener };
+export {
+   loginFirebase, attachFirebaseListener, detachFirebaseListener, logEvent
+};
+
+import { GlobalState } from "./model";
 
 declare namespace firebase {
-  export { auth, database };
+  export { auth, database, analytics };
 };
 
 var auth: any;
 var database: any;
+var analytics: any;
 
-function loginFirebase(token: string, userId: string, onLoginFunc?: () => void) {
+function loginFirebase(state: GlobalState, onLoginFunc?: () => void) {
+   const token = state.firebaseToken;
+   const userId = state.userId;
    // Log in to Firebase using the provided custom token
-   if (onLoginFunc !== undefined) {
-      // Register our login function to execute once the user login is done
-      firebase.auth().onAuthStateChanged(
-         (user: boolean) => {
-            if (user) {
-               // User is signed in
+   // Register our login function to execute once the user login is done
+   firebase.auth().onAuthStateChanged(
+      (signedIn: boolean) => {
+         if (signedIn) {
+            // User is signed in
+            if (onLoginFunc !== undefined) {
                onLoginFunc();
-            } else {
-               // No user is signed in
             }
+            // For new users, log an additional signup event
+            if (state.newUser)
+               logEvent("sign_up",
+                  {
+                     locale: state.locale,
+                     method: state.loginMethod
+                  }
+               );
+            // And always log a login event
+            logEvent("login",
+               {
+                  locale: state.locale,
+                  method: state.loginMethod
+               }
+            );
+         } else {
+            // No user is signed in
          }
-      );
-   }
+      }
+   );
    firebase.auth()
       .signInWithCustomToken(token)
       .then(() => initPresence(userId))
@@ -91,3 +113,7 @@ function detachFirebaseListener(path: string) {
    firebase.database().ref(path).off();
 }
 
+function logEvent(ev: string, params: any) {
+   // Log a Firebase analytics event
+   firebase.analytics().logEvent(ev, params);
+}

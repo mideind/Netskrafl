@@ -27,6 +27,7 @@ from typing import Callable, List, NamedTuple, Tuple, Iterator, Union, Optional,
 import abc
 from random import SystemRandom
 
+from config import DEFAULT_LOCALE
 from dawgdictionary import Wordbase
 from languages import (
     TileSet,
@@ -555,7 +556,7 @@ class State:
             self._racks = [Rack(), Rack()]
             self._manual_wordcheck = manual_wordcheck
             self._board_type = board_type or "standard"
-            self._locale = locale or "is_IS"
+            self._locale = locale or DEFAULT_LOCALE
             self._vocabulary = vocabulary_for_locale(self._locale)
             # The score a challenge would get if made (0 if not challengeable)
             self._challenge_score = 0
