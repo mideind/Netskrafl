@@ -188,6 +188,32 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
         return False
 
 
+def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
+    """ Updates data in Firebase. If a message object is provided, then it sets
+        the data at the given location (whose path is built as a concatenation
+        of the *args list) with the message using the PUT http method.
+        If no message is provided, the data at this location is deleted
+        using the DELETE http method.
+    """
+    try:
+        if args:
+            url = "/".join((FIREBASE_DB_URL,) + args) + ".json"
+        else:
+            url = f"{FIREBASE_DB_URL}/.json"
+        if message is None:
+            response, _ = _firebase_delete(path=url)
+        else:
+            response, _ = _firebase_put(
+                path=f"{url}?print=silent", message=json.dumps(message)
+            )
+        # If all is well and good, "200" (OK) or "204" (No Content)
+        # is returned in the status field
+        return response["status"] in ("200", "204")
+    except httplib2.HttpLib2Error as e:
+        logging.warning("Exception [{}] in firebase.put_message()".format(repr(e)))
+        return False
+
+
 def send_update(*args: str) -> bool:
     """ Updates the path endpoint to contain the current UTC timestamp """
     assert args, "Firebase path cannot be empty"

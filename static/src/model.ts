@@ -31,7 +31,8 @@ import { logEvent } from "channel";
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;
 // Maximum number of concurrent games for non-paying users
-const MAX_FREE_GAMES = 8; // !!! FIXME: Lower number for Explo
+const MAX_FREE_EXPLO = 3;
+const MAX_FREE_NETSKRAFL = 8;
 
 // Basic Mithril routing settings
 type Path = { name: string; route: string; mustLogin: boolean; };
@@ -200,8 +201,11 @@ function getSettings(): Settings {
     paths: Paths = [
       { name: "main", route: "/main", mustLogin: true },
       { name: "help", route: "/help", mustLogin: false },
+      { name: "thanks", route: "/thanks", mustLogin: true },
+      { name: "cancel", route: "/cancel", mustLogin: true },
+      { name: "confirm", route: "/confirm", mustLogin: true },
       { name: "game", route: "/game/:uuid", mustLogin: true },
-      { name: "review", route: "/review/:uuid", mustLogin: true }
+      { name: "review", route: "/review/:uuid", mustLogin: true },
     ];
   return {
     paths: paths,
@@ -247,6 +251,8 @@ class Model {
   userErrors: UserErrors = null;
   // The (cached) help screen contents
   helpHTML: string = null;
+  // The (cached) friend promo screen contents
+  friendHTML: string = null;
   // Outstanding server requests
   spinners: number = 0;
   // The index of the game move being reviewed, if any
@@ -255,10 +261,13 @@ class Model {
   bestMoves: Move[] = null;
   // The index of the best move being highlighted, if reviewing game
   highlightedMove: number = null;
+  // Maximum number of free games allowed concurrently
+  maxFreeGames = 0;
 
   constructor(settings: Settings, state: GlobalState) {
     this.paths = settings.paths.slice();
     this.state = state;
+    this.maxFreeGames = state.isExplo ? MAX_FREE_EXPLO : MAX_FREE_NETSKRAFL;
   }
 
   async loadGame(uuid: string, funcComplete: () => void, deleteZombie: boolean = false) {
@@ -580,6 +589,24 @@ class Model {
     }
   }
 
+  async loadFriendPromo() {
+    // Load the friend promo HTML from the server
+    // (this is done the first time the dialog is displayed)
+    if (this.friendHTML !== null)
+      return; // Already loaded
+    try {
+      const result: string = await m.request({
+        method: "GET",
+        url: "/friend",
+        responseType: "text",
+        deserialize: (str: string) => str
+      });
+      this.friendHTML = result;
+    } catch(e) {
+      this.friendHTML = "";
+    }
+  }
+
   async loadUser(activateSpinner: boolean) {
     // Fetch the preferences of the currently logged in user, if any
     this.user = undefined;
@@ -740,6 +767,33 @@ class Model {
     }
   }
 
+  async cancelFriendship() {
+    // Cancel the current user as a friend
+    try {
+      const json: { ok: boolean; } = await m.request({
+        method: "POST",
+        url: "/cancelfriend",
+        body: { }
+      });
+      if (json?.ok) {
+        // Successfully cancelled: immediately update the friend and hasPaid state
+        this.user.friend = false;
+        this.state.hasPaid = false;
+        // Log a friendship cancellation event
+        logEvent("cancel_friend",
+          {
+            userid: this.state.userId,
+            locale: this.state.locale
+          }
+        );
+        return true;
+      }
+    } catch(e) {
+      // No need to do anything here - a future TODO is to indicate an error in the UI
+    }
+    return false;
+  }
+
   addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
     // Add a chat message to the game's chat message list
     if (this.game && this.game.uuid == game) {
@@ -751,9 +805,24 @@ class Model {
   }
 
   handleUserMessage(json: any, firstAttach: boolean) {
-    // Handle an incoming Firebase user message
+    // Handle an incoming Firebase user message, i.e. a message
+    // on the /user/[userid] path
     if (firstAttach)
       return;
+    let redraw = false;
+    if (json.friend !== undefined || json.hasPaid !== undefined) {
+      // Potential change of user friendship and/or payment status
+      const newFriend = json.friend ? true : false;
+      if (this.user.friend != newFriend) {
+        this.user.friend = newFriend;
+        redraw = true;
+      }
+      const newHasPaid = (newFriend && json.hasPaid) ? true : false;
+      if (this.state.hasPaid != newHasPaid) {
+        this.state.hasPaid = newHasPaid;
+        redraw = true;
+      }
+    }
     let invalidateGameList = false;
     if (json.challenge) {
       // Reload challenge list
@@ -773,8 +842,10 @@ class Model {
     }
     if (invalidateGameList && !this.loadingGameList) {
       this.gameList = null;
-      m.redraw();
+      redraw = true;
     }
+    if (redraw)
+      m.redraw();
   }
 
   handleMoveMessage(json: ServerGame, firstAttach: boolean) {
@@ -804,7 +875,7 @@ class Model {
       return false;
     if (this.state.hasPaid)
       return true;
-    return this.gameList.length < MAX_FREE_GAMES;
+    return this.gameList.length < this.maxFreeGames;
   }
 
 } // class Model

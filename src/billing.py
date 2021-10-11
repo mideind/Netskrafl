@@ -35,6 +35,7 @@ import werkzeug.wrappers
 
 import requests
 
+import firebase
 from skrafluser import User
 
 
@@ -148,9 +149,11 @@ def request_valid(
 
 def cancel_friend(user: User) -> bool:
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
+    userid = user.id()
+    assert userid is not None
     try:
-        url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
-        payload = dict(label=user.id())
+        url = f"https://api.salescloud.is/webhooks/messenger/pull/{_SECRET.uuid}"
+        payload = dict(label=userid)
         ts = datetime.utcnow().isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
@@ -170,7 +173,7 @@ def cancel_friend(user: User) -> bool:
             # Not OK
             logging.error(
                 "Cancel friend request to SalesCloud failed with status {1} for user {0}".format(
-                    user.id(), result.status_code
+                    userid, result.status_code
                 )
             )
             return False
@@ -178,7 +181,7 @@ def cancel_friend(user: User) -> bool:
         if response.get("success") is not True:
             logging.error(
                 "Cancel friend request to SalesCloud failed for user {0}".format(
-                    user.id()
+                    userid
                 )
             )
             return False
@@ -186,10 +189,12 @@ def cancel_friend(user: User) -> bool:
         user.set_friend(False)
         user.set_has_paid(False)
         user.update()
-        logging.info("Removed user {0} as friend".format(user.id()))
+        # Inform clients of the user status change
+        firebase.put_message(dict(friend=False, hasPaid=False), "user", userid)
+        logging.info("Removed user {0} as friend".format(userid))
     except requests.RequestException as ex:
         logging.error(
-            "Exception when cancelling friend for user {1}: {0}".format(ex, user.id())
+            "Exception when cancelling friend for user {1}: {0}".format(ex, userid)
         )
         return False
     # Success
@@ -202,7 +207,9 @@ def handle(request: Request, uid: str) -> ResponseType:
     method: str = cast(Any, request).method
     if method != "POST":
         # This is probably an incoming redirect from the SalesCloud IFRAME
-        # after completing a payment form
+        # after completing a payment form. Note that the actual billing
+        # status update happens via POST from the SalesCloud server and is
+        # handled below, not here.
         xsc_key = request.args.get("salescloud_access_key", "")[0:256]
         xsc_date = request.args.get("salescloud_date", "")[0:256]
         xsc_digest = request.args.get("salescloud_signature", "")[0:256]
@@ -224,10 +231,11 @@ def handle(request: Request, uid: str) -> ResponseType:
                     request.base_url
                 )
             )
-            # !!! The signature from SalesCloud in this case does
-            # !!! not agree with our calculation, so we leave it at that
-            # return "<html><body>Invalid signature</body></html>", 403 # Forbidden
-        return redirect(url_for("web.friend", action=0))  # Redirect to a thank-you page
+            # The signature from SalesCloud in this case does
+            # not agree with our calculation: redirect to the main route
+            return redirect(f"{url_for('web.page')}#!/main")
+        # Looks legit: redirect to a thank-you route
+        return redirect(f"{url_for('web.page')}#!/thanks")
 
     # Begin by validating the request by checking its signature
     headers: Dict[str, str] = cast(Any, request).headers
@@ -288,6 +296,8 @@ def handle(request: Request, uid: str) -> ResponseType:
             return jsonify(
                 ok=False, reason="Unknown or illegal user id (customer_label)"
             )
+        userid = user.id()
+        assert userid is not None
         status = j.get("subscription_status")
         if status == "true":
             # Enable subscription, mark as friend
@@ -296,6 +306,8 @@ def handle(request: Request, uid: str) -> ResponseType:
             user.update()
             logging.info("Set user {0} as friend".format(customer))
             handled = True
+            # Inform clients of the user status change
+            firebase.put_message(dict(friend=True, hasPaid=True), "user", userid)
         elif status == "false":
             # Disable subscription, remove friend status
             user.set_friend(False)
@@ -303,6 +315,8 @@ def handle(request: Request, uid: str) -> ResponseType:
             user.update()
             logging.info("Removed user {0} as friend".format(customer))
             handled = True
+            # Inform clients of the user status change
+            firebase.put_message(dict(friend=False, hasPaid=False), "user", userid)
     if not handled:
         logging.warning(
             "/billing unknown request '{0}', did not handle".format(j.get("type"))

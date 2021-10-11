@@ -61,8 +61,8 @@ from basics import (
 from skrafluser import User, UserLoginDict
 
 # from skrafldb import PromoModel
-import billing
 import firebase
+import billing
 from cache import memcache
 import skraflstats
 
@@ -158,35 +158,9 @@ def login_user() -> bool:
 
 
 @web.route("/friend")
-@auth_required()
 def friend() -> ResponseType:
-    """Page for users to register or unregister themselves
-    as friends of Netskrafl"""
-    user = current_user()
-    assert user is not None
-    try:
-        action = int(request.args.get("action", "0"))
-    except (TypeError, ValueError):
-        action = 0
-    if action == 0:
-        # Launch the actual payment procedure
-        # render_template displays a thank-you note in this case
-        pass
-    elif action == 1:
-        # Display a friendship promotion
-        pass
-    elif action == 2:
-        # Request to cancel a friendship
-        if not user.friend():
-            # Not a friend: nothing to cancel
-            return redirect(url_for("web.main"))
-    elif action == 3:
-        # Actually cancel a friendship
-        if not user.friend():
-            # Not a friend: nothing to cancel
-            return redirect(url_for("web.main"))
-        billing.cancel_friend(user)
-    return render_template("friend.html", user=user, action=action)
+    """ HTML content of a friend promotion dialog """
+    return render_template("promo-friend.html")
 
 
 @web.route("/board")

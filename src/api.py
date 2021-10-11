@@ -108,6 +108,7 @@ from skrafldb import (
     RatingModel,
 )
 import firebase
+from billing import cancel_friend
 
 # Type definitions
 T = TypeVar("T")
@@ -2222,6 +2223,17 @@ def reportuser() -> ResponseType:
         ok = user.report(reported_id, code, text)
 
     return jsonify(ok=ok)
+
+
+@api.route("/cancelfriend", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def cancelfriend() -> ResponseType:
+    """ Cancel a user friendship """
+    user = current_user()
+    if user is None:
+        return jsonify(ok=False)
+    result = cancel_friend(user)
+    return jsonify(ok=result)
 
 
 @api.route("/loaduserprefs", methods=["POST"])

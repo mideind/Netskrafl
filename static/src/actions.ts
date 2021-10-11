@@ -66,11 +66,15 @@ class Actions {
         },
         deleteZombie
       );
-      if (model.game !== null && model.game !== undefined)
-        logEvent("game_open", { locale: model.game.locale, uuid: params.uuid });
-    }
-    else
-    if (routeName == "review") {
+      if (model.game !== null && model.game !== undefined) {
+        logEvent("game_open",
+          {
+            locale: model.game.locale,
+            uuid: params.uuid,
+          }
+        );
+      }
+    } else if (routeName == "review") {
       // A game review: detach listener, if any, and load
       // new game if necessary
       if (model.game !== null) {
@@ -83,24 +87,19 @@ class Actions {
       let move = parseInt(moveParam);
       if (isNaN(move) || !move || move < 0)
         move = 0;
-      if (model.game === null || model.game.uuid != params.uuid)
+      if (model.game === null || model.game.uuid != params.uuid) {
         // Different game than we had before: load it, and then
         // fetch the best moves
         model.loadGame(params.uuid, () => {
           model.loadBestMoves(move);
           setTimeout(this.view.scrollMovelistToBottom);
         });
-      else {
-        if (model.game !== null) {
-          // Already have the right game loaded:
-          // Fetch the best moves and show them once they're available
-          model.loadBestMoves(move);
-        }
+      } else if (model.game !== null) {
+        // Already have the right game loaded:
+        // Fetch the best moves and show them once they're available
+        model.loadBestMoves(move);
       }
-      if (model.game !== null && model.game !== undefined)
-        logEvent("game_review", { locale: model.game.locale, uuid: params.uuid });
-    }
-    else {
+    } else {
       // Not a game route: delete the previously loaded game, if any
       if (model.game !== null) {
         this.detachListenerFromGame(model.game.uuid);
@@ -111,9 +110,15 @@ class Actions {
         // Make sure that the help HTML is loaded upon first use
         model.loadHelp();
         logEvent("help", { locale: model.state.locale });
-      }
-      else
-      if (routeName == "main") {
+      } else if (routeName == "thanks") {
+        // Log a conversion (friendship) event
+        logEvent("init_friend",
+          {
+            userid: model.state.userId,
+            locale: model.state.locale,
+          }
+        );
+      } else if (routeName == "main") {
         // Force reload of lists
         // !!! TBD: This may not be necessary,
         // !!! if all Firebase notifications are acted upon

@@ -1909,7 +1909,7 @@ div#promo-form {
    background-color: @dialog-background;
 }
 
-div#promo-content {
+div.promo-content {
    margin-top: @margin-small * 2;
    margin-left: @margin-small * 2;
    margin-right: @margin-small * 2;
@@ -2748,13 +2748,13 @@ div.score.word-great {
 
 div.score.green {
    color: @review-score-green;
-   border-color: black;
+   // border-color: black;
    background-color: @freshtile;
 }
 
 div.score.yellow {
    color: black;
-   border-color: black;
+   // border-color: black;
    background-color: @racktile;
 }
 
@@ -2956,11 +2956,11 @@ span#total0, span#total1 {
    margin-right: 8px;
 }
 
-div#promo-content h2 {
+div.promo-content h2 {
    color: @close-btn;
 }
 
-div#promo-content h2 span.glyphicon-coffee-cup,
+div.promo-content h2 span.glyphicon-coffee-cup,
 div.help-container span.glyphicon-coffee-cup {
    color: @pass-btn;
 }
@@ -2979,7 +2979,7 @@ div.btn-krafla-yes {
    background-color: @close-btn;
 }
 
-div.btn-thanks {
+div#btn-thanks {
    .standard-button;
    position: absolute;
    width: 96px;
@@ -2990,7 +2990,7 @@ div.btn-thanks {
    background-color: @close-btn;
 }
 
-div.btn-cancel-yes {
+div#btn-cancel-yes {
    .standard-button;
    width: 160px;
    height: 28px;
@@ -3000,7 +3000,7 @@ div.btn-cancel-yes {
    background-color: @alert;
 }
 
-div.btn-cancel-no {
+div#btn-cancel-no {
    .standard-button;
    width: 160px;
    height: 28px;
@@ -3514,7 +3514,7 @@ div#usr-info-form {
    background-color: @dialog-background;
 }
 
-div#thanks-content,
+div.thanks-content,
 div#cancel-content,
 div#confirm-content {
    margin-top: 24px;
@@ -3828,6 +3828,7 @@ div#user-unfriend {
    border-color: @close-btn;
    background-color: white;
    color: @close-btn;
+   line-height: 24px;
 }
 
 div#user-unfriend span.glyphicon-coffee-cup {

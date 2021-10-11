@@ -115,14 +115,21 @@ var $state = {
 function init_amd() {
 
    // Wrap the Mithril library in an AMD/requireJS module definition
-   define("mithril", ["require", "exports"], function (require, exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.m = window.m;
-   });
+   define(
+      "mithril",
+      ["require", "exports"],
+      function (require, exports) {
+         "use strict";
+         Object.defineProperty(exports, "__esModule", { value: true });
+         exports.m = window.m;
+      }
+   );
 
    // Import the single-page app code and call its main function in the page module
-   require(["page"], function(page) { page.main($state); });
+   require(
+      ["page"],
+      function(page) { page.main($state); }
+   );
 }
 
 // Once the DOM is ready, call the init_amd() function

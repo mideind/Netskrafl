@@ -19,7 +19,14 @@
 
 */
 
-export { main, View, DialogButton, OnlinePresence, glyph };
+export {
+  main, View, DialogButton, OnlinePresence, glyph, nbsp, buttonOver, buttonOut
+};
+
+import {
+  m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
+  MithrilEvent, MithrilDragEvent, VnodeChildren
+} from "mithril";
 
 import {
   Model, GlobalState, getSettings,
@@ -29,18 +36,20 @@ import {
 
 import { Game, gameUrl, coord, toVector, Move } from "game";
 
-import { addPinchZoom, registerSalesCloud } from "util";
+import { addPinchZoom } from "util";
 
 import { Actions, createRouteResolver } from "actions";
-
-import {
-  m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
-  MithrilEvent, MithrilDragEvent, VnodeChildren
-} from "mithril";
 
 import { WaitDialog, AcceptDialog } from "wait";
 
 import { ExploLogo, AnimatedExploLogo } from "logo";
+
+import {
+  FriendPromoteDialog, FriendThanksDialog,
+  FriendCancelDialog, FriendCancelConfirmDialog
+} from "friend";
+
+import { logEvent } from "channel";
 
 // Constants
 
@@ -75,6 +84,10 @@ interface DialogViews {
   userinfo: DialogFunc;
   challenge: DialogFunc;
   promo: DialogFunc;
+  friend: DialogFunc;
+  thanks: DialogFunc;
+  cancel: DialogFunc;
+  confirm: DialogFunc;
   wait: DialogFunc;
   accept: DialogFunc;
 }
@@ -105,6 +118,14 @@ class View {
       (view, args) => view.vwChallenge(args),
     promo:
       (view, args) => view.vwPromo(args),
+    friend:
+      (view, args) => view.vwFriend(args),
+    thanks:
+      (view, args) => view.vwThanks(args),
+    cancel:
+      (view, args) => view.vwCancel(args),
+    confirm:
+      (view, args) => view.vwConfirm(args),
     wait:
       (view, args) => view.vwWait(args),
     accept:
@@ -138,6 +159,13 @@ class View {
         break;
       case "review":
         views.push(this.vwReview());
+        break;
+      case "thanks":
+        // Display a thank-you dialog on top of the normal main screen
+        views.push(this.vwMain());
+        // Be careful to add the Thanks dialog only once to the stack
+        if (!this.dialogStack.length)
+          this.showThanks();
         break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
@@ -199,6 +227,27 @@ class View {
   stopSpinner() {
     if (this.model.spinners) {
       this.model.spinners--;
+    }
+  }
+
+  async cancelFriendship() {
+    // Initiate cancellation of the user's friendship
+    let spinner = true;
+    try {
+      this.startSpinner();
+      if (await this.model.cancelFriendship()) {
+        // Successfully cancelled the friendship
+        this.stopSpinner();
+        spinner = false;
+        // Show a confirmation of the cancellation
+        this.pushDialog("confirm", {});
+      }
+    } catch (e) {
+      // Simply display no confirmation in this case
+    }
+    finally {
+      if (spinner)
+        this.stopSpinner();
     }
   }
 
@@ -302,7 +351,17 @@ class View {
 
   showFriendPromo() {
     // Show a friendship promotion
-    this.pushDialog("promo", { kind: "friend", initFunc: registerSalesCloud });
+    this.pushDialog("friend", { });
+  }
+
+  showThanks() {
+    // Show thanks for becoming a friend
+    this.pushDialog("thanks", { });
+  }
+
+  showFriendCancel() {
+    // Show a friendship cancellation dialog
+    this.pushDialog("cancel", { });
   }
 
   showAcceptDialog(oppId: string, oppNick: string) {
@@ -662,8 +721,8 @@ class View {
           user.friend ?
             this.vwDialogButton("user-unfriend", "Hætta sem vinur",
               (ev) => {
-                window.location.href = user.unfriend_url;
                 ev.preventDefault();
+                view.showFriendCancel()
               },
               [glyph("coffee-cup"), nbsp(), nbsp(), "Þú ert vinur Netskrafls!"], 12
             )
@@ -671,8 +730,13 @@ class View {
             this.vwDialogButton("user-friend", "Gerast vinur",
               (ev) => {
                 // Invoke the friend promo dialog
-                view.showFriendPromo();
                 ev.preventDefault();
+                logEvent("click_friend",
+                  {
+                    userid: model.state.userId, locale: model.state.locale
+                  }
+                );
+                view.showFriendPromo();
               },
               [glyph("coffee-cup"), nbsp(), nbsp(), "Gerast vinur Netskrafls"], 12
             )
@@ -712,7 +776,44 @@ class View {
     );
   }
 
-  vwWait(args: { oppId: string; oppNick: string; oppName: string; duration: number; }): m.vnode {
+  vwFriend(args: {}): m.vnode {
+    return m(FriendPromoteDialog,
+      {
+        view: this,
+      }
+    );
+  }
+
+  vwThanks(args: {}): m.vnode {
+    return m(FriendThanksDialog,
+      {
+        view: this,
+      }
+    );
+  }
+
+  vwCancel(args: {}): m.vnode {
+    return m(FriendCancelDialog,
+      {
+        view: this,
+      }
+    );
+  }
+
+  vwConfirm(args: {}): m.vnode {
+    return m(FriendCancelConfirmDialog,
+      {
+        view: this,
+      }
+    );
+  }
+
+  vwWait(args: {
+    oppId: string;
+    oppNick: string;
+    oppName: string;
+    duration: number;
+  }): m.vnode {
     return m(WaitDialog, {
       view: this,
       oppId: args.oppId,
@@ -1169,6 +1270,14 @@ class View {
               ev.preventDefault();
               if (!model.moreGamesAllowed()) {
                 // User must be a friend to be able to accept more challenges
+                logEvent("hit_game_limit",
+                  {
+                    userid: model.state.userId,
+                    locale: model.state.locale,
+                    limit: model.maxFreeGames
+                  }
+                );
+                // Promote being a friend of Netskrafl
                 view.showFriendPromo();
                 return;
               }
@@ -2542,8 +2651,9 @@ class View {
     // Displays a single move
 
     const view = this;
-    const game = this.model.game;
-    const state = this.model.state;
+    const model = this.model;
+    const game = model.game;
+    const state = model.state;
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the move list */
@@ -2578,13 +2688,29 @@ class View {
           m("span.statsbutton",
             {
               onclick: (ev) => {
-                if (state.hasPaid)
+                ev.preventDefault();
+                if (state.hasPaid) {
                   // Show the game review
                   m.route.set("/review/" + game.uuid);
-                else
+                  if (game !== null && game !== undefined) {
+                    // Log an event for this action
+                    logEvent("game_review",
+                      {
+                        locale: game.locale,
+                        uuid: game.uuid
+                      }
+                    );
+                  }
+                }
+                else {
                   // Show a friend promotion dialog
+                  logEvent("click_review",
+                    {
+                      userid: model.state.userId, locale: model.state.locale
+                    }
+                  );
                   view.showFriendPromo();
-                ev.preventDefault();
+                }
               }
             },
             "Skoða yfirlit"
@@ -3606,7 +3732,9 @@ class View {
             id: "review-close",
             onclick: (ev) => {
               // Navigate to move #1
-              setTimeout(() => { m.route.set("/review/" + game.uuid, { move: 1 }); });
+              setTimeout(() => {
+                m.route.set("/review/" + game.uuid, { move: 1 });
+              });
               ev.preventDefault();
             },
             onmouseover: buttonOver,
