@@ -111,11 +111,13 @@ class Actions {
         model.loadHelp();
         logEvent("help", { locale: model.state.locale });
       } else if (routeName == "thanks") {
-        // Log a conversion (friendship) event
-        logEvent("init_friend",
+        // Log a conversion event
+        logEvent("init_plan",
           {
             userid: model.state.userId,
             locale: model.state.locale,
+            // Add plan identifiers here
+            plan: "friend"
           }
         );
       } else if (routeName == "main") {

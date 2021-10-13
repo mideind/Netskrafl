@@ -363,6 +363,7 @@ class Game {
   tiles: TileDict = {};
   rack: RackTile[] = [];
   bag = "";
+  newbag: boolean = true;
   localturn: boolean = false;
   player: number = undefined;
   stats = null; // Game review statistics
@@ -370,7 +371,6 @@ class Game {
   over: boolean = false;
   manual: boolean = false;
   fairplay: boolean = false;
-  newbag: boolean = true;
   zombie: boolean = false; // !!! FIXME
   overdue: boolean = false; // > 14 days since last move without reply from opponent
   currentScore: number = undefined;

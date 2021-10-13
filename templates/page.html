@@ -66,8 +66,8 @@ var $state = {
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},
    fairPlay: {{ 'true' if user and user.fairplay() else 'false' }},
    newBag: {{ 'false' if user and not user.new_bag() else 'true' }},
-   // !!! TODO: Enable this
-   hasPaid: true, // {{ 'true' if user and user.has_paid() else 'false' }},
+   plan: "{{ '' if user == None else user.plan() }}",
+   hasPaid: {{ 'true' if user and user.has_paid() else 'false' }},
    ready: {{ 'true' if user and user.is_ready() else 'false' }},
    readyTimed: {{ 'true' if user and user.is_ready_timed() else 'false' }},
    uiFullscreen: undefined,

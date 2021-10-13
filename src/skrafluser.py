@@ -103,7 +103,8 @@ class User:
     # Upgraded from 4 to 5 after adding locale attribute
     # Upgraded from 5 to 6 after adding location attribute
     # Upgraded from 6 to 7 after adding timestamp with conversion to/from isoformat
-    _NAMESPACE = "user:7"
+    # Upgraded from 7 to 8 after adding plan attribute
+    _NAMESPACE = "user:8"
 
     # Default Elo points if not explicitly assigned
     DEFAULT_ELO = 1200
@@ -120,6 +121,7 @@ class User:
         self._email: Optional[str] = None
         self._nickname = ""
         self._inactive: bool = False
+        self._plan: Optional[str] = None
         self._locale = locale or DEFAULT_LOCALE
         self._preferences: PrefsDict = {}
         self._ready: bool = False
@@ -153,6 +155,7 @@ class User:
         self._nickname = um.nickname
         self._inactive = um.inactive
         self._locale = um.locale or DEFAULT_LOCALE
+        self._plan = um.plan
         self._preferences = um.prefs
         self._ready = False if um.ready is None else um.ready
         self._ready_timed = False if um.ready_timed is None else um.ready_timed
@@ -186,6 +189,7 @@ class User:
             um.name_lc = self.full_name().lower()
             um.inactive = self._inactive
             um.locale = self._locale or DEFAULT_LOCALE
+            um.plan = self._plan
             um.prefs = self._preferences
             um.ready = self._ready
             um.ready_timed = self._ready_timed
@@ -331,11 +335,11 @@ class User:
         self.set_pref("full_name", full_name)
 
     def email(self) -> str:
-        """ Returns the e-mail address of a user """
+        """ Returns the e-mail address of a user from the user preferences """
         return self.get_string_pref("email", self._email or "")
 
     def set_email(self, email: str) -> None:
-        """ Sets the e-mail address of a user """
+        """ Sets the e-mail address of a user in the user preferences """
         self.set_pref("email", email)
 
     def audio(self) -> bool:
@@ -403,20 +407,18 @@ class User:
     @staticmethod
     def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the new bag preference of a user """
-        if prefs is None:
-            return False
-        newbag = prefs.get("newbag")
-        # True by default
-        return newbag if isinstance(newbag, bool) else True
+        # Now always True
+        return True
 
     def new_bag(self) -> bool:
         """ Returns True if the user would like to play with the new bag """
-        # True by default
-        return self.get_bool_pref("newbag", True)
+        # Now always True
+        return True
 
     def set_new_bag(self, state: bool) -> None:
         """ Sets the new bag preference of a user to True or False """
-        self.set_pref("newbag", state)
+        # Now always True; no action needed
+        pass
 
     @staticmethod
     def friend_from_prefs(prefs: Optional[PrefsDict]) -> bool:
@@ -448,8 +450,8 @@ class User:
 
     def has_paid(self) -> bool:
         """ Returns True if the user is a paying friend of Netskrafl """
-        if not self.friend():
-            # Must be a friend before being a paying friend
+        if not self.plan():
+            # Must be a friend of some kind before being a paying friend
             return False
         # False by default
         return self.get_bool_pref("haspaid", False)
@@ -457,6 +459,17 @@ class User:
     def set_has_paid(self, state: bool) -> None:
         """ Sets the payment status of a user to True or False """
         self.set_pref("haspaid", state)
+
+    def plan(self) -> str:
+        """ Return a subscription plan identifier """
+        p = self._plan or ""
+        if not p and self.friend():
+            p = "friend"
+        return p
+
+    def set_plan(self, plan: str) -> None:
+        """ Set a subscription plan """
+        self._plan = plan
 
     def is_ready(self) -> bool:
         """ Returns True if the user is ready to accept challenges """
@@ -803,6 +816,7 @@ class User:
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["image"] = self.image()
+        reply["plan"] = self.plan()
         reply["friend"] = self.friend()
         reply["has_paid"] = self.has_paid()
         reply["locale"] = self.locale

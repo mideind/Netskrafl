@@ -339,12 +339,11 @@ class View {
       this.boardScale = 1.5;
       setTimeout(() => scrollIntoView(tp[0]));
     }
-    else
-      if (numTiles == 0 && this.boardScale > 1.0) {
-        // Removing only remaining tile: zoom out
-        this.boardScale = 1.0; // Needs to be done before setTimeout() call
-        setTimeout(this.resetScale);
-      }
+    else if (numTiles == 0 && this.boardScale > 1.0) {
+      // Removing only remaining tile: zoom out
+      this.boardScale = 1.0; // Needs to be done before setTimeout() call
+      setTimeout(this.resetScale);
+    }
   }
 
   showUserInfo(userid: string, nick: string, fullname: string) {
@@ -582,7 +581,6 @@ class View {
       user.audio = getToggle("audio");
       user.fanfare = getToggle("fanfare");
       user.beginner = getToggle("beginner");
-      user.newbag = getToggle("newbag");
       user.fairplay = getToggle("fairplay");
       // When done, pop the current dialog
       model.saveUser(() => { view.popDialog(); });
@@ -674,18 +672,6 @@ class View {
                         "Stillir hvort ",
                         mt("strong", "minnismiði"),
                         " um margföldunargildi reita er sýndur við borðið"
-                      ]
-                    )
-                  ]
-                ),
-                m(".dialog-spacer",
-                  [
-                    m("span.caption.sub", t("Nýi skraflpokinn:")),
-                    vwToggler("newbag", user.newbag, 7, nbsp(), glyph("shopping-bag")),
-                    mt(".subexplain",
-                      [
-                        "Gefur til kynna hvort þú sért reiðubúin(n) að\nskrafla með ",
-                        mt("strong", "nýja íslenska skraflpokanum")
                       ]
                     )
                   ]
@@ -836,7 +822,6 @@ class View {
     const state = model.state;
     const manual = state.hasPaid; // If paying user, allow manual challenges
     const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
-    const oldBag = !item.newbag && !state.newBag; // Neither user wants new bag
     let manualChallenge = false;
     return {
       view: (vnode) => {
@@ -938,18 +923,6 @@ class View {
                   " af nokkru tagi."
                 ]
               ) : "",
-              oldBag ? m("div", { id: "chall-oldbag" },
-                m("table",
-                  m("tr",
-                    [
-                      m("td", glyph("exclamation-sign")),
-                      m("td",
-                        ["Viðureign með", m("br"), m("strong", "gamla skraflpokanum")]
-                      )
-                    ]
-                  )
-                )
-              ) : "",
               m(DialogButton,
                 {
                   id: "chall-cancel",
@@ -982,7 +955,6 @@ class View {
                         action: "issue",
                         duration: duration,
                         fairplay: fairPlay,
-                        newbag: !oldBag,
                         manual: manualChallenge
                       }
                     );
@@ -1140,8 +1112,9 @@ class View {
                       m("span.usr-info",
                         {
                           title: t("Skoða feril"),
-                          onclick: () => {
+                          onclick: (ev) => {
                             // Show opponent track record
+                            ev.preventDefault();
                             showUserInfo(item.oppid, item.opp, item.fullname);
                           },
                         },
@@ -1339,15 +1312,12 @@ class View {
                     title: t("Skoða feril"),
                     // Show opponent track record
                     onclick: (ev) => {
-                      showUserInfo(item.userid, item.opp, item.fullname);
                       ev.preventDefault();
+                      showUserInfo(item.userid, item.opp, item.fullname);
                     }
                   },
                   m("span.usr-info", "")
                 ),
-                m("span.list-newbag",
-                  glyph("shopping-bag", { title: t("Gamli pokinn") }, item.prefs.newbag)
-                )
               ]
             );
           }
@@ -1380,7 +1350,6 @@ class View {
                 mt("span.list-nick", "Áskorandi"),
                 mt("span.list-chall", "Hvernig"),
                 mt("span.list-info-hdr", "Ferill"),
-                m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') }))
               ]
             ),
             vwList()
@@ -1395,7 +1364,6 @@ class View {
                 mt("span.list-nick", "Andstæðingur"),
                 mt("span.list-chall", "Hvernig"),
                 mt("span.list-info-hdr", "Ferill"),
-                m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') }))
               ]
             ),
             vwList()
@@ -1557,14 +1525,12 @@ class View {
                   {
                     title: t("Skoða feril"),
                     onclick: (ev) => {
-                      showUserInfo(item.userid, item.nick, item.fullname);
                       ev.preventDefault();
+                      showUserInfo(item.userid, item.nick, item.fullname);
                     }
                   },
                   isRobot ? "" : m("span.usr-info")
-                ),
-                isRobot ? "" : m("span.list-newbag", { title: t("Gamli pokinn") },
-                  glyph("shopping-bag", undefined, item.newbag))
+                )
               ]
             );
           }
@@ -1600,7 +1566,6 @@ class View {
               mt("span.list-fullname", "Nafn og merki"),
               robotList ? "" : mt("span.list-human-elo[id='usr-list-elo']", "Elo"),
               robotList ? "" : mt("span.list-info-hdr[id='usr-list-info']", "Ferill"),
-              robotList ? "" : m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') }))
             ]
           ),
           vwList(list),
@@ -3007,7 +2972,7 @@ class View {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  Bag: ComponentFunc<{ bag: string; newbag: string; }> = (initialVnode) => {
+  Bag: ComponentFunc<{ bag: string; newbag: boolean; }> = (initialVnode) => {
     // The bag of tiles
 
     function tiles(bag: string): m.vnode[] {
@@ -3038,9 +3003,8 @@ class View {
         let cls = "";
         if (bag.length <= RACK_SIZE)
           cls += ".empty";
-        else
-          if (newbag)
-            cls += ".new";
+        else if (newbag)
+          cls += ".new";
         return m(".bag",
           { title: 'Flísar sem eftir eru í pokanum' },
           m("table.bag-content" + cls, tiles(bag))
@@ -3630,20 +3594,7 @@ class View {
                 m("span", fmt("gameend"))
               ]
             ),
-            game.newbag ?
-              m("p",
-                [
-                  "Leikið var", game.manual ? m("b", " í keppnisham") : "",
-                  " með", m("b", " nýja"), " skraflpokanum."
-                ]
-              )
-              :
-              m("p",
-                [
-                  "Leikið var", game.manual ? m("b", " í keppnisham") : "",
-                  " með", m("b", " eldri"), " (upphaflega) skraflpokanum."
-                ]
-              )
+            game.manual ? m("p", "Leikið var í keppnisham") : ""
           ]
         ),
         m(".statscol", { style: { clear: "left" } },
@@ -4465,21 +4416,21 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
       return m.fragment({}, [
         m(".listitem.listheader", { key: vnode.attrs.key },
           [
-            m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-            m("span.list-rank", "Röð"),
-            m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
-            m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
-            m("span.list-nick-elo", "Einkenni"),
-            m("span.list-elo[title='Elo-stig']", "Elo"),
-            m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
-            m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
-            m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
-            m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
-            m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
-            m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
-            m("span.list-info-hdr", "Ferill"),
-            m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
-            m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+            m("span.list-ch", glyphGrayed("hand-right", { title: t('Skora á') })),
+            mt("span.list-rank", "Röð"),
+            m("span.list-rank-no-mobile", { title: t('Röð í gær') }, t("1d")),
+            m("span.list-rank-no-mobile", { title: t('Röð fyrir viku') }, t("7d")),
+            mt("span.list-nick-elo", "Einkenni"),
+            m("span.list-elo", { title: t('Elo-stig') }, t("Elo")),
+            m("span.list-elo-no-mobile", { title: t('Elo-stig í gær') }, t("1d")),
+            m("span.list-elo-no-mobile", { title: t('Elo-stig fyrir viku') }, t("7d")),
+            m("span.list-elo-no-mobile", { title: t('Elo-stig fyrir mánuði') }, t("30d")),
+            m("span.list-games", { title: t('Fjöldi viðureigna') }, glyph("th")),
+            m("span.list-ratio", { title: t('Vinningshlutfall') }, glyph("bookmark")),
+            m("span.list-avgpts", { title: t('Meðalstigafjöldi') }, glyph("dashboard")),
+            mt("span.list-info-hdr", "Ferill"),
+            // m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') })),
+            m(".toggler[id='elo-toggler']", { title: t('Með þjörkum eða án') },
               [
                 m(".option.x-small",
                   {
@@ -4543,18 +4494,17 @@ const EloList: ComponentFunc<{
         let nick: VnodeChildren = item.nick;
         let ch = nbsp();
         let info = nbsp();
-        let newbag = item.newbag;
         if (item.userid != state.userId && !item.inactive)
           ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
         if (isRobot) {
           nick = m("span", [glyph("cog"), nbsp(), nick]);
-          newbag = state.newBag; // Imitates the logged-in user
         }
         else
           if (item.userid != state.userId)
             info = m("span.usr-info",
               {
-                onclick: () => {
+                onclick: (ev) => {
+                  ev.preventDefault();
                   vnode.attrs.view.showUserInfo(item.userid, item.nick, item.fullname);
                 }
               }
@@ -4582,7 +4532,6 @@ const EloList: ComponentFunc<{
             m("span.list-ratio", item.ratio + "%"),
             m("span.list-avgpts", item.avgpts),
             m("span.list-info", { title: "Skoða feril" }, info),
-            m("span.list-newbag", glyph("shopping-bag", { title: "Gamli pokinn" }, newbag))
           ]
         );
       }
@@ -4803,12 +4752,12 @@ const UserInfoDialog: ComponentFunc<{
                 m("h2[id='usr-info-fullname']", vnode.attrs.fullname),
                 m(".usr-info-fav",
                   {
-                    title: 'Uppáhald',
+                    title: t('Uppáhald'),
                     onclick: (ev) => {
                       // Toggle the favorite setting
+                      ev.preventDefault();
                       stats.favorite = !stats.favorite;
                       model.markFavorite(vnode.attrs.userid, stats.favorite);
-                      ev.preventDefault();
                     }
                   },
                   stats.favorite ? glyph("star") : glyph("star-empty")
@@ -4826,14 +4775,14 @@ const UserInfoDialog: ComponentFunc<{
                         class: versusAll ? "shown" : "",
                         onclick: () => { _setVersus(vnode, true); } // Set this.versusAll to true
                       },
-                      " gegn öllum "
+                      t(" gegn öllum ")
                     ),
                     m("span",
                       {
                         class: versusAll ? "" : "shown",
                         onclick: () => { _setVersus(vnode, false); } // Set this.versusAll to false
                       },
-                      " gegn þér "
+                      t(" gegn þér ")
                     )
                   ]
                 )
@@ -4885,7 +4834,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
       let json = vnode.attrs.ownStats || {};
       let best = [];
       if (json.highest_score) {
-        best.push("Hæsta skor ");
+        best.push(t("Hæsta skor "));
         best.push(m("b",
           m(m.route.Link,
             { href: "/game/" + json.highest_score_game },
@@ -4962,7 +4911,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 
       return m("div", { id: vnode.attrs.id },
         [
-          m(".toggler", { id: 'own-toggler', title: 'Með þjörkum eða án' },
+          m(".toggler", { id: 'own-toggler', title: t('Með þjörkum eða án') },
             [
               m(".option.small" + (sel == 1 ? ".selected" : ""),
                 { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },
@@ -4977,13 +4926,13 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
           sel == 1 ? m("div",
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
-              m(".stats-fig", { title: 'Elo-stig' },
+              m(".stats-fig", { title: t('Elo-stig') },
                 s ? vwStat(s.human_elo, "crown") : ""),
-              m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+              m(".stats-fig.stats-games", { title: t('Fjöldi viðureigna') },
                 s ? vwStat(s.human_games, "th") : ""),
-              m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+              m(".stats-fig.stats-win-ratio", { title: t('Vinningshlutfall') },
                 vwStat(winRatioHuman, "bookmark", "%")),
-              m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+              m(".stats-fig.stats-avg-score", { title: t('Meðalstigafjöldi') },
                 vwStat(avgScoreHuman, "dashboard"))
             ]
           ) : "",
@@ -4992,11 +4941,11 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             [
               m(".stats-fig", { title: 'Elo-stig' },
                 s ? vwStat(s.elo, "crown") : ""),
-              m(".stats-fig.stats-games", { title: 'Fjöldi viðureigna' },
+              m(".stats-fig.stats-games", { title: t('Fjöldi viðureigna') },
                 s ? vwStat(s.games, "th") : ""),
-              m(".stats-fig.stats-win-ratio", { title: 'Vinningshlutfall' },
+              m(".stats-fig.stats-win-ratio", { title: t('Vinningshlutfall') },
                 vwStat(winRatio, "bookmark", "%")),
-              m(".stats-fig.stats-avg-score", { title: 'Meðalstigafjöldi' },
+              m(".stats-fig.stats-avg-score", { title: t('Meðalstigafjöldi') },
                 vwStat(avgScore, "dashboard"))
             ]
           ) : ""

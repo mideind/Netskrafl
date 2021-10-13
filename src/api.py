@@ -108,7 +108,7 @@ from skrafldb import (
     RatingModel,
 )
 import firebase
-from billing import cancel_friend
+from billing import cancel_plan
 
 # Type definitions
 T = TypeVar("T")
@@ -212,7 +212,6 @@ class UserForm:
         # user cookie, so there is no need for an intervening redirect
         # to logout().
         self.logout_url: str = url_for("web.logout")
-        self.unfriend_url: str = url_for("web.friend", action=2)
         self.nickname: str = ""
         self.full_name: str = ""
         self.id: str = ""
@@ -222,7 +221,6 @@ class UserForm:
         self.fanfare: bool = True
         self.beginner: bool = True
         self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
-        self.newbag: bool = False  # Defaults to False, must be explicitly set to True
         self.friend: bool = False
         self.locale: str = current_lc()
         if usr:
@@ -252,7 +250,6 @@ class UserForm:
             self.fanfare = "fanfare" in form
             self.beginner = "beginner" in form
             self.fairplay = "fairplay" in form
-            self.newbag = "newbag" in form
         except (TypeError, ValueError, KeyError):
             pass
 
@@ -280,7 +277,6 @@ class UserForm:
             self.fanfare = bool(d.get("fanfare", False))
             self.beginner = bool(d.get("beginner", False))
             self.fairplay = bool(d.get("fairplay", False))
-            self.newbag = bool(d.get("newbag", False))
         except (TypeError, ValueError, KeyError):
             pass
 
@@ -288,13 +284,15 @@ class UserForm:
         """ Load the data to be edited upon initial display of the form """
         self.nickname = usr.nickname()
         self.full_name = usr.full_name()
+        # Note that the email property of a User is fetched from the user
+        # preferences, not from the email field in the database.
         self.email = usr.email()
         self.audio = usr.audio()
         self.fanfare = usr.fanfare()
         self.beginner = usr.beginner()
         self.fairplay = usr.fairplay()
-        self.newbag = usr.new_bag()
-        self.friend = usr.friend()
+        # Eventually, we will edit a plan identifier, not just a boolean
+        self.friend = usr.plan() != ""
         self.locale = usr.locale
         self.id = current_user_id() or ""
         self.image = usr.image()
@@ -337,12 +335,13 @@ class UserForm:
         """ Store validated form data back into the user entity """
         usr.set_nickname(self.nickname)
         usr.set_full_name(self.full_name)
+        # Note that the User.set_email() call sets the email in the user preferences,
+        # not the email property in the database. This is intentional and by design.
         usr.set_email(self.email)
         usr.set_audio(self.audio)
         usr.set_fanfare(self.fanfare)
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
-        usr.set_new_bag(self.newbag)
         usr.set_locale(self.locale)
         usr.set_image(self.image)
         usr.update()
@@ -737,7 +736,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "fav": False,
                     "chall": False,
                     "fairplay": False,  # The robots don't play fair ;-)
-                    "newbag": cuser is not None and cuser.new_bag(),
+                    "newbag": True,
                     "ready": True,  # The robots are always ready for a challenge
                     "ready_timed": False,  # Timed games are not available for robots
                     "live": True,  # robots are always online
@@ -785,7 +784,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
                         "fairplay": lu.fairplay(),
-                        "newbag": lu.new_bag(),
+                        "newbag": True,
                         "ready": lu.is_ready() and not chall,
                         "ready_timed": lu.is_ready_timed() and not chall,
                         "live": True,
@@ -812,7 +811,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "fav": True,
                             "chall": chall,
                             "fairplay": fu.fairplay(),
-                            "newbag": fu.new_bag(),
+                            "newbag": True,
                             "live": favid in online,
                             "ready": (fu.is_ready() and favid in online and not chall),
                             "ready_timed": (
@@ -846,7 +845,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "chall": chall,
                             "fairplay": au.fairplay(),
                             "live": uid in online,
-                            "newbag": au.new_bag(),
+                            "newbag": True,
                             "ready": (au.is_ready() and uid in online and not chall),
                             "ready_timed": (
                                 au.is_ready_timed() and uid in online and not chall
@@ -881,7 +880,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "fav": False if cuser is None else cuser.has_favorite(user_id),
                     "chall": chall,
                     "fairplay": user.fairplay(),
-                    "newbag": user.new_bag(),
+                    "newbag": True,
                     "ready": user.is_ready() and not chall,
                     "ready_timed": user.is_ready_timed() and not chall,
                     "image": user.image(),
@@ -930,7 +929,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "chall": chall,
                         "live": uid in online,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
-                        "newbag": User.new_bag_from_prefs(ud["prefs"]),
+                        "newbag": True,
                         "ready": (ud["ready"] and uid in online and not chall),
                         "ready_timed": (
                             ud["ready_timed"] and uid in online and not chall
@@ -1142,8 +1141,6 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
             fullname = nick
             chall = False
             fairplay = False
-            # Robots have the same new bag preference as the user
-            new_bag = cuser and cuser.new_bag()
         else:
             usr = User.load_if_exists(uid)
             if usr is None:
@@ -1155,7 +1152,6 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
             fullname = usr.full_name()
             chall = uid in challenges
             fairplay = usr.fairplay()
-            new_bag = usr.new_bag()
             inactive = usr.is_inactive()
 
         games = ru["games"]
@@ -1177,7 +1173,7 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
                 "fullname": fullname,
                 "chall": chall,
                 "fairplay": fairplay,
-                "newbag": new_bag,
+                "newbag": True,
                 "inactive": inactive,
                 "elo": ru["elo"],
                 "elo_yesterday": ru["elo_yesterday"],
@@ -1742,7 +1738,6 @@ def challenge() -> ResponseType:
     action = rq.get("action", "issue")
     duration = rq.get_int("duration")
     fairplay = rq.get_bool("fairplay")
-    new_bag = rq.get_bool("newbag")
     manual = rq.get_bool("manual")
     # Fetch an optional key of the challenge being acted on
     key = rq.get("key")
@@ -1759,7 +1754,7 @@ def challenge() -> ResponseType:
             {
                 "duration": duration,
                 "fairplay": fairplay,
-                "newbag": new_bag,
+                "newbag": True,
                 "manual": manual,
             },
         )
@@ -2225,14 +2220,14 @@ def reportuser() -> ResponseType:
     return jsonify(ok=ok)
 
 
-@api.route("/cancelfriend", methods=["POST"])
+@api.route("/cancelplan", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def cancelfriend() -> ResponseType:
+def cancelplan() -> ResponseType:
     """ Cancel a user friendship """
     user = current_user()
     if user is None:
         return jsonify(ok=False)
-    result = cancel_friend(user)
+    result = cancel_plan(user)
     return jsonify(ok=result)
 
 
@@ -2292,8 +2287,7 @@ def initgame() -> ResponseType:
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
-        # Play the game with the new bag if the user prefers it
-        prefs = dict(newbag=user.new_bag(), locale=user.locale)
+        prefs = dict(newbag=True, locale=user.locale)
         if board_type != "standard":
             prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)

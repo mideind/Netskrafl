@@ -109,7 +109,6 @@ interface ChallengeParameters {
   destuser: string;
   duration?: number;
   fairplay?: boolean;
-  newbag?: boolean;
   manual?: boolean;
   key?: string;
 }
@@ -122,7 +121,6 @@ interface UserListItem {
   userid: string;
   nick: string;
   fullname: string;
-  newbag: boolean;
   inactive: boolean;
   chall: boolean;
   fairplay: boolean;
@@ -155,11 +153,11 @@ interface UserPrefs {
   email: string;
   beginner: boolean;
   fairplay: boolean;
-  newbag: boolean;
   audio: boolean;
   fanfare: boolean;
   logout_url: string;
-  unfriend_url: string;
+  // The following is currently read-only, i.e. only displayed
+  // and not directly modified in the user preferences dialog
   friend: boolean;
 }
 
@@ -186,7 +184,7 @@ interface GlobalState {
   newUser: boolean;
   beginner: boolean;
   fairPlay: boolean;
-  newBag: boolean;
+  plan: string;
   hasPaid: boolean;
   ready: boolean;
   readyTimed: boolean;
@@ -670,7 +668,7 @@ class Model {
         state.userNick = user.nickname;
         state.beginner = user.beginner;
         state.fairPlay = user.fairplay;
-        state.newBag = user.newbag;
+        // Note that state.plan is updated via a Firebase notification
         // Give the game instance a chance to update its state
         if (this.game !== null)
           this.game.notifyUserChange(user.nickname);
@@ -789,18 +787,21 @@ class Model {
     try {
       const json: { ok: boolean; } = await m.request({
         method: "POST",
-        url: "/cancelfriend",
+        url: "/cancelplan",
         body: { }
       });
       if (json?.ok) {
         // Successfully cancelled: immediately update the friend and hasPaid state
         this.user.friend = false;
         this.state.hasPaid = false;
+        this.state.plan = "";
         // Log a friendship cancellation event
-        logEvent("cancel_friend",
+        logEvent("cancel_plan",
           {
             userid: this.state.userId,
-            locale: this.state.locale
+            locale: this.state.locale,
+            // Add plan identifiers here
+            plan: "friend"
           }
         );
         return true;
@@ -827,14 +828,34 @@ class Model {
     if (firstAttach)
       return;
     let redraw = false;
-    if (json.friend !== undefined || json.hasPaid !== undefined) {
-      // Potential change of user friendship and/or payment status
+    if (json.friend !== undefined) {
+      // Potential change of user friendship status
       const newFriend = json.friend ? true : false;
-      if (this.user.friend != newFriend) {
+      if (this.user && this.user.friend != newFriend) {
         this.user.friend = newFriend;
         redraw = true;
       }
-      const newHasPaid = (newFriend && json.hasPaid) ? true : false;
+    }
+    if (json.plan !== undefined) {
+      // Potential change of user subscription plan
+      if (this.state.plan != json.plan) {
+        this.state.plan = json.plan;
+        redraw = true;
+      }
+      if (this.user && !this.user.friend && this.state.plan == "friend") {
+        // plan == "friend" implies that user.friend should be true
+        this.user.friend = true;
+        redraw = true;
+      }
+      if (this.state.plan == "" && this.user?.friend) {
+        // Conversely, an empty plan string means that the user is not a friend
+        this.user.friend = false;
+        redraw = true;
+      }
+    }
+    if (json.hasPaid !== undefined) {
+      // Potential change of payment status
+      const newHasPaid = (this.state.plan != "" && json.hasPaid) ? true : false;
       if (this.state.hasPaid != newHasPaid) {
         this.state.hasPaid = newHasPaid;
         redraw = true;

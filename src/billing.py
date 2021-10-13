@@ -147,7 +147,7 @@ def request_valid(
     return xsc_digest == my_digest
 
 
-def cancel_friend(user: User) -> bool:
+def cancel_plan(user: User) -> bool:
     """ Cancel a friendship subscription by posting a HTTPS request to SalesCloud """
     userid = user.id()
     assert userid is not None
@@ -186,11 +186,12 @@ def cancel_friend(user: User) -> bool:
             )
             return False
         # Disable subscription, remove friend status
+        user.set_plan("")
         user.set_friend(False)
         user.set_has_paid(False)
         user.update()
         # Inform clients of the user status change
-        firebase.put_message(dict(friend=False, hasPaid=False), "user", userid)
+        firebase.put_message(dict(plan="", friend=False, hasPaid=False), "user", userid)
         logging.info("Removed user {0} as friend".format(userid))
     except requests.RequestException as ex:
         logging.error(
@@ -301,6 +302,7 @@ def handle(request: Request, uid: str) -> ResponseType:
         status = j.get("subscription_status")
         if status == "true":
             # Enable subscription, mark as friend
+            user.set_plan("friend")
             user.set_friend(True)
             user.set_has_paid(True)
             user.update()
@@ -310,13 +312,14 @@ def handle(request: Request, uid: str) -> ResponseType:
             firebase.put_message(dict(friend=True, hasPaid=True), "user", userid)
         elif status == "false":
             # Disable subscription, remove friend status
+            user.set_plan("")
             user.set_friend(False)
             user.set_has_paid(False)
             user.update()
             logging.info("Removed user {0} as friend".format(customer))
             handled = True
             # Inform clients of the user status change
-            firebase.put_message(dict(friend=False, hasPaid=False), "user", userid)
+            firebase.put_message(dict(plan="", friend=False, hasPaid=False), "user", userid)
     if not handled:
         logging.warning(
             "/billing unknown request '{0}', did not handle".format(j.get("type"))

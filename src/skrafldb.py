@@ -454,6 +454,9 @@ class UserModel(Model["UserModel"]):
     # optionally prefixed by the authentication provider id (default: 'google:')
     account = Model.OptionalStr()
 
+    # User subscription plan; currently either empty or "friend"
+    plan = Model.OptionalStr()
+
     # Lower case nickname and full name of user - used for search
     nick_lc = Model.OptionalStr()
     name_lc = Model.OptionalStr()
