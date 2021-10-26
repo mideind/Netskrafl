@@ -120,12 +120,33 @@ handlers:
   mime_type: text/css
   expiration: "0d 1h" # Was "1d 0h"
 
-# Catchall for JavaScript
+# Catchall for minified JavaScript
 - url: /static/(.*\.min\.js)(\?.*)?$
   static_files: static/\1
   upload: static/.*\.min\.js$
   mime_type: application/javascript
   expiration: "0d 1h" # Was "1d 0h"
+
+# Catchall for TypeScript source files (included for debugging only)
+- url: /static/src/(.*\.[jt]s)(\?.*)?$
+  static_files: static/src/\1
+  upload: static/src/.*\.[jt]s$
+  mime_type: application/javascript
+  expiration: "30s"
+
+# Un-minified JavaScript (included for debugging only)
+- url: /static/built/explo\.js$
+  static_files: static/built/explo.js
+  upload: static/built/explo\.js$
+  mime_type: application/javascript
+  expiration: "30s"
+
+# Source map (included for debugging only)
+- url: /static/built/explo\.js\.map$
+  static_files: static/built/explo.js.map
+  upload: static/built/explo\.js\.map$
+  mime_type: application/javascript
+  expiration: "30s"
 
 # Font files that can be cached
 - url: /static/glyphicons-regular.ttf

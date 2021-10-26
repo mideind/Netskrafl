@@ -373,14 +373,14 @@ class Client:
 
 class Context:
 
-    """Wrapper for NDB context operations"""
+    """Wrapper for ndb context operations"""
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def disable_cache() -> None:
-        """Disable the NDB in-context cache"""
+        """Disable the ndb in-context cache"""
         ctx = cast(Any, ndb).get_context()
         assert ctx is not None
         ctx.set_cache_policy(False)

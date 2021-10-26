@@ -208,6 +208,10 @@ class RedisWrapper:
             key = namespace + "|" + key
         return self._call_with_retry(self._client.delete, False, key)
 
+    def flush(self) -> None:
+        """ Flush all keys from the current cache """
+        return self._call_with_retry(self._client.flushdb, None)
+
 
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.

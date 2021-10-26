@@ -64,6 +64,33 @@ const ROUTE_PREFIX_LEN = ROUTE_PREFIX.length;
 // Max number of chat messages per game
 const MAX_CHAT_MESSAGES = 250;
 
+const ERROR_MESSAGES: { [key: string]: string } = {
+  // Translations are found in /static/assets/messages.json
+  1: "Enginn stafur lagður niður",
+  2: "Fyrsta orð verður að liggja um byrjunarreitinn",
+  3: "Orð verður að vera samfellt á borðinu",
+  4: "Orð verður að tengjast orði sem fyrir er",
+  5: "Reitur þegar upptekinn",
+  6: "Ekki má vera eyða í orði",
+  7: "word_not_found",
+  8: "word_not_found",
+  9: "Of margir stafir lagðir niður",
+  10: "Stafur er ekki í rekkanum",
+  11: "Of fáir stafir eftir, skipting ekki leyfð",
+  12: "Of mörgum stöfum skipt",
+  13: "Leik vantar á borðið - notið F5/Refresh",
+  14: "Notandi ekki innskráður - notið F5/Refresh",
+  15: "Rangur eða óþekktur notandi",
+  16: "Viðureign finnst ekki",
+  17: "Viðureign er ekki utan tímamarka",
+  18: "Netþjónn gat ekki tekið við leiknum - reyndu aftur",
+  19: "Véfenging er ekki möguleg í þessari viðureign",
+  20: "Síðasti leikur er ekki véfengjanlegur",
+  21: "Aðeins véfenging eða pass leyfileg",
+  "server": "Netþjónn gat ekki tekið við leiknum - reyndu aftur"
+};
+
+
 function main(state: GlobalState) {
   // The main UI entry point, called from page.html
 
@@ -851,27 +878,27 @@ class View {
                 [
                   m(".promo-fullscreen",
                     [
-                      m("p", [m("strong", "Ný áskorun"), " - veldu lengd viðureignar:"]),
+                      mt("p", [mt("strong", "Ný áskorun"), " - veldu lengd viðureignar:"]),
                       m(MultiSelection,
                         { initialSelection: 0, defaultClass: 'chall-time' },
                         [
                           m("div", { id: 'chall-none', tabindex: 1 },
-                            "Viðureign án klukku"
+                            t("Viðureign án klukku")
                           ),
                           m("div", { id: 'chall-10', tabindex: 2 },
-                            [glyph("time"), "2 x 10 mínútur"]
+                            [glyph("time"), t("2 x 10 mínútur")]
                           ),
                           m("div", { id: 'chall-15', tabindex: 3 },
-                            [glyph("time"), "2 x 15 mínútur"]
+                            [glyph("time"), t("2 x 15 mínútur")]
                           ),
                           m("div", { id: 'chall-20', tabindex: 4 },
-                            [glyph("time"), "2 x 20 mínútur"]
+                            [glyph("time"), t("2 x 20 mínútur")]
                           ),
                           m("div", { id: 'chall-25', tabindex: 5 },
-                            [glyph("time"), "2 x 25 mínútur"]
+                            [glyph("time"), t("2 x 25 mínútur")]
                           ),
                           m("div", { id: 'chall-30', tabindex: 6 },
-                            [glyph("time"), "2 x 30 mínútur"]
+                            [glyph("time"), t("2 x 30 mínútur")]
                           )
                         ]
                       )
@@ -918,9 +945,10 @@ class View {
               ) : "",
               fairPlay ? m("div", { id: "chall-fairplay" },
                 [
-                  "Báðir leikmenn lýsa því yfir að þeir skrafla ",
-                  m("strong", "án stafrænna hjálpartækja"),
-                  " af nokkru tagi."
+                  t("Báðir leikmenn lýsa því yfir að þeir skrafla "),
+                  m("br"),
+                  mt("strong", "án stafrænna hjálpartækja"),
+                  t(" af nokkru tagi"), "."
                 ]
               ) : "",
               m(DialogButton,
@@ -1435,17 +1463,17 @@ class View {
 
             // Online and accepting challenges
             if (item.ready && !isRobot) {
-              fullname.push(m("span.ready-btn", { title: "Álínis og tekur við áskorunum" }));
+              fullname.push(m("span.ready-btn", { title: t("Álínis og tekur við áskorunum") }));
               fullname.push(nbsp());
             }
             // Willing to accept challenges for timed games
             if (item.ready_timed) {
-              fullname.push(m("span.timed-btn", { title: "Til í viðureign með klukku" }));
+              fullname.push(m("span.timed-btn", { title: t("Til í viðureign með klukku") }));
               fullname.push(nbsp());
             }
             // Fair play commitment
             if (item.fairplay) {
-              fullname.push(m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }));
+              fullname.push(m("span.fairplay-btn", { title: t("Skraflar án hjálpartækja") }));
               fullname.push(nbsp());
             }
             fullname.push(item.fullname);
@@ -1455,7 +1483,7 @@ class View {
                 return m("span.list-fav", { style: { cursor: "default" } }, glyph("star-empty"));
               return m("span.list-fav",
                 {
-                  title: "Uppáhald",
+                  title: t("Uppáhald"),
                   onclick: (ev) => {
                     item.fav = !item.fav;
                     model.markFavorite(item.userid, item.fav);
@@ -1968,7 +1996,7 @@ class View {
               ]),
               m(".fairplay",
                 { style: { visibility: fairplay ? "visible" : "hidden" } },
-                m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" })
+                m("span.fairplay-btn.large", { title: t("Skraflað án hjálpartækja") })
               )
             ]),
             vwClock(),
@@ -2181,7 +2209,7 @@ class View {
               ]),
               m(".fairplay",
                 { style: { visibility: fairplay ? "visible" : "hidden" } },
-                m("span.fairplay-btn.large", { title: "Skraflað án hjálpartækja" }))
+                m("span.fairplay-btn.large", { title: t("Skraflað án hjálpartækja") }))
             ])
           ]
         );
@@ -2303,7 +2331,7 @@ class View {
 
     let dtLastMsg: number = null;
 
-    function makeTimestamp(ts: string): m.vnode {
+    function makeTimestamp(ts: string, key: number): m.vnode {
       // Decode the ISO format timestamp we got from the server
       let dtTs = dateFromTimestamp(ts);
       let result: m.vnode = null;
@@ -2325,7 +2353,7 @@ class View {
           // Today
           strTs = ts.substr(11, 5);
         }
-        result = m(".chat-ts", strTs);
+        result = m(".chat-ts", { key: key }, strTs);
       }
       dtLastMsg = dtTs;
       return result;
@@ -2351,19 +2379,22 @@ class View {
       let r: m.vnode[] = [];
       if (game?.chatLoading || !game.messages)
         return r;
+      var key = 0;
       for (const msg of game.messages) {
         let p = player;
         if (msg.from_userid != model.state.userId)
           p = 1 - p;
-        const mTs = makeTimestamp(msg.ts);
-        if (mTs)
+        const mTs = makeTimestamp(msg.ts, key);
+        if (mTs !== null) {
           r.push(mTs);
+          key++;
+        }
         let escMsg = escapeHtml(msg.msg);
         escMsg = replaceEmoticons(escMsg);
         r.push(m(".chat-msg" +
           (p === 0 ? ".left" : ".right") +
           (p === player ? ".local" : ".remote"),
-          // { key: i },
+          { key: key++ },
           m.trust(escMsg))
         );
       }
@@ -2681,7 +2712,7 @@ class View {
                 }
               }
             },
-            "Skoða yfirlit"
+            t("Skoða yfirlit")
           )
         ]
       );
@@ -2696,45 +2727,49 @@ class View {
       wrdclass = "othermove";
       if (tiles == "PASS") {
         /* Pass move */
-        tiles = " Pass ";
+        tiles = " " + t("Pass") + " ";
         score = "";
       }
       else
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
         let numtiles = tiles.slice(5).length;
-        tiles = `Skipti um ${numtiles} ${numtiles == 1 ? " staf" : " stafi"}`;
+        const letters = t(numtiles == 1 ? "letter" : "letters");
+        // Exchanged {numtiles} {letters}
+        tiles = " " + t("exchanged", { numtiles: numtiles.toString(), letters: letters }) + " ";
         score = "";
       }
       else
       if (tiles == "RSGN")
         /* Resigned from game */
-        tiles = " Gaf viðureign "; // Extra space intentional
+        tiles = " " + t("Gaf viðureign") + " ";
       else
       if (tiles == "CHALL") {
         /* Challenge issued */
-        tiles = " Véfengdi lögn "; // Extra space intentional
+        tiles = " " + t("Véfengdi lögn") + " ";
         score = "";
       }
       else
       if (tiles == "RESP") {
         /* Challenge response */
         if (score < 0) {
-          tiles = " Óleyfileg lögn "; // Extra space intentional
+          // Invalid move
+          tiles = " " + t("Óleyfileg lögn") + " ";
           tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
         }
         else
-          tiles = " Röng véfenging "; // Extra space intentional
+          // Unsuccessful challenge
+          tiles = " " + t("Röng véfenging") + " ";
       }
       else
       if (tiles == "TIME") {
-        /* Overtime adjustment */
-        tiles = " Umframtími "; // Extra spaces intentional
+        /* Overtime adjustment, 'Extra time' */
+        tiles = " " + t("Umframtími") + " ";
       }
       else
       if (tiles == "OVER") {
         /* Game over */
-        tiles = "Viðureign lokið";
+        tiles = t("Viðureign lokið");
         wrdclass = "gameover";
       }
       else {
@@ -2754,7 +2789,7 @@ class View {
       // Game over message at bottom of move list
       return gameOverMove(tiles);
     // Normal game move
-    let title = (tileMoveIncrement > 0 && !game.manual) ? "Smelltu til að fletta upp" : "";
+    let title = (tileMoveIncrement > 0 && !game.manual) ? t("Smelltu til að fletta upp") : "";
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
@@ -2764,11 +2799,15 @@ class View {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
       playerColor = 1;
     }
-    let attribs: VnodeAttrs = { title: title };
+    let attribs: VnodeAttrs = { };
     if (state.uiFullscreen && tileMoveIncrement > 0) {
-      if (!game.manual && game.locale == "is_IS")
-        // Tile move and not a manual game: allow word lookup for Icelandic
-        attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
+      if (!game.manual) {
+        if (game.locale == "is_IS") {
+          // Tile move and not a manual game: allow word lookup for Icelandic
+          attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
+          attribs.title = title;
+        }
+      }
       // Highlight the move on the board while hovering over it
       attribs.onmouseout = () => {
         move["highlighted"] = false;
@@ -3006,7 +3045,7 @@ class View {
         else if (newbag)
           cls += ".new";
         return m(".bag",
-          { title: 'Flísar sem eftir eru í pokanum' },
+          { title: t("Flísar sem eftir eru") },
           m("table.bag-content" + cls, tiles(bag))
         );
       }
@@ -3057,14 +3096,14 @@ class View {
           },
           m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'blank-form' },
             [
-              m("p", "Hvaða staf táknar auða flísin?"),
+              mt("p", "Hvaða staf táknar auða flísin?"),
               m(".rack.blank-rack",
                 m("table.board", { id: 'blank-meaning' }, blankLetters(game))
               ),
               m(DialogButton,
                 {
                   id: 'blank-close',
-                  title: 'Hætta við',
+                  title: t("Hætta við"),
                   onclick: (ev: Event) => {
                     ev.preventDefault();
                     game.cancelBlankDialog();
@@ -3813,13 +3852,14 @@ class View {
     if (s.showForceResignMobile) {
       // Force resignation button (only shown on mobile,
       // and only if submit move button is not shown)
+      const txt = t("Þvinga til uppgjafar");
       r.push(
         this.makeButton(
           "force-resign",
           s.showingDialog,
           () => { game.forceResign(); },
-          "Þvinga til uppgjafar",
-          "Þvinga til uppgjafar"
+          txt,
+          txt
         )
       );
     }
@@ -3830,7 +3870,7 @@ class View {
           "submitpass",
           (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitPass(),
-          "Pass", glyph("forward")
+          t("Pass"), glyph("forward")
         )
       );
     }
@@ -3841,7 +3881,7 @@ class View {
           "submitexchange",
           s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           () => game.submitExchange(),
-          "Skipta stöfum", glyph("refresh")
+          t("Skipta stöfum"), glyph("refresh")
         )
       );
     }
@@ -3851,7 +3891,7 @@ class View {
         this.makeButton(
           "submitresign", s.showingDialog,
           () => game.submitResign(),
-          "Gefa viðureign", glyph("fire")
+          t("Gefa viðureign"), glyph("fire")
         )
       );
     }
@@ -3865,7 +3905,7 @@ class View {
             m("span.move-indicator"),
             nbsp(),
             m("strong", game.nickname[1 - game.player]),
-            " á leik",
+            t(" á leik"),
             nbsp(),
             // The following inline button is only
             // displayed in the fullscreen UI
@@ -3878,9 +3918,9 @@ class View {
                 },
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
-                title: '14 dagar liðnir án leiks'
+                title: t("14 dagar liðnir án leiks")
               },
-              "Þvinga til uppgjafar"
+              t("Þvinga til uppgjafar")
             ) : ""
           ]
         )
@@ -3955,41 +3995,24 @@ class View {
   vwErrors(game: Game): m.vnode {
     // Error messages, selectively displayed
     let msg: string = game.currentMessage || "";
-    let errorMessages: { [key: string]: VnodeChildren } = {
-      1: "Enginn stafur lagður niður",
-      2: "Fyrsta orð verður að liggja um byrjunarreitinn",
-      3: "Orð verður að vera samfellt á borðinu",
-      4: "Orð verður að tengjast orði sem fyrir er",
-      5: "Reitur þegar upptekinn",
-      6: "Ekki má vera eyða í orði",
-      7: ["'", m("span.errword", msg), "' finnst ekki í orðasafni"],
-      8: ["'", m("span.errword", msg), "' finnst ekki í orðasafni"],
-      9: "Of margir stafir lagðir niður",
-      10: "Stafur er ekki í rekkanum",
-      11: "Of fáir stafir eftir, skipting ekki leyfð",
-      12: "Of mörgum stöfum skipt",
-      13: "Leik vantar á borðið - notið F5/Refresh",
-      14: "Notandi ekki innskráður - notið F5/Refresh",
-      15: "Rangur eða óþekktur notandi",
-      16: "Viðureign finnst ekki",
-      17: "Viðureign er ekki utan tímamarka",
-      18: "Netþjónn gat ekki tekið við leiknum - reyndu aftur",
-      19: "Véfenging er ekki möguleg í þessari viðureign",
-      20: "Síðasti leikur er ekki véfengjanlegur",
-      21: "Aðeins véfenging eða pass leyfileg",
-      server: "Netþjónn gat ekki tekið við leiknum - reyndu aftur"
-    };
-
-    if (game.currentError in errorMessages) {
+    if (game.currentError in ERROR_MESSAGES) {
+      const txt: string = t(ERROR_MESSAGES[game.currentError]);
+      const wix = txt.indexOf("{word}");
+      let children: VnodeChildren[];
+      if (wix >= 0) {
+        // Found {word} macro: create three child nodes
+        children = [ txt.slice(0, wix), m("span.errword", msg), txt.slice(wix + 6) ];
+      }
+      else {
+        // No {word} macro: just return the message as-is
+        children = [ txt ];
+      }
       return m(".error",
         {
           style: { visibility: "visible" },
           onclick: (ev) => { game.resetError(); ev.preventDefault(); }
         },
-        [
-          glyph("exclamation-sign"),
-          errorMessages[game.currentError]
-        ]
+        [ glyph("exclamation-sign"), ...children ]
       );
     }
     return undefined;
@@ -4511,7 +4534,7 @@ const EloList: ComponentFunc<{
             );
         if (item.fairplay && !isRobot)
           nick = m("span",
-            [m("span.fairplay-btn", { title: "Skraflar án hjálpartækja" }), nick]);
+            [m("span.fairplay-btn", { title: t("Skraflar án hjálpartækja") }), nick]);
 
         return m(".listitem",
           {
@@ -4647,8 +4670,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         [
           m("span.list-win",
             item.sc0 >= item.sc1 ?
-              glyph("bookmark", { title: item.sc0 == item.sc1 ? "Jafntefli" : "Sigur" }) :
-              glyphGrayed("bookmark", { title: "Tap" })
+              glyph("bookmark", { title: item.sc0 == item.sc1 ? t("Jafntefli") : t("Sigur") }) :
+              glyphGrayed("bookmark", { title: t("Tap") })
           ),
           m("span.list-ts-short", item.ts_last_move),
           m("span.list-nick",

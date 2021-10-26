@@ -426,7 +426,9 @@ def oauth2callback() -> ResponseType:
             # or create a fresh user record if not found
             # !!! TODO: Assign locale
             locale = DEFAULT_LOCALE
-            uld = User.login_by_account(account, name or "", email or "", image or "", locale=locale)
+            uld = User.login_by_account(
+                account, name or "", email or "", image or "", locale=locale
+            )
             # Store login data where we'll find it again, and return
             # some of it back to the client
             userid = uld["user_id"]
@@ -1408,7 +1410,8 @@ def gamestate() -> ResponseType:
 
     user_id = current_user_id()
 
-    game = Game.load(uuid, set_locale=True) if uuid else None
+    # !!! FIXME: use_cache was not set to False here
+    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
 
     if game is None or user_id is None:
         # We must have a logged-in user and a valid game
@@ -1489,7 +1492,7 @@ def gamestats() -> str:
     game = None
 
     if uuid is not None:
-        game = Game.load(uuid, set_locale=True)
+        game = Game.load(uuid, set_locale=True, use_cache=False)
         # Check whether the game is still in progress
         if (game is not None) and not game.is_over():
             # Don't allow looking at the stats in this case
@@ -1915,6 +1918,9 @@ def chatmsg() -> ResponseType:
         game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
+            # We don't set use_cache=False here since we are only
+            # accessing game data that remains constant for the
+            # entire duration of a game, i.e. the player info
             game = Game.load(uuid, set_locale=True)
         if game is None or not game.has_player(user_id):
             # The logged-in user must be a player in the game
@@ -2018,6 +2024,9 @@ def chatload() -> ResponseType:
         game: Optional[Game] = None
         uuid = channel[5:][:36]  # The game id
         if uuid:
+            # We don't set use_cache=False here since we are
+            # only accessing data that remains constant over the
+            # lifetime of a game object, i.e. the player information
             game = Game.load(uuid, set_locale=True)
         if game is None or not game.has_player(user_id):
             # The logged-in user must be a player in the game
@@ -2115,7 +2124,9 @@ def bestmoves() -> ResponseType:
 
     uuid = rq.get("game")
     # Attempt to load the game whose id is in the URL query string
-    game: Optional[Game] = None if uuid is None else Game.load(uuid, set_locale=True)
+    game: Optional[Game] = None if uuid is None else Game.load(
+        uuid, set_locale=True, use_cache=False
+    )
 
     if game is None or not game.is_over():
         # The game is not found or still in progress: abort

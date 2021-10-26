@@ -1,41 +1,99 @@
 {
-  "Leikir": {"en": "Moves"},
-  "Viðureignir": {"en": "Games"},
-  "Borðið": {"en": "Board"},
-  "Tveggja stafa orð": {"en": "Two letter words"},
-  "Spjall": {"en": "Chat"},
-  "Þessi vefslóð er ekki rétt": {"en": "Unknown URL"},
-  "Upplýsingar um leikmann": {"en": "Player information"},
-  " Upplýsingar um leikmann": {"en": " Player information"},
-  "Einkenni:": {"en": "User identifier:"},
-  "Verður að vera útfyllt": {"en": "Required field"},
-  "Fullt nafn:": {"en": "Full name:"},
-  "Valfrjálst - sýnt í notendalistum Netskrafls": {"en": "Optional - shown in user lists"},
-  "Tölvupóstfang:": {"en": "E-mail:"},
+  "Leikir": {
+    "en": "Moves"
+  },
+  "Viðureignir": {
+    "en": "Games"
+  },
+  "Borðið": {
+    "en": "Board"
+  },
+  "Tveggja stafa orð": {
+    "en": "Two letter words"
+  },
+  "Spjall": {
+    "en": "Chat"
+  },
+  "Þessi vefslóð er ekki rétt": {
+    "en": "Unknown URL"
+  },
+  "Upplýsingar um leikmann": {
+    "en": "Player information"
+  },
+  " Upplýsingar um leikmann": {
+    "en": " Player information"
+  },
+  "Einkenni:": {
+    "en": "User identifier:"
+  },
+  "Verður að vera útfyllt": {
+    "en": "Required field"
+  },
+  "Fullt nafn:": {
+    "en": "Full name:"
+  },
+  "Valfrjálst - sýnt í notendalistum Netskrafls": {
+    "en": "Optional - shown in user lists"
+  },
+  "Tölvupóstfang:": {
+    "en": "E-mail:"
+  },
   "explain_email": {
     "is": "Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik",
     "en": "If given, Explo can send e-mail to the address when it's your turn in a game"
   },
-  "Hljóðmerki:": {"en": "Sounds:"},
-  "Lúðraþytur eftir sigur:": {"en": "Trumpets after a win:"},
+  "Hljóðmerki:": {
+    "en": "Sounds:"
+  },
+  "Lúðraþytur eftir sigur:": {
+    "en": "Trumpets after a win:"
+  },
   "explain_sound": {
     "is": "Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst",
     "en": "Controls whether sounds are played, e.g. when an opponent moves or when you win"
   },
-  "Sýna reitagildi:": {"en": "Show multipliers:"},
-  "Nýi skraflpokinn:": {"en": "Use the new bag:"},
-  "Án hjálpartækja:": {"en": "Without helpers:"},
-  "Vista": {"en": "Save"},
-  "Hætta við": {"en": "Cancel"},
-  "Skrá mig út": {"en": "Log out"},
-  "Hætta sem vinur": {"en": "Cancel friendship"},
-  "Þú ert vinur Netskrafls!": {"en": "You are a friend of Explo!"},
-  "Gerast vinur": {"en": "Become a friend"},
-  "Gerast vinur Netskrafls": {"en": "Become a friend of Explo"},
-  "Tek við áskorunum!": {"en": "Accepting challenges!"},
-  "Til í viðureign með klukku!": {"en": "Ready for timed games!"},
-  "Stillir hvort ": {"en": "Controls whether "},
-  "minnismiði": {"en": "a memo sticker"},
+  "Sýna reitagildi:": {
+    "en": "Show multipliers:"
+  },
+  "Nýi skraflpokinn:": {
+    "en": "Use the new bag:"
+  },
+  "Án hjálpartækja:": {
+    "en": "Without helpers:"
+  },
+  "Vista": {
+    "en": "Save"
+  },
+  "Hætta við": {
+    "en": "Cancel"
+  },
+  "Skrá mig út": {
+    "en": "Log out"
+  },
+  "Hætta sem vinur": {
+    "en": "Cancel friendship"
+  },
+  "Þú ert vinur Netskrafls!": {
+    "en": "You are a friend of Explo!"
+  },
+  "Gerast vinur": {
+    "en": "Become a friend"
+  },
+  "Gerast vinur Netskrafls": {
+    "en": "Become a friend of Explo"
+  },
+  "Tek við áskorunum!": {
+    "en": "Accepting challenges!"
+  },
+  "Til í viðureign með klukku!": {
+    "en": "Ready for timed games!"
+  },
+  "Stillir hvort ": {
+    "en": "Controls whether "
+  },
+  "minnismiði": {
+    "en": "a memo sticker"
+  },
   " um margföldunargildi reita er sýndur við borðið": {
     "en": " with square multipliers is shown beside the board"
   },
@@ -49,141 +107,485 @@
     "is": "Með því að velja þessa merkingu lýsir þú því yfir að þú\nskraflir við aðra leikmenn ",
     "en": "By selecting this option, you declare that you play\nagainst other humans "
   },
-  "án stafrænna hjálpartækja": {"en": "without helpers or tools"},
-  " af nokkru tagi": {"en": " of any kind"},
-  "Áskoranir": {"en": "Challenges"},
-  "Andstæðingar": {"en": "Opponents"},
-  "Ferill": {"en": "History"},
-  "Þú átt leik": {"en": "Your turn"},
-  "Viðureign lokið": {"en": "Game over"},
-  "opp_move": {"is": "{opponent} á leik", "en": "{opponent}'s turn"},
-  "Átt þú leik?": {"en": "Your turn?"},
-  "Langt frá síðasta leik?": {"en": "Long time elapsed since last move?"},
-  "Síðasti leikur": {"en": "Last move"},
-  "Andstæðingur": {"en": "Opponent"},
-  "Staða": {"en": "Score"},
-  "Framvinda": {"en": "Progress"},
-  "Keppnishamur": {"en": "Pro mode"},
-  "Venjuleg ótímabundin viðureign": {"en": "Normal game without time limit"},
+  "án stafrænna hjálpartækja": {
+    "en": "without helpers or tools"
+  },
+  " af nokkru tagi": {
+    "en": " of any kind"
+  },
+  "Áskoranir": {
+    "en": "Challenges"
+  },
+  "Andstæðingar": {
+    "en": "Opponents"
+  },
+  "Ferill": {
+    "en": "History"
+  },
+  "Þú átt leik": {
+    "en": "Your turn"
+  },
+  "Viðureign lokið": {
+    "en": "Game over"
+  },
+  "opp_move": {
+    "is": "{opponent} á leik", "en": "{opponent}'s turn"
+  },
+  " á leik": {
+    "en": "'s turn"
+  },
+  "Átt þú leik?": {
+    "en": "Your turn?"
+  },
+  "Langt frá síðasta leik?": {
+    "en": "Long time elapsed since last move?"
+  },
+  "Síðasti leikur": {
+    "en": "Last move"
+  },
+  "Andstæðingur": {
+    "en": "Opponent"
+  },
+  "Staða": {
+    "en": "Score"
+  },
+  "Framvinda": {
+    "en": "Progress"
+  },
+  "Keppnishamur": {
+    "en": "Pro mode"
+  },
+  "Venjuleg ótímabundin viðureign": {
+    "en": "Normal game without time limit"
+  },
   "with_clock": {
     "is": "Með klukku, 2 x {duration} mínútur",
     "en": "With clock, 2 x {duration} minutes"
   },
-  "Hafna": {"en": "Decline"},
-  "Afturkalla": {"en": "Retract"},
-  "Án hjálpartækja": {"en": "Without helpers"},
-  "Skoða feril": {"en": "View history"},
-  "Gamli pokinn": {"en": "Old tile bag"},
-  "Hvenær": {"en": "When"},
-  "Áskorandi": {"en": "Challenger"},
-  "Hvernig": {"en": "How"},
-  "Sigur": {"en": "Win"},
-  "Úrslit": {"en": "Result"},
-  "Viðureign lauk": {"en": "Game finished"},
-  "Mennskir andstæðingar": {"en": "Human opponents"},
-  "Allir andstæðingar": {"en": "All opponents"},
+  "Hafna": {
+    "en": "Decline"
+  },
+  "Afturkalla": {
+    "en": "Retract"
+  },
+  "Án hjálpartækja": {
+    "en": "Without helpers"
+  },
+  "Skoða feril": {
+    "en": "View history"
+  },
+  "Gamli pokinn": {
+    "en": "Old tile bag"
+  },
+  "Hvenær": {
+    "en": "When"
+  },
+  "Áskorandi": {
+    "en": "Challenger"
+  },
+  "Hvernig": {
+    "en": "How"
+  },
+  "Sigur": {
+    "en": "Win"
+  },
+  "Jafntefli": {
+    "en": "Draw"
+  },
+  "Tap": {
+    "en": "Loss"
+  },
+  "Úrslit": {
+    "en": "Result"
+  },
+  "Viðureign lauk": {
+    "en": "Game finished"
+  },
+  "Mennskir andstæðingar": {
+    "en": "Human opponents"
+  },
+  "Allir andstæðingar": {
+    "en": "All opponents"
+  },
   "Elo": {},
-  "Lengd": {"en": "Duration"},
-  "Uppáhald": {"en_US": "Favorite", "en": "Favourite"},
-  "Uppáhalds": {"en_US": "Favorites", "en": "Favourites"},
-  "Skora á": {"en": "Challenge"},
-  "Einkenni": {"en": "Identifier"},
-  "Nafn og merki": {"en": "Full name and badges"},
-  " finnst ekki": {"en": " not found"},
-  "Þjarkar": {"en": "Robots"},
-  "Álínis": {"en": "Online"},
-  "Svipaðir": {"en": "Similar"},
-  "Topp 100": {"en": "Top 100"},
-  "orð": {"en": "word"},
-  "stafur": {"en": "letter"},
-  "Senda": {"en": "Send"},
-  "Pass": {"en": "Pass"},
-  "letter": {"en": "letter", "is": "staf"},
-  "letters": {"en": "letters", "is": "stafi"},
+  "Lengd": {
+    "en": "Duration"
+  },
+  "Uppáhald": {
+    "en_US": "Favorite", "en": "Favourite"
+  },
+  "Uppáhalds": {
+    "en_US": "Favorites", "en": "Favourites"
+  },
+  "Skora á": {
+    "en": "Challenge"
+  },
+  "Einkenni": {
+    "en": "Identifier"
+  },
+  "Nafn og merki": {
+    "en": "Full name and badges"
+  },
+  " finnst ekki": {
+    "en": " not found"
+  },
+  "Þjarkar": {
+    "en": "Robots"
+  },
+  "Álínis": {
+    "en": "Online"
+  },
+  "Svipaðir": {
+    "en": "Similar"
+  },
+  "Topp 100": {
+    "en": "Top 100"
+  },
+  "orð": {
+    "en": "word"
+  },
+  "stafur": {
+    "en": "letter"
+  },
+  "Senda": {
+    "en": "Send"
+  },
+  "Pass": {
+    "en": "Pass"
+  },
+  "letter": {
+    "en": "letter", "is": "staf"
+  },
+  "letters": {
+    "en": "letters", "is": "stafi"
+  },
   "exchanged": {
     "is": "Skipti um {numtiles} {letters}",
     "en": "Exchanged {numtiles} {letters}"
   },
-  "Gaf viðureign": {"en": "Resigned game"},
-  "Véfengdi lögn": {"en": "Challenged move"},
-  "Óleyfileg lögn": {"en": "Invalid move"},
-  "Röng véfenging": {"en": "Unsuccessful challenge"},
-  "Umframtími": {"en": "Extra time"},
-  "Stafaleif: (engin)": {"en": "Rack leave: (none)"},
-  "Stafaleif: ": {"en": "Rack leave: "},
-  "Ný áskorun": {"en": "New challenge"},
-  "Viðureign án klukku": {"en": "Game with no time limit"},
-  "Nota ": {"en": "Enable "},
-  "handvirka véfengingu": {"en": "manual challenges"},
-  "(\"keppnishamur\")": {"en": "(\"pro mode\")"},
-  "Viðureignir sem standa yfir": {"en": "Games in progress"},
+  "Gaf viðureign": {
+    "en": "Resigned"
+  },
+  "Véfengdi lögn": {
+    "en": "Challenged move"
+  },
+  "Óleyfileg lögn": {
+    "en": "Invalid move"
+  },
+  "Röng véfenging": {
+    "en": "Unsuccessful challenge"
+  },
+  "Umframtími": {
+    "en": "Extra time"
+  },
+  "Stafaleif: (engin)": {
+    "en": "Rack leave: (none)"
+  },
+  "Stafaleif: ": {
+    "en": "Rack leave: "
+  },
+  "Ný áskorun": {
+    "en": "New challenge"
+  },
+  "Viðureign án klukku": {
+    "en": "Game with no time limit"
+  },
+  "Nota ": {
+    "en": "Enable "
+  },
+  "handvirka véfengingu": {
+    "en": "manual challenges"
+  },
+  "(\"keppnishamur\")": {
+    "en": "(\"pro mode\")"
+  },
+  "Viðureignir sem standa yfir": {
+    "en": "Games in progress"
+  },
   " - smelltu á viðureign til að skoða stöðuna og leika ef ": {
     "en": " - click on a game to view it and make a move if "
   },
-  " þú átt leik": {"en": " it's your turn"},
-  "Skorað á þig": {"en": "Other players have challenged you"},
+  " þú átt leik": {
+    "en": " it's your turn"
+  },
+  "Skorað á þig": {
+    "en": "Other players have challenged you"
+  },
   " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ": {
     "en": " - click on a challenge to accept it and start a game, or on "
   },
-  " til að hafna henni": {"en": " to decline it"},
-  "Þú skorar á aðra": {"en": "You challenge other players"},
-  " - smelltu á ": {"en": " - click on "},
-  " til að afturkalla áskorun": {"en": " to retract an issued challenge"},
-  "Nýlegar viðureignir þínar": {"en": "Your recent games"},
+  " til að hafna henni": {
+    "en": " to decline it"
+  },
+  "Þú skorar á aðra": {
+    "en": "You challenge other players"
+  },
+  " - smelltu á ": {
+    "en": " - click on "
+  },
+  " til að afturkalla áskorun": {
+    "en": " to retract an issued challenge"
+  },
+  "Nýlegar viðureignir þínar": {
+    "en": "Your recent games"
+  },
   " - smelltu á viðureign til að skoða hana og rifja upp": {
     "en": " - click on a game to review it"
   },
-  "Einkenni eða nafn": {"en": "Identifier or name"},
-  "Upplýsingar og hjálp": {"en": "Information and help"},
-  "1 dagur": {"en": "1 day"},
-  " dagar": {"en": " days"},
-  " og ": {"en": " and "},
-  "1 klst": {"en": "1 hour"},
-  " klst": {"en": " hours"},
-  "1 mínúta": {"en": "1 minute"},
-  " mínútur": {"en": " minutes"},
-  "Viðureign með klukku": {"en": "Timed game"},
-  "Vinur Netskrafls": {"en": "Friend of Explo"},
-  "Nýjustu viðureignir": {"en": "Recent games"},
-  "Loka": {"en": "Close"},
-  "Besta orð ": {"en": "Best word "},
-  "Hæsta skor ": {"en": "Highest score "},
-  " stig": {"en": " points"},
-  "Til hamingju með sigurinn!": {"en": "You won - congratulations!"},
-  "Viðureigninni er lokið": {"en": "Game over"},
+  "Einkenni eða nafn": {
+    "en": "Identifier or name"
+  },
+  "Upplýsingar og hjálp": {
+    "en": "Information and help"
+  },
+  "1 dagur": {
+    "en": "1 day"
+  },
+  " dagar": {
+    "en": " days"
+  },
+  " og ": {
+    "en": " and "
+  },
+  "1 klst": {
+    "en": "1 hour"
+  },
+  " klst": {
+    "en": " hours"
+  },
+  "1 mínúta": {
+    "en": "1 minute"
+  },
+  " mínútur": {
+    "en": " minutes"
+  },
+  "Viðureign með klukku": {
+    "en": "Timed game"
+  },
+  "Vinur Netskrafls": {
+    "en": "Friend of Explo"
+  },
+  "Nýjustu viðureignir": {
+    "en": "Recent games"
+  },
+  "Loka": {
+    "en": "Close"
+  },
+  "Besta orð ": {
+    "en": "Best word "
+  },
+  "Hæsta skor ": {
+    "en": "Highest score "
+  },
+  " stig": {
+    "en": " points"
+  },
+  "Til hamingju með sigurinn!": {
+    "en": "You won - congratulations!"
+  },
+  "Viðureigninni er lokið": {
+    "en": "Game over"
+  },
   "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass": {
     "en": "Your opponent emptied the rack - you can challenge or pass"
   },
-  "Viltu gefa leikinn?": {"en": "Do you want to resign the game?"},
-  " Já": {"en": " Yes"},
-  " Nei": {"en": " No"},
-  "Segja pass?": {"en": "Pass the turn?"},
-  "2x3 pöss í röð ljúka viðureign": {"en": "2x3 passes in a row end the game"},
-  "Viðureign lýkur þar með": {"en": "This finishes the game"},
-  "Skipta": {"en": "Exchange"},
+  "Viltu gefa leikinn?": {
+    "en": "Do you want to resign the game?"
+  },
+  " Já": {
+    "en": " Yes"
+  },
+  " Nei": {
+    "en": " No"
+  },
+  "Segja pass?": {
+    "en": "Pass the turn?"
+  },
+  "2x3 pöss í röð ljúka viðureign": {
+    "en": "2x3 passes in a row end the game"
+  },
+  "Viðureign lýkur þar með": {
+    "en": "This finishes the game"
+  },
+  "Skipta": {
+    "en": "Exchange"
+  },
   "Smelltu á flísarnar sem þú vilt skipta": {
     "en": "Click on the tiles that you wish to exchange"
   },
-  "Véfengja lögn?": {"en": "Challenge move?"},
-  "Röng véfenging kostar 10 stig": {"en": "An unsuccessful challenge costs 10 points"},
-  "Er álínis": {"en": "Is online"},
-  "Álínis?": {"en": "Online?"},
-  "Röð": {"en": "Rank"},
-  "Röð í gær": {"en": "Rank yesterday"},
-  "Röð fyrir viku": {"en": "Rank a week ago"},
+  "Véfengja lögn?": {
+    "en": "Challenge move?"
+  },
+  "Röng véfenging kostar 10 stig": {
+    "en": "An unsuccessful challenge costs 10 points"
+  },
+  "Er álínis": {
+    "en": "Is online"
+  },
+  "Álínis?": {
+    "en": "Online?"
+  },
+  "Röð": {
+    "en": "Rank"
+  },
+  "Röð í gær": {
+    "en": "Rank yesterday"
+  },
+  "Röð fyrir viku": {
+    "en": "Rank a week ago"
+  },
   "1d": {},
   "7d": {},
   "30d": {},
-  "Elo-stig": {"en": "Elo points"},
-  "Elo-stig í gær": {"en": "Elo points yesterday"},
-  "Elo-stig fyrir viku": {"en": "Elo points a week ago"},
-  "Elo-stig fyrir mánuði": {"en": "Elo points a month ago"},
-  "Með þjörkum eða án": {"en": "With or without robot games"},
-  "Fjöldi viðureigna": {"en": "Number of games"},
-  "Vinningshlutfall": {"en": "Winning ratio"},
-  "Meðalstigafjöldi": {"en": "Average score"},
-  " gegn öllum ": {"en": " against all "},
-  " gegn þér ": {"en": " against you "},
+  "Elo-stig": {
+    "en": "Elo points"
+  },
+  "Elo-stig í gær": {
+    "en": "Elo points yesterday"
+  },
+  "Elo-stig fyrir viku": {
+    "en": "Elo points a week ago"
+  },
+  "Elo-stig fyrir mánuði": {
+    "en": "Elo points a month ago"
+  },
+  "Með þjörkum eða án": {
+    "en": "With or without robot games"
+  },
+  "Fjöldi viðureigna": {
+    "en": "Number of games"
+  },
+  "Vinningshlutfall": {
+    "en": "Winning ratio"
+  },
+  "Meðalstigafjöldi": {
+    "en": "Average score"
+  },
+  " gegn öllum ": {
+    "en": " against all "
+  },
+  " gegn þér ": {
+    "en": " against you "
+  },
+  " - veldu lengd viðureignar:": {
+    "en": " - choose game duration:"
+  },
+  "2 x 10 mínútur": {
+    "en": "2 x 10 minutes"
+  },
+  "2 x 15 mínútur": {
+    "en": "2 x 15 minutes"
+  },
+  "2 x 20 mínútur": {
+    "en": "2 x 20 minutes"
+  },
+  "2 x 25 mínútur": {
+    "en": "2 x 25 minutes"
+  },
+  "2 x 30 mínútur": {
+    "en": "2 x 30 minutes"
+  },
+  "Báðir leikmenn lýsa því yfir að þeir skrafla ": {
+    "en": "Both players declare that they play "
+  },
+  "Flísar sem eftir eru": {
+    "en": "Tiles remaining"
+  },
+  "Hvaða staf táknar auða flísin?": {
+    "en": "Which letter does the blank tile represent?"
+  },
+  "Þvinga til uppgjafar": {
+    "en": "Force to resign"
+  },
+  "14 dagar liðnir án leiks": {
+    "en": "14 days elapsed without a move"
+  },
+  "Gefa viðureign": {
+    "en": "Resign from game"
+  },
+  "Skipta stöfum": {
+    "en": "Exchange tiles"
+  },
+  "word_not_found": {
+    "en": "'{word}' is not in the dictionary",
+    "is": "'{word}' finnst ekki í orðasafni"
+  },
+  "Smelltu til að fletta upp": {
+    "en": "Click to look up"
+  },
+  "Skoða yfirlit": {
+    "en": "Review game"
+  },
+  "Skraflað án hjálpartækja": {
+    "en": "Game without helpers or tools"
+  },
+  "Skraflar án hjálpartækja": {
+    "en": "Plays without helpers or tools"
+  },
+  "Til í viðureign með klukku": {
+    "en": "Willing to play timed games"
+  },
+  "Álínis og tekur við áskorunum": {
+    "en": "Online and accepting challenges"
+  },
+
+  "Enginn stafur lagður niður": {
+    "en": "No tile played"
+  },
+  "Fyrsta orð verður að liggja um byrjunarreitinn": {
+    "en": "First word must cover the start square"
+  },
+  "Orð verður að vera samfellt á borðinu": {
+    "en": "Word must be placed consecutively on the board"
+  },
+  "Orð verður að tengjast orði sem fyrir er": {
+    "en": "Word must be connected to another word on the board"
+  },
+  "Reitur þegar upptekinn": {
+    "en": "Square is already occupied"
+  },
+  "Ekki má vera eyða í orði": {
+    "en": "Word cannot contain a space"
+  },
+  "Of margir stafir lagðir niður": {
+    "en": "Too many tiles laid down"
+  },
+  "Stafur er ekki í rekkanum": {
+    "en": "Tile is not present in the player's rack"
+  },
+  "Of fáir stafir eftir, skipting ekki leyfð": {
+    "en": "Too few tiles left in bag; exchange not permitted"
+  },
+  "Of mörgum stöfum skipt": {
+    "en": "Too many tiles exchanged"
+  },
+  "Leik vantar á borðið - endurglæðið vefráparann": {
+    "en": "Move missing from board - refresh browser"
+  },
+  "Notandi ekki innskráður - endurglæðið vefráparann": {
+    "en": "User not logged in - refresh browser"
+  },
+  "Rangur eða óþekktur notandi": {
+    "en": "Wrong or unknown user"
+  },
+  "Viðureign finnst ekki": {
+    "en": "Game not found"
+  },
+  "Viðureign er ekki utan tímamarka": {
+    "en": "Game has not exceeded time limit"
+  },
+  "Netþjónn gat ekki tekið við leiknum - reyndu aftur": {
+    "en": "Server is unable to process move - try again"
+  },
+  "Véfenging er ekki möguleg í þessari viðureign": {
+    "en": "A challenge is not possible in this game"
+  },
+  "Síðasti leikur er ekki véfengjanlegur": {
+    "en": "The last move cannot be challenged"
+  },
+  "Aðeins véfenging eða pass leyfileg": {
+    "en": "Only a challenge or a pass are possible"
+  },
 
   "[sentinel]" : {}
 }
