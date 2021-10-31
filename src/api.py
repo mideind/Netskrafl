@@ -1666,7 +1666,7 @@ def rating() -> ResponseType:
     of a given kind ('all' or 'human')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
-    if kind not in ("all", "human"):
+    if kind not in ("all", "human", "manual"):
         kind = "all"
     return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
@@ -1759,6 +1759,8 @@ def challenge() -> ResponseType:
                 "fairplay": fairplay,
                 "newbag": True,
                 "manual": manual,
+                # A challenge is by default bound to the issuing user's locale
+                "locale": user.locale,
             },
         )
     elif action == "retract":
@@ -2298,6 +2300,7 @@ def initgame() -> ResponseType:
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
+        # The game is always in the user's locale
         prefs = dict(newbag=True, locale=user.locale)
         if board_type != "standard":
             prefs["board_type"] = board_type

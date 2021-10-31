@@ -20,10 +20,12 @@ export { main };
 
 import { m, ComponentFunc } from "mithril";
 import { AnimatedExploLogo, NetskraflLegend } from "logo";
+import { t, loadMessages } from "i18n";
 
-function main($state: { loginUrl: string; }) {
+function main($state: { loginUrl: string; locale: string; }) {
   // Mount the Mithril component tree as a child of the div.container element
   // on the login page (login-explo.html)
+  loadMessages($state.locale);
   const root = document.getElementById("container");
   m.mount(root,
     {
@@ -71,11 +73,7 @@ const LoginForm: ComponentFunc<{ loginUrl: string }> = (initialVnode) => {
             "er óhjákvæmilegt að geyma þar til gerða smáköku (",
             m("i", "cookie"), ") í vafranum þínum."
           ]),
-          m("div.welcome",
-            "Til auðkenningar tengir Netskrafl tölvupóstfang og nafn við hvern notanda. " +
-            "Að öðru leyti eru ekki geymdar aðrar upplýsingar um notendur " +
-            "en þær sem þeir skrá sjálfir. Annáll er haldinn um umferð um vefinn."
-          ),
+          m("div.welcome", t("welcome_2")),
           m("div.login-btn-large",
             { onclick: doLogin },
             loginInProgress ? "Skrái þig inn..." : [

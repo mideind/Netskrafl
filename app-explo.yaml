@@ -25,7 +25,6 @@ env_variables:
   REDISHOST: 10.194.164.243
   REDISPORT: 6379
   PROJECT_ID: explo-dev
-  FIREBASE_DB_URL: https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app
   # Single page UI
   SINGLE_PAGE: TRUE
 

@@ -15,30 +15,65 @@
   This module contains internationalization (i18n) utility functions,
   allowing for translation of displayed text between languages.
 
+  Text messages for individual locales are loaded from the
+  /static/assets/messages.json file, which is fetched from the server.
+
 */
 
-import { m, VnodeChildren } from "./mithril";
+export { t, mt, loadMessages };
 
-export { t, mt, setLocale, Messages };
+import { m, VnodeChildren } from "mithril";
+
+// Type declarations
+type Messages = { [key: string]: { [locale: string]: string | string[] }};
+type FlattenedMessages = { [key: string]: { [locale: string]: string }};
+type Interpolations = { [key: string]: string };
 
 // Current exact user locale and fallback locale ("en" for "en_US"/"en_UK"/...)
+// This is overwritten in setLocale()
 let currentLocale = "is_IS";
 let currentFallback = "is";
-
-type Messages = { [key: string]: { [locale: string]: string }};
-type Interpolations = { [key: string]: string };
 
 // Regex that matches embedded interpolations such as "Welcome, {username}!"
 // Interpolation identifiers should only contain ASCII characters, digits and '_'
 const rex = /{\s*(\w+)\s*}/g;
 
-let messages: Messages = {};
+let messages: FlattenedMessages = {};
+let messagesLoaded = false;
 
 function setLocale(locale: string, m: Messages): void {
   // Set the current i18n locale and fallback
   currentLocale = locale;
   currentFallback = locale.split("_")[0];
-  messages = m;
+  // Flatten the Messages structure, enabling long strings
+  // to be represented as string arrays in the messages.json file
+  messages = {};
+  for (let key in m) {
+    for (let lc in m[key]) {
+      let s = m[key][lc];
+      if (Array.isArray(s))
+        s = s.join("");
+      if (messages[key] === undefined)
+        messages[key] = {};
+      messages[key][lc] = s;
+    }
+  }
+  messagesLoaded = true;
+}
+
+async function loadMessages(locale: string) {
+  // Load the internationalization message JSON file from the server
+  // and set the user's locale
+  try {
+    const messages: Messages = await m.request({
+      method: "GET",
+      url: "/static/assets/messages.json",
+    });
+    setLocale(locale, messages);
+  }
+  catch {
+    setLocale(locale, {});
+  }
 }
 
 function t(key: string, ips: Interpolations = {}): string {
@@ -46,7 +81,7 @@ function t(key: string, ips: Interpolations = {}): string {
   const msgDict = messages[key];
   if (msgDict === undefined)
     // No dictionary for this key - may actually be a missing entry
-    return key;
+    return messagesLoaded ? key : "";
   // Lookup exact locale, then fallback, then resort to returning the key
   const message = msgDict[currentLocale] || msgDict[currentFallback] || key;
   // If we have an interpolation object, do the interpolation first
@@ -54,6 +89,8 @@ function t(key: string, ips: Interpolations = {}): string {
 }
 
 function mt(cls: string, children: VnodeChildren): VnodeChildren {
+  // Wrapper for the Mithril m() function that auto-translates
+  // string and array arguments
   if (typeof children == "string") {
     return m(cls, t(children));
   }

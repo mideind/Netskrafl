@@ -17,11 +17,9 @@
   "Þessi vefslóð er ekki rétt": {
     "en": "Unknown URL"
   },
-  "Upplýsingar um leikmann": {
+  "player_info": {
+    "is": "Upplýsingar um leikmann",
     "en": "Player information"
-  },
-  " Upplýsingar um leikmann": {
-    "en": " Player information"
   },
   "Einkenni:": {
     "en": "User identifier:"
@@ -156,7 +154,7 @@
     "en": "Pro mode"
   },
   "Venjuleg ótímabundin viðureign": {
-    "en": "Normal game without time limit"
+    "en": "Standard Mode without time limit"
   },
   "with_clock": {
     "is": "Með klukku, 2 x {duration} mínútur",
@@ -297,12 +295,13 @@
     "en": "manual challenges"
   },
   "(\"keppnishamur\")": {
-    "en": "(\"pro mode\")"
+    "en": "(\"Pro mode\")"
   },
   "Viðureignir sem standa yfir": {
     "en": "Games in progress"
   },
-  " - smelltu á viðureign til að skoða stöðuna og leika ef ": {
+  "click_on_game": {
+    "is": " - smelltu á viðureign til að skoða stöðuna og leika ef ",
     "en": " - click on a game to view it and make a move if "
   },
   " þú átt leik": {
@@ -311,7 +310,8 @@
   "Skorað á þig": {
     "en": "Other players have challenged you"
   },
-  " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ": {
+  "click_on_challenge": {
+    "is": " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ",
     "en": " - click on a challenge to accept it and start a game, or on "
   },
   " til að hafna henni": {
@@ -329,7 +329,8 @@
   "Nýlegar viðureignir þínar": {
     "en": "Your recent games"
   },
-  " - smelltu á viðureign til að skoða hana og rifja upp": {
+  "click_to_review" : {
+    "is": " - smelltu á viðureign til að skoða hana og rifja upp",
     "en": " - click on a game to review it"
   },
   "Einkenni eða nafn": {
@@ -386,7 +387,8 @@
   "Viðureigninni er lokið": {
     "en": "Game over"
   },
-  "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass": {
+  "opponent_emptied_rack": {
+    "is": "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass",
     "en": "Your opponent emptied the rack - you can challenge or pass"
   },
   "Viltu gefa leikinn?": {
@@ -449,7 +451,12 @@
   "Elo-stig fyrir mánuði": {
     "en": "Elo points a month ago"
   },
-  "Með þjörkum eða án": {
+  "elo_list_choice": {
+    "is": "Fólk | allar | keppnishamur",
+    "en": "Humans | all | Pro mode"
+  },
+  "stats_choice": {
+    "is": "Með þjörkum eða án",
     "en": "With or without robot games"
   },
   "Fjöldi viðureigna": {
@@ -585,6 +592,18 @@
   },
   "Aðeins véfenging eða pass leyfileg": {
     "en": "Only a challenge or a pass are possible"
+  },
+  "welcome_2": {
+    "is": [
+      "Til auðkenningar tengir Netskrafl tölvupóstfang og nafn við hvern notanda. ",
+      "Að öðru leyti eru ekki geymdar aðrar upplýsingar um notendur ",
+      "en þær sem þeir skrá sjálfir. Annáll er haldinn um umferð um vefinn."
+    ],
+    "en": [
+      "For identification, Explo associates an e-mail address and a name with each user. ",
+      "Apart from this, Explo only stores information which is voluntarily ",
+      "entered by users themselves. A log is kept of web traffic."
+    ]
   },
 
   "[sentinel]" : {}

@@ -358,6 +358,22 @@ def stats_ratings() -> ResponseType:
     return result, status
 
 
+@web.route("/cache/flush", methods=["GET", "POST"])
+def cache_flush() -> ResponseType:
+    """ Flush the Redis cache """
+    headers: Dict[str, str] = cast(Any, request).headers
+    task_queue_name = headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
+        return "Restricted URL", 403
+    # Flush the cache
+    memcache.flush()
+    return "<html><body><p>Cache flushed</p></body></html>", 200
+
+
 # We only enable the administration routes if running
 # on a local development server, not on the production server
 

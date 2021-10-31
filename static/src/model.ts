@@ -27,7 +27,7 @@ import { Game, ServerGame, Move, RackTile  } from "game";
 
 import { m, RequestArgs } from "mithril";
 import { logEvent } from "channel";
-import { Messages, setLocale } from "i18n";
+import { loadMessages } from "i18n";
 
 // Maximum number of concurrent games per user
 const MAX_GAMES = 50;
@@ -267,22 +267,8 @@ class Model {
     this.paths = settings.paths.slice();
     this.state = state;
     this.maxFreeGames = state.isExplo ? MAX_FREE_EXPLO : MAX_FREE_NETSKRAFL;
-    this.loadMessages();
-  }
-
-  async loadMessages() {
-    // Load the internationalization message JSON file from the server
-    // and set the user's locale
-    try {
-      const messages: Messages = await m.request({
-        method: "GET",
-        url: "/static/assets/messages.json",
-      });
-      setLocale(this.state.locale, messages);
-    }
-    catch {
-      setLocale(this.state.locale, {});
-    }
+    // Load localized text messages from the messages.json file
+    loadMessages(state.locale);
   }
 
   async loadGame(uuid: string, funcComplete: () => void, deleteZombie: boolean = false) {
@@ -453,8 +439,8 @@ class Model {
       // all underlying controls
       this.spinners++;
     }
-    var url = "/userlist";
-    var data: { query?: string; spec?: string; kind?: string; } = criteria;
+    let url = "/userlist";
+    let data: { query?: string; spec?: string; kind?: string; } = criteria;
     if (criteria.query == "elo") {
       // Kludge to make the Elo rating list appear as
       // just another type of user list

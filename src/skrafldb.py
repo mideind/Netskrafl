@@ -1602,7 +1602,7 @@ class RatingModel(Model["RatingModel"]):
 
     """Models tables of user ratings"""
 
-    # Typically "all" or "human"
+    # Typically "all", "human" or "manual"
     kind = Model.Str()
 
     # The ordinal rank

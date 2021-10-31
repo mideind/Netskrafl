@@ -54,6 +54,10 @@ import { logEvent } from "channel";
 
 import { mt, t } from "i18n";
 
+// Types
+
+type EloListSelection = "human" | "all" | "manual";
+
 // Constants
 
 const RACK_SIZE = 7;
@@ -407,7 +411,7 @@ class View {
       return "";
     return m(".userid",
       {
-        title: t("Upplýsingar um leikmann"),
+        title: t("player_info"), // "Player information"
         onclick: (ev) => {
           // Overlay the userprefs dialog
           this.pushDialog("userprefs");
@@ -626,7 +630,7 @@ class View {
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'user-form' },
         [
-          m(".loginhdr", [glyph("address-book"), t(" Upplýsingar um leikmann")]),
+          m(".loginhdr", [glyph("address-book"), " " + t("player_info")]), // "Player information"
           m("div",
             m("form", { action: '', id: 'frm1', method: 'post', name: 'frm1' },
               [
@@ -1637,7 +1641,7 @@ class View {
                 mt("p.no-mobile-block",
                   [
                     mt("strong", "Viðureignir sem standa yfir"),
-                    " - smelltu á viðureign til að skoða stöðuna og leika ef ",
+                    "click_on_game", // "Click on a game to view it and make a move if"
                     glyph("flag"),
                     " þú átt leik"
                   ]
@@ -1650,7 +1654,7 @@ class View {
                 mt("p.no-mobile-block",
                   [
                     mt("strong", "Skorað á þig"),
-                    " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ",
+                    "click_on_challenge", // "Click on a challenge to accept it and start a game, or on"
                     glyph("thumbs-down", { style: { "margin-left": "6px", "margin-right": "6px" } }),
                     " til að hafna henni"
                   ]
@@ -1674,7 +1678,7 @@ class View {
                 mt("p.no-mobile-block",
                   [
                     mt("strong", "Nýlegar viðureignir þínar"),
-                    " - smelltu á viðureign til að skoða hana og rifja upp"
+                    "click_to_review" // "Click on a game to review it"
                   ]
                 ),
                 vwRecentList()
@@ -4052,7 +4056,7 @@ class View {
       r.push(m(".chall-info", { style: { visibility: "visible" } },
         [
           glyph("info-sign"), nbsp(),
-          mt("span.pass-explain", "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass")
+          mt("span.pass-explain", "opponent_emptied_rack") // "Your opponent emptied the rack - you can challenge or pass"
         ]
       ));
     if (game.showingDialog == "resign")
@@ -4432,7 +4436,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
 
   // Show the header of an Elo ranking list and then the list itself
 
-  let sel = "human"; // Default: show ranking for human games only
+  let sel: EloListSelection = "human"; // Default: show ranking for human games only
 
   return {
     view: (vnode) => {
@@ -4453,13 +4457,13 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
             m("span.list-avgpts", { title: t('Meðalstigafjöldi') }, glyph("dashboard")),
             mt("span.list-info-hdr", "Ferill"),
             // m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') })),
-            m(".toggler[id='elo-toggler']", { title: t('Með þjörkum eða án') },
+            m(".toggler[id='elo-toggler']", { title: t("elo_list_choice") },
               [
                 m(".option.x-small",
                   {
                     // Show ranking for human games only
                     className: (sel == "human" ? "selected" : ""),
-                    onclick: () => { sel = "human"; },
+                    onclick: (ev) => { sel = "human"; ev.preventDefault(); },
                   },
                   glyph("user")
                 ),
@@ -4467,9 +4471,17 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
                   {
                     // Show ranking for all games, including robots
                     className: (sel == "all" ? "selected" : ""),
-                    onclick: () => { sel = "all"; },
+                    onclick: (ev) => { sel = "all"; ev.preventDefault(); },
                   },
                   glyph("cog")
+                ),
+                m(".option.x-small",
+                  {
+                    // Show ranking for manual games only
+                    className: (sel == "manual" ? "selected" : ""),
+                    onclick: (ev) => { sel = "manual"; ev.preventDefault(); },
+                  },
+                  glyph("lightbulb")
                 )
               ]
             )
@@ -4491,7 +4503,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
 const EloList: ComponentFunc<{
   view: View;
   id: string;
-  sel: number;
+  sel: EloListSelection;
 }> = (initialVnode) => {
 
   const model = initialVnode.attrs.view.model;
@@ -4568,7 +4580,7 @@ const EloList: ComponentFunc<{
         if (model.userList === null || model.userListCriteria.query != "elo" ||
           model.userListCriteria.spec != vnode.attrs.sel.toString()) {
           // We're not showing the correct list: request a new one
-          model.loadUserList({ query: "elo", spec: vnode.attrs.sel.toString() }, true);
+          model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
         }
         else {
           list = model.userList;
@@ -4934,7 +4946,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 
       return m("div", { id: vnode.attrs.id },
         [
-          m(".toggler", { id: 'own-toggler', title: t('Með þjörkum eða án') },
+          m(".toggler", { id: 'own-toggler', title: t("stats_choice") }, // "With or without robot games"
             [
               m(".option.small" + (sel == 1 ? ".selected" : ""),
                 { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },

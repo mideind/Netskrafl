@@ -41,13 +41,7 @@ from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
 
-from config import running_local
-
-# !!! TODO: Remove this debugging hack
-if running_local:
-    DEFAULT_LOCALE = "is_IS"
-else:
-    from config import DEFAULT_LOCALE
+from config import DEFAULT_LOCALE
 
 from languages import (
     Alphabet,
@@ -92,6 +86,7 @@ class MoveTuple(NamedTuple):
     move: MoveBase
     rack: str
     ts: datetime
+
 
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
@@ -198,10 +193,23 @@ class Game:
         cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
     ) -> Optional[Game]:
         """ Load an already existing game from persistent storage.
-            If set_locale is True, set the current thread's locale to the game locale. """
+            If set_locale is True, set the current thread's locale
+            to the game locale. """
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
-            return cls._load_locked(uuid, use_cache=use_cache, set_locale=set_locale)
+            try:
+                return cls._load_locked(uuid, use_cache=use_cache, set_locale=set_locale)
+            except KeyError:
+                # Hack to handle older game objects that have no associated
+                # locale. If we run Explo on such data, the default locale
+                # is en_US, but the game may use the Icelandic tile set, which
+                # causes KeyError to be raised upon loading. In that case,
+                # we try again with the locale forced to is_IS.
+                if set_locale and DEFAULT_LOCALE != "is_IS":
+                    return cls._load_locked(
+                        uuid, use_cache=use_cache, force_locale="is_IS"
+                    )
+            return None
 
     def store(self) -> None:
         """ Store the game state in persistent storage """
@@ -211,7 +219,8 @@ class Game:
 
     @classmethod
     def _load_locked(
-        cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
+        cls, uuid: str, *,
+        use_cache: bool = True, set_locale: bool = False, force_locale: str = "",
     ) -> Optional[Game]:
         """ Load an existing game from cache or persistent storage under lock """
 
@@ -232,6 +241,12 @@ class Game:
 
         # Initialize the preferences (this sets the locale, tileset, etc.)
         game._preferences = gm.prefs
+
+        if force_locale:
+            # Hack: we force a locale if the game doesn't have one already
+            if not game.has_locale():
+                game.set_locale(force_locale)
+            set_locale = True
 
         # A player_id of None means that the player is an autoplayer (robot)
         game.player_ids[0] = gm.player0_id()
@@ -561,6 +576,14 @@ class Game:
         """ Return the locale of this game """
         return cast(str, self.get_pref("locale")) or DEFAULT_LOCALE
 
+    def set_locale(self, locale: str) -> None:
+        """ Set the locale of this game """
+        return self.set_pref("locale", locale)
+
+    def has_locale(self) -> bool:
+        """ Return True if this game has an assigned locale """
+        return bool(self.get_pref("locale"))
+
     @staticmethod
     def tileset_from_prefs(prefs: Optional[PrefsDict]) -> Type[TileSet]:
         """ Returns the tileset specified by the given game preferences """
@@ -795,9 +818,7 @@ class Game:
         player_index = state.player_to_move()
         # Create an AutoPlayer instance that always finds the top-scoring moves
         apl = AutoPlayer(0, state)
-        return [
-            (player_index, m.summary(state)) for m, _ in apl.generate_best_moves(n)
-        ]
+        return [(player_index, m.summary(state)) for m, _ in apl.generate_best_moves(n)]
 
     def enum_tiles(
         self, state: Optional[State] = None

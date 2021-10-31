@@ -82,8 +82,18 @@
 
    div.board {
       top: @margin-small;
-      padding-top: 0;
+      padding-top: 1px;
       background-color: transparent;
+   }
+
+   @media (max-height: @mobile-width-narrow) {
+
+      /* Landscape on a narrow screen: scale the board down */
+      div.board {
+         transform: scale(0.96);
+         transform-origin: top left;
+      }
+
    }
 
    @rightcol-width: @mobile-height - @board-size - 3 * @margin-small;
@@ -99,12 +109,8 @@
       height: 70px;
    }
 
-   div.rack {
+   div.rack-row {
       display: none;
-      /*
-      left: @rightcol-left;
-      top: @rack-top;
-      */
    }
 
    div.recallbtn {

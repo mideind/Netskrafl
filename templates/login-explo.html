@@ -57,7 +57,12 @@
 // Global state, passed by the server from this template
 // into the client script
 var $state = {
-   loginUrl: "{{ url_for('web.login') | safe }}"
+   loginUrl: "{{ url_for('web.login') | safe }}",
+{% if project_id == 'netskrafl' %}
+   locale: "is_IS"
+{% else %}
+   locale: "en_US" // TODO: Use browser locale
+{% endif %}
 };
 
 function init_amd() {
