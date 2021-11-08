@@ -78,9 +78,9 @@ handlers:
   expiration: "1d 0h"
 
 # Web manifest
-- url: /site.webmanifest
-  static_files: static/site.webmanifest
-  upload: static/site.webmanifest
+- url: /netskrafl.webmanifest
+  static_files: static/netskrafl.webmanifest
+  upload: static/netskrafl.webmanifest
   expiration: "1d 0h"
 
 # Safari pinned tab

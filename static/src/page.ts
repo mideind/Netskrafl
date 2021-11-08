@@ -52,7 +52,7 @@ import {
 
 import { logEvent } from "channel";
 
-import { mt, t } from "i18n";
+import { mt, t, ts } from "i18n";
 
 // Types
 
@@ -411,7 +411,7 @@ class View {
       return "";
     return m(".userid",
       {
-        title: t("player_info"), // "Player information"
+        title: ts("player_info"), // "Player information"
         onclick: (ev) => {
           // Overlay the userprefs dialog
           this.pushDialog("userprefs");
@@ -437,7 +437,7 @@ class View {
       view: () => {
         return vwToggler(
           "ready", model.state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
-          t("Tek við áskorunum!")
+          ts("Tek við áskorunum!")
         );
       }
     };
@@ -458,7 +458,7 @@ class View {
       view: (vnode) => {
         return vwToggler(
           "timed", model.state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
-          t("Til í viðureign með klukku!")
+          ts("Til í viðureign með klukku!")
         );
       }
     };
@@ -630,7 +630,7 @@ class View {
       },
       m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'user-form' },
         [
-          m(".loginhdr", [glyph("address-book"), " " + t("player_info")]), // "Player information"
+          m(".loginhdr", [glyph("address-book"), " " + ts("player_info")]), // "Player information"
           m("div",
             m("form", { action: '', id: 'frm1', method: 'post', name: 'frm1' },
               [
@@ -723,26 +723,26 @@ class View {
               ]
             )
           ),
-          this.vwDialogButton("user-ok", t("Vista"), validate, glyph("ok"), 9),
-          this.vwDialogButton("user-cancel", t("Hætta við"),
+          this.vwDialogButton("user-ok", ts("Vista"), validate, glyph("ok"), 9),
+          this.vwDialogButton("user-cancel", ts("Hætta við"),
             (ev) => { this.popDialog(); ev.preventDefault(); },
             glyph("remove"), 10),
-          this.vwDialogButton("user-logout", t("Skrá mig út"),
+          this.vwDialogButton("user-logout", ts("Skrá mig út"),
             (ev) => {
               window.location.href = user.logout_url;
               ev.preventDefault();
             },
             [glyph("log-out"), nbsp(), t("Skrá mig út")], 11),
           user.friend ?
-            this.vwDialogButton("user-unfriend", t("Hætta sem vinur"),
+            this.vwDialogButton("user-unfriend", ts("Hætta sem vinur"),
               (ev) => {
                 ev.preventDefault();
                 view.showFriendCancel()
               },
-              [glyph("coffee-cup"), nbsp(), nbsp(), t("Þú ert vinur Netskrafls!")], 12
+              [glyph("coffee-cup"), nbsp(), nbsp(), ts("Þú ert vinur Netskrafls!")], 12
             )
             :
-            this.vwDialogButton("user-friend", t("Gerast vinur"),
+            this.vwDialogButton("user-friend", ts("Gerast vinur"),
               (ev) => {
                 // Invoke the friend promo dialog
                 ev.preventDefault();
@@ -753,7 +753,7 @@ class View {
                 );
                 view.showFriendPromo();
               },
-              [glyph("coffee-cup"), nbsp(), nbsp(), t("Gerast vinur Netskrafls")], 12
+              [glyph("coffee-cup"), nbsp(), nbsp(), ts("Gerast vinur Netskrafls")], 12
             )
         ]
       )
@@ -958,7 +958,7 @@ class View {
               m(DialogButton,
                 {
                   id: "chall-cancel",
-                  title: t("Hætta við"),
+                  title: ts("Hætta við"),
                   tabindex: 8,
                   onclick: (ev: Event) => {
                     this.popDialog();
@@ -970,7 +970,7 @@ class View {
               m(DialogButton,
                 {
                   id: "chall-ok",
-                  title: t("Skora á"),
+                  title: ts("Skora á"),
                   tabindex: 9,
                   onclick: (ev: Event) => {
                     // Issue a new challenge
@@ -1095,16 +1095,16 @@ class View {
                 let turnText = "";
                 let flagClass = "";
                 if (item.my_turn) {
-                  turnText = t("Þú átt leik");
+                  turnText = ts("Þú átt leik");
                 }
                 else
                   if (item.zombie) {
-                    turnText = t("Viðureign lokið");
+                    turnText = ts("Viðureign lokið");
                     flagClass = ".zombie";
                   }
                   else {
                     // {opponent}'s move
-                    turnText = t("opp_move", { opponent: item.opp });
+                    turnText = ts("opp_move", { opponent: item.opp });
                     flagClass = ".grayed";
                   }
                 return m("span.list-myturn",
@@ -1143,7 +1143,7 @@ class View {
                       nbsp() :
                       m("span.usr-info",
                         {
-                          title: t("Skoða feril"),
+                          title: ts("Skoða feril"),
                           onclick: (ev) => {
                             // Show opponent track record
                             ev.preventDefault();
@@ -1159,7 +1159,7 @@ class View {
                   m("span.list-tc", vwTileCount()),
                   m("span.list-manual",
                     item.manual
-                    ? glyph("lightbulb", { title: t("Keppnishamur") })
+                    ? glyph("lightbulb", { title: ts("Keppnishamur") })
                     : glyphGrayed("lightbulb")
                   )
                 ]
@@ -1227,16 +1227,16 @@ class View {
         return [
           m(".listitem.listheader",
             [
-              m("span.list-myturn", glyphGrayed("flag", { title: t('Átt þú leik?') })),
+              m("span.list-myturn", glyphGrayed("flag", { title: ts('Átt þú leik?') })),
               m("span.list-overdue",
-                glyphGrayed("hourglass", { title: t('Langt frá síðasta leik?') })
+                glyphGrayed("hourglass", { title: ts('Langt frá síðasta leik?') })
               ),
               mt("span.list-ts-short", "Síðasti leikur"),
               mt("span.list-opp", "Andstæðingur"),
               mt("span.list-info-hdr", "Ferill"),
               mt("span.list-scorehdr", "Staða"),
               mt("span.list-tc", "Framvinda"),
-              m("span.list-manual", glyphGrayed("lightbulb", { title: t('Keppnishamur') }))
+              m("span.list-manual", glyphGrayed("lightbulb", { title: ts('Keppnishamur') }))
             ]
           ),
           vwList(),
@@ -1317,9 +1317,9 @@ class View {
                 m("span.list-icon",
                   { onclick: markChallenge },
                   item.received ?
-                    glyph("thumbs-down", { title: t("Hafna") })
+                    glyph("thumbs-down", { title: ts("Hafna") })
                     :
-                    glyph("hand-right", { title: t("Afturkalla") })
+                    glyph("hand-right", { title: ts("Afturkalla") })
                 ),
                 m(clickable ? "a" : "span",
                   clickable ? {
@@ -1332,8 +1332,8 @@ class View {
                     m("span.list-nick", { title: item.fullname }, item.opp),
                     m("span.list-chall",
                       [
-                        item.prefs.fairplay ? m("span.fairplay-btn", { title: t("Án hjálpartækja") }) : "",
-                        item.prefs.manual ? m("span.manual-btn", { title: t("Keppnishamur") }) : "",
+                        item.prefs.fairplay ? m("span.fairplay-btn", { title: ts("Án hjálpartækja") }) : "",
+                        item.prefs.manual ? m("span.manual-btn", { title: ts("Keppnishamur") }) : "",
                         descr
                       ]
                     )
@@ -1341,7 +1341,7 @@ class View {
                 ),
                 m("span.list-info",
                   {
-                    title: t("Skoða feril"),
+                    title: ts("Skoða feril"),
                     // Show opponent track record
                     onclick: (ev) => {
                       ev.preventDefault();
@@ -1377,7 +1377,7 @@ class View {
           return [
             m(".listitem.listheader",
               [
-                m("span.list-icon", glyphGrayed("thumbs-down", { title: t('Hafna') })),
+                m("span.list-icon", glyphGrayed("thumbs-down", { title: ts('Hafna') })),
                 mt("span.list-ts", "Hvenær"),
                 mt("span.list-nick", "Áskorandi"),
                 mt("span.list-chall", "Hvernig"),
@@ -1391,7 +1391,7 @@ class View {
           return [
             m(".listitem.listheader",
               [
-                m("span.list-icon", glyphGrayed("hand-right", { title: t('Afturkalla') })),
+                m("span.list-icon", glyphGrayed("hand-right", { title: ts('Afturkalla') })),
                 mt("span.list-ts", "Hvenær"),
                 mt("span.list-nick", "Andstæðingur"),
                 mt("span.list-chall", "Hvernig"),
@@ -1418,19 +1418,19 @@ class View {
         return [
           m(".listitem.listheader",
             [
-              m("span.list-win", glyphGrayed("bookmark", { title: t('Sigur') })),
+              m("span.list-win", glyphGrayed("bookmark", { title: ts('Sigur') })),
               mt("span.list-ts-short", "Viðureign lauk"),
               mt("span.list-nick", "Andstæðingur"),
               mt("span.list-scorehdr", "Úrslit"),
               m("span.list-elo-hdr",
                 [
-                  m("span.glyphicon.glyphicon-user.elo-hdr-left", { title: t('Mennskir andstæðingar') }),
+                  m("span.glyphicon.glyphicon-user.elo-hdr-left", { title: ts('Mennskir andstæðingar') }),
                   t("Elo"),
-                  m("span.glyphicon.glyphicon-cog.elo-hdr-right", { title: t('Allir andstæðingar') })
+                  m("span.glyphicon.glyphicon-cog.elo-hdr-right", { title: ts('Allir andstæðingar') })
                 ]
               ),
               mt("span.list-duration", "Lengd"),
-              m("span.list-manual", glyphGrayed("lightbulb", { title: t('Keppnishamur') }))
+              m("span.list-manual", glyphGrayed("lightbulb", { title: ts('Keppnishamur') }))
             ]
           ),
           vwList()
@@ -1467,17 +1467,17 @@ class View {
 
             // Online and accepting challenges
             if (item.ready && !isRobot) {
-              fullname.push(m("span.ready-btn", { title: t("Álínis og tekur við áskorunum") }));
+              fullname.push(m("span.ready-btn", { title: ts("Álínis og tekur við áskorunum") }));
               fullname.push(nbsp());
             }
             // Willing to accept challenges for timed games
             if (item.ready_timed) {
-              fullname.push(m("span.timed-btn", { title: t("Til í viðureign með klukku") }));
+              fullname.push(m("span.timed-btn", { title: ts("Til í viðureign með klukku") }));
               fullname.push(nbsp());
             }
             // Fair play commitment
             if (item.fairplay) {
-              fullname.push(m("span.fairplay-btn", { title: t("Skraflar án hjálpartækja") }));
+              fullname.push(m("span.fairplay-btn", { title: ts("Skraflar án hjálpartækja") }));
               fullname.push(nbsp());
             }
             fullname.push(item.fullname);
@@ -1487,7 +1487,7 @@ class View {
                 return m("span.list-fav", { style: { cursor: "default" } }, glyph("star-empty"));
               return m("span.list-fav",
                 {
-                  title: t("Uppáhald"),
+                  title: ts("Uppáhald"),
                   onclick: (ev) => {
                     item.fav = !item.fav;
                     model.markFavorite(item.userid, item.fav);
@@ -1543,7 +1543,7 @@ class View {
               [
                 m("span.list-ch",
                   {
-                    title: t("Skora á"),
+                    title: ts("Skora á"),
                     onclick: (ev) => {
                       modifyChallenge();
                       ev.preventDefault();
@@ -1555,7 +1555,7 @@ class View {
                 userLink(),
                 m("span.list-info",
                   {
-                    title: t("Skoða feril"),
+                    title: ts("Skoða feril"),
                     onclick: (ev) => {
                       ev.preventDefault();
                       showUserInfo(item.userid, item.nick, item.fullname);
@@ -1592,8 +1592,8 @@ class View {
         return [
           m(".listitem.listheader",
             [
-              m("span.list-ch", glyphGrayed("hand-right", { title: t('Skora á') })),
-              m("span.list-fav", glyph("star-empty", { title: t('Uppáhald') })),
+              m("span.list-ch", glyphGrayed("hand-right", { title: ts('Skora á') })),
+              m("span.list-fav", glyph("star-empty", { title: ts('Uppáhald') })),
               mt("span.list-nick", "Einkenni"),
               mt("span.list-fullname", "Nafn og merki"),
               robotList ? "" : mt("span.list-human-elo[id='usr-list-elo']", "Elo"),
@@ -1690,15 +1690,15 @@ class View {
                   [
                     m(".user-cat[id='user-headings']",
                       [
-                        vwUserButton("robots", "cog", t("Þjarkar")),
+                        vwUserButton("robots", "cog", ts("Þjarkar")),
                         " ",
-                        vwUserButton("fav", "star", t("Uppáhalds")),
+                        vwUserButton("fav", "star", ts("Uppáhalds")),
                         " ",
-                        vwUserButton("live", "flash", t("Álínis")),
+                        vwUserButton("live", "flash", ts("Álínis")),
                         " ",
-                        vwUserButton("alike", "resize-small", t("Svipaðir")),
+                        vwUserButton("alike", "resize-small", ts("Svipaðir")),
                         " ",
-                        vwUserButton("elo", "crown", t("Topp 100"))
+                        vwUserButton("elo", "crown", ts("Topp 100"))
                       ]
                     ),
                     m(SearchButton, { model: model })
@@ -1835,8 +1835,8 @@ class View {
           m(".twoletter-area" + (game.showClock() ? ".with-clock" : ""),
             {
               title: page == 0 ?
-                "Smelltu til að raða eftir seinni staf" :
-                "Smelltu til að raða eftir fyrri staf"
+                ts("Smelltu til að raða eftir seinni staf") :
+                ts("Smelltu til að raða eftir fyrri staf")
             },
             twoLetterList
           )
@@ -1918,10 +1918,11 @@ class View {
     function vwBeginner() {
       // Show the board color guide
       return m(".board-help",
-        { title: 'Hvernig reitirnir margfalda stigin' },
+        { title: ts("Hvernig reitirnir margfalda stigin") },
         [
-          m(".board-help-close[title='Loka þessari hjálp']",
+          m(".board-help-close",
             {
+              title: ts("Loka þessari hjálp"),
               onclick: (ev) => {
                 // Close the guide and set a preference not to see it again
                 state.beginner = false;
@@ -2000,7 +2001,7 @@ class View {
               ]),
               m(".fairplay",
                 { style: { visibility: fairplay ? "visible" : "hidden" } },
-                m("span.fairplay-btn.large", { title: t("Skraflað án hjálpartækja") })
+                m("span.fairplay-btn.large", { title: ts("Skraflað án hjálpartækja") })
               )
             ]),
             vwClock(),
@@ -2213,7 +2214,7 @@ class View {
               ]),
               m(".fairplay",
                 { style: { visibility: fairplay ? "visible" : "hidden" } },
-                m("span.fairplay-btn.large", { title: t("Skraflað án hjálpartækja") }))
+                m("span.fairplay-btn.large", { title: ts("Skraflað án hjálpartækja") }))
             ])
           ]
         );
@@ -2252,14 +2253,14 @@ class View {
     const game = this.model.game;
     let showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     let r: m.vnode[] = [
-      this.vwTab("board", t("Borðið"), "grid"),
-      this.vwTab("movelist", t("Leikir"), "show-lines"),
-      this.vwTab("twoletter", t("Tveggja stafa orð"), "life-preserver"),
-      this.vwTab("games", t("Viðureignir"), "flag")
+      this.vwTab("board", ts("Borðið"), "grid"),
+      this.vwTab("movelist", ts("Leikir"), "show-lines"),
+      this.vwTab("twoletter", ts("Tveggja stafa orð"), "life-preserver"),
+      this.vwTab("games", ts("Viðureignir"), "flag")
     ];
     if (showchat) {
       // Add chat tab
-      r.push(this.vwTab("chat", t("Spjall"), "conversation",
+      r.push(this.vwTab("chat", ts("Spjall"), "conversation",
         () => {
           // The tab has been clicked
           if (game.markChatShown())
@@ -2465,7 +2466,7 @@ class View {
             m(DialogButton,
               {
                 id: "chat-send",
-                title: t("Senda"),
+                title: ts("Senda"),
                 onclick: (ev: Event) => { sendMessage(); ev.preventDefault(); }
               },
               glyph("chat")
@@ -2548,39 +2549,39 @@ class View {
         wrdclass = "othermove";
         if (tiles == "PASS")
           /* Pass move */
-          dispText = t("Pass");
+          dispText = ts("Pass");
         else
         if (tiles.indexOf("EXCH") === 0) {
           /* Exchange move - we don't show the actual tiles exchanged, only their count */
           let numtiles = tiles.slice(5).length
-          const letters = t(numtiles == 1 ? "letter" : "letters");
-          dispText = t("exchanged", { numtiles: numtiles.toString(), letters: letters });
+          const letters = ts(numtiles == 1 ? "letter" : "letters");
+          dispText = ts("exchanged", { numtiles: numtiles.toString(), letters: letters });
         }
         else
         if (tiles == "RSGN")
           /* Resigned from game */
-          dispText = t("Gaf viðureign");
+          dispText = ts("Gaf viðureign");
         else
         if (tiles == "CHALL")
           /* Challenge issued */
-          dispText = t("Véfengdi lögn");
+          dispText = ts("Véfengdi lögn");
         else
         if (tiles == "RESP") {
           /* Challenge response */
           if (score < 0)
-            dispText = t("Óleyfileg lögn");
+            dispText = ts("Óleyfileg lögn");
           else
-            dispText = t("Röng véfenging");
+            dispText = ts("Röng véfenging");
         }
         else
         if (tiles == "TIME") {
           /* Score adjustment for time */
-          dispText = t("Umframtími");
+          dispText = ts("Umframtími");
         }
         else
         if (tiles == "OVER") {
           /* Game over */
-          dispText = t("Viðureign lokið");
+          dispText = ts("Viðureign lokið");
           wrdclass = "gameover";
         }
         else {
@@ -2588,9 +2589,9 @@ class View {
           // and thus cannot be confused with the above abbreviations)
           wrdclass = "othermove";
           if (tiles == "--")
-            dispText = t("Stafaleif: (engin)");
+            dispText = ts("Stafaleif: (engin)");
           else
-            dispText = [t("Stafaleif: "), m("i", tiles)];
+            dispText = [ts("Stafaleif: "), m("i", tiles)];
         }
       }
       return m(".reviewhdr",
@@ -2731,26 +2732,26 @@ class View {
       wrdclass = "othermove";
       if (tiles == "PASS") {
         /* Pass move */
-        tiles = " " + t("Pass") + " ";
+        tiles = " " + ts("Pass") + " ";
         score = "";
       }
       else
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
         let numtiles = tiles.slice(5).length;
-        const letters = t(numtiles == 1 ? "letter" : "letters");
+        const letters = ts(numtiles == 1 ? "letter" : "letters");
         // Exchanged {numtiles} {letters}
-        tiles = " " + t("exchanged", { numtiles: numtiles.toString(), letters: letters }) + " ";
+        tiles = " " + ts("exchanged", { numtiles: numtiles.toString(), letters: letters }) + " ";
         score = "";
       }
       else
       if (tiles == "RSGN")
         /* Resigned from game */
-        tiles = " " + t("Gaf viðureign") + " ";
+        tiles = " " + ts("Gaf viðureign") + " ";
       else
       if (tiles == "CHALL") {
         /* Challenge issued */
-        tiles = " " + t("Véfengdi lögn") + " ";
+        tiles = " " + ts("Véfengdi lögn") + " ";
         score = "";
       }
       else
@@ -2758,22 +2759,22 @@ class View {
         /* Challenge response */
         if (score < 0) {
           // Invalid move
-          tiles = " " + t("Óleyfileg lögn") + " ";
+          tiles = " " + ts("Óleyfileg lögn") + " ";
           tileMoveIncrement = -1; // Subtract one from the actual tile moves on the board
         }
         else
           // Unsuccessful challenge
-          tiles = " " + t("Röng véfenging") + " ";
+          tiles = " " + ts("Röng véfenging") + " ";
       }
       else
       if (tiles == "TIME") {
         /* Overtime adjustment, 'Extra time' */
-        tiles = " " + t("Umframtími") + " ";
+        tiles = " " + ts("Umframtími") + " ";
       }
       else
       if (tiles == "OVER") {
         /* Game over */
-        tiles = t("Viðureign lokið");
+        tiles = ts("Viðureign lokið");
         wrdclass = "gameover";
       }
       else {
@@ -2793,7 +2794,7 @@ class View {
       // Game over message at bottom of move list
       return gameOverMove(tiles);
     // Normal game move
-    let title = (tileMoveIncrement > 0 && !game.manual) ? t("Smelltu til að fletta upp") : "";
+    let title = (tileMoveIncrement > 0 && !game.manual) ? ts("Smelltu til að fletta upp") : "";
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
@@ -3049,7 +3050,7 @@ class View {
         else if (newbag)
           cls += ".new";
         return m(".bag",
-          { title: t("Flísar sem eftir eru") },
+          { title: ts("Flísar sem eftir eru") },
           m("table.bag-content" + cls, tiles(bag))
         );
       }
@@ -3107,7 +3108,7 @@ class View {
               m(DialogButton,
                 {
                   id: 'blank-close',
-                  title: t("Hætta við"),
+                  title: ts("Hætta við"),
                   onclick: (ev: Event) => {
                     ev.preventDefault();
                     game.cancelBlankDialog();
@@ -3489,7 +3490,7 @@ class View {
     return this.makeButton(
       "recallbtn", false,
       () => { game.resetRack(); this.updateScale(game); },
-      "Færa stafi aftur í rekka", glyph("down-arrow")
+      ts("Færa stafi aftur í rekka"), glyph("down-arrow")
     );
   }
 
@@ -3500,7 +3501,7 @@ class View {
     return this.makeButton(
       "scramblebtn", disabled,
       () => { game.rescrambleRack(); },
-      "Stokka upp rekka", glyph("random")
+      ts("Stokka upp rekka"), glyph("random")
     );
   }
 
@@ -3856,7 +3857,7 @@ class View {
     if (s.showForceResignMobile) {
       // Force resignation button (only shown on mobile,
       // and only if submit move button is not shown)
-      const txt = t("Þvinga til uppgjafar");
+      const txt = ts("Þvinga til uppgjafar");
       r.push(
         this.makeButton(
           "force-resign",
@@ -3874,7 +3875,7 @@ class View {
           "submitpass",
           (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
           () => game.submitPass(),
-          t("Pass"), glyph("forward")
+          ts("Pass"), glyph("forward")
         )
       );
     }
@@ -3885,7 +3886,7 @@ class View {
           "submitexchange",
           s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
           () => game.submitExchange(),
-          t("Skipta stöfum"), glyph("refresh")
+          ts("Skipta stöfum"), glyph("refresh")
         )
       );
     }
@@ -3895,7 +3896,7 @@ class View {
         this.makeButton(
           "submitresign", s.showingDialog,
           () => game.submitResign(),
-          t("Gefa viðureign"), glyph("fire")
+          ts("Gefa viðureign"), glyph("fire")
         )
       );
     }
@@ -3909,7 +3910,7 @@ class View {
             m("span.move-indicator"),
             nbsp(),
             m("strong", game.nickname[1 - game.player]),
-            t(" á leik"),
+            ts(" á leik"),
             nbsp(),
             // The following inline button is only
             // displayed in the fullscreen UI
@@ -3922,9 +3923,9 @@ class View {
                 },
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
-                title: t("14 dagar liðnir án leiks")
+                title: ts("14 dagar liðnir án leiks")
               },
-              t("Þvinga til uppgjafar")
+              ts("Þvinga til uppgjafar")
             ) : ""
           ]
         )
@@ -4000,7 +4001,7 @@ class View {
     // Error messages, selectively displayed
     let msg: string = game.currentMessage || "";
     if (game.currentError in ERROR_MESSAGES) {
-      const txt: string = t(ERROR_MESSAGES[game.currentError]);
+      const txt: string = ts(ERROR_MESSAGES[game.currentError]);
       const wix = txt.indexOf("{word}");
       let children: VnodeChildren[];
       if (wix >= 0) {
@@ -4062,45 +4063,45 @@ class View {
     if (game.showingDialog == "resign")
       r.push(m(".resign", { style: { visibility: "visible" } },
         [
-          glyph("exclamation-sign"), nbsp(), t("Viltu gefa leikinn?"), nbsp(),
+          glyph("exclamation-sign"), nbsp(), ts("Viltu gefa leikinn?"), nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmResign(true) },
-            [glyph("ok"), t(" Já")]
+            [glyph("ok"), ts(" Já")]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmResign(false) },
-            [glyph("remove"), t(" Nei")]
+            [glyph("remove"), ts(" Nei")]
           )
         ]
       ));
     if (game.showingDialog == "pass")
       r.push(m(".pass", { style: { visibility: "visible" } },
         [
-          glyph("forward"), nbsp(), t("Segja pass?"),
+          glyph("forward"), nbsp(), ts("Segja pass?"),
           mt("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
           nbsp(), m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [glyph("ok"), t(" Já")]
+            [glyph("ok"), ts(" Já")]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [glyph("remove"), t(" Nei")]
+            [glyph("remove"), ts(" Nei")]
           )
         ]
       ));
     if (game.showingDialog == "pass-last")
       r.push(m(".pass-last", { style: { visibility: "visible" } },
         [
-          glyph("forward"), nbsp(), t("Segja pass?"),
+          glyph("forward"), nbsp(), ts("Segja pass?"),
           mt("span.pass-explain", "Viðureign lýkur þar með"),
           nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [glyph("ok"), t(" Já")]
+            [glyph("ok"), ts(" Já")]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [glyph("remove"), t(" Nei")]
+            [glyph("remove"), ts(" Nei")]
           )
         ]
       ));
@@ -4108,32 +4109,32 @@ class View {
       r.push(m(".exchange", { style: { visibility: "visible" } },
         [
           glyph("refresh"), nbsp(),
-          t("Smelltu á flísarnar sem þú vilt skipta"), nbsp(),
+          ts("Smelltu á flísarnar sem þú vilt skipta"), nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton",
-            { title: t('Skipta'), onclick: () => game.confirmExchange(true) },
+            { title: ts('Skipta'), onclick: () => game.confirmExchange(true) },
             glyph("ok")
           ),
           m("span.mobile-space"),
           m("span.yesnobutton",
-            { title: t('Hætta við'), onclick: () => game.confirmExchange(false) },
+            { title: ts('Hætta við'), onclick: () => game.confirmExchange(false) },
             glyph("remove"))
         ]
       ));
     if (game.showingDialog == "chall")
       r.push(m(".chall", { style: { visibility: "visible" } },
         [
-          glyph("ban-circle"), nbsp(), t("Véfengja lögn?"),
+          glyph("ban-circle"), nbsp(), ts("Véfengja lögn?"),
           mt("span.pass-explain", "Röng véfenging kostar 10 stig"), nbsp(),
           m("span.mobile-break", m("br")),
           m("span.yesnobutton",
             { onclick: () => game.confirmChallenge(true) },
-            [glyph("ok"), t(" Já")]
+            [glyph("ok"), ts(" Já")]
           ),
           m("span.mobile-space"),
           m("span.yesnobutton",
             { onclick: () => game.confirmChallenge(false) },
-            [glyph("remove"), t(" Nei")]
+            [glyph("remove"), ts(" Nei")]
           )
         ]
       ));
@@ -4423,7 +4424,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
       return m("span",
         {
           id: id,
-          title: online ? t("Er álínis") : t("Álínis?"),
+          title: online ? ts("Er álínis") : ts("Álínis?"),
           class: online ? "online" : ""
         }
       );
@@ -4443,21 +4444,21 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
       return m.fragment({}, [
         m(".listitem.listheader", { key: vnode.attrs.key },
           [
-            m("span.list-ch", glyphGrayed("hand-right", { title: t('Skora á') })),
+            m("span.list-ch", glyphGrayed("hand-right", { title: ts('Skora á') })),
             mt("span.list-rank", "Röð"),
-            m("span.list-rank-no-mobile", { title: t('Röð í gær') }, t("1d")),
-            m("span.list-rank-no-mobile", { title: t('Röð fyrir viku') }, t("7d")),
+            m("span.list-rank-no-mobile", { title: ts('Röð í gær') }, ts("1d")),
+            m("span.list-rank-no-mobile", { title: ts('Röð fyrir viku') }, ts("7d")),
             mt("span.list-nick-elo", "Einkenni"),
-            m("span.list-elo", { title: t('Elo-stig') }, t("Elo")),
-            m("span.list-elo-no-mobile", { title: t('Elo-stig í gær') }, t("1d")),
-            m("span.list-elo-no-mobile", { title: t('Elo-stig fyrir viku') }, t("7d")),
-            m("span.list-elo-no-mobile", { title: t('Elo-stig fyrir mánuði') }, t("30d")),
-            m("span.list-games", { title: t('Fjöldi viðureigna') }, glyph("th")),
-            m("span.list-ratio", { title: t('Vinningshlutfall') }, glyph("bookmark")),
-            m("span.list-avgpts", { title: t('Meðalstigafjöldi') }, glyph("dashboard")),
+            m("span.list-elo", { title: ts('Elo-stig') }, ts("Elo")),
+            m("span.list-elo-no-mobile", { title: ts('Elo-stig í gær') }, ts("1d")),
+            m("span.list-elo-no-mobile", { title: ts('Elo-stig fyrir viku') }, ts("7d")),
+            m("span.list-elo-no-mobile", { title: ts('Elo-stig fyrir mánuði') }, ts("30d")),
+            m("span.list-games", { title: ts('Fjöldi viðureigna') }, glyph("th")),
+            m("span.list-ratio", { title: ts('Vinningshlutfall') }, glyph("bookmark")),
+            m("span.list-avgpts", { title: ts('Meðalstigafjöldi') }, glyph("dashboard")),
             mt("span.list-info-hdr", "Ferill"),
-            // m("span.list-newbag", glyphGrayed("shopping-bag", { title: t('Gamli pokinn') })),
-            m(".toggler[id='elo-toggler']", { title: t("elo_list_choice") },
+            // m("span.list-newbag", glyphGrayed("shopping-bag", { title: ts('Gamli pokinn') })),
+            m(".toggler[id='elo-toggler']", { title: ts("elo_list_choice") },
               [
                 m(".option.x-small",
                   {
@@ -4546,7 +4547,7 @@ const EloList: ComponentFunc<{
             );
         if (item.fairplay && !isRobot)
           nick = m("span",
-            [m("span.fairplay-btn", { title: t("Skraflar án hjálpartækja") }), nick]);
+            [m("span.fairplay-btn", { title: ts("Skraflar án hjálpartækja") }), nick]);
 
         return m(".listitem",
           {
@@ -4605,33 +4606,33 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         // Regular (non-timed) game
         if (item.days || item.hours || item.minutes) {
           if (item.days > 1)
-            duration = item.days.toString() + t(" dagar");
+            duration = item.days.toString() + ts(" dagar");
           else
             if (item.days == 1)
-              duration = t("1 dagur");
+              duration = ts("1 dagur");
           if (item.hours > 0) {
             if (duration.length)
-              duration += t(" og ");
+              duration += ts(" og ");
             if (item.hours == 1)
-              duration += t("1 klst");
+              duration += ts("1 klst");
             else
-              duration += item.hours.toString() + t(" klst");
+              duration += item.hours.toString() + ts(" klst");
           }
           if (item.days === 0) {
             if (duration.length)
-              duration += t(" og ");
+              duration += ts(" og ");
             if (item.minutes == 1)
-              duration += t("1 mínúta");
+              duration += ts("1 mínúta");
             else
-              duration += item.minutes.toString() + t(" mínútur");
+              duration += item.minutes.toString() + ts(" mínútur");
           }
         }
       }
       else {
         // This was a timed game
         duration = [
-          m("span.timed-btn", { title: t('Viðureign með klukku') }),
-          " 2 x " + item.duration + t(" mínútur")
+          m("span.timed-btn", { title: ts('Viðureign með klukku') }),
+          " 2 x " + item.duration + ts(" mínútur")
         ];
       }
       return duration;
@@ -4682,8 +4683,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         [
           m("span.list-win",
             item.sc0 >= item.sc1 ?
-              glyph("bookmark", { title: item.sc0 == item.sc1 ? t("Jafntefli") : t("Sigur") }) :
-              glyphGrayed("bookmark", { title: t("Tap") })
+              glyph("bookmark", { title: item.sc0 == item.sc1 ? ts("Jafntefli") : ts("Sigur") }) :
+              glyphGrayed("bookmark", { title: ts("Tap") })
           ),
           m("span.list-ts-short", item.ts_last_move),
           m("span.list-nick",
@@ -4696,7 +4697,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           m("span.list-elo-adj", eloAdj),
           m("span.list-duration", durationDescription()),
           m("span.list-manual",
-            item.manual ? { title: t("Keppnishamur") } : {},
+            item.manual ? { title: ts("Keppnishamur") } : {},
             glyph("lightbulb", undefined, !item.manual)
           )
         ]
@@ -4778,7 +4779,7 @@ const UserInfoDialog: ComponentFunc<{
                 m("h1.usr-info-icon",
                   [
                     stats.friend ?
-                      glyph("coffee-cup", { title: t('Vinur Netskrafls') }) :
+                      glyph("coffee-cup", { title: ts('Vinur Netskrafls') }) :
                       glyph("user"), nbsp()
                   ]
                 ),
@@ -4787,7 +4788,7 @@ const UserInfoDialog: ComponentFunc<{
                 m("h2[id='usr-info-fullname']", vnode.attrs.fullname),
                 m(".usr-info-fav",
                   {
-                    title: t('Uppáhald'),
+                    title: ts('Uppáhald'),
                     onclick: (ev) => {
                       // Toggle the favorite setting
                       ev.preventDefault();
@@ -4825,19 +4826,19 @@ const UserInfoDialog: ComponentFunc<{
             ),
             m(".listitem.listheader",
               [
-                m("span.list-win", glyphGrayed("bookmark", { title: t('Sigur') })),
+                m("span.list-win", glyphGrayed("bookmark", { title: ts('Sigur') })),
                 mt("span.list-ts-short", "Viðureign lauk"),
                 mt("span.list-nick", "Andstæðingur"),
                 mt("span.list-scorehdr", "Úrslit"),
                 m("span.list-elo-hdr",
                   [
-                    m("span.glyphicon.glyphicon-user.elo-hdr-left", { title: t('Mennskir andstæðingar') }),
+                    m("span.glyphicon.glyphicon-user.elo-hdr-left", { title: ts('Mennskir andstæðingar') }),
                     "Elo",
-                    m("span.glyphicon.glyphicon-cog.elo-hdr-right", { title: t('Allir andstæðingar') })
+                    m("span.glyphicon.glyphicon-cog.elo-hdr-right", { title: ts('Allir andstæðingar') })
                   ]
                 ),
                 mt("span.list-duration", "Lengd"),
-                m("span.list-manual", glyphGrayed("lightbulb", { title: t('Keppnishamur') }))
+                m("span.list-manual", glyphGrayed("lightbulb", { title: ts('Keppnishamur') }))
               ]
             ),
             m(RecentList, { id: 'usr-recent', recentList: recentList }), // Recent game list
@@ -4846,7 +4847,7 @@ const UserInfoDialog: ComponentFunc<{
             m(DialogButton,
               {
                 id: 'usr-info-close',
-                title: t('Loka'),
+                title: ts('Loka'),
                 onclick: (ev: Event) => { vnode.attrs.view.popDialog(); ev.preventDefault(); }
               },
               glyph("ok")
@@ -4869,7 +4870,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
       let json = vnode.attrs.ownStats || {};
       let best = [];
       if (json.highest_score) {
-        best.push(t("Hæsta skor "));
+        best.push(ts("Hæsta skor "));
         best.push(m("b",
           m(m.route.Link,
             { href: "/game/" + json.highest_score_game },
@@ -4893,7 +4894,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
           }
           else
             s.push(bw[i]);
-        best.push(t("Besta orð "));
+        best.push(ts("Besta orð "));
         best.push(m("span.best-word", s));
         best.push(", ");
         best.push(m("b",
@@ -4902,7 +4903,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
             json.best_word_score
           )
         ));
-        best.push(t(" stig"));
+        best.push(ts(" stig"));
       }
       return m("p", { id: vnode.attrs.id }, best);
     }
@@ -4946,7 +4947,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 
       return m("div", { id: vnode.attrs.id },
         [
-          m(".toggler", { id: 'own-toggler', title: t("stats_choice") }, // "With or without robot games"
+          m(".toggler", { id: 'own-toggler', title: ts("stats_choice") }, // "With or without robot games"
             [
               m(".option.small" + (sel == 1 ? ".selected" : ""),
                 { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },
@@ -4961,26 +4962,26 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
           sel == 1 ? m("div",
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
-              m(".stats-fig", { title: t('Elo-stig') },
+              m(".stats-fig", { title: ts('Elo-stig') },
                 s ? vwStat(s.human_elo, "crown") : ""),
-              m(".stats-fig.stats-games", { title: t('Fjöldi viðureigna') },
+              m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.human_games, "th") : ""),
-              m(".stats-fig.stats-win-ratio", { title: t('Vinningshlutfall') },
+              m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },
                 vwStat(winRatioHuman, "bookmark", "%")),
-              m(".stats-fig.stats-avg-score", { title: t('Meðalstigafjöldi') },
+              m(".stats-fig.stats-avg-score", { title: ts('Meðalstigafjöldi') },
                 vwStat(avgScoreHuman, "dashboard"))
             ]
           ) : "",
           sel == 2 ? m("div",
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
-              m(".stats-fig", { title: 'Elo-stig' },
+              m(".stats-fig", { title: ts("Elo-stig") },
                 s ? vwStat(s.elo, "crown") : ""),
-              m(".stats-fig.stats-games", { title: t('Fjöldi viðureigna') },
+              m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.games, "th") : ""),
-              m(".stats-fig.stats-win-ratio", { title: t('Vinningshlutfall') },
+              m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },
                 vwStat(winRatio, "bookmark", "%")),
-              m(".stats-fig.stats-avg-score", { title: t('Meðalstigafjöldi') },
+              m(".stats-fig.stats-avg-score", { title: ts('Meðalstigafjöldi') },
                 vwStat(avgScore, "dashboard"))
             ]
           ) : ""
@@ -5132,7 +5133,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
               id: 'search-id',
               name: 'search-id',
               maxlength: 16,
-              placeholder: t('Einkenni eða nafn'),
+              placeholder: ts('Einkenni eða nafn'),
               value: spec,
               onfocus: () => newSearch(),
               oninput: (ev) => {
@@ -5169,7 +5170,7 @@ const Info: ComponentFunc<{}> = (initialVnode) => {
   return {
     view: (vnode) => {
       return m(".info",
-        { title: t("Upplýsingar og hjálp") },
+        { title: ts("Upplýsingar og hjálp") },
         m(m.route.Link,
           { href: "/help", class: "iconlink" },
           glyph("info-sign")

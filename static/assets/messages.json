@@ -452,8 +452,8 @@
     "en": "Elo points a month ago"
   },
   "elo_list_choice": {
-    "is": "Fólk | allar | keppnishamur",
-    "en": "Humans | all | Pro mode"
+    "is": "Fólk | Allar | Keppnishamur",
+    "en": "Humans | All | Pro mode"
   },
   "stats_choice": {
     "is": "Með þjörkum eða án",
@@ -597,13 +597,64 @@
     "is": [
       "Til auðkenningar tengir Netskrafl tölvupóstfang og nafn við hvern notanda. ",
       "Að öðru leyti eru ekki geymdar aðrar upplýsingar um notendur ",
-      "en þær sem þeir skrá sjálfir. Annáll er haldinn um umferð um vefinn."
+      "en þær sem þeir skrá sjálfir. Annáll er haldinn um umferð um vefinn og um ",
+      "aðgerðir notenda, í því skyni að endurbæta Netskrafl."
     ],
     "en": [
       "For identification, Explo associates an e-mail address and a name with each user. ",
       "Apart from this, Explo only stores information which is voluntarily ",
-      "entered by users themselves. A log is kept of web traffic."
+      "entered by users themselves. A log is kept of web traffic and events within Explo, ",
+      "for the purpose of improving the service."
     ]
+  },
+  "welcome_1": {
+    "is": [
+      "Netskrafl notar Google Accounts innskráningu, þá sömu og er notuð m.a. í Gmail. ",
+      "Til að auðkenna þig sem notanda og halda innskráningunni virkri ",
+      "er óhjákvæmilegt að geyma þar til gerða smáköku (<i>cookie</i>)",
+      "í vafranum þínum."
+    ],
+    "en": [
+      "Explo uses Google Accounts for user authentication, similarly to e.g. Gmail. ",
+      "To remember your login and maintain your session, it is necessary to store a ",
+      "cookie within your browser."
+    ]
+  },
+  "welcome_0": {
+    "is": [
+      "Netskrafl er vettvangur ",
+      "<b>yfir 20.000 íslenskra skraflara</b>",
+      " á netinu."
+    ],
+    "en": [
+      "Explo is a venue for ",
+      "<b>tens of thousands of crossword game enthusiasts</b> ",
+      "on the Internet."
+    ]
+  },
+  "Skrái þig inn...": {
+    "en": "Logging you in..."
+  },
+  "Innskrá": {
+    "en": "Log in"
+  },
+  "Smelltu til að raða eftir seinni staf": {
+    "en": "Click to sort by last letter"
+  },
+  "Smelltu til að raða eftir fyrri staf": {
+    "en": "Click to sort by first letter"
+  },
+  "Hvernig reitirnir margfalda stigin": {
+    "en": "How squares multiply points"
+  },
+  "Loka þessari hjálp": {
+    "en": "Close this help"
+  },
+  "Stokka upp rekka": {
+    "en": "Shuffle rack"
+  },
+  "Færa stafi aftur í rekka": {
+    "en": "Recall tiles into rack"
   },
 
   "[sentinel]" : {}

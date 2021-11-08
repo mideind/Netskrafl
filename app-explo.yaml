@@ -76,6 +76,12 @@ handlers:
   upload: static/mstile-150x150.png
   expiration: "1d 0h"
 
+# Web manifest
+- url: /explo.webmanifest
+  static_files: static/explo.webmanifest
+  upload: static/explo.webmanifest
+  expiration: "1d 0h"
+
 # Safari pinned tab
 - url: /safari-pinned-tab.svg
   static_files: static/safari-pinned-tab.svg

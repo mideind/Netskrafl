@@ -1215,7 +1215,10 @@ div#blank-form {
    font-size: 14px;
    line-height: 26px;
    margin: 0;
-   padding: 0 4px 4px;
+   padding-top: 0px;
+   padding-left: 4px;
+   padding-right: 4px;
+   padding-bottom: 4px;
    visibility: hidden;
    transform-origin: left top;
    animation: slidein 0.4s;
@@ -1253,15 +1256,19 @@ div.opp-turn.flashing {
 div#congrats, div#gameover {
    .bottom-message;
    visibility: visible;
+   font-size: 16px;
    width: 100%;
    text-align: center;
+   padding-bottom: 0px;
 }
 
 div#congrats span.glyphicon-bookmark {
+   padding-right: 2px;
    color: @close-btn;
 }
 
 div#gameover span.glyphicon-info-sign {
+   padding-right: 4px;
    color: @triple-letter;
 }
 
@@ -3330,6 +3337,7 @@ span.elo-hdr-left {
    padding-right: 6px;
    margin-left: 6px;
    margin-right: 6px;
+   top: 0px;
 }
 
 span.elo-hdr-right {
@@ -3341,6 +3349,7 @@ span.elo-hdr-right {
    padding-right: 6px;
    margin-left: 6px;
    margin-right: 6px;
+   top: 0px;
 }
 
 span.usr-info {

@@ -20,7 +20,7 @@ export { main };
 
 import { m, ComponentFunc } from "mithril";
 import { AnimatedExploLogo, NetskraflLegend } from "logo";
-import { t, loadMessages } from "i18n";
+import { mt, t, loadMessages } from "i18n";
 
 function main($state: { loginUrl: string; locale: string; }) {
   // Mount the Mithril component tree as a child of the div.container element
@@ -62,22 +62,13 @@ const LoginForm: ComponentFunc<{ loginUrl: string }> = (initialVnode) => {
             width: 600,
             msStepTime: 0
           }),
-          m("div.welcome", [
-            "Netskrafl er vettvangur ",
-            m("b", "yfir 20.000 íslenskra skraflara"),
-            " á netinu."
-          ]),
-          m("div.welcome", [
-            "Netskrafl notar Google Accounts innskráningu, þá sömu og er notuð m.a. í Gmail. " +
-            "Til að auðkenna þig sem notanda og halda innskráningunni virkri " +
-            "er óhjákvæmilegt að geyma þar til gerða smáköku (",
-            m("i", "cookie"), ") í vafranum þínum."
-          ]),
-          m("div.welcome", t("welcome_2")),
+          mt("div.welcome", "welcome_0"),
+          mt("div.welcome", "welcome_1"),
+          mt("div.welcome", "welcome_2"),
           m("div.login-btn-large",
             { onclick: doLogin },
-            loginInProgress ? "Skrái þig inn..." : [
-              "Innskrá ", m("span.glyphicon.glyphicon-play")
+            loginInProgress ? t("Skrái þig inn...") : [
+              t("Innskrá") + " ", m("span.glyphicon.glyphicon-play")
             ]
           )
         ]),
@@ -97,7 +88,7 @@ const LoginForm: ComponentFunc<{ loginUrl: string }> = (initialVnode) => {
           }),
           m("div.login-btn-small",
             { onclick: doLogin },
-            loginInProgress ? "Skrái þig inn..." : "Innskrá "
+            loginInProgress ? t("Skrái þig inn...") : t("Innskrá")
           )
         ])
       ]);
