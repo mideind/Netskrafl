@@ -225,7 +225,7 @@
       height: @board-cell-big;
       width: @board-cell-big;
       border-width: 2px;
-      border-radius: 0;
+      border-radius: 3.5px;
       box-shadow: none;
    }
 
@@ -269,11 +269,16 @@
       margin-left: 0;
    }
 
-   div.tile.wide {
-      /* Wide character tile: Z, Q, X */
+   div.tile.wide, div.tile.extra-wide {
+      /* Wide character tile */
       text-indent: -6px;
       margin-left: 0;
       padding-right: 2px;
+   }
+
+   div.tile.extra-wide {
+      /* Extra wide character tile: Q */
+      text-indent: -8px;
    }
 
    /* On large UIs, tile size doesn't change while dragging */
@@ -293,18 +298,20 @@
    }
 
    .rack div.letterscore {
+      left: auto;
       right: 0px;
       bottom: 1px;
-      left: auto;
    }
 
-   div.tile.wide div.letterscore {
+   div.tile.wide div.letterscore,
+   div.tile.extra-wide div.letterscore {
       /* Adjust letter score position for wide tiles */
       right: 1px;
       left: auto;
    }
 
-   .rack div.tile.wide div.letterscore {
+   .rack div.tile.wide div.letterscore,
+   .rack div.tile.extra-wide div.letterscore {
       /* Adjust letter score position for wide tiles */
       right: 1px;
       left: auto;
@@ -1262,6 +1269,14 @@
       right: 202px;
       width: 504px;
       height: 400px;
+   }
+
+   div#accept-form {
+      top: 220px;
+      right: 300px;
+      width: 428px;
+      height: 292px;
+      padding-top: 12px; /* Override */
    }
 
    span.left-to-move,

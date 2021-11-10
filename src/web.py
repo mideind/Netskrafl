@@ -18,6 +18,7 @@
 """
 
 from __future__ import annotations
+import os
 
 from typing import (
     Optional,
@@ -42,6 +43,7 @@ from flask import (
     session,
 )
 from flask.wrappers import Response
+from flask.globals import current_app
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
@@ -79,9 +81,12 @@ GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
 # _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 # _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
+STATIC_FOLDER = "../static"
+TEMPLATE_FOLDER = "../templates"
+
 # Register the Flask blueprint for the web routes
 web_blueprint = Blueprint(
-    "web", __name__, static_folder="../static", template_folder="../templates"
+    "web", __name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER
 )
 # The following cast can be removed once Flask's typing becomes
 # more robust and/or compatible with Pylance
@@ -157,10 +162,31 @@ def login_user() -> bool:
     return True
 
 
+def render_locale_template(template: str, locale: str, **kwargs: Any) -> ResponseType:
+    """ Render a template for a given locale. The template file name should contain
+        a {0} format placeholder for the locale. """
+    parts = locale.split("_")
+    if not (1 <= len(parts) <= 2) or not all(len(p) == 2 for p in parts):
+        # Funky locale requested: default to 'en'
+        parts = ["en"]
+    # Obtain the Flask template folder
+    template_folder: str = cast(Any, current_app).template_folder or TEMPLATE_FOLDER
+    # Try en_US first, then en, then nothing
+    for ix in range(len(parts), -1, -1):
+        lc = "_".join(parts[0:ix])
+        t = template.format(lc)
+        if os.path.isfile(os.path.join(template_folder, t)):
+            # Found a template corresponding to the locale: render it
+            return render_template(t, **kwargs)
+    # The locale is not found: return a default template rendering
+    return render_template(template.format("en"), **kwargs)
+
+
 @web.route("/friend")
 def friend() -> ResponseType:
-    """ HTML content of a friend promotion dialog """
-    return render_template("promo-friend.html")
+    """ HTML content of a friend (subscription) promotion dialog """
+    locale = request.args.get("locale", "is_IS")
+    return render_locale_template("promo-friend-{0}", locale)
 
 
 @web.route("/board")
@@ -216,6 +242,8 @@ def handle_billing() -> ResponseType:
 def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
 
+    locale = request.args.get("locale", "is_IS")
+
     def override_url_for(endpoint: str, **values: Any) -> str:
         """ Convert URLs from old-format plain ones to single-page fancy ones """
         if endpoint in {"web.twoletter", "web.newbag", "web.userprefs"}:
@@ -224,7 +252,7 @@ def rawhelp() -> ResponseType:
             return "$$" + endpoint.split(".")[-1] + "$$"
         return url_for(endpoint, **values)
 
-    return render_template("rawhelp.html", url_for=override_url_for)
+    return render_locale_template("rawhelp-{0}.html", locale, url_for=override_url_for)
 
 
 @web.route("/page")
@@ -291,14 +319,13 @@ def oauth2callback() -> ResponseType:
 @web.route("/service-worker.js")
 @max_age(seconds=1 * 60 * 60)  # Cache file for 1 hour
 def service_worker() -> ResponseType:
-    return send_from_directory("../static", "service-worker.js")
+    return send_from_directory(STATIC_FOLDER, "service-worker.js")
 
 
 @web.route("/")
 @auth_required()
 def main() -> ResponseType:
     """ Handler for the main (index) page """
-
     # Redirect to the single page UI
     return redirect(url_for("web.page"))
 

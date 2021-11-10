@@ -387,13 +387,13 @@ div.tile {
    cursor: default;
 }
 
-div.tile.wide {
+div.tile.wide, div.tile.extra-wide {
    /* Wide tile in the rack */
    text-indent: -6px;
 }
 
 div.board div.tile.wide {
-   /* Wide tile on the board */
+   /* Wide letter tile on the board */
    text-indent: -4px;
 }
 
@@ -425,7 +425,7 @@ div.tile.ui-draggable-dragging {
    border-style: solid;
    border-color: @cell-border;
    border-width: 1.5px;
-   border-radius: 2px;
+   border-radius: 2.5px;
    /* box-shadow: inset 0px 0px 3px 1px #afb7ca87; */
 }
 
@@ -488,6 +488,12 @@ div.letterscore {
    padding: 0;
    background-color: transparent;
    vertical-align: bottom;
+}
+
+div.tile.wide div.letterscore,
+div.tile.extra-wide div.letterscore {
+   /* Adjust letter score tracking for wide tiles */
+   letter-spacing: -0.5px;
 }
 
 .rack div.letterscore {
@@ -1193,6 +1199,7 @@ svg circle.shadow {
    box-shadow: 3px 3px 5px 2px @box-shadow;
    font-size: 1em;
    z-index: 20;
+   background-color: @dialog-background;
 }
 
 div#blank-form {
@@ -1847,7 +1854,6 @@ div#chall-form {
    width: @mobile-width - 6 * @margin-small;
    height: 352px;
    font-size: 0.85em;
-   background-color: @dialog-background;
 }
 
 div#chall-fairplay {
@@ -1910,10 +1916,9 @@ div#promo-form {
    .std-form;
    top: 64px;
    left: @margin-small * 3 * 0.5;
-   width: @mobile-width - 2 * @margin-small;
+   width: @mobile-width - 6 * @margin-small;
    height: 364px;
    line-height: 1.5em;
-   background-color: @dialog-background;
 }
 
 div.promo-content {
@@ -2073,7 +2078,8 @@ div#own-toggler {
 p#own-best {
    display: inline-block;
    position: absolute;
-   left: 16px;
+   left: auto;
+   right: 174px;
    top: 26px;
    text-align: right;
    font-size: 0.85em;
@@ -2595,7 +2601,7 @@ span.total {
    width: 28px;
    padding-left: 3px;
    margin-left: 0px;
-   padding-right: 3px;
+   padding-right: 6px;
    margin-right: 0px;
    font-weight: 700;
    text-align: right;
@@ -2606,11 +2612,17 @@ span.total {
 div.leftmove span.total {
    border-left-width: 0px; // 6px;
    border-left-style: solid;
+   border-top-right-radius: 2.5px;
+   border-bottom-right-radius: 2.5px;
+   margin-right: 2px;
 }
 
 div.rightmove span.total {
-  border-right-width: 0px; // 6px;
-  border-right-style: solid;
+   border-right-width: 0px; // 6px;
+   border-right-style: solid;
+   border-top-left-radius: 2.5px;
+   border-bottom-left-radius: 2.5px;
+   margin-left: 2px;
 }
 
 span.total.human {
@@ -3520,7 +3532,6 @@ div#usr-info-form {
    right: 12px;
    width: 884px;
    height: 644px;
-   background-color: @dialog-background;
 }
 
 div.thanks-content,
@@ -3813,7 +3824,6 @@ div#user-form {
    right: 64px;
    width: 736px;
    height: 582px;
-   background-color: @dialog-background;
 }
 
 div#user-logout {
@@ -3858,11 +3868,10 @@ div#user-ok {
 
 div#accept-form {
    .std-form;
-   top: 220px;
-   right: 300px;
-   width: 428px;
-   height: 292px;
-   padding-top: 12px; /* Override */
+   top: @margin-small;
+   left: @margin-small * 0.5;
+   width: @mobile-width - 5 * @margin-small;
+   height: @mobile-height-net - 8 * @margin-small;
 }
 
 h1#accept-nick {

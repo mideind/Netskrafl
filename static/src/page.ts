@@ -1282,7 +1282,7 @@ class View {
                     limit: model.maxFreeGames
                   }
                 );
-                // Promote being a friend of Netskrafl
+                // Promote a subscription to Netskrafl/Explo
                 view.showFriendPromo();
                 return;
               }
@@ -2685,7 +2685,7 @@ class View {
     function gameOverMove(tiles: string): m.vnode {
       // Add a 'game over' div at the bottom of the move list
       // of a completed game. The div includes a button to
-      // open a review of the game, if the user is a friend of Explo.
+      // open a review of the game, if the user is a subscriber.
       return m(".move.gameover",
         [
           m("span.gameovermsg", tiles),
@@ -3174,6 +3174,8 @@ class View {
       view: (vnode) => {
         const game = model.game;
         const coord = vnode.attrs.coord;
+        const isRackTile = coord[0] == 'R';
+        // Tile laid down by the opponent
         const opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
         const t = game.tiles[coord];
@@ -3181,13 +3183,16 @@ class View {
         let attrs: VnodeAttrs = {};
         if (t.tile == '?')
           classes.push("blanktile");
-        if (t.letter == 'z' || t.letter == 'q' || t.letter == 'x')
+        if (t.letter == 'q')
+          // Extra wide letter: handle specially
+          classes.push("extra-wide");
+        else if (t.letter == 'z' || t.letter == 'x' || t.letter == 'm' || t.letter == 'æ')
           // Wide letter: handle specially
           classes.push("wide");
-        if (coord[0] == 'R' || t.draggable) {
+        if (isRackTile || t.draggable) {
           // Rack tile, or at least a draggable one
           classes.push(opponent ? "freshtile" : "racktile");
-          if (coord[0] == 'R' && game.showingDialog == "exchange") {
+          if (isRackTile && game.showingDialog == "exchange") {
             // Rack tile, and we're showing the exchange dialog
             if (t.xchg)
               // Chosen as an exchange tile
@@ -3202,17 +3207,18 @@ class View {
           }
         }
         if (t.freshtile) {
-          // A fresh tile that has just been played by the opponent
+          // A fresh tile on the board that has
+          // just been played by the opponent
           classes.push("freshtile");
         }
         if (t.index) {
           // Make fresh or highlighted tiles appear sequentally by animation
           const ANIMATION_STEP = 150; // Milliseconds
           const delay = (t.index * ANIMATION_STEP).toString() + "ms";
-          attrs.style = "animation-delay: " + delay + "; " +
-            "-webkit-animation-delay: " + delay + ";";
+          attrs.style = `animation-delay: ${delay}; -webkit-animation-delay: ${delay};`;
         }
         if (coord == game.selectedSq)
+          // Currently selected square
           classes.push("sel"); // Blinks red
         if (t.highlight !== undefined) {
           // highlight0 is the local player color
@@ -3257,7 +3263,31 @@ class View {
     };
   }
 
-  ReviewTile: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  TileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+    // Return a td element that wraps a tile on the board.
+    // If the opponent flag is true, we put an '.opp' class on the td
+    const view = this;
+    const model = this.model;
+    return {
+      view: (vnode) => {
+        const coord = vnode.attrs.coord;
+        const game = model.game;
+        return m("td",
+          {
+            id: "sq_" + coord,
+            class: game.squareClass(coord),
+            // The square contains a tile, so we don't allow dropping a tile on it;
+            // indicate this by curtailing feedback on dragover and on drop
+            ondragover: (ev) => ev.stopPropagation(),
+            ondrop: (ev) => ev.stopPropagation()
+          },
+          m(view.Tile, { coord: coord, opponent: false })
+        );
+      }
+    };
+  };
+
+  ReviewTileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
     // Return a td element that wraps an 'inert' tile in a review screen.
     // If the opponent flag is true, we put an '.opp' class on the td
     const model = this.model;
@@ -3274,7 +3304,7 @@ class View {
     };
   };
 
-  DropTarget: ComponentFunc<{ coord: string; }> = (initialVnode) => {
+  DropTargetSquare: ComponentFunc<{ coord: string; }> = (initialVnode) => {
     // Return a td element that is a target for dropping tiles
     const model = this.model;
     return {
@@ -3370,29 +3400,19 @@ class View {
     function row(rowid: string): m.vnode {
       // Each row of the board
       let r: m.vnode[] = [];
-      let game = model.game;
+      const game = model.game;
       r.push(m("td.rowid", { key: "R" + rowid }, rowid));
       for (let col = 1; col <= 15; col++) {
-        let coord = rowid + col.toString();
+        const coord = rowid + col.toString();
         if (game && (coord in game.tiles))
           // There is a tile in this square: render it
-          r.push(m("td",
-            {
-              key: coord,
-              id: "sq_" + coord,
-              class: game.squareClass(coord),
-              ondragover: (ev) => ev.stopPropagation(),
-              ondrop: (ev) => ev.stopPropagation()
-            },
-            m(view.Tile, { coord: coord, opponent: false })
-          ));
+          r.push(m(view.TileSquare, { key: coord, coord: coord, opponent: false }));
+        else if (review)
+          // Empty, inert square
+          r.push(m(view.ReviewTileSquare, { key: coord, coord: coord, opponent: false }));
         else
-          if (review)
-            // Empty, inert square
-            r.push(m(view.ReviewTile, { key: coord, coord: coord, opponent: false }));
-          else
-            // Empty square which is a drop target
-            r.push(m(view.DropTarget, { key: coord, coord: coord }));
+          // Empty square which is a drop target
+          r.push(m(view.DropTargetSquare, { key: coord, coord: coord }));
       }
       return m("tr", r);
     }
@@ -3420,12 +3440,12 @@ class View {
 
     return {
       view: (vnode) => {
-        let scale = view.boardScale || 1.0;
+        const scale = view.boardScale || 1.0;
         let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, zoomIn, zoomOut);
         if (scale != 1.0)
-          attrs.style = "transform: scale(" + scale + ")";
+          attrs.style = `transform: scale(${scale})`;
         return m(".board",
           { id: "board-parent" },
           m("table.board", attrs, m("tbody", allrows()))
@@ -3447,33 +3467,32 @@ class View {
         // that is not a drop target and whose color reflects the
         // currently shown move.
         // If opponent==true, we're showing the opponent's rack
-        let opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
+        const opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
         for (let i = 1; i <= RACK_SIZE; i++) {
-          let coord = 'R' + i.toString();
+          const coord = 'R' + i.toString();
           if (game && (coord in game.tiles)) {
             // We have a tile in this rack slot, but it is a drop target anyway
             if (review) {
               r.push(
-                m(view.ReviewTile, { coord: coord, opponent: opponent },
+                m(view.ReviewTileSquare, { coord: coord, opponent: opponent },
                   m(view.Tile, { coord: coord, opponent: opponent })
                 )
               );
             }
             else {
               r.push(
-                m(view.DropTarget, { coord: coord },
+                m(view.DropTargetSquare, { coord: coord },
                   m(view.Tile, { coord: coord, opponent: false })
                 )
               );
             }
           }
-          else
-            if (review) {
-              r.push(m(view.ReviewTile, { coord: coord, opponent: false }));
-            }
-            else {
-              r.push(m(view.DropTarget, { coord: coord }));
-            }
+          else if (review) {
+            r.push(m(view.ReviewTileSquare, { coord: coord, opponent: false }));
+          }
+          else {
+            r.push(m(view.DropTargetSquare, { coord: coord }));
+          }
         }
         return m(".rack-row", [
           m(".rack-left", view.vwButtonsLeftOfRack()),

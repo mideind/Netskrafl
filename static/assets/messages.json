@@ -69,16 +69,16 @@
     "en": "Log out"
   },
   "Hætta sem vinur": {
-    "en": "Cancel friendship"
+    "en": "Cancel subscription"
   },
   "Þú ert vinur Netskrafls!": {
-    "en": "You are a friend of Explo!"
+    "en": "You're an Explo subscriber!"
   },
   "Gerast vinur": {
-    "en": "Become a friend"
+    "en": "Subscribe"
   },
   "Gerast vinur Netskrafls": {
-    "en": "Become a friend of Explo"
+    "en": "Subscribe to Explo"
   },
   "Tek við áskorunum!": {
     "en": "Accepting challenges!"
@@ -364,7 +364,7 @@
     "en": "Timed game"
   },
   "Vinur Netskrafls": {
-    "en": "Friend of Explo"
+    "en": "Explo subscriber"
   },
   "Nýjustu viðureignir": {
     "en": "Recent games"

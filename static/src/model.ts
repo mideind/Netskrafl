@@ -580,7 +580,7 @@ class Model {
     try {
       const result: string = await m.request({
         method: "GET",
-        url: "/rawhelp",
+        url: "/rawhelp?locale=" + this.state.locale,
         responseType: "text",
         deserialize: (str: string) => str
       });
@@ -598,7 +598,7 @@ class Model {
     try {
       const result: string = await m.request({
         method: "GET",
-        url: "/friend",
+        url: "/friend?locale=" + this.state.locale,
         responseType: "text",
         deserialize: (str: string) => str
       });

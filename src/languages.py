@@ -28,7 +28,17 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Type, NamedTuple, Callable, TypeVar, overload
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    NamedTuple,
+    Callable,
+    TypeVar,
+    overload,
+)
 
 import abc
 import functools
@@ -419,6 +429,9 @@ NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 
 class EnglishTileSet(TileSet):
 
+    """ Original ('classic') English tile set. Only included for reference;
+        not used in Explo. """
+
     alphabet = EnglishAlphabet
 
     scores = {
@@ -726,6 +739,7 @@ SUPPORTED_LOCALES = frozenset(
     | LANGUAGES.keys()
 )
 
+
 class Locale(NamedTuple):
     lc: str
     language: str
@@ -733,6 +747,7 @@ class Locale(NamedTuple):
     tileset: Type[TileSet]
     vocabulary: str
     board_type: str
+
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
@@ -748,13 +763,16 @@ current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tile
 current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
 current_board_type: Callable[[], str] = lambda: current_locale.get().board_type
 
+
 @overload
 def dget(d: Dict[str, _T], key: str) -> Optional[_T]:
     ...
 
+
 @overload
 def dget(d: Dict[str, _T], key: str, default: _T) -> _T:
     ...
+
 
 def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
     """ Retrieve value from dictionary by locale code, as precisely as possible,
