@@ -59,7 +59,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple, Iterator, List
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Iterator, List, Any
 
 import os
 import threading
@@ -77,6 +77,12 @@ from languages import (
     current_alphabet,
     current_vocabulary,
 )
+
+
+if TYPE_CHECKING:
+    # Hack to avoid Pylance errors on @lru_cache()
+    def lru_cache(maxsize: int = 0) -> Any:
+        pass
 
 
 # Type definitions

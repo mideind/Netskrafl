@@ -116,7 +116,7 @@ class Actions {
           {
             userid: model.state.userId,
             locale: model.state.locale,
-            // Add plan identifiers here
+            // TODO: Add plan identifiers here
             plan: "friend"
           }
         );

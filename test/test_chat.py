@@ -25,22 +25,13 @@ SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
 sys.path.append(SRC_PATH)
 
 # Set up the environment for Explo-dev testing
+os.environ["PROJECT_ID"] = "explo-dev"
 os.environ[
     "GOOGLE_APPLICATION_CREDENTIALS"
 ] = "resources/Explo Development-414318fa79b8.json"
 os.environ["SERVER_SOFTWARE"] = "Development"
-os.environ["PROJECT_ID"] = "explo-dev"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
-os.environ[
-    "CLIENT_ID"
-] = "970204261331-758cjav6i4lbiq1nemm6j8215omefqg3.apps.googleusercontent.com"
-os.environ["FIREBASE_API_KEY"] = "AIzaSyCsNVCzDnAXo_cbViXl7fa5BYr_Wz6lFEc"
-os.environ["FIREBASE_SENDER_ID"] = "970204261331"
-os.environ[
-    "FIREBASE_DB_URL"
-] = "https://explo-dev-default-rtdb.europe-west1.firebasedatabase.app"
-os.environ["FIREBASE_APP_ID"] = "1:970204261331:web:fce1615824c2e382ec9d26"
 
 
 @pytest.fixture

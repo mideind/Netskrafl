@@ -226,10 +226,10 @@ class Key(Generic[_T_Model], ndb.Key):
     """A type-safer wrapper around ndb.Key"""
 
     def id(self) -> str:
-        return cast(str, super().id())
+        return cast(str, cast(Any, super()).id())
 
     def parent(self) -> Optional[Key[_T_Model]]:
-        return cast(Optional[Key[_T_Model]], super().parent())
+        return cast(Optional[Key[_T_Model]], cast(Any, super()).parent())
 
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
         return cast(Optional[_T_Model], super().get(*args, **kwargs))  # type: ignore
@@ -242,7 +242,7 @@ class Model(Generic[_T_Model], ndb.Model):
 
     """A type-safer wrapper around ndb.Model"""
 
-    @property
+    @property  # type: ignore
     def key(self) -> Key[_T_Model]:
         return cast(Key[_T_Model], cast(Any, super()).key)
 
@@ -254,7 +254,7 @@ class Model(Generic[_T_Model], ndb.Model):
         put_multi(recs)
 
     @classmethod
-    def get_by_id(
+    def get_by_id(  # type: ignore
         cls: Type[_T_Model], identifier: str, **kwargs: Any
     ) -> Optional[_T_Model]:
         return cast(Any, super()).get_by_id(identifier, **kwargs)
@@ -757,8 +757,8 @@ class GameModel(Model["GameModel"]):
     """Models a game between two users"""
 
     # The players
-    player0 = Model.OptionalDbKey(kind=UserModel)
-    player1 = Model.OptionalDbKey(kind=UserModel)
+    player0: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
+    player1: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
 
     rack0 = Model.Str()  # Must be indexed
     rack1 = Model.Str()  # Must be indexed
@@ -898,8 +898,8 @@ class GameModel(Model["GameModel"]):
         if versus:
             # Add a filter on the opponent
             v: Key[UserModel] = Key(UserModel, versus)
-            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
-            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
+            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))  # type: ignore
+            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))  # type: ignore
         else:
             # Plain filter on the player
             q0 = cls.query(GameModel.player0 == k)
@@ -931,7 +931,7 @@ class GameModel(Model["GameModel"]):
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         # pylint: disable=singleton-comparison
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(
+        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(  # type: ignore
             GameModel.over == False
         )
 
@@ -989,9 +989,7 @@ class FavoriteModel(Model["FavoriteModel"]):
 
     def set_dest(self, user_id: str) -> None:
         """Set a destination user key property"""
-        k: Optional[Key[UserModel]] = None if not user_id else Key(
-            UserModel, user_id
-        )
+        k: Optional[Key[UserModel]] = None if not user_id else Key(UserModel, user_id)
         self.destuser = k
 
     @classmethod
@@ -1531,13 +1529,12 @@ class StatsModel(Model["StatsModel"]):
         sm = cls.create(user_id, robot_level)
         if ts:
             # Try to query using the timestamp
-            if user_id is None:
-                k = None
-            else:
-                k = Key(UserModel, user_id)
+            k: Optional[Key[UserModel]] = None if user_id is None else Key(
+                UserModel, user_id
+            )
             # Use a common query structure and index for humans and robots
             q = cls.query(
-                ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level)
+                ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level)  # type: ignore
             )
             q = q.filter(StatsModel.timestamp <= ts).order(
                 -cast(int, StatsModel.timestamp)
@@ -1556,7 +1553,7 @@ class StatsModel(Model["StatsModel"]):
             return None
         k: Key[UserModel] = Key(UserModel, user_id)
         # Use a common query structure and index for humans and robots
-        q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)).order(
+        q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)).order(  # type: ignore
             -cast(int, StatsModel.timestamp)
         )
         sm = q.get()
@@ -1573,7 +1570,7 @@ class StatsModel(Model["StatsModel"]):
         k: Key[UserModel] = Key(UserModel, user_id)
         now = datetime.utcnow()
         q = (
-            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k))
+            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k))  # type: ignore
             .filter(StatsModel.timestamp <= now)
             .order(-cast(int, StatsModel.timestamp))
         )
@@ -1592,7 +1589,7 @@ class StatsModel(Model["StatsModel"]):
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         delete_multi(
-            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)).iter(
+            cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)).iter(  # type: ignore
                 keys_only=True
             )
         )
@@ -1730,10 +1727,10 @@ class ChatModel(Model["ChatModel"]):
     channel = Model.Str()
 
     # The user originating this chat message
-    user = Model.DbKey(kind=UserModel)
+    user: Key[UserModel] = Model.DbKey(kind=UserModel)
 
     # The recipient of the message
-    recipient = Model.OptionalDbKey(kind=UserModel)
+    recipient: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
 
     # The timestamp of this chat message
     timestamp = Model.Datetime(indexed=True, auto_now_add=True)
@@ -1932,9 +1929,9 @@ class ZombieModel(Model["ZombieModel"]):
     """Models finished games that have not been seen by one of the players"""
 
     # The zombie game
-    game = Model.DbKey(kind=GameModel)
+    game: Key[GameModel] = Model.DbKey(kind=GameModel)
     # The player that has not seen the result
-    player = Model.DbKey(kind=UserModel)
+    player: Key[UserModel] = Model.DbKey(kind=UserModel)
 
     def set_player(self, user_id: Optional[str]) -> None:
         """Set the player's user id"""
@@ -2014,7 +2011,7 @@ class PromoModel(Model["PromoModel"]):
     """Models promotions displayed to players"""
 
     # The player that saw the promotion
-    player = Model.DbKey(kind=UserModel)
+    player: Key[UserModel] = Model.DbKey(kind=UserModel)
     # The promotion id
     promotion = Model.Str()
     # The timestamp
@@ -2099,9 +2096,9 @@ class BlockModel(Model["BlockModel"]):
     MAX_BLOCKS = 100  # The maximum number of blocked users per user
 
     # The user who has blocked another user
-    blocker = Model.DbKey(kind=UserModel)
+    blocker: Key[UserModel] = Model.DbKey(kind=UserModel)
     # The blocked user
-    blocked = Model.DbKey(kind=UserModel)
+    blocked: Key[UserModel] = Model.DbKey(kind=UserModel)
     # Timestamp
     timestamp = Model.Datetime(auto_now_add=True)
 
@@ -2134,7 +2131,7 @@ class BlockModel(Model["BlockModel"]):
         blocker: Key[UserModel] = Key(UserModel, blocker_id)
         blocked: Key[UserModel] = Key(UserModel, blocked_id)
         q = cls.query(
-            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
+            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)  # type: ignore
         )
         unblocked = False
         # There might conceivably be more than one BlockModel entity
@@ -2150,7 +2147,7 @@ class BlockModel(Model["BlockModel"]):
         blocker: Key[UserModel] = Key(UserModel, blocker_id)
         blocked: Key[UserModel] = Key(UserModel, blocked_id)
         q = cls.query(
-            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)
+            ndb.AND(BlockModel.blocker == blocker, BlockModel.blocked == blocked)  # type: ignore
         )
         return q.get(keys_only=True) is not None
 
@@ -2160,9 +2157,9 @@ class ReportModel(Model["ReportModel"]):
     """Models the fact that a user has reported another user"""
 
     # The user who is reporting another user
-    reporter = Model.DbKey(kind=UserModel)
+    reporter: Key[UserModel] = Model.DbKey(kind=UserModel)
     # The reported user
-    reported = Model.DbKey(kind=UserModel)
+    reported: Key[UserModel] = Model.DbKey(kind=UserModel)
     # The reason code (0: Free format text explanation; >= 1: fixed reasons)
     code = Model.Int()
     # Free format text, if any

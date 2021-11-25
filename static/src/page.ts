@@ -3055,7 +3055,7 @@ class View {
         );
       }
     };
-  }
+  };
 
   BlankDialog: ComponentFunc<{}> = (initialVnode) => {
     // A dialog for choosing the meaning of a blank tile
@@ -3121,7 +3121,7 @@ class View {
         );
       }
     };
-  }
+  };
 
   BoardArea: ComponentFunc<{}> = (initialVnode) => {
     // Collection of components in the board (left-side) area
@@ -3134,7 +3134,7 @@ class View {
           r = [
             m(this.Board, { review: false }),
             m(this.Rack, { review: false }),
-            this.vwButtons(),
+            m(this.Buttons),
             this.vwErrors(game),
             this.vwGameOver()
           ];
@@ -3143,7 +3143,7 @@ class View {
         return m(".board-area", r);
       }
     };
-  }
+  };
 
   BoardReview: ComponentFunc<{ moveIndex: number; }> = (initialVnode) => {
     // The board area within a game review screen
@@ -3790,181 +3790,188 @@ class View {
     );
   }
 
-  vwButtons(): m.vnode {
-    // The set of buttons below the game board, alongside the rack (fullscreen view)
-    // or below the rack (mobile view)
+  Buttons: ComponentFunc<{}> = (initialVnode) => {
+
     const model = this.model;
-    const game = model.game;
-    const s = this.buttonState(game);
-    let r: m.vnode[] = [];
-    r.push(m(".word-check" +
-      (s.wordGood ? ".word-good" : "") +
-      (s.wordBad ? ".word-bad" : "")));
-    if (s.showChallenge) {
-      // Show a button that allows the player to challenge the opponent's
-      // last move
-      r.push(
-        this.makeButton(
-          "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
-          () => game.submitChallenge(),
-          'Véfenging (röng kostar 10 stig)', glyph("ban-circle")
-        )
-      );
-    }
-    if (s.showChallengeInfo)
-      r.push(m(".chall-info"));
-    if (s.showRecall)
-      // Show button to recall tiles from the board into the rack
-      r.push(this.vwRecallButton());
-    if (s.showScramble)
-      // Show button to scramble (randomly reorder) the rack tiles
-      r.push(this.vwScrambleButton(s.showingDialog));
-    if (s.showMove) {
-      // "Plain" move button for fullscreen
-      r.push(
-        this.makeButton(
-          "submitmove", !s.tilesPlaced || s.showingDialog,
-          () => { game.submitMove(); this.updateScale(game); },
-          "Leika", ["Leika", glyph("right-arrow")]
-        )
-      );
-    }
-    if (s.showMoveMobile) {
-      // Submit-Move button on mobile, which also shows the score
-      // and whether the move is good or bad
-      let classes: string[] = ["submitmove"];
-      let wordIsPlayable = game.currentScore !== undefined;
-      if (game.manual) {
-        classes.push("manual")
-      } else if (s.wordGood) {
-        classes.push("word-good");
-        if (game.currentScore >= 50)
-          classes.push("word-great");
-      } else if (s.wordBad) {
-        classes.push("word-bad");
-        wordIsPlayable = false;
-      }
-      const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
-      let legend: VnodeChildren[] = [m("span.score-mobile", text)];
-      if (s.canPlay && wordIsPlayable)
-        legend.push(glyph("right-arrow"));
-      else
-        legend.push(glyph("remove"));
-      let action: () => void;
-      if (s.canPlay) {
-        if (wordIsPlayable)
-          action = () => { game.submitMove(); this.updateScale(game); };
-        else
-          action = () => { /* TODO: Add some kind of feedback? */ };
-      }
-      else {
-        action = () => {
-          // Make the 'opp-turn' flash, to remind the user that it's not her turn
-          const el = document.querySelector("div.opp-turn") as HTMLElement;
-          if (el) {
-            el.classList.toggle("flashing", true);
-            setTimeout(() => el.classList.toggle("flashing", false), 1200);
+
+    return {
+      view: (vnode) => {
+        // The set of buttons below the game board, alongside the rack (fullscreen view)
+        // or below the rack (mobile view)
+        const game = model.game;
+        const s = this.buttonState(game);
+        let r: m.vnode[] = [];
+        r.push(m(".word-check" +
+          (s.wordGood ? ".word-good" : "") +
+          (s.wordBad ? ".word-bad" : "")));
+        if (s.showChallenge) {
+          // Show a button that allows the player to challenge the opponent's
+          // last move
+          r.push(
+            this.makeButton(
+              "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
+              () => game.submitChallenge(),
+              'Véfenging (röng kostar 10 stig)', glyph("ban-circle")
+            )
+          );
+        }
+        if (s.showChallengeInfo)
+          r.push(m(".chall-info"));
+        if (s.showRecall)
+          // Show button to recall tiles from the board into the rack
+          r.push(this.vwRecallButton());
+        if (s.showScramble)
+          // Show button to scramble (randomly reorder) the rack tiles
+          r.push(this.vwScrambleButton(s.showingDialog));
+        if (s.showMove) {
+          // "Plain" move button for fullscreen
+          const submit_move = ts("submit_move"); // 'Move' or 'Leika'
+          r.push(
+            this.makeButton(
+              "submitmove", !s.tilesPlaced || s.showingDialog,
+              () => { game.submitMove(); this.updateScale(game); },
+              submit_move, [submit_move, glyph("right-arrow")]
+            )
+          );
+        }
+        if (s.showMoveMobile) {
+          // Submit-Move button on mobile, which also shows the score
+          // and whether the move is good or bad
+          let classes: string[] = ["submitmove"];
+          let wordIsPlayable = game.currentScore !== undefined;
+          if (game.manual) {
+            classes.push("manual")
+          } else if (s.wordGood) {
+            classes.push("word-good");
+            if (game.currentScore >= 50)
+              classes.push("word-great");
+          } else if (s.wordBad) {
+            classes.push("word-bad");
+            wordIsPlayable = false;
           }
-        };
+          const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
+          let legend: VnodeChildren[] = [m("span.score-mobile", text)];
+          if (s.canPlay && wordIsPlayable)
+            legend.push(glyph("right-arrow"));
+          else
+            legend.push(glyph("remove"));
+          let action: () => void;
+          if (s.canPlay) {
+            if (wordIsPlayable)
+              action = () => { game.submitMove(); this.updateScale(game); };
+            else
+              action = () => { /* TODO: Add some kind of feedback? */ };
+          }
+          else {
+            action = () => {
+              // Make the 'opp-turn' flash, to remind the user that it's not her turn
+              const el = document.querySelector("div.opp-turn") as HTMLElement;
+              if (el) {
+                el.classList.toggle("flashing", true);
+                setTimeout(() => el.classList.toggle("flashing", false), 1200);
+              }
+            };
+          }
+          r.push(
+            this.makeButton(
+              classes.join("."), s.showingDialog, action, text, legend, "move-mobile"
+            )
+          );
+        }
+        if (s.showForceResignMobile) {
+          // Force resignation button (only shown on mobile,
+          // and only if submit move button is not shown)
+          const txt = ts("Þvinga til uppgjafar");
+          r.push(
+            this.makeButton(
+              "force-resign",
+              s.showingDialog,
+              () => { game.forceResign(); },
+              txt,
+              txt
+            )
+          );
+        }
+        if (s.showPass) {
+          // Pass move
+          r.push(
+            this.makeButton(
+              "submitpass",
+              (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
+              () => game.submitPass(),
+              ts("Pass"), glyph("forward")
+            )
+          );
+        }
+        if (s.showExchange) {
+          // Exchange tiles from the rack
+          r.push(
+            this.makeButton(
+              "submitexchange",
+              s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
+              () => game.submitExchange(),
+              ts("Skipta stöfum"), glyph("refresh")
+            )
+          );
+        }
+        if (s.showResign) {
+          // Resign the game
+          r.push(
+            this.makeButton(
+              "submitresign", s.showingDialog,
+              () => game.submitResign(),
+              ts("Gefa viðureign"), glyph("fire")
+            )
+          );
+        }
+        if (!s.gameOver && !s.localTurn && !game.moveInProgress) {
+          // Indicate that it is the opponent's turn; offer to force a resignation
+          // if the opponent hasn't moved for 14 days
+          r.push(
+            m(".opp-turn",
+              { style: { visibility: "visible" } },
+              [
+                m("span.move-indicator"),
+                nbsp(),
+                m("strong", game.nickname[1 - game.player]),
+                ts(" á leik"),
+                nbsp(),
+                // The following inline button is only
+                // displayed in the fullscreen UI
+                s.tardyOpponent ? m("span.yesnobutton",
+                  {
+                    id: 'force-resign',
+                    onclick: (ev) => {
+                      ev.preventDefault();
+                      game.forceResign();
+                    },
+                    onmouseout: buttonOut,
+                    onmouseover: buttonOver,
+                    title: ts("14 dagar liðnir án leiks")
+                  },
+                  ts("Þvinga til uppgjafar")
+                ) : ""
+              ]
+            )
+          );
+        }
+        if (s.tilesPlaced)
+          // Show the score of the current move (not visible on mobile)
+          r.push(this.vwScore());
+        // Is the server processing a move?
+        if (game.moveInProgress) {
+          r.push(
+            m(".waitmove",
+              m(".animated-waitmove",
+                m(AnimatedExploLogo, { msStepTime: 100, width: 38, withCircle: false })
+              )
+            )
+          );
+        }
+        return m(".buttons", r);
       }
-      r.push(
-        this.makeButton(
-          classes.join("."), s.showingDialog, action, text, legend, "move-mobile"
-        )
-      );
-    }
-    if (s.showForceResignMobile) {
-      // Force resignation button (only shown on mobile,
-      // and only if submit move button is not shown)
-      const txt = ts("Þvinga til uppgjafar");
-      r.push(
-        this.makeButton(
-          "force-resign",
-          s.showingDialog,
-          () => { game.forceResign(); },
-          txt,
-          txt
-        )
-      );
-    }
-    if (s.showPass) {
-      // Pass move
-      r.push(
-        this.makeButton(
-          "submitpass",
-          (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
-          () => game.submitPass(),
-          ts("Pass"), glyph("forward")
-        )
-      );
-    }
-    if (s.showExchange) {
-      // Exchange tiles from the rack
-      r.push(
-        this.makeButton(
-          "submitexchange",
-          s.tilesPlaced || s.showingDialog || !s.exchangeAllowed,
-          () => game.submitExchange(),
-          ts("Skipta stöfum"), glyph("refresh")
-        )
-      );
-    }
-    if (s.showResign) {
-      // Resign the game
-      r.push(
-        this.makeButton(
-          "submitresign", s.showingDialog,
-          () => game.submitResign(),
-          ts("Gefa viðureign"), glyph("fire")
-        )
-      );
-    }
-    if (!s.gameOver && !s.localTurn && !game.moveInProgress) {
-      // Indicate that it is the opponent's turn; offer to force a resignation
-      // if the opponent hasn't moved for 14 days
-      r.push(
-        m(".opp-turn",
-          { style: { visibility: "visible" } },
-          [
-            m("span.move-indicator"),
-            nbsp(),
-            m("strong", game.nickname[1 - game.player]),
-            ts(" á leik"),
-            nbsp(),
-            // The following inline button is only
-            // displayed in the fullscreen UI
-            s.tardyOpponent ? m("span.yesnobutton",
-              {
-                id: 'force-resign',
-                onclick: (ev) => {
-                  ev.preventDefault();
-                  game.forceResign();
-                },
-                onmouseout: buttonOut,
-                onmouseover: buttonOver,
-                title: ts("14 dagar liðnir án leiks")
-              },
-              ts("Þvinga til uppgjafar")
-            ) : ""
-          ]
-        )
-      );
-    }
-    if (s.tilesPlaced)
-      // Show the score of the current move (not visible on mobile)
-      r.push(this.vwScore());
-    // Is the server processing a move?
-    if (game.moveInProgress) {
-      r.push(
-        m(".waitmove",
-          m(".animated-waitmove",
-            m(AnimatedExploLogo, { msStepTime: 100, width: 38, withCircle: false })
-          )
-        )
-      );
-    }
-    return m(".buttons", r);
-  }
+    };
+  };
 
   vwButtonsReview(moveIndex: number) {
     // The navigation buttons below the board on the review screen

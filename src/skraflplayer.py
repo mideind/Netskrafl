@@ -653,6 +653,8 @@ TOP_SCORE = 0
 MEDIUM = 8
 # By convention, a robot level that uses only common words
 COMMON = 15
+# By convention, a robot level that is adaptive
+ADAPTIVE = 20
 
 
 class AutoPlayer:
@@ -909,6 +911,8 @@ class AutoPlayer_Custom(AutoPlayer):
         if custom_vocab:
             # This robot constrains itself with a custom vocabulary: load it
             self.vocab = Wordbase.dawg_for_vocab(custom_vocab)
+        # Flag indicating whether this robot adapts to the score difference in the game
+        self.adaptive = kwargs.get("adaptive", False)
 
     def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
@@ -922,7 +926,8 @@ class AutoPlayer_Custom(AutoPlayer):
         i = 0  # Candidate index
         p = 0  # Playable index
         while p < pick_from and i < num_candidates:
-            m, score = scored_candidates[i]  # Candidate move
+            candidate = scored_candidates[i]
+            m, score = candidate  # Candidate move
             # We assume that m is a normal tile move
             assert isinstance(m, Move)
             w = m.word()  # The principal word being played
@@ -933,14 +938,15 @@ class AutoPlayer_Custom(AutoPlayer):
                 if p == 1 and score == playable_candidates[0].score:
                     pass
                 else:
-                    playable_candidates.append(scored_candidates[i])
+                    playable_candidates.append(candidate)
                     p += 1
             i += 1
-        # Now we have a list of up to NUM_TO_PICK_FROM playable moves
+        # Now we have a list of up to self.pick_from playable moves
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None
         # Pick a move at random from the playable list
+        # TODO: If adaptive, make a choice based on the score difference
         return random.choice(playable_candidates).move
 
 
@@ -1144,26 +1150,41 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     ],
     "en": [
         AutoPlayerTuple(
-            "Steel", "Always plays the highest-scoring move", TOP_SCORE, AutoPlayer, {},
+            "Freyja",
+            "Always plays the highest-scoring move",
+            TOP_SCORE,
+            AutoPlayer,
+            {},
         ),
         AutoPlayerTuple(
-            "Wood",
+            "Idun",
             "Picks one of 10 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
             dict(pick_from=10),
         ),
         AutoPlayerTuple(
-            "Cotton",
+            "Frigg",
             "Picks one of 20 top-scoring moves",
             COMMON,
             AutoPlayer_Custom,
             dict(pick_from=20),
         ),
+        AutoPlayerTuple(
+            "Sif",
+            "Adaptive",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            dict(pick_from=20, adaptive=True),
+        ),
     ],
     "pl": [
         AutoPlayerTuple(
-            "Mikołaj ", "Always plays the highest-scoring move", TOP_SCORE, AutoPlayer, {},
+            "Mikołaj ",
+            "Always plays the highest-scoring move",
+            TOP_SCORE,
+            AutoPlayer,
+            {},
         ),
         AutoPlayerTuple(
             "Marian",
