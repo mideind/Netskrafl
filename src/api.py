@@ -1009,6 +1009,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     "image": u.image(),
                     "fav": False if cuser is None else cuser.has_favorite(opp),
                     "tile_count": 100,  # All tiles (100%) accounted for
+                    "robot_level": 0,  # Should not be used; zombie games are human-only
                 }
             )
         # Sort zombies in decreasing order by last move,
@@ -1044,6 +1045,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     for g in i:
         if g is None:
             continue
+        u = None
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
@@ -1056,9 +1058,11 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         timed = Game.get_duration_from_prefs(prefs)
         locale = Game.locale_from_prefs(prefs)
         fullname = ""
+        robot_level: int = 0
         if opp is None:
             # Autoplayer opponent
-            nick = AutoPlayer.name(locale, g["robot_level"])
+            robot_level = g["robot_level"]
+            nick = AutoPlayer.name(locale, robot_level)
         else:
             # Human opponent
             try:
@@ -1096,6 +1100,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 "live": opp in online,
                 "image": "" if u is None else u.image(),
                 "fav": False if cuser is None else cuser.has_favorite(opp),
+                "robot_level": robot_level,
             }
         )
     if running_local:
@@ -1212,6 +1217,8 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
 
     for g in rlist:
 
+        uuid = g["uuid"]
+
         prefs = g["prefs"]
         locale = Game.locale_from_prefs(prefs)
 
@@ -1245,9 +1252,11 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
 
         result.append(
             {
-                "url": url_for("web.board", game=g["uuid"]),
+                "uuid": uuid,
+                "url": url_for("web.board", game=uuid),
                 "opp": nick,
                 "opp_is_robot": opp is None,
+                "robot_level": g["robot_level"],
                 "sc0": g["sc0"],
                 "sc1": g["sc1"],
                 "elo_adj": g["elo_adj"],
