@@ -556,10 +556,7 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
     try:
         token = firebase.create_custom_token(cuid)
-        # !!! TODO: Temporary hack to accommodate app client
-        # Correct code for future use:
-        # return jsonify(ok=True, token=token)
-        return jsonify(ok=True, id=token, token=token)
+        return jsonify(ok=True, token=token)
     except:
         return jsonify(ok=False)
 
@@ -732,8 +729,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             result.append(
                 {
                     "userid": "robot-" + str(r.level),
+                    "robot_level": r.level,
                     "nick": r.name,
                     "fullname": r.description,
+                    "elo": elo_str(None),
                     "human_elo": elo_str(None),
                     "fav": False,
                     "chall": False,
@@ -742,6 +741,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "ready": True,  # The robots are always ready for a challenge
                     "ready_timed": False,  # Timed games are not available for robots
                     "live": True,  # robots are always online
+                    "image": None,
                 }
             )
         # That's it; we're done (no sorting required)
@@ -780,8 +780,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 result.append(
                     {
                         "userid": uid,
+                        "robot_level": 0,
                         "nick": lu.nickname(),
                         "fullname": lu.full_name(),
+                        "elo": elo_str(lu.elo()),
                         "human_elo": elo_str(lu.human_elo()),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
@@ -807,8 +809,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     result.append(
                         {
                             "userid": favid,
+                            "robot_level": 0,
                             "nick": fu.nickname(),
                             "fullname": fu.full_name(),
+                            "elo": elo_str(fu.elo()),
                             "human_elo": elo_str(fu.human_elo()),
                             "fav": True,
                             "chall": chall,
@@ -840,8 +844,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     result.append(
                         {
                             "userid": uid,
+                            "robot_level": 0,
                             "nick": au.nickname(),
                             "fullname": au.full_name(),
+                            "elo": elo_str(au.elo()),
                             "human_elo": elo_str(au.human_elo()),
                             "fav": False if cuser is None else cuser.has_favorite(uid),
                             "chall": chall,
@@ -876,8 +882,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             result.append(
                 {
                     "userid": user_id,
+                    "robot_level": 0,
                     "nick": user.nickname(),
                     "fullname": user.full_name(),
+                    "elo": elo_str(user.elo()),
                     "human_elo": elo_str(user.human_elo()),
                     "fav": False if cuser is None else cuser.has_favorite(user_id),
                     "chall": chall,
@@ -924,8 +932,10 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 result.append(
                     {
                         "userid": uid,
+                        "robot_level": 0,
                         "nick": ud["nickname"],
                         "fullname": User.full_name_from_prefs(ud["prefs"]),
+                        "elo": elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
                         "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
                         "fav": False if cuser is None else cuser.has_favorite(uid),
                         "chall": chall,
@@ -1010,6 +1020,8 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     "fav": False if cuser is None else cuser.has_favorite(opp),
                     "tile_count": 100,  # All tiles (100%) accounted for
                     "robot_level": 0,  # Should not be used; zombie games are human-only
+                    "elo": u.elo(),
+                    "human_elo": u.human_elo(),
                 }
             )
         # Sort zombies in decreasing order by last move,
@@ -1101,6 +1113,8 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 "image": "" if u is None else u.image(),
                 "fav": False if cuser is None else cuser.has_favorite(opp),
                 "robot_level": robot_level,
+                "elo": 0 if u is None else u.elo(),
+                "human_elo": 0 if u is None else u.human_elo(),
             }
         )
     if running_local:
@@ -1198,11 +1212,11 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
     return result
 
 
-def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str, Any]]:
+def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> List[Dict[str, Any]]:
     """Return a list of recent games for the indicated user, eventually
     filtered by the opponent id (versus)"""
     result: List[Dict[str, Any]] = []
-    if cuid is None:
+    if not cuid:
         return result
 
     cuser = current_user()
@@ -1222,7 +1236,7 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
         prefs = g["prefs"]
         locale = Game.locale_from_prefs(prefs)
 
-        opp = g["opp"]
+        opp: Optional[str] = g["opp"]
         if opp is None:
             # Autoplayer opponent
             u = None
@@ -1254,6 +1268,7 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
             {
                 "uuid": uuid,
                 "url": url_for("web.board", game=uuid),
+                "oppid": opp,
                 "opp": nick,
                 "opp_is_robot": opp is None,
                 "robot_level": g["robot_level"],
@@ -1269,9 +1284,11 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
                     "duration": Game.get_duration_from_prefs(prefs),
                     "manual": Game.manual_wordcheck_from_prefs(prefs),
                 },
-                "live": opp in online,
+                "live": False if opp is None else opp in online,
                 "image": "" if u is None else u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(opp),
+                "fav": False if cuser is None or opp is None else cuser.has_favorite(opp),
+                "elo": 0 if u is None else u.elo(),
+                "human_elo": 0 if u is None else u.human_elo(),
             }
         )
     return result
@@ -1335,6 +1352,8 @@ def _challengelist() -> List[Dict[str, Any]]:
                 "live": oppid in online,
                 "image": u.image(),
                 "fav": False if cuser is None else cuser.has_favorite(oppid),
+                "elo": 0 if u is None else u.elo(),
+                "human_elo": 0 if u is None else u.human_elo(),
             }
         )
     # List the issued challenges
@@ -1357,6 +1376,8 @@ def _challengelist() -> List[Dict[str, Any]]:
                 "live": oppid in online,
                 "image": u.image(),
                 "fav": False if cuser is None else cuser.has_favorite(oppid),
+                "elo": 0 if u is None else u.elo(),
+                "human_elo": 0 if u is None else u.human_elo(),
             }
         )
     return result
@@ -1686,8 +1707,8 @@ def recentlist() -> ResponseType:
     """ Return a list of recently completed games for the indicated user """
 
     rq = RequestData(request)
-    user_id = rq.get("user")
-    versus = rq.get("versus")
+    user_id: Optional[str] = rq.get("user")
+    versus: Optional[str] = rq.get("versus")
     count = rq.get_int("count", 14)  # Default number of recent games to return
 
     # Limit count to 50 games

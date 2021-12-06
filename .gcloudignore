@@ -52,10 +52,17 @@ resources/Explo*.json
 *.py[cod]
 **/.*
 __pycache__/
+src/__pycache__/
 ptvsd/
 log/
 .vscode/
 .idea/
+.git/
+.gitattributes
+.gitignore
+.mypy_cache/
+.pytest_cache/
+.tscache/
 
 # NodeJS stuff, mostly related to Grunt
 node_modules/
@@ -67,4 +74,7 @@ lib/
 
 # Python3 virtual environment library files
 venv/
+
+# Test stuff
+test/
 
