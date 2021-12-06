@@ -906,7 +906,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             spec = spec[0:16]
 
             # The "N:" prefix is a version header
-            cache_range = "4:" + spec.lower()  # Case is not significant
+            cache_range = "5:" + spec.lower()  # Case is not significant
 
             # Start by looking in the cache
             si = memcache.get(cache_range, namespace="userlist")

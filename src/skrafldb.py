@@ -649,6 +649,7 @@ class UserModel(Model["UserModel"]):
                         timestamp=um.timestamp,
                         ready=um.ready,
                         ready_timed=um.ready_timed,
+                        elo=um.elo,
                         human_elo=um.human_elo,
                         manual_elo=um.manual_elo,
                         image=um.image,
