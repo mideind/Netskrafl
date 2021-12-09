@@ -875,6 +875,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "newbag": True,
                     "ready": user.is_ready(),
                     "ready_timed": True,
+                    "live": True,
                     "image": user.image(),
                 }
             )
@@ -899,39 +900,30 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
-        def displayable(ud: Mapping[str, str]) -> bool:
-            """ Determine whether a user entity is displayable in a list """
-            return User.is_valid_nick(ud["nickname"])
-
         for ud in si:
-            uid = ud.get("id")
-            if not uid:
+            if not (uid := ud.get("id")) or uid == cuid:
                 continue
-            if uid == cuid:
-                # Do not include the current user, if any, in the list
-                continue
-            if displayable(ud):
-                chall = uid in challenges
-                result.append(
-                    {
-                        "userid": uid,
-                        "robot_level": 0,
-                        "nick": ud["nickname"],
-                        "fullname": User.full_name_from_prefs(ud["prefs"]),
-                        "elo": elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
-                        "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
-                        "fav": False if cuser is None else cuser.has_favorite(uid),
-                        "chall": chall,
-                        "live": uid in online,
-                        "fairplay": User.fairplay_from_prefs(ud["prefs"]),
-                        "newbag": True,
-                        "ready": ud["ready"],
-                        "ready_timed": (
-                            ud["ready_timed"] and uid in online
-                        ),
-                        "image": ud["image"],
-                    }
-                )
+            chall = uid in challenges
+            result.append(
+                {
+                    "userid": uid,
+                    "robot_level": 0,
+                    "nick": ud["nickname"],
+                    "fullname": User.full_name_from_prefs(ud["prefs"]),
+                    "elo": elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
+                    "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
+                    "fav": False if cuser is None else cuser.has_favorite(uid),
+                    "chall": chall,
+                    "live": uid in online,
+                    "fairplay": User.fairplay_from_prefs(ud["prefs"]),
+                    "newbag": True,
+                    "ready": ud["ready"],
+                    "ready_timed": (
+                        ud["ready_timed"] and uid in online
+                    ),
+                    "image": ud["image"],
+                }
+            )
 
     # Sort the user list. The result is approximately like so:
     # 1) Users who are online and ready for timed games.

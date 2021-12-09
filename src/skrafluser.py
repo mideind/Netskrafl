@@ -270,8 +270,7 @@ class User:
         if self._inactive:
             # Inactive users are hidden
             return False
-        # Nicknames that haven't been properly set aren't displayed
-        return User.is_valid_nick(self._nickname)
+        return True
 
     @property
     def preferences(self) -> PrefsDict:
@@ -776,6 +775,7 @@ class User:
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
+        nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
         prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
         user_id = UserModel.create(
             user_id=account,
