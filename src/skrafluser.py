@@ -87,6 +87,9 @@ class UserLoginDict(TypedDict, total=False):
 # Should we use memcache (in practice Redis) to cache user data?
 USE_MEMCACHE = False
 
+# Maximum length of player nickname
+MAX_NICKNAME_LENGTH = 15
+
 
 class User:
 
@@ -230,7 +233,7 @@ class User:
 
     def set_nickname(self, nickname: str) -> None:
         """ Sets the human-readable nickname of a user """
-        self._nickname = nickname
+        self._nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
 
     def timestamp(self) -> datetime:
         """ Creation date and time for this user """
@@ -239,9 +242,12 @@ class User:
     @staticmethod
     def is_valid_nick(nick: str) -> bool:
         """ Check whether a nickname is valid and displayable """
+        nick = nick.strip()
         if not nick:
             return False
-        return nick[0:8] != "https://" and nick[0:7] != "http://"
+        if len(nick) > MAX_NICKNAME_LENGTH:
+            return False
+        return not nick.startswith(("https://", "http://"))
 
     def elo(self) -> int:
         """ Return the overall (human and robot) Elo points of the user """

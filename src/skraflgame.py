@@ -454,18 +454,15 @@ class Game:
 
     def player_nickname(self, index: int) -> str:
         """ Returns the nickname of a player """
-        u = (
-            None
-            if self.player_ids[index] is None
-            else User.load_if_exists(self.player_ids[index])
-        )
+        uid = self.player_ids[index]
+        u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
             nick = AutoPlayer.name(self.locale, self.robot_level)
         else:
             # This is a human user
             nick = u.nickname()
-            if nick[0:8] == "https://":
+            if nick.startswith("https://") or nick.startswith("http://"):
                 # Raw name (path) from Google Accounts:
                 # use a more readable version
                 locale = self.locale
@@ -479,11 +476,8 @@ class Game:
 
     def player_fullname(self, index: int) -> str:
         """ Returns the full name of a player """
-        u = (
-            None
-            if self.player_ids[index] is None
-            else User.load_if_exists(self.player_ids[index])
-        )
+        uid = self.player_ids[index]
+        u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
             name = AutoPlayer.name(self.locale, self.robot_level)
@@ -491,8 +485,9 @@ class Game:
             # This is a human user
             name = u.full_name().strip()
             if not name:
+                # Try the nickname instead
                 name = u.nickname()
-                if name[0:8] == "https://":
+                if name.startswith("https://") or name.startswith("http://"):
                     # Raw name (path) from Google Accounts:
                     # use a more readable version
                     locale = self.locale

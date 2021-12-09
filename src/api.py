@@ -34,6 +34,7 @@ from typing import (
 )
 
 import os
+import re
 import logging
 import threading
 import random
@@ -92,7 +93,7 @@ from skraflmechanics import (
     ChallengeMove,
     Error,
 )
-from skrafluser import User, UserLoginDict
+from skrafluser import MAX_NICKNAME_LENGTH, User, UserLoginDict
 from skraflgame import BestMoveList, Game
 from skraflplayer import AutoPlayer
 from skrafldb import (
@@ -181,19 +182,15 @@ FACEBOOK_TOKEN_VALIDATION_URL = (
 VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     "is": {
         "NICK_MISSING": "Notandi verður að hafa einkenni",
-        "NICK_MUST_BEGIN_WITH_LETTER": "Einkenni verður að byrja á bókstaf",
-        "NICK_TOO_LONG": "Einkenni má ekki vera lengra en 15 stafir",
-        "NICK_NO_QUOTES": "Einkenni má ekki innihalda gæsalappir",
-        "NAME_NO_QUOTES": "Nafn má ekki innihalda gæsalappir",
+        "NICK_NOT_ALPHANUMERIC": "Einkenni má aðeins innihalda bók- og tölustafi",
+        "NICK_TOO_LONG": f"Einkenni má ekki vera lengra en {MAX_NICKNAME_LENGTH} stafir",
         "EMAIL_NO_AT": "Tölvupóstfang verður að innihalda @-merki",
         "LOCALE_UNKNOWN": "Óþekkt staðfang (locale)",
     },
     "en": {
-        "NICK_MISSING": "User nickname missing",
-        "NICK_MUST_BEGIN_WITH_LETTER": "Nickname must start with a letter",
-        "NICK_TOO_LONG": "Nickname must not be longer than 15 characters",
-        "NICK_NO_QUOTES": "Nickname cannot contain double quotes",
-        "NAME_NO_QUOTES": "Name cannot contain double quotes",
+        "NICK_MISSING": "Nickname missing",
+        "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
+        "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
     },
@@ -229,7 +226,7 @@ class UserForm:
     def init_from_form(self, form: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
-            self.nickname = form["nickname"].strip()
+            self.nickname = form["nickname"].strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError, KeyError):
             pass
         try:
@@ -256,7 +253,7 @@ class UserForm:
     def init_from_dict(self, d: Dict[str, str]) -> None:
         """ The form has been submitted after editing: retrieve the entered data """
         try:
-            self.nickname = d.get("nickname", "").strip()
+            self.nickname = d.get("nickname", "").strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError):
             pass
         try:
@@ -311,20 +308,12 @@ class UserForm:
         and return a dict of errors, if any"""
         errors: Dict[str, str] = dict()
         # pylint: disable=bad-continuation
-        alphabet = current_alphabet()
         if not self.nickname:
             errors["nickname"] = self.error_msg("NICK_MISSING")
-        elif (
-            self.nickname[0] not in alphabet.full_order
-            and self.nickname[0] not in alphabet.full_upper
-        ):
-            errors["nickname"] = self.error_msg("NICK_MUST_BEGIN_WITH_LETTER")
-        elif len(self.nickname) > 15:
+        elif len(self.nickname) > MAX_NICKNAME_LENGTH:
             errors["nickname"] = self.error_msg("NICK_TOO_LONG")
-        elif '"' in self.nickname:
-            errors["nickname"] = self.error_msg("NICK_NO_QUOTES")
-        if '"' in self.full_name:
-            errors["full_name"] = self.error_msg("NAME_NO_QUOTES")
+        elif not re.match(r"^\w+$", self.nickname):
+            errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
         if self.email and "@" not in self.email:
             errors["email"] = self.error_msg("EMAIL_NO_AT")
         if self.locale not in SUPPORTED_LOCALES:
@@ -771,11 +760,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
 
         ousers = User.load_multi(iter_online)
         for lu in ousers:
-            if lu and lu.is_displayable() and lu.id() != cuid:
+            if lu and lu.is_displayable() and (uid := lu.id()) and uid != cuid:
                 # Don't display the current user in the online list
-                uid = lu.id()
-                if uid is None:
-                    continue
                 chall = uid in challenges
                 result.append(
                     {
@@ -789,8 +775,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "chall": chall,
                         "fairplay": lu.fairplay(),
                         "newbag": True,
-                        "ready": lu.is_ready() and not chall,
-                        "ready_timed": lu.is_ready_timed() and not chall,
+                        "ready": lu.is_ready(),
+                        "ready_timed": lu.is_ready_timed(),
                         "live": True,
                         "image": lu.image(),
                     }
@@ -803,8 +789,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
             for fu in fusers:
-                if fu and fu.is_displayable():
-                    favid = fu.id()
+                if fu and fu.is_displayable() and (favid := fu.id()):
                     chall = favid in challenges
                     result.append(
                         {
@@ -819,9 +804,9 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "fairplay": fu.fairplay(),
                             "newbag": True,
                             "live": favid in online,
-                            "ready": (fu.is_ready() and favid in online and not chall),
+                            "ready": fu.is_ready(),
                             "ready_timed": (
-                                fu.is_ready_timed() and favid in online and not chall
+                                fu.is_ready_timed() and favid in online
                             ),
                             "image": fu.image(),
                         }
@@ -836,10 +821,7 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             )
             ausers = User.load_multi(ui)
             for au in ausers:
-                if au and au.is_displayable() and au.id() != cuid:
-                    uid = au.id()
-                    if uid is None:
-                        continue
+                if au and au.is_displayable() and (uid := au.id()) and uid != cuid:
                     chall = uid in challenges
                     result.append(
                         {
@@ -854,9 +836,9 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                             "fairplay": au.fairplay(),
                             "live": uid in online,
                             "newbag": True,
-                            "ready": (au.is_ready() and uid in online and not chall),
+                            "ready": au.is_ready(),
                             "ready_timed": (
-                                au.is_ready_timed() and uid in online and not chall
+                                au.is_ready_timed() and uid in online
                             ),
                             "image": au.image(),
                         }
@@ -874,11 +856,11 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         for user in online_users:
 
             if not user or not user.is_ready_timed() or not user.is_displayable():
+                # Only return users that are ready to play timed games
                 continue
             if (user_id := user.id()) == cuid or not user_id:
+                # Don't include the current user in the list
                 continue
-
-            chall = user_id in challenges
             result.append(
                 {
                     "userid": user_id,
@@ -888,11 +870,11 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                     "elo": elo_str(user.elo()),
                     "human_elo": elo_str(user.human_elo()),
                     "fav": False if cuser is None else cuser.has_favorite(user_id),
-                    "chall": chall,
+                    "chall": user_id in challenges,
                     "fairplay": user.fairplay(),
                     "newbag": True,
-                    "ready": user.is_ready() and not chall,
-                    "ready_timed": user.is_ready_timed() and not chall,
+                    "ready": user.is_ready(),
+                    "ready_timed": True,
                     "image": user.image(),
                 }
             )
@@ -904,15 +886,16 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         else:
             # Limit the spec to 16 characters
             spec = spec[0:16]
+            lc = current_lc()
 
-            # The "N:" prefix is a version header
-            cache_range = "5:" + spec.lower()  # Case is not significant
+            # The "N:" prefix is a version header; the locale is also a cache key
+            cache_range = "5:" + spec.lower() + ":" + lc  # Case is not significant
 
             # Start by looking in the cache
             si = memcache.get(cache_range, namespace="userlist")
             if si is None:
                 # Not found: do an query, returning max 25 users
-                si = list(UserModel.list_prefix(spec, max_len=25, locale=current_lc()))
+                si = list(UserModel.list_prefix(spec, max_len=25, locale=lc))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
@@ -921,8 +904,8 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
             return User.is_valid_nick(ud["nickname"])
 
         for ud in si:
-            uid = ud["id"]
-            if uid is None:
+            uid = ud.get("id")
+            if not uid:
                 continue
             if uid == cuid:
                 # Do not include the current user, if any, in the list
@@ -942,22 +925,28 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                         "live": uid in online,
                         "fairplay": User.fairplay_from_prefs(ud["prefs"]),
                         "newbag": True,
-                        "ready": (ud["ready"] and uid in online and not chall),
+                        "ready": ud["ready"],
                         "ready_timed": (
-                            ud["ready_timed"] and uid in online and not chall
+                            ud["ready_timed"] and uid in online
                         ),
                         "image": ud["image"],
                     }
                 )
 
-    # Sort the user list. The list is ordered so that users who are
-    # ready for any kind of challenge come first, then users who are ready for
-    # a timed game, and finally all other users. Each category is sorted
-    # by nickname, case-insensitive.
+    # Sort the user list. The result is approximately like so:
+    # 1) Users who are online and ready for timed games.
+    # 2) Users who are online and ready to accept challenges.
+    # 3) Users who are online.
+    # 4) Users who are ready to accept challenges.
+    # 5) All other users.
+    # Each category is sorted by nickname, case-insensitive.
     result.sort(
         key=lambda x: (
-            # First by readiness
-            0 if x["ready"] else 1 if x["ready_timed"] else 2,
+            # First by online or general readiness status
+            0 if x["live"] or x["ready"] else 1,
+            # Then by readiness (note that if ready_timed is true,
+            # then live is true as well)
+            0 if x["ready_timed"] else 1 if x["ready"] else 2,
             # Then by nickname
             current_alphabet().sortkey_nocase(x["nick"]),
         )
