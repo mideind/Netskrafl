@@ -21,7 +21,6 @@ from typing import (
     Optional,
     Dict,
     TypedDict,
-    Mapping,
     Union,
     List,
     Iterable,
@@ -114,7 +113,109 @@ from billing import cancel_plan
 # Type definitions
 T = TypeVar("T")
 UserPrefsType = Dict[str, Union[str, bool]]
-GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
+
+
+class GameListDict(TypedDict):
+
+    """ The dictionary returned from gamelist() """
+
+    uuid: str
+    url: str
+    oppid: Optional[str]
+    opp: str
+    fullname: str
+    sc0: int
+    sc1: int
+    ts: str
+    my_turn: bool
+    overdue: bool
+    zombie: bool
+    prefs: Dict[str, bool]
+    timed: int
+    tile_count: int
+    live: bool
+    image: str
+    fav: bool
+    robot_level: int
+    elo: int
+    human_elo: int
+
+
+GameList = List[GameListDict]
+
+
+class RecentListDict(TypedDict):
+
+    """ The dictionary returned from recentlist() """
+
+    uuid: str
+    url: str
+    oppid: Optional[str]
+    opp: str
+    opp_is_robot: bool
+    robot_level: int
+    sc0: int
+    sc1: int
+    elo_adj: Optional[int]
+    human_elo_adj: Optional[int]
+    ts_last_move: str
+    days: int
+    hours: int
+    minutes: int
+    prefs: Dict[str, Union[int, bool]]
+    live: bool
+    image: str
+    fav: bool
+    elo: int
+    human_elo: int
+
+
+RecentList = List[RecentListDict]
+
+
+class ChallengeListDict(TypedDict):
+
+    """ The dictionary returned from _challengelist() """
+
+    key: str
+    received: bool
+    userid: str
+    opp: str
+    fullname: str
+    prefs: Optional[PrefsDict]
+    ts: str
+    opp_ready: bool
+    live: bool
+    image: str
+    fav: bool
+    elo: int
+    human_elo: int
+
+
+ChallengeList = List[ChallengeListDict]
+
+
+class UserListDict(TypedDict):
+
+    """ The dictionary returned from _userlist() """
+
+    userid: str
+    robot_level: int
+    nick: str
+    fullname: str
+    elo: str  # Elo score or hyphen
+    human_elo: str  # Elo score or hyphen
+    fav: bool
+    chall: bool
+    fairplay: bool
+    newbag: bool
+    ready: bool
+    ready_timed: bool
+    live: bool
+    image: Optional[str]
+
+
+UserList = List[UserListDict]
 
 
 class StatsSummaryDict(TypedDict):
@@ -698,10 +799,10 @@ def fetch_users(
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
-def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
+def _userlist(query: str, spec: str) -> UserList:
     """ Return a list of users matching the filter criteria """
 
-    result: List[Dict[str, Any]] = []
+    result: UserList = []
 
     def elo_str(elo: Union[None, int, str]) -> str:
         """ Return a string representation of an Elo score, or a hyphen if none """
@@ -716,22 +817,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
         aplist = AutoPlayer.for_locale(locale)
         for r in aplist:
             result.append(
-                {
-                    "userid": "robot-" + str(r.level),
-                    "robot_level": r.level,
-                    "nick": r.name,
-                    "fullname": r.description,
-                    "elo": elo_str(None),
-                    "human_elo": elo_str(None),
-                    "fav": False,
-                    "chall": False,
-                    "fairplay": False,  # The robots don't play fair ;-)
-                    "newbag": True,
-                    "ready": True,  # The robots are always ready for a challenge
-                    "ready_timed": False,  # Timed games are not available for robots
-                    "live": True,  # robots are always online
-                    "image": None,
-                }
+                UserListDict(
+                    userid="robot-" + str(r.level),
+                    robot_level=r.level,
+                    nick=r.name,
+                    fullname=r.description,
+                    elo=elo_str(None),
+                    human_elo=elo_str(None),
+                    fav=False,
+                    chall=False,
+                    fairplay=False,  # The robots don't play fair ;-)
+                    newbag=True,
+                    ready=True,  # The robots are always ready for a challenge
+                    ready_timed=False,  # Timed games are not available for robots
+                    live=True,  # robots are always online
+                    image=None,
+                )
             )
         # That's it; we're done (no sorting required)
         return result
@@ -764,22 +865,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 # Don't display the current user in the online list
                 chall = uid in challenges
                 result.append(
-                    {
-                        "userid": uid,
-                        "robot_level": 0,
-                        "nick": lu.nickname(),
-                        "fullname": lu.full_name(),
-                        "elo": elo_str(lu.elo()),
-                        "human_elo": elo_str(lu.human_elo()),
-                        "fav": False if cuser is None else cuser.has_favorite(uid),
-                        "chall": chall,
-                        "fairplay": lu.fairplay(),
-                        "newbag": True,
-                        "ready": lu.is_ready(),
-                        "ready_timed": lu.is_ready_timed(),
-                        "live": True,
-                        "image": lu.image(),
-                    }
+                    UserListDict(
+                        userid=uid,
+                        robot_level=0,
+                        nick=lu.nickname(),
+                        fullname=lu.full_name(),
+                        elo=elo_str(lu.elo()),
+                        human_elo=elo_str(lu.human_elo()),
+                        fav=False if cuser is None else cuser.has_favorite(uid),
+                        chall=chall,
+                        fairplay=lu.fairplay(),
+                        newbag=True,
+                        ready=lu.is_ready(),
+                        ready_timed=lu.is_ready_timed(),
+                        live=True,
+                        image=lu.image(),
+                    )
                 )
 
     elif query == "fav":
@@ -792,24 +893,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 if fu and fu.is_displayable() and (favid := fu.id()):
                     chall = favid in challenges
                     result.append(
-                        {
-                            "userid": favid,
-                            "robot_level": 0,
-                            "nick": fu.nickname(),
-                            "fullname": fu.full_name(),
-                            "elo": elo_str(fu.elo()),
-                            "human_elo": elo_str(fu.human_elo()),
-                            "fav": True,
-                            "chall": chall,
-                            "fairplay": fu.fairplay(),
-                            "newbag": True,
-                            "live": favid in online,
-                            "ready": fu.is_ready(),
-                            "ready_timed": (
-                                fu.is_ready_timed() and favid in online
-                            ),
-                            "image": fu.image(),
-                        }
+                        UserListDict(
+                            userid=favid,
+                            robot_level=0,
+                            nick=fu.nickname(),
+                            fullname=fu.full_name(),
+                            elo=elo_str(fu.elo()),
+                            human_elo=elo_str(fu.human_elo()),
+                            fav=True,
+                            chall=chall,
+                            fairplay=fu.fairplay(),
+                            newbag=True,
+                            live=favid in online,
+                            ready=fu.is_ready(),
+                            ready_timed=(fu.is_ready_timed() and favid in online),
+                            image=fu.image(),
+                        )
                     )
 
     elif query == "alike":
@@ -824,24 +923,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 if au and au.is_displayable() and (uid := au.id()) and uid != cuid:
                     chall = uid in challenges
                     result.append(
-                        {
-                            "userid": uid,
-                            "robot_level": 0,
-                            "nick": au.nickname(),
-                            "fullname": au.full_name(),
-                            "elo": elo_str(au.elo()),
-                            "human_elo": elo_str(au.human_elo()),
-                            "fav": False if cuser is None else cuser.has_favorite(uid),
-                            "chall": chall,
-                            "fairplay": au.fairplay(),
-                            "live": uid in online,
-                            "newbag": True,
-                            "ready": au.is_ready(),
-                            "ready_timed": (
-                                au.is_ready_timed() and uid in online
-                            ),
-                            "image": au.image(),
-                        }
+                        UserListDict(
+                            userid=uid,
+                            robot_level=0,
+                            nick=au.nickname(),
+                            fullname=au.full_name(),
+                            elo=elo_str(au.elo()),
+                            human_elo=elo_str(au.human_elo()),
+                            fav=False if cuser is None else cuser.has_favorite(uid),
+                            chall=chall,
+                            fairplay=au.fairplay(),
+                            live=uid in online,
+                            newbag=True,
+                            ready=au.is_ready(),
+                            ready_timed=(au.is_ready_timed() and uid in online),
+                            image=au.image(),
+                        )
                     )
 
     elif query == "ready_timed":
@@ -862,22 +959,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 # Don't include the current user in the list
                 continue
             result.append(
-                {
-                    "userid": user_id,
-                    "robot_level": 0,
-                    "nick": user.nickname(),
-                    "fullname": user.full_name(),
-                    "elo": elo_str(user.elo()),
-                    "human_elo": elo_str(user.human_elo()),
-                    "fav": False if cuser is None else cuser.has_favorite(user_id),
-                    "chall": user_id in challenges,
-                    "fairplay": user.fairplay(),
-                    "newbag": True,
-                    "ready": user.is_ready(),
-                    "ready_timed": True,
-                    "live": True,
-                    "image": user.image(),
-                }
+                UserListDict(
+                    userid=user_id,
+                    robot_level=0,
+                    nick=user.nickname(),
+                    fullname=user.full_name(),
+                    elo=elo_str(user.elo()),
+                    human_elo=elo_str(user.human_elo()),
+                    fav=False if cuser is None else cuser.has_favorite(user_id),
+                    chall=user_id in challenges,
+                    fairplay=user.fairplay(),
+                    newbag=True,
+                    ready=user.is_ready(),
+                    ready_timed=True,
+                    live=True,
+                    image=user.image(),
+                )
             )
 
     elif query == "search":
@@ -905,24 +1002,22 @@ def _userlist(query: str, spec: str) -> List[Dict[str, Any]]:
                 continue
             chall = uid in challenges
             result.append(
-                {
-                    "userid": uid,
-                    "robot_level": 0,
-                    "nick": ud["nickname"],
-                    "fullname": User.full_name_from_prefs(ud["prefs"]),
-                    "elo": elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
-                    "human_elo": elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
-                    "fav": False if cuser is None else cuser.has_favorite(uid),
-                    "chall": chall,
-                    "live": uid in online,
-                    "fairplay": User.fairplay_from_prefs(ud["prefs"]),
-                    "newbag": True,
-                    "ready": ud["ready"],
-                    "ready_timed": (
-                        ud["ready_timed"] and uid in online
-                    ),
-                    "image": ud["image"],
-                }
+                UserListDict(
+                    userid=uid,
+                    robot_level=0,
+                    nick=ud["nickname"],
+                    fullname=User.full_name_from_prefs(ud["prefs"]),
+                    elo=elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
+                    human_elo=elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
+                    fav=False if cuser is None else cuser.has_favorite(uid),
+                    chall=chall,
+                    live=uid in online,
+                    fairplay=User.fairplay_from_prefs(ud["prefs"]),
+                    newbag=True,
+                    ready=ud["ready"],
+                    ready_timed=(ud["ready_timed"] and uid in online),
+                    image=ud["image"],
+                )
             )
 
     # Sort the user list. The result is approximately like so:
@@ -969,6 +1064,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             u = User.load_if_exists(opp)
             if u is None:
                 continue
+            uuid = g["uuid"]
             nick = u.nickname()
             prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -977,37 +1073,33 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             # Time per player in minutes
             timed = Game.get_duration_from_prefs(prefs)
             result.append(
-                {
-                    "uuid": g["uuid"],
+                GameListDict(
+                    uuid=uuid,
                     # Mark zombie state
-                    "url": url_for("web.board", game=g["uuid"], zombie="1"),
-                    "oppid": opp,
-                    "opp": nick,
-                    "fullname": u.full_name(),
-                    "sc0": g["sc0"],
-                    "sc1": g["sc1"],
-                    "ts": Alphabet.format_timestamp_short(g["ts"]),
-                    "my_turn": False,
-                    "overdue": False,
-                    "zombie": True,
-                    "prefs": {
-                        "fairplay": fairplay,
-                        "newbag": new_bag,
-                        "manual": manual,
-                    },
-                    "timed": timed,
-                    "live": opp in online,
-                    "image": u.image(),
-                    "fav": False if cuser is None else cuser.has_favorite(opp),
-                    "tile_count": 100,  # All tiles (100%) accounted for
-                    "robot_level": 0,  # Should not be used; zombie games are human-only
-                    "elo": u.elo(),
-                    "human_elo": u.human_elo(),
-                }
+                    url=url_for("web.board", game=uuid, zombie="1"),
+                    oppid=opp,
+                    opp=nick,
+                    fullname=u.full_name(),
+                    sc0=g["sc0"],
+                    sc1=g["sc1"],
+                    ts=Alphabet.format_timestamp_short(g["ts"]),
+                    my_turn=False,
+                    overdue=False,
+                    zombie=True,
+                    prefs={"fairplay": fairplay, "newbag": new_bag, "manual": manual,},
+                    timed=timed,
+                    live=opp in online,
+                    image=u.image(),
+                    fav=False if cuser is None else cuser.has_favorite(opp),
+                    tile_count=100,  # All tiles (100%) accounted for
+                    robot_level=0,  # Should not be used; zombie games are human-only
+                    elo=u.elo(),
+                    human_elo=u.human_elo(),
+                )
             )
         # Sort zombies in decreasing order by last move,
         # i.e. most recently completed games first
-        result.sort(key=lambda x: cast(str, x["ts"]), reverse=True)
+        result.sort(key=lambda x: x["ts"], reverse=True)
 
     if running_local:
         ts1 = datetime.utcnow()
@@ -1039,6 +1131,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         if g is None:
             continue
         u = None
+        uuid = g["uuid"]
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
@@ -1075,28 +1168,28 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 # Show mark after 14 days
                 overdue = delta >= timedelta(days=Game.OVERDUE_DAYS)
         result.append(
-            {
-                "uuid": g["uuid"],
-                "url": url_for("web.board", game=g["uuid"]),
-                "oppid": opp,
-                "opp": nick,
-                "fullname": fullname,
-                "sc0": g["sc0"],
-                "sc1": g["sc1"],
-                "ts": Alphabet.format_timestamp_short(ts),
-                "my_turn": g["my_turn"],
-                "overdue": overdue,
-                "zombie": False,
-                "prefs": {"fairplay": fairplay, "newbag": new_bag, "manual": manual,},
-                "timed": timed,
-                "tile_count": int(g["tile_count"] * 100 / tileset.num_tiles()),
-                "live": opp in online,
-                "image": "" if u is None else u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(opp),
-                "robot_level": robot_level,
-                "elo": 0 if u is None else u.elo(),
-                "human_elo": 0 if u is None else u.human_elo(),
-            }
+            GameListDict(
+                uuid=uuid,
+                url=url_for("web.board", game=uuid),
+                oppid=opp,
+                opp=nick,
+                fullname=fullname,
+                sc0=g["sc0"],
+                sc1=g["sc1"],
+                ts=Alphabet.format_timestamp_short(ts),
+                my_turn=g["my_turn"],
+                overdue=overdue,
+                zombie=False,
+                prefs={"fairplay": fairplay, "newbag": new_bag, "manual": manual,},
+                timed=timed,
+                tile_count=int(g["tile_count"] * 100 / tileset.num_tiles()),
+                live=opp in online,
+                image="" if u is None else u.image(),
+                fav=False if cuser is None else cuser.has_favorite(opp),
+                robot_level=robot_level,
+                elo=0 if u is None else u.elo(),
+                human_elo=0 if u is None else u.human_elo(),
+            )
         )
     if running_local:
         ts1 = datetime.utcnow()
@@ -1193,10 +1286,10 @@ def _rating(kind: str) -> List[Dict[str, Any]]:
     return result
 
 
-def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> List[Dict[str, Any]]:
+def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> RecentList:
     """Return a list of recent games for the indicated user, eventually
     filtered by the opponent id (versus)"""
-    result: List[Dict[str, Any]] = []
+    result: RecentList = []
     if not cuid:
         return result
 
@@ -1246,31 +1339,31 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Lis
             minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
 
         result.append(
-            {
-                "uuid": uuid,
-                "url": url_for("web.board", game=uuid),
-                "oppid": opp,
-                "opp": nick,
-                "opp_is_robot": opp is None,
-                "robot_level": g["robot_level"],
-                "sc0": g["sc0"],
-                "sc1": g["sc1"],
-                "elo_adj": g["elo_adj"],
-                "human_elo_adj": g["human_elo_adj"],
-                "ts_last_move": Alphabet.format_timestamp_short(ts_end),
-                "days": int(days),
-                "hours": int(hours),
-                "minutes": int(minutes),
-                "prefs": {
+            RecentListDict(
+                uuid=uuid,
+                url=url_for("web.board", game=uuid),
+                oppid=opp,
+                opp=nick,
+                opp_is_robot=opp is None,
+                robot_level=g["robot_level"],
+                sc0=g["sc0"],
+                sc1=g["sc1"],
+                elo_adj=g["elo_adj"],
+                human_elo_adj=g["human_elo_adj"],
+                ts_last_move=Alphabet.format_timestamp_short(ts_end),
+                days=int(days),
+                hours=int(hours),
+                minutes=int(minutes),
+                prefs={
                     "duration": Game.get_duration_from_prefs(prefs),
                     "manual": Game.manual_wordcheck_from_prefs(prefs),
                 },
-                "live": False if opp is None else opp in online,
-                "image": "" if u is None else u.image(),
-                "fav": False if cuser is None or opp is None else cuser.has_favorite(opp),
-                "elo": 0 if u is None else u.elo(),
-                "human_elo": 0 if u is None else u.human_elo(),
-            }
+                live=False if opp is None else opp in online,
+                image="" if u is None else u.image(),
+                elo=0 if u is None else u.elo(),
+                human_elo=0 if u is None else u.human_elo(),
+                fav=False if cuser is None or opp is None else cuser.has_favorite(opp),
+            )
         )
     return result
 
@@ -1280,10 +1373,10 @@ def _opponent_waiting(user_id: str, opp_id: str) -> bool:
     return firebase.check_wait(opp_id, user_id)
 
 
-def _challengelist() -> List[Dict[str, Any]]:
+def _challengelist() -> ChallengeList:
     """ Return a list of challenges issued or received by the current user """
 
-    result: List[Dict[str, Any]] = []
+    result: ChallengeList = []
     cuser = current_user()
     assert cuser is not None
     cuid = cuser.id()
@@ -1321,21 +1414,21 @@ def _challengelist() -> List[Dict[str, Any]]:
             continue
         nick = u.nickname()
         result.append(
-            {
-                "key": c[3],  # ChallengeModel entity key
-                "received": True,
-                "userid": oppid,
-                "opp": nick,
-                "fullname": u.full_name(),
-                "prefs": c[1],
-                "ts": Alphabet.format_timestamp_short(c[2]),
-                "opp_ready": False,
-                "live": oppid in online,
-                "image": u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(oppid),
-                "elo": 0 if u is None else u.elo(),
-                "human_elo": 0 if u is None else u.human_elo(),
-            }
+            ChallengeListDict(
+                key=c[3],  # ChallengeModel entity key
+                received=True,
+                userid=oppid,
+                opp=nick,
+                fullname=u.full_name(),
+                prefs=c[1],
+                ts=Alphabet.format_timestamp_short(c[2]),
+                opp_ready=False,
+                live=oppid in online,
+                image=u.image(),
+                fav=False if cuser is None else cuser.has_favorite(oppid),
+                elo=0 if u is None else u.elo(),
+                human_elo=0 if u is None else u.human_elo(),
+            )
         )
     # List the issued challenges
     for c in issued:
@@ -1345,21 +1438,21 @@ def _challengelist() -> List[Dict[str, Any]]:
             continue
         nick = u.nickname()
         result.append(
-            {
-                "key": c[3],  # ChallengeModel entity key
-                "received": False,
-                "userid": oppid,
-                "opp": nick,
-                "fullname": u.full_name(),
-                "prefs": c[1],
-                "ts": Alphabet.format_timestamp_short(c[2]),
-                "opp_ready": opp_ready(c),
-                "live": oppid in online,
-                "image": u.image(),
-                "fav": False if cuser is None else cuser.has_favorite(oppid),
-                "elo": 0 if u is None else u.elo(),
-                "human_elo": 0 if u is None else u.human_elo(),
-            }
+            ChallengeListDict(
+                key=c[3],  # ChallengeModel entity key
+                received=False,
+                userid=oppid,
+                opp=nick,
+                fullname=u.full_name(),
+                prefs=c[1],
+                ts=Alphabet.format_timestamp_short(c[2]),
+                opp_ready=opp_ready(c),
+                live=oppid in online,
+                image=u.image(),
+                fav=False if cuser is None else cuser.has_favorite(oppid),
+                elo=0 if u is None else u.elo(),
+                human_elo=0 if u is None else u.human_elo(),
+            )
         )
     return result
 

@@ -527,9 +527,11 @@ class User:
         self._favorites.discard(destuser_id)
         FavoriteModel.del_relation(sid, destuser_id)
 
-    def has_favorite(self, destuser_id: str) -> bool:
+    def has_favorite(self, destuser_id: Optional[str]) -> bool:
         """ Returns True if there is an A-favors-B relation
             between this user and the destuser """
+        if destuser_id is None:
+            return False
         self._load_favorites()
         assert self._favorites is not None
         return destuser_id in self._favorites

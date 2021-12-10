@@ -130,6 +130,50 @@ class StatsDict(TypedDict):
 StatsResults = List[StatsDict]
 
 
+class LiveGameDict(TypedDict):
+
+    """ The dictionary returned from the iter_live_games() method """
+
+    uuid: str
+    ts: datetime
+    opp: Optional[str]
+    robot_level: int
+    my_turn: bool
+    sc0: int
+    sc1: int
+    prefs: PrefsDict
+    tile_count: int
+
+
+class FinishedGameDict(TypedDict):
+
+    """ The dictionary returned from the list_finished_games() method """
+
+    uuid: str
+    ts: datetime
+    ts_last_move: datetime
+    opp: Optional[str]
+    robot_level: int
+    sc0: int
+    sc1: int
+    elo_adj: Optional[int]
+    human_elo_adj: Optional[int]
+    manual_elo_adj: Optional[int]
+    prefs: PrefsDict
+
+
+class ZombieGameDict(TypedDict):
+
+    """ The dictionary returned from the ZombieModel.list_games() method """
+
+    uuid: str
+    ts: datetime
+    opp: Optional[str]
+    robot_level: int
+    sc0: int
+    sc1: int
+
+
 class Query(Generic[_T_Model], ndb.Query):
 
     """A type-safer wrapper around ndb.Query"""
@@ -855,12 +899,12 @@ class GameModel(Model["GameModel"]):
     @classmethod
     def list_finished_games(
         cls, user_id: str, versus: Optional[str] = None, max_len: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> List[FinishedGameDict]:
         """Query for a list of recently finished games for the given user"""
         if not user_id:
             return []
 
-        def game_callback(gm: GameModel) -> Dict[str, Any]:
+        def game_callback(gm: GameModel) -> FinishedGameDict:
             """Map a game entity to a result dictionary with useful info about the game"""
             game_uuid = gm.key.id()
             u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
@@ -880,7 +924,7 @@ class GameModel(Model["GameModel"]):
                 elo_adj = gm.elo1_adj
                 human_elo_adj = gm.human_elo1_adj
                 manual_elo_adj = gm.manual_elo1_adj
-            return dict(
+            return FinishedGameDict(
                 uuid=game_uuid,
                 ts=gm.timestamp,
                 ts_last_move=gm.ts_last_move or gm.timestamp,
@@ -926,7 +970,7 @@ class GameModel(Model["GameModel"]):
     @classmethod
     def iter_live_games(
         cls, user_id: Optional[str], max_len: int = 10
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> Iterator[LiveGameDict]:
         """Query for a list of active games for the given user"""
         if not user_id:
             return
@@ -936,7 +980,7 @@ class GameModel(Model["GameModel"]):
             GameModel.over == False
         )
 
-        def game_callback(gm: GameModel) -> Dict[str, Any]:
+        def game_callback(gm: GameModel) -> LiveGameDict:
             """Map a game entity to a result tuple with useful info about the game"""
             game_uuid = gm.key.id()
             u0: Optional[str] = None if gm.player0 is None else gm.player0.id()
@@ -963,7 +1007,7 @@ class GameModel(Model["GameModel"]):
                     if m.coord:
                         # Normal tile move
                         tc += len(m.tiles.replace("?", ""))
-            return dict(
+            return LiveGameDict(
                 uuid=game_uuid,
                 ts=gm.ts_last_move or gm.timestamp,
                 opp=opp,
@@ -1967,7 +2011,7 @@ class ZombieModel(Model["ZombieModel"]):
         zmk.delete()
 
     @classmethod
-    def list_games(cls, user_id: str) -> Iterator[Dict[str, Any]]:
+    def list_games(cls, user_id: str) -> Iterator[ZombieGameDict]:
         """List all zombie games for the given player"""
         assert user_id is not None
         if user_id is None:
@@ -1975,7 +2019,7 @@ class ZombieModel(Model["ZombieModel"]):
         k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ZombieModel.player == k)
 
-        def z_callback(zm: ZombieModel) -> Optional[Dict[str, Any]]:
+        def z_callback(zm: ZombieModel) -> Optional[ZombieGameDict]:
             """Map a ZombieModel entity to a game descriptor"""
             if not zm.game:
                 return None
@@ -1993,7 +2037,7 @@ class ZombieModel(Model["ZombieModel"]):
                 assert u1 == user_id
                 opp = u0
                 sc1, sc0 = gm.score0, gm.score1
-            return dict(
+            return ZombieGameDict(
                 uuid=zm.game.id(),
                 ts=gm.ts_last_move or gm.timestamp,
                 opp=opp,

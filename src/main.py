@@ -253,7 +253,7 @@ def stop() -> ResponseType:
     return "", 200
 
 
-@app.errorhandler(500)
+@app.errorhandler(500)  # type: ignore
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """ Return a custom 500 error """
     return f"<html><body><p>Eftirfarandi villa kom upp: {e}</p></body></html>", 500
