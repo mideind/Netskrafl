@@ -22,12 +22,7 @@ env_variables:
   # REDISHOST is automatically set to 'localhost' (in cache.py)
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
-  CLIENT_ID: 62474854399-j186rtbl9hbh6c6o21or405o6clbcj84.apps.googleusercontent.com
   PROJECT_ID: netskrafl
-  # The following API key is not a secret - it is sent to clients in cleartext
-  # as required by the Firebase client JS code
-  FIREBASE_API_KEY: AIzaSyBAhoxuIMvvsDepArFbW9YF9F4eduCuWB8
-  FIREBASE_SENDER_ID: 62474854399
 
 inbound_services:
 - warmup

@@ -17,9 +17,10 @@
 
 from __future__ import annotations
 
+from typing import Dict
+
 import os
 from flask import json
-
 
 # Are we running in a local development environment or on a GAE server?
 running_local: bool = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
@@ -44,10 +45,13 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     j = json.loads(f.read())
     assert j is not None
 
-    CLIENT_ID = j.get("CLIENT_ID", "")
-    CLIENT_SECRET = j.get("CLIENT_SECRET", "")
-    assert CLIENT_ID, "CLIENT_ID environment variable not set"
-    assert CLIENT_SECRET, "CLIENT_SECRET environment variable not set"
+    # Client types and their ids (and secrets, as applicable)
+    CLIENT: Dict[str, Dict[str, str]] = j.get("CLIENT", {})
+
+    CLIENT_ID = CLIENT.get("web", {}).get("id", "")
+    CLIENT_SECRET = CLIENT.get("web", {}).get("secret", "")
+    assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_FILE}"
+    assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_FILE}"
 
     # Analytics measurement id
     MEASUREMENT_ID = j.get("MEASUREMENT_ID", "")

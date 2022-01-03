@@ -23,9 +23,9 @@ from __future__ import annotations
 from typing import (
     Dict,
     Type,
-    Any,
     Optional,
     List,
+    TypedDict,
     Union,
     Tuple,
     NamedTuple,
@@ -59,6 +59,8 @@ from skrafldb import (
 )
 from dawgdictionary import Wordbase
 from skraflmechanics import (
+    DetailTuple,
+    RackDetails,
     State,
     Board,
     Rack,
@@ -91,8 +93,52 @@ class MoveTuple(NamedTuple):
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
 
-BestMove = Tuple[int, SummaryTuple]
+MoveSummaryTuple = Tuple[int, SummaryTuple]
+MoveList = List[MoveSummaryTuple]
+BestMove = MoveSummaryTuple
 BestMoveList = List[BestMove]
+
+
+class TimeInfo(TypedDict):
+
+    """ Information about the state of a timed game """
+
+    duration: int
+    elapsed: Tuple[float, float]
+
+
+class ClientStateDict(TypedDict, total=False):
+
+    """ The game state that is sent to the client """
+
+    alphabet: str
+    autoplayer: List[bool]
+    bag: str
+    board_type: str  # 'explo' | 'standard'
+    chall: bool
+    fairplay: bool
+    fullname: List[str]
+    last_chall: bool
+    lastmove: List[DetailTuple]
+    locale: str
+    manual: bool
+    moves: MoveList
+    newbag: bool
+    newmoves: MoveList
+    nickname: List[str]
+    num_moves: int
+    overdue: bool
+    player: Optional[int]
+    rack: RackDetails
+    result: int
+    scores: Tuple[int, int]
+    succ_chall: bool
+    tile_scores: Dict[str, int]
+    time_info: TimeInfo
+    two_letter_words: TwoLetterGroupTuple
+    userid: List[Optional[str]]
+    xchg: bool
+
 
 # The default nickname to display if a player has an unreadable nick
 # (for instance a default Google nick with a https:// prefix)
@@ -198,7 +244,9 @@ class Game:
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
             try:
-                return cls._load_locked(uuid, use_cache=use_cache, set_locale=set_locale)
+                return cls._load_locked(
+                    uuid, use_cache=use_cache, set_locale=set_locale
+                )
             except KeyError:
                 # Hack to handle older game objects that have no associated
                 # locale. If we run Explo on such data, the default locale
@@ -219,8 +267,12 @@ class Game:
 
     @classmethod
     def _load_locked(
-        cls, uuid: str, *,
-        use_cache: bool = True, set_locale: bool = False, force_locale: str = "",
+        cls,
+        uuid: str,
+        *,
+        use_cache: bool = True,
+        set_locale: bool = False,
+        force_locale: str = "",
     ) -> Optional[Game]:
         """ Load an existing game from cache or persistent storage under lock """
 
@@ -673,9 +725,9 @@ class Game:
             elapsed[self.player_to_move()] += delta.total_seconds()
         return cast(Tuple[float, float], tuple(elapsed))
 
-    def time_info(self) -> Dict[str, Union[int, Tuple[float, float]]]:
+    def time_info(self) -> TimeInfo:
         """ Returns a dict with timing information about this game """
-        return dict(duration=self.get_duration(), elapsed=self.get_elapsed())
+        return TimeInfo(duration=self.get_duration(), elapsed=self.get_elapsed())
 
     def overtime(self) -> Tuple[float, float]:
         """ Return overtime for both players, in seconds """
@@ -1014,11 +1066,11 @@ class Game:
         player_index: Union[None, int],
         lastmove: Optional[MoveBase] = None,
         deep: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> ClientStateDict:
         """ Create a package of information for the client
             about the current state """
         assert self.state is not None
-        reply: Dict[str, Any] = dict()
+        reply: ClientStateDict = ClientStateDict()
         num_moves = 1
         lm: Optional[MoveBase] = None
         succ_chall = False
@@ -1034,7 +1086,7 @@ class Game:
             reply["lastmove"] = lm.details(self.state)
             # Successful challenge?
             succ_chall = lm.is_successful_challenge(self.state)
-        newmoves = [
+        newmoves: List[Tuple[int, SummaryTuple]] = [
             (m.player, m.move.summary(self.state)) for m in self.moves[-num_moves:]
         ]
 
@@ -1059,7 +1111,7 @@ class Game:
             reply["bag"] = self.display_bag(player_index)
 
         if player_index is None:
-            reply["rack"] = ""
+            reply["rack"] = []
         else:
             reply["rack"] = self.state.rack_details(player_index)
         reply["num_moves"] = len(self.moves)

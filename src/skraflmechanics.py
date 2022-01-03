@@ -42,6 +42,7 @@ from languages import (
 SummaryTuple = Tuple[str, str, int]
 MoveSummaryTuple = Tuple[int, SummaryTuple]
 DetailTuple = Tuple[str, str, str, int]
+RackDetails = List[Tuple[str, int]]
 
 
 class Cover(NamedTuple):
@@ -737,7 +738,7 @@ class State:
         """ Return the contents of the rack (indexed by 0 or 1) """
         return self._racks[index].contents()
 
-    def rack_details(self, index: int) -> List[Tuple[str, int]]:
+    def rack_details(self, index: int) -> RackDetails:
         """ Return the contents of the rack (indexed by 0 or 1) """
         assert self._tileset is not None
         return self._racks[index].details(self._tileset)

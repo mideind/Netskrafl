@@ -56,7 +56,7 @@ from werkzeug.utils import redirect
 
 from config import (
     running_local,
-    CLIENT_ID,
+    CLIENT,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
@@ -449,17 +449,18 @@ def oauth2callback() -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
     # this route is only for HTTP POSTs
 
-    if not CLIENT_ID:
+    if not CLIENT:
         # Something is wrong in the internal setup of the server
-        # (environment variable probably missing)
+        # (missing setting in client_secret_*.json)
         # 500 - Internal server error
-        return jsonify({"status": "invalid", "msg": "Missing CLIENT_ID"}), 500
+        return jsonify({"status": "invalid", "msg": "Missing CLIENT"}), 500
 
     # !!! TODO: Add CSRF token mechanism
     # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
     token: str
     config = cast(Any, current_app).config
     testing: bool = config.get("TESTING", False)
+    client_type: str = "web"  # Default client type
 
     if testing:
         # Testing only: there is no token in the request
@@ -472,6 +473,17 @@ def oauth2callback() -> ResponseType:
             # No authentication token included in the request
             # 400 - Bad Request
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+        client_type = (
+            request.form.get("clientType", "")
+            or cast(Any, request).json.get("clientType", "")
+            or "web"
+        )
+
+    client_id = CLIENT.get(client_type, {}).get("id", "")
+    if not client_id:
+        # Unknown client type (should be one of 'web', 'ios', 'android')
+        # 400 - Bad Request
+        return jsonify({"status": "invalid", "msg": "Unknown client type"}), 400
 
     uld: Optional[UserLoginDict] = None
     account: Optional[str] = None
@@ -499,7 +511,7 @@ def oauth2callback() -> ResponseType:
         else:
             # Verify the token and extract its claims
             idinfo = id_token.verify_oauth2_token(  # type: ignore
-                token, google_request, CLIENT_ID
+                token, google_request, client_id
             )
             assert idinfo is not None
         # ID token is valid; extract the claims

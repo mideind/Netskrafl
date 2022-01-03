@@ -512,7 +512,7 @@ class Game {
       const result: { ok: boolean; game: ServerGame; } = await m.request({
         method: "POST",
         url: "/gamestate",
-        body: { game: this.uuid }
+        body: { game: this.uuid }  // !!! FIXME: Add delete_zombie parameter
       });
       if (!result?.ok) {
         // console.log("Game " + uuid + " could not be loaded");

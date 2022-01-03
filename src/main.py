@@ -130,9 +130,10 @@ flask_config = dict(
     # SESSION_COOKIE_DOMAIN="netskrafl.is",
     # SERVER_NAME="netskrafl.is",
     PERMANENT_SESSION_LIFETIME=timedelta(days=31),
-    # Add Google OAuth2 client id and secret
+    # Add Google OAuth2 client id and secret for web clients (type 'web')
     GOOGLE_CLIENT_ID=CLIENT_ID,
     GOOGLE_CLIENT_SECRET=CLIENT_SECRET,
+    # !!! TODO: Add other client types (type 'ios', 'android') here?
 )
 
 if running_local:
