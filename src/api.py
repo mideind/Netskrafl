@@ -84,6 +84,7 @@ from languages import (
 )
 from dawgdictionary import Wordbase
 from skraflmechanics import (
+    Board,
     MoveBase,
     Move,
     PassMove,
@@ -1583,19 +1584,31 @@ def wordcheck() -> str:
     """ Check a list of words for validity """
 
     rq = RequestData(request)
+    words: List[str] = rq.get_list("words")
+    word: str = rq["word"]
+    board_size = Board.SIZE
+
+    # Sanity check the word list: we should never need to check more than 16 words
+    # (major-axis word plus up to 15 cross-axis words)
+    if (
+        not words
+        or len(words) > board_size + 1
+        or any(len(w) > board_size for w in words)
+    ):
+        return jsonify(ok=False)
+
     # If a locale is included in the request,
     # use it within the current thread for the vocabulary lookup
     locale: Optional[str] = rq.get("locale")
-    words = rq.get_list("words")
-    word = rq["word"]
 
     if locale:
         set_game_locale(locale)
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
-    ok = all([w in wdb for w in words])
-    return jsonify(word=word, ok=ok)
+    valid = [(w, w in wdb) for w in words]
+    ok = all(v[1] for v in valid)
+    return jsonify(word=word, ok=ok, valid=valid)
 
 
 @api.route("/gamestats", methods=["POST"])
