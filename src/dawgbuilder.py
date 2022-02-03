@@ -1113,6 +1113,8 @@ if __name__ == "__main__":
 
     # Build Polish OSPS37
     run_osps37()
+    # Build OTCWL2014
+    run_otcwl2014()
     exit(0)
 
     # Build the whole Icelandic Netskrafl word database by default
@@ -1124,5 +1126,3 @@ if __name__ == "__main__":
     # Build SOWPODS
     run_sowpods()
 
-    # Build OTCWL2014
-    run_otcwl2014()

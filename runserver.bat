@@ -1,0 +1,10 @@
+set GOOGLE_APPLICATION_CREDENTIALS=./resources/Explo Development-414318fa79b8.json
+set PROJECT_ID=explo-dev
+set SERVER_SOFTWARE=Development
+set OAUTHLIB_INSECURE_TRANSPORT=1
+set SERVER_HOST=0.0.0.0
+set SERVER_PORT=3000
+set REDISHOST=127.0.0.1
+set REDISPORT=6379
+
+python ./src/main.py
