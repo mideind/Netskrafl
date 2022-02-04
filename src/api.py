@@ -62,6 +62,7 @@ from config import (
     FACEBOOK_APP_ID,
 )
 from basics import (
+    is_mobile_client,
     jsonify,
     auth_required,
     ResponseType,
@@ -508,6 +509,7 @@ def oauth2callback() -> ResponseType:
                 account=f["sub"],
                 locale=DEFAULT_LOCALE,
                 new=False,
+                client_type=client_type,
             )
         else:
             # Verify the token and extract its claims
@@ -539,6 +541,7 @@ def oauth2callback() -> ResponseType:
             idinfo["account"] = uld["account"]
             idinfo["locale"] = uld["locale"]
             idinfo["new"] = uld["new"]
+            idinfo["client_type"] = client_type
 
     except (KeyError, ValueError) as e:
         # Invalid token
@@ -636,6 +639,7 @@ def oauth_fb() -> ResponseType:
         account=account,
         locale=locale,
         new=uld.get("new") or False,
+        client_type="web",  # !!! TODO: Pass correct client_type from client
     )
     # Set the Flask session token
     set_session_userid(userid, idinfo)
@@ -1916,27 +1920,32 @@ def setuserpref() -> ResponseType:
     assert user is not None
 
     rq = RequestData(request)
+    is_mobile = is_mobile_client()
 
     # Loop through the various preference booleans and set them
-    # by calling the associated function on the User instance
-    prefs: List[Tuple[str, Callable[[bool], None]]] = [
-        ("beginner", user.set_beginner),
-        ("ready", user.set_ready),
-        ("ready_timed", user.set_ready_timed),
-        ("chat_disabled", user.disable_chat),
+    # by calling the associated function on the User instance.
+    # The last bool parameter is True if the setting is only
+    # available for mobile clients.
+    prefs: List[Tuple[str, Callable[[bool], None], bool]] = [
+        ("beginner", user.set_beginner, False),
+        ("ready", user.set_ready, False),
+        ("ready_timed", user.set_ready_timed, False),
+        ("chat_disabled", user.disable_chat, False),
+        ("friend", user.set_friend, True),
+        ("has_paid", user.set_has_paid, True),
     ]
 
     update = False
-    for s, func in prefs:
+    for s, func, mobile_only in prefs:
         val = rq.get_bool(s, None)
-        if val is not None:
+        if val is not None and (is_mobile or not mobile_only):
             func(val)
             update = True
 
     if update:
         user.update()
 
-    return jsonify(result=Error.LEGAL)
+    return jsonify(result=Error.LEGAL, did_update=update)
 
 
 @api.route("/onlinecheck", methods=["POST"])
@@ -2485,7 +2494,7 @@ def locale_asset() -> ResponseType:
         return "", 404  # Not found
     locale = u.locale or DEFAULT_LOCALE
     parts = locale.split("_")
-    static_folder = current_app.static_folder or "../static"
+    static_folder = current_app.static_folder or os.path.abspath("static")
     # Try en_US first, then en, then nothing
     for ix in range(len(parts), -1, -1):
         lc = "_".join(parts[0:ix])

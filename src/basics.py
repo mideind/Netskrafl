@@ -72,6 +72,11 @@ class UserIdDict(TypedDict):
     locale: str
     # True if new user, signing in for the first time
     new: bool
+    # Client type ('web', 'ios', 'android')
+    client_type: str
+
+
+MOBILE_CLIENT_TYPES = frozenset(("ios", "android"))
 
 
 # Type annotation wrapper for flask.jsonify()
@@ -163,6 +168,13 @@ def session_idinfo() -> Optional[UserIdDict]:
         This can be called within any Flask request. """
     sess = cast(Dict[str, Any], session)
     return None if sess is None else sess.get("user")
+
+
+def is_mobile_client() -> bool:
+    """ Return True if the currently logged in client is a mobile client """
+    if ((idinfo := session_idinfo()) is None):
+        return False
+    return idinfo.get("client_type", "web") in MOBILE_CLIENT_TYPES
 
 
 def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:

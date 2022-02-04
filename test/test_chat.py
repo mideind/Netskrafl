@@ -90,7 +90,7 @@ def u3_uk() -> str:
     return create_user(3, "en_UK")
 
 
-def login_user(client, idx: int) -> Response:
+def login_user(client, idx: int, client_type: str = "web") -> Response:
     idinfo: Dict[str, Any] = dict(
         sub=f"999999{idx}",
         # Full name of user
@@ -99,6 +99,8 @@ def login_user(client, idx: int) -> Response:
         picture="",
         # Make sure that the e-mail address is in lowercase
         email=f"test{idx}@user.explo",
+        # Client type
+        client_type=client_type,
     )
     return client.post("/oauth2callback", data=idinfo)
 
