@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "eslint": "^7.28.0",
-    "grunt": "^1.4.0",
+    "grunt": "^1.4.1",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-jshint": "^3.0.0",
     "grunt-contrib-less": "^3.0.0",

@@ -56,6 +56,7 @@ from werkzeug.utils import redirect
 
 from config import (
     running_local,
+    PROJECT_ID,
     CLIENT,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
@@ -437,7 +438,7 @@ class UserForm:
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
         usr.set_locale(self.locale)
-        usr.set_image(self.image)
+        # usr.set_image(self.image)  # The user image cannot and must not be set like this
         usr.update()
 
     def as_dict(self) -> UserPrefsType:
@@ -1070,13 +1071,9 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     online = firebase.online_users()
     cuser = current_user()
     u: Optional[User] = None
-    ts0: datetime = now
-    ts1: datetime
 
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
-    if running_local:
-        logging.info(f"gamelist: listing zombies, start {ts0}")
     if include_zombies:
         for g in ZombieModel.list_games(cuid):
             opp = g["opp"]  # User id of opponent
@@ -1124,31 +1121,13 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         # i.e. most recently completed games first
         result.sort(key=lambda x: x["ts"], reverse=True)
 
-    if running_local:
-        ts1 = datetime.utcnow()
-        logging.info(
-            f"gamelist: listing zombies, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
-        )
-        ts0 = ts1
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len=50))
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
     # Multi-fetch the opponents in the game list
-    if running_local:
-        ts1 = datetime.utcnow()
-        logging.info(
-            f"gamelist: iter live games, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
-        )
-        ts0 = ts1
     opponents = fetch_users(i, lambda g: g["opp"])
-    if running_local:
-        ts1 = datetime.utcnow()
-        logging.info(
-            f"gamelist: fetch users, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
-        )
-        ts0 = ts1
     # Iterate through the game list
     for g in i:
         if g is None:
@@ -1217,11 +1196,6 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 elo=0 if u is None else u.elo(),
                 human_elo=0 if u is None else u.human_elo(),
             )
-        )
-    if running_local:
-        ts1 = datetime.utcnow()
-        logging.info(
-            f"gamelist: result assembled, end {ts1}, duration {(ts1-ts0).total_seconds():.2f}"
         )
     return result
 
@@ -1594,7 +1568,7 @@ def forceresign() -> ResponseType:
 
 @api.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
-def wordcheck() -> str:
+def wordcheck() -> ResponseType:
     """ Check a list of words for validity """
 
     rq = RequestData(request)
@@ -1627,7 +1601,7 @@ def wordcheck() -> str:
 
 @api.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamestats() -> str:
+def gamestats() -> ResponseType:
     """ Calculate and return statistics on a given finished game """
 
     rq = RequestData(request)
@@ -1649,7 +1623,7 @@ def gamestats() -> str:
 
 @api.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userstats() -> str:
+def userstats() -> ResponseType:
     """ Calculate and return statistics on a given user """
 
     cid = current_user_id()
@@ -2442,7 +2416,10 @@ def initgame() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
-    board_type = rq.get("board_type", current_board_type())
+    if PROJECT_ID == "netskrafl":
+        board_type = rq.get("board_type", current_board_type())
+    else:
+        board_type = "explo"
 
     # Is this a reverse action, i.e. the challenger initiating a timed game,
     # instead of the challenged player initiating a normal one?
@@ -2455,8 +2432,7 @@ def initgame() -> ResponseType:
         robot_level = int(opp[6:])
         # The game is always in the user's locale
         prefs = dict(newbag=True, locale=user.locale)
-        if board_type != "standard":
-            prefs["board_type"] = board_type
+        prefs["board_type"] = board_type
         game = Game.new(uid, None, robot_level, prefs=prefs)
         # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
@@ -2477,7 +2453,10 @@ def initgame() -> ResponseType:
         # No challenge existed between the users
         return jsonify(ok=False)
 
-    # Create a fresh game object
+    # Create a fresh game object, ensuring it has a board_type pref
+    if prefs is None:
+        prefs = dict()
+    prefs["board_type"] = board_type
     game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's client that there is a new game

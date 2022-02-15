@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Union, Tuple, Any, cast
+from typing import Dict, Optional, Any, cast
 
 import os
 import logging
@@ -28,25 +28,14 @@ from datetime import datetime
 import hashlib
 import hmac
 
-from flask import redirect, jsonify as flask_jsonify, url_for
-import flask.wrappers
+from flask import redirect, url_for
 from flask.wrappers import Request
-import werkzeug.wrappers
 
 import requests
 
 import firebase
+from basics import jsonify, ResponseType
 from skrafluser import User
-
-
-ResponseType = Union[
-    str, flask.wrappers.Response, werkzeug.wrappers.Response, Tuple[str, int]
-]
-
-
-# Type annotation wrapper for flask.jsonify()
-def jsonify(*args: Any, **kwargs: Any) -> str:
-    return cast(str, flask_jsonify(*args, **kwargs))
 
 
 class _Secret:

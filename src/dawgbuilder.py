@@ -1113,11 +1113,11 @@ if __name__ == "__main__":
 
     # Build Polish OSPS37
     run_osps37()
+
     # Build OTCWL2014
     run_otcwl2014()
-    exit(0)
 
-    # Build the whole Icelandic Netskrafl word database by default
+    # Build the Icelandic Netskrafl word database
     run_skrafl()
 
     # Build Tournament Word List v6 (TWL06)

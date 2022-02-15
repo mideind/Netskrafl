@@ -23,7 +23,7 @@ export {
   ChallengeAction, MoveInfo, Params
 };
 
-import { Game, ServerGame, Move, RackTile  } from "game";
+import { Game, ServerGame, Move, RackTile, MAX_OVERTIME, DEBUG_OVERTIME } from "game";
 
 import { m, RequestArgs } from "mithril";
 import { logEvent } from "channel";
@@ -192,6 +192,7 @@ interface GlobalState {
   uiLandscape: boolean;
   firebaseToken: string;
   emoticons: { icon: string; image: string; }[];
+  runningLocal: boolean;
 }
 
 function getSettings(): Settings {
@@ -297,7 +298,7 @@ class Model {
       }
       else {
         // Create a new game instance and load the state into it
-        this.game = new Game(uuid, result.game, this);
+        this.game = new Game(uuid, result.game, this, this.state.runningLocal ? DEBUG_OVERTIME : MAX_OVERTIME);
         // Successfully loaded: call the completion function, if given
         // (this usually attaches the Firebase event listener)
         if (funcComplete !== undefined)
