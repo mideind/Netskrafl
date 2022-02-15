@@ -61,6 +61,7 @@ var $state = {
    userFullname: "{{ '' if user == None else user.full_name() }}",
    locale: "{{ default_locale if user == None else user.locale }}",
    isExplo: {{ 'false' if project_id == 'netskrafl' else 'true' }},
+   runningLocal: {{ 'true' if running_local else 'false' }},
    loginMethod: "{{ method }}",
    newUser: {{ 'true' if new else 'false' }},
    beginner: {{ 'false' if user and not user.beginner() else 'true' }},

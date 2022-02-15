@@ -27,7 +27,6 @@ from typing import (
     List,
     Any,
     Callable,
-    Tuple,
     cast,
 )
 
@@ -42,12 +41,10 @@ from flask import (
     request,
     session,
 )
-from flask.wrappers import Response
 from flask.globals import current_app
-from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-from config import running_local, VALID_ISSUERS
+from config import PROJECT_ID, running_local, VALID_ISSUERS
 from basics import (
     UserIdDict,
     current_user,
@@ -59,6 +56,7 @@ from basics import (
     clear_session_userid,
     RequestData,
     max_age,
+    ResponseType,
 )
 from skrafluser import User, UserLoginDict
 
@@ -70,7 +68,6 @@ import skraflstats
 
 
 # Type definitions
-ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 RouteType = Callable[..., ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
@@ -81,8 +78,9 @@ GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
 # _PROMO_COUNT = 2  # Max number of times that the same promo is displayed
 # _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
-STATIC_FOLDER = "../static"
-TEMPLATE_FOLDER = "../templates"
+BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
+STATIC_FOLDER = os.path.join(BASE_PATH, "static")
+TEMPLATE_FOLDER = os.path.join(BASE_PATH, "templates")
 
 # Register the Flask blueprint for the web routes
 web_blueprint = Blueprint(
@@ -272,6 +270,8 @@ def page() -> ResponseType:
         firebase_token=firebase_token,
         method="" if idinfo is None else idinfo.get("method", ""),
         new=False if idinfo is None else idinfo.get("new", False),
+        project_id=PROJECT_ID,
+        running_local=running_local
     )
 
 

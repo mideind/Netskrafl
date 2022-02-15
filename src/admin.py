@@ -13,25 +13,26 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any, cast
+from typing import List, Optional, Dict, Any
 
 import logging
 from threading import Thread
 from datetime import datetime
 
-from flask import jsonify
 from flask import request
+from flask.wrappers import Response
 
+from basics import jsonify
 from languages import Alphabet
 from skrafldb import Client, iter_q, Query, UserModel, GameModel
 from skrafluser import User
 from skraflgame import Game
 
 
-def admin_usercount() -> str:
+def admin_usercount() -> Response:
     """ Return a count of UserModel entities """
     count = UserModel.count()
-    return cast(str, jsonify(count=count))
+    return jsonify(count=count)
 
 
 def deferred_update() -> None:
@@ -96,7 +97,7 @@ def admin_setfriend() -> str:
     )
 
 
-def admin_fetchgames() -> str:
+def admin_fetchgames() -> Response:
     """ Return a JSON representation of all finished games """
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
@@ -116,10 +117,10 @@ def admin_fetchgames() -> str:
                 pr=gm.prefs,
             )
         )
-    return cast(str, jsonify(gamelist=gamelist))
+    return jsonify(gamelist=gamelist)
 
 
-def admin_loadgame() -> str:
+def admin_loadgame() -> Response:
     """ Fetch a game object and return it as JSON """
 
     uuid = request.form.get("uuid", None)
@@ -155,5 +156,5 @@ def admin_loadgame() -> str:
             ],
         )
 
-    return cast(str, jsonify(game=g))
+    return jsonify(game=g)
 

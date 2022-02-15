@@ -68,7 +68,7 @@ from basics import (
 )
 from dawgdictionary import Wordbase
 from api import api_blueprint
-from web import web_blueprint
+from web import STATIC_FOLDER, web_blueprint
 
 
 if running_local:
@@ -94,7 +94,10 @@ if running_local:
 
 # Since we're running from the /src directory, reset Flask's
 # static folder to be relative from the base project directory
-app = Flask(__name__, static_folder="static")
+BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
+STATIC_FOLDER = os.path.join(BASE_PATH, "static")
+
+app = Flask(__name__, static_folder=STATIC_FOLDER)
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
 cast_app = cast(Any, app)
@@ -134,6 +137,7 @@ flask_config = dict(
     GOOGLE_CLIENT_ID=CLIENT_ID,
     GOOGLE_CLIENT_SECRET=CLIENT_SECRET,
     # !!! TODO: Add other client types (type 'ios', 'android') here?
+    JSON_AS_ASCII=False,
 )
 
 if running_local:

@@ -54,7 +54,7 @@ from skrafldb import Client
 
 # Type definitions
 T = TypeVar("T")
-ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
+ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]]
 RouteType = Callable[..., ResponseType]
 
 
@@ -80,8 +80,10 @@ MOBILE_CLIENT_TYPES = frozenset(("ios", "android"))
 
 
 # Type annotation wrapper for flask.jsonify()
-def jsonify(*args: Any, **kwargs: Any) -> str:
-    return cast(str, flask_jsonify(*args, **kwargs))
+def jsonify(*args: Any, **kwargs: Any) -> Response:
+    response = flask_jsonify(*args, **kwargs)
+    response.headers["Content-Type"] = "application/json; charset=UTF-8"
+    return response
 
 
 def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:

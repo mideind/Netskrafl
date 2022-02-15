@@ -80,8 +80,10 @@ const BOARD_PREFIX_LEN = BOARD_PREFIX.length;
 const ROWIDS = "ABCDEFGHIJKLMNO";
 const BOARD_SIZE = ROWIDS.length;
 const RACK_SIZE = 7;
+
 // Maximum overtime before a player loses the game, 10 minutes in seconds
-const MAX_OVERTIME = 10 * 60.0;
+export const MAX_OVERTIME = 10 * 60.0;
+export const DEBUG_OVERTIME = 1 * 60.0;
 
 const GAME_OVER = 99; // Error code corresponding to the Error class in skraflmechanics.py
 
@@ -355,6 +357,7 @@ class Game {
   nickname: [string, string] = ["", ""];
   fullname: [string, string] = ["", ""];
   autoplayer: [boolean, boolean] = [false, false];
+  maxOvertime: number = MAX_OVERTIME;
 
   scores: [number, number] = [0, 0];
   moves: Move[] = [];
@@ -414,11 +417,15 @@ class Game {
   // Plug-in point for parties that want to watch moves being made in the game
   moveListener: MoveListener;
 
-  constructor(uuid: string, srvGame: ServerGame, moveListener: MoveListener) {
+  constructor(uuid: string, srvGame: ServerGame, moveListener: MoveListener, maxOvertime?: number) {
     // Game constructor
     // Add extra data and methods to our game model object
     this.uuid = uuid;
     this.moveListener = moveListener;
+
+    if (maxOvertime !== undefined)
+      // Maximum time override, for debugging purposes
+      this.maxOvertime = maxOvertime;
 
     // Choose and return a constructor function depending on
     // whether HTML5 local storage is available
@@ -631,7 +638,7 @@ class Game {
       // This player's turn: add the local elapsed time
       let now = new Date();
       elapsed += (now.getTime() - this.timeBase.getTime()) / 1000;
-      if (elapsed - gameTime.duration * 60.0 > MAX_OVERTIME) {
+      if (elapsed - gameTime.duration * 60.0 > this.maxOvertime) {
         // 10 minutes overtime has passed: The client now believes
         // that the player has lost. Refresh the game from the server
         // to get its final verdict.
@@ -646,7 +653,7 @@ class Game {
       }
     }
     // The overtime is max 10 minutes - at that point you lose
-    let timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -MAX_OVERTIME);
+    let timeToGo = Math.max(gameTime.duration * 60.0 - elapsed, -this.maxOvertime);
     let absTime = Math.abs(timeToGo);
     let min = Math.floor(absTime / 60.0);
     let sec = Math.floor(absTime - min * 60.0);

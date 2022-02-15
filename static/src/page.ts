@@ -901,8 +901,8 @@ class View {
                           m("div", { id: 'chall-25', tabindex: 5 },
                             [glyph("time"), t("2 x 25 mínútur")]
                           ),
-                          m("div", { id: 'chall-30', tabindex: 6 },
-                            [glyph("time"), t("2 x 30 mínútur")]
+                          m("div", { id: 'chall-3', tabindex: 6 }, // !!! TODO FIXME DEBUG !!!
+                            [glyph("time"), t("2 x 3 mínútur")]
                           )
                         ]
                       )

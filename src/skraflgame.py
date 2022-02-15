@@ -41,7 +41,7 @@ from random import randint
 from datetime import datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE
+from config import DEFAULT_LOCALE, running_local
 
 from languages import (
     Alphabet,
@@ -151,7 +151,11 @@ class Game:
         or completed. Contains inter alia a State instance."""
 
     # The maximum overtime in a game, after which a player automatically loses
-    MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
+    if running_local:
+        # Less max overtime when debugging
+        MAX_OVERTIME = 1 * 60.0  # 1 minutes, in seconds
+    else:
+        MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
 
     # After this number of days the game becomes overdue and the
     # waiting player can force the tardy opponent to resign

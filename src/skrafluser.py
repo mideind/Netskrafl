@@ -205,12 +205,11 @@ class User:
             um.best_word = self._best_word
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
-            um.image = self._image
-            if not self._has_image_blob:
-                um.image_blob = None
             um.location = self._location
-            # um.timestamp should not be set or updated
+            # Don't mess with the image data (the image URL or the BLOB),
+            # those are set with separate APIs
             um.put()
+            # um.timestamp should not be set or updated
 
             # Note: the namespace version should be incremented each time
             # that the class properties change
