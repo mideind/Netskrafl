@@ -322,6 +322,7 @@ class UserForm:
         self.beginner: bool = True
         self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
         self.friend: bool = False
+        self.has_paid: bool = False
         self.locale: str = current_lc()
         if usr:
             self.init_from_user(usr)
@@ -393,6 +394,7 @@ class UserForm:
         self.fairplay = usr.fairplay()
         # Eventually, we will edit a plan identifier, not just a boolean
         self.friend = usr.plan() != ""
+        self.has_paid = usr.has_paid()
         self.locale = usr.locale
         self.id = current_user_id() or ""
         self.image = usr.image()
@@ -445,8 +447,8 @@ class UserForm:
 
 @api.route("/oauth2callback", methods=["POST"])
 def oauth2callback() -> ResponseType:
-    """ The OAuth2 login flow POSTs to this callback when a user has
-        signed in using a Google Account """
+    """The OAuth2 login flow POSTs to this callback when a user has
+    signed in using a Google Account"""
 
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
     # this route is only for HTTP POSTs
@@ -671,10 +673,10 @@ def firebase_token() -> ResponseType:
 def _process_move(
     game: Game, movelist: Iterable[str], *, force_resign: bool = False
 ) -> ResponseType:
-    """ Process a move coming in from the client.
-        If force_resign is True, it is actually the opponent of the
-        tardy player who is initiating the move, so we send the
-        Firebase notification to the opposite (tardy) player in that case. """
+    """Process a move coming in from the client.
+    If force_resign is True, it is actually the opponent of the
+    tardy player who is initiating the move, so we send the
+    Firebase notification to the opposite (tardy) player in that case."""
 
     assert game is not None
 
@@ -1103,7 +1105,11 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     my_turn=False,
                     overdue=False,
                     zombie=True,
-                    prefs={"fairplay": fairplay, "newbag": new_bag, "manual": manual,},
+                    prefs={
+                        "fairplay": fairplay,
+                        "newbag": new_bag,
+                        "manual": manual,
+                    },
                     timed=timed,
                     live=opp in online,
                     image=u.image(),
@@ -1197,7 +1203,11 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 my_turn=g["my_turn"],
                 overdue=overdue,
                 zombie=False,
-                prefs={"fairplay": fairplay, "newbag": new_bag, "manual": manual,},
+                prefs={
+                    "fairplay": fairplay,
+                    "newbag": new_bag,
+                    "manual": manual,
+                },
                 timed=timed,
                 tile_count=int(g["tile_count"] * 100 / tileset.num_tiles()),
                 live=opp in online,
@@ -1699,7 +1709,10 @@ def userstats() -> str:
                 age = PERIOD - 1
                 ts_iso = (now - timedelta(days=age)).isoformat()
             result[age] = StatsSummaryDict(
-                ts=ts_iso, elo=sm.elo, human_elo=sm.human_elo, manual_elo=sm.manual_elo,
+                ts=ts_iso,
+                elo=sm.elo,
+                human_elo=sm.human_elo,
+                manual_elo=sm.manual_elo,
             )
         # Fill all day slots in the result list
         # Create a beginning sentinel entry to fill empty day slots
@@ -1745,7 +1758,9 @@ def image() -> ResponseType:
         if image_blob:
             # We have the image as a bytes object: return it
             mimetype = image or "image/jpeg"
-            return Response(image_blob, mimetype=mimetype)
+            return Response(
+                image_blob, mimetype=mimetype, content_type="application/octet-stream"
+            )
         if not image or image.startswith("/image"):
             return "Image not found", 404  # Not found
         # Assume that this is a URL: redirect to it
@@ -2221,8 +2236,8 @@ def chatload() -> ResponseType:
 @api.route("/chathistory", methods=["POST"])
 @auth_required(ok=False)
 def chathistory() -> ResponseType:
-    """ Return the chat history, i.e. the set of recent,
-        distinct chat conversations for the logged-in user """
+    """Return the chat history, i.e. the set of recent,
+    distinct chat conversations for the logged-in user"""
 
     user_id = current_user_id()
     if not user_id:
@@ -2264,8 +2279,8 @@ def bestmoves() -> ResponseType:
 
     uuid = rq.get("game")
     # Attempt to load the game whose id is in the URL query string
-    game: Optional[Game] = None if uuid is None else Game.load(
-        uuid, set_locale=True, use_cache=False
+    game: Optional[Game] = (
+        None if uuid is None else Game.load(uuid, set_locale=True, use_cache=False)
     )
 
     if game is None or not game.is_over():

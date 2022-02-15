@@ -94,7 +94,7 @@ if running_local:
 
 # Since we're running from the /src directory, reset Flask's
 # static folder to be relative from the base project directory
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder=os.path.join("..", "static"))
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
 cast_app = cast(Any, app)
