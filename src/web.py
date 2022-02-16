@@ -184,7 +184,7 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 def friend() -> ResponseType:
     """ HTML content of a friend (subscription) promotion dialog """
     locale = request.args.get("locale", "is_IS")
-    return render_locale_template("promo-friend-{0}", locale)
+    return render_locale_template("promo-friend-{0}.html", locale)
 
 
 @web.route("/board")
