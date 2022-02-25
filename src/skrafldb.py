@@ -623,8 +623,8 @@ class UserModel(Model["UserModel"]):
         return self.key.id()
 
     def get_image(self) -> Tuple[Optional[str], Optional[bytes]]:
-        """ Obtain image data about the user, consisting of
-            a string and a BLOB (bytes) """
+        """Obtain image data about the user, consisting of
+        a string and a BLOB (bytes)"""
         image = self.image
         if image and image.startswith("/image?"):
             # Wrong URL in the database: act as if no URL is stored
@@ -632,8 +632,8 @@ class UserModel(Model["UserModel"]):
         return image, self.image_blob
 
     def set_image(self, image: Optional[str], image_blob: Optional[bytes]) -> None:
-        """ Set image data about the user, consisting of
-            a string and a BLOB (bytes) """
+        """Set image data about the user, consisting of
+        a string and a BLOB (bytes)"""
         if image and image.startswith("/image?"):
             # Attempting to set the URL of the image API endpoint: not allowed
             image = None
@@ -868,8 +868,8 @@ class GameModel(Model["GameModel"]):
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(
-            UserModel, user_id
+        k: Optional[Key[UserModel]] = (
+            None if user_id is None else Key(UserModel, user_id)
         )
         if ix == 0:
             self.player0 = k
@@ -1101,8 +1101,8 @@ class ChallengeModel(Model["ChallengeModel"]):
 
     def set_dest(self, user_id: Optional[str]) -> None:
         """Set a destination user key property"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(
-            UserModel, user_id
+        k: Optional[Key[UserModel]] = (
+            None if user_id is None else Key(UserModel, user_id)
         )
         self.destuser = k
 
@@ -1156,10 +1156,17 @@ class ChallengeModel(Model["ChallengeModel"]):
         kd: Key[UserModel] = Key(UserModel, dest_id)
         if key:
             # We have the key of a particular challenge: operate on it directly
-            cm = ChallengeModel.get_by_id(key, parent=ks)
-            if cm is not None and cm.destuser == kd:
-                cm.key.delete()
-                return (True, cm.prefs)
+            try:
+                k: Key[ChallengeModel] = Key(
+                    UserModel, src_id, ChallengeModel, int(key)
+                )
+                cm = k.get()
+                if cm is not None and cm.destuser == kd:
+                    k.delete()
+                    return (True, cm.prefs)
+            except ValueError:
+                # The key is probably not a valid integer
+                pass
             return (False, None)
         # We don't have a key: query by source and destination user
         prefs: Optional[PrefsDict] = None
@@ -1258,8 +1265,8 @@ class StatsModel(Model["StatsModel"]):
 
     def set_user(self, user_id: Optional[str], robot_level: int = 0) -> None:
         """Set the user key property"""
-        k: Optional[Key[UserModel]] = None if user_id is None else Key(
-            UserModel, user_id
+        k: Optional[Key[UserModel]] = (
+            None if user_id is None else Key(UserModel, user_id)
         )
         self.user = k
         self.robot_level = robot_level
@@ -1574,8 +1581,8 @@ class StatsModel(Model["StatsModel"]):
         sm = cls.create(user_id, robot_level)
         if ts:
             # Try to query using the timestamp
-            k: Optional[Key[UserModel]] = None if user_id is None else Key(
-                UserModel, user_id
+            k: Optional[Key[UserModel]] = (
+                None if user_id is None else Key(UserModel, user_id)
             )
             # Use a common query structure and index for humans and robots
             q = cls.query(
@@ -1863,7 +1870,11 @@ class ChatModel(Model["ChatModel"]):
         return cls.add_msg(channel, from_user, to_user, msg, timestamp)
 
     @classmethod
-    def chat_history(cls, for_user: str, maxlen: int = 20,) -> Iterator[Dict[str, Any]]:
+    def chat_history(
+        cls,
+        for_user: str,
+        maxlen: int = 20,
+    ) -> Iterator[Dict[str, Any]]:
         """ Return the chat history for a user """
         CHUNK_SIZE = 50
 
@@ -2229,4 +2240,3 @@ class ReportModel(Model["ReportModel"]):
             rm.put()
             return True
         return False
-

@@ -18,6 +18,8 @@ export { WaitDialog, AcceptDialog };
 
 import { m, ComponentFunc } from "mithril";
 
+import { mt, ts } from "i18n";
+
 import { View, glyph, DialogButton, OnlinePresence } from "page";
 
 import { attachFirebaseListener, detachFirebaseListener } from "channel";
@@ -113,21 +115,21 @@ const WaitDialog: ComponentFunc<{
               )
             ),
             m(".wait-explain", [
-              m("p", [
+              mt("p", [
                 "Þú ert reiðubúin(n) að taka áskorun um viðureign með klukku, ",
-                m("strong", [ "2 x ", duration.toString(), " mínútur." ])
+                m("strong", [ "2 x ", duration.toString(), ts(" mínútur.") ])
               ]),
-              m("p", [
+              mt("p", [
                 "Beðið er eftir að áskorandinn ", m("strong", oppNick),
-                " sé ", oppOnline ? "" : m("span#chall-is-online", "álínis og "), "til í tuskið."
+                " sé ", oppOnline ? "" : mt("span#chall-is-online", "álínis og "), "til í tuskið."
               ]),
-              m("p", "Leikur hefst um leið og áskorandinn bregst við. Handahóf ræður hvor byrjar."),
-              m("p", "Ef þér leiðist biðin geturðu hætt við og reynt aftur síðar.")
+              mt("p", "Leikur hefst um leið og áskorandinn bregst við. Handahóf ræður hvor byrjar."),
+              mt("p", "Ef þér leiðist biðin geturðu hætt við og reynt aftur síðar.")
             ]),
             m(DialogButton,
               {
                 id: "wait-cancel",
-                title: "Hætta við",
+                title: ts("Hætta við"),
                 // onmouseover: buttonOver,
                 // onmouseout: buttonOut,
                 onclick: (ev: MouseEvent) => {
@@ -211,8 +213,8 @@ const AcceptDialog: ComponentFunc<{
             ),
             m("div", { "style": { "text-align": "center", "padding-top": "32px" }},
               [
-                m("p", m("strong", "Viðureign með klukku")),
-                m("p",
+                m("p", mt("strong", "Viðureign með klukku")),
+                mt("p",
                   oppReady ? "Athuga hvort andstæðingur er reiðubúinn..."
                   : ["Andstæðingurinn ", m("strong", oppNick), " er ekki reiðubúinn"]
                 )
@@ -221,7 +223,7 @@ const AcceptDialog: ComponentFunc<{
             m(DialogButton,
               {
                 id: 'accept-cancel',
-                title: 'Reyna síðar',
+                title: ts('Reyna síðar'),
                 onclick: (ev: MouseEvent) => {
                   // Abort mission
                   view.popDialog();

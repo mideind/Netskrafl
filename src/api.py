@@ -2437,6 +2437,8 @@ def initgame() -> ResponseType:
         # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
 
+    key: Optional[str] = rq.get("key", None)
+
     # Start a new game between two human users
     if rev:
         # Timed game: load the opponent
@@ -2444,10 +2446,10 @@ def initgame() -> ResponseType:
         if opp_user is None:
             return jsonify(ok=False)
         # In this case, the opponent accepts the challenge
-        found, prefs = opp_user.accept_challenge(uid)
+        found, prefs = opp_user.accept_challenge(uid, key=key)
     else:
         # The current user accepts the challenge
-        found, prefs = user.accept_challenge(opp)
+        found, prefs = user.accept_challenge(opp, key=key)
 
     if not found:
         # No challenge existed between the users
