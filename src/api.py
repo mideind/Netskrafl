@@ -575,7 +575,7 @@ def oauth_fb() -> ResponseType:
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
     token = user.get("token", "")
     # Validate the Facebook token
-    if not token or len(token) > 256 or not token.isalnum():
+    if not token or len(token) > 1024 or not token.isalnum():
         return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
     r = requests.get(
         FACEBOOK_TOKEN_VALIDATION_URL.format(
