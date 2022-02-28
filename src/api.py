@@ -796,9 +796,10 @@ def _process_move(
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(opponent_index, m)
+        now = datetime.utcnow().isoformat()
         msg_dict: Dict[str, Any] = {
-            "game/" + game_id + "/" + opponent + "/move": client_state,
-            "user/" + opponent: {"move": datetime.utcnow().isoformat()},
+            f"game/{game_id}/{opponent}/move": client_state,
+            f"user/{opponent}": {"move": now},
         }
         firebase.send_message(msg_dict)
 
@@ -1854,7 +1855,8 @@ def challenge() -> ResponseType:
     """ Create or delete an A-challenges-B relation """
 
     user = current_user()
-    assert user is not None
+    if user is None or not (uid := user.id()):
+        return jsonify(result=Error.LOGIN_REQUIRED)
 
     rq = RequestData(request)
     destuser = rq.get("destuser")
@@ -1893,9 +1895,15 @@ def challenge() -> ResponseType:
     elif action == "accept":
         # Accept a challenge previously made by the destuser (really srcuser)
         user.accept_challenge(destuser, key=key)
-    # Notify the destination user via a
+    # Notify both users via a
     # Firebase notification to /user/[user_id]/challenge
-    firebase.send_update("user", destuser, "challenge")
+    msg: Dict[str, str] = dict()
+
+    # Notify both players' clients of an update to the challenge lists
+    now = datetime.utcnow().isoformat()
+    msg[f"user/{destuser}/challenge"] = now
+    msg[f"user/{uid}/challenge"] = now
+    firebase.send_message(msg)
 
     return jsonify(result=Error.LEGAL)
 
@@ -1959,7 +1967,7 @@ def initwait() -> ResponseType:
     # Get the opponent id
     rq = RequestData(request)
     opp = rq.get("opp")
-    if opp is None or user is None:
+    if not opp or user is None or not (uid := user.id()):
         return jsonify(online=False, waiting=False)
 
     # Find the challenge being accepted
@@ -1975,10 +1983,10 @@ def initwait() -> ResponseType:
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
-    uid = user.id() or ""
+    now = datetime.utcnow().isoformat()
     msg = {
-        "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
-        "user/" + uid + "/wait/" + opp: True,
+        f"user/{opp}/challenge": now,
+        f"user/{uid}/wait/{opp}": True,
     }
     firebase.send_message(msg)
     online = firebase.check_presence(uid)
@@ -2011,9 +2019,10 @@ def cancelwait() -> ResponseType:
         return jsonify(ok=False)
 
     # Delete the current wait and force update of the opponent's challenge list
+    now = datetime.utcnow().isoformat()
     msg = {
-        "user/" + cuid + "/wait/" + opp_id: None,
-        "user/" + opp_id: {"challenge": datetime.utcnow().isoformat()},
+        f"user/{cuid}/wait/{opp_id}": None,
+        f"user/{opp_id}/challenge": now,
     }
     firebase.send_message(msg)
 
@@ -2074,9 +2083,8 @@ def chatmsg() -> ResponseType:
             )
             for p in range(0, 2):
                 # Send a Firebase notification to /game/[gameid]/[userid]/chat
-                pid = game.player_id(p)
-                if pid is not None:
-                    send_msg["game/" + uuid + "/" + pid + "/chat"] = md
+                if (pid := game.player_id(p)):
+                    send_msg[f"game/{uuid}/{pid}/chat"] = md
             if send_msg:
                 firebase.send_message(send_msg)
 
@@ -2098,8 +2106,8 @@ def chatmsg() -> ResponseType:
                 msg=msg,
                 ts=Alphabet.format_timestamp(ts),
             )
-            send_msg["user/" + user_id + "/chat"] = md
-            send_msg["user/" + opp_id + "/chat"] = md
+            send_msg[f"user/{user_id}/chat"] = md
+            send_msg[f"user/{opp_id}/chat"] = md
             firebase.send_message(send_msg)
 
     else:
@@ -2461,12 +2469,19 @@ def initgame() -> ResponseType:
     prefs["board_type"] = board_type
     game = Game.new(uid, opp, 0, prefs)
 
-    # Notify the opponent's client that there is a new game
-    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    # Notify both players' clients that there is a new game
+    now = datetime.utcnow().isoformat()
+    msg: Dict[str, Any] = dict()
+    msg[f"user/{opp}/move"] = now
+    msg[f"user/{uid}/move"] = now
+
+    # Notify both players' clients of an update to the challenge lists
+    msg[f"user/{opp}/challenge"] = now
+    msg[f"user/{uid}/challenge"] = now
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
-        msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
+        msg[f"user/{opp}/wait/{uid}"] = {"game": game.id()}
 
     firebase.send_message(msg)
 
