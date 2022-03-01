@@ -405,6 +405,10 @@ class Bag:
         """ Set the contents of the bag """
         self._tiles = tiles
 
+    def size(self) -> int:
+        """ The original number of tiles in the bag """
+        return self._size
+
     def num_tiles(self) -> int:
         """ Return the number of tiles in the bag """
         return len(self._tiles)
@@ -664,6 +668,15 @@ class State:
         f0 = max(self._scores[0] + self._adj_scores[0], 0)
         f1 = max(self._scores[1] + self._adj_scores[1], 0)
         return (f0, f1)
+
+    def progress(self) -> Tuple[int, int]:
+        """ Returns the number of tiles played (on the board),
+            and the total number of tiles in the bag """
+        sz = self._bag.size()
+        r0 = self._racks[0].num_tiles()
+        r1 = self._racks[1].num_tiles()
+        n = self._bag.num_tiles()
+        return sz - r0 - r1 - n, sz
 
     def num_moves(self) -> int:
         """ Return the number of moves made so far """

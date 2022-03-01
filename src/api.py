@@ -254,6 +254,20 @@ class ChatHistoryDict(TypedDict):
     unread: bool
 
 
+class MoveNotifyDict(TypedDict):
+
+    """ A notification sent via Firebase to clients when a move has been
+        processed """
+
+    game: str
+    timestamp: str
+    players: Tuple[Optional[str], Optional[str]]  # None if robot
+    over: bool
+    to_move: int
+    scores: Tuple[int, int]
+    progress: Tuple[int, int]
+
+
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
@@ -692,6 +706,7 @@ def _process_move(
     # player_index is the index of the tardy opponent of the player
     # that is initiating the resignation
     player_index = game.player_to_move()
+    opponent_index = 1 - player_index
 
     # Parse the move from the movestring we got back
     m: MoveBase = Move("", 0, 0)
@@ -775,8 +790,6 @@ def _process_move(
         # Make sure the new game state is persistently recorded
         game.store()
 
-        opponent_index = 1 - player_index
-
         if force_resign:
             # Reverse the opponent and the player_index, since we want
             # to notify the tardy opponent, not the player who forced the resignation
@@ -790,17 +803,37 @@ def _process_move(
         if is_over and opponent is not None:
             ZombieModel.add_game(game_id, opponent)
 
-    if opponent is not None:
-        # Send Firebase notifications
+    # Prepare the messages/notifications to be sent via Firebase
+    now = datetime.utcnow().isoformat()
+    msg_dict: Dict[str, Any] = dict()
+    # Prepare a summary dict of the state of the game after the move
+    assert game.state is not None
+    move_dict: MoveNotifyDict = {
+        "game": game_id,
+        "timestamp": now,
+        "players": tuple(game.player_ids),
+        "over": game.state.is_game_over(),
+        "to_move": game.player_to_move(),
+        "scores": game.state.scores(),
+        "progress": game.state.progress(),
+    }
+
+    if opponent:
         # Send a game update to the opponent, if human, including
         # the full client state. board.html and main.html listen to this.
         # Also update the user/[opp_id]/move branch with the current timestamp.
         client_state = game.client_state(opponent_index, m)
-        now = datetime.utcnow().isoformat()
-        msg_dict: Dict[str, Any] = {
+        msg_dict = {
             f"game/{game_id}/{opponent}/move": client_state,
-            f"user/{opponent}": {"move": now},
+            f"user/{opponent}/move": move_dict,
         }
+
+    if (player := game.player_id(1 - opponent_index)):
+        # Add a move notification to the original player as well,
+        # since she may have multiple clients and we want to update'em all
+        msg_dict[f"user/{player}/move"] = move_dict
+
+    if msg_dict:
         firebase.send_message(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
@@ -2468,12 +2501,25 @@ def initgame() -> ResponseType:
         prefs = dict()
     prefs["board_type"] = board_type
     game = Game.new(uid, opp, 0, prefs)
+    game_id = game.id()
+    if not game_id or game.state is None:
+        # Something weird is preventing the proper creation of the game
+        return jsonify(ok=False)
 
     # Notify both players' clients that there is a new game
     now = datetime.utcnow().isoformat()
     msg: Dict[str, Any] = dict()
-    msg[f"user/{opp}/move"] = now
-    msg[f"user/{uid}/move"] = now
+    move_dict: MoveNotifyDict = {
+        "game": game_id,
+        "timestamp": now,
+        "over": False,
+        "players": (uid, opp),
+        "to_move": game.player_to_move(),
+        "scores": (0, 0),
+        "progress": game.state.progress(),
+    }
+    msg[f"user/{uid}/move"] = move_dict
+    msg[f"user/{opp}/move"] = move_dict
 
     # Notify both players' clients of an update to the challenge lists
     msg[f"user/{opp}/challenge"] = now
@@ -2481,12 +2527,12 @@ def initgame() -> ResponseType:
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
-        msg[f"user/{opp}/wait/{uid}"] = {"game": game.id()}
+        msg[f"user/{opp}/wait/{uid}"] = {"game": game_id}
 
     firebase.send_message(msg)
 
     # Return the uuid of the new game
-    return jsonify(ok=True, uuid=game.id())
+    return jsonify(ok=True, uuid=game_id)
 
 
 @api.route("/locale_asset", methods=["POST"])
