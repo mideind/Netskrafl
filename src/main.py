@@ -107,15 +107,16 @@ cast_app = cast(Any, app)
 setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
-CORS(
-    app,
-    supports_credentials=True,
-    origins=[
-        "http://explo.300dev.pl",
-        "http://localhost:19006",
-        "http://127.0.0.1:19006",
-    ],
-)
+if running_local:
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=[
+            "http://explo.300dev.pl",
+            "http://localhost:19006",
+            "http://127.0.0.1:19006",
+        ],
+    )
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used
