@@ -4,7 +4,7 @@
 
     DAWG dictionary builder
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2022 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -106,7 +106,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, IO, Tuple
+from typing import Any, Callable, Dict, List, Optional, IO, Tuple, TypedDict
 
 import os
 import sys
@@ -162,7 +162,7 @@ class _DawgNode:
     def sort_by_prefix(
         l: List[Tuple[str, Optional[_DawgNode]]]
     ) -> List[Tuple[str, Optional[_DawgNode]]]:
-        """ Return a list of (prefix, node) tuples sorted by prefix """
+        """Return a list of (prefix, node) tuples sorted by prefix"""
         sortkey = current_alphabet().sortkey
         return sorted(l, key=lambda x: sortkey(x[0]))
 
@@ -185,7 +185,7 @@ class _DawgNode:
         self._hash = None  # Hash of the final flag and a shallow traversal of the edges
 
     def __str__(self) -> str:
-        """ Return a string representation of this node, cached if possible """
+        """Return a string representation of this node, cached if possible"""
         if not self._strng:
             # We don't have a cached string representation: create it
             edges = _DawgNode.stringify_edges(self.edges)
@@ -193,20 +193,20 @@ class _DawgNode:
         return self._strng
 
     def __hash__(self) -> int:
-        """ Return a hash of this node, cached if possible """
+        """Return a hash of this node, cached if possible"""
         if self._hash is None:
             # We don't have a cached hash: create it
             self._hash = self.__str__().__hash__()
         return self._hash
 
     def __eq__(self, o: Any) -> bool:
-        """ Use string equality based on the string representation of nodes """
+        """Use string equality based on the string representation of nodes"""
         if not isinstance(o, _DawgNode):
             return False
         return self.__str__() == o.__str__()
 
     def reset_id(self, newid: int) -> None:
-        """ Set a new id number for this node. This forces a reset of the cached data. """
+        """Set a new id number for this node. This forces a reset of the cached data."""
         self.id = newid
         self._strng = None
         self._hash = None
@@ -214,7 +214,7 @@ class _DawgNode:
 
 class _Dawg:
 
-    """ Directed Acyclic Word Graph (DAWG) """
+    """Directed Acyclic Word Graph (DAWG)"""
 
     def __init__(self) -> None:
         self._lastword = ""
@@ -236,7 +236,7 @@ class _Dawg:
         self._unique_nodes_values: List[Optional[_DawgNode]] = list()
 
     def _collapse_branch(self, parent: DawgDict, prefix: str, node: _DawgNode) -> None:
-        """ Attempt to collapse a single branch of the tree """
+        """Attempt to collapse a single branch of the tree"""
 
         di = node.edges
         assert di is not None
@@ -289,7 +289,7 @@ class _Dawg:
             self._unique_nodes_values.append(node_new)
 
     def _collapse(self, edges: Optional[DawgDict]) -> None:
-        """ Collapse and optimize the edges in the parent dict """
+        """Collapse and optimize the edges in the parent dict"""
         # Iterate through the letter position and
         # attempt to collapse all "simple" branches from it
         if edges:
@@ -300,7 +300,7 @@ class _Dawg:
                     self._collapse_branch(edges, letter, node)
 
     def _collapse_to(self, divergence: int) -> None:
-        """ Collapse the tree backwards from the point of divergence """
+        """Collapse the tree backwards from the point of divergence"""
         j = self._lastlen
         while j > divergence:
             if self._dicts[j]:
@@ -353,7 +353,7 @@ class _Dawg:
         self._lastlen = lenword
 
     def finish(self):
-        """ Complete the optimization of the tree """
+        """Complete the optimization of the tree"""
         self._collapse_to(0)
         self._lastword = ""
         self._lastlen = 0
@@ -367,7 +367,7 @@ class _Dawg:
                 ix += 1
 
     def _dump_level(self, level: int, d: DawgDict) -> None:
-        """ Dump a level of the tree and continue into sublevels by recursion """
+        """Dump a level of the tree and continue into sublevels by recursion"""
         for ch, nx in d.items():
             if not nx:
                 continue
@@ -381,7 +381,7 @@ class _Dawg:
                 self._dump_level(level + 1, nx.edges)
 
     def dump(self) -> None:
-        """ Write a human-readable text representation of the DAWG to the standard output """
+        """Write a human-readable text representation of the DAWG to the standard output"""
         self._dump_level(0, self._root)
         print(
             "Total of {0} nodes and {1} edges with {2} prefix characters".format(
@@ -399,11 +399,11 @@ class _Dawg:
                     )
 
     def num_unique_nodes(self) -> int:
-        """ Count the total number of unique nodes in the graph """
+        """Count the total number of unique nodes in the graph"""
         return len(self._unique_nodes)
 
     def num_edges(self) -> int:
-        """ Count the total number of edges between unique nodes in the graph """
+        """Count the total number of edges between unique nodes in the graph"""
         edges = 0
         for n in self._unique_nodes_values:
             if n is not None:
@@ -411,7 +411,7 @@ class _Dawg:
         return edges
 
     def num_edge_chars(self) -> int:
-        """ Count the total number of edge prefix letters in the graph """
+        """Count the total number of edge prefix letters in the graph"""
         chars = 0
         for n in self._unique_nodes_values:
             if n is not None:
@@ -422,7 +422,7 @@ class _Dawg:
         return chars
 
     def write_packed(self, packer: "_BinaryDawgPacker") -> None:
-        """ Write the optimized DAWG to a packer """
+        """Write the optimized DAWG to a packer"""
         packer.start(len(self._root))
         # Start with the root edges
         sortfunc = _DawgNode.sort_by_prefix
@@ -445,7 +445,7 @@ class _Dawg:
         packer.finish()
 
     def write_text(self, stream: IO[str]) -> None:
-        """ Write the optimized DAWG to a text stream """
+        """Write the optimized DAWG to a text stream"""
         print("Output graph has {0} nodes".format(len(self._unique_nodes)))
         # We don't have to write node ids since they correspond to line numbers.
         # The root is always in the first line and the first node after the root has id 2.
@@ -499,11 +499,11 @@ class _BinaryDawgPacker:
         self._encoding = encoding
 
     def start(self, num_root_edges: int) -> None:
-        """ Write a starting byte with the number of root edges """
+        """Write a starting byte with the number of root edges"""
         self._stream.write(self.BYTE.pack(num_root_edges))
 
     def node_start(self, ident: int, final: bool, num_edges: int) -> None:
-        """ Start a new node in the binary buffer """
+        """Start a new node in the binary buffer"""
         stream = self._stream
         pos = stream.tell()
         if ident in self._fixups:
@@ -519,11 +519,11 @@ class _BinaryDawgPacker:
         stream.write(self.BYTE.pack((0x80 if final else 0x00) | (num_edges & 0x7F)))
 
     def node_end(self, ident: int) -> None:
-        """ End a node in the binary buffer """
+        """End a node in the binary buffer"""
         pass
 
     def edge(self, ident: int, prefix: str) -> None:
-        """ Write an edge into the binary buffer """
+        """Write an edge into the binary buffer"""
         b = bytearray()
         stream = self._stream
         for c in prefix:
@@ -561,12 +561,12 @@ class _BinaryDawgPacker:
             self._fixups[ident].append(pos)
 
     def finish(self) -> None:
-        """ Clear the temporary fixup stuff from memory """
+        """Clear the temporary fixup stuff from memory"""
         self._locs = dict()
         self._fixups = dict()
 
     def dump(self) -> None:
-        """ Print the stream buffer in hexadecimal format """
+        """Print the stream buffer in hexadecimal format"""
         buf: bytes = self._stream.getvalue()
         print("Total of {0} bytes".format(len(buf)))
         s = binascii.hexlify(buf).decode("ascii")
@@ -587,7 +587,6 @@ class _BinaryDawgPacker:
             addr += BYTES_PER_LINE
 
 
-# noinspection Restricted_Python_calls
 class DawgBuilder:
 
     """Creates a DAWG from word lists and writes the resulting
@@ -604,7 +603,7 @@ class DawgBuilder:
         self._alphabet = set(encoding)
 
     class _InFile:
-        """ InFile represents a single sorted input file. """
+        """InFile represents a single sorted input file."""
 
         def __init__(
             self,
@@ -629,7 +628,7 @@ class DawgBuilder:
             self.read_word()
 
         def read_word(self) -> bool:
-            """ Read lines until we have a legal word or EOF """
+            """Read lines until we have a legal word or EOF"""
             assert self._fin is not None
             f = self._input_filter
             while True:
@@ -650,28 +649,28 @@ class DawgBuilder:
                     return True
 
         def next_word(self) -> Optional[str]:
-            """ Returns the next available word from this input file """
+            """Returns the next available word from this input file"""
             return None if self._eof else self._nxt
 
         def next_key(self) -> Optional[List[int]]:
-            """ Returns the sort key of the next available word from this input file """
+            """Returns the sort key of the next available word from this input file"""
             return None if self._eof else self._key
 
         def has_word(self) -> bool:
-            """ True if a word is available, or False if EOF has been reached """
+            """True if a word is available, or False if EOF has been reached"""
             return not self._eof
 
         def close(self) -> None:
-            """ Close the associated file, if it is still open """
+            """Close the associated file, if it is still open"""
             if self._fin is not None:
                 self._fin.close()
             self._fin = None
 
     class _InFileToBeSorted(_InFile):
-        """ InFileToBeSorted represents an input file that should be pre-sorted in memory """
+        """InFileToBeSorted represents an input file that should be pre-sorted in memory"""
 
         def _init(self) -> None:
-            """ Read the entire file and pre-sort it """
+            """Read the entire file and pre-sort it"""
             self._list: List[str] = []
             self._index = 0
             self._sortkey = current_alphabet().sortkey
@@ -706,7 +705,7 @@ class DawgBuilder:
             return True
 
         def close(self) -> None:
-            """ Close the associated file, if it is still open """
+            """Close the associated file, if it is still open"""
             pass
 
     def _load(
@@ -847,7 +846,7 @@ class DawgBuilder:
         )
 
     def _output_binary(self, relpath: str, output: str) -> None:
-        """ Write the DAWG to a flattened binary output file with extension '.dawg' """
+        """Write the DAWG to a flattened binary output file with extension '.dawg'"""
         assert self._dawg is not None
         f = io.BytesIO()
         # Create a packer to flatten the tree onto a binary stream
@@ -862,7 +861,7 @@ class DawgBuilder:
         f.close()
 
     def _output_text(self, relpath: str, output: str) -> None:
-        """ Write the DAWG to a text output file with extension '.text.dawg' """
+        """Write the DAWG to a text output file with extension '.text.dawg'"""
         assert self._dawg is not None
         fname = os.path.abspath(os.path.join(relpath, output + ".text.dawg"))
         with codecs.open(fname, mode="w", encoding="utf-8") as fout:
@@ -908,16 +907,16 @@ class DawgBuilder:
 
 # noinspection PyUnusedLocal
 def nofilter(word: str) -> bool:  # pylint: disable=W0613
-    """ No filtering - include all input words in output graph """
+    """No filtering - include all input words in output graph"""
     return True
 
 
 def filter_skrafl(word: str) -> bool:
-    """ Filtering for an Icelandic crossword game.
-        Exclude words longer than WORD_MAXLEN letters (won't fit on board)
-        Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
-        Exclude two-letter words in the word database that are not
-        allowed according to the rules of 'Skraflfélag Íslands'
+    """Filtering for an Icelandic crossword game.
+    Exclude words longer than WORD_MAXLEN letters (won't fit on board)
+    Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
+    Exclude two-letter words in the word database that are not
+    allowed according to the rules of 'Skraflfélag Íslands'
     """
     return len(word) <= WORD_MAXLEN
 
@@ -931,7 +930,7 @@ def filter_common(word: str) -> bool:
 
 
 def run_test() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named testwords.txt
     print("Starting DAWG build for testwords.txt")
     db = DawgBuilder(encoding=current_alphabet().order)
@@ -946,7 +945,7 @@ def run_test() -> None:
 
 
 def run_twl06() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named twl06.txt,
     # the Tournament Word List version 6
     print("Starting DAWG build for twl06.txt")
@@ -964,7 +963,7 @@ def run_twl06() -> None:
 
 
 def run_otcwl2014() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named otcwl2014.txt
     print("Starting DAWG build for otcwl2014.txt")
     # Set the English-United States locale
@@ -981,7 +980,7 @@ def run_otcwl2014() -> None:
 
 
 def run_sowpods() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named sowpods.txt,
     # the combined European & U.S. English word list
     print("Starting DAWG build for sowpods.txt")
@@ -999,13 +998,13 @@ def run_sowpods() -> None:
 
 
 def run_osps37() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named osps37.txt,
     # containing the Polish word list.
     print("Starting DAWG build for osps37.txt")
 
     def input_filter(line: str) -> str:
-        """ Return the first word in a line, lowercased """
+        """Return the first word in a line, lowercased"""
         a = line.split()
         return a[0].lower()
 
@@ -1024,7 +1023,7 @@ def run_osps37() -> None:
 
 
 def run_skrafl() -> None:
-    """ Build a DAWG from the files listed """
+    """Build a DAWG from the files listed"""
     # This creates a DAWG from the full database of Icelandic words in
     # 'Beygingarlýsing íslensks nútímamáls' (BIN), except abbreviations,
     # 'skammstafanir', and proper names, 'sérnöfn'.
@@ -1109,20 +1108,190 @@ def run_skrafl() -> None:
     print("DAWG builder run complete")
 
 
+def run_english_filter() -> None:
+
+    AML_VOCAB_SIZE = 20_000
+    MID_VOCAB_SIZE = 35_000
+
+    print(
+        f"English filtering in progress, vocab size of {AML_VOCAB_SIZE}/{MID_VOCAB_SIZE}"
+    )
+
+    from dawgdictionary import PackedDawgDictionary
+
+    set_locale("en_US")
+    otcwl2014 = PackedDawgDictionary(current_alphabet())
+    otcwl2014.load(os.path.join("resources", "otcwl2014.bin.dawg"))
+
+    set_locale("en_UK")
+    sowpods = PackedDawgDictionary(current_alphabet())
+    sowpods.load(os.path.join("resources", "sowpods.bin.dawg"))
+
+    source = os.path.join("resources", "english.freq.tsv")
+
+    class TaskDict(TypedDict):
+        vocab: List[str]
+        cnt: int
+        size: int
+        maxlen: int
+        d: PackedDawgDictionary
+        out: str
+
+    tasks = [
+        TaskDict(
+            vocab=[],
+            cnt=0,
+            size=AML_VOCAB_SIZE,
+            maxlen=12,
+            d=otcwl2014,
+            out="otcwl2014.aml.sorted.txt",
+        ),
+        TaskDict(
+            vocab=[],
+            cnt=0,
+            size=MID_VOCAB_SIZE,
+            maxlen=15,
+            d=otcwl2014,
+            out="otcwl2014.mid.sorted.txt",
+        ),
+        TaskDict(
+            vocab=[],
+            cnt=0,
+            size=AML_VOCAB_SIZE,
+            maxlen=12,
+            d=sowpods,
+            out="sowpods.aml.sorted.txt",
+        ),
+        TaskDict(
+            vocab=[],
+            cnt=0,
+            size=MID_VOCAB_SIZE,
+            maxlen=15,
+            d=sowpods,
+            out="sowpods.mid.sorted.txt",
+        ),
+    ]
+
+    cnt = 0
+    with open(source, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cnt += 1
+            a = line.split("\t")
+            if len(a) != 2:
+                continue
+            word = a[0]
+            if not (2 < len(word) < 16):
+                continue
+            # For each task, check whether the word should be added
+            for t in tasks:
+                if t["cnt"] < t["size"] and len(word) <= t["maxlen"] and word in t["d"]:
+                    t["vocab"].append(word)
+                    t["cnt"] += 1
+            if all(t["cnt"] >= t["size"] for t in tasks):
+                break
+    for t in tasks:
+        t["vocab"].sort()
+        with open(os.path.join("resources", t["out"]), "w", encoding="utf-8") as f:
+            for w in t["vocab"]:
+                f.write(f"{w}\n")
+    print(f"English filtering done after reading {cnt} lines from source")
+
+
+def run_english_robot_vocabs() -> None:
+    """Build DAWGS for English robot vocabularies"""
+    print("Starting DAWG build for English robot vocabularies")
+
+    set_locale("en_US")
+
+    print("Starting DAWG build for Sif/otcwl2014")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["otcwl2014.aml.sorted.txt"],  # Input files to be merged
+        "otcwl2014.aml",  # Output file - full name will be otcwl2014.aml.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    print("Starting DAWG build for Frigg/otcwl2014")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["otcwl2014.mid.sorted.txt"],  # Input files to be merged
+        "otcwl2014.mid",  # Output file - full name will be otcwl2014.mid.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    set_locale("en_UK")
+
+    print("Starting DAWG build for Sif/sowpods")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["sowpods.aml.sorted.txt"],  # Input files to be merged
+        "sowpods.aml",  # Output file - full name will be sowpods.aml.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    print("Starting DAWG build for Frigg/sowpods")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["sowpods.mid.sorted.txt"],  # Input files to be merged
+        "sowpods.mid",  # Output file - full name will be sowpods.mid.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
 if __name__ == "__main__":
 
-    # Build Polish OSPS37
-    run_osps37()
+    ALL_TASKS = [
+        run_skrafl,  # Icelandic
+        run_osps37,  # Polish
+        # run_twl06,
+        run_otcwl2014,  # en_US
+        run_sowpods,  # en_UK
+        run_english_filter,
+        run_english_robot_vocabs
+    ]
 
-    # Build OTCWL2014
-    run_otcwl2014()
+    def name(t: Callable[[], None]) -> str:
+        return t.__name__[4:]
 
-    # Build the Icelandic Netskrafl word database
-    run_skrafl()
+    alltasks = frozenset(name(t) for t in ALL_TASKS)
 
-    # Build Tournament Word List v6 (TWL06)
-    run_twl06()
+    def exit_with_help() -> None:
+        print("Please specify a task to perform or 'all'.")
+        print("The tasks are:", ", ".join(alltasks))
+        exit(1)
 
-    # Build SOWPODS
-    run_sowpods()
+    if len(sys.argv) < 2:
+        exit_with_help()
 
+    if len(sys.argv) == 2 and sys.argv[1] == "all":
+        tasks = ALL_TASKS
+    else:
+        args = frozenset(sys.argv[1:])
+        if not (args <= alltasks):
+            exit_with_help()
+        # Keep original task order
+        tasks = [t for t in ALL_TASKS if name(t) in args]
+        if not tasks:
+            exit_with_help()
+
+    for task in tasks:
+        task()

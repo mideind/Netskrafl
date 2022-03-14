@@ -677,7 +677,8 @@ class AutoPlayer:
 
     @staticmethod
     def for_locale(locale: str) -> AutoPlayerList:
-        """ Return the list of autoplayers that are available for the given locale """
+        """ Return the list of autoplayers that are available
+            for the given locale """
         apl = AUTOPLAYERS.get(locale)
         if apl is None:
             if "_" in locale:
@@ -691,7 +692,8 @@ class AutoPlayer:
 
     @staticmethod
     def for_level(locale: str, level: int) -> AutoPlayerTuple:
-        """ Return the list of autoplayers that are available for the given locale """
+        """ Return the list of autoplayers that are available
+            for the given strength level """
         apl = AutoPlayer.for_locale(locale)
         i = len(apl)
         while i > 0:
@@ -902,8 +904,7 @@ class AutoPlayer_Custom(AutoPlayer):
     def __init__(self, robot_level: int, state: State, **kwargs: Any) -> None:
         super().__init__(robot_level, state)
         # The number of moves to pick from
-        self.pick_from: int
-        self.pick_from = kwargs.get("pick_from", 0)
+        self.pick_from: int = kwargs.get("pick_from", 0)
         assert self.pick_from > 0
         # The custom vocabulary used by this robot, if any
         custom_vocab: Optional[str] = kwargs.get("vocab")
@@ -1148,6 +1149,36 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             dict(vocab="amlodi", pick_from=20),
         ),
     ],
+    "en_US": [
+        AutoPlayerTuple(
+            "Freyja",
+            "Always plays the highest-scoring move",
+            TOP_SCORE,
+            AutoPlayer,
+            {},
+        ),
+        AutoPlayerTuple(
+            "Idun",
+            "Picks one of 20 top-scoring moves",
+            MEDIUM,
+            AutoPlayer_Custom,
+            dict(pick_from=20),
+        ),
+        AutoPlayerTuple(
+            "Frigg",
+            "Picks one of 20 top-scoring moves",
+            COMMON,
+            AutoPlayer_Custom,
+            dict(vocab="otcwl2014.mid", pick_from=20),
+        ),
+        AutoPlayerTuple(
+            "Sif",
+            "Adaptive",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            dict(vocab="otcwl2014.aml", pick_from=10, adaptive=True),
+        ),
+    ],
     "en": [
         AutoPlayerTuple(
             "Freyja",
@@ -1158,24 +1189,24 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 10 top-scoring moves",
+            "Picks one of 20 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
-            dict(pick_from=10),
+            dict(pick_from=20),
         ),
         AutoPlayerTuple(
             "Frigg",
             "Picks one of 20 top-scoring moves",
             COMMON,
             AutoPlayer_Custom,
-            dict(pick_from=20),
+            dict(vocab="sowpods.mid", pick_from=20),
         ),
         AutoPlayerTuple(
             "Sif",
             "Adaptive",
             ADAPTIVE,
             AutoPlayer_Custom,
-            dict(pick_from=20, adaptive=True),
+            dict(vocab="sowpods.aml", pick_from=10, adaptive=True),
         ),
     ],
     "pl": [

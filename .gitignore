@@ -35,8 +35,7 @@ resources/explo-*.json
 
 # Unsorted BIN word lists
 resources/ordalistimax15.txt
-resources/ordalisti.full.sorted.txt
-resources/ordalisti.mid.sorted.txt
+resources/*.tsv
 
 # CSS files generated from Less
 static/skrafl-*.css
