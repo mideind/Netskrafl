@@ -205,12 +205,20 @@ class Wordbase:
 
     # Known dictionaries
     DAWGS = [
+        # Icelandic
         ("ordalisti", IcelandicAlphabet),
         ("amlodi", IcelandicAlphabet),
         ("midlungur", IcelandicAlphabet),
-        ("sowpods", EnglishAlphabet),
-        ("twl06", EnglishAlphabet),
+        # US English
         ("otcwl2014", EnglishAlphabet),
+        ("otcwl2014.aml", EnglishAlphabet),
+        ("otcwl2014.mid", EnglishAlphabet),
+        # ("twl06", EnglishAlphabet),
+        # UK & Rest-of-World English
+        ("sowpods", EnglishAlphabet),
+        ("sowpods.aml", EnglishAlphabet),
+        ("sowpods.mid", EnglishAlphabet),
+        # Polish
         ("osps37", PolishAlphabet),
     ]
 
@@ -268,18 +276,6 @@ class Wordbase:
             current vocabulary """
         dawg = Wordbase._dawg.get(vocabulary or current_vocabulary())
         return ([], []) if dawg is None else dawg.two_letter_words()
-
-    @staticmethod
-    def dawg_common() -> PackedDawgDictionary:
-        """ Return the common words DAWG object """
-        # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Amlóði'
-        return Wordbase._dawg["amlodi"]
-
-    @staticmethod
-    def dawg_medium() -> PackedDawgDictionary:
-        """ Return the medium level DAWG object """
-        # !!! FIXME: This is presently hardcoded for the Icelandic robot 'Miðlungur'
-        return Wordbase._dawg["midlungur"]
 
     @staticmethod
     def warmup() -> bool:

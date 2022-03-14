@@ -1166,14 +1166,14 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Picks one of 20 top-scoring moves",
+            "Plays one of 20 possible words from a medium vocabulary",
             COMMON,
             AutoPlayer_Custom,
             dict(vocab="otcwl2014.mid", pick_from=20),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Adaptive",
+            "Plays one of 10 possible common words",
             ADAPTIVE,
             AutoPlayer_Custom,
             dict(vocab="otcwl2014.aml", pick_from=10, adaptive=True),
