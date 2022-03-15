@@ -1563,7 +1563,8 @@ class StatsModel(Model["StatsModel"]):
     def newest_before(
         cls, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> StatsModel:
-        """Returns the newest available stats record for the user at or before the given time"""
+        """ Returns the newest available stats record for the user
+            at or before the given time """
         cache = cls._NB_CACHE
         key = (user_id, robot_level)
         if ts:

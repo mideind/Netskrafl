@@ -421,6 +421,7 @@ class Game:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
+                game.calc_elo_points()
                 game._store_locked()
 
         return game
@@ -795,7 +796,7 @@ class Game:
 
     def finalize_score(self) -> None:
         """ Adjust the score at the end of the game,
-            accounting for left tiles, overtime, etc."""
+            accounting for left tiles, overtime, etc. """
         assert self.is_over()
         # Final adjustments to score, including
         # rack leave and overtime, if any
@@ -814,6 +815,17 @@ class Game:
             after adjustments, if any """
         assert self.state is not None
         return self.state.final_scores()
+
+    def calc_elo_points(self) -> bool:
+        """ Calculate and store Elo points
+            for the game's players """
+        if not self.is_over() or self.state is None:
+            return False
+        # !!! TODO
+        # u0 = User.load_if_exists(self.player_id(0))
+        # u1 = User.load_if_exists(self.player_id(1))
+        # sc0, sc1 = self.state.scores()
+        return True
 
     def allows_best_moves(self) -> bool:
         """ Returns True if this game supports full review

@@ -576,6 +576,7 @@ def _process_move(
         if is_over:
             # If the game is now over, tally the final score
             game.finalize_score()
+            game.calc_elo_points()
 
         # Make sure the new game state is persistently recorded
         game.store()
