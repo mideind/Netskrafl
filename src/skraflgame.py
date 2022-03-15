@@ -819,7 +819,7 @@ class Game:
     def calc_elo_points(self) -> bool:
         """ Calculate and store Elo points
             for the game's players """
-        if not self.is_over() or self.state is None:
+        if self.state is None or not self.is_over():
             return False
         # !!! TODO
         # u0 = User.load_if_exists(self.player_id(0))

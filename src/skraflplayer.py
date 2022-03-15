@@ -914,6 +914,14 @@ class AutoPlayer_Custom(AutoPlayer):
             self.vocab = Wordbase.dawg_for_vocab(custom_vocab)
         # Flag indicating whether this robot adapts to the score difference in the game
         self.adaptive = kwargs.get("adaptive", False)
+        # Find out whether the robot presently has a higher score than the human
+        scores = state.scores()
+        p = state.player_to_move()
+        self.winning = scores[p] > scores[1 - p]
+        # Simple adaptive heuristic: If the robot is winning, pick from
+        # the 2 * N top scoring moves, instead of N
+        if self.adaptive and self.winning:
+            self.pick_from *= 2
 
     def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
@@ -1136,17 +1144,17 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Miðlungur",
-            "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
+            "Forðast allra sjaldgæfustu orðin; velur úr 15 stigahæstu leikjum",
             MEDIUM,
             AutoPlayer_Custom,
-            dict(vocab="midlungur", pick_from=10),
+            dict(vocab="midlungur", pick_from=15),
         ),
         AutoPlayerTuple(
             "Amlóði",
-            "Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
+            "Forðast sjaldgæf orð og velur úr 15 leikjum sem koma til álita",
             COMMON,
             AutoPlayer_Custom,
-            dict(vocab="amlodi", pick_from=20),
+            dict(vocab="amlodi", pick_from=15, adaptive=True),
         ),
     ],
     "en_US": [
@@ -1166,17 +1174,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Plays one of 20 possible words from a medium vocabulary",
+            "Plays one of 15 possible words from a medium vocabulary",
             COMMON,
             AutoPlayer_Custom,
-            dict(vocab="otcwl2014.mid", pick_from=20),
+            # Since Frigg is adaptive, she will pick from the top 30 (=2*15)
+            # moves if she has more points than the human opponent
+            dict(vocab="otcwl2014.mid", pick_from=15, adaptive=True),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Plays one of 10 possible common words",
+            "Plays one of 15 possible common words",
             ADAPTIVE,
             AutoPlayer_Custom,
-            dict(vocab="otcwl2014.aml", pick_from=10, adaptive=True),
+            # Since Sif is adaptive, she will pick from the top 30 (=2*15)
+            # moves if she has more points than the human opponent
+            dict(vocab="otcwl2014.aml", pick_from=15, adaptive=True),
         ),
     ],
     "en": [
@@ -1196,17 +1208,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Picks one of 20 top-scoring moves",
+            "Plays one of 15 possible words from a medium vocabulary",
             COMMON,
             AutoPlayer_Custom,
-            dict(vocab="sowpods.mid", pick_from=20),
+            # Since Frigg is adaptive, she will pick from the top 30 (=2*15)
+            # moves if she has more points than the human opponent
+            dict(vocab="sowpods.mid", pick_from=15, adaptive=True),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Adaptive",
+            "Plays one of 15 possible common words",
             ADAPTIVE,
             AutoPlayer_Custom,
-            dict(vocab="sowpods.aml", pick_from=10, adaptive=True),
+            # Since Sif is adaptive, she will pick from the top 30 (=2*15)
+            # moves if she has more points than the human opponent
+            dict(vocab="sowpods.aml", pick_from=15, adaptive=True),
         ),
     ],
     "pl": [
@@ -1226,10 +1242,10 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idek",
-            "Picks one of 20 top-scoring moves",
+            "Picks one of 15 top-scoring moves",
             COMMON,
             AutoPlayer_Custom,
-            dict(pick_from=20),
+            dict(pick_from=15, adaptive=True),
         ),
     ],
 }
