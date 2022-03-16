@@ -1160,7 +1160,7 @@ class ChallengeModel(Model["ChallengeModel"]):
                 k: Key[ChallengeModel] = Key(
                     UserModel, src_id, ChallengeModel, int(key)
                 )
-                cm: Optional[ChallengeModel] = k.get()  # type: ignore 
+                cm: Optional[ChallengeModel] = k.get()  # type: ignore
                 if cm is not None and cm.destuser == kd:
                     k.delete()
                     return (True, cm.prefs)
@@ -1563,8 +1563,8 @@ class StatsModel(Model["StatsModel"]):
     def newest_before(
         cls, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> StatsModel:
-        """ Returns the newest available stats record for the user
-            at or before the given time """
+        """Returns the newest available stats record for the user
+        at or before the given time"""
         cache = cls._NB_CACHE
         key = (user_id, robot_level)
         if ts:

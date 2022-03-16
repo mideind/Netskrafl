@@ -28,6 +28,7 @@ import jwt
 from flask.wrappers import Request
 from flask.globals import current_app
 
+from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as google_requests  # type: ignore
 from google.auth.exceptions import GoogleAuthError  # type: ignore
 
