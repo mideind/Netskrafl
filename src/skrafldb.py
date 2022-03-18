@@ -1348,7 +1348,7 @@ class StatsModel(Model["StatsModel"]):
         """Return a dictionary key that works for human users and robots"""
         d_user = d.get("user")
         if d_user is None:
-            return "robot-" + str(d.get("robot_level", 0))
+            return f"robot-{d.get('robot_level', 0)}"
         return d_user
 
     @staticmethod
@@ -1359,7 +1359,7 @@ class StatsModel(Model["StatsModel"]):
         return (k, 0)
 
     def fetch_user(self) -> Optional[UserModel]:
-        """Fetch the user associated with a StatsModel instance"""
+        """Fetch the UserModel instance associated with this StatsModel instance"""
         if (user := self.user) is None:
             # Probably a robot
             return None
@@ -1587,7 +1587,7 @@ class StatsModel(Model["StatsModel"]):
             )
             # Use a common query structure and index for humans and robots
             q = cls.query(
-                ndb.AND(StatsModel.user == k, StatsModel.robot_level == robot_level)  # type: ignore
+                ndb.AND(StatsModel.robot_level == robot_level, StatsModel.user == k)  # type: ignore
             )
             q = q.filter(StatsModel.timestamp <= ts).order(
                 -cast(int, StatsModel.timestamp)
@@ -1602,11 +1602,12 @@ class StatsModel(Model["StatsModel"]):
     @classmethod
     def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
         """Returns the newest available stats record for the user"""
+        # This does not work for robots
         if user_id is None:
             return None
         k: Key[UserModel] = Key(UserModel, user_id)
         # Use a common query structure and index for humans and robots
-        q = cls.query(ndb.AND(StatsModel.user == k, StatsModel.robot_level == 0)).order(  # type: ignore
+        q = cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k)).order(  # type: ignore
             -cast(int, StatsModel.timestamp)
         )
         sm = q.get()
@@ -1638,6 +1639,7 @@ class StatsModel(Model["StatsModel"]):
     @classmethod
     def delete_user(cls, user_id: str) -> None:
         """Delete all stats records for a particular user"""
+        # This is only used for testing, and never called for robots
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)

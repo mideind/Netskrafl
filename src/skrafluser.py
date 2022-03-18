@@ -71,6 +71,7 @@ class UserSummaryDict(TypedDict):
     fairplay: bool
     favorite: bool
     live: bool
+    new_board: bool
 
 
 class UserLoginDict(TypedDict, total=False):
@@ -409,6 +410,23 @@ class User:
         self.set_pref("fairplay", state)
 
     @staticmethod
+    def new_board_from_prefs(prefs: Optional[PrefsDict]) -> bool:
+        """ Returns the new_board preference of a user """
+        if prefs is None:
+            return False
+        fp = prefs.get("new_board")
+        return isinstance(fp, bool) and fp
+
+    def new_board(self) -> bool:
+        """ Returns True if the user prefers to play on the new board """
+        # False by default
+        return self.get_bool_pref("new_board", False)
+
+    def set_new_board(self, state: bool) -> None:
+        """ Sets the new_board state of a user to True or False """
+        self.set_pref("new_board", state)
+
+    @staticmethod
     def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """ Returns the new bag preference of a user """
         # Now always True
@@ -604,6 +622,7 @@ class User:
                         fairplay=u.fairplay(),
                         favorite=is_favorite or self.has_favorite(uid),
                         live=uid in online,
+                        new_board=u.new_board(),
                     )
                 )
         return result
@@ -755,7 +774,7 @@ class User:
         if email:
             um = UserModel.fetch_email(email)
             if um is not None:
-                # We probably have an older (GAE) user for this email:
+                # We probably have an older (Python2 GAE) user for this email:
                 # Associate the account with it from now on (but keep the old id)
                 um.account = account
                 if image and image != um.image:

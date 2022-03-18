@@ -30,12 +30,13 @@ ECHO Version is missing; enter deploy D[EFAULT] version
 GOTO :EOF
 :INDEXES
 ECHO Index update starting
-ECHO *** Currently disabled ***
+gcloud beta app deploy --project=explo-dev index.yaml
+gcloud datastore indexes cleanup index.yaml
 ECHO Index update completed
 GOTO :EOF
 :CRON
 ECHO Cron update starting
-ECHO *** Currently disabled ***
+gcloud beta app deploy --project=explo-dev cron.yaml
 ECHO Cron update completed
 GOTO :EOF
 :STATS

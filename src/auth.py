@@ -250,7 +250,8 @@ def oauth_fb(request: Request) -> ResponseType:
         account=account,
         locale=locale,
         new=uld.get("new") or False,
-        client_type="web",  # !!! TODO: Pass correct client_type from client
+        # !!! TODO: Send clientType from client
+        client_type=rq.get("clientType") or "web",
     )
     # Set the Flask session token
     set_session_userid(userid, idinfo)
@@ -316,7 +317,7 @@ def oauth_apple(request: Request) -> ResponseType:
     # Login or create the user in the Explo user model
     # !!! TODO: send locale from client in request
     locale = rq.get("locale") or DEFAULT_LOCALE
-    uld = User.login_by_account(account, name, email, image, locale=None)
+    uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Apple"
     # Emulate the OAuth idinfo
@@ -330,7 +331,7 @@ def oauth_apple(request: Request) -> ResponseType:
         account=account,
         locale=locale,
         new=uld.get("new") or False,
-        client_type="web",  # !!! TODO: Pass correct client_type from client
+        client_type="ios",  # Assume that Apple login is always from iOS
     )
     # Set the Flask session token
     set_session_userid(userid, idinfo)

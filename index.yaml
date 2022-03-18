@@ -93,12 +93,6 @@ indexes:
 - kind: StatsModel
   properties:
   - name: robot_level
-  - name: timestamp
-    direction: desc
-
-- kind: StatsModel
-  properties:
-  - name: robot_level
   - name: user
   - name: timestamp
     direction: desc
@@ -117,8 +111,8 @@ indexes:
 
 - kind: StatsModel
   properties:
-  - name: user
   - name: timestamp
+  - name: manual_elo
     direction: desc
 
 - kind: UserModel
