@@ -148,6 +148,8 @@ class User:
         self._timestamp = datetime.utcnow()
         # The user location is typically an ISO country code
         self._location: str = ""
+        # Number of completed games
+        self._games = 0
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -176,6 +178,7 @@ class User:
         self._has_image_blob = bool(um.image_blob)
         self._timestamp = um.timestamp
         self._location = um.location or ""
+        self._games = um.games or 0
 
     def update(self) -> None:
         """ Update the user's record in the database and in the memcache """
@@ -207,6 +210,7 @@ class User:
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
             um.location = self._location
+            um.games = self._games
             # Don't mess with the image data (the image URL or the BLOB),
             # those are set with separate APIs
             um.put()
@@ -260,6 +264,20 @@ class User:
     def manual_elo(self) -> int:
         """ Return the human-only, manual-game-only Elo points of the user """
         return self._manual_elo or User.DEFAULT_ELO
+
+    def set_elo(self, elo: int, human_elo: int, manual_elo: int) -> None:
+        """ Set the Elo points for the user """
+        self._elo = elo
+        self._human_elo = human_elo
+        self._manual_elo = manual_elo
+
+    def num_games(self) -> int:
+        """ Return the number of completed games for this user """
+        return self._games
+
+    def increment_games(self) -> None:
+        """ Add to the number of completed games for this user """
+        self._games += 1
 
     def is_inactive(self) -> bool:
         """ Return True if the user is marked as inactive """

@@ -143,6 +143,7 @@ class LiveGameDict(TypedDict):
     sc1: int
     prefs: PrefsDict
     tile_count: int
+    locale: str
 
 
 class FinishedGameDict(TypedDict):
@@ -160,6 +161,7 @@ class FinishedGameDict(TypedDict):
     human_elo_adj: Optional[int]
     manual_elo_adj: Optional[int]
     prefs: PrefsDict
+    locale: str
 
 
 class ZombieGameDict(TypedDict):
@@ -172,6 +174,7 @@ class ZombieGameDict(TypedDict):
     robot_level: int
     sc0: int
     sc1: int
+    locale: str
 
 
 class Query(Generic[_T_Model], ndb.Query):
@@ -539,6 +542,8 @@ class UserModel(Model["UserModel"]):
     best_word_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = Model.OptionalStr()
+    # Number of completed games
+    games = Model.Int(default=0, indexed=False)
 
     @classmethod
     def create(
@@ -565,6 +570,7 @@ class UserModel(Model["UserModel"]):
         user.ready_timed = False  # Not ready for timed games unless explicitly set
         user.locale = locale or DEFAULT_LOCALE
         user.last_login = datetime.utcnow()
+        user.games = 0
         return user.put().id()
 
     @classmethod
@@ -805,6 +811,10 @@ class GameModel(Model["GameModel"]):
     player0: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
     player1: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
 
+    # The locale in which the game takes place
+    locale = Model.OptionalStr()
+
+    # The racks
     rack0 = Model.Str()  # Must be indexed
     rack1 = Model.Str()  # Must be indexed
 
@@ -924,6 +934,8 @@ class GameModel(Model["GameModel"]):
                 elo_adj = gm.elo1_adj
                 human_elo_adj = gm.human_elo1_adj
                 manual_elo_adj = gm.manual_elo1_adj
+            prefs = gm.prefs or {}
+            locale = gm.locale or cast(str, prefs.get("locale")) or DEFAULT_LOCALE
             return FinishedGameDict(
                 uuid=game_uuid,
                 ts=gm.timestamp,
@@ -936,6 +948,7 @@ class GameModel(Model["GameModel"]):
                 human_elo_adj=human_elo_adj,
                 manual_elo_adj=manual_elo_adj,
                 prefs=gm.prefs,
+                locale=locale,
             )
 
         k: Key[UserModel] = Key(UserModel, user_id)
@@ -1007,6 +1020,9 @@ class GameModel(Model["GameModel"]):
                     if m.coord:
                         # Normal tile move
                         tc += len(m.tiles.replace("?", ""))
+            # Fetch the game's locale
+            prefs = gm.prefs or {}
+            locale = gm.locale or cast(str, prefs.get("locale")) or DEFAULT_LOCALE
             return LiveGameDict(
                 uuid=game_uuid,
                 ts=gm.ts_last_move or gm.timestamp,
@@ -1017,10 +1033,15 @@ class GameModel(Model["GameModel"]):
                 sc1=sc1,
                 prefs=gm.prefs,
                 tile_count=tc,
+                locale=locale,
             )
 
         for gm in q.fetch(max_len):
             yield game_callback(gm)
+
+    def manual_wordcheck(self) -> bool:
+        """ Returns true if the game preferences specify a manual wordcheck """
+        return self.prefs is not None and cast(bool, self.prefs.get("manual", False))
 
 
 class FavoriteModel(Model["FavoriteModel"]):
@@ -2051,6 +2072,8 @@ class ZombieModel(Model["ZombieModel"]):
                 assert u1 == user_id
                 opp = u0
                 sc1, sc0 = gm.score0, gm.score1
+            prefs = gm.prefs or {}
+            locale = gm.locale or cast(str, prefs.get("locale")) or DEFAULT_LOCALE
             return ZombieGameDict(
                 uuid=zm.game.id(),
                 ts=gm.ts_last_move or gm.timestamp,
@@ -2058,6 +2081,7 @@ class ZombieModel(Model["ZombieModel"]):
                 robot_level=gm.robot_level,
                 sc0=sc0,
                 sc1=sc1,
+                locale=locale,
             )
 
         for zm in list(q.fetch()):

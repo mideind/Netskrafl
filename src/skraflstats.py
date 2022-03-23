@@ -50,15 +50,7 @@ from skrafldb import (
 )
 from skrafluser import User
 from skraflgame import Game
-
-
-# The K constant used in the Elo calculation
-ELO_K: float = 20.0  # For established players
-BEGINNER_K: float = 32.0  # For beginning players
-
-# How many games a player plays as a provisional player
-# before becoming an established one
-ESTABLISHED_MARK: int = 10
+from skraflelo import ESTABLISHED_MARK, compute_elo
 
 
 def monthdelta(date: datetime, delta: int) -> datetime:
@@ -68,67 +60,6 @@ def monthdelta(date: datetime, delta: int) -> datetime:
         m = 12
     d = min(date.day, calendar.monthrange(y, m)[1])
     return date.replace(day=d, month=m, year=y)
-
-
-def _compute_elo(
-    o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int
-) -> Tuple[int, int]:
-    """ Computes the Elo points of the two users after their game """
-    # If no points scored, this is a null game having no effect
-    assert sc0 >= 0
-    assert sc1 >= 0
-    if sc0 + sc1 == 0:
-        return (0, 0)
-
-    # Current Elo ratings
-    elo0 = o_elo[0]
-    elo1 = o_elo[1]
-
-    # Calculate the quotients for each player using a logistic function.
-    # For instance, a player with 1_200 Elo points would get a Q of 10^3 = 1_000,
-    # a player with 800 Elo points would get Q = 10^2 = 100
-    # and a player with 1_600 Elo points would get Q = 10^4 = 10_000.
-    # This means that the 1_600 point player would have a 99% expected probability
-    # of winning a game against the 800 point one, and a 91% expected probability
-    # of winning a game against the 1_200 point player.
-    q0 = 10.0 ** (float(elo0) / 400)
-    q1 = 10.0 ** (float(elo1) / 400)
-    if q0 + q1 < 1.0:
-        # Strange corner case: give up
-        return (0, 0)
-
-    # Calculate the expected winning probability of each player
-    exp0 = q0 / (q0 + q1)
-    exp1 = q1 / (q0 + q1)
-
-    # Represent the actual outcome
-    if sc0 > sc1:
-        # Player 0 won
-        act0 = 1.0
-        act1 = 0.0
-    elif sc1 > sc0:
-        # Player 1 won
-        act1 = 1.0
-        act0 = 0.0
-    else:
-        # Draw
-        act0 = 0.5
-        act1 = 0.5
-
-    # Calculate the adjustments to be made (one positive, one negative)
-    adj0 = (act0 - exp0) * (ELO_K if est0 else BEGINNER_K)
-    adj1 = (act1 - exp1) * (ELO_K if est1 else BEGINNER_K)
-
-    # Calculate the final adjustment tuple
-    adj0, adj1 = int(round(adj0)), int(round(adj1))
-
-    # Make sure we don't adjust to a negative number
-    if adj0 + elo0 < 0:
-        adj0 = -elo0
-    if adj1 + elo1 < 0:
-        adj1 = -elo1
-
-    return (adj0, adj1)
 
 
 def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
@@ -296,7 +227,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             gm.elo0, gm.elo1 = urec0.elo, urec1.elo
 
             # Compute the Elo points of both players
-            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
+            adj = compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
 
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
@@ -315,7 +246,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 uelo0 = urec0.human_elo or User.DEFAULT_ELO
                 uelo1 = urec1.human_elo or User.DEFAULT_ELO
                 gm.human_elo0, gm.human_elo1 = uelo0, uelo1
-                adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                 # Adjust player 0
                 if est0 and not est1:
                     adj = (0, adj[1])
@@ -331,7 +262,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                     uelo0 = urec0.manual_elo or User.DEFAULT_ELO
                     uelo1 = urec1.manual_elo or User.DEFAULT_ELO
                     gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
-                    adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                     # Adjust player 0
                     if est0 and not est1:
                         adj = (0, adj[1])

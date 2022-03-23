@@ -77,6 +77,7 @@ from skraflmechanics import (
 )
 from skraflplayer import AutoPlayer
 from skrafluser import User
+from skraflelo import compute_elo_for_game
 
 
 # Type definitions
@@ -163,9 +164,11 @@ class Game:
 
     _lock = threading.Lock()
 
-    def __init__(self, uuid: Optional[str] = None) -> None:
+    def __init__(self, *, locale: str, uuid: Optional[str] = None) -> None:
         # Unique id of the game
         self.uuid = uuid
+        # The reference locale of the game
+        self._locale = locale
         # The start time of the game
         self.timestamp: Optional[datetime] = None
         # The user ids of the players (None if autoplayer)
@@ -226,7 +229,8 @@ class Game:
         prefs: Optional[PrefsDict] = None,
     ) -> Game:
         """ Start and initialize a new game """
-        game = cls(Unique.id())  # Assign a new unique id to the game
+        locale = Game.locale_from_prefs(prefs) or DEFAULT_LOCALE
+        game = cls(uuid=Unique.id(), locale=locale)  # Assign a new unique id to the game
         if randint(0, 1) == 1:
             # Randomize which player starts the game
             player0_id, player1_id = player1_id, player0_id
@@ -235,7 +239,7 @@ class Game:
         if game.player_id_to_move() is None:
             game.autoplayer_move()
         # Store the new game in persistent storage
-        game.store()
+        game.store(calc_elo_points=False)
         return game
 
     @classmethod
@@ -263,11 +267,11 @@ class Game:
                     )
             return None
 
-    def store(self) -> None:
+    def store(self, *, calc_elo_points: bool) -> None:
         """ Store the game state in persistent storage """
         # Avoid race conditions by securing the lock before storing
         with Game._lock:
-            self._store_locked()
+            self._store_locked(calc_elo_points=calc_elo_points)
 
     @classmethod
     def _load_locked(
@@ -286,7 +290,7 @@ class Game:
             return None
 
         # Initialize a new Game instance with a pre-existing uuid
-        game = cls(uuid)
+        game = cls(uuid=uuid, locale=gm.locale or "")
 
         # Set the timestamps
         game.timestamp = gm.timestamp
@@ -421,12 +425,11 @@ class Game:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
-                game.calc_elo_points()
-                game._store_locked()
+                game._store_locked(calc_elo_points=True)
 
         return game
 
-    def _store_locked(self) -> None:
+    def _store_locked(self, *, calc_elo_points: bool) -> None:
         """ Store the game after having acquired the object lock """
 
         assert self.uuid is not None
@@ -464,8 +467,6 @@ class Game:
             movelist.append(mm)
         gm.moves = movelist
         gm.tile_count = tile_count
-        # Update the database entity
-        gm.put()
 
         # Storing a game that is now over: update the player statistics as well
         if self.is_over():
@@ -485,20 +486,31 @@ class Game:
             pid_0, pid_1 = self.player_ids
             u0 = User.load_if_exists(pid_0) if pid_0 else None
             u1 = User.load_if_exists(pid_1) if pid_1 else None
+            mod_0, mod_1 = False, False
             if u0:
                 mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
                 if bw0:
                     mod_0 |= u0.adjust_best_word(bw0, best_word_score[0], self.uuid)
-                if mod_0:
-                    # Modified: store the updated user entity
-                    u0.update()
             if u1:
                 mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
                 if bw1:
                     mod_1 |= u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
-                if mod_1:
-                    # Modified: store the updated user entity
-                    u1.update()
+
+            if calc_elo_points:
+                # The game is over and we want to calculate new Elo points
+                # and other statistics for the game and the players
+                compute_elo_for_game(gm, u0, u1)
+                mod_0, mod_1 = True, True
+
+            if u0 and mod_0:
+                # Modified: store the updated user entity
+                u0.update()
+            if u1 and mod_1:
+                # Modified: store the updated user entity
+                u1.update()
+
+        # Update the database entity (GameModel) for the game
+        gm.put()
 
     def id(self) -> Optional[str]:
         """ Returns the unique id of this game """
@@ -626,23 +638,24 @@ class Game:
     @property
     def locale(self) -> str:
         """ Return the locale of this game """
-        return cast(str, self.get_pref("locale")) or DEFAULT_LOCALE
+        return self._locale or cast(str, self.get_pref("locale")) or DEFAULT_LOCALE
 
     def set_locale(self, locale: str) -> None:
         """ Set the locale of this game """
+        self._locale = locale
         return self.set_pref("locale", locale)
 
     def has_locale(self) -> bool:
         """ Return True if this game has an assigned locale """
-        return bool(self.get_pref("locale"))
+        return bool(self._locale) or bool(self.get_pref("locale"))
 
     @staticmethod
-    def tileset_from_prefs(prefs: Optional[PrefsDict]) -> Type[TileSet]:
+    def tileset_from_prefs(locale: str, prefs: Optional[PrefsDict]) -> Type[TileSet]:
         """ Returns the tileset specified by the given game preferences """
         if prefs is None:
             # Stay backwards compatible with old version
             return OldTileSet
-        lc = cast(str, prefs.get("locale", DEFAULT_LOCALE))
+        lc = locale or Game.locale_from_prefs(prefs)
         if lc == "is_IS":
             # For Icelandic, there are two bags:
             # select one by preference setting
@@ -654,7 +667,7 @@ class Game:
     @property
     def tileset(self):
         """ Return the tile set used in this game """
-        return Game.tileset_from_prefs(self._preferences)
+        return Game.tileset_from_prefs(self.locale, self._preferences)
 
     @property
     def two_letter_words(self) -> TwoLetterGroupTuple:

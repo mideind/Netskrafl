@@ -114,6 +114,7 @@ class GameListDict(TypedDict):
     """ The dictionary returned from gamelist() """
 
     uuid: str
+    locale: str
     url: str
     oppid: Optional[str]
     opp: str
@@ -143,6 +144,7 @@ class RecentListDict(TypedDict):
     """ The dictionary returned from recentlist() """
 
     uuid: str
+    locale: str
     url: str
     oppid: Optional[str]
     opp: str
@@ -576,10 +578,9 @@ def _process_move(
         if is_over:
             # If the game is now over, tally the final score
             game.finalize_score()
-            game.calc_elo_points()
 
         # Make sure the new game state is persistently recorded
-        game.store()
+        game.store(calc_elo_points=is_over)
 
         if force_resign:
             # Reverse the opponent and the player_index, since we want
@@ -906,6 +907,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             if u is None:
                 continue
             uuid = g["uuid"]
+            locale = g["locale"]
             nick = u.nickname()
             prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -916,6 +918,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             result.append(
                 GameListDict(
                     uuid=uuid,
+                    locale=locale,
                     # Mark zombie state
                     url=url_for("web.board", game=uuid, zombie="1"),
                     oppid=opp,
@@ -961,15 +964,15 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         uuid = g["uuid"]
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
+        locale = g["locale"]
         overdue = False
         prefs = g.get("prefs", None)
-        tileset = Game.tileset_from_prefs(prefs)
+        tileset = Game.tileset_from_prefs(locale, prefs)
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
         # Time per player in minutes
         timed = Game.get_duration_from_prefs(prefs)
-        locale = Game.locale_from_prefs(prefs)
         fullname = ""
         robot_level: int = 0
         if opp is None:
@@ -997,6 +1000,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         result.append(
             GameListDict(
                 uuid=uuid,
+                locale=locale,
                 url=url_for("web.board", game=uuid),
                 oppid=opp,
                 opp=nick,
@@ -1134,7 +1138,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
         uuid = g["uuid"]
 
         prefs = g["prefs"]
-        locale = Game.locale_from_prefs(prefs)
+        locale = g["locale"]
 
         opp: Optional[str] = g["opp"]
         if opp is None:
@@ -1167,6 +1171,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
         result.append(
             RecentListDict(
                 uuid=uuid,
+                locale=locale,
                 url=url_for("web.board", game=uuid),
                 oppid=opp,
                 opp=nick,
