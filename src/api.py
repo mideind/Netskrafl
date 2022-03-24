@@ -456,6 +456,12 @@ def oauth_fb() -> ResponseType:
     return auth.oauth_fb(request)
 
 
+@api.route("/oauth_apple", methods=["POST"])
+def oauth_apple() -> ResponseType:
+    """ Apple authentication """
+    return auth.oauth_apple(request)
+
+
 @api.route("/logout", methods=["POST"])
 def logout() -> ResponseType:
     """ Log the current user out """
