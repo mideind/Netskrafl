@@ -120,7 +120,7 @@ def _init_firebase_app():
 def _firebase_put(  # type: ignore
     path: str, message: Optional[str] = None
 ) -> Tuple[httplib2.Response, bytes]:
-    """ Writes data to Firebase.
+    """Writes data to Firebase.
     An HTTP PUT writes an entire object at the given database path. Updates to
     fields cannot be performed without overwriting the entire object
     Args:
@@ -131,7 +131,7 @@ def _firebase_put(  # type: ignore
 
 
 def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
-    """ Read the data at the given path.
+    """Read the data at the given path.
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
     The response will contain the data being retrieved.
@@ -142,7 +142,7 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
 
 
 def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
-    """ Update the data at the given path.
+    """Update the data at the given path.
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
     The response will contain the data being retrieved.
@@ -153,7 +153,7 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
 
 
 def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
-    """ Delete the data at the given path.
+    """Delete the data at the given path.
     An HTTP DELETE request allows deleting of the data at the given path.
     A successful request will be indicated by a 200 OK HTTP status code.
     Args:
@@ -163,11 +163,11 @@ def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
 
 
 def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
-    """ Updates data in Firebase. If a message object is provided, then it updates
-        the data at the given location (whose path is built as a concatenation
-        of the *args list) with the message using the PATCH http method.
-        If no message is provided, the data at this location is deleted
-        using the DELETE http method.
+    """Updates data in Firebase. If a message object is provided, then it updates
+    the data at the given location (whose path is built as a concatenation
+    of the *args list) with the message using the PATCH http method.
+    If no message is provided, the data at this location is deleted
+    using the DELETE http method.
     """
     try:
         if args:
@@ -189,11 +189,11 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
 
 
 def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
-    """ Updates data in Firebase. If a message object is provided, then it sets
-        the data at the given location (whose path is built as a concatenation
-        of the *args list) with the message using the PUT http method.
-        If no message is provided, the data at this location is deleted
-        using the DELETE http method.
+    """Updates data in Firebase. If a message object is provided, then it sets
+    the data at the given location (whose path is built as a concatenation
+    of the *args list) with the message using the PUT http method.
+    If no message is provided, the data at this location is deleted
+    using the DELETE http method.
     """
     try:
         if args:
@@ -236,10 +236,10 @@ def check_wait(user_id: str, opp_id: str) -> bool:
         return False
 
 
-def check_presence(user_id: str) -> bool:
+def check_presence(user_id: str, locale: str) -> bool:
     """ Check whether the given user has at least one active connection """
     try:
-        url = f"{FIREBASE_DB_URL}/connection/{user_id}.json"
+        url = f"{FIREBASE_DB_URL}/connection/{locale}/{user_id}.json"
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
@@ -250,11 +250,11 @@ def check_presence(user_id: str) -> bool:
         return False
 
 
-def get_connected_users() -> Set[str]:
+def get_connected_users(locale: str) -> Set[str]:
     """ Return a set of all presently connected users """
     with _USERLIST_LOCK:
         # Serialize access to the connected user list
-        url = f"{FIREBASE_DB_URL}/connection.json?shallow=true"
+        url = f"{FIREBASE_DB_URL}/connection/{locale}.json?shallow=true"
         try:
             response, body = _firebase_get(path=url)
         except httplib2.HttpLib2Error as e:
@@ -271,10 +271,10 @@ def get_connected_users() -> Set[str]:
 
 
 def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
-    """ Create a secure token for the given id.
-        This method is used to create secure custom JWT tokens to be passed to
-        clients. It takes a unique id that will be used by Firebase's
-        security rules to prevent unauthorized access. """
+    """Create a secure token for the given id.
+    This method is used to create secure custom JWT tokens to be passed to
+    clients. It takes a unique id that will be used by Firebase's
+    security rules to prevent unauthorized access."""
     # Make sure that the Firebase app instance has been initialized
     _init_firebase_app()
     attempts = 0
@@ -292,11 +292,11 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     assert False, "Unexpected fall out of loop in firebase.create_custom_token()"
 
 
-_online_cache: Optional[Set[str]] = None
-_online_ts: Optional[datetime] = None
+_online_cache: Dict[str, Set[str]] = dict()
+_online_ts: Dict[str, datetime] = dict()
 
 
-def online_users() -> Set[str]:
+def online_users(locale: str) -> Set[str]:
     """Obtain a set of online users, by their user ids"""
 
     global _online_cache, _online_ts
@@ -304,26 +304,31 @@ def online_users() -> Set[str]:
     # First, use a per-process in-memory cache, having a lifetime of 1 minute
     now = datetime.utcnow()
     if (
-        _online_ts is not None
-        and _online_cache is not None
-        and _online_ts > now - timedelta(minutes=_LIFETIME_MEMORY_CACHE)
+        locale in _online_ts
+        and locale in _online_cache
+        and _online_ts[locale] > now - timedelta(minutes=_LIFETIME_MEMORY_CACHE)
     ):
-        return _online_cache
+        return _online_cache[locale]
 
     # Second, use the distributed Redis cache, having a lifetime of 10 minutes
-    online: Union[Set[str], List[str]] = memcache.get("live", namespace="userlist")
+    online: Union[Set[str], List[str]] = memcache.get(
+        "live:" + locale, namespace="userlist"
+    )
 
     if not online:
         # Not found: do a Firebase query, which returns a set
-        online = get_connected_users()
+        online = get_connected_users(locale)
         # Store the result as a list in the Redis cache with a lifetime of 10 minutes
         memcache.set(
-            "live", list(online), time=_LIFETIME_REDIS_CACHE * 60, namespace="userlist"
+            "live:" + locale,
+            list(online),
+            time=_LIFETIME_REDIS_CACHE * 60,
+            namespace="userlist",
         )
     else:
         # Convert the cached list back into a set
         online = set(online)
 
-    _online_cache = online
-    _online_ts = now
+    _online_cache[locale] = online
+    _online_ts[locale] = now
     return online

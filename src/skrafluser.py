@@ -231,8 +231,8 @@ class User:
         return self._user_id
 
     def nickname(self) -> str:
-        """ Returns the human-readable nickname of a user,
-            or userid if a nick is not available """
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
         return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
@@ -563,8 +563,8 @@ class User:
         FavoriteModel.del_relation(sid, destuser_id)
 
     def has_favorite(self, destuser_id: Optional[str]) -> bool:
-        """ Returns True if there is an A-favors-B relation
-            between this user and the destuser """
+        """Returns True if there is an A-favors-B relation
+        between this user and the destuser"""
         if destuser_id is None:
             return False
         self._load_favorites()
@@ -607,8 +607,8 @@ class User:
         return True
 
     def has_blocked(self, destuser_id: str) -> bool:
-        """ Returns True if there is an A-favors-B relation between
-            this user and the destuser """
+        """Returns True if there is an A-favors-B relation between
+        this user and the destuser"""
         if not destuser_id:
             return False
         self._load_blocks()
@@ -620,7 +620,7 @@ class User:
     ) -> List[UserSummaryDict]:
         """ Return a list of summary data about a set of users """
         result: List[UserSummaryDict] = []
-        online = online_users()
+        online = online_users(self.locale)
         for uid in uids:
             u = User.load_if_exists(uid)
             if u is not None:
@@ -881,4 +881,3 @@ class User:
         if sm is not None:
             sm.populate_dict(reply)
         return reply
-

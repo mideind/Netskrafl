@@ -249,8 +249,8 @@ class ChatHistoryDict(TypedDict):
 
 class MoveNotifyDict(TypedDict):
 
-    """ A notification sent via Firebase to clients when a move has been
-        processed """
+    """A notification sent via Firebase to clients when a move has been
+    processed"""
 
     game: str
     timestamp: str
@@ -620,7 +620,7 @@ def _process_move(
             f"user/{opponent}/move": move_dict,
         }
 
-    if (player := game.player_id(1 - opponent_index)):
+    if (player := game.player_id(1 - opponent_index)) :
         # Add a move notification to the original player as well,
         # since she may have multiple clients and we want to update'em all
         msg_dict[f"user/{player}/move"] = move_dict
@@ -695,7 +695,9 @@ def _userlist(query: str, spec: str) -> UserList:
             ]
         )
 
-    online = firebase.online_users()
+    online = firebase.online_users(
+        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    )
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -894,8 +896,10 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         return result
 
     now = datetime.utcnow()
-    online = firebase.online_users()
     cuser = current_user()
+    online = firebase.online_users(
+        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    )
     u: Optional[User] = None
 
     # Place zombie games (recently finished games that this player
@@ -1129,7 +1133,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
 
-    online = firebase.online_users()
+    online = firebase.online_users(cuser.locale if cuser else DEFAULT_LOCALE)
 
     u: Optional[User] = None
 
@@ -1230,7 +1234,9 @@ def _challengelist() -> ChallengeList:
         assert c[0] is not None
         return _opponent_waiting(cuid, c[0])
 
-    online = firebase.online_users()
+    online = firebase.online_users(
+        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    )
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
     # List issued challenges
@@ -1780,7 +1786,11 @@ def onlinecheck() -> ResponseType:
     """ Check whether a particular user is online """
     rq = RequestData(request)
     if (user_id := rq.get("user")) :
-        online = firebase.check_presence(user_id)
+        user = User.load_if_exists(user_id)
+        if not user:
+            online = False
+        else:
+            online = firebase.check_presence(user_id, user.locale)
     else:
         online = False
     return jsonify(online=online)
@@ -1818,7 +1828,7 @@ def initwait() -> ResponseType:
         f"user/{uid}/wait/{opp}": True,
     }
     firebase.send_message(msg)
-    online = firebase.check_presence(uid)
+    online = firebase.check_presence(uid, user.locale)
     return jsonify(online=online, waiting=True)
 
 
@@ -1912,7 +1922,7 @@ def chatmsg() -> ResponseType:
             )
             for p in range(0, 2):
                 # Send a Firebase notification to /game/[gameid]/[userid]/chat
-                if (pid := game.player_id(p)):
+                if (pid := game.player_id(p)) :
                     send_msg[f"game/{uuid}/{pid}/chat"] = md
             if send_msg:
                 firebase.send_message(send_msg)

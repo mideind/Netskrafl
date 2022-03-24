@@ -30,6 +30,7 @@ var analytics: any;
 function loginFirebase(state: GlobalState, onLoginFunc?: () => void) {
   const token = state.firebaseToken;
   const userId = state.userId;
+  const locale = state.locale;
   // Log in to Firebase using the provided custom token
   // Register our login function to execute once the user login is done
   firebase.auth().onAuthStateChanged(
@@ -63,19 +64,19 @@ function loginFirebase(state: GlobalState, onLoginFunc?: () => void) {
   );
   firebase.auth()
     .signInWithCustomToken(token)
-    .then(() => initPresence(userId))
+    .then(() => initPresence(userId, locale))
     .catch((error: { code: string; message: string; }) => {
       console.log('Firebase login failed, error code: ', error.code);
       console.log('Error message: ', error.message);
     });
 }
 
-function initPresence(userId: string) {
+function initPresence(userId: string, locale: string) {
   // Ensure that this user connection is recorded in Firebase
   const db = firebase.database();
   const connectedRef = db.ref('.info/connected');
   // Create a unique connection entry for this user
-  const connectionPath = 'connection/' + userId;
+  const connectionPath = `connection/${locale}/${userId}`;
   const userRef = db.ref(connectionPath).push();
   connectedRef.on('value', (snapshot: any) => {
     if (snapshot.val()) {
