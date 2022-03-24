@@ -127,16 +127,14 @@ indexes:
 
 - kind: UserModel
   properties:
-#  - name: locale
+  - name: locale
   - name: human_elo
     direction: asc
   - name: highest_score
-#  - name: inactive
 
 - kind: UserModel
   properties:
-#  - name: locale
+  - name: locale
   - name: human_elo
     direction: desc
   - name: highest_score
-#  - name: inactive

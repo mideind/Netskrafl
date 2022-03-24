@@ -658,14 +658,12 @@ class UserModel(Model["UserModel"]):
         cls, q: Query[UserModel], locale: Optional[str]
     ) -> Query[UserModel]:
         """Filter the query by locale, if given, otherwise stay
-        with the is_IS default"""
-        # FIXME: To be modified once locale support is fully in place
-        return q
-        # if locale is None:
-        #     return q.filter(
-        #         ndb.OR(UserModel.locale == "is_IS", UserModel.locale == None)
-        #     )
-        # return q.filter(UserModel.locale == locale)
+        with the default"""
+        if locale is None:
+            return q.filter(
+                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
+            )
+        return q.filter(UserModel.locale == locale)
 
     @classmethod
     def list_prefix(
