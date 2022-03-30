@@ -13,4 +13,4 @@ google-cloud-ndb==1.10.3
 google-cloud-logging==2.4.0
 google-python-cloud-debugger==2.17; sys_platform == 'osx' or sys_platform == 'linux'
 Flask-Cors==3.0.10
-jwt
+PyJWT

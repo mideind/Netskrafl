@@ -16,6 +16,7 @@
 """
 
 from __future__ import annotations
+from functools import lru_cache
 
 from typing import Union, cast, Any, Optional, Dict
 
@@ -259,29 +260,39 @@ def oauth_fb(request: Request) -> ResponseType:
     return jsonify(dict(status="success", **uld))
 
 
-def oauth_apple(request: Request) -> ResponseType:
-    """Apple ID authentication"""
-
-    rq = RequestData(request)
-    token = rq.get("token", "")
-    if not token:
-        return jsonify({"status": "invalid", "msg": "Missing token"}), 401
-
+@lru_cache(maxsize=1)
+def _apple_client_secret(day: datetime) -> str:
+    """Return a cached Apple client secret. The secret is calculated
+    once per day and is valid for 180 days (6 months),
+    which is the maximum allowed."""
     headers: Dict[str, str] = {"kid": APPLE_KEY_ID}
-    now = datetime.utcnow()
     payload: Dict[str, Union[str, datetime]] = {
         "iss": APPLE_TEAM_ID,
-        "iat": now,
-        "exp": now + timedelta(days=180),
+        "iat": day,
+        "exp": day + timedelta(days=180),
         "aud": "https://appleid.apple.com",
         "sub": APPLE_CLIENT_ID,
     }
-    client_secret = jwt.encode(
+    return jwt.encode(
         payload,
         APPLE_PRIVATE_KEY,
         algorithm="ES256",
         headers=headers,
     ).decode("utf-8")
+
+
+def oauth_apple(request: Request) -> ResponseType:
+    """Apple ID token authentication"""
+
+    rq = RequestData(request)
+    token = rq.get("token", "")
+    if not token:
+        return jsonify({"status": "invalid", "msg": "Missing token"}), 401
+    # !!! TODO: send locale from client in request
+    locale = rq.get("locale") or DEFAULT_LOCALE
+
+    now = datetime.utcnow()
+    client_secret = _apple_client_secret(datetime(now.year, now.month, now.day))
 
     headers = {"content-type": "application/x-www-form-urlencoded"}
     data: Dict[str, str] = {
@@ -293,8 +304,11 @@ def oauth_apple(request: Request) -> ResponseType:
     }
 
     res = requests.post(APPLE_TOKEN_VALIDATION_URL, data=data, headers=headers)
-    response_dict = res.json()
-    id_token = response_dict.get("id_token", None)
+    if res.status_code == 200:
+        response_dict = res.json()
+        id_token = response_dict.get("id_token", None)
+    else:
+        id_token = None
 
     email: str = ""
     uid: str = ""
@@ -315,8 +329,6 @@ def oauth_apple(request: Request) -> ResponseType:
     # by prefixing them with 'apple:'
     account = "apple:" + uid
     # Login or create the user in the Explo user model
-    # !!! TODO: send locale from client in request
-    locale = rq.get("locale") or DEFAULT_LOCALE
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Apple"
