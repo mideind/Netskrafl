@@ -77,11 +77,9 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     APPLE_KEY_ID = j.get("APPLE_KEY_ID", "")
     APPLE_TEAM_ID = j.get("APPLE_TEAM_ID", "")
     APPLE_CLIENT_ID = j.get("APPLE_CLIENT_ID", "")
-    APPLE_PRIVATE_KEY = j.get("APPLE_PRIVATE_KEY", "")
     # assert APPLE_KEY_ID, "APPLE_KEY_ID environment variable not set"
     # assert APPLE_TEAM_ID, "APPLE_TEAM_ID environment variable not set"
     # assert APPLE_CLIENT_ID, "APPLE_CLIENT_ID environment variable not set"
-    # assert APPLE_PRIVATE_KEY, "APPLE_PRIVATE_KEY environment variable not set"
 
 
 # Valid token issuers for OAuth2 login

@@ -18,8 +18,10 @@
 from __future__ import annotations
 from functools import lru_cache
 
-from typing import Union, cast, Any, Optional, Dict
+from typing import Mapping, Union, cast, Any, Optional, Dict
 
+import os
+import logging
 from datetime import datetime, timedelta
 
 import requests
@@ -41,7 +43,6 @@ from config import (
     APPLE_KEY_ID,
     APPLE_TEAM_ID,
     APPLE_CLIENT_ID,
-    APPLE_PRIVATE_KEY,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
 
@@ -52,6 +53,8 @@ FACEBOOK_TOKEN_VALIDATION_URL = (
     "https://graph.facebook.com/debug_token?input_token={0}&access_token={1}|{2}"
 )
 
+# Apple private key file
+APPLE_PRIVATE_KEY_FILE = f"AuthKey_{APPLE_KEY_ID}.p8"
 APPLE_TOKEN_VALIDATION_URL = "https://appleid.apple.com/auth/token"
 
 # Establish a cached session to communicate with the Google API
@@ -261,6 +264,18 @@ def oauth_fb(request: Request) -> ResponseType:
 
 
 @lru_cache(maxsize=1)
+def _apple_private_key() -> bytes:
+    try:
+        with open(os.path.join("resources", APPLE_PRIVATE_KEY_FILE), "rb") as f:
+            return f.read()
+    except FileNotFoundError as e:
+        logging.warning(
+            f"Could not open Apple private key file {APPLE_PRIVATE_KEY_FILE}: {e}"
+        )
+        return b""
+
+
+@lru_cache(maxsize=1)
 def _apple_client_secret(day: datetime) -> str:
     """Return a cached Apple client secret. The secret is calculated
     once per day and is valid for 180 days (6 months),
@@ -273,12 +288,15 @@ def _apple_client_secret(day: datetime) -> str:
         "aud": "https://appleid.apple.com",
         "sub": APPLE_CLIENT_ID,
     }
-    return jwt.encode(
-        payload,
-        APPLE_PRIVATE_KEY,
-        algorithm="ES256",
-        headers=headers,
-    ).decode("utf-8")
+    return cast(
+        str,
+        jwt.encode(
+            payload,
+            _apple_private_key(),
+            algorithm="ES256",
+            headers=headers,
+        ),
+    )
 
 
 def oauth_apple(request: Request) -> ResponseType:
@@ -304,11 +322,19 @@ def oauth_apple(request: Request) -> ResponseType:
     }
 
     res = requests.post(APPLE_TOKEN_VALIDATION_URL, data=data, headers=headers)
+    # Store error response, if any
+    res_error: Optional[Mapping[str, str]] = None
+
     if res.status_code == 200:
         response_dict = res.json()
         id_token = response_dict.get("id_token", None)
     else:
         id_token = None
+        # Attempt to capture error information, if any
+        try:
+            res_error = res.json()
+        except:
+            pass
 
     email: str = ""
     uid: str = ""
@@ -323,7 +349,10 @@ def oauth_apple(request: Request) -> ResponseType:
         image = decoded.get("image", "")  # !!! TODO
 
     if not uid:
-        return jsonify({"status": "invalid", "msg": "Invalid token"}), 401
+        return (
+            jsonify({"status": "invalid", "msg": "Invalid token", "error": res_error}),
+            401,
+        )
 
     # Make sure that Apple account ids are different from Google/OAuth ones
     # by prefixing them with 'apple:'

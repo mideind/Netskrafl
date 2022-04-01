@@ -24,10 +24,11 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
-# Client secrets, including Google and Facebook authentication secrets
+# Client secrets, including Google, Facebook and Apple authentication secrets
 resources/client_secret*.txt
 resources/client_secret*.json
 resources/Explo Development-414318fa79b8.json
+resources/*.p8
 
 # Private GAE services key
 resources/netskrafl-*.json
