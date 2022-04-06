@@ -760,7 +760,7 @@ def _userlist(query: str, spec: str) -> UserList:
                             newbag=True,
                             live=favid in online,
                             ready=fu.is_ready(),
-                            ready_timed=(fu.is_ready_timed() and favid in online),
+                            ready_timed=fu.is_ready_timed(),
                             image=fu.image(),
                         )
                     )
@@ -790,7 +790,7 @@ def _userlist(query: str, spec: str) -> UserList:
                             live=uid in online,
                             newbag=True,
                             ready=au.is_ready(),
-                            ready_timed=(au.is_ready_timed() and uid in online),
+                            ready_timed=au.is_ready_timed(),
                             image=au.image(),
                         )
                     )
@@ -869,7 +869,7 @@ def _userlist(query: str, spec: str) -> UserList:
                     fairplay=User.fairplay_from_prefs(ud["prefs"]),
                     newbag=True,
                     ready=ud["ready"],
-                    ready_timed=(ud["ready_timed"] and uid in online),
+                    ready_timed=ud["ready_timed"],
                     image=ud["image"],
                 )
             )
@@ -881,13 +881,13 @@ def _userlist(query: str, spec: str) -> UserList:
     # 4) Users who are ready to accept challenges.
     # 5) All other users.
     # Each category is sorted by nickname, case-insensitive.
+    readiness: Callable[[UserListDict], int] = lambda x: (
+        4 if x["ready_timed"] else 2 if x["ready"] else 0
+    ) + (1 if x["live"] else 0)
     result.sort(
         key=lambda x: (
-            # First by online or general readiness status
-            0 if x["live"] or x["ready"] else 1,
-            # Then by readiness (note that if ready_timed is true,
-            # then live is true as well)
-            0 if x["ready_timed"] else 1 if x["ready"] else 2,
+            # First by readiness (most ready first)
+            -readiness(x),
             # Then by nickname
             current_alphabet().sortkey_nocase(x["nick"]),
         )
