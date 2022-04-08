@@ -18,11 +18,9 @@
 from __future__ import annotations
 from functools import lru_cache
 
-from typing import Mapping, Union, cast, Any, Optional, Dict
+from typing import cast, Any, Optional, Dict
 
-import os
-import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 import cachecontrol  # type: ignore
@@ -40,8 +38,6 @@ from config import (
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
-    APPLE_KEY_ID,
-    APPLE_TEAM_ID,
     APPLE_CLIENT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
@@ -53,9 +49,10 @@ FACEBOOK_TOKEN_VALIDATION_URL = (
     "https://graph.facebook.com/debug_token?input_token={0}&access_token={1}|{2}"
 )
 
-# Apple private key file
-APPLE_PRIVATE_KEY_FILE = f"AuthKey_{APPLE_KEY_ID}.p8"
+# Apple public key and JWT stuff
 APPLE_TOKEN_VALIDATION_URL = "https://appleid.apple.com/auth/token"
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_ISSUER = "https://appleid.apple.com"
 
 # Establish a cached session to communicate with the Google API
 session = requests.session()
@@ -264,95 +261,47 @@ def oauth_fb(request: Request) -> ResponseType:
 
 
 @lru_cache(maxsize=1)
-def _apple_private_key() -> bytes:
-    try:
-        with open(os.path.join("resources", APPLE_PRIVATE_KEY_FILE), "rb") as f:
-            return f.read()
-    except FileNotFoundError as e:
-        logging.warning(
-            f"Could not open Apple private key file {APPLE_PRIVATE_KEY_FILE}: {e}"
-        )
-        return b""
-
-
-@lru_cache(maxsize=1)
-def _apple_client_secret(day: datetime) -> str:
+def _apple_key_client(day: datetime) -> jwt.PyJWKClient:
     """Return a cached Apple client secret. The secret is calculated
     once per day and is valid for 180 days (6 months),
     which is the maximum allowed."""
-    headers: Dict[str, str] = {"kid": APPLE_KEY_ID}
-    payload: Dict[str, Union[str, datetime]] = {
-        "iss": APPLE_TEAM_ID,
-        "iat": day,
-        "exp": day + timedelta(days=180),
-        "aud": "https://appleid.apple.com",
-        "sub": APPLE_CLIENT_ID,
-    }
-    return cast(
-        str,
-        jwt.encode(
-            payload,
-            _apple_private_key(),
-            algorithm="ES256",
-            headers=headers,
-        ),
-    )
+    return jwt.PyJWKClient(APPLE_JWKS_URL)
 
 
 def oauth_apple(request: Request) -> ResponseType:
-    """Apple ID token authentication"""
+    """Apple ID token validation"""
 
     rq = RequestData(request)
     token = rq.get("token", "")
     if not token:
         return jsonify({"status": "invalid", "msg": "Missing token"}), 401
-    # !!! TODO: send locale from client in request
-    locale = rq.get("locale") or DEFAULT_LOCALE
-
     now = datetime.utcnow()
-    client_secret = _apple_client_secret(datetime(now.year, now.month, now.day))
+    today = datetime(now.year, now.month, now.day)
 
-    headers = {"content-type": "application/x-www-form-urlencoded"}
-    data: Dict[str, str] = {
-        "client_id": APPLE_CLIENT_ID,
-        "client_secret": client_secret,
-        "code": token,
-        "grant_type": "authorization_code",
-        "redirect_uri": "https://explowordgame.com/redirect",  # Dummy URL
-    }
-
-    res = requests.post(APPLE_TOKEN_VALIDATION_URL, data=data, headers=headers)
-    # Store error response, if any
-    res_error: Optional[Mapping[str, str]] = None
-
-    if res.status_code == 200:
-        response_dict = res.json()
-        id_token = response_dict.get("id_token", None)
-    else:
-        id_token = None
-        # Attempt to capture error information, if any
-        try:
-            res_error = res.json()
-        except:
-            pass
-
-    email: str = ""
-    uid: str = ""
-    name: str = ""
-    image: str = ""
-
-    if id_token:
-        decoded = jwt.decode(id_token, "", verify=False)
-        email = decoded.get("email", "")
-        uid = decoded.get("sub", "")
-        name = decoded.get("name", "")  # !!! TODO
-        image = decoded.get("image", "")  # !!! TODO
-
-    if not uid:
+    try:
+        signing_key = _apple_key_client(today).get_signing_key_from_jwt(token)
+        # The decode() function raises an exception if the token
+        # is incorrectly signed or does not contain the required claims
+        payload = jwt.decode(  # type: ignore
+            token,
+            cast(Any, signing_key).key,
+            algorithms=["RS256"],
+            issuer=APPLE_ISSUER,
+            audience=APPLE_CLIENT_ID,
+            options={"require": ["iss", "sub", "email"]},
+        )
+    except Exception as e:
         return (
-            jsonify({"status": "invalid", "msg": "Invalid token", "error": res_error}),
+            jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
             401,
         )
+
+    email: str = payload.get("email", "")
+    uid: str = payload.get("sub", "")
+    name: str = ""  # !!! Not available from Apple token
+    image: str = ""  # !!! Not available from Apple token
+    # !!! TODO: send locale from client in request
+    locale = rq.get("locale") or DEFAULT_LOCALE
 
     # Make sure that Apple account ids are different from Google/OAuth ones
     # by prefixing them with 'apple:'
