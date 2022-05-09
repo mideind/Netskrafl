@@ -35,7 +35,7 @@ import logging
 from flask import (
     Blueprint,
     render_template,
-    send_from_directory,
+    send_from_directory,  # type: ignore
     redirect,
     url_for,
     request,
