@@ -109,11 +109,19 @@ class TimeInfo(TypedDict):
 
 
 class EloDeltaDict(TypedDict, total=False):
-    """ Elo score deltas (differences) for both players """
+    """ Elo point deltas (differences) for both players """
 
     elo: Tuple[int, int]
     human: Tuple[int, int]
     manual: Tuple[int, int]
+
+
+class EloNowDict(TypedDict, total=False):
+    """ Current Elo points for the requesting player """
+
+    elo: int
+    human: int
+    manual: int
 
 
 class ClientStateDict(TypedDict, total=False):
@@ -125,6 +133,8 @@ class ClientStateDict(TypedDict, total=False):
     bag: str
     board_type: str  # 'explo' | 'standard'
     chall: bool
+    elo_delta: EloDeltaDict
+    elo_now: EloNowDict
     fairplay: bool
     fullname: List[str]
     last_chall: bool
@@ -147,7 +157,6 @@ class ClientStateDict(TypedDict, total=False):
     two_letter_words: TwoLetterGroupTuple
     userid: List[Optional[str]]
     xchg: bool
-    elo_delta: EloDeltaDict
 
 
 # The default nickname to display if a player has an unreadable nick
@@ -483,7 +492,9 @@ class Game:
         gm.tile_count = tile_count
 
         # Storing a game that is now over: update the player statistics as well
-        if self.is_over():
+        # (with the exception that if both scores are zero, the game is
+        # not included in the statistics)
+        if self.is_over() and (sc[0] > 0 or sc[1] > 0):
             # Accumulate best word statistics
             best_word: List[Optional[str]] = [None, None]
             best_word_score = [0, 0]
@@ -500,29 +511,30 @@ class Game:
             pid_0, pid_1 = self.player_ids
             u0 = User.load_if_exists(pid_0) if pid_0 else None
             u1 = User.load_if_exists(pid_1) if pid_1 else None
-            mod_0, mod_1 = False, False
             if u0:
-                mod_0 = u0.adjust_highest_score(sc[0], self.uuid)
+                u0.increment_games()
+                u0.adjust_highest_score(sc[0], self.uuid)
                 if bw0:
-                    mod_0 |= u0.adjust_best_word(bw0, best_word_score[0], self.uuid)
+                    u0.adjust_best_word(bw0, best_word_score[0], self.uuid)
             if u1:
-                mod_1 = u1.adjust_highest_score(sc[1], self.uuid)
+                u1.increment_games()
+                u1.adjust_highest_score(sc[1], self.uuid)
                 if bw1:
-                    mod_1 |= u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
+                    u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
 
-            if calc_elo_points:
-                # The game is over and we want to calculate new Elo points
-                # and other statistics for the game and the players
+            if calc_elo_points and u0 is not None and u1 is not None:
+                # This is a human game that is over.
+                # We want to calculate provisional Elo points for the game
+                # and store them with the game and the users.
                 compute_elo_for_game(gm, u0, u1)
-                mod_0, mod_1 = True, True
                 # Transfer the Elo deltas to the game object
                 self.set_elo_delta(gm)
 
-            if u0 and mod_0:
-                # Modified: store the updated user entity
+            if u0 is not None:
+                # Store the updated user entity
                 u0.update()
-            if u1 and mod_1:
-                # Modified: store the updated user entity
+            if u1 is not None:
+                # Store the updated user entity
                 u1.update()
 
         # Update the database entity (GameModel) for the game
@@ -1158,7 +1170,20 @@ class Game:
             reply["last_chall"] = False  # Not in last challenge state
             reply["bag"] = self.state.bag().contents()
             if self.elo_delta is not None:
+                # Include the Elo deltas for the players
                 reply["elo_delta"] = self.elo_delta
+                if player_index is not None:
+                    # Requesting a game state for a particular player:
+                    # load the user object
+                    user = User.load_if_exists(self.player_ids[player_index])
+                    if user is not None:
+                        # Include the player's current Elo rating
+                        elo_now = EloNowDict(
+                            elo=user.elo(),
+                            human=user.human_elo(),
+                            manual=user.manual_elo(),
+                        )
+                        reply["elo_now"] = elo_now
         else:
             # Game is still in progress
             assert player_index is not None

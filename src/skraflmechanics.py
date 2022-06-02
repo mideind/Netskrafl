@@ -56,8 +56,8 @@ class Cover(NamedTuple):
 
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
-# _DEBUG_MANUAL_WORDCHECK = True
-_DEBUG_MANUAL_WORDCHECK = False
+_DEBUG_SMALL_BAG = True
+# _DEBUG_SMALL_BAG = False
 
 # Board squares with word/letter scores
 # ' '=normal/single, '2'=double, '3'=triple score
@@ -374,8 +374,8 @@ class Bag:
             # Get a full bag from the requested tile set
             assert tileset is not None
             if debug:
-                # Small bag for debugging endgame cases
-                self._tiles = "aaábdðefgiiíklmnnóprrsstuuúæ"
+                # A random string of 14 common letters
+                self._tiles = "aaeilmnnorsstu"
             else:
                 self._tiles = tileset.full_bag()
             self._size = len(self._tiles)
@@ -569,10 +569,7 @@ class State:
             self._last_rack: Optional[str] = None
             # Initialize a fresh, full bag of tiles
             self._tileset = tileset
-            if manual_wordcheck and _DEBUG_MANUAL_WORDCHECK:
-                self._bag = Bag(tileset, debug=True)
-            else:
-                self._bag = Bag(tileset)
+            self._bag = Bag(tileset, debug=_DEBUG_SMALL_BAG)
             if drawtiles:
                 # Draw the racks from the bag
                 for rack in self._racks:

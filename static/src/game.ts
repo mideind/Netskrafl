@@ -442,8 +442,9 @@ class Game {
     if (!this.over && this.isTimed())
       // Ongoing timed game: start the clock
       this.startClock();
-    // Kick off loading of chat messages
-    this.loadMessages();
+    // Kick off loading of chat messages, if this is not a robot game
+    if (!this.autoplayer[0] && !this.autoplayer[1])
+      this.loadMessages();
   }
 
   init(srvGame: ServerGame) {

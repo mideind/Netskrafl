@@ -114,6 +114,10 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
         # The game is not over: something weird going on
         return
 
+    if u0 is None or u1 is None:
+        # Robot game: nothing to do
+        return
+
     s0 = gm.score0
     s1 = gm.score1
 
@@ -125,17 +129,8 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
         return
 
     # Number of games played; are the players established players?
-    est0, est1 = True, True
-    if u0 is not None:
-        u0.increment_games()
-        est0 = u0.num_games() > ESTABLISHED_MARK
-    if u1 is not None:
-        u1.increment_games()
-        est1 = u1.num_games() > ESTABLISHED_MARK
-
-    if u0 is None or u1 is None:
-        # Robot game: we're done
-        return
+    est0 = u0.num_games() > ESTABLISHED_MARK
+    est1 = u1.num_games() > ESTABLISHED_MARK
 
     # Manual (Pro Mode) game?
     manual_game = gm.manual_wordcheck()
@@ -202,7 +197,5 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
     # Update the user records
     # This is a provisional update, to be confirmed during
     # the authoritative calculation performed by a cron job
-    if u0 is not None:
-        u0.set_elo(urec0.elo, urec0.human_elo, urec0.manual_elo)
-    if u1 is not None:
-        u1.set_elo(urec1.elo, urec1.human_elo, urec1.manual_elo)
+    u0.set_elo(urec0.elo, urec0.human_elo, urec0.manual_elo)
+    u1.set_elo(urec1.elo, urec1.human_elo, urec1.manual_elo)
