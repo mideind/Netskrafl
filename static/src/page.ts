@@ -851,7 +851,9 @@ class View {
     const item = initialVnode.attrs.item;
     const model = this.model;
     const state = model.state;
-    const manual = state.hasPaid; // If paying user, allow manual challenges
+    // TODO
+    // const manual = state.hasPaid; // If paying user, allow manual challenges
+    const manual = state.plan !== ""; // If subscriber/friend, allow manual challenges
     const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
     let manualChallenge = false;
     return {
@@ -2157,7 +2159,8 @@ class View {
             [
               vwRightColumn(),
               m(this.BoardArea),
-              state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "", // Visible in fullscreen
+              // The bag is visible in fullscreen
+              state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "",
               game.askingForBlank ? m(this.BlankDialog) : ""
             ]
           )
@@ -3812,16 +3815,15 @@ class View {
         if (s.showChallenge) {
           // Show a button that allows the player to challenge the opponent's
           // last move
+          const disabled = (s.tilesPlaced || s.showingDialog) && !s.lastChallenge;
           r.push(
             this.makeButton(
-              "challenge", (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
+              "challenge", disabled,
               () => game.submitChallenge(),
               'Véfenging (röng kostar 10 stig)', glyph("ban-circle")
             )
           );
         }
-        if (s.showChallengeInfo)
-          r.push(m(".chall-info"));
         if (s.showRecall)
           // Show button to recall tiles from the board into the rack
           r.push(this.vwRecallButton());
@@ -3898,11 +3900,13 @@ class View {
           );
         }
         if (s.showPass) {
-          // Pass move
+          // Pass move: shown if no tiles have been placed
+          // and we're not showing a dialog, or if this is
+          // the last move by the opponent in a manual game
           r.push(
             this.makeButton(
               "submitpass",
-              (s.tilesPlaced && !s.lastChallenge) || s.showingDialog,
+              (s.tilesPlaced || s.showingDialog) && !s.lastChallenge,
               () => game.submitPass(),
               ts("Pass"), glyph("forward")
             )
@@ -4082,13 +4086,19 @@ class View {
   vwDialogs(game: Game) {
     // Show prompt dialogs below game board, if any
     let r: m.vnode[] = [];
-    if (game.showingDialog === null)
+    if (game.showingDialog === null && !game.last_chall)
       return r;
-    if (game.showingDialog == "chall-info")
+    // The dialogs below, specifically the challenge and pass
+    // dialogs, have priority over the last_chall dialog - since
+    // they can be invoked while the last_chall dialog is being
+    // displayed. We therefore allow them to cover the last_chall
+    // dialog. On mobile, both dialogs are displayed simultaneously.
+    if (game.last_chall)
       r.push(m(".chall-info", { style: { visibility: "visible" } },
         [
           glyph("info-sign"), nbsp(),
-          mt("span.pass-explain", "opponent_emptied_rack") // "Your opponent emptied the rack - you can challenge or pass"
+          // "Your opponent emptied the rack - you can challenge or pass"
+          mt("span.pass-explain", "opponent_emptied_rack")
         ]
       ));
     if (game.showingDialog == "resign")
@@ -4105,37 +4115,39 @@ class View {
           )
         ]
       ));
-    if (game.showingDialog == "pass")
-      r.push(m(".pass", { style: { visibility: "visible" } },
-        [
-          glyph("forward"), nbsp(), ts("Segja pass?"),
-          mt("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
-          nbsp(), m("span.mobile-break", m("br")),
-          m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [glyph("ok"), ts(" Já")]
-          ),
-          m("span.mobile-space"),
-          m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [glyph("remove"), ts(" Nei")]
-          )
-        ]
-      ));
-    if (game.showingDialog == "pass-last")
-      r.push(m(".pass-last", { style: { visibility: "visible" } },
-        [
-          glyph("forward"), nbsp(), ts("Segja pass?"),
-          mt("span.pass-explain", "Viðureign lýkur þar með"),
-          nbsp(),
-          m("span.mobile-break", m("br")),
-          m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
-            [glyph("ok"), ts(" Já")]
-          ),
-          m("span.mobile-space"),
-          m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
-            [glyph("remove"), ts(" Nei")]
-          )
-        ]
-      ));
+    if (game.showingDialog == "pass") {
+      if (game.last_chall)
+        r.push(m(".pass-last", { style: { visibility: "visible" } },
+          [
+            glyph("forward"), nbsp(), ts("Segja pass?"),
+            mt("span.pass-explain", "Viðureign lýkur þar með"),
+            nbsp(),
+            m("span.mobile-break", m("br")),
+            m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
+              [glyph("ok"), ts(" Já")]
+            ),
+            m("span.mobile-space"),
+            m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
+              [glyph("remove"), ts(" Nei")]
+            )
+          ]
+        ));
+      else
+        r.push(m(".pass", { style: { visibility: "visible" } },
+          [
+            glyph("forward"), nbsp(), ts("Segja pass?"),
+            mt("span.pass-explain", "2x3 pöss í röð ljúka viðureign"),
+            nbsp(), m("span.mobile-break", m("br")),
+            m("span.yesnobutton", { onclick: () => game.confirmPass(true) },
+              [glyph("ok"), ts(" Já")]
+            ),
+            m("span.mobile-space"),
+            m("span.yesnobutton", { onclick: () => game.confirmPass(false) },
+              [glyph("remove"), ts(" Nei")]
+            )
+          ]
+        ));
+    }
     if (game.showingDialog == "exchange")
       r.push(m(".exchange", { style: { visibility: "visible" } },
         [

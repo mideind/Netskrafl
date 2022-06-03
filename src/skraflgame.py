@@ -870,17 +870,6 @@ class Game:
         assert self.state is not None
         return self.state.final_scores()
 
-    def calc_elo_points(self) -> bool:
-        """Calculate and store Elo points
-        for the game's players"""
-        if self.state is None or not self.is_over():
-            return False
-        # !!! TODO
-        # u0 = User.load_if_exists(self.player_id(0))
-        # u1 = User.load_if_exists(self.player_id(1))
-        # sc0, sc1 = self.state.scores()
-        return True
-
     def allows_best_moves(self) -> bool:
         """Returns True if this game supports full review
         (has stored racks, etc.)"""
