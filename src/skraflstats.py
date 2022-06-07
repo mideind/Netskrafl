@@ -77,6 +77,8 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
             um.elo = sm.elo
             um.human_elo = sm.human_elo
             um.manual_elo = sm.manual_elo
+            # Make sure that the human game counts agree
+            um.games = sm.human_games
             um_list.append(um)
     # Update the statistics records
     StatsModel.put_multi(urecs.values())
@@ -115,10 +117,10 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
         .filter(GameModel.over == True)
     )
 
-    # The accumulated user statistics
+    # The accumulated cache of user statistics
     users: Dict[str, StatsModel] = dict()
 
-    def _init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
+    def init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
         """ Returns the newest StatsModel instance available for the given user """
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
@@ -165,11 +167,11 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             if k0 in users:
                 urec0 = users[k0]
             else:
-                users[k0] = urec0 = _init_stat(p0, rl if p0 is None else 0)
+                users[k0] = urec0 = init_stat(p0, rl if p0 is None else 0)
             if k1 in users:
                 urec1 = users[k1]
             else:
-                users[k1] = urec1 = _init_stat(p1, rl if p1 is None else 0)
+                users[k1] = urec1 = init_stat(p1, rl if p1 is None else 0)
 
             # Number of games played
             urec0.games += 1
@@ -243,6 +245,11 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
+                # Find out whether players are established or beginners,
+                # counting human games only
+                est0 = urec0.human_games > ESTABLISHED_MARK
+                est1 = urec1.human_games > ESTABLISHED_MARK
+
                 uelo0 = urec0.human_elo or User.DEFAULT_ELO
                 uelo1 = urec1.human_elo or User.DEFAULT_ELO
                 gm.human_elo0, gm.human_elo1 = uelo0, uelo1
