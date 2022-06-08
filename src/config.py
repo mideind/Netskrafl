@@ -85,3 +85,6 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
+# How many games a player plays as a provisional player
+# before becoming an established one
+ESTABLISHED_MARK: int = 10

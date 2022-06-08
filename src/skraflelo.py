@@ -22,6 +22,8 @@ from dataclasses import dataclass
 
 from typing import Optional, Tuple
 
+from config import ESTABLISHED_MARK
+
 from skrafldb import GameModel
 from skrafluser import User
 
@@ -38,11 +40,6 @@ class EloDict:
 # The K constant used in the Elo calculation
 ELO_K: float = 20.0  # For established players
 BEGINNER_K: float = 32.0  # For beginning players
-
-# How many games a player plays as a provisional player
-# before becoming an established one
-ESTABLISHED_MARK: int = 10
-
 
 def compute_elo(
     o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int

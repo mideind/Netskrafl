@@ -447,8 +447,11 @@ class Game:
                 # The game was not marked as over when we loaded it from
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
+                # (This also calls game.set_elo_delta())
                 game._store_locked(calc_elo_points=True)
-            game.set_elo_delta(gm)
+            else:
+                # Fill in the game.elo_delta dictionary
+                game.set_elo_delta(gm)
 
         return game
 

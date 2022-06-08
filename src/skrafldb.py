@@ -92,7 +92,7 @@ from datetime import datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_LOCALE
+from config import DEFAULT_LOCALE, ESTABLISHED_MARK
 from cache import memcache
 
 
@@ -1348,6 +1348,8 @@ class StatsModel(Model["StatsModel"]):
         d["manual_elo"] = self.manual_elo
         d["games"] = self.games
         d["human_games"] = self.human_games
+        # Is the player an established player?
+        d["established"] = self.human_games > ESTABLISHED_MARK
         d["manual_games"] = self.manual_games
         d["score"] = self.score
         d["human_score"] = self.human_score
