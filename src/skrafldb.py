@@ -542,7 +542,7 @@ class UserModel(Model["UserModel"]):
     best_word_score = Model.Int(default=0, indexed=True)
     # Note: indexing of string properties is mandatory
     best_word_game = Model.OptionalStr()
-    # Number of completed games
+    # Number of completed human games
     games = Model.Int(default=0, indexed=False)
 
     @classmethod

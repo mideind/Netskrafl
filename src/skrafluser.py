@@ -148,8 +148,9 @@ class User:
         self._timestamp = datetime.utcnow()
         # The user location is typically an ISO country code
         self._location: str = ""
-        # Number of completed games
-        self._games = 0
+        # Number of completed human games
+        # (used for on-the-fly Elo calculations at game end)
+        self._human_games = 0
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
@@ -178,7 +179,7 @@ class User:
         self._has_image_blob = bool(um.image_blob)
         self._timestamp = um.timestamp
         self._location = um.location or ""
-        self._games = um.games or 0
+        self._human_games = um.games or 0
 
     def update(self) -> None:
         """ Update the user's record in the database and in the memcache """
@@ -210,7 +211,7 @@ class User:
             um.best_word_score = self._best_word_score
             um.best_word_game = self._best_word_game
             um.location = self._location
-            um.games = self._games
+            um.games = self._human_games
             # Don't mess with the image data (the image URL or the BLOB),
             # those are set with separate APIs
             um.put()
@@ -271,13 +272,13 @@ class User:
         self._human_elo = human_elo
         self._manual_elo = manual_elo
 
-    def num_games(self) -> int:
-        """ Return the number of completed games for this user """
-        return self._games
+    def num_human_games(self) -> int:
+        """ Return the number of completed human games for this user """
+        return self._human_games
 
-    def increment_games(self) -> None:
-        """ Add to the number of completed games for this user """
-        self._games += 1
+    def increment_human_games(self) -> None:
+        """ Add to the number of completed human games for this user """
+        self._human_games += 1
 
     def is_inactive(self) -> bool:
         """ Return True if the user is marked as inactive """

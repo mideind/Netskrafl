@@ -125,9 +125,9 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
         # ignore such a game altogether in the statistics
         return
 
-    # Number of games played; are the players established players?
-    est0 = u0.num_games() > ESTABLISHED_MARK
-    est1 = u1.num_games() > ESTABLISHED_MARK
+    # Number of human games played; are the players established players?
+    est0 = u0.num_human_games() > ESTABLISHED_MARK
+    est1 = u1.num_human_games() > ESTABLISHED_MARK
 
     # Manual (Pro Mode) game?
     manual_game = gm.manual_wordcheck()

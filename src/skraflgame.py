@@ -102,14 +102,14 @@ BestMoveList = List[BestMove]
 
 class TimeInfo(TypedDict):
 
-    """ Information about the state of a timed game """
+    """Information about the state of a timed game"""
 
     duration: int
     elapsed: Tuple[float, float]
 
 
 class EloDeltaDict(TypedDict, total=False):
-    """ Elo point deltas (differences) for both players """
+    """Elo point deltas (differences) for both players"""
 
     elo: Tuple[int, int]
     human: Tuple[int, int]
@@ -117,7 +117,7 @@ class EloDeltaDict(TypedDict, total=False):
 
 
 class EloNowDict(TypedDict, total=False):
-    """ Current Elo points for the requesting player """
+    """Current Elo points for the requesting player"""
 
     elo: int
     human: int
@@ -126,7 +126,7 @@ class EloNowDict(TypedDict, total=False):
 
 class ClientStateDict(TypedDict, total=False):
 
-    """ The game state that is sent to the client """
+    """The game state that is sent to the client"""
 
     alphabet: str
     autoplayer: List[bool]
@@ -223,7 +223,7 @@ class Game:
         robot_level: int = 0,
         prefs: Optional[PrefsDict] = None,
     ) -> None:
-        """ Initialize a new, fresh game """
+        """Initialize a new, fresh game"""
         self._preferences = prefs
         # If either player0_id or player1_id is None,
         # this is a human-vs-autoplayer game
@@ -248,7 +248,7 @@ class Game:
         robot_level: int = 0,
         prefs: Optional[PrefsDict] = None,
     ) -> Game:
-        """ Start and initialize a new game """
+        """Start and initialize a new game"""
         locale = Game.locale_from_prefs(prefs) or DEFAULT_LOCALE
         game = cls(
             uuid=Unique.id(), locale=locale
@@ -290,7 +290,7 @@ class Game:
             return None
 
     def store(self, *, calc_elo_points: bool) -> None:
-        """ Store the game state in persistent storage """
+        """Store the game state in persistent storage"""
         # Avoid race conditions by securing the lock before storing
         with Game._lock:
             self._store_locked(calc_elo_points=calc_elo_points)
@@ -304,7 +304,7 @@ class Game:
         set_locale: bool = False,
         force_locale: str = "",
     ) -> Optional[Game]:
-        """ Load an existing game from cache or persistent storage under lock """
+        """Load an existing game from cache or persistent storage under lock"""
 
         gm = GameModel.fetch(uuid, use_cache)
         if gm is None:
@@ -456,7 +456,7 @@ class Game:
         return game
 
     def _store_locked(self, *, calc_elo_points: bool) -> None:
-        """ Store the game after having acquired the object lock """
+        """Store the game after having acquired the object lock"""
 
         assert self.uuid is not None
 
@@ -514,13 +514,17 @@ class Game:
             pid_0, pid_1 = self.player_ids
             u0 = User.load_if_exists(pid_0) if pid_0 else None
             u1 = User.load_if_exists(pid_1) if pid_1 else None
-            if u0:
-                u0.increment_games()
+            if u0 is not None:
+                if u1 is not None:
+                    # This is a two-human-player game
+                    u0.increment_human_games()
                 u0.adjust_highest_score(sc[0], self.uuid)
                 if bw0:
                     u0.adjust_best_word(bw0, best_word_score[0], self.uuid)
-            if u1:
-                u1.increment_games()
+            if u1 is not None:
+                if u0 is not None:
+                    # This is a two-human-player game
+                    u1.increment_human_games()
                 u1.adjust_highest_score(sc[1], self.uuid)
                 if bw1:
                     u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
@@ -544,16 +548,16 @@ class Game:
         gm.put()
 
     def id(self) -> Optional[str]:
-        """ Returns the unique id of this game """
+        """Returns the unique id of this game"""
         return self.uuid
 
     @property
     def preferences(self) -> Optional[PrefsDict]:
-        """ Return the game preferences, as a dictionary """
+        """Return the game preferences, as a dictionary"""
         return self._preferences
 
     def player_nickname(self, index: int) -> str:
-        """ Returns the nickname of a player """
+        """Returns the nickname of a player"""
         uid = self.player_ids[index]
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
@@ -575,7 +579,7 @@ class Game:
         return nick
 
     def player_fullname(self, index: int) -> str:
-        """ Returns the full name of a player """
+        """Returns the full name of a player"""
         uid = self.player_ids[index]
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
@@ -600,8 +604,8 @@ class Game:
         return name
 
     def set_elo_delta(self, gm: GameModel) -> None:
-        """ Collect Elo delta information from the GameModel.
-            Only finished games have this info. """
+        """Collect Elo delta information from the GameModel.
+        Only finished games have this info."""
         delta = EloDeltaDict()
         if gm.elo0_adj is not None and gm.elo1_adj is not None:
             delta["elo"] = (gm.elo0_adj, gm.elo1_adj)
@@ -613,13 +617,13 @@ class Game:
             self.elo_delta = delta
 
     def get_pref(self, pref: str) -> Union[None, str, int, bool]:
-        """ Retrieve a preference, or None if not found """
+        """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
         return self._preferences.get(pref, None)
 
     def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
-        """ Set a preference to a value """
+        """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
         self._preferences[pref] = value
@@ -631,71 +635,71 @@ class Game:
         return prefs is not None and cast(bool, prefs.get("fairplay", False))
 
     def get_fairplay(self) -> bool:
-        """ True if this was originated as a fairplay game """
+        """True if this was originated as a fairplay game"""
         return cast(bool, self.get_pref("fairplay")) or False
 
     def set_fairplay(self, state: bool) -> None:
-        """ Set the fairplay commitment of this game """
+        """Set the fairplay commitment of this game"""
         self.set_pref("fairplay", state)
 
     @staticmethod
     def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns true if the game preferences specify a new bag """
+        """Returns true if the game preferences specify a new bag"""
         return prefs is not None and cast(bool, prefs.get("newbag", False))
 
     def new_bag(self) -> bool:
-        """ True if this game uses the new bag """
+        """True if this game uses the new bag"""
         return cast(bool, self.get_pref("newbag")) or False
 
     def set_new_bag(self, state: bool) -> None:
-        """ Configures the game as using the new bag """
+        """Configures the game as using the new bag"""
         self.set_pref("newbag", state)
 
     @staticmethod
     def manual_wordcheck_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns true if the game preferences specify a manual wordcheck """
+        """Returns true if the game preferences specify a manual wordcheck"""
         return prefs is not None and cast(bool, prefs.get("manual", False))
 
     def manual_wordcheck(self) -> bool:
-        """ True if this game uses manual wordcheck """
+        """True if this game uses manual wordcheck"""
         if self.is_robot_game():
             # A robot game always uses automatic wordcheck
             return False
         return cast(bool, self.get_pref("manual")) or False
 
     def set_manual_wordcheck(self, state: bool) -> None:
-        """ Configures the game as using manual wordcheck """
+        """Configures the game as using manual wordcheck"""
         self.set_pref("manual", state)
 
     @property
     def board_type(self) -> str:
-        """ Return the type of the board used in this game """
+        """Return the type of the board used in this game"""
         return cast(str, self.get_pref("board_type")) or "standard"
 
     @staticmethod
     def locale_from_prefs(prefs: Optional[PrefsDict]) -> str:
-        """ Return the locale specified by the given game preferences """
+        """Return the locale specified by the given game preferences"""
         if prefs is None:
             return DEFAULT_LOCALE
         return cast(str, prefs.get("locale", DEFAULT_LOCALE))
 
     @property
     def locale(self) -> str:
-        """ Return the locale of this game """
+        """Return the locale of this game"""
         return self._locale or cast(str, self.get_pref("locale")) or DEFAULT_LOCALE
 
     def set_locale(self, locale: str) -> None:
-        """ Set the locale of this game """
+        """Set the locale of this game"""
         self._locale = locale
         return self.set_pref("locale", locale)
 
     def has_locale(self) -> bool:
-        """ Return True if this game has an assigned locale """
+        """Return True if this game has an assigned locale"""
         return bool(self._locale) or bool(self.get_pref("locale"))
 
     @staticmethod
     def tileset_from_prefs(locale: str, prefs: Optional[PrefsDict]) -> Type[TileSet]:
-        """ Returns the tileset specified by the given game preferences """
+        """Returns the tileset specified by the given game preferences"""
         if prefs is None:
             # Stay backwards compatible with old version
             return OldTileSet
@@ -710,7 +714,7 @@ class Game:
 
     @property
     def tileset(self):
-        """ Return the tile set used in this game """
+        """Return the tile set used in this game"""
         return Game.tileset_from_prefs(self.locale, self._preferences)
 
     @property
@@ -751,7 +755,7 @@ class Game:
 
     @staticmethod
     def get_duration_from_prefs(prefs: Optional[PrefsDict]) -> int:
-        """ Return the duration given a dict of game preferences """
+        """Return the duration given a dict of game preferences"""
         return 0 if prefs is None else cast(int, prefs.get("duration", 0))
 
     def get_duration(self) -> int:
@@ -788,11 +792,11 @@ class Game:
         return cast(Tuple[float, float], tuple(elapsed))
 
     def time_info(self) -> TimeInfo:
-        """ Returns a dict with timing information about this game """
+        """Returns a dict with timing information about this game"""
         return TimeInfo(duration=self.get_duration(), elapsed=self.get_elapsed())
 
     def overtime(self) -> Tuple[float, float]:
-        """ Return overtime for both players, in seconds """
+        """Return overtime for both players, in seconds"""
         overtime: List[float] = [0.0, 0.0]
         duration = self.get_duration() * 60.0  # In seconds
         if duration > 0.0:
@@ -820,7 +824,7 @@ class Game:
         return cast(Tuple[int, int], tuple(adjustment))
 
     def is_over(self) -> bool:
-        """ Return True if the game is over """
+        """Return True if the game is over"""
         if self._game_over:
             # Use the cached result if available and True
             return True
@@ -884,7 +888,7 @@ class Game:
         return self.is_over()
 
     def check_legality(self, move: MoveBase) -> Union[int, Tuple[int, str]]:
-        """ Check whether an incoming move from a client is legal and valid """
+        """Check whether an incoming move from a client is legal and valid"""
         assert self.state is not None
         return self.state.check_legality(move)
 
@@ -902,7 +906,7 @@ class Game:
         self.last_move = None  # No response move yet
 
     def autoplayer_move(self) -> None:
-        """ Generate an AutoPlayer move and register it """
+        """Generate an AutoPlayer move and register it"""
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
         assert self.state is not None
@@ -912,7 +916,7 @@ class Game:
         self.last_move = move  # Store a response move
 
     def response_move(self) -> None:
-        """ Generate a response to a challenge move and register it """
+        """Generate a response to a challenge move and register it"""
         move = ResponseMove()
         self.register_move(move)
         self.last_move = move  # Store the response move
@@ -932,7 +936,7 @@ class Game:
     def enum_tiles(
         self, state: Optional[State] = None
     ) -> Iterator[Tuple[str, str, str, int]]:
-        """ Enumerate all tiles on the board in a convenient form """
+        """Enumerate all tiles on the board in a convenient form"""
         if state is None:
             state = self.state
         assert state is not None
@@ -982,15 +986,15 @@ class Game:
         return self.state.display_bag(player_index)
 
     def num_moves(self) -> int:
-        """ Returns the number of moves in the game so far """
+        """Returns the number of moves in the game so far"""
         return len(self.moves)
 
     def is_erroneous(self) -> bool:
-        """ Return True if this game object is incorrectly serialized """
+        """Return True if this game object is incorrectly serialized"""
         return self._erroneous
 
     def player_to_move(self) -> int:
-        """ Returns the index (0 or 1) of the player whose move it is """
+        """Returns the index (0 or 1) of the player whose move it is"""
         assert self.state is not None
         return self.state.player_to_move()
 
@@ -1000,21 +1004,21 @@ class Game:
         return self.player_ids[self.player_to_move()]
 
     def player_id(self, player_index: int) -> Optional[str]:
-        """ Return the userid of the indicated player """
+        """Return the userid of the indicated player"""
         return self.player_ids[player_index]
 
     def my_turn(self, user_id: str) -> bool:
-        """ Return True if it is the indicated player's turn to move """
+        """Return True if it is the indicated player's turn to move"""
         if self.is_over():
             return False
         return self.player_id_to_move() == user_id
 
     def is_autoplayer(self, player_index: int) -> bool:
-        """ Return True if the player in question is an autoplayer """
+        """Return True if the player in question is an autoplayer"""
         return self.player_ids[player_index] is None
 
     def is_robot_game(self) -> bool:
-        """ Return True if one of the players is an autoplayer """
+        """Return True if one of the players is an autoplayer"""
         return self.is_autoplayer(0) or self.is_autoplayer(1)
 
     def player_index(self, user_id: str) -> Optional[int]:
@@ -1027,17 +1031,17 @@ class Game:
         return None
 
     def has_player(self, user_id: str) -> bool:
-        """ Return True if the indicated user is a player of this game """
+        """Return True if the indicated user is a player of this game"""
         return self.player_index(user_id) is not None
 
     def start_time(self) -> str:
-        """ Returns the timestamp of the game in a readable format """
+        """Returns the timestamp of the game in a readable format"""
         return (
             "" if self.timestamp is None else Alphabet.format_timestamp(self.timestamp)
         )
 
     def end_time(self) -> str:
-        """ Returns the time of the last move in a readable format """
+        """Returns the time of the last move in a readable format"""
         return (
             ""
             if self.ts_last_move is None
@@ -1107,13 +1111,13 @@ class Game:
         movelist.append((1 - lastplayer, ("", "OVER", 0)))
 
     def get_final_adjustments(self) -> List[MoveSummaryTuple]:
-        """ Get a fresh list of the final adjustments made to the game score """
+        """Get a fresh list of the final adjustments made to the game score"""
         movelist: List[MoveSummaryTuple] = []
         self._append_final_adjustments(movelist)
         return movelist
 
     def is_challengeable(self) -> bool:
-        """ Return True if the last move in the game is challengeable """
+        """Return True if the last move in the game is challengeable"""
         assert self.state is not None
         return self.state.is_challengeable()
 
@@ -1229,7 +1233,7 @@ class Game:
         return reply
 
     def bingoes(self) -> Tuple[List[Tuple[str, int]], List[Tuple[str, int]]]:
-        """ Returns a tuple of lists of bingoes for both players """
+        """Returns a tuple of lists of bingoes for both players"""
         # List all bingoes in the game
         assert self.state is not None
         bingoes = [
