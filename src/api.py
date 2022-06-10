@@ -1470,8 +1470,8 @@ def userstats() -> ResponseType:
 
     cid = current_user_id()
     rq = RequestData(request)
-    uid = rq.get("user", cid)  # Current user is implicit
-    user = User.load_if_exists(uid)
+    uid = rq.get("user", cid or "")  # Current user is implicit
+    user = User.load_if_exists(uid) if uid else None
 
     if user is None:
         return jsonify(result=Error.WRONG_USER)
@@ -1778,6 +1778,18 @@ def setuserpref() -> ResponseType:
         val = rq.get_bool(s, None)
         if val is not None and (is_mobile or not mobile_only):
             func(val)
+            update = True
+
+    # We allow the locale to be set as a user preference.
+    # Note that it cannot be read back as a preference!
+    if (lc := rq.get("locale", "")) :
+        # Do some rudimentary normalization and validation of the locale code
+        lc = lc.replace("-", "_")
+        a = lc.split("_")
+        # Locales have one or two parts, separated by an underscore,
+        # and each part is a two-letter code.
+        if 1 <= len(a) <= 2 and all(len(x) == 2 and x.isalpha() for x in a):
+            user.set_locale(lc)
             update = True
 
     if update:

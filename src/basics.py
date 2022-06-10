@@ -256,6 +256,14 @@ class RequestData:
                 else:
                     self.q = dict()
 
+    @overload
+    def get(self, key: str) -> Any:
+        ...
+
+    @overload
+    def get(self, key: str, default: T) -> T:
+        ...
+
     def get(self, key: str, default: Any = None) -> Any:
         """ Obtain an arbitrary data item from the request """
         return self.q.get(key, default)
