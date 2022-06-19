@@ -321,6 +321,7 @@ class UserForm:
         self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
         self.friend: bool = False
         self.has_paid: bool = False
+        self.chat_disabled: bool = False
         self.locale: str = current_lc()
         if usr:
             self.init_from_user(usr)
@@ -349,6 +350,7 @@ class UserForm:
             self.fanfare = "fanfare" in form
             self.beginner = "beginner" in form
             self.fairplay = "fairplay" in form
+            self.chat_disabled = "chat_disabled" in form
         except (TypeError, ValueError, KeyError):
             pass
 
@@ -376,6 +378,7 @@ class UserForm:
             self.fanfare = bool(d.get("fanfare", False))
             self.beginner = bool(d.get("beginner", False))
             self.fairplay = bool(d.get("fairplay", False))
+            self.chat_disabled = bool(d.get("chat_disabled", False))
         except (TypeError, ValueError, KeyError):
             pass
 
@@ -393,6 +396,7 @@ class UserForm:
         # Eventually, we will edit a plan identifier, not just a boolean
         self.friend = usr.plan() != ""
         self.has_paid = usr.has_paid()
+        self.chat_disabled = usr.chat_disabled()
         self.locale = usr.locale
         self.id = current_user_id() or ""
         self.image = usr.image()
@@ -434,6 +438,7 @@ class UserForm:
         usr.set_fanfare(self.fanfare)
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
+        usr.disable_chat(self.chat_disabled)
         usr.set_locale(self.locale)
         # usr.set_image(self.image)  # The user image cannot and must not be set like this
         usr.update()
@@ -1466,7 +1471,7 @@ def gamestats() -> ResponseType:
 @api.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userstats() -> ResponseType:
-    """ Calculate and return statistics on a given user """
+    """ Return the profile of a given user along with key statistics """
 
     cid = current_user_id()
     rq = RequestData(request)
@@ -1478,7 +1483,7 @@ def userstats() -> ResponseType:
 
     cuser = current_user()
     assert cuser is not None
-
+ 
     profile = user.profile()
 
     # Include info on whether this user is a favorite of the current user

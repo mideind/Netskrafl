@@ -533,7 +533,7 @@ class User:
         return self._chat_disabled
 
     def disable_chat(self, disabled: bool) -> None:
-        """ Sets the ready state of a user to True or False """
+        """ Sets the chat disabled state for a user to True or False """
         self._chat_disabled = disabled
 
     def _load_favorites(self) -> None:
