@@ -195,7 +195,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return f(*args, **kwargs)
 
     @overload
-    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:  # type: ignore
+    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:
         """ Special signature for a key-only fetch """
         ...
 
@@ -211,7 +211,9 @@ class Query(Generic[_T_Model], ndb.Query):
         ).fetch
         return f(*args, **kwargs)
 
-    def fetch_async(self, limit: Optional[int] = None, **kwargs: Any) -> Future[_T_Model]:  # type: ignore
+    def fetch_async(
+        self, limit: Optional[int] = None, **kwargs: Any
+    ) -> Future[_T_Model]:
         f: Callable[..., Future[_T_Model]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
 
@@ -224,7 +226,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return f(*args, **kwargs)
 
     @overload
-    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:  # type: ignore
+    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:
         """ Special signature for a key-only get """
         ...
 
@@ -232,7 +234,7 @@ class Query(Generic[_T_Model], ndb.Query):
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
         ...
 
-    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:  # type: ignore
+    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
         f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
         return f(*args, **kwargs)
 
@@ -240,7 +242,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:  # type: ignore
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:
         """ Special signature for key-only iteration """
         ...
 
@@ -248,7 +250,9 @@ class Query(Generic[_T_Model], ndb.Query):
     def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]:
         ...
 
-    def iter(self, *args: Any, **kwargs: Any) -> Union[Iterable[Key], Iterable[_T_Model]]:  # type: ignore
+    def iter(
+        self, *args: Any, **kwargs: Any
+    ) -> Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]:
         f: Callable[..., Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]] = cast(
             Any, super()
         ).iter
@@ -1179,7 +1183,7 @@ class ChallengeModel(Model["ChallengeModel"]):
                 k: Key[ChallengeModel] = Key(
                     UserModel, src_id, ChallengeModel, int(key)
                 )
-                cm: Optional[ChallengeModel] = k.get()  # type: ignore
+                cm: Optional[ChallengeModel] = k.get()
                 if cm is not None and cm.destuser == kd:
                     k.delete()
                     return (True, cm.prefs)
@@ -1720,7 +1724,7 @@ class RatingModel(Model["RatingModel"]):
     def get_or_create(cls, kind: str, rank: int) -> RatingModel:
         """Get an existing entity or create a new one if it doesn't exist"""
         k: Key[RatingModel] = Key(cls, kind + ":" + str(rank))
-        rm: Optional[RatingModel] = k.get()  # type: ignore
+        rm: Optional[RatingModel] = k.get()
         if rm is None:
             # Did not already exist in the database:
             # create a fresh instance
