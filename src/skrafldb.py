@@ -177,6 +177,16 @@ class ZombieGameDict(TypedDict):
     locale: str
 
 
+class ChatModelHistoryDict(TypedDict):
+
+    """ The dictionary returned from the ChatModel.chat_history() method """
+
+    user: str
+    ts: datetime
+    last_msg: str
+    unread: bool
+
+
 class Query(Generic[_T_Model], ndb.Query):
 
     """A type-safer wrapper around ndb.Query"""
@@ -1902,7 +1912,7 @@ class ChatModel(Model["ChatModel"]):
         cls,
         for_user: str,
         maxlen: int = 20,
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> Iterator[ChatModelHistoryDict]:
         """ Return the chat history for a user """
         CHUNK_SIZE = 50
 
@@ -1930,7 +1940,7 @@ class ChatModel(Model["ChatModel"]):
             cm_prev: Optional[ChatModel],
             opp: str,
             opp_prev: Optional[str],
-        ) -> Dict[str, Any]:
+        ) -> ChatModelHistoryDict:
             """ Create a chat history entry to be returned """
             nonlocal count
             nonlocal returned
@@ -1943,7 +1953,7 @@ class ChatModel(Model["ChatModel"]):
                 # if it is from the same conversation
                 last_msg = cm_prev.msg
             sender = cm.user.id()
-            return dict(
+            return ChatModelHistoryDict(
                 user=opp,
                 ts=cm.timestamp,
                 last_msg=last_msg,

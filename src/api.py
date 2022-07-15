@@ -245,6 +245,8 @@ class ChatHistoryDict(TypedDict):
     last_msg: str
     ts: str  # An ISO-formatted time stamp
     unread: bool
+    live: bool
+    fav: bool
 
 
 class MoveNotifyDict(TypedDict):
@@ -1986,17 +1988,20 @@ class UserCache:
     def __init__(self) -> None:
         self._cache: Dict[str, Optional[User]] = {}
 
+    def _load(self, user_id: str) -> Optional[User]:
+        if (u := self._cache.get(user_id)) is None:
+            u = User.load_if_exists(user_id)
+            if u is not None:
+                self._cache[user_id] = u
+        return u
+
     def full_name(self, user_id: str) -> str:
         """ Return the full name of a user """
-        if (u := self._cache.get(user_id)) is None:
-            u = self._cache[user_id] = User.load_if_exists(user_id)
-        return "" if u is None else u.full_name()
+        return "" if (u := self._load(user_id)) is None else u.full_name()
 
     def image(self, user_id: str) -> str:
         """ Return the image for a user """
-        if (u := self._cache.get(user_id)) is None:
-            u = self._cache[user_id] = User.load_if_exists(user_id)
-        return "" if u is None else u.image()
+        return "" if (u := self._load(user_id)) is None else u.image()
 
 
 @api.route("/chatload", methods=["POST"])
@@ -2083,14 +2088,22 @@ def chathistory() -> ResponseType:
     """Return the chat history, i.e. the set of recent,
     distinct chat conversations for the logged-in user"""
 
-    user_id = current_user_id()
+    user = current_user()
+    assert user is not None
+
+    user_id = user.id()
     if not user_id:
         # Unknown current user
         return jsonify(ok=False)
 
+    rq = RequestData(request)
+    # By default, return a history of 20 conversations
+    count = rq.get_int("count", 20)
+
+    online = firebase.online_users(user.locale or DEFAULT_LOCALE)
+    uc = UserCache()
     # The chat history is ordered in reverse timestamp
     # order, i.e. the newest entry comes first
-    uc = UserCache()
     history: List[ChatHistoryDict] = [
         ChatHistoryDict(
             user=(uid := cm["user"]),
@@ -2099,8 +2112,10 @@ def chathistory() -> ResponseType:
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
+            live=uid in online,
+            fav=user.has_favorite(uid),
         )
-        for cm in ChatModel.chat_history(user_id)
+        for cm in ChatModel.chat_history(user_id, maxlen=count)
     ]
 
     return jsonify(ok=True, history=history)
