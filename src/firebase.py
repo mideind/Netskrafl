@@ -268,6 +268,7 @@ def get_connected_users(locale: str) -> Set[str]:
         if not msg:
             return set()
         return set(msg.keys())
+    return set()  # Included to pacify Pylance
 
 
 def create_custom_token(uid: str, valid_minutes: int = 60) -> str:

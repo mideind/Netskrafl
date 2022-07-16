@@ -239,14 +239,16 @@ class ChatHistoryDict(TypedDict):
 
     """ A chat history entry as returned by the /chathistory endpoint """
 
-    user: str
-    name: str
+    user: str  # User id
+    name: str  # Full name
+    nick: str  # Nickname
     image: str
     last_msg: str
     ts: str  # An ISO-formatted time stamp
     unread: bool
     live: bool
     fav: bool
+    disabled: bool  # Chat disabled?
 
 
 class MoveNotifyDict(TypedDict):
@@ -563,6 +565,8 @@ def _process_move(
         # show the user a corresponding error message
         return jsonify(result=err, msg=msg)
 
+    opponent: Optional[str] = None
+
     # Serialize access to the following code section
     with autoplayer_lock:
 
@@ -669,10 +673,10 @@ def _userlist(query: str, spec: str) -> UserList:
 
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
 
     if query == "robots":
         # Return the list of available autoplayers for the user's locale
-        locale = "en" if cuser is None else cuser.locale
         aplist = AutoPlayer.for_locale(locale)
         for r in aplist:
             result.append(
@@ -708,9 +712,10 @@ def _userlist(query: str, spec: str) -> UserList:
             ]
         )
 
-    online = firebase.online_users(
-        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    )
+    # Note that we only consider online users in the same locale
+    # as the requesting user
+    online = firebase.online_users(locale)
+
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -746,6 +751,8 @@ def _userlist(query: str, spec: str) -> UserList:
 
     elif query == "fav":
         # Return favorites of the current user
+        # Note: this is currently not locale-constrained,
+        # which may well turn out to be a bug
         if cuid is not None:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
@@ -773,11 +780,12 @@ def _userlist(query: str, spec: str) -> UserList:
                     )
 
     elif query == "alike":
-        # Return users with similar Elo ratings
+        # Return users with similar Elo ratings, in the same locale
+        # as the requesting user
         if cuid is not None:
             assert cuser is not None
             ui = UserModel.list_similar_elo(
-                cuser.human_elo(), max_len=40, locale=current_lc()
+                cuser.human_elo(), max_len=40, locale=locale
             )
             ausers = User.load_multi(ui)
             for au in ausers:
@@ -803,7 +811,9 @@ def _userlist(query: str, spec: str) -> UserList:
                     )
 
     elif query == "ready_timed":
-        # Display users who are online and ready for a timed game
+        # Display users who are online and ready for a timed game.
+        # Note that the online list is already filtered by locale,
+        # so the result is also filtered by locale.
         if len(online) > MAX_ONLINE:
             iter_online = random.sample(list(online), MAX_ONLINE)
         else:
@@ -845,16 +855,15 @@ def _userlist(query: str, spec: str) -> UserList:
         else:
             # Limit the spec to 16 characters
             spec = spec[0:16]
-            lc = current_lc()
 
             # The "N:" prefix is a version header; the locale is also a cache key
-            cache_range = "5:" + spec.lower() + ":" + lc  # Case is not significant
+            cache_range = "5:" + spec.lower() + ":" + locale  # Case is not significant
 
             # Start by looking in the cache
             si = memcache.get(cache_range, namespace="userlist")
             if si is None:
                 # Not found: do an query, returning max 25 users
-                si = list(UserModel.list_prefix(spec, max_len=25, locale=lc))
+                si = list(UserModel.list_prefix(spec, max_len=25, locale=locale))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
@@ -1999,9 +2008,19 @@ class UserCache:
         """ Return the full name of a user """
         return "" if (u := self._load(user_id)) is None else u.full_name()
 
+    def nickname(self, user_id: str) -> str:
+        """ Return the nickname of a user """
+        return "" if (u := self._load(user_id)) is None else u.nickname()
+
     def image(self, user_id: str) -> str:
         """ Return the image for a user """
         return "" if (u := self._load(user_id)) is None else u.image()
+
+    def chat_disabled(self, user_id: str) -> bool:
+        """ Return True if the user has disabled chat """
+        if (u := self._load(user_id)) is None:
+            return True  # Chat is disabled by default
+        return u.chat_disabled()
 
 
 @api.route("/chatload", methods=["POST"])
@@ -2108,12 +2127,14 @@ def chathistory() -> ResponseType:
         ChatHistoryDict(
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
+            nick=uc.nickname(uid),
             image=uc.image(uid),
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
             live=uid in online,
             fav=user.has_favorite(uid),
+            disabled=uc.chat_disabled(uid)
         )
         for cm in ChatModel.chat_history(user_id, maxlen=count)
     ]
