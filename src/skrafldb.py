@@ -1912,9 +1912,9 @@ class ChatModel(Model["ChatModel"]):
         cls,
         for_user: str,
         maxlen: int = 20,
-    ) -> Iterator[ChatModelHistoryDict]:
+    ) -> Sequence[ChatModelHistoryDict]:
         """ Return the chat history for a user """
-        CHUNK_SIZE = 50
+        CHUNK_SIZE = maxlen * 2
 
         # Create two queries, on the user and recipient fields,
         # and interleave their results by timestamp
@@ -1927,47 +1927,53 @@ class ChatModel(Model["ChatModel"]):
         )
         # Count of unique counterparties that we have already returned
         count = 0
-        # Set of opponents (chat counterparties) that we have already returned
-        returned: Set[str] = set()
+        # Dictionary of counterparties that we've encountered so far
+        result: Dict[str, ChatModelHistoryDict] = dict()
 
         i1 = iter_q(q1, CHUNK_SIZE)
         i2 = iter_q(q2, CHUNK_SIZE)
         c1 = next(i1, None)
         c2 = next(i2, None)
 
-        def d(
-            cm: ChatModel,
-            cm_prev: Optional[ChatModel],
-            opp: str,
-            opp_prev: Optional[str],
-        ) -> ChatModelHistoryDict:
-            """ Create a chat history entry to be returned """
-            nonlocal count
-            nonlocal returned
-            count += 1
-            returned.add(opp)
-            last_msg = cm.msg
-            if not last_msg and cm_prev is not None and opp == opp_prev:
-                # The current message may be a read marker (empty string)
-                # so we return the previous message string in that case,
-                # if it is from the same conversation
-                last_msg = cm_prev.msg
-            sender = cm.user.id()
-            return ChatModelHistoryDict(
-                user=opp,
-                ts=cm.timestamp,
-                last_msg=last_msg,
-                # A chat message is unread if it was not originated by
-                # this user, and it is not an empty message (read marker)
-                # This function only sees the newest message in each thread,
-                # so a more fancy state check is not needed
-                unread=(sender != for_user) and cm.msg != "",
-            )
+        def consider(cm: ChatModel, counterparty: str) -> Literal[0, 1]:
+            """ Potentially add a new history entry for a message
+                exchanged with the given counterparty. Returns 1 if
+                a proper history entry was added, or 0 otherwise. """
+            nonlocal result
+            if (ch := result.get(counterparty)) is None:
+                # We have not seen this counterparty before:
+                # create a history entry for it, assuming the
+                # message is unread (for the time being)
+                result[counterparty] = ChatModelHistoryDict(
+                    user=counterparty,
+                    ts=cm.timestamp,
+                    last_msg=cm.msg,
+                    # Messages originated by this user
+                    # are never unread
+                    unread=cm.user.id() != for_user,
+                )
+                # If the message is empty, it is a read marker
+                # and we don't count it for now
+                return 1 if cm.msg else 0
+            # The counterparty was already in the result.
+            # In that case, we are only interested if the previously
+            # seen message was empty (=a read marker). If so, we
+            # replace it with the new message, if not also empty.
+            if not ch["last_msg"] and cm.msg:
+                # Upgradee the read marker to a 'proper' history entry
+                ch["last_msg"] = cm.msg
+                ch["ts"] = cm.timestamp
+                # There was a read marker, so we can set unread to False
+                ch["unread"] = False
+                # Now we can add this to the result count
+                return 1
+            # Already seen a proper message for this counterparty;
+            # no need to add this one
+            return 0
 
-        # We loop until both iterators are exhausted, or we have returned
-        # maxlen unique history entries
+        # We loop until both iterators are exhausted, or we have
+        # collected maxlen unique history entries
         while (c1 or c2) and (count < maxlen):
-            pick: int = 0
             if c1 and c2:
                 if c1.timestamp > c2.timestamp:
                     # The first iterator has a newer message than the second
@@ -1979,28 +1985,24 @@ class ChatModel(Model["ChatModel"]):
                 pick = 1
             elif c2:
                 pick = 2
-            if pick == 1:
-                # Pick a message where this user is the originator
-                assert c1 is not None
-                n1 = next(i1, None)
-                opp = c1.recipient
-                if opp and opp.id() not in returned:
-                    # Haven't returned this opponent/counterparty before: do it now
-                    yield d(c1, n1, opp.id(), n1 and n1.recipient and n1.recipient.id())
-                # Go to the previous, older message
-                c1 = n1
-            elif pick == 2:
-                # Pick a message where this user is the recipient
-                assert c2 is not None
-                n2 = next(i2, None)
-                opp = c2.user
-                if opp.id() not in returned:
-                    # Haven't returned this opponent/counterparty before: do it now
-                    yield d(c2, n2, opp.id(), n2 and n2.user.id())
-                # Go to the previous, older message
-                c2 = n2
             else:
                 assert False
+            if pick == 1:
+                assert c1 is not None
+                if c1.recipient is not None:
+                    count += consider(c1, c1.recipient.id())
+                c1 = next(i1, None)
+            elif pick == 2:
+                assert c2 is not None
+                count += consider(c2, c2.user.id())
+                c2 = next(i2, None)
+
+        # Compose a result list from all entries that actually
+        # have a message text
+        rlist = [r for r in result.values() if r["last_msg"]]
+        # Make sure that the newest entries occur first
+        rlist.sort(key=lambda r: r["ts"], reverse=True)
+        return rlist
 
     @classmethod
     def delete_for_user(cls, user_id: str) -> None:
