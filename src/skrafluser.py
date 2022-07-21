@@ -671,9 +671,11 @@ class User:
         # TBD: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
-    def find_challenge(self, srcuser_id: str) -> Tuple[bool, Optional[PrefsDict]]:
+    def find_challenge(
+        self, srcuser_id: str, *, key: Optional[str] = None
+    ) -> Tuple[bool, Optional[PrefsDict]]:
         """ Returns (found, prefs)"""
-        return ChallengeModel.find_relation(srcuser_id, self.id())
+        return ChallengeModel.find_relation(srcuser_id, self.id(), key)
 
     def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> None:
         """ Issue a challenge to the destuser """

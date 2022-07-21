@@ -1153,12 +1153,30 @@ class ChallengeModel(Model["ChallengeModel"]):
 
     @classmethod
     def find_relation(
-        cls, srcuser_id: Optional[str], destuser_id: Optional[str]
+        cls, srcuser_id: Optional[str], destuser_id: Optional[str], key: Optional[str]
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Return (found, prefs) where found is True if srcuser has challenged destuser"""
         if srcuser_id is None or destuser_id is None:
             # noinspection PyRedundantParentheses
             return (False, None)
+        if key:
+            # We have the key of a particular challenge: see if it exists and is valid
+            try:
+                k: Key[ChallengeModel] = Key(
+                    UserModel, srcuser_id, ChallengeModel, int(key)
+                )
+                cm: Optional[ChallengeModel] = k.get()
+                if (
+                    cm is not None
+                    and cm.destuser is not None
+                    and cm.destuser.id() == destuser_id
+                ):
+                    return (True, cm.prefs)
+            except ValueError:
+                # The key is probably not a valid integer
+                pass
+            return (False, None)
+        # Find the challenge by the (source user, destination user) key tuple
         ks: Key[UserModel] = Key(UserModel, srcuser_id)
         kd: Key[UserModel] = Key(UserModel, destuser_id)
         q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)

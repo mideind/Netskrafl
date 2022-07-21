@@ -563,6 +563,7 @@ def _process_move(
         # show the user a corresponding error message
         return jsonify(result=err, msg=msg)
 
+    opponent: Optional[str] = None
     # Serialize access to the following code section
     with autoplayer_lock:
 
@@ -1830,12 +1831,14 @@ def initwait() -> ResponseType:
 
     # Get the opponent id
     rq = RequestData(request)
-    opp = rq.get("opp")
+    opp: Optional[str] = rq.get("opp")
     if not opp or user is None or not (uid := user.id()):
         return jsonify(online=False, waiting=False)
 
-    # Find the challenge being accepted
-    found, prefs = user.find_challenge(opp)
+    # Find the challenge being accepted, optionally by explicit key
+    # but otherwise by the (source user, destination user) tuple
+    key: Optional[str] = rq.get("key")  # Can be omitted
+    found, prefs = user.find_challenge(opp, key=key)
     if not found or prefs is None or not int(prefs.get("duration", 0)) > 0:
         # No timed challenge existed between the users
         return jsonify(online=False, waiting=False)
