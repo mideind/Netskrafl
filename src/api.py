@@ -2291,13 +2291,15 @@ def loaduserprefs() -> ResponseType:
 @api.route("/saveuserprefs", methods=["POST"])
 @auth_required(ok=False)
 def saveuserprefs() -> ResponseType:
-    """ Fetch the preferences of the current user in JSON form """
+    """ Set the preferences of the current user, from a JSON dictionary """
 
     user = current_user()
     assert user is not None
-    j: Dict[str, str] = cast(Any, request).get_json(silent=True)
+    j: Optional[Dict[str, str]] = request.get_json(silent=True)
+    if j is None:
+        return jsonify(ok=False, err={"reason": "Unable to parse JSON"})
 
-    # Return the user preferences in JSON form
+    # Populate a UserForm object with the data from the JSON dictionary
     uf = UserForm()
     uf.init_from_dict(j)
     err = uf.validate()
