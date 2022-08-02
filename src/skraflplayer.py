@@ -684,6 +684,9 @@ class AutoPlayer:
             if "_" in locale:
                 # Lookup the major locale, i.e. "en" if "en_US"
                 apl = AUTOPLAYERS.get(locale.split("_")[0])
+            elif "-" in locale:
+                # Also allow a hyphen instead of an underscore
+                apl = AUTOPLAYERS.get(locale.split("-")[0])
             if apl is None:
                 # Fall back to English
                 apl = AUTOPLAYERS.get("en")
@@ -692,8 +695,9 @@ class AutoPlayer:
 
     @staticmethod
     def for_level(locale: str, level: int) -> AutoPlayerTuple:
-        """ Return the list of autoplayers that are available
-            for the given strength level """
+        """ Return the strongest autoplayer that is
+            at or below the given difficulty. Note that a higher
+            level number requests a weaker player. """
         apl = AutoPlayer.for_locale(locale)
         i = len(apl)
         while i > 0:
