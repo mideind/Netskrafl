@@ -55,7 +55,7 @@ _firebase_app_lock = threading.Lock()
 
 
 def _get_http() -> Optional[httplib2.Http]:
-    """ Provides an authorized HTTP object, one per thread """
+    """Provides an authorized HTTP object, one per thread"""
     http: Optional[httplib2.Http] = getattr(_tls, "_HTTP", None)
     if http is None:
         http = cast(Any, httplib2).Http(timeout=_TIMEOUT)
@@ -73,7 +73,7 @@ def _get_http() -> Optional[httplib2.Http]:
 
 
 def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
-    """ Attempt to post a Firebase request, with recovery on a ConnectionError """
+    """Attempt to post a Firebase request, with recovery on a ConnectionError"""
     MAX_ATTEMPTS = 2
     attempts = 0
     response: httplib2.Response
@@ -108,7 +108,7 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
 
 
 def _init_firebase_app():
-    """ Initialize a global Firebase app instance """
+    """Initialize a global Firebase app instance"""
     global _firebase_app
     with _firebase_app_lock:
         if _firebase_app is None:
@@ -215,29 +215,40 @@ def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
 
 
 def send_update(*args: str) -> bool:
-    """ Updates the path endpoint to contain the current UTC timestamp """
+    """Updates the path endpoint to contain the current UTC timestamp"""
     assert args, "Firebase path cannot be empty"
     endpoint = args[-1]
     value = {endpoint: datetime.utcnow().isoformat()}
     return send_message(value, *args[:-1])
 
 
-def check_wait(user_id: str, opp_id: str) -> bool:
-    """ Return True if the user user_id is waiting for the opponent opponent_id """
+def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
+    """Return True if the user user_id is waiting for the opponent opponent_id,
+    on the challenge key, if given."""
     try:
         url = f"{FIREBASE_DB_URL}/user/{user_id}/wait/{opp_id}.json"
         response, body = _firebase_get(path=url)
         if response["status"] != "200":
             return False
         msg = json.loads(body) if body else None
-        return msg is True  # Return False if msg is dict, None or False
+        if msg is True:
+            # The Firebase endpoint is set to True, meaning the user is waiting
+            return True
+        # Alternatively, the firebase endpoint may contain a key of the original challenge.
+        # However, if it also contains a game id, the game has already been started
+        # and the user is no longer waiting.
+        if key is not None and isinstance(msg, dict):
+            msg_dict = cast(Dict[str, str], msg)
+            if "game" not in msg_dict and key == msg_dict.get("key"):
+                return True
+        return False
     except httplib2.HttpLib2Error as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.check_wait()")
         return False
 
 
 def check_presence(user_id: str, locale: str) -> bool:
-    """ Check whether the given user has at least one active connection """
+    """Check whether the given user has at least one active connection"""
     try:
         url = f"{FIREBASE_DB_URL}/connection/{locale}/{user_id}.json"
         response, body = _firebase_get(path=url)
@@ -251,7 +262,7 @@ def check_presence(user_id: str, locale: str) -> bool:
 
 
 def get_connected_users(locale: str) -> Set[str]:
-    """ Return a set of all presently connected users """
+    """Return a set of all presently connected users"""
     with _USERLIST_LOCK:
         # Serialize access to the connected user list
         url = f"{FIREBASE_DB_URL}/connection/{locale}.json?shallow=true"

@@ -68,6 +68,7 @@ from typing import (
     Dict,
     Generic,
     Literal,
+    NamedTuple,
     Sequence,
     Set,
     Tuple,
@@ -103,17 +104,20 @@ _T_Model = TypeVar("_T_Model", bound="ndb.Model")
 
 PrefItem = Union[str, int, bool]
 PrefsDict = Dict[str, PrefItem]
-ChallengeTuple = Tuple[
-    Optional[str],  # Challenged user
-    Optional[PrefsDict],  # Parameters of the challenge
-    datetime,  # Timestamp of the challenge
-    str,  # Key of the ChallengeModel entity
-]
+ChallengeTuple = NamedTuple(
+    "ChallengeTuple",
+    [
+        ("opp", Optional[str]),  # Challenged user
+        ("prefs", Optional[PrefsDict]),  # Parameters of the challenge
+        ("ts", datetime),  # Timestamp of the challenge
+        ("key", str),  # Key of the ChallengeModel entity
+    ],
+)
 
 
 class StatsDict(TypedDict):
 
-    """ Summarized result from a StatsModel query """
+    """Summarized result from a StatsModel query"""
 
     user: Optional[str]
     robot_level: int
@@ -132,7 +136,7 @@ StatsResults = List[StatsDict]
 
 class LiveGameDict(TypedDict):
 
-    """ The dictionary returned from the iter_live_games() method """
+    """The dictionary returned from the iter_live_games() method"""
 
     uuid: str
     ts: datetime
@@ -148,7 +152,7 @@ class LiveGameDict(TypedDict):
 
 class FinishedGameDict(TypedDict):
 
-    """ The dictionary returned from the list_finished_games() method """
+    """The dictionary returned from the list_finished_games() method"""
 
     uuid: str
     ts: datetime
@@ -166,7 +170,7 @@ class FinishedGameDict(TypedDict):
 
 class ZombieGameDict(TypedDict):
 
-    """ The dictionary returned from the ZombieModel.list_games() method """
+    """The dictionary returned from the ZombieModel.list_games() method"""
 
     uuid: str
     ts: datetime
@@ -179,7 +183,7 @@ class ZombieGameDict(TypedDict):
 
 class ChatModelHistoryDict(TypedDict):
 
-    """ The dictionary returned from the ChatModel.chat_history() method """
+    """The dictionary returned from the ChatModel.chat_history() method"""
 
     user: str
     ts: datetime
@@ -206,7 +210,7 @@ class Query(Generic[_T_Model], ndb.Query):
 
     @overload
     def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:
-        """ Special signature for a key-only fetch """
+        """Special signature for a key-only fetch"""
         ...
 
     @overload
@@ -237,7 +241,7 @@ class Query(Generic[_T_Model], ndb.Query):
 
     @overload
     def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:
-        """ Special signature for a key-only get """
+        """Special signature for a key-only get"""
         ...
 
     @overload
@@ -253,7 +257,7 @@ class Query(Generic[_T_Model], ndb.Query):
 
     @overload
     def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:
-        """ Special signature for key-only iteration """
+        """Special signature for key-only iteration"""
         ...
 
     @overload
@@ -349,17 +353,17 @@ class Model(Generic[_T_Model], ndb.Model):
 
     @staticmethod
     def Text() -> str:
-        """ Nonindexed string """
+        """Nonindexed string"""
         return cast(str, ndb.TextProperty(required=True))
 
     @staticmethod
     def Blob() -> bytes:
-        """ Nonindexed byte string """
+        """Nonindexed byte string"""
         return cast(bytes, ndb.BlobProperty(required=True))
 
     @staticmethod
     def OptionalBlob(default: Optional[bytes] = None) -> Optional[bytes]:
-        """ Nonindexed byte string, optional """
+        """Nonindexed byte string, optional"""
         return cast(Optional[bytes], ndb.BlobProperty(required=False, default=default))
 
     @staticmethod
@@ -1052,7 +1056,7 @@ class GameModel(Model["GameModel"]):
             yield game_callback(gm)
 
     def manual_wordcheck(self) -> bool:
-        """ Returns true if the game preferences specify a manual wordcheck """
+        """Returns true if the game preferences specify a manual wordcheck"""
         return self.prefs is not None and cast(bool, self.prefs.get("manual", False))
 
 
@@ -1249,7 +1253,7 @@ class ChallengeModel(Model["ChallengeModel"]):
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """Map an issued challenge to a tuple of useful info"""
             id0: Optional[str] = None if cm.destuser is None else cm.destuser.id()
-            return (id0, cm.prefs, cm.timestamp, cm.key.id())
+            return ChallengeTuple(id0, cm.prefs, cm.timestamp, cm.key.id())
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
@@ -1270,7 +1274,7 @@ class ChallengeModel(Model["ChallengeModel"]):
             """Map a received challenge to a tuple of useful info"""
             p0 = cm.key.parent()
             id0: Optional[str] = None if p0 is None else p0.id()
-            return (id0, cm.prefs, cm.timestamp, cm.key.id())
+            return ChallengeTuple(id0, cm.prefs, cm.timestamp, cm.key.id())
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
@@ -1848,7 +1852,7 @@ class ChatModel(Model["ChatModel"]):
     msg = Model.Text()
 
     def get_recipient(self) -> Optional[str]:
-        """ Return the user id of the message recipient """
+        """Return the user id of the message recipient"""
         return None if self.recipient is None else self.recipient.id()
 
     @classmethod
@@ -1904,7 +1908,7 @@ class ChatModel(Model["ChatModel"]):
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
-        """ Adds a message to an in-game conversation """
+        """Adds a message to an in-game conversation"""
         channel = f"game:{game_uuid}"
         return cls.add_msg(channel, from_user, to_user, msg, timestamp)
 
@@ -1916,7 +1920,7 @@ class ChatModel(Model["ChatModel"]):
         msg: str,
         timestamp: Optional[datetime] = None,
     ) -> datetime:
-        """ Adds a message to a chat conversation between two users """
+        """Adds a message to a chat conversation between two users"""
         # By convention, the lower user id comes before
         # the higher one in the channel string
         if from_user < to_user:
@@ -1931,7 +1935,7 @@ class ChatModel(Model["ChatModel"]):
         for_user: str,
         maxlen: int = 20,
     ) -> Sequence[ChatModelHistoryDict]:
-        """ Return the chat history for a user """
+        """Return the chat history for a user"""
         CHUNK_SIZE = maxlen * 2
 
         # Create two queries, on the user and recipient fields,
@@ -1954,9 +1958,9 @@ class ChatModel(Model["ChatModel"]):
         c2 = next(i2, None)
 
         def consider(cm: ChatModel, counterparty: str) -> Literal[0, 1]:
-            """ Potentially add a new history entry for a message
-                exchanged with the given counterparty. Returns 1 if
-                a proper history entry was added, or 0 otherwise. """
+            """Potentially add a new history entry for a message
+            exchanged with the given counterparty. Returns 1 if
+            a proper history entry was added, or 0 otherwise."""
             nonlocal result
             if (ch := result.get(counterparty)) is None:
                 # We have not seen this counterparty before:
@@ -2024,7 +2028,7 @@ class ChatModel(Model["ChatModel"]):
 
     @classmethod
     def delete_for_user(cls, user_id: str) -> None:
-        """ Delete all ChatModel entries for a particular user """
+        """Delete all ChatModel entries for a particular user"""
         if not user_id:
             return
         user: Key[UserModel] = Key(UserModel, user_id)
@@ -2260,7 +2264,7 @@ class BlockModel(Model["BlockModel"]):
 
     @classmethod
     def is_blocking(cls, blocker_id: str, blocked_id: str) -> bool:
-        """ Return True if the user blocker_id has blocked blocked_id """
+        """Return True if the user blocker_id has blocked blocked_id"""
         blocker: Key[UserModel] = Key(UserModel, blocker_id)
         blocked: Key[UserModel] = Key(UserModel, blocked_id)
         q = cls.query(

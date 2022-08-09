@@ -111,7 +111,7 @@ UserPrefsType = Dict[str, Union[str, bool]]
 
 class GameListDict(TypedDict):
 
-    """ The dictionary returned from gamelist() """
+    """The dictionary returned from gamelist()"""
 
     uuid: str
     locale: str
@@ -141,7 +141,7 @@ GameList = List[GameListDict]
 
 class RecentListDict(TypedDict):
 
-    """ The dictionary returned from recentlist() """
+    """The dictionary returned from recentlist()"""
 
     uuid: str
     locale: str
@@ -171,7 +171,7 @@ RecentList = List[RecentListDict]
 
 class ChallengeListDict(TypedDict):
 
-    """ The dictionary returned from _challengelist() """
+    """The dictionary returned from _challengelist()"""
 
     key: str
     received: bool
@@ -193,7 +193,7 @@ ChallengeList = List[ChallengeListDict]
 
 class UserListDict(TypedDict):
 
-    """ The dictionary returned from _userlist() """
+    """The dictionary returned from _userlist()"""
 
     userid: str
     robot_level: int
@@ -216,7 +216,7 @@ UserList = List[UserListDict]
 
 class StatsSummaryDict(TypedDict):
 
-    """ A summary of statistics for a player at a given point in time """
+    """A summary of statistics for a player at a given point in time"""
 
     ts: str  # An ISO-formatted time stamp
     elo: int
@@ -226,7 +226,7 @@ class StatsSummaryDict(TypedDict):
 
 class ChatMessageDict(TypedDict):
 
-    """ A chat message as returned by the /chatload endpoint """
+    """A chat message as returned by the /chatload endpoint"""
 
     from_userid: str
     name: str
@@ -237,7 +237,7 @@ class ChatMessageDict(TypedDict):
 
 class ChatHistoryDict(TypedDict):
 
-    """ A chat history entry as returned by the /chathistory endpoint """
+    """A chat history entry as returned by the /chathistory endpoint"""
 
     user: str  # User id
     name: str  # Full name
@@ -305,7 +305,7 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
 
 class UserForm:
 
-    """ Encapsulates the data in the user preferences form """
+    """Encapsulates the data in the user preferences form"""
 
     def __init__(self, usr: Optional[User] = None) -> None:
         # We store the URL that the client will redirect to after
@@ -331,7 +331,7 @@ class UserForm:
             self.init_from_user(usr)
 
     def init_from_form(self, form: Dict[str, str]) -> None:
-        """ The form has been submitted after editing: retrieve the entered data """
+        """The form has been submitted after editing: retrieve the entered data"""
         try:
             self.nickname = form["nickname"].strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError, KeyError):
@@ -359,7 +359,7 @@ class UserForm:
             pass
 
     def init_from_dict(self, d: Dict[str, str]) -> None:
-        """ The form has been submitted after editing: retrieve the entered data """
+        """The form has been submitted after editing: retrieve the entered data"""
         try:
             self.nickname = d.get("nickname", "").strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError):
@@ -387,7 +387,7 @@ class UserForm:
             pass
 
     def init_from_user(self, usr: User) -> None:
-        """ Load the data to be edited upon initial display of the form """
+        """Load the data to be edited upon initial display of the form"""
         self.nickname = usr.nickname()
         self.full_name = usr.full_name()
         # Note that the email property of a User is fetched from the user
@@ -407,7 +407,7 @@ class UserForm:
 
     @staticmethod
     def error_msg(key: str) -> str:
-        """ Return a validation error message, in the appropriate language """
+        """Return a validation error message, in the appropriate language"""
         lang = current_language()
         if lang not in VALIDATION_ERRORS:
             # Default to English
@@ -432,7 +432,7 @@ class UserForm:
         return errors
 
     def store(self, usr: User) -> None:
-        """ Store validated form data back into the user entity """
+        """Store validated form data back into the user entity"""
         usr.set_nickname(self.nickname)
         usr.set_full_name(self.full_name)
         # Note that the User.set_email() call sets the email in the user preferences,
@@ -448,7 +448,7 @@ class UserForm:
         usr.update()
 
     def as_dict(self) -> UserPrefsType:
-        """ Return the user preferences as a dictionary """
+        """Return the user preferences as a dictionary"""
         return self.__dict__
 
 
@@ -461,19 +461,19 @@ def oauth2callback() -> ResponseType:
 
 @api.route("/oauth_fb", methods=["POST"])
 def oauth_fb() -> ResponseType:
-    """ Facebook authentication """
+    """Facebook authentication"""
     return auth.oauth_fb(request)
 
 
 @api.route("/oauth_apple", methods=["POST"])
 def oauth_apple() -> ResponseType:
-    """ Apple authentication """
+    """Apple authentication"""
     return auth.oauth_apple(request)
 
 
 @api.route("/logout", methods=["POST"])
 def logout() -> ResponseType:
-    """ Log the current user out """
+    """Log the current user out"""
     clear_session_userid()
     return jsonify({"status": "success"})
 
@@ -481,7 +481,7 @@ def logout() -> ResponseType:
 @api.route("/firebase_token", methods=["POST"])
 @auth_required(ok=False)
 def firebase_token() -> ResponseType:
-    """ Obtain a custom Firebase token for the current logged-in user """
+    """Obtain a custom Firebase token for the current logged-in user"""
     cuid = current_user_id()
     if not cuid:
         return jsonify(ok=False)
@@ -637,7 +637,7 @@ def _process_move(
             f"user/{opponent}/move": move_dict,
         }
 
-    if (player := game.player_id(1 - opponent_index)) :
+    if player := game.player_id(1 - opponent_index):
         # Add a move notification to the original player as well,
         # since she may have multiple clients and we want to update'em all
         msg_dict[f"user/{player}/move"] = move_dict
@@ -652,7 +652,7 @@ def _process_move(
 def fetch_users(
     ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
 ) -> Dict[str, User]:
-    """ Return a dictionary of users found in the ulist """
+    """Return a dictionary of users found in the ulist"""
     # Make a set of user ids by applying the uid_func
     # to ulist entries (!= None)
     uids: Set[str] = set(uid for u in ulist if (uid := (u is not None) and uid_func(u)))
@@ -663,12 +663,12 @@ def fetch_users(
 
 
 def _userlist(query: str, spec: str) -> UserList:
-    """ Return a list of users matching the filter criteria """
+    """Return a list of users matching the filter criteria"""
 
     result: UserList = []
 
     def elo_str(elo: Union[None, int, str]) -> str:
-        """ Return a string representation of an Elo score, or a hyphen if none """
+        """Return a string representation of an Elo score, or a hyphen if none"""
         return str(elo) if elo else "-"
 
     cuser = current_user()
@@ -912,7 +912,7 @@ def _userlist(query: str, spec: str) -> UserList:
 
 
 def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
-    """ Return a list of active and zombie games for the current user """
+    """Return a list of active and zombie games for the current user"""
     result: GameList = []
     if not cuid:
         return result
@@ -1056,7 +1056,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
 
 def _rating(kind: str) -> List[Dict[str, Any]]:
-    """ Return a list of Elo ratings of the given kind ('all' or 'human') """
+    """Return a list of Elo ratings of the given kind ('all' or 'human')"""
     result: List[Dict[str, Any]] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
@@ -1225,13 +1225,13 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     return result
 
 
-def _opponent_waiting(user_id: str, opp_id: str) -> bool:
-    """ Return True if the given opponent is waiting on this user's challenge """
-    return firebase.check_wait(opp_id, user_id)
+def _opponent_waiting(user_id: str, opp_id: str, *, key: Optional[str]) -> bool:
+    """Return True if the given opponent is waiting on this user's challenge"""
+    return firebase.check_wait(opp_id, user_id, key)
 
 
 def _challengelist() -> ChallengeList:
-    """ Return a list of challenges issued or received by the current user """
+    """Return a list of challenges issued or received by the current user"""
 
     result: ChallengeList = []
     cuser = current_user()
@@ -1240,7 +1240,7 @@ def _challengelist() -> ChallengeList:
     assert cuid is not None
 
     def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
-        """ Return True if the challenge is for a timed game """
+        """Return True if the challenge is for a timed game"""
         if prefs is None:
             return False
         return int(prefs.get("duration", 0)) > 0
@@ -1248,13 +1248,13 @@ def _challengelist() -> ChallengeList:
     def opp_ready(c: ChallengeTuple):
         """Returns True if this is a timed challenge
         and the opponent is ready to play"""
-        if not is_timed(c[1]):
+        if not is_timed(c.prefs):
             return False
         # Timed challenge: see if there is a Firebase path indicating
         # that the opponent is waiting for this user
         assert cuid is not None
-        assert c[0] is not None
-        return _opponent_waiting(cuid, c[0])
+        assert c.opp is not None
+        return _opponent_waiting(cuid, c.opp, key=c.key)
 
     online = firebase.online_users(
         cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
@@ -1267,20 +1267,20 @@ def _challengelist() -> ChallengeList:
     opponents = fetch_users(received + issued, lambda c: c[0])
     # List the received challenges
     for c in received:
-        if not (oppid := c[0]):
+        if not (oppid := c.opp):
             continue
         if (u := opponents.get(oppid)) is None:  # User id
             continue
         nick = u.nickname()
         result.append(
             ChallengeListDict(
-                key=c[3],  # ChallengeModel entity key
+                key=c.key,  # ChallengeModel entity key
                 received=True,
                 userid=oppid,
                 opp=nick,
                 fullname=u.full_name(),
-                prefs=c[1],
-                ts=Alphabet.format_timestamp_short(c[2]),
+                prefs=c.prefs,
+                ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=False,
                 live=oppid in online,
                 image=u.image(),
@@ -1291,20 +1291,20 @@ def _challengelist() -> ChallengeList:
         )
     # List the issued challenges
     for c in issued:
-        if not (oppid := c[0]):
+        if not (oppid := c.opp):
             continue
         if (u := opponents.get(oppid)) is None:  # User id
             continue
         nick = u.nickname()
         result.append(
             ChallengeListDict(
-                key=c[3],  # ChallengeModel entity key
+                key=c.key,  # ChallengeModel entity key
                 received=False,
                 userid=oppid,
                 opp=nick,
                 fullname=u.full_name(),
-                prefs=c[1],
-                ts=Alphabet.format_timestamp_short(c[2]),
+                prefs=c.prefs,
+                ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=opp_ready(c),
                 live=oppid in online,
                 image=u.image(),
@@ -1319,7 +1319,7 @@ def _challengelist() -> ChallengeList:
 @api.route("/submitmove", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def submitmove() -> ResponseType:
-    """ Handle a move that is being submitted from the client """
+    """Handle a move that is being submitted from the client"""
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
     movelist = rq.get_list("moves")
@@ -1365,7 +1365,7 @@ def submitmove() -> ResponseType:
 @api.route("/gamestate", methods=["POST"])
 @auth_required(ok=False)
 def gamestate() -> ResponseType:
-    """ Returns the current state of a game """
+    """Returns the current state of a game"""
 
     rq = RequestData(request)
     uuid = rq.get("game")
@@ -1396,7 +1396,7 @@ def gamestate() -> ResponseType:
 @api.route("/forceresign", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def forceresign() -> ResponseType:
-    """ Forces a tardy user to resign, if the game is overdue """
+    """Forces a tardy user to resign, if the game is overdue"""
 
     user_id = current_user_id()
     rq = RequestData(request)
@@ -1427,7 +1427,7 @@ def forceresign() -> ResponseType:
 @api.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
 def wordcheck() -> ResponseType:
-    """ Check a list of words for validity """
+    """Check a list of words for validity"""
 
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
@@ -1460,7 +1460,7 @@ def wordcheck() -> ResponseType:
 @api.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def gamestats() -> ResponseType:
-    """ Calculate and return statistics on a given finished game """
+    """Calculate and return statistics on a given finished game"""
 
     rq = RequestData(request)
     uuid = rq.get("game")
@@ -1482,7 +1482,7 @@ def gamestats() -> ResponseType:
 @api.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userstats() -> ResponseType:
-    """ Return the profile of a given user along with key statistics """
+    """Return the profile of a given user along with key statistics"""
 
     cid = current_user_id()
     rq = RequestData(request)
@@ -1494,7 +1494,7 @@ def userstats() -> ResponseType:
 
     cuser = current_user()
     assert cuser is not None
- 
+
     profile = user.profile()
 
     # Include info on whether this user is a favorite of the current user
@@ -1572,7 +1572,7 @@ def userstats() -> ResponseType:
 @api.route("/image", methods=["GET", "POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def image() -> ResponseType:
-    """ Set (POST) or get (GET) the image of a user """
+    """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     cuid = current_user_id()
@@ -1618,7 +1618,7 @@ def image() -> ResponseType:
 @api.route("/userlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userlist() -> ResponseType:
-    """ Return user lists with particular criteria """
+    """Return user lists with particular criteria"""
 
     rq = RequestData(request)
     query = rq.get("query")
@@ -1629,7 +1629,7 @@ def userlist() -> ResponseType:
 @api.route("/gamelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def gamelist() -> ResponseType:
-    """ Return a list of active games for the current user """
+    """Return a list of active games for the current user"""
 
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
@@ -1654,7 +1654,7 @@ def rating() -> ResponseType:
 @api.route("/recentlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def recentlist() -> ResponseType:
-    """ Return a list of recently completed games for the indicated user """
+    """Return a list of recently completed games for the indicated user"""
 
     rq = RequestData(request)
     user_id: Optional[str] = rq.get("user")
@@ -1681,14 +1681,14 @@ def recentlist() -> ResponseType:
 @api.route("/challengelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def challengelist() -> ResponseType:
-    """ Return a list of challenges issued or received by the current user """
+    """Return a list of challenges issued or received by the current user"""
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
 
 
 @api.route("/favorite", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def favorite() -> ResponseType:
-    """ Create or delete an A-favors-B relation """
+    """Create or delete an A-favors-B relation"""
 
     user = current_user()
     assert user is not None
@@ -1709,7 +1709,7 @@ def favorite() -> ResponseType:
 @api.route("/challenge", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def challenge() -> ResponseType:
-    """ Create or delete an A-challenges-B relation """
+    """Create or delete an A-challenges-B relation"""
 
     user = current_user()
     if user is None or not (uid := user.id()):
@@ -1768,7 +1768,7 @@ def challenge() -> ResponseType:
 @api.route("/setuserpref", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def setuserpref() -> ResponseType:
-    """ Set a user preference """
+    """Set a user preference"""
 
     user = current_user()
     assert user is not None
@@ -1798,7 +1798,7 @@ def setuserpref() -> ResponseType:
 
     # We allow the locale to be set as a user preference.
     # Note that it cannot be read back as a preference!
-    if (lc := rq.get("locale", "")) :
+    if lc := rq.get("locale", ""):
         # Do some rudimentary normalization and validation of the locale code
         lc = lc.replace("-", "_")
         a = lc.split("_")
@@ -1817,9 +1817,9 @@ def setuserpref() -> ResponseType:
 @api.route("/onlinecheck", methods=["POST"])
 @auth_required(online=False)
 def onlinecheck() -> ResponseType:
-    """ Check whether a particular user is online """
+    """Check whether a particular user is online"""
     rq = RequestData(request)
-    if (user_id := rq.get("user")) :
+    if user_id := rq.get("user"):
         user = User.load_if_exists(user_id)
         if not user:
             online = False
@@ -1833,7 +1833,7 @@ def onlinecheck() -> ResponseType:
 @api.route("/initwait", methods=["POST"])
 @auth_required(online=False, waiting=False)
 def initwait() -> ResponseType:
-    """ Initialize a wait for a timed game to start """
+    """Initialize a wait for a timed game to start"""
 
     user = current_user()
 
@@ -1861,7 +1861,7 @@ def initwait() -> ResponseType:
     now = datetime.utcnow().isoformat()
     msg = {
         f"user/{opp}/challenge": now,
-        f"user/{uid}/wait/{opp}": True,
+        f"user/{uid}/wait/{opp}": {"key": key} if key else True,
     }
     firebase.send_message(msg)
     online = firebase.check_presence(uid, user.locale)
@@ -1871,21 +1871,22 @@ def initwait() -> ResponseType:
 @api.route("/waitcheck", methods=["POST"])
 @auth_required(waiting=False)
 def waitcheck() -> ResponseType:
-    """ Check whether a particular opponent is waiting on a challenge """
+    """Check whether a particular opponent is waiting on a challenge"""
     rq = RequestData(request)
     opp_id = rq.get("user")
+    key: Optional[str] = rq.get("key")  # Can be omitted
     waiting = False
     if opp_id:
         cuid = current_user_id()
         assert cuid is not None
-        waiting = _opponent_waiting(cuid, opp_id)
+        waiting = _opponent_waiting(cuid, opp_id, key=key)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
 @api.route("/cancelwait", methods=["POST"])
 @auth_required(ok=False)
 def cancelwait() -> ResponseType:
-    """ A wait on a challenge has been cancelled """
+    """A wait on a challenge has been cancelled"""
     rq = RequestData(request)
     opp_id = rq.get("opp")
     cuid = current_user_id()
@@ -1907,7 +1908,7 @@ def cancelwait() -> ResponseType:
 @api.route("/chatmsg", methods=["POST"])
 @auth_required(ok=False)
 def chatmsg() -> ResponseType:
-    """ Send a chat message on a conversation channel """
+    """Send a chat message on a conversation channel"""
 
     user_id = current_user_id()
     if not user_id:
@@ -1958,7 +1959,7 @@ def chatmsg() -> ResponseType:
             )
             for p in range(0, 2):
                 # Send a Firebase notification to /game/[gameid]/[userid]/chat
-                if (pid := game.player_id(p)) :
+                if pid := game.player_id(p):
                     send_msg[f"game/{uuid}/{pid}/chat"] = md
             if send_msg:
                 firebase.send_message(send_msg)
@@ -1994,7 +1995,7 @@ def chatmsg() -> ResponseType:
 
 class UserCache:
 
-    """ A temporary cache for user lookups """
+    """A temporary cache for user lookups"""
 
     def __init__(self) -> None:
         self._cache: Dict[str, Optional[User]] = {}
@@ -2007,19 +2008,19 @@ class UserCache:
         return u
 
     def full_name(self, user_id: str) -> str:
-        """ Return the full name of a user """
+        """Return the full name of a user"""
         return "" if (u := self._load(user_id)) is None else u.full_name()
 
     def nickname(self, user_id: str) -> str:
-        """ Return the nickname of a user """
+        """Return the nickname of a user"""
         return "" if (u := self._load(user_id)) is None else u.nickname()
 
     def image(self, user_id: str) -> str:
-        """ Return the image for a user """
+        """Return the image for a user"""
         return "" if (u := self._load(user_id)) is None else u.image()
 
     def chat_disabled(self, user_id: str) -> bool:
-        """ Return True if the user has disabled chat """
+        """Return True if the user has disabled chat"""
         if (u := self._load(user_id)) is None:
             return True  # Chat is disabled by default
         return u.chat_disabled()
@@ -2028,7 +2029,7 @@ class UserCache:
 @api.route("/chatload", methods=["POST"])
 @auth_required(ok=False)
 def chatload() -> ResponseType:
-    """ Load all chat messages on a conversation channel """
+    """Load all chat messages on a conversation channel"""
 
     # The channel can be either 'game:' + game uuid or
     # 'user:' + user id
@@ -2136,7 +2137,7 @@ def chathistory() -> ResponseType:
             unread=cm["unread"],
             live=uid in online,
             fav=user.has_favorite(uid),
-            disabled=uc.chat_disabled(uid)
+            disabled=uc.chat_disabled(uid),
         )
         for cm in ChatModel.chat_history(user_id, maxlen=count)
     ]
@@ -2226,7 +2227,7 @@ def bestmoves() -> ResponseType:
 @api.route("/blockuser", methods=["POST"])
 @auth_required(ok=False)
 def blockuser() -> ResponseType:
-    """ Block or unblock another user """
+    """Block or unblock another user"""
     user = current_user()
     assert user is not None
 
@@ -2247,7 +2248,7 @@ def blockuser() -> ResponseType:
 @api.route("/reportuser", methods=["POST"])
 @auth_required(ok=False)
 def reportuser() -> ResponseType:
-    """ Report another user """
+    """Report another user"""
     user = current_user()
     assert user is not None
 
@@ -2271,7 +2272,7 @@ def reportuser() -> ResponseType:
 @api.route("/cancelplan", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def cancelplan() -> ResponseType:
-    """ Cancel a user friendship """
+    """Cancel a user friendship"""
     user = current_user()
     if user is None:
         return jsonify(ok=False)
@@ -2282,7 +2283,7 @@ def cancelplan() -> ResponseType:
 @api.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
 def loaduserprefs() -> ResponseType:
-    """ Fetch the preferences of the current user in JSON form """
+    """Fetch the preferences of the current user in JSON form"""
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
     return jsonify(ok=True, userprefs=uf.as_dict())
@@ -2291,7 +2292,7 @@ def loaduserprefs() -> ResponseType:
 @api.route("/saveuserprefs", methods=["POST"])
 @auth_required(ok=False)
 def saveuserprefs() -> ResponseType:
-    """ Set the preferences of the current user, from a JSON dictionary """
+    """Set the preferences of the current user, from a JSON dictionary"""
 
     user = current_user()
     assert user is not None
@@ -2312,7 +2313,7 @@ def saveuserprefs() -> ResponseType:
 @api.route("/initgame", methods=["POST"])
 @auth_required(ok=False)
 def initgame() -> ResponseType:
-    """ Create a new game and return its UUID """
+    """Create a new game and return its UUID"""
 
     user = current_user()
     assert user is not None
@@ -2396,7 +2397,7 @@ def initgame() -> ResponseType:
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
-        msg[f"user/{opp}/wait/{uid}"] = {"game": game_id}
+        msg[f"user/{opp}/wait/{uid}"] = {"game": game_id, "key": key}
 
     firebase.send_message(msg)
 
@@ -2407,7 +2408,7 @@ def initgame() -> ResponseType:
 @api.route("/locale_asset", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def locale_asset() -> ResponseType:
-    """ Return static content, for the user's locale """
+    """Return static content, for the user's locale"""
     # For a locale such as en_US, we first try to serve from
     # base_path/static/assets/en_US/asset_name, then
     # base_path/static/assets/en/asset_name, and finally
