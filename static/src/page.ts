@@ -397,8 +397,8 @@ class View {
     this.pushDialog("cancel", { });
   }
 
-  showAcceptDialog(oppId: string, oppNick: string) {
-    this.pushDialog("accept", { oppId: oppId, oppNick: oppNick });
+  showAcceptDialog(oppId: string, oppNick: string, challengeKey: string) {
+    this.pushDialog("accept", { oppId, oppNick, challengeKey });
   }
 
   // Globally available view functions
@@ -828,21 +828,24 @@ class View {
     oppNick: string;
     oppName: string;
     duration: number;
+    challengeKey: string;
   }): m.vnode {
     return m(WaitDialog, {
       view: this,
       oppId: args.oppId,
       oppNick: args.oppNick,
       oppName: args.oppName,
-      duration: args.duration
+      duration: args.duration,
+      challengeKey: args.challengeKey,
     });
   }
 
-  vwAccept(args: { oppId: string; oppNick: string; }): m.vnode {
+  vwAccept(args: { oppId: string; oppNick: string; challengeKey: string; }): m.vnode {
     return m(AcceptDialog, {
       view: this,
       oppId: args.oppId,
-      oppNick: args.oppNick
+      oppNick: args.oppNick,
+      challengeKey: args.challengeKey,
     });
   }
 
@@ -1300,7 +1303,8 @@ class View {
                     oppId: item.userid,
                     oppNick: item.opp,
                     oppName: item.fullname,
-                    duration: item.prefs.duration
+                    duration: item.prefs.duration,
+                    challengeKey: item.key,
                   });
                 else
                   // Ask the server to create a new game and route to it
@@ -1309,7 +1313,7 @@ class View {
               else {
                 // Clicking on a sent challenge, i.e. a timed game
                 // where the opponent is waiting and ready to start
-                view.showAcceptDialog(item.userid, item.opp);
+                view.showAcceptDialog(item.userid, item.opp, item.key);
               }
             }
 

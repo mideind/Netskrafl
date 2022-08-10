@@ -1307,21 +1307,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     "pl": [
         AutoPlayerTuple(
             "Mikołaj ",
-            "Always plays the highest-scoring move",
+            "Always plays the highest-scoring move",  # FIXME: Translate to Polish
             TOP_SCORE,
             AutoPlayer,
             {},
         ),
         AutoPlayerTuple(
             "Marian",
-            "Picks one of 10 top-scoring moves",
+            "Picks one of 10 top-scoring moves",  # FIXME: Translate to Polish
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=10),
         ),
         AutoPlayerTuple(
             "Idek",
-            "Picks one of 15 top-scoring moves",
+            "Picks one of 15 top-scoring moves",  # FIXME: Translate to Polish
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
