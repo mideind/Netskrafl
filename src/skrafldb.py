@@ -1253,7 +1253,9 @@ class ChallengeModel(Model["ChallengeModel"]):
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
             """Map an issued challenge to a tuple of useful info"""
             id0: Optional[str] = None if cm.destuser is None else cm.destuser.id()
-            return ChallengeTuple(id0, cm.prefs, cm.timestamp, cm.key.id())
+            # Note that the native key is an int, but we convert it
+            # to str for internal use
+            return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
@@ -1274,7 +1276,9 @@ class ChallengeModel(Model["ChallengeModel"]):
             """Map a received challenge to a tuple of useful info"""
             p0 = cm.key.parent()
             id0: Optional[str] = None if p0 is None else p0.id()
-            return ChallengeTuple(id0, cm.prefs, cm.timestamp, cm.key.id())
+            # Note that the native key is an int, but we convert it
+            # to str for internal use
+            return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
         for cm in q.fetch(max_len):
             yield ch_callback(cm)
