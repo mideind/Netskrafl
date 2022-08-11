@@ -142,8 +142,7 @@ def oauth2callback(request: Request) -> ResponseType:
             email = idinfo.get("email", "").lower()
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
-            # !!! TODO: Assign locale
-            locale = DEFAULT_LOCALE
+            locale = (idinfo.get("locale") or DEFAULT_LOCALE).replace("-", "_")
             uld = User.login_by_account(
                 account, name or "", email or "", image or "", locale=locale
             )
@@ -235,9 +234,8 @@ def oauth_fb(request: Request) -> ResponseType:
     # by prefixing them with 'fb:'
     account = "fb:" + account
     # Login or create the user in the Explo user model
-    # !!! TODO: send locale from client in request
-    locale = rq.get("locale") or DEFAULT_LOCALE
-    uld = User.login_by_account(account, name, email, image, locale=None)
+    locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
+    uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Facebook"
     # Emulate the OAuth idinfo
@@ -251,7 +249,6 @@ def oauth_fb(request: Request) -> ResponseType:
         account=account,
         locale=locale,
         new=uld.get("new") or False,
-        # !!! TODO: Send clientType from client
         client_type=rq.get("clientType") or "web",
     )
     # Set the Flask session token
@@ -301,11 +298,13 @@ def oauth_apple(request: Request) -> ResponseType:
     name: str = ""  # !!! Not available from Apple token
     image: str = ""  # !!! Not available from Apple token
     # !!! TODO: send locale from client in request
-    locale = rq.get("locale") or DEFAULT_LOCALE
+    locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
 
     # Make sure that Apple account ids are different from Google/OAuth ones
-    # by prefixing them with 'apple:'
-    account = "apple:" + uid
+    # by prefixing them with 'apple:'. Note that Firebase paths cannot contain
+    # periods, so we replace those with underscores, enabling the account
+    # id to be used as a part of a Firebase path.
+    account = "apple:" + uid.replace(".", "_")
     # Login or create the user in the Explo user model
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""

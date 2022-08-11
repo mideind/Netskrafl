@@ -91,7 +91,7 @@ def u3_uk() -> str:
 
 
 def login_user(client, idx: int, client_type: str = "web") -> Response:
-    idinfo: Dict[str, Any] = dict(
+    rq: Dict[str, Any] = dict(
         sub=f"999999{idx}",
         # Full name of user
         name=f"Test user {idx}",
@@ -100,9 +100,9 @@ def login_user(client, idx: int, client_type: str = "web") -> Response:
         # Make sure that the e-mail address is in lowercase
         email=f"test{idx}@user.explo",
         # Client type
-        client_type=client_type,
+        clientType=client_type,
     )
-    return client.post("/oauth2callback", data=idinfo)
+    return client.post("/oauth2callback", data=rq)
 
 
 def test_chat(client, u1, u2) -> None:
