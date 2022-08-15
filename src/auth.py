@@ -41,6 +41,7 @@ from config import (
     APPLE_CLIENT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
+from .languages import to_supported_locale
 
 from skrafluser import User, UserLoginDict
 
@@ -295,10 +296,13 @@ def oauth_apple(request: Request) -> ResponseType:
 
     email: str = payload.get("email", "")
     uid: str = payload.get("sub", "")
-    name: str = ""  # !!! Not available from Apple token
+    name: str = rq.get("fullName", "")  # This is populated on first sign-in
     image: str = ""  # !!! Not available from Apple token
-    # !!! TODO: send locale from client in request
     locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
+    # Apple can return strange locale codes such as en_IS.
+    # In such cases, we downcast to a generic locale, in this case 'en',
+    # or to the DEFAULT_LOCALE if no downcast is found.
+    locale = to_supported_locale(locale)
 
     # Make sure that Apple account ids are different from Google/OAuth ones
     # by prefixing them with 'apple:'. Note that Firebase paths cannot contain

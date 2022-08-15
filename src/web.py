@@ -44,7 +44,7 @@ from flask import (
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-from config import PROJECT_ID, running_local, VALID_ISSUERS
+from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS
 from basics import (
     UserIdDict,
     current_user,
@@ -183,7 +183,7 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 @web.route("/friend")
 def friend() -> ResponseType:
     """ HTML content of a friend (subscription) promotion dialog """
-    locale = request.args.get("locale", "is_IS")
+    locale = request.args.get("locale", DEFAULT_LOCALE)
     return render_locale_template("promo-friend-{0}.html", locale)
 
 
@@ -240,7 +240,7 @@ def handle_billing() -> ResponseType:
 def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
 
-    locale = request.args.get("locale", "is_IS")
+    locale = request.args.get("locale", DEFAULT_LOCALE)
 
     def override_url_for(endpoint: str, **values: Any) -> str:
         """ Convert URLs from old-format plain ones to single-page fancy ones """

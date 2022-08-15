@@ -2344,6 +2344,7 @@ def initgame() -> ResponseType:
         # The game is always in the user's locale
         prefs = dict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type
+        set_game_locale(user.locale)
         game = Game.new(uid, None, robot_level, prefs=prefs)
         # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
@@ -2368,8 +2369,9 @@ def initgame() -> ResponseType:
 
     # Create a fresh game object, ensuring it has a board_type pref
     if prefs is None:
-        prefs = dict()
+        prefs = dict(locale=user.locale)
     prefs["board_type"] = board_type
+    set_game_locale(cast(str, prefs.get("locale")) or user.locale)
     game = Game.new(uid, opp, 0, prefs)
     game_id = game.id()
     if not game_id or game.state is None:

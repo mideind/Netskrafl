@@ -766,8 +766,8 @@ class User:
         *,
         locale: Optional[str] = None
     ) -> UserLoginDict:
-        """ Log in a user via the given Google Account and return her user id """
-        # First, see if the user account already exists under the Google account id
+        """ Log in a user via the given account identifier and return her user id """
+        # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
         if um is not None:
             # We've seen this user account before
@@ -817,7 +817,7 @@ class User:
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
         nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
-        prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
+        prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name or nickname}
         user_id = UserModel.create(
             user_id=account,
             account=account,
@@ -825,7 +825,7 @@ class User:
             nickname=nickname,
             image=image,
             preferences=prefs,
-            locale=locale,
+            locale=locale or DEFAULT_LOCALE,
         )
         # Create a user login event object and return it
         uld = UserLoginDict(

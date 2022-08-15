@@ -45,6 +45,8 @@ import functools
 from datetime import datetime
 from contextvars import ContextVar
 
+from config import DEFAULT_LOCALE, PROJECT_ID
+
 
 _T = TypeVar("_T")
 
@@ -161,11 +163,6 @@ class Alphabet(abc.ABC):
         """Return a timestamp formatted as a readable string"""
         # Returns a short ISO format: YYYY-MM-DD HH:MM
         return ts.isoformat(" ")[0:16]
-
-    @staticmethod
-    def tileset_for_locale(locale: str) -> Type[TileSet]:
-        """Return an appropriate tile set for a given locale"""
-        return TILESETS.get(locale, NewTileSet)
 
 
 class _IcelandicAlphabet(Alphabet):
@@ -751,8 +748,10 @@ class Locale(NamedTuple):
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale(
-    "is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard"
+default_locale: Locale = (
+    Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
+    if PROJECT_ID == "netskrafl"
+    else Locale("en_US", "en", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo")
 )
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
@@ -811,6 +810,19 @@ def board_type_for_locale(lc: str) -> str:
 def language_for_locale(lc: str) -> str:
     """Return the identifier of the language for the given locale"""
     return dget(LANGUAGES, lc, "en")
+
+
+def to_supported_locale(key: str) -> str:
+    """Return the locale code if it is supported, otherwise its parent
+    locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
+    val = key in SUPPORTED_LOCALES
+    while not val:
+        key = "".join(key.split("_")[0:-1])
+        if key:
+            val = key in SUPPORTED_LOCALES
+        else:
+            break
+    return key if val else DEFAULT_LOCALE
 
 
 def set_locale(lc: str) -> None:

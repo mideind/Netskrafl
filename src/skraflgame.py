@@ -48,6 +48,7 @@ from languages import (
     OldTileSet,
     NewTileSet,
     TileSet,
+    tileset_for_locale,
     vocabulary_for_locale,
     set_game_locale,
 )
@@ -463,6 +464,7 @@ class Game:
         gm = GameModel(id=self.uuid)
         gm.timestamp = cast(datetime, self.timestamp)
         gm.ts_last_move = cast(datetime, self.ts_last_move)
+        gm.locale = self.locale
         gm.set_player(0, self.player_ids[0])
         gm.set_player(1, self.player_ids[1])
         gm.irack0 = cast(str, self.initial_racks[0])
@@ -709,8 +711,8 @@ class Game:
             # select one by preference setting
             new_bag = Game.new_bag_from_prefs(prefs)
             return NewTileSet if new_bag else OldTileSet
-        # For other locales, use the Alphabet mapping found in languages.py
-        return Alphabet.tileset_for_locale(lc)
+        # For other locales, use the mapping found in languages.py
+        return tileset_for_locale(lc)
 
     @property
     def tileset(self):
