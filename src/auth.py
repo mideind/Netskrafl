@@ -41,7 +41,7 @@ from config import (
     APPLE_CLIENT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
-from .languages import to_supported_locale
+from languages import to_supported_locale
 
 from skrafluser import User, UserLoginDict
 
