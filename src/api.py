@@ -292,14 +292,14 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "Tölvupóstfang verður að innihalda @-merki",
         "LOCALE_UNKNOWN": "Óþekkt staðfang (locale)",
     },
-    "en": {
+    "en_US": {
         "NICK_MISSING": "Nickname missing",
         "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
         "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
     },
-    # !!! TODO: Add Polish here
+    # !!! TODO: Add en_GB and Polish here
 }
 
 
@@ -410,8 +410,8 @@ class UserForm:
         """Return a validation error message, in the appropriate language"""
         lang = current_language()
         if lang not in VALIDATION_ERRORS:
-            # Default to English
-            lang = "en"
+            # Default to U.S. English
+            lang = "en_US"
         return VALIDATION_ERRORS[lang].get(key, "")
 
     def validate(self) -> Dict[str, str]:

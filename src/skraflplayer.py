@@ -70,6 +70,7 @@
 """
 
 from __future__ import annotations
+from functools import lru_cache
 
 from typing import (
     Any,
@@ -703,17 +704,16 @@ class AutoPlayer:
     """
 
     @staticmethod
+    @lru_cache(maxsize=None)
     def for_locale(locale: str) -> AutoPlayerList:
         """Return the list of autoplayers that are available
         for the given locale"""
+        locale = locale.replace("-", "_")
         apl = AUTOPLAYERS.get(locale)
         if apl is None:
             if "_" in locale:
                 # Lookup the major locale, i.e. "en" if "en_US"
                 apl = AUTOPLAYERS.get(locale.split("_")[0])
-            elif "-" in locale:
-                # Also allow a hyphen instead of an underscore
-                apl = AUTOPLAYERS.get(locale.split("-")[0])
             if apl is None:
                 # Fall back to English
                 apl = AUTOPLAYERS.get("en")
@@ -721,6 +721,7 @@ class AutoPlayer:
         return apl
 
     @staticmethod
+    @lru_cache(maxsize=None)
     def for_level(locale: str, level: int) -> AutoPlayerTuple:
         """Return the strongest autoplayer that is
         at or below the given difficulty. Note that a higher
@@ -741,6 +742,7 @@ class AutoPlayer:
         return apl.ctor(robot_level, state, **apl.kwargs)
 
     @staticmethod
+    @lru_cache(maxsize=None)
     def name(locale: str, level: int) -> str:
         """ Return the autoplayer name for a given level """
         return AutoPlayer.for_level(locale, level).name
@@ -1307,21 +1309,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     "pl": [
         AutoPlayerTuple(
             "Mikołaj ",
-            "Always plays the highest-scoring move",  # FIXME: Translate to Polish
+            "Zawsze gra ruch z najwyższym wynikiem",
             TOP_SCORE,
             AutoPlayer,
             {},
         ),
         AutoPlayerTuple(
             "Marian",
-            "Picks one of 10 top-scoring moves",  # FIXME: Translate to Polish
+            "Wybiera jeden z 10 najlepiej punktowanych ruchów",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=10),
         ),
         AutoPlayerTuple(
             "Idek",
-            "Picks one of 15 top-scoring moves",  # FIXME: Translate to Polish
+            "Wybiera jeden z 15 najlepiej punktowanych ruchów",
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(

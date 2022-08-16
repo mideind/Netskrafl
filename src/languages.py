@@ -31,6 +31,7 @@ from __future__ import annotations
 from typing import (
     Dict,
     List,
+    Mapping,
     Optional,
     Tuple,
     Type,
@@ -49,6 +50,14 @@ from config import DEFAULT_LOCALE, PROJECT_ID
 
 
 _T = TypeVar("_T")
+
+# Map from a generic locale ('en') to a
+# more specific default locale ('en_US')
+NONGENERIC_DEFAULT: Mapping[str, str] = {
+    "is": "is_IS",
+    "en": "en_US",
+    "pl": "pl_PL",
+}
 
 
 class Alphabet(abc.ABC):
@@ -674,21 +683,8 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "pl": PolishTileSet,
     "pl_PL": PolishTileSet,
     "en": NewEnglishTileSet,
-    "en_AU": NewEnglishTileSet,
-    "en_BZ": NewEnglishTileSet,
-    "en_CA": NewEnglishTileSet,
-    "en_GB": NewEnglishTileSet,
-    "en_IE": NewEnglishTileSet,
-    "en_IN": NewEnglishTileSet,
-    "en_JM": NewEnglishTileSet,
-    "en_MY": NewEnglishTileSet,
-    "en_NZ": NewEnglishTileSet,
-    "en_PH": NewEnglishTileSet,
-    "en_SG": NewEnglishTileSet,
-    "en_TT": NewEnglishTileSet,
     "en_US": NewEnglishTileSet,
-    "en_ZA": NewEnglishTileSet,
-    "en_ZW": NewEnglishTileSet,
+    "en_GB": NewEnglishTileSet,
 }
 
 # Mapping of locale code to alphabet
@@ -721,10 +717,24 @@ BOARD_TYPES: Dict[str, str] = {
 
 LANGUAGES: Dict[str, str] = {
     "is": "is",
-    "en_US": "en",
-    "en_GB": "en",
+    "en_US": "en_US",
+    "en_GB": "en_GB",
+    "en_AU": "en_GB",
+    "en_BZ": "en_GB",
+    "en_CA": "en_GB",
+    "en_IE": "en_GB",
+    "en_IN": "en_GB",
+    "en_JM": "en_GB",
+    "en_MY": "en_GB",
+    "en_NZ": "en_GB",
+    "en_PH": "en_GB",
+    "en_SG": "en_GB",
+    "en_TT": "en_GB",
+    "en_US": "en_GB",
+    "en_ZA": "en_GB",
+    "en_ZW": "en_GB",
     "pl": "pl",
-    # Everything else defaults to 'en'
+    # Everything else defaults to 'en_US'
 }
 
 # Set of all supported locale codes
@@ -751,7 +761,7 @@ class Locale(NamedTuple):
 default_locale: Locale = (
     Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
     if PROJECT_ID == "netskrafl"
-    else Locale("en_US", "en", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo")
+    else Locale("en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo")
 )
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
@@ -809,20 +819,26 @@ def board_type_for_locale(lc: str) -> str:
 
 def language_for_locale(lc: str) -> str:
     """Return the identifier of the language for the given locale"""
-    return dget(LANGUAGES, lc, "en")
+    return dget(LANGUAGES, lc, "en_US")
 
 
-def to_supported_locale(key: str) -> str:
+@functools.lru_cache(maxsize=None)
+def to_supported_locale(lc: str) -> str:
     """Return the locale code if it is supported, otherwise its parent
     locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
-    val = key in SUPPORTED_LOCALES
-    while not val:
-        key = "".join(key.split("_")[0:-1])
-        if key:
-            val = key in SUPPORTED_LOCALES
+    found = lc in SUPPORTED_LOCALES
+    while not found:
+        lc = "".join(lc.split("_")[0:-1])
+        if lc:
+            found = lc in SUPPORTED_LOCALES
         else:
             break
-    return key if val else DEFAULT_LOCALE
+    if found:
+        # We may be down to a generic locale such as 'en' or 'pl'.
+        # Go back to a more specific locale, if available.
+        return NONGENERIC_DEFAULT.get(lc, lc)
+    # Not found at all: return a global generic locale
+    return DEFAULT_LOCALE
 
 
 def set_locale(lc: str) -> None:

@@ -984,8 +984,8 @@ def run_sowpods() -> None:
     # This creates a DAWG from a single file named sowpods.txt,
     # the combined European & U.S. English word list
     print("Starting DAWG build for sowpods.txt")
-    # Set the generic English locale
-    set_locale("en")
+    # Set the English-GB locale
+    set_locale("en_GB")
     db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(

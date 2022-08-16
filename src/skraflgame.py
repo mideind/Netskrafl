@@ -162,7 +162,11 @@ class ClientStateDict(TypedDict, total=False):
 
 # The default nickname to display if a player has an unreadable nick
 # (for instance a default Google nick with a https:// prefix)
-UNDEFINED_NAME: Dict[str, str] = {"is": "[Ónefndur]", "en": "[Unknown]"}
+UNDEFINED_NAME: Dict[str, str] = {
+    "is": "[Ónefndur]",
+    "en": "[Unknown]",
+    "pl": "[Nieznany]",
+}
 
 
 class Game:
