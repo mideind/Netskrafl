@@ -92,8 +92,9 @@ def admin_setfriend() -> str:
     u.set_has_paid(bstate)
     u.update()
     logging.info("Friend state of user {0} manually set to {1}".format(uid, bstate))
-    return "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>".format(
-        uid, bstate, was_friend
+    return (
+        f"<html><body><p>User '{uid}': friend state was {was_friend}; "
+        f"set to friend={u.friend()}, has_paid={u.has_paid()}</p></body></html>"
     )
 
 
