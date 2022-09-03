@@ -1,6 +1,6 @@
 gunicorn>=20.0.4
 Flask>=1.1.0
-authlib
+authlib==0.15.4
 oauth2client
 requests
 firebase-admin
