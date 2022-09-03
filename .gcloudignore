@@ -12,6 +12,9 @@ resources/*.text.dawg
 # DAWG trees in pickled form
 resources/*.dawg.pickle
 
+# Auxiliary files
+resources/*.pptx
+
 # CSV files
 resources/*.csv
 
@@ -25,6 +28,16 @@ resources/explo-*.json
 
 # Log files
 *.log
+
+# Mypy
+mypy.ini
+
+# Pydev/VSCode
+pydev_startup.py
+
+# Development tools
+generate-secret.py
+dawgtester.py
 
 # MarkDown documentation files
 *.md

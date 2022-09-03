@@ -1209,7 +1209,7 @@ def gamestate():
         return jsonify(ok=False)
 
     player_index = game.player_index(user_id)
-    if player_index is None and not game.is_over:
+    if player_index is None and not game.is_over():
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
         return jsonify(ok=False)
