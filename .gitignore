@@ -25,6 +25,8 @@ resources/salescloud_key.bin
 # Google OAuth client secret
 resources/client_secret.txt
 resources/client_secret_explo.txt
+resources/client_secret_explo.json
+resources/Explo*.json
 
 # Private GAE services key
 resources/netskrafl-*.json
@@ -42,10 +44,11 @@ resources/sowpods.txt
 # CSS files generated from Less
 static/skrafl-*.css
 
-# Concatenated JS
+# Concatenated & generated JS
 static/netskrafl.js
 static/main.js
 static/wait.js
+static/built/
 
 # Minified JavaScript
 static/netskrafl.min.js
@@ -89,6 +92,7 @@ node_modules/
 .idea/
 .vscode/
 .mypy_cache/
+.tscache/
 
 # Node dependency descriptions
 package*.json
