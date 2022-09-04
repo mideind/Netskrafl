@@ -12,9 +12,11 @@
 			"__pycache__/": true,
 			".idea/": true,
 			".vscode/": true,
+			".tscache/": true,
 			"**/*.min.js": true,
 			"**/*.profile": true,
 			"**/*.pyc": true,
+			"**/*.bin.dawg": true,
 			"google/": true,
 			"lib/": true,
 			"node_modules/": true,
@@ -24,7 +26,6 @@
 		"[javascript]": {
 			"editor.tabSize": 2,
 		},
-		"python.pythonPath": "C:\\Python37\\python.exe",
 		"python.formatting.blackArgs": ["-S"],
 		"python.autoComplete.extraPaths": [
 			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
@@ -36,6 +37,8 @@
 		"files.watcherExclude": {
 			"**/venv/**": true
 		},
-		"mypy.executable": "C:\\Users\\Notandi\\Documents\\Github\\Netskrafl\\venv\\scripts\\mypyls.exe",
+		"python.analysis.extraPaths": [
+			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
+		],
 	}
 }
