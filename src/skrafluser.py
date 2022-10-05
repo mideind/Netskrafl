@@ -55,7 +55,7 @@ from skraflmechanics import Error
 
 class UserSummaryDict(TypedDict):
 
-    """ Summary data about a user """
+    """Summary data about a user"""
 
     uid: str
     nick: str
@@ -76,7 +76,7 @@ class UserSummaryDict(TypedDict):
 
 class UserLoginDict(TypedDict, total=False):
 
-    """ Summary data about a login event """
+    """Summary data about a login event"""
 
     user_id: str
     account: str
@@ -94,7 +94,7 @@ MAX_NICKNAME_LENGTH = 15
 
 class User:
 
-    """ Information about a human user including nickname and preferences """
+    """Information about a human user including nickname and preferences"""
 
     # Use a lock to avoid potential race conditions between
     # the memcache and the database
@@ -119,7 +119,7 @@ class User:
         account: Optional[str] = None,
         locale: Optional[str] = None,
     ) -> None:
-        """ Initialize a fresh User instance """
+        """Initialize a fresh User instance"""
         self._user_id = uid
         self._account = account
         self._email: Optional[str] = None
@@ -156,7 +156,7 @@ class User:
         # (User._NAMESPACE, above) should be incremented!
 
     def _init(self, um: UserModel) -> None:
-        """ Obtain the properties from the database entity """
+        """Obtain the properties from the database entity"""
         self._account = um.account
         self._email = um.email
         self._nickname = um.nickname
@@ -182,7 +182,7 @@ class User:
         self._human_games = um.games or 0
 
     def update(self) -> None:
-        """ Update the user's record in the database and in the memcache """
+        """Update the user's record in the database and in the memcache"""
         with User._lock:
             # Use a lock to avoid the scenaro where a user
             # is fetched by another request in the interval
@@ -228,7 +228,7 @@ class User:
                 )
 
     def id(self) -> Optional[str]:
-        """ Returns the id (database key) of the user """
+        """Returns the id (database key) of the user"""
         return self._user_id
 
     def nickname(self) -> str:
@@ -237,16 +237,16 @@ class User:
         return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
-        """ Sets the human-readable nickname of a user """
+        """Sets the human-readable nickname of a user"""
         self._nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
 
     def timestamp(self) -> datetime:
-        """ Creation date and time for this user """
+        """Creation date and time for this user"""
         return self._timestamp
 
     @staticmethod
     def is_valid_nick(nick: str) -> bool:
-        """ Check whether a nickname is valid and displayable """
+        """Check whether a nickname is valid and displayable"""
         nick = nick.strip()
         if not nick:
             return False
@@ -255,37 +255,37 @@ class User:
         return not nick.startswith(("https://", "http://"))
 
     def elo(self) -> int:
-        """ Return the overall (human and robot) Elo points of the user """
+        """Return the overall (human and robot) Elo points of the user"""
         return self._elo or User.DEFAULT_ELO
 
     def human_elo(self) -> int:
-        """ Return the human-only Elo points of the user """
+        """Return the human-only Elo points of the user"""
         return self._human_elo or User.DEFAULT_ELO
 
     def manual_elo(self) -> int:
-        """ Return the human-only, manual-game-only Elo points of the user """
+        """Return the human-only, manual-game-only Elo points of the user"""
         return self._manual_elo or User.DEFAULT_ELO
 
     def set_elo(self, elo: int, human_elo: int, manual_elo: int) -> None:
-        """ Set the Elo points for the user """
+        """Set the Elo points for the user"""
         self._elo = elo
         self._human_elo = human_elo
         self._manual_elo = manual_elo
 
     def num_human_games(self) -> int:
-        """ Return the number of completed human games for this user """
+        """Return the number of completed human games for this user"""
         return self._human_games
 
     def increment_human_games(self) -> None:
-        """ Add to the number of completed human games for this user """
+        """Add to the number of completed human games for this user"""
         self._human_games += 1
 
     def is_inactive(self) -> bool:
-        """ Return True if the user is marked as inactive """
+        """Return True if the user is marked as inactive"""
         return self._inactive
 
     def is_displayable(self) -> bool:
-        """ Returns True if this user should appear in user lists """
+        """Returns True if this user should appear in user lists"""
         if self._inactive:
             # Inactive users are hidden
             return False
@@ -293,101 +293,108 @@ class User:
 
     @property
     def preferences(self) -> PrefsDict:
-        """ Return the game preferences as a dictionary """
+        """Return the game preferences as a dictionary"""
         return self._preferences
 
     @property
     def locale(self) -> str:
-        """ Get the locale code for this user """
+        """Get the locale code for this user"""
         return self._locale or DEFAULT_LOCALE
 
     def set_locale(self, locale: str) -> None:
-        """ Set the locale code for this user """
+        """Set the locale code for this user"""
         self._locale = locale
 
     @property
     def location(self) -> str:
-        """ Get the location code for this user """
+        """Get the location code for this user"""
         return self._location or ""
 
     def set_location(self, location: str) -> None:
-        """ Set the location code for this user """
+        """Set the location code for this user"""
         self._location = location
 
     def get_pref(
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
-        """ Retrieve a preference, or None if not found """
+        """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
         return self._preferences.get(pref, default)
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
-        """ Retrieve a string preference, or "" if not found """
+        """Retrieve a string preference, or "" if not found"""
         if self._preferences is None:
             return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
-        """ Retrieve a string preference, or "" if not found """
+        """Retrieve a string preference, or "" if not found"""
         if self._preferences is None:
             return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
-        """ Set a preference to a value """
+        """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
     def full_name_from_prefs(prefs: Optional[PrefsDict]) -> str:
-        """ Returns the full name of a user from a dict of preferences """
+        """Returns the full name of a user from a dict of preferences"""
         if prefs is None:
             return ""
         fn = prefs.get("full_name")
         return fn if fn is not None and isinstance(fn, str) else ""
 
     def full_name(self) -> str:
-        """ Returns the full name of a user """
+        """Returns the full name of a user"""
         return self.get_string_pref("full_name")
 
     def set_full_name(self, full_name: str) -> None:
-        """ Sets the full name of a user """
+        """Sets the full name of a user"""
         self.set_pref("full_name", full_name)
 
     def email(self) -> str:
-        """ Returns the e-mail address of a user from the user preferences """
+        """Returns the e-mail address of a user from the user preferences"""
         return self.get_string_pref("email", self._email or "")
 
     def set_email(self, email: str) -> None:
-        """ Sets the e-mail address of a user in the user preferences """
+        """Sets the e-mail address of a user in the user preferences"""
         self.set_pref("email", email)
 
     def audio(self) -> bool:
-        """ Returns True if the user wants audible signals """
+        """Returns True if the user wants audible signals"""
         # True by default
         return self.get_bool_pref("audio", True)
 
     def set_audio(self, audio: bool) -> None:
-        """ Sets the audio preference of a user to True or False """
+        """Sets the audio preference of a user to True or False"""
         assert isinstance(audio, bool)
         self.set_pref("audio", audio)
 
-    def image(self) -> str:
-        """ Returns the URL of an image (photo/avatar) of a user """
-        if not self._user_id:
+    @staticmethod
+    def image_url(
+        user_id: Optional[str], image: Optional[str], has_image_blob: bool
+    ) -> str:
+        """Converts a user_id and image info to an image URL"""
+        if not user_id:
             return ""
-        if self._has_image_blob:
+        if has_image_blob:
             # We have a stored BLOB for this user: return a URL to it
-            return url_for("api.image", uid=self._user_id)
+            return url_for("api.image", uid=user_id)
         # We have a stored URL: return it
-        return self._image or ""
+        return image or ""
+
+    def image(self) -> str:
+        """Returns the URL of an image (photo/avatar) of a user"""
+        return self.image_url(self._user_id, self._image, self._has_image_blob)
 
     def set_image(self, image: str) -> None:
-        """ Sets the URL of an image (photo/avatar) of a user """
+        """Sets the URL of an image (photo/avatar) of a user"""
         # Note: For associating a user with an image BLOB,
         # refer to the /image endpoint in api.py.
         # This call erases any BLOB already associated with the user!
@@ -395,92 +402,92 @@ class User:
         self._has_image_blob = False
 
     def fanfare(self) -> bool:
-        """ Returns True if the user wants a fanfare sound when winning """
+        """Returns True if the user wants a fanfare sound when winning"""
         return self.get_bool_pref("fanfare", True)
 
     def set_fanfare(self, fanfare: bool) -> None:
-        """ Sets the fanfare preference of a user to True or False """
+        """Sets the fanfare preference of a user to True or False"""
         self.set_pref("fanfare", fanfare)
 
     def beginner(self) -> bool:
-        """ Returns True if the user is a beginner so we show help panels, etc."""
+        """Returns True if the user is a beginner so we show help panels, etc."""
         # True by default
         return self.get_bool_pref("beginner", True)
 
     def set_beginner(self, beginner: bool) -> None:
-        """ Sets the beginner state of a user to True or False """
+        """Sets the beginner state of a user to True or False"""
         self.set_pref("beginner", beginner)
 
     @staticmethod
     def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns the fairplay preference of a user """
+        """Returns the fairplay preference of a user"""
         if prefs is None:
             return False
         fp = prefs.get("fairplay")
         return isinstance(fp, bool) and fp
 
     def fairplay(self) -> bool:
-        """ Returns True if the user has committed to a fair play statement """
+        """Returns True if the user has committed to a fair play statement"""
         # False by default
         return self.get_bool_pref("fairplay", False)
 
     def set_fairplay(self, state: bool) -> None:
-        """ Sets the fairplay state of a user to True or False """
+        """Sets the fairplay state of a user to True or False"""
         self.set_pref("fairplay", state)
 
     @staticmethod
     def new_board_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns the new_board preference of a user """
+        """Returns the new_board preference of a user"""
         if prefs is None:
             return False
         fp = prefs.get("new_board")
         return isinstance(fp, bool) and fp
 
     def new_board(self) -> bool:
-        """ Returns True if the user prefers to play on the new board """
+        """Returns True if the user prefers to play on the new board"""
         # False by default
         return self.get_bool_pref("new_board", False)
 
     def set_new_board(self, state: bool) -> None:
-        """ Sets the new_board state of a user to True or False """
+        """Sets the new_board state of a user to True or False"""
         self.set_pref("new_board", state)
 
     @staticmethod
     def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns the new bag preference of a user """
+        """Returns the new bag preference of a user"""
         # Now always True
         return True
 
     def new_bag(self) -> bool:
-        """ Returns True if the user would like to play with the new bag """
+        """Returns True if the user would like to play with the new bag"""
         # Now always True
         return True
 
     def set_new_bag(self, state: bool) -> None:
-        """ Sets the new bag preference of a user to True or False """
+        """Sets the new bag preference of a user to True or False"""
         # Now always True; no action needed
         pass
 
     @staticmethod
     def friend_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns True if the user is a friend of Netskrafl """
+        """Returns True if the user is a friend of Netskrafl"""
         if prefs is None:
             return False
         friend = prefs.get("friend")
         return isinstance(friend, bool) and friend
 
     def friend(self) -> bool:
-        """ Returns True if the user is a friend of Netskrafl """
+        """Returns True if the user is a friend of Netskrafl"""
         # False by default
         return self.get_bool_pref("friend", False)
 
     def set_friend(self, state: bool) -> None:
-        """ Sets the friend status of a user to True or False """
+        """Sets the friend status of a user to True or False"""
         self.set_pref("friend", state)
 
     @staticmethod
     def has_paid_from_prefs(prefs: Optional[PrefsDict]) -> bool:
-        """ Returns True if the user is a paying friend of Netskrafl """
+        """Returns True if the user is a paying friend of Netskrafl"""
         if prefs is None:
             return False
         if not User.friend_from_prefs(prefs):
@@ -490,7 +497,7 @@ class User:
         return isinstance(has_paid, bool) and has_paid
 
     def has_paid(self) -> bool:
-        """ Returns True if the user is a paying friend of Netskrafl """
+        """Returns True if the user is a paying friend of Netskrafl"""
         if not self.plan():
             # Must be a friend of some kind before being a paying friend
             return False
@@ -498,46 +505,46 @@ class User:
         return self.get_bool_pref("haspaid", False)
 
     def set_has_paid(self, state: bool) -> None:
-        """ Sets the payment status of a user to True or False """
+        """Sets the payment status of a user to True or False"""
         self.set_pref("haspaid", state)
 
     def plan(self) -> str:
-        """ Return a subscription plan identifier """
+        """Return a subscription plan identifier"""
         p = self._plan or ""
         if not p and self.friend():
             p = "friend"
         return p
 
     def set_plan(self, plan: str) -> None:
-        """ Set a subscription plan """
+        """Set a subscription plan"""
         self._plan = plan
 
     def is_ready(self) -> bool:
-        """ Returns True if the user is ready to accept challenges """
+        """Returns True if the user is ready to accept challenges"""
         return self._ready
 
     def set_ready(self, ready: bool) -> None:
-        """ Sets the ready state of a user to True or False """
+        """Sets the ready state of a user to True or False"""
         self._ready = ready
 
     def is_ready_timed(self) -> bool:
-        """ Returns True if the user is ready for timed games """
+        """Returns True if the user is ready for timed games"""
         return self._ready_timed
 
     def set_ready_timed(self, ready: bool) -> None:
-        """ Sets the whether a user is ready for timed games """
+        """Sets the whether a user is ready for timed games"""
         self._ready_timed = ready
 
     def chat_disabled(self) -> bool:
-        """ Returns True if the user has disabled chat """
+        """Returns True if the user has disabled chat"""
         return self._chat_disabled
 
     def disable_chat(self, disabled: bool) -> None:
-        """ Sets the chat disabled state for a user to True or False """
+        """Sets the chat disabled state for a user to True or False"""
         self._chat_disabled = disabled
 
     def _load_favorites(self) -> None:
-        """ Loads favorites of this user from the database into a set in memory """
+        """Loads favorites of this user from the database into a set in memory"""
         if hasattr(self, "_favorites") and self._favorites:
             # Already have the favorites in memory
             return
@@ -546,7 +553,7 @@ class User:
         self._favorites = set(FavoriteModel.list_favorites(sid))
 
     def add_favorite(self, destuser_id: str) -> None:
-        """ Add an A-favors-B relation between this user and the destuser """
+        """Add an A-favors-B relation between this user and the destuser"""
         sid = self.id()
         assert sid is not None
         self._load_favorites()
@@ -555,7 +562,7 @@ class User:
         FavoriteModel.add_relation(sid, destuser_id)
 
     def del_favorite(self, destuser_id: str) -> None:
-        """ Delete an A-favors-B relation between this user and the destuser """
+        """Delete an A-favors-B relation between this user and the destuser"""
         sid = self.id()
         assert sid is not None
         self._load_favorites()
@@ -573,7 +580,7 @@ class User:
         return destuser_id in self._favorites
 
     def _load_blocks(self) -> None:
-        """ Loads blocked users into a set in memory """
+        """Loads blocked users into a set in memory"""
         if hasattr(self, "_blocks") and self._blocks:
             # Already have the blocks in memory
             return
@@ -582,7 +589,7 @@ class User:
         self._blocks = set(BlockModel.list_blocked_users(sid))
 
     def block(self, destuser_id: str) -> bool:
-        """ Add an A-blocks-B relation between this user and the destuser """
+        """Add an A-blocks-B relation between this user and the destuser"""
         if not destuser_id:
             return False
         sid = self.id()
@@ -595,7 +602,7 @@ class User:
         return True
 
     def unblock(self, destuser_id: str) -> bool:
-        """ Delete an A-favors-B relation between this user and the destuser """
+        """Delete an A-favors-B relation between this user and the destuser"""
         if not destuser_id:
             return False
         sid = self.id()
@@ -619,7 +626,7 @@ class User:
     def _summary_list(
         self, uids: Iterable[str], *, is_favorite: bool = False
     ) -> List[UserSummaryDict]:
-        """ Return a list of summary data about a set of users """
+        """Return a list of summary data about a set of users"""
         result: List[UserSummaryDict] = []
         online = online_users(self.locale)
         for uid in uids:
@@ -647,19 +654,19 @@ class User:
         return result
 
     def list_blocked(self) -> List[UserSummaryDict]:
-        """ Returns a list of users blocked by this user """
+        """Returns a list of users blocked by this user"""
         self._load_blocks()
         assert self._blocks is not None
         return self._summary_list(self._blocks)
 
     def list_favorites(self) -> List[UserSummaryDict]:
-        """ Returns a list of users that this user favors """
+        """Returns a list of users that this user favors"""
         self._load_favorites()
         assert self._favorites is not None
         return self._summary_list(self._favorites, is_favorite=True)
 
     def report(self, destuser_id: str, code: int, text: str) -> bool:
-        """ The current user is reporting another user """
+        """The current user is reporting another user"""
         if not destuser_id:
             return False
         sid = self.id()
@@ -667,30 +674,30 @@ class User:
         return ReportModel.report_user(sid, destuser_id, code, text)
 
     def has_challenge(self, destuser_id: str) -> bool:
-        """ Returns True if this user has challenged destuser """
+        """Returns True if this user has challenged destuser"""
         # TBD: Cache this in the user object to save NDB reads
         return ChallengeModel.has_relation(self.id(), destuser_id)
 
     def find_challenge(
         self, srcuser_id: str, *, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
-        """ Returns (found, prefs)"""
+        """Returns (found, prefs)"""
         return ChallengeModel.find_relation(srcuser_id, self.id(), key)
 
     def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> None:
-        """ Issue a challenge to the destuser """
+        """Issue a challenge to the destuser"""
         sid = self.id()
         assert sid is not None
         ChallengeModel.add_relation(sid, destuser_id, prefs)
 
     def retract_challenge(self, destuser_id: str, *, key: Optional[str] = None) -> None:
-        """ Retract a challenge previously issued to the destuser """
+        """Retract a challenge previously issued to the destuser"""
         sid = self.id()
         assert sid is not None
         ChallengeModel.del_relation(sid, destuser_id, key)
 
     def decline_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> None:
-        """ Decline a challenge previously issued by the srcuser """
+        """Decline a challenge previously issued by the srcuser"""
         sid = self.id()
         assert sid is not None
         ChallengeModel.del_relation(srcuser_id, sid, key)
@@ -698,14 +705,14 @@ class User:
     def accept_challenge(
         self, srcuser_id: str, *, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
-        """ Decline a challenge previously issued by the srcuser """
+        """Decline a challenge previously issued by the srcuser"""
         # Delete the accepted challenge and return the associated preferences
         sid = self.id()
         assert sid is not None
         return ChallengeModel.del_relation(srcuser_id, sid, key)
 
     def adjust_highest_score(self, score: int, game_uuid: str) -> bool:
-        """ If this is the highest score of the player, modify it """
+        """If this is the highest score of the player, modify it"""
         if self._highest_score and self._highest_score >= score:
             # Not a new record
             return False
@@ -715,7 +722,7 @@ class User:
         return True
 
     def adjust_best_word(self, word: str, score: int, game_uuid: str) -> bool:
-        """ If this is the highest scoring word of the player, modify it """
+        """If this is the highest scoring word of the player, modify it"""
         if self._best_word_score and self._best_word_score >= score:
             # Not a new record
             return False
@@ -727,7 +734,7 @@ class User:
 
     @classmethod
     def load_if_exists(cls, uid: Optional[str]) -> Optional[User]:
-        """ Load a user by id if she exists, otherwise return None """
+        """Load a user by id if she exists, otherwise return None"""
         if not uid:
             return None
         with User._lock:
@@ -746,7 +753,7 @@ class User:
 
     @classmethod
     def load_multi(cls, uids: Iterable[str]) -> List[User]:
-        """ Load multiple users from persistent storage, given their user id """
+        """Load multiple users from persistent storage, given their user id"""
         user_list: List[User] = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
@@ -764,9 +771,9 @@ class User:
         email: str,
         image: str,
         *,
-        locale: Optional[str] = None
+        locale: Optional[str] = None,
     ) -> UserLoginDict:
-        """ Log in a user via the given account identifier and return her user id """
+        """Log in a user via the given account identifier and return her user id"""
         # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
         if um is not None:
@@ -817,7 +824,11 @@ class User:
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
         nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
-        prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name or nickname}
+        prefs: PrefsDict = {
+            "newbag": True,
+            "email": email,
+            "full_name": name or nickname,
+        }
         user_id = UserModel.create(
             user_id=account,
             account=account,
@@ -837,7 +848,7 @@ class User:
         return uld
 
     def to_serializable(self) -> Dict[str, Any]:
-        """ Convert to JSON-serializable format """
+        """Convert to JSON-serializable format"""
         d: Dict[str, Any] = dict(**self.__dict__)
         del d["_favorites"]
         del d["_blocks"]
@@ -846,7 +857,7 @@ class User:
 
     @classmethod
     def from_serializable(cls, j: Dict[str, Any]) -> User:
-        """ Create a fresh instance from a JSON-serialized object """
+        """Create a fresh instance from a JSON-serialized object"""
         u = cls(uid=j["_user_id"])
         u.__dict__ = j
         u._favorites = None
@@ -855,7 +866,7 @@ class User:
         return u
 
     def profile(self) -> Dict[str, Any]:
-        """ Return a set of key statistics on the user """
+        """Return a set of key statistics on the user"""
         reply: Dict[str, Any] = dict()
         user_id = self.id()
         assert user_id is not None

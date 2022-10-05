@@ -90,6 +90,7 @@ from skraflgame import BestMoveList, Game
 from skraflplayer import AutoPlayer
 from skrafldb import (
     ChatModel,
+    ListPrefixDict,
     ZombieModel,
     PrefsDict,
     ChallengeModel,
@@ -208,7 +209,7 @@ class UserListDict(TypedDict):
     ready: bool
     ready_timed: bool
     live: bool
-    image: Optional[str]
+    image: str
 
 
 UserList = List[UserListDict]
@@ -694,7 +695,7 @@ def _userlist(query: str, spec: str) -> UserList:
                     ready=True,  # The robots are always ready for a challenge
                     ready_timed=False,  # Timed games are not available for robots
                     live=True,  # robots are always online
-                    image=None,
+                    image="",
                 )
             )
         # That's it; we're done (no sorting required)
@@ -850,19 +851,18 @@ def _userlist(query: str, spec: str) -> UserList:
 
     elif query == "search":
         # Return users with nicknames matching a pattern
-        if not spec:
-            si = []
-        else:
+        si: List[ListPrefixDict] = []
+        if spec:
             # Limit the spec to 16 characters
             spec = spec[0:16]
 
             # The "N:" prefix is a version header; the locale is also a cache key
-            cache_range = "5:" + spec.lower() + ":" + locale  # Case is not significant
+            cache_range = "6:" + spec.lower() + ":" + locale  # Case is not significant
 
             # Start by looking in the cache
             si = memcache.get(cache_range, namespace="userlist")
             if si is None:
-                # Not found: do an query, returning max 25 users
+                # Not found: do a query, returning max 25 users
                 si = list(UserModel.list_prefix(spec, max_len=25, locale=locale))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
@@ -884,9 +884,9 @@ def _userlist(query: str, spec: str) -> UserList:
                     live=uid in online,
                     fairplay=User.fairplay_from_prefs(ud["prefs"]),
                     newbag=True,
-                    ready=ud["ready"],
-                    ready_timed=ud["ready_timed"],
-                    image=ud["image"],
+                    ready=ud["ready"] or False,
+                    ready_timed=ud["ready_timed"] or False,
+                    image=User.image_url(uid, ud["image"], ud["has_image_blob"]),
                 )
             )
 

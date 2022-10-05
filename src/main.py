@@ -92,11 +92,6 @@ if running_local:
         }
     )
 
-# Since we're running from the /src directory, reset Flask's
-# static folder to be relative from the base project directory
-BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
-STATIC_FOLDER = os.path.join(BASE_PATH, "static")
-
 app = Flask(__name__, static_folder=STATIC_FOLDER)
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
@@ -171,14 +166,14 @@ init_oauth(app)
 
 @app.template_filter("stripwhite")
 def stripwhite(s: str) -> str:
-    """ Flask/Jinja2 template filter to strip out consecutive whitespace """
+    """Flask/Jinja2 template filter to strip out consecutive whitespace"""
     # Convert all consecutive runs of whitespace of 1 char or more into a single space
     return re.sub(r"\s+", " ", s)
 
 
 @app.after_request
 def add_headers(response: Response) -> Response:
-    """ Inject additional headers into responses """
+    """Inject additional headers into responses"""
     if not running_local:
         # Add HSTS to enforce HTTPS
         response.headers[
@@ -189,7 +184,7 @@ def add_headers(response: Response) -> Response:
 
 @app.context_processor
 def inject_into_context() -> Dict[str, Union[bool, str]]:
-    """ Inject variables and functions into all Flask contexts """
+    """Inject variables and functions into all Flask contexts"""
     return dict(
         # Variable dev_server is True if running on a (local) GAE development server
         dev_server=running_local,
@@ -211,7 +206,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     where XXX is calculated from the file timestamp"""
 
     def static_file_hash(filename: str) -> int:
-        """ Obtain a timestamp for the given file """
+        """Obtain a timestamp for the given file"""
         return int(os.stat(filename).st_mtime)
 
     if "static" == endpoint or endpoint.endswith(".static"):
@@ -242,18 +237,16 @@ def warmup() -> ResponseType:
 
 @cast_app.route("/_ah/start")
 def start() -> ResponseType:
-    """ App Engine is starting a fresh instance """
+    """App Engine is starting a fresh instance"""
     version = os.environ.get("GAE_VERSION", "N/A")
     instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(
-        f"Start: version {version}, instance {instance}"
-    )
+    logging.info(f"Start: version {version}, instance {instance}")
     return "", 200
 
 
 @cast_app.route("/_ah/stop")
 def stop() -> ResponseType:
-    """ App Engine is shutting down an instance """
+    """App Engine is shutting down an instance"""
     instance = os.environ.get("GAE_INSTANCE", "N/A")
     logging.info(f"Stop: instance {instance}")
     return "", 200
@@ -261,7 +254,7 @@ def stop() -> ResponseType:
 
 @app.errorhandler(500)  # type: ignore
 def server_error(e: Union[int, Exception]) -> ResponseType:
-    """ Return a custom 500 error """
+    """Return a custom 500 error"""
     return f"<html><body><p>Eftirfarandi villa kom upp: {e}</p></body></html>", 500
 
 
@@ -285,4 +278,3 @@ if __name__ == "__main__":
         processes=1,
         host=host,  # Set by default to "127.0.0.1" in basics.py
     )
-

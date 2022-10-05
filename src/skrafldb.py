@@ -191,6 +191,23 @@ class ChatModelHistoryDict(TypedDict):
     unread: bool
 
 
+class ListPrefixDict(TypedDict):
+
+    """The dictionary returned from the UserModel.list_prefix() method"""
+
+    id: str
+    nickname: str
+    prefs: PrefsDict
+    timestamp: datetime
+    ready: Optional[bool]
+    ready_timed: Optional[bool]
+    elo: int
+    human_elo: int
+    manual_elo: int
+    image: Optional[str]
+    has_image_blob: bool
+
+
 class Query(Generic[_T_Model], ndb.Query):
 
     """A type-safer wrapper around ndb.Query"""
@@ -686,7 +703,7 @@ class UserModel(Model["UserModel"]):
     @classmethod
     def list_prefix(
         cls, prefix: str, max_len: int = 50, locale: Optional[str] = None
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> Iterator[ListPrefixDict]:
         """Query for a list of users having a name or nick with the given prefix"""
 
         if not prefix:
@@ -698,7 +715,7 @@ class UserModel(Model["UserModel"]):
 
         def list_q(
             q: Query[UserModel], f: Callable[[UserModel], str]
-        ) -> Iterator[Dict[str, Any]]:
+        ) -> Iterator[ListPrefixDict]:
             """Yield the results of a user query"""
             CHUNK_SIZE = 50
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
@@ -708,7 +725,7 @@ class UserModel(Model["UserModel"]):
                 if not um.inactive and not um.key.id() in id_set:
                     # This entity matches and has not already been
                     # returned: yield a dict describing it
-                    yield dict(
+                    yield ListPrefixDict(
                         id=um.key.id(),
                         nickname=um.nickname,
                         prefs=um.prefs,
@@ -719,6 +736,7 @@ class UserModel(Model["UserModel"]):
                         human_elo=um.human_elo,
                         manual_elo=um.manual_elo,
                         image=um.image,
+                        has_image_blob=bool(um.image_blob),
                     )
                     id_set.add(um.key.id())
 

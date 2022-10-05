@@ -175,11 +175,8 @@ class Game:
     or completed. Contains inter alia a State instance."""
 
     # The maximum overtime in a game, after which a player automatically loses
-    if running_local:
-        # Less max overtime when debugging
-        MAX_OVERTIME = 1 * 60.0  # 1 minutes, in seconds
-    else:
-        MAX_OVERTIME = 10 * 60.0  # 10 minutes, in seconds
+    # Normally 10 minutes, but set to 1 minute if running locally (debug)
+    MAX_OVERTIME = 1 * 60.0 if running_local else 10 * 60.0
 
     # After this number of days the game becomes overdue and the
     # waiting player can force the tardy opponent to resign
