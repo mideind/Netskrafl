@@ -3,13 +3,13 @@ cron:
   url: /stats/run
   schedule: every day 03:00
   retry_parameters:
-    job_retry_limit: 2
-    min_backoff_seconds: 30.0
-    max_doublings: 1
+    job_retry_limit: 3
+    min_backoff_seconds: 60.0
+    max_doublings: 3
 - description: "Skrafl ratings"
   url: /stats/ratings
-  schedule: every day 03:30
+  schedule: every day 03:45
   retry_parameters:
-    job_retry_limit: 2
-    min_backoff_seconds: 30.0
-    max_doublings: 1
+    job_retry_limit: 3
+    min_backoff_seconds: 60.0
+    max_doublings: 3

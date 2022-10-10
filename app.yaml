@@ -8,7 +8,7 @@
 #
 
 runtime: python38
-entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
+entrypoint: gunicorn -b :$PORT -w 8 netskrafl:app
 
 instance_class: B4
 manual_scaling:

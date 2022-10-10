@@ -35,7 +35,7 @@ ECHO Index update completed
 GOTO :EOF
 :CRON
 ECHO Cron update starting
-ECHO *** Currently disabled ***
+gcloud app deploy --project=netskrafl cron.yaml
 ECHO Cron update completed
 GOTO :EOF
 :STATS
