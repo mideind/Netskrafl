@@ -119,6 +119,7 @@ import io
 
 # The DAWG builder uses the collation (sorting) given by
 # the current locale setting, typically 'is_IS' or 'en_US'
+os.environ["PROJECT_ID"] = "explo-dev"
 from languages import current_alphabet, set_locale
 
 
