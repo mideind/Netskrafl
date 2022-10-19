@@ -149,6 +149,7 @@ class ClientStateDict(TypedDict, total=False):
     num_moves: int
     overdue: bool
     player: Optional[int]
+    progress: Tuple[int, int]
     rack: RackDetails
     result: int
     scores: Tuple[int, int]
@@ -1201,6 +1202,7 @@ class Game:
         reply["num_moves"] = len(self.moves)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
+        reply["progress"] = self.state.progress()
         reply["succ_chall"] = succ_chall  # Successful challenge
         reply["player"] = player_index  # Can be None if the game is over
         if self.get_duration():
