@@ -269,10 +269,12 @@ class MoveNotifyDict(TypedDict):
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
-# Maximum number of best moves to return from /bestmoves
+# Default number of best moves to return from /bestmoves.
 # This is set to 19 moves because that number is what fits
-# in the move list of the fullscreen web version
-MAX_BEST_MOVES = 19
+# in the move list of the fullscreen web version.
+DEFAULT_BEST_MOVES = 19
+# Maximum number of best moves to return from /bestmoves
+MAX_BEST_MOVES = 20
 
 # To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
 # exceptions, run the AutoPlayer move generators serially and exclusively
@@ -2194,9 +2196,11 @@ def bestmoves() -> ResponseType:
     player_index = state.player_to_move()
 
     if rq_move_number <= move_number:
+        # How many best moves are being requested?
+        num_moves = rq.get_int("num_moves", DEFAULT_BEST_MOVES)
         # Serialize access to the following section
         with autoplayer_lock:
-            best_moves = game.best_moves(state, MAX_BEST_MOVES)
+            best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
 
     uid = user.id()
     if uid is not None and game.has_player(uid):
