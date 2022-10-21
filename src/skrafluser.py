@@ -28,7 +28,7 @@ from typing import (
 
 import threading
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask.helpers import url_for
 
@@ -83,6 +83,16 @@ class UserLoginDict(TypedDict, total=False):
     method: str
     locale: str
     new: bool
+
+
+class StatsSummaryDict(TypedDict):
+
+    """A summary of statistics for a player at a given point in time"""
+
+    ts: str  # An ISO-formatted time stamp
+    elo: int
+    human_elo: int
+    manual_elo: int
 
 
 # Should we use memcache (in practice Redis) to cache user data?
@@ -895,3 +905,89 @@ class User:
         if sm is not None:
             sm.populate_dict(reply)
         return reply
+
+    @staticmethod
+    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[Dict[str, Any]]]:
+        """Return the profile of a given user along with key statistics,
+        as a dictionary as well as an error code"""
+        if cuser.id() == uid:
+            # Current user: no need to load the user object
+            user = cuser
+        else:
+            user = User.load_if_exists(uid) if uid else None
+            if user is None:
+                return Error.WRONG_USER, None
+
+        assert uid is not None
+        profile = user.profile()
+
+        # Include info on whether this user is a favorite of the current user
+        fav = False
+        if uid != cuser.id():
+            fav = cuser.has_favorite(uid)
+        profile["favorite"] = fav
+
+        # Include info on whether the current user has challenged this user
+        chall = False
+        if uid != cuser.id():
+            chall = cuser.has_challenge(uid)
+        profile["challenge"] = chall
+
+        # Include info on whether the current user has blocked this user
+        blocked = False
+        if uid != cuser.id():
+            blocked = cuser.has_blocked(uid)
+        profile["blocked"] = blocked
+
+        if uid == cuser.id():
+            # If current user, include a list of favorite users
+            profile["list_favorites"] = cuser.list_favorites()
+            # Also, include a list of blocked users
+            profile["list_blocked"] = cuser.list_blocked()
+            # Also, include a 30-day history of Elo scores
+            now = datetime.utcnow()
+            # Time at midnight, i.e. start of the current day
+            now = datetime(year=now.year, month=now.month, day=now.day)
+            # We will return a 30-day history
+            PERIOD = 30
+            # Initialize the list of day slots
+            result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
+            # The enumeration is youngest-first
+            for sm in StatsModel.last_for_user(uid, days=PERIOD):
+                age = (now - sm.timestamp).days
+                ts_iso = sm.timestamp.isoformat()
+                if age >= PERIOD:
+                    # It's an entry older than we need
+                    if result[PERIOD - 1] is not None:
+                        # We've already filled our list
+                        break
+                    # Assign the oldest entry, if we don't yet have a value for it
+                    age = PERIOD - 1
+                    ts_iso = (now - timedelta(days=age)).isoformat()
+                result[age] = StatsSummaryDict(
+                    ts=ts_iso,
+                    elo=sm.elo,
+                    human_elo=sm.human_elo,
+                    manual_elo=sm.manual_elo,
+                )
+            # Fill all day slots in the result list
+            # Create a beginning sentinel entry to fill empty day slots
+            prev = StatsSummaryDict(
+                ts=(now - timedelta(days=31)).isoformat(),
+                elo=1200,
+                human_elo=1200,
+                manual_elo=1200,
+            )
+            # Enumerate in reverse order (oldest first)
+            for ix in reversed(range(PERIOD)):
+                r = result[ix]
+                if r is None:
+                    # No entry for this day: duplicate the previous entry
+                    p = prev.copy()
+                    p["ts"] = (now - timedelta(days=ix)).isoformat()
+                    result[ix] = p
+                else:
+                    prev = r
+            profile[f"elo_{PERIOD}_days"] = result
+
+        return Error.LEGAL, profile

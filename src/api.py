@@ -98,7 +98,6 @@ from skrafldb import (
     UserModel,
     FavoriteModel,
     GameModel,
-    StatsModel,
     RatingModel,
 )
 import firebase
@@ -213,16 +212,6 @@ class UserListDict(TypedDict):
 
 
 UserList = List[UserListDict]
-
-
-class StatsSummaryDict(TypedDict):
-
-    """A summary of statistics for a player at a given point in time"""
-
-    ts: str  # An ISO-formatted time stamp
-    elo: int
-    human_elo: int
-    manual_elo: int
 
 
 class ChatMessageDict(TypedDict):
@@ -1485,90 +1474,16 @@ def gamestats() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userstats() -> ResponseType:
     """Return the profile of a given user along with key statistics"""
-
-    cid = current_user_id()
+    cuser = current_user()
+    if cuser is None:
+        return jsonify(result=Error.LOGIN_REQUIRED)
+    cid = cuser.id()
     rq = RequestData(request)
     uid = rq.get("user", cid or "")  # Current user is implicit
-    user = User.load_if_exists(uid) if uid else None
-
-    if user is None:
-        return jsonify(result=Error.WRONG_USER)
-
-    cuser = current_user()
-    assert cuser is not None
-
-    profile = user.profile()
-
-    # Include info on whether this user is a favorite of the current user
-    fav = False
-    if uid != cuser.id():
-        fav = cuser.has_favorite(uid)
-    profile["favorite"] = fav
-
-    # Include info on whether the current user has challenged this user
-    chall = False
-    if uid != cuser.id():
-        chall = cuser.has_challenge(uid)
-    profile["challenge"] = chall
-
-    # Include info on whether the current user has blocked this user
-    blocked = False
-    if uid != cuser.id():
-        blocked = cuser.has_blocked(uid)
-    profile["blocked"] = blocked
-
-    if uid == cuser.id():
-        # If current user, include a list of favorite users
-        profile["list_favorites"] = cuser.list_favorites()
-        # Also, include a list of blocked users
-        profile["list_blocked"] = cuser.list_blocked()
-        # Also, include a 30-day history of Elo scores
-        now = datetime.utcnow()
-        # Time at midnight, i.e. start of the current day
-        now = datetime(year=now.year, month=now.month, day=now.day)
-        # We will return a 30-day history
-        PERIOD = 30
-        # Initialize the list of day slots
-        result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
-        # The enumeration is youngest-first
-        for sm in StatsModel.last_for_user(uid, days=PERIOD):
-            age = (now - sm.timestamp).days
-            ts_iso = sm.timestamp.isoformat()
-            if age >= PERIOD:
-                # It's an entry older than we need
-                if result[PERIOD - 1] is not None:
-                    # We've already filled our list
-                    break
-                # Assign the oldest entry, if we don't yet have a value for it
-                age = PERIOD - 1
-                ts_iso = (now - timedelta(days=age)).isoformat()
-            result[age] = StatsSummaryDict(
-                ts=ts_iso,
-                elo=sm.elo,
-                human_elo=sm.human_elo,
-                manual_elo=sm.manual_elo,
-            )
-        # Fill all day slots in the result list
-        # Create a beginning sentinel entry to fill empty day slots
-        prev = StatsSummaryDict(
-            ts=(now - timedelta(days=31)).isoformat(),
-            elo=1200,
-            human_elo=1200,
-            manual_elo=1200,
-        )
-        # Enumerate in reverse order (oldest first)
-        for ix in reversed(range(PERIOD)):
-            r = result[ix]
-            if r is None:
-                # No entry for this day: duplicate the previous entry
-                p = prev.copy()
-                p["ts"] = (now - timedelta(days=ix)).isoformat()
-                result[ix] = p
-            else:
-                prev = r
-        profile[f"elo_{PERIOD}_days"] = result
-
-    return jsonify(profile)
+    error, us = User.stats(uid, cuser)
+    if error != Error.LEGAL or us is None:
+        return jsonify(result=error or Error.WRONG_USER)
+    return jsonify(us)
 
 
 @api.route("/image", methods=["GET", "POST"])
@@ -2312,6 +2227,37 @@ def saveuserprefs() -> ResponseType:
         return jsonify(ok=False, err=err)
     uf.store(user)
     return jsonify(ok=True)
+
+
+@api.route("/inituser", methods=["POST"])
+@auth_required(ok=False)
+def inituser() -> ResponseType:
+    """Combines the data returned from the /loaduserprefs, /userstats and /firebase_token
+    API endpoints into a single endpoint, for efficiency. The result is a JSON dictionary
+    with three fields, called userprefs, userstats and firebase_token."""
+    cuser = current_user()
+    if cuser is None:
+        # No logged-in user
+        return jsonify(ok=False)
+    cuid = cuser.id()
+    if cuid is None:
+        # No logged-in user
+        return jsonify(ok=False)
+    try:
+        error, us = User.stats(cuid, cuser)
+        if error != Error.LEGAL or us is None:
+            return jsonify(ok=False)
+        token = firebase.create_custom_token(cuid)
+        uf = UserForm(cuser)
+    except:
+        return jsonify(ok=False)
+
+    return jsonify(
+        ok=True,
+        userprefs=uf.as_dict(),
+        userstats=us,
+        firebase_token=token,
+    )
 
 
 @api.route("/initgame", methods=["POST"])
