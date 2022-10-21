@@ -1552,20 +1552,9 @@ def gamelist() -> ResponseType:
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
     cuid = current_user_id()
-    assert cuid is not None
+    if cuid is None:
+        return jsonify(result=Error.WRONG_USER)
     return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
-
-
-@api.route("/rating", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def rating() -> ResponseType:
-    """Return the newest Elo ratings table (top 100)
-    of a given kind ('all' or 'human')"""
-    rq = RequestData(request)
-    kind = rq.get("kind", "all")
-    if kind not in ("all", "human", "manual"):
-        kind = "all"
-    return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @api.route("/recentlist", methods=["POST"])
@@ -1600,6 +1589,42 @@ def recentlist() -> ResponseType:
 def challengelist() -> ResponseType:
     """Return a list of challenges issued or received by the current user"""
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
+
+
+@api.route("/allgamelists", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def allgamelists() -> ResponseType:
+    """Return a combined dict with the results of the gamelist,
+    challengelist and recentlist calls, for the current user"""
+    cuid = current_user_id()
+    if cuid is None:
+        return jsonify(result=Error.WRONG_USER)
+    rq = RequestData(request)
+    count = rq.get_int("count", 14)  # Default number of recent games to return
+    # Limit count to 50 games
+    if count > 50:
+        count = 50
+    elif count < 1:
+        count = 1
+    include_zombies = rq.get_bool("zombies", True)
+    return jsonify(
+        result=Error.LEGAL,
+        gamelist=_gamelist(cuid, include_zombies),
+        challengelist=_challengelist(),
+        recentlist=_recentlist(cuid, versus=None, max_len=count),
+    )
+
+
+@api.route("/rating", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def rating() -> ResponseType:
+    """Return the newest Elo ratings table (top 100)
+    of a given kind ('all' or 'human')"""
+    rq = RequestData(request)
+    kind = rq.get("kind", "all")
+    if kind not in ("all", "human", "manual"):
+        kind = "all"
+    return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @api.route("/favorite", methods=["POST"])
