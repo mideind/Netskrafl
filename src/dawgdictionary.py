@@ -59,7 +59,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Iterator, List, Any
+from typing import Dict, Optional, Tuple, Iterator, List
 
 import os
 import threading
@@ -77,12 +77,6 @@ from languages import (
     current_alphabet,
     current_vocabulary,
 )
-
-
-if TYPE_CHECKING:
-    # Hack to avoid Pylance errors on @lru_cache()
-    def lru_cache(maxsize: int = 0) -> Any:
-        pass
 
 
 # Type definitions
@@ -565,8 +559,8 @@ class Navigation:
                 offset += 4
             yield prefix, nextnode
 
-    @lru_cache(maxsize=8 * 1024)  # 8K entries seems to be plenty
     @staticmethod
+    @lru_cache(maxsize=8 * 1024)  # 8K entries seems to be plenty
     def _tuple_from_node(pd: PackedDawgDictionary, offset: int) -> PrefixNodes:
         """Return a cached tuple of prefixes and next node offsets along an edge"""
         return tuple(Navigation._iter_from_node(pd, offset))
