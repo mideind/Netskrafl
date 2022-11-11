@@ -102,10 +102,11 @@ class PackedDawgDictionary:
 
     def __init__(self, alphabet: Alphabet) -> None:
         # The packed byte buffer
-        self._b: Optional[bytearray] = None
+        self.b: Optional[bytes] = None
         # Lock to ensure that only one thread loads the dictionary
         self._lock = threading.Lock()
-        self._alphabet = alphabet
+        self.alphabet = alphabet
+        self.coding = alphabet.coding
         # Cached list of two letter words in this DAWG,
         # sorted by first letter and second letter
         self._two_letter: Tuple[List[str], List[str]] = ([], [])
@@ -114,12 +115,12 @@ class PackedDawgDictionary:
         """ Load a packed DAWG from a binary file """
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
-            if self._b is not None:
+            if self.b is not None:
                 # Already loaded
                 return
             # Quickly gulp the file contents into the byte buffer
             with open(fname, mode="rb") as fin:
-                self._b = bytearray(fin.read())
+                self.b = fin.read()
 
     def find(self, word: str) -> bool:
         """ Look for a word in the graph, returning True if it is found or False if not """
@@ -130,6 +131,14 @@ class PackedDawgDictionary:
     def __contains__(self, word: str) -> bool:
         """ Enable simple lookup syntax: "word" in dawgdict """
         return self.find(word)
+
+    def __hash__(self) -> int:
+        """Return a hash value for this dictionary"""
+        return id(self)
+
+    def __eq__(self, other: object) -> bool:
+        """Return True if this dictionary is equal to another"""
+        return self is other
 
     def find_matches(self, pattern: str, sort: bool = True) -> List[str]:
         """Returns a list of words matching a pattern.
@@ -171,26 +180,26 @@ class PackedDawgDictionary:
         def done()
             called when the navigation is completed
         """
-        if self._b is None:
+        if self.b is None:
             # No graph: no navigation
             nav.done()
         else:
-            Navigation(nav, self._b, self._alphabet).go()
+            Navigation(nav, self).go()
 
     def resume_navigation(
         self, nav: Navigator, prefix: str, nextnode: int, leftpart: str
     ) -> None:
         """Continue a previous navigation of the DAWG, using saved
         state information"""
-        assert self._b is not None
-        Navigation(nav, self._b, self._alphabet).resume(prefix, nextnode, leftpart)
+        assert self.b is not None
+        Navigation(nav, self).resume(prefix, nextnode, leftpart)
 
     def two_letter_words(self) -> TwoLetterListTuple:
         """Return the two letter words in this DAWG,
         sorted by first letter and by second letter"""
         if not self._two_letter[0]:
             # Cache has not yet been populated: calculate the lists
-            sk = self._alphabet.sortkey
+            sk = self.alphabet.sortkey
             # The list sorted by first letter
             tw0 = self.find_matches("??", sort=True)
             # The list sorted by second (last) letter
@@ -508,30 +517,33 @@ class MatchNavigator(Navigator):
         return self._result
 
 
+# The structure used to decode an edge offset from bytes
+_UINT32 = struct.Struct("<L")
+
+
 class Navigation:
 
     """ Manages the state for a navigation while it is in progress """
 
-    # The structure used to decode an edge offset from bytes
-    _UINT32 = struct.Struct("<L")
-
-    def __init__(self, nav: Navigator, b: bytearray, alphabet: Alphabet) -> None:
+    def __init__(self, nav: Navigator, pd: PackedDawgDictionary) -> None:
         # Store the associated navigator
         self._nav = nav
-        # The DAWG bytearray
-        self._b = b
-        # The alphabet to use for decoding the DAWG
-        self._alphabet = alphabet
+        # The DAWG dictionary we are navigating
+        self._pd = pd
+        assert pd.b is not None
+        self._b = pd.b
         # If the navigator implements accept_resumable(),
         # note it and call it with additional state information instead of
         # plain accept()
         self._resumable = nav.is_resumable
 
-    def _iter_from_node(self, offset: int) -> Iterator[IterTuple]:
+    @staticmethod
+    def _iter_from_node(pd: PackedDawgDictionary, offset: int) -> Iterator[IterTuple]:
         """A generator for yielding prefixes and next node offset along an edge
-        starting at the given offset in the DAWG bytearray"""
-        b = self._b
-        coding = self._alphabet.coding
+        starting at the given offset in the DAWG bytes"""
+        b = pd.b
+        assert b is not None
+        coding = pd.coding
         num_edges = b[offset] & 0x7F
         offset += 1
         for _ in range(num_edges):
@@ -549,23 +561,22 @@ class Navigation:
             else:
                 # Read the next node offset
                 # Tuple of length 1, i.e. (n, )
-                (nextnode,) = self._UINT32.unpack_from(b, offset)
+                (nextnode,) = _UINT32.unpack_from(b, offset)
                 offset += 4
             yield prefix, nextnode
 
-    @lru_cache(maxsize=32 * 1024)
-    def _make_iter_from_node(self, offset: int) -> PrefixNodes:
-        """Return an iterable over the prefixes and next node pointers
-        of the edge at the given offset. This function is LRU cached,
-        storing up to 32k node-to-prefix-list associations."""
-        return tuple(self._iter_from_node(offset))
+    @lru_cache(maxsize=8 * 1024)  # 8K entries seems to be plenty
+    @staticmethod
+    def _tuple_from_node(pd: PackedDawgDictionary, offset: int) -> PrefixNodes:
+        """Return a cached tuple of prefixes and next node offsets along an edge"""
+        return tuple(Navigation._iter_from_node(pd, offset))
 
     def _navigate_from_node(self, offset: int, matched: str) -> None:
         """ Starting from a given node, navigate outgoing edges """
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
         nav = self._nav
-        for prefix, nextnode in self._make_iter_from_node(offset):
+        for prefix, nextnode in Navigation._tuple_from_node(self._pd, offset):
             if nav.push_edge(prefix[0]):
                 # This edge is a candidate: navigate through it
                 self._navigate_from_edge(prefix, nextnode, matched)
@@ -628,3 +639,15 @@ class Navigation:
     def resume(self, prefix: str, nextnode: int, matched: str) -> None:
         """ Resume navigation from a previously saved state """
         self._navigate_from_edge(prefix, nextnode, matched)
+
+"""
+# Debug instrumentation:
+# Create a thread that runs every 30 seconds and logs the
+# cache statistics for the Navigation._tuple_from_node() method
+def _log_cache_stats() -> None:
+    while True:
+        time.sleep(30)
+        logging.info(Navigation._tuple_from_node.cache_info())
+
+threading.Thread(target=_log_cache_stats, daemon=True).start()
+"""

@@ -27,7 +27,7 @@ from typing import Callable, List, NamedTuple, Tuple, Iterator, Union, Optional,
 import abc
 from random import SystemRandom
 
-from config import DEFAULT_LOCALE, running_local
+from config import DEFAULT_LOCALE
 from dawgdictionary import Wordbase
 from languages import (
     TileSet,
@@ -56,8 +56,8 @@ class Cover(NamedTuple):
 
 
 # !!! DEBUG ONLY: Set to True to use an extra small bag for testing
-_DEBUG_SMALL_BAG = running_local
-# _DEBUG_SMALL_BAG = False
+# _DEBUG_SMALL_BAG = running_local
+_DEBUG_SMALL_BAG = False
 
 # Board squares with word/letter scores
 # ' '=normal/single, '2'=double, '3'=triple score
