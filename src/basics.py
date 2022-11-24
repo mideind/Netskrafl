@@ -174,7 +174,7 @@ def session_idinfo() -> Optional[UserIdDict]:
 
 def is_mobile_client() -> bool:
     """ Return True if the currently logged in client is a mobile client """
-    if ((idinfo := session_idinfo()) is None):
+    if (idinfo := session_idinfo()) is None:
         return False
     return idinfo.get("client_type", "web") in MOBILE_CLIENT_TYPES
 
