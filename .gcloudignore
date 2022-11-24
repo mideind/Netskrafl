@@ -15,8 +15,9 @@ resources/*.dawg.pickle
 # Auxiliary files
 resources/*.pptx
 
-# CSV files
+# CSV and TSV files
 resources/*.csv
+resources/*.tsv
 
 # Credential files
 resources/netskrafl-*.json

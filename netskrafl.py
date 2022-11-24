@@ -33,6 +33,7 @@ from __future__ import annotations
 from typing import (
     Optional,
     Dict,
+    Set,
     Union,
     List,
     Any,
@@ -571,12 +572,13 @@ def fetch_users(
 ) -> Dict[str, User]:
     """ Return a dictionary of users found in the ulist """
     # Make a list of user ids by applying the uid_func to ulist entries (!= None)
-    uids: List[str] = []
+    uset: Set[str] = set()
     for u in ulist:
         uid = None if u is None else uid_func(u)
         if uid:
-            uids.append(uid)
+            uset.add(uid)
     # No need for a special case for an empty list
+    uids: List[str] = list(uset)
     user_objects = User.load_multi(uids)
     # Return a dictionary mapping user ids to users
     return {uid: user for uid, user in zip(uids, user_objects)}
@@ -852,7 +854,7 @@ def _gamelist(
     for g in i:
         if g is None:
             continue
-        opp = g["opp"]  # User id of opponent
+        opp: str = g["opp"]  # User id of opponent
         ts = g["ts"]
         overdue = False
         prefs = g.get("prefs", None)
@@ -867,7 +869,9 @@ def _gamelist(
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = opponents[opp]  # Was User.load(opp)
+            u = opponents.get(opp)  # Was User.load(opp)
+            if u is None:
+                continue
             nick = u.nickname()
             fullname = u.full_name()
             delta = now - ts
@@ -1003,7 +1007,9 @@ def _recentlist(cuid: Optional[str], versus: str, max_len: int) -> List[Dict[str
             nick = Game.autoplayer_name(g["robot_level"])
         else:
             # Human opponent
-            u = opponents[opp]  # Was User.load(opp)
+            u = opponents.get(opp)  # Was User.load(opp)
+            if u is None:
+                continue
             nick = u.nickname()
 
         # Calculate the duration of the game in days, hours, minutes
@@ -1080,7 +1086,9 @@ def _challengelist() -> List[Dict[str, Any]]:
         for c in received:
             uid = c[0]  # User id
             if uid is not None:
-                u = opponents[uid]
+                u = opponents.get(uid)
+                if u is None:
+                    continue
                 nick = u.nickname()
                 result.append(
                     {
@@ -1097,7 +1105,9 @@ def _challengelist() -> List[Dict[str, Any]]:
         for c in issued:
             uid = c[0]  # User id
             if uid is not None:
-                u = opponents[uid]
+                u = opponents.get(uid)
+                if u is None:
+                    continue
                 nick = u.nickname()
                 result.append(
                     {

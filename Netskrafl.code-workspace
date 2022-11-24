@@ -40,5 +40,7 @@
 		"python.analysis.extraPaths": [
 			"${env:LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\platform\\google_appengine"
 		],
+		"python.analysis.diagnosticMode": "workspace",
+		"python.analysis.typeCheckingMode": "strict",
 	}
 }
