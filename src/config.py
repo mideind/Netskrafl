@@ -68,18 +68,18 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     FIREBASE_SENDER_ID = j.get("FIREBASE_SENDER_ID", "")
     FIREBASE_DB_URL = j.get("FIREBASE_DB_URL", "")
     FIREBASE_APP_ID = j.get("FIREBASE_APP_ID", "")
-    assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
     assert FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
     assert FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
+    assert FIREBASE_DB_URL, "FIREBASE_DB_URL environment variable not set"
     assert FIREBASE_APP_ID, "FIREBASE_APP_ID environment variable not set"
 
     # Apple ID configuration
     APPLE_KEY_ID = j.get("APPLE_KEY_ID", "")
     APPLE_TEAM_ID = j.get("APPLE_TEAM_ID", "")
     APPLE_CLIENT_ID = j.get("APPLE_CLIENT_ID", "")
-    # assert APPLE_KEY_ID, "APPLE_KEY_ID environment variable not set"
-    # assert APPLE_TEAM_ID, "APPLE_TEAM_ID environment variable not set"
-    # assert APPLE_CLIENT_ID, "APPLE_CLIENT_ID environment variable not set"
+    assert APPLE_KEY_ID, "APPLE_KEY_ID environment variable not set"
+    assert APPLE_TEAM_ID, "APPLE_TEAM_ID environment variable not set"
+    assert APPLE_CLIENT_ID, "APPLE_CLIENT_ID environment variable not set"
 
 
 # Valid token issuers for OAuth2 login
