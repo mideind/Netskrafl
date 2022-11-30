@@ -14,14 +14,14 @@ IF /i "%1" EQU "C" GOTO CRON
 IF /i "%1" EQU "DEFAULT" GOTO DEFAULT
 IF /i "%1" EQU "D" GOTO DEFAULT
 ECHO Full deployment (app + skraflstats) starting
-cmd.exe /c "grunt make"
+cmd.exe /c "npx grunt make"
 ECHO *** Currently disabled ***
 ECHO Full deployment completed
 GOTO :EOF
 :DEFAULT
 IF "%2" EQU "" GOTO NOVERSION
 ECHO Default module deployment starting, version '%2'
-cmd.exe /c "grunt make"
+cmd.exe /c "npx grunt make"
 gcloud beta app deploy --version=%2 --no-promote --project=netskrafl app-netskrafl.yaml
 ECHO Default module deployment completed
 GOTO :EOF
