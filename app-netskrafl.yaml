@@ -4,7 +4,7 @@
 # Copyright (C) 2022 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
-# Deploy with 'gcloud beta app deploy --no-promote --version=somename app.yaml'
+# Deploy with 'gcloud beta app deploy --no-promote --version=somename app-netskrafl.yaml'
 #
 
 runtime: python38

@@ -172,9 +172,9 @@ _PROJECT_ID = os.environ.get("PROJECT_ID", "")
 # client_id and client_secret for Google Sign-In
 _CLIENT_ID = os.environ.get("CLIENT_ID", "")
 _CLIENT_SECRET_FILE = {
-    "netskrafl": "client_secret.txt",
+    "netskrafl": "client_secret_netskrafl.txt",
     "explo-dev": "client_secret_explo.txt",
-}.get(_PROJECT_ID, "client_secret.txt")
+}.get(_PROJECT_ID, "client_secret_netskrafl.txt")
 
 # Read client secret key from file
 with open(

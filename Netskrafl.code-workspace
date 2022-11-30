@@ -9,14 +9,14 @@
 			"**/*.html": "jinja-html"
 		},
 		"files.exclude": {
-			"__pycache__/": true,
 			".idea/": true,
-			".vscode/": true,
 			".tscache/": true,
+			".vscode/": true,
+			"**/__pycache__/": true,
+			"**/*.bin.dawg": true,
 			"**/*.min.js": true,
 			"**/*.profile": true,
 			"**/*.pyc": true,
-			"**/*.bin.dawg": true,
 			"google/": true,
 			"lib/": true,
 			"node_modules/": true,
