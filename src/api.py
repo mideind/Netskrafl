@@ -1358,16 +1358,17 @@ def submitmove() -> ResponseType:
 def gamestate() -> ResponseType:
     """Returns the current state of a game"""
 
+    user_id = current_user_id()
+    if user_id is None:
+        return jsonify(ok=False)
+
     rq = RequestData(request)
     uuid = rq.get("game")
     delete_zombie = rq.get_bool("delete_zombie", False)
 
-    user_id = current_user_id()
-
-    # !!! FIXME: use_cache was not set to False here
     game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
 
-    if game is None or user_id is None:
+    if game is None:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
@@ -1382,6 +1383,34 @@ def gamestate() -> ResponseType:
         ZombieModel.del_game(uuid, user_id)
 
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
+
+
+@api.route("/clear_zombie", methods=["POST"])
+@auth_required(ok=False)
+def clear_zombie() -> ResponseType:
+    """Clears the zombie status of a game"""
+
+    user_id = current_user_id()
+    if user_id is None:
+        return jsonify(ok=False)
+
+    rq = RequestData(request)
+    uuid = rq.get("game")
+
+    game = Game.load(uuid) if uuid else None
+
+    if game is None:
+        # We must have a logged-in user and a valid game
+        return jsonify(ok=False)
+
+    player_index = game.player_index(user_id)
+    if player_index is None:
+        # This user is not one of the players: refuse the request
+        return jsonify(ok=False)
+
+    ZombieModel.del_game(uuid, user_id)
+
+    return jsonify(ok=True)
 
 
 @api.route("/forceresign", methods=["POST"])
