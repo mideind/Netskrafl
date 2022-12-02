@@ -88,7 +88,7 @@ function initPresence(userId: string, locale: string) {
     }
     else
       // Unset presence
-      userRef.set(false);
+      userRef.remove();
   });
 }
 

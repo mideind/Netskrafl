@@ -692,9 +692,8 @@ class UserModel(Model["UserModel"]):
     def filter_locale(
         cls, q: Query[UserModel], locale: Optional[str]
     ) -> Query[UserModel]:
-        """Filter the query by locale, if given, otherwise stay
-        with the default"""
-        if locale is None:
+        """Filter the query by locale, if given, otherwise stay with the default"""
+        if not locale:
             return q.filter(
                 ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
             )

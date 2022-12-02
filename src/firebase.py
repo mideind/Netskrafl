@@ -242,7 +242,7 @@ def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
             if "game" not in msg_dict and key == msg_dict.get("key"):
                 return True
         return False
-    except httplib2.HttpLib2Error as e:
+    except (httplib2.HttpLib2Error, ValueError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.check_wait()")
         return False
 
@@ -256,7 +256,7 @@ def check_presence(user_id: str, locale: str) -> bool:
             return False
         msg = json.loads(body) if body else None
         return bool(msg)
-    except httplib2.HttpLib2Error as e:
+    except (httplib2.HttpLib2Error, ValueError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.check_presence()")
         return False
 
@@ -279,7 +279,6 @@ def get_connected_users(locale: str) -> Set[str]:
         if not msg:
             return set()
         return set(msg.keys())
-    return set()  # Pacify Pylance
 
 
 def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
