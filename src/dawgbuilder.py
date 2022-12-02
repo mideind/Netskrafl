@@ -106,11 +106,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, IO, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 import os
 import sys
-import codecs
 import time
 
 import binascii
@@ -445,7 +444,7 @@ class _Dawg:
                 packer.node_end(node.id)
         packer.finish()
 
-    def write_text(self, stream: IO[str]) -> None:
+    def write_text(self, stream: io.TextIOWrapper) -> None:
         """Write the optimized DAWG to a text stream"""
         print("Output graph has {0} nodes".format(len(self._unique_nodes)))
         # We don't have to write node ids since they correspond to line numbers.
@@ -618,9 +617,7 @@ class DawgBuilder:
             self._sortkey = current_alphabet().sortkey
             self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin: Optional[IO[str]] = codecs.open(
-                fpath, mode="r", encoding="utf-8"
-            )
+            self._fin: io.TextIOWrapper = open(fpath, "r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 
@@ -865,7 +862,7 @@ class DawgBuilder:
         """Write the DAWG to a text output file with extension '.text.dawg'"""
         assert self._dawg is not None
         fname = os.path.abspath(os.path.join(relpath, output + ".text.dawg"))
-        with codecs.open(fname, mode="w", encoding="utf-8") as fout:
+        with open(fname, "w", encoding="utf-8", newline="\n") as fout:
             self._dawg.write_text(fout)
 
     # pylint: disable=bad-continuation
@@ -1139,8 +1136,13 @@ def run_icelandic_filter() -> None:
             # else:
             #    print("Deleting {0}".format(word))
 
+    # Write the filtered vocabulary to a file, always using LF line endings
+    # even on Windows
     with open(
-        os.path.join("resources", "ordalisti.aml.filtered.txt"), "w", encoding="utf-8"
+        os.path.join("resources", "ordalisti.aml.filtered.txt"),
+        "w",
+        encoding="utf-8",
+        newline="\n",
     ) as f:
         for w in vocab:
             f.write(f"{w}\n")
@@ -1247,7 +1249,9 @@ def run_english_filter() -> None:
                 break
     for t in tasks:
         t["vocab"].sort()
-        with open(os.path.join("resources", t["out"]), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join("resources", t["out"]), "w", encoding="utf-8", newline="\n"
+        ) as f:
             for w in t["vocab"]:
                 f.write(f"{w}\n")
     print(f"English filtering done after reading {cnt} lines from source")
