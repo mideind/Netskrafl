@@ -617,7 +617,7 @@ class DawgBuilder:
             self._sortkey = current_alphabet().sortkey
             self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin: io.TextIOWrapper = open(fpath, "r", encoding="utf-8")
+            self._fin = open(fpath, "r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 
