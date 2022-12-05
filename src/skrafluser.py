@@ -35,7 +35,7 @@ from flask.helpers import url_for
 from cache import memcache
 
 from config import DEFAULT_LOCALE
-from languages import Alphabet
+from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
     PrefItem,
@@ -839,6 +839,8 @@ class User:
             "email": email,
             "full_name": name or nickname,
         }
+        # Make sure that the locale is a valid, supported locale
+        locale = to_supported_locale(locale) if locale else DEFAULT_LOCALE
         user_id = UserModel.create(
             user_id=account,
             account=account,
@@ -846,13 +848,13 @@ class User:
             nickname=nickname,
             image=image,
             preferences=prefs,
-            locale=locale or DEFAULT_LOCALE,
+            locale=locale,
         )
         # Create a user login event object and return it
         uld = UserLoginDict(
             user_id=user_id,
             account=account,
-            locale=locale or DEFAULT_LOCALE,
+            locale=locale,
             new=True,
         )
         return uld

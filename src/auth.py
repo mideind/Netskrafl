@@ -248,7 +248,7 @@ def oauth_fb(request: Request) -> ResponseType:
         email=email,
         method="Facebook",
         account=account,
-        locale=locale,
+        locale=uld["locale"],
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
@@ -299,10 +299,6 @@ def oauth_apple(request: Request) -> ResponseType:
     name: str = rq.get("fullName", "")  # This is populated on first sign-in
     image: str = ""  # !!! Not available from Apple token
     locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
-    # Apple can return strange locale codes such as en_IS.
-    # In such cases, we downcast to a generic locale, in this case 'en',
-    # or to the DEFAULT_LOCALE if no downcast is found.
-    locale = to_supported_locale(locale)
 
     # Make sure that Apple account ids are different from Google/OAuth ones
     # by prefixing them with 'apple:'. Note that Firebase paths cannot contain
@@ -322,7 +318,7 @@ def oauth_apple(request: Request) -> ResponseType:
         email=email,
         method="Apple",
         account=account,
-        locale=locale,
+        locale=uld["locale"],
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )

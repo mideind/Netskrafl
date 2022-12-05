@@ -72,6 +72,7 @@ from languages import (
     current_lc,
     current_alphabet,
     current_language,
+    to_supported_locale,
     SUPPORTED_LOCALES,
 )
 from dawgdictionary import Wordbase
@@ -336,7 +337,7 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
-        self.locale = form.get("locale", "").strip() or DEFAULT_LOCALE
+        self.locale = to_supported_locale(form.get("locale", "").strip()) or DEFAULT_LOCALE
         try:
             self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
@@ -364,7 +365,7 @@ class UserForm:
             self.email = d.get("email", "").strip()
         except (TypeError, ValueError):
             pass
-        self.locale = d.get("locale", "").strip() or DEFAULT_LOCALE
+        self.locale = to_supported_locale(d.get("locale", "").strip()) or DEFAULT_LOCALE
         try:
             self.image = d.get("image", "").strip()
         except (TypeError, ValueError, KeyError):
@@ -1468,7 +1469,7 @@ def wordcheck() -> ResponseType:
     locale: Optional[str] = rq.get("locale")
 
     if locale:
-        set_game_locale(locale)
+        set_game_locale(to_supported_locale(locale))
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -1776,7 +1777,7 @@ def setuserpref() -> ResponseType:
         # Locales have one or two parts, separated by an underscore,
         # and each part is a two-letter code.
         if 1 <= len(a) <= 2 and all(len(x) == 2 and x.isalpha() for x in a):
-            user.set_locale(lc)
+            user.set_locale(to_supported_locale(lc))
             update = True
 
     if update:

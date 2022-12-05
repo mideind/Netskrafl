@@ -826,6 +826,8 @@ def language_for_locale(lc: str) -> str:
 def to_supported_locale(lc: str) -> str:
     """Return the locale code if it is supported, otherwise its parent
     locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
+    # Defensive programming: we always use underscores in locale codes
+    lc = lc.replace("-", "_")
     found = lc in SUPPORTED_LOCALES
     while not found:
         lc = "".join(lc.split("_")[0:-1])
