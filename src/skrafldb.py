@@ -579,6 +579,8 @@ class UserModel(Model["UserModel"]):
     best_word_game = Model.OptionalStr()
     # Number of completed human games
     games = Model.Int(default=0, indexed=False)
+    # User's device tokens storage
+    device_tokens = Model.OptionalStr()
 
     @classmethod
     def create(

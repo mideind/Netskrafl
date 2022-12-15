@@ -1317,6 +1317,7 @@ def submitmove() -> ResponseType:
     movelist = rq.get_list("moves")
     movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
+    firebase.send_push_notification()
 
     game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
 
@@ -2282,6 +2283,13 @@ def saveuserprefs() -> ResponseType:
         return jsonify(ok=False, err=err)
     uf.store(user)
     return jsonify(ok=True)
+
+
+@api.route("/setdevicetoken", methods=["POST"])
+@auth_required(ok=False)
+def set_device_token() -> None:
+    print("test")
+
 
 
 @api.route("/inituser", methods=["POST"])

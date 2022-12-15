@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Sequence, List, Union, Tuple, Set, Dict, cast
 
+import os
 import json
 import threading
 import logging
@@ -28,7 +29,7 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import App, initialize_app, auth  # type: ignore
+from firebase_admin import App, initialize_app, auth, messaging, credentials  # type: ignore
 
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
@@ -52,6 +53,31 @@ _tls = threading.local()
 
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
+
+firebase_cred = credentials.Certificate(os.path.abspath(os.path.join("resources", "explo-dev-firebase-adminsdk-nlwq7-706a6b3fdd.json")))
+
+
+def _init_firebase_app():
+    """Initialize a global Firebase app instance"""
+    global _firebase_app
+    with _firebase_app_lock:
+        if _firebase_app is None:
+            _firebase_app = initialize_app(
+                credential=firebase_cred,
+                options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
+            )
+
+_init_firebase_app()
+
+def send_push_notification() -> None:
+    message = messaging.Message(
+        data={
+            'score': '850',
+            'time': '2:45',
+        },
+        token="clwIGAakTryj3dcc8Xv93g:APA91bGndABmV1mBQfAhu9-Rkl6cBNCyghqRf47dhG5PCPW3L3TpG_GZsPopmmt0Nhf9TsywRGmxz4su733jSOZhQOP0LMS7GtrhuQHb4IwlOb7ZczoOidC9K_rF7OT46XP9z0B0K4WW"
+    )
+    messaging.send(message)
 
 
 def _get_http() -> Optional[httplib2.Http]:
@@ -105,16 +131,6 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
         attempts += 1
     # Should not get here
     assert False, "Unexpected fall out of loop in firebase._request()"
-
-
-def _init_firebase_app():
-    """Initialize a global Firebase app instance"""
-    global _firebase_app
-    with _firebase_app_lock:
-        if _firebase_app is None:
-            _firebase_app = initialize_app(
-                options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
-            )
 
 
 def _firebase_put(  # type: ignore
@@ -287,7 +303,6 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     clients. It takes a unique id that will be used by Firebase's
     security rules to prevent unauthorized access."""
     # Make sure that the Firebase app instance has been initialized
-    _init_firebase_app()
     attempts = 0
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:
