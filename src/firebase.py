@@ -41,7 +41,7 @@ _FIREBASE_SCOPES: Sequence[str] = [
 _TIMEOUT: int = 15  # Seconds
 
 _LIFETIME_MEMORY_CACHE = 1  # Minutes
-_LIFETIME_REDIS_CACHE = 10  # Minutes
+_LIFETIME_REDIS_CACHE = 5  # Minutes
 
 _HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
 
@@ -321,7 +321,7 @@ def online_users(locale: str) -> Set[str]:
     ):
         return _online_cache[locale]
 
-    # Second, use the distributed Redis cache, having a lifetime of 10 minutes
+    # Second, use the distributed Redis cache, having a lifetime of 5 minutes
     online: Union[Set[str], List[str]] = memcache.get(
         "live:" + locale, namespace="userlist"
     )
@@ -329,7 +329,7 @@ def online_users(locale: str) -> Set[str]:
     if not online:
         # Not found: do a Firebase query, which returns a set
         online = get_connected_users(locale)
-        # Store the result as a list in the Redis cache with a lifetime of 10 minutes
+        # Store the result as a list in the Redis cache, with a timeout
         memcache.set(
             "live:" + locale,
             list(online),
