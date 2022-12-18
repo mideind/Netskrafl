@@ -135,8 +135,8 @@ def login_user() -> bool:
             # in the user session
             idinfo["method"] = "Google"
             idinfo["account"] = uld["account"]
-            idinfo["new"] = uld["new"]
-            idinfo["locale"] = uld["locale"]
+            idinfo["new"] = uld.get("new", False)
+            idinfo["locale"] = uld.get("locale", DEFAULT_LOCALE)
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider

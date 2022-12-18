@@ -41,7 +41,6 @@ from config import (
     APPLE_CLIENT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
-from languages import to_supported_locale
 
 from skrafluser import User, UserLoginDict
 
@@ -248,7 +247,7 @@ def oauth_fb(request: Request) -> ResponseType:
         email=email,
         method="Facebook",
         account=account,
-        locale=uld["locale"],
+        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
@@ -318,7 +317,7 @@ def oauth_apple(request: Request) -> ResponseType:
         email=email,
         method="Apple",
         account=account,
-        locale=uld["locale"],
+        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )
