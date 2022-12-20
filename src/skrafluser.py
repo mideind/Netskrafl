@@ -369,8 +369,10 @@ class User:
         self.set_pref("full_name", full_name)
 
     def email(self) -> str:
-        """Returns the e-mail address of a user from the user preferences"""
-        return self.get_string_pref("email", self._email or "")
+        """Returns the e-mail address of a user from the user preferences,
+        or the e-mail address of the user entity"""
+        email = self.get_string_pref("email")
+        return email or self._email or ""
 
     def set_email(self, email: str) -> None:
         """Sets the e-mail address of a user in the user preferences"""
