@@ -2193,8 +2193,9 @@ class CompletionModel(Model["CompletionModel"]):
 
     # The type of process that was completed, usually 'stats' or 'ratings'
     proctype = Model.Str()
+
     # The timestamp of the successful run
-    timestamp = Model.Datetime(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
 
     # The from-to range of the successful process
     ts_from = Model.Datetime()
