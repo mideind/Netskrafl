@@ -29,7 +29,7 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import App, initialize_app, auth, messaging, credentials  # type: ignore
+from firebase_admin import App, initialize_app, auth, messaging, credentials, db  # type: ignore
 
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
@@ -69,15 +69,26 @@ def _init_firebase_app():
 
 _init_firebase_app()
 
-def send_push_notification() -> None:
-    message = messaging.Message(
-        data={
-            'score': '850',
-            'time': '2:45',
-        },
-        token="clwIGAakTryj3dcc8Xv93g:APA91bGndABmV1mBQfAhu9-Rkl6cBNCyghqRf47dhG5PCPW3L3TpG_GZsPopmmt0Nhf9TsywRGmxz4su733jSOZhQOP0LMS7GtrhuQHb4IwlOb7ZczoOidC9K_rF7OT46XP9z0B0K4WW"
+def send_push_notification(user_id: str, title: str, body: str) -> None:
+    user_session = db.reference('session/{0}'.format(user_id)).get()
+
+    if user_session is None:
+        return
+
+    device_tokens = list(user_session.keys())
+    aps = messaging.Aps(content_available=True)
+    payload = messaging.APNSPayload(aps)
+
+    message = messaging.MulticastMessage(
+        notification=messaging.Notification(
+            title=title,
+            body=body
+        ),
+        tokens=device_tokens,
+        apns=messaging.APNSConfig(payload=payload)
     )
-    messaging.send(message)
+
+    messaging.send_multicast(message)
 
 
 def _get_http() -> Optional[httplib2.Http]:

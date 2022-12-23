@@ -485,6 +485,14 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
 
 
+def _notify_opponent_about_move(opponent_id: str, move: MoveBase) -> None:
+    firebase.send_push_notification(
+        user_id=opponent_id,
+        title="Your opponent has made a move",
+        body=str(move)
+    )
+
+
 def _process_move(
     game: Game, movelist: Iterable[str], *, force_resign: bool = False
 ) -> ResponseType:
@@ -637,6 +645,7 @@ def _process_move(
 
     if msg_dict:
         firebase.send_message(msg_dict)
+        _notify_opponent_about_move(opponent, m)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(1 - opponent_index))
@@ -1317,7 +1326,6 @@ def submitmove() -> ResponseType:
     movelist = rq.get_list("moves")
     movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
-    firebase.send_push_notification()
 
     game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
 
