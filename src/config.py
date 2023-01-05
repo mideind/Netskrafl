@@ -38,7 +38,7 @@ DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 CLIENT_SECRET_FILE = {
     "netskrafl": "client_secret_netskrafl.json",
     "explo-dev": "client_secret_explo.json",
-    "explo-live": "client_secret_explo.json",
+    "explo-live": "client_secret_explo_live.json",
 }.get(PROJECT_ID, "client_secret.json")
 
 # Read client secrets (some of which aren't really that secret) from JSON file
