@@ -161,8 +161,6 @@ class User:
         # Number of completed human games
         # (used for on-the-fly Elo calculations at game end)
         self._human_games = 0
-        # User's device tokens storage
-        self._device_tokens: Optional[Set[str]] = None
 
         # NOTE: When new properties are added, the memcache namespace version id
         # (User._NAMESPACE, above) should be incremented!
