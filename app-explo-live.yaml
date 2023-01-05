@@ -16,6 +16,9 @@ manual_scaling:
   #instances: 2
   instances: 1
 
+vpc_access_connector:
+  name: 'projects/explo-live/locations/europe-west1/connectors/vpc0c'
+
 env_variables:
   # When running on the local development server,
   # REDISHOST is automatically set to 'localhost' (in cache.py)

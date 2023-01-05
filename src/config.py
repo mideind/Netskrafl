@@ -34,6 +34,8 @@ assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
 DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
+DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
     "netskrafl": "client_secret_netskrafl.json",
@@ -48,11 +50,14 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
 
     # Client types and their ids (and secrets, as applicable)
     CLIENT: Dict[str, Dict[str, str]] = j.get("CLIENT", {})
+    WEB_CLIENT = CLIENT.get("web", {})
 
-    CLIENT_ID = CLIENT.get("web", {}).get("id", "")
-    CLIENT_SECRET = CLIENT.get("web", {}).get("secret", "")
+    CLIENT_ID = WEB_CLIENT.get("id", "")
+    CLIENT_SECRET = WEB_CLIENT.get("secret", "")
     assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_FILE}"
     assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_FILE}"
+
+    OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
     # Analytics measurement id
     MEASUREMENT_ID = j.get("MEASUREMENT_ID", "")

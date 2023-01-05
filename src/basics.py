@@ -48,6 +48,7 @@ from flask.wrappers import Request, Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
+from config import OAUTH_CONF_URL
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
@@ -122,7 +123,6 @@ _oauth: Optional[OAuth] = None
 
 def init_oauth(app: Flask) -> None:
     """ Initialize the OAuth wrapper """
-    OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
     global _oauth
     _oauth = OAuth(app)
     cast(Any, _oauth).register(
