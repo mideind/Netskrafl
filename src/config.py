@@ -87,6 +87,8 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     assert APPLE_TEAM_ID, "APPLE_TEAM_ID environment variable not set"
     assert APPLE_CLIENT_ID, "APPLE_CLIENT_ID environment variable not set"
 
+    # RevenueCat bearer token
+    RC_WEBHOOK_AUTH = j.get("RC_WEBHOOK_AUTH", "")
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

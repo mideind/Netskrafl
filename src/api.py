@@ -50,6 +50,7 @@ from flask.globals import current_app
 from werkzeug.utils import redirect
 
 from config import (
+    RC_WEBHOOK_AUTH,
     running_local,
     PROJECT_ID,
     DEFAULT_LOCALE,
@@ -2252,6 +2253,70 @@ def cancelplan() -> ResponseType:
         return jsonify(ok=False)
     result = cancel_plan(user)
     return jsonify(ok=result)
+
+
+# RevenueCat event types that start or continue a subscription
+SUBSCRIPTION_START_TYPES = frozenset(
+    [
+        "INITIAL_PURCHASE",
+        "NON_RENEWING_PURCHASE",
+        "RENEWAL",
+        "UNCANCELLATION",
+        # "TRANSFER",
+    ]
+)
+
+# RevenueCat event types that end a subscription
+SUBSCRIPTION_END_TYPES = frozenset(
+    [
+        "CANCELLATION",
+        "SUBSCRIPTION_PAUSED",
+        # "TRANSFER",
+    ]
+)
+
+# Assert if there is overlap between the two sets
+assert not SUBSCRIPTION_START_TYPES.intersection(SUBSCRIPTION_END_TYPES), (
+    "SUBSCRIPTION_START_TYPES and SUBSCRIPTION_END_TYPES must be disjoint"
+)
+
+@api.route("/rchook", methods=["POST"])
+def rchook() -> ResponseType:
+    """Receive a webhook call from the RevenueCat server"""
+    # First, validate whether the request has the correct
+    # bearer token (RC_WEBHOOK_AUTH)
+    if not RC_WEBHOOK_AUTH:
+        return "Not supported", 200
+    if request.headers.get("Authorization", "") != "Bearer " + RC_WEBHOOK_AUTH:
+        return "Not authorized", 401
+    # OK: Process the request
+    rq = RequestData(request)
+    logging.info(f"Received webhook from RevenueCat: {rq!r}")  # !!! DEBUG
+    rq_type = rq.get("type", "")
+    if rq_type in SUBSCRIPTION_START_TYPES:
+        # A subscription has been purchased or renewed
+        user_id = rq.get("app_user_id", "")
+        if user_id:
+            user = User.load_if_exists(user_id)
+            if user is not None:
+                user.set_friend(True)
+                user.set_has_paid(True)
+                user.set_plan("friend")
+                user.update()
+        return "OK", 200
+    elif rq_type in SUBSCRIPTION_END_TYPES:
+        # A subscription has expired or been cancelled
+        user_id = rq.get("app_user_id", "")
+        if user_id:
+            user = User.load_if_exists(user_id)
+            if user is not None:
+                user.set_friend(False)
+                user.set_has_paid(False)
+                user.set_plan("")
+                user.update()
+        return "OK", 200
+    # !!! TODO: Log events to the database
+    return "OK", 200
 
 
 @api.route("/loaduserprefs", methods=["POST"])

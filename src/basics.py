@@ -256,6 +256,9 @@ class RequestData:
                 else:
                     self.q = dict()
 
+    def __repr__(self) -> str:
+        return f"<RequestData {self.q!r}>"
+
     @overload
     def get(self, key: str) -> Any:
         ...
