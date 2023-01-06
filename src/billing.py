@@ -175,10 +175,7 @@ def cancel_plan(user: User) -> bool:
             )
             return False
         # Disable subscription, remove friend status
-        user.set_plan("")
-        user.set_friend(False)
-        user.set_has_paid(False)
-        user.update()
+        user.add_transaction("", "salescloud")
         # Inform clients of the user status change
         firebase.put_message(dict(plan="", friend=False, hasPaid=False), "user", userid)
         logging.info("Removed user {0} as friend".format(userid))
@@ -291,20 +288,14 @@ def handle(request: Request, uid: str) -> ResponseType:
         status = j.get("subscription_status")
         if status == "true":
             # Enable subscription, mark as friend
-            user.set_plan("friend")
-            user.set_friend(True)
-            user.set_has_paid(True)
-            user.update()
+            user.add_transaction("friend", "salescloud")
             logging.info("Set user {0} as friend".format(customer))
             handled = True
             # Inform clients of the user status change
             firebase.put_message(dict(friend=True, hasPaid=True), "user", userid)
         elif status == "false":
             # Disable subscription, remove friend status
-            user.set_plan("")
-            user.set_friend(False)
-            user.set_has_paid(False)
-            user.update()
+            user.add_transaction("", "salescloud")
             logging.info("Removed user {0} as friend".format(customer))
             handled = True
             # Inform clients of the user status change

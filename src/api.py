@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import (
     Optional,
     Dict,
+    Sequence,
     TypedDict,
     Union,
     List,
@@ -1758,8 +1759,8 @@ def setuserpref() -> ResponseType:
         ("ready", user.set_ready, False),
         ("ready_timed", user.set_ready_timed, False),
         ("chat_disabled", user.disable_chat, False),
-        ("friend", user.set_friend, True),
-        ("has_paid", user.set_has_paid, True),
+        # ("friend", user.set_friend, True),
+        # ("has_paid", user.set_has_paid, True),
     ]
 
     update = False
@@ -2302,10 +2303,7 @@ def rchook() -> ResponseType:
         if user_id:
             user = User.load_if_exists(user_id)
             if user is not None:
-                user.set_friend(True)
-                user.set_has_paid(True)
-                user.set_plan("friend")
-                user.update()
+                user.add_transaction("friend", "rchook")
         return "OK", 200
     elif rq_type in SUBSCRIPTION_END_TYPES:
         # A subscription has expired or been cancelled
@@ -2313,11 +2311,27 @@ def rchook() -> ResponseType:
         if user_id:
             user = User.load_if_exists(user_id)
             if user is not None:
-                user.set_friend(False)
-                user.set_has_paid(False)
-                user.set_plan("")
-                user.update()
+                user.add_transaction("", "rchook")
         return "OK", 200
+    elif rq_type == "TRANSFER":
+        # A subscription has been transferred between users,
+        # from the one in transferred_from[0] to the one in
+        # transferred_to[0]. Load both users and add the appropriate
+        # transactions.
+        from_list: Sequence[str] = rq.get("transferred_from") or [""]
+        to_list: Sequence[str] = rq.get("transferred_to") or [""]
+        user_from_id = from_list[0]
+        user_to_id = to_list[0]
+        if user_from_id:
+            user = User.load_if_exists(user_from_id)
+            if user is not None:
+                user.add_transaction("", "rchook_transfer")
+        if user_to_id:
+            user = User.load_if_exists(user_to_id)
+            if user is not None:
+                user.add_transaction("friend", "rchook_transfer")
+        return "OK", 200
+
     # !!! TODO: Log events to the database
     return "OK", 200
 

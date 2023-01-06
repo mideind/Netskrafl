@@ -2327,3 +2327,32 @@ class ReportModel(Model["ReportModel"]):
             rm.put()
             return True
         return False
+
+
+class TransactionModel(Model["TransactionModel"]):
+
+    """Models subscription transactions"""
+
+    # Unique transaction id
+    uuid = Model.Str()
+    # User
+    user: Key[UserModel] = Model.DbKey(kind=UserModel)
+    # Timestamp
+    ts = Model.Datetime(auto_now_add=True)
+    # Subscription plan, or empty string if none
+    plan = Model.Str()
+    # Subscription kind, or empty string if none
+    plan = Model.Str()
+
+    @classmethod
+    def add_transaction(
+        cls, user_id: str, plan: str, kind: str
+    ) -> None:
+        """Add a transaction"""
+        tm = TransactionModel()
+        tm.uuid = Unique.id()
+        tm.user = Key(UserModel, user_id)
+        tm.ts = datetime.utcnow()
+        tm.plan = plan
+        tm.kind = kind
+        tm.put()

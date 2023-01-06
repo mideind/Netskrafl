@@ -88,9 +88,7 @@ def admin_setfriend() -> str:
     if u is None:
         return "<html><body><p>Unknown user id '{0}'</p></body></html>".format(uid)
     was_friend = u.friend()
-    u.set_friend(bstate)
-    u.set_has_paid(bstate)
-    u.update()
+    u.add_transaction("friend" if bstate else "", "admin")
     logging.info("Friend state of user {0} manually set to {1}".format(uid, bstate))
     return (
         f"<html><body><p>User '{uid}': friend state was {was_friend}; "

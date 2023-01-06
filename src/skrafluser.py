@@ -40,6 +40,8 @@ from firebase import online_users
 from skrafldb import (
     PrefItem,
     PrefsDict,
+    TransactionModel,
+    Unique,
     UserModel,
     FavoriteModel,
     ChallengeModel,
@@ -527,9 +529,14 @@ class User:
             p = "friend"
         return p
 
-    def set_plan(self, plan: str) -> None:
-        """Set a subscription plan"""
+    def add_transaction(self, plan: str, kind: str) -> None:
+        """Start or finish a subscription plan"""
         self._plan = plan
+        self.set_has_paid(plan != "")
+        self.set_friend(plan != "")
+        self.update()
+        # Add a transaction record to the datastore
+        TransactionModel.add_transaction(self.id(), plan, kind)
 
     def is_ready(self) -> bool:
         """Returns True if the user is ready to accept challenges"""
