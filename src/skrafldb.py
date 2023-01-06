@@ -2333,8 +2333,6 @@ class TransactionModel(Model["TransactionModel"]):
 
     """Models subscription transactions"""
 
-    # Unique transaction id
-    uuid = Model.Str()
     # User
     user: Key[UserModel] = Model.DbKey(kind=UserModel)
     # Timestamp
@@ -2349,8 +2347,7 @@ class TransactionModel(Model["TransactionModel"]):
         cls, user_id: str, plan: str, kind: str
     ) -> None:
         """Add a transaction"""
-        tm = TransactionModel()
-        tm.uuid = Unique.id()
+        tm = cls(id=Unique.id())
         tm.user = Key(UserModel, user_id)
         tm.ts = datetime.utcnow()
         tm.plan = plan
