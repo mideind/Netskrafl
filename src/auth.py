@@ -90,7 +90,10 @@ def oauth2callback(request: Request) -> ResponseType:
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
         client_type = (
             request.form.get("clientType", "")
-            or cast(Any, request).json.get("clientType", "")
+            or (
+                request.json is not None
+                and cast(Dict[str, str], request.json.get("clientType", ""))
+            )
             or "web"
         )
 

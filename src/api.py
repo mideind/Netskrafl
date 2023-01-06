@@ -2127,8 +2127,11 @@ def bestmoves() -> ResponseType:
     user = current_user()
     assert user is not None
 
-    if not user.has_paid() and not running_local:
-        # User must be a paying friend, or we're on a development server
+    if not user.has_paid() and not is_mobile_client() and not running_local:
+        # For this to succeed, the user must be a paying friend,
+        # or the request is coming from a mobile client
+        # (where the paywall gating is reliably performed in the UI)
+        # or we're on a development server
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
 
     rq = RequestData(request)
