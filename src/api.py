@@ -258,6 +258,16 @@ class MoveNotifyDict(TypedDict):
     progress: Tuple[int, int]
 
 
+class RevenueCatEvent(TypedDict, total=False):
+
+    """A JSON object describing a subscription event from RevenueCat"""
+
+    type: str
+    app_user_id: str
+    transferred_from: Sequence[str]
+    transferred_to: Sequence[str]
+
+
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
@@ -2295,44 +2305,48 @@ def rchook() -> ResponseType:
         return "Not authorized", 401
     # OK: Process the request
     rq = RequestData(request)
-    logging.info(f"Received webhook from RevenueCat: {rq!r}")  # !!! DEBUG
-    rq_type = rq.get("type", "")
+    # logging.info(f"Received webhook from RevenueCat: {rq!r}")
+    event: RevenueCatEvent = rq.get("event", {})
+    rq_type = event.get("type", "")
     if rq_type in SUBSCRIPTION_START_TYPES:
         # A subscription has been purchased or renewed
-        user_id = rq.get("app_user_id", "")
+        user_id = event.get("app_user_id", "")
         if user_id:
             user = User.load_if_exists(user_id)
             if user is not None:
-                user.add_transaction("friend", "rchook")
+                user.add_transaction("friend", "rchook", rq_type)
         return "OK", 200
+
     elif rq_type in SUBSCRIPTION_END_TYPES:
         # A subscription has expired or been cancelled
-        user_id = rq.get("app_user_id", "")
+        user_id = event.get("app_user_id", "")
         if user_id:
             user = User.load_if_exists(user_id)
             if user is not None:
-                user.add_transaction("", "rchook")
+                user.add_transaction("", "rchook", rq_type)
         return "OK", 200
+
     elif rq_type == "TRANSFER":
         # A subscription has been transferred between users,
         # from the one in transferred_from[0] to the one in
         # transferred_to[0]. Load both users and add the appropriate
         # transactions.
-        from_list: Sequence[str] = rq.get("transferred_from") or [""]
-        to_list: Sequence[str] = rq.get("transferred_to") or [""]
+        from_list = event.get("transferred_from") or [""]
+        to_list = event.get("transferred_to") or [""]
         user_from_id = from_list[0]
         user_to_id = to_list[0]
         if user_from_id:
             user = User.load_if_exists(user_from_id)
             if user is not None:
-                user.add_transaction("", "rchook_transfer")
+                user.add_transaction("", "rchook", rq_type)
         if user_to_id:
             user = User.load_if_exists(user_to_id)
             if user is not None:
-                user.add_transaction("friend", "rchook_transfer")
+                user.add_transaction("friend", "rchook", rq_type)
         return "OK", 200
 
-    # !!! TODO: Log events to the database
+    # Return 200 OK for all other event types, since RevenueCat
+    # will retry the request if we return an error
     return "OK", 200
 
 

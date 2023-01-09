@@ -529,14 +529,14 @@ class User:
             p = "friend"
         return p
 
-    def add_transaction(self, plan: str, kind: str) -> None:
+    def add_transaction(self, plan: str, kind: str, op: str = "") -> None:
         """Start or finish a subscription plan"""
         self._plan = plan
         self.set_has_paid(plan != "")
         self.set_friend(plan != "")
         self.update()
         # Add a transaction record to the datastore
-        TransactionModel.add_transaction(self.id(), plan, kind)
+        TransactionModel.add_transaction(self.id(), plan, kind, op)
 
     def is_ready(self) -> bool:
         """Returns True if the user is ready to accept challenges"""

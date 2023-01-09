@@ -229,8 +229,7 @@ def current_user() -> Optional[User]:
 def current_user_id() -> Optional[str]:
     """ Return the id of the currently logged in user. Only valid within route
         functions decorated with @auth_required. """
-    u = g.get("user")
-    return None if u is None else u.id()
+    return None if (u := g.get("user")) is None else u.id()
 
 
 class RequestData:

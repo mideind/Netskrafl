@@ -2336,15 +2336,17 @@ class TransactionModel(Model["TransactionModel"]):
     # User
     user: Key[UserModel] = Model.DbKey(kind=UserModel)
     # Timestamp
-    ts = Model.Datetime(auto_now_add=True)
+    ts = Model.Datetime(auto_now_add=True, indexed=True)
     # Subscription plan, or empty string if none
     plan = Model.Str()
     # Subscription kind, or empty string if none
-    plan = Model.Str()
+    kind = Model.Str()
+    # Operation performed
+    op = Model.Str()
 
     @classmethod
     def add_transaction(
-        cls, user_id: str, plan: str, kind: str
+        cls, user_id: str, plan: str, kind: str, op: str
     ) -> None:
         """Add a transaction"""
         tm = cls(id=Unique.id())
@@ -2352,4 +2354,5 @@ class TransactionModel(Model["TransactionModel"]):
         tm.ts = datetime.utcnow()
         tm.plan = plan
         tm.kind = kind
+        tm.op = op
         tm.put()
