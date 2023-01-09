@@ -54,7 +54,8 @@ _tls = threading.local()
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
 
-firebase_cred = credentials.Certificate(os.path.abspath(os.path.join("resources", "explo-dev-firebase-adminsdk-nlwq7-706a6b3fdd.json")))
+_FIREBASE_CRED_PATH = os.path.join(os.path.dirname(__file__), "..", "resources", "explo-dev-firebase-adminsdk.json")
+firebase_cred = credentials.Certificate(_FIREBASE_CRED_PATH)
 
 
 def _init_firebase_app():
@@ -70,12 +71,16 @@ def _init_firebase_app():
 _init_firebase_app()
 
 def send_push_notification(user_id: str, title: str, body: str) -> None:
-    user_session = db.reference('session/{0}'.format(user_id)).get()
+    user_session = db.reference(f'session/{user_id}').get()
 
     if user_session is None:
         return
 
     device_tokens = list(user_session.keys())
+    
+    if not device_tokens:
+        return
+
     aps = messaging.Aps(content_available=True)
     payload = messaging.APNSPayload(aps)
 

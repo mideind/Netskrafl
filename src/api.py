@@ -2293,13 +2293,6 @@ def saveuserprefs() -> ResponseType:
     return jsonify(ok=True)
 
 
-@api.route("/setdevicetoken", methods=["POST"])
-@auth_required(ok=False)
-def set_device_token() -> None:
-    print("test")
-
-
-
 @api.route("/inituser", methods=["POST"])
 @auth_required(ok=False)
 def inituser() -> ResponseType:
