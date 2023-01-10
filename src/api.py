@@ -2276,7 +2276,6 @@ SUBSCRIPTION_START_TYPES = frozenset(
         "NON_RENEWING_PURCHASE",
         "RENEWAL",
         "UNCANCELLATION",
-        # "TRANSFER",
     ]
 )
 
@@ -2285,7 +2284,7 @@ SUBSCRIPTION_END_TYPES = frozenset(
     [
         "CANCELLATION",
         "SUBSCRIPTION_PAUSED",
-        # "TRANSFER",
+        "EXPIRATION",
     ]
 )
 
@@ -2347,6 +2346,7 @@ def rchook() -> ResponseType:
 
     # Return 200 OK for all other event types, since RevenueCat
     # will retry the request if we return an error
+    logging.info(f"Ignoring RevenueCat event type '{rq_type}'")
     return "OK", 200
 
 
