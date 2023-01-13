@@ -1169,6 +1169,7 @@ class Game:
             reply["chall"] = False  # Challenge not allowed
             reply["last_chall"] = False  # Not in last challenge state
             reply["bag"] = self.state.bag().contents()
+            reply["overdue"] = False
             if self.elo_delta is not None:
                 # Include the Elo deltas for the players
                 reply["elo_delta"] = self.elo_delta
@@ -1194,6 +1195,7 @@ class Game:
             reply["chall"] = self.state.is_challengeable()
             reply["last_chall"] = last_chall
             reply["bag"] = self.display_bag(player_index)
+            reply["overdue"] = self.is_overdue()
 
         if player_index is None:
             reply["rack"] = []
@@ -1228,7 +1230,6 @@ class Game:
             reply["fairplay"] = self.get_fairplay()
             reply["newbag"] = self.new_bag()
             reply["manual"] = self.manual_wordcheck()
-            reply["overdue"] = self.is_overdue()
             reply["locale"] = self.locale
             reply["alphabet"] = self.tileset.alphabet.order
             reply["tile_scores"] = self.tileset.scores
