@@ -2,7 +2,7 @@
 
 """ Test module for DAWG dictionary
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This module contains test code for dawgdictionary.py
@@ -412,7 +412,7 @@ def test():
 if __name__ == '__main__':
 
     print("DawgDictionary tester")
-    print("Copyright (C) 2021 Miðeind ehf")
+    print("Copyright (C) 2023 Miðeind ehf")
     print("Author: Vilhjálmur Þorsteinsson\n")
 
     test()
