@@ -14,6 +14,7 @@
 """
 
 from __future__ import annotations
+import logging
 
 from typing import (
     Dict,
@@ -24,6 +25,7 @@ from typing import (
     Set,
     Tuple,
     Iterable,
+    cast,
 )
 
 import threading
@@ -31,17 +33,17 @@ import threading
 from datetime import datetime, timedelta
 
 from flask.helpers import url_for
+import jwt
 
 from cache import memcache
 
-from config import DEFAULT_LOCALE
+from config import CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
     PrefItem,
     PrefsDict,
     TransactionModel,
-    Unique,
     UserModel,
     FavoriteModel,
     ChallengeModel,
@@ -85,6 +87,19 @@ class UserLoginDict(TypedDict, total=False):
     method: str
     locale: str
     new: bool
+    # Our own token, which the client can pass back later to authenticate
+    # without using the third party authentication providers
+    token: str
+    expires: datetime
+
+
+class UserDetailDict(TypedDict):
+
+    """Additional data about a user, returned when logging in by user id"""
+
+    name: str
+    picture: str
+    email: str
 
 
 class StatsSummaryDict(TypedDict):
@@ -102,6 +117,46 @@ USE_MEMCACHE = False
 
 # Maximum length of player nickname
 MAX_NICKNAME_LENGTH = 15
+
+# Default token lifetime
+DEFAULT_TOKEN_LIFETIME = timedelta(days=30)  # 30 days
+
+# Key ID for the client secret key used to sign our own tokens
+# Change this if the key is rotated
+EXPLO_KID = "2022-02-08:1"
+
+
+def make_login_dict(
+    user_id: str,
+    account: str,
+    locale: str,
+    new: bool,
+    lifetime: timedelta = DEFAULT_TOKEN_LIFETIME,
+) -> UserLoginDict:
+    """Create a login credential object that is returned to the client"""
+    now = datetime.utcnow()
+    expires = now + lifetime
+    # Create our own client token, which the client can pass back later
+    # instead of using the third party authentication providers
+    token = jwt.encode(
+        {
+            "iss": PROJECT_ID,
+            "sub": user_id,
+            "exp": expires,
+            "iat": now,
+        },
+        CLIENT_SECRET,
+        algorithm="HS256",
+        headers={"kid": EXPLO_KID},
+    )
+    return {
+        "user_id": user_id,
+        "account": account,
+        "locale": locale,
+        "new": new,
+        "token": token,
+        "expires": expires,
+    }
 
 
 class User:
@@ -531,12 +586,15 @@ class User:
 
     def add_transaction(self, plan: str, kind: str, op: str = "") -> None:
         """Start or finish a subscription plan"""
+        if not (user_id := self.id()):
+            logging.warning("Attempted to add transaction for user with no id")
+            return
         self._plan = plan
         self.set_has_paid(plan != "")
         self.set_friend(plan != "")
         self.update()
         # Add a transaction record to the datastore
-        TransactionModel.add_transaction(self.id(), plan, kind, op)
+        TransactionModel.add_transaction(user_id, plan, kind, op)
 
     def is_ready(self) -> bool:
         """Returns True if the user is ready to accept challenges"""
@@ -810,7 +868,7 @@ class User:
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
             # !!! TODO: Return the entire UserModel object to avoid re-loading it
-            uld = UserLoginDict(
+            uld = make_login_dict(
                 user_id=um.user_id(),
                 account=um.account or account,
                 locale=um.locale or DEFAULT_LOCALE,
@@ -830,7 +888,7 @@ class User:
                 # Note the last login
                 um.last_login = datetime.utcnow()
                 user_id = um.put().id()
-                uld = UserLoginDict(
+                uld = make_login_dict(
                     user_id=user_id,
                     account=um.account,
                     locale=um.locale or DEFAULT_LOCALE,
@@ -860,13 +918,38 @@ class User:
             locale=locale,
         )
         # Create a user login event object and return it
-        uld = UserLoginDict(
+        uld = make_login_dict(
             user_id=user_id,
             account=account,
             locale=locale,
             new=True,
         )
         return uld
+
+    @classmethod
+    def login_by_id(
+        cls,
+        user_id: str,
+    ) -> Optional[Tuple[UserLoginDict, UserDetailDict]]:
+        """Log in a user given a user id; return a login dictionary
+        and some additional user details, or None"""
+        um = UserModel.fetch(user_id)
+        if um is None:
+            return None
+        # Note the login timestamp
+        um.last_login = datetime.utcnow()
+        um.put()
+        uld = make_login_dict(
+            user_id=user_id,
+            account=um.account or user_id,
+            locale=um.locale or DEFAULT_LOCALE,
+            new=False,
+        )
+        full_name = cast(str, um.prefs.get("full_name", "")) if um.prefs else ""
+        udd = UserDetailDict(
+            name=full_name, picture=um.image or "", email=um.email or ""
+        )
+        return uld, udd
 
     def to_serializable(self) -> Dict[str, Any]:
         """Convert to JSON-serializable format"""

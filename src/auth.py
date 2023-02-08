@@ -35,14 +35,16 @@ from google.auth.exceptions import GoogleAuthError  # type: ignore
 
 from config import (
     CLIENT,
+    CLIENT_SECRET,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
     APPLE_CLIENT_ID,
+    PROJECT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
 
-from skrafluser import User, UserLoginDict
+from skrafluser import User, UserLoginDict, EXPLO_KID
 
 # URL to validate Facebook login token, in /oauth_fb endpoint
 FACEBOOK_TOKEN_VALIDATION_URL = (
@@ -92,7 +94,7 @@ def oauth2callback(request: Request) -> ResponseType:
             request.form.get("clientType", "")
             or (
                 request.json is not None
-                and cast(Dict[str, str], request.json.get("clientType", ""))
+                and cast(Dict[str, str], request.json).get("clientType", "")
             )
             or "web"
         )
@@ -325,6 +327,134 @@ def oauth_apple(request: Request) -> ResponseType:
         client_type="ios",  # Assume that Apple login is always from iOS
     )
     # Set the Flask session token
+    set_session_userid(userid, idinfo)
+    # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
+
+
+def oauth_explo(request: Request) -> ResponseType:
+    """Login via a previously issued Explo token. The token is generated
+    in any of the other login methods and is returned to the client in the
+    UserLoginDict instance. The client can then use that token for subsequent
+    logins, without having to go through the third party OAuth flow again.
+    The token is by default valid for 30 days."""
+    token: str
+    config = cast(Any, current_app).config
+    testing: bool = config.get("TESTING", False)
+    client_type: str = "web"  # Default client type
+
+    if testing:
+        # Testing only: there is no token in the request
+        token = ""
+    else:
+        token = request.form.get("idToken", "") or cast(Any, request).json.get(
+            "idToken", ""
+        )
+        if not token:
+            # No authentication token included in the request
+            # 400 - Bad Request
+            return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+        client_type = (
+            request.form.get("clientType", "")
+            or (
+                request.json is not None
+                and cast(Dict[str, str], request.json).get("clientType", "")
+            )
+            or "web"
+        )
+
+    client_id = CLIENT.get(client_type, {}).get("id", "")
+    if not client_id:
+        # Unknown client type (should be one of 'web', 'ios', 'android')
+        # 400 - Bad Request
+        return jsonify({"status": "invalid", "msg": "Unknown client type"}), 400
+
+    uld: Optional[UserLoginDict] = None
+    userid: Optional[str] = None
+    idinfo: Optional[UserIdDict] = None
+
+    try:
+        if testing:
+            # Get the idinfo dictionary directly from the request
+            f = cast(Dict[str, str], request.form)
+            sub = f.get("sub", "")
+            idinfo = UserIdDict(
+                iss=PROJECT_ID,
+                sub=sub,
+                name="",
+                picture="",
+                email="",
+                method="Explo",
+                account=sub,
+                locale=DEFAULT_LOCALE,
+                new=False,
+                client_type=client_type,
+            )
+        else:
+            # Verify the basics of the JWT-compliant token
+            headers: Dict[str, str] = cast(Any, jwt).get_unverified_header(token)
+            if (typ := headers.get("typ")) != "JWT":
+                raise ValueError(f"Unexpected token type: {typ}")
+            if (alg := headers.get("alg")) != "RS256":
+                raise ValueError(f"Unexpected algorithm: {alg}")
+            if (kid := headers.get("kid")) != EXPLO_KID:
+                # We have rotated the client key and no longer
+                # accept tokens signed with the old key
+                raise ValueError(f"Unexpected key id: {kid}")
+            # So far, so good. Now verify the JWT and its claims.
+            # This will raise an exception if the token is invalid.
+            claims: Dict[str, str] = cast(Any, jwt).decode(
+                token,
+                CLIENT_SECRET,
+                algorithms=["HS256"],
+                issuer=PROJECT_ID,
+            )
+            # Claims successfully extracted, which means that the token
+            # is valid and not expired
+            sub = claims.get("sub", "")
+            idinfo = UserIdDict(
+                iss=PROJECT_ID,
+                sub=sub,
+                name="",  # Not available from Explo token
+                picture="",  # Not available from Explo token
+                email="",  # Not available from Explo token
+                account=sub,  # Not available from Explo token
+                locale=DEFAULT_LOCALE,  # Not available from Explo token
+                method="Explo",
+                new=False,
+                client_type=client_type,
+            )
+        if not sub:
+            raise ValueError("Missing user id")
+        t = User.login_by_id(sub)
+        if t is None:
+            raise ValueError("User id not found")
+        uld, udd = t
+        # Store login data where we'll find it again, and return
+        # some of it back to the client
+        userid = uld["user_id"]
+        uld["method"] = idinfo["method"] = "Explo"
+        # Note! We return the original (old) session token to the client;
+        # we want it to be re-used until it expires
+        uld["token"] = token
+        idinfo["account"] = uld["account"]
+        idinfo["locale"] = uld["locale"]
+        idinfo["new"] = uld["new"]
+        idinfo["name"] = udd["name"]
+        idinfo["picture"] = udd["picture"]
+        idinfo["email"] = udd["email"]
+        idinfo["client_type"] = client_type
+
+    except (KeyError, ValueError) as e:
+        # Invalid token
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    except jwt.InvalidTokenError as e:
+        return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    # Authentication complete; token was valid and user id was found
+    # Set a session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))

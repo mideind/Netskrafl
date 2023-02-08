@@ -1269,11 +1269,14 @@ def _challengelist() -> ChallengeList:
     issued = list(ChallengeModel.list_issued(cuid, max_len=20))
     # Multi-fetch all opponents involved
     opponents = fetch_users(received + issued, lambda c: c[0])
+    u: Optional[User] = None
+
     # List the received challenges
     for c in received:
         if not (oppid := c.opp):
             continue
-        if (u := opponents.get(oppid)) is None:  # User id
+        u = opponents.get(oppid)
+        if u is None:
             continue
         nick = u.nickname()
         result.append(
@@ -1297,7 +1300,8 @@ def _challengelist() -> ChallengeList:
     for c in issued:
         if not (oppid := c.opp):
             continue
-        if (u := opponents.get(oppid)) is None:  # User id
+        u = opponents.get(oppid)
+        if u is None:
             continue
         nick = u.nickname()
         result.append(
@@ -2305,7 +2309,7 @@ def rchook() -> ResponseType:
     # OK: Process the request
     rq = RequestData(request)
     # logging.info(f"Received webhook from RevenueCat: {rq!r}")
-    event: RevenueCatEvent = rq.get("event", {})
+    event: RevenueCatEvent = rq.get("event", RevenueCatEvent())
     rq_type = event.get("type", "")
     if rq_type in SUBSCRIPTION_START_TYPES:
         # A subscription has been purchased or renewed
