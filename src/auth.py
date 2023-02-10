@@ -35,7 +35,6 @@ from google.auth.exceptions import GoogleAuthError  # type: ignore
 
 from config import (
     CLIENT,
-    CLIENT_SECRET,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
@@ -44,7 +43,7 @@ from config import (
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
 
-from skrafluser import User, UserLoginDict, EXPLO_KID
+from skrafluser import User, UserLoginDict, verify_explo_token
 
 # URL to validate Facebook login token, in /oauth_fb endpoint
 FACEBOOK_TOKEN_VALIDATION_URL = (
@@ -287,7 +286,7 @@ def oauth_apple(request: Request) -> ResponseType:
         payload = jwt.decode(  # type: ignore
             token,
             cast(Any, signing_key).key,
-            algorithms=["RS256"],
+            algorithms=["RS256"], # Apple only supports RS256
             issuer=APPLE_ISSUER,
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
@@ -338,17 +337,14 @@ def oauth_explo(request: Request) -> ResponseType:
     UserLoginDict instance. The client can then use that token for subsequent
     logins, without having to go through the third party OAuth flow again.
     The token is by default valid for 30 days."""
-    token: str
+    token: Optional[str] = None
     config = cast(Any, current_app).config
     testing: bool = config.get("TESTING", False)
     client_type: str = "web"  # Default client type
 
-    if testing:
-        # Testing only: there is no token in the request
-        token = ""
-    else:
-        token = request.form.get("idToken", "") or cast(Any, request).json.get(
-            "idToken", ""
+    if not testing:
+        token = request.form.get("token", "") or cast(Any, request).json.get(
+            "token", ""
         )
         if not token:
             # No authentication token included in the request
@@ -378,79 +374,40 @@ def oauth_explo(request: Request) -> ResponseType:
             # Get the idinfo dictionary directly from the request
             f = cast(Dict[str, str], request.form)
             sub = f.get("sub", "")
-            idinfo = UserIdDict(
-                iss=PROJECT_ID,
-                sub=sub,
-                name="",
-                picture="",
-                email="",
-                method="Explo",
-                account=sub,
-                locale=DEFAULT_LOCALE,
-                new=False,
-                client_type=client_type,
-            )
         else:
             # Verify the basics of the JWT-compliant token
-            headers: Dict[str, str] = cast(Any, jwt).get_unverified_header(token)
-            if (typ := headers.get("typ")) != "JWT":
-                raise ValueError(f"Unexpected token type: {typ}")
-            if (alg := headers.get("alg")) != "RS256":
-                raise ValueError(f"Unexpected algorithm: {alg}")
-            if (kid := headers.get("kid")) != EXPLO_KID:
-                # We have rotated the client key and no longer
-                # accept tokens signed with the old key
-                raise ValueError(f"Unexpected key id: {kid}")
-            # So far, so good. Now verify the JWT and its claims.
-            # This will raise an exception if the token is invalid.
-            claims: Dict[str, str] = cast(Any, jwt).decode(
-                token,
-                CLIENT_SECRET,
-                algorithms=["HS256"],
-                issuer=PROJECT_ID,
-            )
+            claims = verify_explo_token(token) if token else None
+            if claims is None:
+                raise ValueError("Unable to verify token")
             # Claims successfully extracted, which means that the token
             # is valid and not expired
             sub = claims.get("sub", "")
-            idinfo = UserIdDict(
-                iss=PROJECT_ID,
-                sub=sub,
-                name="",  # Not available from Explo token
-                picture="",  # Not available from Explo token
-                email="",  # Not available from Explo token
-                account=sub,  # Not available from Explo token
-                locale=DEFAULT_LOCALE,  # Not available from Explo token
-                method="Explo",
-                new=False,
-                client_type=client_type,
-            )
         if not sub:
             raise ValueError("Missing user id")
-        t = User.login_by_id(sub)
+        # Note that we return the original token to the client,
+        # as we want to re-use it until it expires
+        t = User.login_by_id(sub, previous_token=token)
         if t is None:
             raise ValueError("User id not found")
         uld, udd = t
-        # Store login data where we'll find it again, and return
-        # some of it back to the client
+        idinfo = UserIdDict(
+            iss=PROJECT_ID,
+            sub=sub,
+            name=udd["name"],  # Not available from Explo token
+            picture=udd["picture"],  # Not available from Explo token
+            email=udd["email"],  # Not available from Explo token
+            account=uld["account"],  # Not available from Explo token
+            locale=uld["locale"],  # Not available from Explo token
+            method="Explo",
+            new=False,
+            client_type=client_type,
+        )
         userid = uld["user_id"]
-        uld["method"] = idinfo["method"] = "Explo"
-        # Note! We return the original (old) session token to the client;
-        # we want it to be re-used until it expires
-        uld["token"] = token
-        idinfo["account"] = uld["account"]
-        idinfo["locale"] = uld["locale"]
-        idinfo["new"] = uld["new"]
-        idinfo["name"] = udd["name"]
-        idinfo["picture"] = udd["picture"]
-        idinfo["email"] = udd["email"]
-        idinfo["client_type"] = client_type
+        uld["method"] = idinfo["method"]
 
     except (KeyError, ValueError) as e:
         # Invalid token
         # 401 - Unauthorized
-        return jsonify({"status": "invalid", "msg": str(e)}), 401
-
-    except jwt.InvalidTokenError as e:
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     # Authentication complete; token was valid and user id was found

@@ -90,10 +90,6 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     """ Runs a process to update user statistics and Elo ratings """
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
-    if from_time is None or to_time is None:
-        # Time range must be specified
-        return False
-
     if from_time >= to_time:
         # Null time range
         return False

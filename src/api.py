@@ -476,6 +476,12 @@ def oauth_apple() -> ResponseType:
     return auth.oauth_apple(request)
 
 
+@api.route("/oauth_explo", methods=["POST"])
+def oauth_explo() -> ResponseType:
+    """Explo authentication"""
+    return auth.oauth_explo(request)
+
+
 @api.route("/logout", methods=["POST"])
 def logout() -> ResponseType:
     """Log the current user out"""
@@ -804,7 +810,7 @@ def _userlist(query: str, spec: str) -> UserList:
                             fullname=au.full_name(),
                             elo=elo_str(au.elo()),
                             human_elo=elo_str(au.human_elo()),
-                            fav=False if cuser is None else cuser.has_favorite(uid),
+                            fav=cuser.has_favorite(uid),
                             chall=chall,
                             fairplay=au.fairplay(),
                             live=uid in online,
@@ -855,7 +861,7 @@ def _userlist(query: str, spec: str) -> UserList:
 
     elif query == "search":
         # Return users with nicknames matching a pattern
-        si: List[ListPrefixDict] = []
+        si: Optional[List[ListPrefixDict]] = []
         if spec:
             # Limit the spec to 16 characters
             spec = spec[0:16]
@@ -988,8 +994,6 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
-        if g is None:
-            continue
         u = None
         uuid = g["uuid"]
         opp = g["opp"]  # User id of opponent
@@ -1189,14 +1193,11 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
         ts_start = g["ts"]
         ts_end = g["ts_last_move"]
 
-        if (ts_start is None) or (ts_end is None):
-            days, hours, minutes = (0, 0, 0)
-        else:
-            td = ts_end - ts_start  # Timedelta
-            tsec = td.total_seconds()
-            days, tsec = divmod(tsec, 24 * 60 * 60)
-            hours, tsec = divmod(tsec, 60 * 60)
-            minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
+        td = ts_end - ts_start  # Timedelta
+        tsec = td.total_seconds()
+        days, tsec = divmod(tsec, 24 * 60 * 60)
+        hours, tsec = divmod(tsec, 60 * 60)
+        minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
 
         result.append(
             RecentListDict(
@@ -1291,9 +1292,9 @@ def _challengelist() -> ChallengeList:
                 opp_ready=False,
                 live=oppid in online,
                 image=u.image(),
-                fav=False if cuser is None else cuser.has_favorite(oppid),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                fav=cuser.has_favorite(oppid),
+                elo=u.elo(),
+                human_elo=u.human_elo(),
             )
         )
     # List the issued challenges
@@ -1316,9 +1317,9 @@ def _challengelist() -> ChallengeList:
                 opp_ready=opp_ready(c),
                 live=oppid in online,
                 image=u.image(),
-                fav=False if cuser is None else cuser.has_favorite(oppid),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                fav=cuser.has_favorite(oppid),
+                elo=u.elo(),
+                human_elo=u.human_elo(),
             )
         )
     return result

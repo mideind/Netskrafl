@@ -149,7 +149,7 @@ def admin_loadgame() -> Response:
                     m.player,
                     m.move.summary(game.state),
                     m.rack,
-                    Alphabet.format_timestamp(m.ts),
+                    Alphabet.format_timestamp(m.ts or now),
                 )
                 for m in game.moves
             ],

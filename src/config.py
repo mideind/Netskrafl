@@ -57,6 +57,11 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_FILE}"
     assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_FILE}"
 
+    # Explo client secret, used as a key for signing our own JWTs
+    # that are used to extend the validity of third party auth tokens
+    EXPLO_CLIENT = CLIENT.get("explo", {})
+    EXPLO_CLIENT_SECRET = EXPLO_CLIENT.get("secret", "")
+
     OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
     # Analytics measurement id

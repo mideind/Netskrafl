@@ -168,7 +168,7 @@ def session_user() -> Optional[User]:
 def session_idinfo() -> Optional[UserIdDict]:
     """ Return the user who is authenticated in the current session, if any.
         This can be called within any Flask request. """
-    sess = cast(Dict[str, Any], session)
+    sess = cast(Optional[Dict[str, Any]], session)
     return None if sess is None else sess.get("user")
 
 

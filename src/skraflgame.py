@@ -89,7 +89,7 @@ class MoveTuple(NamedTuple):
     player: int
     move: MoveBase
     rack: str
-    ts: datetime
+    ts: Optional[datetime]
 
 
 TwoLetterGroupList = List[Tuple[str, List[str]]]
@@ -384,11 +384,11 @@ class Game:
                     horiz = False
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
-                if mm.tiles is not None:
+                if mm.tiles:
                     m = Move(mm.tiles.replace("?", ""), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
 
-            elif mm.tiles is None:
+            elif not mm.tiles:
 
                 # Degenerate (error) case: this game is stored incorrectly
                 # in the NDB datastore. Probably an artifact of the move to
@@ -978,8 +978,7 @@ class Game:
         # Apply the moves up to the state point
         for m in self.moves[0:move_number]:
             s.apply_move(m.move, shallow=True)  # Shallow apply
-            if m.rack is not None:
-                s.set_rack(m.player, m.rack)
+            s.set_rack(m.player, m.rack)
         s.recalc_bag()
         return s
 

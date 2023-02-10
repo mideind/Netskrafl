@@ -18,6 +18,7 @@ import logging
 
 from typing import (
     Dict,
+    Mapping,
     TypedDict,
     Any,
     Optional,
@@ -37,7 +38,7 @@ import jwt
 
 from cache import memcache
 
-from config import CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
+from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
@@ -90,7 +91,9 @@ class UserLoginDict(TypedDict, total=False):
     # Our own token, which the client can pass back later to authenticate
     # without using the third party authentication providers
     token: str
-    expires: datetime
+    # If we just generated a new Explo token, this is its expiration time,
+    # as an ISO format date and time string
+    expires: Optional[str]
 
 
 class UserDetailDict(TypedDict):
@@ -119,11 +122,14 @@ USE_MEMCACHE = False
 MAX_NICKNAME_LENGTH = 15
 
 # Default token lifetime
-DEFAULT_TOKEN_LIFETIME = timedelta(days=30)  # 30 days
+DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
 
 # Key ID for the client secret key used to sign our own tokens
 # Change this if the key is rotated
 EXPLO_KID = "2022-02-08:1"
+
+# Algorithm: HMAC using SHA-256
+JWT_ALGORITHM = "HS256"
 
 
 def make_login_dict(
@@ -132,21 +138,24 @@ def make_login_dict(
     locale: str,
     new: bool,
     lifetime: timedelta = DEFAULT_TOKEN_LIFETIME,
+    previous_token: Optional[str] = None,
 ) -> UserLoginDict:
     """Create a login credential object that is returned to the client"""
     now = datetime.utcnow()
     expires = now + lifetime
-    # Create our own client token, which the client can pass back later
-    # instead of using the third party authentication providers
-    token = jwt.encode(
+    # If asked, we create our own client token,
+    # which the client can pass back later
+    # instead of using the third party
+    # authentication providers
+    token = previous_token or jwt.encode(
         {
             "iss": PROJECT_ID,
             "sub": user_id,
             "exp": expires,
             "iat": now,
         },
-        CLIENT_SECRET,
-        algorithm="HS256",
+        EXPLO_CLIENT_SECRET,
+        algorithm=JWT_ALGORITHM,
         headers={"kid": EXPLO_KID},
     )
     return {
@@ -155,8 +164,34 @@ def make_login_dict(
         "locale": locale,
         "new": new,
         "token": token,
-        "expires": expires,
+        "expires": expires.isoformat() if previous_token is None else None,
     }
+
+
+def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
+    """Verify a JWT-encoded Explo token and return its claims,
+    or None if verification fails"""
+    try:
+        headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
+        if (typ := headers.get("typ")) != "JWT":
+            raise ValueError(f"Unexpected token type: {typ}")
+        if (alg := headers.get("alg")) != JWT_ALGORITHM:
+            raise ValueError(f"Unexpected algorithm: {alg}")
+        if (kid := headers.get("kid")) != EXPLO_KID:
+            # We have rotated the client key and no longer
+            # accept tokens signed with the old key
+            raise ValueError(f"Unexpected key id: {kid}")
+        # So far, so good. Now verify the JWT and its claims.
+        # This will raise an exception if the token is invalid.
+        claims: Mapping[str, str] = cast(Any, jwt).decode(
+            token,
+            EXPLO_CLIENT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            issuer=PROJECT_ID,
+        )
+        return claims
+    except (jwt.InvalidTokenError, ValueError):
+        return None
 
 
 class User:
@@ -230,7 +265,7 @@ class User:
         self._inactive = um.inactive
         self._locale = um.locale or DEFAULT_LOCALE
         self._plan = um.plan
-        self._preferences = um.prefs
+        self._preferences = um.prefs or {}
         self._ready = False if um.ready is None else um.ready
         self._ready_timed = False if um.ready_timed is None else um.ready_timed
         self._chat_disabled = False if um.chat_disabled is None else um.chat_disabled
@@ -385,28 +420,20 @@ class User:
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        if self._preferences is None:
-            return None
         return self._preferences.get(pref, default)
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
-        if self._preferences is None:
-            return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
         """Retrieve a string preference, or "" if not found"""
-        if self._preferences is None:
-            return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
-        if self._preferences is None:
-            self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
@@ -930,6 +957,7 @@ class User:
     def login_by_id(
         cls,
         user_id: str,
+        previous_token: Optional[str] = None,
     ) -> Optional[Tuple[UserLoginDict, UserDetailDict]]:
         """Log in a user given a user id; return a login dictionary
         and some additional user details, or None"""
@@ -944,6 +972,7 @@ class User:
             account=um.account or user_id,
             locale=um.locale or DEFAULT_LOCALE,
             new=False,
+            previous_token=previous_token,
         )
         full_name = cast(str, um.prefs.get("full_name", "")) if um.prefs else ""
         udd = UserDetailDict(

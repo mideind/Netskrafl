@@ -599,7 +599,7 @@ class State:
         """ Load a Board into this state """
         self._board = board
 
-    def check_legality(self, move: MoveBase) -> Union[int, Tuple[int, str]]:
+    def check_legality(self, move: Optional[MoveBase]) -> Union[int, Tuple[int, str]]:
         """ Is the move legal in this state? """
         if move is None:
             return Error.NULL_MOVE
@@ -753,9 +753,9 @@ class State:
         assert self._tileset is not None
         return self._racks[index].details(self._tileset)
 
-    def set_rack(self, index: int, tiles: str) -> None:
+    def set_rack(self, index: int, tiles: Optional[str]) -> None:
         """ Set the contents of the rack (indexed by 0 or 1) """
-        self._racks[index].set_tiles("" if tiles is None else tiles)
+        self._racks[index].set_tiles(tiles or "")
 
     def board(self) -> Board:
         """ Return the Board object of this state """
@@ -1018,7 +1018,7 @@ class Move(MoveBase):
         # laid down on the board
         self._covers: List[Cover] = []
         # Number of letters in word formed (this may be >= len(self._covers))
-        self._numletters = 0 if word is None else len(word)
+        self._numletters = len(word)
         # The word formed
         self._word = word
         # The tiles used to form the word. '?' tiles are followed
@@ -1102,11 +1102,10 @@ class Move(MoveBase):
             return False
         if col < 0 or col >= Board.SIZE:
             return False
-        if (tile is None) or len(tile) != 1:
+        if len(tile) != 1:
             return False
         if (
-            (letter is None)
-            or len(letter) != 1
+            len(letter) != 1
             or (letter not in current_alphabet().order)
         ):
             return False
