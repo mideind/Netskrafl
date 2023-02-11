@@ -133,7 +133,8 @@ def oauth2callback(request: Request) -> ResponseType:
             idinfo = id_token.verify_oauth2_token(  # type: ignore
                 token, google_request, client_id
             )
-            assert idinfo is not None
+            if idinfo is None:
+                raise ValueError("Invalid Google token")
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
