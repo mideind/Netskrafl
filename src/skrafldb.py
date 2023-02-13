@@ -556,9 +556,9 @@ class UserModel(Model["UserModel"]):
     # Last login for the user
     last_login = Model.OptionalDatetime()
     # Ready for challenges?
-    ready = Model.OptionalBool(default=False)
+    ready = Model.OptionalBool(default=True)
     # Ready for timed challenges?
-    ready_timed = Model.OptionalBool(default=False)
+    ready_timed = Model.OptionalBool(default=True)
     # Chat disabled?
     chat_disabled = Model.OptionalBool(default=False)
     # Elo points

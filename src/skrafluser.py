@@ -32,6 +32,7 @@ from typing import (
 import threading
 
 from datetime import datetime, timedelta
+import re
 
 from flask.helpers import url_for
 import jwt
@@ -130,6 +131,9 @@ EXPLO_KID = "2022-02-08:1"
 
 # Algorithm: HMAC using SHA-256
 JWT_ALGORITHM = "HS256"
+
+# Nickname character replacement pattern
+NICKNAME_STRIP = re.compile(r"[\W_]+", re.UNICODE)
 
 
 def make_login_dict(
@@ -230,8 +234,8 @@ class User:
         self._plan: Optional[str] = None
         self._locale = locale or DEFAULT_LOCALE
         self._preferences: PrefsDict = {}
-        self._ready: bool = False
-        self._ready_timed: bool = False
+        self._ready: bool = True
+        self._ready_timed: bool = True
         self._chat_disabled: bool = False
         self._elo = 0
         self._human_elo = 0
@@ -266,8 +270,8 @@ class User:
         self._locale = um.locale or DEFAULT_LOCALE
         self._plan = um.plan
         self._preferences = um.prefs or {}
-        self._ready = False if um.ready is None else um.ready
-        self._ready_timed = False if um.ready_timed is None else um.ready_timed
+        self._ready = True if um.ready is None else um.ready
+        self._ready_timed = True if um.ready_timed is None else um.ready_timed
         self._chat_disabled = False if um.chat_disabled is None else um.chat_disabled
         self._elo = um.elo
         self._human_elo = um.human_elo
@@ -927,7 +931,12 @@ class User:
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
-        nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
+        # Strip nickname to only contain alphanumeric characters
+        nickname = NICKNAME_STRIP.sub("", nickname)
+        nickname = nickname[0:MAX_NICKNAME_LENGTH]
+        if not nickname:
+            # Strange situation: no nickname
+            nickname = "Anonymous"
         prefs: PrefsDict = {
             "newbag": True,
             "email": email,
