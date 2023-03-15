@@ -2,7 +2,7 @@
 
     Game class for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -89,7 +89,7 @@ class MoveTuple(NamedTuple):
     player: int
     move: MoveBase
     rack: str
-    ts: datetime
+    ts: Optional[datetime]
 
 
 TwoLetterGroupList = List[Tuple[str, List[str]]]
@@ -149,6 +149,7 @@ class ClientStateDict(TypedDict, total=False):
     num_moves: int
     overdue: bool
     player: Optional[int]
+    progress: Tuple[int, int]
     rack: RackDetails
     result: int
     scores: Tuple[int, int]
@@ -383,11 +384,11 @@ class Game:
                     horiz = False
                 # The tiles string may contain wildcards followed by their meaning
                 # Remove the ? marks to get the "plain" word formed
-                if mm.tiles is not None:
+                if mm.tiles:
                     m = Move(mm.tiles.replace("?", ""), row, col, horiz)
                     m.make_covers(game.state.board(), mm.tiles)
 
-            elif mm.tiles is None:
+            elif not mm.tiles:
 
                 # Degenerate (error) case: this game is stored incorrectly
                 # in the NDB datastore. Probably an artifact of the move to
@@ -977,8 +978,7 @@ class Game:
         # Apply the moves up to the state point
         for m in self.moves[0:move_number]:
             s.apply_move(m.move, shallow=True)  # Shallow apply
-            if m.rack is not None:
-                s.set_rack(m.player, m.rack)
+            s.set_rack(m.player, m.rack)
         s.recalc_bag()
         return s
 
@@ -1168,6 +1168,7 @@ class Game:
             reply["chall"] = False  # Challenge not allowed
             reply["last_chall"] = False  # Not in last challenge state
             reply["bag"] = self.state.bag().contents()
+            reply["overdue"] = False
             if self.elo_delta is not None:
                 # Include the Elo deltas for the players
                 reply["elo_delta"] = self.elo_delta
@@ -1193,6 +1194,7 @@ class Game:
             reply["chall"] = self.state.is_challengeable()
             reply["last_chall"] = last_chall
             reply["bag"] = self.display_bag(player_index)
+            reply["overdue"] = self.is_overdue()
 
         if player_index is None:
             reply["rack"] = []
@@ -1201,6 +1203,7 @@ class Game:
         reply["num_moves"] = len(self.moves)
         reply["newmoves"] = newmoves
         reply["scores"] = self.final_scores()
+        reply["progress"] = self.state.progress()
         reply["succ_chall"] = succ_chall  # Successful challenge
         reply["player"] = player_index  # Can be None if the game is over
         if self.get_duration():
@@ -1226,7 +1229,6 @@ class Game:
             reply["fairplay"] = self.get_fairplay()
             reply["newbag"] = self.new_bag()
             reply["manual"] = self.manual_wordcheck()
-            reply["overdue"] = self.is_overdue()
             reply["locale"] = self.locale
             reply["alphabet"] = self.tileset.alphabet.order
             reply["tile_scores"] = self.tileset.scores

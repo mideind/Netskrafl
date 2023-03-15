@@ -2,7 +2,7 @@
 
     User class for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -14,9 +14,11 @@
 """
 
 from __future__ import annotations
+import logging
 
 from typing import (
     Dict,
+    Mapping,
     TypedDict,
     Any,
     Optional,
@@ -24,22 +26,26 @@ from typing import (
     Set,
     Tuple,
     Iterable,
+    cast,
 )
 
 import threading
 
-from datetime import datetime
+from datetime import datetime, timedelta
+import re
 
 from flask.helpers import url_for
+import jwt
 
 from cache import memcache
 
-from config import DEFAULT_LOCALE
-from languages import Alphabet
+from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
+from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
     PrefItem,
     PrefsDict,
+    TransactionModel,
     UserModel,
     FavoriteModel,
     ChallengeModel,
@@ -83,6 +89,31 @@ class UserLoginDict(TypedDict, total=False):
     method: str
     locale: str
     new: bool
+    # Our own token, which the client can pass back later to authenticate
+    # without using the third party authentication providers
+    token: str
+    # If we just generated a new Explo token, this is its expiration time,
+    # as an ISO format date and time string
+    expires: Optional[str]
+
+
+class UserDetailDict(TypedDict):
+
+    """Additional data about a user, returned when logging in by user id"""
+
+    name: str
+    picture: str
+    email: str
+
+
+class StatsSummaryDict(TypedDict):
+
+    """A summary of statistics for a player at a given point in time"""
+
+    ts: str  # An ISO-formatted time stamp
+    elo: int
+    human_elo: int
+    manual_elo: int
 
 
 # Should we use memcache (in practice Redis) to cache user data?
@@ -90,6 +121,81 @@ USE_MEMCACHE = False
 
 # Maximum length of player nickname
 MAX_NICKNAME_LENGTH = 15
+
+# Default token lifetime
+DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
+
+# Key ID for the client secret key used to sign our own tokens
+# Change this if the key is rotated
+EXPLO_KID = "2022-02-08:1"
+
+# Algorithm: HMAC using SHA-256
+JWT_ALGORITHM = "HS256"
+
+# Nickname character replacement pattern
+NICKNAME_STRIP = re.compile(r"[\W_]+", re.UNICODE)
+
+
+def make_login_dict(
+    user_id: str,
+    account: str,
+    locale: str,
+    new: bool,
+    lifetime: timedelta = DEFAULT_TOKEN_LIFETIME,
+    previous_token: Optional[str] = None,
+) -> UserLoginDict:
+    """Create a login credential object that is returned to the client"""
+    now = datetime.utcnow()
+    expires = now + lifetime
+    # If asked, we create our own client token,
+    # which the client can pass back later
+    # instead of using the third party
+    # authentication providers
+    token = previous_token or jwt.encode(
+        {
+            "iss": PROJECT_ID,
+            "sub": user_id,
+            "exp": expires,
+            "iat": now,
+        },
+        EXPLO_CLIENT_SECRET,
+        algorithm=JWT_ALGORITHM,
+        headers={"kid": EXPLO_KID},
+    )
+    return {
+        "user_id": user_id,
+        "account": account,
+        "locale": locale,
+        "new": new,
+        "token": token,
+        "expires": expires.isoformat() if previous_token is None else None,
+    }
+
+
+def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
+    """Verify a JWT-encoded Explo token and return its claims,
+    or None if verification fails"""
+    try:
+        headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
+        if (typ := headers.get("typ")) != "JWT":
+            raise ValueError(f"Unexpected token type: {typ}")
+        if (alg := headers.get("alg")) != JWT_ALGORITHM:
+            raise ValueError(f"Unexpected algorithm: {alg}")
+        if (kid := headers.get("kid")) != EXPLO_KID:
+            # We have rotated the client key and no longer
+            # accept tokens signed with the old key
+            raise ValueError(f"Unexpected key id: {kid}")
+        # So far, so good. Now verify the JWT and its claims.
+        # This will raise an exception if the token is invalid.
+        claims: Mapping[str, str] = cast(Any, jwt).decode(
+            token,
+            EXPLO_CLIENT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            issuer=PROJECT_ID,
+        )
+        return claims
+    except (jwt.InvalidTokenError, ValueError):
+        return None
 
 
 class User:
@@ -128,8 +234,8 @@ class User:
         self._plan: Optional[str] = None
         self._locale = locale or DEFAULT_LOCALE
         self._preferences: PrefsDict = {}
-        self._ready: bool = False
-        self._ready_timed: bool = False
+        self._ready: bool = True
+        self._ready_timed: bool = True
         self._chat_disabled: bool = False
         self._elo = 0
         self._human_elo = 0
@@ -163,9 +269,9 @@ class User:
         self._inactive = um.inactive
         self._locale = um.locale or DEFAULT_LOCALE
         self._plan = um.plan
-        self._preferences = um.prefs
-        self._ready = False if um.ready is None else um.ready
-        self._ready_timed = False if um.ready_timed is None else um.ready_timed
+        self._preferences = um.prefs or {}
+        self._ready = True if um.ready is None else um.ready
+        self._ready_timed = True if um.ready_timed is None else um.ready_timed
         self._chat_disabled = False if um.chat_disabled is None else um.chat_disabled
         self._elo = um.elo
         self._human_elo = um.human_elo
@@ -318,28 +424,20 @@ class User:
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        if self._preferences is None:
-            return None
         return self._preferences.get(pref, default)
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
-        if self._preferences is None:
-            return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
         """Retrieve a string preference, or "" if not found"""
-        if self._preferences is None:
-            return default
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
-        if self._preferences is None:
-            self._preferences = {}
         self._preferences[pref] = value
 
     @staticmethod
@@ -359,8 +457,10 @@ class User:
         self.set_pref("full_name", full_name)
 
     def email(self) -> str:
-        """Returns the e-mail address of a user from the user preferences"""
-        return self.get_string_pref("email", self._email or "")
+        """Returns the e-mail address of a user from the user preferences,
+        or the e-mail address of the user entity"""
+        email = self.get_string_pref("email")
+        return email or self._email or ""
 
     def set_email(self, email: str) -> None:
         """Sets the e-mail address of a user in the user preferences"""
@@ -515,9 +615,17 @@ class User:
             p = "friend"
         return p
 
-    def set_plan(self, plan: str) -> None:
-        """Set a subscription plan"""
+    def add_transaction(self, plan: str, kind: str, op: str = "") -> None:
+        """Start or finish a subscription plan"""
+        if not (user_id := self.id()):
+            logging.warning("Attempted to add transaction for user with no id")
+            return
         self._plan = plan
+        self.set_has_paid(plan != "")
+        self.set_friend(plan != "")
+        self.update()
+        # Add a transaction record to the datastore
+        TransactionModel.add_transaction(user_id, plan, kind, op)
 
     def is_ready(self) -> bool:
         """Returns True if the user is ready to accept challenges"""
@@ -791,7 +899,7 @@ class User:
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
             # !!! TODO: Return the entire UserModel object to avoid re-loading it
-            uld = UserLoginDict(
+            uld = make_login_dict(
                 user_id=um.user_id(),
                 account=um.account or account,
                 locale=um.locale or DEFAULT_LOCALE,
@@ -811,7 +919,7 @@ class User:
                 # Note the last login
                 um.last_login = datetime.utcnow()
                 user_id = um.put().id()
-                uld = UserLoginDict(
+                uld = make_login_dict(
                     user_id=user_id,
                     account=um.account,
                     locale=um.locale or DEFAULT_LOCALE,
@@ -823,12 +931,19 @@ class User:
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
         nickname = email.split("@")[0] or name.split()[0]
-        nickname = nickname.strip()[0:MAX_NICKNAME_LENGTH]
+        # Strip nickname to only contain alphanumeric characters
+        nickname = NICKNAME_STRIP.sub("", nickname)
+        nickname = nickname[0:MAX_NICKNAME_LENGTH]
+        if not nickname:
+            # Strange situation: no nickname
+            nickname = "Anonymous"
         prefs: PrefsDict = {
             "newbag": True,
             "email": email,
             "full_name": name or nickname,
         }
+        # Make sure that the locale is a valid, supported locale
+        locale = to_supported_locale(locale) if locale else DEFAULT_LOCALE
         user_id = UserModel.create(
             user_id=account,
             account=account,
@@ -836,16 +951,43 @@ class User:
             nickname=nickname,
             image=image,
             preferences=prefs,
-            locale=locale or DEFAULT_LOCALE,
+            locale=locale,
         )
         # Create a user login event object and return it
-        uld = UserLoginDict(
+        uld = make_login_dict(
             user_id=user_id,
             account=account,
-            locale=locale or DEFAULT_LOCALE,
+            locale=locale,
             new=True,
         )
         return uld
+
+    @classmethod
+    def login_by_id(
+        cls,
+        user_id: str,
+        previous_token: Optional[str] = None,
+    ) -> Optional[Tuple[UserLoginDict, UserDetailDict]]:
+        """Log in a user given a user id; return a login dictionary
+        and some additional user details, or None"""
+        um = UserModel.fetch(user_id)
+        if um is None:
+            return None
+        # Note the login timestamp
+        um.last_login = datetime.utcnow()
+        um.put()
+        uld = make_login_dict(
+            user_id=user_id,
+            account=um.account or user_id,
+            locale=um.locale or DEFAULT_LOCALE,
+            new=False,
+            previous_token=previous_token,
+        )
+        full_name = cast(str, um.prefs.get("full_name", "")) if um.prefs else ""
+        udd = UserDetailDict(
+            name=full_name, picture=um.image or "", email=um.email or ""
+        )
+        return uld, udd
 
     def to_serializable(self) -> Dict[str, Any]:
         """Convert to JSON-serializable format"""
@@ -895,3 +1037,89 @@ class User:
         if sm is not None:
             sm.populate_dict(reply)
         return reply
+
+    @staticmethod
+    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[Dict[str, Any]]]:
+        """Return the profile of a given user along with key statistics,
+        as a dictionary as well as an error code"""
+        if cuser.id() == uid:
+            # Current user: no need to load the user object
+            user = cuser
+        else:
+            user = User.load_if_exists(uid) if uid else None
+            if user is None:
+                return Error.WRONG_USER, None
+
+        assert uid is not None
+        profile = user.profile()
+
+        # Include info on whether this user is a favorite of the current user
+        fav = False
+        if uid != cuser.id():
+            fav = cuser.has_favorite(uid)
+        profile["favorite"] = fav
+
+        # Include info on whether the current user has challenged this user
+        chall = False
+        if uid != cuser.id():
+            chall = cuser.has_challenge(uid)
+        profile["challenge"] = chall
+
+        # Include info on whether the current user has blocked this user
+        blocked = False
+        if uid != cuser.id():
+            blocked = cuser.has_blocked(uid)
+        profile["blocked"] = blocked
+
+        if uid == cuser.id():
+            # If current user, include a list of favorite users
+            profile["list_favorites"] = cuser.list_favorites()
+            # Also, include a list of blocked users
+            profile["list_blocked"] = cuser.list_blocked()
+            # Also, include a 30-day history of Elo scores
+            now = datetime.utcnow()
+            # Time at midnight, i.e. start of the current day
+            now = datetime(year=now.year, month=now.month, day=now.day)
+            # We will return a 30-day history
+            PERIOD = 30
+            # Initialize the list of day slots
+            result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
+            # The enumeration is youngest-first
+            for sm in StatsModel.last_for_user(uid, days=PERIOD):
+                age = (now - sm.timestamp).days
+                ts_iso = sm.timestamp.isoformat()
+                if age >= PERIOD:
+                    # It's an entry older than we need
+                    if result[PERIOD - 1] is not None:
+                        # We've already filled our list
+                        break
+                    # Assign the oldest entry, if we don't yet have a value for it
+                    age = PERIOD - 1
+                    ts_iso = (now - timedelta(days=age)).isoformat()
+                result[age] = StatsSummaryDict(
+                    ts=ts_iso,
+                    elo=sm.elo,
+                    human_elo=sm.human_elo,
+                    manual_elo=sm.manual_elo,
+                )
+            # Fill all day slots in the result list
+            # Create a beginning sentinel entry to fill empty day slots
+            prev = StatsSummaryDict(
+                ts=(now - timedelta(days=31)).isoformat(),
+                elo=1200,
+                human_elo=1200,
+                manual_elo=1200,
+            )
+            # Enumerate in reverse order (oldest first)
+            for ix in reversed(range(PERIOD)):
+                r = result[ix]
+                if r is None:
+                    # No entry for this day: duplicate the previous entry
+                    p = prev.copy()
+                    p["ts"] = (now - timedelta(days=ix)).isoformat()
+                    result[ix] = p
+                else:
+                    prev = r
+            profile[f"elo_{PERIOD}_days"] = result
+
+        return Error.LEGAL, profile

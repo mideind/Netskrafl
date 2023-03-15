@@ -2,7 +2,7 @@
 
     Cache - Redis cache wrapper for the Netskrafl application
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     This module wraps Redis caching in a thin wrapper object,
@@ -89,7 +89,7 @@ def _dumps(obj: Any) -> str:
     return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
-def _loads(j: str) -> Any:
+def _loads(j: Optional[str]) -> Any:
     """ Return an instance of a serializable class,
         initialized from a JSON string """
     if j is None:

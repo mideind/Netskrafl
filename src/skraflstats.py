@@ -2,7 +2,7 @@
 
     Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -89,10 +89,6 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
 def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     """ Runs a process to update user statistics and Elo ratings """
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
-
-    if from_time is None or to_time is None:
-        # Time range must be specified
-        return False
 
     if from_time >= to_time:
         # Null time range

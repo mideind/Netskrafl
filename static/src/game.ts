@@ -4,7 +4,7 @@
 
 	The Game class, as used in the single-page UI
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2023 Miðeind ehf.
   Author: Vilhjalmur Thorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0

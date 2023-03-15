@@ -2,7 +2,7 @@
 """
 
     Tests for Netskrafl
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
 
     This module tests several APIs by submitting HTTP requests
     to the Netskrafl server.

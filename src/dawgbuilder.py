@@ -4,7 +4,7 @@
 
     DAWG dictionary builder
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -106,11 +106,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, IO, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 import os
 import sys
-import codecs
 import time
 
 import binascii
@@ -445,7 +444,7 @@ class _Dawg:
                 packer.node_end(node.id)
         packer.finish()
 
-    def write_text(self, stream: IO[str]) -> None:
+    def write_text(self, stream: io.TextIOWrapper) -> None:
         """Write the optimized DAWG to a text stream"""
         print("Output graph has {0} nodes".format(len(self._unique_nodes)))
         # We don't have to write node ids since they correspond to line numbers.
@@ -618,9 +617,7 @@ class DawgBuilder:
             self._sortkey = current_alphabet().sortkey
             self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin: Optional[IO[str]] = codecs.open(
-                fpath, mode="r", encoding="utf-8"
-            )
+            self._fin = open(fpath, "r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 
@@ -865,7 +862,7 @@ class DawgBuilder:
         """Write the DAWG to a text output file with extension '.text.dawg'"""
         assert self._dawg is not None
         fname = os.path.abspath(os.path.join(relpath, output + ".text.dawg"))
-        with codecs.open(fname, mode="w", encoding="utf-8") as fout:
+        with open(fname, "w", encoding="utf-8", newline="\n") as fout:
             self._dawg.write_text(fout)
 
     # pylint: disable=bad-continuation
@@ -1069,7 +1066,7 @@ def run_skrafl() -> None:
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
-        ["ordalisti.aml.sorted.txt"],  # Input files to be merged
+        ["ordalisti.aml.filtered.txt"],  # Input files to be merged
         "amlodi",  # Output file - full name will be amlodi.bin.dawg
         "resources",  # Subfolder of input and output files
         filter_common,  # Word filter function to apply
@@ -1109,10 +1106,57 @@ def run_skrafl() -> None:
     print("DAWG builder run complete")
 
 
-def run_english_filter() -> None:
+def run_icelandic_filter() -> None:
+    """Read an Icelandic robot vocabulary and filter out words
+    that occur rarely in the Icelandic Gigaword Corpus (IGC, Risamálheild),
+    as measured by the icegrams database built by Miðeind"""
 
-    AML_VOCAB_SIZE = 20_000
-    MID_VOCAB_SIZE = 35_000
+    print("Icelandic filtering in progress")
+
+    MIN_ICELANDIC_FREQUENCY = 5
+
+    from icegrams.ngrams import Ngrams
+
+    # The name of the input file containing the robot vocabulary
+    source = os.path.join("resources", "ordalisti.aml.sorted.txt")
+
+    # Read the input file, which is sorted in descending order by frequency,
+    # and filter the words
+    ngrams = Ngrams()
+    vocab: List[str] = []
+    icnt = 0
+    with open(source, "r", encoding="utf-8") as f:
+        for word in f:
+            word = word.strip()
+            if not word:
+                continue
+            icnt += 1
+            if len(word) == 2 or ngrams.freq(word) >= MIN_ICELANDIC_FREQUENCY:
+                vocab.append(word)
+            # else:
+            #    print("Deleting {0}".format(word))
+
+    # Write the filtered vocabulary to a file, always using LF line endings
+    # even on Windows
+    with open(
+        os.path.join("resources", "ordalisti.aml.filtered.txt"),
+        "w",
+        encoding="utf-8",
+        newline="\n",
+    ) as f:
+        for w in vocab:
+            f.write(f"{w}\n")
+    print(f"Icelandic filtering done; count was {icnt} but becomes {len(vocab)}")
+
+
+def run_english_filter() -> None:
+    """Read list of frequent English words, filter them by the
+    two main vocabularies (SOWPODS and OTCWL2014) and add them
+    to the two robot vocabularies for each main vocabulary,
+    until we have enough words in each."""
+
+    AML_VOCAB_SIZE = 20_000  # Easy robot vocabulary size
+    MID_VOCAB_SIZE = 35_000  # Medium robot vocabulary size
 
     print(
         f"English filtering in progress, vocab size of {AML_VOCAB_SIZE}/{MID_VOCAB_SIZE}"
@@ -1120,15 +1164,21 @@ def run_english_filter() -> None:
 
     from dawgdictionary import PackedDawgDictionary
 
+    # Load the OTCWL2014 vocabulary as a packed DAWG
     set_locale("en_US")
     otcwl2014 = PackedDawgDictionary(current_alphabet())
     otcwl2014.load(os.path.join("resources", "otcwl2014.bin.dawg"))
 
+    # Load the SOWPODS vocabulary as a packed DAWG
     set_locale("en_UK")
     sowpods = PackedDawgDictionary(current_alphabet())
     sowpods.load(os.path.join("resources", "sowpods.bin.dawg"))
 
+    # The name of the input file containing
+    # the list of frequent English words
     source = os.path.join("resources", "english.freq.tsv")
+
+    # Define our tasks
 
     class TaskDict(TypedDict):
         vocab: List[str]
@@ -1143,7 +1193,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=AML_VOCAB_SIZE,
-            maxlen=12,
+            maxlen=12,  # Only include words up to 12 letters long
             d=otcwl2014,
             out="otcwl2014.aml.sorted.txt",
         ),
@@ -1159,7 +1209,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=AML_VOCAB_SIZE,
-            maxlen=12,
+            maxlen=12,  # Only include words up to 12 letters long
             d=sowpods,
             out="sowpods.aml.sorted.txt",
         ),
@@ -1173,6 +1223,8 @@ def run_english_filter() -> None:
         ),
     ]
 
+    # Read the input file, which is sorted in descending order by frequency,
+    # and filter the words
     cnt = 0
     with open(source, "r", encoding="utf-8") as f:
         for line in f:
@@ -1184,6 +1236,7 @@ def run_english_filter() -> None:
             if len(a) != 2:
                 continue
             word = a[0]
+            # We only use words ranging from 3 to 15 letters, inclusive
             if not (2 < len(word) < 16):
                 continue
             # For each task, check whether the word should be added
@@ -1191,11 +1244,14 @@ def run_english_filter() -> None:
                 if t["cnt"] < t["size"] and len(word) <= t["maxlen"] and word in t["d"]:
                     t["vocab"].append(word)
                     t["cnt"] += 1
+            # Circuit breaker: stop when all tasks are complete
             if all(t["cnt"] >= t["size"] for t in tasks):
                 break
     for t in tasks:
         t["vocab"].sort()
-        with open(os.path.join("resources", t["out"]), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join("resources", t["out"]), "w", encoding="utf-8", newline="\n"
+        ) as f:
             for w in t["vocab"]:
                 f.write(f"{w}\n")
     print(f"English filtering done after reading {cnt} lines from source")
@@ -1261,13 +1317,14 @@ def run_english_robot_vocabs() -> None:
 if __name__ == "__main__":
 
     ALL_TASKS = [
+        run_icelandic_filter,  # Remove rare Icelandic words from robot vocabularies
         run_skrafl,  # Icelandic
         run_osps37,  # Polish
         # run_twl06,
         run_otcwl2014,  # en_US
         run_sowpods,  # en_UK
         run_english_filter,
-        run_english_robot_vocabs
+        run_english_robot_vocabs,
     ]
 
     def name(t: Callable[[], None]) -> str:

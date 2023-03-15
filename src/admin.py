@@ -2,7 +2,7 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -88,9 +88,7 @@ def admin_setfriend() -> str:
     if u is None:
         return "<html><body><p>Unknown user id '{0}'</p></body></html>".format(uid)
     was_friend = u.friend()
-    u.set_friend(bstate)
-    u.set_has_paid(bstate)
-    u.update()
+    u.add_transaction("friend" if bstate else "", "admin", "setfriend")
     logging.info("Friend state of user {0} manually set to {1}".format(uid, bstate))
     return (
         f"<html><body><p>User '{uid}': friend state was {was_friend}; "
@@ -151,7 +149,7 @@ def admin_loadgame() -> Response:
                     m.player,
                     m.move.summary(game.state),
                     m.rack,
-                    Alphabet.format_timestamp(m.ts),
+                    Alphabet.format_timestamp(m.ts or now),
                 )
                 for m in game.moves
             ],

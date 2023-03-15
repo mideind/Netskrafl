@@ -2,7 +2,7 @@
 
     Basic utility functions and classes
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -48,6 +48,7 @@ from flask.wrappers import Request, Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
+from config import OAUTH_CONF_URL
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
@@ -122,7 +123,6 @@ _oauth: Optional[OAuth] = None
 
 def init_oauth(app: Flask) -> None:
     """ Initialize the OAuth wrapper """
-    OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
     global _oauth
     _oauth = OAuth(app)
     cast(Any, _oauth).register(
@@ -168,13 +168,13 @@ def session_user() -> Optional[User]:
 def session_idinfo() -> Optional[UserIdDict]:
     """ Return the user who is authenticated in the current session, if any.
         This can be called within any Flask request. """
-    sess = cast(Dict[str, Any], session)
+    sess = cast(Optional[Dict[str, Any]], session)
     return None if sess is None else sess.get("user")
 
 
 def is_mobile_client() -> bool:
     """ Return True if the currently logged in client is a mobile client """
-    if ((idinfo := session_idinfo()) is None):
+    if (idinfo := session_idinfo()) is None:
         return False
     return idinfo.get("client_type", "web") in MOBILE_CLIENT_TYPES
 
@@ -229,8 +229,7 @@ def current_user() -> Optional[User]:
 def current_user_id() -> Optional[str]:
     """ Return the id of the currently logged in user. Only valid within route
         functions decorated with @auth_required. """
-    u = g.get("user")
-    return None if u is None else u.id()
+    return None if (u := g.get("user")) is None else u.id()
 
 
 class RequestData:
@@ -255,6 +254,9 @@ class RequestData:
                     self.q = rq.args
                 else:
                     self.q = dict()
+
+    def __repr__(self) -> str:
+        return f"<RequestData {self.q!r}>"
 
     @overload
     def get(self, key: str) -> Any:

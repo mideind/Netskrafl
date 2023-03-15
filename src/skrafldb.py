@@ -2,7 +2,7 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -145,7 +145,7 @@ class LiveGameDict(TypedDict):
     my_turn: bool
     sc0: int
     sc1: int
-    prefs: PrefsDict
+    prefs: Optional[PrefsDict]
     tile_count: int
     locale: str
 
@@ -164,7 +164,7 @@ class FinishedGameDict(TypedDict):
     elo_adj: Optional[int]
     human_elo_adj: Optional[int]
     manual_elo_adj: Optional[int]
-    prefs: PrefsDict
+    prefs: Optional[PrefsDict]
     locale: str
 
 
@@ -556,9 +556,9 @@ class UserModel(Model["UserModel"]):
     # Last login for the user
     last_login = Model.OptionalDatetime()
     # Ready for challenges?
-    ready = Model.OptionalBool(default=False)
+    ready = Model.OptionalBool(default=True)
     # Ready for timed challenges?
-    ready_timed = Model.OptionalBool(default=False)
+    ready_timed = Model.OptionalBool(default=True)
     # Chat disabled?
     chat_disabled = Model.OptionalBool(default=False)
     # Elo points
@@ -638,11 +638,11 @@ class UserModel(Model["UserModel"]):
         return sorted(result, key=lambda u: (u.elo > 0, u.timestamp), reverse=True)[0]
 
     @classmethod
-    def fetch_multi(cls, user_ids: Iterable[str]) -> List[UserModel]:
+    def fetch_multi(cls, user_ids: Iterable[str]) -> List[Optional[UserModel]]:
         """Fetch multiple user entities by id list"""
         # Google NDB/RPC doesn't allow more than 1000 entities per get_multi() call
         MAX_CHUNK = 1000
-        result: List[UserModel] = []
+        result: List[Optional[UserModel]] = []
         ix = 0
         user_ids = list(user_ids)
         end = len(user_ids)
@@ -692,9 +692,8 @@ class UserModel(Model["UserModel"]):
     def filter_locale(
         cls, q: Query[UserModel], locale: Optional[str]
     ) -> Query[UserModel]:
-        """Filter the query by locale, if given, otherwise stay
-        with the default"""
-        if locale is None:
+        """Filter the query by locale, if given, otherwise stay with the default"""
+        if not locale:
             return q.filter(
                 ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
             )
@@ -883,7 +882,7 @@ class GameModel(Model["GameModel"]):
     irack1 = Model.OptionalStr()  # Must be indexed
 
     # Game preferences, such as duration, alternative bags or boards, etc.
-    prefs = cast(PrefsDict, ndb.JsonProperty(required=False, default=None))
+    prefs = cast(Optional[PrefsDict], ndb.JsonProperty(required=False, default=None))
 
     # Count of tiles that have been laid on the board
     tile_count = Model.OptionalInt()
@@ -1259,10 +1258,9 @@ class ChallengeModel(Model["ChallengeModel"]):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: str, max_len: int = 20) -> Iterator[ChallengeTuple]:
+    def list_issued(cls, user_id: Optional[str], max_len: int = 20) -> Iterator[ChallengeTuple]:
         """Query for a list of challenges issued by a particular user"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         # List issued challenges in ascending order by timestamp (oldest first)
@@ -1283,8 +1281,7 @@ class ChallengeModel(Model["ChallengeModel"]):
         cls, user_id: Optional[str], max_len: int = 20
     ) -> Iterator[ChallengeTuple]:
         """Query for a list of challenges issued to a particular user"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         # List received challenges in ascending order by timestamp (oldest first)
@@ -1508,7 +1505,7 @@ class StatsModel(Model["StatsModel"]):
                 nd = makedict(sm)
                 # This may be None if a default record was created
                 nd_ts = nd["timestamp"]
-                if (nd_ts is not None) and nd_ts > d["timestamp"]:
+                if nd_ts > d["timestamp"]:
                     # This is a newer one than we have already
                     # It must be a lower Elo score, or we would already have it
                     assert nd["elo"] <= d["elo"]
@@ -1679,10 +1676,10 @@ class StatsModel(Model["StatsModel"]):
         return sm
 
     @classmethod
-    def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
+    def newest_for_user(cls, user_id: Optional[str]) -> Optional[StatsModel]:
         """Returns the newest available stats record for the user"""
         # This does not work for robots
-        if user_id is None:
+        if not user_id:
             return None
         k: Key[UserModel] = Key(UserModel, user_id)
         # Use a common query structure and index for humans and robots
@@ -2106,10 +2103,9 @@ class ZombieModel(Model["ZombieModel"]):
         zmk.delete()
 
     @classmethod
-    def list_games(cls, user_id: str) -> Iterator[ZombieGameDict]:
+    def list_games(cls, user_id: Optional[str]) -> Iterator[ZombieGameDict]:
         """List all zombie games for the given player"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ZombieModel.player == k)
@@ -2178,8 +2174,7 @@ class PromoModel(Model["PromoModel"]):
         cls, user_id: Optional[str], promotion: str
     ) -> Iterator[datetime]:
         """Return a list of timestamps for when the given promotion has been displayed"""
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)
@@ -2194,8 +2189,9 @@ class CompletionModel(Model["CompletionModel"]):
 
     # The type of process that was completed, usually 'stats' or 'ratings'
     proctype = Model.Str()
+
     # The timestamp of the successful run
-    timestamp = Model.Datetime(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
 
     # The from-to range of the successful process
     ts_from = Model.Datetime()
@@ -2327,3 +2323,32 @@ class ReportModel(Model["ReportModel"]):
             rm.put()
             return True
         return False
+
+
+class TransactionModel(Model["TransactionModel"]):
+
+    """Models subscription transactions"""
+
+    # User
+    user: Key[UserModel] = Model.DbKey(kind=UserModel)
+    # Timestamp
+    ts = Model.Datetime(auto_now_add=True, indexed=True)
+    # Subscription plan, or empty string if none
+    plan = Model.Str()
+    # Subscription kind, or empty string if none
+    kind = Model.Str()
+    # Operation performed
+    op = Model.Str()
+
+    @classmethod
+    def add_transaction(
+        cls, user_id: str, plan: str, kind: str, op: str
+    ) -> None:
+        """Add a transaction"""
+        tm = cls(id=Unique.id())
+        tm.user = Key(UserModel, user_id)
+        tm.ts = datetime.utcnow()
+        tm.plan = plan
+        tm.kind = kind
+        tm.op = op
+        tm.put()

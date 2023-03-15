@@ -2,7 +2,7 @@
 
     Authentication module for netskrafl.is
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -39,11 +39,11 @@ from config import (
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
     APPLE_CLIENT_ID,
+    PROJECT_ID,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
-from languages import to_supported_locale
 
-from skrafluser import User, UserLoginDict
+from skrafluser import User, UserLoginDict, verify_explo_token
 
 # URL to validate Facebook login token, in /oauth_fb endpoint
 FACEBOOK_TOKEN_VALIDATION_URL = (
@@ -91,7 +91,10 @@ def oauth2callback(request: Request) -> ResponseType:
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
         client_type = (
             request.form.get("clientType", "")
-            or cast(Any, request).json.get("clientType", "")
+            or (
+                request.json is not None
+                and cast(Dict[str, str], request.json).get("clientType", "")
+            )
             or "web"
         )
 
@@ -130,7 +133,8 @@ def oauth2callback(request: Request) -> ResponseType:
             idinfo = id_token.verify_oauth2_token(  # type: ignore
                 token, google_request, client_id
             )
-            assert idinfo is not None
+            if idinfo is None:
+                raise ValueError("Invalid Google token")
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -248,7 +252,7 @@ def oauth_fb(request: Request) -> ResponseType:
         email=email,
         method="Facebook",
         account=account,
-        locale=locale,
+        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
@@ -283,7 +287,7 @@ def oauth_apple(request: Request) -> ResponseType:
         payload = jwt.decode(  # type: ignore
             token,
             cast(Any, signing_key).key,
-            algorithms=["RS256"],
+            algorithms=["RS256"], # Apple only supports RS256
             issuer=APPLE_ISSUER,
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
@@ -299,10 +303,6 @@ def oauth_apple(request: Request) -> ResponseType:
     name: str = rq.get("fullName", "")  # This is populated on first sign-in
     image: str = ""  # !!! Not available from Apple token
     locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
-    # Apple can return strange locale codes such as en_IS.
-    # In such cases, we downcast to a generic locale, in this case 'en',
-    # or to the DEFAULT_LOCALE if no downcast is found.
-    locale = to_supported_locale(locale)
 
     # Make sure that Apple account ids are different from Google/OAuth ones
     # by prefixing them with 'apple:'. Note that Firebase paths cannot contain
@@ -322,11 +322,97 @@ def oauth_apple(request: Request) -> ResponseType:
         email=email,
         method="Apple",
         account=account,
-        locale=locale,
+        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )
     # Set the Flask session token
+    set_session_userid(userid, idinfo)
+    # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
+
+
+def oauth_explo(request: Request) -> ResponseType:
+    """Login via a previously issued Explo token. The token is generated
+    in any of the other login methods and is returned to the client in the
+    UserLoginDict instance. The client can then use that token for subsequent
+    logins, without having to go through the third party OAuth flow again.
+    The token is by default valid for 30 days."""
+    token: Optional[str] = None
+    config = cast(Any, current_app).config
+    testing: bool = config.get("TESTING", False)
+    client_type: str = "web"  # Default client type
+
+    if not testing:
+        token = request.form.get("token", "") or cast(Any, request).json.get(
+            "token", ""
+        )
+        if not token:
+            # No authentication token included in the request
+            # 400 - Bad Request
+            return jsonify({"status": "invalid", "msg": "Missing token"}), 400
+        client_type = (
+            request.form.get("clientType", "")
+            or (
+                request.json is not None
+                and cast(Dict[str, str], request.json).get("clientType", "")
+            )
+            or "web"
+        )
+
+    client_id = CLIENT.get(client_type, {}).get("id", "")
+    if not client_id:
+        # Unknown client type (should be one of 'web', 'ios', 'android')
+        # 400 - Bad Request
+        return jsonify({"status": "invalid", "msg": "Unknown client type"}), 400
+
+    uld: Optional[UserLoginDict] = None
+    userid: Optional[str] = None
+    idinfo: Optional[UserIdDict] = None
+
+    try:
+        if testing:
+            # Get the idinfo dictionary directly from the request
+            f = cast(Dict[str, str], request.form)
+            sub = f.get("sub", "")
+        else:
+            # Verify the basics of the JWT-compliant token
+            claims = verify_explo_token(token) if token else None
+            if claims is None:
+                raise ValueError("Unable to verify token")
+            # Claims successfully extracted, which means that the token
+            # is valid and not expired
+            sub = claims.get("sub", "")
+        if not sub:
+            raise ValueError("Missing user id")
+        # Note that we return the original token to the client,
+        # as we want to re-use it until it expires
+        t = User.login_by_id(sub, previous_token=token)
+        if t is None:
+            raise ValueError("User id not found")
+        uld, udd = t
+        idinfo = UserIdDict(
+            iss=PROJECT_ID,
+            sub=sub,
+            name=udd["name"],  # Not available from Explo token
+            picture=udd["picture"],  # Not available from Explo token
+            email=udd["email"],  # Not available from Explo token
+            account=uld["account"],  # Not available from Explo token
+            locale=uld["locale"],  # Not available from Explo token
+            method="Explo",
+            new=False,
+            client_type=client_type,
+        )
+        userid = uld["user_id"]
+        uld["method"] = idinfo["method"]
+
+    except (KeyError, ValueError) as e:
+        # Invalid token
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": str(e)}), 401
+
+    # Authentication complete; token was valid and user id was found
+    # Set a session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
