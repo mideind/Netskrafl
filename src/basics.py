@@ -55,7 +55,7 @@ from skrafldb import Client
 
 # Type definitions
 T = TypeVar("T")
-ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]]
+ResponseType = Union[str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]]
 RouteType = Callable[..., ResponseType]
 
 

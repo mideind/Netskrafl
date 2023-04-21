@@ -45,10 +45,10 @@ from flask import (
     request,
     url_for,
 )
-from flask.wrappers import Response
 from flask.globals import current_app
 
 from werkzeug.utils import redirect
+from werkzeug.wrappers import Response
 
 from config import (
     RC_WEBHOOK_AUTH,
@@ -1565,14 +1565,13 @@ def userstats() -> ResponseType:
 
 
 @api.route("/image", methods=["GET", "POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+# @auth_required(result=Error.LOGIN_REQUIRED)
 def image() -> ResponseType:
     """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     cuid = current_user_id()
-    assert cuid is not None
-    uid = rq.get("uid") or cuid
+    uid = rq.get("uid") or cuid or ""
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
