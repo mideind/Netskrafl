@@ -65,6 +65,7 @@
 from __future__ import annotations
 
 from typing import (
+    ContextManager,
     Dict,
     Generic,
     Literal,
@@ -448,9 +449,9 @@ class Client:
         pass
 
     @classmethod
-    def get_context(cls):
+    def get_context(cls) -> ContextManager[ndb.Context]:
         """Return the ndb client instance singleton"""
-        return cast(Any, cls._client).context(global_cache=cls._global_cache)
+        return cls._client.context(global_cache=cls._global_cache)
 
 
 class Context:
@@ -511,12 +512,12 @@ def iter_q(
 
 def put_multi(recs: Iterable[_T_Model]) -> None:
     """Type-safer call to ndb.put_multi()"""
-    cast(Any, ndb).put_multi(recs)
+    ndb.put_multi(list(recs))
 
 
 def delete_multi(keys: Iterable[Key[_T_Model]]) -> None:
     """Type-safer call to ndb.delete_multi()"""
-    cast(Any, ndb).delete_multi(keys)
+    ndb.delete_multi(list(keys))
 
 
 class UserModel(Model["UserModel"]):
@@ -1100,7 +1101,7 @@ class FavoriteModel(Model["FavoriteModel"]):
             return
         k: Optional[Key[UserModel]] = Key(UserModel, user_id)
         q = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_consistency=cast(Any, ndb).EVENTUAL):
+        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
             if fm.destuser is not None:
                 yield fm.destuser.id()
 
@@ -1258,7 +1259,9 @@ class ChallengeModel(Model["ChallengeModel"]):
             cm.key.delete()
 
     @classmethod
-    def list_issued(cls, user_id: Optional[str], max_len: int = 20) -> Iterator[ChallengeTuple]:
+    def list_issued(
+        cls, user_id: Optional[str], max_len: int = 20
+    ) -> Iterator[ChallengeTuple]:
         """Query for a list of challenges issued by a particular user"""
         if not user_id:
             return
@@ -1952,9 +1955,12 @@ class ChatModel(Model["ChatModel"]):
     def chat_history(
         cls,
         for_user: str,
+        *,
         maxlen: int = 20,
+        blocked_users: Set[str] = set(),
     ) -> Sequence[ChatModelHistoryDict]:
-        """Return the chat history for a user"""
+        """Return the chat history for a user, excluding counterparties
+        from the blocked_users set"""
         CHUNK_SIZE = maxlen * 2
 
         # Create two queries, on the user and recipient fields,
@@ -1985,6 +1991,9 @@ class ChatModel(Model["ChatModel"]):
                 # We have not seen this counterparty before:
                 # create a history entry for it, assuming the
                 # message is unread (for the time being)
+                if counterparty in blocked_users:
+                    # Don't include blocked users in the chat history
+                    return 0
                 result[counterparty] = ChatModelHistoryDict(
                     user=counterparty,
                     ts=cm.timestamp,
@@ -2001,7 +2010,7 @@ class ChatModel(Model["ChatModel"]):
             # seen message was empty (=a read marker). If so, we
             # replace it with the new message, if not also empty.
             if not ch["last_msg"] and cm.msg:
-                # Upgradee the read marker to a 'proper' history entry
+                # Upgrade the read marker to a 'proper' history entry
                 ch["last_msg"] = cm.msg
                 ch["ts"] = cm.timestamp
                 # There was a read marker, so we can set unread to False
@@ -2031,10 +2040,14 @@ class ChatModel(Model["ChatModel"]):
             if pick == 1:
                 assert c1 is not None
                 if c1.recipient is not None:
+                    # This user is the originator,
+                    # so the counterparty is the recipient
                     count += consider(c1, c1.recipient.id())
                 c1 = next(i1, None)
             elif pick == 2:
                 assert c2 is not None
+                # This user is the recipient,
+                # so the counterparty is the originator
                 count += consider(c2, c2.user.id())
                 c2 = next(i2, None)
 
@@ -2341,9 +2354,7 @@ class TransactionModel(Model["TransactionModel"]):
     op = Model.Str()
 
     @classmethod
-    def add_transaction(
-        cls, user_id: str, plan: str, kind: str, op: str
-    ) -> None:
+    def add_transaction(cls, user_id: str, plan: str, kind: str, op: str) -> None:
         """Add a transaction"""
         tm = cls(id=Unique.id())
         tm.user = Key(UserModel, user_id)

@@ -689,7 +689,7 @@ class User:
 
     def _load_blocks(self) -> None:
         """Loads blocked users into a set in memory"""
-        if hasattr(self, "_blocks") and self._blocks:
+        if getattr(self, "_blocks", None) is not None:
             # Already have the blocks in memory
             return
         sid = self.id()
@@ -710,7 +710,7 @@ class User:
         return True
 
     def unblock(self, destuser_id: str) -> bool:
-        """Delete an A-favors-B relation between this user and the destuser"""
+        """Delete an A-blocks-B relation between this user and the destuser"""
         if not destuser_id:
             return False
         sid = self.id()
@@ -723,13 +723,19 @@ class User:
         return True
 
     def has_blocked(self, destuser_id: str) -> bool:
-        """Returns True if there is an A-favors-B relation between
+        """Returns True if there is an A-blocks-B relation between
         this user and the destuser"""
         if not destuser_id:
             return False
         self._load_blocks()
         assert self._blocks is not None
         return destuser_id in self._blocks
+
+    def blocked(self) -> Set[str]:
+        """Returns a set of ids of all users blocked by this user"""
+        self._load_blocks()
+        assert self._blocks is not None
+        return self._blocks
 
     def _summary_list(
         self, uids: Iterable[str], *, is_favorite: bool = False
@@ -1042,7 +1048,8 @@ class User:
     def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[Dict[str, Any]]]:
         """Return the profile of a given user along with key statistics,
         as a dictionary as well as an error code"""
-        if cuser.id() == uid:
+        cuid = cuser.id()
+        if cuid == uid:
             # Current user: no need to load the user object
             user = cuser
         else:
@@ -1055,21 +1062,27 @@ class User:
 
         # Include info on whether this user is a favorite of the current user
         fav = False
-        if uid != cuser.id():
+        if uid != cuid:
             fav = cuser.has_favorite(uid)
         profile["favorite"] = fav
 
         # Include info on whether the current user has challenged this user
         chall = False
-        if uid != cuser.id():
+        if uid != cuid:
             chall = cuser.has_challenge(uid)
         profile["challenge"] = chall
 
         # Include info on whether the current user has blocked this user
         blocked = False
-        if uid != cuser.id():
+        if uid != cuid:
             blocked = cuser.has_blocked(uid)
         profile["blocked"] = blocked
+
+        # Include info on whether this user has blocked the current user
+        blocking = False
+        if cuid and uid != cuid:
+            blocking = user.has_blocked(cuid)
+        profile["blocking"] = blocking
 
         if uid == cuser.id():
             # If current user, include a list of favorite users
