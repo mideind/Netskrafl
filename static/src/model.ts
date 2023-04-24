@@ -849,6 +849,10 @@ class Model {
       }
     }
     let invalidateGameList = false;
+    // The following code is a bit iffy since both json.challenge and json.move
+    // are included in the same message on the /user/[userid] path.
+    // !!! FIXME: Split this into two separate listeners,
+    // !!! one for challenges and one for moves
     if (json.challenge) {
       // Reload challenge list
       this.loadChallengeList();

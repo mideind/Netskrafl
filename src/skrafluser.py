@@ -151,7 +151,7 @@ def make_login_dict(
     # which the client can pass back later
     # instead of using the third party
     # authentication providers
-    token = previous_token or jwt.encode(
+    token: str = previous_token or cast(Any, jwt).encode(
         {
             "iss": PROJECT_ID,
             "sub": user_id,

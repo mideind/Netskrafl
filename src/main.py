@@ -107,9 +107,7 @@ if running_local:
         app,
         supports_credentials=True,
         origins=[
-            "http://explo.300dev.pl",
-            "http://localhost:19006",
-            "http://127.0.0.1:19006",
+            "http://127.0.0.1:3000",
         ],
     )
 

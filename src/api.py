@@ -39,16 +39,18 @@ import logging
 import threading
 import random
 from datetime import datetime, timedelta
+import base64
+import io
 
 from flask import (
     Blueprint,
     request,
     url_for,
+    send_file,  # type: ignore
 )
 from flask.globals import current_app
 
 from werkzeug.utils import redirect
-from werkzeug.wrappers import Response
 
 from config import (
     RC_WEBHOOK_AUTH,
@@ -1565,7 +1567,7 @@ def userstats() -> ResponseType:
 
 
 @api.route("/image", methods=["GET", "POST"])
-# @auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(result=Error.LOGIN_REQUIRED)
 def image() -> ResponseType:
     """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
@@ -1583,11 +1585,21 @@ def image() -> ResponseType:
         image, image_blob = um.get_image()
         if image_blob:
             # We have the image as a bytes object: return it
-            mimetype = image or "image/jpeg"
-            return Response(
-                image_blob, mimetype=mimetype, content_type="application/octet-stream"
-            )
-        if not image or image.startswith("/image"):
+            if not image or image.startswith(("https:", "http:")):
+                # Accommodate strange scenarios
+                mimetype = "image/jpeg"
+            else:
+                mimetype = image
+            try:
+                decoded_image = base64.b64decode(image_blob)
+                # Convert the decoded image to a BytesIO object
+                image_bytes = io.BytesIO(decoded_image)
+                # Serve the image using flask.send_file()
+                return send_file(image_bytes, mimetype='image/jpeg', cache_timeout=0)
+            except Exception:
+                # Something wrong in the image_blob: give up
+                pass
+        if not image or not image.startswith(("https:", "http:")):
             return "Image not found", 404  # Not found
         # Assume that this is a URL: redirect to it
         return redirect(image)
