@@ -602,8 +602,8 @@ class UserModel(Model["UserModel"]):
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
         user.prefs = preferences or {}  # Default to no preferences
-        user.ready = False  # Not ready for new challenges unless explicitly set
-        user.ready_timed = False  # Not ready for timed games unless explicitly set
+        user.ready = True  # Ready for new challenges by default
+        user.ready_timed = True  # Ready for timed games by default
         user.locale = locale or DEFAULT_LOCALE
         user.last_login = datetime.utcnow()
         user.games = 0
