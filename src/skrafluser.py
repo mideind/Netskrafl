@@ -390,6 +390,10 @@ class User:
         """Return True if the user is marked as inactive"""
         return self._inactive
 
+    def set_inactive(self, state: bool) -> None:
+        """Set the inactive state of a user"""
+        self._inactive = state
+
     def is_displayable(self) -> bool:
         """Returns True if this user should appear in user lists"""
         if self._inactive:
@@ -888,6 +892,7 @@ class User:
         locale: Optional[str] = None,
     ) -> UserLoginDict:
         """Log in a user via the given account identifier and return her user id"""
+        name = name.strip()
         # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
         if um is not None:
@@ -899,6 +904,10 @@ class User:
                 # Use the opportunity to update the email, if different
                 # (This should probably not happen very often)
                 um.email = email
+            full_name = um.prefs.get("full_name", "") if um.prefs else ""
+            if name and not full_name:
+                # Use the opportunity to update the name, if not already set
+                um.prefs["full_name"] = name
             # Note the login timestamp
             um.last_login = datetime.utcnow()
             um.put()
@@ -922,6 +931,10 @@ class User:
                 if image and image != um.image:
                     # Use the opportunity to update the image, if different
                     um.image = image
+                full_name = um.prefs.get("full_name", "") if um.prefs else ""
+                if name and not full_name:
+                    # Use the opportunity to update the name, if not already set
+                    um.prefs["full_name"] = name
                 # Note the last login
                 um.last_login = datetime.utcnow()
                 user_id = um.put().id()
@@ -1012,6 +1025,29 @@ class User:
         u._blocks = None
         u._timestamp = datetime.fromisoformat(j["_timestamp"])
         return u
+
+    def delete_account(self) -> bool:
+        """Delete the user account"""
+        # We can't actually delete the user entity in the database,
+        # since it is referenced by other entities, such as GameModel
+        # and ChallengeModel. Instead, we remove all personally identifiable
+        # information from the user object, and delete associated entities
+        # such as favorites and blocks.
+        self.set_email("")
+        self.set_full_name("")
+        self.set_image("")
+        self.set_location("")
+        self.set_inactive(True)
+        self.set_ready(False)
+        self.set_ready_timed(False)
+        self.disable_chat(True)
+        # Remove favorites
+        # Remove blocks
+        # Retract issued challenges
+        # Reject received challenges
+        # Save the updated user record and delete subscriptions/plans
+        self.add_transaction("", "api", "ACCOUNT_DELETED")
+        return True
 
     def profile(self) -> Dict[str, Any]:
         """Return a set of key statistics on the user"""

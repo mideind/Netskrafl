@@ -1106,6 +1106,19 @@ class FavoriteModel(Model["FavoriteModel"]):
                 yield fm.destuser.id()
 
     @classmethod
+    def delete_favorites(
+        cls, user_id: str
+    ) -> None:
+        """Delete all favorite relations for the given user"""
+        if not user_id:
+            return
+        k: Key[UserModel] = Key(UserModel, user_id)
+        q = cls.query(ancestor=k)
+        keys = list(q.fetch(keys_only=True))
+        if (keys):
+            delete_multi(keys)
+
+    @classmethod
     def has_relation(
         cls, srcuser_id: Optional[str], destuser_id: Optional[str]
     ) -> bool:

@@ -493,6 +493,18 @@ def logout() -> ResponseType:
     return jsonify({"status": "success"})
 
 
+@api.route("/delete_account", methods=["POST"])
+@auth_required(ok=False)
+def delete_account() -> ResponseType:
+    """Delete the account of the current user"""
+    u = current_user()
+    if not u or not u.delete_account():
+        return jsonify(ok=False)
+    # Successfully deleted: also delete the session cookie
+    clear_session_userid()
+    return jsonify(ok=True)
+
+
 @api.route("/firebase_token", methods=["POST"])
 @auth_required(ok=False)
 def firebase_token() -> ResponseType:
