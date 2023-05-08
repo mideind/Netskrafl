@@ -1029,22 +1029,24 @@ class User:
     def delete_account(self) -> bool:
         """Delete the user account"""
         # We can't actually delete the user entity in the database,
-        # since it is referenced by other entities, such as GameModel
-        # and ChallengeModel. Instead, we remove all personally identifiable
+        # since it is referenced by other entities, such as GameModel.
+        # Instead, we remove all personally identifiable
         # information from the user object, and delete associated entities
-        # such as favorites and blocks.
+        # such as favorites and challenges.
+        if not (uid := self.id()):
+            return False
+        self.set_inactive(True)
         self.set_email("")
         self.set_full_name("")
         self.set_image("")
         self.set_location("")
-        self.set_inactive(True)
         self.set_ready(False)
         self.set_ready_timed(False)
         self.disable_chat(True)
         # Remove favorites
-        # Remove blocks
         # Retract issued challenges
         # Reject received challenges
+        UserModel.delete_related_entities(uid)
         # Save the updated user record and delete subscriptions/plans
         self.add_transaction("", "api", "ACCOUNT_DELETED")
         return True

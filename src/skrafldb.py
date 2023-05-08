@@ -825,6 +825,20 @@ class UserModel(Model["UserModel"]):
         result = lower[ix:] + higher[0 : max_len - (len_lower - ix)]
         return result
 
+    @classmethod
+    def delete_related_entities(cls, user_id: str) -> None:
+        """Delete entities that are related to a particular user"""
+        if not user_id:
+            return
+        # FavoriteModel: delete all favorite relations for this user
+        FavoriteModel.delete_user(user_id)
+        # ChallengeModel: delete all challenges issued or received by this user
+        ChallengeModel.delete_user(user_id)
+        # Intentionally, we do not delete blocks, neither issued nor received
+        # Same goes for reports, both of and by this user
+        # We also do not delete stats, since other users will want to see them
+        # in relation to previously played games
+
 
 class MoveModel(Model["MoveModel"]):
 
@@ -1106,17 +1120,19 @@ class FavoriteModel(Model["FavoriteModel"]):
                 yield fm.destuser.id()
 
     @classmethod
-    def delete_favorites(
+    def delete_user(
         cls, user_id: str
     ) -> None:
         """Delete all favorite relations for the given user"""
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        q = cls.query(ancestor=k)
-        keys = list(q.fetch(keys_only=True))
-        if (keys):
-            delete_multi(keys)
+
+        def keys_to_delete() -> Iterator[Key[FavoriteModel]]:
+            yield from cls.query(ancestor=k).iter(keys_only=True)
+            yield from cls.query(FavoriteModel.destuser == k).iter(keys_only=True)
+
+        delete_multi(keys_to_delete())
 
     @classmethod
     def has_relation(
@@ -1270,6 +1286,20 @@ class ChallengeModel(Model["ChallengeModel"]):
             if prefs is None:
                 prefs = cm.prefs
             cm.key.delete()
+
+    @classmethod
+    def delete_user(cls, user_id: str) -> None:
+        """Delete all challenges involving a particular user"""
+        if not user_id:
+            return
+        k: Key[UserModel] = Key(UserModel, user_id)
+
+        # Delete all challenges issued by this user
+        def keys_to_delete() -> Iterator[Key[ChallengeModel]]:
+            yield from cls.query(ancestor=k).iter(keys_only=True)
+            yield from cls.query(ChallengeModel.destuser == k).iter(keys_only=True)
+
+        delete_multi(keys_to_delete())
 
     @classmethod
     def list_issued(

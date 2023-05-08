@@ -14,6 +14,7 @@ from typing import Any, Dict
 import sys
 import os
 from datetime import datetime, timedelta
+import base64
 
 import pytest
 
@@ -490,16 +491,19 @@ def test_image(client, u1):
     resp = login_user(client, 1)
 
     # Set the image by POSTing the JPEG or PNG content (BLOB) directly
-    resp = client.post("/image", data=b"1234", content_type="image/jpeg; charset=utf-8")
+    image_blob = b"1234"
+    # Encode the image_blob as base64
+    image_b64 = base64.b64encode(image_blob)
+    resp = client.post("/image", data=image_b64, content_type="image/jpeg; charset=utf-8")
     assert resp.status_code == 200
 
     # Retrieve the image of the currently logged-in user
     resp = client.get("/image")
     assert resp.status_code == 200
     assert resp.mimetype == "image/jpeg"
-    assert resp.content_length == 4
+    assert resp.content_length == len(image_blob)
     # Retrieve the original BLOB
-    assert resp.get_data(as_text=False) == b"1234"
+    assert resp.get_data(as_text=False) == image_blob
 
     # Set an image URL: note the text/plain MIME type
     image_url = "https://lh3.googleusercontent.com/a/AATXAJxmLaM_8c61i_EeyptXynOG1SL7b-BSt7uBz8Hg=s96-c"
@@ -518,3 +522,78 @@ def test_image(client, u1):
 
     resp = client.post("/logout")
 
+
+def test_delete_user_1(client, u1):
+    """Delete a user using the /delete_account endpoint"""
+    # Try to delete an account without being logged in
+    resp = client.post("/delete_account")
+    assert resp.status_code == 401  # Unauthorized
+
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Delete the account
+    resp = client.post("/delete_account")
+    assert resp.status_code == 200
+    assert resp.json["ok"] == True
+
+    # Now the session cookie should be expired
+    resp = client.post("/delete_account")
+    assert resp.status_code == 401  # Unauthorized
+
+
+def test_delete_user_2(client, u1, u2):
+    """Delete a user using the /delete_account endpoint"""
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Add challenges and favorites
+    resp = client.post("/challenge", data=dict(destuser=u2, duration=10))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    resp = client.post("/challenge", data=dict(destuser=u2, duration=20))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+
+    # Add a favorite
+    resp = client.post("/favorite", data=dict(destuser=u2))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+
+    # Log in the second user
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 2)
+    assert resp.status_code == 200
+
+    # Verify that the challenges exist
+    resp = client.post("/challengelist")
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert len(resp.json["challengelist"]) == 2
+
+    # Logout and log in the first user again
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Delete the user account
+    resp = client.post("/delete_account")
+    assert resp.status_code == 200
+    assert resp.json["ok"] == True
+
+    # Logout and log in the second user again
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 2)
+    assert resp.status_code == 200
+
+    # Now there should be no challenges
+    resp = client.post("/challengelist")
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert len(resp.json["challengelist"]) == 0
+
+    resp = client.post("/logout")
+    assert resp.status_code == 200

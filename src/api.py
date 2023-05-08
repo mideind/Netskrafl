@@ -1607,7 +1607,7 @@ def image() -> ResponseType:
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
                 # Serve the image using flask.send_file()
-                return send_file(image_bytes, mimetype='image/jpeg', cache_timeout=0)
+                return send_file(image_bytes, mimetype='image/jpeg', max_age=10 * 60)  # 10 minutes
             except Exception:
                 # Something wrong in the image_blob: give up
                 pass
@@ -2593,5 +2593,5 @@ def locale_asset() -> ResponseType:
         fname = os.path.join(static_folder, "assets", lc, asset)
         if os.path.isfile(fname):
             # Found the static asset file: return it
-            return current_app.send_static_file(os.path.join("assets", lc, asset))
+            return send_file(fname)
     return "", 404  # Not found
