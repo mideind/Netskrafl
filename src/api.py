@@ -497,6 +497,9 @@ def logout() -> ResponseType:
 @auth_required(ok=False)
 def delete_account() -> ResponseType:
     """Delete the account of the current user"""
+    # This marks the account as inactive and erases personally identifiable data
+    # such as the full name, the email address and the profile picture.
+    # Challenges and favorites associated with the account are also deleted.
     u = current_user()
     if not u or not u.delete_account():
         return jsonify(ok=False)

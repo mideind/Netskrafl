@@ -106,6 +106,38 @@ class UserDetailDict(TypedDict):
     email: str
 
 
+class UserProfileDict(TypedDict, total=False):
+
+    """User profile, returned as a part of the /userstats response"""
+
+    result: int
+    uid: str
+    inactive: bool
+    nickname: str
+    fullname: str
+    image: str
+    plan: str
+    friend: bool
+    has_paid: bool
+    locale: str
+    location: str
+    timestamp: str
+    accepts_challenges: bool
+    accepts_timed: bool
+    chat_disabled: bool
+    highest_score: int
+    highest_score_game: Optional[str]
+    best_word: Optional[str]
+    best_word_score: int
+    best_word_game: Optional[str]
+    favorite: bool
+    challenge: bool
+    blocked: bool
+    blocking: bool
+    list_favorites: List[UserSummaryDict]
+    list_blocked: List[UserSummaryDict]
+
+
 class StatsSummaryDict(TypedDict):
 
     """A summary of statistics for a player at a given point in time"""
@@ -910,6 +942,8 @@ class User:
                 um.prefs["full_name"] = name
             # Note the login timestamp
             um.last_login = datetime.utcnow()
+            # If the account was disabled, enable it again
+            um.inactive = False
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
@@ -937,6 +971,8 @@ class User:
                     um.prefs["full_name"] = name
                 # Note the last login
                 um.last_login = datetime.utcnow()
+                # If the account was disabled, enable it again
+                um.inactive = False
                 user_id = um.put().id()
                 uld = make_login_dict(
                     user_id=user_id,
@@ -1051,12 +1087,13 @@ class User:
         self.add_transaction("", "api", "ACCOUNT_DELETED")
         return True
 
-    def profile(self) -> Dict[str, Any]:
+    def profile(self) -> UserProfileDict:
         """Return a set of key statistics on the user"""
-        reply: Dict[str, Any] = dict()
+        reply = UserProfileDict()
         user_id = self.id()
         assert user_id is not None
         reply["result"] = Error.LEGAL
+        reply["inactive"] = self.is_inactive()
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["image"] = self.image()
@@ -1079,11 +1116,11 @@ class User:
         # Add Elo statistics
         sm = StatsModel.newest_for_user(user_id)
         if sm is not None:
-            sm.populate_dict(reply)
+            sm.populate_dict(cast(Dict[str, int], reply))  # Typing hack
         return reply
 
     @staticmethod
-    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[Dict[str, Any]]]:
+    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[UserProfileDict]]:
         """Return the profile of a given user along with key statistics,
         as a dictionary as well as an error code"""
         cuid = cuser.id()
