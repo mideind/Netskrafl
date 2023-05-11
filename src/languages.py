@@ -688,6 +688,7 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "en": NewEnglishTileSet,
     "en_US": NewEnglishTileSet,
     "en_GB": NewEnglishTileSet,
+    "en_UK": NewEnglishTileSet,
 }
 
 # Mapping of locale code to alphabet
@@ -734,6 +735,7 @@ LANGUAGES: Dict[str, str] = {
     "en_PH": "en_GB",
     "en_SG": "en_GB",
     "en_TT": "en_GB",
+    "en_UK": "en_GB",
     "en_ZA": "en_GB",
     "en_ZW": "en_GB",
     "pl": "pl",
