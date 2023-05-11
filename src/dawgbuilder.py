@@ -115,21 +115,27 @@ import time
 import binascii
 import struct
 import io
+import functools
 
 # The DAWG builder uses the collation (sorting) given by
 # the current locale setting, typically 'is_IS' or 'en_US'
-os.environ["PROJECT_ID"] = "explo-dev"
+if "PROJECT_ID" not in os.environ:
+    os.environ["PROJECT_ID"] = "explo-dev"
+
 from languages import current_alphabet, set_locale
 
 
 # Type definitions
 DawgDict = Dict[str, Optional["_DawgNode"]]
+NodeTuple = Tuple[str, Optional["_DawgNode"]]
 
 
 MAXLEN = 48  # Longest possible word to be processed
 WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
 
+base_path = os.path.dirname(__file__)  # Assumed to be in the /src directory
+rpath = functools.partial(os.path.join, base_path, "../resources")
 
 class _DawgNode:
 
@@ -159,9 +165,7 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
-    def sort_by_prefix(
-        l: List[Tuple[str, Optional[_DawgNode]]]
-    ) -> List[Tuple[str, Optional[_DawgNode]]]:
+    def sort_by_prefix(l: List[NodeTuple]) -> List[NodeTuple]:
         """Return a list of (prefix, node) tuples sorted by prefix"""
         sortkey = current_alphabet().sortkey
         return sorted(l, key=lambda x: sortkey(x[0]))
@@ -352,7 +356,7 @@ class _Dawg:
         self._lastword = wrd
         self._lastlen = lenword
 
-    def finish(self):
+    def finish(self) -> None:
         """Complete the optimization of the tree"""
         self._collapse_to(0)
         self._lastword = ""
@@ -1078,7 +1082,7 @@ def run_skrafl() -> None:
     from dawgdictionary import PackedDawgDictionary
 
     dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "ordalisti.bin.dawg"))
+    fpath = rpath("ordalisti.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
@@ -1087,7 +1091,7 @@ def run_skrafl() -> None:
 
     # Test loading of Miðlungur DAWG
     dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "midlungur.bin.dawg"))
+    fpath = rpath("midlungur.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
@@ -1096,7 +1100,7 @@ def run_skrafl() -> None:
 
     # Test loading of Amlóði DAWG
     dawg = PackedDawgDictionary(current_alphabet())
-    fpath = os.path.abspath(os.path.join("resources", "amlodi.bin.dawg"))
+    fpath = rpath("amlodi.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
     t1 = time.time()
@@ -1118,7 +1122,7 @@ def run_icelandic_filter() -> None:
     from icegrams.ngrams import Ngrams
 
     # The name of the input file containing the robot vocabulary
-    source = os.path.join("resources", "ordalisti.aml.sorted.txt")
+    source = rpath("ordalisti.aml.sorted.txt")
 
     # Read the input file, which is sorted in descending order by frequency,
     # and filter the words
@@ -1139,7 +1143,7 @@ def run_icelandic_filter() -> None:
     # Write the filtered vocabulary to a file, always using LF line endings
     # even on Windows
     with open(
-        os.path.join("resources", "ordalisti.aml.filtered.txt"),
+        rpath("ordalisti.aml.filtered.txt"),
         "w",
         encoding="utf-8",
         newline="\n",
@@ -1167,16 +1171,16 @@ def run_english_filter() -> None:
     # Load the OTCWL2014 vocabulary as a packed DAWG
     set_locale("en_US")
     otcwl2014 = PackedDawgDictionary(current_alphabet())
-    otcwl2014.load(os.path.join("resources", "otcwl2014.bin.dawg"))
+    otcwl2014.load(rpath("otcwl2014.bin.dawg"))
 
     # Load the SOWPODS vocabulary as a packed DAWG
-    set_locale("en_UK")
+    set_locale("en_GB")
     sowpods = PackedDawgDictionary(current_alphabet())
-    sowpods.load(os.path.join("resources", "sowpods.bin.dawg"))
+    sowpods.load(rpath("sowpods.bin.dawg"))
 
     # The name of the input file containing
     # the list of frequent English words
-    source = os.path.join("resources", "english.freq.tsv")
+    source = rpath("english.freq.tsv")
 
     # Define our tasks
 
@@ -1193,7 +1197,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=AML_VOCAB_SIZE,
-            maxlen=12,  # Only include words up to 12 letters long
+            maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
             d=otcwl2014,
             out="otcwl2014.aml.sorted.txt",
         ),
@@ -1201,7 +1205,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=MID_VOCAB_SIZE,
-            maxlen=15,
+            maxlen=WORD_MAXLEN,
             d=otcwl2014,
             out="otcwl2014.mid.sorted.txt",
         ),
@@ -1209,7 +1213,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=AML_VOCAB_SIZE,
-            maxlen=12,  # Only include words up to 12 letters long
+            maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
             d=sowpods,
             out="sowpods.aml.sorted.txt",
         ),
@@ -1217,7 +1221,7 @@ def run_english_filter() -> None:
             vocab=[],
             cnt=0,
             size=MID_VOCAB_SIZE,
-            maxlen=15,
+            maxlen=WORD_MAXLEN,
             d=sowpods,
             out="sowpods.mid.sorted.txt",
         ),
@@ -1237,7 +1241,7 @@ def run_english_filter() -> None:
                 continue
             word = a[0]
             # We only use words ranging from 3 to 15 letters, inclusive
-            if not (2 < len(word) < 16):
+            if not (3 <= len(word) <= WORD_MAXLEN):
                 continue
             # For each task, check whether the word should be added
             for t in tasks:
@@ -1250,7 +1254,7 @@ def run_english_filter() -> None:
     for t in tasks:
         t["vocab"].sort()
         with open(
-            os.path.join("resources", t["out"]), "w", encoding="utf-8", newline="\n"
+            rpath(t["out"]), "w", encoding="utf-8", newline="\n"
         ) as f:
             for w in t["vocab"]:
                 f.write(f"{w}\n")
@@ -1287,7 +1291,7 @@ def run_english_robot_vocabs() -> None:
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    set_locale("en_UK")
+    set_locale("en_GB")
 
     print("Starting DAWG build for Sif/sowpods")
     db = DawgBuilder(encoding=current_alphabet().order)
@@ -1314,7 +1318,40 @@ def run_english_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
+def run_polish_robot_vocabs() -> None:
+    """Build DAWGS for Polish robot vocabularies"""
+    print("Starting DAWG build for Polish robot vocabularies")
+
+    set_locale("pl")
+
+    print("Starting DAWG build for Zofia/osps37")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["polish_top_30000.txt"],  # Input files to be merged
+        "osps37.aml",  # Output file - full name will be osps37.aml.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    print("Starting DAWG build for Idek/osps37")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["polish_top_60000.txt"],  # Input files to be merged
+        "osps37.mid",  # Output file - full name will be osps37.mid.bin.dawg
+        "resources",  # Subfolder of input and output files
+        filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
 if __name__ == "__main__":
+
+    print(f"DawgBuilder - project {os.environ['PROJECT_ID']}")
 
     ALL_TASKS = [
         run_icelandic_filter,  # Remove rare Icelandic words from robot vocabularies
@@ -1322,9 +1359,10 @@ if __name__ == "__main__":
         run_osps37,  # Polish
         # run_twl06,
         run_otcwl2014,  # en_US
-        run_sowpods,  # en_UK
+        run_sowpods,  # en_GB
         run_english_filter,
         run_english_robot_vocabs,
+        run_polish_robot_vocabs,
     ]
 
     def name(t: Callable[[], None]) -> str:

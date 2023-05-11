@@ -59,6 +59,9 @@ NONGENERIC_DEFAULT: Mapping[str, str] = {
     "pl": "pl_PL",
 }
 
+DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
+DEFAULT_BOARD_TYPE = "standard" if PROJECT_ID == "netskrafl" else "explo"
+
 
 class Alphabet(abc.ABC):
 
@@ -717,6 +720,7 @@ BOARD_TYPES: Dict[str, str] = {
 
 LANGUAGES: Dict[str, str] = {
     "is": "is",
+    "is_IS": "is",
     "en_US": "en_US",
     "en_GB": "en_GB",
     "en_AU": "en_GB",
@@ -730,10 +734,10 @@ LANGUAGES: Dict[str, str] = {
     "en_PH": "en_GB",
     "en_SG": "en_GB",
     "en_TT": "en_GB",
-    "en_US": "en_GB",
     "en_ZA": "en_GB",
     "en_ZW": "en_GB",
     "pl": "pl",
+    "pl_PL": "pl",
     # Everything else defaults to 'en_US'
 }
 
@@ -814,12 +818,12 @@ def vocabulary_for_locale(lc: str) -> str:
 
 def board_type_for_locale(lc: str) -> str:
     """Return the identifier of the default board type for the given locale"""
-    return dget(BOARD_TYPES, lc, "explo")
+    return dget(BOARD_TYPES, lc, DEFAULT_BOARD_TYPE)
 
 
 def language_for_locale(lc: str) -> str:
     """Return the identifier of the language for the given locale"""
-    return dget(LANGUAGES, lc, "en_US")
+    return dget(LANGUAGES, lc, DEFAULT_LANGUAGE)
 
 
 @functools.lru_cache(maxsize=None)
