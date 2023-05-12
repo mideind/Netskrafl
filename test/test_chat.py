@@ -86,9 +86,9 @@ def u2() -> str:
 
 
 @pytest.fixture
-def u3_uk() -> str:
-    """ Create a test user in the en_UK locale """
-    return create_user(3, "en_UK")
+def u3_gb() -> str:
+    """ Create a test user in the en_GB locale """
+    return create_user(3, "en_GB")
 
 
 def login_user(client, idx: int, client_type: str = "web") -> Response:
@@ -213,7 +213,7 @@ def test_chat(client, u1, u2) -> None:
     assert not history[-1]["unread"]
 
 
-def test_locale_assets(client, u1, u3_uk):
+def test_locale_assets(client, u1, u3_gb):
 
     # Test default en_US user
     resp = login_user(client, 1)
@@ -223,7 +223,7 @@ def test_locale_assets(client, u1, u3_uk):
     assert "American English" in resp.data.decode("utf-8")
     resp = client.post("/logout")
 
-    # Test en_UK user
+    # Test en_GB user
     resp = login_user(client, 3)
     resp = client.post("/locale_asset", data=dict(asset="test_english.html"))
     assert resp.status_code == 200

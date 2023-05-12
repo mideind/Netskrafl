@@ -29,7 +29,7 @@ type Messages = { [key: string]: { [locale: string]: string | string[] }};
 type FlattenedMessages = { [key: string]: { [locale: string]: VnodeChildren }};
 type Interpolations = { [key: string]: string };
 
-// Current exact user locale and fallback locale ("en" for "en_US"/"en_UK"/...)
+// Current exact user locale and fallback locale ("en" for "en_US"/"en_GB"/...)
 // This is overwritten in setLocale()
 let currentLocale = "is_IS";
 let currentFallback = "is";

@@ -223,6 +223,8 @@ class Wordbase:
         ("sowpods.mid", EnglishAlphabet),
         # Polish
         ("osps37", PolishAlphabet),
+        ("osps37.aml", PolishAlphabet),
+        ("osps37.mid", PolishAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()
@@ -238,7 +240,7 @@ class Wordbase:
                     try:
                         Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
                     except FileNotFoundError:
-                        logging.warning("Unable to load DAWG {0}".format(dawg))
+                        logging.error("Unable to load DAWG {0}".format(dawg))
 
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:

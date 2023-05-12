@@ -1209,10 +1209,10 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
                 vocab="amlodi",
                 pick_from=20,
                 adaptive=True,
-                # Cuts off the top 7 moves (20*0.35) to select typically from 13 moves
-                discard_best_ratio_winning=0.35,
-                # Cuts off the top 3 moves (20*0.1) to select typically from 17 moves
-                discard_best_ratio_losing=0.15,
+                # Cuts off the top 6 moves (20*0.3) to select typically from 14 moves
+                discard_best_ratio_winning=0.3,
+                # Cuts off the top 2 moves (20*0.1) to select typically from 18 moves
+                discard_best_ratio_losing=0.1,
             ),
         ),
         AutoPlayerTuple(
@@ -1257,8 +1257,8 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
                 vocab="otcwl2014.mid",
                 pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.35,  # Cuts off the top 7 moves (20*0.35)
-                discard_best_ratio_losing=0.15,  # Cuts off the top 3 moves (20*0.15)
+                discard_best_ratio_winning=0.3,  # Cuts off the top 6 moves (20*0.3)
+                discard_best_ratio_losing=0.1,  # Cuts off the top 2 moves (20*0.1)
             ),
         ),
         AutoPlayerTuple(
@@ -1300,8 +1300,8 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
                 vocab="sowpods.mid",
                 pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.35,
-                discard_best_ratio_losing=0.15,
+                discard_best_ratio_winning=0.3,
+                discard_best_ratio_losing=0.1,
             ),
         ),
         AutoPlayerTuple(
@@ -1321,7 +1321,6 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
     ],
     # Polish
-    # !!! TODO: Create a cut-down Polish vocabulary with frequent words only
     "pl": [
         AutoPlayerTuple(
             "Mikołaj ",
@@ -1343,10 +1342,11 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
+                vocab="osps37.mid",
                 pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.35,
-                discard_best_ratio_losing=0.15,
+                discard_best_ratio_winning=0.3,
+                discard_best_ratio_losing=0.1,
             ),
         ),
         AutoPlayerTuple(
@@ -1355,6 +1355,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
+                vocab="osps37.aml",
                 pick_from=30,
                 adaptive=True,
                 discard_best_ratio_winning=0.3,  # Cuts off the top 9 moves (30*0.3)
