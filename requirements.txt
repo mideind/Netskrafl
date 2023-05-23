@@ -4,7 +4,7 @@ gevent-websocket==0.10.1
 Flask==2.0.1
 Authlib==0.15.4
 oauth2client==4.1.3
-requests==2.25.1
+requests==2.31.0
 firebase-admin==5.0.0
 redis==3.3.11
 protobuf==3.18.3
