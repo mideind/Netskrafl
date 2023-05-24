@@ -107,9 +107,7 @@ if running_local:
         app,
         supports_credentials=True,
         origins=[
-            "http://explo.300dev.pl",
-            "http://localhost:19006",
-            "http://127.0.0.1:19006",
+            "http://127.0.0.1:3000",
         ],
     )
 
@@ -224,23 +222,24 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
             values[param_name] = static_file_hash(os.path.join(static_folder, filename))
 
 
-@cast_app.route("/_ah/warmup")
-def warmup() -> ResponseType:
-    """App Engine is starting a fresh instance - warm it up
-    by loading all vocabularies"""
-    ok = Wordbase.warmup()
-    logging.info(
-        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
-    )
-    return "", 200
-
-
 @cast_app.route("/_ah/start")
 def start() -> ResponseType:
     """App Engine is starting a fresh instance"""
     version = os.environ.get("GAE_VERSION", "N/A")
     instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(f"Start: version {version}, instance {instance}")
+    logging.info(f"Start: project {PROJECT_ID}, version {version}, instance {instance}")
+    return "", 200
+
+
+@cast_app.route("/_ah/warmup")
+def warmup() -> ResponseType:
+    """App Engine is starting a fresh instance - warm it up
+    by loading all vocabularies"""
+    ok = Wordbase.warmup()
+    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    logging.info(
+        f"Warmup, instance {instance}, ok is {ok}"
+    )
     return "", 200
 
 
@@ -255,17 +254,10 @@ def stop() -> ResponseType:
 @app.errorhandler(500)  # type: ignore
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """Return a custom 500 error"""
-    return f"<html><body><p>Eftirfarandi villa kom upp: {e}</p></body></html>", 500
-
-
-if not running_local:
-    # Start the Google Stackdriver debugger, if not running locally
-    try:
-        import googleclouddebugger  # type: ignore
-
-        googleclouddebugger.enable()  # type: ignore
-    except ImportError:
-        pass
+    logging.error(f"Server error: {e}")
+    if PROJECT_ID == "netskrafl":
+        return f"<html><body><p>Villa kom upp í netþjóni: {e}</p></body></html>", 500
+    return f"<html><body><p>An error occurred in the server: {e}</p></body></html>", 500
 
 
 # Run a default Flask web server for testing if invoked directly as a main program

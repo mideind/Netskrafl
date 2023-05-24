@@ -39,13 +39,15 @@ import logging
 import threading
 import random
 from datetime import datetime, timedelta
+import base64
+import io
 
 from flask import (
     Blueprint,
     request,
     url_for,
+    send_file,  # type: ignore
 )
-from flask.wrappers import Response
 from flask.globals import current_app
 
 from werkzeug.utils import redirect
@@ -349,7 +351,9 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
-        self.locale = to_supported_locale(form.get("locale", "").strip()) or DEFAULT_LOCALE
+        self.locale = (
+            to_supported_locale(form.get("locale", "").strip()) or DEFAULT_LOCALE
+        )
         try:
             self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
@@ -487,6 +491,21 @@ def logout() -> ResponseType:
     """Log the current user out"""
     clear_session_userid()
     return jsonify({"status": "success"})
+
+
+@api.route("/delete_account", methods=["POST"])
+@auth_required(ok=False)
+def delete_account() -> ResponseType:
+    """Delete the account of the current user"""
+    # This marks the account as inactive and erases personally identifiable data
+    # such as the full name, the email address and the profile picture.
+    # Challenges and favorites associated with the account are also deleted.
+    u = current_user()
+    if not u or not u.delete_account():
+        return jsonify(ok=False)
+    # Successfully deleted: also delete the session cookie
+    clear_session_userid()
+    return jsonify(ok=True)
 
 
 @api.route("/firebase_token", methods=["POST"])
@@ -727,6 +746,9 @@ def _userlist(query: str, spec: str) -> UserList:
     # as the requesting user
     online = firebase.online_users(locale)
 
+    # Set of users blocked by the current user
+    blocked: Set[str] = cuser.blocked() if cuser else set()
+
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -738,7 +760,13 @@ def _userlist(query: str, spec: str) -> UserList:
 
         ousers = User.load_multi(iter_online)
         for lu in ousers:
-            if lu and lu.is_displayable() and (uid := lu.id()) and uid != cuid:
+            if (
+                lu
+                and lu.is_displayable()
+                and (uid := lu.id())
+                and uid != cuid
+                and uid not in blocked
+            ):
                 # Don't display the current user in the online list
                 chall = uid in challenges
                 result.append(
@@ -769,7 +797,12 @@ def _userlist(query: str, spec: str) -> UserList:
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
             for fu in fusers:
-                if fu and fu.is_displayable() and (favid := fu.id()):
+                if (
+                    fu
+                    and fu.is_displayable()
+                    and (favid := fu.id())
+                    and favid not in blocked
+                ):
                     chall = favid in challenges
                     result.append(
                         UserListDict(
@@ -800,7 +833,13 @@ def _userlist(query: str, spec: str) -> UserList:
             )
             ausers = User.load_multi(ui)
             for au in ausers:
-                if au and au.is_displayable() and (uid := au.id()) and uid != cuid:
+                if (
+                    au
+                    and au.is_displayable()
+                    and (uid := au.id())
+                    and uid != cuid
+                    and uid not in blocked
+                ):
                     chall = uid in challenges
                     result.append(
                         UserListDict(
@@ -837,8 +876,9 @@ def _userlist(query: str, spec: str) -> UserList:
             if not user or not user.is_ready_timed() or not user.is_displayable():
                 # Only return users that are ready to play timed games
                 continue
-            if (user_id := user.id()) == cuid or not user_id:
-                # Don't include the current user in the list
+            if not (user_id := user.id()) or user_id == cuid or user_id in blocked:
+                # Don't include the current user in the list;
+                # also don't include users that are blocked by the current user
                 continue
             result.append(
                 UserListDict(
@@ -878,7 +918,7 @@ def _userlist(query: str, spec: str) -> UserList:
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         for ud in si:
-            if not (uid := ud.get("id")) or uid == cuid:
+            if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
                 continue
             chall = uid in challenges
             result.append(
@@ -1240,9 +1280,9 @@ def _challengelist() -> ChallengeList:
 
     result: ChallengeList = []
     cuser = current_user()
-    assert cuser is not None
-    cuid = cuser.id()
-    assert cuid is not None
+    if cuser is None or not (cuid := cuser.id()):
+        # Current user not valid: return empty list
+        return result
 
     def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
         """Return True if the challenge is for a timed game"""
@@ -1261,6 +1301,7 @@ def _challengelist() -> ChallengeList:
         assert c.opp is not None
         return _opponent_waiting(cuid, c.opp, key=c.key)
 
+    blocked = cuser.blocked()
     online = firebase.online_users(
         cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
     )
@@ -1275,6 +1316,9 @@ def _challengelist() -> ChallengeList:
     # List the received challenges
     for c in received:
         if not (oppid := c.opp):
+            continue
+        if oppid in blocked:
+            # Don't list challenges from blocked users
             continue
         u = opponents.get(oppid)
         if u is None:
@@ -1301,6 +1345,10 @@ def _challengelist() -> ChallengeList:
     for c in issued:
         if not (oppid := c.opp):
             continue
+        # Currently, we do include challenges issued to blocked users
+        # in the list of issued challenges.
+        # A possible addition would be to automatically delete issued
+        # challenges to a user when blocking that user.
         u = opponents.get(oppid)
         if u is None:
             continue
@@ -1540,8 +1588,7 @@ def image() -> ResponseType:
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     cuid = current_user_id()
-    assert cuid is not None
-    uid = rq.get("uid") or cuid
+    uid = rq.get("uid") or cuid or ""
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
@@ -1553,11 +1600,21 @@ def image() -> ResponseType:
         image, image_blob = um.get_image()
         if image_blob:
             # We have the image as a bytes object: return it
-            mimetype = image or "image/jpeg"
-            return Response(
-                image_blob, mimetype=mimetype, content_type="application/octet-stream"
-            )
-        if not image or image.startswith("/image"):
+            if not image or image.startswith(("https:", "http:")):
+                # Accommodate strange scenarios
+                mimetype = "image/jpeg"
+            else:
+                mimetype = image
+            try:
+                decoded_image = base64.b64decode(image_blob)
+                # Convert the decoded image to a BytesIO object
+                image_bytes = io.BytesIO(decoded_image)
+                # Serve the image using flask.send_file()
+                return send_file(image_bytes, mimetype='image/jpeg', max_age=10 * 60)  # 10 minutes
+            except Exception:
+                # Something wrong in the image_blob: give up
+                pass
+        if not image or not image.startswith(("https:", "http:")):
             return "Image not found", 404  # Not found
         # Assume that this is a URL: redirect to it
         return redirect(image)
@@ -1899,8 +1956,7 @@ def cancelwait() -> ResponseType:
 def chatmsg() -> ResponseType:
     """Send a chat message on a conversation channel"""
 
-    user_id = current_user_id()
-    if not user_id:
+    if not (user_id := current_user_id()):
         return jsonify(ok=False)
 
     rq = RequestData(request)
@@ -2112,6 +2168,9 @@ def chathistory() -> ResponseType:
     count = rq.get_int("count", 20)
 
     online = firebase.online_users(user.locale or DEFAULT_LOCALE)
+    # We don't return chat conversations with users
+    # that this user has blocked
+    blocked = user.blocked()
     uc = UserCache()
     # The chat history is ordered in reverse timestamp
     # order, i.e. the newest entry comes first
@@ -2128,7 +2187,7 @@ def chathistory() -> ResponseType:
             fav=user.has_favorite(uid),
             disabled=uc.chat_disabled(uid),
         )
-        for cm in ChatModel.chat_history(user_id, maxlen=count)
+        for cm in ChatModel.chat_history(user_id, blocked_users=blocked, maxlen=count)
     ]
 
     return jsonify(ok=True, history=history)
@@ -2294,9 +2353,10 @@ SUBSCRIPTION_END_TYPES = frozenset(
 )
 
 # Assert if there is overlap between the two sets
-assert not SUBSCRIPTION_START_TYPES.intersection(SUBSCRIPTION_END_TYPES), (
-    "SUBSCRIPTION_START_TYPES and SUBSCRIPTION_END_TYPES must be disjoint"
-)
+assert not SUBSCRIPTION_START_TYPES.intersection(
+    SUBSCRIPTION_END_TYPES
+), "SUBSCRIPTION_START_TYPES and SUBSCRIPTION_END_TYPES must be disjoint"
+
 
 @api.route("/rchook", methods=["POST"])
 def rchook() -> ResponseType:
@@ -2536,5 +2596,5 @@ def locale_asset() -> ResponseType:
         fname = os.path.join(static_folder, "assets", lc, asset)
         if os.path.isfile(fname):
             # Found the static asset file: return it
-            return current_app.send_static_file(os.path.join("assets", lc, asset))
+            return send_file(fname)
     return "", 404  # Not found

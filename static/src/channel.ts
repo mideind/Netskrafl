@@ -105,6 +105,7 @@ function attachFirebaseListener(
       // called upon the first attach or upon a later data change
       cnt++;
       const json = snapshot.val();
+      // console.log("received on path", path, ":", json);
       if (json) {
         func(json, cnt == 1);
       }

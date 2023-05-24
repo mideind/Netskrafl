@@ -106,6 +106,38 @@ class UserDetailDict(TypedDict):
     email: str
 
 
+class UserProfileDict(TypedDict, total=False):
+
+    """User profile, returned as a part of the /userstats response"""
+
+    result: int
+    uid: str
+    inactive: bool
+    nickname: str
+    fullname: str
+    image: str
+    plan: str
+    friend: bool
+    has_paid: bool
+    locale: str
+    location: str
+    timestamp: str
+    accepts_challenges: bool
+    accepts_timed: bool
+    chat_disabled: bool
+    highest_score: int
+    highest_score_game: Optional[str]
+    best_word: Optional[str]
+    best_word_score: int
+    best_word_game: Optional[str]
+    favorite: bool
+    challenge: bool
+    blocked: bool
+    blocking: bool
+    list_favorites: List[UserSummaryDict]
+    list_blocked: List[UserSummaryDict]
+
+
 class StatsSummaryDict(TypedDict):
 
     """A summary of statistics for a player at a given point in time"""
@@ -151,7 +183,7 @@ def make_login_dict(
     # which the client can pass back later
     # instead of using the third party
     # authentication providers
-    token = previous_token or jwt.encode(
+    token: str = previous_token or cast(Any, jwt).encode(
         {
             "iss": PROJECT_ID,
             "sub": user_id,
@@ -389,6 +421,10 @@ class User:
     def is_inactive(self) -> bool:
         """Return True if the user is marked as inactive"""
         return self._inactive
+
+    def set_inactive(self, state: bool) -> None:
+        """Set the inactive state of a user"""
+        self._inactive = state
 
     def is_displayable(self) -> bool:
         """Returns True if this user should appear in user lists"""
@@ -689,7 +725,7 @@ class User:
 
     def _load_blocks(self) -> None:
         """Loads blocked users into a set in memory"""
-        if hasattr(self, "_blocks") and self._blocks:
+        if getattr(self, "_blocks", None) is not None:
             # Already have the blocks in memory
             return
         sid = self.id()
@@ -710,7 +746,7 @@ class User:
         return True
 
     def unblock(self, destuser_id: str) -> bool:
-        """Delete an A-favors-B relation between this user and the destuser"""
+        """Delete an A-blocks-B relation between this user and the destuser"""
         if not destuser_id:
             return False
         sid = self.id()
@@ -723,13 +759,19 @@ class User:
         return True
 
     def has_blocked(self, destuser_id: str) -> bool:
-        """Returns True if there is an A-favors-B relation between
+        """Returns True if there is an A-blocks-B relation between
         this user and the destuser"""
         if not destuser_id:
             return False
         self._load_blocks()
         assert self._blocks is not None
         return destuser_id in self._blocks
+
+    def blocked(self) -> Set[str]:
+        """Returns a set of ids of all users blocked by this user"""
+        self._load_blocks()
+        assert self._blocks is not None
+        return self._blocks
 
     def _summary_list(
         self, uids: Iterable[str], *, is_favorite: bool = False
@@ -882,6 +924,7 @@ class User:
         locale: Optional[str] = None,
     ) -> UserLoginDict:
         """Log in a user via the given account identifier and return her user id"""
+        name = name.strip()
         # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
         if um is not None:
@@ -893,8 +936,14 @@ class User:
                 # Use the opportunity to update the email, if different
                 # (This should probably not happen very often)
                 um.email = email
+            full_name = um.prefs.get("full_name", "") if um.prefs else ""
+            if name and not full_name:
+                # Use the opportunity to update the name, if not already set
+                um.prefs["full_name"] = name
             # Note the login timestamp
             um.last_login = datetime.utcnow()
+            # If the account was disabled, enable it again
+            um.inactive = False
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
@@ -916,8 +965,14 @@ class User:
                 if image and image != um.image:
                     # Use the opportunity to update the image, if different
                     um.image = image
+                full_name = um.prefs.get("full_name", "") if um.prefs else ""
+                if name and not full_name:
+                    # Use the opportunity to update the name, if not already set
+                    um.prefs["full_name"] = name
                 # Note the last login
                 um.last_login = datetime.utcnow()
+                # If the account was disabled, enable it again
+                um.inactive = False
                 user_id = um.put().id()
                 uld = make_login_dict(
                     user_id=user_id,
@@ -1007,12 +1062,38 @@ class User:
         u._timestamp = datetime.fromisoformat(j["_timestamp"])
         return u
 
-    def profile(self) -> Dict[str, Any]:
+    def delete_account(self) -> bool:
+        """Delete the user account"""
+        # We can't actually delete the user entity in the database,
+        # since it is referenced by other entities, such as GameModel.
+        # Instead, we remove all personally identifiable
+        # information from the user object, and delete associated entities
+        # such as favorites and challenges.
+        if not (uid := self.id()):
+            return False
+        self.set_inactive(True)
+        self.set_email("")
+        self.set_full_name("")
+        self.set_image("")
+        self.set_location("")
+        self.set_ready(False)
+        self.set_ready_timed(False)
+        self.disable_chat(True)
+        # Remove favorites
+        # Retract issued challenges
+        # Reject received challenges
+        UserModel.delete_related_entities(uid)
+        # Save the updated user record and delete subscriptions/plans
+        self.add_transaction("", "api", "ACCOUNT_DELETED")
+        return True
+
+    def profile(self) -> UserProfileDict:
         """Return a set of key statistics on the user"""
-        reply: Dict[str, Any] = dict()
+        reply = UserProfileDict()
         user_id = self.id()
         assert user_id is not None
         reply["result"] = Error.LEGAL
+        reply["inactive"] = self.is_inactive()
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["image"] = self.image()
@@ -1035,14 +1116,15 @@ class User:
         # Add Elo statistics
         sm = StatsModel.newest_for_user(user_id)
         if sm is not None:
-            sm.populate_dict(reply)
+            sm.populate_dict(cast(Dict[str, int], reply))  # Typing hack
         return reply
 
     @staticmethod
-    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[Dict[str, Any]]]:
+    def stats(uid: Optional[str], cuser: User) -> Tuple[int, Optional[UserProfileDict]]:
         """Return the profile of a given user along with key statistics,
         as a dictionary as well as an error code"""
-        if cuser.id() == uid:
+        cuid = cuser.id()
+        if cuid == uid:
             # Current user: no need to load the user object
             user = cuser
         else:
@@ -1055,21 +1137,27 @@ class User:
 
         # Include info on whether this user is a favorite of the current user
         fav = False
-        if uid != cuser.id():
+        if uid != cuid:
             fav = cuser.has_favorite(uid)
         profile["favorite"] = fav
 
         # Include info on whether the current user has challenged this user
         chall = False
-        if uid != cuser.id():
+        if uid != cuid:
             chall = cuser.has_challenge(uid)
         profile["challenge"] = chall
 
         # Include info on whether the current user has blocked this user
         blocked = False
-        if uid != cuser.id():
+        if uid != cuid:
             blocked = cuser.has_blocked(uid)
         profile["blocked"] = blocked
+
+        # Include info on whether this user has blocked the current user
+        blocking = False
+        if cuid and uid != cuid:
+            blocking = user.has_blocked(cuid)
+        profile["blocking"] = blocking
 
         if uid == cuser.id():
             # If current user, include a list of favorite users

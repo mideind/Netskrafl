@@ -955,10 +955,6 @@ class AutoPlayer_Custom(AutoPlayer):
         scores = state.scores()
         p = state.player_to_move()
         self.winning = scores[p] > scores[1 - p]
-        # Simple adaptive heuristic: If the robot is winning, pick from
-        # the 2 * N top scoring moves, instead of N
-        if self.adaptive and self.winning:
-            self.pick_from *= 2
 
     def _pick_candidate(self, scored_candidates: MoveList) -> Optional[MoveBase]:
         """ From a sorted list of >1 scored candidates, pick a move to make """
@@ -1185,6 +1181,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
 # The list for each locale should be ordered in ascending order by level.
 
 AUTOPLAYERS: Dict[str, AutoPlayerList] = {
+    # Icelandic
     "is": [
         AutoPlayerTuple(
             "Fullsterkur",
@@ -1195,25 +1192,47 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Miðlungur",
-            "Forðast allra sjaldgæfustu orðin; velur úr 15 stigahæstu leikjum",
+            "Forðast allra sjaldgæfustu orðin; velur úr 30 stigahæstu leikjum",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(vocab="midlungur", pick_from=15),
+            AutoPlayerKwargs(
+                vocab="midlungur",
+                pick_from=30,
+            ),
         ),
         AutoPlayerTuple(
-            "Amlóði",
-            "Forðast sjaldgæf orð og velur úr 15 leikjum sem koma til álita",
+            "Hálfdrættingur",
+            "Forðast sjaldgæf orð; velur úr 20 stigahæstu leikjum",
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
                 vocab="amlodi",
-                pick_from=15,
+                pick_from=20,
                 adaptive=True,
+                # Cuts off the top 6 moves (20*0.3) to select typically from 14 moves
                 discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.15,
+                # Cuts off the top 2 moves (20*0.1) to select typically from 18 moves
+                discard_best_ratio_losing=0.1,
+            ),
+        ),
+        AutoPlayerTuple(
+            "Amlóði",
+            "Forðast sjaldgæf orð og velur úr 30 leikjum sem koma til álita",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="amlodi",
+                # Considers a maximum of 30 candidate moves, in descending score order
+                pick_from=30,
+                adaptive=True,
+                # Cuts off the top 9 moves (30*0.3) to select typically from 21 moves
+                discard_best_ratio_winning=0.3,
+                # Cuts off the top 6 moves (30*0.2) to select typically from 24 moves
+                discard_best_ratio_losing=0.2,
             ),
         ),
     ],
+    # U.S. English
     "en_US": [
         AutoPlayerTuple(
             "Freyja",
@@ -1224,42 +1243,39 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 20 top-scoring moves",
+            "Picks one of 30 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
+            AutoPlayerKwargs(pick_from=30),
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Plays one of 15 possible words from a medium vocabulary",
+            "Plays one of 20 possible words from a medium vocabulary",
             COMMON,
             AutoPlayer_Custom,
-            # Since Frigg is adaptive, she will pick from the top 30 (=2*15)
-            # moves if she has more points than the human opponent
             AutoPlayerKwargs(
                 vocab="otcwl2014.mid",
-                pick_from=15,
+                pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.15,
-                discard_best_ratio_losing=0.0,
+                discard_best_ratio_winning=0.3,  # Cuts off the top 6 moves (20*0.3)
+                discard_best_ratio_losing=0.1,  # Cuts off the top 2 moves (20*0.1)
             ),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Plays one of 15 possible common words",
+            "Plays one of 30 possible common words",
             ADAPTIVE,
             AutoPlayer_Custom,
-            # Since Sif is adaptive, she will pick from the top 30 (=2*15)
-            # moves if she has more points than the human opponent
             AutoPlayerKwargs(
                 vocab="otcwl2014.aml",
-                pick_from=15,
+                pick_from=30,
                 adaptive=True,
-                discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.15,
+                discard_best_ratio_winning=0.3,  # Cuts off the top 9 moves (30*0.3)
+                discard_best_ratio_losing=0.2,  # Cuts off the top 6 moves (30*0.2)
             ),
         ),
     ],
+    # Default English (UK & Rest Of World)
     "en": [
         AutoPlayerTuple(
             "Freyja",
@@ -1270,42 +1286,41 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 20 top-scoring moves",
+            "Picks one of 30 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
+            AutoPlayerKwargs(pick_from=30),
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Plays one of 15 possible words from a medium vocabulary",
+            "Plays one of 20 possible words from a medium vocabulary",
             COMMON,
             AutoPlayer_Custom,
-            # Since Frigg is adaptive, she will pick from the top 30 (=2*15)
-            # moves if she has more points than the human opponent
             AutoPlayerKwargs(
                 vocab="sowpods.mid",
-                pick_from=15,
+                pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.15,
-                discard_best_ratio_losing=0.0,
+                discard_best_ratio_winning=0.3,
+                discard_best_ratio_losing=0.1,
             ),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Plays one of 15 possible common words",
+            "Plays one of 30 possible common words",
             ADAPTIVE,
             AutoPlayer_Custom,
             # Since Sif is adaptive, she will pick from the top 30 (=2*15)
             # moves if she has more points than the human opponent
             AutoPlayerKwargs(
                 vocab="sowpods.aml",
-                pick_from=15,
+                pick_from=30,
                 adaptive=True,
                 discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.15,
+                discard_best_ratio_losing=0.2,
             ),
         ),
     ],
+    # Polish
     "pl": [
         AutoPlayerTuple(
             "Mikołaj ",
@@ -1316,21 +1331,35 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Marian",
-            "Wybiera jeden z 10 najlepiej punktowanych ruchów",
+            "Wybiera jeden z 30 najwyżej punktowanych ruchów",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=10),
+            AutoPlayerKwargs(pick_from=30),
         ),
         AutoPlayerTuple(
             "Idek",
-            "Wybiera jeden z 15 najlepiej punktowanych ruchów",
+            "Wybiera jeden z 20 najwyżej punktowanych ruchów",
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
-                pick_from=15,
+                vocab="osps37.mid",
+                pick_from=20,
                 adaptive=True,
                 discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.15,
+                discard_best_ratio_losing=0.1,
+            ),
+        ),
+        AutoPlayerTuple(
+            "Zofia",
+            "Wybiera jeden z 30 najwyżej punktowanych ruchów",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="osps37.aml",
+                pick_from=30,
+                adaptive=True,
+                discard_best_ratio_winning=0.3,  # Cuts off the top 9 moves (30*0.3)
+                discard_best_ratio_losing=0.2,  # Cuts off the top 6 moves (30*0.2)
             ),
         ),
     ],
