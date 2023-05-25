@@ -3958,7 +3958,6 @@ arkitektum
 arkitektunum
 arkitektúr
 arkitektúrs
-arl
 arm
 arma
 armana
@@ -10401,7 +10400,6 @@ birtuskilyrði
 birtuskilyrðum
 birtust
 birtustig
-bis
 bisa
 bisast
 biskup
@@ -22925,7 +22923,6 @@ essi
 essinu
 essir
 essum
-est
 estragon
 estrógen
 estrógeni
@@ -71130,7 +71127,6 @@ maísmjöl
 maísólin
 maísstöngla
 maísstönglar
-major
 majónes
 majónesi
 majónesið
@@ -113700,7 +113696,6 @@ syllu
 sylluna
 syllunni
 syllur
-syn
 synd
 synda
 syndaaflausn
