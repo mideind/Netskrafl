@@ -2290,7 +2290,6 @@ akfær
 akfæra
 akfærum
 aki
-akk
 akka
 akkar
 akkeri
@@ -3268,7 +3267,6 @@ amstri
 amstrinu
 amstur
 amsturs
-amt
 amtmaður
 amtmanns
 amtsbókavörður
@@ -3711,7 +3709,6 @@ apótekinu
 apóteks
 apóteksins
 apótekum
-app
 apparat
 apparati
 apparatið
@@ -3914,7 +3911,6 @@ arftakinn
 arftöku
 arfur
 arfurinn
-arg
 argandi
 argast
 argasta
@@ -4003,7 +3999,6 @@ arsen
 arsenik
 arseniki
 arsens
-art
 artist
 aröbum
 as
@@ -6758,7 +6753,6 @@ aþenskur
 ánetjaðist
 ánetjast
 ánetjist
-áni
 áningarstað
 áningarstaða
 áningarstaðar
@@ -9720,7 +9714,6 @@ beltisþara
 beltisþari
 beltum
 beltunum
-ben
 bend
 benda
 bendi
@@ -11096,7 +11089,6 @@ björt
 björtu
 björtum
 björtustu
-bla
 blað
 blaða
 blaðaauglýsingu
@@ -16921,7 +16913,6 @@ derhúfuna
 derhúfur
 derra
 derring
-des
 desember
 desembermánaða
 desembermánaðar
@@ -17288,7 +17279,6 @@ dolls
 dolluna
 dollurum
 dollurunum
-don
 dong
 dont
 doppum
@@ -19287,7 +19277,6 @@ eflst
 eflt
 eflum
 eflumst
-efn
 efna
 efnablanda
 efnablandna
@@ -21858,7 +21847,6 @@ eltur
 eltust
 elur
 em
-ema
 embætta
 embættanna
 embættaskiptin
@@ -22552,7 +22540,6 @@ endurvinnslunni
 endurvígð
 endurvöxt
 endurþekkti
-eng
 enga
 engan
 engar
@@ -26033,7 +26020,6 @@ fitusýrur
 fitusýrurnar
 fitusöfnun
 fituvef
-fix
 fixa
 fíaskó
 fífil
@@ -35155,7 +35141,6 @@ gapastokk
 gapastokkinn
 gapastokknum
 gapti
-gar
 gara
 garda
 gardi
@@ -35902,7 +35887,6 @@ geitur
 geiturnar
 gekk
 gekkst
-gel
 geld
 gelda
 geldar
@@ -38051,7 +38035,6 @@ goggs
 goggunarröð
 goggunarröðina
 goggunarröðinni
-gol
 gola
 goldið
 goldin
@@ -40662,7 +40645,6 @@ göntuðumst
 göntuðust
 gönur
 göptu
-gör
 görðum
 görðunum
 görn
@@ -47825,7 +47807,6 @@ hlutverks
 hlutverksins
 hlutverkum
 hlutverkunum
-hlú
 hlúa
 hlúð
 hlúði
@@ -48513,7 +48494,6 @@ hommi
 homminn
 hommum
 honum
-hop
 hopa
 hopað
 hopaði
@@ -52519,7 +52499,6 @@ höfundunum
 höfundur
 höfundurinn
 höfunum
-hög
 högg
 högga
 höggafjölda
@@ -54234,7 +54213,6 @@ islamskra
 íshokkíinu
 íshröngl
 íshúð
-ísi
 ísilagða
 ísilagðri
 ísilagt
@@ -54913,7 +54891,6 @@ jakkinn
 jaml
 jamli
 jamls
-jan
 janúarbyrjun
 janúarhefti
 janúarmánaða
@@ -55388,7 +55365,6 @@ jáyrði
 je
 jemenska
 jemensku
-jen
 jena
 jeni
 jenið
@@ -56201,7 +56177,6 @@ kampinn
 kamra
 kamrar
 kamrinum
-kan
 kana
 kanadísk
 kanadíska
@@ -56959,7 +56934,6 @@ káfaði
 káfar
 káfi
 káfuðu
-kái
 kák
 kál
 kála
@@ -59949,7 +59923,6 @@ koti
 kotinu
 kotroskinn
 kotru
-kóa
 kóað
 kóalabirni
 kóbalt
@@ -63099,7 +63072,6 @@ lakkrísrör
 lakkskóm
 lakra
 laktósa
-lam
 lama
 lamað
 lamaðar
@@ -63986,7 +63958,6 @@ langþreyttur
 langömmu
 langömmur
 lanir
-lap
 lappa
 lappað
 lappanna
@@ -64017,7 +63988,6 @@ lastar
 lastið
 lasting
 lasts
-lat
 lata
 latan
 latari
@@ -65090,7 +65060,6 @@ legutíma
 legutími
 legvatn
 legvatni
-lei
 leidd
 leidda
 leiddar
@@ -66425,7 +66394,6 @@ leyti
 leytið
 leytinu
 lé
-léð
 léði
 léðu
 lék
@@ -66658,7 +66626,6 @@ liðþófans
 liðþófanum
 liðþófi
 liðþófum
-lif
 lifa
 lifað
 lifanda
@@ -68682,7 +68649,6 @@ lofuðu
 lofuðuð
 lofuðum
 lofum
-log
 loga
 logað
 logaði
@@ -68993,7 +68959,6 @@ losunarinnar
 losunin
 losunina
 losuninni
-lot
 lota
 lotaðar
 lotaður
@@ -69186,7 +69151,6 @@ luktum
 luktust
 luku
 lukum
-lum
 luma
 lumað
 lumaði
@@ -72614,7 +72578,6 @@ mágkona
 mágkonu
 mágs
 mágur
-mái
 máið
 máist
 mál
@@ -74314,7 +74277,6 @@ menntunina
 menntuninni
 mennum
 menúett
-mer
 merar
 merg
 mergð
@@ -75199,7 +75161,6 @@ miltisbrandi
 miltisbrands
 miltisbrandur
 miltisbruna
-mim
 minja
 minjagildi
 minjagrip
@@ -75409,7 +75370,6 @@ minnum
 minnumst
 minta
 mintu
-mis
 misbauð
 misbeita
 misbeiti
@@ -76057,7 +76017,6 @@ montuðu
 montuðum
 montum
 moppu
-mor
 morandi
 morð
 morða
@@ -76355,7 +76314,6 @@ mógrænt
 mógröfum
 móinn
 móki
-mól
 mólendi
 mónum
 móral
@@ -77545,7 +77503,6 @@ mætumst
 mætur
 mætust
 mætustu
-mög
 mögla
 möglunarlaust
 mögnuð
@@ -77669,7 +77626,6 @@ möstrin
 möstrum
 möstrunum
 möstur
-möt
 mötin
 mött
 möttli
@@ -79478,7 +79434,6 @@ nikótíns
 nippinu
 nirvana
 nisti
-nit
 nitri
 nitur
 niturs
@@ -79995,7 +79950,6 @@ nunnur
 nunnurnar
 nurla
 nurlað
-nus
 nutu
 nutuð
 nutum
@@ -80849,7 +80803,6 @@ nærumst
 nærvera
 nærveran
 nærveru
-næs
 næst
 næsta
 næstan
@@ -86302,7 +86255,6 @@ peppa
 peppaði
 pepperóní
 peptíð
-per
 pera
 performera
 perla
@@ -88749,7 +88701,6 @@ rappið
 rappinu
 rappsins
 rapsódía
-rar
 rara
 rari
 rasa
@@ -88811,7 +88762,6 @@ rassvasa
 rassvasann
 rassvasanum
 rasta
-rat
 rata
 ratað
 rataði
@@ -92246,7 +92196,6 @@ ruplað
 ruplaði
 ruplandi
 rupluðu
-rur
 rusl
 rusla
 ruslabíl
@@ -95270,7 +95219,6 @@ sannur
 sannvirði
 sans
 sanskrít
-sar
 sardínan
 sardínu
 sardínudós
@@ -95779,7 +95727,6 @@ sefaði
 sefar
 sefur
 sefurðu
-seg
 sega
 segði
 segðir
@@ -96095,7 +96042,6 @@ semjist
 semjum
 semst
 semur
-sen
 sena
 senan
 send
@@ -105895,7 +105841,6 @@ soldið
 soltið
 soltin
 soltinn
-som
 son
 sona
 sonanna
@@ -112457,7 +112402,6 @@ surtur
 sussa
 sussaði
 sú
-súa
 súdanska
 súdanski
 súdanskir
@@ -114605,7 +114549,6 @@ sökunaut
 sökunautar
 sökunauts
 sökunautur
-söl
 sölin
 sölsa
 sölsað
@@ -115251,7 +115194,6 @@ tamningastöð
 tamningu
 tamningum
 tamt
-tan
 tandurhreinn
 tandurhreint
 tandurhreinu
@@ -116259,7 +116201,6 @@ testósteróns
 tests
 tetur
 tevatnsins
-tex
 texta
 textabrot
 textabrota
@@ -116350,7 +116291,6 @@ teymt
 teymum
 teymunum
 té
-téð
 téða
 téðan
 téðar
@@ -119979,7 +119919,6 @@ tælingar
 tælingu
 tælir
 tælt
-tæm
 tæma
 tæmandi
 tæmast
@@ -120504,7 +120443,6 @@ ullinni
 ullu
 ultu
 um
-uma
 umba
 umbeðið
 umbeðin
@@ -123204,7 +123142,6 @@ uxum
 úfnu
 úfnum
 úi
-úir
 úkraínsk
 úkraínska
 úkraínskar
@@ -126798,7 +126735,6 @@ válista
 válistum
 válynd
 vánni
-vár
 vátryggð
 vátryggða
 vátryggðan
@@ -132828,7 +132764,6 @@ volt
 volta
 voltum
 volæði
-vom
 von
 vona
 vonað
@@ -133142,7 +133077,6 @@ voveiflegir
 voveiflegu
 voveiflegum
 vó
-vóg
 vógu
 væðingu
 væflast
@@ -134378,7 +134312,6 @@ yrra
 yrt
 yrti
 ys
-ysi
 ysinn
 yst
 ysta
@@ -139182,7 +139115,6 @@ yxu
 öllum
 ölmusa
 ölmusu
-öln
 ölóðir
 öls
 ölstofu
@@ -139229,7 +139161,6 @@ yxu
 ömmustrákur
 ömmusystir
 ömmusystur
-ömt
 ömtin
 ömurleg
 ömurlega
@@ -139317,7 +139248,6 @@ yxu
 önnum
 önnur
 önugur
-öpp
 öppum
 öpum
 öpunum

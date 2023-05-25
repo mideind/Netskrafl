@@ -4,15 +4,14 @@
 # Raw text resources, such as word lists
 resources/*.txt
 resources/*.tsv
+resources/*.csv
+resources/bin/
 
 # DAWG trees in text form
 resources/*.text.dawg
 
 # DAWG trees in pickled form
 resources/*.dawg.pickle
-
-# CSV files
-resources/*.csv
 
 # Credential files
 resources/netskrafl-*.json
