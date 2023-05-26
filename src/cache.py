@@ -51,7 +51,13 @@ def _deserialize_dt(args: DateTimeTuple) -> datetime:
 
 
 _serializers: Mapping[Tuple[str, str], SerializerFuncTuple] = {
-    ("datetime", "datetime"): (_serialize_dt, _deserialize_dt,)
+    ("datetime", "datetime"):
+        (_serialize_dt, _deserialize_dt,),
+    # Apparently we sometimes get this derived class from the Google
+    # datastore instead of datetime.datetime, so we need an entry for
+    # it. Replacing it with plain datetime.datetime is fine, btw.
+    ("proto.datetime_helpers", "DatetimeWithNanoseconds"):
+        (_serialize_dt, _deserialize_dt,),
 }
 
 
@@ -71,7 +77,7 @@ def serialize(obj: Any) -> Dict[str, Any]:
         # Use a custom serializer
         serializer = _serializers.get((module_name, cls_name))
         # If we don't have one, that's a problem
-        assert serializer is not None
+        assert serializer is not None, f"No serializer for {module_name}.{cls_name}"
         # Apply the serializer to the object
         s = serializer[0](obj)
     # Do some sanity checks: we must be able to recreate
