@@ -985,13 +985,23 @@ class User:
         # with the account id as user id.
         # New users are created with the new bag as default,
         # and we also capture the email and the full name.
-        nickname = email.split("@")[0] or name.split()[0]
-        # Strip nickname to only contain alphanumeric characters
-        nickname = NICKNAME_STRIP.sub("", nickname)
+        # Obtain a candidate nickname from the email
+        candidate1 = email.split("@")[0] if email else ""
+        # Strip candidate to only contain alphanumeric characters
+        strip1 = NICKNAME_STRIP.sub("", candidate1)
+        # Obtain a candidate nickname from the full name
+        candidate2 = name.split()[0] if name else ""
+        # Strip candidate to only contain alphanumeric characters
+        strip2 = NICKNAME_STRIP.sub("", candidate2)
+        # If candidate1 originally contained non-alphanumeric characters,
+        # but candidate2 did not, prefer candidate2
+        if strip1 != candidate1 and candidate2 and strip2 == candidate2:
+            strip1 = ""
+        nickname = strip1 or candidate2 or "Anon"
         nickname = nickname[0:MAX_NICKNAME_LENGTH]
         if not nickname:
             # Strange situation: no nickname
-            nickname = "Anonymous"
+            nickname = "Anon"
         prefs: PrefsDict = {
             "newbag": True,
             "email": email,
