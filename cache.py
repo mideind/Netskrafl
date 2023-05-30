@@ -41,6 +41,10 @@ _serializers = {
     ("datetime", "datetime"): (
         lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
         lambda args: datetime(*args),
+    ),
+    ("proto.datetime_helpers", "DatetimeWithNanoseconds"): (
+        lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
+        lambda args: datetime(*args),
     )
 }
 
@@ -61,7 +65,7 @@ def serialize(obj: Any) -> Dict[str, Any]:
         # Use a custom serializer
         serializer = _serializers.get((module_name, cls_name))
         # If we don't have one, that's a problem
-        assert serializer is not None
+        assert serializer is not None, f"No serializer for {module_name}.{cls_name}"
         # Apply the serializer to the object
         s = serializer[0](obj)
     # Do some sanity checks: we must be able to recreate
