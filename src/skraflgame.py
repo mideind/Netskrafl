@@ -120,9 +120,9 @@ class EloDeltaDict(TypedDict, total=False):
 class EloNowDict(TypedDict, total=False):
     """Current Elo points for the requesting player"""
 
-    elo: int
-    human: int
-    manual: int
+    elo: Tuple[int, int]
+    human: Tuple[int, int]
+    manual: Tuple[int, int]
 
 
 class ClientStateDict(TypedDict, total=False):
@@ -218,6 +218,8 @@ class Game:
         self._two_letter_words: Optional[TwoLetterGroupTuple] = None
         # Elo score deltas for both players, calculated when the game finishes
         self.elo_delta: Optional[EloDeltaDict] = None
+        # Current Elo scores for both players
+        self.elo_now: Optional[EloNowDict] = None
 
     def _make_new(
         self,
@@ -453,7 +455,7 @@ class Game:
                 # (This also calls game.set_elo_delta())
                 game._store_locked(calc_elo_points=True)
             else:
-                # Fill in the game.elo_delta dictionary
+                # Fill in the game.elo_delta and game.elo_now dictionaries
                 game.set_elo_delta(gm)
 
         return game
@@ -619,6 +621,16 @@ class Game:
             delta["manual"] = (gm.manual_elo0_adj, gm.manual_elo1_adj)
         if delta:
             self.elo_delta = delta
+        # Note that elo_now is the Elo rating BEFORE applying the delta!
+        now = EloNowDict()
+        if gm.elo0 is not None and gm.elo1 is not None:
+            now["elo"] = (gm.elo0, gm.elo1)
+        if gm.human_elo0 is not None and gm.human_elo1 is not None:
+            now["human"] = (gm.human_elo0, gm.human_elo1)
+        if gm.manual_elo0 is not None and gm.manual_elo1 is not None:
+            now["manual"] = (gm.manual_elo0, gm.manual_elo1)
+        if now:
+            self.elo_now = now
 
     def get_pref(self, pref: str) -> Union[None, str, int, bool]:
         """Retrieve a preference, or None if not found"""
@@ -1172,18 +1184,9 @@ class Game:
             if self.elo_delta is not None:
                 # Include the Elo deltas for the players
                 reply["elo_delta"] = self.elo_delta
-                if player_index is not None:
-                    # Requesting a game state for a particular player:
-                    # load the user object
-                    user = User.load_if_exists(self.player_ids[player_index])
-                    if user is not None:
-                        # Include the player's current Elo rating
-                        elo_now = EloNowDict(
-                            elo=user.elo(),
-                            human=user.human_elo(),
-                            manual=user.manual_elo(),
-                        )
-                        reply["elo_now"] = elo_now
+            if self.elo_now is not None:
+                # Include the Elo base scores for the players
+                reply["elo_now"] = self.elo_now
         else:
             # Game is still in progress
             assert player_index is not None
