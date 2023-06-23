@@ -144,7 +144,7 @@ license (see below).
 
 *Netskrafl - an Icelandic crossword game website*
 
-*Copyright © 2021 Miðeind ehf.*
+*Copyright © 2023 Miðeind ehf.*
 
 This set of programs is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
