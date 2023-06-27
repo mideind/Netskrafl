@@ -22899,7 +22899,6 @@ eru
 eruð
 erum
 es
-eski
 espa
 esperanto
 ess
@@ -22908,7 +22907,6 @@ essar
 essens
 essi
 essinu
-essir
 essum
 estragon
 estrógen
@@ -71091,6 +71089,7 @@ maísmjöl
 maísólin
 maísstöngla
 maísstönglar
+major
 majónes
 majónesi
 majónesið

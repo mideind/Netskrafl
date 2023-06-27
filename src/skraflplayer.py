@@ -1192,12 +1192,12 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Miðlungur",
-            "Forðast allra sjaldgæfustu orðin; velur úr 30 stigahæstu leikjum",
+            "Forðast allra sjaldgæfustu orðin; velur úr 20 stigahæstu leikjum",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
                 vocab="midlungur",
-                pick_from=30,
+                pick_from=20,
             ),
         ),
         AutoPlayerTuple(
@@ -1243,10 +1243,10 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 30 top-scoring moves",
+            "Picks one of 20 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=30),
+            AutoPlayerKwargs(pick_from=20),
         ),
         AutoPlayerTuple(
             "Frigg",
@@ -1286,10 +1286,10 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 30 top-scoring moves",
+            "Picks one of 20 top-scoring moves",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=30),
+            AutoPlayerKwargs(pick_from=20),
         ),
         AutoPlayerTuple(
             "Frigg",
@@ -1331,10 +1331,10 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Marian",
-            "Wybiera jeden z 30 najwyżej punktowanych ruchów",
+            "Wybiera jeden z 20 najwyżej punktowanych ruchów",
             MEDIUM,
             AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=30),
+            AutoPlayerKwargs(pick_from=20),
         ),
         AutoPlayerTuple(
             "Idek",
