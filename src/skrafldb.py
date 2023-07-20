@@ -1216,7 +1216,7 @@ class ChallengeModel(Model["ChallengeModel"]):
                 k: Key[ChallengeModel] = Key(
                     UserModel, srcuser_id, ChallengeModel, int(key)
                 )
-                cm: Optional[ChallengeModel] = cast(Optional[ChallengeModel], k.get())
+                cm: Optional[ChallengeModel] = k.get()
                 if (
                     cm is not None
                     and cm.destuser is not None
@@ -1262,7 +1262,7 @@ class ChallengeModel(Model["ChallengeModel"]):
                 k: Key[ChallengeModel] = Key(
                     UserModel, src_id, ChallengeModel, int(key)
                 )
-                cm: Optional[ChallengeModel] = cast(Optional[ChallengeModel], k.get())
+                cm: Optional[ChallengeModel] = k.get()
                 if cm is not None and cm.destuser == kd:
                     k.delete()
                     return (True, cm.prefs)
@@ -1821,7 +1821,7 @@ class RatingModel(Model["RatingModel"]):
     def get_or_create(cls, kind: str, rank: int) -> RatingModel:
         """Get an existing entity or create a new one if it doesn't exist"""
         k: Key[RatingModel] = Key(cls, kind + ":" + str(rank))
-        rm: Optional[RatingModel] = cast(Optional[RatingModel], k.get())
+        rm: Optional[RatingModel] = k.get()
         if rm is None:
             # Did not already exist in the database:
             # create a fresh instance

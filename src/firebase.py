@@ -16,7 +16,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence, List, Union, Tuple, Set, Dict, cast
+from typing import (
+    Any,
+    Mapping,
+    Optional,
+    Sequence,
+    List,
+    TypedDict,
+    Union,
+    Tuple,
+    Set,
+    Dict,
+    cast,
+)
 
 import json
 import threading
@@ -28,10 +40,23 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import App, initialize_app, auth  # type: ignore
+from firebase_admin import App, initialize_app, auth, messaging  # type: ignore
+from firebase_admin.exceptions import FirebaseError  # type: ignore
 
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
+
+
+ResponseType = Tuple[httplib2.Response, bytes]
+
+
+class PushMessageDict(TypedDict, total=False):
+
+    """A message to be sent to a device via a push notification"""
+
+    title: str
+    body: str
+    image: str  # Image URL
 
 
 _FIREBASE_SCOPES: Sequence[str] = [
@@ -43,7 +68,10 @@ _TIMEOUT: int = 15  # Seconds
 _LIFETIME_MEMORY_CACHE = 1  # Minutes
 _LIFETIME_REDIS_CACHE = 5  # Minutes
 
-_HEADERS: Mapping[str, str] = {"Connection": "keep-alive"}
+_HEADERS: Mapping[str, str] = {
+    "Connection": "keep-alive",
+    "Content-Type": "application/json",
+}
 
 _USERLIST_LOCK = threading.Lock()
 
@@ -72,7 +100,7 @@ def _get_http() -> Optional[httplib2.Http]:
     return http
 
 
-def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
+def _request(*args: Any, **kwargs: Any) -> ResponseType:
     """Attempt to post a Firebase request, with recovery on a ConnectionError"""
     MAX_ATTEMPTS = 2
     attempts = 0
@@ -80,11 +108,11 @@ def _request(*args: Any, **kwargs: Any) -> Tuple[httplib2.Response, bytes]:
     content: bytes
     while attempts < MAX_ATTEMPTS:
         try:
-            kw: Dict[str, Any] = kwargs.copy()
-            kw["headers"] = _HEADERS
             if (http := _get_http()) is None:
                 raise ValueError("Unable to obtain http object")
-            response, content = cast(Any, http).request(*args, **kw)
+            response, content = cast(
+                ResponseType, cast(Any, http).request(*args, headers=_HEADERS, **kwargs)
+            )
             assert isinstance(content, bytes)
             return response, content
         except ConnectionError:
@@ -117,9 +145,7 @@ def _init_firebase_app():
             )
 
 
-def _firebase_put(  # type: ignore
-    path: str, message: Optional[str] = None
-) -> Tuple[httplib2.Response, bytes]:
+def _firebase_put(path: str, message: Optional[str] = None) -> ResponseType:
     """Writes data to Firebase.
     An HTTP PUT writes an entire object at the given database path. Updates to
     fields cannot be performed without overwriting the entire object
@@ -130,7 +156,7 @@ def _firebase_put(  # type: ignore
     return _request(path, method="PUT", body=message)
 
 
-def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
+def _firebase_get(path: str) -> ResponseType:
     """Read the data at the given path.
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
@@ -141,7 +167,7 @@ def _firebase_get(path: str) -> Tuple[httplib2.Response, bytes]:
     return _request(path, method="GET")
 
 
-def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
+def _firebase_patch(path: str, message: str) -> ResponseType:
     """Update the data at the given path.
     An HTTP GET request allows reading of data at a particular path.
     A successful request will be indicated by a 200 OK HTTP status code.
@@ -152,7 +178,7 @@ def _firebase_patch(path: str, message: str) -> Tuple[httplib2.Response, bytes]:
     return _request(path, method="PATCH", body=message)
 
 
-def _firebase_delete(path: str) -> Tuple[httplib2.Response, bytes]:
+def _firebase_delete(path: str) -> ResponseType:
     """Delete the data at the given path.
     An HTTP DELETE request allows deleting of the data at the given path.
     A successful request will be indicated by a 200 OK HTTP status code.
@@ -184,7 +210,7 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
         # is returned in the status field
         return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
-        logging.warning("Exception [{}] in firebase.send_message()".format(repr(e)))
+        logging.warning(f"Exception [{repr(e)}] in firebase.send_message()")
         return False
 
 
@@ -210,13 +236,14 @@ def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
         # is returned in the status field
         return response["status"] in ("200", "204")
     except httplib2.HttpLib2Error as e:
-        logging.warning("Exception [{}] in firebase.put_message()".format(repr(e)))
+        logging.warning(f"Exception [{repr(e)}] in firebase.put_message()")
         return False
 
 
 def send_update(*args: str) -> bool:
     """Updates the path endpoint to contain the current UTC timestamp"""
-    assert args, "Firebase path cannot be empty"
+    if not args:
+        return False
     endpoint = args[-1]
     value = {endpoint: datetime.utcnow().isoformat()}
     return send_message(value, *args[:-1])
@@ -343,3 +370,73 @@ def online_users(locale: str) -> Set[str]:
     _online_cache[locale] = online
     _online_ts[locale] = now
     return online
+
+
+def push_notification(device_token: str, message: PushMessageDict) -> bool:
+    """Send a Firebase push notification to a particular device,
+    identified by device token. The message is a dictionary that
+    contains a title and a body."""
+    if not device_token:
+        return False
+    if _firebase_app is None:
+        _init_firebase_app()
+
+    # Construct the message
+    msg = messaging.Message(
+        notification=messaging.Notification(**message),
+        token=device_token,
+    )
+
+    # Send the message
+    try:
+        message_id: str = cast(Any, messaging).send(msg, app=_firebase_app)
+        # The response is a message ID string
+        return bool(message_id)
+    except (FirebaseError, ValueError) as e:
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.push_notification()")
+
+    return False
+
+
+def push_to_user(user_id: str, message: PushMessageDict) -> bool:
+    """Send a Firebase push notification to a particular user,
+    identified by user id. The message is a dictionary that
+    contains a title and a body."""
+    if not user_id:
+        return False
+    # A user's sessions are found under the /session/<user_id> path,
+    # containing 0..N sessions. Each session has a token as its key,
+    # and contains a dictionary with the OS and the timestamp of the session.
+    # We need to iterate over all sessions and send the message to each
+    # device token.
+    try:
+        url = f"{FIREBASE_DB_URL}/session/{user_id}.json"
+        response, body = _firebase_get(path=url)
+        if response["status"] != "200":
+            return False
+        msg = json.loads(body) if body else None
+        if not msg:
+            return False
+        # We don't send notifications to sessions that are older than 7 days
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        # msg is a dictionary of device tokens : { os, utc }
+        device_token: str
+        device_info: Mapping[str, str]
+        for device_token, device_info in msg.items():
+            # os = device_info.get("os") or ""
+            if not isinstance(device_info, dict):
+                continue
+            utc = device_info.get("utc") or ""
+            if not utc:
+                continue
+            # Format the string so that Python can parse it
+            utc = utc[0:19]
+            if datetime.fromisoformat(utc) < cutoff:
+                # The device token is too old
+                logging.info("Skipping notification, session token is too old")
+                # continue
+            push_notification(device_token, message)
+        return True
+    except (httplib2.HttpLib2Error, ValueError) as e:
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.push_to_user()")
+        return False

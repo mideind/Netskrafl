@@ -280,6 +280,8 @@ DEFAULT_BEST_MOVES = 19
 # Maximum number of best moves to return from /bestmoves
 MAX_BEST_MOVES = 20
 
+EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/explo-logo-only.svg"
+
 # To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
 # exceptions, run the AutoPlayer move generators serially and exclusively
 # within an instance
@@ -660,12 +662,17 @@ def _process_move(
     if opponent:
         # Send a game update to the opponent, if human, including
         # the full client state. board.html and main.html listen to this.
-        # Also update the user/[opp_id]/move branch with the current timestamp.
+        # Also update the user/[opp_id]/move branch with the newest move data.
         client_state = game.client_state(opponent_index, m)
         msg_dict = {
             f"game/{game_id}/{opponent}/move": client_state,
             f"user/{opponent}/move": move_dict,
         }
+        firebase.push_to_user(opponent, {
+            "title": "Þú átt leik í Explo!",
+            "body": f"{game.player_nickname(1 - opponent_index)} hefur gert leikinn {game_id} tilbúinn.",
+            "image": EXPLO_LOGO_URL,
+        })
 
     if player := game.player_id(1 - opponent_index):
         # Add a move notification to the original player as well,
