@@ -280,7 +280,7 @@ DEFAULT_BEST_MOVES = 19
 # Maximum number of best moves to return from /bestmoves
 MAX_BEST_MOVES = 20
 
-EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/explo-logo-only.svg"
+EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/icon-explo-192.png"
 
 # To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
 # exceptions, run the AutoPlayer move generators serially and exclusively
@@ -311,6 +311,18 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     # !!! TODO: Add en_GB and Polish here
 }
 
+PUSH_MESSAGES: Dict[str, Dict[str, str]] = {
+    "title": {
+        "is": "Þú átt leik í Explo 💥",
+        "en": "Your turn in Explo 💥",
+        "pl": "Twoja kolej w Explo 💥",
+    },
+    "body": {
+        "is": "{player} hefur leikið í viðureign ykkar.",
+        "en": "{player} made a move in your game.",
+        "pl": "{player} wykonał ruch w Twojej grze.",
+    },
+}
 
 class UserForm:
 
@@ -524,6 +536,21 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
 
 
+def localize_push_message(key: str, locale: str) -> str:
+    """Return a localized push message for the given key and locale"""
+    pm = PUSH_MESSAGES.get(key)
+    if pm is None:
+        return ""
+    txt = pm.get(locale)
+    if txt is None and len(locale) > 2:
+        # Try to find a message for the language only
+        txt = pm.get(locale[0:2])
+    if txt is None:
+        # Default to English
+        txt = pm.get("en")
+    return txt or ""
+
+
 def _process_move(
     game: Game, movelist: Iterable[str], *, force_resign: bool = False
 ) -> ResponseType:
@@ -668,10 +695,13 @@ def _process_move(
             f"game/{game_id}/{opponent}/move": client_state,
             f"user/{opponent}/move": move_dict,
         }
+        # Push a Firebase notification message to the opponent,
+        # in the correct language for each client session
+        opp_nick = game.player_nickname(1 - opponent_index)
         firebase.push_to_user(opponent, {
-            "title": "Þú átt leik í Explo!",
-            "body": f"{game.player_nickname(1 - opponent_index)} hefur gert leikinn {game_id} tilbúinn.",
-            "image": EXPLO_LOGO_URL,
+            "title": lambda locale: localize_push_message("title", locale),
+            "body": lambda locale: localize_push_message("body", locale).format(player=opp_nick),
+            "image": lambda locale: EXPLO_LOGO_URL,
         })
 
     if player := game.player_id(1 - opponent_index):

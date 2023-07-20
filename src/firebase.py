@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import (
     Any,
+    Callable,
     Mapping,
     Optional,
     Sequence,
@@ -54,9 +55,9 @@ class PushMessageDict(TypedDict, total=False):
 
     """A message to be sent to a device via a push notification"""
 
-    title: str
-    body: str
-    image: str  # Image URL
+    title: Callable[[str], str]
+    body: Callable[[str], str]
+    image: Callable[[str], str]  # Image URL
 
 
 _FIREBASE_SCOPES: Sequence[str] = [
@@ -72,6 +73,10 @@ _HEADERS: Mapping[str, str] = {
     "Connection": "keep-alive",
     "Content-Type": "application/json",
 }
+
+# We don't send push notification messages to sessions
+# that are older than the following constant indicates
+_PUSH_NOTIFICATION_CUTOFF = 14  # Days
 
 _USERLIST_LOCK = threading.Lock()
 
@@ -372,19 +377,22 @@ def online_users(locale: str) -> Set[str]:
     return online
 
 
-def push_notification(device_token: str, message: PushMessageDict) -> bool:
+def push_notification(device_token: str, message: Mapping[str, str]) -> bool:
     """Send a Firebase push notification to a particular device,
     identified by device token. The message is a dictionary that
     contains a title and a body."""
     if not device_token:
         return False
-    if _firebase_app is None:
-        _init_firebase_app()
 
     # Construct the message
     msg = messaging.Message(
         notification=messaging.Notification(**message),
         token=device_token,
+        apns=messaging.APNSConfig(
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(content_available=True),
+            ),
+        ),
     )
 
     # Send the message
@@ -401,14 +409,16 @@ def push_notification(device_token: str, message: PushMessageDict) -> bool:
 def push_to_user(user_id: str, message: PushMessageDict) -> bool:
     """Send a Firebase push notification to a particular user,
     identified by user id. The message is a dictionary that
-    contains a title and a body."""
+    contains at least a title and a body."""
     if not user_id:
         return False
+    if _firebase_app is None:
+        _init_firebase_app()
     # A user's sessions are found under the /session/<user_id> path,
     # containing 0..N sessions. Each session has a token as its key,
     # and contains a dictionary with the OS and the timestamp of the session.
     # We need to iterate over all sessions and send the message to each
-    # device token.
+    # device token, after localizing it for the UI locale of the session.
     try:
         url = f"{FIREBASE_DB_URL}/session/{user_id}.json"
         response, body = _firebase_get(path=url)
@@ -417,11 +427,12 @@ def push_to_user(user_id: str, message: PushMessageDict) -> bool:
         msg = json.loads(body) if body else None
         if not msg:
             return False
-        # We don't send notifications to sessions that are older than 7 days
-        cutoff = datetime.utcnow() - timedelta(days=7)
-        # msg is a dictionary of device tokens : { os, utc }
+        # We don't send notifications to sessions that are older than 14 days
+        cutoff = datetime.utcnow() - timedelta(days=_PUSH_NOTIFICATION_CUTOFF)
+        # msg is a dictionary of device tokens : { os, utc, locale }
         device_token: str
         device_info: Mapping[str, str]
+        raw_message = cast(Mapping[str, Callable[[str], str]], message)
         for device_token, device_info in msg.items():
             # os = device_info.get("os") or ""
             if not isinstance(device_info, dict):
@@ -430,13 +441,22 @@ def push_to_user(user_id: str, message: PushMessageDict) -> bool:
             if not utc:
                 continue
             # Format the string so that Python can parse it
+            # (the original string is generated in JavaScript code and
+            # is not ISO 8601 compliant as far as Python is concerned)
             utc = utc[0:19]
             if datetime.fromisoformat(utc) < cutoff:
-                # The device token is too old
-                logging.info("Skipping notification, session token is too old")
-                # continue
-            push_notification(device_token, message)
+                # The session token is too old
+                # logging.info("Skipping notification, session token is too old")
+                continue
+            # Localize the message for this session
+            locale = device_info.get("locale") or "en"
+            localized_message = {
+                key: text_func(locale)
+                for key, text_func in raw_message.items()
+            }
+            # Send the push notification via Firebase
+            push_notification(device_token, localized_message)
         return True
-    except (httplib2.HttpLib2Error, ValueError) as e:
+    except (httplib2.HttpLib2Error, ValueError, FirebaseError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_to_user()")
         return False
