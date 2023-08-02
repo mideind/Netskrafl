@@ -41,8 +41,9 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import App, initialize_app, auth, messaging  # type: ignore
-from firebase_admin.exceptions import FirebaseError  # type: ignore
+from firebase_admin import App, initialize_app, auth, messaging
+from firebase_admin.exceptions import FirebaseError
+from firebase_admin.messaging import UnregisteredError
 
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
@@ -400,6 +401,8 @@ def push_notification(device_token: str, message: Mapping[str, str]) -> bool:
         message_id: str = cast(Any, messaging).send(msg, app=_firebase_app)
         # The response is a message ID string
         return bool(message_id)
+    except UnregisteredError as e:
+        logging.warning(f"Unregistered device token ('{device_token}') in firebase.push_notification()")
     except (FirebaseError, ValueError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_notification()")
 
@@ -455,7 +458,16 @@ def push_to_user(user_id: str, message: PushMessageDict) -> bool:
                 for key, text_func in raw_message.items()
             }
             # Send the push notification via Firebase
-            push_notification(device_token, localized_message)
+            if not push_notification(device_token, localized_message):
+                # The device token has become invalid:
+                # delete this node from the Firebase tree to prevent
+                # further attempts to send notifications to it
+                url = f"{FIREBASE_DB_URL}/session/{user_id}/{device_token}.json"
+                response, body = _firebase_delete(path=url)
+                if response["status"] != "200":
+                    logging.warning(
+                        f"Failed to delete node '{url}' in firebase.push_to_user()"
+                    )
         return True
     except (httplib2.HttpLib2Error, ValueError, FirebaseError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_to_user()")
