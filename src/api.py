@@ -324,6 +324,7 @@ PUSH_MESSAGES: Dict[str, Dict[str, str]] = {
     },
 }
 
+
 class UserForm:
 
     """Encapsulates the data in the user preferences form"""
@@ -698,11 +699,17 @@ def _process_move(
         # Push a Firebase notification message to the opponent,
         # in the correct language for each client session
         opp_nick = game.player_nickname(1 - opponent_index)
-        firebase.push_to_user(opponent, {
-            "title": lambda locale: localize_push_message("title", locale),
-            "body": lambda locale: localize_push_message("body", locale).format(player=opp_nick),
-            "image": lambda locale: EXPLO_LOGO_URL,
-        })
+        firebase.push_to_user(
+            opponent,
+            {
+                "title": lambda locale: localize_push_message("title", locale),
+                "body": lambda locale: localize_push_message("body", locale).format(
+                    player=opp_nick
+                ),
+                "image": lambda locale: EXPLO_LOGO_URL,
+            },
+            {"type": "notify-move"},
+        )
 
     if player := game.player_id(1 - opponent_index):
         # Add a move notification to the original player as well,
@@ -1647,7 +1654,9 @@ def image() -> ResponseType:
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
                 # Serve the image using flask.send_file()
-                return send_file(image_bytes, mimetype='image/jpeg', max_age=10 * 60)  # 10 minutes
+                return send_file(
+                    image_bytes, mimetype="image/jpeg", max_age=10 * 60
+                )  # 10 minutes
             except Exception:
                 # Something wrong in the image_blob: give up
                 pass

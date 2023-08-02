@@ -51,14 +51,17 @@ from cache import memcache
 
 ResponseType = Tuple[httplib2.Response, bytes]
 
+PushMessageCallable = Callable[[str], str]
+PushDataDict = Mapping[str, Any]
+
 
 class PushMessageDict(TypedDict, total=False):
 
     """A message to be sent to a device via a push notification"""
 
-    title: Callable[[str], str]
-    body: Callable[[str], str]
-    image: Callable[[str], str]  # Image URL
+    title: PushMessageCallable
+    body: PushMessageCallable
+    image: PushMessageCallable  # Image URL
 
 
 _FIREBASE_SCOPES: Sequence[str] = [
@@ -378,7 +381,9 @@ def online_users(locale: str) -> Set[str]:
     return online
 
 
-def push_notification(device_token: str, message: Mapping[str, str]) -> bool:
+def push_notification(
+    device_token: str, message: Mapping[str, str], data: Optional[PushDataDict]
+) -> bool:
     """Send a Firebase push notification to a particular device,
     identified by device token. The message is a dictionary that
     contains a title and a body."""
@@ -389,6 +394,7 @@ def push_notification(device_token: str, message: Mapping[str, str]) -> bool:
     msg = messaging.Message(
         notification=messaging.Notification(**message),
         token=device_token,
+        data=data,
         apns=messaging.APNSConfig(
             payload=messaging.APNSPayload(
                 aps=messaging.Aps(content_available=True),
@@ -402,14 +408,18 @@ def push_notification(device_token: str, message: Mapping[str, str]) -> bool:
         # The response is a message ID string
         return bool(message_id)
     except UnregisteredError as e:
-        logging.warning(f"Unregistered device token ('{device_token}') in firebase.push_notification()")
+        logging.warning(
+            f"Unregistered device token ('{device_token}') in firebase.push_notification()"
+        )
     except (FirebaseError, ValueError) as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_notification()")
 
     return False
 
 
-def push_to_user(user_id: str, message: PushMessageDict) -> bool:
+def push_to_user(
+    user_id: str, message: PushMessageDict, data: Optional[PushDataDict]
+) -> bool:
     """Send a Firebase push notification to a particular user,
     identified by user id. The message is a dictionary that
     contains at least a title and a body."""
@@ -435,7 +445,7 @@ def push_to_user(user_id: str, message: PushMessageDict) -> bool:
         # msg is a dictionary of device tokens : { os, utc, locale }
         device_token: str
         device_info: Mapping[str, str]
-        raw_message = cast(Mapping[str, Callable[[str], str]], message)
+        raw_message = cast(Mapping[str, PushMessageCallable], message)
         for device_token, device_info in msg.items():
             # os = device_info.get("os") or ""
             if not isinstance(device_info, dict):
@@ -454,11 +464,10 @@ def push_to_user(user_id: str, message: PushMessageDict) -> bool:
             # Localize the message for this session
             locale = device_info.get("locale") or "en"
             localized_message = {
-                key: text_func(locale)
-                for key, text_func in raw_message.items()
+                key: text_func(locale) for key, text_func in raw_message.items()
             }
             # Send the push notification via Firebase
-            if not push_notification(device_token, localized_message):
+            if not push_notification(device_token, localized_message, data):
                 # The device token has become invalid:
                 # delete this node from the Firebase tree to prevent
                 # further attempts to send notifications to it
