@@ -74,6 +74,7 @@ lib/
 
 # Python3 virtual environment library files
 venv/
+v311/
 
 # Test stuff
 test/

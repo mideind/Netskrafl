@@ -19,6 +19,7 @@ import logging
 from typing import (
     Dict,
     Mapping,
+    NotRequired,
     TypedDict,
     Any,
     Optional,
@@ -80,13 +81,13 @@ class UserSummaryDict(TypedDict):
     new_board: bool
 
 
-class UserLoginDict(TypedDict, total=False):
+class UserLoginDict(TypedDict):
 
     """Summary data about a login event"""
 
     user_id: str
     account: str
-    method: str
+    method: NotRequired[str]
     locale: str
     new: bool
     # Our own token, which the client can pass back later to authenticate

@@ -20,6 +20,7 @@ from typing import (
     Any,
     Callable,
     Mapping,
+    NotRequired,
     Optional,
     Sequence,
     List,
@@ -55,13 +56,13 @@ PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
 
 
-class PushMessageDict(TypedDict, total=False):
+class PushMessageDict(TypedDict):
 
     """A message to be sent to a device via a push notification"""
 
     title: PushMessageCallable
     body: PushMessageCallable
-    image: PushMessageCallable  # Image URL
+    image: NotRequired[PushMessageCallable]  # Image URL
 
 
 _FIREBASE_SCOPES: Sequence[str] = [

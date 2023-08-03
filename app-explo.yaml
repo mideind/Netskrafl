@@ -7,7 +7,7 @@
 # Deploy with 'gcloud beta app deploy --no-promote --version=somename app-explo.yaml'
 #
 
-runtime: python38
+runtime: python311
 entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
 
 #instance_class: B4
