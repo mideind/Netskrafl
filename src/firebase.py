@@ -42,7 +42,7 @@ import httplib2  # type: ignore
 
 from oauth2client.client import GoogleCredentials  # type: ignore
 
-from firebase_admin import App, initialize_app, auth, messaging
+from firebase_admin import App, initialize_app, auth, messaging, db
 from firebase_admin.exceptions import FirebaseError
 from firebase_admin.messaging import UnregisteredError
 
@@ -279,7 +279,7 @@ def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
             if "game" not in msg_dict and key == msg_dict.get("key"):
                 return True
         return False
-    except (httplib2.HttpLib2Error, ValueError) as e:
+    except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.check_wait()")
         return False
 
@@ -293,29 +293,25 @@ def check_presence(user_id: str, locale: str) -> bool:
             return False
         msg = json.loads(body) if body else None
         return bool(msg)
-    except (httplib2.HttpLib2Error, ValueError) as e:
+    except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.check_presence()")
         return False
 
 
 def get_connected_users(locale: str) -> Set[str]:
     """Return a set of all presently connected users"""
-    with _USERLIST_LOCK:
-        # Serialize access to the connected user list
-        url = f"{FIREBASE_DB_URL}/connection/{locale}.json?shallow=true"
-        try:
-            response, body = _firebase_get(path=url)
-        except httplib2.HttpLib2Error as e:
-            logging.warning(
-                f"Exception [{repr(e)}] raised in firebase.get_connected_users()"
-            )
-            return set()
-        if response["status"] != "200":
-            return set()
-        msg = json.loads(body) if body else None
-        if not msg:
-            return set()
-        return set(msg.keys())
+    try:
+        path = f"/connection/{locale}"
+        ref = db.reference(path, app=_firebase_app)
+        msg = cast(Mapping[str, str], ref.get(shallow=True))
+    except Exception as e:
+        logging.warning(
+            f"Exception [{repr(e)}] raised in firebase.get_connected_users()"
+        )
+        return set()
+    if not msg:
+        return set()
+    return set(msg.keys())
 
 
 def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
@@ -358,27 +354,31 @@ def online_users(locale: str) -> Set[str]:
     ):
         return _online_cache[locale]
 
-    # Second, use the distributed Redis cache, having a lifetime of 5 minutes
-    online: Union[Set[str], List[str]] = memcache.get(
-        "live:" + locale, namespace="userlist"
-    )
+    # Serialize access to the connected user list
+    with _USERLIST_LOCK:
 
-    if not online:
-        # Not found: do a Firebase query, which returns a set
-        online = get_connected_users(locale)
-        # Store the result as a list in the Redis cache, with a timeout
-        memcache.set(
-            "live:" + locale,
-            list(online),
-            time=_LIFETIME_REDIS_CACHE * 60,
-            namespace="userlist",
+        # Use the distributed Redis cache, having a lifetime of 5 minutes
+        online: Union[None, Set[str], List[str]] = memcache.get(
+            "live:" + locale, namespace="userlist"
         )
-    else:
-        # Convert the cached list back into a set
-        online = set(online)
 
-    _online_cache[locale] = online
-    _online_ts[locale] = now
+        if online is None:
+            # Not found: do a Firebase query, which returns a set
+            online = get_connected_users(locale)
+            # Store the result as a list in the Redis cache, with a timeout
+            memcache.set(
+                "live:" + locale,
+                list(online),
+                time=_LIFETIME_REDIS_CACHE * 60,
+                namespace="userlist",
+            )
+        else:
+            # Convert the cached list back into a set
+            online = set(online)
+
+        _online_cache[locale] = online
+        _online_ts[locale] = now
+
     return online
 
 
