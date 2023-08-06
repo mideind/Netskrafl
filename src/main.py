@@ -66,6 +66,7 @@ from basics import (
     init_oauth,
     ResponseType,
 )
+from firebase import init_firebase_app
 from dawgdictionary import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
@@ -92,6 +93,23 @@ if running_local:
         }
     )
 
+if running_local:
+    logging.info("Netskrafl app running with DEBUG set to True")
+    # flask_config["SERVER_NAME"] = "127.0.0.1"
+else:
+    # Import the Google Cloud client library
+    import google.cloud.logging
+
+    # Instantiate a logging client
+    logging_client = google.cloud.logging.Client()
+    # Connects the logger to the root logging handler;
+    # by default this captures all logs at INFO level and higher
+    cast(Any, logging_client).setup_logging()
+
+# Initialize Firebase
+init_firebase_app()
+
+# Initialize Flask
 app = Flask(__name__, static_folder=STATIC_FOLDER)
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
@@ -133,19 +151,6 @@ flask_config = dict(
     # !!! TODO: Add other client types (type 'ios', 'android') here?
     JSON_AS_ASCII=False,
 )
-
-if running_local:
-    logging.info("Netskrafl app running with DEBUG set to True")
-    # flask_config["SERVER_NAME"] = "127.0.0.1"
-else:
-    # Import the Google Cloud client library
-    import google.cloud.logging  # type: ignore
-
-    # Instantiate a logging client
-    logging_client = google.cloud.logging.Client()
-    # Connects the logger to the root logging handler;
-    # by default this captures all logs at INFO level and higher
-    cast(Any, logging_client).setup_logging()
 
 # Read the Flask secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
