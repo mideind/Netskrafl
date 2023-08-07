@@ -2021,7 +2021,7 @@ def chatmsg() -> ResponseType:
         # In-game chat
         # Send notifications to both players on the game channel
         game: Optional[Game] = None
-        uuid = channel[5:][:36]  # The game id
+        uuid = channel[5:][:36]  # The game id; UUIDs are 36 chars long
         if uuid:
             # We don't set use_cache=False here since we are only
             # accessing game data that remains constant for the
@@ -2058,7 +2058,7 @@ def chatmsg() -> ResponseType:
     elif channel.startswith("user:"):
 
         # Chat between two users
-        opp_id = channel[5:][:36]  # The opponent id
+        opp_id = channel[5:][:64]  # The opponent id is e.g. 50 characters in the case of Apple
         if not opp_id:
             return jsonify(ok=False)
         # Add a message entity to the data store and remember its timestamp
@@ -2139,7 +2139,7 @@ def chatload() -> ResponseType:
     if channel.startswith("game:"):
         # In-game conversation
         game: Optional[Game] = None
-        uuid = channel[5:][:36]  # The game id
+        uuid = channel[5:][:36]  # The game id (UUIDs are 36 chars long)
         if uuid:
             # We don't set use_cache=False here since we are
             # only accessing data that remains constant over the
@@ -2150,7 +2150,7 @@ def chatload() -> ResponseType:
             return jsonify(ok=False)
     elif channel.startswith("user:"):
         # Conversation between users
-        opp_id = channel[5:][:36]  # The opponent id
+        opp_id = channel[5:][:64]  # The opponent id, e.g. 50 chars in the case of Apple
         if not opp_id:
             return jsonify(ok=False)
         # By convention, the lower user id comes before
