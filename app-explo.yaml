@@ -13,7 +13,6 @@ entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:ap
 #instance_class: B4
 instance_class: B2
 manual_scaling:
-  #instances: 2
   instances: 1
 
 vpc_access_connector:
