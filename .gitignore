@@ -87,6 +87,7 @@ var/
 log/
 console/
 venv/
+v311/
 node_modules/
 .idea/
 .vscode/

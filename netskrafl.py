@@ -2341,7 +2341,7 @@ def promo() -> ResponseType:
         return "<p>Notandi er ekki innskráður</p>"  # Unauthorized
     rq = RequestData(request)
     key = rq.get("key", "")
-    VALID_PROMOS = {"friend", "krafla"}
+    VALID_PROMOS = {"friend", "krafla", "explo"}
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user=user)
@@ -2397,25 +2397,22 @@ def main() -> ResponseType:
     firebase_token = firebase.create_custom_token(uid)
 
     # Promotion display logic
-    promo_to_show = None
+    promo_to_show: Optional[str] = "explo"  # None if no promo is ongoing
     promos: List[datetime] = []
-    if random.randint(1, _PROMO_FREQUENCY) == 1:
+    if promo_to_show and random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
 
-        # promo = 'krafla' # Un-comment this to enable promo
-
         # The list_promotions call yields a list of timestamps
-        if promo_to_show:
-            promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
-            now = datetime.utcnow()
-            if len(promos) >= _PROMO_COUNT:
-                # Already seen too many of these
-                promo_to_show = None
-            elif promos and (now - promos[-1] < _PROMO_INTERVAL):
-                # Less than one interval since last promo was displayed:
-                # don't display this one
-                promo_to_show = None
+        promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
+        now = datetime.utcnow()
+        if len(promos) >= _PROMO_COUNT:
+            # Already seen too many of these
+            promo_to_show = None
+        elif promos and (now - promos[-1] < _PROMO_INTERVAL):
+            # Less than one interval since last promo was displayed:
+            # don't display this one
+            promo_to_show = None
 
     if promo_to_show:
         # Note the fact that we have displayed this promotion to this user
