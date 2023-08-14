@@ -1357,7 +1357,7 @@ div.tabbed-page {
    left: 0;
    top: 0;
    width: @mobile-width;
-   height: @mobile-height-net;
+   height: auto; /* @mobile-height-net; */
    overflow: auto;
    font-size: 13px;
    line-height: 23px;
@@ -1839,11 +1839,19 @@ div#user-load {
 
 div#promo-form {
    .std-form;
+   position: relative;
    top: 64px;
-   left: @margin-small * 3 / 2;
-   width: @mobile-width - 2 * @margin-small;
-   height: 364px;
+   /* left: (@margin-small * 1.5); */
+   margin-left: auto;
+   margin-right: auto;
+   width: @mobile-width - 4 * @margin-small;
+   height: 644px;
    line-height: 1.5em;
+   padding: 4px;
+}
+
+div.promo-explo#promo-form {
+   background-color: #f8f8f8;
 }
 
 div#promo-content {
@@ -1878,6 +1886,18 @@ div.btn-promo-no {
    right: 3 * @margin-small;
    top: auto;
    background-color: darken(@freshtile, 10%);
+}
+
+div.app-store-button {
+   position: absolute;
+   bottom: 64px;
+   left: 80px;
+}
+
+div.play-store-button {
+   position: absolute;
+   bottom: 64px;
+   left: 80px + 158.5px + 16px;
 }
 
 div.challenge {
