@@ -238,9 +238,10 @@ oauth.register(
 _autoplayer_lock = threading.Lock()
 
 # Promotion parameters
+_PROMO_CURRENT: Optional[str] = "explo"  # None if no promo ongoing
 # A promo check is done randomly, but on average every 1 out of N times
 _PROMO_FREQUENCY = 8
-_PROMO_COUNT = 2  # Max number of times that the same promo is displayed
+_PROMO_COUNT = 3  # Max number of times that the same promo is displayed
 _PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # Maximum number of online users to display
@@ -2397,8 +2398,9 @@ def main() -> ResponseType:
     firebase_token = firebase.create_custom_token(uid)
 
     # Promotion display logic
-    promo_to_show: Optional[str] = "explo"  # None if no promo is ongoing
+    promo_to_show: Optional[str] = _PROMO_CURRENT  # None if no promo is ongoing
     promos: List[datetime] = []
+
     if promo_to_show and random.randint(1, _PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for
         # a promotion display
@@ -2413,6 +2415,9 @@ def main() -> ResponseType:
             # Less than one interval since last promo was displayed:
             # don't display this one
             promo_to_show = None
+    else:
+        # We either have no promo or the random choice did not trigger this time
+        promo_to_show = None
 
     if promo_to_show:
         # Note the fact that we have displayed this promotion to this user

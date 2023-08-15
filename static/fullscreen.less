@@ -139,8 +139,8 @@
 
    div.tile {
       font-size: 25px;
-      line-height: 26px;
-      height: (@board-cell-big - 2px);
+      line-height: 29px;
+      /* height: (@board-cell-big - 2px); */ /* We inherit 100% from main.less */
       width: (@board-cell-big - 2px);
       margin: 0;
       padding-top: 2px;
@@ -242,7 +242,7 @@
       line-height: 45px;
       top: auto;
       bottom: 272px;
-      left: 648px;
+      left: 642px;
       border-radius: 5px;
    }
    
@@ -253,7 +253,7 @@
       line-height: 46px;
       top: auto;
       bottom: 208px;
-      left: 648px;
+      left: 642px;
       border-radius: 5px;
    }
    
@@ -657,6 +657,10 @@
       display: block;
    }
    
+   .mobile-only-block {
+      display: none;
+   }
+   
    .no-mobile-block {
       display: block;
    }
@@ -845,8 +849,8 @@
    }
    
    div#spinner-dialog div#user-load {
-      top: (768px - 48px) / 2;
-      left: (1024px - 48px) / 2;
+      top: ((768px - 48px) / 2);
+      left: ((1024px - 48px) / 2);
       width: 48px;
       height: 48px;
       background-size: 48px 48px;
@@ -859,13 +863,17 @@
       padding-top: 6px;
       padding-bottom: 6px;
       left: auto;
-      top: 16px;
-      right: 12px;
+      top: 20px;
+      right: 20px;
       width: 884px;
       height: 644px;
       line-height: 1.62em;
    }
-   
+
+   div.promo-explo#promo-form {
+      height: 644px;
+   }
+
    div#promo-content {
       margin-top: 48px;
       margin-left: 48px;
@@ -878,6 +886,21 @@
    
    div.promo-mobile {
       display: none;
+   }
+
+   div.app-store-button {
+      bottom: 58px;
+      left: 70px;
+   }
+
+   div.play-store-button {
+      bottom: 58px;
+      left: 70px + 158.5px + 16px;
+   }
+
+   div.btn-explo-yes {
+      bottom: 40px;
+      right: 48px;
    }
    
    div.btn-promo-no {
@@ -893,8 +916,8 @@
       width: 48px;
       height: 48px;
       top: auto;
-      bottom: 204px;
-      left: 644px;
+      bottom: 208px;
+      left: 642px;
       font-size: 26px;
       line-height: 46px;
    }

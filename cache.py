@@ -125,7 +125,7 @@ class RedisWrapper:
         making it appear as a simplified memcache instance """
 
     def __init__(
-        self, redis_host: Optional[str] = None, redis_port: int = None
+        self, redis_host: Optional[str] = None, redis_port: Optional[int] = None
     ) -> None:
         redis_host = redis_host or os.environ.get("REDISHOST", "localhost")
         redis_port = redis_port or int(os.environ.get("REDISPORT", 6379))

@@ -508,7 +508,7 @@ class GameModel(ndb.Model):
     )
 
     # Is this game over?
-    over = ndb.BooleanProperty()
+    over = cast(bool, ndb.BooleanProperty())
 
     # When was the game started?
     timestamp = cast(datetime, ndb.DateTimeProperty(auto_now_add=True))
@@ -1319,10 +1319,10 @@ class RatingModel(ndb.Model):
     """ Models tables of user ratings """
 
     # Typically "all" or "human"
-    kind = ndb.StringProperty(required=True)
+    kind = cast(str, ndb.StringProperty(required=True))
 
     # The ordinal rank
-    rank = ndb.IntegerProperty(required=True)
+    rank = cast(int, ndb.IntegerProperty(required=True))
 
     user = ndb.KeyProperty(kind=UserModel, required=False, default=None, indexed=False)
     robot_level = ndb.IntegerProperty(required=False, default=0, indexed=False)

@@ -37,7 +37,11 @@ from skraflgame import User
 
 
 ResponseType = Union[
-    str, flask.wrappers.Response, werkzeug.wrappers.Response, Tuple[str, int]
+    str,
+    flask.wrappers.Response,
+    werkzeug.wrappers.Response,
+    Tuple[str, int],
+    Tuple[flask.wrappers.Response, int],
 ]
 
 
@@ -229,7 +233,8 @@ def handle(request: Request, uid) -> ResponseType:
     payload = b""
     try:
         # Do not accept request bodies larger than 2K
-        if int(request.headers.get("Content-length", 0)) < 2048:
+        content_length = request.headers.get("Content-length", 0) or 0
+        if int(content_length) < 2048:
             payload = request.get_data(cache=False, as_text=False)
     except Exception as ex:
         # Something wrong with the Content-length header or the request body

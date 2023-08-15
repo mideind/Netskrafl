@@ -611,7 +611,8 @@ class User:
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
         reply["friend"] = self.friend()
-        sm.populate_dict(reply)
+        if sm is not None:
+            sm.populate_dict(reply)
         # Add statistics from the user entity
         reply["highest_score"] = self._highest_score
         reply["highest_score_game"] = self._highest_score_game
@@ -1278,6 +1279,8 @@ class Game:
         """ Enumerate all tiles on the board in a convenient form """
         if state is None:
             state = self.state
+            if state is None:
+                return
         for x, y, tile, letter in state.board().enum_tiles():
             yield (
                 Board.ROWIDS[x] + str(y + 1),

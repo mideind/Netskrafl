@@ -22,7 +22,7 @@ import logging
 from threading import Thread
 from datetime import datetime
 
-from flask import jsonify
+from flask import Response, jsonify
 from flask import request
 
 from languages import Alphabet
@@ -30,7 +30,7 @@ from skrafldb import ndb, iter_q, Client, UserModel, GameModel
 from skraflgame import User, Game
 
 
-def admin_usercount() -> str:
+def admin_usercount() -> Response:
     """ Return a count of UserModel entities """
     count = UserModel.count()
     return jsonify(count=count)
@@ -98,7 +98,7 @@ def admin_setfriend() -> str:
     )
 
 
-def admin_fetchgames() -> str:
+def admin_fetchgames() -> Response:
     """ Return a JSON representation of all finished games """
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
@@ -121,7 +121,7 @@ def admin_fetchgames() -> str:
     return jsonify(gamelist=gamelist)
 
 
-def admin_loadgame() -> str:
+def admin_loadgame() -> Response:
     """ Fetch a game object and return it as JSON """
 
     uuid = request.form.get("uuid", None)

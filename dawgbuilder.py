@@ -732,6 +732,7 @@ class DawgBuilder:
                         # Use the sort ordering of the current locale to compare words
                         assert key_smallest is not None
                         key_f = f.next_key()
+                        assert key_f is not None
                         if key_f == key_smallest:
                             # We have the same word in two files: make sure we don't add it twice
                             f.read_word()

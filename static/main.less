@@ -267,6 +267,10 @@ span.mobile-space {
    padding-right: 32px;
 }
 
+.mobile-only-block {
+   display: block;
+}
+
 .no-mobile-block {
    display: none;
 }
@@ -492,12 +496,12 @@ div.board-area {
 div.board {
    position: absolute;
    top: @board-top;
-   left: 2px; /* Seems to be required for correct alignment on iPhone */
+   left: 8px; /* Seems to be required for correct alignment on iPhone */
    height: 100%;
    padding-top: 8px;
    background-color: @container;
-   padding-left: 5px;
-   padding-right: 5px;
+   padding-left: 6px;
+   padding-right: 6px;
 }
 
 div.tile {
@@ -508,7 +512,7 @@ div.tile {
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
-   height: @board-cell-small;
+   height: 100%;
    width: @board-cell-small;
    overflow: hidden;
    margin: 0;
@@ -527,11 +531,13 @@ div.tile.wide {
 /* On small form factors, we have bigger tiles in the rack than on the board */
 
 .rack div.tile {
-   font-size: 21px;
-   line-height: 12px;
-   height: @rack-cell-small - 6px;
-   width: @rack-cell-small + 1px;
-   padding-top: 6px;
+   font-size: 22px;
+   line-height: 26px;
+   height: (@rack-cell-small + 1px);
+   min-height: (@rack-cell-small + 1px);
+   width: (@rack-cell-small + 1px);
+   min-width: (@rack-cell-small + 1px);
+   // padding-top: 6px;
    margin-left: -3px;
 }
 
@@ -539,13 +545,19 @@ div.tile.wide {
 
 div.tile.ui-draggable-dragging {
    font-size: 22px;
-   line-height: 11px;
-   height: @rack-cell-small - 6px;
-   width: @rack-cell-small;
+   line-height: 26px;
+   height: (@rack-cell-small + 2px);
+   min-height: (@rack-cell-small + 2px);
+   width: (@rack-cell-small + 2px);
+   min-width: (@rack-cell-small + 2px);
+   border-radius: 3px;
+   margin-left: -3px;
 }
 
 .board td {
+   width: @board-cell-small;
    min-width: @board-cell-small;
+   height: @board-cell-small;
    overflow: hidden;
    background-color: @board-background;
    border-style: solid;
@@ -582,10 +594,10 @@ div.rack {
 div.letterscore {
    position: absolute;
    bottom: 0px;
-   right: 0px;
+   right: 1px;
    height: 9px;
    width: 9px;
-   font-size: 6px;
+   font-size: 6.5px;
    line-height: 9px;
    text-align: right;
    font-weight: 400;
@@ -594,8 +606,10 @@ div.letterscore {
    vertical-align: bottom;
 }
 
-.rack div.letterscore {
-   left: 19px;
+.rack div.letterscore,
+.ui-draggable-dragging div.letterscore {
+   right: 2px;
+   bottom: 2px;
    font-size: 9px;
    line-height: 9px;
 }
@@ -1162,7 +1176,7 @@ div.modal-dialog#spinner-dialog {
 div#blank-form {
    .std-form;
    top: 124px;
-   right: (375px - 274px - 24px) / 2;
+   right: ((375px - 274px - 24px) / 2);
    width: 274px;
    height: 400px;
 }
@@ -1827,20 +1841,20 @@ div.user-cat#user-headings span {
 div#user-load {
    display: none;
    position: absolute;
-   top: @mobile-height / 2 - 12px;
-   left: @mobile-width / 2 - 12px;
-   width: 24px;
-   height: 24px;
+   top: ((@mobile-height - 48px) / 2);
+   left: ((@mobile-width - 48px) / 2);
+   width: 48px;
+   height: 48px;
    z-index: 10;
    background-image: url('user-loader.gif');
    background-repeat: no-repeat;
-   background-size: 24px 24px;
+   background-size: 48px 48px;
 }
 
 div#promo-form {
    .std-form;
    position: relative;
-   top: 64px;
+   top: 16px;
    /* left: (@margin-small * 1.5); */
    margin-left: auto;
    margin-right: auto;
@@ -1852,12 +1866,16 @@ div#promo-form {
 
 div.promo-explo#promo-form {
    background-color: #f8f8f8;
+   padding: 0;
+   border-width: 0;
+   overflow: hidden;
+   height: 612px;
 }
 
 div#promo-content {
-   margin-top: @margin-small * 2;
-   margin-left: @margin-small * 2;
-   margin-right: @margin-small * 2;
+   margin-top: 0;
+   margin-left: 0;
+   margin-right: 0;
 }
 
 div.promo-fullscreen {
@@ -1866,6 +1884,12 @@ div.promo-fullscreen {
 
 div.promo-mobile {
    display: block;
+}
+
+div.promo-friend-mobile {
+   margin-top: @margin-small;
+   margin-left: @margin-small;
+   margin-right: @margin-small;
 }
 
 div.btn-promo-yes {
@@ -1890,14 +1914,14 @@ div.btn-promo-no {
 
 div.app-store-button {
    position: absolute;
-   bottom: 64px;
-   left: 80px;
+   bottom: 72px;
+   left: 18px;
 }
 
 div.play-store-button {
    position: absolute;
-   bottom: 64px;
-   left: 80px + 158.5px + 16px;
+   bottom: 72px;
+   left: 18px + 136px + 16px;
 }
 
 div.challenge {
@@ -1984,7 +2008,7 @@ div.games-item {
 div#wait-form {
    .std-form;
    top: @margin-small;
-   left: @margin-small / 2;
+   left: (@margin-small / 2);
    width: @mobile-width - 5 * @margin-small;
    height: @mobile-height-net - 8 * @margin-small;
 }
@@ -2880,8 +2904,8 @@ div.btn-explo-yes {
    .standard-button;
    width: 80px;
    height: 28px;
-   bottom: 48px;
-   right: 48px;
+   bottom: 8px;
+   right: 8px;
    top: auto;
    background-color: darken(@freshtile, 10%);
 }
