@@ -6,7 +6,6 @@ requests==2.31.0
 firebase-admin
 redis==4.4.4
 google-cloud-ndb>=1.3.0
-google-python-cloud-debugger; sys_platform == 'linux'
 protobuf>=3.20.3
 googleapis_common_protos
 google-cloud-logging

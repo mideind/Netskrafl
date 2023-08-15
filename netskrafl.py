@@ -2682,17 +2682,6 @@ def server_error(e) -> ResponseType:
     """ Return a custom 500 error """
     return "Eftirfarandi villa kom upp: {}".format(e), 500
 
-
-if not running_local:
-    # Start the Google Stackdriver debugger, if not running locally
-    try:
-        import googleclouddebugger  # type: ignore
-
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
-
-
 # Run a default Flask web server for testing if invoked directly as a main program
 
 if __name__ == "__main__":
