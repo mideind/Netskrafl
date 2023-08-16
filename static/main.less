@@ -46,7 +46,7 @@
 @board-size: 360px;
 
 @vertical-space: 20px;
-@rack-top: @board-top + @board-size + @vertical-space;
+@rack-top: @board-size + @vertical-space;
 @rack-height: 48px;
 @btn-top: @rack-top + @rack-height + @vertical-space;
 
@@ -451,7 +451,8 @@ table.board td.center:before {
 }
 
 table.board {
-   margin: 0;
+   margin-left: auto;
+   margin-right: auto;
    padding: 0;
    border-spacing: 0;
    border-collapse: separate;
@@ -490,18 +491,22 @@ div.bag {
 div.board-area {
    position: absolute;
    z-index: 5;
-   height: 100%;
+   top: @board-top;
+   height: (@mobile-height-net - @board-top);
 }
 
 div.board {
-   position: absolute;
-   top: @board-top;
-   left: 8px; /* Seems to be required for correct alignment on iPhone */
+   position: relative;
+   /* top: @board-top; */
+   /* left: 8px; /* Seems to be required for correct alignment on iPhone */
    height: 100%;
+   min-width: 375px;
    padding-top: 8px;
    background-color: @container;
+   /*
    padding-left: 6px;
    padding-right: 6px;
+   */
 }
 
 div.tile {
@@ -533,12 +538,12 @@ div.tile.wide {
 .rack div.tile {
    font-size: 22px;
    line-height: 26px;
-   height: (@rack-cell-small + 1px);
-   min-height: (@rack-cell-small + 1px);
-   width: (@rack-cell-small + 1px);
-   min-width: (@rack-cell-small + 1px);
-   // padding-top: 6px;
-   margin-left: -3px;
+   height: @rack-cell-small;
+   min-height: @rack-cell-small;
+   width: @rack-cell-small;
+   min-width: @rack-cell-small;
+   padding-right: 3px;
+   padding-bottom: 1px;
 }
 
 /* While dragging a tile, show it in the rack form factor */
@@ -567,8 +572,11 @@ div.tile.ui-draggable-dragging {
 }
 
 .rack td {
-   min-width: @rack-cell-small;
-   width: @rack-cell-small + 2px;
+   /* The + 1px addition is to prevent the cell from
+      shrinking when a tile is removed from it */
+   min-width: (@rack-cell-small + 1px);
+   width: (@rack-cell-small + 1px);
+   height: (@rack-cell-small + 1px);
 }
 
 tr.colid {
@@ -582,7 +590,7 @@ td.rowid {
 div.rack {
    position: absolute;
    text-align: center;
-   top: @board-top + @board-size + @vertical-space;
+   top: @rack-top;
    left: @margin-small;
    background-color: @board-background;
    padding: 6px;
@@ -608,7 +616,7 @@ div.letterscore {
 
 .rack div.letterscore,
 .ui-draggable-dragging div.letterscore {
-   right: 2px;
+   right: 1px;
    bottom: 2px;
    font-size: 9px;
    line-height: 9px;
@@ -660,8 +668,10 @@ div.score {
    font-weight: 700;
    color: white;
    margin: 0;
-   padding: 6px;
-   padding-top: 9px;
+   padding-left: 6px;
+   padding-right: 6px;
+   padding-top: 7.5px;
+   padding-bottom: 7.5px;
    border-radius: 5px;
    vertical-align: middle;
    cursor: pointer;
@@ -2555,7 +2565,8 @@ span.total {
    text-align: right;
    background-color: @board-background;
    color: white;
-   line-height: 16px;
+   line-height: 17px;
+   margin-top: 1.5px;
 }
 
 span.highlight {
