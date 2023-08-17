@@ -312,7 +312,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
 
     def static_file_hash(filename: str) -> int:
         """ Obtain a timestamp for the given file """
-        return int(os.stat(filename).st_mtime)
+        return int(os.stat(filename).st_mtime) + 1  # Increment this at version changes
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")
