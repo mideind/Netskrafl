@@ -2533,34 +2533,38 @@ def oauth2callback() -> ResponseType:
     """The OAuth2 login flow GETs this callback when a user has
     signed in using a Google Account"""
 
-    account: Optional[str] = None
     userid: Optional[str] = None
-    idinfo: Dict[str, Any] = dict()
-    email: Optional[str] = None
-    name: Optional[str] = None
+    idinfo: Optional[Dict[str, str]] = None
+    account = ""
+    email = ""
+    name = ""
+
     try:
+        assert oauth.google is not None
         token = oauth.google.authorize_access_token()
-        idinfo = oauth.google.parse_id_token(token)
-        if idinfo["iss"] not in _VALID_ISSUERS:
-            raise ValueError("Unknown OAuth2 token issuer: " + idinfo["iss"])
+        idinfo = cast(Optional[Dict[str, str]], oauth.google.parse_id_token(token))
+        if idinfo is None:
+            raise ValueError("Unable to parse id_token")
+        if (iss := idinfo.get("iss", "")) not in _VALID_ISSUERS:
+            raise ValueError("Unknown OAuth2 token issuer: " + iss)
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
-        account = idinfo["sub"]
+        account = idinfo.get("sub", "")
         assert account
         # Full name of user
-        name = idinfo["name"]
+        name = idinfo.get("name", "")
         # Make sure that the e-mail address is in lowercase
-        email = idinfo["email"].lower()
+        email = idinfo.get("email", "").lower()
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
-        userid = User.login_by_account(account, name or "", email or "")
-    except (ValueError, MismatchingStateError) as e:
+        userid = User.login_by_account(account, name, email)
+    except (ValueError, MismatchingStateError, AssertionError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"oauth2callback(): {e}")
         userid = None
 
-    if not userid:
+    if not userid or not idinfo:
         # Unable to obtain a properly authenticated user id for some reason
         return redirect(url_for("login_error"))
 

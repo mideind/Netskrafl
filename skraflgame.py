@@ -534,7 +534,7 @@ class User:
     @classmethod
     def login_by_account(
         cls, account: str, name: str, email: str, *, locale: Optional[str] = None
-    ):
+    ) -> str:
         """ Log in a user via the given Google Account and return her user id """
         # First, see if the user account already exists under the Google account id
         um = UserModel.fetch_account(account)
