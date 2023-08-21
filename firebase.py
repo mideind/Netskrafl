@@ -18,10 +18,7 @@ from __future__ import annotations
 from typing import (
     Any,
     Mapping,
-    NotRequired,
     Optional,
-    Sequence,
-    TypedDict,
     Set,
     cast,
 )
@@ -31,7 +28,7 @@ import threading
 import logging
 from datetime import datetime
 
-from firebase_admin import App, initialize_app, auth, db  # type: ignore
+from firebase_admin import App, initialize_app, auth, db
 
 _PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 
@@ -67,7 +64,7 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """
     try:
         path = "/".join(args)
-        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref = db.reference(path, app=_firebase_app)
         if message is None:
             ref.delete()
         else:
@@ -87,7 +84,7 @@ def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """
     try:
         path = "/".join(args)
-        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref = db.reference(path, app=_firebase_app)
         if message is None:
             ref.delete()
         else:
@@ -107,12 +104,12 @@ def send_update(*args: str) -> bool:
     return send_message(value, *args[:-1])
 
 
-def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
+def check_wait(user_id: str, opp_id: str, key: Optional[str] = None) -> bool:
     """Return True if the user user_id is waiting for the opponent opponent_id,
     on the challenge key, if given."""
     try:
-        path = f"/user/{user_id}/wait/{opp_id}.json"
-        ref = cast(Any, db).reference(path, app=_firebase_app)
+        path = f"/user/{user_id}/wait/{opp_id}"
+        ref = db.reference(path, app=_firebase_app)
         msg = ref.get()
         if msg is True:
             # The Firebase endpoint is set to True, meaning the user is waiting
@@ -133,7 +130,7 @@ def check_presence(user_id: str) -> bool:
     """Check whether the given user has at least one active connection"""
     try:
         path = f"/connection/{user_id}"
-        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref = db.reference(path, app=_firebase_app)
         msg = ref.get(shallow=True)
         return bool(msg)
     except Exception as e:
@@ -145,7 +142,7 @@ def get_connected_users() -> Set[str]:
     """Return a set of all presently connected users"""
     try:
         path = "/connection"
-        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref = db.reference(path, app=_firebase_app)
         msg = cast(Mapping[str, str], ref.get(shallow=True))
     except Exception as e:
         logging.warning(
@@ -166,7 +163,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     MAX_ATTEMPTS = 2
     while attempts < MAX_ATTEMPTS:
         try:
-            return cast(Any, auth).create_custom_token(uid).decode()
+            return auth.create_custom_token(uid).decode()
         except:
             # It appears that ConnectionResetError exceptions can
             # propagate (wrapped in an obscure Firebase object) from

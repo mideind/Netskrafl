@@ -325,12 +325,12 @@ class UserModel(ndb.Model):
 
     def user_id(self) -> str:
         """ Return the ndb key of a user as a string """
-        return _id(self.key)
+        return _id(self.key) if self.key else ""
 
     @staticmethod
     def put_multi(recs: Iterable[UserModel]) -> None:
         """ Insert or update multiple user records """
-        ndb.put_multi(recs)
+        ndb.put_multi(list(recs))
 
     @classmethod
     def count(cls) -> int:

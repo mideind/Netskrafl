@@ -677,7 +677,7 @@ class DawgBuilder:
         self,
         relpath: str,
         inputs: str,
-        removals: str,
+        removals: Optional[str],
         word_filter: Optional[Callable[[str], bool]],
     ) -> None:
         """Load word lists into the DAWG from one or more static text files,

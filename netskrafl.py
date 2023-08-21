@@ -72,7 +72,7 @@ from werkzeug.urls import url_parse
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from authlib.integrations.flask_client import OAuth  # type: ignore
-from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
+from authlib.integrations.base_client.errors import OAuthError, MismatchingStateError  # type: ignore
 
 from languages import (
     Alphabet,
@@ -265,6 +265,9 @@ assert _FIREBASE_API_KEY, "FIREBASE_API_KEY environment variable not set"
 assert _FIREBASE_SENDER_ID, "FIREBASE_SENDER_ID environment variable not set"
 
 
+# Make sure that Firebase is initialized
+firebase.init_firebase_app()
+
 @app.after_request
 def add_headers(response: Response) -> Response:
     """ Inject additional headers into responses """
@@ -408,14 +411,15 @@ class RequestData:
 
     def __init__(self, rq: Request) -> None:
         # If JSON data is present, assume this is a JSON request
-        self.q: Dict[str, Any] = rq.get_json(silent=True)
+        j: Optional[Dict[str, Any]] = rq.get_json(silent=True)
         self.using_json = True
-        if not self.q:
+        if not j:
             # No JSON data: assume this is a form-encoded request
-            self.q = rq.form
+            j = rq.form
             self.using_json = False
-            if not self.q:
-                self.q = dict()
+            if not j:
+                j = dict()
+        self.q = j
 
     def get(self, key: str, default=None) -> Any:
         """ Obtain an arbitrary data item from the request """
@@ -1267,7 +1271,7 @@ def forceresign():
 
 @app.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
-def wordcheck() -> str:
+def wordcheck() -> Response:
     """ Check a list of words for validity """
 
     rq = RequestData(request)
@@ -1288,7 +1292,7 @@ def wordcheck() -> str:
 
 @app.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamestats() -> str:
+def gamestats() -> Response:
     """ Calculate and return statistics on a given finished game """
 
     rq = RequestData(request)
@@ -1313,7 +1317,7 @@ def gamestats() -> str:
 
 @app.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userstats() -> str:
+def userstats() -> Response:
     """ Calculate and return statistics on a given user """
 
     cid = current_user_id()
@@ -1975,7 +1979,8 @@ def saveuserprefs() -> ResponseType:
 
     # Return the user preferences in JSON form
     uf = UserForm()
-    uf.init_from_dict(j)
+    if j:
+        uf.init_from_dict(j)
     err = uf.validate()
     if err:
         return jsonify(ok=False, err=err)
@@ -2058,7 +2063,10 @@ def newgame() -> ResponseType:
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
-        robot_level = int(opp[6:])
+        try:
+            robot_level = int(opp[6:])
+        except ValueError:
+            robot_level = AutoPlayer.AUTOPLAYER_COMMON
         # Play the game with the new bag if the user prefers it
         prefs = dict(
             newbag=user.new_bag(),
@@ -2514,6 +2522,8 @@ def login() -> ResponseType:
     session.pop("userid", None)
     session.pop("user", None)
     redirect_uri = url_for('oauth2callback', _external=True)
+    if oauth.google is None:
+        return redirect(url_for("login_error"))
     return oauth.google.authorize_redirect(redirect_uri)
 
 
@@ -2561,7 +2571,7 @@ def oauth2callback() -> ResponseType:
         # Attempt to find an associated user record in the datastore,
         # or create a fresh user record if not found
         userid = User.login_by_account(account, name, email)
-    except (ValueError, MismatchingStateError, AssertionError) as e:
+    except (ValueError, AssertionError, MismatchingStateError, OAuthError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"oauth2callback(): {e}")
