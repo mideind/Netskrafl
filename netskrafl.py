@@ -119,6 +119,9 @@ ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int]]
 RouteType = Callable[[], ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 
+# Increment this at version changes to ensure cache busting
+VERSION_INCREMENT = 3
+
 # Are we running in a local development environment or on a GAE server?
 running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
 
@@ -312,7 +315,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
 
     def static_file_hash(filename: str) -> int:
         """ Obtain a timestamp for the given file """
-        return int(os.stat(filename).st_mtime) + 1  # Increment this at version changes
+        return int(os.stat(filename).st_mtime) + VERSION_INCREMENT
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")

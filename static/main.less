@@ -497,23 +497,17 @@ div.board-area {
 
 div.board {
    position: relative;
-   /* top: @board-top; */
-   /* left: 8px; /* Seems to be required for correct alignment on iPhone */
    height: 100%;
    min-width: 375px;
    padding-top: 8px;
    background-color: @container;
-   /*
-   padding-left: 6px;
-   padding-right: 6px;
-   */
 }
 
 div.tile {
    position: relative;
    background-color: @tile;
    font-size: 17px;
-   line-height: 22px;
+   line-height: 20px;
    font-weight: 700;
    text-align: center;
    text-transform: uppercase;
@@ -524,7 +518,6 @@ div.tile {
    padding: 0;
    margin-left: -2px;
    padding-right: 2px;
-   vertical-align: top;
    cursor: default;
 }
 
@@ -604,7 +597,6 @@ div.letterscore {
    bottom: 0px;
    right: 1px;
    height: 9px;
-   width: 9px;
    font-size: 6.5px;
    line-height: 9px;
    text-align: right;
@@ -617,7 +609,7 @@ div.letterscore {
 .rack div.letterscore,
 .ui-draggable-dragging div.letterscore {
    right: 1px;
-   bottom: 2px;
+   bottom: 1px;
    font-size: 9px;
    line-height: 9px;
 }
@@ -2482,7 +2474,7 @@ div.gamestats {
    width: 724px;
    height: 580px;
    left: 150px;
-   top: 64px;
+   top: 12px;
    cursor: pointer;
    padding: 12px;
    border-radius: 5px;
@@ -2875,6 +2867,7 @@ span#nav-next-waiting {
 
 div.closebtn {
    .standard-button;
+   top: auto;
    width: 100px;
    height: 28px;
    bottom: 12px;
