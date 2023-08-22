@@ -67,6 +67,12 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
     um_list: List[UserModel] = []
+    sm_list: List[StatsModel] = []
+    # Note: we need a limit on the put_multi() size
+    # since user entites can be quite large (due to the embedded images)
+    # and the maximum size of a single RPC call is 10 MB
+    MAX_STATS_PUT = 200
+    MAX_USERS_PUT = 50
     for sm in urecs.values():
         # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
@@ -80,10 +86,22 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
             # Make sure that the human game counts agree
             um.games = sm.human_games
             um_list.append(um)
-    # Update the statistics records
-    StatsModel.put_multi(urecs.values())
-    # Update the user records
-    UserModel.put_multi(um_list)
+            if len(um_list) >= MAX_USERS_PUT:
+                # At limit: Update the entities that we've gathered so far
+                UserModel.put_multi(um_list)
+                um_list = []
+        # Collect the updated StatsModel entities
+        sm_list.append(sm)
+        if len(sm_list) >= MAX_STATS_PUT:
+            # At limit: Update the entities that we've gathered so far
+            StatsModel.put_multi(sm_list)
+            sm_list = []
+    # Update the remaining StatsModel entities
+    if sm_list:
+        StatsModel.put_multi(sm_list)
+    # Update the remaining UserModel entities
+    if um_list:
+        UserModel.put_multi(um_list)
 
 
 def _run_stats(from_time: datetime, to_time: datetime) -> bool:
