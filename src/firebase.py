@@ -131,7 +131,7 @@ def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
     """Return True if the user user_id is waiting for the opponent opponent_id,
     on the challenge key, if given."""
     try:
-        path = f"/user/{user_id}/wait/{opp_id}.json"
+        path = f"/user/{user_id}/wait/{opp_id}"
         ref = cast(Any, db).reference(path, app=_firebase_app)
         msg = ref.get()
         if msg is True:
