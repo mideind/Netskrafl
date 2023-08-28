@@ -10,8 +10,7 @@
 runtime: python311
 entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
 
-#instance_class: B4
-instance_class: B2
+instance_class: B4_1G
 manual_scaling:
   instances: 1
 
