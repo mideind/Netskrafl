@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import (
     Optional,
     Dict,
+    Mapping,
     Sequence,
     TypedDict,
     Union,
@@ -311,7 +312,7 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     # !!! TODO: Add en_GB and Polish here
 }
 
-PUSH_MESSAGES: Dict[str, Dict[str, str]] = {
+PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
     "title": {
         "is": "Þú átt leik í Explo 💥",
         "en": "Your turn in Explo 💥",
@@ -321,6 +322,16 @@ PUSH_MESSAGES: Dict[str, Dict[str, str]] = {
         "is": "{player} hefur leikið í viðureign ykkar.",
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
+    },
+    "chall_title": {
+        "is": "Þú fékkst áskorun í Explo 💥",
+        "en": "You've been challenged in Explo 💥",
+        "pl": "Zostałeś wyzwany w Explo 💥",
+    },
+    "chall_body": {
+        "is": "{player} hefur skorað á þig í viðureign!",
+        "en": "{player} has challenged you to a game!",
+        "pl": "{player} wyzwał cię na pojedynek!",
     },
 }
 
@@ -680,7 +691,7 @@ def _process_move(
     move_dict: MoveNotifyDict = {
         "game": game_id,
         "timestamp": now,
-        "players": tuple(game.player_ids),
+        "players": (game.player_ids[0], game.player_ids[1]),
         "over": game.state.is_game_over(),
         "to_move": game.player_to_move(),
         "scores": game.state.scores(),
@@ -708,7 +719,10 @@ def _process_move(
                 ),
                 "image": lambda locale: EXPLO_LOGO_URL,
             },
-            {"type": "notify-move"},
+            {
+                "type": "notify-move",
+                "game": game_id,
+            },
         )
 
     if player := game.player_id(1 - opponent_index):
@@ -1834,6 +1848,21 @@ def challenge() -> ResponseType:
                 "manual": manual,
                 # A challenge is by default bound to the issuing user's locale
                 "locale": user.locale,
+            },
+        )
+        # Notify the challenged user via a push notification
+        firebase.push_to_user(
+            destuser,
+            {
+                "title": lambda locale: localize_push_message("chall_title", locale),
+                "body": lambda locale: localize_push_message("chall_body", locale).format(
+                    player=user.nickname()
+                ),
+                "image": lambda locale: EXPLO_LOGO_URL,
+            },
+            {
+                "type": "notify-challenge",
+                "uid": uid,
             },
         )
     elif action == "retract":
