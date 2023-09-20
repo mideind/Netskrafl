@@ -17,7 +17,7 @@ import os
 import time
 
 from dawgdictionary import PackedDawgDictionary
-from languages import IcelandicAlphabet, PolishAlphabet
+from languages import IcelandicAlphabet, PolishAlphabet, set_locale
 
 
 class DawgTester:
@@ -51,6 +51,7 @@ class DawgTesterIcelandic(DawgTester):
         """ Load a DawgDictionary and test its functionality """
 
         t0 = time.time()
+        set_locale("is_IS")
         self._dawg = PackedDawgDictionary(IcelandicAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()
@@ -68,6 +69,7 @@ class DawgTesterIcelandic(DawgTester):
         self._test_false("abs")
         self._test_true("halló")
         self._test_true("blús")
+        self._test_true("kríaðist")
         # self._test_true("hraðskákmótin") # Not in BÍN
         # self._test_true("jólahraðskákmótið") # Longer than 15 letters
 
@@ -355,6 +357,7 @@ class DawgTesterPolish(DawgTester):
     def run(self) -> None:
 
         t0 = time.time()
+        set_locale("pl_PL")
         self._dawg = PackedDawgDictionary(PolishAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()
@@ -402,7 +405,7 @@ class DawgTesterPolish(DawgTester):
 
 
 def test():
-    # Test navivation in the DAWG
+    # Test navigation in the DAWG
     dt = DawgTesterIcelandic()
     dt.run()
     dt = DawgTesterPolish()
