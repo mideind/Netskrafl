@@ -70,6 +70,9 @@ class DawgTesterIcelandic(DawgTester):
         self._test_true("halló")
         self._test_true("blús")
         self._test_true("kríaðist")
+        self._test_true("járn")
+        self._test_true("jafni")
+        self._test_true("gras")
         # self._test_true("hraðskákmótin") # Not in BÍN
         # self._test_true("jólahraðskákmótið") # Longer than 15 letters
 
