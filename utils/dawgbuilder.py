@@ -117,6 +117,14 @@ import struct
 import io
 import functools
 
+base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
+
+# Add the ../src directory to the Python path
+sys.path.append(os.path.join(base_path, "../src"))
+
+# Establish the resources path
+rpath = functools.partial(os.path.join, base_path, "../resources")
+
 # The DAWG builder uses the collation (sorting) given by
 # the current locale setting, typically 'is_IS' or 'en_US'
 if "PROJECT_ID" not in os.environ:
@@ -133,9 +141,6 @@ NodeTuple = Tuple[str, Optional["_DawgNode"]]
 MAXLEN = 48  # Longest possible word to be processed
 WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
-
-base_path = os.path.dirname(__file__)  # Assumed to be in the /src directory
-rpath = functools.partial(os.path.join, base_path, "../resources")
 
 class _DawgNode:
 

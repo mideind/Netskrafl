@@ -27,8 +27,14 @@ from __future__ import annotations
 from typing import List, Optional, Tuple, Callable, cast
 
 import getopt
+import os
 import sys
 import time
+
+base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
+
+# Add the ../src directory to the Python path
+sys.path.append(os.path.join(base_path, "../src"))
 
 from languages import (
     NewTileSet,

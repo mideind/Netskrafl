@@ -14,7 +14,13 @@ from __future__ import annotations
 from typing import Optional
 
 import os
+import sys
 import time
+
+base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
+
+# Add the ../src directory to the Python path
+sys.path.append(os.path.join(base_path, "../src"))
 
 from dawgdictionary import PackedDawgDictionary
 from languages import IcelandicAlphabet, PolishAlphabet, set_locale
