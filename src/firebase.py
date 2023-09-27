@@ -199,12 +199,13 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
 
 _online_cache: Dict[str, Set[str]] = dict()
 _online_ts: Dict[str, datetime] = dict()
+_online_counter: int = 0
 
 
 def online_users(locale: str) -> Set[str]:
     """Obtain a set of online users, by their user ids"""
 
-    global _online_cache, _online_ts
+    global _online_cache, _online_ts, _online_counter
 
     # First, use a per-process in-memory cache, having a lifetime of 1 minute
     now = datetime.utcnow()
@@ -230,9 +231,14 @@ def online_users(locale: str) -> Set[str]:
             memcache.set(
                 "live:" + locale,
                 list(online),
-                time=_LIFETIME_REDIS_CACHE * 60,
+                time=_LIFETIME_REDIS_CACHE * 60,  # Currently 5 minutes
                 namespace="userlist",
             )
+            _online_counter += 1
+            if _online_counter >= 12:
+                # Approximately once per hour (12 * 5 minutes), log number of connected users
+                logging.info(f"Connected users in locale {locale} are {len(online)}")
+                _online_counter = 0
         else:
             # Convert the cached list back into a set
             online = set(online)

@@ -1122,7 +1122,7 @@ def run_icelandic_filter() -> None:
 
     print("Icelandic filtering in progress")
 
-    MIN_ICELANDIC_FREQUENCY = 5
+    MIN_ICELANDIC_FREQUENCY = 10
 
     from icegrams.ngrams import Ngrams
 

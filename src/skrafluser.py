@@ -132,6 +132,7 @@ class UserProfileDict(TypedDict, total=False):
     best_word_score: int
     best_word_game: Optional[str]
     favorite: bool
+    live: bool
     challenge: bool
     blocked: bool
     blocking: bool
@@ -1096,7 +1097,7 @@ class User:
         return True
 
     def profile(self) -> UserProfileDict:
-        """Return a set of key statistics on the user"""
+        """Return a set of static attributes and key statistics on the user"""
         reply = UserProfileDict()
         user_id = self.id()
         assert user_id is not None
@@ -1139,30 +1140,39 @@ class User:
             user = User.load_if_exists(uid) if uid else None
             if user is None:
                 return Error.WRONG_USER, None
-
         assert uid is not None
+
+        # Read static attributes of the user into a profile object
         profile = user.profile()
 
+        # Add dynamic attributes to the returned object
+
+        # Is the user online in the current user's locale?
+        live = True  # The current user is always live
+        if uid != cuid:
+            live = uid in online_users(cuser.locale)
+        profile["live"] = live
+
         # Include info on whether this user is a favorite of the current user
-        fav = False
+        fav = False  # The current user is never a favorite of themselves
         if uid != cuid:
             fav = cuser.has_favorite(uid)
         profile["favorite"] = fav
 
         # Include info on whether the current user has challenged this user
-        chall = False
+        chall = False  # The current user cannot challenge themselves
         if uid != cuid:
             chall = cuser.has_challenge(uid)
         profile["challenge"] = chall
 
         # Include info on whether the current user has blocked this user
-        blocked = False
+        blocked = False  # The current user cannot be blocking themselves
         if uid != cuid:
             blocked = cuser.has_blocked(uid)
         profile["blocked"] = blocked
 
         # Include info on whether this user has blocked the current user
-        blocking = False
+        blocking = False  # The current user cannot block themselves
         if cuid and uid != cuid:
             blocking = user.has_blocked(cuid)
         profile["blocking"] = blocking
