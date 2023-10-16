@@ -2160,7 +2160,7 @@ def chatload() -> ResponseType:
 
     rq = RequestData(request)
     channel = rq.get("channel", "")
-    maxlen = rq.get_int("maxlen", 50)
+    maxlen = rq.get_int("count", 50)
 
     if not channel:
         # We must have a valid channel
