@@ -1930,7 +1930,7 @@ class ChatModel(Model["ChatModel"]):
             -cast(int, ChatModel.timestamp)
         )
         count = 0
-        for cm in iter_q(q, CHUNK_SIZE):
+        for cm in iter_q(q, chunk_size=CHUNK_SIZE):
             # Note: this also returns empty messages (read markers)
             yield dict(
                 user=cm.user.id(),

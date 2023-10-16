@@ -2160,6 +2160,7 @@ def chatload() -> ResponseType:
 
     rq = RequestData(request)
     channel = rq.get("channel", "")
+    maxlen = rq.get_int("maxlen", 50)
 
     if not channel:
         # We must have a valid channel
@@ -2204,7 +2205,7 @@ def chatload() -> ResponseType:
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
-        for cm in ChatModel.list_conversation(channel)
+        for cm in ChatModel.list_conversation(channel, maxlen=maxlen)
     ]
     # Check whether the user has already seen the newest chat message
     # (which may be a read marker, i.e. an empty message)
