@@ -32,6 +32,8 @@ port: str = os.environ.get("SERVER_PORT", "8080")
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
+DEV_SERVER = PROJECT_ID == "explo-dev"
+
 DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"

@@ -40,6 +40,7 @@ from config import (
     FACEBOOK_APP_ID,
     APPLE_CLIENT_ID,
     PROJECT_ID,
+    DEV_SERVER,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
 
@@ -71,8 +72,20 @@ def oauth2callback(request: Request) -> ResponseType:
         # 500 - Internal server error
         return jsonify({"status": "invalid", "msg": "Missing CLIENT"}), 500
 
-    # !!! TODO: Add CSRF token mechanism
-    # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
+    if DEV_SERVER:
+        # The 'fail' parameter is used for testing purposes only.
+        # If sent by the client, we respond with the error code requested.
+        fail = request.form.get("fail", "") or cast(Any, request).json.get(
+            "fail", ""
+        )
+        if fail:
+            try:
+                fail_code = int(fail) if len(fail) <= 3 else 0
+            except ValueError:
+                fail_code = 0
+            if fail_code:
+                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+
     token: str
     config = cast(Any, current_app).config
     testing: bool = config.get("TESTING", False)
@@ -182,10 +195,27 @@ def oauth2callback(request: Request) -> ResponseType:
 
 def oauth_fb(request: Request) -> ResponseType:
     """Facebook authentication"""
+    # The 'fail' parameter is used for testing purposes only.
+    # If sent by the client, we always respond with a 401 Not Authorized.
+    if DEV_SERVER:
+        # The 'fail' parameter is used for testing purposes only.
+        # If sent by the client, we respond with the error code requested.
+        fail = request.form.get("fail", "") or cast(Any, request).json.get(
+            "fail", ""
+        )
+        if fail:
+            try:
+                fail_code = int(fail) if len(fail) <= 3 else 0
+            except ValueError:
+                fail_code = 0
+            if fail_code:
+                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+
     rq = RequestData(request)
     user: Optional[Dict[str, str]] = rq.get("user")
     if user is None or not (account := user.get("id", "")):
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+
     token = user.get("token", "")
     # Validate the Facebook token
     if not token or len(token) > 1024 or not token.isalnum():
@@ -273,6 +303,20 @@ def _apple_key_client(day: datetime) -> jwt.PyJWKClient:
 def oauth_apple(request: Request) -> ResponseType:
     """Apple ID token validation"""
 
+    if DEV_SERVER:
+        # The 'fail' parameter is used for testing purposes only.
+        # If sent by the client, we respond with the error code requested.
+        fail = request.form.get("fail", "") or cast(Any, request).json.get(
+            "fail", ""
+        )
+        if fail:
+            try:
+                fail_code = int(fail) if len(fail) <= 3 else 0
+            except ValueError:
+                fail_code = 0
+            if fail_code:
+                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+
     rq = RequestData(request)
     token = rq.get("token", "")
     if not token:
@@ -338,6 +382,20 @@ def oauth_explo(request: Request) -> ResponseType:
     UserLoginDict instance. The client can then use that token for subsequent
     logins, without having to go through the third party OAuth flow again.
     The token is by default valid for 30 days."""
+    if DEV_SERVER:
+        # The 'fail' parameter is used for testing purposes only.
+        # If sent by the client, we respond with the error code requested.
+        fail = request.form.get("fail", "") or cast(Any, request).json.get(
+            "fail", ""
+        )
+        if fail:
+            try:
+                fail_code = int(fail) if len(fail) <= 3 else 0
+            except ValueError:
+                fail_code = 0
+            if fail_code:
+                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+
     token: Optional[str] = None
     config = cast(Any, current_app).config
     testing: bool = config.get("TESTING", False)
