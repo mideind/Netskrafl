@@ -84,6 +84,7 @@ from skraflelo import compute_elo_for_game
 # Type definitions
 StatsDict = Dict[str, Union[str, int, float, Tuple[int, int]]]
 
+
 # Tuple for storing move data within a Game
 class MoveTuple(NamedTuple):
     player: int
@@ -143,6 +144,7 @@ class ClientStateDict(TypedDict, total=False):
     locale: str
     manual: bool
     moves: MoveList
+    racks: Optional[List[str]]
     newbag: bool
     newmoves: MoveList
     nickname: List[str]
@@ -369,11 +371,9 @@ class Game:
         now = datetime.utcnow()
 
         for mm in gm.moves:
-
             m: Optional[MoveBase] = None
 
             if mm.coord:
-
                 # Normal tile move
                 # Decode the coordinate: A15 = horizontal, 15A = vertical
                 if mm.coord[0] in Board.ROWIDS:
@@ -391,34 +391,28 @@ class Game:
                     m.make_covers(game.state.board(), mm.tiles)
 
             elif not mm.tiles:
-
                 # Degenerate (error) case: this game is stored incorrectly
                 # in the NDB datastore. Probably an artifact of the move to
                 # Google Cloud NDB.
                 pass
 
             elif mm.tiles[0:4] == "EXCH":
-
                 # Exchange move
                 m = ExchangeMove(mm.tiles[5:])
 
             elif mm.tiles == "PASS":
-
                 # Pass move
                 m = PassMove()
 
             elif mm.tiles == "RSGN":
-
                 # Game resigned
                 m = ResignMove(-mm.score)
 
             elif mm.tiles == "CHALL":
-
                 # Last move challenged
                 m = ChallengeMove()
 
             elif mm.tiles == "RESP":
-
                 # Response to challenge
                 m = ResponseMove(mm.score)
 
@@ -1072,7 +1066,6 @@ class Game:
         assert self.state is not None
 
         if not self.state.is_resigned():
-
             # If the game did not end by resignation, check for a timeout
             overtime = self.overtime()
             adjustment = list(self.overtime_adjustment())
@@ -1223,6 +1216,13 @@ class Game:
             reply["moves"] = [
                 (m.player, m.move.summary(self.state)) for m in self.moves[0:-num_moves]
             ]
+            if self.is_over():
+                # The game is over and this may be a game review:
+                # Send the racks as they were before each move
+                reply["racks"] = [
+                    self.initial_racks[0] or self.state.rack(0),
+                    self.initial_racks[1] or self.state.rack(1),
+                ] + [m.rack for m in self.moves]
             # Player information
             reply["autoplayer"] = [self.is_autoplayer(0), self.is_autoplayer(1)]
             reply["nickname"] = [self.player_nickname(0), self.player_nickname(1)]
