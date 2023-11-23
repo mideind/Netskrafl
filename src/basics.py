@@ -312,7 +312,7 @@ class RequestData:
         else:
             # Use special getlist() call on request.form object
             r = cast(Any, self.q).getlist(key + "[]")
-        return r if isinstance(r, list) else []
+        return cast(List[Any], r) if isinstance(r, list) else []
 
     def __getitem__(self, key: str) -> Any:
         """ Shortcut: allow indexing syntax with an empty string default """

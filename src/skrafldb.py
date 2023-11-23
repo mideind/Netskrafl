@@ -325,8 +325,8 @@ class Model(Generic[_T_Model], ndb.Model):
 
     """A type-safer wrapper around ndb.Model"""
 
-    @property  # type: ignore
-    def key(self) -> Key[_T_Model]:
+    @property
+    def key(self) -> Key[_T_Model]:  # type: ignore
         return cast(Key[_T_Model], cast(Any, super()).key)
 
     def put(self, **kwargs: Any) -> Key[_T_Model]:
