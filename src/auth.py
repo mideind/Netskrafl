@@ -41,6 +41,7 @@ from config import (
     APPLE_CLIENT_ID,
     PROJECT_ID,
     DEV_SERVER,
+    FlaskConfig,
 )
 from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
 
@@ -61,6 +62,9 @@ session = requests.session()
 cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
 google_request = google_requests.Request(session=cached_session)
 
+# For testing purposes only: a hard-coded user image URL
+TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADdaFE9Pk1NobKf2veK6Hvt=s96-c"
+
 
 def oauth2callback(request: Request) -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
@@ -75,20 +79,21 @@ def oauth2callback(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
-        if fail:
-            try:
+        try:
+            fail = request.form.get("fail", "") or cast(Any, request).json.get(
+                "fail", ""
+            )
+            if fail:
                 fail_code = int(fail) if len(fail) <= 3 else 0
-            except ValueError:
-                fail_code = 0
-            if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                if fail_code:
+                    return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+        except Exception:
+            # Never mind (this can happen if the request is not a form and does not contain JSON)
+            pass
 
     token: str
-    config = cast(Any, current_app).config
-    testing: bool = config.get("TESTING", False)
+    config: FlaskConfig = cast(Any, current_app).config
+    testing = config.get("TESTING", False)
     client_type: str = "web"  # Default client type
 
     if testing:
@@ -133,10 +138,24 @@ def oauth2callback(request: Request) -> ResponseType:
                 iss="accounts.google.com",
                 sub=f["sub"],
                 name=f["name"],
-                picture=f["picture"],
+                picture=TEST_USER_IMAGE,
                 email=f["email"],
                 method="Test",
                 account=f["sub"],
+                locale=DEFAULT_LOCALE,
+                new=False,
+                client_type=client_type,
+            )
+        elif DEV_SERVER and token == "[TESTING]":
+            # Testing only: use a hard-coded user id dictionary
+            idinfo = UserIdDict(
+                iss="accounts.google.com",
+                sub=token,
+                name="Test User",
+                picture=TEST_USER_IMAGE,
+                email="test@explowordgame.com",
+                method="Test",
+                account=token,
                 locale=DEFAULT_LOCALE,
                 new=False,
                 client_type=client_type,
@@ -397,8 +416,8 @@ def oauth_explo(request: Request) -> ResponseType:
                 return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
 
     token: Optional[str] = None
-    config = cast(Any, current_app).config
-    testing: bool = config.get("TESTING", False)
+    config: FlaskConfig = cast(Any, current_app).config
+    testing = config.get("TESTING", False)
     client_type: str = "web"  # Default client type
 
     if not testing:

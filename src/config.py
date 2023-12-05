@@ -17,10 +17,24 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
+from typing import Dict, Literal, NotRequired, TypedDict
+from datetime import timedelta
 import os
 from flask import json
+
+
+class FlaskConfig(TypedDict):
+    """The Flask configuration dictionary"""
+    DEBUG: bool
+    SESSION_COOKIE_SECURE: bool
+    SESSION_COOKIE_HTTPONLY: bool
+    SESSION_COOKIE_SAMESITE: Literal["Strict", "Lax", "None"]
+    PERMANENT_SESSION_LIFETIME: timedelta
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    JSON_AS_ASCII: bool
+    TESTING: NotRequired[bool]
+
 
 # Are we running in a local development environment or on a GAE server?
 running_local: bool = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")

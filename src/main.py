@@ -48,6 +48,7 @@ from flask.wrappers import Response
 from flask_cors import CORS  # type: ignore
 
 from config import (
+    FlaskConfig,
     DEFAULT_LOCALE,
     running_local,
     host,
@@ -135,7 +136,8 @@ if running_local:
 # invisible from JavaScript (HTTPONLY).
 # We set SameSite to 'Lax', as it cannot be 'Strict' or 'None'
 # due to the user authentication (OAuth2) redirection flow.
-flask_config = dict(
+
+flask_config = FlaskConfig(
     DEBUG=running_local,
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
