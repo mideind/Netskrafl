@@ -2313,7 +2313,7 @@ class BlockModel(Model["BlockModel"]):
     def block_user(cls, blocker_id: str, blocked_id: str) -> bool:
         """Add a block"""
         if blocker_id and blocked_id:
-            bm = BlockModel()
+            bm = cls()
             bm.blocker = Key(UserModel, blocker_id)
             bm.blocked = Key(UserModel, blocked_id)
             bm.put()
@@ -2368,9 +2368,10 @@ class ReportModel(Model["ReportModel"]):
     ) -> bool:
         """Add a block"""
         if reporter_id and reported_id:
-            rm = ReportModel()
-            rm.reporter = Key(UserModel, reporter_id)
-            rm.reported = Key(UserModel, reported_id)
+            rm = cls()
+            rm.reporter = cast(Key[UserModel], Key(UserModel, reporter_id))
+            # No idea why the following cast is needed; probably a Pylance bug
+            rm.reported = cast(Key[UserModel], Key(UserModel, reported_id))
             if rm.reported.get() is None:
                 # The reported user does not exist
                 return False
