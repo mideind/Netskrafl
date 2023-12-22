@@ -235,13 +235,24 @@ def oauth_fb(request: Request) -> ResponseType:
     if user is None or not (account := user.get("id", "")):
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
+    # Obtain the provider that is being requested for Facebook token validation
+    # These are presently either "stokkur" (default) or "mideind"
+    provider = rq.get("provider", "stokkur")
+    facebook_app_id = FACEBOOK_APP_ID.get(provider, "")
+    facebook_app_secret = FACEBOOK_APP_SECRET.get(provider, "")
+    if not facebook_app_id or not facebook_app_secret:
+        return (
+            jsonify({"status": "invalid", "msg": "Unknown Facebook auth provider"}),
+            401,
+        )
+
     token = user.get("token", "")
     # Validate the Facebook token
     if not token or len(token) > 1024 or not token.isalnum():
         return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
     r = requests.get(
         FACEBOOK_TOKEN_VALIDATION_URL.format(
-            token, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
+            token, facebook_app_id, facebook_app_secret
         )
     )
     if r.status_code != 200:
@@ -271,7 +282,7 @@ def oauth_fb(request: Request) -> ResponseType:
             401,
         )
     if (
-        FACEBOOK_APP_ID != rd.get("app_id")
+        facebook_app_id != rd.get("app_id")
         or "USER" != rd.get("type")
         or not rd.get("is_valid")
     ):
