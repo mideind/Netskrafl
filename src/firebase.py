@@ -276,7 +276,7 @@ def push_notification(
         # The response is a message ID string
         return bool(message_id)
     except UnregisteredError as e:
-        logging.warning(
+        logging.info(
             f"Unregistered device token ('{device_token}') in firebase.push_notification()"
         )
     except (FirebaseError, ValueError) as e:
