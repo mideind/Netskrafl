@@ -363,10 +363,12 @@ class Model(Generic[_T_Model], ndb.Model):
 
     @staticmethod
     def Str() -> str:
+        """This is indexed by default"""
         return cast(str, ndb.StringProperty(required=True))
 
     @staticmethod
     def OptionalStr(default: Optional[str] = None) -> Optional[str]:
+        """This is indexed by default"""
         return cast(Optional[str], ndb.StringProperty(required=False, default=default))
 
     @staticmethod
@@ -881,7 +883,7 @@ class GameModel(Model["GameModel"]):
     over = Model.Bool()
 
     # When was the game started?
-    timestamp = Model.Datetime(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
 
     # The timestamp of the last move in the game
     ts_last_move = Model.OptionalDatetime(indexed=True)
@@ -1777,10 +1779,10 @@ class RatingModel(Model["RatingModel"]):
     """Models tables of user ratings"""
 
     # Typically "all", "human" or "manual"
-    kind = Model.Str()
+    kind = Model.Str()  # Indexed by default
 
     # The ordinal rank
-    rank = Model.Int()
+    rank = Model.Int(indexed=True)
 
     user = Model.OptionalDbKey(kind=UserModel, indexed=False)
 
@@ -2210,7 +2212,7 @@ class PromoModel(Model["PromoModel"]):
     # The promotion id
     promotion = Model.Str()
     # The timestamp
-    timestamp = Model.Datetime(auto_now_add=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
 
     def set_player(self, user_id: str) -> None:
         """Set the player's user id"""
