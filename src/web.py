@@ -417,6 +417,10 @@ if running_local:
     def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
 
+    @web.route("/admin/gameupdate", methods=["GET"])
+    def admin_gameupdate() -> ResponseType:
+        return admin.admin_gameupdate()
+
     @web.route("/admin/setfriend", methods=["GET"])
     def admin_setfriend() -> ResponseType:
         return admin.admin_setfriend()
@@ -428,7 +432,7 @@ if running_local:
     @web.route("/admin/main")
     def admin_main() -> ResponseType:
         """ Show main administration page """
-        return render_template("admin.html")
+        return render_template("admin.html", project_id=PROJECT_ID)
 
 
 # noinspection PyUnusedLocal

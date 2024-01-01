@@ -30,13 +30,13 @@ from skraflgame import Game
 
 
 def admin_usercount() -> Response:
-    """ Return a count of UserModel entities """
+    """Return a count of UserModel entities"""
     count = UserModel.count()
     return jsonify(count=count)
 
 
-def deferred_update() -> None:
-    """ Update all users in the datastore with lowercase nick and full name """
+def deferred_user_update() -> None:
+    """Update all users in the datastore with lowercase nick and full name"""
     logging.info("Deferred user update starting")
     CHUNK_SIZE = 200
     scan = 0
@@ -52,30 +52,69 @@ def deferred_update() -> None:
                     count += 1
                 if scan % 1000 == 0:
                     logging.info(
-                        "Completed scanning {0} and updating {1} user records".format(
+                        "Completed scanning {0} and updating {1} user entities".format(
                             scan, count
                         )
                     )
         except Exception as e:
             logging.info(
-                "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}".format(
-                    e, scan, count
-                )
+                f"Exception in deferred_user_update(): {e}, "
+                f"already scanned {scan} entities and updated {count}"
             )
     logging.info(
-        "Completed scanning {0} and updating {1} user records".format(scan, count)
+        f"Completed scanning {scan} and updating {count} user entities"
+    )
+
+
+def deferred_game_update() -> None:
+    """Reindex all games in the datastore by loading them and saving them again"""
+    logging.info("Deferred game update starting")
+    CHUNK_SIZE = 250
+    count = 0
+    with Client.get_context():
+        try:
+            q: Query[GameModel] = GameModel.query()
+            result: List[GameModel] = []
+            for gm in iter_q(q, chunk_size=CHUNK_SIZE):
+                result.append(gm)
+                if len(result) >= CHUNK_SIZE:
+                    GameModel.put_multi(result)
+                    result = []
+                count += 1
+                if count % 1000 == 0:
+                    logging.info(
+                        f"Completed scanning {count} game entities"
+                    )
+                # Debug
+                if count >= 5:
+                    break
+            if result:
+                GameModel.put_multi(result)
+        except Exception as e:
+            logging.info(
+                f"Exception in deferred_game_update(): {e}, already scanned {count} records"
+            )
+    logging.info(
+        f"Completed updating {count} game entities"
     )
 
 
 def admin_userupdate() -> str:
-    """ Start a user update background task """
+    """Start a user update background task"""
     logging.info("Starting user update")
-    Thread(target=deferred_update).start()
+    Thread(target=deferred_user_update).start()
     return "<html><body><p>User update started</p></body></html>"
 
 
+def admin_gameupdate() -> str:
+    """Start a game update background task"""
+    logging.info("Starting game update")
+    Thread(target=deferred_game_update).start()
+    return "<html><body><p>Game update started</p></body></html>"
+
+
 def admin_setfriend() -> str:
-    """ Set the friend state of a user """
+    """Set the friend state of a user"""
     uid = request.args.get("uid", "")
     state = request.args.get("state", "1")  # Default: set as friend
     try:
@@ -97,8 +136,7 @@ def admin_setfriend() -> str:
 
 
 def admin_fetchgames() -> Response:
-    """ Return a JSON representation of all finished games """
-    # noinspection PyPep8
+    """Return a JSON representation of all finished games"""
     # pylint: disable=singleton-comparison
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     gamelist: List[Dict[str, Any]] = []
@@ -120,7 +158,7 @@ def admin_fetchgames() -> Response:
 
 
 def admin_loadgame() -> Response:
-    """ Fetch a game object and return it as JSON """
+    """Fetch a game object and return it as JSON"""
 
     uuid = request.form.get("uuid", None)
     game = None
@@ -156,4 +194,3 @@ def admin_loadgame() -> Response:
         )
 
     return jsonify(game=g)
-
