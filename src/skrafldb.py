@@ -470,6 +470,13 @@ class Context:
         assert ctx is not None
         ctx.set_cache_policy(False)
 
+    @staticmethod
+    def disable_global_cache() -> None:
+        """Disable the ndb global memcache"""
+        ctx = cast(Any, ndb).get_context()
+        assert ctx is not None
+        ctx.set_memcache_policy(False)
+
 
 class Unique:
 
@@ -925,6 +932,10 @@ class GameModel(Model["GameModel"]):
     # Manual-only Elo point adjustment as a result of this game
     manual_elo0_adj = Model.OptionalInt()
     manual_elo1_adj = Model.OptionalInt()
+
+    # Flag indicating that the game entity has been processed
+    # to update the Datastore index
+    index_updated = Model.OptionalBool(default=False)
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""

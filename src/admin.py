@@ -24,7 +24,7 @@ from flask.wrappers import Response
 
 from basics import jsonify
 from languages import Alphabet
-from skrafldb import Client, iter_q, Query, UserModel, GameModel
+from skrafldb import Client, Context, iter_q, Query, UserModel, GameModel
 from skrafluser import User
 from skraflgame import Game
 
@@ -71,46 +71,50 @@ def deferred_game_update() -> None:
     logging.info("Deferred game update starting")
     CHUNK_SIZE = 250
     count = 0
+    updated = 0
     with Client.get_context():
+        Context.disable_cache()
+        Context.disable_global_cache()
         try:
             q: Query[GameModel] = GameModel.query()
             result: List[GameModel] = []
             for gm in iter_q(q, chunk_size=CHUNK_SIZE):
-                result.append(gm)
-                if len(result) >= CHUNK_SIZE:
-                    GameModel.put_multi(result)
-                    result = []
+                if not gm.index_updated:
+                    # Not already updated
+                    gm.index_updated = True
+                    result.append(gm)
+                    if len(result) >= CHUNK_SIZE:
+                        GameModel.put_multi(result)
+                        updated += len(result)
+                        result = []
                 count += 1
                 if count % 1000 == 0:
                     logging.info(
-                        f"Completed scanning {count} game entities"
+                        f"Completed scanning {count} game entities, updated {updated} entities"
                     )
-                # Debug
-                if count >= 5:
-                    break
             if result:
                 GameModel.put_multi(result)
+                updated += len(result)
         except Exception as e:
             logging.info(
-                f"Exception in deferred_game_update(): {e}, already scanned {count} records"
+                f"Exception in deferred_game_update(): {e}, already scanned {count} entities, updated {updated} entities"
             )
     logging.info(
-        f"Completed updating {count} game entities"
+        f"Completed scanning {count} and updating {updated} game entities"
     )
 
 
-def admin_userupdate() -> str:
+def admin_userupdate() -> Response:
     """Start a user update background task"""
     logging.info("Starting user update")
     Thread(target=deferred_user_update).start()
-    return "<html><body><p>User update started</p></body></html>"
+    return jsonify(ok=True, result="User update started")
 
 
-def admin_gameupdate() -> str:
+def admin_gameupdate() -> Response:
     """Start a game update background task"""
-    logging.info("Starting game update")
     Thread(target=deferred_game_update).start()
-    return "<html><body><p>Game update started</p></body></html>"
+    return jsonify(ok=True, result="Game update started")
 
 
 def admin_setfriend() -> str:

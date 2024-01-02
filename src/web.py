@@ -413,11 +413,11 @@ if running_local:
         # Be careful - this operation is EXTREMELY slow on Cloud Datastore
         return admin.admin_usercount()
 
-    @web.route("/admin/userupdate", methods=["GET"])
+    @web.route("/admin/userupdate", methods=["POST"])
     def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
 
-    @web.route("/admin/gameupdate", methods=["GET"])
+    @web.route("/admin/gameupdate", methods=["POST"])
     def admin_gameupdate() -> ResponseType:
         return admin.admin_gameupdate()
 
