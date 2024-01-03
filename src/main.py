@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -48,6 +48,7 @@ from flask.wrappers import Response
 from flask_cors import CORS  # type: ignore
 
 from config import (
+    FlaskConfig,
     DEFAULT_LOCALE,
     running_local,
     host,
@@ -66,6 +67,7 @@ from basics import (
     init_oauth,
     ResponseType,
 )
+from firebase import init_firebase_app
 from dawgdictionary import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
@@ -92,11 +94,23 @@ if running_local:
         }
     )
 
-# Since we're running from the /src directory, reset Flask's
-# static folder to be relative from the base project directory
-BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
-STATIC_FOLDER = os.path.join(BASE_PATH, "static")
+if running_local:
+    logging.info("Netskrafl app running with DEBUG set to True")
+    # flask_config["SERVER_NAME"] = "127.0.0.1"
+else:
+    # Import the Google Cloud client library
+    import google.cloud.logging
 
+    # Instantiate a logging client
+    logging_client = google.cloud.logging.Client()
+    # Connects the logger to the root logging handler;
+    # by default this captures all logs at INFO level and higher
+    cast(Any, logging_client).setup_logging()
+
+# Initialize Firebase
+init_firebase_app()
+
+# Initialize Flask
 app = Flask(__name__, static_folder=STATIC_FOLDER)
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
@@ -107,15 +121,14 @@ cast_app = cast(Any, app)
 setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
-CORS(
-    app,
-    supports_credentials=True,
-    origins=[
-        "http://explo.300dev.pl",
-        "http://localhost:19006",
-        "http://127.0.0.1:19006",
-    ],
-)
+if running_local:
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=[
+            "http://127.0.0.1:3000",
+        ],
+    )
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used
@@ -123,7 +136,8 @@ CORS(
 # invisible from JavaScript (HTTPONLY).
 # We set SameSite to 'Lax', as it cannot be 'Strict' or 'None'
 # due to the user authentication (OAuth2) redirection flow.
-flask_config = dict(
+
+flask_config = FlaskConfig(
     DEBUG=running_local,
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
@@ -139,19 +153,6 @@ flask_config = dict(
     # !!! TODO: Add other client types (type 'ios', 'android') here?
     JSON_AS_ASCII=False,
 )
-
-if running_local:
-    logging.info("Netskrafl app running with DEBUG set to True")
-    # flask_config["SERVER_NAME"] = "127.0.0.1"
-else:
-    # Import the Google Cloud client library
-    import google.cloud.logging  # type: ignore
-
-    # Instantiate a logging client
-    logging_client = google.cloud.logging.Client()
-    # Connects the logger to the root logging handler;
-    # by default this captures all logs at INFO level and higher
-    cast(Any, logging_client).setup_logging()
 
 # Read the Flask secret session key from file
 with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
@@ -170,14 +171,14 @@ init_oauth(app)
 
 @app.template_filter("stripwhite")
 def stripwhite(s: str) -> str:
-    """ Flask/Jinja2 template filter to strip out consecutive whitespace """
+    """Flask/Jinja2 template filter to strip out consecutive whitespace"""
     # Convert all consecutive runs of whitespace of 1 char or more into a single space
     return re.sub(r"\s+", " ", s)
 
 
 @app.after_request
 def add_headers(response: Response) -> Response:
-    """ Inject additional headers into responses """
+    """Inject additional headers into responses"""
     if not running_local:
         # Add HSTS to enforce HTTPS
         response.headers[
@@ -188,7 +189,7 @@ def add_headers(response: Response) -> Response:
 
 @app.context_processor
 def inject_into_context() -> Dict[str, Union[bool, str]]:
-    """ Inject variables and functions into all Flask contexts """
+    """Inject variables and functions into all Flask contexts"""
     return dict(
         # Variable dev_server is True if running on a (local) GAE development server
         dev_server=running_local,
@@ -210,7 +211,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     where XXX is calculated from the file timestamp"""
 
     def static_file_hash(filename: str) -> int:
-        """ Obtain a timestamp for the given file """
+        """Obtain a timestamp for the given file"""
         return int(os.stat(filename).st_mtime)
 
     if "static" == endpoint or endpoint.endswith(".static"):
@@ -228,31 +229,30 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
             values[param_name] = static_file_hash(os.path.join(static_folder, filename))
 
 
+@cast_app.route("/_ah/start")
+def start() -> ResponseType:
+    """App Engine is starting a fresh instance"""
+    version = os.environ.get("GAE_VERSION", "N/A")
+    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    logging.info(f"Start: project {PROJECT_ID}, version {version}, instance {instance}")
+    return "", 200
+
+
 @cast_app.route("/_ah/warmup")
 def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
     ok = Wordbase.warmup()
-    logging.info(
-        "Warmup, instance {0}, ok is {1}".format(os.environ.get("GAE_INSTANCE", ""), ok)
-    )
-    return "", 200
-
-
-@cast_app.route("/_ah/start")
-def start() -> ResponseType:
-    """ App Engine is starting a fresh instance """
-    version = os.environ.get("GAE_VERSION", "N/A")
     instance = os.environ.get("GAE_INSTANCE", "N/A")
     logging.info(
-        f"Start: version {version}, instance {instance}"
+        f"Warmup, instance {instance}, ok is {ok}"
     )
     return "", 200
 
 
 @cast_app.route("/_ah/stop")
 def stop() -> ResponseType:
-    """ App Engine is shutting down an instance """
+    """App Engine is shutting down an instance"""
     instance = os.environ.get("GAE_INSTANCE", "N/A")
     logging.info(f"Stop: instance {instance}")
     return "", 200
@@ -260,18 +260,11 @@ def stop() -> ResponseType:
 
 @app.errorhandler(500)  # type: ignore
 def server_error(e: Union[int, Exception]) -> ResponseType:
-    """ Return a custom 500 error """
-    return f"<html><body><p>Eftirfarandi villa kom upp: {e}</p></body></html>", 500
-
-
-if not running_local:
-    # Start the Google Stackdriver debugger, if not running locally
-    try:
-        import googleclouddebugger  # type: ignore
-
-        googleclouddebugger.enable()  # type: ignore
-    except ImportError:
-        pass
+    """Return a custom 500 error"""
+    logging.error(f"Server error: {e}")
+    if PROJECT_ID == "netskrafl":
+        return f"<html><body><p>Villa kom upp í netþjóni: {e}</p></body></html>", 500
+    return f"<html><body><p>An error occurred in the server: {e}</p></body></html>", 500
 
 
 # Run a default Flask web server for testing if invoked directly as a main program
@@ -284,4 +277,3 @@ if __name__ == "__main__":
         processes=1,
         host=host,  # Set by default to "127.0.0.1" in basics.py
     )
-

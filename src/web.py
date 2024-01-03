@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -35,7 +35,7 @@ import logging
 from flask import (
     Blueprint,
     render_template,
-    send_from_directory,
+    send_from_directory,  # type: ignore
     redirect,
     url_for,
     request,
@@ -44,12 +44,13 @@ from flask import (
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-from config import PROJECT_ID, running_local, VALID_ISSUERS
+from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS
 from basics import (
     UserIdDict,
     current_user,
     auth_required,
     get_google_auth,
+    jsonify,
     session_idinfo,
     session_user,
     set_session_userid,
@@ -135,8 +136,8 @@ def login_user() -> bool:
             # in the user session
             idinfo["method"] = "Google"
             idinfo["account"] = uld["account"]
-            idinfo["new"] = uld["new"]
-            idinfo["locale"] = uld["locale"]
+            idinfo["new"] = uld.get("new", False)
+            idinfo["locale"] = uld.get("locale", DEFAULT_LOCALE)
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
@@ -183,7 +184,7 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 @web.route("/friend")
 def friend() -> ResponseType:
     """ HTML content of a friend (subscription) promotion dialog """
-    locale = request.args.get("locale", "is_IS")
+    locale = request.args.get("locale", DEFAULT_LOCALE)
     return render_locale_template("promo-friend-{0}.html", locale)
 
 
@@ -240,7 +241,7 @@ def handle_billing() -> ResponseType:
 def rawhelp() -> ResponseType:
     """ Return raw help page HTML. Authentication is not required. """
 
-    locale = request.args.get("locale", "is_IS")
+    locale = request.args.get("locale", DEFAULT_LOCALE)
 
     def override_url_for(endpoint: str, **values: Any) -> str:
         """ Convert URLs from old-format plain ones to single-page fancy ones """
@@ -413,9 +414,14 @@ if running_local:
         # Be careful - this operation is EXTREMELY slow on Cloud Datastore
         return admin.admin_usercount()
 
-    @web.route("/admin/userupdate", methods=["GET"])
+    @web.route("/admin/userupdate", methods=["POST"])
     def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
+
+    @web.route("/admin/gameupdate", methods=["POST"])
+    def admin_gameupdate() -> ResponseType:
+        return jsonify(ok=False, result="Not implemented")
+        # return admin.admin_gameupdate()
 
     @web.route("/admin/setfriend", methods=["GET"])
     def admin_setfriend() -> ResponseType:
@@ -428,7 +434,7 @@ if running_local:
     @web.route("/admin/main")
     def admin_main() -> ResponseType:
         """ Show main administration page """
-        return render_template("admin.html")
+        return render_template("admin.html", project_id=PROJECT_ID)
 
 
 # noinspection PyUnusedLocal

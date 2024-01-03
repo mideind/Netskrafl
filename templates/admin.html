@@ -7,6 +7,47 @@
 .admin-stat {
    font-weight: 700;
 }
+div#game-info {
+   margin-top: 1em;
+   max-height: 480px;
+   overflow-x: auto;
+}
+div#game-info pre {
+   font-size: 12px;
+   line-height: 15px;
+}
+input#uuid {
+   margin-left: 0.6em;
+   font-size: 1.1em;
+   font-weight: 400;
+   width: 320px;
+}
+div.modal-close.opbutton {
+   position: relative;
+   display: inline-block;
+   margin-left: 1em;
+   height: 25px;
+   top: auto;
+   left: auto;
+   bottom: auto;
+   right: auto;
+   padding-top: 6px;
+   background-color: #72a55f;
+}
+div#reindex-games {
+   width: 160px;
+}
+div.legend-container {
+   display: flex;
+   flex-direction: row;
+   justify-content: center;
+   align-items: center;
+}
+span.button-legend {
+   margin-left: 0.5em;
+   font-size: 0.9em;
+   font-weight: 400;
+}
 </style>
 
 {% endblock %}
@@ -76,7 +117,7 @@ function populateGame(json) {
    // Display the game info
    var str = "<p>Game not found</p>";
    if (json.game)
-      str = "<p>" + json.game.uuid + "</p>";
+      str = "<pre>" + JSON.stringify(json, null, 2) + "</pre>";
    $("#game-info").html(str);
 }
 
@@ -89,6 +130,30 @@ function loadGame() {
          uuid: uuid
       },
       populateGame
+   );
+}
+
+function updateGames() {
+   // Reindex all games
+   // Obtain the current date/time in UTC string format
+   const utcTimeNowAsString = new Date().toISOString();
+   const timeSuffix = " (" + utcTimeNowAsString + ")";
+   const status = "Triggering reindex of games" + timeSuffix;
+   $("#status").html(status);
+   serverQuery("/admin/gameupdate",
+      {},
+      (json) => {
+         // successFunc
+         if (json.ok)
+            $("#status").html("Reindex started" + timeSuffix);
+         else
+            $("#status").html("Reindex failed to start" + timeSuffix);
+      },
+      undefined, // completeFunc
+      () => {
+         // errorFunc
+         $("#status").html("Reindex failed due to error" + timeSuffix);
+      },
    );
 }
 
@@ -133,31 +198,55 @@ function initMain() {
 
    <ul>
       <li><a href="#tabs-1"><span class='glyphicon glyphicon-user'></span>&nbsp;&nbsp;Main statistics</a></li>
-      <li><a href="#tabs-2"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Downloads</a></li>
-      <li><a href="#tabs-3"><span class='glyphicon glyphicon-flash'></span>&nbsp;&nbsp;Operations</a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-flash'></span>&nbsp;&nbsp;Operations</a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-th'></span>&nbsp;&nbsp;Games</a></li>
    </ul>
 
    <div id="tabs-1">
 
-      <p><strong>Main statistics</strong></p>
+      <p><strong>Project:</strong></p>
+      <p>{{ project_id }}</p>
+
+      <p><strong>Main statistics:</strong></p>
 
       <p>Number of users: <span class="admin-stat" id="num-users">0</span></p>
       <p>Number of games played last 24 hours: <span class="admin-stat" id="num-games-24">0</span></p>
 
    </div>
 
-   <div id="tabs-3">
+   <div id="tabs-2">
 
       <p><strong>Operations</strong></p>
+
+      <!-- Reindex games button -->
+      <div class="modal-close opbutton" id="reindex-games" title="Reindex games" tabindex="2"
+         onclick="updateGames()"
+         onmouseover="buttonOver(this)"
+         onmouseout="buttonOut(this)">
+         <div class="legend-container">
+            <span class="glyphicon glyphicon-cog"></span>
+            <span class="button-legend">Reindex games</span>
+         </div>
+      </div>
+
+      <div><p id="status"></p></div>
+
+   </div>
+
+   <div id="tabs-3">
+
+      <p><strong>Game inspection</strong></p>
 
       <span>Game UUID:</span> <input type="text" name="uuid" id="uuid" tabindex="1"
          maxlength=36 autofocus class="text" value=""/>
 
       <!-- OK button -->
-      <div class="modal-close" id="load-game" title="Sækja viðureign" tabindex="2"
+      <div class="modal-close opbutton" id="load-game" title="Sækja viðureign" tabindex="2"
          onclick="loadGame()"
          onmouseover="buttonOver(this)"
-         onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-th"></span></div>
+         onmouseout="buttonOut(this)">
+         <span class="glyphicon glyphicon-th"></span>
+      </div>
 
       <div id="game-info"></div>
 

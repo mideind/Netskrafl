@@ -423,7 +423,7 @@
     "en": "Challenge move?"
   },
   "Röng véfenging kostar 10 stig": {
-    "en": "An unsuccessful challenge costs 10 points"
+    "en": "Wrong challenge costs 10 points"
   },
   "Er álínis": {
     "en": "Is online"
@@ -609,6 +609,12 @@
       "Apart from this, Explo only stores information which is voluntarily ",
       "entered by users themselves. A log is kept of web traffic and events within Explo, ",
       "for the purpose of improving the service."
+    ],
+    "pl": [
+      "W celu identyfikacji Explo przypisuje każdemu użytkownikowi adres e-mail i nazwę. ",
+      "Poza tym Explo przechowuje tylko te informacje, które dobrowolnie wprowadzają sami ",
+      "użytkownicy. Prowadzony jest rejestr ruchu internetowego i zdarzeń w Explo w celu ",
+      "ulepszenia usługi."
     ]
   },
   "welcome_1": {

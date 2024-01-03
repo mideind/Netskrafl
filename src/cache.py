@@ -2,7 +2,7 @@
 
     Cache - Redis cache wrapper for the Netskrafl application
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     This module wraps Redis caching in a thin wrapper object,
@@ -51,7 +51,13 @@ def _deserialize_dt(args: DateTimeTuple) -> datetime:
 
 
 _serializers: Mapping[Tuple[str, str], SerializerFuncTuple] = {
-    ("datetime", "datetime"): (_serialize_dt, _deserialize_dt,)
+    ("datetime", "datetime"):
+        (_serialize_dt, _deserialize_dt,),
+    # Apparently we sometimes get this derived class from the Google
+    # datastore instead of datetime.datetime, so we need an entry for
+    # it. Replacing it with plain datetime.datetime is fine, btw.
+    ("proto.datetime_helpers", "DatetimeWithNanoseconds"):
+        (_serialize_dt, _deserialize_dt,),
 }
 
 
@@ -71,7 +77,7 @@ def serialize(obj: Any) -> Dict[str, Any]:
         # Use a custom serializer
         serializer = _serializers.get((module_name, cls_name))
         # If we don't have one, that's a problem
-        assert serializer is not None
+        assert serializer is not None, f"No serializer for {module_name}.{cls_name}"
         # Apply the serializer to the object
         s = serializer[0](obj)
     # Do some sanity checks: we must be able to recreate
@@ -89,7 +95,7 @@ def _dumps(obj: Any) -> str:
     return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
-def _loads(j: str) -> Any:
+def _loads(j: Optional[str]) -> Any:
     """ Return an instance of a serializable class,
         initialized from a JSON string """
     if j is None:

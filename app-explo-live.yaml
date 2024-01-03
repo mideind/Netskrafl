@@ -1,0 +1,167 @@
+#
+# App.yaml for the Explo application on Google App Engine
+#
+# Copyright (C) 2023 by Miðeind ehf.
+# Original author: Vilhjálmur Þorsteinsson
+#
+# Deploy with 'gcloud beta app deploy --no-promote --project=explo-live --version=somename app-explo.yaml'
+#
+
+runtime: python311
+entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
+
+instance_class: B4_1G
+manual_scaling:
+  instances: 2
+
+vpc_access_connector:
+  name: 'projects/explo-live/locations/europe-west1/connectors/vpc0c'
+
+env_variables:
+  # When running on the local development server,
+  # REDISHOST is automatically set to 'localhost' (in cache.py)
+  REDISHOST: 10.81.155.67
+  REDISPORT: 6379
+  PROJECT_ID: explo-live
+  # Single page UI
+  SINGLE_PAGE: TRUE
+
+inbound_services:
+- warmup
+
+handlers:
+
+# Robots.txt URL, cacheable
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+  expiration: "1d 0h"
+
+# Favorite icon URL, cacheable
+- url: /favicon.ico
+  static_files: static/favicon.ico
+  upload: static/favicon.ico
+  expiration: "1d 0h"
+
+# Favorite icon URL, 32x32
+- url: /favicon-32x32.png
+  static_files: static/favicon-32x32.png
+  upload: static/favicon-32x32.png
+  expiration: "1d 0h"
+
+# Favorite icon URL, 16x16
+- url: /favicon-16x16.png
+  static_files: static/favicon-16x16.png
+  upload: static/favicon-16x16.png
+  expiration: "1d 0h"
+
+# Service worker
+- url: /service-worker.js
+  static_files: static/service-worker.js
+  upload: static/service-worker.js
+  mime_type: application/javascript
+  #expiration: "1d 0h"
+
+# Internet Explorer & Windows 8 resource file, can be cached  
+- url: /browserconfig.xml
+  static_files: static/browserconfig.xml
+  upload: static/browserconfig.xml
+  expiration: "1d 0h"
+
+# Microsoft Windows tile
+- url: /mstile-150x150.png
+  static_files: static/mstile-150x150.png
+  upload: static/mstile-150x150.png
+  expiration: "1d 0h"
+
+# Web manifest
+- url: /explo.webmanifest
+  static_files: static/explo.webmanifest
+  upload: static/explo.webmanifest
+  expiration: "1d 0h"
+
+# Safari pinned tab
+- url: /safari-pinned-tab.svg
+  static_files: static/safari-pinned-tab.svg
+  upload: static/safari-pinned-tab.svg
+  expiration: "1d 0h"
+
+# Special Apple iOS URLs for image resources, all cacheable
+- url: /apple-touch-icon.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+  expiration: "1d 0h"
+- url: /touch-icon-ipad.png
+  static_files: static/touch-icon-ipad.png
+  upload: static/touch-icon-ipad.png
+  expiration: "1d 0h"
+- url: /touch-icon-ipad-retina.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+  expiration: "1d 0h"
+- url: /touch-icon-iphone-retina.png
+  static_files: static/touch-icon-iphone-retina.png
+  upload: static/touch-icon-iphone-retina.png
+  expiration: "1d 0h"
+
+# Image files that can be cached
+- url: /static/(.*\.(gif|png|jpg|svg))(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.(gif|png|jpg|svg)$
+  expiration: "1d 0h"
+
+# CSS files that can be cached
+- url: /static/(.*\.css)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.css$
+  mime_type: text/css
+  expiration: "0d 1h" # Was "1d 0h"
+
+# Catchall for JavaScript
+- url: /static/(.*\.min\.js)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.min\.js$
+  mime_type: application/javascript
+  expiration: "0d 1h" # Was "1d 0h"
+
+# Catchall for JavaScript
+- url: /static/built/(.*\.min\.js)(\?.*)?$
+  static_files: static/built/\1
+  upload: static/built/.*\.min\.js$
+  mime_type: application/javascript
+  expiration: "0d 1h" # Was "1d 0h"
+
+# Font files that can be cached
+- url: /static/glyphicons-regular.ttf
+  static_files: static/glyphicons-regular.ttf
+  upload: static/glyphicons-regular.ttf
+  expiration: "1d 0h"
+  mime_type: application/font-sfnt
+- url: /static/glyphicons-regular.eot
+  static_files: static/glyphicons-regular.eot
+  upload: static/glyphicons-regular.eot
+  expiration: "1d 0h"
+  mime_type: application/vnd.ms-fontobject
+- url: /static/glyphicons-regular.svg
+  static_files: static/glyphicons-regular.svg
+  upload: static/glyphicons-regular.svg
+  expiration: "1d 0h"
+  mime_type: image/svg+xml
+- url: /static/glyphicons-regular.woff
+  static_files: static/glyphicons-regular.woff
+  upload: static/glyphicons-regular.woff
+  expiration: "1d 0h"
+  mime_type: application/font-woff
+
+# MP3 sound files that can be cached  
+- url: /static/(.*\.mp3)$
+  static_files: static/\1
+  upload: static/.*\.mp3$
+  mime_type: audio/mpeg
+  expiration: "1d 0h"
+
+# Catchall for all other URLS
+- url: .*
+  secure: always
+  redirect_http_response_code: 301
+  script: auto

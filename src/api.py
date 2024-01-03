@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -20,6 +20,8 @@ from __future__ import annotations
 from typing import (
     Optional,
     Dict,
+    Mapping,
+    Sequence,
     TypedDict,
     Union,
     List,
@@ -38,29 +40,24 @@ import logging
 import threading
 import random
 from datetime import datetime, timedelta
+import base64
+import io
 
 from flask import (
     Blueprint,
     request,
     url_for,
+    send_file,  # type: ignore
 )
-from flask.wrappers import Response
 from flask.globals import current_app
 
-import requests
-import cachecontrol  # type: ignore
-from google.oauth2 import id_token  # type: ignore
-from google.auth.exceptions import GoogleAuthError  # type: ignore
-from google.auth.transport import requests as google_requests  # type: ignore
 from werkzeug.utils import redirect
 
 from config import (
+    RC_WEBHOOK_AUTH,
     running_local,
     PROJECT_ID,
-    CLIENT,
     DEFAULT_LOCALE,
-    FACEBOOK_APP_SECRET,
-    FACEBOOK_APP_ID,
 )
 from basics import (
     is_mobile_client,
@@ -68,10 +65,8 @@ from basics import (
     auth_required,
     ResponseType,
     RequestData,
-    UserIdDict,
     current_user,
     current_user_id,
-    set_session_userid,
     clear_session_userid,
 )
 from cache import memcache
@@ -82,6 +77,7 @@ from languages import (
     current_lc,
     current_alphabet,
     current_language,
+    to_supported_locale,
     SUPPORTED_LOCALES,
 )
 from dawgdictionary import Wordbase
@@ -95,11 +91,12 @@ from skraflmechanics import (
     ChallengeMove,
     Error,
 )
-from skrafluser import MAX_NICKNAME_LENGTH, User, UserLoginDict
+from skrafluser import MAX_NICKNAME_LENGTH, User
 from skraflgame import BestMoveList, Game
 from skraflplayer import AutoPlayer
 from skrafldb import (
     ChatModel,
+    ListPrefixDict,
     ZombieModel,
     PrefsDict,
     ChallengeModel,
@@ -107,11 +104,11 @@ from skrafldb import (
     UserModel,
     FavoriteModel,
     GameModel,
-    StatsModel,
     RatingModel,
 )
 import firebase
 from billing import cancel_plan
+import auth
 
 # Type definitions
 T = TypeVar("T")
@@ -120,9 +117,10 @@ UserPrefsType = Dict[str, Union[str, bool]]
 
 class GameListDict(TypedDict):
 
-    """ The dictionary returned from gamelist() """
+    """The dictionary returned from gamelist()"""
 
     uuid: str
+    locale: str
     url: str
     oppid: Optional[str]
     opp: str
@@ -149,9 +147,10 @@ GameList = List[GameListDict]
 
 class RecentListDict(TypedDict):
 
-    """ The dictionary returned from recentlist() """
+    """The dictionary returned from recentlist()"""
 
     uuid: str
+    locale: str
     url: str
     oppid: Optional[str]
     opp: str
@@ -178,7 +177,7 @@ RecentList = List[RecentListDict]
 
 class ChallengeListDict(TypedDict):
 
-    """ The dictionary returned from _challengelist() """
+    """The dictionary returned from _challengelist()"""
 
     key: str
     received: bool
@@ -200,7 +199,7 @@ ChallengeList = List[ChallengeListDict]
 
 class UserListDict(TypedDict):
 
-    """ The dictionary returned from _userlist() """
+    """The dictionary returned from _userlist()"""
 
     userid: str
     robot_level: int
@@ -215,25 +214,15 @@ class UserListDict(TypedDict):
     ready: bool
     ready_timed: bool
     live: bool
-    image: Optional[str]
+    image: str
 
 
 UserList = List[UserListDict]
 
 
-class StatsSummaryDict(TypedDict):
-
-    """ A summary of statistics for a player at a given point in time """
-
-    ts: str  # An ISO-formatted time stamp
-    elo: int
-    human_elo: int
-    manual_elo: int
-
-
 class ChatMessageDict(TypedDict):
 
-    """ A chat message as returned by the /chatload endpoint """
+    """A chat message as returned by the /chatload endpoint"""
 
     from_userid: str
     name: str
@@ -244,20 +233,24 @@ class ChatMessageDict(TypedDict):
 
 class ChatHistoryDict(TypedDict):
 
-    """ A chat history entry as returned by the /chathistory endpoint """
+    """A chat history entry as returned by the /chathistory endpoint"""
 
-    user: str
-    name: str
+    user: str  # User id
+    name: str  # Full name
+    nick: str  # Nickname
     image: str
     last_msg: str
     ts: str  # An ISO-formatted time stamp
     unread: bool
+    live: bool
+    fav: bool
+    disabled: bool  # Chat disabled?
 
 
 class MoveNotifyDict(TypedDict):
 
-    """ A notification sent via Firebase to clients when a move has been
-        processed """
+    """A notification sent via Firebase to clients when a move has been
+    processed"""
 
     game: str
     timestamp: str
@@ -268,13 +261,27 @@ class MoveNotifyDict(TypedDict):
     progress: Tuple[int, int]
 
 
+class RevenueCatEvent(TypedDict, total=False):
+
+    """A JSON object describing a subscription event from RevenueCat"""
+
+    type: str
+    app_user_id: str
+    transferred_from: Sequence[str]
+    transferred_to: Sequence[str]
+
+
 # Maximum number of online users to display
 MAX_ONLINE = 80
 
-# Maximum number of best moves to return from /bestmoves
+# Default number of best moves to return from /bestmoves.
 # This is set to 19 moves because that number is what fits
-# in the move list of the fullscreen web version
-MAX_BEST_MOVES = 19
+# in the move list of the fullscreen web version.
+DEFAULT_BEST_MOVES = 19
+# Maximum number of best moves to return from /bestmoves
+MAX_BEST_MOVES = 20
+
+EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/icon-explo-192.png"
 
 # To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
 # exceptions, run the AutoPlayer move generators serially and exclusively
@@ -287,16 +294,6 @@ api_blueprint = Blueprint("api", __name__)
 # and/or compatible with Pylance
 api = cast(Any, api_blueprint)
 
-# Establish a cached session to communicate with the Google API
-session = requests.session()
-cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
-google_request = google_requests.Request(session=cached_session)
-
-# URL to validate Facebook login token, in /oauth_fb endpoint
-FACEBOOK_TOKEN_VALIDATION_URL = (
-    "https://graph.facebook.com/debug_token?input_token={0}&access_token={1}|{2}"
-)
-
 VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     "is": {
         "NICK_MISSING": "Notandi verður að hafa einkenni",
@@ -305,20 +302,43 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "Tölvupóstfang verður að innihalda @-merki",
         "LOCALE_UNKNOWN": "Óþekkt staðfang (locale)",
     },
-    "en": {
+    "en_US": {
         "NICK_MISSING": "Nickname missing",
         "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
         "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
     },
-    # !!! TODO: Add Polish here
+    # !!! TODO: Add en_GB and Polish here
+}
+
+PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
+    "title": {
+        "is": "Þú átt leik í Explo 💥",
+        "en": "Your turn in Explo 💥",
+        "pl": "Twoja kolej w Explo 💥",
+    },
+    "body": {
+        "is": "{player} hefur leikið í viðureign ykkar.",
+        "en": "{player} made a move in your game.",
+        "pl": "{player} wykonał ruch w Twojej grze.",
+    },
+    "chall_title": {
+        "is": "Þú fékkst áskorun í Explo 💥",
+        "en": "You've been challenged in Explo 💥",
+        "pl": "Zostałeś wyzwany w Explo 💥",
+    },
+    "chall_body": {
+        "is": "{player} hefur skorað á þig í viðureign!",
+        "en": "{player} has challenged you to a game!",
+        "pl": "{player} wyzwał cię na pojedynek!",
+    },
 }
 
 
 class UserForm:
 
-    """ Encapsulates the data in the user preferences form """
+    """Encapsulates the data in the user preferences form"""
 
     def __init__(self, usr: Optional[User] = None) -> None:
         # We store the URL that the client will redirect to after
@@ -338,12 +358,13 @@ class UserForm:
         self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
         self.friend: bool = False
         self.has_paid: bool = False
+        self.chat_disabled: bool = False
         self.locale: str = current_lc()
         if usr:
             self.init_from_user(usr)
 
     def init_from_form(self, form: Dict[str, str]) -> None:
-        """ The form has been submitted after editing: retrieve the entered data """
+        """The form has been submitted after editing: retrieve the entered data"""
         try:
             self.nickname = form["nickname"].strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError, KeyError):
@@ -356,7 +377,9 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
-        self.locale = form.get("locale", "").strip() or DEFAULT_LOCALE
+        self.locale = (
+            to_supported_locale(form.get("locale", "").strip()) or DEFAULT_LOCALE
+        )
         try:
             self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
@@ -366,11 +389,12 @@ class UserForm:
             self.fanfare = "fanfare" in form
             self.beginner = "beginner" in form
             self.fairplay = "fairplay" in form
+            self.chat_disabled = "chat_disabled" in form
         except (TypeError, ValueError, KeyError):
             pass
 
     def init_from_dict(self, d: Dict[str, str]) -> None:
-        """ The form has been submitted after editing: retrieve the entered data """
+        """The form has been submitted after editing: retrieve the entered data"""
         try:
             self.nickname = d.get("nickname", "").strip()[0:MAX_NICKNAME_LENGTH]
         except (TypeError, ValueError):
@@ -383,7 +407,7 @@ class UserForm:
             self.email = d.get("email", "").strip()
         except (TypeError, ValueError):
             pass
-        self.locale = d.get("locale", "").strip() or DEFAULT_LOCALE
+        self.locale = to_supported_locale(d.get("locale", "").strip()) or DEFAULT_LOCALE
         try:
             self.image = d.get("image", "").strip()
         except (TypeError, ValueError, KeyError):
@@ -393,11 +417,12 @@ class UserForm:
             self.fanfare = bool(d.get("fanfare", False))
             self.beginner = bool(d.get("beginner", False))
             self.fairplay = bool(d.get("fairplay", False))
+            self.chat_disabled = bool(d.get("chat_disabled", False))
         except (TypeError, ValueError, KeyError):
             pass
 
     def init_from_user(self, usr: User) -> None:
-        """ Load the data to be edited upon initial display of the form """
+        """Load the data to be edited upon initial display of the form"""
         self.nickname = usr.nickname()
         self.full_name = usr.full_name()
         # Note that the email property of a User is fetched from the user
@@ -410,17 +435,18 @@ class UserForm:
         # Eventually, we will edit a plan identifier, not just a boolean
         self.friend = usr.plan() != ""
         self.has_paid = usr.has_paid()
+        self.chat_disabled = usr.chat_disabled()
         self.locale = usr.locale
         self.id = current_user_id() or ""
         self.image = usr.image()
 
     @staticmethod
     def error_msg(key: str) -> str:
-        """ Return a validation error message, in the appropriate language """
+        """Return a validation error message, in the appropriate language"""
         lang = current_language()
         if lang not in VALIDATION_ERRORS:
-            # Default to English
-            lang = "en"
+            # Default to U.S. English
+            lang = "en_US"
         return VALIDATION_ERRORS[lang].get(key, "")
 
     def validate(self) -> Dict[str, str]:
@@ -441,7 +467,7 @@ class UserForm:
         return errors
 
     def store(self, usr: User) -> None:
-        """ Store validated form data back into the user entity """
+        """Store validated form data back into the user entity"""
         usr.set_nickname(self.nickname)
         usr.set_full_name(self.full_name)
         # Note that the User.set_email() call sets the email in the user preferences,
@@ -451,12 +477,13 @@ class UserForm:
         usr.set_fanfare(self.fanfare)
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
+        usr.disable_chat(self.chat_disabled)
         usr.set_locale(self.locale)
         # usr.set_image(self.image)  # The user image cannot and must not be set like this
         usr.update()
 
     def as_dict(self) -> UserPrefsType:
-        """ Return the user preferences as a dictionary """
+        """Return the user preferences as a dictionary"""
         return self.__dict__
 
 
@@ -464,217 +491,53 @@ class UserForm:
 def oauth2callback() -> ResponseType:
     """The OAuth2 login flow POSTs to this callback when a user has
     signed in using a Google Account"""
-
-    # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
-    # this route is only for HTTP POSTs
-
-    if not CLIENT:
-        # Something is wrong in the internal setup of the server
-        # (missing setting in client_secret_*.json)
-        # 500 - Internal server error
-        return jsonify({"status": "invalid", "msg": "Missing CLIENT"}), 500
-
-    # !!! TODO: Add CSRF token mechanism
-    # csrf_token = request.form.get("csrfToken", "") or request.json['csrfToken']
-    token: str
-    config = cast(Any, current_app).config
-    testing: bool = config.get("TESTING", False)
-    client_type: str = "web"  # Default client type
-
-    if testing:
-        # Testing only: there is no token in the request
-        token = ""
-    else:
-        token = request.form.get("idToken", "") or cast(Any, request).json.get(
-            "idToken", ""
-        )
-        if not token:
-            # No authentication token included in the request
-            # 400 - Bad Request
-            return jsonify({"status": "invalid", "msg": "Missing token"}), 400
-        client_type = (
-            request.form.get("clientType", "")
-            or cast(Any, request).json.get("clientType", "")
-            or "web"
-        )
-
-    client_id = CLIENT.get(client_type, {}).get("id", "")
-    if not client_id:
-        # Unknown client type (should be one of 'web', 'ios', 'android')
-        # 400 - Bad Request
-        return jsonify({"status": "invalid", "msg": "Unknown client type"}), 400
-
-    uld: Optional[UserLoginDict] = None
-    account: Optional[str] = None
-    userid: Optional[str] = None
-    idinfo: Optional[UserIdDict] = None
-    email: Optional[str] = None
-    image: Optional[str] = None
-    name: Optional[str] = None
-
-    try:
-        if testing:
-            # Get the idinfo dictionary directly from the request
-            f = cast(Dict[str, str], request.form)
-            idinfo = UserIdDict(
-                iss="accounts.google.com",
-                sub=f["sub"],
-                name=f["name"],
-                picture=f["picture"],
-                email=f["email"],
-                method="Test",
-                account=f["sub"],
-                locale=DEFAULT_LOCALE,
-                new=False,
-                client_type=client_type,
-            )
-        else:
-            # Verify the token and extract its claims
-            idinfo = id_token.verify_oauth2_token(  # type: ignore
-                token, google_request, client_id
-            )
-            assert idinfo is not None
-        # ID token is valid; extract the claims
-        # Get the user's Google Account ID
-        account = idinfo.get("sub")
-        if account:
-            # Full name of user
-            name = idinfo.get("name")
-            # User image
-            image = idinfo.get("picture")
-            # Make sure that the e-mail address is in lowercase
-            email = idinfo.get("email", "").lower()
-            # Attempt to find an associated user record in the datastore,
-            # or create a fresh user record if not found
-            # !!! TODO: Assign locale
-            locale = DEFAULT_LOCALE
-            uld = User.login_by_account(
-                account, name or "", email or "", image or "", locale=locale
-            )
-            # Store login data where we'll find it again, and return
-            # some of it back to the client
-            userid = uld["user_id"]
-            uld["method"] = idinfo["method"] = "Google"
-            idinfo["account"] = uld["account"]
-            idinfo["locale"] = uld["locale"]
-            idinfo["new"] = uld["new"]
-            idinfo["client_type"] = client_type
-
-    except (KeyError, ValueError) as e:
-        # Invalid token
-        # 401 - Unauthorized
-        return jsonify({"status": "invalid", "msg": str(e)}), 401
-
-    except GoogleAuthError as e:
-        return jsonify({"status": "invalid", "msg": str(e)}), 401
-
-    if not userid or uld is None:
-        # Unable to obtain the user id for some reason
-        # 401 - Unauthorized
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
-
-    # Authentication complete; user id obtained
-    # Set a session cookie
-    set_session_userid(userid, idinfo)
-    # Send a bunch of login data back to the client via the UserLoginDict instance
-    return jsonify(dict(status="success", **uld))
+    return auth.oauth2callback(request)
 
 
 @api.route("/oauth_fb", methods=["POST"])
 def oauth_fb() -> ResponseType:
-    """ Facebook authentication """
-    rq = RequestData(request)
-    user: Optional[Dict[str, str]] = rq.get("user")
-    if user is None or not (account := user.get("id", "")):
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
-    token = user.get("token", "")
-    # Validate the Facebook token
-    if not token or len(token) > 1024 or not token.isalnum():
-        return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
-    r = requests.get(
-        FACEBOOK_TOKEN_VALIDATION_URL.format(
-            token, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
-        )
-    )
-    if r.status_code != 200:
-        # Error from the Facebook API: communicate it back to the client
-        msg = ""
-        try:
-            msg = cast(Any, r).json()["error"]["message"]
-            msg = f": {msg}"
-        except (KeyError, ValueError):
-            pass
-        return (
-            jsonify(
-                {"status": "invalid", "msg": f"Unable to verify Facebook token{msg}"}
-            ),
-            401,
-        )
-    # So far, so good: double check that token data are as expected
-    name = user.get("full_name", "")
-    image = user.get("image", "")
-    email = user.get("email", "").lower()
-    response: Dict[str, Any] = cast(Any, r).json()
-    if not response or not (rd := response.get("data")):
-        return (
-            jsonify(
-                {"status": "invalid", "msg": "Invalid format of Facebook token data"}
-            ),
-            401,
-        )
-    if (
-        FACEBOOK_APP_ID != rd.get("app_id")
-        or "USER" != rd.get("type")
-        or not rd.get("is_valid")
-    ):
-        return (
-            jsonify({"status": "invalid", "msg": "Facebook token data mismatch"}),
-            401,
-        )
-    if account != rd.get("user_id"):
-        return (
-            jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
-            401,
-        )
-    # Make sure that Facebook account ids are different from Google/OAuth ones
-    # by prefixing them with 'fb:'
-    account = "fb:" + account
-    # Login or create the user in the Explo user model
-    # !!! TODO: send locale from client in request
-    locale = rq.get("locale") or DEFAULT_LOCALE
-    uld = User.login_by_account(account, name, email, image, locale=None)
-    userid = uld.get("user_id") or ""
-    uld["method"] = "Facebook"
-    # Emulate the OAuth idinfo
-    idinfo = UserIdDict(
-        iss="accounts.facebook.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
-        method="Facebook",
-        account=account,
-        locale=locale,
-        new=uld.get("new") or False,
-        client_type="web",  # !!! TODO: Pass correct client_type from client
-    )
-    # Set the Flask session token
-    set_session_userid(userid, idinfo)
-    # Send a bunch of login data back to the client via the UserLoginDict instance
-    return jsonify(dict(status="success", **uld))
+    """Facebook authentication"""
+    return auth.oauth_fb(request)
+
+
+@api.route("/oauth_apple", methods=["POST"])
+def oauth_apple() -> ResponseType:
+    """Apple authentication"""
+    return auth.oauth_apple(request)
+
+
+@api.route("/oauth_explo", methods=["POST"])
+def oauth_explo() -> ResponseType:
+    """Explo authentication"""
+    return auth.oauth_explo(request)
 
 
 @api.route("/logout", methods=["POST"])
 def logout() -> ResponseType:
-    """ Log the current user out """
+    """Log the current user out"""
     clear_session_userid()
     return jsonify({"status": "success"})
+
+
+@api.route("/delete_account", methods=["POST"])
+@auth_required(ok=False)
+def delete_account() -> ResponseType:
+    """Delete the account of the current user"""
+    # This marks the account as inactive and erases personally identifiable data
+    # such as the full name, the email address and the profile picture.
+    # Challenges and favorites associated with the account are also deleted.
+    u = current_user()
+    if not u or not u.delete_account():
+        return jsonify(ok=False)
+    # Successfully deleted: also delete the session cookie
+    clear_session_userid()
+    return jsonify(ok=True)
 
 
 @api.route("/firebase_token", methods=["POST"])
 @auth_required(ok=False)
 def firebase_token() -> ResponseType:
-    """ Obtain a custom Firebase token for the current logged-in user """
+    """Obtain a custom Firebase token for the current logged-in user"""
     cuid = current_user_id()
     if not cuid:
         return jsonify(ok=False)
@@ -683,6 +546,21 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=True, token=token)
     except:
         return jsonify(ok=False)
+
+
+def localize_push_message(key: str, locale: str) -> str:
+    """Return a localized push message for the given key and locale"""
+    pm = PUSH_MESSAGES.get(key)
+    if pm is None:
+        return ""
+    txt = pm.get(locale)
+    if txt is None and len(locale) > 2:
+        # Try to find a message for the language only
+        txt = pm.get(locale[0:2])
+    if txt is None:
+        # Default to English
+        txt = pm.get("en")
+    return txt or ""
 
 
 def _process_move(
@@ -758,6 +636,8 @@ def _process_move(
         # show the user a corresponding error message
         return jsonify(result=err, msg=msg)
 
+    opponent: Optional[str] = None
+
     # Serialize access to the following code section
     with autoplayer_lock:
 
@@ -788,7 +668,7 @@ def _process_move(
             game.finalize_score()
 
         # Make sure the new game state is persistently recorded
-        game.store()
+        game.store(calc_elo_points=is_over)
 
         if force_resign:
             # Reverse the opponent and the player_index, since we want
@@ -811,7 +691,7 @@ def _process_move(
     move_dict: MoveNotifyDict = {
         "game": game_id,
         "timestamp": now,
-        "players": tuple(game.player_ids),
+        "players": (game.player_ids[0], game.player_ids[1]),
         "over": game.state.is_game_over(),
         "to_move": game.player_to_move(),
         "scores": game.state.scores(),
@@ -821,14 +701,31 @@ def _process_move(
     if opponent:
         # Send a game update to the opponent, if human, including
         # the full client state. board.html and main.html listen to this.
-        # Also update the user/[opp_id]/move branch with the current timestamp.
+        # Also update the user/[opp_id]/move branch with the newest move data.
         client_state = game.client_state(opponent_index, m)
         msg_dict = {
             f"game/{game_id}/{opponent}/move": client_state,
             f"user/{opponent}/move": move_dict,
         }
+        # Push a Firebase notification message to the opponent,
+        # in the correct language for each client session
+        opp_nick = game.player_nickname(1 - opponent_index)
+        firebase.push_to_user(
+            opponent,
+            {
+                "title": lambda locale: localize_push_message("title", locale),
+                "body": lambda locale: localize_push_message("body", locale).format(
+                    player=opp_nick
+                ),
+                "image": lambda locale: EXPLO_LOGO_URL,
+            },
+            {
+                "type": "notify-move",
+                "game": game_id,
+            },
+        )
 
-    if (player := game.player_id(1 - opponent_index)):
+    if player := game.player_id(1 - opponent_index):
         # Add a move notification to the original player as well,
         # since she may have multiple clients and we want to update'em all
         msg_dict[f"user/{player}/move"] = move_dict
@@ -843,7 +740,7 @@ def _process_move(
 def fetch_users(
     ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
 ) -> Dict[str, User]:
-    """ Return a dictionary of users found in the ulist """
+    """Return a dictionary of users found in the ulist"""
     # Make a set of user ids by applying the uid_func
     # to ulist entries (!= None)
     uids: Set[str] = set(uid for u in ulist if (uid := (u is not None) and uid_func(u)))
@@ -854,20 +751,20 @@ def fetch_users(
 
 
 def _userlist(query: str, spec: str) -> UserList:
-    """ Return a list of users matching the filter criteria """
+    """Return a list of users matching the filter criteria"""
 
     result: UserList = []
 
     def elo_str(elo: Union[None, int, str]) -> str:
-        """ Return a string representation of an Elo score, or a hyphen if none """
+        """Return a string representation of an Elo score, or a hyphen if none"""
         return str(elo) if elo else "-"
 
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
 
     if query == "robots":
         # Return the list of available autoplayers for the user's locale
-        locale = "en" if cuser is None else cuser.locale
         aplist = AutoPlayer.for_locale(locale)
         for r in aplist:
             result.append(
@@ -885,7 +782,7 @@ def _userlist(query: str, spec: str) -> UserList:
                     ready=True,  # The robots are always ready for a challenge
                     ready_timed=False,  # Timed games are not available for robots
                     live=True,  # robots are always online
-                    image=None,
+                    image="",
                 )
             )
         # That's it; we're done (no sorting required)
@@ -903,7 +800,13 @@ def _userlist(query: str, spec: str) -> UserList:
             ]
         )
 
-    online = firebase.online_users()
+    # Note that we only consider online users in the same locale
+    # as the requesting user
+    online = firebase.online_users(locale)
+
+    # Set of users blocked by the current user
+    blocked: Set[str] = cuser.blocked() if cuser else set()
+
     if query == "live":
         # Return a sample (no larger than MAX_ONLINE items) of online (live) users
 
@@ -915,7 +818,13 @@ def _userlist(query: str, spec: str) -> UserList:
 
         ousers = User.load_multi(iter_online)
         for lu in ousers:
-            if lu and lu.is_displayable() and (uid := lu.id()) and uid != cuid:
+            if (
+                lu
+                and lu.is_displayable()
+                and (uid := lu.id())
+                and uid != cuid
+                and uid not in blocked
+            ):
                 # Don't display the current user in the online list
                 chall = uid in challenges
                 result.append(
@@ -939,12 +848,19 @@ def _userlist(query: str, spec: str) -> UserList:
 
     elif query == "fav":
         # Return favorites of the current user
+        # Note: this is currently not locale-constrained,
+        # which may well turn out to be a bug
         if cuid is not None:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
             for fu in fusers:
-                if fu and fu.is_displayable() and (favid := fu.id()):
+                if (
+                    fu
+                    and fu.is_displayable()
+                    and (favid := fu.id())
+                    and favid not in blocked
+                ):
                     chall = favid in challenges
                     result.append(
                         UserListDict(
@@ -960,21 +876,28 @@ def _userlist(query: str, spec: str) -> UserList:
                             newbag=True,
                             live=favid in online,
                             ready=fu.is_ready(),
-                            ready_timed=(fu.is_ready_timed() and favid in online),
+                            ready_timed=fu.is_ready_timed(),
                             image=fu.image(),
                         )
                     )
 
     elif query == "alike":
-        # Return users with similar Elo ratings
+        # Return users with similar Elo ratings, in the same locale
+        # as the requesting user
         if cuid is not None:
             assert cuser is not None
             ui = UserModel.list_similar_elo(
-                cuser.human_elo(), max_len=40, locale=current_lc()
+                cuser.human_elo(), max_len=40, locale=locale
             )
             ausers = User.load_multi(ui)
             for au in ausers:
-                if au and au.is_displayable() and (uid := au.id()) and uid != cuid:
+                if (
+                    au
+                    and au.is_displayable()
+                    and (uid := au.id())
+                    and uid != cuid
+                    and uid not in blocked
+                ):
                     chall = uid in challenges
                     result.append(
                         UserListDict(
@@ -984,19 +907,21 @@ def _userlist(query: str, spec: str) -> UserList:
                             fullname=au.full_name(),
                             elo=elo_str(au.elo()),
                             human_elo=elo_str(au.human_elo()),
-                            fav=False if cuser is None else cuser.has_favorite(uid),
+                            fav=cuser.has_favorite(uid),
                             chall=chall,
                             fairplay=au.fairplay(),
                             live=uid in online,
                             newbag=True,
                             ready=au.is_ready(),
-                            ready_timed=(au.is_ready_timed() and uid in online),
+                            ready_timed=au.is_ready_timed(),
                             image=au.image(),
                         )
                     )
 
     elif query == "ready_timed":
-        # Display users who are online and ready for a timed game
+        # Display users who are online and ready for a timed game.
+        # Note that the online list is already filtered by locale,
+        # so the result is also filtered by locale.
         if len(online) > MAX_ONLINE:
             iter_online = random.sample(list(online), MAX_ONLINE)
         else:
@@ -1009,8 +934,9 @@ def _userlist(query: str, spec: str) -> UserList:
             if not user or not user.is_ready_timed() or not user.is_displayable():
                 # Only return users that are ready to play timed games
                 continue
-            if (user_id := user.id()) == cuid or not user_id:
-                # Don't include the current user in the list
+            if not (user_id := user.id()) or user_id == cuid or user_id in blocked:
+                # Don't include the current user in the list;
+                # also don't include users that are blocked by the current user
                 continue
             result.append(
                 UserListDict(
@@ -1033,26 +959,24 @@ def _userlist(query: str, spec: str) -> UserList:
 
     elif query == "search":
         # Return users with nicknames matching a pattern
-        if not spec:
-            si = []
-        else:
+        si: Optional[List[ListPrefixDict]] = []
+        if spec:
             # Limit the spec to 16 characters
             spec = spec[0:16]
-            lc = current_lc()
 
             # The "N:" prefix is a version header; the locale is also a cache key
-            cache_range = "5:" + spec.lower() + ":" + lc  # Case is not significant
+            cache_range = "6:" + spec.lower() + ":" + locale  # Case is not significant
 
             # Start by looking in the cache
             si = memcache.get(cache_range, namespace="userlist")
             if si is None:
-                # Not found: do an query, returning max 25 users
-                si = list(UserModel.list_prefix(spec, max_len=25, locale=lc))
+                # Not found: do a query, returning max 25 users
+                si = list(UserModel.list_prefix(spec, max_len=25, locale=locale))
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         for ud in si:
-            if not (uid := ud.get("id")) or uid == cuid:
+            if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
                 continue
             chall = uid in challenges
             result.append(
@@ -1068,9 +992,9 @@ def _userlist(query: str, spec: str) -> UserList:
                     live=uid in online,
                     fairplay=User.fairplay_from_prefs(ud["prefs"]),
                     newbag=True,
-                    ready=ud["ready"],
-                    ready_timed=(ud["ready_timed"] and uid in online),
-                    image=ud["image"],
+                    ready=ud["ready"] or False,
+                    ready_timed=ud["ready_timed"] or False,
+                    image=User.image_url(uid, ud["image"], ud["has_image_blob"]),
                 )
             )
 
@@ -1081,13 +1005,13 @@ def _userlist(query: str, spec: str) -> UserList:
     # 4) Users who are ready to accept challenges.
     # 5) All other users.
     # Each category is sorted by nickname, case-insensitive.
+    readiness: Callable[[UserListDict], int] = lambda x: (
+        4 if x["ready_timed"] else 2 if x["ready"] else 0
+    ) + (1 if x["live"] else 0)
     result.sort(
         key=lambda x: (
-            # First by online or general readiness status
-            0 if x["live"] or x["ready"] else 1,
-            # Then by readiness (note that if ready_timed is true,
-            # then live is true as well)
-            0 if x["ready_timed"] else 1 if x["ready"] else 2,
+            # First by readiness (most ready first)
+            -readiness(x),
             # Then by nickname
             current_alphabet().sortkey_nocase(x["nick"]),
         )
@@ -1096,14 +1020,16 @@ def _userlist(query: str, spec: str) -> UserList:
 
 
 def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
-    """ Return a list of active and zombie games for the current user """
+    """Return a list of active and zombie games for the current user"""
     result: GameList = []
     if not cuid:
         return result
 
     now = datetime.utcnow()
-    online = firebase.online_users()
     cuser = current_user()
+    online = firebase.online_users(
+        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    )
     u: Optional[User] = None
 
     # Place zombie games (recently finished games that this player
@@ -1115,6 +1041,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             if u is None:
                 continue
             uuid = g["uuid"]
+            locale = g["locale"]
             nick = u.nickname()
             prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -1125,6 +1052,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             result.append(
                 GameListDict(
                     uuid=uuid,
+                    locale=locale,
                     # Mark zombie state
                     url=url_for("web.board", game=uuid, zombie="1"),
                     oppid=opp,
@@ -1164,21 +1092,19 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     opponents = fetch_users(i, lambda g: g["opp"])
     # Iterate through the game list
     for g in i:
-        if g is None:
-            continue
         u = None
         uuid = g["uuid"]
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
+        locale = g["locale"]
         overdue = False
         prefs = g.get("prefs", None)
-        tileset = Game.tileset_from_prefs(prefs)
+        tileset = Game.tileset_from_prefs(locale, prefs)
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
         # Time per player in minutes
         timed = Game.get_duration_from_prefs(prefs)
-        locale = Game.locale_from_prefs(prefs)
         fullname = ""
         robot_level: int = 0
         if opp is None:
@@ -1206,6 +1132,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         result.append(
             GameListDict(
                 uuid=uuid,
+                locale=locale,
                 url=url_for("web.board", game=uuid),
                 oppid=opp,
                 opp=nick,
@@ -1235,7 +1162,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
 
 def _rating(kind: str) -> List[Dict[str, Any]]:
-    """ Return a list of Elo ratings of the given kind ('all' or 'human') """
+    """Return a list of Elo ratings of the given kind ('all' or 'human')"""
     result: List[Dict[str, Any]] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
@@ -1334,7 +1261,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
 
-    online = firebase.online_users()
+    online = firebase.online_users(cuser.locale if cuser else DEFAULT_LOCALE)
 
     u: Optional[User] = None
 
@@ -1343,7 +1270,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
         uuid = g["uuid"]
 
         prefs = g["prefs"]
-        locale = Game.locale_from_prefs(prefs)
+        locale = g["locale"]
 
         opp: Optional[str] = g["opp"]
         if opp is None:
@@ -1364,18 +1291,16 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
         ts_start = g["ts"]
         ts_end = g["ts_last_move"]
 
-        if (ts_start is None) or (ts_end is None):
-            days, hours, minutes = (0, 0, 0)
-        else:
-            td = ts_end - ts_start  # Timedelta
-            tsec = td.total_seconds()
-            days, tsec = divmod(tsec, 24 * 60 * 60)
-            hours, tsec = divmod(tsec, 60 * 60)
-            minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
+        td = ts_end - ts_start  # Timedelta
+        tsec = td.total_seconds()
+        days, tsec = divmod(tsec, 24 * 60 * 60)
+        hours, tsec = divmod(tsec, 60 * 60)
+        minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
 
         result.append(
             RecentListDict(
                 uuid=uuid,
+                locale=locale,
                 url=url_for("web.board", game=uuid),
                 oppid=opp,
                 opp=nick,
@@ -1403,22 +1328,22 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     return result
 
 
-def _opponent_waiting(user_id: str, opp_id: str) -> bool:
-    """ Return True if the given opponent is waiting on this user's challenge """
-    return firebase.check_wait(opp_id, user_id)
+def _opponent_waiting(user_id: str, opp_id: str, *, key: Optional[str]) -> bool:
+    """Return True if the given opponent is waiting on this user's challenge"""
+    return firebase.check_wait(opp_id, user_id, key)
 
 
 def _challengelist() -> ChallengeList:
-    """ Return a list of challenges issued or received by the current user """
+    """Return a list of challenges issued or received by the current user"""
 
     result: ChallengeList = []
     cuser = current_user()
-    assert cuser is not None
-    cuid = cuser.id()
-    assert cuid is not None
+    if cuser is None or not (cuid := cuser.id()):
+        # Current user not valid: return empty list
+        return result
 
     def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
-        """ Return True if the challenge is for a timed game """
+        """Return True if the challenge is for a timed game"""
         if prefs is None:
             return False
         return int(prefs.get("duration", 0)) > 0
@@ -1426,67 +1351,81 @@ def _challengelist() -> ChallengeList:
     def opp_ready(c: ChallengeTuple):
         """Returns True if this is a timed challenge
         and the opponent is ready to play"""
-        if not is_timed(c[1]):
+        if not is_timed(c.prefs):
             return False
         # Timed challenge: see if there is a Firebase path indicating
         # that the opponent is waiting for this user
         assert cuid is not None
-        assert c[0] is not None
-        return _opponent_waiting(cuid, c[0])
+        assert c.opp is not None
+        return _opponent_waiting(cuid, c.opp, key=c.key)
 
-    online = firebase.online_users()
+    blocked = cuser.blocked()
+    online = firebase.online_users(
+        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    )
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
     # List issued challenges
     issued = list(ChallengeModel.list_issued(cuid, max_len=20))
     # Multi-fetch all opponents involved
     opponents = fetch_users(received + issued, lambda c: c[0])
+    u: Optional[User] = None
+
     # List the received challenges
     for c in received:
-        if not (oppid := c[0]):
+        if not (oppid := c.opp):
             continue
-        if (u := opponents.get(oppid)) is None:  # User id
+        if oppid in blocked:
+            # Don't list challenges from blocked users
+            continue
+        u = opponents.get(oppid)
+        if u is None:
             continue
         nick = u.nickname()
         result.append(
             ChallengeListDict(
-                key=c[3],  # ChallengeModel entity key
+                key=c.key,  # ChallengeModel entity key
                 received=True,
                 userid=oppid,
                 opp=nick,
                 fullname=u.full_name(),
-                prefs=c[1],
-                ts=Alphabet.format_timestamp_short(c[2]),
+                prefs=c.prefs,
+                ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=False,
                 live=oppid in online,
                 image=u.image(),
-                fav=False if cuser is None else cuser.has_favorite(oppid),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                fav=cuser.has_favorite(oppid),
+                elo=u.elo(),
+                human_elo=u.human_elo(),
             )
         )
     # List the issued challenges
     for c in issued:
-        if not (oppid := c[0]):
+        if not (oppid := c.opp):
             continue
-        if (u := opponents.get(oppid)) is None:  # User id
+        # Currently, we do include challenges issued to blocked users
+        # in the list of issued challenges.
+        # A possible addition would be to automatically delete issued
+        # challenges to a user when blocking that user.
+        u = opponents.get(oppid)
+        if u is None:
             continue
         nick = u.nickname()
         result.append(
             ChallengeListDict(
-                key=c[3],  # ChallengeModel entity key
+                key=c.key,  # ChallengeModel entity key
                 received=False,
                 userid=oppid,
                 opp=nick,
                 fullname=u.full_name(),
-                prefs=c[1],
-                ts=Alphabet.format_timestamp_short(c[2]),
+                prefs=c.prefs,
+                ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=opp_ready(c),
                 live=oppid in online,
                 image=u.image(),
-                fav=False if cuser is None else cuser.has_favorite(oppid),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                fav=cuser.has_favorite(oppid),
+                elo=u.elo(),
+                human_elo=u.human_elo(),
             )
         )
     return result
@@ -1495,7 +1434,7 @@ def _challengelist() -> ChallengeList:
 @api.route("/submitmove", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def submitmove() -> ResponseType:
-    """ Handle a move that is being submitted from the client """
+    """Handle a move that is being submitted from the client"""
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
     movelist = rq.get_list("moves")
@@ -1541,23 +1480,24 @@ def submitmove() -> ResponseType:
 @api.route("/gamestate", methods=["POST"])
 @auth_required(ok=False)
 def gamestate() -> ResponseType:
-    """ Returns the current state of a game """
+    """Returns the current state of a game"""
+
+    user_id = current_user_id()
+    if user_id is None:
+        return jsonify(ok=False)
 
     rq = RequestData(request)
     uuid = rq.get("game")
     delete_zombie = rq.get_bool("delete_zombie", False)
 
-    user_id = current_user_id()
-
-    # !!! FIXME: use_cache was not set to False here
     game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
 
-    if game is None or user_id is None:
+    if game is None:
         # We must have a logged-in user and a valid game
         return jsonify(ok=False)
 
     player_index = game.player_index(user_id)
-    if player_index is None and not game.is_over:
+    if player_index is None and not game.is_over():
         # The game is still ongoing and this user is not one of the players:
         # refuse the request
         return jsonify(ok=False)
@@ -1569,10 +1509,38 @@ def gamestate() -> ResponseType:
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
 
+@api.route("/clear_zombie", methods=["POST"])
+@auth_required(ok=False)
+def clear_zombie() -> ResponseType:
+    """Clears the zombie status of a game"""
+
+    user_id = current_user_id()
+    if user_id is None:
+        return jsonify(ok=False)
+
+    rq = RequestData(request)
+    uuid = rq.get("game")
+
+    game = Game.load(uuid) if uuid else None
+
+    if game is None:
+        # We must have a logged-in user and a valid game
+        return jsonify(ok=False)
+
+    player_index = game.player_index(user_id)
+    if player_index is None:
+        # This user is not one of the players: refuse the request
+        return jsonify(ok=False)
+
+    ZombieModel.del_game(uuid, user_id)
+
+    return jsonify(ok=True)
+
+
 @api.route("/forceresign", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def forceresign() -> ResponseType:
-    """ Forces a tardy user to resign, if the game is overdue """
+    """Forces a tardy user to resign, if the game is overdue"""
 
     user_id = current_user_id()
     rq = RequestData(request)
@@ -1603,7 +1571,7 @@ def forceresign() -> ResponseType:
 @api.route("/wordcheck", methods=["POST"])
 @auth_required(ok=False)
 def wordcheck() -> ResponseType:
-    """ Check a list of words for validity """
+    """Check a list of words for validity"""
 
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
@@ -1624,7 +1592,7 @@ def wordcheck() -> ResponseType:
     locale: Optional[str] = rq.get("locale")
 
     if locale:
-        set_game_locale(locale)
+        set_game_locale(to_supported_locale(locale))
 
     # Check the words against the dictionary
     wdb = Wordbase.dawg()
@@ -1636,7 +1604,7 @@ def wordcheck() -> ResponseType:
 @api.route("/gamestats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def gamestats() -> ResponseType:
-    """ Calculate and return statistics on a given finished game """
+    """Calculate and return statistics on a given finished game"""
 
     rq = RequestData(request)
     uuid = rq.get("game")
@@ -1658,102 +1626,27 @@ def gamestats() -> ResponseType:
 @api.route("/userstats", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userstats() -> ResponseType:
-    """ Calculate and return statistics on a given user """
-
-    cid = current_user_id()
-    rq = RequestData(request)
-    uid = rq.get("user", cid)  # Current user is implicit
-    user = User.load_if_exists(uid)
-
-    if user is None:
-        return jsonify(result=Error.WRONG_USER)
-
+    """Return the profile of a given user along with key statistics"""
     cuser = current_user()
-    assert cuser is not None
-
-    profile = user.profile()
-
-    # Include info on whether this user is a favorite of the current user
-    fav = False
-    if uid != cuser.id():
-        fav = cuser.has_favorite(uid)
-    profile["favorite"] = fav
-
-    # Include info on whether the current user has challenged this user
-    chall = False
-    if uid != cuser.id():
-        chall = cuser.has_challenge(uid)
-    profile["challenge"] = chall
-
-    # Include info on whether the current user has blocked this user
-    blocked = False
-    if uid != cuser.id():
-        blocked = cuser.has_blocked(uid)
-    profile["blocked"] = blocked
-
-    if uid == cuser.id():
-        # If current user, include a list of favorite users
-        profile["list_favorites"] = cuser.list_favorites()
-        # Also, include a list of blocked users
-        profile["list_blocked"] = cuser.list_blocked()
-        # Also, include a 30-day history of Elo scores
-        now = datetime.utcnow()
-        # Time at midnight, i.e. start of the current day
-        now = datetime(year=now.year, month=now.month, day=now.day)
-        # We will return a 30-day history
-        PERIOD = 30
-        # Initialize the list of day slots
-        result: List[Optional[StatsSummaryDict]] = [None] * PERIOD
-        # The enumeration is youngest-first
-        for sm in StatsModel.last_for_user(uid, days=PERIOD):
-            age = (now - sm.timestamp).days
-            ts_iso = sm.timestamp.isoformat()
-            if age >= PERIOD:
-                # It's an entry older than we need
-                if result[PERIOD - 1] is not None:
-                    # We've already filled our list
-                    break
-                # Assign the oldest entry, if we don't yet have a value for it
-                age = PERIOD - 1
-                ts_iso = (now - timedelta(days=age)).isoformat()
-            result[age] = StatsSummaryDict(
-                ts=ts_iso,
-                elo=sm.elo,
-                human_elo=sm.human_elo,
-                manual_elo=sm.manual_elo,
-            )
-        # Fill all day slots in the result list
-        # Create a beginning sentinel entry to fill empty day slots
-        prev = StatsSummaryDict(
-            ts=(now - timedelta(days=31)).isoformat(),
-            elo=1200,
-            human_elo=1200,
-            manual_elo=1200,
-        )
-        # Enumerate in reverse order (oldest first)
-        for ix in reversed(range(PERIOD)):
-            r = result[ix]
-            if r is None:
-                # No entry for this day: duplicate the previous entry
-                p = prev.copy()
-                p["ts"] = (now - timedelta(days=ix)).isoformat()
-                result[ix] = p
-            else:
-                prev = r
-        profile[f"elo_{PERIOD}_days"] = result
-
-    return jsonify(profile)
+    if cuser is None:
+        return jsonify(result=Error.LOGIN_REQUIRED)
+    cid = cuser.id()
+    rq = RequestData(request)
+    uid = rq.get("user", cid or "")  # Current user is implicit
+    error, us = User.stats(uid, cuser)
+    if error != Error.LEGAL or us is None:
+        return jsonify(result=error or Error.WRONG_USER)
+    return jsonify(us)
 
 
 @api.route("/image", methods=["GET", "POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def image() -> ResponseType:
-    """ Set (POST) or get (GET) the image of a user """
+    """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     cuid = current_user_id()
-    assert cuid is not None
-    uid = rq.get("uid") or cuid
+    uid = rq.get("uid") or cuid or ""
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
@@ -1765,11 +1658,23 @@ def image() -> ResponseType:
         image, image_blob = um.get_image()
         if image_blob:
             # We have the image as a bytes object: return it
-            mimetype = image or "image/jpeg"
-            return Response(
-                image_blob, mimetype=mimetype, content_type="application/octet-stream"
-            )
-        if not image or image.startswith("/image"):
+            if not image or image.startswith(("https:", "http:")):
+                # Accommodate strange scenarios
+                mimetype = "image/jpeg"
+            else:
+                mimetype = image
+            try:
+                decoded_image = base64.b64decode(image_blob)
+                # Convert the decoded image to a BytesIO object
+                image_bytes = io.BytesIO(decoded_image)
+                # Serve the image using flask.send_file()
+                return send_file(
+                    image_bytes, mimetype="image/jpeg", max_age=10 * 60
+                )  # 10 minutes
+            except Exception:
+                # Something wrong in the image_blob: give up
+                pass
+        if not image or not image.startswith(("https:", "http:")):
             return "Image not found", 404  # Not found
         # Assume that this is a URL: redirect to it
         return redirect(image)
@@ -1794,7 +1699,7 @@ def image() -> ResponseType:
 @api.route("/userlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userlist() -> ResponseType:
-    """ Return user lists with particular criteria """
+    """Return user lists with particular criteria"""
 
     rq = RequestData(request)
     query = rq.get("query")
@@ -1805,32 +1710,21 @@ def userlist() -> ResponseType:
 @api.route("/gamelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def gamelist() -> ResponseType:
-    """ Return a list of active games for the current user """
+    """Return a list of active games for the current user"""
 
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
     cuid = current_user_id()
-    assert cuid is not None
+    if cuid is None:
+        return jsonify(result=Error.WRONG_USER)
     return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
-
-
-@api.route("/rating", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def rating() -> ResponseType:
-    """Return the newest Elo ratings table (top 100)
-    of a given kind ('all' or 'human')"""
-    rq = RequestData(request)
-    kind = rq.get("kind", "all")
-    if kind not in ("all", "human", "manual"):
-        kind = "all"
-    return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @api.route("/recentlist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def recentlist() -> ResponseType:
-    """ Return a list of recently completed games for the indicated user """
+    """Return a list of recently completed games for the indicated user"""
 
     rq = RequestData(request)
     user_id: Optional[str] = rq.get("user")
@@ -1857,14 +1751,50 @@ def recentlist() -> ResponseType:
 @api.route("/challengelist", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def challengelist() -> ResponseType:
-    """ Return a list of challenges issued or received by the current user """
+    """Return a list of challenges issued or received by the current user"""
     return jsonify(result=Error.LEGAL, challengelist=_challengelist())
+
+
+@api.route("/allgamelists", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def allgamelists() -> ResponseType:
+    """Return a combined dict with the results of the gamelist,
+    challengelist and recentlist calls, for the current user"""
+    cuid = current_user_id()
+    if cuid is None:
+        return jsonify(result=Error.WRONG_USER)
+    rq = RequestData(request)
+    count = rq.get_int("count", 14)  # Default number of recent games to return
+    # Limit count to 50 games
+    if count > 50:
+        count = 50
+    elif count < 1:
+        count = 1
+    include_zombies = rq.get_bool("zombies", True)
+    return jsonify(
+        result=Error.LEGAL,
+        gamelist=_gamelist(cuid, include_zombies),
+        challengelist=_challengelist(),
+        recentlist=_recentlist(cuid, versus=None, max_len=count),
+    )
+
+
+@api.route("/rating", methods=["POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def rating() -> ResponseType:
+    """Return the newest Elo ratings table (top 100)
+    of a given kind ('all' or 'human')"""
+    rq = RequestData(request)
+    kind = rq.get("kind", "all")
+    if kind not in ("all", "human", "manual"):
+        kind = "all"
+    return jsonify(result=Error.LEGAL, rating=_rating(kind))
 
 
 @api.route("/favorite", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def favorite() -> ResponseType:
-    """ Create or delete an A-favors-B relation """
+    """Create or delete an A-favors-B relation"""
 
     user = current_user()
     assert user is not None
@@ -1885,7 +1815,7 @@ def favorite() -> ResponseType:
 @api.route("/challenge", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def challenge() -> ResponseType:
-    """ Create or delete an A-challenges-B relation """
+    """Create or delete an A-challenges-B relation"""
 
     user = current_user()
     if user is None or not (uid := user.id()):
@@ -1920,6 +1850,21 @@ def challenge() -> ResponseType:
                 "locale": user.locale,
             },
         )
+        # Notify the challenged user via a push notification
+        firebase.push_to_user(
+            destuser,
+            {
+                "title": lambda locale: localize_push_message("chall_title", locale),
+                "body": lambda locale: localize_push_message("chall_body", locale).format(
+                    player=user.nickname()
+                ),
+                "image": lambda locale: EXPLO_LOGO_URL,
+            },
+            {
+                "type": "notify-challenge",
+                "uid": uid,
+            },
+        )
     elif action == "retract":
         user.retract_challenge(destuser, key=key)
     elif action == "decline":
@@ -1944,7 +1889,7 @@ def challenge() -> ResponseType:
 @api.route("/setuserpref", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def setuserpref() -> ResponseType:
-    """ Set a user preference """
+    """Set a user preference"""
 
     user = current_user()
     assert user is not None
@@ -1961,8 +1906,8 @@ def setuserpref() -> ResponseType:
         ("ready", user.set_ready, False),
         ("ready_timed", user.set_ready_timed, False),
         ("chat_disabled", user.disable_chat, False),
-        ("friend", user.set_friend, True),
-        ("has_paid", user.set_has_paid, True),
+        # ("friend", user.set_friend, True),
+        # ("has_paid", user.set_has_paid, True),
     ]
 
     update = False
@@ -1970,6 +1915,18 @@ def setuserpref() -> ResponseType:
         val = rq.get_bool(s, None)
         if val is not None and (is_mobile or not mobile_only):
             func(val)
+            update = True
+
+    # We allow the locale to be set as a user preference.
+    # Note that it cannot be read back as a preference!
+    if lc := rq.get("locale", ""):
+        # Do some rudimentary normalization and validation of the locale code
+        lc = lc.replace("-", "_")
+        a = lc.split("_")
+        # Locales have one or two parts, separated by an underscore,
+        # and each part is a two-letter code.
+        if 1 <= len(a) <= 2 and all(len(x) == 2 and x.isalpha() for x in a):
+            user.set_locale(to_supported_locale(lc))
             update = True
 
     if update:
@@ -1981,10 +1938,14 @@ def setuserpref() -> ResponseType:
 @api.route("/onlinecheck", methods=["POST"])
 @auth_required(online=False)
 def onlinecheck() -> ResponseType:
-    """ Check whether a particular user is online """
+    """Check whether a particular user is online"""
     rq = RequestData(request)
-    if (user_id := rq.get("user")) :
-        online = firebase.check_presence(user_id)
+    if user_id := rq.get("user"):
+        user = User.load_if_exists(user_id)
+        if not user:
+            online = False
+        else:
+            online = firebase.check_presence(user_id, user.locale)
     else:
         online = False
     return jsonify(online=online)
@@ -1993,18 +1954,20 @@ def onlinecheck() -> ResponseType:
 @api.route("/initwait", methods=["POST"])
 @auth_required(online=False, waiting=False)
 def initwait() -> ResponseType:
-    """ Initialize a wait for a timed game to start """
+    """Initialize a wait for a timed game to start"""
 
     user = current_user()
 
     # Get the opponent id
     rq = RequestData(request)
-    opp = rq.get("opp")
+    opp: Optional[str] = rq.get("opp")
     if not opp or user is None or not (uid := user.id()):
         return jsonify(online=False, waiting=False)
 
-    # Find the challenge being accepted
-    found, prefs = user.find_challenge(opp)
+    # Find the challenge being accepted, optionally by explicit key
+    # but otherwise by the (source user, destination user) tuple
+    key: Optional[str] = rq.get("key")  # Can be omitted
+    found, prefs = user.find_challenge(opp, key=key)
     if not found or prefs is None or not int(prefs.get("duration", 0)) > 0:
         # No timed challenge existed between the users
         return jsonify(online=False, waiting=False)
@@ -2019,31 +1982,32 @@ def initwait() -> ResponseType:
     now = datetime.utcnow().isoformat()
     msg = {
         f"user/{opp}/challenge": now,
-        f"user/{uid}/wait/{opp}": True,
+        f"user/{uid}/wait/{opp}": {"key": key} if key else True,
     }
     firebase.send_message(msg)
-    online = firebase.check_presence(uid)
+    online = firebase.check_presence(uid, user.locale)
     return jsonify(online=online, waiting=True)
 
 
 @api.route("/waitcheck", methods=["POST"])
 @auth_required(waiting=False)
 def waitcheck() -> ResponseType:
-    """ Check whether a particular opponent is waiting on a challenge """
+    """Check whether a particular opponent is waiting on a challenge"""
     rq = RequestData(request)
     opp_id = rq.get("user")
+    key: Optional[str] = rq.get("key")  # Can be omitted
     waiting = False
     if opp_id:
         cuid = current_user_id()
         assert cuid is not None
-        waiting = _opponent_waiting(cuid, opp_id)
+        waiting = _opponent_waiting(cuid, opp_id, key=key)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
 @api.route("/cancelwait", methods=["POST"])
 @auth_required(ok=False)
 def cancelwait() -> ResponseType:
-    """ A wait on a challenge has been cancelled """
+    """A wait on a challenge has been cancelled"""
     rq = RequestData(request)
     opp_id = rq.get("opp")
     cuid = current_user_id()
@@ -2065,10 +2029,9 @@ def cancelwait() -> ResponseType:
 @api.route("/chatmsg", methods=["POST"])
 @auth_required(ok=False)
 def chatmsg() -> ResponseType:
-    """ Send a chat message on a conversation channel """
+    """Send a chat message on a conversation channel"""
 
-    user_id = current_user_id()
-    if not user_id:
+    if not (user_id := current_user_id()):
         return jsonify(ok=False)
 
     rq = RequestData(request)
@@ -2087,7 +2050,7 @@ def chatmsg() -> ResponseType:
         # In-game chat
         # Send notifications to both players on the game channel
         game: Optional[Game] = None
-        uuid = channel[5:][:36]  # The game id
+        uuid = channel[5:][:36]  # The game id; UUIDs are 36 chars long
         if uuid:
             # We don't set use_cache=False here since we are only
             # accessing game data that remains constant for the
@@ -2116,7 +2079,7 @@ def chatmsg() -> ResponseType:
             )
             for p in range(0, 2):
                 # Send a Firebase notification to /game/[gameid]/[userid]/chat
-                if (pid := game.player_id(p)):
+                if pid := game.player_id(p):
                     send_msg[f"game/{uuid}/{pid}/chat"] = md
             if send_msg:
                 firebase.send_message(send_msg)
@@ -2124,7 +2087,7 @@ def chatmsg() -> ResponseType:
     elif channel.startswith("user:"):
 
         # Chat between two users
-        opp_id = channel[5:][:36]  # The opponent id
+        opp_id = channel[5:][:64]  # The opponent id is e.g. 50 characters in the case of Apple
         if not opp_id:
             return jsonify(ok=False)
         # Add a message entity to the data store and remember its timestamp
@@ -2152,28 +2115,41 @@ def chatmsg() -> ResponseType:
 
 class UserCache:
 
-    """ A temporary cache for user lookups """
+    """A temporary cache for user lookups"""
 
     def __init__(self) -> None:
         self._cache: Dict[str, Optional[User]] = {}
 
-    def full_name(self, user_id: str) -> str:
-        """ Return the full name of a user """
+    def _load(self, user_id: str) -> Optional[User]:
         if (u := self._cache.get(user_id)) is None:
-            u = self._cache[user_id] = User.load_if_exists(user_id)
-        return "" if u is None else u.full_name()
+            u = User.load_if_exists(user_id)
+            if u is not None:
+                self._cache[user_id] = u
+        return u
+
+    def full_name(self, user_id: str) -> str:
+        """Return the full name of a user"""
+        return "" if (u := self._load(user_id)) is None else u.full_name()
+
+    def nickname(self, user_id: str) -> str:
+        """Return the nickname of a user"""
+        return "" if (u := self._load(user_id)) is None else u.nickname()
 
     def image(self, user_id: str) -> str:
-        """ Return the image for a user """
-        if (u := self._cache.get(user_id)) is None:
-            u = self._cache[user_id] = User.load_if_exists(user_id)
-        return "" if u is None else u.image()
+        """Return the image for a user"""
+        return "" if (u := self._load(user_id)) is None else u.image()
+
+    def chat_disabled(self, user_id: str) -> bool:
+        """Return True if the user has disabled chat"""
+        if (u := self._load(user_id)) is None:
+            return True  # Chat is disabled by default
+        return u.chat_disabled()
 
 
 @api.route("/chatload", methods=["POST"])
 @auth_required(ok=False)
 def chatload() -> ResponseType:
-    """ Load all chat messages on a conversation channel """
+    """Load all chat messages on a conversation channel"""
 
     # The channel can be either 'game:' + game uuid or
     # 'user:' + user id
@@ -2184,6 +2160,7 @@ def chatload() -> ResponseType:
 
     rq = RequestData(request)
     channel = rq.get("channel", "")
+    maxlen = rq.get_int("count", 50)
 
     if not channel:
         # We must have a valid channel
@@ -2192,7 +2169,7 @@ def chatload() -> ResponseType:
     if channel.startswith("game:"):
         # In-game conversation
         game: Optional[Game] = None
-        uuid = channel[5:][:36]  # The game id
+        uuid = channel[5:][:36]  # The game id (UUIDs are 36 chars long)
         if uuid:
             # We don't set use_cache=False here since we are
             # only accessing data that remains constant over the
@@ -2203,7 +2180,7 @@ def chatload() -> ResponseType:
             return jsonify(ok=False)
     elif channel.startswith("user:"):
         # Conversation between users
-        opp_id = channel[5:][:36]  # The opponent id
+        opp_id = channel[5:][:64]  # The opponent id, e.g. 50 chars in the case of Apple
         if not opp_id:
             return jsonify(ok=False)
         # By convention, the lower user id comes before
@@ -2228,7 +2205,7 @@ def chatload() -> ResponseType:
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
-        for cm in ChatModel.list_conversation(channel)
+        for cm in ChatModel.list_conversation(channel, maxlen=maxlen)
     ]
     # Check whether the user has already seen the newest chat message
     # (which may be a read marker, i.e. an empty message)
@@ -2254,24 +2231,39 @@ def chathistory() -> ResponseType:
     """Return the chat history, i.e. the set of recent,
     distinct chat conversations for the logged-in user"""
 
-    user_id = current_user_id()
+    user = current_user()
+    assert user is not None
+
+    user_id = user.id()
     if not user_id:
         # Unknown current user
         return jsonify(ok=False)
 
+    rq = RequestData(request)
+    # By default, return a history of 20 conversations
+    count = rq.get_int("count", 20)
+
+    online = firebase.online_users(user.locale or DEFAULT_LOCALE)
+    # We don't return chat conversations with users
+    # that this user has blocked
+    blocked = user.blocked()
+    uc = UserCache()
     # The chat history is ordered in reverse timestamp
     # order, i.e. the newest entry comes first
-    uc = UserCache()
     history: List[ChatHistoryDict] = [
         ChatHistoryDict(
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
+            nick=uc.nickname(uid),
             image=uc.image(uid),
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
+            live=uid in online,
+            fav=user.has_favorite(uid),
+            disabled=uc.chat_disabled(uid),
         )
-        for cm in ChatModel.chat_history(user_id)
+        for cm in ChatModel.chat_history(user_id, blocked_users=blocked, maxlen=count)
     ]
 
     return jsonify(ok=True, history=history)
@@ -2286,8 +2278,11 @@ def bestmoves() -> ResponseType:
     user = current_user()
     assert user is not None
 
-    if not user.has_paid() and not running_local:
-        # User must be a paying friend, or we're on a development server
+    if not user.has_paid() and not is_mobile_client() and not running_local:
+        # For this to succeed, the user must be a paying friend,
+        # or the request is coming from a mobile client
+        # (where the paywall gating is reliably performed in the UI)
+        # or we're on a development server
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
 
     rq = RequestData(request)
@@ -2326,9 +2321,11 @@ def bestmoves() -> ResponseType:
     player_index = state.player_to_move()
 
     if rq_move_number <= move_number:
+        # How many best moves are being requested?
+        num_moves = rq.get_int("num_moves", DEFAULT_BEST_MOVES)
         # Serialize access to the following section
         with autoplayer_lock:
-            best_moves = game.best_moves(state, MAX_BEST_MOVES)
+            best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
 
     uid = user.id()
     if uid is not None and game.has_player(uid):
@@ -2359,7 +2356,7 @@ def bestmoves() -> ResponseType:
 @api.route("/blockuser", methods=["POST"])
 @auth_required(ok=False)
 def blockuser() -> ResponseType:
-    """ Block or unblock another user """
+    """Block or unblock another user"""
     user = current_user()
     assert user is not None
 
@@ -2380,7 +2377,7 @@ def blockuser() -> ResponseType:
 @api.route("/reportuser", methods=["POST"])
 @auth_required(ok=False)
 def reportuser() -> ResponseType:
-    """ Report another user """
+    """Report another user"""
     user = current_user()
     assert user is not None
 
@@ -2404,7 +2401,7 @@ def reportuser() -> ResponseType:
 @api.route("/cancelplan", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def cancelplan() -> ResponseType:
-    """ Cancel a user friendship """
+    """Cancel a user friendship"""
     user = current_user()
     if user is None:
         return jsonify(ok=False)
@@ -2412,10 +2409,92 @@ def cancelplan() -> ResponseType:
     return jsonify(ok=result)
 
 
+# RevenueCat event types that start or continue a subscription
+SUBSCRIPTION_START_TYPES = frozenset(
+    [
+        "INITIAL_PURCHASE",
+        "NON_RENEWING_PURCHASE",
+        "RENEWAL",
+        "UNCANCELLATION",
+    ]
+)
+
+# RevenueCat event types that end a subscription
+SUBSCRIPTION_END_TYPES = frozenset(
+    [
+        "CANCELLATION",
+        "SUBSCRIPTION_PAUSED",
+        "EXPIRATION",
+    ]
+)
+
+# Assert if there is overlap between the two sets
+assert not SUBSCRIPTION_START_TYPES.intersection(
+    SUBSCRIPTION_END_TYPES
+), "SUBSCRIPTION_START_TYPES and SUBSCRIPTION_END_TYPES must be disjoint"
+
+
+@api.route("/rchook", methods=["POST"])
+def rchook() -> ResponseType:
+    """Receive a webhook call from the RevenueCat server"""
+    # First, validate whether the request has the correct
+    # bearer token (RC_WEBHOOK_AUTH)
+    if not RC_WEBHOOK_AUTH:
+        return "Not supported", 200
+    if request.headers.get("Authorization", "") != "Bearer " + RC_WEBHOOK_AUTH:
+        return "Not authorized", 401
+    # OK: Process the request
+    rq = RequestData(request)
+    # logging.info(f"Received webhook from RevenueCat: {rq!r}")
+    event: RevenueCatEvent = rq.get("event", RevenueCatEvent())
+    rq_type = event.get("type", "")
+    if rq_type in SUBSCRIPTION_START_TYPES:
+        # A subscription has been purchased or renewed
+        user_id = event.get("app_user_id", "")
+        if user_id:
+            user = User.load_if_exists(user_id)
+            if user is not None:
+                user.add_transaction("friend", "rchook", rq_type)
+        return "OK", 200
+
+    elif rq_type in SUBSCRIPTION_END_TYPES:
+        # A subscription has expired or been cancelled
+        user_id = event.get("app_user_id", "")
+        if user_id:
+            user = User.load_if_exists(user_id)
+            if user is not None:
+                user.add_transaction("", "rchook", rq_type)
+        return "OK", 200
+
+    elif rq_type == "TRANSFER":
+        # A subscription has been transferred between users,
+        # from the one in transferred_from[0] to the one in
+        # transferred_to[0]. Load both users and add the appropriate
+        # transactions.
+        from_list = event.get("transferred_from") or [""]
+        to_list = event.get("transferred_to") or [""]
+        user_from_id = from_list[0]
+        user_to_id = to_list[0]
+        if user_from_id:
+            user = User.load_if_exists(user_from_id)
+            if user is not None:
+                user.add_transaction("", "rchook", rq_type)
+        if user_to_id:
+            user = User.load_if_exists(user_to_id)
+            if user is not None:
+                user.add_transaction("friend", "rchook", rq_type)
+        return "OK", 200
+
+    # Return 200 OK for all other event types, since RevenueCat
+    # will retry the request if we return an error
+    logging.info(f"Ignoring RevenueCat event type '{rq_type}'")
+    return "OK", 200
+
+
 @api.route("/loaduserprefs", methods=["POST"])
 @auth_required(ok=False)
 def loaduserprefs() -> ResponseType:
-    """ Fetch the preferences of the current user in JSON form """
+    """Fetch the preferences of the current user in JSON form"""
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
     return jsonify(ok=True, userprefs=uf.as_dict())
@@ -2424,13 +2503,15 @@ def loaduserprefs() -> ResponseType:
 @api.route("/saveuserprefs", methods=["POST"])
 @auth_required(ok=False)
 def saveuserprefs() -> ResponseType:
-    """ Fetch the preferences of the current user in JSON form """
+    """Set the preferences of the current user, from a JSON dictionary"""
 
     user = current_user()
     assert user is not None
-    j: Dict[str, str] = cast(Any, request).get_json(silent=True)
+    j: Optional[Dict[str, str]] = request.get_json(silent=True)
+    if j is None:
+        return jsonify(ok=False, err={"reason": "Unable to parse JSON"})
 
-    # Return the user preferences in JSON form
+    # Populate a UserForm object with the data from the JSON dictionary
     uf = UserForm()
     uf.init_from_dict(j)
     err = uf.validate()
@@ -2440,10 +2521,41 @@ def saveuserprefs() -> ResponseType:
     return jsonify(ok=True)
 
 
+@api.route("/inituser", methods=["POST"])
+@auth_required(ok=False)
+def inituser() -> ResponseType:
+    """Combines the data returned from the /loaduserprefs, /userstats and /firebase_token
+    API endpoints into a single endpoint, for efficiency. The result is a JSON dictionary
+    with three fields, called userprefs, userstats and firebase_token."""
+    cuser = current_user()
+    if cuser is None:
+        # No logged-in user
+        return jsonify(ok=False)
+    cuid = cuser.id()
+    if cuid is None:
+        # No logged-in user
+        return jsonify(ok=False)
+    try:
+        error, us = User.stats(cuid, cuser)
+        if error != Error.LEGAL or us is None:
+            return jsonify(ok=False)
+        token = firebase.create_custom_token(cuid)
+        uf = UserForm(cuser)
+    except:
+        return jsonify(ok=False)
+
+    return jsonify(
+        ok=True,
+        userprefs=uf.as_dict(),
+        userstats=us,
+        firebase_token=token,
+    )
+
+
 @api.route("/initgame", methods=["POST"])
 @auth_required(ok=False)
 def initgame() -> ResponseType:
-    """ Create a new game and return its UUID """
+    """Create a new game and return its UUID"""
 
     user = current_user()
     assert user is not None
@@ -2474,6 +2586,7 @@ def initgame() -> ResponseType:
         # The game is always in the user's locale
         prefs = dict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type
+        set_game_locale(user.locale)
         game = Game.new(uid, None, robot_level, prefs=prefs)
         # Return the uuid of the new game
         return jsonify(ok=True, uuid=game.id())
@@ -2498,8 +2611,9 @@ def initgame() -> ResponseType:
 
     # Create a fresh game object, ensuring it has a board_type pref
     if prefs is None:
-        prefs = dict()
+        prefs = dict(locale=user.locale)
     prefs["board_type"] = board_type
+    set_game_locale(cast(str, prefs.get("locale")) or user.locale)
     game = Game.new(uid, opp, 0, prefs)
     game_id = game.id()
     if not game_id or game.state is None:
@@ -2527,7 +2641,7 @@ def initgame() -> ResponseType:
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
-        msg[f"user/{opp}/wait/{uid}"] = {"game": game_id}
+        msg[f"user/{opp}/wait/{uid}"] = {"game": game_id, "key": key}
 
     firebase.send_message(msg)
 
@@ -2538,7 +2652,7 @@ def initgame() -> ResponseType:
 @api.route("/locale_asset", methods=["POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def locale_asset() -> ResponseType:
-    """ Return static content, for the user's locale """
+    """Return static content, for the user's locale"""
     # For a locale such as en_US, we first try to serve from
     # base_path/static/assets/en_US/asset_name, then
     # base_path/static/assets/en/asset_name, and finally
@@ -2558,5 +2672,5 @@ def locale_asset() -> ResponseType:
         fname = os.path.join(static_folder, "assets", lc, asset)
         if os.path.isfile(fname):
             # Found the static asset file: return it
-            return current_app.send_static_file(os.path.join("assets", lc, asset))
+            return send_file(fname)
     return "", 404  # Not found

@@ -2,7 +2,7 @@
 
     Language, locale and alphabet encapsulation module
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -31,6 +31,7 @@ from __future__ import annotations
 from typing import (
     Dict,
     List,
+    Mapping,
     Optional,
     Tuple,
     Type,
@@ -45,14 +46,27 @@ import functools
 from datetime import datetime
 from contextvars import ContextVar
 
+from config import DEFAULT_LOCALE, PROJECT_ID
+
 
 _T = TypeVar("_T")
+
+# Map from a generic locale ('en') to a
+# more specific default locale ('en_US')
+NONGENERIC_DEFAULT: Mapping[str, str] = {
+    "is": "is_IS",
+    "en": "en_US",
+    "pl": "pl_PL",
+}
+
+DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
+DEFAULT_BOARD_TYPE = "standard" if PROJECT_ID == "netskrafl" else "explo"
 
 
 class Alphabet(abc.ABC):
 
-    """ Base class for alphabets particular to languages,
-        i.e. the letters used in a game """
+    """Base class for alphabets particular to languages,
+    i.e. the letters used in a game"""
 
     # The following are overridden in derived classes
     order = ""
@@ -92,15 +106,15 @@ class Alphabet(abc.ABC):
         self.coding.update({i | 0x80: c + "|" for i, c in enumerate(self.order)})
 
     def sortkey(self, lstr: str) -> List[int]:
-        """ Key function for locale-based sorting """
+        """Key function for locale-based sorting"""
         # Note: this only works for lowercase strings that
         # contain letters from the bag (plus '?')
         o = self.all_tiles
         return [o.index(c) for c in lstr if c != "|"]
 
     def sortval(self, c: str) -> int:
-        """ Sort value for any character, with correct ordering
-            for the current alphabet, case-insensitive """
+        """Sort value for any character, with correct ordering
+        for the current alphabet, case-insensitive"""
         o = ord(c)
         if o < self.ord_first:
             # A 'low' ordinal below our alphabet: return it as-is
@@ -116,27 +130,27 @@ class Alphabet(abc.ABC):
         return self.ord_offset + o
 
     def sortkey_nocase(self, lstr: str) -> List[int]:
-        """ Return a case-insensitive sort key for the given string """
+        """Return a case-insensitive sort key for the given string"""
         return [self.sortval(c) for c in lstr]
 
     def bit_pattern(self, word: str) -> int:
-        """ Return a pattern of bits indicating which letters
-            are present in the word """
+        """Return a pattern of bits indicating which letters
+        are present in the word"""
         bitwise_or: Callable[[int, int], int] = lambda x, y: x | y
         lbit = self.letter_bit
         return functools.reduce(bitwise_or, (lbit[c] for c in word), 0)
 
     def bit_of(self, c: str) -> int:
-        """ Returns the bit corresponding to a character in the alphabet """
+        """Returns the bit corresponding to a character in the alphabet"""
         return self.letter_bit[c]
 
     def all_bits_set(self) -> int:
-        """ Return a bit pattern where the bits for all letters
-            in the Alphabet are set """
+        """Return a bit pattern where the bits for all letters
+        in the Alphabet are set"""
         return 2 ** len(self.order) - 1
 
     def string_subtract(self, a: str, b: str) -> str:
-        """ Subtract all letters in b from a, counting each instance separately """
+        """Subtract all letters in b from a, counting each instance separately"""
         # Note that this cannot be done with sets,
         # as they fold multiple letter instances into one
         lcount = [a.count(c) - b.count(c) for c in self.all_tiles]
@@ -151,26 +165,21 @@ class Alphabet(abc.ABC):
     # noinspection PyUnusedLocal
     @staticmethod
     def format_timestamp(ts: datetime) -> str:
-        """ Return a timestamp formatted as a readable string """
+        """Return a timestamp formatted as a readable string"""
         # Currently always returns the full ISO format: YYYY-MM-DD HH:MM:SS
         return ts.isoformat(" ")[0:19]
 
     # noinspection PyUnusedLocal
     @staticmethod
     def format_timestamp_short(ts: datetime) -> str:
-        """ Return a timestamp formatted as a readable string """
+        """Return a timestamp formatted as a readable string"""
         # Returns a short ISO format: YYYY-MM-DD HH:MM
         return ts.isoformat(" ")[0:16]
-
-    @staticmethod
-    def tileset_for_locale(locale: str) -> Type[TileSet]:
-        """ Return an appropriate tile set for a given locale """
-        return TILESETS.get(locale, NewTileSet)
 
 
 class _IcelandicAlphabet(Alphabet):
 
-    """ The Icelandic alphabet """
+    """The Icelandic alphabet"""
 
     order = "aábdðeéfghiíjklmnoóprstuúvxyýþæö"
     # Upper case version of the order string
@@ -187,7 +196,7 @@ IcelandicAlphabet = _IcelandicAlphabet()
 
 class _EnglishAlphabet(Alphabet):
 
-    """ The English alphabet """
+    """The English alphabet"""
 
     order = "abcdefghijklmnopqrstuvwxyz"
     # Upper case version of the order string
@@ -204,7 +213,7 @@ EnglishAlphabet = _EnglishAlphabet()
 
 class _PolishAlphabet(Alphabet):
 
-    """ The Polish alphabet """
+    """The Polish alphabet"""
 
     order = "aąbcćdeęfghijklłmnńoóprsśtuwyzźż"
     upper = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPRSŚTUWYZŹŻ"
@@ -220,7 +229,7 @@ PolishAlphabet = _PolishAlphabet()
 
 class TileSet(abc.ABC):
 
-    """ Abstract base class for tile sets. Concrete classes are found below. """
+    """Abstract base class for tile sets. Concrete classes are found below."""
 
     # The following will be overridden in derived classes
     alphabet: Alphabet
@@ -230,14 +239,14 @@ class TileSet(abc.ABC):
 
     @classmethod
     def score(cls, tiles: str):
-        """ Return the net (plain) score of the given tiles """
+        """Return the net (plain) score of the given tiles"""
         if not tiles:
             return 0
         return sum([cls.scores[tile] for tile in tiles])
 
     @classmethod
     def full_bag(cls):
-        """ Return a full bag of tiles """
+        """Return a full bag of tiles"""
         if not cls._full_bag:
             # Cache the bag
             cls._full_bag = "".join([tile * count for (tile, count) in cls.bag_tiles])
@@ -245,13 +254,13 @@ class TileSet(abc.ABC):
 
     @classmethod
     def num_tiles(cls):
-        """ Return the total number of tiles in this tile set """
+        """Return the total number of tiles in this tile set"""
         return sum(n for _, n in cls.bag_tiles)
 
 
 class OldTileSet(TileSet):
 
-    """ The old (original) Icelandic tile set """
+    """The old (original) Icelandic tile set"""
 
     # Letter scores in the old (original) Icelandic tile set
 
@@ -340,7 +349,7 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 class NewTileSet(TileSet):
 
-    """ The new Icelandic tile set, created by Skraflfélag Íslands """
+    """The new Icelandic tile set, created by Skraflfélag Íslands"""
 
     alphabet = IcelandicAlphabet
 
@@ -429,8 +438,8 @@ NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 
 class EnglishTileSet(TileSet):
 
-    """ Original ('classic') English tile set. Only included for reference;
-        not used in Explo. """
+    """Original ('classic') English tile set. Only included for reference;
+    not used in Explo."""
 
     alphabet = EnglishAlphabet
 
@@ -503,8 +512,8 @@ EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
 
 class NewEnglishTileSet(TileSet):
 
-    """ New English Tile Set - Copyright (C) Miðeind ehf.
-        Created by a proprietary method of game simulation.
+    """New English Tile Set - Copyright (C) Miðeind ehf.
+    Created by a proprietary method of game simulation.
     """
 
     alphabet = EnglishAlphabet
@@ -586,7 +595,7 @@ assert (
 
 class PolishTileSet(TileSet):
 
-    """ Polish tile set """
+    """Polish tile set"""
 
     alphabet = PolishAlphabet
 
@@ -677,21 +686,9 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "pl": PolishTileSet,
     "pl_PL": PolishTileSet,
     "en": NewEnglishTileSet,
-    "en_AU": NewEnglishTileSet,
-    "en_BZ": NewEnglishTileSet,
-    "en_CA": NewEnglishTileSet,
-    "en_GB": NewEnglishTileSet,
-    "en_IE": NewEnglishTileSet,
-    "en_IN": NewEnglishTileSet,
-    "en_JM": NewEnglishTileSet,
-    "en_MY": NewEnglishTileSet,
-    "en_NZ": NewEnglishTileSet,
-    "en_PH": NewEnglishTileSet,
-    "en_SG": NewEnglishTileSet,
-    "en_TT": NewEnglishTileSet,
     "en_US": NewEnglishTileSet,
-    "en_ZA": NewEnglishTileSet,
-    "en_ZW": NewEnglishTileSet,
+    "en_GB": NewEnglishTileSet,
+    "en_UK": NewEnglishTileSet,
 }
 
 # Mapping of locale code to alphabet
@@ -724,10 +721,26 @@ BOARD_TYPES: Dict[str, str] = {
 
 LANGUAGES: Dict[str, str] = {
     "is": "is",
-    "en_US": "en",
-    "en_GB": "en",
+    "is_IS": "is",
+    "en_US": "en_US",
+    "en_GB": "en_GB",
+    "en_AU": "en_GB",
+    "en_BZ": "en_GB",
+    "en_CA": "en_GB",
+    "en_IE": "en_GB",
+    "en_IN": "en_GB",
+    "en_JM": "en_GB",
+    "en_MY": "en_GB",
+    "en_NZ": "en_GB",
+    "en_PH": "en_GB",
+    "en_SG": "en_GB",
+    "en_TT": "en_GB",
+    "en_UK": "en_GB",
+    "en_ZA": "en_GB",
+    "en_ZW": "en_GB",
     "pl": "pl",
-    # Everything else defaults to 'en'
+    "pl_PL": "pl",
+    # Everything else defaults to 'en_US'
 }
 
 # Set of all supported locale codes
@@ -751,8 +764,10 @@ class Locale(NamedTuple):
 
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = Locale(
-    "is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard"
+default_locale: Locale = (
+    Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
+    if PROJECT_ID == "netskrafl"
+    else Locale("en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo")
 )
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
@@ -775,8 +790,8 @@ def dget(d: Dict[str, _T], key: str, default: _T) -> _T:
 
 
 def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
-    """ Retrieve value from dictionary by locale code, as precisely as possible,
-        i.e. trying 'is_IS' first, then 'is', before giving up """
+    """Retrieve value from dictionary by locale code, as precisely as possible,
+    i.e. trying 'is_IS' first, then 'is', before giving up"""
     val = d.get(key)
     while val is None:
         key = "".join(key.split("_")[0:-1])
@@ -788,33 +803,54 @@ def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_
 
 
 def alphabet_for_locale(lc: str) -> Alphabet:
-    """ Return the Alphabet for the given locale """
+    """Return the Alphabet for the given locale"""
     return dget(ALPHABETS, lc, default_locale.alphabet)
 
 
 def tileset_for_locale(lc: str) -> Type[TileSet]:
-    """ Return the identifier of the default board type for the given locale """
+    """Return the identifier of the default board type for the given locale"""
     return dget(TILESETS, lc, default_locale.tileset)
 
 
 def vocabulary_for_locale(lc: str) -> str:
-    """ Return the name of the main vocabulary for the given locale,
-        i.e. 'ordalisti' for is_IS. """
+    """Return the name of the main vocabulary for the given locale,
+    i.e. 'ordalisti' for is_IS."""
     return dget(VOCABULARIES, lc, default_locale.vocabulary)
 
 
 def board_type_for_locale(lc: str) -> str:
-    """ Return the identifier of the default board type for the given locale """
-    return dget(BOARD_TYPES, lc, "explo")
+    """Return the identifier of the default board type for the given locale"""
+    return dget(BOARD_TYPES, lc, DEFAULT_BOARD_TYPE)
 
 
 def language_for_locale(lc: str) -> str:
-    """ Return the identifier of the language for the given locale """
-    return dget(LANGUAGES, lc, "en")
+    """Return the identifier of the language for the given locale"""
+    return dget(LANGUAGES, lc, DEFAULT_LANGUAGE)
+
+
+@functools.lru_cache(maxsize=None)
+def to_supported_locale(lc: str) -> str:
+    """Return the locale code if it is supported, otherwise its parent
+    locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
+    # Defensive programming: we always use underscores in locale codes
+    lc = lc.replace("-", "_")
+    found = lc in SUPPORTED_LOCALES
+    while not found:
+        lc = "".join(lc.split("_")[0:-1])
+        if lc:
+            found = lc in SUPPORTED_LOCALES
+        else:
+            break
+    if found:
+        # We may be down to a generic locale such as 'en' or 'pl'.
+        # Go back to a more specific locale, if available.
+        return NONGENERIC_DEFAULT.get(lc, lc)
+    # Not found at all: return a global generic locale
+    return DEFAULT_LOCALE
 
 
 def set_locale(lc: str) -> None:
-    """ Set the current thread's locale context """
+    """Set the current thread's locale context"""
     locale = Locale(
         lc=lc,
         language=language_for_locale(lc),
@@ -827,9 +863,9 @@ def set_locale(lc: str) -> None:
 
 
 def set_game_locale(lc: str) -> None:
-    """ Override the current thread's locale context to correspond to a
-        particular game's locale. This doesn't change the UI language,
-        which remains tied to the logged-in user. """
+    """Override the current thread's locale context to correspond to a
+    particular game's locale. This doesn't change the UI language,
+    which remains tied to the logged-in user."""
     locale = Locale(
         lc=lc,
         language=current_language(),

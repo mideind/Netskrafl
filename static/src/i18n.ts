@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2023 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -29,7 +29,7 @@ type Messages = { [key: string]: { [locale: string]: string | string[] }};
 type FlattenedMessages = { [key: string]: { [locale: string]: VnodeChildren }};
 type Interpolations = { [key: string]: string };
 
-// Current exact user locale and fallback locale ("en" for "en_US"/"en_UK"/...)
+// Current exact user locale and fallback locale ("en" for "en_US"/"en_GB"/...)
 // This is overwritten in setLocale()
 let currentLocale = "is_IS";
 let currentFallback = "is";

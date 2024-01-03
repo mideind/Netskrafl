@@ -24,6 +24,12 @@ div.salescloud-wrapper {
    overflow-y: auto;
 }
 
+/* Hack that seems to be necessary to get
+   the SalesCloud IFRAME to display properly */
+div.salescloud-wrapper iframe {
+  min-height: 1526px;
+}
+
 </style>
 
 {% endblock %}

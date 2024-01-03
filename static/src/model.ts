@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2023 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -849,6 +849,10 @@ class Model {
       }
     }
     let invalidateGameList = false;
+    // The following code is a bit iffy since both json.challenge and json.move
+    // are included in the same message on the /user/[userid] path.
+    // !!! FIXME: Split this into two separate listeners,
+    // !!! one for challenges and one for moves
     if (json.challenge) {
       // Reload challenge list
       this.loadChallengeList();
