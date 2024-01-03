@@ -169,6 +169,7 @@ UNDEFINED_NAME: Dict[str, str] = {
     "is": "[Ónefndur]",
     "en": "[Unknown]",
     "pl": "[Nieznany]",
+    "nb": "[Ukjent]",
 }
 
 

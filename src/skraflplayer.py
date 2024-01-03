@@ -1320,6 +1320,49 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             ),
         ),
     ],
+    # Norwegian (Bokmål)
+    "nb": [
+        AutoPlayerTuple(
+            "Freyja",
+            "Velger alltid det høyest scorende trekket",
+            TOP_SCORE,
+            AutoPlayer,
+            {},
+        ),
+        AutoPlayerTuple(
+            "Idunn",
+            "Velger ett av de 20 høyest scorende trekkene",
+            MEDIUM,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(pick_from=20),
+        ),
+        AutoPlayerTuple(
+            "Frigg",
+            "Spiller ett av 20 mulige ord fra et middels vokabular",
+            COMMON,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="nwl18.mid",  # !!! TODO
+                pick_from=20,
+                adaptive=True,
+                discard_best_ratio_winning=0.3,
+                discard_best_ratio_losing=0.1,
+            ),
+        ),
+        AutoPlayerTuple(
+            "Sif",
+            "Spiller ett av 30 mulige vanlige ord",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="nwl18.aml",  # !!! TODO
+                pick_from=30,
+                adaptive=True,
+                discard_best_ratio_winning=0.3,
+                discard_best_ratio_losing=0.2,
+            ),
+        ),
+    ],
     # Polish
     "pl": [
         AutoPlayerTuple(

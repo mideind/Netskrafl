@@ -57,6 +57,9 @@ NONGENERIC_DEFAULT: Mapping[str, str] = {
     "is": "is_IS",
     "en": "en_US",
     "pl": "pl_PL",
+    "nb": "nb_NO",  # Norwegian Bokmål
+    "no": "nb_NO",
+    # We do not map from Norwegian Nynorsk ('nn') to Bokmål ('nb')
 }
 
 DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
@@ -225,6 +228,23 @@ class _PolishAlphabet(Alphabet):
 
 
 PolishAlphabet = _PolishAlphabet()
+
+
+class _NorwegianAlphabet(Alphabet):
+    
+    """The Norwegian alphabet"""
+
+    # Note: Q, X and Z are not included in the Norwegian alphabet
+    order = "abcdefghijklmnoprstuvwyæøå"
+    upper = "ABCDEFGHIJKLMNOPRSTUVWYÆØÅ"
+
+    # Sort ordering of all valid letters
+    full_order = "abcdefghijklmnopqrstuvwxyzæøå"
+    # Upper case version of the full order string
+    full_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ"
+
+
+NorwegianAlphabet = _NorwegianAlphabet()
 
 
 class TileSet(abc.ABC):
@@ -678,6 +698,90 @@ class PolishTileSet(TileSet):
 PolishTileSet.BAG_SIZE = PolishTileSet.num_tiles()
 assert PolishTileSet.BAG_SIZE == 100
 
+
+class NorwegianTileSet(TileSet):
+    """ The norwegian tile set is documented as follows:
+        2 blank tiles (scoring 0 points)
+        1 point: E ×9, A ×7, N ×6, R ×6, S ×6, T ×6, D ×5, I ×5, L ×5
+        2 points: F ×4, G ×4, K ×4, O ×4, M ×3
+        3 points: H ×3
+        4 points: B ×3, U ×3, V ×3, J ×2, P ×2, Å ×2
+        5 points: Ø ×2
+        6 points: Y ×1, Æ ×1
+        8 points: W ×1
+        10 points: C ×1
+    """
+
+    alphabet = NorwegianAlphabet
+
+    scores = {
+        "a": 1,
+        "b": 4,
+        "c": 10,
+        "d": 1,
+        "e": 1,
+        "f": 2,
+        "g": 2,
+        "h": 3,
+        "i": 1,
+        "j": 4,
+        "k": 2,
+        "l": 1,
+        "m": 2,
+        "n": 1,
+        "o": 2,
+        "p": 4,
+        "r": 1,
+        "s": 1,
+        "t": 1,
+        "u": 4,
+        "v": 4,
+        "w": 8,
+        "y": 6,
+        "æ": 6,
+        "ø": 5,
+        "å": 4,
+        "?": 0,
+    }
+
+    bag_tiles = [
+        ("a", 7),
+        ("b", 3),
+        ("c", 1),
+        ("d", 5),
+        ("e", 9),
+        ("f", 4),
+        ("g", 4),
+        ("h", 3),
+        ("i", 5),
+        ("j", 2),
+        ("k", 4),
+        ("l", 5),
+        ("m", 3),
+        ("n", 6),
+        ("o", 4),
+        ("p", 2),
+        ("r", 6),
+        ("s", 6),
+        ("t", 6),
+        ("u", 3),
+        ("v", 3),
+        ("w", 1),
+        ("y", 1),
+        ("æ", 1),
+        ("ø", 2),
+        ("å", 2),
+        ("?", 2),  # Blank tiles
+    ]
+
+    BAG_SIZE: int = 0
+
+
+# Number of tiles in bag
+NorwegianTileSet.BAG_SIZE = NorwegianTileSet.num_tiles()
+assert NorwegianTileSet.BAG_SIZE == 100
+
+
 # Mapping of locale code to tileset
 
 TILESETS: Dict[str, Type[TileSet]] = {
@@ -685,6 +789,12 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "is_IS": NewTileSet,
     "pl": PolishTileSet,
     "pl_PL": PolishTileSet,
+    "nb": NorwegianTileSet,
+    "nb_NO": NorwegianTileSet,
+    "no": NorwegianTileSet,
+    "no_NO": NorwegianTileSet,
+    "nn": NorwegianTileSet,
+    "nn_NO": NorwegianTileSet,
     "en": NewEnglishTileSet,
     "en_US": NewEnglishTileSet,
     "en_GB": NewEnglishTileSet,
@@ -697,6 +807,9 @@ ALPHABETS: Dict[str, Alphabet] = {
     "is": IcelandicAlphabet,
     "en": EnglishAlphabet,
     "pl": PolishAlphabet,
+    "no": NorwegianAlphabet,
+    "nb": NorwegianAlphabet,
+    "nn": NorwegianAlphabet,
     # Everything else presently defaults to IcelandicAlphabet
 }
 
@@ -707,6 +820,7 @@ VOCABULARIES: Dict[str, str] = {
     "en": "sowpods",
     "en_US": "otcwl2014",
     "pl": "osps37",
+    # !!! TODO: Add Norwegian vocabulary
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -740,6 +854,11 @@ LANGUAGES: Dict[str, str] = {
     "en_ZW": "en_GB",
     "pl": "pl",
     "pl_PL": "pl",
+    "nb": "nb",
+    "nb_NO": "nb",
+    # For generic Norwegian, default to Bokmål
+    "no": "nb",
+    "no_NO": "nb",
     # Everything else defaults to 'en_US'
 }
 

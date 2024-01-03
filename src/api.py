@@ -309,7 +309,27 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
     },
-    # !!! TODO: Add en_GB and Polish here
+    "pl": {
+        "NICK_MISSING": "Brak nazwy użytkownika",
+        "NICK_NOT_ALPHANUMERIC": "Nazwa użytkownika może zawierać tylko litery i cyfry",
+        "NICK_TOO_LONG": f"Nazwa użytkownika nie może mieć więcej niż {MAX_NICKNAME_LENGTH} znaków",
+        "EMAIL_NO_AT": "Adres e-mail musi zawierać znak @",
+        "LOCALE_UNKNOWN": "Nieznana lokalizacja",
+    },
+    "en_GB": {
+        "NICK_MISSING": "Nickname missing",
+        "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
+        "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
+        "EMAIL_NO_AT": "E-mail address must contain @ sign",
+        "LOCALE_UNKNOWN": "Unknown locale",
+    },
+    "nb": {
+        "NICK_MISSING": "Mangler kallenavn",
+        "NICK_NOT_ALPHANUMERIC": "Kallenavn kan bare inneholde bokstaver og tall",
+        "NICK_TOO_LONG": f"Kallenavn kan ikke være lengre enn {MAX_NICKNAME_LENGTH} tegn",
+        "EMAIL_NO_AT": "E-postadressen må inneholde @-tegn",
+        "LOCALE_UNKNOWN": "Ukjent lokalitet",
+    },
 }
 
 PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
@@ -317,21 +337,25 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "is": "Þú átt leik í Explo 💥",
         "en": "Your turn in Explo 💥",
         "pl": "Twoja kolej w Explo 💥",
+        "nb": "Din tur i Explo 💥",
     },
     "body": {
         "is": "{player} hefur leikið í viðureign ykkar.",
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
+        "nb": "{player} har gjort et trekk i spillet ditt.",
     },
     "chall_title": {
         "is": "Þú fékkst áskorun í Explo 💥",
         "en": "You've been challenged in Explo 💥",
         "pl": "Zostałeś wyzwany w Explo 💥",
+        "nb": "Du har blitt utfordret i Explo 💥",
     },
     "chall_body": {
         "is": "{player} hefur skorað á þig í viðureign!",
         "en": "{player} has challenged you to a game!",
         "pl": "{player} wyzwał cię na pojedynek!",
+        "nb": "{player} har utfordret deg til en kamp!",
     },
 }
 
