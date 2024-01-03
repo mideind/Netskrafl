@@ -50,6 +50,7 @@ from basics import (
     current_user,
     auth_required,
     get_google_auth,
+    jsonify,
     session_idinfo,
     session_user,
     set_session_userid,
@@ -419,7 +420,8 @@ if running_local:
 
     @web.route("/admin/gameupdate", methods=["POST"])
     def admin_gameupdate() -> ResponseType:
-        return admin.admin_gameupdate()
+        return jsonify(ok=False, result="Not implemented")
+        # return admin.admin_gameupdate()
 
     @web.route("/admin/setfriend", methods=["GET"])
     def admin_setfriend() -> ResponseType:

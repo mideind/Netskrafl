@@ -890,7 +890,7 @@ class GameModel(Model["GameModel"]):
     over = Model.Bool()
 
     # When was the game started?
-    timestamp = Model.Datetime(auto_now_add=True, indexed=True)
+    timestamp = Model.Datetime(auto_now_add=True, indexed=False)
 
     # The timestamp of the last move in the game
     ts_last_move = Model.OptionalDatetime(indexed=True)

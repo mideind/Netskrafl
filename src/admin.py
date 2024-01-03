@@ -24,7 +24,7 @@ from flask.wrappers import Response
 
 from basics import jsonify
 from languages import Alphabet
-from skrafldb import Client, Context, iter_q, Query, UserModel, GameModel
+from skrafldb import Client, iter_q, Query, UserModel, GameModel
 from skrafluser import User
 from skraflgame import Game
 
@@ -66,6 +66,7 @@ def deferred_user_update() -> None:
     )
 
 
+'''
 def deferred_game_update() -> None:
     """Reindex all games in the datastore by loading them and saving them again"""
     logging.info("Deferred game update starting")
@@ -102,7 +103,7 @@ def deferred_game_update() -> None:
     logging.info(
         f"Completed scanning {count} and updating {updated} game entities"
     )
-
+'''
 
 def admin_userupdate() -> Response:
     """Start a user update background task"""
@@ -111,10 +112,12 @@ def admin_userupdate() -> Response:
     return jsonify(ok=True, result="User update started")
 
 
+'''
 def admin_gameupdate() -> Response:
     """Start a game update background task"""
     Thread(target=deferred_game_update).start()
     return jsonify(ok=True, result="Game update started")
+'''
 
 
 def admin_setfriend() -> str:

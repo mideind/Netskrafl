@@ -46,6 +46,7 @@ indexes:
   - name: ts_last_move
     direction: desc
 
+# The following index is actually not used
 - kind: GameModel
   properties:
   - name: over
@@ -60,6 +61,7 @@ indexes:
   - name: ts_last_move
     direction: desc
 
+# The following index is actually not used
 - kind: GameModel
   properties:
   - name: over
