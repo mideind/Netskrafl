@@ -73,6 +73,7 @@ from languages import (
     Alphabet,
     IcelandicAlphabet,
     EnglishAlphabet,
+    NorwegianAlphabet,
     PolishAlphabet,
     current_alphabet,
     current_vocabulary,
@@ -225,6 +226,10 @@ class Wordbase:
         ("osps37", PolishAlphabet),
         ("osps37.aml", PolishAlphabet),
         ("osps37.mid", PolishAlphabet),
+        # Norwegian
+        ("nsf2022", NorwegianAlphabet),
+        #("nsf2022.aml", NorwegianAlphabet),
+        #("nsf2022.mid", NorwegianAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()

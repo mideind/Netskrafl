@@ -919,13 +919,8 @@ def nofilter(word: str) -> bool:  # pylint: disable=W0613
 
 
 def filter_skrafl(word: str) -> bool:
-    """Filtering for an Icelandic crossword game.
-    Exclude words longer than WORD_MAXLEN letters (won't fit on board)
-    Exclude words with non-Icelandic letters, i.e. C, Q, W, Z
-    Exclude two-letter words in the word database that are not
-    allowed according to the rules of 'Skraflfélag Íslands'
-    """
-    return len(word) <= WORD_MAXLEN
+    """Normal filtering. Exclude words < 2 or > 15 letters long"""
+    return 2 <= len(word) <= WORD_MAXLEN
 
 
 def filter_common(word: str) -> bool:
@@ -945,7 +940,6 @@ def run_test() -> None:
     db.build(
         ["testwords.txt"],  # Input files to be merged
         "testwords",  # Output file - full name will be testwords.text.dawg
-        "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -963,7 +957,6 @@ def run_twl06() -> None:
     db.build(
         ["twl06.txt"],  # Input files to be merged
         "twl06",  # Output file - full name will be twl06.bin.dawg
-        "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -980,7 +973,6 @@ def run_otcwl2014() -> None:
     db.build(
         ["otcwl2014.txt"],  # Input files to be merged
         "otcwl2014",  # Output file - full name will be otcwl2014.bin.dawg
-        "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -998,7 +990,6 @@ def run_sowpods() -> None:
     db.build(
         ["sowpods.txt"],  # Input files to be merged
         "sowpods",  # Output file - full name will be sowpods.bin.dawg
-        "resources",  # Subfolder of input and output files
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1022,8 +1013,27 @@ def run_osps37() -> None:
     db.build(
         ["osps37.txt"],  # Input files to be merged
         "osps37",  # Output file - full name will be osps37.bin.dawg
-        "resources",  # Subfolder of input and output files
         input_filter=input_filter,
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
+def run_nsf2022() -> None:
+    """Build a DAWG from the files listed"""
+    # This creates a DAWG from a single file named nsf2022.txt,
+    # containing the Norwegian word list.
+    print("Starting DAWG build for nsf2022.txt")
+
+    # Set the Norwegian (bokmål) locale
+    set_locale("nb")
+    db = DawgBuilder(encoding=current_alphabet().order)
+    t0 = time.time()
+    db.build(
+        ["nsf2022.txt"],  # Input files to be merged
+        "nsf2022",  # Output file - full name will be nsf2022.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1045,9 +1055,8 @@ def run_skrafl() -> None:
     db.build(
         ["ordalisti.full.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
         "ordalisti",  # Output file - full name will be ordalisti.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
-        "ordalisti.remove.txt",  # Words to remove
+        word_filter=filter_skrafl,  # Word filter function to apply
+        removals="ordalisti.remove.txt",  # Words to remove
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1061,9 +1070,8 @@ def run_skrafl() -> None:
     db.build(
         ["ordalisti.mid.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
         "midlungur",  # Output file - full name will be midlungur.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
-        "ordalisti.remove.txt",  # Words to remove
+        word_filter=filter_skrafl,  # Word filter function to apply
+        removals="ordalisti.remove.txt",  # Words to remove
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1077,8 +1085,7 @@ def run_skrafl() -> None:
     db.build(
         ["ordalisti.aml.filtered.txt"],  # Input files to be merged
         "amlodi",  # Output file - full name will be amlodi.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_common,  # Word filter function to apply
+        word_filter=filter_common,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1278,8 +1285,7 @@ def run_english_robot_vocabs() -> None:
     db.build(
         ["otcwl2014.aml.sorted.txt"],  # Input files to be merged
         "otcwl2014.aml",  # Output file - full name will be otcwl2014.aml.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1290,8 +1296,7 @@ def run_english_robot_vocabs() -> None:
     db.build(
         ["otcwl2014.mid.sorted.txt"],  # Input files to be merged
         "otcwl2014.mid",  # Output file - full name will be otcwl2014.mid.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1304,8 +1309,7 @@ def run_english_robot_vocabs() -> None:
     db.build(
         ["sowpods.aml.sorted.txt"],  # Input files to be merged
         "sowpods.aml",  # Output file - full name will be sowpods.aml.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1316,8 +1320,7 @@ def run_english_robot_vocabs() -> None:
     db.build(
         ["sowpods.mid.sorted.txt"],  # Input files to be merged
         "sowpods.mid",  # Output file - full name will be sowpods.mid.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1335,8 +1338,7 @@ def run_polish_robot_vocabs() -> None:
     db.build(
         ["polish_top_30000.txt"],  # Input files to be merged
         "osps37.aml",  # Output file - full name will be osps37.aml.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1347,8 +1349,7 @@ def run_polish_robot_vocabs() -> None:
     db.build(
         ["polish_top_60000.txt"],  # Input files to be merged
         "osps37.mid",  # Output file - full name will be osps37.mid.bin.dawg
-        "resources",  # Subfolder of input and output files
-        filter_skrafl,  # Word filter function to apply
+        word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
@@ -1362,6 +1363,7 @@ if __name__ == "__main__":
         run_icelandic_filter,  # Remove rare Icelandic words from robot vocabularies
         run_skrafl,  # Icelandic
         run_osps37,  # Polish
+        run_nsf2022,  # Norwegian
         # run_twl06,
         run_otcwl2014,  # en_US
         run_sowpods,  # en_GB

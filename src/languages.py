@@ -234,14 +234,17 @@ class _NorwegianAlphabet(Alphabet):
     
     """The Norwegian alphabet"""
 
-    # Note: Q, X and Z are not included in the Norwegian alphabet
-    order = "abcdefghijklmnoprstuvwyæøå"
-    upper = "ABCDEFGHIJKLMNOPRSTUVWYÆØÅ"
+    # Note: Ä, Ö, Ü, Q, X and Z are not included in the
+    # Norwegian tile set, but they can appear in words in
+    # the dictionary (and can be played via the blank tile),
+    # so we include them here
+    order = "aäbcdefghijklmnoöpqrstuüvwxyzæøå"
+    upper = "AÄBCDEFGHIJKLMNOÖPQRSTUÜVWXYZÆØÅ"
 
     # Sort ordering of all valid letters
-    full_order = "abcdefghijklmnopqrstuvwxyzæøå"
+    full_order = order
     # Upper case version of the full order string
-    full_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ"
+    full_upper = upper
 
 
 NorwegianAlphabet = _NorwegianAlphabet()
@@ -700,16 +703,19 @@ assert PolishTileSet.BAG_SIZE == 100
 
 
 class NorwegianTileSet(TileSet):
-    """ The norwegian tile set is documented as follows:
+    """
+        The norwegian tile set is documented as follows:
+
         2 blank tiles (scoring 0 points)
-        1 point: E ×9, A ×7, N ×6, R ×6, S ×6, T ×6, D ×5, I ×5, L ×5
-        2 points: F ×4, G ×4, K ×4, O ×4, M ×3
-        3 points: H ×3
-        4 points: B ×3, U ×3, V ×3, J ×2, P ×2, Å ×2
-        5 points: Ø ×2
-        6 points: Y ×1, Æ ×1
-        8 points: W ×1
-        10 points: C ×1
+        1 point: E x9, A x7, N x6, R x6, S x6, T x6, D x5, I x5, L x5
+        2 points: F x4, G x4, K x4, O x4, M x3
+        3 points: H x3
+        4 points: B x3, U x3, V x3, J x2, P x2, Å x2
+        5 points: Ø x2
+        6 points: Y x1, Æ x1
+        8 points: W x1
+        10 points: C x1
+
     """
 
     alphabet = NorwegianAlphabet
@@ -820,7 +826,7 @@ VOCABULARIES: Dict[str, str] = {
     "en": "sowpods",
     "en_US": "otcwl2014",
     "pl": "osps37",
-    # !!! TODO: Add Norwegian vocabulary
+    "nb": "nsf2022",
     # Everything else presently defaults to 'ordalisti'
 }
 
