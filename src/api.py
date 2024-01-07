@@ -401,9 +401,8 @@ class UserForm:
             self.email = form["email"].strip()
         except (TypeError, ValueError, KeyError):
             pass
-        self.locale = (
-            to_supported_locale(form.get("locale", "").strip()) or DEFAULT_LOCALE
-        )
+        # An empty locale is mapped to DEFAULT_LOCALE
+        self.locale = to_supported_locale(form.get("locale", "").strip())
         try:
             self.image = form["image"].strip()
         except (TypeError, ValueError, KeyError):
@@ -431,7 +430,8 @@ class UserForm:
             self.email = d.get("email", "").strip()
         except (TypeError, ValueError):
             pass
-        self.locale = to_supported_locale(d.get("locale", "").strip()) or DEFAULT_LOCALE
+        # An empty locale is mapped to DEFAULT_LOCALE
+        self.locale = to_supported_locale(d.get("locale", "").strip())
         try:
             self.image = d.get("image", "").strip()
         except (TypeError, ValueError, KeyError):
@@ -1612,14 +1612,11 @@ def wordcheck() -> ResponseType:
         return jsonify(ok=False)
 
     # If a locale is included in the request,
-    # use it within the current thread for the vocabulary lookup
-    locale: Optional[str] = rq.get("locale")
-
-    if locale:
-        set_game_locale(to_supported_locale(locale))
+    # use it for the vocabulary lookup
+    locale = to_supported_locale(rq.get("locale", ""))
 
     # Check the words against the dictionary
-    wdb = Wordbase.dawg()
+    wdb = Wordbase.dawg_for_locale(locale)
     valid = [(w, w in wdb) for w in words]
     ok = all(v[1] for v in valid)
     return jsonify(word=word, ok=ok, valid=valid)

@@ -77,6 +77,7 @@ from languages import (
     PolishAlphabet,
     current_alphabet,
     current_vocabulary,
+    vocabulary_for_locale,
 )
 
 
@@ -227,9 +228,9 @@ class Wordbase:
         ("osps37.aml", PolishAlphabet),
         ("osps37.mid", PolishAlphabet),
         # Norwegian
-        ("nsf2022", NorwegianAlphabet),
-        #("nsf2022.aml", NorwegianAlphabet),
-        #("nsf2022.mid", NorwegianAlphabet),
+        ("nsf2023", NorwegianAlphabet),
+        #("nsf2023.aml", NorwegianAlphabet),
+        #("nsf2023.mid", NorwegianAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()
@@ -272,6 +273,12 @@ class Wordbase:
         """ Return the main dictionary DAWG object, associated with the
             current thread, i.e. the current user's (or game's) locale """
         return Wordbase._dawg[current_vocabulary()]
+
+    @staticmethod
+    def dawg_for_locale(locale: str) -> PackedDawgDictionary:
+        """ Return the DAWG object associated with the given locale """
+        vocab = vocabulary_for_locale(locale)
+        return Wordbase._dawg[vocab]
 
     @staticmethod
     def dawg_for_vocab(vocab: str) -> Optional[PackedDawgDictionary]:

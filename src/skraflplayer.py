@@ -1342,7 +1342,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
-                vocab="nsf2022.mid",  # !!! TODO
+                vocab="nsf2023.mid",  # !!! TODO
                 pick_from=20,
                 adaptive=True,
                 discard_best_ratio_winning=0.3,
@@ -1355,7 +1355,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
-                vocab="nsf2022.aml",  # !!! TODO
+                vocab="nsf2023.aml",  # !!! TODO
                 pick_from=30,
                 adaptive=True,
                 discard_best_ratio_winning=0.3,

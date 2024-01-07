@@ -1007,7 +1007,7 @@ class User:
             "full_name": name or nickname,
         }
         # Make sure that the locale is a valid, supported locale
-        locale = to_supported_locale(locale) if locale else DEFAULT_LOCALE
+        locale = to_supported_locale(locale)  # Maps an empty locale to DEFAULT_LOCALE
         user_id = UserModel.create(
             user_id=account,
             account=account,

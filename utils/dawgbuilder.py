@@ -1020,19 +1020,19 @@ def run_osps37() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
-def run_nsf2022() -> None:
+def run_nsf2023() -> None:
     """Build a DAWG from the files listed"""
-    # This creates a DAWG from a single file named nsf2022.txt,
+    # This creates a DAWG from a single file named nsf2023.txt,
     # containing the Norwegian word list.
-    print("Starting DAWG build for nsf2022.txt")
+    print("Starting DAWG build for nsf2023.txt")
 
     # Set the Norwegian (bokmål) locale
     set_locale("nb")
     db = DawgBuilder(encoding=current_alphabet().order)
     t0 = time.time()
     db.build(
-        ["nsf2022.txt"],  # Input files to be merged
-        "nsf2022",  # Output file - full name will be nsf2022.bin.dawg
+        ["nsf2023.txt"],  # Input files to be merged
+        "nsf2023",  # Output file - full name will be nsf2023.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
@@ -1363,7 +1363,7 @@ if __name__ == "__main__":
         run_icelandic_filter,  # Remove rare Icelandic words from robot vocabularies
         run_skrafl,  # Icelandic
         run_osps37,  # Polish
-        run_nsf2022,  # Norwegian
+        run_nsf2023,  # Norwegian
         # run_twl06,
         run_otcwl2014,  # en_US
         run_sowpods,  # en_GB

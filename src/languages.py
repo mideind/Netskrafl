@@ -2,7 +2,7 @@
 
     Language, locale and alphabet encapsulation module
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -13,16 +13,18 @@
     languages, including the character set, scores, tiles in the
     initial bag, sorting, etc.
 
-    Currently the only supported language is Icelandic.
+    Currently the supported languages are Icelandic, English (UK and US),
+    Polish and Norwegian (Bokmål).
 
     Locale-dependent information is stored in a ContextVar called
     current_locale, defined at the bottom of this module. ContextVars
     were introduced in Python 3.7 and encapsulate thread local state
-    in a safe manner, also under asynchronous frameworks. The default
-    locale is 'is_IS', i.e. the Icelandic locale with the Icelandic
-    alphabet and 'new' tile set. To use another locale during processing
-    of a request or otherwise, set the current_locale variable accordingly
-    before invoking the request processing code.
+    in a safe manner, also under asynchronous frameworks.
+    
+    The default locale for Netskrafl is 'is_IS', i.e. the Icelandic locale
+    with the Icelandic alphabet and the 'new' tile set. To use another
+    locale during processing of a request or otherwise, set the current_locale
+    variable accordingly before invoking the request processing code.
 
 """
 
@@ -231,7 +233,7 @@ PolishAlphabet = _PolishAlphabet()
 
 
 class _NorwegianAlphabet(Alphabet):
-    
+
     """The Norwegian alphabet"""
 
     # Note: Ä, Ö, Ü, Q, X and Z are not included in the
@@ -283,7 +285,11 @@ class TileSet(abc.ABC):
 
 class OldTileSet(TileSet):
 
-    """The old (original) Icelandic tile set"""
+    """
+    The old (original) Icelandic tile set.
+    This tile set is awful. We don't recommend using it.
+    It is only included here for backwards compatibility.
+    """
 
     # Letter scores in the old (original) Icelandic tile set
 
@@ -372,7 +378,11 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 class NewTileSet(TileSet):
 
-    """The new Icelandic tile set, created by Skraflfélag Íslands"""
+    """
+    The new Icelandic tile set, created by Skraflfélag Íslands
+    and Miðeind ehf. This tile set is used by default in Netskrafl
+    and Explo.
+    """
 
     alphabet = IcelandicAlphabet
 
@@ -461,8 +471,10 @@ NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 
 class EnglishTileSet(TileSet):
 
-    """Original ('classic') English tile set. Only included for reference;
-    not used in Explo."""
+    """
+    Original ('classic') English tile set. Only included for
+    documentation and reference; not used in Explo.
+    """
 
     alphabet = EnglishAlphabet
 
@@ -535,8 +547,11 @@ EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
 
 class NewEnglishTileSet(TileSet):
 
-    """New English Tile Set - Copyright (C) Miðeind ehf.
-    Created by a proprietary method of game simulation.
+    """
+    New English Tile Set - Copyright (C) Miðeind ehf.
+    This set was created by a proprietary method,
+    based on extensive game simulation and optimization.
+    THIS TILE SET IS PUBLISHED UNDER THE CC-BY-NC 4.0 LICENSE.
     """
 
     alphabet = EnglishAlphabet
@@ -702,20 +717,11 @@ PolishTileSet.BAG_SIZE = PolishTileSet.num_tiles()
 assert PolishTileSet.BAG_SIZE == 100
 
 
-class NorwegianTileSet(TileSet):
+class OriginalNorwegianTileSet(TileSet):
+
     """
-        The norwegian tile set is documented as follows:
-
-        2 blank tiles (scoring 0 points)
-        1 point: E x9, A x7, N x6, R x6, S x6, T x6, D x5, I x5, L x5
-        2 points: F x4, G x4, K x4, O x4, M x3
-        3 points: H x3
-        4 points: B x3, U x3, V x3, J x2, P x2, Å x2
-        5 points: Ø x2
-        6 points: Y x1, Æ x1
-        8 points: W x1
-        10 points: C x1
-
+    This tile set is presently not used by Netskrafl or Explo.
+    It is only included here for documentation and reference.
     """
 
     alphabet = NorwegianAlphabet
@@ -784,8 +790,86 @@ class NorwegianTileSet(TileSet):
 
 
 # Number of tiles in bag
-NorwegianTileSet.BAG_SIZE = NorwegianTileSet.num_tiles()
-assert NorwegianTileSet.BAG_SIZE == 100
+OriginalNorwegianTileSet.BAG_SIZE = OriginalNorwegianTileSet.num_tiles()
+assert OriginalNorwegianTileSet.BAG_SIZE == 100
+
+
+class NewNorwegianTileSet(TileSet):
+
+    """
+    The new, improved Norwegian tile set was designed
+    by Taral Guldahl Seierstad and is used here
+    by kind permission. Thanks Taral!
+    """
+
+    alphabet = NorwegianAlphabet
+
+    scores = {
+        "a": 1,
+        "b": 3,
+        "c": 8,
+        "d": 2,
+        "e": 1,
+        "f": 4,
+        "g": 2,
+        "h": 3,
+        "i": 1,
+        "j": 5,
+        "k": 2,
+        "l": 1,
+        "m": 2,
+        "n": 1,
+        "o": 2,
+        "p": 3,
+        "r": 1,
+        "s": 1,
+        "t": 1,
+        "u": 3,
+        "v": 3,
+        "w": 10,
+        "y": 3,
+        "æ": 6,
+        "ø": 4,
+        "å": 3,
+        "?": 0,
+    }
+
+    bag_tiles = [
+        ("a", 11),
+        ("b", 3),
+        ("c", 1),
+        ("d", 4),
+        ("e", 12),
+        ("f", 2),
+        ("g", 3),
+        ("h", 3),
+        ("i", 5),
+        ("j", 2),
+        ("k", 4),
+        ("l", 5),
+        ("m", 2),
+        ("n", 5),
+        ("o", 4),
+        ("p", 2),
+        ("r", 6),
+        ("s", 4),
+        ("t", 5),
+        ("u", 4),
+        ("v", 3),
+        ("w", 1),
+        ("y", 2),
+        ("æ", 1),
+        ("ø", 2),
+        ("å", 2),
+        ("?", 2),  # Blank tiles
+    ]
+
+    BAG_SIZE: int = 0
+
+
+# Number of tiles in bag
+NewNorwegianTileSet.BAG_SIZE = NewNorwegianTileSet.num_tiles()
+assert NewNorwegianTileSet.BAG_SIZE == 100
 
 
 # Mapping of locale code to tileset
@@ -795,12 +879,12 @@ TILESETS: Dict[str, Type[TileSet]] = {
     "is_IS": NewTileSet,
     "pl": PolishTileSet,
     "pl_PL": PolishTileSet,
-    "nb": NorwegianTileSet,
-    "nb_NO": NorwegianTileSet,
-    "no": NorwegianTileSet,
-    "no_NO": NorwegianTileSet,
-    "nn": NorwegianTileSet,
-    "nn_NO": NorwegianTileSet,
+    "nb": NewNorwegianTileSet,
+    "nb_NO": NewNorwegianTileSet,
+    "no": NewNorwegianTileSet,
+    "no_NO": NewNorwegianTileSet,
+    "nn": NewNorwegianTileSet,
+    "nn_NO": NewNorwegianTileSet,
     "en": NewEnglishTileSet,
     "en_US": NewEnglishTileSet,
     "en_GB": NewEnglishTileSet,
@@ -826,7 +910,7 @@ VOCABULARIES: Dict[str, str] = {
     "en": "sowpods",
     "en_US": "otcwl2014",
     "pl": "osps37",
-    "nb": "nsf2022",
+    "nb": "nsf2023",
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -887,13 +971,18 @@ class Locale(NamedTuple):
     board_type: str
 
 
+default_locale_netskrafl = Locale(
+    "is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard"
+)
+default_locale_explo = Locale(
+    "en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo"
+)
+default_locale = (
+    default_locale_netskrafl if PROJECT_ID == "netskrafl" else default_locale_explo
+)
+
 # Use a context variable (thread local) to store the locale information
 # for the current thread, i.e. for the current request
-default_locale: Locale = (
-    Locale("is_IS", "is", IcelandicAlphabet, NewTileSet, "ordalisti", "standard")
-    if PROJECT_ID == "netskrafl"
-    else Locale("en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo")
-)
 current_locale: ContextVar[Locale] = ContextVar("locale", default=default_locale)
 
 current_lc: Callable[[], str] = lambda: current_locale.get().lc
@@ -958,6 +1047,8 @@ def to_supported_locale(lc: str) -> str:
     """Return the locale code if it is supported, otherwise its parent
     locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
     # Defensive programming: we always use underscores in locale codes
+    if not lc:
+        return DEFAULT_LOCALE
     lc = lc.replace("-", "_")
     found = lc in SUPPORTED_LOCALES
     while not found:

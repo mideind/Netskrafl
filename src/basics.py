@@ -212,7 +212,6 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
             # and call the route function
             g.user = u
             # Set the locale for this thread to the user's locale
-            u.set_locale("nb_NO")  # !!! DEBUG !!!
             set_locale(u.locale)
             return func()
 
