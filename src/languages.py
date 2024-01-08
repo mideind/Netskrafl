@@ -1065,16 +1065,22 @@ def to_supported_locale(lc: str) -> str:
     return DEFAULT_LOCALE
 
 
+_LOCALE_CACHE: Dict[Tuple[str, str], Locale] = {}
+
+
 def set_locale(lc: str) -> None:
     """Set the current thread's locale context"""
-    locale = Locale(
-        lc=lc,
-        language=language_for_locale(lc),
-        alphabet=alphabet_for_locale(lc),
-        tileset=tileset_for_locale(lc),
-        vocabulary=vocabulary_for_locale(lc),
-        board_type=board_type_for_locale(lc),
-    )
+    key = (lc, language_for_locale(lc))
+    if (locale := _LOCALE_CACHE.get(key)) is None:
+        locale = Locale(
+            lc=key[0],
+            language=key[1],
+            alphabet=alphabet_for_locale(lc),
+            tileset=tileset_for_locale(lc),
+            vocabulary=vocabulary_for_locale(lc),
+            board_type=board_type_for_locale(lc),
+        )
+        _LOCALE_CACHE[key] = locale
     current_locale.set(locale)
 
 
@@ -1082,12 +1088,15 @@ def set_game_locale(lc: str) -> None:
     """Override the current thread's locale context to correspond to a
     particular game's locale. This doesn't change the UI language,
     which remains tied to the logged-in user."""
-    locale = Locale(
-        lc=lc,
-        language=current_language(),
-        alphabet=alphabet_for_locale(lc),
-        tileset=tileset_for_locale(lc),
-        vocabulary=vocabulary_for_locale(lc),
-        board_type=board_type_for_locale(lc),
-    )
+    key = (lc, current_language())
+    if (locale := _LOCALE_CACHE.get(key)) is None:
+        locale = Locale(
+            lc=key[0],
+            language=key[1],
+            alphabet=alphabet_for_locale(lc),
+            tileset=tileset_for_locale(lc),
+            vocabulary=vocabulary_for_locale(lc),
+            board_type=board_type_for_locale(lc),
+        )
+        _LOCALE_CACHE[key] = locale
     current_locale.set(locale)
