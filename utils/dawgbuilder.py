@@ -106,7 +106,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
 
 import os
 import sys
@@ -1039,6 +1039,99 @@ def run_nsf2023() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
+def run_norwegian_filter() -> None:
+    """Read list of frequent Norwegian words, filter them by the
+    vocabulary and add them
+    to the two robot vocabularies for each main vocabulary,
+    until we have enough words in each."""
+
+    AML_VOCAB_SIZE = 20_000  # Easy robot vocabulary size
+    MID_VOCAB_SIZE = 32_500  # Medium robot vocabulary size
+
+    print(
+        f"Norwegian filtering in progress, vocab size of {AML_VOCAB_SIZE}/{MID_VOCAB_SIZE}"
+    )
+
+    from dawgdictionary import PackedDawgDictionary
+
+    # Load the NSF2023 vocabulary as a packed DAWG
+    set_locale("nb_NO")
+    nsf2023 = PackedDawgDictionary(current_alphabet())
+    nsf2023.load(rpath("nsf2023.bin.dawg"))
+
+    # The name of the input file containing
+    # the list of frequent Norwegian words
+    source = rpath("nob-no_web_2020_300K-words.txt")
+
+    # Define our tasks
+
+    class TaskDict(TypedDict):
+        vocab: Set[str]
+        cnt: int
+        size: int
+        maxlen: int
+        d: PackedDawgDictionary
+        out: str
+
+    tasks = [
+        TaskDict(
+            vocab=set(),
+            cnt=0,
+            size=AML_VOCAB_SIZE,
+            maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
+            d=nsf2023,
+            out=f"norwegian_top_{AML_VOCAB_SIZE}.txt",
+        ),
+        TaskDict(
+            vocab=set(),
+            cnt=0,
+            size=MID_VOCAB_SIZE,
+            maxlen=WORD_MAXLEN,
+            d=nsf2023,
+            out=f"norwegian_top_{MID_VOCAB_SIZE}.txt",
+        ),
+    ]
+
+    # Read the input file, which is (roughly) sorted in descending order
+    # by frequency, and filter the words
+    cnt = 0
+    with open(source, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cnt += 1
+            a = line.split("\t")
+            if len(a) != 3:
+                continue
+            word = a[1]
+            # We only use words ranging from 3 to 15 letters, inclusive
+            if not (3 <= len(word) <= WORD_MAXLEN):
+                continue
+            # For each task, check whether the word should be added
+            for t in tasks:
+                if t["cnt"] < t["size"] and len(word) <= t["maxlen"]:
+                    if (word := word.lower()) in t["d"]:
+                        (s := t["vocab"]).add(word)
+                        t["cnt"] = len(s)
+            # Circuit breaker: stop when all tasks are complete
+            if all(t["cnt"] >= t["size"] for t in tasks):
+                break
+
+    # Create a lambda that can be used as a key in the sorted function
+    # to sort in Norwegian bokmål order
+    alphabet = current_alphabet().full_order
+    keyfunc: Callable[[str], List[int]] = lambda w: [alphabet.index(c) for c in w]
+    for t in tasks:
+        vocab = sorted(t["vocab"], key=keyfunc)
+        with open(
+            rpath(t["out"]), "w", encoding="utf-8", newline="\n"
+        ) as f:
+            for w in vocab:
+                f.write(f"{w}\n")
+    print(f"Norwegian filtering done after reading {cnt} lines from source")
+
+
 def run_skrafl() -> None:
     """Build a DAWG from the files listed"""
     # This creates a DAWG from the full database of Icelandic words in
@@ -1355,6 +1448,35 @@ def run_polish_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
+def run_norwegian_robot_vocabs() -> None:
+    """Build DAWGS for Norwegian robot vocabularies"""
+    print("Starting DAWG build for Norwegian robot vocabularies")
+
+    set_locale("nb_NO")
+
+    print("Starting DAWG build for Sif/nsf2023")
+    db = DawgBuilder(encoding=current_alphabet().full_order)
+    t0 = time.time()
+    db.build(
+        ["norwegian_top_20000.txt"],  # Input files to be merged
+        "nsf2023.aml",  # Output file - full name will be nsf2023.aml.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    print("Starting DAWG build for Frigg/nsf2023")
+    db = DawgBuilder(encoding=current_alphabet().full_order)
+    t0 = time.time()
+    db.build(
+        ["norwegian_top_32500.txt"],  # Input files to be merged
+        "nsf2023.mid",  # Output file - full name will be nsf2023.mid.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
 if __name__ == "__main__":
 
     print(f"DawgBuilder - project {os.environ['PROJECT_ID']}")
@@ -1367,9 +1489,11 @@ if __name__ == "__main__":
         # run_twl06,
         run_otcwl2014,  # en_US
         run_sowpods,  # en_GB
+        run_norwegian_filter,
         run_english_filter,
         run_english_robot_vocabs,
         run_polish_robot_vocabs,
+        run_norwegian_robot_vocabs,
     ]
 
     def name(t: Callable[[], None]) -> str:
