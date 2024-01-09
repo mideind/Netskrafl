@@ -1366,7 +1366,7 @@ def _challengelist() -> ChallengeList:
         # Current user not valid: return empty list
         return result
 
-    def is_timed(prefs: Optional[Dict[str, Any]]) -> bool:
+    def is_timed(prefs: Optional[PrefsDict]) -> bool:
         """Return True if the challenge is for a timed game"""
         if prefs is None:
             return False
@@ -2605,7 +2605,7 @@ def initgame() -> ResponseType:
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
         # The game is always in the user's locale
-        prefs = dict(newbag=True, locale=user.locale)
+        prefs = PrefsDict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type
         set_game_locale(user.locale)
         game = Game.new(uid, None, robot_level, prefs=prefs)
@@ -2632,7 +2632,7 @@ def initgame() -> ResponseType:
 
     # Create a fresh game object, ensuring it has a board_type pref
     if prefs is None:
-        prefs = dict(locale=user.locale)
+        prefs = PrefsDict(locale=user.locale)
     prefs["board_type"] = board_type
     set_game_locale(cast(str, prefs.get("locale")) or user.locale)
     game = Game.new(uid, opp, 0, prefs)
@@ -2661,7 +2661,7 @@ def initgame() -> ResponseType:
     msg[f"user/{uid}/challenge"] = now
 
     # If this is a timed game, notify the waiting party
-    if prefs and cast(int, prefs.get("duration", 0)) > 0:
+    if prefs and prefs.get("duration", 0) > 0:
         msg[f"user/{opp}/wait/{uid}"] = {"game": game_id, "key": key}
 
     firebase.send_message(msg)

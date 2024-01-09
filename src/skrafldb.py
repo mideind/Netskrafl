@@ -103,8 +103,21 @@ _T = TypeVar("_T", covariant=True)
 
 _T_Model = TypeVar("_T_Model", bound="ndb.Model")
 
-PrefItem = Union[str, int, bool]
-PrefsDict = Dict[str, PrefItem]
+
+class PrefsDict(TypedDict, total=False):
+
+    """Dictionary of user or game preferences"""
+
+    full_name: str
+    email: str
+    locale: str
+    duration: int
+    fairplay: bool
+    newbag: bool
+    manual: bool
+    board_type: str
+
+
 ChallengeTuple = NamedTuple(
     "ChallengeTuple",
     [
@@ -996,7 +1009,7 @@ class GameModel(Model["GameModel"]):
                 human_elo_adj = gm.human_elo1_adj
                 manual_elo_adj = gm.manual_elo1_adj
             prefs = gm.prefs or {}
-            locale = gm.locale or cast(str, prefs.get("locale")) or DEFAULT_LOCALE
+            locale = gm.locale or prefs.get("locale") or DEFAULT_LOCALE
             return FinishedGameDict(
                 uuid=game_uuid,
                 ts=gm.timestamp,
@@ -1102,7 +1115,7 @@ class GameModel(Model["GameModel"]):
 
     def manual_wordcheck(self) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
-        return self.prefs is not None and cast(bool, self.prefs.get("manual", False))
+        return self.prefs is not None and self.prefs.get("manual", False)
 
 
 class FavoriteModel(Model["FavoriteModel"]):
@@ -1133,9 +1146,7 @@ class FavoriteModel(Model["FavoriteModel"]):
                 yield fm.destuser.id()
 
     @classmethod
-    def delete_user(
-        cls, user_id: str
-    ) -> None:
+    def delete_user(cls, user_id: str) -> None:
         """Delete all favorite relations for the given user"""
         if not user_id:
             return
@@ -1259,7 +1270,7 @@ class ChallengeModel(Model["ChallengeModel"]):
         """Add a challenge relation between the two users"""
         cm = ChallengeModel(parent=Key(UserModel, src_id))
         cm.set_dest(dest_id)
-        cm.prefs = {} if prefs is None else prefs
+        cm.prefs = PrefsDict() if prefs is None else prefs
         cm.put()
 
     @classmethod

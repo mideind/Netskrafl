@@ -27,6 +27,7 @@ from typing import (
     Set,
     Tuple,
     Iterable,
+    Union,
     cast,
 )
 
@@ -44,7 +45,6 @@ from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
-    PrefItem,
     PrefsDict,
     TransactionModel,
     UserModel,
@@ -459,8 +459,8 @@ class User:
         self._location = location
 
     def get_pref(
-        self, pref: str, default: Optional[PrefItem] = None
-    ) -> Optional[PrefItem]:
+        self, pref: str, default: Optional[Union[str, int, bool]] = None
+    ) -> Optional[Union[str, int, bool]]:
         """Retrieve a preference, or None if not found"""
         return self._preferences.get(pref, default)
 
@@ -474,7 +474,7 @@ class User:
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
-    def set_pref(self, pref: str, value: PrefItem) -> None:
+    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
         """Set a preference to a value"""
         self._preferences[pref] = value
 
@@ -484,7 +484,7 @@ class User:
         if prefs is None:
             return ""
         fn = prefs.get("full_name")
-        return fn if fn is not None and isinstance(fn, str) else ""
+        return fn or ""
 
     def full_name(self) -> str:
         """Returns the full name of a user"""
@@ -1047,7 +1047,7 @@ class User:
             new=False,
             previous_token=previous_token,
         )
-        full_name = cast(str, um.prefs.get("full_name", "")) if um.prefs else ""
+        full_name = um.prefs.get("full_name", "") if um.prefs else ""
         udd = UserDetailDict(
             name=full_name, picture=um.image or "", email=um.email or ""
         )
