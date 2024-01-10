@@ -92,15 +92,12 @@ def oauth2callback(request: Request) -> ResponseType:
             # Never mind (this can happen if the request is not a form and does not contain JSON)
             pass
 
-    token: str
+    token = ""
     config: FlaskConfig = cast(Any, current_app).config
     testing = config.get("TESTING", False)
     client_type: str = "web"  # Default client type
 
-    if testing:
-        # Testing only: there is no token in the request
-        token = ""
-    else:
+    if not testing:
         token = request.form.get("idToken", "") or cast(Any, request).json.get(
             "idToken", ""
         )
