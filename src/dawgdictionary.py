@@ -227,10 +227,10 @@ class Wordbase:
         ("osps37", PolishAlphabet),
         ("osps37.aml", PolishAlphabet),
         ("osps37.mid", PolishAlphabet),
-        # Norwegian
+        # Norwegian Bokmål
         ("nsf2023", NorwegianAlphabet),
-        #("nsf2023.aml", NorwegianAlphabet),
-        #("nsf2023.mid", NorwegianAlphabet),
+        ("nsf2023.aml", NorwegianAlphabet),
+        ("nsf2023.mid", NorwegianAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()
