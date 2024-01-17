@@ -169,6 +169,7 @@ UNDEFINED_NAME: Dict[str, str] = {
     "is": "[Ónefndur]",
     "en": "[Unknown]",
     "pl": "[Nieznany]",
+    "nb": "[Ukjent]",
 }
 
 
@@ -642,7 +643,7 @@ class Game:
     def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """Returns the fairplay commitment specified
         by the given game preferences"""
-        return prefs is not None and cast(bool, prefs.get("fairplay", False))
+        return prefs is not None and prefs.get("fairplay", False)
 
     def get_fairplay(self) -> bool:
         """True if this was originated as a fairplay game"""
@@ -655,7 +656,7 @@ class Game:
     @staticmethod
     def new_bag_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """Returns true if the game preferences specify a new bag"""
-        return prefs is not None and cast(bool, prefs.get("newbag", False))
+        return prefs is not None and prefs.get("newbag", False)
 
     def new_bag(self) -> bool:
         """True if this game uses the new bag"""
@@ -668,7 +669,7 @@ class Game:
     @staticmethod
     def manual_wordcheck_from_prefs(prefs: Optional[PrefsDict]) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
-        return prefs is not None and cast(bool, prefs.get("manual", False))
+        return prefs is not None and prefs.get("manual", False)
 
     def manual_wordcheck(self) -> bool:
         """True if this game uses manual wordcheck"""
@@ -691,7 +692,7 @@ class Game:
         """Return the locale specified by the given game preferences"""
         if prefs is None:
             return DEFAULT_LOCALE
-        return cast(str, prefs.get("locale", DEFAULT_LOCALE))
+        return prefs.get("locale", DEFAULT_LOCALE)
 
     @property
     def locale(self) -> str:
@@ -766,7 +767,7 @@ class Game:
     @staticmethod
     def get_duration_from_prefs(prefs: Optional[PrefsDict]) -> int:
         """Return the duration given a dict of game preferences"""
-        return 0 if prefs is None else cast(int, prefs.get("duration", 0))
+        return 0 if prefs is None else prefs.get("duration", 0)
 
     def get_duration(self) -> int:
         """Return the duration for each player in

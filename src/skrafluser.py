@@ -27,6 +27,7 @@ from typing import (
     Set,
     Tuple,
     Iterable,
+    Union,
     cast,
 )
 
@@ -38,13 +39,10 @@ import re
 from flask.helpers import url_for
 import jwt
 
-from cache import memcache
-
 from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_users
 from skrafldb import (
-    PrefItem,
     PrefsDict,
     TransactionModel,
     UserModel,
@@ -150,13 +148,10 @@ class StatsSummaryDict(TypedDict):
     manual_elo: int
 
 
-# Should we use memcache (in practice Redis) to cache user data?
-USE_MEMCACHE = False
-
 # Maximum length of player nickname
 MAX_NICKNAME_LENGTH = 15
 
-# Default token lifetime
+# Default login token lifetime
 DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
 
 # Key ID for the client secret key used to sign our own tokens
@@ -239,9 +234,6 @@ class User:
     # Use a lock to avoid potential race conditions between
     # the memcache and the database
     _lock = threading.Lock()
-
-    # User object expiration in memcache/Redis, measured in seconds
-    _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
     # Upgraded from 4 to 5 after adding locale attribute
@@ -357,16 +349,6 @@ class User:
             um.put()
             # um.timestamp should not be set or updated
 
-            # Note: the namespace version should be incremented each time
-            # that the class properties change
-            if USE_MEMCACHE:
-                memcache.set(
-                    self._user_id,
-                    self,
-                    time=User._CACHE_EXPIRY,
-                    namespace=User._NAMESPACE,
-                )
-
     def id(self) -> Optional[str]:
         """Returns the id (database key) of the user"""
         return self._user_id
@@ -459,8 +441,8 @@ class User:
         self._location = location
 
     def get_pref(
-        self, pref: str, default: Optional[PrefItem] = None
-    ) -> Optional[PrefItem]:
+        self, pref: str, default: Optional[Union[str, int, bool]] = None
+    ) -> Optional[Union[str, int, bool]]:
         """Retrieve a preference, or None if not found"""
         return self._preferences.get(pref, default)
 
@@ -474,7 +456,7 @@ class User:
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
-    def set_pref(self, pref: str, value: PrefItem) -> None:
+    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
         """Set a preference to a value"""
         self._preferences[pref] = value
 
@@ -484,7 +466,7 @@ class User:
         if prefs is None:
             return ""
         fn = prefs.get("full_name")
-        return fn if fn is not None and isinstance(fn, str) else ""
+        return fn or ""
 
     def full_name(self) -> str:
         """Returns the full name of a user"""
@@ -890,17 +872,11 @@ class User:
         if not uid:
             return None
         with User._lock:
-            if USE_MEMCACHE:
-                u = memcache.get(uid, namespace=User._NAMESPACE)
-                if u is not None:
-                    return u
             um = UserModel.fetch(uid)
             if um is None:
                 return None
             u = cls(uid=uid)
             u._init(um)
-            if USE_MEMCACHE:
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod
@@ -1007,7 +983,7 @@ class User:
             "full_name": name or nickname,
         }
         # Make sure that the locale is a valid, supported locale
-        locale = to_supported_locale(locale) if locale else DEFAULT_LOCALE
+        locale = to_supported_locale(locale)  # Maps an empty locale to DEFAULT_LOCALE
         user_id = UserModel.create(
             user_id=account,
             account=account,
@@ -1047,7 +1023,7 @@ class User:
             new=False,
             previous_token=previous_token,
         )
-        full_name = cast(str, um.prefs.get("full_name", "")) if um.prefs else ""
+        full_name = um.prefs.get("full_name", "") if um.prefs else ""
         udd = UserDetailDict(
             name=full_name, picture=um.image or "", email=um.email or ""
         )

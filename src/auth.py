@@ -2,7 +2,7 @@
 
     Authentication module for netskrafl.is
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -21,6 +21,7 @@ from functools import lru_cache
 from typing import cast, Any, Optional, Dict
 
 from datetime import datetime
+import logging
 
 import requests
 import cachecontrol  # type: ignore
@@ -91,21 +92,19 @@ def oauth2callback(request: Request) -> ResponseType:
             # Never mind (this can happen if the request is not a form and does not contain JSON)
             pass
 
-    token: str
+    token = ""
     config: FlaskConfig = cast(Any, current_app).config
     testing = config.get("TESTING", False)
     client_type: str = "web"  # Default client type
 
-    if testing:
-        # Testing only: there is no token in the request
-        token = ""
-    else:
+    if not testing:
         token = request.form.get("idToken", "") or cast(Any, request).json.get(
             "idToken", ""
         )
         if not token:
             # No authentication token included in the request
             # 400 - Bad Request
+            logging.warning("Missing token")
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
         client_type = (
             request.form.get("clientType", "")
@@ -116,10 +115,12 @@ def oauth2callback(request: Request) -> ResponseType:
             or "web"
         )
 
+    client_type = client_type[:64]  # Defensive programming
     client_id = CLIENT.get(client_type, {}).get("id", "")
     if not client_id:
         # Unknown client type (should be one of 'web', 'ios', 'android')
         # 400 - Bad Request
+        logging.warning(f"Unknown client type: {client_type}")
         return jsonify({"status": "invalid", "msg": "Unknown client type"}), 400
 
     uld: Optional[UserLoginDict] = None
@@ -166,7 +167,7 @@ def oauth2callback(request: Request) -> ResponseType:
                 token, google_request, client_id
             )
             if idinfo is None:
-                raise ValueError("Invalid Google token")
+                raise ValueError(f"Invalid Google token: {token}, client_id {client_id}")
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -195,14 +196,17 @@ def oauth2callback(request: Request) -> ResponseType:
     except (KeyError, ValueError) as e:
         # Invalid token
         # 401 - Unauthorized
+        logging.error(f"Invalid token: {e}")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     except GoogleAuthError as e:
+        logging.error(f"Google auth error: {e}")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     if not userid or uld is None:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
+        logging.error("Unable to obtain user id")
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
     # Authentication complete; user id obtained
