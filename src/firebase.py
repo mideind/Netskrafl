@@ -217,6 +217,8 @@ def online_users(locale: str) -> Set[str]:
         return _online_cache[locale]
 
     # Serialize access to the connected user list
+    # !!! TBD: Convert this to a background task that periodically
+    # updates the Redis cache from the Firebase database
     with _USERLIST_LOCK:
 
         # Use the distributed Redis cache, having a lifetime of 5 minutes
@@ -235,8 +237,9 @@ def online_users(locale: str) -> Set[str]:
                 namespace="userlist",
             )
             _online_counter += 1
-            if _online_counter >= 12:
-                # Approximately once per hour (12 * 5 minutes), log number of connected users
+            if _online_counter >= 6:
+                # Approximately once per half hour (6 * 5 minutes),
+                # log number of connected users
                 logging.info(f"Connected users in locale {locale} are {len(online)}")
                 _online_counter = 0
         else:

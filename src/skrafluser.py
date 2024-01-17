@@ -39,8 +39,6 @@ import re
 from flask.helpers import url_for
 import jwt
 
-from cache import memcache
-
 from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_users
@@ -150,13 +148,10 @@ class StatsSummaryDict(TypedDict):
     manual_elo: int
 
 
-# Should we use memcache (in practice Redis) to cache user data?
-USE_MEMCACHE = False
-
 # Maximum length of player nickname
 MAX_NICKNAME_LENGTH = 15
 
-# Default token lifetime
+# Default login token lifetime
 DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
 
 # Key ID for the client secret key used to sign our own tokens
@@ -239,9 +234,6 @@ class User:
     # Use a lock to avoid potential race conditions between
     # the memcache and the database
     _lock = threading.Lock()
-
-    # User object expiration in memcache/Redis, measured in seconds
-    _CACHE_EXPIRY = 15 * 60  # 15 minutes
 
     # Current namespace (schema) for memcached User objects
     # Upgraded from 4 to 5 after adding locale attribute
@@ -356,16 +348,6 @@ class User:
             # those are set with separate APIs
             um.put()
             # um.timestamp should not be set or updated
-
-            # Note: the namespace version should be incremented each time
-            # that the class properties change
-            if USE_MEMCACHE:
-                memcache.set(
-                    self._user_id,
-                    self,
-                    time=User._CACHE_EXPIRY,
-                    namespace=User._NAMESPACE,
-                )
 
     def id(self) -> Optional[str]:
         """Returns the id (database key) of the user"""
@@ -890,17 +872,11 @@ class User:
         if not uid:
             return None
         with User._lock:
-            if USE_MEMCACHE:
-                u = memcache.get(uid, namespace=User._NAMESPACE)
-                if u is not None:
-                    return u
             um = UserModel.fetch(uid)
             if um is None:
                 return None
             u = cls(uid=uid)
             u._init(um)
-            if USE_MEMCACHE:
-                memcache.add(uid, u, time=User._CACHE_EXPIRY, namespace=User._NAMESPACE)
             return u
 
     @classmethod

@@ -2,7 +2,7 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -478,14 +478,14 @@ class Context:
 
     @staticmethod
     def disable_cache() -> None:
-        """Disable the ndb in-context cache"""
+        """Disable the ndb in-context cache for this context"""
         ctx = cast(Any, ndb).get_context()
         assert ctx is not None
         ctx.set_cache_policy(False)
 
     @staticmethod
     def disable_global_cache() -> None:
-        """Disable the ndb global memcache"""
+        """Disable the ndb global memcache for this context"""
         ctx = cast(Any, ndb).get_context()
         assert ctx is not None
         ctx.set_memcache_policy(False)
