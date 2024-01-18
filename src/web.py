@@ -431,6 +431,10 @@ if running_local:
     def admin_loadgame() -> ResponseType:
         return admin.admin_loadgame()
 
+    @web.route("/admin/loaduser", methods=["POST"])
+    def admin_loaduser() -> ResponseType:
+        return admin.admin_loaduser()
+
     @web.route("/admin/main")
     def admin_main() -> ResponseType:
         """ Show main administration page """

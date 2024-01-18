@@ -644,6 +644,22 @@ class UserModel(Model["UserModel"]):
         return q.get()
 
     @classmethod
+    def fetch_nickname(cls, nickname: str, ignore_case: bool) -> Optional[UserModel]:
+        """Attempt to fetch a user by nickname"""
+        lc = nickname.lower()
+        if ignore_case:
+            # Do a lowercase lookup first, it's more general
+            q = cls.query(UserModel.nick_lc == lc)
+            if (u := q.get()) is not None:
+                return u
+            if lc == nickname:
+                # The nickname is already all lowercase: no need to do another lookup
+                return None
+        # Do a case-sensitive lookup
+        q = cls.query(UserModel.nickname == nickname)
+        return q.get()
+
+    @classmethod
     def fetch_email(cls, email: str) -> Optional[UserModel]:
         """Attempt to fetch a user by email"""
         if not email:
@@ -2334,6 +2350,18 @@ class BlockModel(Model["BlockModel"]):
             yield bm.blocked.id()
 
     @classmethod
+    def list_blocked_by(
+        cls, user_id: str, max_len: int = MAX_BLOCKS
+    ) -> Iterator[str]:
+        """Query for a list of users blocking the given user"""
+        if not user_id:
+            return
+        k: Key[UserModel] = Key(UserModel, user_id)
+        q = cls.query(BlockModel.blocked == k)
+        for bm in q.fetch(limit=max_len):
+            yield bm.blocker.id()
+
+    @classmethod
     def block_user(cls, blocker_id: str, blocked_id: str) -> bool:
         """Add a block"""
         if blocker_id and blocked_id:
@@ -2386,6 +2414,8 @@ class ReportModel(Model["ReportModel"]):
     # Timestamp
     timestamp = Model.Datetime(auto_now_add=True)
 
+    MAX_REPORTS = 100  # The maximum number of reported users per user
+
     @classmethod
     def report_user(
         cls, reporter_id: str, reported_id: str, code: int, text: str
@@ -2404,6 +2434,18 @@ class ReportModel(Model["ReportModel"]):
             rm.put()
             return True
         return False
+
+    @classmethod
+    def list_reported_by(
+        cls, user_id: str, max_len: int = MAX_REPORTS
+    ) -> Iterator[str]:
+        """Query for a list of users who have reported the given user"""
+        if not user_id:
+            return
+        k: Key[UserModel] = Key(UserModel, user_id)
+        q = cls.query(ReportModel.reported == k)
+        for bm in q.fetch(limit=max_len):
+            yield bm.reporter.id()
 
 
 class TransactionModel(Model["TransactionModel"]):
