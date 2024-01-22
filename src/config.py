@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Mapping, NotRequired, TypedDict
+from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict
 from datetime import timedelta
 import os
 from flask import json
@@ -26,7 +26,7 @@ from flask import json
 class FlaskConfig(TypedDict):
     """The Flask configuration dictionary"""
     DEBUG: bool
-    SESSION_COOKIE_DOMAIN: str
+    SESSION_COOKIE_DOMAIN: Optional[str]
     SESSION_COOKIE_SECURE: bool
     SESSION_COOKIE_HTTPONLY: bool
     SESSION_COOKIE_SAMESITE: Literal["Strict", "Lax", "None"]

@@ -141,7 +141,7 @@ if running_local:
 
 flask_config = FlaskConfig(
     DEBUG=running_local,
-    SESSION_COOKIE_DOMAIN=COOKIE_DOMAIN,
+    SESSION_COOKIE_DOMAIN=None if running_local else COOKIE_DOMAIN,
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
     # Be careful! Setting COOKIE_SAMESITE to "None"
