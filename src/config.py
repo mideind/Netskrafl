@@ -26,6 +26,7 @@ from flask import json
 class FlaskConfig(TypedDict):
     """The Flask configuration dictionary"""
     DEBUG: bool
+    SESSION_COOKIE_DOMAIN: str
     SESSION_COOKIE_SECURE: bool
     SESSION_COOKIE_HTTPONLY: bool
     SESSION_COOKIE_SAMESITE: Literal["Strict", "Lax", "None"]
@@ -51,6 +52,13 @@ DEV_SERVER = PROJECT_ID == "explo-dev"
 DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
+# Obtain the domain to use for HTTP session cookies
+COOKIE_DOMAIN = {
+    "netskrafl": "netskrafl.is",
+    "explo-dev": "explo-dev.appspot.com",
+    "explo-live": "explo-live.appspot.com",
+}.get(PROJECT_ID, "netskrafl.is")
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
@@ -110,6 +118,13 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
 
     # RevenueCat bearer token
     RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
+
+
+# Read the Flask secret session key from file
+with open(os.path.join("resources", "secret_key.bin"), "rb") as f:
+    FLASK_SESSION_KEY = f.read()
+    assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
+
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

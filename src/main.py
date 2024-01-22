@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -10,7 +10,7 @@
     For further information, see https://github.com/mideind/Netskrafl
 
 
-    This Python >= 3.8 web server module uses the Flask framework
+    This Python >= 3.11 web server module uses the Flask framework
     to implement a crossword game.
 
     The actual game logic is found in skraflplayer.py and
@@ -45,7 +45,7 @@ from logging.config import dictConfig
 
 from flask import Flask
 from flask.wrappers import Response
-from flask_cors import CORS  # type: ignore
+from flask_cors import CORS
 
 from config import (
     FlaskConfig,
@@ -56,11 +56,13 @@ from config import (
     PROJECT_ID,
     CLIENT_ID,
     CLIENT_SECRET,
+    COOKIE_DOMAIN,
     MEASUREMENT_ID,
     FIREBASE_API_KEY,
     FIREBASE_SENDER_ID,
     FIREBASE_DB_URL,
     FIREBASE_APP_ID,
+    FLASK_SESSION_KEY,
 )
 from basics import (
     ndb_wsgi_middleware,
@@ -139,6 +141,7 @@ if running_local:
 
 flask_config = FlaskConfig(
     DEBUG=running_local,
+    SESSION_COOKIE_DOMAIN=COOKIE_DOMAIN,
     SESSION_COOKIE_SECURE=not running_local,
     SESSION_COOKIE_HTTPONLY=True,
     # Be careful! Setting COOKIE_SAMESITE to "None"
@@ -151,9 +154,8 @@ flask_config = FlaskConfig(
     JSON_AS_ASCII=False,
 )
 
-# Read the Flask secret session key from file
-with open(os.path.abspath(os.path.join("resources", "secret_key.bin")), "rb") as f:
-    app.secret_key = f.read()
+# Set the Flask secret session key
+app.secret_key = FLASK_SESSION_KEY
 
 # Load the Flask configuration
 cast_app.config.update(**flask_config)
