@@ -93,6 +93,7 @@ node_modules/
 .idea/
 .vscode/
 .mypy_cache/
+.pytest_cache/
 
 # Node dependency descriptions
 package*.json

@@ -20,6 +20,7 @@ resources/Explo*.json
 
 # Utility scripts
 utils/
+mypy.ini
 
 # Photoshop & Illustrator files
 *.psd
