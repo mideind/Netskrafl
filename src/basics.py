@@ -160,8 +160,8 @@ def session_user() -> Optional[User]:
     u = None
     sess = cast(Dict[str, Any], session)
     if (user := sess.get("userid")) is not None:
-        userid = user.get("id")
-        u = User.load_if_exists(userid)
+        userid = user.get("id", "")
+        u = User.load_if_exists(userid)  # Returns None if userid is None or empty
     return u
 
 

@@ -59,8 +59,8 @@ APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
 APPLE_ISSUER = "https://appleid.apple.com"
 
 # Establish a cached session to communicate with the Google API
-session = requests.session()
-cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
+google_api_session = requests.session()
+cached_session: Any = cast(Any, cachecontrol).CacheControl(google_api_session)
 google_request = google_requests.Request(session=cached_session)
 
 # For testing purposes only: a hard-coded user image URL
@@ -196,21 +196,21 @@ def oauth2callback(request: Request) -> ResponseType:
     except (KeyError, ValueError) as e:
         # Invalid token
         # 401 - Unauthorized
-        logging.error(f"Invalid token: {e}")
+        logging.error(f"Invalid Google token: {e}", exc_info=True)
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     except GoogleAuthError as e:
-        logging.error(f"Google auth error: {e}")
+        logging.error(f"Google auth error: {e}", exc_info=True)
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     if not userid or uld is None:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
-        logging.error("Unable to obtain user id")
+        logging.error("Unable to obtain user id in Google sign-in")
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
     # Authentication complete; user id obtained
-    # Set a session cookie
+    # Set the Flask session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
@@ -320,7 +320,7 @@ def oauth_fb(request: Request) -> ResponseType:
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
-    # Set the Flask session token
+    # Set the Flask session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
@@ -371,6 +371,8 @@ def oauth_apple(request: Request) -> ResponseType:
             options={"require": ["iss", "sub", "email"]},
         )
     except Exception as e:
+        # Invalid token: return 401 - Unauthorized
+        logging.error(f"Invalid Apple token: {e}", exc_info=True)
         return (
             jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
             401,
@@ -404,7 +406,7 @@ def oauth_apple(request: Request) -> ResponseType:
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )
-    # Set the Flask session token
+    # Set the Flask session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
@@ -499,12 +501,12 @@ def oauth_explo(request: Request) -> ResponseType:
         uld["method"] = idinfo["method"]
 
     except (KeyError, ValueError) as e:
-        # Invalid token
-        # 401 - Unauthorized
+        # Invalid token: return 401 - Unauthorized
+        logging.error(f"Invalid Explo token: {e}")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     # Authentication complete; token was valid and user id was found
-    # Set a session cookie
+    # Set the Flask session cookie
     set_session_userid(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))

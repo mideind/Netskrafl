@@ -39,7 +39,6 @@ from flask import (
     redirect,
     url_for,
     request,
-    session,
 )
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
@@ -285,8 +284,7 @@ def greet() -> ResponseType:
 @web.route("/login")
 def login() -> ResponseType:
     """ Handler for the login sequence """
-    cast(Any, session).pop("userid", None)
-    cast(Any, session).pop("user", None)
+    clear_session_userid()
     redirect_uri = url_for("web.oauth2callback", _external=True)
     g = get_google_auth()
     return g.authorize_redirect(redirect_uri)
