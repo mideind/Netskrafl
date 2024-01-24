@@ -44,7 +44,7 @@ from config import (
     DEV_SERVER,
     FlaskConfig,
 )
-from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
+from basics import jsonify, UserIdDict, ResponseType, set_session_cookie, RequestData
 
 from skrafluser import User, UserLoginDict, verify_explo_token
 
@@ -87,7 +87,10 @@ def oauth2callback(request: Request) -> ResponseType:
             if fail:
                 fail_code = int(fail) if len(fail) <= 3 else 0
                 if fail_code:
-                    return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                    return (
+                        jsonify({"status": "invalid", "msg": "Testing failure"}),
+                        fail_code,
+                    )
         except Exception:
             # Never mind (this can happen if the request is not a form and does not contain JSON)
             pass
@@ -167,7 +170,9 @@ def oauth2callback(request: Request) -> ResponseType:
                 token, google_request, client_id
             )
             if idinfo is None:
-                raise ValueError(f"Invalid Google token: {token}, client_id {client_id}")
+                raise ValueError(
+                    f"Invalid Google token: {token}, client_id {client_id}"
+                )
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -211,7 +216,7 @@ def oauth2callback(request: Request) -> ResponseType:
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie
-    set_session_userid(userid, idinfo)
+    set_session_cookie(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -223,16 +228,17 @@ def oauth_fb(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     rq = RequestData(request)
     user: Optional[Dict[str, str]] = rq.get("user")
@@ -321,7 +327,7 @@ def oauth_fb(request: Request) -> ResponseType:
         client_type=rq.get("clientType") or "web",
     )
     # Set the Flask session cookie
-    set_session_userid(userid, idinfo)
+    set_session_cookie(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -340,16 +346,17 @@ def oauth_apple(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     rq = RequestData(request)
     token = rq.get("token", "")
@@ -365,7 +372,7 @@ def oauth_apple(request: Request) -> ResponseType:
         payload = jwt.decode(  # type: ignore
             token,
             cast(Any, signing_key).key,
-            algorithms=["RS256"], # Apple only supports RS256
+            algorithms=["RS256"],  # Apple only supports RS256
             issuer=APPLE_ISSUER,
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
@@ -407,7 +414,7 @@ def oauth_apple(request: Request) -> ResponseType:
         client_type="ios",  # Assume that Apple login is always from iOS
     )
     # Set the Flask session cookie
-    set_session_userid(userid, idinfo)
+    set_session_cookie(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -421,16 +428,17 @@ def oauth_explo(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     token: Optional[str] = None
     config: FlaskConfig = cast(Any, current_app).config
@@ -507,6 +515,6 @@ def oauth_explo(request: Request) -> ResponseType:
 
     # Authentication complete; token was valid and user id was found
     # Set the Flask session cookie
-    set_session_userid(userid, idinfo)
+    set_session_cookie(userid, idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))

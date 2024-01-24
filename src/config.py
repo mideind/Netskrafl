@@ -55,10 +55,10 @@ DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configu
 
 # Obtain the domain to use for HTTP session cookies
 COOKIE_DOMAIN = {
-    "netskrafl": "netskrafl.is",
-    "explo-dev": "explo-dev.appspot.com",
-    "explo-live": "explo-live.appspot.com",
-}.get(PROJECT_ID, "netskrafl.is")
+    "netskrafl": ".netskrafl.is",
+    "explo-dev": ".explo-dev.appspot.com",
+    "explo-live": ".explo-live.appspot.com",
+}.get(PROJECT_ID, ".netskrafl.is")
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
