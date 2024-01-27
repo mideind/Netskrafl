@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -39,7 +39,6 @@ from flask import (
     redirect,
     url_for,
     request,
-    session,
 )
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
@@ -51,9 +50,9 @@ from basics import (
     auth_required,
     get_google_auth,
     jsonify,
-    session_idinfo,
+    session_data,
     session_user,
-    set_session_userid,
+    set_session_cookie,
     clear_session_userid,
     RequestData,
     max_age,
@@ -93,7 +92,7 @@ web = cast(Any, web_blueprint)
 
 
 def login_user() -> bool:
-    """ Log in a user after she is authenticated via OAuth """
+    """Log in a user after she is authenticated via OAuth"""
     # This function is called from web.oauth2callback()
     # Note that a similar function is found in api.py
     uld: Optional[UserLoginDict] = None
@@ -112,7 +111,7 @@ def login_user() -> bool:
                 return False
             issuer = idinfo.get("iss", "")
             if issuer not in VALID_ISSUERS:
-                logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
+                logging.error(f"Unknown OAuth2 token issuer: {issuer or '[None]'}")
                 return False
             # ID token is valid; extract the claims
             # Get the user's Google Account ID
@@ -135,9 +134,8 @@ def login_user() -> bool:
             # Save the stuff we want to keep around
             # in the user session
             idinfo["method"] = "Google"
-            idinfo["account"] = uld["account"]
             idinfo["new"] = uld.get("new", False)
-            idinfo["locale"] = uld.get("locale", DEFAULT_LOCALE)
+            idinfo["client_type"] = "web"
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
@@ -149,7 +147,7 @@ def login_user() -> bool:
         return False
 
     # Authentication complete; user id obtained
-    set_session_userid(userid, idinfo)
+    set_session_cookie(userid, idinfo=idinfo)
 
     if running_local:
         logging.info(
@@ -162,8 +160,8 @@ def login_user() -> bool:
 
 
 def render_locale_template(template: str, locale: str, **kwargs: Any) -> ResponseType:
-    """ Render a template for a given locale. The template file name should contain
-        a {0} format placeholder for the locale. """
+    """Render a template for a given locale. The template file name should contain
+    a {0} format placeholder for the locale."""
     parts = locale.split("_")
     if not (1 <= len(parts) <= 2) or not all(len(p) == 2 for p in parts):
         # Funky locale requested: default to 'en'
@@ -183,21 +181,21 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 
 @web.route("/friend")
 def friend() -> ResponseType:
-    """ HTML content of a friend (subscription) promotion dialog """
+    """HTML content of a friend (subscription) promotion dialog"""
     locale = request.args.get("locale", DEFAULT_LOCALE)
     return render_locale_template("promo-friend-{0}.html", locale)
 
 
 @web.route("/board")
 def board() -> ResponseType:
-    """ The main game page """
+    """The main game page"""
     # This is an artifact, needed only to allow url_for("web.board") to work.
     return ""
 
 
 @web.route("/promo", methods=["POST"])
 def promo() -> ResponseType:
-    """ Return promotional HTML corresponding to a given key (category) """
+    """Return promotional HTML corresponding to a given key (category)"""
     user = session_user()
     if user is None:
         lang = request.accept_languages.best_match(("is", "en"), "en")
@@ -215,13 +213,13 @@ def promo() -> ResponseType:
 @web.route("/signup", methods=["GET"])
 @auth_required()
 def signup() -> ResponseType:
-    """ Sign up as a friend, enter card info, etc. """
+    """Sign up as a friend, enter card info, etc."""
     return render_template("signup.html", user=current_user())
 
 
 @web.route("/skilmalar", methods=["GET"])
 def skilmalar() -> ResponseType:
-    """ Terms & conditions """
+    """Terms & conditions"""
     return render_template("skilmalar.html")
 
 
@@ -239,12 +237,12 @@ def handle_billing() -> ResponseType:
 
 @web.route("/rawhelp")
 def rawhelp() -> ResponseType:
-    """ Return raw help page HTML. Authentication is not required. """
+    """Return raw help page HTML. Authentication is not required."""
 
     locale = request.args.get("locale", DEFAULT_LOCALE)
 
     def override_url_for(endpoint: str, **values: Any) -> str:
-        """ Convert URLs from old-format plain ones to single-page fancy ones """
+        """Convert URLs from old-format plain ones to single-page fancy ones"""
         if endpoint in {"web.twoletter", "web.newbag", "web.userprefs"}:
             # Insert special token that will be caught by client-side
             # code and converted to an action in the single-page UI
@@ -257,11 +255,11 @@ def rawhelp() -> ResponseType:
 @web.route("/page")
 @auth_required()
 def page() -> ResponseType:
-    """ Show single-page UI """
+    """Show single-page UI"""
     user = current_user()
     assert user is not None
     uid = user.id() or ""
-    idinfo = session_idinfo()
+    s = session_data()
     firebase_token = firebase.create_custom_token(uid)
     # We return information about the login method to the client,
     # as well as whether this is a new user signing in for the first time
@@ -269,24 +267,23 @@ def page() -> ResponseType:
         "page.html",
         user=user,
         firebase_token=firebase_token,
-        method="" if idinfo is None else idinfo.get("method", ""),
-        new=False if idinfo is None else idinfo.get("new", False),
+        method="" if s is None else s.get("method", ""),
+        new=False if s is None else s.get("new", False),
         project_id=PROJECT_ID,
-        running_local=running_local
+        running_local=running_local,
     )
 
 
 @web.route("/greet")
 def greet() -> ResponseType:
-    """ Handler for the greeting page """
+    """Handler for the greeting page"""
     return render_template("login-explo.html")
 
 
 @web.route("/login")
 def login() -> ResponseType:
-    """ Handler for the login sequence """
-    cast(Any, session).pop("userid", None)
-    cast(Any, session).pop("user", None)
+    """Handler for the login sequence"""
+    clear_session_userid()
     redirect_uri = url_for("web.oauth2callback", _external=True)
     g = get_google_auth()
     return g.authorize_redirect(redirect_uri)
@@ -294,13 +291,13 @@ def login() -> ResponseType:
 
 @web.route("/login_error")
 def login_error() -> ResponseType:
-    """ An error during login: probably cookies or popups are not allowed """
+    """An error during login: probably cookies or popups are not allowed"""
     return render_template("login-error.html")
 
 
 @web.route("/logout", methods=["GET"])
 def logout() -> ResponseType:
-    """ Log the user out """
+    """Log the user out"""
     clear_session_userid()
     return redirect(url_for("web.greet"))
 
@@ -326,7 +323,7 @@ def service_worker() -> ResponseType:
 @web.route("/")
 @auth_required()
 def main() -> ResponseType:
-    """ Handler for the main (index) page """
+    """Handler for the main (index) page"""
     # Redirect to the single page UI
     return redirect(url_for("web.page"))
 
@@ -337,7 +334,7 @@ def main() -> ResponseType:
 
 @web.route("/stats/run", methods=["GET", "POST"])
 def stats_run() -> ResponseType:
-    """ Start a task to calculate Elo points for games """
+    """Start a task to calculate Elo points for games"""
     headers: Dict[str, str] = cast(Any, request).headers
     task_queue_name = headers.get("X-AppEngine-QueueName", "")
     task_queue = task_queue_name != ""
@@ -360,7 +357,7 @@ def stats_run() -> ResponseType:
 
 @web.route("/stats/ratings", methods=["GET", "POST"])
 def stats_ratings() -> ResponseType:
-    """ Start a task to calculate top Elo rankings """
+    """Start a task to calculate top Elo rankings"""
     headers: Dict[str, str] = cast(Any, request).headers
     task_queue_name = headers.get("X-AppEngine-QueueName", "")
     task_queue = task_queue_name != ""
@@ -388,7 +385,7 @@ def stats_ratings() -> ResponseType:
 
 @web.route("/cache/flush", methods=["GET", "POST"])
 def cache_flush() -> ResponseType:
-    """ Flush the Redis cache """
+    """Flush the Redis cache"""
     headers: Dict[str, str] = cast(Any, request).headers
     task_queue_name = headers.get("X-AppEngine-QueueName", "")
     task_queue = task_queue_name != ""
@@ -406,7 +403,6 @@ def cache_flush() -> ResponseType:
 # on a local development server, not on the production server
 
 if running_local:
-
     import admin
 
     @web.route("/admin/usercount", methods=["POST"])
@@ -431,9 +427,13 @@ if running_local:
     def admin_loadgame() -> ResponseType:
         return admin.admin_loadgame()
 
+    @web.route("/admin/loaduser", methods=["POST"])
+    def admin_loaduser() -> ResponseType:
+        return admin.admin_loaduser()
+
     @web.route("/admin/main")
     def admin_main() -> ResponseType:
-        """ Show main administration page """
+        """Show main administration page"""
         return render_template("admin.html", project_id=PROJECT_ID)
 
 
@@ -441,9 +441,8 @@ if running_local:
 # pylint: disable=unused-argument
 @web.errorhandler(404)
 def page_not_found(e: Union[int, Exception]) -> ResponseType:
-    """ Return a custom 404 error """
+    """Return a custom 404 error"""
     lang = request.accept_languages.best_match(("is", "en"), "en")
     if lang == "is":
         return "Þessi vefslóð er ekki rétt", 404
     return "This URL is not recognized", 404
-

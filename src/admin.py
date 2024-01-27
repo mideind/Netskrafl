@@ -61,9 +61,7 @@ def deferred_user_update() -> None:
                 f"Exception in deferred_user_update(): {e}, "
                 f"already scanned {scan} entities and updated {count}"
             )
-    logging.info(
-        f"Completed scanning {scan} and updating {count} user entities"
-    )
+    logging.info(f"Completed scanning {scan} and updating {count} user entities")
 
 
 '''
@@ -104,6 +102,7 @@ def deferred_game_update() -> None:
         f"Completed scanning {count} and updating {updated} game entities"
     )
 '''
+
 
 def admin_userupdate() -> Response:
     """Start a user update background task"""
@@ -173,7 +172,7 @@ def admin_loadgame() -> Response:
     g: Optional[Dict[str, Any]] = None
 
     if uuid:
-        # Attempt to load the game whose id is in the URL query string
+        # Attempt to load the game by its UUID
         game = Game.load(uuid, set_locale=True, use_cache=False)
 
     if game is not None and game.state is not None:
@@ -201,3 +200,43 @@ def admin_loadgame() -> Response:
         )
 
     return jsonify(game=g)
+
+
+def admin_loaduser() -> Response:
+    """Fetch a user object and return it as JSON"""
+
+    userid = request.form.get("id", None)
+    user = None
+
+    u: Optional[Dict[str, Any]] = None
+
+    if userid:
+        # Attempt to load the user by UUID, account id, email or nickname
+        user = User.load_if_exists(userid)
+        if user is None:
+            user = User.load_by_account(userid)
+        if user is None and "@" in userid:
+            user = User.load_by_email(userid)
+        if user is None:
+            user = User.load_by_nickname(userid, ignore_case=True)
+
+    if user is not None:
+        now = datetime.utcnow()
+        u = dict(
+            userid=user.id(),
+            account=user.account(),
+            timestamp=Alphabet.format_timestamp(user.timestamp() or now),
+            email=user.email(),
+            nick=user.nickname(),
+            full_name=user.full_name(),
+            friend=user.friend(),
+            has_paid=user.has_paid(),
+            plan=user.plan(),
+            locale=user.locale,
+            location=user.location,
+            inactive=user.is_inactive(),
+            blocked_by=list(user.blocked_by()),
+            reported_by=list(user.reported_by()),
+        )
+
+    return jsonify(user=u)

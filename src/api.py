@@ -1916,25 +1916,22 @@ def setuserpref() -> ResponseType:
     assert user is not None
 
     rq = RequestData(request)
-    is_mobile = is_mobile_client()
 
     # Loop through the various preference booleans and set them
     # by calling the associated function on the User instance.
     # The last bool parameter is True if the setting is only
     # available for mobile clients.
-    prefs: List[Tuple[str, Callable[[bool], None], bool]] = [
-        ("beginner", user.set_beginner, False),
-        ("ready", user.set_ready, False),
-        ("ready_timed", user.set_ready_timed, False),
-        ("chat_disabled", user.disable_chat, False),
-        # ("friend", user.set_friend, True),
-        # ("has_paid", user.set_has_paid, True),
+    prefs: List[Tuple[str, Callable[[bool], None]]] = [
+        ("beginner", user.set_beginner),
+        ("ready", user.set_ready),
+        ("ready_timed", user.set_ready_timed),
+        ("chat_disabled", user.disable_chat),
     ]
 
     update = False
-    for s, func, mobile_only in prefs:
+    for s, func in prefs:
         val = rq.get_bool(s, None)
-        if val is not None and (is_mobile or not mobile_only):
+        if val is not None:
             func(val)
             update = True
 

@@ -353,6 +353,11 @@ class User:
         """Returns the id (database key) of the user"""
         return self._user_id
 
+    def account(self) -> str:
+        """Returns the OAuth account identifier (including a potential
+        provider prefix, i.e. "fb:" or "apple:") of the user"""
+        return self._account or ""
+
     def nickname(self) -> str:
         """Returns the human-readable nickname of a user,
         or userid if a nick is not available"""
@@ -716,6 +721,18 @@ class User:
         assert sid is not None
         self._blocks = set(BlockModel.list_blocked_users(sid))
 
+    def blocked_by(self) -> Set[str]:
+        """Return a set of user ids who block this user"""
+        if not (sid := self.id()):
+            return set()
+        return set(BlockModel.list_blocked_by(sid))
+
+    def reported_by(self) -> Set[str]:
+        """Return a set of user ids who have reported this user"""
+        if not (sid := self.id()):
+            return set()
+        return set(ReportModel.list_reported_by(sid))
+
     def block(self, destuser_id: str) -> bool:
         """Add an A-blocks-B relation between this user and the destuser"""
         if not destuser_id:
@@ -880,6 +897,47 @@ class User:
             return u
 
     @classmethod
+    def load_by_email(cls, email: str) -> Optional[User]:
+        """Load a user by email if she exists, otherwise return None"""
+        if not email:
+            return None
+        with User._lock:
+            um = UserModel.fetch_email(email)
+            if um is None:
+                return None
+            u = cls(uid=um.user_id())
+            u._init(um)
+            return u
+
+    @classmethod
+    def load_by_account(cls, account: str) -> Optional[User]:
+        """Load a user by account id if she exists, otherwise return None"""
+        if not account:
+            return None
+        with User._lock:
+            um = UserModel.fetch_account(account)
+            if um is None:
+                return None
+            u = cls(uid=um.user_id())
+            u._init(um)
+            return u
+
+    @classmethod
+    def load_by_nickname(
+        cls, nickname: str, *, ignore_case: bool = False
+    ) -> Optional[User]:
+        """Load a user by account id if she exists, otherwise return None"""
+        if not nickname:
+            return None
+        with User._lock:
+            um = UserModel.fetch_nickname(nickname, ignore_case)
+            if um is None:
+                return None
+            u = cls(uid=um.user_id())
+            u._init(um)
+            return u
+
+    @classmethod
     def load_multi(cls, uids: Iterable[str]) -> List[User]:
         """Load multiple users from persistent storage, given their user id"""
         user_list: List[User] = []
@@ -1007,7 +1065,7 @@ class User:
         cls,
         user_id: str,
         previous_token: Optional[str] = None,
-    ) -> Optional[Tuple[UserLoginDict, UserDetailDict]]:
+    ) -> Optional[UserLoginDict]:
         """Log in a user given a user id; return a login dictionary
         and some additional user details, or None"""
         um = UserModel.fetch(user_id)
@@ -1023,11 +1081,7 @@ class User:
             new=False,
             previous_token=previous_token,
         )
-        full_name = um.prefs.get("full_name", "") if um.prefs else ""
-        udd = UserDetailDict(
-            name=full_name, picture=um.image or "", email=um.email or ""
-        )
-        return uld, udd
+        return uld
 
     def to_serializable(self) -> Dict[str, Any]:
         """Convert to JSON-serializable format"""

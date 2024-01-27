@@ -2,7 +2,7 @@
 
     Configuration data
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -17,22 +17,25 @@
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Mapping, NotRequired, TypedDict
+from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict
 from datetime import timedelta
 import os
 from flask import json
 
 
 class FlaskConfig(TypedDict):
+
     """The Flask configuration dictionary"""
+
     DEBUG: bool
+    SESSION_COOKIE_DOMAIN: Optional[str]
     SESSION_COOKIE_SECURE: bool
     SESSION_COOKIE_HTTPONLY: bool
     SESSION_COOKIE_SAMESITE: Literal["Strict", "Lax", "None"]
     PERMANENT_SESSION_LIFETIME: timedelta
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
-    JSON_AS_ASCII: bool
+    # JSON_AS_ASCII: bool  # No longer supported in Flask >= 2.3
     TESTING: NotRequired[bool]
 
 
@@ -51,6 +54,13 @@ DEV_SERVER = PROJECT_ID == "explo-dev"
 DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
+# Obtain the domain to use for HTTP session cookies
+COOKIE_DOMAIN = {
+    "netskrafl": ".netskrafl.is",
+    "explo-dev": ".explo-dev.appspot.com",
+    "explo-live": ".explo-live.appspot.com",
+}.get(PROJECT_ID, ".netskrafl.is")
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
@@ -87,7 +97,9 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     # Facebook app token, for login verification calls to the graph API
     FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
     FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-    assert FACEBOOK_APP_SECRET, f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FACEBOOK_APP_SECRET
+    ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
     assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 
     # Firebase configuration
@@ -95,8 +107,12 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
     FIREBASE_DB_URL: str = j.get("FIREBASE_DB_URL", "")
     FIREBASE_APP_ID: str = j.get("FIREBASE_APP_ID", "")
-    assert FIREBASE_API_KEY, f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
-    assert FIREBASE_SENDER_ID, f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FIREBASE_API_KEY
+    ), f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FIREBASE_SENDER_ID
+    ), f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
     assert FIREBASE_DB_URL, f"FIREBASE_DB_URL not set correctly in {CLIENT_SECRET_FILE}"
     assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 
@@ -110,6 +126,13 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
 
     # RevenueCat bearer token
     RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
+
+
+# Read the Flask secret session key from file
+with open(os.path.join("resources", "secret_key.bin"), "rb") as f:
+    FLASK_SESSION_KEY = f.read()
+    assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
+
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

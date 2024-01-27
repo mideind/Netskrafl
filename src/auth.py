@@ -40,11 +40,17 @@ from config import (
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
     APPLE_CLIENT_ID,
-    PROJECT_ID,
     DEV_SERVER,
     FlaskConfig,
 )
-from basics import jsonify, UserIdDict, ResponseType, set_session_userid, RequestData
+from basics import (
+    SessionDict,
+    jsonify,
+    UserIdDict,
+    ResponseType,
+    set_session_cookie,
+    RequestData,
+)
 
 from skrafluser import User, UserLoginDict, verify_explo_token
 
@@ -59,8 +65,8 @@ APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
 APPLE_ISSUER = "https://appleid.apple.com"
 
 # Establish a cached session to communicate with the Google API
-session = requests.session()
-cached_session: Any = cast(Any, cachecontrol).CacheControl(session)
+google_api_session = requests.session()
+cached_session: Any = cast(Any, cachecontrol).CacheControl(google_api_session)
 google_request = google_requests.Request(session=cached_session)
 
 # For testing purposes only: a hard-coded user image URL
@@ -87,7 +93,10 @@ def oauth2callback(request: Request) -> ResponseType:
             if fail:
                 fail_code = int(fail) if len(fail) <= 3 else 0
                 if fail_code:
-                    return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                    return (
+                        jsonify({"status": "invalid", "msg": "Testing failure"}),
+                        fail_code,
+                    )
         except Exception:
             # Never mind (this can happen if the request is not a form and does not contain JSON)
             pass
@@ -167,7 +176,9 @@ def oauth2callback(request: Request) -> ResponseType:
                 token, google_request, client_id
             )
             if idinfo is None:
-                raise ValueError(f"Invalid Google token: {token}, client_id {client_id}")
+                raise ValueError(
+                    f"Invalid Google token: {token}, client_id {client_id}"
+                )
         # ID token is valid; extract the claims
         # Get the user's Google Account ID
         account = idinfo.get("sub")
@@ -188,30 +199,28 @@ def oauth2callback(request: Request) -> ResponseType:
             # some of it back to the client
             userid = uld["user_id"]
             uld["method"] = idinfo["method"] = "Google"
-            idinfo["account"] = uld["account"]
-            idinfo["locale"] = uld["locale"]
             idinfo["new"] = uld["new"]
             idinfo["client_type"] = client_type
 
     except (KeyError, ValueError) as e:
         # Invalid token
         # 401 - Unauthorized
-        logging.error(f"Invalid token: {e}")
+        logging.error(f"Invalid Google token: {e}", exc_info=True)
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     except GoogleAuthError as e:
-        logging.error(f"Google auth error: {e}")
+        logging.error(f"Google auth error: {e}", exc_info=True)
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     if not userid or uld is None:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
-        logging.error("Unable to obtain user id")
+        logging.error("Unable to obtain user id in Google sign-in")
         return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
 
     # Authentication complete; user id obtained
-    # Set a session cookie
-    set_session_userid(userid, idinfo)
+    # Set the Flask session cookie
+    set_session_cookie(userid, idinfo=idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -223,16 +232,17 @@ def oauth_fb(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     rq = RequestData(request)
     user: Optional[Dict[str, str]] = rq.get("user")
@@ -307,21 +317,15 @@ def oauth_fb(request: Request) -> ResponseType:
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Facebook"
-    # Emulate the OAuth idinfo
-    idinfo = UserIdDict(
-        iss="accounts.facebook.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
+    # Create the session dictionary that will be set as a cookie
+    sd = SessionDict(
+        userid=userid,
         method="Facebook",
-        account=account,
-        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
-    # Set the Flask session token
-    set_session_userid(userid, idinfo)
+    # Set the Flask session cookie
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -340,16 +344,17 @@ def oauth_apple(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     rq = RequestData(request)
     token = rq.get("token", "")
@@ -365,12 +370,14 @@ def oauth_apple(request: Request) -> ResponseType:
         payload = jwt.decode(  # type: ignore
             token,
             cast(Any, signing_key).key,
-            algorithms=["RS256"], # Apple only supports RS256
+            algorithms=["RS256"],  # Apple only supports RS256
             issuer=APPLE_ISSUER,
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
         )
     except Exception as e:
+        # Invalid token: return 401 - Unauthorized
+        logging.error(f"Invalid Apple token: {e}", exc_info=True)
         return (
             jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
             401,
@@ -391,21 +398,15 @@ def oauth_apple(request: Request) -> ResponseType:
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Apple"
-    # Emulate the OAuth idinfo
-    idinfo = UserIdDict(
-        iss="appleid.apple.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
+    # Populate the session dictionary that will be set as a cookie
+    sd = SessionDict(
+        userid=userid,
         method="Apple",
-        account=account,
-        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )
-    # Set the Flask session token
-    set_session_userid(userid, idinfo)
+    # Set the Flask session cookie
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -419,16 +420,17 @@ def oauth_explo(request: Request) -> ResponseType:
     if DEV_SERVER:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
-        fail = request.form.get("fail", "") or cast(Any, request).json.get(
-            "fail", ""
-        )
+        fail = request.form.get("fail", "") or cast(Any, request).json.get("fail", "")
         if fail:
             try:
                 fail_code = int(fail) if len(fail) <= 3 else 0
             except ValueError:
                 fail_code = 0
             if fail_code:
-                return jsonify({"status": "invalid", "msg": "Testing failure"}), fail_code
+                return (
+                    jsonify({"status": "invalid", "msg": "Testing failure"}),
+                    fail_code,
+                )
 
     token: Optional[str] = None
     config: FlaskConfig = cast(Any, current_app).config
@@ -460,7 +462,6 @@ def oauth_explo(request: Request) -> ResponseType:
 
     uld: Optional[UserLoginDict] = None
     userid: Optional[str] = None
-    idinfo: Optional[UserIdDict] = None
 
     try:
         if testing:
@@ -479,32 +480,27 @@ def oauth_explo(request: Request) -> ResponseType:
             raise ValueError("Missing user id")
         # Note that we return the original token to the client,
         # as we want to re-use it until it expires
-        t = User.login_by_id(sub, previous_token=token)
-        if t is None:
+        uld = User.login_by_id(sub, previous_token=token)
+        if uld is None:
             raise ValueError("User id not found")
-        uld, udd = t
-        idinfo = UserIdDict(
-            iss=PROJECT_ID,
-            sub=sub,
-            name=udd["name"],  # Not available from Explo token
-            picture=udd["picture"],  # Not available from Explo token
-            email=udd["email"],  # Not available from Explo token
-            account=uld["account"],  # Not available from Explo token
-            locale=uld["locale"],  # Not available from Explo token
+        userid = uld["user_id"]
+        uld["method"] = "Explo"
+        sd = SessionDict(
+            userid=userid,
             method="Explo",
+            # By definition, the user must already have existed
+            # in order for Explo auth to be available
             new=False,
             client_type=client_type,
         )
-        userid = uld["user_id"]
-        uld["method"] = idinfo["method"]
 
     except (KeyError, ValueError) as e:
-        # Invalid token
-        # 401 - Unauthorized
+        # Invalid token: return 401 - Unauthorized
+        logging.error(f"Invalid Explo token: {e}")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     # Authentication complete; token was valid and user id was found
-    # Set a session cookie
-    set_session_userid(userid, idinfo)
+    # Set the Flask session cookie
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
