@@ -923,7 +923,9 @@ class User:
             return u
 
     @classmethod
-    def load_by_nickname(cls, nickname: str, *, ignore_case: bool = False) -> Optional[User]:
+    def load_by_nickname(
+        cls, nickname: str, *, ignore_case: bool = False
+    ) -> Optional[User]:
         """Load a user by account id if she exists, otherwise return None"""
         if not nickname:
             return None
@@ -1063,7 +1065,7 @@ class User:
         cls,
         user_id: str,
         previous_token: Optional[str] = None,
-    ) -> Optional[Tuple[UserLoginDict, UserDetailDict]]:
+    ) -> Optional[UserLoginDict]:
         """Log in a user given a user id; return a login dictionary
         and some additional user details, or None"""
         um = UserModel.fetch(user_id)
@@ -1079,11 +1081,7 @@ class User:
             new=False,
             previous_token=previous_token,
         )
-        full_name = um.prefs.get("full_name", "") if um.prefs else ""
-        udd = UserDetailDict(
-            name=full_name, picture=um.image or "", email=um.email or ""
-        )
-        return uld, udd
+        return uld
 
     def to_serializable(self) -> Dict[str, Any]:
         """Convert to JSON-serializable format"""

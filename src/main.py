@@ -45,6 +45,7 @@ from logging.config import dictConfig
 
 from flask import Flask
 from flask.wrappers import Response
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 
 from config import (
@@ -147,11 +148,12 @@ flask_config = FlaskConfig(
     # Be careful! Setting COOKIE_SAMESITE to "None"
     # disables web login (OAuth2 flow)
     SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=timedelta(days=31),
+    # Allow sessions to last 90 days
+    PERMANENT_SESSION_LIFETIME=timedelta(days=90),
     # Add Google OAuth2 client id and secret for web clients (type 'web')
     GOOGLE_CLIENT_ID=CLIENT_ID,
     GOOGLE_CLIENT_SECRET=CLIENT_SECRET,
-    JSON_AS_ASCII=False,
+    # JSON_AS_ASCII=False,
 )
 
 # Set the Flask secret session key
@@ -159,6 +161,11 @@ app.secret_key = FLASK_SESSION_KEY
 
 # Load the Flask configuration
 cast_app.config.update(**flask_config)
+
+# Configure the Flask JSON provider to use UTF-8 encoding and to not sort keys
+assert isinstance(app.json, DefaultJSONProvider)
+app.json.ensure_ascii = False
+app.json.sort_keys = False
 
 # Register the Flask blueprints for the api and web routes
 app.register_blueprint(api_blueprint)
@@ -204,7 +211,7 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 
 
 # Flask cache busting for static .css and .js files
-@cast_app.url_defaults
+@app.url_defaults
 def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     """Add a ?h=XXX parameter to URLs for static .js and .css files,
     where XXX is calculated from the file timestamp"""
@@ -228,7 +235,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
             values[param_name] = static_file_hash(os.path.join(static_folder, filename))
 
 
-@cast_app.route("/_ah/start")
+@app.route("/_ah/start")
 def start() -> ResponseType:
     """App Engine is starting a fresh instance"""
     version = os.environ.get("GAE_VERSION", "N/A")
@@ -237,19 +244,17 @@ def start() -> ResponseType:
     return "", 200
 
 
-@cast_app.route("/_ah/warmup")
+@app.route("/_ah/warmup")
 def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
     ok = Wordbase.warmup()
     instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(
-        f"Warmup, instance {instance}, ok is {ok}"
-    )
+    logging.info(f"Warmup, instance {instance}, ok is {ok}")
     return "", 200
 
 
-@cast_app.route("/_ah/stop")
+@app.route("/_ah/stop")
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
     instance = os.environ.get("GAE_INSTANCE", "N/A")
@@ -257,7 +262,7 @@ def stop() -> ResponseType:
     return "", 200
 
 
-@app.errorhandler(500)  # type: ignore
+@app.errorhandler(500)
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """Return a custom 500 error"""
     logging.error(f"Server error: {e}")

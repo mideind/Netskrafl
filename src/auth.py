@@ -40,11 +40,17 @@ from config import (
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
     APPLE_CLIENT_ID,
-    PROJECT_ID,
     DEV_SERVER,
     FlaskConfig,
 )
-from basics import jsonify, UserIdDict, ResponseType, set_session_cookie, RequestData
+from basics import (
+    SessionDict,
+    jsonify,
+    UserIdDict,
+    ResponseType,
+    set_session_cookie,
+    RequestData,
+)
 
 from skrafluser import User, UserLoginDict, verify_explo_token
 
@@ -193,8 +199,6 @@ def oauth2callback(request: Request) -> ResponseType:
             # some of it back to the client
             userid = uld["user_id"]
             uld["method"] = idinfo["method"] = "Google"
-            idinfo["account"] = uld["account"]
-            idinfo["locale"] = uld["locale"]
             idinfo["new"] = uld["new"]
             idinfo["client_type"] = client_type
 
@@ -216,7 +220,7 @@ def oauth2callback(request: Request) -> ResponseType:
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie
-    set_session_cookie(userid, idinfo)
+    set_session_cookie(userid, idinfo=idinfo)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -313,21 +317,15 @@ def oauth_fb(request: Request) -> ResponseType:
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Facebook"
-    # Emulate the OAuth idinfo
-    idinfo = UserIdDict(
-        iss="accounts.facebook.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
+    # Create the session dictionary that will be set as a cookie
+    sd = SessionDict(
+        userid=userid,
         method="Facebook",
-        account=account,
-        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type=rq.get("clientType") or "web",
     )
     # Set the Flask session cookie
-    set_session_cookie(userid, idinfo)
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -400,21 +398,15 @@ def oauth_apple(request: Request) -> ResponseType:
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
     uld["method"] = "Apple"
-    # Emulate the OAuth idinfo
-    idinfo = UserIdDict(
-        iss="appleid.apple.com",
-        sub=account,
-        name=name,
-        picture=image,
-        email=email,
+    # Populate the session dictionary that will be set as a cookie
+    sd = SessionDict(
+        userid=userid,
         method="Apple",
-        account=account,
-        locale=uld.get("locale", DEFAULT_LOCALE),
         new=uld.get("new") or False,
         client_type="ios",  # Assume that Apple login is always from iOS
     )
     # Set the Flask session cookie
-    set_session_cookie(userid, idinfo)
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
 
@@ -470,7 +462,6 @@ def oauth_explo(request: Request) -> ResponseType:
 
     uld: Optional[UserLoginDict] = None
     userid: Optional[str] = None
-    idinfo: Optional[UserIdDict] = None
 
     try:
         if testing:
@@ -489,24 +480,19 @@ def oauth_explo(request: Request) -> ResponseType:
             raise ValueError("Missing user id")
         # Note that we return the original token to the client,
         # as we want to re-use it until it expires
-        t = User.login_by_id(sub, previous_token=token)
-        if t is None:
+        uld = User.login_by_id(sub, previous_token=token)
+        if uld is None:
             raise ValueError("User id not found")
-        uld, udd = t
-        idinfo = UserIdDict(
-            iss=PROJECT_ID,
-            sub=sub,
-            name=udd["name"],  # Not available from Explo token
-            picture=udd["picture"],  # Not available from Explo token
-            email=udd["email"],  # Not available from Explo token
-            account=uld["account"],  # Not available from Explo token
-            locale=uld["locale"],  # Not available from Explo token
+        userid = uld["user_id"]
+        uld["method"] = "Explo"
+        sd = SessionDict(
+            userid=userid,
             method="Explo",
+            # By definition, the user must already have existed
+            # in order for Explo auth to be available
             new=False,
             client_type=client_type,
         )
-        userid = uld["user_id"]
-        uld["method"] = idinfo["method"]
 
     except (KeyError, ValueError) as e:
         # Invalid token: return 401 - Unauthorized
@@ -515,6 +501,6 @@ def oauth_explo(request: Request) -> ResponseType:
 
     # Authentication complete; token was valid and user id was found
     # Set the Flask session cookie
-    set_session_cookie(userid, idinfo)
+    set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))

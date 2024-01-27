@@ -159,15 +159,29 @@ def get_google_auth() -> Any:
     return cast(Any, _oauth).google
 
 
-def set_session_cookie(userid: str, idinfo: UserIdDict) -> None:
+def set_session_cookie(
+    userid: str,
+    *,
+    sd: Optional[SessionDict] = None,
+    idinfo: Optional[UserIdDict] = None,
+) -> None:
     """Set the Flask session cookie attributes"""
-    s = SessionDict(
-        userid=userid,
-        method=idinfo.get("method", "Google"),
-        new=idinfo.get("new", False),
-        client_type=idinfo.get("client_type", "web"),
-    )
-    session["s"] = s
+    sess = cast(Dict[str, Any], session)
+    if sd is None:
+        if idinfo is None:
+            raise ValueError("Either sd or idinfo must be specified")
+        # Create a SessionDict from the UserIdDict
+        sd = SessionDict(
+            userid=userid,
+            method=idinfo.get("method", "Google"),
+            new=idinfo.get("new", False),
+            client_type=idinfo.get("client_type", "web"),
+        )
+    # Set the new-style session attribute
+    sess["s"] = sd
+    # Pop deprecated session attributes
+    sess.pop("userid", None)
+    sess.pop("user", None)
     session.permanent = True
 
 

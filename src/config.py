@@ -2,7 +2,7 @@
 
     Configuration data
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -24,7 +24,9 @@ from flask import json
 
 
 class FlaskConfig(TypedDict):
+
     """The Flask configuration dictionary"""
+
     DEBUG: bool
     SESSION_COOKIE_DOMAIN: Optional[str]
     SESSION_COOKIE_SECURE: bool
@@ -33,7 +35,7 @@ class FlaskConfig(TypedDict):
     PERMANENT_SESSION_LIFETIME: timedelta
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
-    JSON_AS_ASCII: bool
+    # JSON_AS_ASCII: bool  # No longer supported in Flask >= 2.3
     TESTING: NotRequired[bool]
 
 
@@ -95,7 +97,9 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     # Facebook app token, for login verification calls to the graph API
     FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
     FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-    assert FACEBOOK_APP_SECRET, f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FACEBOOK_APP_SECRET
+    ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
     assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 
     # Firebase configuration
@@ -103,8 +107,12 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
     FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
     FIREBASE_DB_URL: str = j.get("FIREBASE_DB_URL", "")
     FIREBASE_APP_ID: str = j.get("FIREBASE_APP_ID", "")
-    assert FIREBASE_API_KEY, f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
-    assert FIREBASE_SENDER_ID, f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FIREBASE_API_KEY
+    ), f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
+    assert (
+        FIREBASE_SENDER_ID
+    ), f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
     assert FIREBASE_DB_URL, f"FIREBASE_DB_URL not set correctly in {CLIENT_SECRET_FILE}"
     assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 

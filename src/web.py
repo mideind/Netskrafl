@@ -111,7 +111,7 @@ def login_user() -> bool:
                 return False
             issuer = idinfo.get("iss", "")
             if issuer not in VALID_ISSUERS:
-                logging.error("Unknown OAuth2 token issuer: " + (issuer or "[None]"))
+                logging.error(f"Unknown OAuth2 token issuer: {issuer or '[None]'}")
                 return False
             # ID token is valid; extract the claims
             # Get the user's Google Account ID
@@ -134,9 +134,7 @@ def login_user() -> bool:
             # Save the stuff we want to keep around
             # in the user session
             idinfo["method"] = "Google"
-            idinfo["account"] = uld["account"]
             idinfo["new"] = uld.get("new", False)
-            idinfo["locale"] = uld.get("locale", DEFAULT_LOCALE)
             idinfo["client_type"] = "web"
     except (KeyError, ValueError, MismatchingStateError) as e:
         # Something is wrong: we're not getting the same (random) state string back
@@ -149,7 +147,7 @@ def login_user() -> bool:
         return False
 
     # Authentication complete; user id obtained
-    set_session_cookie(userid, idinfo)
+    set_session_cookie(userid, idinfo=idinfo)
 
     if running_local:
         logging.info(
