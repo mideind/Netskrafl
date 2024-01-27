@@ -3,6 +3,9 @@
 
 # Raw text resources, such as word lists
 resources/*.txt
+resources/*.tsv
+resources/*.csv
+resources/bin/
 
 # DAWG trees in text form
 resources/*.text.dawg
@@ -10,13 +13,14 @@ resources/*.text.dawg
 # DAWG trees in pickled form
 resources/*.dawg.pickle
 
-# CSV files
-resources/*.csv
-
 # Credential files
 resources/netskrafl-*.json
 resources/explo-*.json
 resources/Explo*.json
+
+# Utility scripts
+utils/
+mypy.ini
 
 # Photoshop & Illustrator files
 *.psd
@@ -74,6 +78,7 @@ lib/
 
 # Python3 virtual environment library files
 venv/
+v311/
 
 # Test stuff
 test/

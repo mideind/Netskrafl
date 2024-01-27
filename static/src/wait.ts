@@ -5,7 +5,7 @@
   Code for the WaitDialog and AcceptDialog components,
   used in the UI flow for timed games
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2023 Miðeind ehf.
   Original author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -25,7 +25,12 @@ import { View, glyph, DialogButton, OnlinePresence } from "page";
 import { attachFirebaseListener, detachFirebaseListener } from "channel";
 
 const WaitDialog: ComponentFunc<{
-  view: View; oppId: string; oppNick: string; oppName: string; duration: number;
+  view: View;
+  oppId: string;
+  oppNick: string;
+  oppName: string;
+  duration: number;
+  challengeKey: string;
 }> = (initialVnode) => {
 
   // A dialog that is shown while the user waits for the opponent,
@@ -36,6 +41,7 @@ const WaitDialog: ComponentFunc<{
   const model = view.model;
   const duration = attrs.duration;
   const oppId = attrs.oppId;
+  const key = attrs.challengeKey;
   let oppNick = attrs.oppNick;
   let oppName = attrs.oppName;
   let oppOnline = false;
@@ -51,7 +57,7 @@ const WaitDialog: ComponentFunc<{
       const json: { online: boolean; waiting: boolean; } = await m.request({
         method: "POST",
         url: "/initwait",
-        body: { opp: oppId }
+        body: { opp: oppId, key }
       });
       // If json.waiting is false, the initiation failed
       // and there is really no point in continuing to wait
@@ -71,7 +77,8 @@ const WaitDialog: ComponentFunc<{
         url: "/cancelwait",
         body: {
           user: userId,
-          opp: oppId
+          opp: oppId,
+          key
         }
       });
     }
@@ -155,7 +162,7 @@ const WaitDialog: ComponentFunc<{
 };
 
 const AcceptDialog: ComponentFunc<{
-  view: View; oppId: string; oppNick: string;
+  view: View; oppId: string; oppNick: string; challengeKey: string;
 }> = (initialVnode) => {
 
   // A dialog that is shown (usually briefly) while
@@ -166,6 +173,7 @@ const AcceptDialog: ComponentFunc<{
   const view = attrs.view;
   const model = view.model;
   const oppId = attrs.oppId;
+  const key = attrs.challengeKey;
   let oppNick = attrs.oppNick;
   let oppReady = true;
 
@@ -175,7 +183,7 @@ const AcceptDialog: ComponentFunc<{
       const json: { waiting: boolean; } = await m.request({
         method: "POST",
         url: "/waitcheck",
-        body: { user: oppId }
+        body: { user: oppId, key }
       });
       if (json?.waiting) {
         // Both players are now ready: Start the timed game.

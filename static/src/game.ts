@@ -4,7 +4,7 @@
 
 	The Game class, as used in the single-page UI
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2023 Miðeind ehf.
   Author: Vilhjalmur Thorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -442,8 +442,9 @@ class Game {
     if (!this.over && this.isTimed())
       // Ongoing timed game: start the clock
       this.startClock();
-    // Kick off loading of chat messages
-    this.loadMessages();
+    // Kick off loading of chat messages, if this is not a robot game
+    if (!this.autoplayer[0] && !this.autoplayer[1])
+      this.loadMessages();
   }
 
   init(srvGame: ServerGame) {

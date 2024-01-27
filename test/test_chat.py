@@ -2,7 +2,7 @@
 """
 
     Tests for Netskrafl
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
 
     This module tests several APIs by submitting HTTP requests
     to the Netskrafl server.
@@ -14,6 +14,7 @@ from typing import Any, Dict
 import sys
 import os
 from datetime import datetime, timedelta
+import base64
 
 import pytest
 
@@ -39,7 +40,7 @@ def client():
     """ Flask client fixture """
     import main
 
-    main.app.config['TESTING'] = True
+    main.app.config["TESTING"] = True
     main.app.testing = True
 
     with main.app.test_client() as client:
@@ -85,13 +86,13 @@ def u2() -> str:
 
 
 @pytest.fixture
-def u3_uk() -> str:
-    """ Create a test user in the en_UK locale """
-    return create_user(3, "en_UK")
+def u3_gb() -> str:
+    """ Create a test user in the en_GB locale """
+    return create_user(3, "en_GB")
 
 
 def login_user(client, idx: int, client_type: str = "web") -> Response:
-    idinfo: Dict[str, Any] = dict(
+    rq: Dict[str, Any] = dict(
         sub=f"999999{idx}",
         # Full name of user
         name=f"Test user {idx}",
@@ -100,9 +101,9 @@ def login_user(client, idx: int, client_type: str = "web") -> Response:
         # Make sure that the e-mail address is in lowercase
         email=f"test{idx}@user.explo",
         # Client type
-        client_type=client_type,
+        clientType=client_type,
     )
-    return client.post("/oauth2callback", data=idinfo)
+    return client.post("/oauth2callback", data=rq)
 
 
 def test_chat(client, u1, u2) -> None:
@@ -212,7 +213,7 @@ def test_chat(client, u1, u2) -> None:
     assert not history[-1]["unread"]
 
 
-def test_locale_assets(client, u1, u3_uk):
+def test_locale_assets(client, u1, u3_gb):
 
     # Test default en_US user
     resp = login_user(client, 1)
@@ -222,7 +223,7 @@ def test_locale_assets(client, u1, u3_uk):
     assert "American English" in resp.data.decode("utf-8")
     resp = client.post("/logout")
 
-    # Test en_UK user
+    # Test en_GB user
     resp = login_user(client, 3)
     resp = client.post("/locale_asset", data=dict(asset="test_english.html"))
     assert resp.status_code == 200
@@ -490,16 +491,19 @@ def test_image(client, u1):
     resp = login_user(client, 1)
 
     # Set the image by POSTing the JPEG or PNG content (BLOB) directly
-    resp = client.post("/image", data=b"1234", content_type="image/jpeg; charset=utf-8")
+    image_blob = b"1234"
+    # Encode the image_blob as base64
+    image_b64 = base64.b64encode(image_blob)
+    resp = client.post("/image", data=image_b64, content_type="image/jpeg; charset=utf-8")
     assert resp.status_code == 200
 
     # Retrieve the image of the currently logged-in user
     resp = client.get("/image")
     assert resp.status_code == 200
     assert resp.mimetype == "image/jpeg"
-    assert resp.content_length == 4
+    assert resp.content_length == len(image_blob)
     # Retrieve the original BLOB
-    assert resp.get_data(as_text=False) == b"1234"
+    assert resp.get_data(as_text=False) == image_blob
 
     # Set an image URL: note the text/plain MIME type
     image_url = "https://lh3.googleusercontent.com/a/AATXAJxmLaM_8c61i_EeyptXynOG1SL7b-BSt7uBz8Hg=s96-c"
@@ -518,3 +522,99 @@ def test_image(client, u1):
 
     resp = client.post("/logout")
 
+
+def test_delete_user_1(client, u1):
+    """Delete a user using the /delete_account endpoint"""
+    # Try to delete an account without being logged in
+    resp = client.post("/delete_account")
+    assert resp.status_code == 401  # Unauthorized
+
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Delete the account
+    resp = client.post("/delete_account")
+    assert resp.status_code == 200
+    assert resp.json["ok"] == True
+
+    # Now the session cookie should be expired
+    resp = client.post("/delete_account")
+    assert resp.status_code == 401  # Unauthorized
+
+
+def test_delete_user_2(client, u1, u2):
+    """Delete a user using the /delete_account endpoint"""
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Add challenges and favorites
+    resp = client.post("/challenge", data=dict(destuser=u2, duration=10))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    resp = client.post("/challenge", data=dict(destuser=u2, duration=20))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+
+    # Add a favorite (u1 favors u2)
+    resp = client.post("/favorite", data=dict(destuser=u2))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+
+    # Log in the second user
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 2)
+    assert resp.status_code == 200
+
+    # Verify that the challenges exist
+    resp = client.post("/challengelist")
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert len(resp.json["challengelist"]) == 2
+
+    # Add a favorite (u2 favors u1)
+    resp = client.post("/favorite", data=dict(destuser=u1))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+
+    # Logout and log in the first user again
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 1)
+    assert resp.status_code == 200
+
+    # Delete the user account
+    resp = client.post("/delete_account")
+    assert resp.status_code == 200
+    assert resp.json["ok"] == True
+
+    # Logout and log in the second user again
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    resp = login_user(client, 2)
+    assert resp.status_code == 200
+
+    # Now there should be no challenges
+    resp = client.post("/challengelist")
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert len(resp.json["challengelist"]) == 0
+
+    # Load user stats for the current user (u2)
+    resp = client.post("/userstats")
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert len(resp.json["list_favorites"]) == 0
+
+    # Load user stats for the other (deleted) user (u1)
+    resp = client.post("/userstats", data=dict(user=u1))
+    assert resp.status_code == 200
+    assert resp.json["result"] == 0
+    assert resp.json["favorite"] == False
+    assert "list_favorites" not in resp.json
+    assert resp.json["fullname"] == ""
+    # assert resp.json["image"] == ""
+    assert resp.json["chat_disabled"] == True
+
+    resp = client.post("/logout")
+    assert resp.status_code == 200

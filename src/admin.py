@@ -2,7 +2,7 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -30,13 +30,13 @@ from skraflgame import Game
 
 
 def admin_usercount() -> Response:
-    """ Return a count of UserModel entities """
+    """Return a count of UserModel entities"""
     count = UserModel.count()
     return jsonify(count=count)
 
 
-def deferred_update() -> None:
-    """ Update all users in the datastore with lowercase nick and full name """
+def deferred_user_update() -> None:
+    """Update all users in the datastore with lowercase nick and full name"""
     logging.info("Deferred user update starting")
     CHUNK_SIZE = 200
     scan = 0
@@ -52,30 +52,75 @@ def deferred_update() -> None:
                     count += 1
                 if scan % 1000 == 0:
                     logging.info(
-                        "Completed scanning {0} and updating {1} user records".format(
+                        "Completed scanning {0} and updating {1} user entities".format(
                             scan, count
                         )
                     )
         except Exception as e:
             logging.info(
-                "Exception in deferred_update(): {0}, already scanned {1} records and updated {2}".format(
-                    e, scan, count
-                )
+                f"Exception in deferred_user_update(): {e}, "
+                f"already scanned {scan} entities and updated {count}"
+            )
+    logging.info(f"Completed scanning {scan} and updating {count} user entities")
+
+
+'''
+def deferred_game_update() -> None:
+    """Reindex all games in the datastore by loading them and saving them again"""
+    logging.info("Deferred game update starting")
+    CHUNK_SIZE = 250
+    count = 0
+    updated = 0
+    with Client.get_context():
+        Context.disable_cache()
+        Context.disable_global_cache()
+        try:
+            q: Query[GameModel] = GameModel.query()
+            result: List[GameModel] = []
+            for gm in iter_q(q, chunk_size=CHUNK_SIZE):
+                if not gm.index_updated:
+                    # Not already updated
+                    gm.index_updated = True
+                    result.append(gm)
+                    if len(result) >= CHUNK_SIZE:
+                        GameModel.put_multi(result)
+                        updated += len(result)
+                        result = []
+                count += 1
+                if count % 1000 == 0:
+                    logging.info(
+                        f"Completed scanning {count} game entities, updated {updated} entities"
+                    )
+            if result:
+                GameModel.put_multi(result)
+                updated += len(result)
+        except Exception as e:
+            logging.info(
+                f"Exception in deferred_game_update(): {e}, already scanned {count} entities, updated {updated} entities"
             )
     logging.info(
-        "Completed scanning {0} and updating {1} user records".format(scan, count)
+        f"Completed scanning {count} and updating {updated} game entities"
     )
+'''
 
 
-def admin_userupdate() -> str:
-    """ Start a user update background task """
+def admin_userupdate() -> Response:
+    """Start a user update background task"""
     logging.info("Starting user update")
-    Thread(target=deferred_update).start()
-    return "<html><body><p>User update started</p></body></html>"
+    Thread(target=deferred_user_update).start()
+    return jsonify(ok=True, result="User update started")
+
+
+'''
+def admin_gameupdate() -> Response:
+    """Start a game update background task"""
+    Thread(target=deferred_game_update).start()
+    return jsonify(ok=True, result="Game update started")
+'''
 
 
 def admin_setfriend() -> str:
-    """ Set the friend state of a user """
+    """Set the friend state of a user"""
     uid = request.args.get("uid", "")
     state = request.args.get("state", "1")  # Default: set as friend
     try:
@@ -88,18 +133,16 @@ def admin_setfriend() -> str:
     if u is None:
         return "<html><body><p>Unknown user id '{0}'</p></body></html>".format(uid)
     was_friend = u.friend()
-    u.set_friend(bstate)
-    u.set_has_paid(bstate)
-    u.update()
+    u.add_transaction("friend" if bstate else "", "admin", "setfriend")
     logging.info("Friend state of user {0} manually set to {1}".format(uid, bstate))
-    return "<html><body><p>User '{0}': friend state was '{2}', set to '{1}'</p></body></html>".format(
-        uid, bstate, was_friend
+    return (
+        f"<html><body><p>User '{uid}': friend state was {was_friend}; "
+        f"set to friend={u.friend()}, has_paid={u.has_paid()}</p></body></html>"
     )
 
 
 def admin_fetchgames() -> Response:
-    """ Return a JSON representation of all finished games """
-    # noinspection PyPep8
+    """Return a JSON representation of all finished games"""
     # pylint: disable=singleton-comparison
     q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
     gamelist: List[Dict[str, Any]] = []
@@ -121,7 +164,7 @@ def admin_fetchgames() -> Response:
 
 
 def admin_loadgame() -> Response:
-    """ Fetch a game object and return it as JSON """
+    """Fetch a game object and return it as JSON"""
 
     uuid = request.form.get("uuid", None)
     game = None
@@ -129,7 +172,7 @@ def admin_loadgame() -> Response:
     g: Optional[Dict[str, Any]] = None
 
     if uuid:
-        # Attempt to load the game whose id is in the URL query string
+        # Attempt to load the game by its UUID
         game = Game.load(uuid, set_locale=True, use_cache=False)
 
     if game is not None and game.state is not None:
@@ -150,7 +193,7 @@ def admin_loadgame() -> Response:
                     m.player,
                     m.move.summary(game.state),
                     m.rack,
-                    Alphabet.format_timestamp(m.ts),
+                    Alphabet.format_timestamp(m.ts or now),
                 )
                 for m in game.moves
             ],
@@ -158,3 +201,42 @@ def admin_loadgame() -> Response:
 
     return jsonify(game=g)
 
+
+def admin_loaduser() -> Response:
+    """Fetch a user object and return it as JSON"""
+
+    userid = request.form.get("id", None)
+    user = None
+
+    u: Optional[Dict[str, Any]] = None
+
+    if userid:
+        # Attempt to load the user by UUID, account id, email or nickname
+        user = User.load_if_exists(userid)
+        if user is None:
+            user = User.load_by_account(userid)
+        if user is None and "@" in userid:
+            user = User.load_by_email(userid)
+        if user is None:
+            user = User.load_by_nickname(userid, ignore_case=True)
+
+    if user is not None:
+        now = datetime.utcnow()
+        u = dict(
+            userid=user.id(),
+            account=user.account(),
+            timestamp=Alphabet.format_timestamp(user.timestamp() or now),
+            email=user.email(),
+            nick=user.nickname(),
+            full_name=user.full_name(),
+            friend=user.friend(),
+            has_paid=user.has_paid(),
+            plan=user.plan(),
+            locale=user.locale,
+            location=user.location,
+            inactive=user.is_inactive(),
+            blocked_by=list(user.blocked_by()),
+            reported_by=list(user.reported_by()),
+        )
+
+    return jsonify(user=u)

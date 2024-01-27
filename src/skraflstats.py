@@ -2,7 +2,7 @@
 
     Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2023 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -38,6 +38,7 @@ from threading import Thread
 from flask.wrappers import Request
 
 from skrafldb import (
+    Context,
     ndb,
     Client,
     UserModel,
@@ -50,15 +51,7 @@ from skrafldb import (
 )
 from skrafluser import User
 from skraflgame import Game
-
-
-# The K constant used in the Elo calculation
-ELO_K: float = 20.0  # For established players
-BEGINNER_K: float = 32.0  # For beginning players
-
-# How many games a player plays as a provisional player
-# before becoming an established one
-ESTABLISHED_MARK: int = 10
+from skraflelo import ESTABLISHED_MARK, compute_elo
 
 
 def monthdelta(date: datetime, delta: int) -> datetime:
@@ -70,72 +63,17 @@ def monthdelta(date: datetime, delta: int) -> datetime:
     return date.replace(day=d, month=m, year=y)
 
 
-def _compute_elo(
-    o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int
-) -> Tuple[int, int]:
-    """ Computes the Elo points of the two users after their game """
-    # If no points scored, this is a null game having no effect
-    assert sc0 >= 0
-    assert sc1 >= 0
-    if sc0 + sc1 == 0:
-        return (0, 0)
-
-    # Current Elo ratings
-    elo0 = o_elo[0]
-    elo1 = o_elo[1]
-
-    # Calculate the quotients for each player using a logistic function.
-    # For instance, a player with 1_200 Elo points would get a Q of 10^3 = 1_000,
-    # a player with 800 Elo points would get Q = 10^2 = 100
-    # and a player with 1_600 Elo points would get Q = 10^4 = 10_000.
-    # This means that the 1_600 point player would have a 99% expected probability
-    # of winning a game against the 800 point one, and a 91% expected probability
-    # of winning a game against the 1_200 point player.
-    q0 = 10.0 ** (float(elo0) / 400)
-    q1 = 10.0 ** (float(elo1) / 400)
-    if q0 + q1 < 1.0:
-        # Strange corner case: give up
-        return (0, 0)
-
-    # Calculate the expected winning probability of each player
-    exp0 = q0 / (q0 + q1)
-    exp1 = q1 / (q0 + q1)
-
-    # Represent the actual outcome
-    if sc0 > sc1:
-        # Player 0 won
-        act0 = 1.0
-        act1 = 0.0
-    elif sc1 > sc0:
-        # Player 1 won
-        act1 = 1.0
-        act0 = 0.0
-    else:
-        # Draw
-        act0 = 0.5
-        act1 = 0.5
-
-    # Calculate the adjustments to be made (one positive, one negative)
-    adj0 = (act0 - exp0) * (ELO_K if est0 else BEGINNER_K)
-    adj1 = (act1 - exp1) * (ELO_K if est1 else BEGINNER_K)
-
-    # Calculate the final adjustment tuple
-    adj0, adj1 = int(round(adj0)), int(round(adj1))
-
-    # Make sure we don't adjust to a negative number
-    if adj0 + elo0 < 0:
-        adj0 = -elo0
-    if adj1 + elo1 < 0:
-        adj1 = -elo1
-
-    return (adj0, adj1)
-
-
 def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
     """ Writes the freshly calculated statistics records to the database """
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
     um_list: List[UserModel] = []
+    sm_list: List[StatsModel] = []
+    # Note: we need a limit on the put_multi() size
+    # since user entites can be quite large (due to the embedded images)
+    # and the maximum size of a single RPC call is 10 MB
+    MAX_STATS_PUT = 200
+    MAX_USERS_PUT = 50
     for sm in urecs.values():
         # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
@@ -146,20 +84,30 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
             um.elo = sm.elo
             um.human_elo = sm.human_elo
             um.manual_elo = sm.manual_elo
+            # Make sure that the human game counts agree
+            um.games = sm.human_games
             um_list.append(um)
-    # Update the statistics records
-    StatsModel.put_multi(urecs.values())
-    # Update the user records
-    UserModel.put_multi(um_list)
+            if len(um_list) >= MAX_USERS_PUT:
+                # At limit: Update the entities that we've gathered so far
+                UserModel.put_multi(um_list)
+                um_list = []
+        # Collect the updated StatsModel entities
+        sm_list.append(sm)
+        if len(sm_list) >= MAX_STATS_PUT:
+            # At limit: Update the entities that we've gathered so far
+            StatsModel.put_multi(sm_list)
+            sm_list = []
+    # Update the remaining StatsModel entities
+    if sm_list:
+        StatsModel.put_multi(sm_list)
+    # Update the remaining UserModel entities
+    if um_list:
+        UserModel.put_multi(um_list)
 
 
 def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     """ Runs a process to update user statistics and Elo ratings """
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
-
-    if from_time is None or to_time is None:
-        # Time range must be specified
-        return False
 
     if from_time >= to_time:
         # Null time range
@@ -184,10 +132,10 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
         .filter(GameModel.over == True)
     )
 
-    # The accumulated user statistics
+    # The accumulated cache of user statistics
     users: Dict[str, StatsModel] = dict()
 
-    def _init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
+    def init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
         """ Returns the newest StatsModel instance available for the given user """
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
@@ -234,11 +182,11 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             if k0 in users:
                 urec0 = users[k0]
             else:
-                users[k0] = urec0 = _init_stat(p0, rl if p0 is None else 0)
+                users[k0] = urec0 = init_stat(p0, rl if p0 is None else 0)
             if k1 in users:
                 urec1 = users[k1]
             else:
-                users[k1] = urec1 = _init_stat(p1, rl if p1 is None else 0)
+                users[k1] = urec1 = init_stat(p1, rl if p1 is None else 0)
 
             # Number of games played
             urec0.games += 1
@@ -296,7 +244,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             gm.elo0, gm.elo1 = urec0.elo, urec1.elo
 
             # Compute the Elo points of both players
-            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
+            adj = compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
 
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
@@ -312,10 +260,15 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
+                # Find out whether players are established or beginners,
+                # counting human games only
+                est0 = urec0.human_games > ESTABLISHED_MARK
+                est1 = urec1.human_games > ESTABLISHED_MARK
+
                 uelo0 = urec0.human_elo or User.DEFAULT_ELO
                 uelo1 = urec1.human_elo or User.DEFAULT_ELO
                 gm.human_elo0, gm.human_elo1 = uelo0, uelo1
-                adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                 # Adjust player 0
                 if est0 and not est1:
                     adj = (0, adj[1])
@@ -331,7 +284,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                     uelo0 = urec0.manual_elo or User.DEFAULT_ELO
                     uelo1 = urec1.manual_elo or User.DEFAULT_ELO
                     gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
-                    adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                     # Adjust player 0
                     if est0 and not est1:
                         adj = (0, adj[1])
@@ -569,6 +522,8 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
 
     # Asynchronous: we need a new context for this thread
     with Client.get_context():
+        # Disable the in-memory cache for this thread
+        Context.disable_cache()
         return _deferred_stats()
 
 
@@ -605,6 +560,8 @@ def deferred_ratings(wait: bool) -> bool:
 
     # Asynchronous: this thread needs a fresh client context
     with Client.get_context():
+        # Disable the in-memory cache for this thread
+        Context.disable_cache()
         return _deferred_ratings()
 
 

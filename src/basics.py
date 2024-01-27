@@ -2,7 +2,7 @@
 
     Basic utility functions and classes
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import (
     Literal,
+    Mapping,
     Optional,
     Dict,
     TypedDict,
@@ -48,28 +49,49 @@ from flask.wrappers import Request, Response
 from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
+from config import OAUTH_CONF_URL
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
 
 # Type definitions
 T = TypeVar("T")
-ResponseType = Union[str, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]]
+ResponseType = Union[
+    str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
+]
 RouteType = Callable[..., ResponseType]
 
 
 class UserIdDict(TypedDict):
+
+    """Old-style auxiliary user data dictionary, previously
+    stored in the Flask session cookie. Has been replaced by
+    the simpler and smaller SessionDict (see below)."""
+
     iss: str
     sub: str
     name: str
     picture: str
     email: str
-    # Login method (now 'Google' or 'Facebook')
+    # Login method ('Google', 'Facebook', 'Apple', 'Explo')
     method: str
     # Account identifier
     account: str
     # User locale
     locale: str
+    # True if new user, signing in for the first time
+    new: bool
+    # Client type ('web', 'ios', 'android')
+    client_type: str
+
+
+class SessionDict(TypedDict):
+
+    """The contents of the Flask session cookie"""
+
+    userid: str
+    # Login method ('Google', 'Facebook', 'Apple', 'Explo')
+    method: str
     # True if new user, signing in for the first time
     new: bool
     # Client type ('web', 'ios', 'android')
@@ -87,10 +109,10 @@ def jsonify(*args: Any, **kwargs: Any) -> Response:
 
 
 def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
-    """ Returns a wrapper for the original WSGI app """
+    """Returns a wrapper for the original WSGI app"""
 
     def middleware(environ: Any, start_response: Any) -> Any:
-        """ Wraps the original WSGI app """
+        """Wraps the original WSGI app"""
         with Client.get_context():
             return wsgi_app(environ, start_response)
 
@@ -98,8 +120,8 @@ def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
 
 
 def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
-    """ Caching decorator for Flask - augments response
-        with a max-age cache header """
+    """Caching decorator for Flask - augments response
+    with a max-age cache header"""
 
     def decorator(f: RouteType) -> RouteType:
         @wraps(f)
@@ -121,8 +143,7 @@ _oauth: Optional[OAuth] = None
 
 
 def init_oauth(app: Flask) -> None:
-    """ Initialize the OAuth wrapper """
-    OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
+    """Initialize the OAuth wrapper"""
     global _oauth
     _oauth = OAuth(app)
     cast(Any, _oauth).register(
@@ -133,58 +154,93 @@ def init_oauth(app: Flask) -> None:
 
 
 def get_google_auth() -> Any:
-    """ Return a Google authentication provider interface """
+    """Return a Google authentication provider interface"""
     assert _oauth is not None
     return cast(Any, _oauth).google
 
 
-def set_session_userid(userid: str, idinfo: UserIdDict) -> None:
-    """ Set the Flask session userid and idinfo attributes """
-    session["userid"] = {
-        "id": userid,
-    }
-    session["user"] = idinfo
+def set_session_cookie(
+    userid: str,
+    *,
+    sd: Optional[SessionDict] = None,
+    idinfo: Optional[UserIdDict] = None,
+) -> None:
+    """Set the Flask session cookie attributes"""
+    sess = cast(Dict[str, Any], session)
+    if sd is None:
+        if idinfo is None:
+            raise ValueError("Either sd or idinfo must be specified")
+        # Create a SessionDict from the UserIdDict
+        sd = SessionDict(
+            userid=userid,
+            method=idinfo.get("method", "Google"),
+            new=idinfo.get("new", False),
+            client_type=idinfo.get("client_type", "web"),
+        )
+    # Set the new-style session attribute
+    sess["s"] = sd
+    # Pop deprecated session attributes
+    sess.pop("userid", None)
+    sess.pop("user", None)
     session.permanent = True
 
 
 def clear_session_userid() -> None:
-    """ Clears the Flask session userid and idinfo attributes """
+    """Clears the Flask session userid and idinfo attributes"""
     sess = cast(Dict[str, Any], session)
+    # Pop deprecated session attributes
     sess.pop("userid", None)
     sess.pop("user", None)
+    # Pop the current session attribute
+    sess.pop("s", None)
 
 
 def session_user() -> Optional[User]:
-    """ Return the user who is authenticated in the current session, if any.
-        This can be called within any Flask request. """
-    u = None
-    sess = cast(Dict[str, Any], session)
-    if (user := sess.get("userid")) is not None:
-        userid = user.get("id")
-        u = User.load_if_exists(userid)
-    return u
+    """Return the user who is authenticated in the current session, if any.
+    This can be called within any Flask request."""
+    userid = ""
+    sess = cast(Mapping[str, Any], session)
+    if (s := cast(Optional[SessionDict], sess.get("s"))) is not None:
+        # New-style session: single user id
+        userid = s.get("userid", "")
+    elif (u := sess.get("userid")) is not None:
+        # Old-style session: nested user id dictionary
+        userid = u.get("id", "")
+    return User.load_if_exists(userid)  # Returns None if userid is None or empty
 
 
-def session_idinfo() -> Optional[UserIdDict]:
-    """ Return the user who is authenticated in the current session, if any.
-        This can be called within any Flask request. """
-    sess = cast(Dict[str, Any], session)
-    return None if sess is None else sess.get("user")
+def session_data() -> Optional[SessionDict]:
+    """Return auxiliary data associated with the current session, if any.
+    This can be called within any Flask request."""
+    if (sess := cast(Optional[Dict[str, Any]], session)) is None:
+        return None
+    # Check for new-style session and return it directly if found
+    if (sd := sess.get("s")) is not None:
+        return sd
+    # Check for old-style (deprecated) session
+    if (u := cast(Optional[UserIdDict], sess.get("user"))) is None:
+        return None
+    return SessionDict(
+        userid="",  # Not used by clients of session_data()
+        method=u.get("method", "Google"),
+        new=u.get("new", False),
+        client_type=u.get("client_type", "web"),
+    )
 
 
 def is_mobile_client() -> bool:
-    """ Return True if the currently logged in client is a mobile client """
-    if ((idinfo := session_idinfo()) is None):
+    """Return True if the currently logged in client is a mobile client"""
+    if (s := session_data()) is None:
         return False
-    return idinfo.get("client_type", "web") in MOBILE_CLIENT_TYPES
+    return s.get("client_type", "web") in MOBILE_CLIENT_TYPES
 
 
 def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
-    """ Decorator for routes that require an authenticated user.
-        Call with no parameters to redirect unauthenticated requests
-        to url_for("web.login"), or login_url="..." to redirect to that URL,
-        or any other kwargs to return a JSON reply to unauthenticated
-        requests, containing those kwargs (via jsonify()). """
+    """Decorator for routes that require an authenticated user.
+    Call with no parameters to redirect unauthenticated requests
+    to url_for("web.login"), or login_url="..." to redirect to that URL,
+    or any other kwargs to return a JSON reply to unauthenticated
+    requests, containing those kwargs (via jsonify())."""
 
     def wrap(func: RouteType) -> RouteType:
         @wraps(func)
@@ -213,6 +269,7 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
             g.user = u
             # Set the locale for this thread to the user's locale
             set_locale(u.locale)
+            # set_locale("nb_NO")  # !!! DEBUG
             return func()
 
         return route
@@ -221,22 +278,21 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
 
 
 def current_user() -> Optional[User]:
-    """ Return the currently logged in user. Only valid within route functions
-        decorated with @auth_required. """
+    """Return the currently logged in user. Only valid within route functions
+    decorated with @auth_required."""
     return g.get("user")
 
 
 def current_user_id() -> Optional[str]:
-    """ Return the id of the currently logged in user. Only valid within route
-        functions decorated with @auth_required. """
-    u = g.get("user")
-    return None if u is None else u.id()
+    """Return the id of the currently logged in user. Only valid within route
+    functions decorated with @auth_required."""
+    return None if (u := g.get("user")) is None else u.id()
 
 
 class RequestData:
 
-    """ Wraps the Flask request object to allow error-checked retrieval of query
-        parameters either from JSON or from form-encoded POST data """
+    """Wraps the Flask request object to allow error-checked retrieval of query
+    parameters either from JSON or from form-encoded POST data"""
 
     _TRUE_SET = frozenset(("true", "True", "1", 1, True))
     _FALSE_SET = frozenset(("false", "False", "0", 0, False))
@@ -256,12 +312,23 @@ class RequestData:
                 else:
                     self.q = dict()
 
+    def __repr__(self) -> str:
+        return f"<RequestData {self.q!r}>"
+
+    @overload
+    def get(self, key: str) -> Any:
+        ...
+
+    @overload
+    def get(self, key: str, default: T) -> T:
+        ...
+
     def get(self, key: str, default: Any = None) -> Any:
-        """ Obtain an arbitrary data item from the request """
+        """Obtain an arbitrary data item from the request"""
         return self.q.get(key, default)
 
     def get_int(self, key: str, default: int = 0) -> int:
-        """ Obtain an integer data item from the request """
+        """Obtain an integer data item from the request"""
         try:
             return int(self.q.get(key, default))
         except (TypeError, ValueError):
@@ -280,7 +347,7 @@ class RequestData:
         ...
 
     def get_bool(self, key: str, default: Optional[bool] = None) -> Union[bool, None]:
-        """ Obtain a boolean data item from the request """
+        """Obtain a boolean data item from the request"""
         try:
             val = self.q.get(key, default)
             if val in self._TRUE_SET:
@@ -295,16 +362,15 @@ class RequestData:
         return default
 
     def get_list(self, key: str) -> List[Any]:
-        """ Obtain a list data item from the request """
+        """Obtain a list data item from the request"""
         if self.using_json:
             # Normal get from a JSON dictionary
             r = self.q.get(key, [])
         else:
             # Use special getlist() call on request.form object
             r = cast(Any, self.q).getlist(key + "[]")
-        return r if isinstance(r, list) else []
+        return cast(List[Any], r) if isinstance(r, list) else []
 
     def __getitem__(self, key: str) -> Any:
-        """ Shortcut: allow indexing syntax with an empty string default """
+        """Shortcut: allow indexing syntax with an empty string default"""
         return self.q.get(key, "")
-

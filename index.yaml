@@ -46,6 +46,7 @@ indexes:
   - name: ts_last_move
     direction: desc
 
+# The following index is actually not used
 - kind: GameModel
   properties:
   - name: over
@@ -60,6 +61,7 @@ indexes:
   - name: ts_last_move
     direction: desc
 
+# The following index is actually not used
 - kind: GameModel
   properties:
   - name: over
@@ -93,12 +95,6 @@ indexes:
 - kind: StatsModel
   properties:
   - name: robot_level
-  - name: timestamp
-    direction: desc
-
-- kind: StatsModel
-  properties:
-  - name: robot_level
   - name: user
   - name: timestamp
     direction: desc
@@ -117,8 +113,14 @@ indexes:
 
 - kind: StatsModel
   properties:
-  - name: user
   - name: timestamp
+  - name: manual_elo
+    direction: desc
+
+- kind: TransactionModel
+  properties:
+  - name: user
+  - name: ts
     direction: desc
 
 - kind: UserModel
@@ -133,16 +135,14 @@ indexes:
 
 - kind: UserModel
   properties:
-#  - name: locale
+  - name: locale
   - name: human_elo
     direction: asc
   - name: highest_score
-#  - name: inactive
 
 - kind: UserModel
   properties:
-#  - name: locale
+  - name: locale
   - name: human_elo
     direction: desc
   - name: highest_score
-#  - name: inactive
