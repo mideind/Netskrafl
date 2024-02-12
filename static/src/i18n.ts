@@ -41,15 +41,26 @@ const rex = /{\s*(\w+)\s*}/g;
 let messages: FlattenedMessages = {};
 let messagesLoaded = false;
 
+function hasAnyTranslation(msgs: Messages, locale: string): boolean {
+  // Return true if any translation is available for the given locale
+  for (let key in msgs) {
+    if (msgs[key][locale] !== undefined)
+      return true;
+  }
+  return false;
+}
+
 function setLocale(locale: string, msgs: Messages): void {
   // Set the current i18n locale and fallback
   currentLocale = locale;
   currentFallback = locale.split("_")[0];
-  // For unsupported locales, fall back to English (U.S.)
-  if (msgs[currentLocale] === undefined && msgs[currentFallback] === undefined) {
+  // For unsupported locales, i.e. locales that have no
+  // translations available for them, fall back to English (U.S.).
+  if (!hasAnyTranslation(msgs, currentLocale) && !hasAnyTranslation(msgs, currentFallback)) {
     currentLocale = "en_US";
     currentFallback = "en";
   }
+
   // Flatten the Messages structure, enabling long strings
   // to be represented as string arrays in the messages.json file
   messages = {};
