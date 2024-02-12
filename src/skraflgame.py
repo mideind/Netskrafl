@@ -170,6 +170,7 @@ UNDEFINED_NAME: Dict[str, str] = {
     "en": "[Unknown]",
     "pl": "[Nieznany]",
     "nb": "[Ukjent]",
+    "ga": "[Anaithnid]",
 }
 
 

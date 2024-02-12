@@ -116,7 +116,6 @@ UserPrefsType = Dict[str, Union[str, bool]]
 
 
 class GameListDict(TypedDict):
-
     """The dictionary returned from gamelist()"""
 
     uuid: str
@@ -146,7 +145,6 @@ GameList = List[GameListDict]
 
 
 class RecentListDict(TypedDict):
-
     """The dictionary returned from recentlist()"""
 
     uuid: str
@@ -176,7 +174,6 @@ RecentList = List[RecentListDict]
 
 
 class ChallengeListDict(TypedDict):
-
     """The dictionary returned from _challengelist()"""
 
     key: str
@@ -198,7 +195,6 @@ ChallengeList = List[ChallengeListDict]
 
 
 class UserListDict(TypedDict):
-
     """The dictionary returned from _userlist()"""
 
     userid: str
@@ -221,7 +217,6 @@ UserList = List[UserListDict]
 
 
 class ChatMessageDict(TypedDict):
-
     """A chat message as returned by the /chatload endpoint"""
 
     from_userid: str
@@ -232,7 +227,6 @@ class ChatMessageDict(TypedDict):
 
 
 class ChatHistoryDict(TypedDict):
-
     """A chat history entry as returned by the /chathistory endpoint"""
 
     user: str  # User id
@@ -248,7 +242,6 @@ class ChatHistoryDict(TypedDict):
 
 
 class MoveNotifyDict(TypedDict):
-
     """A notification sent via Firebase to clients when a move has been
     processed"""
 
@@ -262,7 +255,6 @@ class MoveNotifyDict(TypedDict):
 
 
 class RevenueCatEvent(TypedDict, total=False):
-
     """A JSON object describing a subscription event from RevenueCat"""
 
     type: str
@@ -289,10 +281,7 @@ EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/icon-explo-192.png"
 autoplayer_lock = threading.Lock()
 
 # Register the Flask blueprint for the APIs
-api_blueprint = Blueprint("api", __name__)
-# The cast to Any can be removed when Flask typing becomes more robust
-# and/or compatible with Pylance
-api = cast(Any, api_blueprint)
+api = api_blueprint = Blueprint("api", __name__)
 
 VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
     "is": {
@@ -309,19 +298,19 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
     },
-    "pl": {
-        "NICK_MISSING": "Brak nazwy użytkownika",
-        "NICK_NOT_ALPHANUMERIC": "Nazwa użytkownika może zawierać tylko litery i cyfry",
-        "NICK_TOO_LONG": f"Nazwa użytkownika nie może mieć więcej niż {MAX_NICKNAME_LENGTH} znaków",
-        "EMAIL_NO_AT": "Adres e-mail musi zawierać znak @",
-        "LOCALE_UNKNOWN": "Nieznana lokalizacja",
-    },
     "en_GB": {
         "NICK_MISSING": "Nickname missing",
         "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
         "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
         "EMAIL_NO_AT": "E-mail address must contain @ sign",
         "LOCALE_UNKNOWN": "Unknown locale",
+    },
+    "pl": {
+        "NICK_MISSING": "Brak nazwy użytkownika",
+        "NICK_NOT_ALPHANUMERIC": "Nazwa użytkownika może zawierać tylko litery i cyfry",
+        "NICK_TOO_LONG": f"Nazwa użytkownika nie może mieć więcej niż {MAX_NICKNAME_LENGTH} znaków",
+        "EMAIL_NO_AT": "Adres e-mail musi zawierać znak @",
+        "LOCALE_UNKNOWN": "Nieznana lokalizacja",
     },
     "nb": {
         "NICK_MISSING": "Mangler kallenavn",
@@ -330,6 +319,13 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "E-postadressen må inneholde @-tegn",
         "LOCALE_UNKNOWN": "Ukjent lokalitet",
     },
+    "ga": {
+        "NICK_MISSING": "Ainm cleite in easnamh",
+        "NICK_NOT_ALPHANUMERIC": "Ní féidir le hainm cleite ach litreacha agus uimhreacha a áireamh",
+        "NICK_TOO_LONG": "Ní mór d'ainm cleite a bheith níos lú ná {MAX_NICKNAME_LENGTH} carachtair",
+        "EMAIL_NO_AT": "Caithfidh seoladh ríomhphoist comhartha @ a áireamh",
+        "LOCALE_UNKNOWN": "Locale anaithnid",
+    }
 }
 
 PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
@@ -338,30 +334,33 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "Your turn in Explo 💥",
         "pl": "Twoja kolej w Explo 💥",
         "nb": "Din tur i Explo 💥",
+        "ga": "Do sheal i Explo 💥"
     },
     "body": {
         "is": "{player} hefur leikið í viðureign ykkar.",
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
         "nb": "{player} har gjort et trekk i spillet ditt.",
+        "ga": "Rinne {player} gluaiseacht i do chluiche."
     },
     "chall_title": {
         "is": "Þú fékkst áskorun í Explo 💥",
         "en": "You've been challenged in Explo 💥",
         "pl": "Zostałeś wyzwany w Explo 💥",
         "nb": "Du har blitt utfordret i Explo 💥",
+        "ga": "Tá dúshlán curtha ort i Explo 💥"
     },
     "chall_body": {
         "is": "{player} hefur skorað á þig í viðureign!",
         "en": "{player} has challenged you to a game!",
         "pl": "{player} wyzwał cię na pojedynek!",
         "nb": "{player} har utfordret deg til en kamp!",
+        "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!"
     },
 }
 
 
 class UserForm:
-
     """Encapsulates the data in the user preferences form"""
 
     def __init__(self, usr: Optional[User] = None) -> None:
@@ -1876,9 +1875,9 @@ def challenge() -> ResponseType:
             destuser,
             {
                 "title": lambda locale: localize_push_message("chall_title", locale),
-                "body": lambda locale: localize_push_message("chall_body", locale).format(
-                    player=user.nickname()
-                ),
+                "body": lambda locale: localize_push_message(
+                    "chall_body", locale
+                ).format(player=user.nickname()),
                 "image": lambda locale: EXPLO_LOGO_URL,
             },
             {
@@ -2105,7 +2104,9 @@ def chatmsg() -> ResponseType:
     elif channel.startswith("user:"):
 
         # Chat between two users
-        opp_id = channel[5:][:64]  # The opponent id is e.g. 50 characters in the case of Apple
+        opp_id = channel[5:][
+            :64
+        ]  # The opponent id is e.g. 50 characters in the case of Apple
         if not opp_id:
             return jsonify(ok=False)
         # Add a message entity to the data store and remember its timestamp
@@ -2132,7 +2133,6 @@ def chatmsg() -> ResponseType:
 
 
 class UserCache:
-
     """A temporary cache for user lookups"""
 
     def __init__(self) -> None:

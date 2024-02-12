@@ -59,12 +59,9 @@ from basics import (
     ResponseType,
 )
 from skrafluser import User, UserLoginDict
-
-# from skrafldb import PromoModel
 import firebase
 import billing
 from cache import memcache
-import skraflstats
 
 
 # Type definitions
@@ -83,12 +80,9 @@ STATIC_FOLDER = os.path.join(BASE_PATH, "static")
 TEMPLATE_FOLDER = os.path.join(BASE_PATH, "templates")
 
 # Register the Flask blueprint for the web routes
-web_blueprint = Blueprint(
+web = web_blueprint = Blueprint(
     "web", __name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER
 )
-# The following cast can be removed once Flask's typing becomes
-# more robust and/or compatible with Pylance
-web = cast(Any, web_blueprint)
 
 
 def login_user() -> bool:
@@ -328,61 +322,6 @@ def main() -> ResponseType:
     return redirect(url_for("web.page"))
 
 
-# Cloud Scheduler routes - requests are only accepted when originated
-# by the Google Cloud Scheduler
-
-
-@web.route("/stats/run", methods=["GET", "POST"])
-def stats_run() -> ResponseType:
-    """Start a task to calculate Elo points for games"""
-    headers: Dict[str, str] = cast(Any, request).headers
-    task_queue_name = headers.get("X-AppEngine-QueueName", "")
-    task_queue = task_queue_name != ""
-    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = headers.get("X-Appengine-Cron", "") == "true"
-    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
-        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
-        return "Restricted URL", 403
-    wait = True
-    if cloud_scheduler:
-        logging.info("Running stats from cloud scheduler")
-        # Run Cloud Scheduler tasks asynchronously
-        wait = False
-    elif task_queue:
-        logging.info(f"Running stats from queue {task_queue_name}")
-    elif cron_job:
-        logging.info("Running stats from cron job")
-    return skraflstats.run(request, wait=wait)
-
-
-@web.route("/stats/ratings", methods=["GET", "POST"])
-def stats_ratings() -> ResponseType:
-    """Start a task to calculate top Elo rankings"""
-    headers: Dict[str, str] = cast(Any, request).headers
-    task_queue_name = headers.get("X-AppEngine-QueueName", "")
-    task_queue = task_queue_name != ""
-    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = headers.get("X-Appengine-Cron", "") == "true"
-    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
-        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
-        return "Restricted URL", 403
-    wait = True
-    if cloud_scheduler:
-        logging.info("Running ratings from cloud scheduler")
-        # Run Cloud Scheduler tasks asynchronously
-        wait = False
-    elif task_queue:
-        logging.info(f"Running ratings from queue {task_queue_name}")
-    elif cron_job:
-        logging.info("Running ratings from cron job")
-    result, status = skraflstats.ratings(request, wait=wait)
-    if status == 200:
-        # New ratings: ensure that old ones are deleted from cache
-        memcache.delete("all", namespace="rating")
-        memcache.delete("human", namespace="rating")
-    return result, status
-
-
 @web.route("/cache/flush", methods=["GET", "POST"])
 def cache_flush() -> ResponseType:
     """Flush the Redis cache"""
@@ -397,7 +336,6 @@ def cache_flush() -> ResponseType:
     # Flush the cache
     memcache.flush()
     return "<html><body><p>Cache flushed</p></body></html>", 200
-
 
 # We only enable the administration routes if running
 # on a local development server, not on the production server

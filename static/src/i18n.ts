@@ -45,6 +45,11 @@ function setLocale(locale: string, msgs: Messages): void {
   // Set the current i18n locale and fallback
   currentLocale = locale;
   currentFallback = locale.split("_")[0];
+  // For unsupported locales, fall back to English (U.S.)
+  if (msgs[currentLocale] === undefined && msgs[currentFallback] === undefined) {
+    currentLocale = "en_US";
+    currentFallback = "en";
+  }
   // Flatten the Messages structure, enabling long strings
   // to be represented as string arrays in the messages.json file
   messages = {};

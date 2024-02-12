@@ -2,7 +2,7 @@
 
     Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -35,8 +35,12 @@ import gc
 from datetime import datetime, timedelta
 from threading import Thread
 
+from flask import request, Blueprint
 from flask.wrappers import Request
 
+from basics import ResponseType
+from config import running_local
+from cache import memcache
 from skrafldb import (
     Context,
     ndb,
@@ -53,9 +57,12 @@ from skrafluser import User
 from skraflgame import Game
 from skraflelo import ESTABLISHED_MARK, compute_elo
 
+# Register the Flask blueprint for the stats routes
+stats = stats_blueprint = Blueprint("stats", __name__, url_prefix="/stats")
+
 
 def monthdelta(date: datetime, delta: int) -> datetime:
-    """ Calculate a date x months from now, in the past or in the future """
+    """Calculate a date x months from now, in the past or in the future"""
     m, y = (date.month + delta) % 12, date.year + (date.month + delta - 1) // 12
     if not m:
         m = 12
@@ -64,7 +71,7 @@ def monthdelta(date: datetime, delta: int) -> datetime:
 
 
 def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
-    """ Writes the freshly calculated statistics records to the database """
+    """Writes the freshly calculated statistics records to the database"""
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
     um_list: List[UserModel] = []
@@ -106,7 +113,7 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
 
 
 def _run_stats(from_time: datetime, to_time: datetime) -> bool:
-    """ Runs a process to update user statistics and Elo ratings """
+    """Runs a process to update user statistics and Elo ratings"""
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
     if from_time >= to_time:
@@ -136,7 +143,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     users: Dict[str, StatsModel] = dict()
 
     def init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
-        """ Returns the newest StatsModel instance available for the given user """
+        """Returns the newest StatsModel instance available for the given user"""
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
     cnt = 0
@@ -323,7 +330,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
 
 
 def _create_ratings() -> None:
-    """ Create the Top 100 ratings tables """
+    """Create the Top 100 ratings tables"""
     logging.info("Starting _create_ratings")
 
     _key = StatsModel.dict_key
@@ -477,7 +484,7 @@ def _create_ratings() -> None:
 
 
 def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
-    """ This is the deferred stats collection process """
+    """This is the deferred stats collection process"""
 
     def _deferred_stats() -> bool:
         success = False
@@ -528,7 +535,7 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
 
 
 def deferred_ratings(wait: bool) -> bool:
-    """ This is the deferred ratings table calculation process """
+    """This is the deferred ratings table calculation process"""
 
     def _deferred_ratings() -> bool:
 
@@ -566,7 +573,7 @@ def deferred_ratings(wait: bool) -> bool:
 
 
 def run(request: Request, *, wait: bool) -> Tuple[str, int]:
-    """ Calculate a new set of statistics """
+    """Calculate a new set of statistics"""
     logging.info("Starting stats calculation")
 
     # If invoked without parameters (such as from a cron job),
@@ -601,7 +608,7 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
 
 
 def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
-    """ Calculate new ratings tables """
+    """Calculate new ratings tables"""
     logging.info("Starting ratings calculation")
     kwargs: Dict[str, Any] = dict(wait=wait)
     if not wait:
@@ -613,3 +620,58 @@ def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
         return "Ratings calculation failed", 500
 
     return "Ratings calculation completed", 200
+
+
+# Cloud Scheduler routes - requests are only accepted when originated
+# by the Google Cloud Scheduler
+
+
+@stats.route("/run", methods=["GET", "POST"])
+def stats_run() -> ResponseType:
+    """Start a task to calculate Elo points for games"""
+    headers: Dict[str, str] = cast(Any, request).headers
+    task_queue_name = headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
+        return "Restricted URL", 403
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running stats from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running stats from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running stats from cron job")
+    return run(request, wait=wait)
+
+
+@stats.route("/ratings", methods=["GET", "POST"])
+def stats_ratings() -> ResponseType:
+    """Start a task to calculate top Elo rankings"""
+    headers: Dict[str, str] = cast(Any, request).headers
+    task_queue_name = headers.get("X-AppEngine-QueueName", "")
+    task_queue = task_queue_name != ""
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
+        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
+        return "Restricted URL", 403
+    wait = True
+    if cloud_scheduler:
+        logging.info("Running ratings from cloud scheduler")
+        # Run Cloud Scheduler tasks asynchronously
+        wait = False
+    elif task_queue:
+        logging.info(f"Running ratings from queue {task_queue_name}")
+    elif cron_job:
+        logging.info("Running ratings from cron job")
+    result, status = ratings(request, wait=wait)
+    if status == 200:
+        # New ratings: ensure that old ones are deleted from cache
+        memcache.delete("all", namespace="rating")
+        memcache.delete("human", namespace="rating")
+    return result, status

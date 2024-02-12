@@ -74,6 +74,7 @@ from firebase import init_firebase_app
 from dawgdictionary import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
+from skraflstats import stats_blueprint
 
 
 if running_local:
@@ -167,9 +168,10 @@ assert isinstance(app.json, DefaultJSONProvider)
 app.json.ensure_ascii = False
 app.json.sort_keys = False
 
-# Register the Flask blueprints for the api and web routes
+# Register the Flask blueprints for the various routes
 app.register_blueprint(api_blueprint)
 app.register_blueprint(web_blueprint)
+app.register_blueprint(stats_blueprint)
 
 # Initialize the OAuth wrapper
 init_oauth(app)

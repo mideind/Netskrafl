@@ -56,12 +56,13 @@ _T = TypeVar("_T")
 # Map from a generic locale ('en') to a
 # more specific default locale ('en_US')
 NONGENERIC_DEFAULT: Mapping[str, str] = {
-    "is": "is_IS",
-    "en": "en_US",
-    "pl": "pl_PL",
+    "is": "is_IS",  # Icelandic
+    "en": "en_US",  # English (US)
+    "pl": "pl_PL",  # Polish
     "nb": "nb_NO",  # Norwegian Bokmål
-    "no": "nb_NO",
+    "no": "nb_NO",  # Norwegian Bokmål
     # We do not map from Norwegian Nynorsk ('nn') to Bokmål ('nb')
+    "ga": "ga_IE",  # Gaeilge/Irish
 }
 
 DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"

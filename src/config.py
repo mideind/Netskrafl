@@ -55,12 +55,22 @@ DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
+# Should we constrain the domain for HTTP session cookies?
+# Currently we don't do this as we would like to be able to access
+# particular versions of the backend by using VERSION-dot-PROJECT.appspot.com
+# URLs, and we want to allow cookies for such domains also.
+# (This is not ideal but follows from the peculiar GAE convention of
+# using "-dot-" to separate the version and project id in HTTPS URLs.
+# Ideally, we would want to share cookies across version subdomains of
+# PROJECT.appspot.com, but this is not currently possible with GAE.)
+CONSTRAIN_COOKIE_DOMAIN = False
+
 # Obtain the domain to use for HTTP session cookies
-COOKIE_DOMAIN = {
+COOKIE_DOMAIN: Optional[str] = {
     "netskrafl": ".netskrafl.is",
     "explo-dev": ".explo-dev.appspot.com",
     "explo-live": ".explo-live.appspot.com",
-}.get(PROJECT_ID, ".netskrafl.is")
+}.get(PROJECT_ID, ".netskrafl.is") if CONSTRAIN_COOKIE_DOMAIN else None
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
