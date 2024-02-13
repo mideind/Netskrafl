@@ -2,7 +2,7 @@
 
     Cache - Redis cache wrapper for the Netskrafl application
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     This module wraps Redis caching in a thin wrapper object,
@@ -42,6 +42,7 @@ DateTimeTuple = Tuple[int, int, int, int, int, int]
 SerializerFunc = Callable[..., Any]
 SerializerFuncTuple = Tuple[SerializerFunc, SerializerFunc]
 
+
 def _serialize_dt(dt: datetime) -> DateTimeTuple:
     return (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 
@@ -51,18 +52,22 @@ def _deserialize_dt(args: DateTimeTuple) -> datetime:
 
 
 _serializers: Mapping[Tuple[str, str], SerializerFuncTuple] = {
-    ("datetime", "datetime"):
-        (_serialize_dt, _deserialize_dt,),
+    ("datetime", "datetime"): (
+        _serialize_dt,
+        _deserialize_dt,
+    ),
     # Apparently we sometimes get this derived class from the Google
     # datastore instead of datetime.datetime, so we need an entry for
     # it. Replacing it with plain datetime.datetime is fine, btw.
-    ("proto.datetime_helpers", "DatetimeWithNanoseconds"):
-        (_serialize_dt, _deserialize_dt,),
+    ("proto.datetime_helpers", "DatetimeWithNanoseconds"): (
+        _serialize_dt,
+        _deserialize_dt,
+    ),
 }
 
 
 def serialize(obj: Any) -> Dict[str, Any]:
-    """ Return a JSON-serializable representation of an object """
+    """Return a JSON-serializable representation of an object"""
     cls = obj.__class__
     cls_name = cls.__name__
     module_name = cls.__module__
@@ -90,14 +95,14 @@ def serialize(obj: Any) -> Dict[str, Any]:
 
 
 def _dumps(obj: Any) -> str:
-    """ Returns the given object in JSON format, using the custom serializer
-        for composite objects """
+    """Returns the given object in JSON format, using the custom serializer
+    for composite objects"""
     return json.dumps(obj, default=serialize, ensure_ascii=False, separators=(",", ":"))
 
 
 def _loads(j: Optional[str]) -> Any:
-    """ Return an instance of a serializable class,
-        initialized from a JSON string """
+    """Return an instance of a serializable class,
+    initialized from a JSON string"""
     if j is None:
         return None
     d: Union[int, str, List[Any], Dict[str, Any]] = json.loads(j)
@@ -132,9 +137,8 @@ def _loads(j: Optional[str]) -> Any:
 
 
 class RedisWrapper:
-
-    """ Wrapper class around the Redis client,
-        making it appear as a simplified memcache instance """
+    """Wrapper class around the Redis client,
+    making it appear as a simplified memcache instance"""
 
     def __init__(
         self, redis_host: Optional[str] = None, redis_port: Optional[int] = None
@@ -148,14 +152,14 @@ class RedisWrapper:
         )
 
     def get_redis_client(self) -> redis.Redis[bytes]:
-        """ Return the underlying Redis client instance """
+        """Return the underlying Redis client instance"""
         return self._client
 
     def _call_with_retry(
         self, func: Callable[..., Any], errval: Any, *args: Any, **kwargs: Any
     ) -> Any:
-        """ Call a client function, attempting one retry
-            upon a connection error """
+        """Call a client function, attempting one retry
+        upon a connection error"""
         attempts = 0
         while attempts < 2:
             try:
@@ -177,9 +181,9 @@ class RedisWrapper:
         time: Optional[int] = None,
         namespace: Optional[str] = None,
     ) -> Any:
-        """ Add a value to the cache, under the given key
-            and within the given namespace, with an optional
-            expiry time in seconds """
+        """Add a value to the cache, under the given key
+        and within the given namespace, with an optional
+        expiry time in seconds"""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
@@ -187,35 +191,46 @@ class RedisWrapper:
             self._client.set, None, key, _dumps(value), ex=time
         )
 
-    def set(
+    set = add  # Alias for add()
+
+    def mset(
         self,
-        key: str,
-        value: Any,
+        mapping: Mapping[str, str],
         time: Optional[int] = None,
         namespace: Optional[str] = None,
     ) -> Any:
-        """ Set a value in the cache, under the given key
-            and within the given namespace, with an optional
-            expiry time in seconds. This is an alias for self.add(). """
-        return self.add(key, value, time, namespace)
+        """Add multiple key-value pairs to the cache, within the given namespace,
+        with an optional expiry time in seconds"""
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            mapping = {namespace + "|" + k: _dumps(v) for k, v in mapping.items()}
+        return self._call_with_retry(self._client.mset, None, mapping, ex=time)
 
     def get(self, key: str, namespace: Optional[str] = None) -> Any:
-        """ Fetch a value from the cache, under the given key and within
-            the given namespace. Returns None if the key is not found. """
+        """Fetch a value from the cache, under the given key and within
+        the given namespace. Returns None if the key is not found."""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
         return _loads(self._call_with_retry(self._client.get, None, key))
 
+    def mget(self, keys: List[str], namespace: Optional[str] = None) -> Any:
+        """Fetch multiple values from the cache, within the given namespace.
+        Returns a list of values, with None for keys that are not found."""
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            keys = [namespace + "|" + k for k in keys]
+        return [_loads(v) for v in self._call_with_retry(self._client.mget, [], keys)]
+
     def delete(self, key: str, namespace: Optional[str] = None) -> Any:
-        """ Delete a value from the cache """
+        """Delete a value from the cache"""
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
         return self._call_with_retry(self._client.delete, False, key)
 
     def flush(self) -> None:
-        """ Flush all keys from the current cache """
+        """Flush all keys from the current cache"""
         return self._call_with_retry(self._client.flushdb, None)
 
 

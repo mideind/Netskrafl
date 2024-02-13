@@ -33,11 +33,13 @@ from typing import (
 import threading
 import logging
 from datetime import datetime, timedelta
+from flask import Blueprint, request
 
 from firebase_admin import App, initialize_app, auth, messaging, db  # type: ignore
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
+from basics import ResponseType
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
 
@@ -66,6 +68,11 @@ _USERLIST_LOCK = threading.Lock()
 
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
+
+# Create a blueprint for the connect module, which is used to
+# update the Redis cache from Firebase presence information
+# using a cron job that calls /connect/update
+connect_blueprint = connect = Blueprint('connect', __name__, url_prefix='/connect')
 
 
 def init_firebase_app():
@@ -348,3 +355,32 @@ def push_to_user(
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_to_user()")
     return False
+
+
+@connect.route('/update', methods=['GET'])
+def update() -> ResponseType:
+    """Update the Redis cache from Firebase presence information.
+    This method is called from a cron job that invokes /connect/update."""
+    # Check that we are actually being called internally by
+    # a GAE cron job or a cloud scheduler
+    headers = request.headers
+    task_queue = headers.get("X-AppEngine-QueueName", "") != ""
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    if not any((task_queue, cloud_scheduler, cron_job)):
+        return "Error", 403  # Forbidden
+    try:
+        # Get the list of all connected users from Firebase
+        for locale in ("en", "is"):
+            online = get_connected_users(locale)
+            # Store the result as a list in the Redis cache, with a timeout
+            memcache.set(
+                "live:" + locale,
+                list(online),
+                time=_LIFETIME_REDIS_CACHE * 60,  # Currently 5 minutes
+                namespace="userlist",
+            )
+        return "OK", 200
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")
+    return "Error", 500
