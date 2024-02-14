@@ -118,6 +118,7 @@ interface VnodeAttrs {
   style?: string | object;
   title?: string;
   tabindex?: number;
+  autocomplete?: string;
   href?: string;
   src?: string;
   alt?: string;
