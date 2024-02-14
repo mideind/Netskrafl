@@ -78,7 +78,7 @@ from languages import (
     current_alphabet,
     current_language,
     to_supported_locale,
-    SUPPORTED_LOCALES,
+    RECOGNIZED_LOCALES,
 )
 from dawgdictionary import Wordbase
 from skraflmechanics import (
@@ -485,7 +485,7 @@ class UserForm:
             errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
         if self.email and "@" not in self.email:
             errors["email"] = self.error_msg("EMAIL_NO_AT")
-        if self.locale not in SUPPORTED_LOCALES:
+        if self.locale not in RECOGNIZED_LOCALES:
             errors["locale"] = self.error_msg("LOCALE_UNKNOWN")
         return errors
 
@@ -870,9 +870,8 @@ def _userlist(query: str, spec: str) -> UserList:
                 )
 
     elif query == "fav":
-        # Return favorites of the current user
-        # Note: this is currently not locale-constrained,
-        # which may well turn out to be a bug
+        # Return favorites of the current user, filtered by
+        # the user's current locale
         if cuid is not None:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
@@ -881,6 +880,7 @@ def _userlist(query: str, spec: str) -> UserList:
                 if (
                     fu
                     and fu.is_displayable()
+                    and fu.locale == locale
                     and (favid := fu.id())
                     and favid not in blocked
                 ):

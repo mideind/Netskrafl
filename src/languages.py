@@ -53,24 +53,11 @@ from config import DEFAULT_LOCALE, PROJECT_ID
 
 _T = TypeVar("_T")
 
-# Map from a generic locale ('en') to a
-# more specific default locale ('en_US')
-NONGENERIC_DEFAULT: Mapping[str, str] = {
-    "is": "is_IS",  # Icelandic
-    "en": "en_US",  # English (US)
-    "pl": "pl_PL",  # Polish
-    "nb": "nb_NO",  # Norwegian Bokmål
-    "no": "nb_NO",  # Norwegian Bokmål
-    # We do not map from Norwegian Nynorsk ('nn') to Bokmål ('nb')
-    "ga": "ga_IE",  # Gaeilge/Irish
-}
-
 DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 DEFAULT_BOARD_TYPE = "standard" if PROJECT_ID == "netskrafl" else "explo"
 
 
 class Alphabet(abc.ABC):
-
     """Base class for alphabets particular to languages,
     i.e. the letters used in a game"""
 
@@ -184,7 +171,6 @@ class Alphabet(abc.ABC):
 
 
 class _IcelandicAlphabet(Alphabet):
-
     """The Icelandic alphabet"""
 
     order = "aábdðeéfghiíjklmnoóprstuúvxyýþæö"
@@ -201,7 +187,6 @@ IcelandicAlphabet = _IcelandicAlphabet()
 
 
 class _EnglishAlphabet(Alphabet):
-
     """The English alphabet"""
 
     order = "abcdefghijklmnopqrstuvwxyz"
@@ -218,7 +203,6 @@ EnglishAlphabet = _EnglishAlphabet()
 
 
 class _PolishAlphabet(Alphabet):
-
     """The Polish alphabet"""
 
     order = "aąbcćdeęfghijklłmnńoóprsśtuwyzźż"
@@ -234,7 +218,6 @@ PolishAlphabet = _PolishAlphabet()
 
 
 class _NorwegianAlphabet(Alphabet):
-
     """The Norwegian alphabet"""
 
     # Note: Ä, Ö, Ü, Q, X and Z are not included in the
@@ -254,7 +237,6 @@ NorwegianAlphabet = _NorwegianAlphabet()
 
 
 class TileSet(abc.ABC):
-
     """Abstract base class for tile sets. Concrete classes are found below."""
 
     # The following will be overridden in derived classes
@@ -285,7 +267,6 @@ class TileSet(abc.ABC):
 
 
 class OldTileSet(TileSet):
-
     """
     The old (original) Icelandic tile set.
     This tile set is awful. We don't recommend using it.
@@ -378,7 +359,6 @@ OldTileSet.BAG_SIZE = OldTileSet.num_tiles()
 
 
 class NewTileSet(TileSet):
-
     """
     The new Icelandic tile set, created by Skraflfélag Íslands
     and Miðeind ehf. This tile set is used by default in Netskrafl
@@ -471,7 +451,6 @@ NewTileSet.BAG_SIZE = NewTileSet.num_tiles()
 
 
 class EnglishTileSet(TileSet):
-
     """
     Original ('classic') English tile set. Only included for
     documentation and reference; not used in Explo.
@@ -547,7 +526,6 @@ EnglishTileSet.BAG_SIZE = EnglishTileSet.num_tiles()
 
 
 class NewEnglishTileSet(TileSet):
-
     """
     New English Tile Set - Copyright (C) Miðeind ehf.
     This set was created by a proprietary method,
@@ -633,7 +611,6 @@ assert (
 
 
 class PolishTileSet(TileSet):
-
     """Polish tile set"""
 
     alphabet = PolishAlphabet
@@ -719,7 +696,6 @@ assert PolishTileSet.BAG_SIZE == 100
 
 
 class OriginalNorwegianTileSet(TileSet):
-
     """
     This tile set is presently not used by Netskrafl or Explo.
     It is only included here for documentation and reference.
@@ -796,7 +772,6 @@ assert OriginalNorwegianTileSet.BAG_SIZE == 100
 
 
 class NewNorwegianTileSet(TileSet):
-
     """
     The new, improved Norwegian tile set was designed
     by Taral Guldahl Seierstad and is used here
@@ -954,13 +929,44 @@ LANGUAGES: Dict[str, str] = {
 }
 
 # Set of all supported locale codes
-SUPPORTED_LOCALES = frozenset(
+RECOGNIZED_LOCALES = frozenset(
     TILESETS.keys()
     | ALPHABETS.keys()
     | VOCABULARIES.keys()
     | BOARD_TYPES.keys()
     | LANGUAGES.keys()
 )
+
+# Map from recognized locales ('en_ZA', 'no_NO') to the
+# currently supported set of game locales ('en_GB', 'nb_NO')
+RECOGNIZED_TO_SUPPORTED_LOCALES: Mapping[str, str] = {
+    "is": "is_IS",  # Icelandic
+    "en": "en_US",  # English (US)
+    "en_AU": "en_GB",  # English (UK)
+    "en_BZ": "en_GB",
+    "en_CA": "en_GB",
+    "en_IE": "en_GB",
+    "en_IN": "en_GB",
+    "en_JM": "en_GB",
+    "en_MY": "en_GB",
+    "en_NZ": "en_GB",
+    "en_PH": "en_GB",
+    "en_SG": "en_GB",
+    "en_TT": "en_GB",
+    "en_UK": "en_GB",
+    "en_ZA": "en_GB",
+    "en_ZW": "en_GB",
+    "pl": "pl_PL",  # Polish
+    "nb": "nb_NO",  # Norwegian Bokmål
+    "no": "nb_NO",  # Norwegian generic
+    "nn": "nb_NO",  # Norwegian Nynorsk
+    # "ga": "ga_IE",  # Gaeilge/Irish !!! TODO: Uncomment this when Irish is supported
+}
+
+# Set of all supported game locales
+# This set is used for player presence management
+# and to group players together into communities
+SUPPORTED_LOCALES = frozenset(RECOGNIZED_TO_SUPPORTED_LOCALES.values())
 
 
 class Locale(NamedTuple):
@@ -995,13 +1001,11 @@ current_board_type: Callable[[], str] = lambda: current_locale.get().board_type
 
 
 @overload
-def dget(d: Dict[str, _T], key: str) -> Optional[_T]:
-    ...
+def dget(d: Dict[str, _T], key: str) -> Optional[_T]: ...
 
 
 @overload
-def dget(d: Dict[str, _T], key: str, default: _T) -> _T:
-    ...
+def dget(d: Dict[str, _T], key: str, default: _T) -> _T: ...
 
 
 def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
@@ -1047,21 +1051,21 @@ def language_for_locale(lc: str) -> str:
 def to_supported_locale(lc: str) -> str:
     """Return the locale code if it is supported, otherwise its parent
     locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
-    # Defensive programming: we always use underscores in locale codes
     if not lc:
         return DEFAULT_LOCALE
+    # Defensive programming: we always use underscores in locale codes
     lc = lc.replace("-", "_")
-    found = lc in SUPPORTED_LOCALES
+    found = lc in RECOGNIZED_LOCALES
     while not found:
         lc = "".join(lc.split("_")[0:-1])
         if lc:
-            found = lc in SUPPORTED_LOCALES
+            found = lc in RECOGNIZED_LOCALES
         else:
             break
     if found:
         # We may be down to a generic locale such as 'en' or 'pl'.
         # Go back to a more specific locale, if available.
-        return NONGENERIC_DEFAULT.get(lc, lc)
+        return RECOGNIZED_TO_SUPPORTED_LOCALES.get(lc, lc)
     # Not found at all: return a global generic locale
     return DEFAULT_LOCALE
 

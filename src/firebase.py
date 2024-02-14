@@ -42,6 +42,7 @@ from firebase_admin.messaging import UnregisteredError  # type: ignore
 from basics import ResponseType
 from config import PROJECT_ID, FIREBASE_DB_URL
 from cache import memcache
+from languages import SUPPORTED_LOCALES
 
 
 PushMessageCallable = Callable[[str], str]
@@ -170,6 +171,8 @@ def check_presence(user_id: str, locale: str) -> bool:
 
 def get_connected_users(locale: str) -> Set[str]:
     """Return a set of all presently connected users"""
+    assert len(locale) == 5, "Locale string is expected to have format 'xx_XX'"
+    assert "_" in locale, "Locale string is expected to have format 'xx_XX'"
     try:
         path = f"/connection/{locale}"
         ref = cast(Any, db).reference(path, app=_firebase_app)
@@ -360,7 +363,7 @@ def push_to_user(
 @connect.route('/update', methods=['GET'])
 def update() -> ResponseType:
     """Update the Redis cache from Firebase presence information.
-    This method is called from a cron job that invokes /connect/update."""
+    This method is invoked from a cron job that fetches /connect/update."""
     # Check that we are actually being called internally by
     # a GAE cron job or a cloud scheduler
     headers = request.headers
@@ -368,18 +371,18 @@ def update() -> ResponseType:
     cron_job = headers.get("X-Appengine-Cron", "") == "true"
     cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
     if not any((task_queue, cloud_scheduler, cron_job)):
+        # Not called internally, by a cron job or a cloud scheduler
         return "Error", 403  # Forbidden
     try:
-        # Get the list of all connected users from Firebase
-        for locale in ("en", "is"):
+        # Get the list of all connected users from Firebase,
+        # for each supported game locale
+        for locale in SUPPORTED_LOCALES:
             online = get_connected_users(locale)
-            # Store the result as a list in the Redis cache, with a timeout
-            memcache.set(
-                "live:" + locale,
-                list(online),
-                time=_LIFETIME_REDIS_CACHE * 60,  # Currently 5 minutes
-                namespace="userlist",
-            )
+            # Store the result using the MSET command (multi-set)
+            # in the Redis cache, with a timeout
+            if online:
+                connected = { f"live:{locale}:{uid}": "1" for uid in online }
+                memcache.mset(connected, time=_LIFETIME_REDIS_CACHE * 60)
         return "OK", 200
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")
