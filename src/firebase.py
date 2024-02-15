@@ -39,10 +39,9 @@ from firebase_admin import App, initialize_app, auth, messaging, db  # type: ign
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
-from basics import ResponseType
-from config import PROJECT_ID, FIREBASE_DB_URL
-from cache import memcache
+from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType
 from languages import SUPPORTED_LOCALES
+from cache import memcache
 
 
 PushMessageCallable = Callable[[str], str]
@@ -60,6 +59,7 @@ class PushMessageDict(TypedDict):
 
 _LIFETIME_MEMORY_CACHE = 1  # Minutes
 _LIFETIME_REDIS_CACHE = 5  # Minutes
+_CONNECTED_EXPIRY = 2 * 60  # 2 minutes
 
 # We don't send push notification messages to sessions
 # that are older than the following constant indicates
@@ -370,7 +370,7 @@ def update() -> ResponseType:
     task_queue = headers.get("X-AppEngine-QueueName", "") != ""
     cron_job = headers.get("X-Appengine-Cron", "") == "true"
     cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    if not any((task_queue, cloud_scheduler, cron_job)):
+    if not any((running_local, task_queue, cloud_scheduler, cron_job)):
         # Not called internally, by a cron job or a cloud scheduler
         return "Error", 403  # Forbidden
     try:
@@ -378,11 +378,9 @@ def update() -> ResponseType:
         # for each supported game locale
         for locale in SUPPORTED_LOCALES:
             online = get_connected_users(locale)
-            # Store the result using the MSET command (multi-set)
-            # in the Redis cache, with a timeout
-            if online:
-                connected = { f"live:{locale}:{uid}": "1" for uid in online }
-                memcache.mset(connected, time=_LIFETIME_REDIS_CACHE * 60)
+            # Store the result in a Redis set, with an expiry
+            if not memcache.init_set("live:" + locale, online, time=_CONNECTED_EXPIRY):
+                logging.warning(f"Unable to update Redis connection cache for locale {locale}")
         return "OK", 200
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")

@@ -17,10 +17,19 @@
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict
+from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict, Union, Tuple, Callable
 from datetime import timedelta
 import os
+from werkzeug.wrappers import Response as WerkzeugResponse
+from flask.wrappers import Response
 from flask import json
+
+
+# Universal type definitions
+ResponseType = Union[
+    str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
+]
+RouteType = Callable[..., ResponseType]
 
 
 class FlaskConfig(TypedDict):

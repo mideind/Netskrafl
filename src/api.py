@@ -58,12 +58,12 @@ from config import (
     running_local,
     PROJECT_ID,
     DEFAULT_LOCALE,
+    ResponseType,
 )
 from basics import (
     is_mobile_client,
     jsonify,
     auth_required,
-    ResponseType,
     RequestData,
     current_user,
     current_user_id,

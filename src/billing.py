@@ -34,7 +34,8 @@ from flask.wrappers import Request
 import requests
 
 import firebase
-from basics import jsonify, ResponseType
+from config import ResponseType
+from basics import jsonify
 from skrafluser import User
 
 

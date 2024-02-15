@@ -43,7 +43,7 @@ from flask import (
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS
+from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
 from basics import (
     UserIdDict,
     current_user,
@@ -56,7 +56,6 @@ from basics import (
     clear_session_userid,
     RequestData,
     max_age,
-    ResponseType,
 )
 from skrafluser import User, UserLoginDict
 import firebase

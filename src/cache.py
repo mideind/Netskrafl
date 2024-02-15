@@ -21,15 +21,17 @@
 
 from __future__ import annotations
 
-from typing import Dict, Any, Callable, List, Mapping, Optional, Tuple, Union
+from typing import Dict, Any, Callable, List, Mapping, Optional, Tuple, Union, cast
 from types import ModuleType
+from collections.abc import Collection
 
 import os
-import redis
 import json
 import importlib
 import logging
 from datetime import datetime
+
+import redis
 
 
 # A cache of imported modules, used to create fresh instances
@@ -166,11 +168,15 @@ class RedisWrapper:
                 ret = func(*args, **kwargs)
                 # No error: return
                 return ret
-            except redis.exceptions.ConnectionError:
+            except (
+                redis.exceptions.ConnectionError,
+                redis.exceptions.TimeoutError,
+                redis.exceptions.TryAgainError,
+            ) as e:
                 if attempts == 0:
-                    logging.warning("Retrying Redis call after connection error")
+                    logging.warning(f"Retrying Redis call after {repr(e)}")
                 else:
-                    logging.error("Redis connection error persisted after retrying")
+                    logging.error(f"Redis error {repr(e)} persisted after retrying")
                 attempts += 1
         return errval
 
@@ -232,6 +238,56 @@ class RedisWrapper:
     def flush(self) -> None:
         """Flush all keys from the current cache"""
         return self._call_with_retry(self._client.flushdb, None)
+
+    def init_set(
+        self,
+        key: str,
+        elements: Collection[str],
+        *,
+        time: Optional[int] = None,
+        namespace: Optional[str] = None,
+    ) -> bool:
+        """Initialize a fresh set with the given elements, optionally
+        with an expiry time in seconds"""
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            key = namespace + "|" + key
+        try:
+            # Start a pipeline (transaction is implicit with MULTI/EXEC)
+            pipe = self._client.pipeline()
+            # Delete the set (if it exists)
+            pipe.delete(key)
+            # Add users to the set
+            if elements:
+                pipe.sadd(key, *elements)
+                # Set an expiration time of 2 minutes (120 seconds) on the set
+                if time:
+                    pipe.expire(key, time)
+            # Execute the pipeline (transaction)
+            return self._call_with_retry(pipe.execute, None) != None
+        except redis.exceptions.RedisError as e:
+            logging.error(f"Redis error in init_set(): {repr(e)}")
+        return False
+
+    def query_set(
+        self,
+        key: str,
+        elements: List[str],
+        *,
+        namespace: Optional[str] = None,
+    ) -> List[bool]:
+        """Check for multiple elements in a set using the SMISMEMBER
+        command, returning a list of booleans"""
+        if not elements: return []
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            key = namespace + "|" + key
+        smismember = cast(Any, self._client).smismember
+        result: Optional[List[bool]] = self._call_with_retry(smismember, None, key, elements)
+        if result is None:
+            # The key is not found: no elements are present in the set
+            return [False] * len(elements)
+        return result
 
 
 # Create a global singleton wrapper instance with default parameters,
