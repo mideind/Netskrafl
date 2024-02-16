@@ -57,7 +57,7 @@ class PushMessageDict(TypedDict):
     image: NotRequired[PushMessageCallable]  # Image URL
 
 
-_LIFETIME_MEMORY_CACHE = 1  # Minutes
+_LIFETIME_MEMORY_CACHE = timedelta(minutes=1)  # 1 minute
 _LIFETIME_REDIS_CACHE = 5  # Minutes
 _CONNECTED_EXPIRY = 2 * 60  # 2 minutes
 
@@ -222,7 +222,7 @@ def online_users(locale: str) -> Set[str]:
     if (
         locale in _online_ts
         and locale in _online_cache
-        and _online_ts[locale] > now - timedelta(minutes=_LIFETIME_MEMORY_CACHE)
+        and _online_ts[locale] > now - _LIFETIME_MEMORY_CACHE
     ):
         return _online_cache[locale]
 

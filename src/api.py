@@ -1050,9 +1050,8 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
     now = datetime.utcnow()
     cuser = current_user()
-    online = firebase.online_users(
-        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    )
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    online = firebase.online_users(locale)
     u: Optional[User] = None
 
     # Place zombie games (recently finished games that this player
@@ -1283,8 +1282,9 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
 
-    online = firebase.online_users(cuser.locale if cuser else DEFAULT_LOCALE)
+    online = firebase.online_users(locale)
 
     u: Optional[User] = None
 
@@ -1383,9 +1383,8 @@ def _challengelist() -> ChallengeList:
         return _opponent_waiting(cuid, c.opp, key=c.key)
 
     blocked = cuser.blocked()
-    online = firebase.online_users(
-        cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    )
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    online = firebase.online_users(locale)
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
     # List issued challenges
