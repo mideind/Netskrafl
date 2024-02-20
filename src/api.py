@@ -16,6 +16,7 @@
 """
 
 from __future__ import annotations
+import functools
 
 from typing import (
     Optional,
@@ -38,7 +39,6 @@ import os
 import re
 import logging
 import threading
-import random
 from datetime import datetime, timedelta
 import base64
 import io
@@ -113,6 +113,14 @@ import auth
 # Type definitions
 T = TypeVar("T")
 UserPrefsType = Dict[str, Union[str, bool]]
+
+
+class UserIdMixin:
+    """A mixin class for objects that have a user id"""
+
+    def user_id(self) -> str:
+        """Return the user id of the object"""
+        raise NotImplementedError
 
 
 class GameListDict(TypedDict):
@@ -241,6 +249,9 @@ class ChatHistoryDict(TypedDict):
     disabled: bool  # Chat disabled?
 
 
+ChatHistoryList = List[ChatHistoryDict]
+
+
 class MoveNotifyDict(TypedDict):
     """A notification sent via Firebase to clients when a move has been
     processed"""
@@ -325,7 +336,7 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "NICK_TOO_LONG": "Ní mór d'ainm cleite a bheith níos lú ná {MAX_NICKNAME_LENGTH} carachtair",
         "EMAIL_NO_AT": "Caithfidh seoladh ríomhphoist comhartha @ a áireamh",
         "LOCALE_UNKNOWN": "Locale anaithnid",
-    }
+    },
 }
 
 PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
@@ -334,28 +345,28 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "Your turn in Explo 💥",
         "pl": "Twoja kolej w Explo 💥",
         "nb": "Din tur i Explo 💥",
-        "ga": "Do sheal i Explo 💥"
+        "ga": "Do sheal i Explo 💥",
     },
     "body": {
         "is": "{player} hefur leikið í viðureign ykkar.",
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
         "nb": "{player} har gjort et trekk i spillet ditt.",
-        "ga": "Rinne {player} gluaiseacht i do chluiche."
+        "ga": "Rinne {player} gluaiseacht i do chluiche.",
     },
     "chall_title": {
         "is": "Þú fékkst áskorun í Explo 💥",
         "en": "You've been challenged in Explo 💥",
         "pl": "Zostałeś wyzwany w Explo 💥",
         "nb": "Du har blitt utfordret i Explo 💥",
-        "ga": "Tá dúshlán curtha ort i Explo 💥"
+        "ga": "Tá dúshlán curtha ort i Explo 💥",
     },
     "chall_body": {
         "is": "{player} hefur skorað á þig í viðureign!",
         "en": "{player} has challenged you to a game!",
         "pl": "{player} wyzwał cię na pojedynek!",
         "nb": "{player} har utfordret deg til en kamp!",
-        "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!"
+        "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!",
     },
 }
 
@@ -773,6 +784,13 @@ def fetch_users(
     return {uid: user for uid, user in zip(uids, user_objects)}
 
 
+# Kludge to create reasonably type-safe functions for each type of
+# dictionary that contains some kind of user id and has a 'live' property
+set_online_status_for_users = functools.partial(firebase.set_online_status, "userid")
+set_online_status_for_games = functools.partial(firebase.set_online_status, "oppid")
+set_online_status_for_chats = functools.partial(firebase.set_online_status, "user")
+
+
 def _userlist(query: str, spec: str) -> UserList:
     """Return a list of users matching the filter criteria"""
 
@@ -825,23 +843,22 @@ def _userlist(query: str, spec: str) -> UserList:
 
     # Note that we only consider online users in the same locale
     # as the requesting user
-    online = firebase.online_users(locale)
+    online = firebase.online_status(locale)
 
     # Set of users blocked by the current user
     blocked: Set[str] = cuser.blocked() if cuser else set()
 
+    func_online_status: Optional[firebase.OnlineStatusFunc] = None
+
     if query == "live":
-        # Return a sample (no larger than MAX_ONLINE items) of online (live) users
+        # Return a sample (no larger than MAX_ONLINE items)
+        # of online (live) users. Note that these are always
+        # grouped by locale, so all returned users will be in
+        # the same locale as the current user.
 
-        iter_online: Iterable[str]
-        if len(online) > MAX_ONLINE:
-            # This if statement is required as random.sample() raises a ValueError
-            # if the sample size is larger than the population size
-            iter_online = random.sample(list(online), MAX_ONLINE)
-        else:
-            iter_online = online
-
+        iter_online = online.random_sample(MAX_ONLINE)
         ousers = User.load_multi(iter_online)
+
         for lu in ousers:
             if (
                 lu
@@ -878,6 +895,8 @@ def _userlist(query: str, spec: str) -> UserList:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
+            # Look up users' online status later
+            func_online_status = online.users_online
             for fu in fusers:
                 if (
                     fu
@@ -899,7 +918,7 @@ def _userlist(query: str, spec: str) -> UserList:
                             chall=chall,
                             fairplay=fu.fairplay(),
                             newbag=True,
-                            live=favid in online,
+                            live=False,  # Will be filled in later
                             ready=fu.is_ready(),
                             ready_timed=fu.is_ready_timed(),
                             image=fu.image(),
@@ -915,6 +934,8 @@ def _userlist(query: str, spec: str) -> UserList:
                 cuser.human_elo(), max_len=40, locale=locale
             )
             ausers = User.load_multi(ui)
+            # Look up users' online status later
+            func_online_status = online.users_online
             for au in ausers:
                 if (
                     au
@@ -935,7 +956,7 @@ def _userlist(query: str, spec: str) -> UserList:
                             fav=cuser.has_favorite(uid),
                             chall=chall,
                             fairplay=au.fairplay(),
-                            live=uid in online,
+                            live=False,  # Will be filled in later
                             newbag=True,
                             ready=au.is_ready(),
                             ready_timed=au.is_ready_timed(),
@@ -947,11 +968,7 @@ def _userlist(query: str, spec: str) -> UserList:
         # Display users who are online and ready for a timed game.
         # Note that the online list is already filtered by locale,
         # so the result is also filtered by locale.
-        if len(online) > MAX_ONLINE:
-            iter_online = random.sample(list(online), MAX_ONLINE)
-        else:
-            iter_online = online
-
+        iter_online = online.random_sample(MAX_ONLINE)
         online_users = User.load_multi(iter_online)
 
         for user in online_users:
@@ -1000,6 +1017,7 @@ def _userlist(query: str, spec: str) -> UserList:
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
+        func_online_status = online.users_online
         for ud in si:
             if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
                 continue
@@ -1014,7 +1032,7 @@ def _userlist(query: str, spec: str) -> UserList:
                     human_elo=elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
                     fav=False if cuser is None else cuser.has_favorite(uid),
                     chall=chall,
-                    live=uid in online,
+                    live=False,  # Will be filled in later
                     fairplay=User.fairplay_from_prefs(ud["prefs"]),
                     newbag=True,
                     ready=ud["ready"] or False,
@@ -1041,6 +1059,10 @@ def _userlist(query: str, spec: str) -> UserList:
             current_alphabet().sortkey_nocase(x["nick"]),
         )
     )
+    # Assign the online status of the users in the list,
+    # if this assignment was postponed
+    if func_online_status is not None:
+        set_online_status_for_users(result, func_online_status)
     return result
 
 
@@ -1053,7 +1075,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     now = datetime.utcnow()
     cuser = current_user()
     locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    online = firebase.online_users(locale)
+    online = firebase.online_status(locale)
     u: Optional[User] = None
 
     # Place zombie games (recently finished games that this player
@@ -1094,7 +1116,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                         "manual": manual,
                     },
                     timed=timed,
-                    live=opp in online,
+                    live=False,  # Will be filled in later
                     image=u.image(),
                     fav=False if cuser is None else cuser.has_favorite(opp),
                     tile_count=100,  # All tiles (100%) accounted for
@@ -1174,7 +1196,7 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 },
                 timed=timed,
                 tile_count=int(g["tile_count"] * 100 / tileset.num_tiles()),
-                live=opp in online,
+                live=False,
                 image="" if u is None else u.image(),
                 fav=False if cuser is None else cuser.has_favorite(opp),
                 robot_level=robot_level,
@@ -1182,6 +1204,8 @@ def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 human_elo=0 if u is None else u.human_elo(),
             )
         )
+    # Set the live status of the opponents in the list
+    set_online_status_for_games(result, online.users_online)
     return result
 
 
@@ -1286,7 +1310,7 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
     opponents = fetch_users(rlist, lambda g: g["opp"])
     locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
 
-    online = firebase.online_users(locale)
+    online = firebase.online_status(locale)
 
     u: Optional[User] = None
 
@@ -1343,13 +1367,14 @@ def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rec
                     "duration": Game.get_duration_from_prefs(prefs),
                     "manual": Game.manual_wordcheck_from_prefs(prefs),
                 },
-                live=False if opp is None else opp in online,
+                live=False,  # Will be filled in later
                 image="" if u is None else u.image(),
                 elo=0 if u is None else u.elo(),
                 human_elo=0 if u is None else u.human_elo(),
                 fav=False if cuser is None or opp is None else cuser.has_favorite(opp),
             )
         )
+    set_online_status_for_games(result, online.users_online)
     return result
 
 
@@ -1386,7 +1411,7 @@ def _challengelist() -> ChallengeList:
 
     blocked = cuser.blocked()
     locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    online = firebase.online_users(locale)
+    online = firebase.online_status(locale)
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
     # List issued challenges
@@ -1416,7 +1441,7 @@ def _challengelist() -> ChallengeList:
                 prefs=c.prefs,
                 ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=False,
-                live=oppid in online,
+                live=False,  # Will be filled in later
                 image=u.image(),
                 fav=cuser.has_favorite(oppid),
                 elo=u.elo(),
@@ -1445,13 +1470,15 @@ def _challengelist() -> ChallengeList:
                 prefs=c.prefs,
                 ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=opp_ready(c),
-                live=oppid in online,
+                live=False,  # Will be filled in later
                 image=u.image(),
                 fav=cuser.has_favorite(oppid),
                 elo=u.elo(),
                 human_elo=u.human_elo(),
             )
         )
+    # Set the live status of the opponents in the list
+    set_online_status_for_users(result, online.users_online)
     return result
 
 
@@ -2262,14 +2289,14 @@ def chathistory() -> ResponseType:
     # By default, return a history of 20 conversations
     count = rq.get_int("count", 20)
 
-    online = firebase.online_users(user.locale or DEFAULT_LOCALE)
+    online = firebase.online_status(user.locale or DEFAULT_LOCALE)
     # We don't return chat conversations with users
     # that this user has blocked
     blocked = user.blocked()
     uc = UserCache()
     # The chat history is ordered in reverse timestamp
     # order, i.e. the newest entry comes first
-    history: List[ChatHistoryDict] = [
+    history: ChatHistoryList = [
         ChatHistoryDict(
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
@@ -2278,13 +2305,14 @@ def chathistory() -> ResponseType:
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
-            live=uid in online,
+            live=False,  # Will be filled in later
             fav=user.has_favorite(uid),
             disabled=uc.chat_disabled(uid),
         )
         for cm in ChatModel.chat_history(user_id, blocked_users=blocked, maxlen=count)
     ]
 
+    set_online_status_for_chats(history, online.users_online)
     return jsonify(ok=True, history=history)
 
 

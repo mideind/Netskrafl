@@ -24,8 +24,9 @@ from typing import (
     NotRequired,
     Optional,
     List,
+    Required,
+    Sequence,
     TypedDict,
-    Union,
     Set,
     Dict,
     cast,
@@ -44,6 +45,8 @@ from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType
 from languages import SUPPORTED_LOCALES
 from cache import memcache
 
+
+OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
 
 PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
@@ -208,78 +211,30 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     assert False, "Unexpected fall out of loop in firebase.create_custom_token()"
 
 
-_online_cache: Dict[str, Set[str]] = dict()
-_online_ts: Dict[str, datetime] = dict()
-_online_counter: int = 0
-
-
-def online_users(locale: str) -> Set[str]:
-    """Obtain a set of online users, by their user ids"""
-
-    global _online_cache, _online_ts, _online_counter
-
-    # First, use a per-process in-memory cache, having a lifetime of 1 minute
-    now = datetime.utcnow()
-    if (
-        locale in _online_ts
-        and locale in _online_cache
-        and _online_ts[locale] > now - _LIFETIME_MEMORY_CACHE
-    ):
-        return _online_cache[locale]
-
-    # Serialize access to the connected user list
-    # !!! TBD: Convert this to a background task that periodically
-    # updates the Redis cache from the Firebase database
-    with _USERLIST_LOCK:
-
-        # Use the distributed Redis cache, having a lifetime of 5 minutes
-        online: Union[None, Set[str], List[str]] = memcache.get(
-            "live:" + locale, namespace="userlist"
-        )
-
-        if online is None:
-            # Not found: do a Firebase query, which returns a set
-            online = get_connected_users(locale)
-            # Store the result as a list in the Redis cache, with a timeout
-            memcache.set(
-                "live:" + locale,
-                list(online),
-                time=_LIFETIME_REDIS_CACHE * 60,  # Currently 5 minutes
-                namespace="userlist",
-            )
-            _online_counter += 1
-            if _online_counter >= 6:
-                # Approximately once per half hour (6 * 5 minutes),
-                # log number of connected users
-                logging.info(f"Connected users in locale {locale} are {len(online)}")
-                _online_counter = 0
-        else:
-            # Convert the cached list back into a set
-            online = set(online)
-
-        _online_cache[locale] = online
-        _online_ts[locale] = now
-
-    return online
-
-
 class OnlineStatus:
-    """This class implements a wrapper for querying about the
+    """This class implements a wrapper for queries about the
     online status of users by locale. The wrapper talks to the
     Redis cache, which is updated from Firebase by a cron job."""
 
     def __init__(self, locale: str) -> None:
-        self._locale = locale
+        # Assign the Redis key used for the set of online users
+        # for this locale
+        self._key = "live:" + locale
 
     def users_online(self, user_ids: Iterable[str]) -> List[bool]:
         """Return a list of booleans, one for each passed user_id"""
-        return memcache.query_set("live:" + self._locale, list(user_ids))
+        return memcache.query_set(self._key, list(user_ids))
 
     def user_online(self, user_id: str) -> bool:
         """Return True if a user is online"""
         return self.users_online([user_id])[0]
 
+    def random_sample(self, n: int) -> List[str]:
+        """Return a random sample of <= n online users"""
+        return memcache.random_sample_from_set(self._key, n)
 
+
+# Collection of OnlineStatus instances, one for each game locale
 _online_status: Dict[str, OnlineStatus] = dict()
 
 
@@ -290,6 +245,25 @@ def online_status(locale: str) -> OnlineStatus:
         oc = OnlineStatus(locale)
         _online_status[locale] = oc
     return oc
+
+
+class UserLiveDict(TypedDict):
+    """A dictionary that has at least a 'live' property, of type bool"""
+
+    live: Required[bool]
+
+
+def set_online_status(
+    user_id_prop: str,
+    users: Sequence[UserLiveDict],
+    func_online_status: OnlineStatusFunc,
+) -> None:
+    """Set the live (online) status of the users in the list"""
+    # Call the function to get the online status of the users
+    online = func_online_status(cast(str, u[user_id_prop]) for u in users)
+    # Set the live status of the users in the list
+    for u, o in zip(users, online):
+        u["live"] = o
 
 
 def push_notification(

@@ -289,6 +289,15 @@ class RedisWrapper:
             return [False] * len(elements)
         return result
 
+    def random_sample_from_set(
+        self, key: str, count: int, *, namespace: Optional[str] = None
+    ) -> List[str]:
+        """Return a random sample of elements from the set"""
+        if namespace:
+            # Redis doesn't have namespaces, so we prepend the namespace id to the key
+            key = namespace + "|" + key
+        return self._call_with_retry(self._client.srandmember, [], key, count
+    )
 
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.
