@@ -835,6 +835,8 @@ def _userlist(query: str, spec: str) -> UserList:
 
         iter_online: Iterable[str]
         if len(online) > MAX_ONLINE:
+            # This if statement is required as random.sample() raises a ValueError
+            # if the sample size is larger than the population size
             iter_online = random.sample(list(online), MAX_ONLINE)
         else:
             iter_online = online

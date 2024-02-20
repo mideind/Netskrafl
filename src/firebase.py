@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import (
     Any,
     Callable,
+    Iterable,
     Mapping,
     NotRequired,
     Optional,
@@ -260,6 +261,35 @@ def online_users(locale: str) -> Set[str]:
         _online_ts[locale] = now
 
     return online
+
+
+class OnlineStatus:
+    """This class implements a wrapper for querying about the
+    online status of users by locale. The wrapper talks to the
+    Redis cache, which is updated from Firebase by a cron job."""
+
+    def __init__(self, locale: str) -> None:
+        self._locale = locale
+
+    def users_online(self, user_ids: Iterable[str]) -> List[bool]:
+        """Return a list of booleans, one for each passed user_id"""
+        return memcache.query_set("live:" + self._locale, list(user_ids))
+
+    def user_online(self, user_id: str) -> bool:
+        """Return True if a user is online"""
+        return self.users_online([user_id])[0]
+
+
+_online_status: Dict[str, OnlineStatus] = dict()
+
+
+def online_status(locale: str) -> OnlineStatus:
+    """Obtain an user online status wrapper for a particular locale"""
+    global _online_status
+    if (oc := _online_status.get(locale)) is None:
+        oc = OnlineStatus(locale)
+        _online_status[locale] = oc
+    return oc
 
 
 def push_notification(
