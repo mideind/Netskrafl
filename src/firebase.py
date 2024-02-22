@@ -2,7 +2,7 @@
 
     Firebase wrapper for Netskrafl
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -53,7 +53,6 @@ PushDataDict = Mapping[str, Any]
 
 
 class PushMessageDict(TypedDict):
-
     """A message to be sent to a device via a push notification"""
 
     title: PushMessageCallable
@@ -61,15 +60,12 @@ class PushMessageDict(TypedDict):
     image: NotRequired[PushMessageCallable]  # Image URL
 
 
-_LIFETIME_MEMORY_CACHE = timedelta(minutes=1)  # 1 minute
-_LIFETIME_REDIS_CACHE = 5  # Minutes
+# Expiration of user online status, in seconds
 _CONNECTED_EXPIRY = 2 * 60  # 2 minutes
 
 # We don't send push notification messages to sessions
 # that are older than the following constant indicates
 _PUSH_NOTIFICATION_CUTOFF = 14  # Days
-
-_USERLIST_LOCK = threading.Lock()
 
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
@@ -77,7 +73,7 @@ _firebase_app_lock = threading.Lock()
 # Create a blueprint for the connect module, which is used to
 # update the Redis cache from Firebase presence information
 # using a cron job that calls /connect/update
-connect_blueprint = connect = Blueprint('connect', __name__, url_prefix='/connect')
+connect_blueprint = connect = Blueprint("connect", __name__, url_prefix="/connect")
 
 
 def init_firebase_app():
@@ -175,8 +171,9 @@ def check_presence(user_id: str, locale: str) -> bool:
 
 def get_connected_users(locale: str) -> Set[str]:
     """Return a set of all presently connected users"""
-    assert len(locale) == 5, "Locale string is expected to have format 'xx_XX'"
-    assert "_" in locale, "Locale string is expected to have format 'xx_XX'"
+    assert (
+        len(locale) == 5 and "_" in locale
+    ), "Locale string is expected to have format 'xx_XX'"
     try:
         path = f"/connection/{locale}"
         ref = cast(Any, db).reference(path, app=_firebase_app)
@@ -364,7 +361,7 @@ def push_to_user(
     return False
 
 
-@connect.route('/update', methods=['GET'])
+@connect.route("/update", methods=["GET"])
 def update() -> ResponseType:
     """Update the Redis cache from Firebase presence information.
     This method is invoked from a cron job that fetches /connect/update."""
@@ -384,7 +381,9 @@ def update() -> ResponseType:
             online = get_connected_users(locale)
             # Store the result in a Redis set, with an expiry
             if not memcache.init_set("live:" + locale, online, time=_CONNECTED_EXPIRY):
-                logging.warning(f"Unable to update Redis connection cache for locale {locale}")
+                logging.warning(
+                    f"Unable to update Redis connection cache for locale {locale}"
+                )
         return "OK", 200
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")
