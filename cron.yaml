@@ -13,3 +13,10 @@ cron:
     job_retry_limit: 3
     min_backoff_seconds: 30.0
     max_doublings: 3
+- description: "Online users"
+  url: /connect/update
+  schedule: every 1 minutes
+  retry_parameters:
+    job_retry_limit: 3
+    min_backoff_seconds: 10.0
+    max_doublings: 3
