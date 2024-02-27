@@ -18,7 +18,7 @@
 from __future__ import annotations
 from functools import lru_cache
 
-from typing import cast, Any, Optional, Dict
+from typing import Mapping, cast, Any, Optional, Dict
 
 from datetime import datetime
 import logging
@@ -503,4 +503,69 @@ def oauth_explo(request: Request) -> ResponseType:
     # Set the Flask session cookie
     set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
+
+
+def oauth_anonymous(request: Request) -> ResponseType:
+    """Anonymous login, i.e. one where the user hasn't (yet) signed in
+    via any of the regular OAuth2 methods"""
+
+    config: FlaskConfig = cast(Any, current_app).config
+    AUTH_SECRET = config.get("AUTH_SECRET", "")
+
+    # Check whether the request contains a valid authorization header
+    # with our secret bearer token AUTH_SECRET
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": "Missing or invalid authorization token"}), 401
+    token = auth[7:]
+    if not AUTH_SECRET or token != AUTH_SECRET:
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": "Invalid authorization token"}), 401
+
+    f = cast(Optional[Mapping[str, str]], request.json)
+    if f is None or not (sub := f.get("sub", "")):
+        # 401 - Unauthorized
+        return jsonify({"status": "invalid", "msg": "Invalid anonymous login attempt"}), 401
+
+    # This appears to be our client and the request is authorized;
+    # proceed with the anonymous login
+    client_type = f.get("clientType", "web")  # Default client type
+    locale = (f.get("locale", "") or DEFAULT_LOCALE).replace("-", "_")
+
+    # Prefix the incoming device id with 'anon:' to distinguish
+    # it from properly authenticated ids
+    sub = "anon:" + sub
+
+    # Attempt to find an associated user record in the datastore,
+    # or create a fresh user record if not found.
+    # Note that we have no name, e-mail or image for an anonymous user.
+    uld = User.login_by_account(
+        sub, "", "", "", locale=locale
+    )
+
+    # Obtain the unique user id (key), under which this account is stored
+    # in the UserModel table in the datastore
+    userid = uld["user_id"]
+
+    if not userid:
+        # Unable to obtain the user id for some reason
+        # 401 - Unauthorized
+        logging.error("Unable to obtain user id in anonymous sign-in")
+        return jsonify({"status": "invalid", "msg": "No user id in anonymous sign-in"}), 401
+
+    sd = SessionDict(
+        userid=userid,
+        method="Anonymous",
+        new=uld.get("new") or False,
+        client_type=client_type,
+    )
+    uld["method"] = sd["method"]
+
+    # Authentication complete; user id obtained
+    # Set the Flask session cookie
+    set_session_cookie(userid, sd=sd)
+    # Send a bunch of login data back to the client
+    # via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))
