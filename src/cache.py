@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Any, Callable, List, Mapping, Optional, Tuple, Union, cast
+from typing import Dict, Any, Callable, List, Mapping, Optional, Tuple, Union
 from types import ModuleType
 from collections.abc import Collection
 
@@ -278,12 +278,14 @@ class RedisWrapper:
     ) -> List[bool]:
         """Check for multiple elements in a set using the SMISMEMBER
         command, returning a list of booleans"""
-        if not elements: return []
+        if not elements:
+            return []
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        smismember = cast(Any, self._client).smismember
-        result: Optional[List[bool]] = self._call_with_retry(smismember, None, key, elements)
+        result: Optional[List[bool]] = self._call_with_retry(
+            self._client.smismember, None, key, elements  # type: ignore
+        )
         if result is None:
             # The key is not found: no elements are present in the set
             return [False] * len(elements)
@@ -296,8 +298,8 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._call_with_retry(self._client.srandmember, [], key, count
-    )
+        return self._call_with_retry(self._client.srandmember, [], key, count)
+
 
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.
