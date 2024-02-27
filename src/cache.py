@@ -289,7 +289,7 @@ class RedisWrapper:
         if result is None:
             # The key is not found: no elements are present in the set
             return [False] * len(elements)
-        return result
+        return [bool(r) for r in result]
 
     def random_sample_from_set(
         self, key: str, count: int, *, namespace: Optional[str] = None
@@ -298,7 +298,8 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        return self._call_with_retry(self._client.srandmember, [], key, count)
+        result = self._call_with_retry(self._client.srandmember, [], key, count)
+        return [str(u, "utf-8") for u in result]
 
 
 # Create a global singleton wrapper instance with default parameters,

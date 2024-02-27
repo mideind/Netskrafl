@@ -257,10 +257,13 @@ def set_online_status(
 ) -> None:
     """Set the live (online) status of the users in the list"""
     # Call the function to get the online status of the users
-    online = func_online_status(cast(str, u[user_id_prop]) for u in users)
+    # TODO: We are passing in empty strings for robot players, which is a
+    # fairly common occurrence. The robots are never marked as online, so
+    # the Redis roundtrip is unnecessary. We should optimize this.
+    online = func_online_status(cast(str, u.get(user_id_prop) or "") for u in users)
     # Set the live status of the users in the list
     for u, o in zip(users, online):
-        u["live"] = o
+        u["live"] = bool(o)
 
 
 def push_notification(
