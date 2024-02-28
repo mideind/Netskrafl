@@ -41,7 +41,7 @@ from firebase_admin import App, initialize_app, auth, messaging, db  # type: ign
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
-from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType
+from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType, ttl_cache
 from languages import SUPPORTED_LOCALES
 from cache import memcache
 
@@ -226,9 +226,15 @@ class OnlineStatus:
         """Return True if a user is online"""
         return self.users_online([user_id])[0]
 
+    @ttl_cache(seconds=60)  # Cache this data for 1 minute
+    @staticmethod
+    def _get_random_sample(key: str, n: int) -> List[str]:
+        """Return a cached random sample of <= n online users"""
+        return memcache.random_sample_from_set(key, n)
+
     def random_sample(self, n: int) -> List[str]:
         """Return a random sample of <= n online users"""
-        return memcache.random_sample_from_set(self._key, n)
+        return OnlineStatus._get_random_sample(self._key, n)
 
 
 # Collection of OnlineStatus instances, one for each game locale

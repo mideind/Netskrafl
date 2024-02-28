@@ -207,9 +207,13 @@ class RedisWrapper:
     ) -> Any:
         """Add multiple key-value pairs to the cache, within the given namespace,
         with an optional expiry time in seconds"""
+        keyfunc: Callable[[str], str]
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
-            mapping = {namespace + "|" + k: _dumps(v) for k, v in mapping.items()}
+            keyfunc = lambda k: namespace + "|" + k
+        else:
+            keyfunc = lambda k: k
+        mapping = {keyfunc(k): _dumps(v) for k, v in mapping.items()}
         return self._call_with_retry(self._client.mset, None, mapping, ex=time)
 
     def get(self, key: str, namespace: Optional[str] = None) -> Any:
@@ -283,7 +287,7 @@ class RedisWrapper:
         if namespace:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
-        result: Optional[List[bool]] = self._call_with_retry(
+        result: Optional[List[int]] = self._call_with_retry(
             self._client.smismember, None, key, elements  # type: ignore
         )
         if result is None:
@@ -299,6 +303,7 @@ class RedisWrapper:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
         result = self._call_with_retry(self._client.srandmember, [], key, count)
+        # The returned list contains bytes, which we need to convert to strings
         return [str(u, "utf-8") for u in result]
 
 
