@@ -226,7 +226,7 @@ class OnlineStatus:
         """Return True if a user is online"""
         return self.users_online([user_id])[0]
 
-    @ttl_cache(seconds=60)  # Cache this data for 1 minute
+    @ttl_cache(seconds=30)  # Cache this data for 30 seconds
     @staticmethod
     def _get_random_sample(key: str, n: int) -> List[str]:
         """Return a cached random sample of <= n online users"""
