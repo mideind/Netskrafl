@@ -220,7 +220,12 @@ class OnlineStatus:
 
     def users_online(self, user_ids: Iterable[str]) -> List[bool]:
         """Return a list of booleans, one for each passed user_id"""
-        return memcache.query_set(self._key, list(user_ids))
+        list_of_ids = list(user_ids)
+        if any(s for s in list_of_ids):
+            return memcache.query_set(self._key, list_of_ids)
+        # All user ids are empty strings (probably robots):
+        # save ourselves the Redis call and return a list of False values
+        return [False] * len(list_of_ids)
 
     def user_online(self, user_id: str) -> bool:
         """Return True if a user is online"""
