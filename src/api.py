@@ -115,14 +115,6 @@ T = TypeVar("T")
 UserPrefsType = Dict[str, Union[str, bool]]
 
 
-class UserIdMixin:
-    """A mixin class for objects that have a user id"""
-
-    def user_id(self) -> str:
-        """Return the user id of the object"""
-        raise NotImplementedError
-
-
 class GameListDict(TypedDict):
     """The dictionary returned from gamelist()"""
 
