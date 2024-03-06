@@ -35,6 +35,7 @@ from google.auth.transport import requests as google_requests  # type: ignore
 from google.auth.exceptions import GoogleAuthError  # type: ignore
 
 from config import (
+    ANONYMOUS_PREFIX,
     CLIENT,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
@@ -71,6 +72,16 @@ google_request = google_requests.Request(session=cached_session)
 
 # For testing purposes only: a hard-coded user image URL
 TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADdaFE9Pk1NobKf2veK6Hvt=s96-c"
+
+# Characters that are forbidden in Firebase paths
+FIREBASE_FORBIDDEN_CHARS = ".#$[]/"
+FIREBASE_TRANSLATE = str.maketrans(FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS))
+
+
+# Utility function for making account IDs compatible with Firebase
+# key restrictions
+def firebase_key(s: str) -> str:
+    return s.translate(FIREBASE_TRANSLATE)
 
 
 def oauth2callback(request: Request) -> ResponseType:
@@ -402,7 +413,7 @@ def oauth_apple(request: Request) -> ResponseType:
     # by prefixing them with 'apple:'. Note that Firebase paths cannot contain
     # periods, so we replace those with underscores, enabling the account
     # id to be used as a part of a Firebase path.
-    account = "apple:" + uid.replace(".", "_")
+    account = "apple:" + firebase_key(uid)
     # Login or create the user in the Explo user model
     uld = User.login_by_account(account, name, email, image, locale=locale)
     userid = uld.get("user_id") or ""
@@ -517,7 +528,8 @@ def oauth_explo(request: Request) -> ResponseType:
 
 def oauth_anonymous(request: Request) -> ResponseType:
     """Anonymous login, i.e. one where the user hasn't (yet) signed in
-    via any of the regular OAuth2 methods"""
+    via any of the regular OAuth2 methods. This typically relies on a device id
+    to identify the user."""
 
     config: FlaskConfig = cast(Any, current_app).config
     AUTH_SECRET = config.get("AUTH_SECRET", "")
@@ -533,6 +545,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
         # 401 - Unauthorized
         return jsonify({"status": "invalid", "msg": "Invalid authorization token"}), 401
 
+    # Get the device id from the "sub" field in the request JSON
     f = cast(Optional[Mapping[str, str]], request.json)
     if f is None or not (sub := f.get("sub", "")):
         # 401 - Unauthorized
@@ -545,7 +558,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
 
     # Prefix the incoming device id with 'anon:' to distinguish
     # it from properly authenticated ids
-    sub = "anon:" + sub
+    sub = ANONYMOUS_PREFIX + firebase_key(sub)
 
     # Attempt to find an associated user record in the datastore,
     # or create a fresh user record if not found.

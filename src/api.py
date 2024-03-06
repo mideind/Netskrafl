@@ -546,7 +546,7 @@ def logout() -> ResponseType:
 
 
 @api.route("/delete_account", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def delete_account() -> ResponseType:
     """Delete the account of the current user"""
     # This marks the account as inactive and erases personally identifiable data
@@ -1553,7 +1553,7 @@ def gamestate() -> ResponseType:
 
 
 @api.route("/clear_zombie", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def clear_zombie() -> ResponseType:
     """Clears the zombie status of a game"""
 
@@ -1581,7 +1581,7 @@ def clear_zombie() -> ResponseType:
 
 
 @api.route("/forceresign", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def forceresign() -> ResponseType:
     """Forces a tardy user to resign, if the game is overdue"""
 
@@ -1642,7 +1642,7 @@ def wordcheck() -> ResponseType:
 
 
 @api.route("/gamestats", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def gamestats() -> ResponseType:
     """Calculate and return statistics on a given finished game"""
 
@@ -1832,7 +1832,7 @@ def rating() -> ResponseType:
 
 
 @api.route("/favorite", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def favorite() -> ResponseType:
     """Create or delete an A-favors-B relation"""
 
@@ -1853,7 +1853,7 @@ def favorite() -> ResponseType:
 
 
 @api.route("/challenge", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def challenge() -> ResponseType:
     """Create or delete an A-challenges-B relation"""
 
@@ -1948,13 +1948,16 @@ def setuserpref() -> ResponseType:
     ]
 
     update = False
-    for s, func in prefs:
-        val = rq.get_bool(s, None)
-        if val is not None:
-            func(val)
-            update = True
+    # We don't allow anonymous users to set the above preferences
+    if not user.is_anonymous():
+        for s, func in prefs:
+            val = rq.get_bool(s, None)
+            if val is not None:
+                func(val)
+                update = True
 
-    # We allow the locale to be set as a user preference.
+    # We allow the locale to be set as a preference,
+    # even for anonymous users.
     # Note that it cannot be read back as a preference!
     if lc := rq.get("locale", ""):
         # Do some rudimentary normalization and validation of the locale code
@@ -1973,7 +1976,7 @@ def setuserpref() -> ResponseType:
 
 
 @api.route("/onlinecheck", methods=["POST"])
-@auth_required(online=False)
+@auth_required(allow_anonymous=False, online=False)
 def onlinecheck() -> ResponseType:
     """Check whether a particular user is online"""
     rq = RequestData(request)
@@ -1989,7 +1992,7 @@ def onlinecheck() -> ResponseType:
 
 
 @api.route("/initwait", methods=["POST"])
-@auth_required(online=False, waiting=False)
+@auth_required(allow_anonymous=False, online=False, waiting=False)
 def initwait() -> ResponseType:
     """Initialize a wait for a timed game to start"""
 
@@ -2027,7 +2030,7 @@ def initwait() -> ResponseType:
 
 
 @api.route("/waitcheck", methods=["POST"])
-@auth_required(waiting=False)
+@auth_required(allow_anonymous=False, waiting=False)
 def waitcheck() -> ResponseType:
     """Check whether a particular opponent is waiting on a challenge"""
     rq = RequestData(request)
@@ -2042,7 +2045,7 @@ def waitcheck() -> ResponseType:
 
 
 @api.route("/cancelwait", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def cancelwait() -> ResponseType:
     """A wait on a challenge has been cancelled"""
     rq = RequestData(request)
@@ -2064,7 +2067,7 @@ def cancelwait() -> ResponseType:
 
 
 @api.route("/chatmsg", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def chatmsg() -> ResponseType:
     """Send a chat message on a conversation channel"""
 
@@ -2185,7 +2188,7 @@ class UserCache:
 
 
 @api.route("/chatload", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def chatload() -> ResponseType:
     """Load all chat messages on a conversation channel"""
 
@@ -2264,7 +2267,7 @@ def chatload() -> ResponseType:
 
 
 @api.route("/chathistory", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def chathistory() -> ResponseType:
     """Return the chat history, i.e. the set of recent,
     distinct chat conversations for the logged-in user"""
@@ -2309,7 +2312,7 @@ def chathistory() -> ResponseType:
 
 
 @api.route("/bestmoves", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def bestmoves() -> ResponseType:
     """Return a list of the best possible moves in a game
     at a given point"""
@@ -2393,7 +2396,7 @@ def bestmoves() -> ResponseType:
 
 
 @api.route("/blockuser", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def blockuser() -> ResponseType:
     """Block or unblock another user"""
     user = current_user()
@@ -2414,7 +2417,7 @@ def blockuser() -> ResponseType:
 
 
 @api.route("/reportuser", methods=["POST"])
-@auth_required(ok=False)
+@auth_required(allow_anonymous=False, ok=False)
 def reportuser() -> ResponseType:
     """Report another user"""
     user = current_user()
@@ -2438,7 +2441,7 @@ def reportuser() -> ResponseType:
 
 
 @api.route("/cancelplan", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def cancelplan() -> ResponseType:
     """Cancel a user friendship"""
     user = current_user()

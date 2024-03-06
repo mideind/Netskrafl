@@ -223,6 +223,13 @@ def session_data() -> Optional[SessionDict]:
     )
 
 
+def anonymous_user() -> bool:
+    """Return True if the current user signed in anoymously."""
+    if (sd := session_data()) is None:
+        return False
+    return sd.get("method", "") == "Anonymous"
+
+
 def is_mobile_client() -> bool:
     """Return True if the currently logged in client is a mobile client"""
     if (s := session_data()) is None:
@@ -230,7 +237,19 @@ def is_mobile_client() -> bool:
     return s.get("client_type", "web") in MOBILE_CLIENT_TYPES
 
 
-def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
+def current_user() -> Optional[User]:
+    """Return the currently logged in user. Only valid within route functions
+    decorated with @auth_required."""
+    return g.get("user")
+
+
+def current_user_id() -> Optional[str]:
+    """Return the id of the currently logged in user. Only valid within route
+    functions decorated with @auth_required."""
+    return None if (u := g.get("user")) is None else u.id()
+
+
+def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Callable[[RouteType], RouteType]:
     """Decorator for routes that require an authenticated user.
     Call with no parameters to redirect unauthenticated requests
     to url_for("web.login"), or login_url="..." to redirect to that URL,
@@ -259,8 +278,13 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
                 # redirect to it
                 login_url = error_kwargs.get("login_url")
                 return redirect(login_url or url_for("web.greet"))
-            # We have an authenticated user: store in g.user
-            # and call the route function
+            # We have an authenticated user: check whether they're anonymous
+            # and this route forbids anonymous users
+            if not allow_anonymous and u.is_anonymous():
+                # Reply with 401 - Unauthorized
+                # (We are safe to assume that this is a JSON API route)
+                return jsonify(ok=False, msg="Anonymous user not allowed"), 401
+            # All is OK: store in g.user and call the route function
             g.user = u
             # Set the locale for this thread to the user's locale
             set_locale(u.locale)
@@ -269,18 +293,6 @@ def auth_required(**error_kwargs: Any) -> Callable[[RouteType], RouteType]:
         return route
 
     return wrap
-
-
-def current_user() -> Optional[User]:
-    """Return the currently logged in user. Only valid within route functions
-    decorated with @auth_required."""
-    return g.get("user")
-
-
-def current_user_id() -> Optional[str]:
-    """Return the id of the currently logged in user. Only valid within route
-    functions decorated with @auth_required."""
-    return None if (u := g.get("user")) is None else u.id()
 
 
 class RequestData:

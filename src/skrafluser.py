@@ -40,7 +40,7 @@ import re
 from flask.helpers import url_for
 import jwt
 
-from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
+from config import ANONYMOUS_PREFIX, EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_status, set_online_status
 from skrafldb import (
@@ -60,7 +60,6 @@ from skraflmechanics import Error
 
 
 class UserSummaryDict(TypedDict):
-
     """Summary data about a user"""
 
     uid: str
@@ -84,7 +83,6 @@ UserSummaryList = List[UserSummaryDict]
 
 
 class UserLoginDict(TypedDict):
-
     """Summary data about a login event"""
 
     user_id: str
@@ -101,7 +99,6 @@ class UserLoginDict(TypedDict):
 
 
 class UserDetailDict(TypedDict):
-
     """Additional data about a user, returned when logging in by user id"""
 
     name: str
@@ -110,7 +107,6 @@ class UserDetailDict(TypedDict):
 
 
 class UserProfileDict(TypedDict, total=False):
-
     """User profile, returned as a part of the /userstats response"""
 
     result: int
@@ -143,7 +139,6 @@ class UserProfileDict(TypedDict, total=False):
 
 
 class StatsSummaryDict(TypedDict):
-
     """A summary of statistics for a player at a given point in time"""
 
     ts: str  # An ISO-formatted time stamp
@@ -235,7 +230,6 @@ def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
 
 
 class User:
-
     """Information about a human user including nickname and preferences"""
 
     # Use a lock to avoid potential race conditions between
@@ -364,6 +358,10 @@ class User:
         """Returns the OAuth account identifier (including a potential
         provider prefix, i.e. "fb:" or "apple:") of the user"""
         return self._account or ""
+
+    def is_anonymous(self) -> bool:
+        """Returns True if the account is anonymous"""
+        return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
         """Returns the human-readable nickname of a user,

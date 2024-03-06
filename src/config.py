@@ -174,6 +174,9 @@ VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com")
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
 
+# Prefix of anonymous account identifiers
+ANONYMOUS_PREFIX = "anon:"
+
 
 class CacheEntryDict(TypedDict):
     value: Any
