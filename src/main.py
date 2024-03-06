@@ -50,6 +50,7 @@ from flask_cors import CORS
 
 from config import (
     FlaskConfig,
+    ResponseType,
     DEFAULT_LOCALE,
     running_local,
     host,
@@ -68,9 +69,8 @@ from config import (
 from basics import (
     ndb_wsgi_middleware,
     init_oauth,
-    ResponseType,
 )
-from firebase import init_firebase_app
+from firebase import init_firebase_app, connect_blueprint
 from dawgdictionary import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
@@ -172,6 +172,7 @@ app.json.sort_keys = False
 app.register_blueprint(api_blueprint)
 app.register_blueprint(web_blueprint)
 app.register_blueprint(stats_blueprint)
+app.register_blueprint(connect_blueprint)
 
 # Initialize the OAuth wrapper
 init_oauth(app)

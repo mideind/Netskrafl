@@ -43,7 +43,7 @@ from flask import (
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
 
-from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS
+from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
 from basics import (
     UserIdDict,
     current_user,
@@ -56,7 +56,6 @@ from basics import (
     clear_session_userid,
     RequestData,
     max_age,
-    ResponseType,
 )
 from skrafluser import User, UserLoginDict
 import firebase
@@ -214,7 +213,7 @@ def signup() -> ResponseType:
 @web.route("/skilmalar", methods=["GET"])
 def skilmalar() -> ResponseType:
     """Terms & conditions"""
-    return render_template("skilmalar.html")
+    return render_template("skilmalar.html", user=session_user())
 
 
 @web.route("/billing", methods=["GET", "POST"])
@@ -271,7 +270,7 @@ def page() -> ResponseType:
 @web.route("/greet")
 def greet() -> ResponseType:
     """Handler for the greeting page"""
-    return render_template("login-explo.html")
+    return render_template("login-explo.html", user=None)
 
 
 @web.route("/login")
@@ -286,7 +285,7 @@ def login() -> ResponseType:
 @web.route("/login_error")
 def login_error() -> ResponseType:
     """An error during login: probably cookies or popups are not allowed"""
-    return render_template("login-error.html")
+    return render_template("login-error.html", user=None)
 
 
 @web.route("/logout", methods=["GET"])
@@ -372,7 +371,7 @@ if running_local:
     @web.route("/admin/main")
     def admin_main() -> ResponseType:
         """Show main administration page"""
-        return render_template("admin.html", project_id=PROJECT_ID)
+        return render_template("admin.html", user=None, project_id=PROJECT_ID)
 
 
 # noinspection PyUnusedLocal
