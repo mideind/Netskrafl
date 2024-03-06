@@ -14,6 +14,7 @@
 """
 
 from __future__ import annotations
+import functools
 import logging
 
 from typing import (
@@ -41,7 +42,7 @@ import jwt
 
 from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
-from firebase import online_users
+from firebase import online_status, set_online_status
 from skrafldb import (
     PrefsDict,
     TransactionModel,
@@ -77,6 +78,9 @@ class UserSummaryDict(TypedDict):
     favorite: bool
     live: bool
     new_board: bool
+
+
+UserSummaryList = List[UserSummaryDict]
 
 
 class UserLoginDict(TypedDict):
@@ -163,6 +167,9 @@ JWT_ALGORITHM = "HS256"
 
 # Nickname character replacement pattern
 NICKNAME_STRIP = re.compile(r"[\W_]+", re.UNICODE)
+
+# Use a partial function to set the online status within user summaries
+set_online_status_for_summaries = functools.partial(set_online_status, "uid")
 
 
 def make_login_dict(
@@ -776,10 +783,10 @@ class User:
 
     def _summary_list(
         self, uids: Iterable[str], *, is_favorite: bool = False
-    ) -> List[UserSummaryDict]:
+    ) -> UserSummaryList:
         """Return a list of summary data about a set of users"""
-        result: List[UserSummaryDict] = []
-        online = online_users(self.locale)
+        result: UserSummaryList = []
+        online = online_status(self.locale)
         for uid in uids:
             u = User.load_if_exists(uid)
             if u is not None:
@@ -798,10 +805,11 @@ class User:
                         ready_timed=u.is_ready_timed(),
                         fairplay=u.fairplay(),
                         favorite=is_favorite or self.has_favorite(uid),
-                        live=uid in online,
+                        live=False,  # Will be filled in later
                         new_board=u.new_board(),
                     )
                 )
+        set_online_status_for_summaries(result, online.users_online)
         return result
 
     def list_blocked(self) -> List[UserSummaryDict]:
@@ -1180,7 +1188,8 @@ class User:
         # Is the user online in the current user's locale?
         live = True  # The current user is always live
         if uid != cuid:
-            live = uid in online_users(cuser.locale)
+            online = online_status(cuser.locale or DEFAULT_LOCALE)
+            live = online.user_online(uid)
         profile["live"] = live
 
         # Include info on whether this user is a favorite of the current user

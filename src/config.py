@@ -17,14 +17,33 @@
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict
-from datetime import timedelta
+from typing import (
+    Any,
+    Dict,
+    Literal,
+    Mapping,
+    NotRequired,
+    Optional,
+    TypedDict,
+    Union,
+    Tuple,
+    Callable,
+)
+from datetime import datetime, timedelta
 import os
+from werkzeug.wrappers import Response as WerkzeugResponse
+from flask.wrappers import Response
 from flask import json
 
 
-class FlaskConfig(TypedDict):
+# Universal type definitions
+ResponseType = Union[
+    str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
+]
+RouteType = Callable[..., ResponseType]
 
+
+class FlaskConfig(TypedDict):
     """The Flask configuration dictionary"""
 
     DEBUG: bool
@@ -66,11 +85,15 @@ DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configu
 CONSTRAIN_COOKIE_DOMAIN = False
 
 # Obtain the domain to use for HTTP session cookies
-COOKIE_DOMAIN: Optional[str] = {
-    "netskrafl": ".netskrafl.is",
-    "explo-dev": ".explo-dev.appspot.com",
-    "explo-live": ".explo-live.appspot.com",
-}.get(PROJECT_ID, ".netskrafl.is") if CONSTRAIN_COOKIE_DOMAIN else None
+COOKIE_DOMAIN: Optional[str] = (
+    {
+        "netskrafl": ".netskrafl.is",
+        "explo-dev": ".explo-dev.appspot.com",
+        "explo-live": ".explo-live.appspot.com",
+    }.get(PROJECT_ID, ".netskrafl.is")
+    if CONSTRAIN_COOKIE_DOMAIN
+    else None
+)
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
 CLIENT_SECRET_FILE = {
@@ -150,3 +173,32 @@ VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com")
 # How many games a player plays as a provisional player
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
+
+
+class CacheEntryDict(TypedDict):
+    value: Any
+    time: datetime
+
+
+def ttl_cache(seconds: int) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """A simple time-to-live (TTL) caching decorator"""
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        cache: Dict[Tuple[Any, ...], CacheEntryDict] = {}
+        delta = timedelta(seconds=seconds)
+
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            current_time = datetime.utcnow()
+            # Check if the value is in the cache and if it has not expired
+            key = (*args, *kwargs.items())
+            val = cache.get(key)
+            if val is not None and current_time - val["time"] < delta:
+                return val["value"]
+            # Call the function and store the result in the cache with the current time
+            result = func(*args, **kwargs)
+            cache[key] = {"value": result, "time": current_time}
+            return result
+
+        return wrapped
+
+    return decorator

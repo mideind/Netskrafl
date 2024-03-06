@@ -203,9 +203,9 @@ def oauth2callback(request: Request) -> ResponseType:
             idinfo["client_type"] = client_type
 
     except (KeyError, ValueError) as e:
-        # Invalid token
+        # Invalid token (most likely expired, which is an expected condition)
         # 401 - Unauthorized
-        logging.error(f"Invalid Google token: {e}", exc_info=True)
+        logging.info(f"Invalid Google token: {e}")
         return jsonify({"status": "invalid", "msg": str(e)}), 401
 
     except GoogleAuthError as e:
@@ -375,8 +375,17 @@ def oauth_apple(request: Request) -> ResponseType:
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
         )
+    except jwt.exceptions.ExpiredSignatureError as e:
+        # Expired token (which is an expected condition):
+        # return 401 - Unauthorized
+        logging.info(f"Expired Apple token: {e}")
+        return (
+            jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
+            401,
+        )
     except Exception as e:
-        # Invalid token: return 401 - Unauthorized
+        # Invalid token (something is probably wrong):
+        # return 401 - Unauthorized
         logging.error(f"Invalid Apple token: {e}", exc_info=True)
         return (
             jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),

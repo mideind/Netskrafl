@@ -28,7 +28,6 @@ from typing import (
     Any,
     TypeVar,
     Callable,
-    Tuple,
     cast,
     overload,
 )
@@ -46,20 +45,16 @@ from flask import (
     session,
 )
 from flask.wrappers import Request, Response
-from werkzeug.wrappers import Response as WerkzeugResponse
 from authlib.integrations.flask_client import OAuth  # type: ignore
 
-from config import OAUTH_CONF_URL
+from config import OAUTH_CONF_URL, RouteType, ResponseType
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
 
-# Type definitions
+
+# Generic placeholder type
 T = TypeVar("T")
-ResponseType = Union[
-    str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
-]
-RouteType = Callable[..., ResponseType]
 
 
 class UserIdDict(TypedDict):

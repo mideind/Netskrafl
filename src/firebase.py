@@ -2,7 +2,7 @@
 
     Firebase wrapper for Netskrafl
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -19,12 +19,14 @@ from __future__ import annotations
 from typing import (
     Any,
     Callable,
+    Iterable,
     Mapping,
     NotRequired,
     Optional,
     List,
+    Required,
+    Sequence,
     TypedDict,
-    Union,
     Set,
     Dict,
     cast,
@@ -33,21 +35,24 @@ from typing import (
 import threading
 import logging
 from datetime import datetime, timedelta
+from flask import Blueprint, request
 
 from firebase_admin import App, initialize_app, auth, messaging, db  # type: ignore
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
-from config import PROJECT_ID, FIREBASE_DB_URL
+from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType, ttl_cache
+from languages import SUPPORTED_LOCALES
 from cache import memcache
 
+
+OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
 
 PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
 
 
 class PushMessageDict(TypedDict):
-
     """A message to be sent to a device via a push notification"""
 
     title: PushMessageCallable
@@ -55,17 +60,20 @@ class PushMessageDict(TypedDict):
     image: NotRequired[PushMessageCallable]  # Image URL
 
 
-_LIFETIME_MEMORY_CACHE = 1  # Minutes
-_LIFETIME_REDIS_CACHE = 5  # Minutes
+# Expiration of user online status, in seconds
+_CONNECTED_EXPIRY = 2 * 60  # 2 minutes
 
 # We don't send push notification messages to sessions
 # that are older than the following constant indicates
 _PUSH_NOTIFICATION_CUTOFF = 14  # Days
 
-_USERLIST_LOCK = threading.Lock()
-
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
+
+# Create a blueprint for the connect module, which is used to
+# update the Redis cache from Firebase presence information
+# using a cron job that calls /connect/update
+connect_blueprint = connect = Blueprint("connect", __name__, url_prefix="/connect")
 
 
 def init_firebase_app():
@@ -163,6 +171,9 @@ def check_presence(user_id: str, locale: str) -> bool:
 
 def get_connected_users(locale: str) -> Set[str]:
     """Return a set of all presently connected users"""
+    assert (
+        len(locale) == 5 and "_" in locale
+    ), "Locale string is expected to have format 'xx_XX'"
     try:
         path = f"/connection/{locale}"
         ref = cast(Any, db).reference(path, app=_firebase_app)
@@ -197,59 +208,73 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     assert False, "Unexpected fall out of loop in firebase.create_custom_token()"
 
 
-_online_cache: Dict[str, Set[str]] = dict()
-_online_ts: Dict[str, datetime] = dict()
-_online_counter: int = 0
+class OnlineStatus:
+    """This class implements a wrapper for queries about the
+    online status of users by locale. The wrapper talks to the
+    Redis cache, which is updated from Firebase by a cron job."""
+
+    def __init__(self, locale: str) -> None:
+        # Assign the Redis key used for the set of online users
+        # for this locale
+        self._key = "live:" + locale
+
+    def users_online(self, user_ids: Iterable[str]) -> List[bool]:
+        """Return a list of booleans, one for each passed user_id"""
+        list_of_ids = list(user_ids)
+        if any(s for s in list_of_ids):
+            return memcache.query_set(self._key, list_of_ids)
+        # All user ids are empty strings (probably robots):
+        # save ourselves the Redis call and return a list of False values
+        return [False] * len(list_of_ids)
+
+    def user_online(self, user_id: str) -> bool:
+        """Return True if a user is online"""
+        return self.users_online([user_id])[0]
+
+    @ttl_cache(seconds=30)  # Cache this data for 30 seconds
+    @staticmethod
+    def _get_random_sample(key: str, n: int) -> List[str]:
+        """Return a cached random sample of <= n online users"""
+        return memcache.random_sample_from_set(key, n)
+
+    def random_sample(self, n: int) -> List[str]:
+        """Return a random sample of <= n online users"""
+        return OnlineStatus._get_random_sample(self._key, n)
 
 
-def online_users(locale: str) -> Set[str]:
-    """Obtain a set of online users, by their user ids"""
+# Collection of OnlineStatus instances, one for each game locale
+_online_status: Dict[str, OnlineStatus] = dict()
 
-    global _online_cache, _online_ts, _online_counter
 
-    # First, use a per-process in-memory cache, having a lifetime of 1 minute
-    now = datetime.utcnow()
-    if (
-        locale in _online_ts
-        and locale in _online_cache
-        and _online_ts[locale] > now - timedelta(minutes=_LIFETIME_MEMORY_CACHE)
-    ):
-        return _online_cache[locale]
+def online_status(locale: str) -> OnlineStatus:
+    """Obtain an user online status wrapper for a particular locale"""
+    global _online_status
+    if (oc := _online_status.get(locale)) is None:
+        oc = OnlineStatus(locale)
+        _online_status[locale] = oc
+    return oc
 
-    # Serialize access to the connected user list
-    # !!! TBD: Convert this to a background task that periodically
-    # updates the Redis cache from the Firebase database
-    with _USERLIST_LOCK:
 
-        # Use the distributed Redis cache, having a lifetime of 5 minutes
-        online: Union[None, Set[str], List[str]] = memcache.get(
-            "live:" + locale, namespace="userlist"
-        )
+class UserLiveDict(TypedDict):
+    """A dictionary that has at least a 'live' property, of type bool"""
 
-        if online is None:
-            # Not found: do a Firebase query, which returns a set
-            online = get_connected_users(locale)
-            # Store the result as a list in the Redis cache, with a timeout
-            memcache.set(
-                "live:" + locale,
-                list(online),
-                time=_LIFETIME_REDIS_CACHE * 60,  # Currently 5 minutes
-                namespace="userlist",
-            )
-            _online_counter += 1
-            if _online_counter >= 6:
-                # Approximately once per half hour (6 * 5 minutes),
-                # log number of connected users
-                logging.info(f"Connected users in locale {locale} are {len(online)}")
-                _online_counter = 0
-        else:
-            # Convert the cached list back into a set
-            online = set(online)
+    live: Required[bool]
 
-        _online_cache[locale] = online
-        _online_ts[locale] = now
 
-    return online
+def set_online_status(
+    user_id_prop: str,
+    users: Sequence[UserLiveDict],
+    func_online_status: OnlineStatusFunc,
+) -> None:
+    """Set the live (online) status of the users in the list"""
+    # Call the function to get the online status of the users
+    # TODO: We are passing in empty strings for robot players, which is a
+    # fairly common occurrence. The robots are never marked as online, so
+    # the Redis roundtrip is unnecessary. We should optimize this.
+    online = func_online_status(cast(str, u.get(user_id_prop) or "") for u in users)
+    # Set the live status of the users in the list
+    for u, o in zip(users, online):
+        u["live"] = bool(o)
 
 
 def push_notification(
@@ -348,3 +373,32 @@ def push_to_user(
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.push_to_user()")
     return False
+
+
+@connect.route("/update", methods=["GET"])
+def update() -> ResponseType:
+    """Update the Redis cache from Firebase presence information.
+    This method is invoked from a cron job that fetches /connect/update."""
+    # Check that we are actually being called internally by
+    # a GAE cron job or a cloud scheduler
+    headers = request.headers
+    task_queue = headers.get("X-AppEngine-QueueName", "") != ""
+    cron_job = headers.get("X-Appengine-Cron", "") == "true"
+    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
+    if not any((running_local, task_queue, cloud_scheduler, cron_job)):
+        # Not called internally, by a cron job or a cloud scheduler
+        return "Error", 403  # Forbidden
+    try:
+        # Get the list of all connected users from Firebase,
+        # for each supported game locale
+        for locale in SUPPORTED_LOCALES:
+            online = get_connected_users(locale)
+            # Store the result in a Redis set, with an expiry
+            if not memcache.init_set("live:" + locale, online, time=_CONNECTED_EXPIRY):
+                logging.warning(
+                    f"Unable to update Redis connection cache for locale {locale}"
+                )
+        return "OK", 200
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")
+    return "Error", 500
