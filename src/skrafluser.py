@@ -515,7 +515,7 @@ class User:
             return ""
         if has_image_blob:
             # We have a stored BLOB for this user: return a URL to it
-            return url_for("api.image", uid=user_id)
+            return url_for("api.image_api", uid=user_id)
         # We have a stored URL: return it
         return image or ""
 

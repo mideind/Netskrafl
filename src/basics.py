@@ -56,6 +56,9 @@ from skrafldb import Client
 # Generic placeholder type
 T = TypeVar("T")
 
+# A Flask route function decorator
+RouteFunc = Callable[[RouteType], RouteType]
+
 
 class UserIdDict(TypedDict):
 
@@ -114,7 +117,7 @@ def ndb_wsgi_middleware(wsgi_app: Any) -> Callable[[Any, Any], Any]:
     return middleware
 
 
-def max_age(seconds: int) -> Callable[[RouteType], RouteType]:
+def max_age(seconds: int) -> RouteFunc:
     """Caching decorator for Flask - augments response
     with a max-age cache header"""
 
@@ -249,7 +252,7 @@ def current_user_id() -> Optional[str]:
     return None if (u := g.get("user")) is None else u.id()
 
 
-def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Callable[[RouteType], RouteType]:
+def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> RouteFunc:
     """Decorator for routes that require an authenticated user.
     Call with no parameters to redirect unauthenticated requests
     to url_for("web.login"), or login_url="..." to redirect to that URL,

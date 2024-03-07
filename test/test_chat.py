@@ -2,7 +2,7 @@
 """
 
     Tests for Netskrafl
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
 
     This module tests several APIs by submitting HTTP requests
     to the Netskrafl server.
@@ -19,6 +19,7 @@ import base64
 import pytest
 
 from flask import Response
+from flask.testing import FlaskClient
 
 
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
@@ -27,9 +28,9 @@ sys.path.append(SRC_PATH)
 
 # Set up the environment for Explo-dev testing
 os.environ["PROJECT_ID"] = "explo-dev"
-os.environ[
-    "GOOGLE_APPLICATION_CREDENTIALS"
-] = "resources/Explo Development-414318fa79b8.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
+    "resources/Explo Development-414318fa79b8.json"
+)
 os.environ["SERVER_SOFTWARE"] = "Development"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
@@ -37,18 +38,34 @@ os.environ["REDISPORT"] = "6379"
 
 @pytest.fixture
 def client():
-    """ Flask client fixture """
+    """Flask client fixture"""
     import main
 
     main.app.config["TESTING"] = True
+    main.app.config["AUTH_SECRET"] = "testsecret"
     main.app.testing = True
+
+    # Create a custom test client class that can optionally
+    # include authorization headers in the requests
+    class CustomClient(FlaskClient):
+        def open(self, *args, **kwargs):
+            hcopy = kwargs.copy()
+            if "headers" not in hcopy:
+                hcopy["headers"] = {}
+            # Add the Authorization header to the request
+            hcopy["headers"]["Authorization"] = "Bearer testsecret"
+            # Set the content type to application/json
+            hcopy["headers"]["Content-Type"] = "application/json"
+            return super().open(*args, **hcopy)
+
+    main.app.test_client_class = CustomClient
 
     with main.app.test_client() as client:
         yield client
 
 
 def create_user(idx: int, locale: str = "en_US") -> str:
-    """ Create a user instance for testing, if it doesn't already exist """
+    """Create a user instance for testing, if it doesn't already exist"""
     from skrafldb import UserModel, ChatModel, Client
     from skraflgame import PrefsDict
 
@@ -75,19 +92,19 @@ def create_user(idx: int, locale: str = "en_US") -> str:
 
 @pytest.fixture
 def u1() -> str:
-    """ Create a test user with no chat messages """
+    """Create a test user with no chat messages"""
     return create_user(1)
 
 
 @pytest.fixture
 def u2() -> str:
-    """ Create a test user with no chat messages """
+    """Create a test user with no chat messages"""
     return create_user(2)
 
 
 @pytest.fixture
 def u3_gb() -> str:
-    """ Create a test user in the en_GB locale """
+    """Create a test user in the en_GB locale"""
     return create_user(3, "en_GB")
 
 
@@ -106,8 +123,44 @@ def login_user(client, idx: int, client_type: str = "web") -> Response:
     return client.post("/oauth2callback", data=rq)
 
 
+def login_anonymous_user(
+    client, idx: int, client_type: str = "web", locale: str = "en_US", authorization: bool=True
+) -> Response:
+    """Log in an anonymous user with the specified client type and locale, associated with a
+    device ID of the form 'device999999N', where N is the user index."""
+    rq: Dict[str, Any] = dict(
+        sub=f"device999999{idx}",
+        # Client type
+        clientType=client_type,
+        # Locale
+        locale=locale,
+    )
+    if authorization:
+        # Add the authorization header to the test client request
+        pass  # TODO
+    return client.post("/oauth_anon", data=rq)
+
+
+def test_anonymous_login(client) -> None:
+    """Test the anonymous login functionality"""
+    resp = login_anonymous_user(client, 1, authorization=False)
+    # Should fail without an authorization header
+    assert resp.status_code == 401
+    # Try again with the proper authorization header
+    resp = login_anonymous_user(client, 1)
+    assert resp.status_code == 200
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+    assert "token" in resp.json
+    assert "expires" in resp.json
+    assert "uid" in resp.json
+    assert "name" in resp.json
+    assert "image" in resp.json
+    assert "locale" in resp.json
+
+
 def test_chat(client, u1, u2) -> None:
-    """ Test the chat functionality """
+    """Test the chat functionality"""
 
     # Chat messages from user 1 to user 2
 
@@ -379,7 +432,9 @@ def test_report(client, u1, u2):
     resp = login_user(client, 1)
 
     # User u1 reports user u2
-    resp = client.post("/reportuser", data=dict(reported=u2, code=0, text="Genuine a**hole!"))
+    resp = client.post(
+        "/reportuser", data=dict(reported=u2, code=0, text="Genuine a**hole!")
+    )
     assert resp.status_code == 200
     assert "ok" in resp.json
     assert resp.json["ok"] == True
@@ -487,14 +542,16 @@ def test_elo_history(client, u1):
 
 
 def test_image(client, u1):
-    """ Test image setting and getting """
+    """Test image setting and getting"""
     resp = login_user(client, 1)
 
     # Set the image by POSTing the JPEG or PNG content (BLOB) directly
     image_blob = b"1234"
     # Encode the image_blob as base64
     image_b64 = base64.b64encode(image_blob)
-    resp = client.post("/image", data=image_b64, content_type="image/jpeg; charset=utf-8")
+    resp = client.post(
+        "/image", data=image_b64, content_type="image/jpeg; charset=utf-8"
+    )
     assert resp.status_code == 200
 
     # Retrieve the image of the currently logged-in user
@@ -507,9 +564,8 @@ def test_image(client, u1):
 
     # Set an image URL: note the text/plain MIME type
     image_url = "https://lh3.googleusercontent.com/a/AATXAJxmLaM_8c61i_EeyptXynOG1SL7b-BSt7uBz8Hg=s96-c"
-    resp = client.post("/image",
-        data=image_url,
-        content_type="text/plain; charset=utf-8"
+    resp = client.post(
+        "/image", data=image_url, content_type="text/plain; charset=utf-8"
     )
     assert resp.status_code == 200
 
