@@ -1,30 +1,35 @@
-# type: ignore
 """
 
-    Tests for Netskrafl
+    Tests for Netskrafl / Explo Word Game
     Copyright (C) 2024 Miðeind ehf.
 
     This module tests several APIs by submitting HTTP requests
-    to the Netskrafl server.
+    to the Netskrafl / Explo server.
 
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Generator
 
 import sys
 import os
 from datetime import datetime, timedelta
 import base64
+import zlib
+import json
 
 import pytest
 
-from flask import Response
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
+from itsdangerous import base64_decode
 
 
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
 SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
 sys.path.append(SRC_PATH)
+
+# Bearer token for testing
+TEST_SECRET = "testsecret"
 
 # Set up the environment for Explo-dev testing
 os.environ["PROJECT_ID"] = "explo-dev"
@@ -36,31 +41,40 @@ os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
 
 
+# Create a custom test client class that can optionally
+# include authorization headers in the requests
+class CustomClient(FlaskClient):
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.send_authorization = False
+        super().__init__(*args, **kwargs)
+
+    def open(self, *args: Any, **kwargs: Any) -> TestResponse:
+        hcopy = kwargs.copy()
+        if self.send_authorization:
+            if "headers" not in hcopy:
+                hcopy["headers"] = {}
+            # Add the Authorization header to the request
+            hcopy["headers"]["Authorization"] = "Bearer " + TEST_SECRET
+        return super().open(*args, **hcopy)
+
+    def set_authorization(self, send_authorization: bool) -> None:
+        self.send_authorization = send_authorization
+
+
 @pytest.fixture
-def client():
+def client() -> Generator[CustomClient, Any, Any]:
     """Flask client fixture"""
     import main
 
     main.app.config["TESTING"] = True
-    main.app.config["AUTH_SECRET"] = "testsecret"
+    main.app.config["AUTH_SECRET"] = TEST_SECRET
     main.app.testing = True
-
-    # Create a custom test client class that can optionally
-    # include authorization headers in the requests
-    class CustomClient(FlaskClient):
-        def open(self, *args, **kwargs):
-            hcopy = kwargs.copy()
-            if "headers" not in hcopy:
-                hcopy["headers"] = {}
-            # Add the Authorization header to the request
-            hcopy["headers"]["Authorization"] = "Bearer testsecret"
-            # Set the content type to application/json
-            hcopy["headers"]["Content-Type"] = "application/json"
-            return super().open(*args, **hcopy)
 
     main.app.test_client_class = CustomClient
 
     with main.app.test_client() as client:
+        assert isinstance(client, CustomClient)
         yield client
 
 
@@ -108,7 +122,7 @@ def u3_gb() -> str:
     return create_user(3, "en_GB")
 
 
-def login_user(client, idx: int, client_type: str = "web") -> Response:
+def login_user(client: CustomClient, idx: int, client_type: str = "web") -> TestResponse:
     rq: Dict[str, Any] = dict(
         sub=f"999999{idx}",
         # Full name of user
@@ -124,8 +138,8 @@ def login_user(client, idx: int, client_type: str = "web") -> Response:
 
 
 def login_anonymous_user(
-    client, idx: int, client_type: str = "web", locale: str = "en_US", authorization: bool=True
-) -> Response:
+    client: CustomClient, idx: int, client_type: str = "web", locale: str = "en_US",
+) -> TestResponse:
     """Log in an anonymous user with the specified client type and locale, associated with a
     device ID of the form 'device999999N', where N is the user index."""
     rq: Dict[str, Any] = dict(
@@ -135,31 +149,76 @@ def login_anonymous_user(
         # Locale
         locale=locale,
     )
-    if authorization:
-        # Add the authorization header to the test client request
-        pass  # TODO
-    return client.post("/oauth_anon", data=rq)
+    # POST the rq dictionary to the /oauth_anon endpoint as JSON
+    return client.post("/oauth_anon", json=rq)
 
 
-def test_anonymous_login(client) -> None:
+def decode_cookie(cookie: str) -> str:
+    """Decode a Flask cookie string"""
+    payload = cookie
+    if (compressed := payload.startswith('.')):
+        payload = payload[1:]
+    data = payload.split(".")[0]
+    data = base64_decode(data)
+    if compressed:
+        data = zlib.decompress(data)
+    return data.decode("utf-8")
+
+
+def test_anonymous_login(client: CustomClient) -> None:
     """Test the anonymous login functionality"""
-    resp = login_anonymous_user(client, 1, authorization=False)
-    # Should fail without an authorization header
-    assert resp.status_code == 401
-    # Try again with the proper authorization header
+    # Should fail if the proper authorization header was not provided
     resp = login_anonymous_user(client, 1)
+    assert resp.status_code == 401  # Unauthorized
+    # Try again with the proper authorization header
+    client.set_authorization(True)
+    resp = login_anonymous_user(client, 1, locale="en_US")
+    client.set_authorization(False)
     assert resp.status_code == 200
-    assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json is not None
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"
+    assert "account" in resp.json
+    assert resp.json.get("locale", "") == "en_US"
     assert "token" in resp.json
     assert "expires" in resp.json
-    assert "uid" in resp.json
-    assert "name" in resp.json
-    assert "image" in resp.json
-    assert "locale" in resp.json
+    assert resp.json.get("method", "") == "Anonymous"
+    # Obtain a Firebase token (this should work for anonymous users)
+    resp = client.post("/firebase_token")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert len(resp.json.get("token", "")) > 0
+    assert resp.json.get("ok", False) == True
+    # Obtain the current user's profile
+    resp = client.post("/userstats")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert resp.json.get("result", -1) == 0
+    # Check that the Flask session cookie contains expected values
+    cookie = client.get_cookie("session")
+    assert cookie is not None
+    session = decode_cookie(cookie.decoded_value)
+    # Obtain the session dictionary from the decoded cookie
+    sd = json.loads(session).get("s", {})
+    assert sd.get("userid", "") == "anon:device9999991"
+    assert sd.get("method", "") == "Anonymous"
+    # Attempt to challenge another user, which should fail with a 401 status (Unauthorized)
+    resp = client.post("/challenge", json=dict(destuser="9999992", duration=0))
+    assert resp.status_code == 401  # Unauthorized
+    # Attempt an online check, which should fail with a 401 status (Unauthorized)
+    resp = client.post("/onlinecheck", json=dict(user="9999992"))
+    assert resp.status_code == 401  # Unauthorized
+    # Log out
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert resp.json.get("status", "") == "success"
+    # Try again to obtain a Firebase token, which should now fail
+    resp = client.post("/firebase_token")
+    assert resp.status_code == 401  # Unauthorized
 
 
-def test_chat(client, u1, u2) -> None:
+def test_chat(client: CustomClient, u1: str, u2: str) -> None:
     """Test the chat functionality"""
 
     # Chat messages from user 1 to user 2
@@ -173,6 +232,7 @@ def test_chat(client, u1, u2) -> None:
     )
 
     resp = client.post("/chatload", data=dict(channel="user:" + u2))
+    assert resp.json is not None
     assert resp.json["ok"]
     assert "messages" in resp.json
     messages = resp.json["messages"]
@@ -191,6 +251,7 @@ def test_chat(client, u1, u2) -> None:
     )
 
     resp = client.post("/chatload", data=dict(channel="user:" + u1))
+    assert resp.json is not None
     assert resp.json["ok"]
     assert "messages" in resp.json
     messages = resp.json["messages"]
@@ -210,6 +271,7 @@ def test_chat(client, u1, u2) -> None:
 
     resp = client.post("/chathistory")
 
+    assert resp.json is not None
     assert resp.json["ok"]
     assert "history" in resp.json
     history = resp.json["history"]
@@ -231,6 +293,7 @@ def test_chat(client, u1, u2) -> None:
 
     resp = client.post("/chathistory")
 
+    assert resp.json is not None
     assert resp.json["ok"]
     assert "history" in resp.json
     history = resp.json["history"]
@@ -251,6 +314,7 @@ def test_chat(client, u1, u2) -> None:
     # Check the chat history again
     resp = client.post("/chathistory")
 
+    assert resp.json is not None
     assert resp.json["ok"]
     assert "history" in resp.json
     history = resp.json["history"]
@@ -266,7 +330,7 @@ def test_chat(client, u1, u2) -> None:
     assert not history[-1]["unread"]
 
 
-def test_locale_assets(client, u1, u3_gb):
+def test_locale_assets(client: CustomClient, u1: str, u3_gb: str) -> None:
 
     # Test default en_US user
     resp = login_user(client, 1)
@@ -285,18 +349,20 @@ def test_locale_assets(client, u1, u3_gb):
     resp = client.post("/logout")
 
 
-def test_block(client, u1, u2):
+def test_block(client: CustomClient, u1: str, u2: str) -> None:
     resp = login_user(client, 1)
 
     # User u1 blocks user u2
     resp = client.post("/blockuser", data=dict(blocked=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "blocked" in resp.json
@@ -307,6 +373,7 @@ def test_block(client, u1, u2):
     # of user u1's profile
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "list_blocked" in resp.json
@@ -319,12 +386,14 @@ def test_block(client, u1, u2):
     # User u1 unblocks user u2
     resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "blocked" in resp.json
@@ -334,6 +403,7 @@ def test_block(client, u1, u2):
     # of user u1's profile
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "list_blocked" in resp.json
@@ -343,16 +413,19 @@ def test_block(client, u1, u2):
     # User u1 blocks user u2 twice
     resp = client.post("/blockuser", data=dict(blocked=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
     resp = client.post("/blockuser", data=dict(blocked=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "blocked" in resp.json
@@ -361,6 +434,7 @@ def test_block(client, u1, u2):
     # There should be a single entry in the list_blocked list
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "list_blocked" in resp.json
@@ -373,12 +447,14 @@ def test_block(client, u1, u2):
     # User u1 unblocks user u2
     resp = client.post("/blockuser", data=dict(blocked=u2, action="delete"))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "blocked" in resp.json
@@ -387,6 +463,7 @@ def test_block(client, u1, u2):
     # There should be no entry in the list_blocked list
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "list_blocked" in resp.json
@@ -396,17 +473,19 @@ def test_block(client, u1, u2):
     resp = client.post("/logout")
 
 
-def test_disable_chat(client, u1, u2):
+def test_disable_chat(client: CustomClient, u1: str, u2: str) -> None:
     resp = login_user(client, 1)
 
     # User u1 disables chat
     resp = client.post("/setuserpref", data=dict(chat_disabled=True))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
 
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "chat_disabled" in resp.json
@@ -415,11 +494,13 @@ def test_disable_chat(client, u1, u2):
     # User u1 enables chat
     resp = client.post("/setuserpref", data=dict(chat_disabled=False))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
 
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
     assert "chat_disabled" in resp.json
@@ -428,7 +509,7 @@ def test_disable_chat(client, u1, u2):
     resp = client.post("/logout")
 
 
-def test_report(client, u1, u2):
+def test_report(client: CustomClient, u1: str, u2: str) -> None:
     resp = login_user(client, 1)
 
     # User u1 reports user u2
@@ -436,6 +517,7 @@ def test_report(client, u1, u2):
         "/reportuser", data=dict(reported=u2, code=0, text="Genuine a**hole!")
     )
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
@@ -446,19 +528,21 @@ def test_report(client, u1, u2):
     # User u2 reports user u1
     resp = client.post("/reportuser", data=dict(reported=u1, code=1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == True
 
     # User u2 reports nonexisting user (which should return ok=False)
     resp = client.post("/reportuser", data=dict(reported="xxx", code=1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "ok" in resp.json
     assert resp.json["ok"] == False
 
     resp = client.post("/logout")
 
 
-def test_elo_history(client, u1):
+def test_elo_history(client: CustomClient, u1: str) -> None:
     resp = login_user(client, 1)
 
     # Insert some stats
@@ -469,6 +553,7 @@ def test_elo_history(client, u1):
 
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
 
@@ -507,6 +592,7 @@ def test_elo_history(client, u1):
 
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert "result" in resp.json
     assert resp.json["result"] == 0
 
@@ -541,7 +627,7 @@ def test_elo_history(client, u1):
     resp = client.post("/logout")
 
 
-def test_image(client, u1):
+def test_image(client: CustomClient, u1: str) -> None:
     """Test image setting and getting"""
     resp = login_user(client, 1)
 
@@ -579,7 +665,7 @@ def test_image(client, u1):
     resp = client.post("/logout")
 
 
-def test_delete_user_1(client, u1):
+def test_delete_user_1(client: CustomClient, u1: str) -> None:
     """Delete a user using the /delete_account endpoint"""
     # Try to delete an account without being logged in
     resp = client.post("/delete_account")
@@ -591,6 +677,7 @@ def test_delete_user_1(client, u1):
     # Delete the account
     resp = client.post("/delete_account")
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["ok"] == True
 
     # Now the session cookie should be expired
@@ -598,7 +685,7 @@ def test_delete_user_1(client, u1):
     assert resp.status_code == 401  # Unauthorized
 
 
-def test_delete_user_2(client, u1, u2):
+def test_delete_user_2(client: CustomClient, u1: str, u2: str) -> None:
     """Delete a user using the /delete_account endpoint"""
     resp = login_user(client, 1)
     assert resp.status_code == 200
@@ -606,14 +693,17 @@ def test_delete_user_2(client, u1, u2):
     # Add challenges and favorites
     resp = client.post("/challenge", data=dict(destuser=u2, duration=10))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
     resp = client.post("/challenge", data=dict(destuser=u2, duration=20))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
 
     # Add a favorite (u1 favors u2)
     resp = client.post("/favorite", data=dict(destuser=u2))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
 
     # Log in the second user
@@ -625,12 +715,14 @@ def test_delete_user_2(client, u1, u2):
     # Verify that the challenges exist
     resp = client.post("/challengelist")
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
     assert len(resp.json["challengelist"]) == 2
 
     # Add a favorite (u2 favors u1)
     resp = client.post("/favorite", data=dict(destuser=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
 
     # Logout and log in the first user again
@@ -642,6 +734,7 @@ def test_delete_user_2(client, u1, u2):
     # Delete the user account
     resp = client.post("/delete_account")
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["ok"] == True
 
     # Logout and log in the second user again
@@ -653,18 +746,21 @@ def test_delete_user_2(client, u1, u2):
     # Now there should be no challenges
     resp = client.post("/challengelist")
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
     assert len(resp.json["challengelist"]) == 0
 
     # Load user stats for the current user (u2)
     resp = client.post("/userstats")
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
     assert len(resp.json["list_favorites"]) == 0
 
     # Load user stats for the other (deleted) user (u1)
     resp = client.post("/userstats", data=dict(user=u1))
     assert resp.status_code == 200
+    assert resp.json is not None
     assert resp.json["result"] == 0
     assert resp.json["favorite"] == False
     assert "list_favorites" not in resp.json
