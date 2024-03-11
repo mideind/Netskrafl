@@ -218,8 +218,12 @@ def session_data() -> Optional[SessionDict]:
     # Check for old-style (deprecated) session
     if (u := cast(Optional[UserIdDict], sess.get("user"))) is None:
         return None
+    userid = ""
+    if (uid := sess.get("userid")) is not None:
+        # Old-style session: nested user id dictionary
+        userid = uid.get("id", "")
     return SessionDict(
-        userid="",  # Not used by clients of session_data()
+        userid=userid,
         method=u.get("method", "Google"),
         new=u.get("new", False),
         client_type=u.get("client_type", "web"),

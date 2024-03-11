@@ -965,19 +965,25 @@ class User:
         image: str,
         *,
         locale: Optional[str] = None,
+        upgrade_from: Optional[str] = None,
     ) -> UserLoginDict:
         """Log in a user via the given account identifier and return her user id"""
         name = name.strip()
         # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
+        if um is None and upgrade_from:
+            # The user probably exists as an anonymous user with the upgrade_from id
+            um = UserModel.fetch(upgrade_from)
         if um is not None:
             # We've seen this user account before
+            # If this was an anonymous user, we need to assign a new account id
+            # (i.e. replace anon:XYZ with [google:]XYZ, fb:XYZ or apple:XYZ)
+            um.account = account
             if image and image != um.image:
                 # Use the opportunity to update the image, if different
                 um.image = image
             if email and email != um.email:
                 # Use the opportunity to update the email, if different
-                # (This should probably not happen very often)
                 um.email = email
             full_name = um.prefs.get("full_name", "") if um.prefs else ""
             if name and not full_name:
@@ -993,7 +999,7 @@ class User:
             # !!! TODO: Return the entire UserModel object to avoid re-loading it
             uld = make_login_dict(
                 user_id=um.user_id(),
-                account=um.account or account,
+                account=um.account,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
             )
