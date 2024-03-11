@@ -552,8 +552,9 @@ class UserModel(Model["UserModel"]):
 
     # A user image can be either a URL
     # or a complete JPEG image stored in a BLOB
+    # Note: indexing of string properties is mandatory
     image = Model.OptionalStr()
-    image_blob = Model.OptionalBlob()
+    image_blob = Model.OptionalBlob()  # Not indexed
 
     # OAuth2 account identifier (unfortunately different from GAE user id)
     # optionally prefixed by the authentication provider id (default: 'google:')
@@ -743,7 +744,6 @@ class UserModel(Model["UserModel"]):
         cls, prefix: str, max_len: int = 50, locale: Optional[str] = None
     ) -> Iterator[ListPrefixDict]:
         """Query for a list of users having a name or nick with the given prefix"""
-
         if not prefix:
             # No prefix means nothing is returned
             return

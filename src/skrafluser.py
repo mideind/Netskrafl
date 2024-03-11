@@ -425,7 +425,8 @@ class User:
         if self._inactive:
             # Inactive users are hidden
             return False
-        return True
+        # Anonymous users are hidden from user lists
+        return not self.is_anonymous()
 
     @property
     def preferences(self) -> PrefsDict:

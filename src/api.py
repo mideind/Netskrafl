@@ -285,7 +285,6 @@ def submitmove_api() -> ResponseType:
 @auth_required(ok=False)
 def gamestate_api() -> ResponseType:
     """Returns the current state of a game"""
-
     user_id = current_user_id()
     if user_id is None:
         return jsonify(ok=False)
@@ -317,7 +316,6 @@ def gamestate_api() -> ResponseType:
 @auth_required(allow_anonymous=False, ok=False)
 def clear_zombie_api() -> ResponseType:
     """Clears the zombie status of a game"""
-
     user_id = current_user_id()
     if user_id is None:
         return jsonify(ok=False)
@@ -345,7 +343,6 @@ def clear_zombie_api() -> ResponseType:
 @auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def forceresign_api() -> ResponseType:
     """Forces a tardy user to resign, if the game is overdue"""
-
     user_id = current_user_id()
     rq = RequestData(request)
     uuid = rq.get("game")
@@ -376,7 +373,8 @@ def forceresign_api() -> ResponseType:
 @auth_required(ok=False)
 def wordcheck_api() -> ResponseType:
     """Check a list of words for validity"""
-
+    # Note: The Explo app calls the /wordcheck endpoint on the 'moves' service,
+    # not this endpoint (which is on the 'default' service)
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
     word: str = rq["word"]
@@ -406,7 +404,6 @@ def wordcheck_api() -> ResponseType:
 @auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def gamestats_api() -> ResponseType:
     """Calculate and return statistics on a given finished game"""
-
     rq = RequestData(request)
     uuid = rq.get("game")
     game = None
@@ -501,7 +498,6 @@ def image_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def userlist_api() -> ResponseType:
     """Return user lists with particular criteria"""
-
     rq = RequestData(request)
     query = rq.get("query")
     spec = rq.get("spec")
@@ -512,7 +508,6 @@ def userlist_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def gamelist_api() -> ResponseType:
     """Return a list of active games for the current user"""
-
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
@@ -526,7 +521,6 @@ def gamelist_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def recentlist_api() -> ResponseType:
     """Return a list of recently completed games for the indicated user"""
-
     rq = RequestData(request)
     user_id: Optional[str] = rq.get("user")
     versus: Optional[str] = rq.get("versus")
@@ -596,7 +590,6 @@ def rating_api() -> ResponseType:
 @auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def favorite_api() -> ResponseType:
     """Create or delete an A-favors-B relation"""
-
     user = current_user()
     assert user is not None
 
@@ -617,7 +610,6 @@ def favorite_api() -> ResponseType:
 @auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
 def challenge_api() -> ResponseType:
     """Create or delete an A-challenges-B relation"""
-
     user = current_user()
     if user is None or not (uid := user.id()):
         return jsonify(result=Error.LOGIN_REQUIRED)
@@ -691,7 +683,6 @@ def challenge_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def setuserpref_api() -> ResponseType:
     """Set a user preference"""
-
     user = current_user()
     assert user is not None
 
@@ -756,7 +747,6 @@ def onlinecheck_api() -> ResponseType:
 @auth_required(allow_anonymous=False, online=False, waiting=False)
 def initwait_api() -> ResponseType:
     """Initialize a wait for a timed game to start"""
-
     user = current_user()
 
     # Get the opponent id
@@ -831,7 +821,6 @@ def cancelwait_api() -> ResponseType:
 @auth_required(allow_anonymous=False, ok=False)
 def chatmsg_api() -> ResponseType:
     """Send a chat message on a conversation channel"""
-
     if not (user_id := current_user_id()):
         return jsonify(ok=False)
 
@@ -1032,7 +1021,6 @@ def chatload_api() -> ResponseType:
 def chathistory_api() -> ResponseType:
     """Return the chat history, i.e. the set of recent,
     distinct chat conversations for the logged-in user"""
-
     user = current_user()
     assert user is not None
 
@@ -1077,7 +1065,6 @@ def chathistory_api() -> ResponseType:
 def bestmoves_api() -> ResponseType:
     """Return a list of the best possible moves in a game
     at a given point"""
-
     user = current_user()
     assert user is not None
 
@@ -1307,7 +1294,6 @@ def loaduserprefs_api() -> ResponseType:
 @auth_required(ok=False)
 def saveuserprefs_api() -> ResponseType:
     """Set the preferences of the current user, from a JSON dictionary"""
-
     user = current_user()
     assert user is not None
     j: Optional[Dict[str, str]] = request.get_json(silent=True)
@@ -1359,7 +1345,6 @@ def inituser_api() -> ResponseType:
 @auth_required(ok=False)
 def initgame_api() -> ResponseType:
     """Create a new game and return its UUID"""
-
     user = current_user()
     assert user is not None
     uid = user.id()

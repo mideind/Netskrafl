@@ -646,6 +646,10 @@ set_online_status_for_chats = functools.partial(firebase.set_online_status, "use
 
 def userlist(query: str, spec: str) -> UserList:
     """Return a list of users matching the filter criteria"""
+    # The query string can be 'robots', 'live', 'fav', 'alike',
+    # 'ready_timed' or 'search', for a list of robots, live users,
+    # favorite users, users with similar Elo ratings, users ready
+    # to play timed games, or a search pattern match, respectively.
 
     result: UserList = []
 
