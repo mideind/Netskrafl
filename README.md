@@ -59,7 +59,7 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 #### Follow these steps:
 
-0. Install [Python 3.11](https://www.python.org/downloads/release/python-380/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
+0. Install [Python 3.11](https://www.python.org/downloads/release/python-3116/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads)
 (GAE) for Python and follow the installation instructions.
