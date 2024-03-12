@@ -1,13 +1,15 @@
 """
-Secret Manager module for Google Cloud Secret Manager
+    Secret Manager module for Google Cloud Secret Manager
 
-Copyright (C) 2024 Miðeind ehf.
-Author: Valur Hrafn Einarsson
+    Copyright (C) 2024 Miðeind ehf.
+    Author: Valur Hrafn Einarsson
 
-License: CC-BY-NC 4.0. More info: https://github.com/your-github-account/your-project
+    The Creative Commons Attribution-NonCommercial 4.0
+    International Public License (CC-BY-NC 4.0) applies to this software.
+    For further information, see https://github.com/mideind/Netskrafl
 
-This module provides a SecretManager class for interacting with Google Cloud Secret Manager. 
-It includes methods to retrieve secrets as bytes or JSON. Errors are logged and exceptions raised.
+    This module provides a SecretManager class for interacting with Google Cloud Secret Manager. 
+    It includes methods to retrieve secrets as bytes or JSON. Errors are logged and exceptions raised.
 """
 
 import json
