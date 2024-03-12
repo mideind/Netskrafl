@@ -7,6 +7,7 @@
 
 """
 
+import json
 from typing import Any, Dict, Generator
 
 import sys
@@ -166,3 +167,12 @@ def decode_cookie(cookie: str) -> str:
     if compressed:
         data = zlib.decompress(data)
     return data.decode("utf-8")
+
+
+def get_session_dict(client: CustomClient) -> Dict[str, Any]:
+    """Decode the Flask session cookie and return the session dictionary"""
+    cookie = client.get_cookie("session")
+    assert cookie is not None
+    session = decode_cookie(cookie.decoded_value)
+    # Obtain the session dictionary from the decoded cookie
+    return json.loads(session).get("s", {})
