@@ -69,7 +69,7 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 3. Run ```pip install -r requirements.txt``` in your virtualenv to install
 required Python packages so that they are accessible to GAE.
 
-4. Run ```python utils/dawgbuilder.py``` to generate the DAWG ```*.bin.dawg``` files. This may
+4. Run ```python utils/dawgbuilder.py all``` to generate the DAWG ```*.bin.dawg``` files. This may
 take a couple of minutes.
 
 5. You will need a secret session key for Flask. The secret session key is stored in Google Cloud secret manager.
