@@ -1059,8 +1059,13 @@ def run_norwegian_filter() -> None:
     nsf2023 = PackedDawgDictionary(current_alphabet())
     nsf2023.load(rpath("nsf2023.bin.dawg"))
 
-    # The name of the input file containing
-    # the list of frequent Norwegian words
+    # The name of the input file containing the list of frequent Norwegian words.
+    # This file is available for download from
+    # https://wortschatz.uni-leipzig.de/en/download/Norwegian%20Bokm%C3%A5l
+    # under the CC-BY license. It is under copyright as follows:
+    # © 2024 Universität Leipzig
+    # / Sächsische Akademie der Wissenschaften / InfAI
+    # ...and used here, with thanks, under the terms of the license.
     source = rpath("nob-no_web_2020_300K-words.txt")
 
     # Define our tasks

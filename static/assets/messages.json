@@ -100,8 +100,8 @@
   },
   "explain_sound": {
     "is": "Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst",
-    "en": "Controls whether sounds are played, e.g. when an opponent moves or when you win",
-    "nb": "Kontrollerer om lyder spilles av, f.eks. når en motstander flytter eller når du vinner",
+    "en": "Controls whether sounds are played, e.g. when an opponent makes a move or when you win",
+    "nb": "Kontrollerer om lyder spilles, f.eks. når en motstander gjør et trekk eller når du vinner",
     "pl": "Kontroluje, czy dźwięki są odtwarzane, np. gdy przeciwnik wykonuje ruch lub gdy wygrywasz",
     "ga": "Rialaíonn sé an seinntear fuaimeanna, m.sh. nuair a bhogann freasúra nó nuair a bhuaigh tú"
   },
@@ -191,7 +191,7 @@
   },
   " um margföldunargildi reita er sýndur við borðið": {
     "en": " with square multipliers is shown beside the board",
-    "nb": " med rute multiplikatorer vises ved siden av brettet",
+    "nb": " med rute-multiplikatorer vises ved siden av brettet",
     "pl": " z mnożnikami kwadratów jest pokazany obok planszy",
     "ga": " le hiolraitheoirí cearnóg le feiceáil in aice leis an mbord"
   },
@@ -608,14 +608,14 @@
   },
   "Viðureignir sem standa yfir": {
     "en": "Games in progress",
-    "nb": "Spill pågår",
+    "nb": "Pågående spill",
     "pl": "Trwające gry",
     "ga": "Cluichí ar siúl"
   },
   "click_on_game": {
     "is": " - smelltu á viðureign til að skoða stöðuna og leika ef ",
     "en": " - click on a game to view it and make a move if ",
-    "nb": " - klikk på et spill for å se det og gjøre et trekk hvis ",
+    "nb": " - klikk på et spill for å åpne det og gjøre et trekk hvis ",
     "pl": " - kliknij na grę, aby ją zobaczyć i wykonać ruch, jeśli ",
     "ga": " - cliceáil ar chluiche chun é a fheiceáil agus bogadh má "
   },
@@ -671,7 +671,7 @@
   "click_to_review": {
     "is": " - smelltu á viðureign til að skoða hana og rifja upp",
     "en": " - click on a game to review it",
-    "nb": " - klikk på et spill for å se det og gå gjennom det",
+    "nb": " - klikk på et spill for å åpne det og gå gjennom det",
     "pl": " - kliknij na grę, aby ją przejrzeć",
     "ga": " - cliceáil ar chluiche chun athbhreithniú a dhéanamh air"
   },

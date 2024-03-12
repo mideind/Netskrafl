@@ -38,8 +38,7 @@ from threading import Thread
 from flask import request, Blueprint
 from flask.wrappers import Request
 
-from basics import ResponseType
-from config import running_local
+from config import running_local, ResponseType
 from cache import memcache
 from skrafldb import (
     Context,

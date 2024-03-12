@@ -642,7 +642,8 @@ class View {
                         initialValue: user.nickname || "",
                         class: "username",
                         maxlength: 15,
-                        id: "nickname"
+                        id: "nickname",
+                        // autocomplete: "nickname", // Chrome doesn't like this
                       }
                     ),
                     nbsp(), m("span.asterisk", "*")
@@ -658,7 +659,8 @@ class View {
                         initialValue: user.full_name || "",
                         class: "fullname",
                         maxlength: 32,
-                        id: "full_name"
+                        id: "full_name",
+                        autocomplete: "name",
                       }
                     )
                   ]
@@ -673,7 +675,8 @@ class View {
                         initialValue: user.email || "",
                         class: "email",
                         maxlength: 32,
-                        id: "email"
+                        id: "email",
+                        autocomplete: "email",
                       }
                     )
                   ]
@@ -4318,6 +4321,7 @@ const TextInput: ComponentFunc<{
   maxlength: number;
   id: string;
   tabindex: number;
+  autocomplete?: string;
 }> = (initialVnode) => {
 
   // Generic text input field
@@ -4337,6 +4341,7 @@ const TextInput: ComponentFunc<{
           name: vnode.attrs.id,
           maxlength: vnode.attrs.maxlength,
           tabindex: vnode.attrs.tabindex,
+          autocomplete: vnode.attrs.autocomplete,
           value: text,
           oninput: (ev) => { text = (ev.target as HTMLInputElement).value + ""; }
         }
