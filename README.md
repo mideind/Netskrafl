@@ -73,7 +73,7 @@ required Python packages so that they are accessible to GAE.
 take a couple of minutes.
 
 5. You will need a secret session key for Flask. The secret session key is stored in Google Cloud secret manager.
-see [Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
+For information on Flask sessions see [Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
 
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
 Run ```npm install``` to install Node dependencies.
