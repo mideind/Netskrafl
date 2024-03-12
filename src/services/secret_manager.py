@@ -30,7 +30,7 @@ class SecretManager:
         """
         Retrieve a secret from Secret Manager.
         The secret is returned as bytes.
-        If an error occurs, an error message is logged and None is returned.
+        If an error occurs, an error message is logged and an exception is raised.
         """
         try:
             name = f"projects/{self.project_id}/secrets/{secret_id}/versions/latest"
@@ -44,7 +44,7 @@ class SecretManager:
         """
         Retrieve a secret from Secret Manager and return it as a JSON object.
         The secret is decoded from bytes to a string before being loaded as JSON.
-        If an error occurs, an error message is logged and None is returned.
+        If an error occurs, an error message is logged and an exception is raised.
         """
         try:
             json_secret = self.get_secret(secret_id, version_id).decode('UTF-8')
