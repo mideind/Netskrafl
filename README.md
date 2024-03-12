@@ -59,7 +59,7 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 #### Follow these steps:
 
-0. Install [Python 3.8](https://www.python.org/downloads/release/python-380/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
+0. Install [Python 3.11](https://www.python.org/downloads/release/python-380/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads)
 (GAE) for Python and follow the installation instructions.
@@ -69,12 +69,11 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 3. Run ```pip install -r requirements.txt``` in your virtualenv to install
 required Python packages so that they are accessible to GAE.
 
-4. Run ```python dawgbuilder.py``` to generate the DAWG ```*.bin.dawg``` files. This may
+4. Run ```python utils/dawgbuilder.py``` to generate the DAWG ```*.bin.dawg``` files. This may
 take a couple of minutes.
 
-5. Create a secret session key for Flask in `resources/secret_key.bin`
-(see [How to generate good secret keys](http://flask.pocoo.org/docs/0.10/quickstart/),
-you need to scroll down to find the heading).
+5. You will need a secret session key for Flask. The secret session key is stored in Google Cloud secret manager.
+see [Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
 
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
 Run ```npm install``` to install Node dependencies.

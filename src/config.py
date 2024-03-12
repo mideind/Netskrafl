@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Dict, Literal, Mapping, NotRequired, Optional, TypedDict
 from datetime import timedelta
 import os
+from services.secret_manager import SecretManager
 from flask import json
 
 
@@ -55,6 +56,9 @@ DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
+# Initialize the SecretManager with your Google Cloud project ID
+sm = SecretManager(PROJECT_ID)
+
 # Should we constrain the domain for HTTP session cookies?
 # Currently we don't do this as we would like to be able to access
 # particular versions of the backend by using VERSION-dot-PROJECT.appspot.com
@@ -73,75 +77,78 @@ COOKIE_DOMAIN: Optional[str] = {
 }.get(PROJECT_ID, ".netskrafl.is") if CONSTRAIN_COOKIE_DOMAIN else None
 
 # Open the correct client_secret file for the project (Explo/Netskrafl)
-CLIENT_SECRET_FILE = {
-    "netskrafl": "client_secret_netskrafl.json",
-    "explo-dev": "client_secret_explo.json",
-    "explo-live": "client_secret_explo_live.json",
-}.get(PROJECT_ID, "client_secret.json")
+try:
+    CLIENT_SECRET_FILE = {
+        "netskrafl": lambda: sm.get_json_secret("CLIENT_SECRET_NETSKRAFL"),
+        "explo-dev": lambda: sm.get_json_secret("CLIENT_SECRET_EXPLO"),
+        "explo-live": lambda: sm.get_json_secret("CLIENT_SECRET_EXPLO_LIVE"),
+    }.get(PROJECT_ID, lambda: sm.get_json_secret("DEFAULT_CLIENT_SECRET"))()
+except Exception:
+    CLIENT_SECRET_FILE = None
 
-# Read client secrets (some of which aren't really that secret) from JSON file
-with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
-    j = json.loads(f.read())
-    assert j is not None
+assert CLIENT_SECRET_FILE, f"CLIENT_SECRET_FILE not set correctly for {PROJECT_ID}"
 
-    # Client types and their ids (and secrets, as applicable)
-    CLIENT: Dict[str, Dict[str, str]] = j.get("CLIENT", {})
-    WEB_CLIENT: Mapping[str, str] = CLIENT.get("web", {})
+# Read client secrets (some of which aren't really that secret) from the CLIENT_SECRET_FILE
+j = CLIENT_SECRET_FILE
+assert j is not None
 
-    CLIENT_ID = WEB_CLIENT.get("id", "")
-    CLIENT_SECRET = WEB_CLIENT.get("secret", "")
-    assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_FILE}"
-    assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_FILE}"
+# Client types and their ids (and secrets, as applicable)
+CLIENT: Dict[str, Dict[str, str]] = j.get("CLIENT", {})
+WEB_CLIENT: Mapping[str, str] = CLIENT.get("web", {})
 
-    # Explo client secret, used as a key for signing our own JWTs
-    # that are used to extend the validity of third party auth tokens
-    EXPLO_CLIENT: Mapping[str, str] = CLIENT.get("explo", {})
-    EXPLO_CLIENT_SECRET = EXPLO_CLIENT.get("secret", "")
+CLIENT_ID = WEB_CLIENT.get("id", "")
+CLIENT_SECRET = WEB_CLIENT.get("secret", "")
+assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_FILE}"
+assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_FILE}"
 
-    OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
+# Explo client secret, used as a key for signing our own JWTs
+# that are used to extend the validity of third party auth tokens
+EXPLO_CLIENT: Mapping[str, str] = CLIENT.get("explo", {})
+EXPLO_CLIENT_SECRET = EXPLO_CLIENT.get("secret", "")
 
-    # Analytics measurement id
-    MEASUREMENT_ID: str = j.get("MEASUREMENT_ID", "")
-    assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
+OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
-    # Facebook app token, for login verification calls to the graph API
-    FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
-    FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-    assert (
-        FACEBOOK_APP_SECRET
-    ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
-    assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
+# Analytics measurement id
+MEASUREMENT_ID: str = j.get("MEASUREMENT_ID", "")
+assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
 
-    # Firebase configuration
-    FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
-    FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
-    FIREBASE_DB_URL: str = j.get("FIREBASE_DB_URL", "")
-    FIREBASE_APP_ID: str = j.get("FIREBASE_APP_ID", "")
-    assert (
-        FIREBASE_API_KEY
-    ), f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
-    assert (
-        FIREBASE_SENDER_ID
-    ), f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
-    assert FIREBASE_DB_URL, f"FIREBASE_DB_URL not set correctly in {CLIENT_SECRET_FILE}"
-    assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
+# Facebook app token, for login verification calls to the graph API
+FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
+FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
+assert (
+    FACEBOOK_APP_SECRET
+), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_FILE}"
+assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 
-    # Apple ID configuration
-    APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")
-    APPLE_TEAM_ID: str = j.get("APPLE_TEAM_ID", "")
-    APPLE_CLIENT_ID: str = j.get("APPLE_CLIENT_ID", "")
-    assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_FILE}"
-    assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_FILE}"
-    assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_FILE}"
+# Firebase configuration
+FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
+FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
+FIREBASE_DB_URL: str = j.get("FIREBASE_DB_URL", "")
+FIREBASE_APP_ID: str = j.get("FIREBASE_APP_ID", "")
+assert (
+    FIREBASE_API_KEY
+), f"FIREBASE_API_KEY not set correctly in {CLIENT_SECRET_FILE}"
+assert (
+    FIREBASE_SENDER_ID
+), f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_FILE}"
+assert FIREBASE_DB_URL, f"FIREBASE_DB_URL not set correctly in {CLIENT_SECRET_FILE}"
+assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_FILE}"
 
-    # RevenueCat bearer token
-    RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
+# Apple ID configuration
+APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")
+APPLE_TEAM_ID: str = j.get("APPLE_TEAM_ID", "")
+APPLE_CLIENT_ID: str = j.get("APPLE_CLIENT_ID", "")
+assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_FILE}"
+assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_FILE}"
+assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_FILE}"
+
+# RevenueCat bearer token
+RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
 
 
-# Read the Flask secret session key from file
-with open(os.path.join("resources", "secret_key.bin"), "rb") as f:
-    FLASK_SESSION_KEY = f.read()
-    assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
+# Read the Flask secret session key from google secret manager
+FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
+assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
 
 
 # Valid token issuers for OAuth2 login
