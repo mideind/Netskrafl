@@ -67,7 +67,7 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 2. ```git clone https://github.com/mideind/Netskrafl``` to your GAE application directory.
 
 3. Run ```pip install -r requirements.txt``` in your virtualenv to install
-required Python packages so that they are accessible to GAE.
+required Python packages so that they are accessible to GAE. To run locally you will also need to install the icegrams package ```pip install icegrams```
 
 4. Run ```python utils/dawgbuilder.py all``` to generate the DAWG ```*.bin.dawg``` files. This may
 take a couple of minutes.
