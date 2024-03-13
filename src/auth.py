@@ -96,15 +96,7 @@ def authorized_as_anonymous(request: Request) -> bool:
         return False
     # Check for our secret bearer token AUTH_SECRET
     auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        # 401 - Unauthorized
-        return False
-    token = auth[7:]
-    if token != AUTH_SECRET:
-        # 401 - Unauthorized
-        return False
-    # Seems legit
-    return True
+    return auth == f"Bearer {AUTH_SECRET}"
 
 
 def oauth2callback(request: Request) -> ResponseType:

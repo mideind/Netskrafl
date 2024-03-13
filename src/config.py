@@ -54,6 +54,7 @@ class FlaskConfig(TypedDict):
     PERMANENT_SESSION_LIFETIME: timedelta
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
+    AUTH_SECRET: str
     # JSON_AS_ASCII: bool  # No longer supported in Flask >= 2.3
     TESTING: NotRequired[bool]
 
@@ -159,6 +160,10 @@ with open(os.path.join("resources", CLIENT_SECRET_FILE), "r") as f:
 
     # RevenueCat bearer token
     RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
+
+    # Anonymous user session token
+    AUTH_SECRET: str = j.get("AUTH_SECRET", "")
+    assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_FILE}"
 
 
 # Read the Flask secret session key from file

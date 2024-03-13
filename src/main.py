@@ -65,6 +65,7 @@ from config import (
     FIREBASE_DB_URL,
     FIREBASE_APP_ID,
     FLASK_SESSION_KEY,
+    AUTH_SECRET,
 )
 from basics import (
     ndb_wsgi_middleware,
@@ -154,6 +155,8 @@ flask_config = FlaskConfig(
     # Add Google OAuth2 client id and secret for web clients (type 'web')
     GOOGLE_CLIENT_ID=CLIENT_ID,
     GOOGLE_CLIENT_SECRET=CLIENT_SECRET,
+    # Set the authentication token for anonymous sessions
+    AUTH_SECRET=AUTH_SECRET,
     # JSON_AS_ASCII=False,
 )
 
