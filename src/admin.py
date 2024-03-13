@@ -17,7 +17,7 @@ from typing import List, Optional, Dict, Any
 
 import logging
 from threading import Thread
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import request
 from flask.wrappers import Response
@@ -176,7 +176,7 @@ def admin_loadgame() -> Response:
         game = Game.load(uuid, set_locale=True, use_cache=False)
 
     if game is not None and game.state is not None:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         g = dict(
             uuid=game.uuid,
             timestamp=Alphabet.format_timestamp(game.timestamp or now),
@@ -221,7 +221,7 @@ def admin_loaduser() -> Response:
             user = User.load_by_nickname(userid, ignore_case=True)
 
     if user is not None:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         u = dict(
             userid=user.id(),
             account=user.account(),

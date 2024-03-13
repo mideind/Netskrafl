@@ -34,13 +34,13 @@ from typing import (
 
 import threading
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import re
 
 from flask.helpers import url_for
 import jwt
 
-from config import EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
+from config import ANONYMOUS_PREFIX, EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
 from languages import Alphabet, to_supported_locale
 from firebase import online_status, set_online_status
 from skrafldb import (
@@ -60,7 +60,6 @@ from skraflmechanics import Error
 
 
 class UserSummaryDict(TypedDict):
-
     """Summary data about a user"""
 
     uid: str
@@ -84,7 +83,6 @@ UserSummaryList = List[UserSummaryDict]
 
 
 class UserLoginDict(TypedDict):
-
     """Summary data about a login event"""
 
     user_id: str
@@ -101,7 +99,6 @@ class UserLoginDict(TypedDict):
 
 
 class UserDetailDict(TypedDict):
-
     """Additional data about a user, returned when logging in by user id"""
 
     name: str
@@ -110,7 +107,6 @@ class UserDetailDict(TypedDict):
 
 
 class UserProfileDict(TypedDict, total=False):
-
     """User profile, returned as a part of the /userstats response"""
 
     result: int
@@ -143,7 +139,6 @@ class UserProfileDict(TypedDict, total=False):
 
 
 class StatsSummaryDict(TypedDict):
-
     """A summary of statistics for a player at a given point in time"""
 
     ts: str  # An ISO-formatted time stamp
@@ -181,7 +176,7 @@ def make_login_dict(
     previous_token: Optional[str] = None,
 ) -> UserLoginDict:
     """Create a login credential object that is returned to the client"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     expires = now + lifetime
     # If asked, we create our own client token,
     # which the client can pass back later
@@ -235,7 +230,6 @@ def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
 
 
 class User:
-
     """Information about a human user including nickname and preferences"""
 
     # Use a lock to avoid potential race conditions between
@@ -284,7 +278,7 @@ class User:
         self._blocks: Optional[Set[str]] = None
         self._image: str = ""
         self._has_image_blob: bool = False
-        self._timestamp = datetime.utcnow()
+        self._timestamp = datetime.now(UTC)
         # The user location is typically an ISO country code
         self._location: str = ""
         # Number of completed human games
@@ -365,6 +359,10 @@ class User:
         provider prefix, i.e. "fb:" or "apple:") of the user"""
         return self._account or ""
 
+    def is_anonymous(self) -> bool:
+        """Returns True if the account is anonymous"""
+        return self.account().startswith(ANONYMOUS_PREFIX)
+
     def nickname(self) -> str:
         """Returns the human-readable nickname of a user,
         or userid if a nick is not available"""
@@ -427,7 +425,8 @@ class User:
         if self._inactive:
             # Inactive users are hidden
             return False
-        return True
+        # Anonymous users are hidden from user lists
+        return not self.is_anonymous()
 
     @property
     def preferences(self) -> PrefsDict:
@@ -517,7 +516,7 @@ class User:
             return ""
         if has_image_blob:
             # We have a stored BLOB for this user: return a URL to it
-            return url_for("api.image", uid=user_id)
+            return url_for("api.image_api", uid=user_id)
         # We have a stored URL: return it
         return image or ""
 
@@ -966,26 +965,32 @@ class User:
         image: str,
         *,
         locale: Optional[str] = None,
+        upgrade_from: Optional[str] = None,
     ) -> UserLoginDict:
         """Log in a user via the given account identifier and return her user id"""
         name = name.strip()
         # First, see if the user account already exists under the account id
         um = UserModel.fetch_account(account)
+        if um is None and upgrade_from:
+            # The user probably exists as an anonymous user with the upgrade_from id
+            um = UserModel.fetch(upgrade_from)
         if um is not None:
             # We've seen this user account before
+            # If this was an anonymous user, we need to assign a new account id
+            # (i.e. replace anon:XYZ with [google:]XYZ, fb:XYZ or apple:XYZ)
+            um.account = account
             if image and image != um.image:
                 # Use the opportunity to update the image, if different
                 um.image = image
             if email and email != um.email:
                 # Use the opportunity to update the email, if different
-                # (This should probably not happen very often)
                 um.email = email
             full_name = um.prefs.get("full_name", "") if um.prefs else ""
             if name and not full_name:
                 # Use the opportunity to update the name, if not already set
                 um.prefs["full_name"] = name
             # Note the login timestamp
-            um.last_login = datetime.utcnow()
+            um.last_login = datetime.now(UTC)
             # If the account was disabled, enable it again
             um.inactive = False
             um.put()
@@ -994,7 +999,7 @@ class User:
             # !!! TODO: Return the entire UserModel object to avoid re-loading it
             uld = make_login_dict(
                 user_id=um.user_id(),
-                account=um.account or account,
+                account=um.account,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
             )
@@ -1014,7 +1019,7 @@ class User:
                     # Use the opportunity to update the name, if not already set
                     um.prefs["full_name"] = name
                 # Note the last login
-                um.last_login = datetime.utcnow()
+                um.last_login = datetime.now(UTC)
                 # If the account was disabled, enable it again
                 um.inactive = False
                 user_id = um.put().id()
@@ -1080,7 +1085,7 @@ class User:
         if um is None:
             return None
         # Note the login timestamp
-        um.last_login = datetime.utcnow()
+        um.last_login = datetime.now(UTC)
         um.put()
         uld = make_login_dict(
             user_id=user_id,
@@ -1222,7 +1227,7 @@ class User:
             # Also, include a list of blocked users
             profile["list_blocked"] = cuser.list_blocked()
             # Also, include a 30-day history of Elo scores
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             # Time at midnight, i.e. start of the current day
             now = datetime(year=now.year, month=now.month, day=now.day)
             # We will return a 30-day history

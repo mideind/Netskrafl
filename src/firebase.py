@@ -34,7 +34,7 @@ from typing import (
 
 import threading
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from flask import Blueprint, request
 
 from firebase_admin import App, initialize_app, auth, messaging, db  # type: ignore
@@ -131,7 +131,7 @@ def send_update(*args: str) -> bool:
     if not args:
         return False
     endpoint = args[-1]
-    value = {endpoint: datetime.utcnow().isoformat()}
+    value = {endpoint: datetime.now(UTC).isoformat()}
     return send_message(value, *args[:-1])
 
 
@@ -333,7 +333,7 @@ def push_to_user(
         if not msg:
             return False
         # We don't send notifications to sessions that are older than 14 days
-        cutoff = datetime.utcnow() - timedelta(days=_PUSH_NOTIFICATION_CUTOFF)
+        cutoff = datetime.now(UTC) - timedelta(days=_PUSH_NOTIFICATION_CUTOFF)
         # msg is a dictionary of device tokens : { os, utc, locale }
         raw_message = cast(Mapping[str, PushMessageCallable], message)
         for device_token, device_info in msg.items():

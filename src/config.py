@@ -29,7 +29,7 @@ from typing import (
     Tuple,
     Callable,
 )
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import os
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
@@ -174,6 +174,9 @@ VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com")
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
 
+# Prefix of anonymous account identifiers
+ANONYMOUS_PREFIX = "anon:"
+
 
 class CacheEntryDict(TypedDict):
     value: Any
@@ -188,7 +191,7 @@ def ttl_cache(seconds: int) -> Callable[[Callable[..., Any]], Callable[..., Any]
         delta = timedelta(seconds=seconds)
 
         def wrapped(*args: Any, **kwargs: Any) -> Any:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(UTC)
             # Check if the value is in the cache and if it has not expired
             key = (*args, *kwargs.items())
             val = cache.get(key)

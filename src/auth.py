@@ -18,9 +18,9 @@
 from __future__ import annotations
 from functools import lru_cache
 
-from typing import cast, Any, Optional, Dict
+from typing import Mapping, cast, Any, Optional, Dict
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 
 import requests
@@ -35,6 +35,7 @@ from google.auth.transport import requests as google_requests  # type: ignore
 from google.auth.exceptions import GoogleAuthError  # type: ignore
 
 from config import (
+    ANONYMOUS_PREFIX,
     CLIENT,
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
@@ -48,6 +49,7 @@ from basics import (
     jsonify,
     UserIdDict,
     ResponseType,
+    session_data,
     set_session_cookie,
     RequestData,
 )
@@ -71,6 +73,38 @@ google_request = google_requests.Request(session=cached_session)
 
 # For testing purposes only: a hard-coded user image URL
 TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADdaFE9Pk1NobKf2veK6Hvt=s96-c"
+
+# Characters that are forbidden in Firebase paths
+FIREBASE_FORBIDDEN_CHARS = ".#$[]/"
+FIREBASE_TRANSLATE = str.maketrans(
+    FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS)
+)
+
+
+# Utility function for making account IDs compatible with Firebase
+# key restrictions
+def firebase_key(s: str) -> str:
+    return s.translate(FIREBASE_TRANSLATE)
+
+
+def authorized_as_anonymous(request: Request) -> bool:
+    """Check whether the request contains the required authorization header
+    that identifies it as legitimately anonymous."""
+    config: FlaskConfig = cast(Any, current_app).config
+    AUTH_SECRET = config.get("AUTH_SECRET", "")
+    if not AUTH_SECRET or not request.json:
+        return False
+    # Check for our secret bearer token AUTH_SECRET
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        # 401 - Unauthorized
+        return False
+    token = auth[7:]
+    if token != AUTH_SECRET:
+        # 401 - Unauthorized
+        return False
+    # Seems legit
+    return True
 
 
 def oauth2callback(request: Request) -> ResponseType:
@@ -192,8 +226,21 @@ def oauth2callback(request: Request) -> ResponseType:
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
             locale = (idinfo.get("locale") or DEFAULT_LOCALE).replace("-", "_")
+            # Check whether this is an upgrade of an anonymous user
+            # to a fully authenticated user
+            upgrade_from: Optional[str] = None
+            sd = session_data()
+            if sd and sd.get("method") == "Anonymous":
+                # We already have a valid anonymous user session:
+                # upgrade the user to a fully authenticated user
+                upgrade_from = sd.get("userid")
             uld = User.login_by_account(
-                account, name or "", email or "", image or "", locale=locale
+                account,
+                name or "",
+                email or "",
+                image or "",
+                locale=locale,
+                upgrade_from=upgrade_from,
             )
             # Store login data where we'll find it again, and return
             # some of it back to the client
@@ -314,7 +361,17 @@ def oauth_fb(request: Request) -> ResponseType:
     account = "fb:" + account
     # Login or create the user in the Explo user model
     locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
-    uld = User.login_by_account(account, name, email, image, locale=locale)
+    # Check whether this is an upgrade of an anonymous user
+    # to a fully authenticated user
+    upgrade_from: Optional[str] = None
+    sd = session_data()
+    if sd and sd.get("method") == "Anonymous":
+        # We already have a valid anonymous user session:
+        # upgrade the user to a fully authenticated user
+        upgrade_from = sd.get("userid")
+    uld = User.login_by_account(
+        account, name, email, image, locale=locale, upgrade_from=upgrade_from
+    )
     userid = uld.get("user_id") or ""
     uld["method"] = "Facebook"
     # Create the session dictionary that will be set as a cookie
@@ -360,7 +417,7 @@ def oauth_apple(request: Request) -> ResponseType:
     token = rq.get("token", "")
     if not token:
         return jsonify({"status": "invalid", "msg": "Missing token"}), 401
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     today = datetime(now.year, now.month, now.day)
 
     try:
@@ -402,9 +459,19 @@ def oauth_apple(request: Request) -> ResponseType:
     # by prefixing them with 'apple:'. Note that Firebase paths cannot contain
     # periods, so we replace those with underscores, enabling the account
     # id to be used as a part of a Firebase path.
-    account = "apple:" + uid.replace(".", "_")
+    account = "apple:" + firebase_key(uid)
+    # Check whether this is an upgrade of an anonymous user
+    # to a fully authenticated user
+    upgrade_from: Optional[str] = None
+    sd = session_data()
+    if sd and sd.get("method") == "Anonymous":
+        # We already have a valid anonymous user session:
+        # upgrade the user to a fully authenticated user
+        upgrade_from = sd.get("userid")
     # Login or create the user in the Explo user model
-    uld = User.login_by_account(account, name, email, image, locale=locale)
+    uld = User.login_by_account(
+        account, name, email, image, locale=locale, upgrade_from=upgrade_from
+    )
     userid = uld.get("user_id") or ""
     uld["method"] = "Apple"
     # Populate the session dictionary that will be set as a cookie
@@ -512,4 +579,66 @@ def oauth_explo(request: Request) -> ResponseType:
     # Set the Flask session cookie
     set_session_cookie(userid, sd=sd)
     # Send a bunch of login data back to the client via the UserLoginDict instance
+    return jsonify(dict(status="success", **uld))
+
+
+def oauth_anonymous(request: Request) -> ResponseType:
+    """Anonymous login, i.e. one where the user hasn't (yet) signed in
+    via any of the regular OAuth2 methods. This typically relies on a device id
+    to identify the user."""
+    if not authorized_as_anonymous(request):
+        return (
+            jsonify({"status": "invalid", "msg": "Invalid anonymous login attempt"}),
+            401,
+        )
+
+    # Get the device id from the "sub" field in the request JSON
+    f = cast(Optional[Mapping[str, str]], request.json)
+    if f is None or not (sub := f.get("sub", "")):
+        # 401 - Unauthorized
+        return (
+            jsonify({"status": "invalid", "msg": "Invalid anonymous login attempt"}),
+            401,
+        )
+
+    # This appears to be our client and the request is authorized;
+    # proceed with the anonymous login
+    client_type = f.get("clientType", "web")  # Default client type
+    locale = (f.get("locale", "") or DEFAULT_LOCALE).replace("-", "_")
+
+    # Prefix the incoming device id with 'anon:' to distinguish
+    # it from properly authenticated ids
+    sub = ANONYMOUS_PREFIX + firebase_key(sub)
+
+    # Attempt to find an associated user record in the datastore,
+    # or create a fresh user record if not found.
+    # Note that we have no name, e-mail or image for an anonymous user.
+    uld = User.login_by_account(sub, "", "", "", locale=locale)
+
+    # Obtain the unique user id (key), under which this account is stored
+    # in the UserModel table in the datastore
+    userid = uld["user_id"]
+
+    if not userid:
+        # Unable to obtain the user id for some reason
+        # 401 - Unauthorized
+        logging.error("Unable to obtain user id in anonymous sign-in")
+        return (
+            jsonify({"status": "invalid", "msg": "No user id in anonymous sign-in"}),
+            401,
+        )
+
+    sd = SessionDict(
+        userid=userid,
+        method="Anonymous",
+        new=uld.get("new") or False,
+        client_type=client_type,
+    )
+    uld["method"] = sd["method"]
+
+    # Authentication complete; user id obtained
+    # Set the Flask session cookie
+    set_session_cookie(userid, sd=sd)
+    # Send a bunch of login data back to the client
+    # via the UserLoginDict instance
     return jsonify(dict(status="success", **uld))

@@ -1,8 +1,8 @@
 """
 
-    Web server for netskrafl.is
+    Server API for netskrafl.is / Explo Word Game
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -16,51 +16,44 @@
 """
 
 from __future__ import annotations
-import functools
+from functools import wraps
 
 from typing import (
     Optional,
     Dict,
-    Mapping,
     Sequence,
     TypedDict,
-    Union,
     List,
-    Iterable,
     Any,
-    TypeVar,
     Tuple,
     Callable,
-    Set,
     cast,
 )
 
 import os
-import re
 import logging
-import threading
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 import base64
 import io
 
 from flask import (
     Blueprint,
     request,
-    url_for,
     send_file,  # type: ignore
 )
 from flask.globals import current_app
-
 from werkzeug.utils import redirect
 
 from config import (
     RC_WEBHOOK_AUTH,
+    RouteType,
     running_local,
     PROJECT_ID,
     DEFAULT_LOCALE,
     ResponseType,
 )
 from basics import (
+    RouteFunc,
     is_mobile_client,
     jsonify,
     auth_required,
@@ -69,151 +62,43 @@ from basics import (
     current_user_id,
     clear_session_userid,
 )
-from cache import memcache
 from languages import (
     Alphabet,
     current_board_type,
     set_game_locale,
-    current_lc,
-    current_alphabet,
-    current_language,
     to_supported_locale,
-    RECOGNIZED_LOCALES,
 )
 from dawgdictionary import Wordbase
 from skraflmechanics import (
     Board,
-    MoveBase,
-    Move,
-    PassMove,
-    ExchangeMove,
-    ResignMove,
-    ChallengeMove,
     Error,
 )
-from skrafluser import MAX_NICKNAME_LENGTH, User
+from skrafluser import User
 from skraflgame import BestMoveList, Game
-from skraflplayer import AutoPlayer
 from skrafldb import (
     ChatModel,
-    ListPrefixDict,
     ZombieModel,
     PrefsDict,
-    ChallengeModel,
-    ChallengeTuple,
     UserModel,
-    FavoriteModel,
-    GameModel,
-    RatingModel,
 )
 import firebase
 from billing import cancel_plan
 import auth
-
-# Type definitions
-T = TypeVar("T")
-UserPrefsType = Dict[str, Union[str, bool]]
-
-
-class GameListDict(TypedDict):
-    """The dictionary returned from gamelist()"""
-
-    uuid: str
-    locale: str
-    url: str
-    oppid: Optional[str]
-    opp: str
-    fullname: str
-    sc0: int
-    sc1: int
-    ts: str
-    my_turn: bool
-    overdue: bool
-    zombie: bool
-    prefs: Dict[str, bool]
-    timed: int
-    tile_count: int
-    live: bool
-    image: str
-    fav: bool
-    robot_level: int
-    elo: int
-    human_elo: int
-
-
-GameList = List[GameListDict]
-
-
-class RecentListDict(TypedDict):
-    """The dictionary returned from recentlist()"""
-
-    uuid: str
-    locale: str
-    url: str
-    oppid: Optional[str]
-    opp: str
-    opp_is_robot: bool
-    robot_level: int
-    sc0: int
-    sc1: int
-    elo_adj: Optional[int]
-    human_elo_adj: Optional[int]
-    ts_last_move: str
-    days: int
-    hours: int
-    minutes: int
-    prefs: Dict[str, Union[int, bool]]
-    live: bool
-    image: str
-    fav: bool
-    elo: int
-    human_elo: int
-
-
-RecentList = List[RecentListDict]
-
-
-class ChallengeListDict(TypedDict):
-    """The dictionary returned from _challengelist()"""
-
-    key: str
-    received: bool
-    userid: str
-    opp: str
-    fullname: str
-    prefs: Optional[PrefsDict]
-    ts: str
-    opp_ready: bool
-    live: bool
-    image: str
-    fav: bool
-    elo: int
-    human_elo: int
-
-
-ChallengeList = List[ChallengeListDict]
-
-
-class UserListDict(TypedDict):
-    """The dictionary returned from _userlist()"""
-
-    userid: str
-    robot_level: int
-    nick: str
-    fullname: str
-    elo: str  # Elo score or hyphen
-    human_elo: str  # Elo score or hyphen
-    fav: bool
-    chall: bool
-    fairplay: bool
-    newbag: bool
-    ready: bool
-    ready_timed: bool
-    live: bool
-    image: str
-
-
-UserList = List[UserListDict]
+from logic import (
+    EXPLO_LOGO_URL,
+    MoveNotifyDict,
+    UserForm,
+    opponent_waiting,
+    localize_push_message,
+    process_move,
+    set_online_status_for_chats,
+    autoplayer_lock,
+    userlist,
+    gamelist,
+    recentlist,
+    challengelist,
+    rating,
+)
 
 
 class ChatMessageDict(TypedDict):
@@ -244,19 +129,6 @@ class ChatHistoryDict(TypedDict):
 ChatHistoryList = List[ChatHistoryDict]
 
 
-class MoveNotifyDict(TypedDict):
-    """A notification sent via Firebase to clients when a move has been
-    processed"""
-
-    game: str
-    timestamp: str
-    players: Tuple[Optional[str], Optional[str]]  # None if robot
-    over: bool
-    to_move: int
-    scores: Tuple[int, int]
-    progress: Tuple[int, int]
-
-
 class RevenueCatEvent(TypedDict, total=False):
     """A JSON object describing a subscription event from RevenueCat"""
 
@@ -266,288 +138,77 @@ class RevenueCatEvent(TypedDict, total=False):
     transferred_to: Sequence[str]
 
 
-# Maximum number of online users to display
-MAX_ONLINE = 80
-
 # Default number of best moves to return from /bestmoves.
 # This is set to 19 moves because that number is what fits
 # in the move list of the fullscreen web version.
 DEFAULT_BEST_MOVES = 19
 # Maximum number of best moves to return from /bestmoves
 MAX_BEST_MOVES = 20
-
-EXPLO_LOGO_URL = "https://explo-live.appspot.com/static/icon-explo-192.png"
-
-# To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
-# exceptions, run the AutoPlayer move generators serially and exclusively
-# within an instance
-autoplayer_lock = threading.Lock()
+# Only allow POST requests to the API endpoints
+_ONLY_POST: Sequence[str] = ["POST"]
 
 # Register the Flask blueprint for the APIs
 api = api_blueprint = Blueprint("api", __name__)
 
-VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
-    "is": {
-        "NICK_MISSING": "Notandi verður að hafa einkenni",
-        "NICK_NOT_ALPHANUMERIC": "Einkenni má aðeins innihalda bók- og tölustafi",
-        "NICK_TOO_LONG": f"Einkenni má ekki vera lengra en {MAX_NICKNAME_LENGTH} stafir",
-        "EMAIL_NO_AT": "Tölvupóstfang verður að innihalda @-merki",
-        "LOCALE_UNKNOWN": "Óþekkt staðfang (locale)",
-    },
-    "en_US": {
-        "NICK_MISSING": "Nickname missing",
-        "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
-        "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
-        "EMAIL_NO_AT": "E-mail address must contain @ sign",
-        "LOCALE_UNKNOWN": "Unknown locale",
-    },
-    "en_GB": {
-        "NICK_MISSING": "Nickname missing",
-        "NICK_NOT_ALPHANUMERIC": "Nickname can only contain letters and numbers",
-        "NICK_TOO_LONG": f"Nickname must not be longer than {MAX_NICKNAME_LENGTH} characters",
-        "EMAIL_NO_AT": "E-mail address must contain @ sign",
-        "LOCALE_UNKNOWN": "Unknown locale",
-    },
-    "pl": {
-        "NICK_MISSING": "Brak nazwy użytkownika",
-        "NICK_NOT_ALPHANUMERIC": "Nazwa użytkownika może zawierać tylko litery i cyfry",
-        "NICK_TOO_LONG": f"Nazwa użytkownika nie może mieć więcej niż {MAX_NICKNAME_LENGTH} znaków",
-        "EMAIL_NO_AT": "Adres e-mail musi zawierać znak @",
-        "LOCALE_UNKNOWN": "Nieznana lokalizacja",
-    },
-    "nb": {
-        "NICK_MISSING": "Mangler kallenavn",
-        "NICK_NOT_ALPHANUMERIC": "Kallenavn kan bare inneholde bokstaver og tall",
-        "NICK_TOO_LONG": f"Kallenavn kan ikke være lengre enn {MAX_NICKNAME_LENGTH} tegn",
-        "EMAIL_NO_AT": "E-postadressen må inneholde @-tegn",
-        "LOCALE_UNKNOWN": "Ukjent lokalitet",
-    },
-    "ga": {
-        "NICK_MISSING": "Ainm cleite in easnamh",
-        "NICK_NOT_ALPHANUMERIC": "Ní féidir le hainm cleite ach litreacha agus uimhreacha a áireamh",
-        "NICK_TOO_LONG": "Ní mór d'ainm cleite a bheith níos lú ná {MAX_NICKNAME_LENGTH} carachtair",
-        "EMAIL_NO_AT": "Caithfidh seoladh ríomhphoist comhartha @ a áireamh",
-        "LOCALE_UNKNOWN": "Locale anaithnid",
-    },
-}
 
-PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
-    "title": {
-        "is": "Þú átt leik í Explo 💥",
-        "en": "Your turn in Explo 💥",
-        "pl": "Twoja kolej w Explo 💥",
-        "nb": "Din tur i Explo 💥",
-        "ga": "Do sheal i Explo 💥",
-    },
-    "body": {
-        "is": "{player} hefur leikið í viðureign ykkar.",
-        "en": "{player} made a move in your game.",
-        "pl": "{player} wykonał ruch w Twojej grze.",
-        "nb": "{player} har gjort et trekk i spillet ditt.",
-        "ga": "Rinne {player} gluaiseacht i do chluiche.",
-    },
-    "chall_title": {
-        "is": "Þú fékkst áskorun í Explo 💥",
-        "en": "You've been challenged in Explo 💥",
-        "pl": "Zostałeś wyzwany w Explo 💥",
-        "nb": "Du har blitt utfordret i Explo 💥",
-        "ga": "Tá dúshlán curtha ort i Explo 💥",
-    },
-    "chall_body": {
-        "is": "{player} hefur skorað á þig í viðureign!",
-        "en": "{player} has challenged you to a game!",
-        "pl": "{player} wyzwał cię na pojedynek!",
-        "nb": "{player} har utfordret deg til en kamp!",
-        "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!",
-    },
-}
+def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
+    """Decorator for API routes; checks that the name of the route function ends with '_api'"""
+
+    def decorator(f: RouteType) -> RouteType:
+
+        assert f.__name__.endswith("_api"), f"Name of API function '{f.__name__}' must end with '_api'"
+
+        @api.route(route, methods=methods)
+        @wraps(f)
+        def wrapper(*args: Any, **kwargs: Any) -> ResponseType:
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
-class UserForm:
-    """Encapsulates the data in the user preferences form"""
-
-    def __init__(self, usr: Optional[User] = None) -> None:
-        # We store the URL that the client will redirect to after
-        # doing an auth2.disconnect() call, clearing client-side
-        # credentials. The login() handler clears the server-side
-        # user cookie, so there is no need for an intervening redirect
-        # to logout().
-        self.logout_url: str = url_for("web.logout")
-        self.nickname: str = ""
-        self.full_name: str = ""
-        self.id: str = ""
-        self.email: str = ""
-        self.image: str = ""
-        self.audio: bool = True
-        self.fanfare: bool = True
-        self.beginner: bool = True
-        self.fairplay: bool = False  # Defaults to False, must be explicitly set to True
-        self.friend: bool = False
-        self.has_paid: bool = False
-        self.chat_disabled: bool = False
-        self.locale: str = current_lc()
-        if usr:
-            self.init_from_user(usr)
-
-    def init_from_form(self, form: Dict[str, str]) -> None:
-        """The form has been submitted after editing: retrieve the entered data"""
-        try:
-            self.nickname = form["nickname"].strip()[0:MAX_NICKNAME_LENGTH]
-        except (TypeError, ValueError, KeyError):
-            pass
-        try:
-            self.full_name = form["full_name"].strip()
-        except (TypeError, ValueError, KeyError):
-            pass
-        try:
-            self.email = form["email"].strip()
-        except (TypeError, ValueError, KeyError):
-            pass
-        # An empty locale is mapped to DEFAULT_LOCALE
-        self.locale = to_supported_locale(form.get("locale", "").strip())
-        try:
-            self.image = form["image"].strip()
-        except (TypeError, ValueError, KeyError):
-            pass
-        try:
-            self.audio = "audio" in form  # State of the checkbox
-            self.fanfare = "fanfare" in form
-            self.beginner = "beginner" in form
-            self.fairplay = "fairplay" in form
-            self.chat_disabled = "chat_disabled" in form
-        except (TypeError, ValueError, KeyError):
-            pass
-
-    def init_from_dict(self, d: Dict[str, str]) -> None:
-        """The form has been submitted after editing: retrieve the entered data"""
-        try:
-            self.nickname = d.get("nickname", "").strip()[0:MAX_NICKNAME_LENGTH]
-        except (TypeError, ValueError):
-            pass
-        try:
-            self.full_name = d.get("full_name", "").strip()
-        except (TypeError, ValueError):
-            pass
-        try:
-            self.email = d.get("email", "").strip()
-        except (TypeError, ValueError):
-            pass
-        # An empty locale is mapped to DEFAULT_LOCALE
-        self.locale = to_supported_locale(d.get("locale", "").strip())
-        try:
-            self.image = d.get("image", "").strip()
-        except (TypeError, ValueError, KeyError):
-            pass
-        try:
-            self.audio = bool(d.get("audio", False))
-            self.fanfare = bool(d.get("fanfare", False))
-            self.beginner = bool(d.get("beginner", False))
-            self.fairplay = bool(d.get("fairplay", False))
-            self.chat_disabled = bool(d.get("chat_disabled", False))
-        except (TypeError, ValueError, KeyError):
-            pass
-
-    def init_from_user(self, usr: User) -> None:
-        """Load the data to be edited upon initial display of the form"""
-        self.nickname = usr.nickname()
-        self.full_name = usr.full_name()
-        # Note that the email property of a User is fetched from the user
-        # preferences, not from the email field in the database.
-        self.email = usr.email()
-        self.audio = usr.audio()
-        self.fanfare = usr.fanfare()
-        self.beginner = usr.beginner()
-        self.fairplay = usr.fairplay()
-        # Eventually, we will edit a plan identifier, not just a boolean
-        self.friend = usr.plan() != ""
-        self.has_paid = usr.has_paid()
-        self.chat_disabled = usr.chat_disabled()
-        self.locale = usr.locale
-        self.id = current_user_id() or ""
-        self.image = usr.image()
-
-    @staticmethod
-    def error_msg(key: str) -> str:
-        """Return a validation error message, in the appropriate language"""
-        lang = current_language()
-        if lang not in VALIDATION_ERRORS:
-            # Default to U.S. English
-            lang = "en_US"
-        return VALIDATION_ERRORS[lang].get(key, "")
-
-    def validate(self) -> Dict[str, str]:
-        """Check the current form data for validity
-        and return a dict of errors, if any"""
-        errors: Dict[str, str] = dict()
-        # pylint: disable=bad-continuation
-        if not self.nickname:
-            errors["nickname"] = self.error_msg("NICK_MISSING")
-        elif len(self.nickname) > MAX_NICKNAME_LENGTH:
-            errors["nickname"] = self.error_msg("NICK_TOO_LONG")
-        elif not re.match(r"^\w+$", self.nickname):
-            errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
-        if self.email and "@" not in self.email:
-            errors["email"] = self.error_msg("EMAIL_NO_AT")
-        if self.locale not in RECOGNIZED_LOCALES:
-            errors["locale"] = self.error_msg("LOCALE_UNKNOWN")
-        return errors
-
-    def store(self, usr: User) -> None:
-        """Store validated form data back into the user entity"""
-        usr.set_nickname(self.nickname)
-        usr.set_full_name(self.full_name)
-        # Note that the User.set_email() call sets the email in the user preferences,
-        # not the email property in the database. This is intentional and by design.
-        usr.set_email(self.email)
-        usr.set_audio(self.audio)
-        usr.set_fanfare(self.fanfare)
-        usr.set_beginner(self.beginner)
-        usr.set_fairplay(self.fairplay)
-        usr.disable_chat(self.chat_disabled)
-        usr.set_locale(self.locale)
-        # usr.set_image(self.image)  # The user image cannot and must not be set like this
-        usr.update()
-
-    def as_dict(self) -> UserPrefsType:
-        """Return the user preferences as a dictionary"""
-        return self.__dict__
-
-
-@api.route("/oauth2callback", methods=["POST"])
-def oauth2callback() -> ResponseType:
+@api_route("/oauth2callback")
+def oauth2callback_api() -> ResponseType:
     """The OAuth2 login flow POSTs to this callback when a user has
     signed in using a Google Account"""
     return auth.oauth2callback(request)
 
 
-@api.route("/oauth_fb", methods=["POST"])
-def oauth_fb() -> ResponseType:
+@api_route("/oauth_fb")
+def oauth_fb_api() -> ResponseType:
     """Facebook authentication"""
     return auth.oauth_fb(request)
 
 
-@api.route("/oauth_apple", methods=["POST"])
-def oauth_apple() -> ResponseType:
+@api_route("/oauth_apple")
+def oauth_apple_api() -> ResponseType:
     """Apple authentication"""
     return auth.oauth_apple(request)
 
 
-@api.route("/oauth_explo", methods=["POST"])
-def oauth_explo() -> ResponseType:
+@api_route("/oauth_explo")
+def oauth_explo_api() -> ResponseType:
     """Explo authentication"""
     return auth.oauth_explo(request)
 
 
-@api.route("/logout", methods=["POST"])
-def logout() -> ResponseType:
+@api_route("/oauth_anon")
+def oauth_anon_api() -> ResponseType:
+    """Anonymous authentication"""
+    return auth.oauth_anonymous(request)
+
+
+@api_route("/logout")
+def logout_api() -> ResponseType:
     """Log the current user out"""
     clear_session_userid()
     return jsonify({"status": "success"})
 
 
-@api.route("/delete_account", methods=["POST"])
-@auth_required(ok=False)
-def delete_account() -> ResponseType:
+@api_route("/delete_account")
+@auth_required(allow_anonymous=False, ok=False)
+def delete_account_api() -> ResponseType:
     """Delete the account of the current user"""
     # This marks the account as inactive and erases personally identifiable data
     # such as the full name, the email address and the profile picture.
@@ -560,9 +221,9 @@ def delete_account() -> ResponseType:
     return jsonify(ok=True)
 
 
-@api.route("/firebase_token", methods=["POST"])
+@api_route("/firebase_token")
 @auth_required(ok=False)
-def firebase_token() -> ResponseType:
+def firebase_token_api() -> ResponseType:
     """Obtain a custom Firebase token for the current logged-in user"""
     cuid = current_user_id()
     if not cuid:
@@ -574,909 +235,9 @@ def firebase_token() -> ResponseType:
         return jsonify(ok=False)
 
 
-def localize_push_message(key: str, locale: str) -> str:
-    """Return a localized push message for the given key and locale"""
-    pm = PUSH_MESSAGES.get(key)
-    if pm is None:
-        return ""
-    txt = pm.get(locale)
-    if txt is None and len(locale) > 2:
-        # Try to find a message for the language only
-        txt = pm.get(locale[0:2])
-    if txt is None:
-        # Default to English
-        txt = pm.get("en")
-    return txt or ""
-
-
-def _process_move(
-    game: Game, movelist: Iterable[str], *, force_resign: bool = False
-) -> ResponseType:
-    """Process a move coming in from the client.
-    If force_resign is True, it is actually the opponent of the
-    tardy player who is initiating the move, so we send the
-    Firebase notification to the opposite (tardy) player in that case."""
-
-    assert game is not None
-
-    game_id = game.id()
-
-    if game_id is None or game.is_over() or game.is_erroneous():
-        # This game is already completed, or cannot be correctly
-        # serialized from the datastore
-        return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Note that in the case of a forced resignation,
-    # player_index is the index of the tardy opponent of the player
-    # that is initiating the resignation
-    player_index = game.player_to_move()
-    opponent_index = 1 - player_index
-
-    # Parse the move from the movestring we got back
-    m: MoveBase = Move("", 0, 0)
-    # pylint: disable=broad-except
-    try:
-        for mstr in movelist:
-            if mstr == "pass":
-                # Pass move (or accepting the last move in the game
-                # without challenging it)
-                m = PassMove()
-                break
-            if mstr.startswith("exch="):
-                # Exchange move
-                m = ExchangeMove(mstr[5:])
-                break
-            if mstr == "rsgn":
-                # Resign from game, forfeiting all points
-                assert game.state is not None
-                m = ResignMove(game.state.scores()[player_index])
-                break
-            if mstr == "chall":
-                # Challenging the last move
-                m = ChallengeMove()
-                break
-            sq, tile = mstr.split("=")
-            row = "ABCDEFGHIJKLMNO".index(sq[0])
-            col = int(sq[1:]) - 1
-            if tile[0] == "?":
-                # If the blank tile is played, the next character contains
-                # its meaning, i.e. the letter it stands for
-                letter = tile[1]
-                tile = tile[0]
-            else:
-                letter = tile
-            assert isinstance(m, Move)
-            m.add_cover(row, col, tile, letter)
-    except Exception as e:
-        logging.info("Exception in _process_move(): {0}".format(e))
-
-    # Process the move string here
-    # Unpack the error code and message
-    err = game.check_legality(m)
-    msg = ""
-    if isinstance(err, tuple):
-        err, msg = err
-
-    if err != Error.LEGAL:
-        # Something was wrong with the move:
-        # show the user a corresponding error message
-        return jsonify(result=err, msg=msg)
-
-    opponent: Optional[str] = None
-
-    # Serialize access to the following code section
-    with autoplayer_lock:
-
-        # Move is OK: register it and update the state
-        game.register_move(m)
-
-        # If it's the autoplayer's move, respond immediately
-        # (can be a bit time consuming if rack has one or two blank tiles)
-        # Note that if force_resign is True, opponent is the id
-        # of the player who initiates the resignation (not the tardy player)
-        opponent = game.player_id_to_move()
-
-        is_over = game.is_over()
-
-        if not is_over:
-
-            if opponent is None:
-                # Generate an autoplayer move in response
-                game.autoplayer_move()
-                is_over = game.is_over()  # State may change during autoplayer_move()
-            elif m.needs_response_move:
-                # Challenge move: generate a response move
-                game.response_move()
-                is_over = game.is_over()  # State may change during response_move()
-
-        if is_over:
-            # If the game is now over, tally the final score
-            game.finalize_score()
-
-        # Make sure the new game state is persistently recorded
-        game.store(calc_elo_points=is_over)
-
-        if force_resign:
-            # Reverse the opponent and the player_index, since we want
-            # to notify the tardy opponent, not the player who forced the resignation
-            # Make sure that opponent is the tardy player
-            opponent_index = player_index
-            opponent = game.player_id(opponent_index)
-
-        # If the game is now over, and the opponent is human, add it to the
-        # zombie game list so that the opponent has a better chance to notice
-        # the result
-        if is_over and opponent is not None:
-            ZombieModel.add_game(game_id, opponent)
-
-    # Prepare the messages/notifications to be sent via Firebase
-    now = datetime.utcnow().isoformat()
-    msg_dict: Dict[str, Any] = dict()
-    # Prepare a summary dict of the state of the game after the move
-    assert game.state is not None
-    move_dict: MoveNotifyDict = {
-        "game": game_id,
-        "timestamp": now,
-        "players": (game.player_ids[0], game.player_ids[1]),
-        "over": game.state.is_game_over(),
-        "to_move": game.player_to_move(),
-        "scores": game.state.scores(),
-        "progress": game.state.progress(),
-    }
-
-    if opponent:
-        # Send a game update to the opponent, if human, including
-        # the full client state. board.html and main.html listen to this.
-        # Also update the user/[opp_id]/move branch with the newest move data.
-        client_state = game.client_state(opponent_index, m)
-        msg_dict = {
-            f"game/{game_id}/{opponent}/move": client_state,
-            f"user/{opponent}/move": move_dict,
-        }
-        # Push a Firebase notification message to the opponent,
-        # in the correct language for each client session
-        opp_nick = game.player_nickname(1 - opponent_index)
-        firebase.push_to_user(
-            opponent,
-            {
-                "title": lambda locale: localize_push_message("title", locale),
-                "body": lambda locale: localize_push_message("body", locale).format(
-                    player=opp_nick
-                ),
-                "image": lambda locale: EXPLO_LOGO_URL,
-            },
-            {
-                "type": "notify-move",
-                "game": game_id,
-            },
-        )
-
-    if player := game.player_id(1 - opponent_index):
-        # Add a move notification to the original player as well,
-        # since she may have multiple clients and we want to update'em all
-        msg_dict[f"user/{player}/move"] = move_dict
-
-    if msg_dict:
-        firebase.send_message(msg_dict)
-
-    # Return a state update to the client (board, rack, score, movelist, etc.)
-    return jsonify(game.client_state(1 - opponent_index))
-
-
-def fetch_users(
-    ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
-) -> Dict[str, User]:
-    """Return a dictionary of users found in the ulist"""
-    # Make a set of user ids by applying the uid_func
-    # to ulist entries (!= None)
-    uids: Set[str] = set(uid for u in ulist if (uid := (u is not None) and uid_func(u)))
-    # No need for a special case for an empty list
-    user_objects = User.load_multi(uids)
-    # Return a dictionary mapping user ids to users
-    return {uid: user for uid, user in zip(uids, user_objects)}
-
-
-# Kludge to create reasonably type-safe functions for each type of
-# dictionary that contains some kind of user id and has a 'live' property
-set_online_status_for_users = functools.partial(firebase.set_online_status, "userid")
-set_online_status_for_games = functools.partial(firebase.set_online_status, "oppid")
-set_online_status_for_chats = functools.partial(firebase.set_online_status, "user")
-
-
-def _userlist(query: str, spec: str) -> UserList:
-    """Return a list of users matching the filter criteria"""
-
-    result: UserList = []
-
-    def elo_str(elo: Union[None, int, str]) -> str:
-        """Return a string representation of an Elo score, or a hyphen if none"""
-        return str(elo) if elo else "-"
-
-    cuser = current_user()
-    cuid = None if cuser is None else cuser.id()
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-
-    if query == "robots":
-        # Return the list of available autoplayers for the user's locale
-        aplist = AutoPlayer.for_locale(locale)
-        for r in aplist:
-            result.append(
-                UserListDict(
-                    userid="robot-" + str(r.level),
-                    robot_level=r.level,
-                    nick=r.name,
-                    fullname=r.description,
-                    elo=elo_str(None),
-                    human_elo=elo_str(None),
-                    fav=False,
-                    chall=False,
-                    fairplay=False,  # The robots don't play fair ;-)
-                    newbag=True,
-                    ready=True,  # The robots are always ready for a challenge
-                    ready_timed=False,  # Timed games are not available for robots
-                    live=True,  # robots are always online
-                    image="",
-                )
-            )
-        # That's it; we're done (no sorting required)
-        return result
-
-    # Generate a list of challenges issued by this user
-    challenges: Set[str] = set()
-    if cuid:
-        challenges.update(
-            # ch[0] is the identifier of the challenged user
-            [
-                cid
-                for ch in ChallengeModel.list_issued(cuid, max_len=20)
-                if (cid := ch[0]) is not None
-            ]
-        )
-
-    # Note that we only consider online users in the same locale
-    # as the requesting user
-    online = firebase.online_status(locale)
-
-    # Set of users blocked by the current user
-    blocked: Set[str] = cuser.blocked() if cuser else set()
-
-    func_online_status: Optional[firebase.OnlineStatusFunc] = None
-
-    if query == "live":
-        # Return a sample (no larger than MAX_ONLINE items)
-        # of online (live) users. Note that these are always
-        # grouped by locale, so all returned users will be in
-        # the same locale as the current user.
-
-        iter_online = online.random_sample(MAX_ONLINE)
-        ousers = User.load_multi(iter_online)
-
-        for lu in ousers:
-            if (
-                lu
-                and lu.is_displayable()
-                and (uid := lu.id())
-                and uid != cuid
-                and uid not in blocked
-            ):
-                # Don't display the current user in the online list
-                chall = uid in challenges
-                result.append(
-                    UserListDict(
-                        userid=uid,
-                        robot_level=0,
-                        nick=lu.nickname(),
-                        fullname=lu.full_name(),
-                        elo=elo_str(lu.elo()),
-                        human_elo=elo_str(lu.human_elo()),
-                        fav=False if cuser is None else cuser.has_favorite(uid),
-                        chall=chall,
-                        fairplay=lu.fairplay(),
-                        newbag=True,
-                        ready=lu.is_ready(),
-                        ready_timed=lu.is_ready_timed(),
-                        live=True,
-                        image=lu.image(),
-                    )
-                )
-
-    elif query == "fav":
-        # Return favorites of the current user, filtered by
-        # the user's current locale
-        if cuid is not None:
-            i = set(FavoriteModel.list_favorites(cuid))
-            # Do a multi-get of the entire favorites list
-            fusers = User.load_multi(i)
-            # Look up users' online status later
-            func_online_status = online.users_online
-            for fu in fusers:
-                if (
-                    fu
-                    and fu.is_displayable()
-                    and fu.locale == locale
-                    and (favid := fu.id())
-                    and favid not in blocked
-                ):
-                    chall = favid in challenges
-                    result.append(
-                        UserListDict(
-                            userid=favid,
-                            robot_level=0,
-                            nick=fu.nickname(),
-                            fullname=fu.full_name(),
-                            elo=elo_str(fu.elo()),
-                            human_elo=elo_str(fu.human_elo()),
-                            fav=True,
-                            chall=chall,
-                            fairplay=fu.fairplay(),
-                            newbag=True,
-                            live=False,  # Will be filled in later
-                            ready=fu.is_ready(),
-                            ready_timed=fu.is_ready_timed(),
-                            image=fu.image(),
-                        )
-                    )
-
-    elif query == "alike":
-        # Return users with similar Elo ratings, in the same locale
-        # as the requesting user
-        if cuid is not None:
-            assert cuser is not None
-            ui = UserModel.list_similar_elo(
-                cuser.human_elo(), max_len=40, locale=locale
-            )
-            ausers = User.load_multi(ui)
-            # Look up users' online status later
-            func_online_status = online.users_online
-            for au in ausers:
-                if (
-                    au
-                    and au.is_displayable()
-                    and (uid := au.id())
-                    and uid != cuid
-                    and uid not in blocked
-                ):
-                    chall = uid in challenges
-                    result.append(
-                        UserListDict(
-                            userid=uid,
-                            robot_level=0,
-                            nick=au.nickname(),
-                            fullname=au.full_name(),
-                            elo=elo_str(au.elo()),
-                            human_elo=elo_str(au.human_elo()),
-                            fav=cuser.has_favorite(uid),
-                            chall=chall,
-                            fairplay=au.fairplay(),
-                            live=False,  # Will be filled in later
-                            newbag=True,
-                            ready=au.is_ready(),
-                            ready_timed=au.is_ready_timed(),
-                            image=au.image(),
-                        )
-                    )
-
-    elif query == "ready_timed":
-        # Display users who are online and ready for a timed game.
-        # Note that the online list is already filtered by locale,
-        # so the result is also filtered by locale.
-        iter_online = online.random_sample(MAX_ONLINE)
-        online_users = User.load_multi(iter_online)
-
-        for user in online_users:
-
-            if not user or not user.is_ready_timed() or not user.is_displayable():
-                # Only return users that are ready to play timed games
-                continue
-            if not (user_id := user.id()) or user_id == cuid or user_id in blocked:
-                # Don't include the current user in the list;
-                # also don't include users that are blocked by the current user
-                continue
-            result.append(
-                UserListDict(
-                    userid=user_id,
-                    robot_level=0,
-                    nick=user.nickname(),
-                    fullname=user.full_name(),
-                    elo=elo_str(user.elo()),
-                    human_elo=elo_str(user.human_elo()),
-                    fav=False if cuser is None else cuser.has_favorite(user_id),
-                    chall=user_id in challenges,
-                    fairplay=user.fairplay(),
-                    newbag=True,
-                    ready=user.is_ready(),
-                    ready_timed=True,
-                    live=True,
-                    image=user.image(),
-                )
-            )
-
-    elif query == "search":
-        # Return users with nicknames matching a pattern
-        si: Optional[List[ListPrefixDict]] = []
-        if spec:
-            # Limit the spec to 16 characters
-            spec = spec[0:16]
-
-            # The "N:" prefix is a version header; the locale is also a cache key
-            cache_range = "6:" + spec.lower() + ":" + locale  # Case is not significant
-
-            # Start by looking in the cache
-            si = memcache.get(cache_range, namespace="userlist")
-            if si is None:
-                # Not found: do a query, returning max 25 users
-                si = list(UserModel.list_prefix(spec, max_len=25, locale=locale))
-                # Store the result in the cache with a lifetime of 2 minutes
-                memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
-
-        func_online_status = online.users_online
-        for ud in si:
-            if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
-                continue
-            chall = uid in challenges
-            result.append(
-                UserListDict(
-                    userid=uid,
-                    robot_level=0,
-                    nick=ud["nickname"],
-                    fullname=User.full_name_from_prefs(ud["prefs"]),
-                    elo=elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
-                    human_elo=elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
-                    fav=False if cuser is None else cuser.has_favorite(uid),
-                    chall=chall,
-                    live=False,  # Will be filled in later
-                    fairplay=User.fairplay_from_prefs(ud["prefs"]),
-                    newbag=True,
-                    ready=ud["ready"] or False,
-                    ready_timed=ud["ready_timed"] or False,
-                    image=User.image_url(uid, ud["image"], ud["has_image_blob"]),
-                )
-            )
-
-    # Sort the user list. The result is approximately like so:
-    # 1) Users who are online and ready for timed games.
-    # 2) Users who are online and ready to accept challenges.
-    # 3) Users who are online.
-    # 4) Users who are ready to accept challenges.
-    # 5) All other users.
-    # Each category is sorted by nickname, case-insensitive.
-    readiness: Callable[[UserListDict], int] = lambda x: (
-        4 if x["ready_timed"] else 2 if x["ready"] else 0
-    ) + (1 if x["live"] else 0)
-    result.sort(
-        key=lambda x: (
-            # First by readiness (most ready first)
-            -readiness(x),
-            # Then by nickname
-            current_alphabet().sortkey_nocase(x["nick"]),
-        )
-    )
-    # Assign the online status of the users in the list,
-    # if this assignment was postponed
-    if func_online_status is not None:
-        set_online_status_for_users(result, func_online_status)
-    return result
-
-
-def _gamelist(cuid: str, include_zombies: bool = True) -> GameList:
-    """Return a list of active and zombie games for the current user"""
-    result: GameList = []
-    if not cuid:
-        return result
-
-    now = datetime.utcnow()
-    cuser = current_user()
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    online = firebase.online_status(locale)
-    u: Optional[User] = None
-
-    # Place zombie games (recently finished games that this player
-    # has not seen) at the top of the list
-    if include_zombies:
-        for g in ZombieModel.list_games(cuid):
-            opp = g["opp"]  # User id of opponent
-            u = User.load_if_exists(opp)
-            if u is None:
-                continue
-            uuid = g["uuid"]
-            locale = g["locale"]
-            nick = u.nickname()
-            prefs: Optional[PrefsDict] = g.get("prefs", None)
-            fairplay = Game.fairplay_from_prefs(prefs)
-            new_bag = Game.new_bag_from_prefs(prefs)
-            manual = Game.manual_wordcheck_from_prefs(prefs)
-            # Time per player in minutes
-            timed = Game.get_duration_from_prefs(prefs)
-            result.append(
-                GameListDict(
-                    uuid=uuid,
-                    locale=locale,
-                    # Mark zombie state
-                    url=url_for("web.board", game=uuid, zombie="1"),
-                    oppid=opp,
-                    opp=nick,
-                    fullname=u.full_name(),
-                    sc0=g["sc0"],
-                    sc1=g["sc1"],
-                    ts=Alphabet.format_timestamp_short(g["ts"]),
-                    my_turn=False,
-                    overdue=False,
-                    zombie=True,
-                    prefs={
-                        "fairplay": fairplay,
-                        "newbag": new_bag,
-                        "manual": manual,
-                    },
-                    timed=timed,
-                    live=False,  # Will be filled in later
-                    image=u.image(),
-                    fav=False if cuser is None else cuser.has_favorite(opp),
-                    tile_count=100,  # All tiles (100%) accounted for
-                    robot_level=0,  # Should not be used; zombie games are human-only
-                    elo=u.elo(),
-                    human_elo=u.human_elo(),
-                )
-            )
-        # Sort zombies in decreasing order by last move,
-        # i.e. most recently completed games first
-        result.sort(key=lambda x: x["ts"], reverse=True)
-
-    # Obtain up to 50 live games where this user is a player
-    i = list(GameModel.iter_live_games(cuid, max_len=50))
-    # Sort in reverse order by turn and then by timestamp of the last move,
-    # i.e. games with newest moves first
-    i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
-    # Multi-fetch the opponents in the game list
-    opponents = fetch_users(i, lambda g: g["opp"])
-    # Iterate through the game list
-    for g in i:
-        u = None
-        uuid = g["uuid"]
-        opp = g["opp"]  # User id of opponent
-        ts = g["ts"]
-        locale = g["locale"]
-        overdue = False
-        prefs = g.get("prefs", None)
-        tileset = Game.tileset_from_prefs(locale, prefs)
-        fairplay = Game.fairplay_from_prefs(prefs)
-        new_bag = Game.new_bag_from_prefs(prefs)
-        manual = Game.manual_wordcheck_from_prefs(prefs)
-        # Time per player in minutes
-        timed = Game.get_duration_from_prefs(prefs)
-        fullname = ""
-        robot_level: int = 0
-        if opp is None:
-            # Autoplayer opponent
-            robot_level = g["robot_level"]
-            nick = AutoPlayer.name(locale, robot_level)
-        else:
-            # Human opponent
-            try:
-                u = opponents[opp]
-            except KeyError:
-                # This should not happen, but try to cope nevertheless
-                u = User.load_if_exists(opp)
-                if u is None:
-                    continue
-            nick = u.nickname()
-            fullname = u.full_name()
-            delta = now - ts
-            if g["my_turn"]:
-                # Start to show warning after 12 days
-                overdue = delta >= timedelta(days=Game.OVERDUE_DAYS - 2)
-            else:
-                # Show mark after 14 days
-                overdue = delta >= timedelta(days=Game.OVERDUE_DAYS)
-        result.append(
-            GameListDict(
-                uuid=uuid,
-                locale=locale,
-                url=url_for("web.board", game=uuid),
-                oppid=opp,
-                opp=nick,
-                fullname=fullname,
-                sc0=g["sc0"],
-                sc1=g["sc1"],
-                ts=Alphabet.format_timestamp_short(ts),
-                my_turn=g["my_turn"],
-                overdue=overdue,
-                zombie=False,
-                prefs={
-                    "fairplay": fairplay,
-                    "newbag": new_bag,
-                    "manual": manual,
-                },
-                timed=timed,
-                tile_count=int(g["tile_count"] * 100 / tileset.num_tiles()),
-                live=False,
-                image="" if u is None else u.image(),
-                fav=False if cuser is None else cuser.has_favorite(opp),
-                robot_level=robot_level,
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
-            )
-        )
-    # Set the live status of the opponents in the list
-    set_online_status_for_games(result, online.users_online)
-    return result
-
-
-def _rating(kind: str) -> List[Dict[str, Any]]:
-    """Return a list of Elo ratings of the given kind ('all' or 'human')"""
-    result: List[Dict[str, Any]] = []
-    cuser = current_user()
-    cuid = None if cuser is None else cuser.id()
-
-    # Generate a list of challenges issued by this user
-    challenges: Set[Optional[str]] = set()
-    if cuid:
-        challenges.update(
-            # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
-        )
-
-    rating_list = memcache.get(kind, namespace="rating")
-    if rating_list is None:
-        # Not found: do a query
-        rating_list = list(RatingModel.list_rating(kind))
-        # Store the result in the cache with a lifetime of 1 hour
-        memcache.set(kind, rating_list, time=1 * 60 * 60, namespace="rating")
-
-    for ru in rating_list:
-
-        uid = ru["userid"]
-        if not uid:
-            # Hit the end of the list
-            break
-        inactive = False
-        if uid.startswith("robot-"):
-            # Assume that the user id has the format robot-level-locale,
-            # for instance robot-15-en. If the locale is missing, use "is".
-            a = uid.split("-")
-            lc = a[2] if len(a) >= 3 else "is"
-            nick = AutoPlayer.name(lc, int(uid[6:]))
-            fullname = nick
-            chall = False
-            fairplay = False
-        else:
-            usr = User.load_if_exists(uid)
-            if usr is None:
-                # Something wrong with this one: don't bother
-                continue
-            nick = usr.nickname()
-            if not User.is_valid_nick(nick):
-                nick = "--"
-            fullname = usr.full_name()
-            chall = uid in challenges
-            fairplay = usr.fairplay()
-            inactive = usr.is_inactive()
-
-        games = ru["games"]
-        if games == 0:
-            ratio = 0
-            avgpts = 0
-        else:
-            ratio = int(round(100.0 * float(ru["wins"]) / games))
-            avgpts = int(round(float(ru["score"]) / games))
-
-        result.append(
-            {
-                "rank": ru["rank"],
-                "rank_yesterday": ru["rank_yesterday"],
-                "rank_week_ago": ru["rank_week_ago"],
-                "rank_month_ago": ru["rank_month_ago"],
-                "userid": uid,
-                "nick": nick,
-                "fullname": fullname,
-                "chall": chall,
-                "fairplay": fairplay,
-                "newbag": True,
-                "inactive": inactive,
-                "elo": ru["elo"],
-                "elo_yesterday": ru["elo_yesterday"],
-                "elo_week_ago": ru["elo_week_ago"],
-                "elo_month_ago": ru["elo_month_ago"],
-                "games": games,
-                "games_yesterday": ru["games_yesterday"],
-                "games_week_ago": ru["games_week_ago"],
-                "games_month_ago": ru["games_month_ago"],
-                "ratio": ratio,
-                "avgpts": avgpts,
-            }
-        )
-
-    return result
-
-
-def _recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> RecentList:
-    """Return a list of recent games for the indicated user, eventually
-    filtered by the opponent id (versus)"""
-    result: RecentList = []
-    if not cuid:
-        return result
-
-    cuser = current_user()
-    # Obtain a list of recently finished games where the indicated user was a player
-    rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
-    # Multi-fetch the opponents in the list into a dictionary
-    opponents = fetch_users(rlist, lambda g: g["opp"])
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-
-    online = firebase.online_status(locale)
-
-    u: Optional[User] = None
-
-    for g in rlist:
-
-        uuid = g["uuid"]
-
-        prefs = g["prefs"]
-        locale = g["locale"]
-
-        opp: Optional[str] = g["opp"]
-        if opp is None:
-            # Autoplayer opponent
-            u = None
-            nick = AutoPlayer.name(locale, g["robot_level"])
-        else:
-            # Human opponent
-            try:
-                u = opponents[opp]
-            except KeyError:
-                u = User.load_if_exists(opp)
-                if u is None:
-                    continue
-            nick = u.nickname()
-
-        # Calculate the duration of the game in days, hours, minutes
-        ts_start = g["ts"]
-        ts_end = g["ts_last_move"]
-
-        td = ts_end - ts_start  # Timedelta
-        tsec = td.total_seconds()
-        days, tsec = divmod(tsec, 24 * 60 * 60)
-        hours, tsec = divmod(tsec, 60 * 60)
-        minutes, tsec = divmod(tsec, 60)  # Ignore the remaining seconds
-
-        result.append(
-            RecentListDict(
-                uuid=uuid,
-                locale=locale,
-                url=url_for("web.board", game=uuid),
-                oppid=opp,
-                opp=nick,
-                opp_is_robot=opp is None,
-                robot_level=g["robot_level"],
-                sc0=g["sc0"],
-                sc1=g["sc1"],
-                elo_adj=g["elo_adj"],
-                human_elo_adj=g["human_elo_adj"],
-                ts_last_move=Alphabet.format_timestamp_short(ts_end),
-                days=int(days),
-                hours=int(hours),
-                minutes=int(minutes),
-                prefs={
-                    "duration": Game.get_duration_from_prefs(prefs),
-                    "manual": Game.manual_wordcheck_from_prefs(prefs),
-                },
-                live=False,  # Will be filled in later
-                image="" if u is None else u.image(),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
-                fav=False if cuser is None or opp is None else cuser.has_favorite(opp),
-            )
-        )
-    set_online_status_for_games(result, online.users_online)
-    return result
-
-
-def _opponent_waiting(user_id: str, opp_id: str, *, key: Optional[str]) -> bool:
-    """Return True if the given opponent is waiting on this user's challenge"""
-    return firebase.check_wait(opp_id, user_id, key)
-
-
-def _challengelist() -> ChallengeList:
-    """Return a list of challenges issued or received by the current user"""
-
-    result: ChallengeList = []
-    cuser = current_user()
-    if cuser is None or not (cuid := cuser.id()):
-        # Current user not valid: return empty list
-        return result
-
-    def is_timed(prefs: Optional[PrefsDict]) -> bool:
-        """Return True if the challenge is for a timed game"""
-        if prefs is None:
-            return False
-        return int(prefs.get("duration", 0)) > 0
-
-    def opp_ready(c: ChallengeTuple):
-        """Returns True if this is a timed challenge
-        and the opponent is ready to play"""
-        if not is_timed(c.prefs):
-            return False
-        # Timed challenge: see if there is a Firebase path indicating
-        # that the opponent is waiting for this user
-        assert cuid is not None
-        assert c.opp is not None
-        return _opponent_waiting(cuid, c.opp, key=c.key)
-
-    blocked = cuser.blocked()
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    online = firebase.online_status(locale)
-    # List received challenges
-    received = list(ChallengeModel.list_received(cuid, max_len=20))
-    # List issued challenges
-    issued = list(ChallengeModel.list_issued(cuid, max_len=20))
-    # Multi-fetch all opponents involved
-    opponents = fetch_users(received + issued, lambda c: c[0])
-    u: Optional[User] = None
-
-    # List the received challenges
-    for c in received:
-        if not (oppid := c.opp):
-            continue
-        if oppid in blocked:
-            # Don't list challenges from blocked users
-            continue
-        u = opponents.get(oppid)
-        if u is None:
-            continue
-        nick = u.nickname()
-        result.append(
-            ChallengeListDict(
-                key=c.key,  # ChallengeModel entity key
-                received=True,
-                userid=oppid,
-                opp=nick,
-                fullname=u.full_name(),
-                prefs=c.prefs,
-                ts=Alphabet.format_timestamp_short(c.ts),
-                opp_ready=False,
-                live=False,  # Will be filled in later
-                image=u.image(),
-                fav=cuser.has_favorite(oppid),
-                elo=u.elo(),
-                human_elo=u.human_elo(),
-            )
-        )
-    # List the issued challenges
-    for c in issued:
-        if not (oppid := c.opp):
-            continue
-        # Currently, we do include challenges issued to blocked users
-        # in the list of issued challenges.
-        # A possible addition would be to automatically delete issued
-        # challenges to a user when blocking that user.
-        u = opponents.get(oppid)
-        if u is None:
-            continue
-        nick = u.nickname()
-        result.append(
-            ChallengeListDict(
-                key=c.key,  # ChallengeModel entity key
-                received=False,
-                userid=oppid,
-                opp=nick,
-                fullname=u.full_name(),
-                prefs=c.prefs,
-                ts=Alphabet.format_timestamp_short(c.ts),
-                opp_ready=opp_ready(c),
-                live=False,  # Will be filled in later
-                image=u.image(),
-                fav=cuser.has_favorite(oppid),
-                elo=u.elo(),
-                human_elo=u.human_elo(),
-            )
-        )
-    # Set the live status of the opponents in the list
-    set_online_status_for_users(result, online.users_online)
-    return result
-
-
-@api.route("/submitmove", methods=["POST"])
+@api_route("/submitmove")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def submitmove() -> ResponseType:
+def submitmove_api() -> ResponseType:
     """Handle a move that is being submitted from the client"""
     # This URL should only receive Ajax POSTs from the client
     rq = RequestData(request)
@@ -1503,7 +264,7 @@ def submitmove() -> ResponseType:
     for attempt in reversed(range(2)):
         # pylint: disable=broad-except
         try:
-            result = _process_move(game, movelist)
+            result = process_move(game, movelist)
         except Exception as e:
             logging.info(
                 "Exception in submitmove(): {0} {1}".format(
@@ -1520,11 +281,10 @@ def submitmove() -> ResponseType:
     return result
 
 
-@api.route("/gamestate", methods=["POST"])
+@api_route("/gamestate")
 @auth_required(ok=False)
-def gamestate() -> ResponseType:
+def gamestate_api() -> ResponseType:
     """Returns the current state of a game"""
-
     user_id = current_user_id()
     if user_id is None:
         return jsonify(ok=False)
@@ -1552,11 +312,10 @@ def gamestate() -> ResponseType:
     return jsonify(ok=True, game=game.client_state(player_index, deep=True))
 
 
-@api.route("/clear_zombie", methods=["POST"])
-@auth_required(ok=False)
-def clear_zombie() -> ResponseType:
+@api_route("/clear_zombie")
+@auth_required(allow_anonymous=False, ok=False)
+def clear_zombie_api() -> ResponseType:
     """Clears the zombie status of a game"""
-
     user_id = current_user_id()
     if user_id is None:
         return jsonify(ok=False)
@@ -1580,11 +339,10 @@ def clear_zombie() -> ResponseType:
     return jsonify(ok=True)
 
 
-@api.route("/forceresign", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def forceresign() -> ResponseType:
+@api_route("/forceresign")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def forceresign_api() -> ResponseType:
     """Forces a tardy user to resign, if the game is overdue"""
-
     user_id = current_user_id()
     rq = RequestData(request)
     uuid = rq.get("game")
@@ -1608,14 +366,15 @@ def forceresign() -> ResponseType:
         return jsonify(result=Error.GAME_NOT_OVERDUE)
 
     # Send in a resign move on behalf of the opponent
-    return _process_move(game, ["rsgn"], force_resign=True)
+    return process_move(game, ["rsgn"], force_resign=True)
 
 
-@api.route("/wordcheck", methods=["POST"])
+@api_route("/wordcheck")
 @auth_required(ok=False)
-def wordcheck() -> ResponseType:
+def wordcheck_api() -> ResponseType:
     """Check a list of words for validity"""
-
+    # Note: The Explo app calls the /wordcheck endpoint on the 'moves' service,
+    # not this endpoint (which is on the 'default' service)
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
     word: str = rq["word"]
@@ -1641,11 +400,10 @@ def wordcheck() -> ResponseType:
     return jsonify(word=word, ok=ok, valid=valid)
 
 
-@api.route("/gamestats", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def gamestats() -> ResponseType:
+@api_route("/gamestats")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def gamestats_api() -> ResponseType:
     """Calculate and return statistics on a given finished game"""
-
     rq = RequestData(request)
     uuid = rq.get("game")
     game = None
@@ -1663,9 +421,9 @@ def gamestats() -> ResponseType:
     return jsonify(game.statistics())
 
 
-@api.route("/userstats", methods=["POST"])
+@api_route("/userstats")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userstats() -> ResponseType:
+def userstats_api() -> ResponseType:
     """Return the profile of a given user along with key statistics"""
     cuser = current_user()
     if cuser is None:
@@ -1679,9 +437,9 @@ def userstats() -> ResponseType:
     return jsonify(us)
 
 
-@api.route("/image", methods=["GET", "POST"])
+@api_route("/image", methods=["GET", "POST"])
 @auth_required(result=Error.LOGIN_REQUIRED)
-def image() -> ResponseType:
+def image_api() -> ResponseType:
     """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
@@ -1736,36 +494,33 @@ def image() -> ResponseType:
     return "Unrecognized MIME type", 400
 
 
-@api.route("/userlist", methods=["POST"])
+@api_route("/userlist")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def userlist() -> ResponseType:
+def userlist_api() -> ResponseType:
     """Return user lists with particular criteria"""
-
     rq = RequestData(request)
     query = rq.get("query")
     spec = rq.get("spec")
-    return jsonify(result=Error.LEGAL, spec=spec, userlist=_userlist(query, spec))
+    return jsonify(result=Error.LEGAL, spec=spec, userlist=userlist(query, spec))
 
 
-@api.route("/gamelist", methods=["POST"])
+@api_route("/gamelist")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def gamelist() -> ResponseType:
+def gamelist_api() -> ResponseType:
     """Return a list of active games for the current user"""
-
     # Specify "zombies":false to omit zombie games from the returned list
     rq = RequestData(request)
     include_zombies = rq.get_bool("zombies", True)
     cuid = current_user_id()
     if cuid is None:
         return jsonify(result=Error.WRONG_USER)
-    return jsonify(result=Error.LEGAL, gamelist=_gamelist(cuid, include_zombies))
+    return jsonify(result=Error.LEGAL, gamelist=gamelist(cuid, include_zombies))
 
 
-@api.route("/recentlist", methods=["POST"])
+@api_route("/recentlist")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def recentlist() -> ResponseType:
+def recentlist_api() -> ResponseType:
     """Return a list of recently completed games for the indicated user"""
-
     rq = RequestData(request)
     user_id: Optional[str] = rq.get("user")
     versus: Optional[str] = rq.get("versus")
@@ -1784,20 +539,20 @@ def recentlist() -> ResponseType:
 
     return jsonify(
         result=Error.LEGAL,
-        recentlist=_recentlist(user_id, versus=versus, max_len=count),
+        recentlist=recentlist(user_id, versus=versus, max_len=count),
     )
 
 
-@api.route("/challengelist", methods=["POST"])
+@api_route("/challengelist")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def challengelist() -> ResponseType:
+def challengelist_api() -> ResponseType:
     """Return a list of challenges issued or received by the current user"""
-    return jsonify(result=Error.LEGAL, challengelist=_challengelist())
+    return jsonify(result=Error.LEGAL, challengelist=challengelist())
 
 
-@api.route("/allgamelists", methods=["POST"])
+@api_route("/allgamelists")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def allgamelists() -> ResponseType:
+def allgamelists_api() -> ResponseType:
     """Return a combined dict with the results of the gamelist,
     challengelist and recentlist calls, for the current user"""
     cuid = current_user_id()
@@ -1813,29 +568,28 @@ def allgamelists() -> ResponseType:
     include_zombies = rq.get_bool("zombies", True)
     return jsonify(
         result=Error.LEGAL,
-        gamelist=_gamelist(cuid, include_zombies),
-        challengelist=_challengelist(),
-        recentlist=_recentlist(cuid, versus=None, max_len=count),
+        gamelist=gamelist(cuid, include_zombies),
+        challengelist=challengelist(),
+        recentlist=recentlist(cuid, versus=None, max_len=count),
     )
 
 
-@api.route("/rating", methods=["POST"])
+@api_route("/rating")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def rating() -> ResponseType:
+def rating_api() -> ResponseType:
     """Return the newest Elo ratings table (top 100)
     of a given kind ('all' or 'human')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
     if kind not in ("all", "human", "manual"):
         kind = "all"
-    return jsonify(result=Error.LEGAL, rating=_rating(kind))
+    return jsonify(result=Error.LEGAL, rating=rating(kind))
 
 
-@api.route("/favorite", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def favorite() -> ResponseType:
+@api_route("/favorite")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def favorite_api() -> ResponseType:
     """Create or delete an A-favors-B relation"""
-
     user = current_user()
     assert user is not None
 
@@ -1852,11 +606,10 @@ def favorite() -> ResponseType:
     return jsonify(result=Error.LEGAL)
 
 
-@api.route("/challenge", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def challenge() -> ResponseType:
+@api_route("/challenge")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def challenge_api() -> ResponseType:
     """Create or delete an A-challenges-B relation"""
-
     user = current_user()
     if user is None or not (uid := user.id()):
         return jsonify(result=Error.LOGIN_REQUIRED)
@@ -1918,7 +671,7 @@ def challenge() -> ResponseType:
     msg: Dict[str, str] = dict()
 
     # Notify both players' clients of an update to the challenge lists
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg[f"user/{destuser}/challenge"] = now
     msg[f"user/{uid}/challenge"] = now
     firebase.send_message(msg)
@@ -1926,11 +679,10 @@ def challenge() -> ResponseType:
     return jsonify(result=Error.LEGAL)
 
 
-@api.route("/setuserpref", methods=["POST"])
+@api_route("/setuserpref")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def setuserpref() -> ResponseType:
+def setuserpref_api() -> ResponseType:
     """Set a user preference"""
-
     user = current_user()
     assert user is not None
 
@@ -1948,13 +700,16 @@ def setuserpref() -> ResponseType:
     ]
 
     update = False
-    for s, func in prefs:
-        val = rq.get_bool(s, None)
-        if val is not None:
-            func(val)
-            update = True
+    # We don't allow anonymous users to set the above preferences
+    if not user.is_anonymous():
+        for s, func in prefs:
+            val = rq.get_bool(s, None)
+            if val is not None:
+                func(val)
+                update = True
 
-    # We allow the locale to be set as a user preference.
+    # We allow the locale to be set as a preference,
+    # even for anonymous users.
     # Note that it cannot be read back as a preference!
     if lc := rq.get("locale", ""):
         # Do some rudimentary normalization and validation of the locale code
@@ -1972,9 +727,9 @@ def setuserpref() -> ResponseType:
     return jsonify(result=Error.LEGAL, did_update=update)
 
 
-@api.route("/onlinecheck", methods=["POST"])
-@auth_required(online=False)
-def onlinecheck() -> ResponseType:
+@api_route("/onlinecheck")
+@auth_required(allow_anonymous=False, online=False)
+def onlinecheck_api() -> ResponseType:
     """Check whether a particular user is online"""
     rq = RequestData(request)
     if user_id := rq.get("user"):
@@ -1988,11 +743,10 @@ def onlinecheck() -> ResponseType:
     return jsonify(online=online)
 
 
-@api.route("/initwait", methods=["POST"])
-@auth_required(online=False, waiting=False)
-def initwait() -> ResponseType:
+@api_route("/initwait")
+@auth_required(allow_anonymous=False, online=False, waiting=False)
+def initwait_api() -> ResponseType:
     """Initialize a wait for a timed game to start"""
-
     user = current_user()
 
     # Get the opponent id
@@ -2016,7 +770,7 @@ def initwait() -> ResponseType:
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg = {
         f"user/{opp}/challenge": now,
         f"user/{uid}/wait/{opp}": {"key": key} if key else True,
@@ -2026,9 +780,9 @@ def initwait() -> ResponseType:
     return jsonify(online=online, waiting=True)
 
 
-@api.route("/waitcheck", methods=["POST"])
-@auth_required(waiting=False)
-def waitcheck() -> ResponseType:
+@api_route("/waitcheck")
+@auth_required(allow_anonymous=False, waiting=False)
+def waitcheck_api() -> ResponseType:
     """Check whether a particular opponent is waiting on a challenge"""
     rq = RequestData(request)
     opp_id = rq.get("user")
@@ -2037,13 +791,13 @@ def waitcheck() -> ResponseType:
     if opp_id:
         cuid = current_user_id()
         assert cuid is not None
-        waiting = _opponent_waiting(cuid, opp_id, key=key)
+        waiting = opponent_waiting(cuid, opp_id, key=key)
     return jsonify(userid=opp_id, waiting=waiting)
 
 
-@api.route("/cancelwait", methods=["POST"])
-@auth_required(ok=False)
-def cancelwait() -> ResponseType:
+@api_route("/cancelwait")
+@auth_required(allow_anonymous=False, ok=False)
+def cancelwait_api() -> ResponseType:
     """A wait on a challenge has been cancelled"""
     rq = RequestData(request)
     opp_id = rq.get("opp")
@@ -2053,7 +807,7 @@ def cancelwait() -> ResponseType:
         return jsonify(ok=False)
 
     # Delete the current wait and force update of the opponent's challenge list
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg = {
         f"user/{cuid}/wait/{opp_id}": None,
         f"user/{opp_id}/challenge": now,
@@ -2063,11 +817,10 @@ def cancelwait() -> ResponseType:
     return jsonify(ok=True)
 
 
-@api.route("/chatmsg", methods=["POST"])
-@auth_required(ok=False)
-def chatmsg() -> ResponseType:
+@api_route("/chatmsg")
+@auth_required(allow_anonymous=False, ok=False)
+def chatmsg_api() -> ResponseType:
     """Send a chat message on a conversation channel"""
-
     if not (user_id := current_user_id()):
         return jsonify(ok=False)
 
@@ -2184,9 +937,9 @@ class UserCache:
         return u.chat_disabled()
 
 
-@api.route("/chatload", methods=["POST"])
-@auth_required(ok=False)
-def chatload() -> ResponseType:
+@api_route("/chatload")
+@auth_required(allow_anonymous=False, ok=False)
+def chatload_api() -> ResponseType:
     """Load all chat messages on a conversation channel"""
 
     # The channel can be either 'game:' + game uuid or
@@ -2263,12 +1016,11 @@ def chatload() -> ResponseType:
     return jsonify(ok=True, seen=seen, messages=messages)
 
 
-@api.route("/chathistory", methods=["POST"])
-@auth_required(ok=False)
-def chathistory() -> ResponseType:
+@api_route("/chathistory")
+@auth_required(allow_anonymous=False, ok=False)
+def chathistory_api() -> ResponseType:
     """Return the chat history, i.e. the set of recent,
     distinct chat conversations for the logged-in user"""
-
     user = current_user()
     assert user is not None
 
@@ -2308,12 +1060,11 @@ def chathistory() -> ResponseType:
     return jsonify(ok=True, history=history)
 
 
-@api.route("/bestmoves", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def bestmoves() -> ResponseType:
+@api_route("/bestmoves")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def bestmoves_api() -> ResponseType:
     """Return a list of the best possible moves in a game
     at a given point"""
-
     user = current_user()
     assert user is not None
 
@@ -2392,9 +1143,9 @@ def bestmoves() -> ResponseType:
     )
 
 
-@api.route("/blockuser", methods=["POST"])
-@auth_required(ok=False)
-def blockuser() -> ResponseType:
+@api_route("/blockuser")
+@auth_required(allow_anonymous=False, ok=False)
+def blockuser_api() -> ResponseType:
     """Block or unblock another user"""
     user = current_user()
     assert user is not None
@@ -2413,9 +1164,9 @@ def blockuser() -> ResponseType:
     return jsonify(ok=ok)
 
 
-@api.route("/reportuser", methods=["POST"])
-@auth_required(ok=False)
-def reportuser() -> ResponseType:
+@api_route("/reportuser")
+@auth_required(allow_anonymous=False, ok=False)
+def reportuser_api() -> ResponseType:
     """Report another user"""
     user = current_user()
     assert user is not None
@@ -2437,9 +1188,9 @@ def reportuser() -> ResponseType:
     return jsonify(ok=ok)
 
 
-@api.route("/cancelplan", methods=["POST"])
-@auth_required(result=Error.LOGIN_REQUIRED)
-def cancelplan() -> ResponseType:
+@api_route("/cancelplan")
+@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
+def cancelplan_api() -> ResponseType:
     """Cancel a user friendship"""
     user = current_user()
     if user is None:
@@ -2473,8 +1224,8 @@ assert not SUBSCRIPTION_START_TYPES.intersection(
 ), "SUBSCRIPTION_START_TYPES and SUBSCRIPTION_END_TYPES must be disjoint"
 
 
-@api.route("/rchook", methods=["POST"])
-def rchook() -> ResponseType:
+@api_route("/rchook")
+def rchook_api() -> ResponseType:
     """Receive a webhook call from the RevenueCat server"""
     # First, validate whether the request has the correct
     # bearer token (RC_WEBHOOK_AUTH)
@@ -2530,20 +1281,19 @@ def rchook() -> ResponseType:
     return "OK", 200
 
 
-@api.route("/loaduserprefs", methods=["POST"])
+@api_route("/loaduserprefs")
 @auth_required(ok=False)
-def loaduserprefs() -> ResponseType:
+def loaduserprefs_api() -> ResponseType:
     """Fetch the preferences of the current user in JSON form"""
     # Return the user preferences in JSON form
     uf = UserForm(current_user())
     return jsonify(ok=True, userprefs=uf.as_dict())
 
 
-@api.route("/saveuserprefs", methods=["POST"])
+@api_route("/saveuserprefs")
 @auth_required(ok=False)
-def saveuserprefs() -> ResponseType:
+def saveuserprefs_api() -> ResponseType:
     """Set the preferences of the current user, from a JSON dictionary"""
-
     user = current_user()
     assert user is not None
     j: Optional[Dict[str, str]] = request.get_json(silent=True)
@@ -2560,9 +1310,9 @@ def saveuserprefs() -> ResponseType:
     return jsonify(ok=True)
 
 
-@api.route("/inituser", methods=["POST"])
+@api_route("/inituser")
 @auth_required(ok=False)
-def inituser() -> ResponseType:
+def inituser_api() -> ResponseType:
     """Combines the data returned from the /loaduserprefs, /userstats and /firebase_token
     API endpoints into a single endpoint, for efficiency. The result is a JSON dictionary
     with three fields, called userprefs, userstats and firebase_token."""
@@ -2591,11 +1341,10 @@ def inituser() -> ResponseType:
     )
 
 
-@api.route("/initgame", methods=["POST"])
+@api_route("/initgame")
 @auth_required(ok=False)
-def initgame() -> ResponseType:
+def initgame_api() -> ResponseType:
     """Create a new game and return its UUID"""
-
     user = current_user()
     assert user is not None
     uid = user.id()
@@ -2660,7 +1409,7 @@ def initgame() -> ResponseType:
         return jsonify(ok=False)
 
     # Notify both players' clients that there is a new game
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg: Dict[str, Any] = dict()
     move_dict: MoveNotifyDict = {
         "game": game_id,
@@ -2688,9 +1437,9 @@ def initgame() -> ResponseType:
     return jsonify(ok=True, uuid=game_id)
 
 
-@api.route("/locale_asset", methods=["POST"])
+@api_route("/locale_asset")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def locale_asset() -> ResponseType:
+def locale_asset_api() -> ResponseType:
     """Return static content, for the user's locale"""
     # For a locale such as en_US, we first try to serve from
     # base_path/static/assets/en_US/asset_name, then
