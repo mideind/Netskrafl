@@ -418,7 +418,7 @@ def oauth_apple(request: Request) -> ResponseType:
     if not token:
         return jsonify({"status": "invalid", "msg": "Missing token"}), 401
     now = datetime.now(UTC)
-    today = datetime(now.year, now.month, now.day)
+    today = datetime(now.year, now.month, now.day, tzinfo=UTC)
 
     try:
         signing_key = _apple_key_client(today).get_signing_key_from_jwt(token)

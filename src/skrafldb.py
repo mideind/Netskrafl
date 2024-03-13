@@ -440,6 +440,7 @@ class Model(Generic[_T_Model], ndb.Model):
                 default=default,
                 indexed=indexed,
                 auto_now_add=auto_now_add,
+                tzinfo=UTC,
             ),
         )
 
@@ -449,7 +450,12 @@ class Model(Generic[_T_Model], ndb.Model):
     ) -> Optional[datetime]:
         return cast(
             Optional[datetime],
-            ndb.DateTimeProperty(required=False, default=default, indexed=indexed),
+            ndb.DateTimeProperty(
+                required=False,
+                default=default,
+                indexed=indexed,
+                tzinfo=UTC,
+            ),
         )
 
 

@@ -32,7 +32,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
     assert "elo_30_days" in resp.json
     assert len(resp.json["elo_30_days"]) == 30
     now = datetime.now(UTC)
-    now = datetime(year=now.year, month=now.month, day=now.day)
+    now = datetime(year=now.year, month=now.month, day=now.day, tzinfo=UTC)
 
     for ix, sm in enumerate(resp.json["elo_30_days"]):
         ts = datetime.fromisoformat(sm["ts"])

@@ -586,7 +586,7 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     month = int(request.args.get("month", str(yesterday.month)))
     day = int(request.args.get("day", str(yesterday.day)))
 
-    from_time = datetime(year=year, month=month, day=day)
+    from_time = datetime(year=year, month=month, day=day, tzinfo=UTC)
     to_time = from_time + timedelta(days=1)
 
     kwargs: Dict[str, Any] = dict(from_time=from_time, to_time=to_time, wait=wait)

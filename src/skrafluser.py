@@ -1229,7 +1229,7 @@ class User:
             # Also, include a 30-day history of Elo scores
             now = datetime.now(UTC)
             # Time at midnight, i.e. start of the current day
-            now = datetime(year=now.year, month=now.month, day=now.day)
+            now = datetime(year=now.year, month=now.month, day=now.day, tzinfo=UTC)
             # We will return a 30-day history
             PERIOD = 30
             # Initialize the list of day slots

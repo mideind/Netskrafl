@@ -29,7 +29,7 @@ import os
 import json
 import importlib
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 import redis
 
@@ -50,7 +50,7 @@ def _serialize_dt(dt: datetime) -> DateTimeTuple:
 
 
 def _deserialize_dt(args: DateTimeTuple) -> datetime:
-    return datetime(*args)
+    return datetime(*args, tzinfo=UTC)
 
 
 _serializers: Mapping[Tuple[str, str], SerializerFuncTuple] = {
