@@ -34,7 +34,7 @@ from typing import (
 
 import threading
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import re
 
 from flask.helpers import url_for
@@ -176,7 +176,7 @@ def make_login_dict(
     previous_token: Optional[str] = None,
 ) -> UserLoginDict:
     """Create a login credential object that is returned to the client"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     expires = now + lifetime
     # If asked, we create our own client token,
     # which the client can pass back later
@@ -278,7 +278,7 @@ class User:
         self._blocks: Optional[Set[str]] = None
         self._image: str = ""
         self._has_image_blob: bool = False
-        self._timestamp = datetime.utcnow()
+        self._timestamp = datetime.now(UTC)
         # The user location is typically an ISO country code
         self._location: str = ""
         # Number of completed human games
@@ -990,7 +990,7 @@ class User:
                 # Use the opportunity to update the name, if not already set
                 um.prefs["full_name"] = name
             # Note the login timestamp
-            um.last_login = datetime.utcnow()
+            um.last_login = datetime.now(UTC)
             # If the account was disabled, enable it again
             um.inactive = False
             um.put()
@@ -1019,7 +1019,7 @@ class User:
                     # Use the opportunity to update the name, if not already set
                     um.prefs["full_name"] = name
                 # Note the last login
-                um.last_login = datetime.utcnow()
+                um.last_login = datetime.now(UTC)
                 # If the account was disabled, enable it again
                 um.inactive = False
                 user_id = um.put().id()
@@ -1085,7 +1085,7 @@ class User:
         if um is None:
             return None
         # Note the login timestamp
-        um.last_login = datetime.utcnow()
+        um.last_login = datetime.now(UTC)
         um.put()
         uld = make_login_dict(
             user_id=user_id,
@@ -1227,7 +1227,7 @@ class User:
             # Also, include a list of blocked users
             profile["list_blocked"] = cuser.list_blocked()
             # Also, include a 30-day history of Elo scores
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             # Time at midnight, i.e. start of the current day
             now = datetime(year=now.year, month=now.month, day=now.day)
             # We will return a 30-day history

@@ -32,7 +32,7 @@ import logging
 import time
 import gc
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Thread
 
 from flask import request, Blueprint
@@ -334,7 +334,7 @@ def _create_ratings() -> None:
 
     _key = StatsModel.dict_key
 
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(UTC)
     yesterday = timestamp - timedelta(days=1)
     week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
@@ -544,7 +544,7 @@ def deferred_ratings(wait: bool) -> bool:
             _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             CompletionModel.add_failure("ratings", now, now, str(ex))
             return False
 
@@ -555,7 +555,7 @@ def deferred_ratings(wait: bool) -> bool:
         StatsModel.clear_cache()
 
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         CompletionModel.add_completion("ratings", now, now)
 
         return True
@@ -579,7 +579,7 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     # this will calculate yesterday's statistics.
     # If invoked with a year=YYYY&month=MM&day=DD parameter,
     # the parameter is the starting date (from_time) for the calculation.
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     yesterday = now - timedelta(days=1)
 
     year = int(request.args.get("year", str(yesterday.year)))

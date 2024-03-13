@@ -38,7 +38,7 @@ import threading
 # import logging
 
 from random import randint
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
 from config import DEFAULT_LOCALE, running_local
@@ -247,7 +247,7 @@ class Game:
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
-        self.timestamp = self.ts_last_move = datetime.utcnow()
+        self.timestamp = self.ts_last_move = datetime.now(UTC)
 
     @classmethod
     def new(
@@ -370,7 +370,7 @@ class Game:
 
         # Process the moves
         player = 0
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for mm in gm.moves:
             m: Optional[MoveBase] = None
@@ -783,15 +783,15 @@ class Game:
     def is_overdue(self) -> bool:
         """Return True if no move has been made
         in the game for OVERDUE_DAYS days"""
-        ts_last_move = self.ts_last_move or self.timestamp or datetime.utcnow()
-        delta = datetime.utcnow() - ts_last_move
+        ts_last_move = self.ts_last_move or self.timestamp or datetime.now(UTC)
+        delta = datetime.now(UTC) - ts_last_move
         return delta >= timedelta(days=Game.OVERDUE_DAYS)
 
     def get_elapsed(self) -> Tuple[float, float]:
         """Return the elapsed time for both players,
         in seconds, as a tuple"""
         elapsed = [0.0, 0.0]
-        last_ts = self.timestamp or datetime.utcnow()
+        last_ts = self.timestamp or datetime.now(UTC)
         for m in self.moves:
             if m.ts is not None:
                 delta = m.ts - last_ts
@@ -799,7 +799,7 @@ class Game:
                 elapsed[m.player] += delta.total_seconds()
         if self.state is not None and not self.state.is_game_over():
             # Game still going on: Add the time from the last move until now
-            delta = datetime.utcnow() - last_ts
+            delta = datetime.now(UTC) - last_ts
             elapsed[self.player_to_move()] += delta.total_seconds()
         return cast(Tuple[float, float], tuple(elapsed))
 
@@ -910,7 +910,7 @@ class Game:
         player_index = self.player_to_move()
         assert self.state is not None
         self.state.apply_move(move)
-        self.ts_last_move = datetime.utcnow()
+        self.ts_last_move = datetime.now(UTC)
         mt = MoveTuple(
             player_index, move, self.state.rack(player_index), self.ts_last_move
         )

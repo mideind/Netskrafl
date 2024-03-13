@@ -8,7 +8,7 @@
 
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from utils import CustomClient, login_user
 from utils import client, u1, u2, u3_gb  # type: ignore
@@ -31,7 +31,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
 
     assert "elo_30_days" in resp.json
     assert len(resp.json["elo_30_days"]) == 30
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     now = datetime(year=now.year, month=now.month, day=now.day)
 
     for ix, sm in enumerate(resp.json["elo_30_days"]):

@@ -23,7 +23,7 @@ import os
 import logging
 import json
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import hashlib
 import hmac
@@ -115,7 +115,7 @@ def request_valid(
     except ValueError:
         # Invalid date/time
         return False
-    delta = (datetime.utcnow() - dt).total_seconds()
+    delta = (datetime.now(UTC) - dt).total_seconds()
     if not -2.0 < delta < max_time:
         # The request must be made in a time window ranging from 2 seconds in
         # the future (allowing for a slightly wrong clock) to 100 seconds in
@@ -144,7 +144,7 @@ def cancel_plan(user: User) -> bool:
     try:
         url = f"https://api.salescloud.is/webhooks/messenger/pull/{_SECRET.uuid}"
         payload = dict(label=userid)
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(UTC).isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
         signature = (ts + _SECRET.public_key + method + url).encode("ascii")

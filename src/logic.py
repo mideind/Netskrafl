@@ -17,7 +17,7 @@
 """
 
 from __future__ import annotations
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import functools
 
 from typing import (
@@ -569,7 +569,7 @@ def process_move(
             ZombieModel.add_game(game_id, opponent)
 
     # Prepare the messages/notifications to be sent via Firebase
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg_dict: Dict[str, Any] = dict()
     # Prepare a summary dict of the state of the game after the move
     assert game.state is not None
@@ -929,7 +929,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     if not cuid:
         return result
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     cuser = current_user()
     locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
     online = firebase.online_status(locale)

@@ -90,7 +90,7 @@ from typing import (
 import logging
 import uuid
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
@@ -628,7 +628,7 @@ class UserModel(Model["UserModel"]):
         user.ready = True  # Ready for new challenges by default
         user.ready_timed = True  # Ready for timed games by default
         user.locale = locale or DEFAULT_LOCALE
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(UTC)
         user.games = 0
         return user.put().id()
 
@@ -1436,7 +1436,7 @@ class StatsModel(Model["StatsModel"]):
         """Create a fresh instance with default values"""
         sm = cls()
         sm.set_user(user_id, robot_level)
-        sm.timestamp = datetime.utcnow()
+        sm.timestamp = datetime.now(UTC)
         sm.elo = 1200
         sm.human_elo = 1200
         sm.manual_elo = 1200
@@ -1544,7 +1544,7 @@ class StatsModel(Model["StatsModel"]):
         check_false_positives = True
 
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(UTC)
             max_fetch = max_len
             # No need to check false positives if querying newest records
             check_false_positives = False
@@ -1784,7 +1784,7 @@ class StatsModel(Model["StatsModel"]):
         if not user_id or days <= 0:
             return []
         k: Key[UserModel] = Key(UserModel, user_id)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         q = (
             cls.query(ndb.AND(StatsModel.robot_level == 0, StatsModel.user == k))  # type: ignore
             .filter(StatsModel.timestamp <= now)
@@ -1999,7 +1999,7 @@ class ChatModel(Model["ChatModel"]):
         cm.user = Key(UserModel, from_user)
         cm.recipient = Key(UserModel, to_user)
         cm.msg = msg
-        cm.timestamp = timestamp or datetime.utcnow()
+        cm.timestamp = timestamp or datetime.now(UTC)
         cm.put()
         # Return the message timestamp
         return cm.timestamp
@@ -2468,7 +2468,7 @@ class TransactionModel(Model["TransactionModel"]):
         """Add a transaction"""
         tm = cls(id=Unique.id())
         tm.user = Key(UserModel, user_id)
-        tm.ts = datetime.utcnow()
+        tm.ts = datetime.now(UTC)
         tm.plan = plan
         tm.kind = kind
         tm.op = op

@@ -20,7 +20,7 @@ from functools import lru_cache
 
 from typing import Mapping, cast, Any, Optional, Dict
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 
 import requests
@@ -417,7 +417,7 @@ def oauth_apple(request: Request) -> ResponseType:
     token = rq.get("token", "")
     if not token:
         return jsonify({"status": "invalid", "msg": "Missing token"}), 401
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     today = datetime(now.year, now.month, now.day)
 
     try:

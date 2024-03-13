@@ -32,7 +32,7 @@ from typing import (
 
 import os
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 import base64
 import io
 
@@ -671,7 +671,7 @@ def challenge_api() -> ResponseType:
     msg: Dict[str, str] = dict()
 
     # Notify both players' clients of an update to the challenge lists
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg[f"user/{destuser}/challenge"] = now
     msg[f"user/{uid}/challenge"] = now
     firebase.send_message(msg)
@@ -770,7 +770,7 @@ def initwait_api() -> ResponseType:
 
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg = {
         f"user/{opp}/challenge": now,
         f"user/{uid}/wait/{opp}": {"key": key} if key else True,
@@ -807,7 +807,7 @@ def cancelwait_api() -> ResponseType:
         return jsonify(ok=False)
 
     # Delete the current wait and force update of the opponent's challenge list
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg = {
         f"user/{cuid}/wait/{opp_id}": None,
         f"user/{opp_id}/challenge": now,
@@ -1409,7 +1409,7 @@ def initgame_api() -> ResponseType:
         return jsonify(ok=False)
 
     # Notify both players' clients that there is a new game
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     msg: Dict[str, Any] = dict()
     move_dict: MoveNotifyDict = {
         "game": game_id,
