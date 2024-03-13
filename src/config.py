@@ -31,7 +31,7 @@ from typing import (
 )
 from datetime import datetime, timedelta
 import os
-from services.secret_manager import SecretManager
+from secret_manager import SecretManager
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from flask import json
