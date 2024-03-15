@@ -1046,7 +1046,7 @@ class User:
         # but candidate2 did not, prefer candidate2
         if strip1 != candidate1 and candidate2 and strip2 == candidate2:
             strip1 = ""
-        nickname = strip1 or candidate2 or "Anon"  # 'Anon' is a last-resort fallback
+        nickname = strip1 or candidate2 or ""
         nickname = nickname[0:MAX_NICKNAME_LENGTH]
         prefs: PrefsDict = {
             "newbag": True,
