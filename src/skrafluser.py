@@ -364,9 +364,8 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user,
-        or userid if a nick is not available"""
-        return self._nickname or self._user_id or ""
+        """Returns the human-readable nickname of a user"""
+        return self._nickname
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
@@ -476,8 +475,7 @@ class User:
         """Returns the full name of a user from a dict of preferences"""
         if prefs is None:
             return ""
-        fn = prefs.get("full_name")
-        return fn or ""
+        return prefs.get("full_name", "")
 
     def full_name(self) -> str:
         """Returns the full name of a user"""
