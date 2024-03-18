@@ -296,6 +296,7 @@ class UserForm:
         self.nickname: str = ""
         self.full_name: str = ""
         self.id: str = ""
+        self.account: str = ""
         self.email: str = ""
         self.image: str = ""
         self.audio: bool = True
@@ -384,6 +385,7 @@ class UserForm:
         self.chat_disabled = usr.chat_disabled()
         self.locale = usr.locale
         self.id = current_user_id() or ""
+        self.account = usr.account()
         self.image = usr.image()
 
     @staticmethod
