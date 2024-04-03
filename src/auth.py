@@ -99,6 +99,15 @@ def authorized_as_anonymous(request: Request) -> bool:
     return auth == f"Bearer {AUTH_SECRET}"
 
 
+def rq_get(request: Request, key: str) -> str:
+    """Get a value from the request by key, either from the form data or JSON"""
+    if (val := request.form.get(key)):
+        return val
+    if (j := request.json):
+        return j.get(key, "")
+    return ""
+
+
 def oauth2callback(request: Request) -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
     # this route is only for HTTP POSTs
@@ -113,9 +122,7 @@ def oauth2callback(request: Request) -> ResponseType:
         # The 'fail' parameter is used for testing purposes only.
         # If sent by the client, we respond with the error code requested.
         try:
-            fail = request.form.get("fail", "") or cast(Any, request).json.get(
-                "fail", ""
-            )
+            fail = rq_get(request, "fail")
             if fail:
                 fail_code = int(fail) if len(fail) <= 3 else 0
                 if fail_code:
@@ -130,25 +137,18 @@ def oauth2callback(request: Request) -> ResponseType:
     token = ""
     config: FlaskConfig = cast(Any, current_app).config
     testing = config.get("TESTING", False)
-    client_type: str = "web"  # Default client type
+    client_type = "web"  # Default client type
+    locale = ""
 
     if not testing:
-        token = request.form.get("idToken", "") or cast(Any, request).json.get(
-            "idToken", ""
-        )
+        token = rq_get(request, "idToken")
         if not token:
             # No authentication token included in the request
             # 400 - Bad Request
             logging.warning("Missing token")
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
-        client_type = (
-            request.form.get("clientType", "")
-            or (
-                request.json is not None
-                and cast(Dict[str, str], request.json).get("clientType", "")
-            )
-            or "web"
-        )
+        client_type = rq_get(request, "clientType") or "web"
+        locale = rq_get(request, "locale")
 
     client_type = client_type[:64]  # Defensive programming
     client_id = CLIENT.get(client_type, {}).get("id", "")
@@ -168,6 +168,7 @@ def oauth2callback(request: Request) -> ResponseType:
 
     try:
         if testing:
+            # Probably a Python unit test
             # Get the idinfo dictionary directly from the request
             f = cast(Dict[str, str], request.form)
             idinfo = UserIdDict(
@@ -183,7 +184,8 @@ def oauth2callback(request: Request) -> ResponseType:
                 client_type=client_type,
             )
         elif DEV_SERVER and token == "[TESTING]":
-            # Testing only: use a hard-coded user id dictionary
+            # Probably a client-side (Detox/Jest) test
+            # Use a hard-coded user id dictionary
             idinfo = UserIdDict(
                 iss="accounts.google.com",
                 sub=token,
@@ -215,9 +217,10 @@ def oauth2callback(request: Request) -> ResponseType:
             image = idinfo.get("picture")
             # Make sure that the e-mail address is in lowercase
             email = idinfo.get("email", "").lower()
-            # Attempt to find an associated user record in the datastore,
-            # or create a fresh user record if not found
-            locale = (idinfo.get("locale") or DEFAULT_LOCALE).replace("-", "_")
+            # We prioritize the locale given in the request, if any,
+            # then the one returned from the Google auth, if any,
+            # and finally we resort to the default locale (en_US).
+            locale = (locale or idinfo.get("locale") or DEFAULT_LOCALE).replace("-", "_")
             # Check whether this is an upgrade of an anonymous user
             # to a fully authenticated user
             upgrade_from: Optional[str] = None
@@ -226,6 +229,8 @@ def oauth2callback(request: Request) -> ResponseType:
                 # We already have a valid anonymous user session:
                 # upgrade the user to a fully authenticated user
                 upgrade_from = sd.get("userid")
+            # Attempt to find an associated user record in the datastore,
+            # or create a fresh user record if not found
             uld = User.login_by_account(
                 account,
                 name or "",

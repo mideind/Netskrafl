@@ -1047,7 +1047,7 @@ def language_for_locale(lc: str) -> str:
     return dget(LANGUAGES, lc, DEFAULT_LANGUAGE)
 
 
-@functools.lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=128)
 def to_supported_locale(lc: str) -> str:
     """Return the locale code if it is supported, otherwise its parent
     locale, or the fallback DEFAULT_LOCALE if none of the above is found"""
