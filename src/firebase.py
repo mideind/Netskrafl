@@ -347,7 +347,7 @@ def push_to_user(
             # (the original string is generated in JavaScript code and
             # is not ISO 8601 compliant as far as Python is concerned)
             utc = utc[0:19]
-            if datetime.fromisoformat(utc) < cutoff:
+            if datetime.fromisoformat(utc).replace(tzinfo=UTC) < cutoff:
                 # The session token is too old
                 # logging.info("Skipping notification, session token is too old")
                 continue

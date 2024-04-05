@@ -1109,7 +1109,7 @@ class User:
         u.__dict__ = j
         u._favorites = None
         u._blocks = None
-        u._timestamp = datetime.fromisoformat(j["_timestamp"])
+        u._timestamp = datetime.fromisoformat(j["_timestamp"]).replace(tzinfo=UTC)
         return u
 
     def delete_account(self) -> bool:

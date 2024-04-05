@@ -35,7 +35,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
     now = datetime(year=now.year, month=now.month, day=now.day, tzinfo=UTC)
 
     for ix, sm in enumerate(resp.json["elo_30_days"]):
-        ts = datetime.fromisoformat(sm["ts"])
+        ts = datetime.fromisoformat(sm["ts"]).replace(tzinfo=UTC)
         assert (now - ts).days == ix
         assert sm["elo"] == 1200
         assert sm["human_elo"] == 1200
@@ -74,7 +74,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
 
     for ix in reversed(range(16, 30)):
         sm = slist[ix]
-        ts = datetime.fromisoformat(sm["ts"])
+        ts = datetime.fromisoformat(sm["ts"]).replace(tzinfo=UTC)
         assert (now - ts).days == ix
         assert sm["elo"] == 1210
         assert sm["human_elo"] == 1220
@@ -82,7 +82,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
 
     for ix in reversed(range(6, 16)):
         sm = slist[ix]
-        ts = datetime.fromisoformat(sm["ts"])
+        ts = datetime.fromisoformat(sm["ts"]).replace(tzinfo=UTC)
         assert (now - ts).days == ix
         assert sm["elo"] == 1240
         assert sm["human_elo"] == 1250
@@ -90,7 +90,7 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
 
     for ix in reversed(range(0, 6)):
         sm = slist[ix]
-        ts = datetime.fromisoformat(sm["ts"])
+        ts = datetime.fromisoformat(sm["ts"]).replace(tzinfo=UTC)
         assert (now - ts).days == ix
         assert sm["elo"] == 1270
         assert sm["human_elo"] == 1280

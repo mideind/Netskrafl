@@ -111,7 +111,7 @@ def request_valid(
 
     # Check the time stamp
     try:
-        dt = datetime.strptime(xsc_date, "%Y-%m-%d %H:%M:%S")
+        dt = datetime.strptime(xsc_date, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
     except ValueError:
         # Invalid date/time
         return False
