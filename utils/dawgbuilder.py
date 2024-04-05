@@ -4,7 +4,7 @@
 
     DAWG dictionary builder
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -626,7 +626,7 @@ class DawgBuilder:
             self._sortkey = current_alphabet().sortkey
             self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
-            self._fin = open(fpath, "r", encoding="utf-8")
+            self._fin: Optional[io.TextIOWrapper] = open(fpath, "r", encoding="utf-8")
             print("Opened input file {0}".format(fpath))
             self._init()
 

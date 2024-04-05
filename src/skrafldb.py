@@ -896,13 +896,17 @@ class MoveModel(Model["MoveModel"]):
     timestamp = Model.OptionalDatetime()
 
 
+class GameModelFuture(Future["GameModel"]):
+    pass
+
+
 class GameModel(Model["GameModel"]):
 
     """Models a game between two users"""
 
     # The players
-    player0: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
-    player1: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
+    player0 = UserModel.OptionalDbKey(kind=UserModel)
+    player1 = UserModel.OptionalDbKey(kind=UserModel)
 
     # The locale in which the game takes place
     locale = Model.OptionalStr()
@@ -1069,7 +1073,7 @@ class GameModel(Model["GameModel"]):
         # Issue two asynchronous queries in parallel
         qf = (q0.fetch_async(limit=max_len), q1.fetch_async(limit=max_len))
         # Wait for both of them to finish
-        Future.wait_all(qf)
+        GameModelFuture.wait_all(qf)
 
         # Combine the two query result lists and call game_callback() on each item
         rlist = map(game_callback, qf[0].get_result() + qf[1].get_result())
@@ -1148,7 +1152,7 @@ class FavoriteModel(Model["FavoriteModel"]):
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
 
     # The originating (source) user is the parent/ancestor of the relation
-    destuser = Model.OptionalDbKey(kind=UserModel)
+    destuser = UserModel.OptionalDbKey(kind=UserModel)
 
     def set_dest(self, user_id: str) -> None:
         """Set a destination user key property"""
@@ -1222,7 +1226,7 @@ class ChallengeModel(Model["ChallengeModel"]):
     # The challenging (source) user is the parent/ancestor of the relation
 
     # The challenged user
-    destuser = Model.OptionalDbKey(kind=UserModel)
+    destuser = UserModel.OptionalDbKey(kind=UserModel)
 
     # The parameters of the challenge (time, bag type, etc.)
     prefs = cast(PrefsDict, ndb.JsonProperty())
@@ -1397,7 +1401,7 @@ class StatsModel(Model["StatsModel"]):
     """Models statistics about users"""
 
     # The user associated with this statistic or None if robot
-    user = Model.OptionalDbKey(kind=UserModel)
+    user = UserModel.OptionalDbKey(kind=UserModel)
     robot_level = Model.Int(default=0, indexed=True)
 
     # The timestamp of this statistic
@@ -1829,7 +1833,7 @@ class RatingModel(Model["RatingModel"]):
     # The ordinal rank
     rank = Model.Int(indexed=True)
 
-    user = Model.OptionalDbKey(kind=UserModel, indexed=False)
+    user = UserModel.OptionalDbKey(kind=UserModel, indexed=False)
 
     robot_level = Model.Int(default=0, indexed=False)
 
@@ -1951,10 +1955,10 @@ class ChatModel(Model["ChatModel"]):
     channel = Model.Str()
 
     # The user originating this chat message
-    user: Key[UserModel] = Model.DbKey(kind=UserModel)
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
 
     # The recipient of the message
-    recipient: Optional[Key[UserModel]] = Model.OptionalDbKey(kind=UserModel)
+    recipient: Optional[Key[UserModel]] = UserModel.OptionalDbKey(kind=UserModel)
 
     # The timestamp of this chat message
     timestamp = Model.Datetime(indexed=True, auto_now_add=True)
@@ -2169,9 +2173,9 @@ class ZombieModel(Model["ZombieModel"]):
     """Models finished games that have not been seen by one of the players"""
 
     # The zombie game
-    game: Key[GameModel] = Model.DbKey(kind=GameModel)
+    game: Key[GameModel] = GameModel.DbKey(kind=GameModel)
     # The player that has not seen the result
-    player: Key[UserModel] = Model.DbKey(kind=UserModel)
+    player: Key[UserModel] = UserModel.DbKey(kind=UserModel)
 
     def set_player(self, user_id: Optional[str]) -> None:
         """Set the player's user id"""
@@ -2253,7 +2257,7 @@ class PromoModel(Model["PromoModel"]):
     """Models promotions displayed to players"""
 
     # The player that saw the promotion
-    player: Key[UserModel] = Model.DbKey(kind=UserModel)
+    player: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # The promotion id
     promotion = Model.Str()
     # The timestamp
@@ -2338,9 +2342,9 @@ class BlockModel(Model["BlockModel"]):
     MAX_BLOCKS = 100  # The maximum number of blocked users per user
 
     # The user who has blocked another user
-    blocker: Key[UserModel] = Model.DbKey(kind=UserModel)
+    blocker: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # The blocked user
-    blocked: Key[UserModel] = Model.DbKey(kind=UserModel)
+    blocked: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # Timestamp
     timestamp = Model.Datetime(auto_now_add=True)
 
@@ -2411,9 +2415,9 @@ class ReportModel(Model["ReportModel"]):
     """Models the fact that a user has reported another user"""
 
     # The user who is reporting another user
-    reporter: Key[UserModel] = Model.DbKey(kind=UserModel)
+    reporter = UserModel.DbKey(kind=UserModel)
     # The reported user
-    reported: Key[UserModel] = Model.DbKey(kind=UserModel)
+    reported = UserModel.DbKey(kind=UserModel)
     # The reason code (0: Free format text explanation; >= 1: fixed reasons)
     code = Model.Int()
     # Free format text, if any
@@ -2460,7 +2464,7 @@ class TransactionModel(Model["TransactionModel"]):
     """Models subscription transactions"""
 
     # User
-    user: Key[UserModel] = Model.DbKey(kind=UserModel)
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # Timestamp
     ts = Model.Datetime(auto_now_add=True, indexed=True)
     # Subscription plan, or empty string if none
