@@ -347,7 +347,7 @@ class Model(Generic[_T_Model], ndb.Model):
 
     @classmethod
     def put_multi(cls: Type[_T_Model], recs: Iterable[_T_Model]) -> None:
-        put_multi(recs)
+        ndb.put_multi(list(recs))
 
     @classmethod
     def get_by_id(  # type: ignore
