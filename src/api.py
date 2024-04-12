@@ -35,6 +35,7 @@ import logging
 from datetime import UTC, datetime
 import base64
 import io
+from zlib import adler32
 
 from flask import (
     Blueprint,
@@ -465,10 +466,15 @@ def image_api() -> ResponseType:
                 decoded_image = base64.b64decode(image_blob)
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
-                # Serve the image using flask.send_file()
+                checksum = adler32(decoded_image) & 0xFFFFFFFF
+                # Serve the image using flask.send_file(),
+                # with a cache time of 10 minutes
                 return send_file(
-                    image_bytes, mimetype="image/jpeg", max_age=10 * 60
-                )  # 10 minutes
+                    image_bytes,
+                    mimetype=mimetype,
+                    etag=f"img:{checksum:08x}",
+                    max_age=10 * 60,
+                )
             except Exception:
                 # Something wrong in the image_blob: give up
                 pass
@@ -492,6 +498,42 @@ def image_api() -> ResponseType:
         um.set_image(mimetype, request.get_data(as_text=False))
         return "OK", 200
     return "Unrecognized MIME type", 400
+
+
+@api_route("/thumbnail", methods=["GET", "POST"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def thumbnail_api() -> ResponseType:
+    """Get (GET) a profile image thumbnail for a user"""
+    rq = RequestData(request, use_args=True)
+    uid = rq.get("uid", "") or current_user_id() or ""
+    um = UserModel.fetch(uid) if uid else None
+    if not um:
+        # User not found
+        return jsonify({ "ok": False })
+    # Get image for user
+    image, image_blob = um.get_image()
+    if image_blob:
+        # We have the image as a bytes object: return it
+        if not image or image.startswith(("https:", "http:")):
+            # Accommodate strange scenarios
+            mimetype = "image/jpeg"
+        else:
+            mimetype = image
+        try:
+            decoded_image = base64.b64decode(image_blob)
+            # Convert the decoded image to a BytesIO object
+            image_bytes = io.BytesIO(decoded_image)
+            # Serve the image using flask.send_file()
+            return send_file(
+                image_bytes, mimetype="image/jpeg", max_age=10 * 60
+            )  # 10 minutes
+        except Exception:
+            # Something wrong in the image_blob: give up
+            pass
+    if not image or not image.startswith(("https:", "http:")):
+        return "Image not found", 404  # Not found
+    # Assume that this is a URL: redirect to it
+    return redirect(image)
 
 
 @api_route("/userlist")
