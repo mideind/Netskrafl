@@ -10,15 +10,18 @@
 
     This module provides a SecretManager class for interacting with Google Cloud Secret Manager. 
     It includes methods to retrieve secrets as bytes or JSON. Errors are logged and exceptions raised.
+
 """
 
 import json
-from google.cloud import secretmanager
+from google.cloud import secretmanager  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError
 import logging
 from typing import Any
 
+
 class SecretManager:
+
     def __init__(self, project_id: str) -> None:
         """
         Initialize the SecretManager with a Google Cloud project ID.
@@ -33,9 +36,12 @@ class SecretManager:
         The secret is returned as bytes.
         If an error occurs, an error message is logged and an exception is raised.
         """
+        name = ""
         try:
-            name = f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
-            response = self.client.access_secret_version(request={"name": name})
+            name = (
+                f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
+            )
+            response = self.client.access_secret_version(request={"name": name})  # type: ignore
             return response.payload.data
         except GoogleAPICallError as e:
             logging.error(f"Failed to get secret: {e}. Secret path: {name}")
@@ -48,8 +54,10 @@ class SecretManager:
         If an error occurs, an error message is logged and an exception is raised.
         """
         try:
-            json_secret = self.get_secret(secret_id, version_id).decode('UTF-8')
+            json_secret = self.get_secret(secret_id, version_id).decode("utf-8")
             return json.loads(json_secret)
         except json.JSONDecodeError as e:
-            logging.error(f"Failed to decode JSON secret: {e}. Secret ID: {secret_id}, Version ID: {version_id}")
+            logging.error(
+                f"Failed to decode JSON secret: {e}. Secret ID: {secret_id}, Version ID: {version_id}"
+            )
             raise
