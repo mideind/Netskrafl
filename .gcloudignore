@@ -17,6 +17,8 @@ resources/*.dawg.pickle
 resources/netskrafl-*.json
 resources/explo-*.json
 resources/Explo*.json
+resources/client_secret_*.json
+resources/secret_key.bin
 
 # Utility scripts
 utils/

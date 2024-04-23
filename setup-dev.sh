@@ -29,10 +29,10 @@ type dev_appserver.py >/dev/null 2>&1 || { echo >&2 " - GAE for python is missin
 
 python - <<EOF
 import sys
-if sys.version_info.major == 2 and sys.version_info.minor == 7:
+if sys.version_info.major == 3 and sys.version_info.minor == 11:
     sys.exit(0)
 else:
-    print("Unsupported version of Python. Supported: 2.7.*")
+    print("Unsupported version of Python. Supported: 3.11.*")
     sys.exit(1)
 EOF
 
@@ -50,15 +50,9 @@ if [[ -f resources/algeng.dawg.pickle && -f resources/ordalisti.dawg.pickle ]]; 
     echo "Pickle files available"
 else
     echo "Some pickle files not available, running dawgbuilder..."
-    python dawgbuilder.py
+    python utils/dawgbuilder.py all
 fi
 
-echo "Creating secret file..."
-if [ -f resources/secret_key.bin ]; then
-    echo "Secret file already exists"
-else
-    python generate-secret.py
-fi
 
 echo "Generated resource files:"
 git clean --dry-run -X resources | awk '{ print $3 }'
