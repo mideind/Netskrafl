@@ -44,6 +44,7 @@ from flask import (
 )
 from flask.globals import current_app
 from werkzeug.utils import redirect
+from PIL import Image
 
 from config import (
     RC_WEBHOOK_AUTH,
@@ -514,18 +515,19 @@ def thumbnail_api() -> ResponseType:
     image, image_blob = um.get_image()
     if image_blob:
         # We have the image as a bytes object: return it
-        if not image or image.startswith(("https:", "http:")):
-            # Accommodate strange scenarios
-            mimetype = "image/jpeg"
-        else:
-            mimetype = image
         try:
             decoded_image = base64.b64decode(image_blob)
             # Convert the decoded image to a BytesIO object
             image_bytes = io.BytesIO(decoded_image)
+            # Create a thumbnail using PIL
+            img = Image.open(image_bytes)  # type: ignore
+            img.thumbnail((512, 512))  # type: ignore
+            thumb_bytes = io.BytesIO()
+            img.save(thumb_bytes, "JPEG")  # type: ignore
+            thumb_bytes.seek(0)
             # Serve the image using flask.send_file()
             return send_file(
-                image_bytes, mimetype="image/jpeg", max_age=10 * 60
+                thumb_bytes, mimetype="image/jpeg", max_age=10 * 60
             )  # 10 minutes
         except Exception:
             # Something wrong in the image_blob: give up
