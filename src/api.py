@@ -44,7 +44,6 @@ from flask import (
 )
 from flask.globals import current_app
 from werkzeug.utils import redirect
-from PIL import Image
 
 from config import (
     RC_WEBHOOK_AUTH,
@@ -63,6 +62,7 @@ from basics import (
     current_user,
     current_user_id,
     clear_session_userid,
+    make_thumbnail,
 )
 from languages import (
     Alphabet,
@@ -79,6 +79,7 @@ from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     ChatModel,
+    ImageModel,
     ZombieModel,
     PrefsDict,
     UserModel,
@@ -446,11 +447,11 @@ def image_api() -> ResponseType:
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     cuid = current_user_id()
-    uid = rq.get("uid") or cuid or ""
+    uid = (rq.get("uid") or cuid or "").strip()
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
-    um = UserModel.fetch(uid)
+    um = UserModel.fetch(uid) if uid else None
     if not um:
         return "User not found", 404  # Not found
     if method == "GET":
@@ -496,39 +497,50 @@ def image_api() -> ResponseType:
             return "OK", 200
         return "Invalid URL", 400  # Bad request
     elif mimetype.startswith("image/"):
-        um.set_image(mimetype, request.get_data(as_text=False))
+        img_data = request.get_data(as_text=False)
+        # Generate thumbnail and store it for later use
+        # Note: img_data is base64 encoded; we need to decode it
+        decoded_image = base64.b64decode(img_data)
+        thumb_bytes = make_thumbnail(decoded_image)
+        ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
+        # Store the original (full) image in the UserModel entity
+        um.set_image(mimetype, img_data)
         return "OK", 200
     return "Unrecognized MIME type", 400
 
 
-@api_route("/thumbnail", methods=["GET", "POST"])
+@api_route("/thumbnail", methods=["GET"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def thumbnail_api() -> ResponseType:
     """Get (GET) a profile image thumbnail for a user"""
     rq = RequestData(request, use_args=True)
-    uid = rq.get("uid", "") or current_user_id() or ""
+    uid = (rq.get("uid", "") or current_user_id() or "").strip()
+    # Check whether we already have a thumbnail ready for this user
+    thumb = ImageModel.get_thumbnail(uid)
+    if thumb:
+        # Pack the bytes object into a BytesIO object and send it in response
+        thumb_bytes = io.BytesIO(thumb)
+        return send_file(thumb_bytes, mimetype="image/jpeg", max_age=10 * 60)
+    # Thumbnail not present: generate it
     um = UserModel.fetch(uid) if uid else None
     if not um:
         # User not found
-        return jsonify({ "ok": False })
+        return "User not found", 404  # Not found
     # Get image for user
     image, image_blob = um.get_image()
     if image_blob:
-        # We have the image as a bytes object: return it
+        # We have the image as a bytes object:
+        # make a thumbnail and return it
         try:
             decoded_image = base64.b64decode(image_blob)
-            # Convert the decoded image to a BytesIO object
-            image_bytes = io.BytesIO(decoded_image)
-            # Create a thumbnail using PIL
-            img = Image.open(image_bytes)  # type: ignore
-            img.thumbnail((512, 512))  # type: ignore
-            thumb_bytes = io.BytesIO()
-            img.save(thumb_bytes, "JPEG")  # type: ignore
-            thumb_bytes.seek(0)
-            # Serve the image using flask.send_file()
+            thumb_bytes = make_thumbnail(decoded_image)
+            # Save the thumbnail as an ImageModel entity
+            ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
+            # Serve the image using flask.send_file(),
+            # with a cache lifetime of 10 minutes
             return send_file(
                 thumb_bytes, mimetype="image/jpeg", max_age=10 * 60
-            )  # 10 minutes
+            )
         except Exception:
             # Something wrong in the image_blob: give up
             pass

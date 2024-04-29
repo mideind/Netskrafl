@@ -896,6 +896,54 @@ class MoveModel(Model["MoveModel"]):
     timestamp = Model.OptionalDatetime()
 
 
+class ImageModel(Model["ImageModel"]):
+
+    """Model for storing user images and thumbnails in the database,
+    independently of the user entity"""
+
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
+    # Formats include:
+    # 'jpeg': original full-size JPEG
+    # 'thumb512': 512x512 thumbnail, always JPEG
+    fmt = Model.Str()
+    image = Model.Blob()
+
+    @classmethod
+    def get_thumbnail(cls, uid: str) -> Optional[bytes]:
+        """Fetch the thumbnail image for a user"""
+        if not uid: return None
+        k: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(
+            ndb.AND(
+                ImageModel.user == k,  # type: ignore
+                ImageModel.fmt == "thumb512",
+            )
+        )
+        if (im := q.get()) is None:
+            return None
+        return im.image
+
+    @classmethod
+    def set_thumbnail(cls, uid: str, image: bytes) -> None:
+        """Store a thumbnail image for a user"""
+        # Enclose the following in an NDB transaction
+        k: Key[UserModel] = Key(UserModel, uid)
+        # If a thumbnail already exists, update it
+        q = cls.query(
+            ndb.AND(
+                ImageModel.user == k,  # type: ignore
+                ImageModel.fmt == "thumb512",
+            )
+        )
+        if (im := q.get()) is not None:
+            im.image = image
+            im.put()
+            return
+        # Otherwise, create a new thumbnail entity
+        im = cls(user=k, fmt="thumb512", image=image)
+        im.put()
+
+
 class GameModelFuture(Future["GameModel"]):
     pass
 

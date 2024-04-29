@@ -146,3 +146,8 @@ indexes:
   - name: human_elo
     direction: desc
   - name: highest_score
+
+- kind: ImageModel
+  properties:
+  - name: user
+  - name: fmt
