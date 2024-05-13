@@ -35,7 +35,6 @@ import logging
 from datetime import UTC, datetime
 import base64
 import io
-from zlib import adler32
 
 from flask import (
     Blueprint,
@@ -63,6 +62,7 @@ from basics import (
     current_user_id,
     clear_session_userid,
     make_thumbnail,
+    send_cached_file,
 )
 from languages import (
     Alphabet,
@@ -159,7 +159,9 @@ def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
 
     def decorator(f: RouteType) -> RouteType:
 
-        assert f.__name__.endswith("_api"), f"Name of API function '{f.__name__}' must end with '_api'"
+        assert f.__name__.endswith(
+            "_api"
+        ), f"Name of API function '{f.__name__}' must end with '_api'"
 
         @api.route(route, methods=methods)
         @wraps(f)
@@ -468,14 +470,10 @@ def image_api() -> ResponseType:
                 decoded_image = base64.b64decode(image_blob)
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
-                checksum = adler32(decoded_image) & 0xFFFFFFFF
                 # Serve the image using flask.send_file(),
                 # with a cache time of 10 minutes
-                return send_file(
-                    image_bytes,
-                    mimetype=mimetype,
-                    etag=f"img:{checksum:08x}",
-                    max_age=10 * 60,
+                return send_cached_file(
+                    image_bytes, lifetime_seconds=10 * 60, mimetype=mimetype
                 )
             except Exception:
                 # Something wrong in the image_blob: give up
@@ -520,7 +518,7 @@ def thumbnail_api() -> ResponseType:
     if thumb:
         # Pack the bytes object into a BytesIO object and send it in response
         thumb_bytes = io.BytesIO(thumb)
-        return send_file(thumb_bytes, mimetype="image/jpeg", max_age=10 * 60)
+        return send_cached_file(thumb_bytes, lifetime_seconds=10 * 60)
     # Thumbnail not present: generate it
     um = UserModel.fetch(uid) if uid else None
     if not um:
@@ -538,9 +536,7 @@ def thumbnail_api() -> ResponseType:
             ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
             # Serve the image using flask.send_file(),
             # with a cache lifetime of 10 minutes
-            return send_file(
-                thumb_bytes, mimetype="image/jpeg", max_age=10 * 60
-            )
+            return send_cached_file(thumb_bytes, lifetime_seconds=10 * 60)
         except Exception:
             # Something wrong in the image_blob: give up
             pass
@@ -986,6 +982,10 @@ class UserCache:
         """Return the image for a user"""
         return "" if (u := self._load(user_id)) is None else u.image()
 
+    def thumbnail(self, user_id: str) -> str:
+        """Return the thumbnail for a user"""
+        return "" if (u := self._load(user_id)) is None else u.thumbnail()
+
     def chat_disabled(self, user_id: str) -> bool:
         """Return True if the user has disabled chat"""
         if (u := self._load(user_id)) is None:
@@ -1048,7 +1048,7 @@ def chatload_api() -> ResponseType:
         ChatMessageDict(
             from_userid=(uid := cm["user"]),
             name=uc.full_name(uid),
-            image=uc.image(uid),
+            image=uc.thumbnail(uid),
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
@@ -1101,7 +1101,7 @@ def chathistory_api() -> ResponseType:
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
             nick=uc.nickname(uid),
-            image=uc.image(uid),
+            image=uc.thumbnail(uid),
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],

@@ -743,7 +743,7 @@ def userlist(query: str, spec: str) -> UserList:
                         ready=lu.is_ready(),
                         ready_timed=lu.is_ready_timed(),
                         live=True,
-                        image=lu.image(),
+                        image=lu.thumbnail(),
                     )
                 )
 
@@ -780,7 +780,7 @@ def userlist(query: str, spec: str) -> UserList:
                             live=False,  # Will be filled in later
                             ready=fu.is_ready(),
                             ready_timed=fu.is_ready_timed(),
-                            image=fu.image(),
+                            image=fu.thumbnail(),
                         )
                     )
 
@@ -819,7 +819,7 @@ def userlist(query: str, spec: str) -> UserList:
                             newbag=True,
                             ready=au.is_ready(),
                             ready_timed=au.is_ready_timed(),
-                            image=au.image(),
+                            image=au.thumbnail(),
                         )
                     )
 
@@ -854,7 +854,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready=user.is_ready(),
                     ready_timed=True,
                     live=True,
-                    image=user.image(),
+                    image=user.thumbnail(),
                 )
             )
 
@@ -896,7 +896,7 @@ def userlist(query: str, spec: str) -> UserList:
                     newbag=True,
                     ready=ud["ready"] or False,
                     ready_timed=ud["ready_timed"] or False,
-                    image=User.image_url(uid, ud["image"], ud["has_image_blob"]),
+                    image=User.thumbnail_url(uid, ud["image"], ud["has_image_blob"]),
                 )
             )
 
@@ -976,7 +976,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     },
                     timed=timed,
                     live=False,  # Will be filled in later
-                    image=u.image(),
+                    image=u.thumbnail(),
                     fav=False if cuser is None else cuser.has_favorite(opp),
                     tile_count=100,  # All tiles (100%) accounted for
                     robot_level=0,  # Should not be used; zombie games are human-only
@@ -1056,7 +1056,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 timed=timed,
                 tile_count=int(g["tile_count"] * 100 / tileset.num_tiles()),
                 live=False,
-                image="" if u is None else u.image(),
+                image="" if u is None else u.thumbnail(),
                 fav=False if cuser is None else cuser.has_favorite(opp),
                 robot_level=robot_level,
                 elo=0 if u is None else u.elo(),
@@ -1227,7 +1227,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
                     "manual": Game.manual_wordcheck_from_prefs(prefs),
                 },
                 live=False,  # Will be filled in later
-                image="" if u is None else u.image(),
+                image="" if u is None else u.thumbnail(),
                 elo=0 if u is None else u.elo(),
                 human_elo=0 if u is None else u.human_elo(),
                 fav=False if cuser is None or opp is None else cuser.has_favorite(opp),
@@ -1301,7 +1301,7 @@ def challengelist() -> ChallengeList:
                 ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=False,
                 live=False,  # Will be filled in later
-                image=u.image(),
+                image=u.thumbnail(),
                 fav=cuser.has_favorite(oppid),
                 elo=u.elo(),
                 human_elo=u.human_elo(),
@@ -1330,7 +1330,7 @@ def challengelist() -> ChallengeList:
                 ts=Alphabet.format_timestamp_short(c.ts),
                 opp_ready=opp_ready(c),
                 live=False,  # Will be filled in later
-                image=u.image(),
+                image=u.thumbnail(),
                 fav=cuser.has_favorite(oppid),
                 elo=u.elo(),
                 human_elo=u.human_elo(),

@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import io
 from typing import (
     Literal,
@@ -39,6 +40,7 @@ from flask import (
     Flask,
     redirect,
     jsonify as flask_jsonify,
+    send_file,  # type: ignore
     url_for,
     request,
     make_response,
@@ -135,6 +137,17 @@ def max_age(seconds: int) -> RouteFunc:
         return decorated_function
 
     return decorator
+
+
+def send_cached_file(content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg") -> Response:
+    """Create a response with a JPEG image and a cache header"""
+    response = send_file(content, mimetype=mimetype)
+    now = datetime.now(UTC)
+    expires = now + timedelta(seconds=lifetime_seconds)
+    response.headers["Cache-Control"] = f"public, max-age={lifetime_seconds}"
+    response.headers["Last-Modified"] = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    return response
 
 
 # Module-scope OAuth instance,
