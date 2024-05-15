@@ -149,6 +149,8 @@ DEFAULT_BEST_MOVES = 19
 MAX_BEST_MOVES = 20
 # Only allow POST requests to the API endpoints
 _ONLY_POST: Sequence[str] = ["POST"]
+# How long to cache a thumbnail image client-side, in seconds
+THUMBNAIL_LIFETIME = 10 * 60  # 10 minutes
 
 # Register the Flask blueprint for the APIs
 api = api_blueprint = Blueprint("api", __name__)
@@ -448,8 +450,10 @@ def image_api() -> ResponseType:
     """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
+    uid = rq.get("uid", "").strip()
+    request_has_uid = bool(uid)  # True if a specific user id was requested
     cuid = current_user_id()
-    uid = (rq.get("uid") or cuid or "").strip()
+    uid = uid or cuid or ""
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
@@ -473,7 +477,9 @@ def image_api() -> ResponseType:
                 # Serve the image using flask.send_file(),
                 # with a cache time of 10 minutes
                 return send_cached_file(
-                    image_bytes, lifetime_seconds=10 * 60, mimetype=mimetype
+                    image_bytes,
+                    lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+                    mimetype=mimetype,
                 )
             except Exception:
                 # Something wrong in the image_blob: give up
@@ -512,13 +518,21 @@ def image_api() -> ResponseType:
 def thumbnail_api() -> ResponseType:
     """Get (GET) a profile image thumbnail for a user"""
     rq = RequestData(request, use_args=True)
-    uid = (rq.get("uid", "") or current_user_id() or "").strip()
+    uid = rq.get("uid", "").strip()
+    request_has_uid = bool(uid)  # True if a specific user id was requested
+    uid = uid or current_user_id() or ""
     # Check whether we already have a thumbnail ready for this user
     thumb = ImageModel.get_thumbnail(uid)
     if thumb:
         # Pack the bytes object into a BytesIO object and send it in response
         thumb_bytes = io.BytesIO(thumb)
-        return send_cached_file(thumb_bytes, lifetime_seconds=10 * 60)
+        # If this was a request for a particular uid (not the current user),
+        # cache it for 10 minutes; otherwise, don't cache it (since the
+        # current user's thumbnail is session dependent, not URL-dependent)
+        return send_cached_file(
+            thumb_bytes,
+            lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+        )
     # Thumbnail not present: generate it
     um = UserModel.fetch(uid) if uid else None
     if not um:
@@ -536,7 +550,10 @@ def thumbnail_api() -> ResponseType:
             ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
             # Serve the image using flask.send_file(),
             # with a cache lifetime of 10 minutes
-            return send_cached_file(thumb_bytes, lifetime_seconds=10 * 60)
+            return send_cached_file(
+                thumb_bytes,
+                lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+            )
         except Exception:
             # Something wrong in the image_blob: give up
             pass

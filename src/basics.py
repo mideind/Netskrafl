@@ -40,7 +40,6 @@ from flask import (
     Flask,
     redirect,
     jsonify as flask_jsonify,
-    send_file,  # type: ignore
     url_for,
     request,
     make_response,
@@ -48,6 +47,7 @@ from flask import (
     session,
 )
 from flask.wrappers import Request, Response
+from werkzeug.utils import send_file  # type: ignore
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 
@@ -65,7 +65,6 @@ RouteFunc = Callable[[RouteType], RouteType]
 
 
 class UserIdDict(TypedDict):
-
     """Old-style auxiliary user data dictionary, previously
     stored in the Flask session cookie. Has been replaced by
     the simpler and smaller SessionDict (see below)."""
@@ -88,7 +87,6 @@ class UserIdDict(TypedDict):
 
 
 class SessionDict(TypedDict):
-
     """The contents of the Flask session cookie"""
 
     userid: str
@@ -139,14 +137,33 @@ def max_age(seconds: int) -> RouteFunc:
     return decorator
 
 
-def send_cached_file(content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg") -> Response:
-    """Create a response with a JPEG image and a cache header"""
-    response = send_file(content, mimetype=mimetype)
+class CachedResponse(Response):
+    """A subclass of Flask's Response class that adds
+    the requisite cache headers to the response and
+    deletes the Vary: header which Flask adds by
+    default to all responses that use the current
+    session."""
+
+    pass
+
+
+def send_cached_file(
+    content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg"
+) -> Response:
+    """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
     now = datetime.now(UTC)
-    expires = now + timedelta(seconds=lifetime_seconds)
-    response.headers["Cache-Control"] = f"public, max-age={lifetime_seconds}"
-    response.headers["Last-Modified"] = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-    response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    response = send_file(
+        content,
+        environ=request.environ,
+        mimetype=mimetype,
+        last_modified=now,
+        max_age=lifetime_seconds,
+        response_class=CachedResponse if lifetime_seconds > 0 else Response,
+    )
+    assert isinstance(response, Response)
+    if lifetime_seconds > 0:
+        expires = now + timedelta(seconds=lifetime_seconds)
+        response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
     return response
 
 
@@ -331,7 +348,6 @@ def make_thumbnail(image: bytes) -> io.BytesIO:
 
 
 class RequestData:
-
     """Wraps the Flask request object to allow error-checked retrieval of query
     parameters either from JSON or from form-encoded POST data"""
 
@@ -357,12 +373,10 @@ class RequestData:
         return f"<RequestData {self.q!r}>"
 
     @overload
-    def get(self, key: str) -> Any:
-        ...
+    def get(self, key: str) -> Any: ...
 
     @overload
-    def get(self, key: str, default: T) -> T:
-        ...
+    def get(self, key: str, default: T) -> T: ...
 
     def get(self, key: str, default: Any = None) -> Any:
         """Obtain an arbitrary data item from the request"""
@@ -376,16 +390,13 @@ class RequestData:
             return default
 
     @overload
-    def get_bool(self, key: str) -> bool:
-        ...
+    def get_bool(self, key: str) -> bool: ...
 
     @overload
-    def get_bool(self, key: str, default: bool) -> bool:
-        ...
+    def get_bool(self, key: str, default: bool) -> bool: ...
 
     @overload
-    def get_bool(self, key: str, default: Literal[None]) -> Union[bool, None]:
-        ...
+    def get_bool(self, key: str, default: Literal[None]) -> Union[bool, None]: ...
 
     def get_bool(self, key: str, default: Optional[bool] = None) -> Union[bool, None]:
         """Obtain a boolean data item from the request"""

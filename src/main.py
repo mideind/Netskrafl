@@ -70,6 +70,7 @@ from config import (
 from basics import (
     ndb_wsgi_middleware,
     init_oauth,
+    CachedResponse,
 )
 from firebase import init_firebase_app, connect_blueprint
 from dawgdictionary import Wordbase
@@ -115,8 +116,24 @@ else:
 # Initialize Firebase
 init_firebase_app()
 
+
+class OurFlask(Flask):
+    """Override Flask to use our custom process_response() method"""
+
+    def process_response(self, response: Response) -> Response:
+        """Process the response before returning it to the client"""
+        r = super().process_response(response)
+        if isinstance(r, CachedResponse):
+            # Make sure that the response is cacheable,
+            # by removing the default Vary: Cookie header
+            r.headers.pop("Vary", None)
+            r.vary.clear()
+            # r.vary.add("Accept-Encoding")
+        return r
+
+
 # Initialize Flask
-app = Flask(__name__, static_folder=STATIC_FOLDER)
+app = OurFlask(__name__, static_folder=STATIC_FOLDER)
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
 cast_app = cast(Any, app)
