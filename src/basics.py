@@ -51,7 +51,7 @@ from werkzeug.utils import send_file  # type: ignore
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 
-from config import OAUTH_CONF_URL, RouteType, ResponseType
+from config import OAUTH_CONF_URL, DEFAULT_THUMBNAIL_SIZE, RouteType, ResponseType
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
@@ -352,13 +352,13 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
     return wrap
 
 
-def make_thumbnail(image: bytes) -> io.BytesIO:
-    """Create a 512x512 thumbnail from a JPEG image"""
+def make_thumbnail(image: bytes, size: int=DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
+    """Create a thumbnail from a JPEG image"""
     # Convert the image bytes to a BytesIO object
     image_bytes = io.BytesIO(image)
     # Create a thumbnail using PIL
     img = Image.open(image_bytes, formats=["JPEG"])  # type: ignore
-    img.thumbnail((512, 512))  # type: ignore
+    img.thumbnail((size, size))  # type: ignore
     thumb_bytes = io.BytesIO()
     img.save(thumb_bytes, format="JPEG")  # type: ignore
     thumb_bytes.seek(0)

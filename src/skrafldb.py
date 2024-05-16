@@ -94,7 +94,7 @@ from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_LOCALE, ESTABLISHED_MARK
+from config import DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
 from cache import memcache
 
 
@@ -105,7 +105,6 @@ _T_Model = TypeVar("_T_Model", bound="ndb.Model")
 
 
 class PrefsDict(TypedDict, total=False):
-
     """Dictionary of user or game preferences"""
 
     full_name: str
@@ -130,7 +129,6 @@ ChallengeTuple = NamedTuple(
 
 
 class StatsDict(TypedDict):
-
     """Summarized result from a StatsModel query"""
 
     user: Optional[str]
@@ -149,7 +147,6 @@ StatsResults = List[StatsDict]
 
 
 class LiveGameDict(TypedDict):
-
     """The dictionary returned from the iter_live_games() method"""
 
     uuid: str
@@ -165,7 +162,6 @@ class LiveGameDict(TypedDict):
 
 
 class FinishedGameDict(TypedDict):
-
     """The dictionary returned from the list_finished_games() method"""
 
     uuid: str
@@ -183,7 +179,6 @@ class FinishedGameDict(TypedDict):
 
 
 class ZombieGameDict(TypedDict):
-
     """The dictionary returned from the ZombieModel.list_games() method"""
 
     uuid: str
@@ -196,7 +191,6 @@ class ZombieGameDict(TypedDict):
 
 
 class ChatModelHistoryDict(TypedDict):
-
     """The dictionary returned from the ChatModel.chat_history() method"""
 
     user: str
@@ -206,7 +200,6 @@ class ChatModelHistoryDict(TypedDict):
 
 
 class ListPrefixDict(TypedDict):
-
     """The dictionary returned from the UserModel.list_prefix() method"""
 
     id: str
@@ -223,7 +216,6 @@ class ListPrefixDict(TypedDict):
 
 
 class Query(Generic[_T_Model], ndb.Query):
-
     """A type-safer wrapper around ndb.Query"""
 
     # Be careful with this class: It is included for type checking only.
@@ -245,8 +237,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]:
-        ...
+    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]: ...
 
     def fetch(
         self, *args: Any, **kwargs: Any
@@ -276,8 +267,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        ...
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...
 
     def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
         f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
@@ -292,8 +282,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]:
-        ...
+    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]: ...
 
     def iter(
         self, *args: Any, **kwargs: Any
@@ -305,7 +294,6 @@ class Query(Generic[_T_Model], ndb.Query):
 
 
 class Future(Generic[_T], ndb.Future):
-
     """A type-safer wrapper around ndb.Future"""
 
     def get_result(self) -> List[_T]:
@@ -318,7 +306,6 @@ class Future(Generic[_T], ndb.Future):
 
 
 class Key(Generic[_T_Model], ndb.Key):
-
     """A type-safer wrapper around ndb.Key"""
 
     def id(self) -> str:
@@ -335,7 +322,6 @@ class Key(Generic[_T_Model], ndb.Key):
 
 
 class Model(Generic[_T_Model], ndb.Model):
-
     """A type-safer wrapper around ndb.Model"""
 
     @property
@@ -460,7 +446,6 @@ class Model(Generic[_T_Model], ndb.Model):
 
 
 class Client:
-
     """Wrapper for the ndb client instance singleton"""
 
     _client = ndb.Client()
@@ -476,7 +461,6 @@ class Client:
 
 
 class Context:
-
     """Wrapper for ndb context operations"""
 
     def __init__(self) -> None:
@@ -498,7 +482,6 @@ class Context:
 
 
 class Unique:
-
     """Utility class for generation of unique id strings for keys"""
 
     def __init__(self) -> None:
@@ -549,7 +532,6 @@ def delete_multi(keys: Iterable[Key[_T_Model]]) -> None:
 
 
 class UserModel(Model["UserModel"]):
-
     """Models an individual user"""
 
     nickname = Model.Str()
@@ -886,7 +868,6 @@ class UserModel(Model["UserModel"]):
 
 
 class MoveModel(Model["MoveModel"]):
-
     """Models a single move in a Game"""
 
     coord = Model.Str()
@@ -897,26 +878,30 @@ class MoveModel(Model["MoveModel"]):
 
 
 class ImageModel(Model["ImageModel"]):
-
     """Model for storing user images and thumbnails in the database,
     independently of the user entity"""
 
     user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # Formats include:
     # 'jpeg': original full-size JPEG
+    # 'thumb384': 384x384 thumbnail, always JPEG
     # 'thumb512': 512x512 thumbnail, always JPEG
     fmt = Model.Str()
     image = Model.Blob()
 
     @classmethod
-    def get_thumbnail(cls, uid: str) -> Optional[bytes]:
+    def get_thumbnail(
+        cls, uid: str, size: int = DEFAULT_THUMBNAIL_SIZE
+    ) -> Optional[bytes]:
         """Fetch the thumbnail image for a user"""
-        if not uid: return None
+        if not uid:
+            return None
+        fmt = f"thumb{size}"
         k: Key[UserModel] = Key(UserModel, uid)
         q = cls.query(
             ndb.AND(
                 ImageModel.user == k,  # type: ignore
-                ImageModel.fmt == "thumb512",
+                ImageModel.fmt == fmt,
             )
         )
         if (im := q.get()) is None:
@@ -924,15 +909,18 @@ class ImageModel(Model["ImageModel"]):
         return im.image
 
     @classmethod
-    def set_thumbnail(cls, uid: str, image: bytes) -> None:
+    def set_thumbnail(
+        cls, uid: str, image: bytes, size: int = DEFAULT_THUMBNAIL_SIZE
+    ) -> None:
         """Store a thumbnail image for a user"""
         # Enclose the following in an NDB transaction
         k: Key[UserModel] = Key(UserModel, uid)
+        fmt = f"thumb{size}"
         # If a thumbnail already exists, update it
         q = cls.query(
             ndb.AND(
                 ImageModel.user == k,  # type: ignore
-                ImageModel.fmt == "thumb512",
+                ImageModel.fmt == fmt,
             )
         )
         if (im := q.get()) is not None:
@@ -940,7 +928,7 @@ class ImageModel(Model["ImageModel"]):
             im.put()
             return
         # Otherwise, create a new thumbnail entity
-        im = cls(user=k, fmt="thumb512", image=image)
+        im = cls(user=k, fmt=fmt, image=image)
         im.put()
 
 
@@ -949,7 +937,6 @@ class GameModelFuture(Future["GameModel"]):
 
 
 class GameModel(Model["GameModel"]):
-
     """Models a game between two users"""
 
     # The players
@@ -1194,7 +1181,6 @@ class GameModel(Model["GameModel"]):
 
 
 class FavoriteModel(Model["FavoriteModel"]):
-
     """Models the fact that a user has marked another user as a favorite"""
 
     MAX_FAVORITES = 100  # The maximum number of favorites that a user can have
@@ -1268,7 +1254,6 @@ class FavoriteModel(Model["FavoriteModel"]):
 
 
 class ChallengeModel(Model["ChallengeModel"]):
-
     """Models a challenge issued by a user to another user"""
 
     # The challenging (source) user is the parent/ancestor of the relation
@@ -1445,7 +1430,6 @@ class ChallengeModel(Model["ChallengeModel"]):
 
 
 class StatsModel(Model["StatsModel"]):
-
     """Models statistics about users"""
 
     # The user associated with this statistic or None if robot
@@ -1872,7 +1856,6 @@ class StatsModel(Model["StatsModel"]):
 
 
 class RatingModel(Model["RatingModel"]):
-
     """Models tables of user ratings"""
 
     # Typically "all", "human" or "manual"
@@ -1993,7 +1976,6 @@ class RatingModel(Model["RatingModel"]):
 
 
 class ChatModel(Model["ChatModel"]):
-
     """Models chat communications between users"""
 
     # The channel (conversation) identifier
@@ -2217,7 +2199,6 @@ class ChatModel(Model["ChatModel"]):
 
 
 class ZombieModel(Model["ZombieModel"]):
-
     """Models finished games that have not been seen by one of the players"""
 
     # The zombie game
@@ -2301,7 +2282,6 @@ class ZombieModel(Model["ZombieModel"]):
 
 
 class PromoModel(Model["PromoModel"]):
-
     """Models promotions displayed to players"""
 
     # The player that saw the promotion
@@ -2339,7 +2319,6 @@ class PromoModel(Model["PromoModel"]):
 
 
 class CompletionModel(Model["CompletionModel"]):
-
     """Models the successful completion of stats or ratings runs"""
 
     # The type of process that was completed, usually 'stats' or 'ratings'
@@ -2384,7 +2363,6 @@ class CompletionModel(Model["CompletionModel"]):
 
 
 class BlockModel(Model["BlockModel"]):
-
     """Models the fact that a user has blocked another user"""
 
     MAX_BLOCKS = 100  # The maximum number of blocked users per user
@@ -2409,9 +2387,7 @@ class BlockModel(Model["BlockModel"]):
             yield bm.blocked.id()
 
     @classmethod
-    def list_blocked_by(
-        cls, user_id: str, max_len: int = MAX_BLOCKS
-    ) -> Iterator[str]:
+    def list_blocked_by(cls, user_id: str, max_len: int = MAX_BLOCKS) -> Iterator[str]:
         """Query for a list of users blocking the given user"""
         if not user_id:
             return
@@ -2459,7 +2435,6 @@ class BlockModel(Model["BlockModel"]):
 
 
 class ReportModel(Model["ReportModel"]):
-
     """Models the fact that a user has reported another user"""
 
     # The user who is reporting another user
@@ -2508,7 +2483,6 @@ class ReportModel(Model["ReportModel"]):
 
 
 class TransactionModel(Model["TransactionModel"]):
-
     """Models subscription transactions"""
 
     # User
