@@ -138,13 +138,31 @@ def max_age(seconds: int) -> RouteFunc:
 
 
 class CachedResponse(Response):
-    """A subclass of Flask's Response class that adds
-    the requisite cache headers to the response and
-    deletes the Vary: header which Flask adds by
+
+    """A subclass of Flask's Response class that causes
+    the requisite cache headers to be added to the response
+    and deletes the Vary: header which Flask adds by
     default to all responses that use the current
     session."""
 
     pass
+
+
+class FlaskWithCaching(Flask):
+
+    """Subclass Flask to inject our custom process_response() method"""
+
+    def process_response(self, response: Response) -> Response:
+        """Process the response before returning it to the client"""
+        r = super().process_response(response)
+        if isinstance(r, CachedResponse):
+            # Remove the Set-Cookie header, as the client
+            # may not cache responses that set cookies
+            r.headers.pop("Set-Cookie", None)
+            # ...and remove Flask's default Vary: Cookie header
+            r.headers.pop("Vary", None)
+            r.vary.clear()
+        return r
 
 
 def send_cached_file(
