@@ -9,7 +9,7 @@ firebase-admin==5.4.0
 redis==4.4.4
 google-cloud-ndb==2.2.2
 google-cloud-logging==2.4.0
-Flask-Cors==3.0.10
+Flask-Cors==4.0.1
 PyJWT
 google-cloud-secret-manager==2.17.0
 Pillow
