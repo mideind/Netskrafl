@@ -101,9 +101,9 @@ def authorized_as_anonymous(request: Request) -> bool:
 
 def rq_get(request: Request, key: str) -> str:
     """Get a value from the request by key, either from the form data or JSON"""
-    if (val := request.form.get(key)):
+    if val := request.form.get(key):
         return val
-    if (j := request.json):
+    if j := request.json:
         return j.get(key, "")
     return ""
 
@@ -220,7 +220,9 @@ def oauth2callback(request: Request) -> ResponseType:
             # We prioritize the locale given in the request, if any,
             # then the one returned from the Google auth, if any,
             # and finally we resort to the default locale (en_US).
-            locale = (locale or idinfo.get("locale") or DEFAULT_LOCALE).replace("-", "_")
+            locale = (locale or idinfo.get("locale") or DEFAULT_LOCALE).replace(
+                "-", "_"
+            )
             # Check whether this is an upgrade of an anonymous user
             # to a fully authenticated user
             upgrade_from: Optional[str] = None
@@ -259,8 +261,9 @@ def oauth2callback(request: Request) -> ResponseType:
     if not userid or uld is None:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
-        logging.error("Unable to obtain user id in Google sign-in")
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+        msg = "Unable to obtain user id in Google sign-in"
+        logging.error(msg)
+        return jsonify({"status": "invalid", "msg": msg}), 401
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie
@@ -291,7 +294,15 @@ def oauth_fb(request: Request) -> ResponseType:
     rq = RequestData(request)
     user: Optional[Dict[str, str]] = rq.get("user")
     if user is None or not (account := user.get("id", "")):
-        return jsonify({"status": "invalid", "msg": "Unable to obtain user id"}), 401
+        return (
+            jsonify(
+                {
+                    "status": "invalid",
+                    "msg": "Unable to obtain user id in Facebook sign-in",
+                }
+            ),
+            401,
+        )
 
     # Obtain the provider that is being requested for Facebook token validation
     # These are presently either "stokkur" (default) or "mideind"
@@ -300,7 +311,12 @@ def oauth_fb(request: Request) -> ResponseType:
     facebook_app_secret = FACEBOOK_APP_SECRET.get(provider, "")
     if not facebook_app_id or not facebook_app_secret:
         return (
-            jsonify({"status": "invalid", "msg": "Unknown Facebook auth provider"}),
+            jsonify(
+                {
+                    "status": "invalid",
+                    "msg": "Unknown Facebook auth provider",
+                }
+            ),
             401,
         )
 
@@ -323,7 +339,10 @@ def oauth_fb(request: Request) -> ResponseType:
             pass
         return (
             jsonify(
-                {"status": "invalid", "msg": f"Unable to verify Facebook token{msg}"}
+                {
+                    "status": "invalid",
+                    "msg": f"Unable to verify Facebook token{msg}",  # Lack of space intentional
+                }
             ),
             401,
         )
@@ -413,7 +432,10 @@ def oauth_apple(request: Request) -> ResponseType:
     rq = RequestData(request)
     token = rq.get("token", "")
     if not token:
-        return jsonify({"status": "invalid", "msg": "Missing token"}), 401
+        return (
+            jsonify({"status": "invalid", "msg": "Missing token in Apple sign-in"}),
+            401,
+        )
     now = datetime.now(UTC)
     today = datetime(now.year, now.month, now.day, tzinfo=UTC)
 
@@ -434,7 +456,13 @@ def oauth_apple(request: Request) -> ResponseType:
         # return 401 - Unauthorized
         logging.info(f"Expired Apple token: {e}")
         return (
-            jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
+            jsonify(
+                {
+                    "status": "invalid",
+                    "msg": "Invalid token in Apple sign-in",
+                    "error": str(e),
+                }
+            ),
             401,
         )
     except Exception as e:
@@ -442,14 +470,20 @@ def oauth_apple(request: Request) -> ResponseType:
         # return 401 - Unauthorized
         logging.error(f"Invalid Apple token: {e}", exc_info=True)
         return (
-            jsonify({"status": "invalid", "msg": "Invalid token", "error": str(e)}),
+            jsonify(
+                {
+                    "status": "invalid",
+                    "msg": "Invalid token in Apple sign-in",
+                    "error": str(e),
+                }
+            ),
             401,
         )
 
     email: str = payload.get("email", "")
     uid: str = payload.get("sub", "")
     name: str = rq.get("fullName", "")  # This is populated on first sign-in
-    image: str = ""  # !!! Not available from Apple token
+    image = ""  # !!! Not available from Apple token
     locale = (rq.get("locale") or DEFAULT_LOCALE).replace("-", "_")
 
     # Make sure that Apple account ids are different from Google/OAuth ones
@@ -569,8 +603,9 @@ def oauth_explo(request: Request) -> ResponseType:
 
     except (KeyError, ValueError) as e:
         # Invalid token: return 401 - Unauthorized
-        logging.error(f"Invalid Explo token: {e}")
-        return jsonify({"status": "invalid", "msg": str(e)}), 401
+        msg = f"Invalid Explo token: {e}"
+        logging.error(msg)
+        return jsonify({"status": "invalid", "msg": msg}), 401
 
     # Authentication complete; token was valid and user id was found
     # Set the Flask session cookie
@@ -585,7 +620,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
     to identify the user."""
     if not authorized_as_anonymous(request):
         return (
-            jsonify({"status": "invalid", "msg": "Invalid anonymous login attempt"}),
+            jsonify({"status": "invalid", "msg": "Not authorized as anonymous"}),
             401,
         )
 
@@ -594,7 +629,9 @@ def oauth_anonymous(request: Request) -> ResponseType:
     if f is None or not (sub := f.get("sub", "")):
         # 401 - Unauthorized
         return (
-            jsonify({"status": "invalid", "msg": "Invalid anonymous login attempt"}),
+            jsonify(
+                {"status": "invalid", "msg": "Missing device id in anonymous sign-in"}
+            ),
             401,
         )
 

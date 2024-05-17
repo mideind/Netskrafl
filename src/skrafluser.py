@@ -506,27 +506,46 @@ class User:
         self.set_pref("audio", audio)
 
     @staticmethod
-    def image_url(
-        user_id: Optional[str], image: Optional[str], has_image_blob: bool
+    def _url_for_image(
+        user_id: Optional[str], image: Optional[str], has_image_blob: bool, api: str
     ) -> str:
         """Converts a user_id and image info to an image URL"""
         if not user_id:
             return ""
         if has_image_blob:
             # We have a stored BLOB for this user: return a URL to it
-            return url_for("api.image_api", uid=user_id)
+            return url_for(f"api.{api}", uid=user_id)
         # We have a stored URL: return it
         return image or ""
+
+    @staticmethod
+    def image_url(
+        user_id: Optional[str], image: Optional[str], has_image_blob: bool
+    ) -> str:
+        """Converts a user_id and image info to an image URL"""
+        return User._url_for_image(user_id, image, has_image_blob, "image_api")
+
+    @staticmethod
+    def thumbnail_url(
+        user_id: Optional[str], image: Optional[str], has_image_blob: bool
+    ) -> str:
+        """Converts a user_id and image info to a thumbnail URL"""
+        return User._url_for_image(user_id, image, has_image_blob, "thumbnail_api")
 
     def image(self) -> str:
         """Returns the URL of an image (photo/avatar) of a user"""
         return self.image_url(self._user_id, self._image, self._has_image_blob)
 
+    def thumbnail(self) -> str:
+        """Returns the URL of a thumbnail (photo/avatar) of a user"""
+        return self.thumbnail_url(self._user_id, self._image, self._has_image_blob)
+
     def set_image(self, image: str) -> None:
         """Sets the URL of an image (photo/avatar) of a user"""
         # Note: For associating a user with an image BLOB,
         # refer to the /image endpoint in api.py.
-        # This call erases any BLOB already associated with the user!
+        # This erases any BLOB already associated with the user,
+        # when the user entity is saved in the database!
         self._image = image
         self._has_image_blob = False
 
@@ -682,7 +701,7 @@ class User:
 
     def _load_favorites(self) -> None:
         """Loads favorites of this user from the database into a set in memory"""
-        if hasattr(self, "_favorites") and self._favorites:
+        if hasattr(self, "_favorites") and (self._favorites is not None):
             # Already have the favorites in memory
             return
         sid = self.id()
@@ -792,7 +811,7 @@ class User:
                         uid=uid,
                         nick=u.nickname(),
                         name=u.full_name(),
-                        image=u.image(),
+                        image=u.thumbnail(),
                         locale=u.locale,
                         location=u.location,
                         elo=u.elo(),
@@ -1146,7 +1165,7 @@ class User:
         reply["inactive"] = self.is_inactive()
         reply["nickname"] = self.nickname()
         reply["fullname"] = self.full_name()
-        reply["image"] = self.image()
+        reply["image"] = self.image()  # Full size image (not thumbnail)
         reply["plan"] = self.plan()
         reply["friend"] = self.friend()
         reply["has_paid"] = self.has_paid()

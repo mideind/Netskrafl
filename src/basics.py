@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+import io
 from typing import (
     Literal,
     Mapping,
@@ -45,9 +47,11 @@ from flask import (
     session,
 )
 from flask.wrappers import Request, Response
+from werkzeug.utils import send_file  # type: ignore
 from authlib.integrations.flask_client import OAuth  # type: ignore
+from PIL import Image
 
-from config import OAUTH_CONF_URL, RouteType, ResponseType
+from config import OAUTH_CONF_URL, DEFAULT_THUMBNAIL_SIZE, RouteType, ResponseType
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
@@ -61,7 +65,6 @@ RouteFunc = Callable[[RouteType], RouteType]
 
 
 class UserIdDict(TypedDict):
-
     """Old-style auxiliary user data dictionary, previously
     stored in the Flask session cookie. Has been replaced by
     the simpler and smaller SessionDict (see below)."""
@@ -84,7 +87,6 @@ class UserIdDict(TypedDict):
 
 
 class SessionDict(TypedDict):
-
     """The contents of the Flask session cookie"""
 
     userid: str
@@ -133,6 +135,54 @@ def max_age(seconds: int) -> RouteFunc:
         return decorated_function
 
     return decorator
+
+
+class CachedResponse(Response):
+
+    """A subclass of Flask's Response class that causes
+    the requisite cache headers to be added to the response
+    and deletes the Vary: header which Flask adds by
+    default to all responses that use the current
+    session."""
+
+    pass
+
+
+class FlaskWithCaching(Flask):
+
+    """Subclass Flask to inject our custom process_response() method"""
+
+    def process_response(self, response: Response) -> Response:
+        """Process the response before returning it to the client"""
+        r = super().process_response(response)
+        if isinstance(r, CachedResponse):
+            # Remove the Set-Cookie header, as the client
+            # may not cache responses that set cookies
+            r.headers.pop("Set-Cookie", None)
+            # ...and remove Flask's default Vary: Cookie header
+            r.headers.pop("Vary", None)
+            r.vary.clear()
+        return r
+
+
+def send_cached_file(
+    content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg"
+) -> Response:
+    """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
+    now = datetime.now(UTC)
+    response = send_file(
+        content,
+        environ=request.environ,
+        mimetype=mimetype,
+        last_modified=now,
+        max_age=lifetime_seconds,
+        response_class=CachedResponse if lifetime_seconds > 0 else Response,
+    )
+    assert isinstance(response, Response)
+    if lifetime_seconds > 0:
+        expires = now + timedelta(seconds=lifetime_seconds)
+        response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    return response
 
 
 # Module-scope OAuth instance,
@@ -302,8 +352,20 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
     return wrap
 
 
-class RequestData:
+def make_thumbnail(image: bytes, size: int=DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
+    """Create a thumbnail from a JPEG image"""
+    # Convert the image bytes to a BytesIO object
+    image_bytes = io.BytesIO(image)
+    # Create a thumbnail using PIL
+    img = Image.open(image_bytes, formats=["JPEG"])  # type: ignore
+    img.thumbnail((size, size))  # type: ignore
+    thumb_bytes = io.BytesIO()
+    img.save(thumb_bytes, format="JPEG")  # type: ignore
+    thumb_bytes.seek(0)
+    return thumb_bytes
 
+
+class RequestData:
     """Wraps the Flask request object to allow error-checked retrieval of query
     parameters either from JSON or from form-encoded POST data"""
 
@@ -329,12 +391,10 @@ class RequestData:
         return f"<RequestData {self.q!r}>"
 
     @overload
-    def get(self, key: str) -> Any:
-        ...
+    def get(self, key: str) -> Any: ...
 
     @overload
-    def get(self, key: str, default: T) -> T:
-        ...
+    def get(self, key: str, default: T) -> T: ...
 
     def get(self, key: str, default: Any = None) -> Any:
         """Obtain an arbitrary data item from the request"""
@@ -348,16 +408,13 @@ class RequestData:
             return default
 
     @overload
-    def get_bool(self, key: str) -> bool:
-        ...
+    def get_bool(self, key: str) -> bool: ...
 
     @overload
-    def get_bool(self, key: str, default: bool) -> bool:
-        ...
+    def get_bool(self, key: str, default: bool) -> bool: ...
 
     @overload
-    def get_bool(self, key: str, default: Literal[None]) -> Union[bool, None]:
-        ...
+    def get_bool(self, key: str, default: Literal[None]) -> Union[bool, None]: ...
 
     def get_bool(self, key: str, default: Optional[bool] = None) -> Union[bool, None]:
         """Obtain a boolean data item from the request"""

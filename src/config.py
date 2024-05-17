@@ -75,6 +75,8 @@ DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
+DEFAULT_THUMBNAIL_SIZE = 384  # Thumbnails are 384x384 pixels by default
+
 # Initialize the SecretManager with your Google Cloud project ID
 sm = SecretManager(PROJECT_ID)
 

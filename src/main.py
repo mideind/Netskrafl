@@ -43,7 +43,6 @@ import logging
 from datetime import timedelta
 from logging.config import dictConfig
 
-from flask import Flask
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
@@ -68,6 +67,7 @@ from config import (
     AUTH_SECRET,
 )
 from basics import (
+    FlaskWithCaching,
     ndb_wsgi_middleware,
     init_oauth,
 )
@@ -115,8 +115,9 @@ else:
 # Initialize Firebase
 init_firebase_app()
 
-# Initialize Flask
-app = Flask(__name__, static_folder=STATIC_FOLDER)
+# Initialize Flask using our custom subclass, defined in basics.py
+app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
+
 # The following cast to Any can be removed once Flask typing becomes
 # more robust and/or compatible with Pylance
 cast_app = cast(Any, app)

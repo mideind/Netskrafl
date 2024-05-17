@@ -61,6 +61,8 @@ from basics import (
     current_user,
     current_user_id,
     clear_session_userid,
+    make_thumbnail,
+    send_cached_file,
 )
 from languages import (
     Alphabet,
@@ -77,6 +79,7 @@ from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     ChatModel,
+    ImageModel,
     ZombieModel,
     PrefsDict,
     UserModel,
@@ -146,6 +149,8 @@ DEFAULT_BEST_MOVES = 19
 MAX_BEST_MOVES = 20
 # Only allow POST requests to the API endpoints
 _ONLY_POST: Sequence[str] = ["POST"]
+# How long to cache a thumbnail image client-side, in seconds
+THUMBNAIL_LIFETIME = 10 * 60  # 10 minutes
 
 # Register the Flask blueprint for the APIs
 api = api_blueprint = Blueprint("api", __name__)
@@ -156,7 +161,9 @@ def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
 
     def decorator(f: RouteType) -> RouteType:
 
-        assert f.__name__.endswith("_api"), f"Name of API function '{f.__name__}' must end with '_api'"
+        assert f.__name__.endswith(
+            "_api"
+        ), f"Name of API function '{f.__name__}' must end with '_api'"
 
         @api.route(route, methods=methods)
         @wraps(f)
@@ -443,12 +450,14 @@ def image_api() -> ResponseType:
     """Set (POST) or get (GET) the image of a user"""
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
+    uid = rq.get("uid", "").strip()
+    request_has_uid = bool(uid)  # True if a specific user id was requested
     cuid = current_user_id()
-    uid = rq.get("uid") or cuid or ""
+    uid = uid or cuid or ""
     if method == "POST" and uid != cuid:
         # Can't update another user's image
         return "Not authorized", 403  # Forbidden
-    um = UserModel.fetch(uid)
+    um = UserModel.fetch(uid) if uid else None
     if not um:
         return "User not found", 404  # Not found
     if method == "GET":
@@ -465,10 +474,13 @@ def image_api() -> ResponseType:
                 decoded_image = base64.b64decode(image_blob)
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
-                # Serve the image using flask.send_file()
-                return send_file(
-                    image_bytes, mimetype="image/jpeg", max_age=10 * 60
-                )  # 10 minutes
+                # Serve the image using flask.send_file(),
+                # with a cache time of 10 minutes
+                return send_cached_file(
+                    image_bytes,
+                    lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+                    mimetype=mimetype,
+                )
             except Exception:
                 # Something wrong in the image_blob: give up
                 pass
@@ -489,9 +501,66 @@ def image_api() -> ResponseType:
             return "OK", 200
         return "Invalid URL", 400  # Bad request
     elif mimetype.startswith("image/"):
-        um.set_image(mimetype, request.get_data(as_text=False))
+        img_data = request.get_data(as_text=False)
+        # Generate thumbnail and store it for later use
+        # Note: img_data is base64 encoded; we need to decode it
+        decoded_image = base64.b64decode(img_data)
+        thumb_bytes = make_thumbnail(decoded_image)
+        ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
+        # Store the original (full) image in the UserModel entity
+        um.set_image(mimetype, img_data)
         return "OK", 200
     return "Unrecognized MIME type", 400
+
+
+@api_route("/thumbnail", methods=["GET"])
+@auth_required(result=Error.LOGIN_REQUIRED)
+def thumbnail_api() -> ResponseType:
+    """Get (GET) a profile image thumbnail for a user"""
+    rq = RequestData(request, use_args=True)
+    uid = rq.get("uid", "").strip()
+    request_has_uid = bool(uid)  # True if a specific user id was requested
+    uid = uid or current_user_id() or ""
+    # Check whether we already have a thumbnail ready for this user
+    thumb = ImageModel.get_thumbnail(uid)
+    if thumb:
+        # Pack the bytes object into a BytesIO object and send it in response
+        thumb_bytes = io.BytesIO(thumb)
+        # If this was a request for a particular uid (not the current user),
+        # cache it for 10 minutes; otherwise, don't cache it (since the
+        # current user's thumbnail is session dependent, not URL-dependent)
+        return send_cached_file(
+            thumb_bytes,
+            lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+        )
+    # Thumbnail not present: generate it
+    um = UserModel.fetch(uid) if uid else None
+    if not um:
+        # User not found
+        return "User not found", 404  # Not found
+    # Get image for user
+    image, image_blob = um.get_image()
+    if image_blob:
+        # We have the image as a bytes object:
+        # make a thumbnail and return it
+        try:
+            decoded_image = base64.b64decode(image_blob)
+            thumb_bytes = make_thumbnail(decoded_image)
+            # Save the thumbnail as an ImageModel entity
+            ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
+            # Serve the image using flask.send_file(),
+            # with a cache lifetime of 10 minutes
+            return send_cached_file(
+                thumb_bytes,
+                lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
+            )
+        except Exception:
+            # Something wrong in the image_blob: give up
+            pass
+    if not image or not image.startswith(("https:", "http:")):
+        return "Image not found", 404  # Not found
+    # Assume that this is a URL: redirect to it
+    return redirect(image)
 
 
 @api_route("/userlist")
@@ -930,6 +999,10 @@ class UserCache:
         """Return the image for a user"""
         return "" if (u := self._load(user_id)) is None else u.image()
 
+    def thumbnail(self, user_id: str) -> str:
+        """Return the thumbnail for a user"""
+        return "" if (u := self._load(user_id)) is None else u.thumbnail()
+
     def chat_disabled(self, user_id: str) -> bool:
         """Return True if the user has disabled chat"""
         if (u := self._load(user_id)) is None:
@@ -992,7 +1065,7 @@ def chatload_api() -> ResponseType:
         ChatMessageDict(
             from_userid=(uid := cm["user"]),
             name=uc.full_name(uid),
-            image=uc.image(uid),
+            image=uc.thumbnail(uid),
             msg=cm["msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
         )
@@ -1045,7 +1118,7 @@ def chathistory_api() -> ResponseType:
             user=(uid := cm["user"]),
             name=uc.full_name(uid),
             nick=uc.nickname(uid),
-            image=uc.image(uid),
+            image=uc.thumbnail(uid),
             last_msg=cm["last_msg"],
             ts=Alphabet.format_timestamp(cm["ts"]),
             unread=cm["unread"],
