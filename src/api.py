@@ -451,7 +451,6 @@ def image_api() -> ResponseType:
     rq = RequestData(request, use_args=True)
     method: str = cast(Any, request).method
     uid = rq.get("uid", "").strip()
-    request_has_uid = bool(uid)  # True if a specific user id was requested
     cuid = current_user_id()
     uid = uid or cuid or ""
     if method == "POST" and uid != cuid:
@@ -474,11 +473,11 @@ def image_api() -> ResponseType:
                 decoded_image = base64.b64decode(image_blob)
                 # Convert the decoded image to a BytesIO object
                 image_bytes = io.BytesIO(decoded_image)
-                # Serve the image using flask.send_file(),
-                # with a cache time of 10 minutes
-                return send_cached_file(
+                # Serve the image using flask.send_file()
+                # Note: we intentionally do not cache the /image endpoint,
+                # only the /thumbnail endpoint
+                return send_file(
                     image_bytes,
-                    lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
                     mimetype=mimetype,
                 )
             except Exception:
@@ -548,8 +547,7 @@ def thumbnail_api() -> ResponseType:
             thumb_bytes = make_thumbnail(decoded_image)
             # Save the thumbnail as an ImageModel entity
             ImageModel.set_thumbnail(uid, thumb_bytes.getvalue())
-            # Serve the image using flask.send_file(),
-            # with a cache lifetime of 10 minutes
+            # Serve the thumbnail with a cache lifetime of 10 minutes
             return send_cached_file(
                 thumb_bytes,
                 lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
