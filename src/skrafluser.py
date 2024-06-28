@@ -962,12 +962,14 @@ class User:
             return u
 
     @classmethod
-    def load_multi(cls, uids: Iterable[str]) -> List[User]:
+    def load_multi(cls, uids: Iterable[str]) -> List[Optional[User]]:
         """Load multiple users from persistent storage, given their user id"""
-        user_list: List[User] = []
+        user_list: List[Optional[User]] = []
         with User._lock:
             for um in UserModel.fetch_multi(uids):
-                if um is not None:
+                if um is None:
+                    user_list.append(None)
+                else:
                     u = cls(uid=um.user_id())
                     u._init(um)
                     user_list.append(u)

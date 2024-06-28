@@ -215,6 +215,40 @@ class ListPrefixDict(TypedDict):
     has_image_blob: bool
 
 
+class RatingDict(TypedDict):
+    """The dictionary returned from list_ratings() method"""
+
+    rank: int
+    userid: str
+    games: int
+    elo: int
+    score: int
+    score_against: int
+    wins: int
+    losses: int
+    rank_yesterday: int
+    games_yesterday: int
+    elo_yesterday: int
+    score_yesterday: int
+    score_against_yesterday: int
+    wins_yesterday: int
+    losses_yesterday: int
+    rank_week_ago: int
+    games_week_ago: int
+    elo_week_ago: int
+    score_week_ago: int
+    score_against_week_ago: int
+    wins_week_ago: int
+    losses_week_ago: int
+    rank_month_ago: int
+    games_month_ago: int
+    elo_month_ago: int
+    score_month_ago: int
+    score_against_month_ago: int
+    wins_month_ago: int
+    losses_month_ago: int
+
+
 class Query(Generic[_T_Model], ndb.Query):
     """A type-safer wrapper around ndb.Query"""
 
@@ -676,15 +710,21 @@ class UserModel(Model["UserModel"]):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys: List[Key[UserModel]] = [
+            keys: Sequence[Key[UserModel]] = [
                 Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]
             ]
             len_keys = len(keys)
+            recs = cast(
+                List[Optional[UserModel]],
+                # The following cast is due to strange typing
+                # in ndb (the use of 'Type' is almost certainly a bug there)
+                ndb.get_multi(cast(Sequence[Type[Key[UserModel]]], keys)),
+            )
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
-                return cast(Any, ndb).get_multi(keys)
+                return recs
             # Otherwise, accumulate chunks
-            result.extend(cast(Any, ndb).get_multi(keys))
+            result.extend(recs)
             ix += len_keys
         return result
 
@@ -1880,7 +1920,7 @@ class RatingModel(Model["RatingModel"]):
     elo_yesterday = Model.Int(default=1200)
     score_yesterday = Model.Int(default=0)
     score_against_yesterday = Model.Int(default=0)
-    wins_yesterday = Model.OptionalInt(default=0)
+    wins_yesterday = Model.Int(default=0)
     losses_yesterday = Model.Int(default=0)
 
     rank_week_ago = Model.Int(default=0)
@@ -1922,13 +1962,14 @@ class RatingModel(Model["RatingModel"]):
                 setattr(self, key, val)
 
     @classmethod
-    def list_rating(cls, kind: str) -> Iterator[Dict[str, Any]]:
+    def list_rating(cls, kind: str) -> Iterator[RatingDict]:
         """Iterate through the rating table of a given kind, in ascending order by rank"""
         CHUNK_SIZE = 100
         q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
         for rm in iter_q(q, CHUNK_SIZE, limit=100):
-            v: Dict[str, Union[str, Optional[int]]] = dict(
+            v = RatingDict(
                 rank=rm.rank,
+                userid="",
                 games=rm.games,
                 elo=rm.elo,
                 score=rm.score,
@@ -1963,7 +2004,7 @@ class RatingModel(Model["RatingModel"]):
                 if rm.robot_level < 0:
                     v["userid"] = ""
                 else:
-                    v["userid"] = "robot-" + str(rm.robot_level)
+                    v["userid"] = f"robot-{rm.robot_level}"
             else:
                 v["userid"] = rm.user.id()
 

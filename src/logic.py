@@ -67,6 +67,7 @@ from skrafluser import MAX_NICKNAME_LENGTH, User
 from skraflplayer import AutoPlayer
 from skrafldb import (
     ListPrefixDict,
+    RatingDict,
     ZombieModel,
     PrefsDict,
     ChallengeModel,
@@ -281,6 +282,37 @@ class MoveNotifyDict(TypedDict):
     to_move: int
     scores: Tuple[int, int]
     progress: Tuple[int, int]
+
+
+class UserRatingDict(TypedDict):
+    """The dictionary returned from the rating() function"""
+
+    rank: int
+    rank_yesterday: int
+    rank_week_ago: int
+    rank_month_ago: int
+    userid: str
+    nick: str
+    fullname: str
+    chall: bool
+    fairplay: bool
+    newbag: bool
+    inactive: bool
+    fav: bool
+    ready: bool
+    ready_timed: bool
+    live: bool
+    image: str
+    elo: int
+    elo_yesterday: int
+    elo_week_ago: int
+    elo_month_ago: int
+    games: int
+    games_yesterday: int
+    games_week_ago: int
+    games_month_ago: int
+    ratio: float
+    avgpts: float
 
 
 class UserForm:
@@ -636,7 +668,7 @@ def fetch_users(
     # No need for a special case for an empty list
     user_objects = User.load_multi(uids)
     # Return a dictionary mapping user ids to users
-    return {uid: user for uid, user in zip(uids, user_objects)}
+    return {uid: user for uid, user in zip(uids, user_objects) if user is not None}
 
 
 # Kludge to create reasonably type-safe functions for each type of
@@ -925,6 +957,112 @@ def userlist(query: str, spec: str) -> UserList:
     return result
 
 
+def rating(kind: str) -> List[UserRatingDict]:
+    """Return a list of top players by Elo rating of the given kind ('all' or 'human')"""
+    result: List[UserRatingDict] = []
+    cuser = current_user()
+    cuid = None if cuser is None else cuser.id()
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    online = firebase.online_status(locale)
+
+    # Generate a list of challenges issued by this user
+    challenges: Set[Optional[str]] = set()
+    if cuid:
+        challenges.update(
+            # ch[0] is the identifier of the challenged user
+            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
+        )
+
+    rating_list: Optional[List[RatingDict]] = memcache.get(kind, namespace="rating")
+    if rating_list is None:
+        # Not found: do a query
+        rating_list = list(RatingModel.list_rating(kind))
+        # Store the result in the cache with a lifetime of 1 hour
+        memcache.set(kind, rating_list, time=1 * 60 * 60, namespace="rating")
+
+    # Prefetch the users in the rating list
+    users = fetch_users(rating_list, lambda x: x["userid"])
+
+    for ru in rating_list:
+
+        uid = ru["userid"]
+        if not uid:
+            # Hit the end of the list
+            break
+        inactive = False
+        if uid.startswith("robot-"):
+            # Assume that the user id has the format robot-level-locale,
+            # for instance robot-15-en. If the locale is missing, use "is".
+            a = uid.split("-")
+            lc = a[2] if len(a) >= 3 else "is"
+            nick = AutoPlayer.name(lc, int(a[1]))
+            fullname = nick
+            chall = False
+            fairplay = False
+            fav = False
+            ready = True
+            ready_timed = False
+            image = ""
+        else:
+            usr = users.get(uid)
+            if usr is None:
+                # Something wrong with this one: don't bother
+                continue
+            nick = usr.nickname()
+            if not User.is_valid_nick(nick):
+                nick = "--"
+            fullname = usr.full_name()
+            chall = uid in challenges
+            fairplay = usr.fairplay()
+            inactive = usr.is_inactive()
+            fav = False if cuser is None else cuser.has_favorite(uid)
+            ready = usr.is_ready()
+            ready_timed = usr.is_ready_timed()
+            image = usr.thumbnail()
+
+        games = ru["games"]
+        if games == 0:
+            ratio = 0
+            avgpts = 0
+        else:
+            ratio = int(round(100.0 * float(ru["wins"]) / games))
+            avgpts = int(round(float(ru["score"]) / games))
+
+        result.append(
+            {
+                "rank": ru["rank"],
+                "rank_yesterday": ru["rank_yesterday"],
+                "rank_week_ago": ru["rank_week_ago"],
+                "rank_month_ago": ru["rank_month_ago"],
+                "userid": uid,
+                "nick": nick,
+                "fullname": fullname,
+                "chall": chall,
+                "fairplay": fairplay,
+                "newbag": True,
+                "inactive": inactive,
+                "fav": fav,
+                "ready": ready,
+                "ready_timed": ready_timed,
+                "live": False,  # Will be filled in later
+                "image": image,
+                "elo": ru["elo"],
+                "elo_yesterday": ru["elo_yesterday"],
+                "elo_week_ago": ru["elo_week_ago"],
+                "elo_month_ago": ru["elo_month_ago"],
+                "games": games,
+                "games_yesterday": ru["games_yesterday"],
+                "games_week_ago": ru["games_week_ago"],
+                "games_month_ago": ru["games_month_ago"],
+                "ratio": ratio,
+                "avgpts": avgpts,
+            }
+        )
+
+    set_online_status_for_users(result, online.users_online)
+    return result
+
+
 def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     """Return a list of active and zombie games for the current user"""
     result: GameList = []
@@ -1018,13 +1156,12 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             nick = AutoPlayer.name(locale, robot_level)
         else:
             # Human opponent
-            try:
-                u = opponents[opp]
-            except KeyError:
+            u = opponents.get(opp)
+            if u is None:
                 # This should not happen, but try to cope nevertheless
                 u = User.load_if_exists(opp)
-                if u is None:
-                    continue
+            if u is None:
+                continue
             nick = u.nickname()
             fullname = u.full_name()
             delta = now - ts
@@ -1068,93 +1205,6 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     return result
 
 
-def rating(kind: str) -> List[Dict[str, Any]]:
-    """Return a list of Elo ratings of the given kind ('all' or 'human')"""
-    result: List[Dict[str, Any]] = []
-    cuser = current_user()
-    cuid = None if cuser is None else cuser.id()
-
-    # Generate a list of challenges issued by this user
-    challenges: Set[Optional[str]] = set()
-    if cuid:
-        challenges.update(
-            # ch[0] is the identifier of the challenged user
-            [ch[0] for ch in ChallengeModel.list_issued(cuid, max_len=20)]
-        )
-
-    rating_list = memcache.get(kind, namespace="rating")
-    if rating_list is None:
-        # Not found: do a query
-        rating_list = list(RatingModel.list_rating(kind))
-        # Store the result in the cache with a lifetime of 1 hour
-        memcache.set(kind, rating_list, time=1 * 60 * 60, namespace="rating")
-
-    for ru in rating_list:
-
-        uid = ru["userid"]
-        if not uid:
-            # Hit the end of the list
-            break
-        inactive = False
-        if uid.startswith("robot-"):
-            # Assume that the user id has the format robot-level-locale,
-            # for instance robot-15-en. If the locale is missing, use "is".
-            a = uid.split("-")
-            lc = a[2] if len(a) >= 3 else "is"
-            nick = AutoPlayer.name(lc, int(uid[6:]))
-            fullname = nick
-            chall = False
-            fairplay = False
-        else:
-            usr = User.load_if_exists(uid)
-            if usr is None:
-                # Something wrong with this one: don't bother
-                continue
-            nick = usr.nickname()
-            if not User.is_valid_nick(nick):
-                nick = "--"
-            fullname = usr.full_name()
-            chall = uid in challenges
-            fairplay = usr.fairplay()
-            inactive = usr.is_inactive()
-
-        games = ru["games"]
-        if games == 0:
-            ratio = 0
-            avgpts = 0
-        else:
-            ratio = int(round(100.0 * float(ru["wins"]) / games))
-            avgpts = int(round(float(ru["score"]) / games))
-
-        result.append(
-            {
-                "rank": ru["rank"],
-                "rank_yesterday": ru["rank_yesterday"],
-                "rank_week_ago": ru["rank_week_ago"],
-                "rank_month_ago": ru["rank_month_ago"],
-                "userid": uid,
-                "nick": nick,
-                "fullname": fullname,
-                "chall": chall,
-                "fairplay": fairplay,
-                "newbag": True,
-                "inactive": inactive,
-                "elo": ru["elo"],
-                "elo_yesterday": ru["elo_yesterday"],
-                "elo_week_ago": ru["elo_week_ago"],
-                "elo_month_ago": ru["elo_month_ago"],
-                "games": games,
-                "games_yesterday": ru["games_yesterday"],
-                "games_week_ago": ru["games_week_ago"],
-                "games_month_ago": ru["games_month_ago"],
-                "ratio": ratio,
-                "avgpts": avgpts,
-            }
-        )
-
-    return result
-
-
 def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> RecentList:
     """Return a list of recent games for the indicated user, eventually
     filtered by the opponent id (versus)"""
@@ -1187,12 +1237,11 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
             nick = AutoPlayer.name(locale, g["robot_level"])
         else:
             # Human opponent
-            try:
-                u = opponents[opp]
-            except KeyError:
+            u = opponents.get(opp)
+            if u is None:
                 u = User.load_if_exists(opp)
-                if u is None:
-                    continue
+            if u is None:
+                continue
             nick = u.nickname()
 
         # Calculate the duration of the game in days, hours, minutes
