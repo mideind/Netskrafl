@@ -483,7 +483,11 @@ def localize_push_message(key: str, locale: str) -> str:
 
 
 def process_move(
-    game: Game, movelist: Iterable[str], *, force_resign: bool = False
+    game: Game,
+    movelist: Iterable[str],
+    *,
+    force_resign: bool = False,
+    validate: bool = True,
 ) -> ResponseType:
     """Process a move coming in from the client.
     If force_resign is True, it is actually the opponent of the
@@ -545,7 +549,7 @@ def process_move(
 
     # Process the move string here
     # Unpack the error code and message
-    err = game.check_legality(m)
+    err = game.check_legality(m, validate)
     msg = ""
     if isinstance(err, tuple):
         err, msg = err

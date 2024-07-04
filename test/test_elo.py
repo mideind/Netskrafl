@@ -9,9 +9,13 @@
 """
 
 from datetime import UTC, datetime, timedelta
+import functools
+from typing import List, Tuple
 
 from utils import CustomClient, login_user
-from utils import client, u1, u2, u3_gb  # type: ignore
+from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore
+
+from skraflgame import ClientStateDict
 
 
 def test_elo_history(client: CustomClient, u1: str) -> None:
@@ -97,4 +101,127 @@ def test_elo_history(client: CustomClient, u1: str) -> None:
         assert sm["manual_elo"] == 1290
 
     resp = client.post("/logout")
+    assert resp.status_code == 200
+
+
+def play_game(
+    client1: CustomClient,
+    client2: CustomClient,
+    u1: str,
+    u2: str,
+    locale: str,
+) -> str:
+    """Simulate an entire game between two users in a given
+    locale. Return the index (0 or 1) of the winning player."""
+
+    # First, challenge the opponent
+    resp = client1.post(
+        "/challenge",
+        json=dict(
+            action="issue",
+            destuser=u2,
+        ),
+    )
+    assert resp.status_code == 200
+
+    # Start the game (this also accepts and deletes the challenge)
+    resp = client2.post("/initgame", json=dict(opp=u1))
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+    assert "uuid" in resp.json
+    game_uuid = resp.json["uuid"]
+    assert "to_move" in resp.json
+    player_to_move = resp.json["to_move"]
+    to_move = 0 if player_to_move == u2 else 1
+
+    # Submit two simulated moves (one per player) via
+    # /submitmove, and then complete the game by having
+    # a player resign (submit a 'RSGN' move)
+    MOVES = [
+        # Horizontal first move
+        ["D4=t", "D5=e", "D6=s", "D7=t"],
+        # Vertical second move
+        ["E4=e", "F4=s", "G4=t"],
+        # Resignation move
+        ["rsgn"],
+    ]
+
+    # It is client2 who initates the game and is player 0 by default
+    clients = [client2, client1] if to_move == 0 else [client1, client2]
+
+    for i, m in enumerate(MOVES):
+        # Alternate between clients, submitting moves
+        client = clients[i % 2]
+        resp = client.post(
+            "/submitmove",
+            json=dict(
+                uuid=game_uuid,
+                moves=m,
+                mcount=i,
+                validate=False,
+            ),
+        )
+        assert resp.status_code == 200
+        assert resp.json is not None
+        assert "result" in resp.json
+        if m[0] == "rsgn":
+            # Final move is a resignation; result is Error.GAME_OVER
+            assert resp.json["result"] == 99  # Error.GAME_OVER
+            # In this case, we leave to_move as it was
+        else:
+            assert resp.json["result"] == 0  # Error.LEGAL
+            to_move = 1 - to_move
+
+    # The winner is the one who did not make the resignation move
+    winner = 1 - to_move
+    # Check that the game is now over, by calling the /gamestate endpoint
+    resp = clients[winner].post("/gamestate", json=dict(
+        game=game_uuid,
+        delete_zombie=1,
+    ))
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "ok" in resp.json
+    assert resp.json["ok"] == True
+    assert "game" in resp.json
+    game: ClientStateDict = resp.json["game"]
+    # The game should be over now
+    assert game.get("result") == 99  # Error.GAME_OVER
+    scores = game.get("scores", [0, 0])
+    winning_user = u2 if winner == 0 else u1
+    if game.get("userid", ["", ""])[0] == winning_user:
+        assert scores[0] > scores[1]
+    else:
+        assert scores[1] > scores[0]
+    # Return the index of the winning player,
+    # i.e. the one who did not resign
+    return winning_user
+
+
+def test_elo_locale(
+    client1: CustomClient, client2: CustomClient, u1: str, u2: str
+) -> None:
+    # Log in on client1 as user 1
+    resp = login_user(client1, 1)
+    assert resp.status_code == 200
+    # Log in on client2 as user 2
+    resp = login_user(client2, 2)
+    assert resp.status_code == 200
+    # Make life a little more convenient
+    play = functools.partial(play_game, client1, client2, u1, u2)
+    winners: List[Tuple[str, str]] = []
+    # Play two games in the en_US locale
+    winners.append(("en_US", play("en_US")))
+    winners.append(("en_US", play("en_US")))
+    # Play two games in the Norwegian (bokmål) locale
+    winners.append(("nb_NO", play("nb_NO")))
+    winners.append(("nb_NO", play("nb_NO")))
+    # Play one game in the Icelandic locale
+    winners.append(("is_IS", play("is_IS")))
+    # Log out on both clients
+    resp = client1.post("/logout")
+    assert resp.status_code == 200
+    resp = client2.post("/logout")
     assert resp.status_code == 200

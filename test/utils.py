@@ -8,7 +8,7 @@
 """
 
 import json
-from typing import Any, Dict, Generator
+from typing import Any, Dict
 
 import sys
 import os
@@ -19,7 +19,6 @@ import pytest
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 from itsdangerous import base64_decode
-
 
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
 SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
@@ -39,6 +38,7 @@ os.environ["SERVER_SOFTWARE"] = "Development"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
 
+import main
 
 # Create a custom test client class that can optionally
 # include authorization headers in the requests
@@ -61,20 +61,33 @@ class CustomClient(FlaskClient):
         self.send_authorization = send_authorization
 
 
+main.app.config["TESTING"] = True
+main.app.config["AUTH_SECRET"] = TEST_SECRET
+main.app.testing = True
+
+main.app.test_client_class = CustomClient
+
+
+def flask_client() -> CustomClient:
+    client = main.app.test_client()
+    assert isinstance(client, CustomClient)
+    return client
+
+
 @pytest.fixture
-def client() -> Generator[CustomClient, Any, Any]:
+def client() -> CustomClient:
     """Flask client fixture"""
-    import main
+    return flask_client()
 
-    main.app.config["TESTING"] = True
-    main.app.config["AUTH_SECRET"] = TEST_SECRET
-    main.app.testing = True
 
-    main.app.test_client_class = CustomClient
+@pytest.fixture
+def client1() -> CustomClient:
+    return flask_client()
 
-    with main.app.test_client() as client:
-        assert isinstance(client, CustomClient)
-        yield client
+
+@pytest.fixture
+def client2() -> CustomClient:
+    return flask_client()
 
 
 def create_user(idx: int, locale: str = "en_US") -> str:

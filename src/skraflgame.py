@@ -899,10 +899,10 @@ class Game:
         # Never show best moves for games that are still being played
         return self.is_over()
 
-    def check_legality(self, move: MoveBase) -> Union[int, Tuple[int, str]]:
+    def check_legality(self, move: MoveBase, validate: bool) -> Union[int, Tuple[int, str]]:
         """Check whether an incoming move from a client is legal and valid"""
         assert self.state is not None
-        return self.state.check_legality(move)
+        return self.state.check_legality(move, validate)
 
     def register_move(self, move: MoveBase) -> None:
         """Register a new move, updating the score

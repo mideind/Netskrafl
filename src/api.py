@@ -246,16 +246,21 @@ def firebase_token_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def submitmove_api() -> ResponseType:
     """Handle a move that is being submitted from the client"""
-    # This URL should only receive Ajax POSTs from the client
+    # This URL should only receive POSTs from the client
     rq = RequestData(request)
-    movelist = rq.get_list("moves")
-    movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
 
-    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
+    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
 
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
+
+    movelist = rq.get_list("moves")
+    movecount = rq.get_int("mcount")
+    if current_app.testing:
+        validate = rq.get_bool("validate", True)
+    else:
+        validate = True
 
     # Make sure the client is in sync with the server:
     # check the move count
@@ -271,7 +276,7 @@ def submitmove_api() -> ResponseType:
     for attempt in reversed(range(2)):
         # pylint: disable=broad-except
         try:
-            result = process_move(game, movelist)
+            result = process_move(game, movelist, validate=validate)
         except Exception as e:
             logging.info(
                 "Exception in submitmove(): {0} {1}".format(
@@ -1447,8 +1452,9 @@ def initgame_api() -> ResponseType:
         prefs["board_type"] = board_type
         set_game_locale(user.locale)
         game = Game.new(uid, None, robot_level, prefs=prefs)
+        to_move = game.player_id_to_move() or f"robot-{robot_level}"
         # Return the uuid of the new game
-        return jsonify(ok=True, uuid=game.id())
+        return jsonify(ok=True, uuid=game.id(), to_move=to_move)
 
     key: Optional[str] = rq.get("key", None)
 
@@ -1472,7 +1478,7 @@ def initgame_api() -> ResponseType:
     if prefs is None:
         prefs = PrefsDict(locale=user.locale)
     prefs["board_type"] = board_type
-    set_game_locale(cast(str, prefs.get("locale")) or user.locale)
+    set_game_locale(prefs.get("locale") or user.locale)
     game = Game.new(uid, opp, 0, prefs)
     game_id = game.id()
     if not game_id or game.state is None:
@@ -1486,6 +1492,9 @@ def initgame_api() -> ResponseType:
         "game": game_id,
         "timestamp": now,
         "over": False,
+        # !!! TODO: note that the to_move index is not an index
+        # into the players tuple, which may be reversed depending on
+        # which player played the initial move
         "players": (uid, opp),
         "to_move": game.player_to_move(),
         "scores": (0, 0),
@@ -1504,8 +1513,10 @@ def initgame_api() -> ResponseType:
 
     firebase.send_message(msg)
 
-    # Return the uuid of the new game
-    return jsonify(ok=True, uuid=game_id)
+    # Return the uuid of the new game, and the id of the
+    # player whose turn it is
+    to_move = game.player_id_to_move()
+    return jsonify(ok=True, uuid=game_id, to_move=to_move)
 
 
 @api_route("/locale_asset")

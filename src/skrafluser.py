@@ -383,7 +383,7 @@ class User:
             return False
         if len(nick) > MAX_NICKNAME_LENGTH:
             return False
-        return not nick.startswith(("https://", "http://"))
+        return not nick.startswith(("https://", "http://", "robot-"))
 
     def elo(self) -> int:
         """Return the overall (human and robot) Elo points of the user"""
@@ -871,7 +871,9 @@ class User:
         assert sid is not None
         ChallengeModel.del_relation(sid, destuser_id, key)
 
-    def decline_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> None:
+    def decline_challenge(
+        self, srcuser_id: str, *, key: Optional[str] = None
+    ) -> None:
         """Decline a challenge previously issued by the srcuser"""
         sid = self.id()
         assert sid is not None
@@ -880,7 +882,7 @@ class User:
     def accept_challenge(
         self, srcuser_id: str, *, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
-        """Decline a challenge previously issued by the srcuser"""
+        """Accept a challenge previously issued by the srcuser"""
         # Delete the accepted challenge and return the associated preferences
         sid = self.id()
         assert sid is not None
