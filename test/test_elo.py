@@ -114,7 +114,20 @@ def play_game(
     """Simulate an entire game between two users in a given
     locale. Return the index (0 or 1) of the winning player."""
 
-    # First, challenge the opponent
+    # Set the locale of User 1 to the specified locale
+    # using the /setuserpref API
+    resp = client1.post(
+        "/setuserpref",
+        json=dict(
+            locale=locale,
+        ),
+    )
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "did_update" in resp.json
+    assert resp.json["did_update"] == True
+
+    # User 1 challenges User 2
     resp = client1.post(
         "/challenge",
         json=dict(
@@ -123,6 +136,8 @@ def play_game(
         ),
     )
     assert resp.status_code == 200
+    assert resp.json is not None
+    assert resp.json["result"] == 0  # Error.LEGAL
 
     # Start the game (this also accepts and deletes the challenge)
     resp = client2.post("/initgame", json=dict(opp=u1))
@@ -132,6 +147,10 @@ def play_game(
     assert resp.json["ok"] == True
     assert "uuid" in resp.json
     game_uuid = resp.json["uuid"]
+    # Ascertain that the game was initiated with the correct locale
+    assert "locale" in resp.json
+    assert resp.json["locale"] == locale
+    # Find out which player is to move first (this is random)
     assert "to_move" in resp.json
     player_to_move = resp.json["to_move"]
     to_move = 0 if player_to_move == u2 else 1

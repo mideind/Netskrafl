@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 from typing import Optional, Tuple
 
-from config import ESTABLISHED_MARK
+from config import ESTABLISHED_MARK, DEFAULT_ELO
 
 from skrafldb import GameModel
 from skrafluser import User
@@ -136,8 +136,8 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
     urec1 = EloDict(elo=u1.elo(), human_elo=u1.human_elo(), manual_elo=u1.manual_elo())
 
     # Save the Elo point state used in the calculation
-    uelo0 = urec0.elo or User.DEFAULT_ELO
-    uelo1 = urec1.elo or User.DEFAULT_ELO
+    uelo0 = urec0.elo or DEFAULT_ELO
+    uelo1 = urec1.elo or DEFAULT_ELO
     gm.elo0, gm.elo1 = uelo0, uelo1
 
     # Compute the Elo points of both players
@@ -157,8 +157,8 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
     urec1.elo = uelo1 + adj[1]
 
     # Compute the human-only Elo
-    uelo0 = urec0.human_elo or User.DEFAULT_ELO
-    uelo1 = urec1.human_elo or User.DEFAULT_ELO
+    uelo0 = urec0.human_elo or DEFAULT_ELO
+    uelo1 = urec1.human_elo or DEFAULT_ELO
     gm.human_elo0, gm.human_elo1 = uelo0, uelo1
 
     adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
@@ -176,8 +176,8 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
 
     # If manual game, compute the manual-only Elo
     if manual_game:
-        uelo0 = urec0.manual_elo or User.DEFAULT_ELO
-        uelo1 = urec1.manual_elo or User.DEFAULT_ELO
+        uelo0 = urec0.manual_elo or DEFAULT_ELO
+        uelo1 = urec1.manual_elo or DEFAULT_ELO
         gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
         adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
         # Adjust player 0
@@ -194,5 +194,5 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
     # Update the user records
     # This is a provisional update, to be confirmed during
     # the authoritative calculation performed by a cron job
-    u0.set_elo(urec0.elo, urec0.human_elo, urec0.manual_elo)
-    u1.set_elo(urec1.elo, urec1.human_elo, urec1.manual_elo)
+    u0.set_elo((urec0.elo, urec0.human_elo, urec0.manual_elo))
+    u1.set_elo((urec1.elo, urec1.human_elo, urec1.manual_elo))

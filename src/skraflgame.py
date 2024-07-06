@@ -462,13 +462,15 @@ class Game:
         assert self.uuid is not None
 
         gm = GameModel(id=self.uuid)
-        gm.timestamp = cast(datetime, self.timestamp)
-        gm.ts_last_move = cast(datetime, self.ts_last_move)
+        assert self.timestamp is not None
+        gm.timestamp = self.timestamp
+        assert self.ts_last_move is not None
+        gm.ts_last_move = self.ts_last_move
         gm.locale = self.locale
         gm.set_player(0, self.player_ids[0])
         gm.set_player(1, self.player_ids[1])
-        gm.irack0 = cast(str, self.initial_racks[0])
-        gm.irack1 = cast(str, self.initial_racks[1])
+        gm.irack0 = self.initial_racks[0] or ""
+        gm.irack1 = self.initial_racks[1] or ""
         assert self.state is not None
         gm.rack0 = self.state.rack(0)
         gm.rack1 = self.state.rack(1)
@@ -478,7 +480,7 @@ class Game:
         gm.score1 = sc[1]
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
-        gm.prefs = cast(PrefsDict, self._preferences)
+        gm.prefs = self._preferences
         tile_count = 0
         movelist: List[MoveModel] = []
         for m in self.moves:

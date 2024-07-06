@@ -249,6 +249,10 @@ class RatingDict(TypedDict):
     losses_month_ago: int
 
 
+# elo, human_elo, manual_elo
+EloTuple = Tuple[int, int, int]
+
+
 class Query(Generic[_T_Model], ndb.Query):
     """A type-safer wrapper around ndb.Query"""
 
@@ -907,6 +911,92 @@ class UserModel(Model["UserModel"]):
         # in relation to previously played games
 
 
+class EloModel(Model["EloModel"]):
+    """Models the current Elo ratings for a user, by locale"""
+
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
+    locale = Model.Str()
+    timestamp = Model.Datetime(auto_now_add=True)
+    elo = Model.Int()
+    human_elo = Model.Int()
+    manual_elo = Model.Int()
+
+    @classmethod
+    def user_elo(cls, uid: str, locale: str) -> Optional[EloTuple]:
+        """Retrieve and return the Elo rating for a user, in the given locale"""
+        key: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(
+            ndb.AND(
+                EloModel.user == key,  # type: ignore
+                EloModel.locale == locale,
+            )
+        )
+        if (em := q.get()) is None:
+            return None
+        return (em.elo, em.human_elo, em.manual_elo)
+
+    @classmethod
+    def update_user_elo(cls, uid: str, locale: str, ratings: EloTuple) -> None:
+        """Update the Elo ratings for a user, in the given locale"""
+        elo, human_elo, manual_elo = ratings
+        key: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(
+            ndb.AND(
+                EloModel.user == key,  # type: ignore
+                EloModel.locale == locale,
+            )
+        )
+        if (em := q.get()) is None:
+            # Create new entity
+            em = cls(user=key, locale=locale, elo=elo, human_elo=human_elo, manual=manual_elo)
+        else:
+            # Update existing entity
+            em.elo = elo
+            em.human_elo = human_elo
+            em.manual_elo = manual_elo
+            em.timestamp = datetime.now(UTC)
+        em.put()
+
+    @classmethod
+    def read_and_update_user_elo(
+        cls,
+        uid: str,
+        locale: str,
+        update_func: Callable[[Optional[EloTuple]], EloTuple],
+    ) -> None:
+        """Read and update the Elo ratings for a user, in the given locale,
+        using a supplied update function"""
+        key: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(
+            ndb.AND(
+                EloModel.user == key,  # type: ignore
+                EloModel.locale == locale,
+            )
+        )
+        em = q.get()
+        prev: Optional[EloTuple] = (em.elo, em.human_elo, em.manual_elo) if em else None
+        # Calculate a new set of Elo ratings
+        elo, human_elo, manual_elo = update_func(prev)
+        if em is None:
+            # Create new entity
+            em = cls(user=key, locale=locale, elo=elo, human_elo=human_elo, manual=manual_elo)
+        else:
+            # Update existing entity
+            em.elo = elo
+            em.human_elo = human_elo
+            em.manual_elo = manual_elo
+            em.timestamp = datetime.now(UTC)
+        em.put()
+
+    @classmethod
+    def delete_for_user(cls, uid: str) -> None:
+        """Delete all Elo ratings for a user"""
+        if not uid: return
+        key: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(EloModel.user == key)
+        delete_multi(q.iter(keys_only=True))
+
+
 class MoveModel(Model["MoveModel"]):
     """Models a single move in a Game"""
 
@@ -1218,6 +1308,19 @@ class GameModel(Model["GameModel"]):
     def manual_wordcheck(self) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
         return self.prefs is not None and self.prefs.get("manual", False)
+
+    @classmethod
+    def delete_for_user(cls, uid: str) -> None:
+        """Delete all game entities for a particular user"""
+        if not uid:
+            return
+        k: Key[UserModel] = Key(UserModel, uid)
+
+        def keys_to_delete() -> Iterator[Key[GameModel]]:
+            yield from cls.query(GameModel.player0 == k).iter(keys_only=True)
+            yield from cls.query(GameModel.player1 == k).iter(keys_only=True)
+
+        delete_multi(keys_to_delete())
 
 
 class FavoriteModel(Model["FavoriteModel"]):
@@ -2278,6 +2381,19 @@ class ZombieModel(Model["ZombieModel"]):
             # No such game in the zombie list
             return
         zmk.delete()
+
+    @classmethod
+    def delete_for_user(cls, user_id: str) -> None:
+        """Delete all ZombieModel entries for a particular user"""
+        if not user_id:
+            return
+        user: Key[UserModel] = Key(UserModel, user_id)
+
+        def keys_to_delete() -> Iterator[Key[ZombieModel]]:
+            for key in cls.query(ZombieModel.player == user).iter(keys_only=True):
+                yield key
+
+        delete_multi(keys_to_delete())
 
     @classmethod
     def list_games(cls, user_id: Optional[str]) -> Iterator[ZombieGameDict]:

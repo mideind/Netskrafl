@@ -18,6 +18,7 @@ import functools
 import logging
 
 from typing import (
+    Callable,
     Dict,
     Mapping,
     NotRequired,
@@ -40,7 +41,7 @@ import re
 from flask.helpers import url_for
 import jwt
 
-from config import ANONYMOUS_PREFIX, EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID
+from config import ANONYMOUS_PREFIX, EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID, DEFAULT_ELO
 from languages import Alphabet, to_supported_locale
 from firebase import online_status, set_online_status
 from skrafldb import (
@@ -52,6 +53,8 @@ from skrafldb import (
     StatsModel,
     BlockModel,
     ReportModel,
+    EloModel,
+    EloTuple,
 )
 from skraflmechanics import Error
 
@@ -243,9 +246,6 @@ class User:
     # Upgraded from 7 to 8 after adding plan attribute
     _NAMESPACE = "user:8"
 
-    # Default Elo points if not explicitly assigned
-    DEFAULT_ELO = 1200
-
     def __init__(
         self,
         uid: Optional[str] = None,
@@ -387,21 +387,64 @@ class User:
 
     def elo(self) -> int:
         """Return the overall (human and robot) Elo points of the user"""
-        return self._elo or User.DEFAULT_ELO
+        return self._elo or DEFAULT_ELO
 
     def human_elo(self) -> int:
         """Return the human-only Elo points of the user"""
-        return self._human_elo or User.DEFAULT_ELO
+        return self._human_elo or DEFAULT_ELO
 
     def manual_elo(self) -> int:
         """Return the human-only, manual-game-only Elo points of the user"""
-        return self._manual_elo or User.DEFAULT_ELO
+        return self._manual_elo or DEFAULT_ELO
 
-    def set_elo(self, elo: int, human_elo: int, manual_elo: int) -> None:
+    def set_elo(self, ratings: EloTuple) -> None:
         """Set the Elo points for the user"""
-        self._elo = elo
-        self._human_elo = human_elo
-        self._manual_elo = manual_elo
+        # Note: This is the 'old-style' Elo rating, which is not
+        # locale-specific. The new-style Elo ratings are stored
+        # in EloModel entities, one for each (user, locale) combination.
+        self._elo, self._human_elo, self._manual_elo = ratings
+
+    def elo_for_locale(self, locale: Optional[str]) -> EloTuple:
+        """Return the Elo ratings of the user for the given locale"""
+        if uid := self.id():
+            locale = locale or self.locale
+            ratings: Optional[EloTuple] = EloModel.user_elo(uid, locale)
+            if ratings is not None:
+                return ratings
+            # Default to the 'old-style' Elo ratings if the locales match,
+            # otherwise return the default Elo ratings
+            if locale == self.locale:
+                return self.elo(), self.human_elo(), self.manual_elo()
+        return DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
+
+    def update_elo(
+        self,
+        locale: Optional[str],
+        update_func: Callable[[EloTuple], EloTuple],
+    ) -> None:
+        """Update the Elo ratings of the user for the given locale"""
+        # Define a wrapper update functiont that provides a default
+        # Elo ratings tuple if the user has no Elo ratings yet
+        if not (uid := self.id()):
+            return
+        locale = locale or self.locale
+        def update_func_wrapper(ratings: Optional[EloTuple]) -> EloTuple:
+            if ratings is None:
+                # If the locale matches the current user locale,
+                # use the "old" Elo ratings in the User instance
+                # (if available) to initialize the new Elo ratings
+                if locale == self.locale:
+                    return update_func(
+                        (
+                            self.elo(),
+                            self.human_elo(),
+                            self.manual_elo(),
+                        )
+                    )
+                return update_func((DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO))
+            return update_func(ratings)
+        # Upsert the new Elo ratings as an EloModel entity
+        EloModel.read_and_update_user_elo(uid, locale, update_func_wrapper)
 
     def num_human_games(self) -> int:
         """Return the number of completed human games for this user"""

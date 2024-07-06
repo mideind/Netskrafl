@@ -44,7 +44,7 @@ from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, ResponseType
+from config import DEFAULT_LOCALE, DEFAULT_ELO, ResponseType
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -923,8 +923,8 @@ def userlist(query: str, spec: str) -> UserList:
                     robot_level=0,
                     nick=ud["nickname"],
                     fullname=User.full_name_from_prefs(ud["prefs"]),
-                    elo=elo_str(ud["elo"] or str(User.DEFAULT_ELO)),
-                    human_elo=elo_str(ud["human_elo"] or str(User.DEFAULT_ELO)),
+                    elo=elo_str(ud["elo"] or str(DEFAULT_ELO)),
+                    human_elo=elo_str(ud["human_elo"] or str(DEFAULT_ELO)),
                     fav=False if cuser is None else cuser.has_favorite(uid),
                     chall=chall,
                     live=False,  # Will be filled in later

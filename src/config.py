@@ -77,6 +77,8 @@ DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configu
 
 DEFAULT_THUMBNAIL_SIZE = 384  # Thumbnails are 384x384 pixels by default
 
+DEFAULT_ELO = 1200  # Elo rating for new players
+
 # Initialize the SecretManager with your Google Cloud project ID
 sm = SecretManager(PROJECT_ID)
 

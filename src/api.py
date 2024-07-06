@@ -1516,7 +1516,7 @@ def initgame_api() -> ResponseType:
     # Return the uuid of the new game, and the id of the
     # player whose turn it is
     to_move = game.player_id_to_move()
-    return jsonify(ok=True, uuid=game_id, to_move=to_move)
+    return jsonify(ok=True, uuid=game_id, locale=game.locale, to_move=to_move)
 
 
 @api_route("/locale_asset")
