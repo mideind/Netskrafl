@@ -275,7 +275,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]: ...
+    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]: ...  # type: ignore
 
     def fetch(
         self, *args: Any, **kwargs: Any
@@ -305,7 +305,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...  # type: ignore
 
     def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
         f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
@@ -320,7 +320,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]: ...
+    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]: ...  # type: ignore
 
     def iter(
         self, *args: Any, **kwargs: Any
