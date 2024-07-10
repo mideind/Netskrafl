@@ -78,7 +78,7 @@ from skraflmechanics import (
 )
 from skraflplayer import AutoPlayer
 from skrafluser import User
-from skraflelo import compute_elo_for_game
+from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
 
 
 # Type definitions
@@ -533,13 +533,17 @@ class Game:
                 if bw1:
                     u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
 
-            if calc_elo_points and u0 is not None and u1 is not None:
-                # This is a human game that is over.
+            if calc_elo_points:
                 # We want to calculate provisional Elo points for the game
-                # and store them with the game and the users.
-                compute_elo_for_game(gm, u0, u1)
-                # Transfer the Elo deltas to the game object
-                self.set_elo_delta(gm)
+                # and store them with the game and the user(s).
+                if u0 is not None and u1 is not None:
+                    # Human-only game: calculate 'old style' Elo points
+                    compute_elo_for_game(gm, u0, u1)
+                    # Transfer the Elo deltas to the game object
+                    self.set_elo_delta(gm)
+                # Calculate 'new style', locale-specific Elo points
+                # for the game and the users
+                compute_locale_elo_for_game(gm, u0, u1)
 
             if u0 is not None:
                 # Store the updated user entity

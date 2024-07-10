@@ -102,7 +102,11 @@ def compute_elo(
     return (adj0, adj1)
 
 
-def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) -> None:
+def compute_elo_for_game(
+    gm: GameModel,
+    u0: Optional[User],
+    u1: Optional[User]
+) -> None:
     """Compute new Elo points (and evenutally other statistics)
     when a game is over. We calculate provisional points
     for human games only here; the full and authoritative calculation
@@ -128,6 +132,105 @@ def compute_elo_for_game(gm: GameModel, u0: Optional[User], u1: Optional[User]) 
     # Number of human games played; are the players established players?
     est0 = u0.num_human_games() > ESTABLISHED_MARK
     est1 = u1.num_human_games() > ESTABLISHED_MARK
+
+    # Manual (Pro Mode) game?
+    manual_game = gm.manual_wordcheck()
+
+    urec0 = EloDict(elo=u0.elo(), human_elo=u0.human_elo(), manual_elo=u0.manual_elo())
+    urec1 = EloDict(elo=u1.elo(), human_elo=u1.human_elo(), manual_elo=u1.manual_elo())
+
+    # Save the Elo point state used in the calculation
+    uelo0 = urec0.elo or DEFAULT_ELO
+    uelo1 = urec1.elo or DEFAULT_ELO
+    gm.elo0, gm.elo1 = uelo0, uelo1
+
+    # Compute the Elo points of both players
+    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+
+    # When an established player is playing a beginning (provisional) player,
+    # leave the Elo score of the established player unchanged
+    # Adjust player 0
+    if est0 and not est1:
+        adj = (0, adj[1])
+    gm.elo0_adj = adj[0]
+    urec0.elo = uelo0 + adj[0]
+    # Adjust player 1
+    if est1 and not est0:
+        adj = (adj[0], 0)
+    gm.elo1_adj = adj[1]
+    urec1.elo = uelo1 + adj[1]
+
+    # Compute the human-only Elo
+    uelo0 = urec0.human_elo or DEFAULT_ELO
+    uelo1 = urec1.human_elo or DEFAULT_ELO
+    gm.human_elo0, gm.human_elo1 = uelo0, uelo1
+
+    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+
+    # Adjust player 0
+    if est0 and not est1:
+        adj = (0, adj[1])
+    gm.human_elo0_adj = adj[0]
+    urec0.human_elo = uelo0 + adj[0]
+    # Adjust player 1
+    if est1 and not est0:
+        adj = (adj[0], 0)
+    gm.human_elo1_adj = adj[1]
+    urec1.human_elo = uelo1 + adj[1]
+
+    # If manual game, compute the manual-only Elo
+    if manual_game:
+        uelo0 = urec0.manual_elo or DEFAULT_ELO
+        uelo1 = urec1.manual_elo or DEFAULT_ELO
+        gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
+        adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+        # Adjust player 0
+        if est0 and not est1:
+            adj = (0, adj[1])
+        gm.manual_elo0_adj = adj[0]
+        urec0.manual_elo = uelo0 + adj[0]
+        # Adjust player 1
+        if est1 and not est0:
+            adj = (adj[0], 0)
+        gm.manual_elo1_adj = adj[1]
+        urec1.manual_elo = uelo1 + adj[1]
+
+    # Update the user records
+    # This is a provisional update, to be confirmed during
+    # the authoritative calculation performed by a cron job
+    u0.set_elo((urec0.elo, urec0.human_elo, urec0.manual_elo))
+    u1.set_elo((urec1.elo, urec1.human_elo, urec1.manual_elo))
+
+
+def compute_locale_elo_for_game(
+    gm: GameModel,
+    u0: Optional[User],
+    u1: Optional[User],
+) -> None:
+    """Compute new Elo points (and evenutally other statistics)
+    when a game is over. We calculate provisional points
+    for human games only here; the full and authoritative calculation
+    happens in a cron job once per day."""
+    if not gm.over:
+        # The game is not over: something weird going on
+        return
+
+    s0 = gm.score0
+    s1 = gm.score1
+
+    if (s0 == 0) and (s1 == 0):
+        # When a game ends by resigning immediately,
+        # make sure that the weaker player
+        # doesn't get Elo points for a draw; in fact,
+        # ignore such a game altogether in the statistics
+        return
+
+    locale = gm.locale
+    robot_level = gm.robot_level
+
+    # Number of human games played; are the players established players?
+    est0 = u0.num_human_games() > ESTABLISHED_MARK if u0 else True
+    est1 = u1.num_human_games() > ESTABLISHED_MARK if u1 else True
 
     # Manual (Pro Mode) game?
     manual_game = gm.manual_wordcheck()

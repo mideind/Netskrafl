@@ -912,43 +912,65 @@ class UserModel(Model["UserModel"]):
 
 
 class EloModel(Model["EloModel"]):
-    """Models the current Elo ratings for a user, by locale"""
+    """Models the current Elo ratings for a user or a robot, by locale"""
 
-    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
+    # An entity contains either a UserModel key or a robot identifier
+    # (but not both). Robot identifiers are "robot-<level>", where <level>
+    # is typically 0, 8, 15 or 20 (see robot levels in skraflplayer.py)
     locale = Model.Str()
+    user: Optional[Key[UserModel]] = UserModel.OptionalDbKey(kind=UserModel)
+    robot = Model.OptionalStr()
     timestamp = Model.Datetime(auto_now_add=True)
     elo = Model.Int()
     human_elo = Model.Int()
     manual_elo = Model.Int()
 
     @classmethod
-    def user_elo(cls, uid: str, locale: str) -> Optional[EloTuple]:
-        """Retrieve and return the Elo rating for a user, in the given locale"""
+    def _get_for_user(cls, locale: str, uid: str) -> Optional[EloModel]:
+        """Retrieve the EloModel entity for a user, in the given locale"""
         key: Key[UserModel] = Key(UserModel, uid)
         q = cls.query(
             ndb.AND(
-                EloModel.user == key,  # type: ignore
                 EloModel.locale == locale,
+                EloModel.user == key,  # type: ignore
             )
         )
-        if (em := q.get()) is None:
+        return q.get()
+
+    @classmethod
+    def _get_for_robot(cls, locale: str, level: int) -> Optional[EloModel]:
+        """Retrieve the EloModel entity for a robot, in the given locale"""
+        key = f"robot-{level}"
+        q = cls.query(
+            ndb.AND(
+                EloModel.locale == locale,
+                EloModel.robot == key,
+            )
+        )
+        return q.get()
+
+    @classmethod
+    def user_elo(cls, locale: str, uid: str) -> Optional[EloTuple]:
+        """Retrieve and return the Elo rating for a user, in the given locale"""
+        if (em := cls._get_for_user(locale, uid)) is None:
             return None
         return (em.elo, em.human_elo, em.manual_elo)
 
     @classmethod
-    def update_user_elo(cls, uid: str, locale: str, ratings: EloTuple) -> None:
+    def robot_elo(cls, locale: str, level: int) -> Optional[EloTuple]:
+        """Retrieve and return the Elo rating for a robot, in the given locale"""
+        if (em := cls._get_for_robot(locale, level)) is None:
+            return None
+        return (em.elo, em.human_elo, em.manual_elo)
+
+    @classmethod
+    def update_user_elo(cls, locale: str, uid: str, ratings: EloTuple) -> None:
         """Update the Elo ratings for a user, in the given locale"""
         elo, human_elo, manual_elo = ratings
-        key: Key[UserModel] = Key(UserModel, uid)
-        q = cls.query(
-            ndb.AND(
-                EloModel.user == key,  # type: ignore
-                EloModel.locale == locale,
-            )
-        )
-        if (em := q.get()) is None:
+        if (em := cls._get_for_user(locale, uid)) is None:
             # Create new entity
-            em = cls(user=key, locale=locale, elo=elo, human_elo=human_elo, manual=manual_elo)
+            key: Key[UserModel] = Key(UserModel, uid)
+            em = cls(locale=locale, user=key, elo=elo, human_elo=human_elo, manual=manual_elo)
         else:
             # Update existing entity
             em.elo = elo
@@ -958,28 +980,52 @@ class EloModel(Model["EloModel"]):
         em.put()
 
     @classmethod
-    def read_and_update_user_elo(
+    def update_robot_elo(cls, locale: str, level: int, ratings: EloTuple) -> None:
+        """Update the Elo ratings for a robot, in the given locale"""
+        elo, human_elo, manual = ratings
+        if (em := cls._get_for_robot(locale, level)) is None:
+            # Create new entity
+            key: str = f"robot-{level}"
+            em = cls(locale=locale, robot=key, elo=elo, human_elo=human_elo, manual_elo=manual)
+        else:
+            # Update existing entity
+            em.elo = elo
+            em.human_elo = human_elo
+            em.manual_elo = manual
+            em.timestamp = datetime.now(UTC)
+        em.put()
+
+    @classmethod
+    def read_and_update_elo(
         cls,
-        uid: str,
         locale: str,
+        uid: Optional[str],
+        level: Optional[int],
         update_func: Callable[[Optional[EloTuple]], EloTuple],
     ) -> None:
-        """Read and update the Elo ratings for a user, in the given locale,
+        """Read and update the Elo ratings for a user or robot, in the given locale,
         using a supplied update function"""
-        key: Key[UserModel] = Key(UserModel, uid)
-        q = cls.query(
-            ndb.AND(
-                EloModel.user == key,  # type: ignore
-                EloModel.locale == locale,
-            )
-        )
-        em = q.get()
+        if uid:
+            em = cls._get_for_user(locale, uid)
+        elif level is not None:
+            em = cls._get_for_robot(locale, level)
+        else:
+            em = None
         prev: Optional[EloTuple] = (em.elo, em.human_elo, em.manual_elo) if em else None
         # Calculate a new set of Elo ratings
         elo, human_elo, manual_elo = update_func(prev)
         if em is None:
             # Create new entity
-            em = cls(user=key, locale=locale, elo=elo, human_elo=human_elo, manual=manual_elo)
+            user_key: Optional[Key[UserModel]] = Key(UserModel, uid) if uid else None
+            robot_key = f"robot-{level}" if level is not None else None
+            em = cls(
+                locale=locale,
+                user=user_key,
+                robot=robot_key,
+                elo=elo,
+                human_elo=human_elo,
+                manual=manual_elo,
+            )
         else:
             # Update existing entity
             em.elo = elo

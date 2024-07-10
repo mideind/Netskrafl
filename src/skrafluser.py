@@ -408,7 +408,7 @@ class User:
         """Return the Elo ratings of the user for the given locale"""
         if uid := self.id():
             locale = locale or self.locale
-            ratings: Optional[EloTuple] = EloModel.user_elo(uid, locale)
+            ratings: Optional[EloTuple] = EloModel.user_elo(locale, uid)
             if ratings is not None:
                 return ratings
             # Default to the 'old-style' Elo ratings if the locales match,
@@ -444,7 +444,7 @@ class User:
                 return update_func((DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO))
             return update_func(ratings)
         # Upsert the new Elo ratings as an EloModel entity
-        EloModel.read_and_update_user_elo(uid, locale, update_func_wrapper)
+        EloModel.read_and_update_elo(locale, uid, None, update_func_wrapper)
 
     def num_human_games(self) -> int:
         """Return the number of completed human games for this user"""

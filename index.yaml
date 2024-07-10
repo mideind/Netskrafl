@@ -159,6 +159,11 @@ indexes:
 
 - kind: EloModel
   properties:
+  - name: robot
+  - name: locale
+
+- kind: EloModel
+  properties:
   - name: locale
   - name: elo
     direction: desc
