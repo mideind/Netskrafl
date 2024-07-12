@@ -37,8 +37,10 @@ resources/explo-*.json
 # Unsorted BIN word lists
 resources/ordalistimax15.txt
 resources/*.tsv
+resources/*.csv
 resources/nob-no_web_2020_300K-words.txt
 !resources/english.freq.tsv
+resources/diff*.txt
 
 # CSS files generated from Less
 static/skrafl-*.css

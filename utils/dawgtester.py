@@ -23,7 +23,7 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 sys.path.append(os.path.join(base_path, "../src"))
 
 from dawgdictionary import PackedDawgDictionary
-from languages import IcelandicAlphabet, PolishAlphabet, set_locale
+from alphabets import IcelandicAlphabet, PolishAlphabet
 
 
 class DawgTester:
@@ -57,7 +57,6 @@ class DawgTesterIcelandic(DawgTester):
         """ Load a DawgDictionary and test its functionality """
 
         t0 = time.time()
-        set_locale("is_IS")
         self._dawg = PackedDawgDictionary(IcelandicAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()
@@ -366,7 +365,6 @@ class DawgTesterPolish(DawgTester):
     def run(self) -> None:
 
         t0 = time.time()
-        set_locale("pl_PL")
         self._dawg = PackedDawgDictionary(PolishAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()
