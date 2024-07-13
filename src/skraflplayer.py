@@ -87,7 +87,8 @@ from typing import (
 import random
 from enum import Enum
 
-from dawgdictionary import Wordbase, PackedDawgDictionary
+from dawgdictionary import PackedDawgDictionary
+from wordbase import Wordbase
 from languages import current_alphabet
 from skraflmechanics import (
     State,
