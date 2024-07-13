@@ -15,9 +15,10 @@
    serverQuery, gameId, localPlayer,
    gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag, gameTilescores, gameAlphabet,
    gameLocale, userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
-   opponentInfo, preventPullToRefresh, initFirebaseListener, loginFirebase, attachFirebaseListener,
-   initSkrafl, lateInit, initialGameTime, initBag, initMoveList, placeTiles,
+   opponentInfo, preventPullToRefresh, loginFirebase, attachFirebaseListener,
+   lateInit, initialGameTime, initBag, initMoveList, placeTiles,
    favUserInfo, toggleVersus, initToggle, toggleStats, fbShare,
+   hasOwnProp
 */
 
 /* eslint-disable no-unused-vars */
@@ -458,7 +459,7 @@ function placeTile(sq, tile, letter, score) {
 function removeNewestTileMove() {
    // Successful challenge: retract the tiles placed in the last tile move
    for (var nsq in newestTileMove)
-      if (newestTileMove.hasOwnProperty(nsq))
+      if (hasOwnProp(newestTileMove, nsq))
          placeTile(nsq, "", "", 0); // Erase tile
 }
 
@@ -521,7 +522,7 @@ function highlightNewestMove(playerColor) {
       // newestMove must be set when the board was initialized
       return;
    for (var nsq in newestMove)
-      if (newestMove.hasOwnProperty(nsq)) {
+      if (hasOwnProp(newestMove, nsq)) {
          var tileDiv = $("#"+nsq).children().eq(0);
          if (tileDiv !== null)
             tileDiv.addClass("highlight" + playerColor);
@@ -547,7 +548,7 @@ function showBestMove(ev) {
       tempTiles = { };
       /* Hide the most recent move */
       for (nsq in newestMove)
-         if (newestMove.hasOwnProperty(nsq))
+         if (hasOwnProp(newestMove, nsq))
             placeTile(nsq, "", "", 0);
       /* Show the score difference */
       var scoreBest = parseInt($(this).find("span.score").eq(0).text());
@@ -595,7 +596,7 @@ function showBestMove(ev) {
       tempTiles = null;
       /* Show and highlight the most recent move again */
       for (nsq in newestMove)
-         if (newestMove.hasOwnProperty(nsq))
+         if (hasOwnProp(newestMove, nsq))
             placeTile(nsq, newestMove[nsq].tile, newestMove[nsq].letter, newestMove[nsq].score);
       highlightNewestMove(playerColor);
       /* Hide the score difference */
@@ -1421,11 +1422,12 @@ function updateButtonState() {
             word laid down and all cross words */
          wordToCheck = scoreResult.word;
          wordGoodOrBad(false, false);
-         if (!gameIsManual())
+         if (!gameIsManual()) {
             serverQuery("/wordcheck",
                { locale: gameLocale(), word: wordToCheck, words: scoreResult.words },
                showWordCheck
             );
+         }
       }
       showRecall = true;
    }
@@ -1827,7 +1829,7 @@ function _updateState(json, preserveTiles) {
          $("div.submitexchange").toggleClass("disabled", true);
          /* Hide Move button and display New Game button */
          $("div.submitmove").toggleClass("hidden", true);
-         $("div.submitnewgame").css("display", "inline");
+         $("div.submitnewgame").css("display", "block");
          gameOver = true;
       }
    }

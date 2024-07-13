@@ -18,6 +18,10 @@
 
 /* eslint-disable no-unused-vars */
 
+function hasOwnProp(obj, prop) {
+   return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+
 var entityMap = {
    "&": "&amp;",
    "<": "&lt;",
