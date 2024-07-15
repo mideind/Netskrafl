@@ -28,7 +28,7 @@ import abc
 from random import SystemRandom
 
 from config import DEFAULT_LOCALE
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from languages import (
     TileSet,
     Alphabet,

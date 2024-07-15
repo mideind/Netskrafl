@@ -14,6 +14,24 @@ from utils import CustomClient, login_user
 from utils import client, u1, u2, u3_gb  # type: ignore
 
 
+# Create a minimal JPEG image directly from bytes
+# (Credit: StackOverflow answer by 'matja',
+# https://stackoverflow.com/a/2349470/6335727)
+
+MINIMAL_JPEG_HEX = (
+    "ffd8ffe000104a4649460001010100"
+    "4800480000ffdb0043000302020202"
+    "020302020203030303040604040404"
+    "04080606050609080a0a090809090a"
+    "0c0f0c0a0b0e0b09090d110d0e0f10"
+    "1011100a0c12131210130f101010ff"
+    "c9000b080001000101011100ffcc00"
+    "0600101005ffda0008010100003f00"
+    "d2cf20ffd9"
+)
+MINIMAL_JPEG_BYTES = bytes.fromhex(MINIMAL_JPEG_HEX)
+
+
 def test_locale_assets(client: CustomClient, u1: str, u3_gb: str) -> None:
 
     # Test default en_US user
@@ -39,7 +57,7 @@ def test_image(client: CustomClient, u1: str) -> None:
     resp = login_user(client, 1)
 
     # Set the image by POSTing the JPEG or PNG content (BLOB) directly
-    image_blob = b"1234"
+    image_blob = MINIMAL_JPEG_BYTES
     # Encode the image_blob as base64
     image_b64 = base64.b64encode(image_blob)
     resp = client.post(
