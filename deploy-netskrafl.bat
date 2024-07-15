@@ -1,6 +1,7 @@
 @ECHO OFF
 ECHO Deploy an update to App Server
 ECHO *** Run me from the Google Cloud SDK Shell! ***
+set PROJECT_ID=netskrafl
 set GOOGLE_APPLICATION_CREDENTIALS=resources\netskrafl-0dd9fbdf9ab3.json
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
