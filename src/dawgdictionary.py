@@ -59,32 +59,22 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple, Iterator, List
+from functools import lru_cache
+import struct
+from typing import Callable, Iterator, Optional, Tuple, List
 
 import os
 import threading
-import logging
-import time
-import struct
 import abc
-from functools import lru_cache
 
-from languages import (
-    Alphabet,
-    IcelandicAlphabet,
-    EnglishAlphabet,
-    NorwegianAlphabet,
-    PolishAlphabet,
-    current_alphabet,
-    current_vocabulary,
-    vocabulary_for_locale,
-)
+from alphabets import Alphabet
 
 
 # Type definitions
 IterTuple = Tuple[str, int]
 PrefixNodes = Tuple[IterTuple, ...]
 TwoLetterListTuple = Tuple[List[str], List[str]]
+SortKeyFunc = Callable[[str], List[int]]
 
 
 # Base project directory path
@@ -92,7 +82,6 @@ BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
 
 
 class PackedDawgDictionary:
-
     """Encapsulates a DAWG dictionary that is initialized from a packed
     binary file on disk and navigated as a byte buffer."""
 
@@ -102,13 +91,14 @@ class PackedDawgDictionary:
         # Lock to ensure that only one thread loads the dictionary
         self._lock = threading.Lock()
         self.alphabet = alphabet
+        self.sortkey = alphabet.sortkey
         self.coding = alphabet.coding
         # Cached list of two letter words in this DAWG,
         # sorted by first letter and second letter
         self._two_letter: Tuple[List[str], List[str]] = ([], [])
 
     def load(self, fname: str) -> None:
-        """ Load a packed DAWG from a binary file """
+        """Load a packed DAWG from a binary file"""
         with self._lock:
             # Ensure that we don't have multiple threads trying to load simultaneously
             if self.b is not None:
@@ -119,13 +109,13 @@ class PackedDawgDictionary:
                 self.b = fin.read()
 
     def find(self, word: str) -> bool:
-        """ Look for a word in the graph, returning True if it is found or False if not """
+        """Look for a word in the graph, returning True if it is found or False if not"""
         nav = FindNavigator(word)
         self.navigate(nav)
         return nav.is_found()
 
     def __contains__(self, word: str) -> bool:
-        """ Enable simple lookup syntax: "word" in dawgdict """
+        """Enable simple lookup syntax: "word" in dawgdict"""
         return self.find(word)
 
     def __hash__(self) -> int:
@@ -141,7 +131,7 @@ class PackedDawgDictionary:
         The pattern contains characters and '?'-signs denoting wildcards.
         Characters are matched exactly, while the wildcards match any character.
         """
-        nav = MatchNavigator(pattern, sort)
+        nav = MatchNavigator(self.sortkey, pattern, sort)
         self.navigate(nav)
         return nav.result()
 
@@ -152,7 +142,7 @@ class PackedDawgDictionary:
         Question marks should be used carefully as they can
         yield very large result sets.
         """
-        nav = PermutationNavigator(rack, minlen)
+        nav = PermutationNavigator(self.sortkey, rack, minlen)
         self.navigate(nav)
         return nav.result()
 
@@ -204,107 +194,7 @@ class PackedDawgDictionary:
         return self._two_letter
 
 
-class Wordbase:
-
-    """ Container for singleton instances of the supported dictionaries """
-
-    # Known dictionaries
-    DAWGS = [
-        # Icelandic
-        ("ordalisti", IcelandicAlphabet),
-        ("amlodi", IcelandicAlphabet),
-        ("midlungur", IcelandicAlphabet),
-        # US English
-        ("otcwl2014", EnglishAlphabet),
-        ("otcwl2014.aml", EnglishAlphabet),
-        ("otcwl2014.mid", EnglishAlphabet),
-        # ("twl06", EnglishAlphabet),
-        # UK & Rest-of-World English
-        ("sowpods", EnglishAlphabet),
-        ("sowpods.aml", EnglishAlphabet),
-        ("sowpods.mid", EnglishAlphabet),
-        # Polish
-        ("osps37", PolishAlphabet),
-        ("osps37.aml", PolishAlphabet),
-        ("osps37.mid", PolishAlphabet),
-        # Norwegian Bokmål
-        ("nsf2023", NorwegianAlphabet),
-        ("nsf2023.aml", NorwegianAlphabet),
-        ("nsf2023.mid", NorwegianAlphabet),
-    ]
-
-    _dawg: Dict[str, PackedDawgDictionary] = dict()
-
-    _lock = threading.Lock()
-
-    @staticmethod
-    def initialize() -> None:
-        """ Load all known dictionaries into memory """
-        with Wordbase._lock:
-            if not Wordbase._dawg:
-                for dawg, alphabet in Wordbase.DAWGS:
-                    try:
-                        Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
-                    except FileNotFoundError:
-                        logging.error("Unable to load DAWG {0}".format(dawg))
-
-    @staticmethod
-    def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
-        """ Load a dictionary from a binary DAWG file """
-
-        bname = os.path.abspath(
-            os.path.join(BASE_PATH, "resources", resource + ".bin.dawg")
-        )
-        # Load packed binary file
-        logging.info(
-            "Instance {0} loading DAWG from binary file {1}".format(
-                os.environ.get("INSTANCE_ID", ""), bname
-            )
-        )
-        t0 = time.time()
-        dawg = PackedDawgDictionary(alphabet)
-        dawg.load(bname)
-        t1 = time.time()
-        logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
-        return dawg
-
-    @staticmethod
-    def dawg() -> PackedDawgDictionary:
-        """ Return the main dictionary DAWG object, associated with the
-            current thread, i.e. the current user's (or game's) locale """
-        return Wordbase._dawg[current_vocabulary()]
-
-    @staticmethod
-    def dawg_for_locale(locale: str) -> PackedDawgDictionary:
-        """ Return the DAWG object associated with the given locale """
-        vocab = vocabulary_for_locale(locale)
-        return Wordbase._dawg[vocab]
-
-    @staticmethod
-    def dawg_for_vocab(vocab: str) -> Optional[PackedDawgDictionary]:
-        """ Return the DAWG object associated with the given vocabulary """
-        return Wordbase._dawg.get(vocab)
-
-    @staticmethod
-    def two_letter_words(
-        vocabulary: Optional[str] = None,
-    ) -> Tuple[List[str], List[str]]:
-        """ Return the two letter word list associated with the
-            current vocabulary """
-        dawg = Wordbase._dawg.get(vocabulary or current_vocabulary())
-        return ([], []) if dawg is None else dawg.two_letter_words()
-
-    @staticmethod
-    def warmup() -> bool:
-        """ Called from GAE instance initialization; add warmup code here if needed """
-        return True
-
-
-Wordbase.initialize()
-
-
 class Navigator(abc.ABC):
-
     """Base class for navigators that move through the DAWG,
     finding words or patterns or collecting information,
     for instance about possible moves"""
@@ -316,27 +206,27 @@ class Navigator(abc.ABC):
 
     @abc.abstractmethod
     def push_edge(self, firstchar: str) -> bool:
-        """ Returns True if the edge should be entered or False if not """
+        """Returns True if the edge should be entered or False if not"""
         raise NotImplementedError
 
     @abc.abstractmethod
     def accepting(self) -> bool:
-        """ Returns False if the navigator does not want more characters """
+        """Returns False if the navigator does not want more characters"""
         raise NotImplementedError
 
     @abc.abstractmethod
     def accepts(self, newchar: str) -> bool:
-        """ Returns True if the navigator will accept the new character """
+        """Returns True if the navigator will accept the new character"""
         raise NotImplementedError
 
     # pylint: disable=unused-argument
     @abc.abstractmethod
     def accept(self, matched: str, final: bool) -> None:
-        """ Called to inform the navigator of a match and whether it is a final word """
+        """Called to inform the navigator of a match and whether it is a final word"""
         raise NotImplementedError
 
     def accept_resumable(self, prefix: str, nextnode: int, matched: str) -> None:
-        """ This is not an abstract method since it is not mandatory to implement """
+        """This is not an abstract method since it is not mandatory to implement"""
         # If implemented in a subclass, set is_resumable = True
         raise NotImplementedError
 
@@ -347,13 +237,12 @@ class Navigator(abc.ABC):
         return False
 
     def done(self) -> None:
-        """ Called when the whole navigation is done """
+        """Called when the whole navigation is done"""
         # An implementation is not mandatory
         pass
 
 
 class FindNavigator(Navigator):
-
     """A navigation class to be used with DawgDictionary.navigate()
     to find a particular word in the dictionary by exact match"""
 
@@ -365,17 +254,17 @@ class FindNavigator(Navigator):
         self._found = False
 
     def push_edge(self, firstchar: str) -> bool:
-        """ Returns True if the edge should be entered or False if not """
+        """Returns True if the edge should be entered or False if not"""
         # Enter the edge if it fits where we are in the word
         return self._word[self._index] == firstchar
 
     def accepting(self) -> bool:
-        """ Returns False if the navigator does not want more characters """
+        """Returns False if the navigator does not want more characters"""
         # Don't go too deep
         return self._index < self._len
 
     def accepts(self, newchar: str) -> bool:
-        """ Returns True if the navigator will accept the new character """
+        """Returns True if the navigator will accept the new character"""
         if newchar != self._word[self._index]:
             return False
         # Match: move to the next index position
@@ -384,32 +273,32 @@ class FindNavigator(Navigator):
 
     # pylint: disable=unused-argument
     def accept(self, matched: str, final: bool) -> None:
-        """ Called to inform the navigator of a match and whether it is a final word """
+        """Called to inform the navigator of a match and whether it is a final word"""
         if final and self._index == self._len:
             # Yes, this is what we were looking for
             # assert matched == self._word
             self._found = True
 
     def is_found(self) -> bool:
-        """ Return True if the sought word was found in the DAWG """
+        """Return True if the sought word was found in the DAWG"""
         return self._found
 
 
 class PermutationNavigator(Navigator):
-
     """A navigation class to be used with DawgDictionary.navigate()
     to find all permutations of a rack
     """
 
-    def __init__(self, rack: str, minlen: int = 0) -> None:
+    def __init__(self, sortkey: SortKeyFunc, rack: str, minlen: int = 0) -> None:
         super().__init__()
         self._rack = rack
         self._stack: List[str] = []
         self._result: List[str] = []
         self._minlen = minlen
+        self._sortkey = sortkey
 
     def push_edge(self, firstchar: str) -> bool:
-        """ Returns True if the edge should be entered or False if not """
+        """Returns True if the edge should be entered or False if not"""
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
         rack = self._rack
@@ -420,12 +309,12 @@ class PermutationNavigator(Navigator):
         return True
 
     def accepting(self) -> bool:
-        """ Returns False if the navigator does not want more characters """
+        """Returns False if the navigator does not want more characters"""
         # Continue as long as there is something left on the rack
         return bool(self._rack)
 
     def accepts(self, newchar: str) -> bool:
-        """ Returns True if the navigator will accept the new character """
+        """Returns True if the navigator will accept the new character"""
         rack = self._rack
         exactmatch = newchar in rack
         if (not exactmatch) and ("?" not in rack):
@@ -439,33 +328,31 @@ class PermutationNavigator(Navigator):
         return True
 
     def accept(self, matched: str, final: bool) -> None:
-        """ Called to inform the navigator of a match and whether it is a final word """
+        """Called to inform the navigator of a match and whether it is a final word"""
         if final and len(matched) >= self._minlen:
             self._result.append(matched)
 
     def pop_edge(self) -> bool:
-        """ Called when leaving an edge that has been navigated """
+        """Called when leaving an edge that has been navigated"""
         self._rack = self._stack.pop()
         # We need to visit all outgoing edges, so return True
         return True
 
     def done(self) -> None:
-        """ Called when the whole navigation is done """
-        sortkey = current_alphabet().sortkey
-        self._result.sort(key=lambda x: (-len(x), sortkey(x)))
+        """Called when the whole navigation is done"""
+        self._result.sort(key=lambda x: (-len(x), self._sortkey(x)))
 
     def result(self) -> List[str]:
-        """ Return the list of results accumulated during the navigation """
+        """Return the list of results accumulated during the navigation"""
         return self._result
 
 
 class MatchNavigator(Navigator):
-
     """A navigation class to be used with DawgDictionary.navigate()
     to find all words matching a pattern
     """
 
-    def __init__(self, pattern: str, sort: bool) -> None:
+    def __init__(self, sortkey: SortKeyFunc, pattern: str, sort: bool) -> None:
         super().__init__()
         self._pattern = pattern
         self._lenp = len(pattern)
@@ -475,9 +362,10 @@ class MatchNavigator(Navigator):
         self._stack: List[Tuple[int, str, bool]] = []
         self._result: List[str] = []
         self._sort = sort
+        self._sortkey = sortkey
 
     def push_edge(self, firstchar: str) -> bool:
-        """ Returns True if the edge should be entered or False if not """
+        """Returns True if the edge should be entered or False if not"""
         # Follow all edges that match a letter in the rack
         # (which can be '?', matching all edges)
         if not self._wildcard and (firstchar != self._chmatch):
@@ -487,12 +375,12 @@ class MatchNavigator(Navigator):
         return True
 
     def accepting(self) -> bool:
-        """ Returns False if the navigator does not want more characters """
+        """Returns False if the navigator does not want more characters"""
         # Continue as long as there is something left to match
         return self._index < self._lenp
 
     def accepts(self, newchar: str) -> bool:
-        """ Returns True if the navigator will accept the new character """
+        """Returns True if the navigator will accept the new character"""
         if not self._wildcard and (newchar != self._chmatch):
             return False
         self._index += 1
@@ -502,26 +390,25 @@ class MatchNavigator(Navigator):
         return True
 
     def accept(self, matched: str, final: bool) -> None:
-        """ Called to inform the navigator of a match and whether it is a final word """
+        """Called to inform the navigator of a match and whether it is a final word"""
         if final and self._index == self._lenp:
             # We have an entire pattern match
             # (Note that this could be relaxed to also return partial (shorter) pattern matches)
             self._result.append(matched)
 
     def pop_edge(self) -> bool:
-        """ Called when leaving an edge that has been navigated """
+        """Called when leaving an edge that has been navigated"""
         self._index, self._chmatch, self._wildcard = self._stack.pop()
         # We need to continue visiting edges only if this is a wildcard position
         return self._wildcard
 
     def done(self) -> None:
-        """ Called when the whole navigation is done """
+        """Called when the whole navigation is done"""
         if self._sort:
-            sortkey = current_alphabet().sortkey
-            self._result.sort(key=sortkey)
+            self._result.sort(key=self._sortkey)
 
     def result(self) -> List[str]:
-        """ Return the list of results accumulated during the navigation """
+        """Return the list of results accumulated during the navigation"""
         return self._result
 
 
@@ -530,8 +417,7 @@ _UINT32 = struct.Struct("<L")
 
 
 class Navigation:
-
-    """ Manages the state for a navigation while it is in progress """
+    """Manages the state for a navigation while it is in progress"""
 
     def __init__(self, nav: Navigator, pd: PackedDawgDictionary) -> None:
         # Store the associated navigator
@@ -580,7 +466,7 @@ class Navigation:
         return tuple(Navigation._iter_from_node(pd, offset))
 
     def _navigate_from_node(self, offset: int, matched: str) -> None:
-        """ Starting from a given node, navigate outgoing edges """
+        """Starting from a given node, navigate outgoing edges"""
         # Go through the edges of this node and follow the ones
         # okayed by the navigator
         nav = self._nav
@@ -593,7 +479,7 @@ class Navigation:
                     break
 
     def _navigate_from_edge(self, prefix: str, nextnode: int, matched: str) -> None:
-        """ Navigate along an edge, accepting partial and full matches """
+        """Navigate along an edge, accepting partial and full matches"""
         # Go along the edge as long as the navigator is accepting
         b = self._b
         lenp = len(prefix)
@@ -637,7 +523,7 @@ class Navigation:
             self._navigate_from_node(nextnode, matched)
 
     def go(self) -> None:
-        """ Perform the navigation using the given navigator """
+        """Perform the navigation using the given navigator"""
         # The ship is ready to go
         if self._nav.accepting():
             # Leave shore and navigate the open seas
@@ -645,8 +531,9 @@ class Navigation:
         self._nav.done()
 
     def resume(self, prefix: str, nextnode: int, matched: str) -> None:
-        """ Resume navigation from a previously saved state """
+        """Resume navigation from a previously saved state"""
         self._navigate_from_edge(prefix, nextnode, matched)
+
 
 """
 # Debug instrumentation:

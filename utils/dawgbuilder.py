@@ -122,6 +122,8 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
+from alphabets import Alphabet, EnglishAlphabet, IcelandicAlphabet, NorwegianAlphabet, PolishAlphabet
+
 # Establish the resources path
 rpath = functools.partial(os.path.join, base_path, "../resources")
 
@@ -129,8 +131,6 @@ rpath = functools.partial(os.path.join, base_path, "../resources")
 # the current locale setting, typically 'is_IS' or 'en_US'
 if "PROJECT_ID" not in os.environ:
     os.environ["PROJECT_ID"] = "explo-dev"
-
-from languages import current_alphabet, set_locale
 
 
 # Type definitions
@@ -141,6 +141,18 @@ NodeTuple = Tuple[str, Optional["_DawgNode"]]
 MAXLEN = 48  # Longest possible word to be processed
 WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
+
+# Hacky, but OK in this instance: store the current alphabet and its
+# sort key in global variables
+_current_alphabet: Optional[Alphabet] = None
+_current_sortkey: Optional[Callable[[str], List[int]]] = None
+
+def set_current_alphabet(alphabet: Alphabet) -> None:
+    """Set the current alphabet and its sort key"""
+    global _current_alphabet, _current_sortkey
+    _current_alphabet = alphabet
+    _current_sortkey = alphabet.sortkey
+
 
 class _DawgNode:
 
@@ -172,7 +184,8 @@ class _DawgNode:
     @staticmethod
     def sort_by_prefix(l: List[NodeTuple]) -> List[NodeTuple]:
         """Return a list of (prefix, node) tuples sorted by prefix"""
-        sortkey = current_alphabet().sortkey
+        sortkey = _current_sortkey
+        assert sortkey is not None
         return sorted(l, key=lambda x: sortkey(x[0]))
 
     @staticmethod
@@ -623,7 +636,8 @@ class DawgBuilder:
             self._eof: bool = False
             self._nxt: Optional[str] = None
             self._key: Optional[List[int]] = None  # Sortkey for self._nxt
-            self._sortkey = current_alphabet().sortkey
+            assert _current_sortkey is not None
+            self._sortkey = _current_sortkey
             self._input_filter = input_filter
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin: Optional[io.TextIOWrapper] = open(fpath, "r", encoding="utf-8")
@@ -680,7 +694,8 @@ class DawgBuilder:
             """Read the entire file and pre-sort it"""
             self._list: List[str] = []
             self._index = 0
-            self._sortkey = current_alphabet().sortkey
+            assert _current_sortkey is not None
+            self._sortkey = _current_sortkey
             f = self._input_filter
             assert self._fin is not None
             try:
@@ -935,7 +950,9 @@ def run_test() -> None:
     """Build a DAWG from the files listed"""
     # This creates a DAWG from a single file named testwords.txt
     print("Starting DAWG build for testwords.txt")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(IcelandicAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["testwords.txt"],  # Input files to be merged
@@ -951,8 +968,9 @@ def run_twl06() -> None:
     # the Tournament Word List version 6
     print("Starting DAWG build for twl06.txt")
     # Set the English-United States locale
-    set_locale("en_US")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(EnglishAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["twl06.txt"],  # Input files to be merged
@@ -967,8 +985,9 @@ def run_otcwl2014() -> None:
     # This creates a DAWG from a single file named otcwl2014.txt
     print("Starting DAWG build for otcwl2014.txt")
     # Set the English-United States locale
-    set_locale("en_US")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(EnglishAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["otcwl2014.txt"],  # Input files to be merged
@@ -984,8 +1003,9 @@ def run_sowpods() -> None:
     # the combined European & U.S. English word list
     print("Starting DAWG build for sowpods.txt")
     # Set the English-GB locale
-    set_locale("en_GB")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(EnglishAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["sowpods.txt"],  # Input files to be merged
@@ -1007,8 +1027,9 @@ def run_osps37() -> None:
         return a[0].lower()
 
     # Set the generic Polish locale
-    set_locale("pl")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(PolishAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["osps37.txt"],  # Input files to be merged
@@ -1027,8 +1048,9 @@ def run_nsf2023() -> None:
     print("Starting DAWG build for nsf2023.txt")
 
     # Set the Norwegian (bokmål) locale
-    set_locale("nb")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    set_current_alphabet(NorwegianAlphabet)
+    assert _current_alphabet is not None
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["nsf2023.txt"],  # Input files to be merged
@@ -1055,8 +1077,9 @@ def run_norwegian_filter() -> None:
     from dawgdictionary import PackedDawgDictionary
 
     # Load the NSF2023 vocabulary as a packed DAWG
-    set_locale("nb_NO")
-    nsf2023 = PackedDawgDictionary(current_alphabet())
+    set_current_alphabet(NorwegianAlphabet)
+    assert _current_alphabet is not None
+    nsf2023 = PackedDawgDictionary(_current_alphabet)
     nsf2023.load(rpath("nsf2023.bin.dawg"))
 
     # The name of the input file containing the list of frequent Norwegian words.
@@ -1125,7 +1148,7 @@ def run_norwegian_filter() -> None:
 
     # Create a lambda that can be used as a key in the sorted function
     # to sort in Norwegian bokmål order
-    alphabet = current_alphabet().full_order
+    alphabet = _current_alphabet.full_order
     keyfunc: Callable[[str], List[int]] = lambda w: [alphabet.index(c) for c in w]
     for t in tasks:
         vocab = sorted(t["vocab"], key=keyfunc)
@@ -1146,9 +1169,10 @@ def run_skrafl() -> None:
     # ordalisti.remove.txt (known errors) are removed.
     # The result is about 2.3 million words, generating >100,000 graph nodes
     print("Starting DAWG build for skraflhjalp/netskrafl.appspot.com")
-    set_locale("is_IS")
+    set_current_alphabet(IcelandicAlphabet)
+    assert _current_alphabet is not None
 
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["ordalisti.full.sorted.txt", "ordalisti.add.txt"],  # Input files to be merged
@@ -1162,7 +1186,7 @@ def run_skrafl() -> None:
     # Process Miðlungur vocabulary
 
     print("Starting DAWG build for Miðlungur")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
@@ -1177,7 +1201,7 @@ def run_skrafl() -> None:
     # Process Amlóði vocabulary
 
     print("Starting DAWG build for Amlóði")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     # "isl"/"is_IS" specifies Icelandic sorting order - modify this for other languages
     db.build(
@@ -1191,7 +1215,7 @@ def run_skrafl() -> None:
     # Test loading of DAWG
     from dawgdictionary import PackedDawgDictionary
 
-    dawg = PackedDawgDictionary(current_alphabet())
+    dawg = PackedDawgDictionary(_current_alphabet)
     fpath = rpath("ordalisti.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
@@ -1200,7 +1224,7 @@ def run_skrafl() -> None:
     print("ordalisti.bin.dawg loaded in {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of Miðlungur DAWG
-    dawg = PackedDawgDictionary(current_alphabet())
+    dawg = PackedDawgDictionary(_current_alphabet)
     fpath = rpath("midlungur.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
@@ -1209,7 +1233,7 @@ def run_skrafl() -> None:
     print("midlungur.bin.dawg loaded in {0:.2f} seconds".format(t1 - t0))
 
     # Test loading of Amlóði DAWG
-    dawg = PackedDawgDictionary(current_alphabet())
+    dawg = PackedDawgDictionary(_current_alphabet)
     fpath = rpath("amlodi.bin.dawg")
     t0 = time.time()
     dawg.load(fpath)
@@ -1279,13 +1303,13 @@ def run_english_filter() -> None:
     from dawgdictionary import PackedDawgDictionary
 
     # Load the OTCWL2014 vocabulary as a packed DAWG
-    set_locale("en_US")
-    otcwl2014 = PackedDawgDictionary(current_alphabet())
+    set_current_alphabet(EnglishAlphabet)
+    assert _current_alphabet is not None
+    otcwl2014 = PackedDawgDictionary(_current_alphabet)
     otcwl2014.load(rpath("otcwl2014.bin.dawg"))
 
     # Load the SOWPODS vocabulary as a packed DAWG
-    set_locale("en_GB")
-    sowpods = PackedDawgDictionary(current_alphabet())
+    sowpods = PackedDawgDictionary(_current_alphabet)
     sowpods.load(rpath("sowpods.bin.dawg"))
 
     # The name of the input file containing
@@ -1375,10 +1399,11 @@ def run_english_robot_vocabs() -> None:
     """Build DAWGS for English robot vocabularies"""
     print("Starting DAWG build for English robot vocabularies")
 
-    set_locale("en_US")
+    set_current_alphabet(EnglishAlphabet)
+    assert _current_alphabet is not None
 
     print("Starting DAWG build for Sif/otcwl2014")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["otcwl2014.aml.sorted.txt"],  # Input files to be merged
@@ -1389,7 +1414,7 @@ def run_english_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     print("Starting DAWG build for Frigg/otcwl2014")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["otcwl2014.mid.sorted.txt"],  # Input files to be merged
@@ -1399,10 +1424,8 @@ def run_english_robot_vocabs() -> None:
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    set_locale("en_GB")
-
     print("Starting DAWG build for Sif/sowpods")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["sowpods.aml.sorted.txt"],  # Input files to be merged
@@ -1413,7 +1436,7 @@ def run_english_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     print("Starting DAWG build for Frigg/sowpods")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["sowpods.mid.sorted.txt"],  # Input files to be merged
@@ -1428,10 +1451,11 @@ def run_polish_robot_vocabs() -> None:
     """Build DAWGS for Polish robot vocabularies"""
     print("Starting DAWG build for Polish robot vocabularies")
 
-    set_locale("pl")
+    set_current_alphabet(PolishAlphabet)
+    assert _current_alphabet is not None
 
     print("Starting DAWG build for Zofia/osps37")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["polish_top_30000.txt"],  # Input files to be merged
@@ -1442,7 +1466,7 @@ def run_polish_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     print("Starting DAWG build for Idek/osps37")
-    db = DawgBuilder(encoding=current_alphabet().order)
+    db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
         ["polish_top_60000.txt"],  # Input files to be merged
@@ -1457,10 +1481,11 @@ def run_norwegian_robot_vocabs() -> None:
     """Build DAWGS for Norwegian robot vocabularies"""
     print("Starting DAWG build for Norwegian robot vocabularies")
 
-    set_locale("nb_NO")
+    set_current_alphabet(NorwegianAlphabet)
+    assert _current_alphabet is not None
 
     print("Starting DAWG build for Sif/nsf2023")
-    db = DawgBuilder(encoding=current_alphabet().full_order)
+    db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
         ["norwegian_top_20000.txt"],  # Input files to be merged
@@ -1471,7 +1496,7 @@ def run_norwegian_robot_vocabs() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
     print("Starting DAWG build for Frigg/nsf2023")
-    db = DawgBuilder(encoding=current_alphabet().full_order)
+    db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
         ["norwegian_top_32500.txt"],  # Input files to be merged

@@ -70,7 +70,7 @@ from languages import (
     set_game_locale,
     to_supported_locale,
 )
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from skraflmechanics import (
     Board,
     Error,

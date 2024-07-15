@@ -58,7 +58,7 @@ from skrafldb import (
     GameModel,
     MoveModel,
 )
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from skraflmechanics import (
     DetailTuple,
     RackDetails,

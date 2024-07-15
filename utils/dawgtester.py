@@ -22,8 +22,8 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
+from alphabets import IcelandicAlphabet, PolishAlphabet
 from dawgdictionary import PackedDawgDictionary
-from languages import IcelandicAlphabet, PolishAlphabet, set_locale
 
 
 class DawgTester:
@@ -57,7 +57,6 @@ class DawgTesterIcelandic(DawgTester):
         """ Load a DawgDictionary and test its functionality """
 
         t0 = time.time()
-        set_locale("is_IS")
         self._dawg = PackedDawgDictionary(IcelandicAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()
@@ -236,6 +235,20 @@ class DawgTesterIcelandic(DawgTester):
         self._test_true("yla")
         self._test_true("ritu")
 
+        # 2024 additions
+        self._test_true("bríostur")
+        self._test_true("dúllurass")
+        self._test_true("feik")
+        self._test_true("frisbí")
+        self._test_true("kits")
+        self._test_true("kósý")
+        self._test_true("spólgraður")
+        self._test_true("öryrkjavæddur")
+
+        # 2024 deletions
+        self._test_false("afbyggst")
+        self._test_false("handlaðirðu")
+
         # All two-letter words on the official list of the
         # Icelandic Skrafl society
         smallwords = [
@@ -366,7 +379,6 @@ class DawgTesterPolish(DawgTester):
     def run(self) -> None:
 
         t0 = time.time()
-        set_locale("pl_PL")
         self._dawg = PackedDawgDictionary(PolishAlphabet)
         self._dawg.load(self._fpath)
         t1 = time.time()

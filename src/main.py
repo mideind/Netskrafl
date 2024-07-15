@@ -72,7 +72,7 @@ from basics import (
     init_oauth,
 )
 from firebase import init_firebase_app, connect_blueprint
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
