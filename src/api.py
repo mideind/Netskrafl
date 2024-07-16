@@ -16,7 +16,6 @@
 """
 
 from __future__ import annotations
-from functools import wraps
 
 from typing import (
     Optional,
@@ -31,10 +30,11 @@ from typing import (
 )
 
 import os
+import io
 import logging
 from datetime import UTC, datetime
 import base64
-import io
+from functools import wraps
 
 from flask import (
     Blueprint,
