@@ -229,6 +229,7 @@ class DawgTesterIcelandic(DawgTester):
         self._test_false("strinum")
         self._test_false("sigrihrt")
         self._test_false("býj")
+        self._test_false("ösi")
 
         self._test_true("fau")
         self._test_true("ifa")
