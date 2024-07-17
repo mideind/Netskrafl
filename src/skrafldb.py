@@ -2196,7 +2196,7 @@ class ChatModel(Model["ChatModel"]):
         cls, channel: str, maxlen: int = 250
     ) -> Iterator[Dict[str, Any]]:
         """Return the newest items in a conversation"""
-        CHUNK_SIZE = 100
+        CHUNK_SIZE = 250
         q = cls.query(ChatModel.channel == channel).order(
             -cast(int, ChatModel.timestamp)
         )
@@ -2275,7 +2275,9 @@ class ChatModel(Model["ChatModel"]):
     ) -> Sequence[ChatModelHistoryDict]:
         """Return the chat history for a user, excluding counterparties
         from the blocked_users set"""
-        CHUNK_SIZE = maxlen * 2
+        # Going too far back in the chat history is quite expensive
+        # in terms of NDB operations, so a limit is advisable
+        HISTORY_LIMIT = 500  # For a prolific chatter, this is about 5 months
 
         # Create two queries, on the user and recipient fields,
         # and interleave their results by timestamp
@@ -2291,8 +2293,14 @@ class ChatModel(Model["ChatModel"]):
         # Dictionary of counterparties that we've encountered so far
         result: Dict[str, ChatModelHistoryDict] = dict()
 
-        i1 = iter_q(q1, CHUNK_SIZE)
-        i2 = iter_q(q2, CHUNK_SIZE)
+        def iterable(q: Query[ChatModel]) -> Iterator[ChatModel]:
+            """Iterate through a query, yielding the results"""
+            # The following approach is much faster than using
+            # iter_q(); tested by benchmarking.
+            yield from q.fetch(limit=HISTORY_LIMIT)
+
+        i1 = iterable(q1)
+        i2 = iterable(q2)
         c1 = next(i1, None)
         c2 = next(i2, None)
 
