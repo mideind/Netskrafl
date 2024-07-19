@@ -89,7 +89,7 @@ from typing import (
 
 import logging
 import uuid
-
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
@@ -249,8 +249,13 @@ class RatingDict(TypedDict):
     losses_month_ago: int
 
 
-# elo, human_elo, manual_elo
-EloTuple = Tuple[int, int, int]
+@dataclass
+class EloDict:
+    """ A class that encapsulates the Elo scores of a player """
+
+    elo: int
+    human_elo: int
+    manual_elo: int
 
 
 class Query(Generic[_T_Model], ndb.Query):
@@ -905,10 +910,23 @@ class UserModel(Model["UserModel"]):
         FavoriteModel.delete_user(user_id)
         # ChallengeModel: delete all challenges issued or received by this user
         ChallengeModel.delete_user(user_id)
+        # Delete Elo ratings for this user
+        EloModel.delete_for_user(user_id)
         # Intentionally, we do not delete blocks, neither issued nor received
         # Same goes for reports, both of and by this user
         # We also do not delete stats, since other users will want to see them
         # in relation to previously played games
+
+    @classmethod
+    def delete(cls, user_id: str) -> None:
+        """Delete a user entity"""
+        if not user_id:
+            return
+        # Delete related entities first
+        cls.delete_related_entities(user_id)
+        # Delete the user entity itself
+        k: Key[UserModel] = Key(UserModel, user_id)
+        k.delete()
 
 
 class EloModel(Model["EloModel"]):
@@ -926,7 +944,7 @@ class EloModel(Model["EloModel"]):
     manual_elo = Model.Int()
 
     @classmethod
-    def _get_for_user(cls, locale: str, uid: str) -> Optional[EloModel]:
+    def user_elo(cls, locale: str, uid: str) -> Optional[EloModel]:
         """Retrieve the EloModel entity for a user, in the given locale"""
         key: Key[UserModel] = Key(UserModel, uid)
         q = cls.query(
@@ -938,9 +956,9 @@ class EloModel(Model["EloModel"]):
         return q.get()
 
     @classmethod
-    def _get_for_robot(cls, locale: str, level: int) -> Optional[EloModel]:
+    def robot_elo(cls, locale: str, robot_level: int) -> Optional[EloModel]:
         """Retrieve the EloModel entity for a robot, in the given locale"""
-        key = f"robot-{level}"
+        key = f"robot-{robot_level}"
         q = cls.query(
             ndb.AND(
                 EloModel.locale == locale,
@@ -950,87 +968,37 @@ class EloModel(Model["EloModel"]):
         return q.get()
 
     @classmethod
-    def user_elo(cls, locale: str, uid: str) -> Optional[EloTuple]:
-        """Retrieve and return the Elo rating for a user, in the given locale"""
-        if (em := cls._get_for_user(locale, uid)) is None:
-            return None
-        return (em.elo, em.human_elo, em.manual_elo)
-
-    @classmethod
-    def robot_elo(cls, locale: str, level: int) -> Optional[EloTuple]:
-        """Retrieve and return the Elo rating for a robot, in the given locale"""
-        if (em := cls._get_for_robot(locale, level)) is None:
-            return None
-        return (em.elo, em.human_elo, em.manual_elo)
-
-    @classmethod
-    def update_user_elo(cls, locale: str, uid: str, ratings: EloTuple) -> None:
-        """Update the Elo ratings for a user, in the given locale"""
-        elo, human_elo, manual_elo = ratings
-        if (em := cls._get_for_user(locale, uid)) is None:
-            # Create new entity
-            key: Key[UserModel] = Key(UserModel, uid)
-            em = cls(locale=locale, user=key, elo=elo, human_elo=human_elo, manual=manual_elo)
-        else:
-            # Update existing entity
-            em.elo = elo
-            em.human_elo = human_elo
-            em.manual_elo = manual_elo
-            em.timestamp = datetime.now(UTC)
-        em.put()
-
-    @classmethod
-    def update_robot_elo(cls, locale: str, level: int, ratings: EloTuple) -> None:
-        """Update the Elo ratings for a robot, in the given locale"""
-        elo, human_elo, manual = ratings
-        if (em := cls._get_for_robot(locale, level)) is None:
-            # Create new entity
-            key: str = f"robot-{level}"
-            em = cls(locale=locale, robot=key, elo=elo, human_elo=human_elo, manual_elo=manual)
-        else:
-            # Update existing entity
-            em.elo = elo
-            em.human_elo = human_elo
-            em.manual_elo = manual
-            em.timestamp = datetime.now(UTC)
-        em.put()
-
-    @classmethod
-    def read_and_update_elo(
+    def upsert(
         cls,
+        em: Optional[EloModel],
         locale: str,
         uid: Optional[str],
-        level: Optional[int],
-        update_func: Callable[[Optional[EloTuple]], EloTuple],
+        robot_level: int,
+        ratings: EloDict,
     ) -> None:
-        """Read and update the Elo ratings for a user or robot, in the given locale,
-        using a supplied update function"""
-        if uid:
-            em = cls._get_for_user(locale, uid)
-        elif level is not None:
-            em = cls._get_for_robot(locale, level)
-        else:
-            em = None
-        prev: Optional[EloTuple] = (em.elo, em.human_elo, em.manual_elo) if em else None
-        # Calculate a new set of Elo ratings
-        elo, human_elo, manual_elo = update_func(prev)
+        """Update the Elo ratings for a user or a robot, in the given locale"""
         if em is None:
-            # Create new entity
-            user_key: Optional[Key[UserModel]] = Key(UserModel, uid) if uid else None
-            robot_key = f"robot-{level}" if level is not None else None
+            # Insert a new entity
+            user: Optional[Key[UserModel]] = Key(UserModel, uid) if uid else None
+            robot: Optional[str] = None if uid else f"robot-{robot_level}"
             em = cls(
                 locale=locale,
-                user=user_key,
-                robot=robot_key,
-                elo=elo,
-                human_elo=human_elo,
-                manual=manual_elo,
+                user=user,
+                robot=robot,
+                elo=ratings.elo,
+                human_elo=ratings.human_elo,
+                manual_elo=ratings.manual_elo,
             )
         else:
             # Update existing entity
-            em.elo = elo
-            em.human_elo = human_elo
-            em.manual_elo = manual_elo
+            # Do a sanity check; the existing entity must be for the same user or robot
+            if em.user is not None:
+                assert em.user.id() == uid
+            else:
+                assert em.robot == f"robot-{robot_level}"
+            em.elo = ratings.elo
+            em.human_elo = ratings.human_elo
+            em.manual_elo = ratings.manual_elo
             em.timestamp = datetime.now(UTC)
         em.put()
 
@@ -1051,6 +1019,10 @@ class MoveModel(Model["MoveModel"]):
     score = Model.Int(default=0)
     rack = Model.OptionalStr()
     timestamp = Model.OptionalDatetime()
+
+    def is_resignation(self) -> bool:
+        """Is this a resignation move?"""
+        return self.coord == "" and self.tiles == "RSGN"
 
 
 class ImageModel(Model["ImageModel"]):
@@ -1148,7 +1120,7 @@ class GameModel(Model["GameModel"]):
 
     # The moves so far
     moves = cast(
-        Iterable[MoveModel],
+        List[MoveModel],
         ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False),
     )
 
@@ -1391,7 +1363,7 @@ class FavoriteModel(Model["FavoriteModel"]):
             return
         k: Optional[Key[UserModel]] = Key(UserModel, user_id)
         q = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
+        for fm in q.fetch(max_len):
             if fm.destuser is not None:
                 yield fm.destuser.id()
 
@@ -1714,7 +1686,7 @@ class StatsModel(Model["StatsModel"]):
         self.manual_wins = src.manual_wins
         self.manual_losses = src.manual_losses
 
-    def populate_dict(self, d: Dict[str, int]) -> None:
+    def populate_dict(self, d: Dict[str, Any]) -> None:
         """Copy statistics data to the given dict"""
         d["elo"] = self.elo
         d["human_elo"] = self.human_elo
@@ -1994,7 +1966,7 @@ class StatsModel(Model["StatsModel"]):
         return sm
 
     @classmethod
-    def newest_for_user(cls, user_id: Optional[str]) -> Optional[StatsModel]:
+    def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
         """Returns the newest available stats record for the user"""
         # This does not work for robots
         if not user_id:

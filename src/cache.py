@@ -310,9 +310,9 @@ class RedisWrapper:
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.
 
-# If we're running on the local
-# development server (GAE emulator),
-# connect to a local Redis server.
+# If we're running on a local development server, connect to a
+# local Redis server (which may of course be tunneled through SSH,
+# via ssh -fNL 6379:localhost:6379 user@my.redis.host)
 if os.environ.get("SERVER_SOFTWARE", "").startswith("Development"):
     memcache = RedisWrapper(redis_host="127.0.0.1")
 else:

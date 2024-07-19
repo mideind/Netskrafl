@@ -17,8 +17,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-import io
 from typing import (
     Literal,
     Mapping,
@@ -34,6 +32,8 @@ from typing import (
     overload,
 )
 
+import io
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 
 from flask import (
@@ -48,6 +48,7 @@ from flask import (
 )
 from flask.wrappers import Request, Response
 from werkzeug.utils import send_file  # type: ignore
+
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 

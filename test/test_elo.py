@@ -8,14 +8,21 @@
 
 """
 
+from typing import Dict, List, Tuple
+
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 import functools
-from typing import List, Tuple
+import logging
 
 from utils import CustomClient, login_user
 from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore
 
 from skraflgame import ClientStateDict
+
+# The K constant used in the Elo calculation
+ELO_K: float = 20.0  # For established players
+BEGINNER_K: float = 32.0  # For beginning players
 
 
 def test_elo_history(client: CustomClient, u1: str) -> None:
@@ -219,9 +226,69 @@ def play_game(
     return winning_user
 
 
+def check_ratings(
+    locale: str,
+    client1: CustomClient,
+    client2: CustomClient,
+    rating1: Dict[str, int],
+    rating2: Dict[str, int],
+) -> None:
+    """Check that the Elo ratings of the two players are as expected,
+    for the given locale"""
+    # First, set the locale of the users
+    resp = client1.post(
+        "/setuserpref",
+        json=dict(
+            locale=locale,
+        ),
+    )
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "did_update" in resp.json
+    assert resp.json["did_update"] == True
+    resp = client2.post(
+        "/setuserpref",
+        json=dict(
+            locale=locale,
+        ),
+    )
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "did_update" in resp.json
+    assert resp.json["did_update"] == True
+    # Check the stats of the first user
+    resp = client1.post("/userstats")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "locale" in resp.json
+    assert resp.json["locale"] == locale
+    assert "locale_elo" in resp.json
+    r = resp.json["locale_elo"]
+    assert r["elo"] == rating1[locale]
+    assert r["human_elo"] == rating1[locale]
+    assert r["manual_elo"] == 1200
+    # Check the stats of the second user
+    resp = client2.post("/userstats")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "locale" in resp.json
+    assert resp.json["locale"] == locale
+    assert "locale_elo" in resp.json
+    r = resp.json["locale_elo"]
+    assert r["elo"] == rating2[locale]
+    assert r["human_elo"] == rating2[locale]
+    assert r["manual_elo"] == 1200
+
+
 def test_elo_locale(
     client1: CustomClient, client2: CustomClient, u1: str, u2: str
 ) -> None:
+    # Delete the two test users to start with a clean slate
+    from skrafldb import UserModel, Client
+    with Client.get_context():
+        UserModel.delete(u1)
+        UserModel.delete(u2)
+
     # Log in on client1 as user 1
     resp = login_user(client1, 1)
     assert resp.status_code == 200
@@ -239,6 +306,34 @@ def test_elo_locale(
     winners.append(("nb_NO", play("nb_NO")))
     # Play one game in the Icelandic locale
     winners.append(("is_IS", play("is_IS")))
+    # Manually calculate the Elo ratings of the two players
+    rating1: Dict[str, int] = defaultdict(lambda: 1200)
+    rating2: Dict[str, int] = defaultdict(lambda: 1200)
+    # Elo rating multiplication constant
+    K = BEGINNER_K
+    for locale, winner in winners:
+        elo1 = rating1[locale]
+        elo2 = rating2[locale]
+        # Calculate the predicted outcome via the standard Elo formula
+        q1: float = 10.0 ** (float(elo1) / 400.0)
+        q2: float = 10.0 ** (float(elo2) / 400.0)
+        exp1 = q1 / (q1 + q2)
+        exp2 = q2 / (q1 + q2)
+        act1, act2 = (1.0, 0.0) if winner == u1 else (0.0, 1.0)
+        adj1 = int(round((act1 - exp1) * K))
+        adj2 = int(round((act2 - exp2) * K))
+        logging.info(
+            f"Locale {locale}: {u1} ({elo1}) vs. {u2} ({elo2}) -> "
+            f"{act1}-{act2} ({exp1:.3f}-{exp2:.3f}) -> "
+            f"{adj1:+}, {adj2:+}"
+        )
+        rating1[locale] = elo1 + adj1
+        rating2[locale] = elo2 + adj2
+    # Check the Elo ratings of the two players in the tested locales
+    check_ratings("en_US", client1, client2, rating1, rating2)
+    check_ratings("nb_NO", client1, client2, rating1, rating2)
+    check_ratings("is_IS", client1, client2, rating1, rating2)
+
     # Log out on both clients
     resp = client1.post("/logout")
     assert resp.status_code == 200

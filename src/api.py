@@ -276,6 +276,9 @@ def submitmove_api() -> ResponseType:
     for attempt in reversed(range(2)):
         # pylint: disable=broad-except
         try:
+            # TODO: process_move() may change the game object and
+            # is not guaranteed to be idempotent, so calling it more
+            # than once for the same object is actually not ideal.
             result = process_move(game, movelist, validate=validate)
         except Exception as e:
             logging.info(

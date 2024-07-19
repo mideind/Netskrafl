@@ -18,33 +18,25 @@
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
 
 from typing import Optional, Tuple
 
-from config import ESTABLISHED_MARK, DEFAULT_ELO
+import logging
 
-from skrafldb import GameModel
+from config import DEFAULT_LOCALE, ESTABLISHED_MARK, DEFAULT_ELO
+from skrafldb import EloModel, GameModel, EloDict
 from skrafluser import User
-
-
-@dataclass
-class EloDict:
-    """ A class that encapsulates the Elo scores of a player """
-
-    elo: int
-    human_elo: int
-    manual_elo: int
 
 
 # The K constant used in the Elo calculation
 ELO_K: float = 20.0  # For established players
 BEGINNER_K: float = 32.0  # For beginning players
 
+
 def compute_elo(
     o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int
 ) -> Tuple[int, int]:
-    """ Computes the Elo points of the two users after their game """
+    """Computes the Elo points of the two users after their game"""
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
     assert sc1 >= 0
@@ -52,8 +44,7 @@ def compute_elo(
         return (0, 0)
 
     # Current Elo ratings
-    elo0 = o_elo[0]
-    elo1 = o_elo[1]
+    elo0, elo1 = o_elo
 
     # Calculate the quotients for each player using a logistic function.
     # For instance, a player with 1_200 Elo points would get a Q of 10^3 = 1_000,
@@ -62,8 +53,8 @@ def compute_elo(
     # This means that the 1_600 point player would have a 99% expected probability
     # of winning a game against the 800 point one, and a 91% expected probability
     # of winning a game against the 1_200 point player.
-    q0 = 10.0 ** (float(elo0) / 400)
-    q1 = 10.0 ** (float(elo1) / 400)
+    q0: float = 10.0 ** (float(elo0) / 400.0)
+    q1: float = 10.0 ** (float(elo1) / 400.0)
     if q0 + q1 < 1.0:
         # Strange corner case: give up
         return (0, 0)
@@ -105,7 +96,7 @@ def compute_elo(
 def compute_elo_for_game(
     gm: GameModel,
     u0: Optional[User],
-    u1: Optional[User]
+    u1: Optional[User],
 ) -> None:
     """Compute new Elo points (and evenutally other statistics)
     when a game is over. We calculate provisional points
@@ -136,8 +127,8 @@ def compute_elo_for_game(
     # Manual (Pro Mode) game?
     manual_game = gm.manual_wordcheck()
 
-    urec0 = EloDict(elo=u0.elo(), human_elo=u0.human_elo(), manual_elo=u0.manual_elo())
-    urec1 = EloDict(elo=u1.elo(), human_elo=u1.human_elo(), manual_elo=u1.manual_elo())
+    urec0 = EloDict(u0.elo(), u0.human_elo(), u0.manual_elo())
+    urec1 = EloDict(u1.elo(), u1.human_elo(), u1.manual_elo())
 
     # Save the Elo point state used in the calculation
     uelo0 = urec0.elo or DEFAULT_ELO
@@ -198,56 +189,122 @@ def compute_elo_for_game(
     # Update the user records
     # This is a provisional update, to be confirmed during
     # the authoritative calculation performed by a cron job
-    u0.set_elo((urec0.elo, urec0.human_elo, urec0.manual_elo))
-    u1.set_elo((urec1.elo, urec1.human_elo, urec1.manual_elo))
+    u0.set_elo(urec0)
+    u1.set_elo(urec1)
 
 
 def compute_locale_elo_for_game(
     gm: GameModel,
     u0: Optional[User],
     u1: Optional[User],
+    # The following parameters contain the Elo ratings of the
+    # players as they were before the current game
+    orig0: EloDict,
+    orig1: EloDict,
 ) -> None:
-    """Compute new Elo points (and evenutally other statistics)
-    when a game is over. We calculate provisional points
-    for human games only here; the full and authoritative calculation
-    happens in a cron job once per day."""
+    """Compute new Elo points when a game is over, for the
+    particular locale in which it was played."""
     if not gm.over:
-        # The game is not over: something weird going on
+        # The game is not over: something weird is going on
+        logging.warning(f"compute_locale_elo_for_game: game {gm.key.id()} is not over")
+        return
+    if u0 is None and u1 is None:
+        # No users: something weird is going on
+        logging.warning(f"compute_locale_elo_for_game: game {gm.key.id()} has no users")
         return
 
     s0 = gm.score0
     s1 = gm.score1
 
-    if (s0 == 0) and (s1 == 0):
-        # When a game ends by resigning immediately,
-        # make sure that the weaker player
-        # doesn't get Elo points for a draw; in fact,
-        # ignore such a game altogether in the statistics
-        return
+    # If no_adjust is True, we apply a zero Elo adjustment
+    # as a result of this game, but it is still recorded in the
+    # GameModel entity, and the EloModel timestamps are updated.
+    no_adjust = False
 
-    locale = gm.locale
-    robot_level = gm.robot_level
+    if (s0 == 0) and (s1 == 0):
+        # A game that never properly starts doesn't count in Elo calculations
+        no_adjust = True
+    elif len(gm.moves) >= 2 and gm.moves[1].is_resignation():
+        # A game that ends by immediate resignation after the first move
+        # doesn't count in Elo calculations
+        no_adjust = True
+
+    locale = gm.locale or DEFAULT_LOCALE
+    robot_game = (u0 is None) or (u1 is None)
+    robot_level = gm.robot_level if robot_game else 0
 
     # Number of human games played; are the players established players?
+    # For this purpose, robots are always "established".
+    # We look at all games played, not just in the current locale.
     est0 = u0.num_human_games() > ESTABLISHED_MARK if u0 else True
     est1 = u1.num_human_games() > ESTABLISHED_MARK if u1 else True
 
     # Manual (Pro Mode) game?
-    manual_game = gm.manual_wordcheck()
+    manual_game = False if robot_game else gm.manual_wordcheck()
 
-    urec0 = EloDict(elo=u0.elo(), human_elo=u0.human_elo(), manual_elo=u0.manual_elo())
-    urec1 = EloDict(elo=u1.elo(), human_elo=u1.human_elo(), manual_elo=u1.manual_elo())
+    # Fetch the EloModel entities to modify, if they already exist
+    if u0 is None:
+        # Robot player
+        uid0 = ""
+        em0 = EloModel.robot_elo(locale, robot_level)
+    else:
+        # Human player
+        uid0 = u0.id() or ""
+        if not uid0:
+            # Something is wrong
+            no_adjust = True
+        em0 = EloModel.user_elo(locale, uid0)
+    if u1 is None:
+        # Robot player
+        uid1 = ""
+        em1 = EloModel.robot_elo(locale, robot_level)
+    else:
+        # Human player
+        uid1 = u1.id() or ""
+        if not uid1:
+            # Something is wrong
+            no_adjust = True
+        em1 = EloModel.user_elo(locale, uid1)
+
+    # Obtain the current Elo status of the players (users or robots)
+    if em0 is None:
+        if u0 is not None and u0.locale == locale:
+            # Obtain Elo ratings from the user entity, via the 'old' mechanism
+            uelo0 = orig0.elo
+            u0_human = orig0.human_elo
+            u0_manual = orig0.manual_elo
+        else:
+            uelo0, u0_human, u0_manual = DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
+    else:
+        uelo0, u0_human, u0_manual = em0.elo, em0.human_elo, em0.manual_elo
+    if em1 is None:
+        if u1 is not None and u1.locale == locale:
+            # Obtain Elo ratings from the user entity, via the 'old' mechanism
+            uelo1 = orig1.elo
+            u1_human = orig1.human_elo
+            u1_manual = orig1.manual_elo
+        else:
+            uelo1, u1_human, u1_manual = DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
+    else:
+        uelo1, u1_human, u1_manual = em1.elo, em1.human_elo, em1.manual_elo
+
+    # Collect the current Elo status into EloDict objects
+    urec0 = EloDict(elo=uelo0, human_elo=u0_human, manual_elo=u0_manual)
+    urec1 = EloDict(elo=uelo1, human_elo=u1_human, manual_elo=u1_manual)
 
     # Save the Elo point state used in the calculation
-    uelo0 = urec0.elo or DEFAULT_ELO
-    uelo1 = urec1.elo or DEFAULT_ELO
     gm.elo0, gm.elo1 = uelo0, uelo1
 
     # Compute the Elo points of both players
-    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+    if no_adjust:
+        # ...or not
+        adj = (0, 0)
+    else:
+        adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+        logging.info(f"compute_locale_elo_for_game: {locale} {s0=} {s1=} {uelo0=} {uelo1=} {adj=}")
 
     # When an established player is playing a beginning (provisional) player,
-    # leave the Elo score of the established player unchanged
+    # leave the Elo score of the established player unchanged.
     # Adjust player 0
     if est0 and not est1:
         adj = (0, adj[1])
@@ -259,43 +316,61 @@ def compute_locale_elo_for_game(
     gm.elo1_adj = adj[1]
     urec1.elo = uelo1 + adj[1]
 
-    # Compute the human-only Elo
-    uelo0 = urec0.human_elo or DEFAULT_ELO
-    uelo1 = urec1.human_elo or DEFAULT_ELO
-    gm.human_elo0, gm.human_elo1 = uelo0, uelo1
-
-    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
-
-    # Adjust player 0
-    if est0 and not est1:
-        adj = (0, adj[1])
-    gm.human_elo0_adj = adj[0]
-    urec0.human_elo = uelo0 + adj[0]
-    # Adjust player 1
-    if est1 and not est0:
-        adj = (adj[0], 0)
-    gm.human_elo1_adj = adj[1]
-    urec1.human_elo = uelo1 + adj[1]
-
-    # If manual game, compute the manual-only Elo
-    if manual_game:
-        uelo0 = urec0.manual_elo or DEFAULT_ELO
-        uelo1 = urec1.manual_elo or DEFAULT_ELO
-        gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
-        adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+    if not robot_game:
+        # Compute the Elo rating for human games only
+        uelo0 = urec0.human_elo
+        uelo1 = urec1.human_elo
+        gm.human_elo0, gm.human_elo1 = uelo0, uelo1
+        if no_adjust:
+            adj = (0, 0)
+        else:
+            adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
         # Adjust player 0
         if est0 and not est1:
             adj = (0, adj[1])
-        gm.manual_elo0_adj = adj[0]
-        urec0.manual_elo = uelo0 + adj[0]
+        gm.human_elo0_adj = adj[0]
+        urec0.human_elo = uelo0 + adj[0]
         # Adjust player 1
         if est1 and not est0:
             adj = (adj[0], 0)
-        gm.manual_elo1_adj = adj[1]
-        urec1.manual_elo = uelo1 + adj[1]
+        gm.human_elo1_adj = adj[1]
+        urec1.human_elo = uelo1 + adj[1]
 
-    # Update the user records
-    # This is a provisional update, to be confirmed during
-    # the authoritative calculation performed by a cron job
-    u0.set_elo((urec0.elo, urec0.human_elo, urec0.manual_elo))
-    u1.set_elo((urec1.elo, urec1.human_elo, urec1.manual_elo))
+        # If manual game (always between humans), compute the manual-only Elo
+        if manual_game:
+            uelo0 = urec0.manual_elo
+            uelo1 = urec1.manual_elo
+            gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
+            if no_adjust:
+                adj = (0, 0)
+            else:
+                adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+            # Adjust player 0
+            if est0 and not est1:
+                adj = (0, adj[1])
+            gm.manual_elo0_adj = adj[0]
+            urec0.manual_elo = uelo0 + adj[0]
+            # Adjust player 1
+            if est1 and not est0:
+                adj = (adj[0], 0)
+            gm.manual_elo1_adj = adj[1]
+            urec1.manual_elo = uelo1 + adj[1]
+
+    # Upsert the EloModel entities
+    if uid0 or u0 is None:
+        # This is a bona fide user with a user id, or a robot
+        EloModel.upsert(
+            em0,
+            locale,
+            uid0,
+            robot_level,
+            urec0,
+        )
+    if uid1 or u1 is None:
+        EloModel.upsert(
+            em1,
+            locale,
+            uid1,
+            robot_level,
+            urec1,
+        )

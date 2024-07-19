@@ -18,7 +18,6 @@ import functools
 import logging
 
 from typing import (
-    Callable,
     Dict,
     Mapping,
     NotRequired,
@@ -41,7 +40,13 @@ import re
 from flask.helpers import url_for
 import jwt
 
-from config import ANONYMOUS_PREFIX, EXPLO_CLIENT_SECRET, DEFAULT_LOCALE, PROJECT_ID, DEFAULT_ELO
+from config import (
+    ANONYMOUS_PREFIX,
+    EXPLO_CLIENT_SECRET,
+    DEFAULT_LOCALE,
+    PROJECT_ID,
+    DEFAULT_ELO,
+)
 from languages import Alphabet, to_supported_locale
 from firebase import online_status, set_online_status
 from skrafldb import (
@@ -54,7 +59,7 @@ from skrafldb import (
     BlockModel,
     ReportModel,
     EloModel,
-    EloTuple,
+    EloDict,
 )
 from skraflmechanics import Error
 
@@ -139,6 +144,7 @@ class UserProfileDict(TypedDict, total=False):
     blocking: bool
     list_favorites: List[UserSummaryDict]
     list_blocked: List[UserSummaryDict]
+    locale_elo: EloDict
 
 
 class StatsSummaryDict(TypedDict):
@@ -397,54 +403,45 @@ class User:
         """Return the human-only, manual-game-only Elo points of the user"""
         return self._manual_elo or DEFAULT_ELO
 
-    def set_elo(self, ratings: EloTuple) -> None:
+    def set_elo(self, ratings: EloDict) -> None:
         """Set the Elo points for the user"""
         # Note: This is the 'old-style' Elo rating, which is not
         # locale-specific. The new-style Elo ratings are stored
         # in EloModel entities, one for each (user, locale) combination.
-        self._elo, self._human_elo, self._manual_elo = ratings
+        self._elo = ratings.elo
+        self._human_elo = ratings.human_elo
+        self._manual_elo = ratings.manual_elo
 
-    def elo_for_locale(self, locale: Optional[str]) -> EloTuple:
-        """Return the Elo ratings of the user for the given locale"""
-        if uid := self.id():
-            locale = locale or self.locale
-            ratings: Optional[EloTuple] = EloModel.user_elo(locale, uid)
-            if ratings is not None:
-                return ratings
-            # Default to the 'old-style' Elo ratings if the locales match,
-            # otherwise return the default Elo ratings
-            if locale == self.locale:
-                return self.elo(), self.human_elo(), self.manual_elo()
-        return DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
-
-    def update_elo(
-        self,
+    @classmethod
+    def user_or_robot_elo_for_locale(
+        cls,
         locale: Optional[str],
-        update_func: Callable[[EloTuple], EloTuple],
-    ) -> None:
-        """Update the Elo ratings of the user for the given locale"""
-        # Define a wrapper update functiont that provides a default
-        # Elo ratings tuple if the user has no Elo ratings yet
-        if not (uid := self.id()):
-            return
-        locale = locale or self.locale
-        def update_func_wrapper(ratings: Optional[EloTuple]) -> EloTuple:
-            if ratings is None:
-                # If the locale matches the current user locale,
-                # use the "old" Elo ratings in the User instance
-                # (if available) to initialize the new Elo ratings
-                if locale == self.locale:
-                    return update_func(
-                        (
-                            self.elo(),
-                            self.human_elo(),
-                            self.manual_elo(),
-                        )
-                    )
-                return update_func((DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO))
-            return update_func(ratings)
-        # Upsert the new Elo ratings as an EloModel entity
-        EloModel.read_and_update_elo(locale, uid, None, update_func_wrapper)
+        user: Optional[User],
+        robot_level: int,
+    ) -> EloDict:
+        """Return the Elo ratings of the user for the given locale"""
+        em: Optional[EloModel] = None
+        if user is not None:
+            # This is a user
+            locale = locale or user.locale
+            if uid := user.id():
+                em = EloModel.user_elo(locale, uid)
+        else:
+            # This is a robot
+            locale = locale or DEFAULT_LOCALE
+            em = EloModel.robot_elo(locale, robot_level)
+        if em is not None:
+            return EloDict(em.elo, em.human_elo, em.manual_elo)
+        # Default to the 'old-style' Elo ratings if the locales match,
+        # otherwise return the default Elo ratings
+        if user is not None and locale == user.locale:
+            return EloDict(user.elo(), user.human_elo(), user.manual_elo())
+        return EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
+
+    def elo_for_locale(self, locale: Optional[str] = None) -> EloDict:
+        """Return the Elo ratings of the user for the given locale,
+        or for the user's current locale if None"""
+        return self.user_or_robot_elo_for_locale(locale, self, 0)
 
     def num_human_games(self) -> int:
         """Return the number of completed human games for this user"""
@@ -914,9 +911,7 @@ class User:
         assert sid is not None
         ChallengeModel.del_relation(sid, destuser_id, key)
 
-    def decline_challenge(
-        self, srcuser_id: str, *, key: Optional[str] = None
-    ) -> None:
+    def decline_challenge(self, srcuser_id: str, *, key: Optional[str] = None) -> None:
         """Decline a challenge previously issued by the srcuser"""
         sid = self.id()
         assert sid is not None
@@ -1232,7 +1227,9 @@ class User:
         # Add Elo statistics
         sm = StatsModel.newest_for_user(user_id)
         if sm is not None:
-            sm.populate_dict(cast(Dict[str, int], reply))  # Typing hack
+            sm.populate_dict(cast(Dict[str, Any], reply))  # Typing hack
+        # Add locale-specific Elo ratings
+        reply["locale_elo"] = self.elo_for_locale()
         return reply
 
     @staticmethod

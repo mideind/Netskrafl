@@ -41,7 +41,7 @@ from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local
+from config import DEFAULT_ELO, DEFAULT_LOCALE, running_local
 
 from languages import (
     Alphabet,
@@ -53,6 +53,7 @@ from languages import (
     set_game_locale,
 )
 from skrafldb import (
+    EloDict,
     PrefsDict,
     Unique,
     GameModel,
@@ -103,7 +104,6 @@ BestMoveList = List[BestMove]
 
 
 class TimeInfo(TypedDict):
-
     """Information about the state of a timed game"""
 
     duration: int
@@ -127,7 +127,6 @@ class EloNowDict(TypedDict, total=False):
 
 
 class ClientStateDict(TypedDict, total=False):
-
     """The game state that is sent to the client"""
 
     alphabet: str
@@ -175,7 +174,6 @@ UNDEFINED_NAME: Dict[str, str] = {
 
 
 class Game:
-
     """A wrapper class for a particular game that is in process
     or completed. Contains inter alia a State instance."""
 
@@ -536,14 +534,28 @@ class Game:
             if calc_elo_points:
                 # We want to calculate provisional Elo points for the game
                 # and store them with the game and the user(s).
+                # First, establish the original Elo ratings of the players
+                # as they were before the current game
+                if u0 is None:
+                    orig0 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
+                else:
+                    orig0 = EloDict(u0.elo(), u0.human_elo(), u0.manual_elo())
+                if u1 is None:
+                    orig1 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
+                else:
+                    orig1 = EloDict(u1.elo(), u1.human_elo(), u1.manual_elo())
                 if u0 is not None and u1 is not None:
-                    # Human-only game: calculate 'old style' Elo points
+                    # Human-only game: calculate 'old style' Elo points.
+                    # Note that this changes the Elo ratings stored in the User
+                    # objects, which is why we saved their original values above.
                     compute_elo_for_game(gm, u0, u1)
-                    # Transfer the Elo deltas to the game object
-                    self.set_elo_delta(gm)
                 # Calculate 'new style', locale-specific Elo points
-                # for the game and the users
-                compute_locale_elo_for_game(gm, u0, u1)
+                # for the game and the users. This modifies the GameModel
+                # entity, and upserts EloModel entities for the players (also robots)
+                compute_locale_elo_for_game(gm, u0, u1, orig0, orig1)
+                # Transfer the computed Elo deltas from the GameModel entity
+                # to the Game object
+                self.set_elo_delta(gm)
 
             if u0 is not None:
                 # Store the updated user entity
@@ -905,7 +917,9 @@ class Game:
         # Never show best moves for games that are still being played
         return self.is_over()
 
-    def check_legality(self, move: MoveBase, validate: bool) -> Union[int, Tuple[int, str]]:
+    def check_legality(
+        self, move: MoveBase, validate: bool
+    ) -> Union[int, Tuple[int, str]]:
         """Check whether an incoming move from a client is legal and valid"""
         assert self.state is not None
         return self.state.check_legality(move, validate)
