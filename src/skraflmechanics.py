@@ -734,8 +734,6 @@ class State:
         """Set the challengeable state, with the given covers being laid down"""
         if score and self.manual_wordcheck:
             self._challenge_score = score
-            # logging.info("State.set_challengeable: last_rack is {0}"
-            # .format(last_rack))
             self._last_rack = last_rack
             self._last_covers = covers
 
@@ -1430,7 +1428,6 @@ class Move(MoveBase):
         board = state.board()
         rack = state.player_rack()
         last_rack = rack.contents()  # The rack as it stood before this move
-        # logging.info("Move.apply: last_rack set to {0}".format(last_rack))
         for c in self._covers:
             board.set_letter(c.row, c.col, c.letter)
             board.set_tile(c.row, c.col, c.tile)
@@ -1596,7 +1593,6 @@ class ResponseMove(MoveBase):
         """Calculate the score of this move, which is assumed to be legal"""
         if self._score is None:
             self._score = state.challenge_score
-            # logging.info("Setting score of ResponseMove to {0}".format(self._score))
             assert self._score != 0
         return self._score
 
@@ -1630,8 +1626,6 @@ class ResponseMove(MoveBase):
                 # Return all the current tiles to the bag
                 bag.return_tiles(rack.contents())
                 # Draw all the previous tiles from the bag
-                # logging.info("ResponseMove.apply: setting rack to {0}"
-                # .format(state.last_rack))
                 rack.set_tiles(state.last_rack)
                 bag.subtract_rack(rack.contents())
         state.clear_challengeable()

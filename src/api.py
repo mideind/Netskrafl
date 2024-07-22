@@ -771,7 +771,7 @@ def setuserpref_api() -> ResponseType:
         ("beginner", user.set_beginner),
         ("ready", user.set_ready),
         ("ready_timed", user.set_ready_timed),
-        ("chat_disabled", user.disable_chat),
+        ("chat_disabled", user.set_chat_disabled),
     ]
 
     update = False
@@ -793,8 +793,10 @@ def setuserpref_api() -> ResponseType:
         # Locales have one or two parts, separated by an underscore,
         # and each part is a two-letter code.
         if 1 <= len(a) <= 2 and all(len(x) == 2 and x.isalpha() for x in a):
-            user.set_locale(to_supported_locale(lc))
-            update = True
+            new_locale = to_supported_locale(lc)
+            if user.locale != new_locale:
+                user.set_locale(new_locale)
+                update = True
 
     if update:
         user.update()

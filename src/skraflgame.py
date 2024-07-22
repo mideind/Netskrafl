@@ -535,12 +535,14 @@ class Game:
                 # We want to calculate provisional Elo points for the game
                 # and store them with the game and the user(s).
                 # First, establish the original Elo ratings of the players
-                # as they were before the current game
-                if u0 is None:
+                # as they were before the current game. Note that we can
+                # only use on the 'old style' (locale-independent) ratings
+                # if the user locale matches the game locale.
+                if u0 is None or u0.locale != self.locale:
                     orig0 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
                 else:
                     orig0 = EloDict(u0.elo(), u0.human_elo(), u0.manual_elo())
-                if u1 is None:
+                if u1 is None or u1.locale != self.locale:
                     orig1 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
                 else:
                     orig1 = EloDict(u1.elo(), u1.human_elo(), u1.manual_elo())
@@ -548,6 +550,8 @@ class Game:
                     # Human-only game: calculate 'old style' Elo points.
                     # Note that this changes the Elo ratings stored in the User
                     # objects, which is why we saved their original values above.
+                    # Also note that this provisional, 'old style' Elo rating
+                    # is not calculated for robot games.
                     compute_elo_for_game(gm, u0, u1)
                 # Calculate 'new style', locale-specific Elo points
                 # for the game and the users. This modifies the GameModel

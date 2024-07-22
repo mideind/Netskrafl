@@ -479,6 +479,11 @@ class User:
 
     def set_locale(self, locale: str) -> None:
         """Set the locale code for this user"""
+        if self._locale == locale:
+            return  # Nothing to do
+        # Note: the following two statements much occur in this order!
+        # Update the 'old-style' Elo ratings to reflect the new locale
+        self.set_elo(self.elo_for_locale(locale))
         self._locale = locale
 
     @property
@@ -735,7 +740,7 @@ class User:
         """Returns True if the user has disabled chat"""
         return self._chat_disabled
 
-    def disable_chat(self, disabled: bool) -> None:
+    def set_chat_disabled(self, disabled: bool) -> None:
         """Sets the chat disabled state for a user to True or False"""
         self._chat_disabled = disabled
 
@@ -1189,7 +1194,7 @@ class User:
         self.set_location("")
         self.set_ready(False)
         self.set_ready_timed(False)
-        self.disable_chat(True)
+        self.set_chat_disabled(True)
         # Remove favorites
         # Retract issued challenges
         # Reject received challenges

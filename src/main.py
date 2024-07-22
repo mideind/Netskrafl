@@ -100,7 +100,7 @@ if running_local:
     )
 
 if running_local:
-    logging.info("Netskrafl app running with DEBUG set to True")
+    logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library

@@ -457,7 +457,7 @@ class UserForm:
         usr.set_fanfare(self.fanfare)
         usr.set_beginner(self.beginner)
         usr.set_fairplay(self.fairplay)
-        usr.disable_chat(self.chat_disabled)
+        usr.set_chat_disabled(self.chat_disabled)
         usr.set_locale(self.locale)
         # usr.set_image(self.image)  # The user image cannot and must not be set like this
         usr.update()

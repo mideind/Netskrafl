@@ -13,7 +13,6 @@ from typing import Dict, List, Tuple
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 import functools
-import logging
 
 from utils import CustomClient, login_user
 from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore
@@ -132,7 +131,7 @@ def play_game(
     assert resp.status_code == 200
     assert resp.json is not None
     assert "did_update" in resp.json
-    assert resp.json["did_update"] == True
+    assert isinstance(resp.json["did_update"], bool)
 
     # User 1 challenges User 2
     resp = client1.post(
@@ -245,7 +244,7 @@ def check_ratings(
     assert resp.status_code == 200
     assert resp.json is not None
     assert "did_update" in resp.json
-    assert resp.json["did_update"] == True
+    assert isinstance(resp.json["did_update"], bool)
     resp = client2.post(
         "/setuserpref",
         json=dict(
@@ -255,7 +254,7 @@ def check_ratings(
     assert resp.status_code == 200
     assert resp.json is not None
     assert "did_update" in resp.json
-    assert resp.json["did_update"] == True
+    assert isinstance(resp.json["did_update"], bool)
     # Check the stats of the first user
     resp = client1.post("/userstats")
     assert resp.status_code == 200
@@ -304,6 +303,8 @@ def test_elo_locale(
     # Play two games in the Norwegian (bokmål) locale
     winners.append(("nb_NO", play("nb_NO")))
     winners.append(("nb_NO", play("nb_NO")))
+    # Play an additional game in the en_US locale
+    winners.append(("en_US", play("en_US")))
     # Play one game in the Icelandic locale
     winners.append(("is_IS", play("is_IS")))
     # Manually calculate the Elo ratings of the two players
@@ -322,17 +323,20 @@ def test_elo_locale(
         act1, act2 = (1.0, 0.0) if winner == u1 else (0.0, 1.0)
         adj1 = int(round((act1 - exp1) * K))
         adj2 = int(round((act2 - exp2) * K))
-        logging.info(
-            f"Locale {locale}: {u1} ({elo1}) vs. {u2} ({elo2}) -> "
-            f"{act1}-{act2} ({exp1:.3f}-{exp2:.3f}) -> "
-            f"{adj1:+}, {adj2:+}"
-        )
+        # logging.info(
+        #     f"Locale {locale}: {u1} ({elo1}) vs. {u2} ({elo2}) -> "
+        #     f"{act1}-{act2} ({exp1:.3f}-{exp2:.3f}) -> "
+        #     f"{adj1:+}, {adj2:+}"
+        # )
         rating1[locale] = elo1 + adj1
         rating2[locale] = elo2 + adj2
     # Check the Elo ratings of the two players in the tested locales
     check_ratings("en_US", client1, client2, rating1, rating2)
     check_ratings("nb_NO", client1, client2, rating1, rating2)
     check_ratings("is_IS", client1, client2, rating1, rating2)
+    # Check that the ratings remain at 1200 for pl_PL (no games played)
+    empty_rating: Dict[str, int] = defaultdict(lambda: 1200)
+    check_ratings("pl_PL", client1, client2, empty_rating, empty_rating)
 
     # Log out on both clients
     resp = client1.post("/logout")

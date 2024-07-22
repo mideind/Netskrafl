@@ -301,7 +301,7 @@ def compute_locale_elo_for_game(
         adj = (0, 0)
     else:
         adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
-        logging.info(f"compute_locale_elo_for_game: {locale} {s0=} {s1=} {uelo0=} {uelo1=} {adj=}")
+        # logging.info(f"compute_locale_elo_for_game: {locale} {s0=} {s1=} {uelo0=} {uelo1=} {adj=}")
 
     # When an established player is playing a beginning (provisional) player,
     # leave the Elo score of the established player unchanged.
