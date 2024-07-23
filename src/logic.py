@@ -66,8 +66,10 @@ from skraflmechanics import (
 from skrafluser import MAX_NICKNAME_LENGTH, User
 from skraflplayer import AutoPlayer
 from skrafldb import (
+    EloModel,
     ListPrefixDict,
     RatingDict,
+    RatingForLocaleDict,
     ZombieModel,
     PrefsDict,
     ChallengeModel,
@@ -282,6 +284,23 @@ class MoveNotifyDict(TypedDict):
     to_move: int
     scores: Tuple[int, int]
     progress: Tuple[int, int]
+
+
+class UserRatingForLocaleDict(TypedDict):
+    """The dictionary returned from the rating_for_locale() function"""
+
+    rank: int
+    userid: str
+    nick: str
+    fullname: str
+    fairplay: bool
+    inactive: bool
+    fav: bool
+    ready: bool
+    ready_timed: bool
+    live: bool
+    image: str
+    elo: int
 
 
 class UserRatingDict(TypedDict):
@@ -966,8 +985,8 @@ def rating(kind: str) -> List[UserRatingDict]:
     result: List[UserRatingDict] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
-    online = firebase.online_status(locale)
+    user_locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    online = firebase.online_status(user_locale)
 
     # Generate a list of challenges issued by this user
     challenges: Set[Optional[str]] = set()
@@ -1060,6 +1079,82 @@ def rating(kind: str) -> List[UserRatingDict]:
                 "games_month_ago": ru["games_month_ago"],
                 "ratio": ratio,
                 "avgpts": avgpts,
+            }
+        )
+
+    set_online_status_for_users(result, online.users_online)
+    return result
+
+
+def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
+    """Return a list of top players by Elo rating of the given kind ('all' or 'human')"""
+    result: List[UserRatingForLocaleDict] = []
+    cuser = current_user()
+    user_locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    online = firebase.online_status(user_locale)
+    # If the locale is not explicitly given, use the current user's locale
+    locale = locale or user_locale
+
+    cache_key = f"{kind}:{locale}"
+    rating_list: Optional[List[RatingForLocaleDict]] = memcache.get(cache_key, namespace="rating")
+    if rating_list is None:
+        # Not found: do a query
+        rating_list = list(EloModel.list_rating(kind, locale))
+        # Store the result in the cache with a lifetime of 1 hour
+        memcache.set(cache_key, rating_list, time=1 * 60 * 60, namespace="rating")
+
+    # Prefetch the users in the rating list
+    users = fetch_users(rating_list, lambda x: x["userid"])
+
+    for ru in rating_list:
+
+        uid = ru["userid"]
+        if not uid:
+            # Hit the end of the list
+            break
+        if uid.startswith("robot-"):
+            a = uid.split("-")
+            try:
+                nick = AutoPlayer.name(locale, int(a[1]))
+            except ValueError:
+                nick = "--"
+            fullname = nick
+            fairplay = False
+            inactive = False
+            fav = False
+            ready = True
+            ready_timed = False
+            image = ""
+        else:
+            usr = users.get(uid)
+            if usr is None:
+                # Something wrong with this one: don't bother
+                continue
+            nick = usr.nickname()
+            if not User.is_valid_nick(nick):
+                nick = "--"
+            fullname = usr.full_name()
+            fairplay = usr.fairplay()
+            inactive = usr.is_inactive()
+            fav = False if cuser is None else cuser.has_favorite(uid)
+            ready = usr.is_ready()
+            ready_timed = usr.is_ready_timed()
+            image = usr.thumbnail()
+
+        result.append(
+            {
+                "rank": ru["rank"],
+                "userid": uid,
+                "nick": nick,
+                "fullname": fullname,
+                "fairplay": fairplay,
+                "inactive": inactive,
+                "fav": fav,
+                "ready": ready,
+                "ready_timed": ready_timed,
+                "live": False,  # Will be filled in later
+                "image": image,
+                "elo": ru["elo"],
             }
         )
 

@@ -216,7 +216,7 @@ class ListPrefixDict(TypedDict):
 
 
 class RatingDict(TypedDict):
-    """The dictionary returned from list_ratings() method"""
+    """The dictionary returned from RatingModel.list_rating() function"""
 
     rank: int
     userid: str
@@ -247,6 +247,14 @@ class RatingDict(TypedDict):
     score_against_month_ago: int
     wins_month_ago: int
     losses_month_ago: int
+
+
+class RatingForLocaleDict(TypedDict):
+    """The dictionary returned from EloModel.list_rating() function"""
+
+    rank: int
+    userid: str
+    elo: int
 
 
 @dataclass
@@ -939,9 +947,9 @@ class EloModel(Model["EloModel"]):
     user: Optional[Key[UserModel]] = UserModel.OptionalDbKey(kind=UserModel)
     robot = Model.OptionalStr()
     timestamp = Model.Datetime(auto_now_add=True)
-    elo = Model.Int()
-    human_elo = Model.Int()
-    manual_elo = Model.Int()
+    elo = Model.Int(indexed=True)
+    human_elo = Model.Int(indexed=True)
+    manual_elo = Model.Int(indexed=True)
 
     @classmethod
     def user_elo(cls, locale: str, uid: str) -> Optional[EloModel]:
@@ -1009,6 +1017,31 @@ class EloModel(Model["EloModel"]):
         key: Key[UserModel] = Key(UserModel, uid)
         q = cls.query(EloModel.user == key)
         delete_multi(q.iter(keys_only=True))
+
+    @classmethod
+    def list_rating(cls, kind: str, locale: str) -> Iterable[RatingForLocaleDict]:
+        """Return the top 100 Elo ratings of a specified kind
+        ('all', 'human' or 'manual') in the given locale"""
+        q = cls.query(EloModel.locale == locale)
+        # Property extractor
+        p: Callable[[EloModel], int]
+        if kind == 'human':
+            q = q.order(-EloModel.human_elo)
+            p = lambda em: em.human_elo
+        elif kind == 'manual':
+            q = q.order(-EloModel.manual_elo)
+            p = lambda em: em.manual_elo
+        else:
+            # Default, kind == 'all'
+            q = q.order(-EloModel.elo)
+            p = lambda em: em.elo
+        for ix, em in enumerate(q.fetch(limit=100)):
+            userid = (em.user.id() if em.user else em.robot) or ""
+            yield RatingForLocaleDict(
+                rank=ix + 1,
+                userid=userid,
+                elo=p(em),
+            )
 
 
 class MoveModel(Model["MoveModel"]):

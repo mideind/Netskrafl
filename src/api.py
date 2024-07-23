@@ -94,6 +94,7 @@ from logic import (
     opponent_waiting,
     localize_push_message,
     process_move,
+    rating_for_locale,
     set_online_status_for_chats,
     autoplayer_lock,
     userlist,
@@ -652,13 +653,29 @@ def allgamelists_api() -> ResponseType:
 @api_route("/rating")
 @auth_required(result=Error.LOGIN_REQUIRED)
 def rating_api() -> ResponseType:
-    """Return the newest Elo ratings table (top 100)
-    of a given kind ('all' or 'human')"""
+    """Return the newest Elo ratings table (top 100) of a given kind
+    ('all', 'human', 'manual'), locale-ignorant ('old-style')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
     if kind not in ("all", "human", "manual"):
         kind = "all"
     return jsonify(result=Error.LEGAL, rating=rating(kind))
+
+
+@api_route("/rating_locale")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def rating_locale_api() -> ResponseType:
+    """Return the newest Elo ratings table (top 100) of a given kind
+    ('all', 'human', 'manual') for a given locale"""
+    rq = RequestData(request)
+    kind = rq.get("kind", "all")
+    if kind not in ("all", "human", "manual"):
+        kind = "all"
+    # An empty locale string means the locale of the current user
+    locale = rq.get("locale", "")
+    if locale:
+        locale = to_supported_locale(locale)
+    return jsonify(result=Error.LEGAL, rating=rating_for_locale(kind, locale))
 
 
 @api_route("/favorite")

@@ -343,3 +343,35 @@ def test_elo_locale(
     assert resp.status_code == 200
     resp = client2.post("/logout")
     assert resp.status_code == 200
+
+
+def test_elo_rating(
+    client1: CustomClient, u1: str,
+) -> None:
+    """Test the /rating_locale endpoint"""
+    # Log in on client1 as user 1
+    resp = login_user(client1, 1)
+    assert resp.status_code == 200
+
+    for locale in ("en_US", "nb_NO", "is_IS"):
+        # Set the locale of User 1 to the specified locale
+        # using the /setuserpref API
+        resp = client1.post(
+            "/setuserpref",
+            json=dict(
+                locale=locale,
+            ),
+        )
+        assert resp.status_code == 200
+        assert resp.json is not None
+        assert "did_update" in resp.json
+        assert isinstance(resp.json["did_update"], bool)
+        # Obtain the current Elo ratings for the users' locale
+        resp = client1.post("/rating_locale")
+        assert resp.status_code == 200
+        assert resp.json is not None
+        assert "rating" in resp.json
+
+    # Log out on client1
+    resp = client1.post("/logout")
+    assert resp.status_code == 200
