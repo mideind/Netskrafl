@@ -293,8 +293,7 @@ def push_notification(
         data=data,
         apns=messaging.APNSConfig(
             payload=messaging.APNSPayload(
-                aps=messaging.Aps(content_available=True),
-                sound="default",
+                aps=messaging.Aps(content_available=True, sound="default"),
             ),
         ),
     )
