@@ -44,7 +44,7 @@ from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, ResponseType
+from config import DEFAULT_LOCALE, DEFAULT_ELO, PROJECT_ID, ResponseType
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -748,7 +748,9 @@ def userlist(query: str, spec: str) -> UserList:
 
     # Generate a list of challenges issued by this user
     challenges: Set[str] = set()
-    if cuid:
+    # Explo presently doesn't use this information, so we
+    # only include it for Netskrafl
+    if cuid and PROJECT_ID == "netskrafl":
         challenges.update(
             # ch[0] is the identifier of the challenged user
             [
@@ -759,7 +761,9 @@ def userlist(query: str, spec: str) -> UserList:
         )
 
     # Note that we only consider online users in the same locale
-    # as the requesting user
+    # as the requesting user. However, the Firebase connection
+    # information is occasionally stale, so we still need to
+    # filter the returned users by locale.
     online = firebase.online_status(locale)
 
     # Set of users blocked by the current user
@@ -777,34 +781,35 @@ def userlist(query: str, spec: str) -> UserList:
         ousers = User.load_multi(iter_online)
 
         for lu in ousers:
-            if (
-                lu
-                and lu.is_displayable()
-                and (uid := lu.id())
-                and uid != cuid
-                and uid not in blocked
-            ):
+            if lu is None or not lu.is_displayable():
+                continue
+            if lu.locale != locale:
+                # The online user list may on occasion contain users
+                # from other locales, so we need to filter them out
+                continue
+            if not (uid := lu.id()) or uid == cuid or uid in blocked:
                 # Don't display the current user in the online list
-                chall = uid in challenges
-                result.append(
-                    UserListDict(
-                        userid=uid,
-                        robot_level=0,
-                        nick=lu.nickname(),
-                        fullname=lu.full_name(),
-                        locale=locale,
-                        elo=elo_str(lu.elo()),
-                        human_elo=elo_str(lu.human_elo()),
-                        fav=False if cuser is None else cuser.has_favorite(uid),
-                        chall=chall,
-                        fairplay=lu.fairplay(),
-                        newbag=True,
-                        ready=lu.is_ready(),
-                        ready_timed=lu.is_ready_timed(),
-                        live=True,
-                        image=lu.thumbnail(),
-                    )
+                continue
+            chall = uid in challenges
+            result.append(
+                UserListDict(
+                    userid=uid,
+                    robot_level=0,
+                    nick=lu.nickname(),
+                    fullname=lu.full_name(),
+                    locale=lu.locale,
+                    elo=elo_str(lu.elo()),
+                    human_elo=elo_str(lu.human_elo()),
+                    fav=False if cuser is None else cuser.has_favorite(uid),
+                    chall=chall,
+                    fairplay=lu.fairplay(),
+                    newbag=True,
+                    ready=lu.is_ready(),
+                    ready_timed=lu.is_ready_timed(),
+                    live=True,
+                    image=lu.thumbnail(),
                 )
+            )
 
     elif query == "fav":
         # Return favorites of the current user, filtered by
@@ -829,7 +834,7 @@ def userlist(query: str, spec: str) -> UserList:
                             robot_level=0,
                             nick=fu.nickname(),
                             fullname=fu.full_name(),
-                            locale=fu.locale,
+                            locale=fu.locale,  # Note: This might not be the current user's locale
                             elo=elo_str(fu.elo()),
                             human_elo=elo_str(fu.human_elo()),
                             fav=True,
@@ -894,6 +899,10 @@ def userlist(query: str, spec: str) -> UserList:
 
             if not user or not user.is_ready_timed() or not user.is_displayable():
                 # Only return users that are ready to play timed games
+                continue
+            if user.locale != locale:
+                # The online user list may on occasion contain users
+                # from other locales, so we need to filter them out
                 continue
             if not (user_id := user.id()) or user_id == cuid or user_id in blocked:
                 # Don't include the current user in the list;
