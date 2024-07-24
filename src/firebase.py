@@ -294,6 +294,7 @@ def push_notification(
         apns=messaging.APNSConfig(
             payload=messaging.APNSPayload(
                 aps=messaging.Aps(content_available=True),
+                sound="default",
             ),
         ),
     )
