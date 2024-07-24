@@ -179,6 +179,7 @@ class UserListDict(TypedDict):
     robot_level: int
     nick: str
     fullname: str
+    locale: str
     elo: str  # Elo score or hyphen
     human_elo: str  # Elo score or hyphen
     fav: bool
@@ -293,6 +294,7 @@ class UserRatingForLocaleDict(TypedDict):
     userid: str
     nick: str
     fullname: str
+    locale: str
     fairplay: bool
     inactive: bool
     fav: bool
@@ -728,6 +730,7 @@ def userlist(query: str, spec: str) -> UserList:
                     robot_level=r.level,
                     nick=r.name,
                     fullname=r.description,
+                    locale=locale,
                     elo=elo_str(None),
                     human_elo=elo_str(None),
                     fav=False,
@@ -789,6 +792,7 @@ def userlist(query: str, spec: str) -> UserList:
                         robot_level=0,
                         nick=lu.nickname(),
                         fullname=lu.full_name(),
+                        locale=locale,
                         elo=elo_str(lu.elo()),
                         human_elo=elo_str(lu.human_elo()),
                         fav=False if cuser is None else cuser.has_favorite(uid),
@@ -815,7 +819,6 @@ def userlist(query: str, spec: str) -> UserList:
                 if (
                     fu
                     and fu.is_displayable()
-                    and fu.locale == locale
                     and (favid := fu.id())
                     and favid not in blocked
                 ):
@@ -826,6 +829,7 @@ def userlist(query: str, spec: str) -> UserList:
                             robot_level=0,
                             nick=fu.nickname(),
                             fullname=fu.full_name(),
+                            locale=fu.locale,
                             elo=elo_str(fu.elo()),
                             human_elo=elo_str(fu.human_elo()),
                             fav=True,
@@ -865,6 +869,7 @@ def userlist(query: str, spec: str) -> UserList:
                             robot_level=0,
                             nick=au.nickname(),
                             fullname=au.full_name(),
+                            locale=au.locale,
                             elo=elo_str(au.elo()),
                             human_elo=elo_str(au.human_elo()),
                             fav=cuser.has_favorite(uid),
@@ -900,6 +905,7 @@ def userlist(query: str, spec: str) -> UserList:
                     robot_level=0,
                     nick=user.nickname(),
                     fullname=user.full_name(),
+                    locale=user.locale,
                     elo=elo_str(user.elo()),
                     human_elo=elo_str(user.human_elo()),
                     fav=False if cuser is None else cuser.has_favorite(user_id),
@@ -942,6 +948,7 @@ def userlist(query: str, spec: str) -> UserList:
                     robot_level=0,
                     nick=ud["nickname"],
                     fullname=User.full_name_from_prefs(ud["prefs"]),
+                    locale=locale,
                     elo=elo_str(ud["elo"] or str(DEFAULT_ELO)),
                     human_elo=elo_str(ud["human_elo"] or str(DEFAULT_ELO)),
                     fav=False if cuser is None else cuser.has_favorite(uid),
@@ -1125,6 +1132,7 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
             ready = True
             ready_timed = False
             image = ""
+            list_locale = locale
         else:
             usr = users.get(uid)
             if usr is None:
@@ -1140,6 +1148,7 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
             ready = usr.is_ready()
             ready_timed = usr.is_ready_timed()
             image = usr.thumbnail()
+            list_locale = usr.locale  # The user's current locale
 
         result.append(
             {
@@ -1147,6 +1156,7 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
                 "userid": uid,
                 "nick": nick,
                 "fullname": fullname,
+                "locale": list_locale,
                 "fairplay": fairplay,
                 "inactive": inactive,
                 "fav": fav,
