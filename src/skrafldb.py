@@ -259,7 +259,7 @@ class RatingForLocaleDict(TypedDict):
 
 @dataclass
 class EloDict:
-    """ A class that encapsulates the Elo scores of a player """
+    """A class that encapsulates the Elo scores of a player"""
 
     elo: int
     human_elo: int
@@ -853,7 +853,8 @@ class UserModel(Model["UserModel"]):
     def list_similar_elo(
         cls, elo: int, max_len: int = 40, locale: Optional[str] = None
     ) -> List[str]:
-        """List users with a similar (human) Elo rating"""
+        """List users with a similar (human) Elo rating. This uses the
+        'old-style', locale-independent Elo rating."""
         # Start with max_len users with a lower Elo rating
 
         def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
@@ -937,6 +938,10 @@ class UserModel(Model["UserModel"]):
         k.delete()
 
 
+class EloModelFuture(Future["EloModel"]):
+    pass
+
+
 class EloModel(Model["EloModel"]):
     """Models the current Elo ratings for a user or a robot, by locale"""
 
@@ -1013,7 +1018,8 @@ class EloModel(Model["EloModel"]):
     @classmethod
     def delete_for_user(cls, uid: str) -> None:
         """Delete all Elo ratings for a user"""
-        if not uid: return
+        if not uid:
+            return
         key: Key[UserModel] = Key(UserModel, uid)
         q = cls.query(EloModel.user == key)
         delete_multi(q.iter(keys_only=True))
@@ -1025,10 +1031,10 @@ class EloModel(Model["EloModel"]):
         q = cls.query(EloModel.locale == locale)
         # Property extractor
         p: Callable[[EloModel], int]
-        if kind == 'human':
+        if kind == "human":
             q = q.order(-EloModel.human_elo)
             p = lambda em: em.human_elo
-        elif kind == 'manual':
+        elif kind == "manual":
             q = q.order(-EloModel.manual_elo)
             p = lambda em: em.manual_elo
         else:
@@ -1042,6 +1048,68 @@ class EloModel(Model["EloModel"]):
                 userid=userid,
                 elo=p(em),
             )
+
+    @classmethod
+    def list_similar(
+        cls,
+        locale: str,
+        elo: int,
+        max_len: int = 40,
+    ) -> Iterable[Tuple[str, EloDict]]:
+        """Return the ids of users with a similar human Elo rating to
+        the one given, in the specified locale"""
+
+        # Start with max_len users with a lower Elo rating
+        # Descending order
+        q_desc = (
+            cls.query(EloModel.locale == locale)
+            .filter(EloModel.human_elo < elo)
+            .order(-EloModel.human_elo)
+        )
+        # Add another query for the same or higher rating
+        # Ascending order
+        q_asc = (
+            cls.query(EloModel.locale == locale)
+            .filter(EloModel.human_elo >= elo)
+            .order(EloModel.human_elo)
+        )
+        # Issue two queries in parallel
+        qf = (q_desc.fetch_async(limit=max_len), q_asc.fetch_async(limit=max_len))
+        EloModelFuture.wait_all(qf)
+        lower = qf[0].get_result()
+        higher = qf[1].get_result()
+        lower.reverse()  # Convert the lower part to an ascending list
+        # Concatenate the upper part of the lower range with the
+        # lower part of the higher range in the most balanced way
+        # available (considering that either of the lower or upper
+        # ranges may be empty or have fewer than max_len//2 entries)
+        len_lower = len(lower)
+        len_higher = len(higher)
+        # Ideal balanced length from each range
+        half_len = max_len // 2
+        ix = 0  # Default starting index in the lower range
+        if len_lower >= half_len:
+            # We have enough entries in the lower range for a balanced result,
+            # if the higher range allows
+            # Move the start index
+            ix = len_lower - half_len
+            if len_higher < half_len:
+                # We don't have enough entries in the upper range
+                # to balance the result: move the beginning index down
+                if ix >= half_len - len_higher:
+                    # Shift the entire missing balance to the lower range
+                    ix -= half_len - len_higher
+                else:
+                    # Take as much slack as possible
+                    ix = 0
+        # Concatenate the two slices into one result and return it
+        assert max_len >= (len_lower - ix)
+        result = lower[ix:] + higher[0 : max_len - (len_lower - ix)]
+        # Return the user ids
+        for em in result:
+            # Note: we never return robots
+            if em.user is not None and (uid := em.user.id()):
+                yield uid, EloDict(em.elo, em.human_elo, em.manual_elo)
 
 
 class MoveModel(Model["MoveModel"]):
@@ -1188,10 +1256,6 @@ class GameModel(Model["GameModel"]):
     # Manual-only Elo point adjustment as a result of this game
     manual_elo0_adj = Model.OptionalInt()
     manual_elo1_adj = Model.OptionalInt()
-
-    # Flag indicating that the game entity has been processed
-    # to update the Datastore index
-    index_updated = Model.OptionalBool(default=False)
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
@@ -2170,6 +2234,10 @@ class RatingModel(Model["RatingModel"]):
         delete_multi(cls.query().iter(keys_only=True))
 
 
+class ChatModelFuture(Future["ChatModel"]):
+    pass
+
+
 class ChatModel(Model["ChatModel"]):
     """Models chat communications between users"""
 
@@ -2298,14 +2366,20 @@ class ChatModel(Model["ChatModel"]):
         # Dictionary of counterparties that we've encountered so far
         result: Dict[str, ChatModelHistoryDict] = dict()
 
-        def iterable(q: Query[ChatModel]) -> Iterator[ChatModel]:
-            """Iterate through a query, yielding the results"""
-            # The following approach is much faster than using
-            # iter_q(); tested by benchmarking.
-            yield from q.fetch(limit=HISTORY_LIMIT)
+        # Use async futures to issue the two queries in parallel and
+        # then create two iterators to iterate through the results
+        qf = (
+            q1.fetch_async(limit=HISTORY_LIMIT),
+            q2.fetch_async(limit=HISTORY_LIMIT),
+        )
+        ChatModelFuture.wait_all(qf)
 
-        i1 = iterable(q1)
-        i2 = iterable(q2)
+        def iterable(f: Future[ChatModel]) -> Iterator[ChatModel]:
+            """Iterate through a query, yielding the results"""
+            yield from f.get_result()
+
+        i1 = iterable(qf[0])
+        i2 = iterable(qf[1])
         c1 = next(i1, None)
         c2 = next(i2, None)
 

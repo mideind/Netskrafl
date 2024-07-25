@@ -777,8 +777,9 @@ def userlist(query: str, spec: str) -> UserList:
         # grouped by locale, so all returned users will be in
         # the same locale as the current user.
 
-        iter_online = online.random_sample(MAX_ONLINE)
-        ousers = User.load_multi(iter_online)
+        list_online = online.random_sample(MAX_ONLINE)
+        ousers = User.load_multi(list_online)
+        # oelos = EloModel.load_multi(locale, list_online)
 
         for lu in ousers:
             if lu is None or not lu.is_displayable():
@@ -798,8 +799,8 @@ def userlist(query: str, spec: str) -> UserList:
                     nick=lu.nickname(),
                     fullname=lu.full_name(),
                     locale=lu.locale,
-                    elo=elo_str(lu.elo()),
-                    human_elo=elo_str(lu.human_elo()),
+                    elo=elo_str(lu.elo()),  # TODO: Use locale-specific Elo
+                    human_elo=elo_str(lu.human_elo()),  # TODO: Use locale-specific Elo
                     fav=False if cuser is None else cuser.has_favorite(uid),
                     chall=chall,
                     fairplay=lu.fairplay(),
@@ -821,72 +822,73 @@ def userlist(query: str, spec: str) -> UserList:
             # Look up users' online status later
             func_online_status = online.users_online
             for fu in fusers:
-                if (
-                    fu
-                    and fu.is_displayable()
-                    and (favid := fu.id())
-                    and favid not in blocked
-                ):
-                    chall = favid in challenges
-                    result.append(
-                        UserListDict(
-                            userid=favid,
-                            robot_level=0,
-                            nick=fu.nickname(),
-                            fullname=fu.full_name(),
-                            locale=fu.locale,  # Note: This might not be the current user's locale
-                            elo=elo_str(fu.elo()),
-                            human_elo=elo_str(fu.human_elo()),
-                            fav=True,
-                            chall=chall,
-                            fairplay=fu.fairplay(),
-                            newbag=True,
-                            live=False,  # Will be filled in later
-                            ready=fu.is_ready(),
-                            ready_timed=fu.is_ready_timed(),
-                            image=fu.thumbnail(),
-                        )
+                if not fu or not fu.is_displayable():
+                    continue
+                if not (favid := fu.id()) or favid in blocked:
+                    continue
+                chall = favid in challenges
+                result.append(
+                    UserListDict(
+                        userid=favid,
+                        robot_level=0,
+                        nick=fu.nickname(),
+                        fullname=fu.full_name(),
+                        locale=fu.locale,  # Note: This might not be the current user's locale
+                        elo=elo_str(fu.elo()),  # TODO: Use locale-specific Elo
+                        human_elo=elo_str(fu.human_elo()),  # TODO: Use locale-specific Elo
+                        fav=True,
+                        chall=chall,
+                        fairplay=fu.fairplay(),
+                        newbag=True,
+                        live=False,  # Will be filled in later
+                        ready=fu.is_ready(),
+                        ready_timed=fu.is_ready_timed(),
+                        image=fu.thumbnail(),
                     )
+                )
 
     elif query == "alike":
-        # Return users with similar Elo ratings, in the same locale
-        # as the requesting user
+        # Return users with similar human Elo ratings,
+        # in the same locale as the requesting user
         if cuid is not None:
             assert cuser is not None
-            ui = UserModel.list_similar_elo(
-                cuser.human_elo(), max_len=40, locale=locale
-            )
-            ausers = User.load_multi(ui)
+            # Obtain the user's current human Elo rating
+            ed = cuser.elo_for_locale(locale)
+            # Look up users with similar Elo ratings
+            ei = list(EloModel.list_similar(locale, ed.human_elo, max_len=40))
+            # Load the user entities and zip them with the corresponding EloDict
+            ausers = zip(User.load_multi(e[0] for e in ei), (e[1] for e in ei))
             # Look up users' online status later
             func_online_status = online.users_online
-            for au in ausers:
-                if (
-                    au
-                    and au.is_displayable()
-                    and (uid := au.id())
-                    and uid != cuid
-                    and uid not in blocked
-                ):
-                    chall = uid in challenges
-                    result.append(
-                        UserListDict(
-                            userid=uid,
-                            robot_level=0,
-                            nick=au.nickname(),
-                            fullname=au.full_name(),
-                            locale=au.locale,
-                            elo=elo_str(au.elo()),
-                            human_elo=elo_str(au.human_elo()),
-                            fav=cuser.has_favorite(uid),
-                            chall=chall,
-                            fairplay=au.fairplay(),
-                            live=False,  # Will be filled in later
-                            newbag=True,
-                            ready=au.is_ready(),
-                            ready_timed=au.is_ready_timed(),
-                            image=au.thumbnail(),
-                        )
+            for au, ed in ausers:
+                if not au or not au.is_displayable():
+                    continue
+                if au.locale != locale:
+                    # Better safe than sorry
+                    continue
+                if not (uid := au.id()) or uid == cuid or uid in blocked:
+                    continue
+                chall = uid in challenges
+                result.append(
+                    UserListDict(
+                        userid=uid,
+                        robot_level=0,
+                        nick=au.nickname(),
+                        fullname=au.full_name(),
+                        locale=au.locale,
+                        elo=elo_str(ed.elo),
+                        human_elo=elo_str(ed.human_elo),
+                        # manual_elo=elo_str(ed.manual_elo),
+                        fav=cuser.has_favorite(uid),
+                        chall=chall,
+                        fairplay=au.fairplay(),
+                        live=False,  # Will be filled in later
+                        newbag=True,
+                        ready=au.is_ready(),
+                        ready_timed=au.is_ready_timed(),
+                        image=au.thumbnail(),
                     )
+                )
 
     elif query == "ready_timed":
         # Display users who are online and ready for a timed game.
@@ -896,7 +898,6 @@ def userlist(query: str, spec: str) -> UserList:
         online_users = User.load_multi(iter_online)
 
         for user in online_users:
-
             if not user or not user.is_ready_timed() or not user.is_displayable():
                 # Only return users that are ready to play timed games
                 continue
@@ -915,8 +916,8 @@ def userlist(query: str, spec: str) -> UserList:
                     nick=user.nickname(),
                     fullname=user.full_name(),
                     locale=user.locale,
-                    elo=elo_str(user.elo()),
-                    human_elo=elo_str(user.human_elo()),
+                    elo=elo_str(user.elo()),  # TODO: Use locale-specific Elo
+                    human_elo=elo_str(user.human_elo()),  # TODO: Use locale-specific Elo
                     fav=False if cuser is None else cuser.has_favorite(user_id),
                     chall=user_id in challenges,
                     fairplay=user.fairplay(),
@@ -1112,7 +1113,9 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
     locale = locale or user_locale
 
     cache_key = f"{kind}:{locale}"
-    rating_list: Optional[List[RatingForLocaleDict]] = memcache.get(cache_key, namespace="rating")
+    rating_list: Optional[List[RatingForLocaleDict]] = memcache.get(
+        cache_key, namespace="rating"
+    )
     if rating_list is None:
         # Not found: do a query
         rating_list = list(EloModel.list_rating(kind, locale))
