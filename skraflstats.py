@@ -506,7 +506,7 @@ def _create_ratings() -> None:
     t0 = time.time()
 
     # Write the Top 100 tables to the database
-    rlist = []
+    rlist: List[RatingModel] = []
 
     for rank in range(0, 100):
 
@@ -596,6 +596,8 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
 
     # Asynchronous: we need a new context for this thread
     with Client.get_context():
+        # Disable the in-memory cache for this thread
+        Context.disable_cache()
         return _deferred_stats()
 
 
