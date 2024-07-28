@@ -145,8 +145,8 @@
       height: (@board-cell-big - 2px);
       width: (@board-cell-big - 2px);
       margin: 0;
-      padding-top: 3px;
-      padding-right: 3px;
+      padding-top: 2.667px;
+      padding-right: 3.667px;
       margin-left: -1px;
    }
 
@@ -286,6 +286,10 @@
    div.submitmove {
       .submitbutton;
    }
+
+   div.submitmove span.glyphicon-play {
+      top: 3px;
+   }
    
    div.submitmove.error-shown {
       display: block;
@@ -304,6 +308,7 @@
    div.submitresign {
       width: @btn-width-big;
       height: @btn-height-big;
+      font-size: 21px;
       top: auto;
       bottom: 130px;
       left: 101px;
@@ -312,6 +317,7 @@
    div.submitexchange {
       width: @btn-width-big;
       height: @btn-height-big;
+      font-size: 21px;
       top: auto;
       bottom: 130px;
       left: 167px;
@@ -320,6 +326,7 @@
    div.recallbtn {
       width: @btn-width-big;
       height: @btn-height-big;
+      font-size: 21px;
       top: auto;
       bottom: 130px;
       left: 167px;
@@ -330,6 +337,7 @@
    div.scramblebtn {
       width: @btn-width-big;
       height: @btn-height-big;
+      font-size: 21px;
       top: auto;
       bottom: 130px;
       left: 534px;
@@ -338,6 +346,7 @@
    div.submitpass {
       width: @btn-width-big;
       height: @btn-height-big;
+      font-size: 21px;
       top: auto;
       bottom: 130px;
       left: 600px;
@@ -588,6 +597,22 @@
    
    div.gameinfo {
       .bottom-message;
+   }
+   
+   span#force-resign {
+      display: none;
+      background-color: @alert;
+      color: white;
+      position: relative;
+      right: auto;
+      font-size: 16px;
+      margin-right: 4px;
+      padding-top: 2px;
+      cursor: pointer;
+   }
+
+   span#force-resign.active {
+      display: inline;
    }
    
    input.chat-txt {

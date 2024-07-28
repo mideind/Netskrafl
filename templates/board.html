@@ -677,7 +677,7 @@
       scoreRight = {{ fsc1 }};
 {% if user and game.is_overdue() and not game.my_turn(user.id()) %}
       // Display option to force opponent to resign
-      $("#force-resign").css("display", "inline");
+      $("#force-resign").toggleClass("active", true);
 {% endif %}
 {% if player_index == None or game.is_robot_game() %}
       // Only show the chat tab if the user is a player of this game and the
