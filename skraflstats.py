@@ -2,7 +2,7 @@
 
     Server module for Netskrafl statistics and other background tasks
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -28,20 +28,20 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Any
+from typing import Dict, Iterable, List, Optional, Tuple, Any, cast
 
 import calendar
 import logging
 import time
 import gc
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Thread
 
 from flask import Request
 
-from languages import Alphabet
 from skrafldb import (
+    Context,
     ndb,
     Client,
     UserModel,
@@ -49,9 +49,11 @@ from skrafldb import (
     StatsModel,
     RatingModel,
     CompletionModel,
+    StatsDict,
     iter_q,
 )
 from skraflgame import Game, User
+from cache import memcache
 
 
 # The K constant used in the Elo calculation
@@ -64,7 +66,7 @@ ESTABLISHED_MARK: int = 10
 
 
 def monthdelta(date: datetime, delta: int) -> datetime:
-    """ Calculate a date x months from now, in the past or in the future """
+    """Calculate a date x months from now, in the past or in the future"""
     m, y = (date.month + delta) % 12, date.year + (date.month + delta - 1) // 12
     if not m:
         m = 12
@@ -72,10 +74,10 @@ def monthdelta(date: datetime, delta: int) -> datetime:
     return date.replace(day=d, month=m, year=y)
 
 
-def _compute_elo(
+def compute_elo(
     o_elo: Tuple[int, int], sc0: int, sc1: int, est0: int, est1: int
 ) -> Tuple[int, int]:
-    """ Computes the Elo points of the two users after their game """
+    """Computes the Elo points of the two users after their game"""
     # If no points scored, this is a null game having no effect
     assert sc0 >= 0
     assert sc1 >= 0
@@ -134,10 +136,16 @@ def _compute_elo(
 
 
 def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
-    """ Writes the freshly calculated statistics records to the database """
+    """Writes the freshly calculated statistics records to the database"""
     # Delete all previous stats with the same timestamp, if any
     StatsModel.delete_ts(timestamp=timestamp)
-    um_list = []
+    um_list: List[UserModel] = []
+    sm_list: List[StatsModel] = []
+    # Note: we need a limit on the put_multi() size
+    # since user entites can be quite large (due to the embedded images)
+    # and the maximum size of a single RPC call is 10 MB
+    MAX_STATS_PUT = 200
+    MAX_USERS_PUT = 50
     for sm in urecs.values():
         # Set the reference timestamp for the entire stats series
         sm.timestamp = timestamp
@@ -149,14 +157,26 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
             um.human_elo = sm.human_elo
             um.manual_elo = sm.manual_elo
             um_list.append(um)
-    # Update the statistics records
-    StatsModel.put_multi(urecs.values())
-    # Update the user records
-    UserModel.put_multi(um_list)
+            if len(um_list) >= MAX_USERS_PUT:
+                # At limit: Update the entities that we've gathered so far
+                UserModel.put_multi(um_list)
+                um_list = []
+        # Collect the updated StatsModel entities
+        sm_list.append(sm)
+        if len(sm_list) >= MAX_STATS_PUT:
+            # At limit: Update the entities that we've gathered so far
+            StatsModel.put_multi(sm_list)
+            sm_list = []
+    # Update the remaining StatsModel entities
+    if sm_list:
+        StatsModel.put_multi(sm_list)
+    # Update the remaining UserModel entities
+    if um_list:
+        UserModel.put_multi(um_list)
 
 
 def _run_stats(from_time: datetime, to_time: datetime) -> bool:
-    """ Runs a process to update user statistics and Elo ratings """
+    """Runs a process to update user statistics and Elo ratings"""
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
     if from_time is None or to_time is None:
@@ -178,21 +198,24 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
     q = (
         GameModel.query(
             ndb.AND(
-                GameModel.ts_last_move > from_time, GameModel.ts_last_move <= to_time
+                cast(datetime, GameModel.ts_last_move) > from_time,
+                cast(datetime, GameModel.ts_last_move) <= to_time,
             )
         )
         .order(GameModel.ts_last_move)
         .filter(GameModel.over == True)
     )
 
-    # The accumulated user statistics
+    # The accumulated cache of user statistics
     users: Dict[str, StatsModel] = dict()
 
-    def _init_stat(user_id, robot_level):
-        """ Returns the newest StatsModel instance available for the given user """
+    def init_stat(user_id: Optional[str], robot_level: int) -> StatsModel:
+        """Returns the newest StatsModel instance available for the given user"""
         return StatsModel.newest_before(from_time, user_id, robot_level)
 
     cnt = 0
+    p0: Optional[str]
+    p1: Optional[str]
 
     try:
         # Use i as a progress counter
@@ -210,7 +233,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 # ignore such a game altogether in the statistics
                 continue
 
-            lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
+            # lm = Alphabet.format_timestamp(gm.ts_last_move or gm.timestamp)
             p0 = None if gm.player0 is None else gm.player0.id()
             p1 = None if gm.player1 is None else gm.player1.id()
             robot_game = (p0 is None) or (p1 is None)
@@ -233,11 +256,11 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             if k0 in users:
                 urec0 = users[k0]
             else:
-                users[k0] = urec0 = _init_stat(p0, rl if p0 is None else 0)
+                users[k0] = urec0 = init_stat(p0, rl if p0 is None else 0)
             if k1 in users:
                 urec1 = users[k1]
             else:
-                users[k1] = urec1 = _init_stat(p1, rl if p1 is None else 0)
+                users[k1] = urec1 = init_stat(p1, rl if p1 is None else 0)
 
             # Number of games played
             urec0.games += 1
@@ -295,7 +318,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             gm.elo0, gm.elo1 = urec0.elo, urec1.elo
 
             # Compute the Elo points of both players
-            adj = _compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
+            adj = compute_elo((urec0.elo, urec1.elo), s0, s1, est0, est1)
 
             # When an established player is playing a beginning (provisional) player,
             # leave the Elo score of the established player unchanged
@@ -311,10 +334,15 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             urec1.elo += adj[1]
             # If not a robot game, compute the human-only Elo
             if not robot_game:
+                # Find out whether players are established or beginners,
+                # counting human games only
+                est0 = urec0.human_games > ESTABLISHED_MARK
+                est1 = urec1.human_games > ESTABLISHED_MARK
+
                 uelo0 = urec0.human_elo or User.DEFAULT_ELO
                 uelo1 = urec1.human_elo or User.DEFAULT_ELO
                 gm.human_elo0, gm.human_elo1 = uelo0, uelo1
-                adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                 # Adjust player 0
                 if est0 and not est1:
                     adj = (0, adj[1])
@@ -330,7 +358,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                     uelo0 = urec0.manual_elo or User.DEFAULT_ELO
                     uelo1 = urec1.manual_elo or User.DEFAULT_ELO
                     gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
-                    adj = _compute_elo((uelo0, uelo1), s0, s1, est0, est1)
+                    adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                     # Adjust player 0
                     if est0 and not est1:
                         adj = (0, adj[1])
@@ -369,12 +397,12 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
 
 
 def _create_ratings() -> None:
-    """ Create the Top 100 ratings tables """
+    """Create the Top 100 ratings tables"""
     logging.info("Starting _create_ratings")
 
     _key = StatsModel.dict_key
 
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(UTC)
     yesterday = timestamp - timedelta(days=1)
     week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
@@ -382,7 +410,12 @@ def _create_ratings() -> None:
     # Collect any stray garbage before we start
     gc.collect()
 
-    def _augment_table(t, t_yesterday, t_week_ago, t_month_ago):
+    def _augment_table(
+        t: Iterable[StatsDict],
+        t_yesterday: Dict[str, StatsDict],
+        t_week_ago: Dict[str, StatsDict],
+        t_month_ago: Dict[str, StatsDict],
+    ) -> None:
         """Go through a table of top scoring users and augment it
         with data from previous time points"""
 
@@ -391,15 +424,16 @@ def _create_ratings() -> None:
             key = _key(sm)
 
             # pylint: disable=cell-var-from-loop
-            def _augment(prop):
-                sm[prop + "_yesterday"] = (
-                    t_yesterday[key][prop] if key in t_yesterday else 0
+            def _augment(prop: str) -> None:
+                asm = cast(Any, sm)  # Type checking hack
+                asm[prop + "_yesterday"] = (
+                    t_yesterday[key][prop] if key in t_yesterday else 0  # type: ignore
                 )
-                sm[prop + "_week_ago"] = (
-                    t_week_ago[key][prop] if key in t_week_ago else 0
+                asm[prop + "_week_ago"] = (
+                    t_week_ago[key][prop] if key in t_week_ago else 0  # type: ignore
                 )
-                sm[prop + "_month_ago"] = (
-                    t_month_ago[key][prop] if key in t_month_ago else 0
+                asm[prop + "_month_ago"] = (
+                    t_month_ago[key][prop] if key in t_month_ago else 0  # type: ignore
                 )
 
             _augment("rank")
@@ -517,7 +551,7 @@ def _create_ratings() -> None:
 
 
 def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
-    """ This is the deferred stats collection process """
+    """This is the deferred stats collection process"""
 
     def _deferred_stats() -> bool:
         success = False
@@ -561,12 +595,12 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
         return _deferred_stats()
 
     # Asynchronous: we need a new context for this thread
-    with Client.get_context() as context:
+    with Client.get_context():
         return _deferred_stats()
 
 
 def deferred_ratings(wait: bool) -> bool:
-    """ This is the deferred ratings table calculation process """
+    """This is the deferred ratings table calculation process"""
 
     def _deferred_ratings() -> bool:
 
@@ -576,7 +610,7 @@ def deferred_ratings(wait: bool) -> bool:
             _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             CompletionModel.add_failure("ratings", now, now, str(ex))
             return False
 
@@ -587,7 +621,7 @@ def deferred_ratings(wait: bool) -> bool:
         StatsModel.clear_cache()
 
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         CompletionModel.add_completion("ratings", now, now)
 
         return True
@@ -597,26 +631,28 @@ def deferred_ratings(wait: bool) -> bool:
         return _deferred_ratings()
 
     # Asynchronous: this thread needs a fresh client context
-    with Client.get_context() as context:
+    with Client.get_context():
+        # Disable the in-memory cache for this thread
+        Context.disable_cache()
         return _deferred_ratings()
 
 
 def run(request: Request, *, wait: bool) -> Tuple[str, int]:
-    """ Calculate a new set of statistics """
+    """Calculate a new set of statistics"""
     logging.info("Starting stats calculation")
 
     # If invoked without parameters (such as from a cron job),
     # this will calculate yesterday's statistics.
     # If invoked with a year=YYYY&month=MM&day=DD parameter,
     # the parameter is the starting date (from_time) for the calculation.
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     yesterday = now - timedelta(days=1)
 
     year = int(request.args.get("year", str(yesterday.year)))
     month = int(request.args.get("month", str(yesterday.month)))
     day = int(request.args.get("day", str(yesterday.day)))
 
-    from_time = datetime(year=year, month=month, day=day)
+    from_time = datetime(year=year, month=month, day=day, tzinfo=UTC)
     to_time = from_time + timedelta(days=1)
 
     kwargs: Dict[str, Any] = dict(from_time=from_time, to_time=to_time, wait=wait)
@@ -637,7 +673,7 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
 
 
 def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
-    """ Calculate new ratings tables """
+    """Calculate new ratings tables"""
     logging.info("Starting ratings calculation")
     kwargs: Dict[str, Any] = dict(wait=wait)
     if not wait:
@@ -648,4 +684,7 @@ def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
     if not success:
         return "Ratings calculation failed", 500
 
+    # New ratings: ensure that old ones are deleted from cache
+    memcache.delete("all", namespace="rating")
+    memcache.delete("human", namespace="rating")
     return "Ratings calculation completed", 200
