@@ -153,13 +153,8 @@ indexes:
   - name: fmt
 
 - kind: EloModel
+  ancestor: yes
   properties:
-  - name: user
-  - name: locale
-
-- kind: EloModel
-  properties:
-  - name: robot
   - name: locale
 
 - kind: EloModel
@@ -185,3 +180,8 @@ indexes:
   - name: locale
   - name: manual_elo
     direction: desc
+
+- kind: RobotModel
+  properties:
+  - name: locale
+  - name: level

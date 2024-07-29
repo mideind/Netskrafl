@@ -19,12 +19,12 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import logging
 
 from config import DEFAULT_LOCALE, ESTABLISHED_MARK, DEFAULT_ELO
-from skrafldb import EloModel, GameModel, EloDict
+from skrafldb import EloModel, GameModel, EloDict, RobotModel
 from skrafluser import User
 
 
@@ -232,6 +232,8 @@ def compute_locale_elo_for_game(
     locale = gm.locale or DEFAULT_LOCALE
     robot_game = (u0 is None) or (u1 is None)
     robot_level = gm.robot_level if robot_game else 0
+    em0: Union[None, EloModel, RobotModel] = None
+    em1: Union[None, EloModel, RobotModel] = None
 
     # Number of human games played; are the players established players?
     # For this purpose, robots are always "established".
@@ -246,7 +248,7 @@ def compute_locale_elo_for_game(
     if u0 is None:
         # Robot player
         uid0 = ""
-        em0 = EloModel.robot_elo(locale, robot_level)
+        em0 = RobotModel.robot_elo(locale, robot_level)
     else:
         # Human player
         uid0 = u0.id() or ""
@@ -257,7 +259,7 @@ def compute_locale_elo_for_game(
     if u1 is None:
         # Robot player
         uid1 = ""
-        em1 = EloModel.robot_elo(locale, robot_level)
+        em1 = RobotModel.robot_elo(locale, robot_level)
     else:
         # Human player
         uid1 = u1.id() or ""
@@ -274,8 +276,15 @@ def compute_locale_elo_for_game(
             u0_human = orig0.human_elo
             u0_manual = orig0.manual_elo
         else:
+            # TODO: Is there a way to obtain the 'old-style' Elo rating of a robot?
             uelo0, u0_human, u0_manual = DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
+    elif u0 is None:
+        # Robot
+        assert isinstance(em1, RobotModel)
+        uelo0, u0_human, u0_manual = em0.elo, DEFAULT_ELO, DEFAULT_ELO
     else:
+        # Human player
+        assert isinstance(em0, EloModel)
         uelo0, u0_human, u0_manual = em0.elo, em0.human_elo, em0.manual_elo
     if em1 is None:
         if u1 is not None and u1.locale == locale:
@@ -284,8 +293,15 @@ def compute_locale_elo_for_game(
             u1_human = orig1.human_elo
             u1_manual = orig1.manual_elo
         else:
+            # TODO: Is there a way to obtain the 'old-style' Elo rating of a robot?
             uelo1, u1_human, u1_manual = DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
+    elif u1 is None:
+        # Robot
+        assert isinstance(em1, RobotModel)
+        uelo1, u1_human, u1_manual = em1.elo, DEFAULT_ELO, DEFAULT_ELO
     else:
+        # Human player
+        assert isinstance(em1, EloModel)
         uelo1, u1_human, u1_manual = em1.elo, em1.human_elo, em1.manual_elo
 
     # Collect the current Elo status into EloDict objects
@@ -356,21 +372,37 @@ def compute_locale_elo_for_game(
             gm.manual_elo1_adj = adj[1]
             urec1.manual_elo = uelo1 + adj[1]
 
-    # Upsert the EloModel entities
-    if uid0 or u0 is None:
-        # This is a bona fide user with a user id, or a robot
+    # Upsert the EloModel/RobotModel entities
+    if uid0:
+        assert isinstance(em0, EloModel)
         EloModel.upsert(
             em0,
             locale,
             uid0,
-            robot_level,
             urec0,
         )
-    if uid1 or u1 is None:
+    else:
+        assert isinstance(em0, RobotModel)
+        RobotModel.upsert(
+            em0,
+            locale,
+            robot_level,
+            urec0.elo,
+        )
+    if uid1:
+        # TODO: Handle robots
+        assert isinstance(em1, EloModel)
         EloModel.upsert(
             em1,
             locale,
             uid1,
-            robot_level,
             urec1,
+        )
+    else:
+        assert isinstance(em1, RobotModel)
+        RobotModel.upsert(
+            em1,
+            locale,
+            robot_level,
+            urec1.elo,
         )

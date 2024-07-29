@@ -429,7 +429,9 @@ class User:
         else:
             # This is a robot
             locale = locale or DEFAULT_LOCALE
-            em = EloModel.robot_elo(locale, robot_level)
+            # TODO: Implement robot Elo ratings
+            # em = EloModel.robot_elo(locale, robot_level)
+            em = None
         if em is not None:
             return EloDict(em.elo, em.human_elo, em.manual_elo)
         # Default to the 'old-style' Elo ratings if the locales match,
