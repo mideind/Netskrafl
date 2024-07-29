@@ -1454,7 +1454,7 @@ def run_polish_robot_vocabs() -> None:
     set_current_alphabet(PolishAlphabet)
     assert _current_alphabet is not None
 
-    print("Starting DAWG build for Zofia/osps37")
+    print("Starting DAWG build for Zofii/osps37")
     db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
@@ -1465,7 +1465,7 @@ def run_polish_robot_vocabs() -> None:
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    print("Starting DAWG build for Idek/osps37")
+    print("Starting DAWG build for Irek/osps37")
     db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
