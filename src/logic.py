@@ -17,14 +17,11 @@
 """
 
 from __future__ import annotations
-from datetime import UTC, datetime, timedelta
-import functools
 
 from typing import (
     Any,
     Callable,
     Dict,
-    FrozenSet,
     Iterable,
     List,
     Mapping,
@@ -39,6 +36,8 @@ from typing import (
 import logging
 import threading
 import re
+import functools
+from datetime import UTC, datetime, timedelta
 
 from flask import url_for
 import firebase
@@ -63,9 +62,10 @@ from skraflmechanics import (
     PassMove,
     ResignMove,
 )
-from skrafluser import MAX_NICKNAME_LENGTH, User
+from skrafluser import MAX_NICKNAME_LENGTH, User, fetch_users
 from skraflplayer import AutoPlayer
 from skrafldb import (
+    EloDict,
     EloModel,
     ListPrefixDict,
     RatingDict,
@@ -681,21 +681,6 @@ def process_move(
     return jsonify(game.client_state(1 - opponent_index))
 
 
-def fetch_users(
-    ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
-) -> Dict[str, User]:
-    """Return a dictionary of users found in the ulist"""
-    # Make a set of user ids by applying the uid_func
-    # to ulist entries (!= None)
-    uids: FrozenSet[str] = frozenset(
-        uid for u in ulist if (uid := (u is not None) and uid_func(u))
-    )
-    # No need for a special case for an empty list
-    user_objects = User.load_multi(uids)
-    # Return a dictionary mapping user ids to users
-    return {uid: user for uid, user in zip(uids, user_objects) if user is not None}
-
-
 # Kludge to create reasonably type-safe functions for each type of
 # dictionary that contains some kind of user id and has a 'live' property
 set_online_status_for_users = functools.partial(firebase.set_online_status, "userid")
@@ -739,7 +724,7 @@ def userlist(query: str, spec: str) -> UserList:
                     newbag=True,
                     ready=True,  # The robots are always ready for a challenge
                     ready_timed=False,  # Timed games are not available for robots
-                    live=True,  # robots are always online
+                    live=True,  # Robots are always online
                     image="",
                 )
             )
@@ -779,7 +764,7 @@ def userlist(query: str, spec: str) -> UserList:
 
         list_online = online.random_sample(MAX_ONLINE)
         ousers = User.load_multi(list_online)
-        # oelos = EloModel.load_multi(locale, list_online)
+        oelos = EloModel.load_multi(locale, list_online)
 
         for lu in ousers:
             if lu is None or not lu.is_displayable():
@@ -791,6 +776,7 @@ def userlist(query: str, spec: str) -> UserList:
             if not (uid := lu.id()) or uid == cuid or uid in blocked:
                 # Don't display the current user in the online list
                 continue
+            rating = oelos.get(uid, lu.elo_for_locale())
             chall = uid in challenges
             result.append(
                 UserListDict(
@@ -799,8 +785,8 @@ def userlist(query: str, spec: str) -> UserList:
                     nick=lu.nickname(),
                     fullname=lu.full_name(),
                     locale=lu.locale,
-                    elo=elo_str(lu.elo()),  # TODO: Use locale-specific Elo
-                    human_elo=elo_str(lu.human_elo()),  # TODO: Use locale-specific Elo
+                    elo=elo_str(rating.elo),
+                    human_elo=elo_str(rating.human_elo),
                     fav=False if cuser is None else cuser.has_favorite(uid),
                     chall=chall,
                     fairplay=lu.fairplay(),
@@ -819,6 +805,7 @@ def userlist(query: str, spec: str) -> UserList:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
+            felos = EloModel.load_multi(locale, i)
             # Look up users' online status later
             func_online_status = online.users_online
             for fu in fusers:
@@ -826,6 +813,7 @@ def userlist(query: str, spec: str) -> UserList:
                     continue
                 if not (favid := fu.id()) or favid in blocked:
                     continue
+                rating = felos.get(favid, fu.elo_for_locale())
                 chall = favid in challenges
                 result.append(
                     UserListDict(
@@ -834,8 +822,8 @@ def userlist(query: str, spec: str) -> UserList:
                         nick=fu.nickname(),
                         fullname=fu.full_name(),
                         locale=fu.locale,  # Note: This might not be the current user's locale
-                        elo=elo_str(fu.elo()),  # TODO: Use locale-specific Elo
-                        human_elo=elo_str(fu.human_elo()),  # TODO: Use locale-specific Elo
+                        elo=elo_str(rating.elo),
+                        human_elo=elo_str(rating.human_elo),
                         fav=True,
                         chall=chall,
                         fairplay=fu.fairplay(),
@@ -852,7 +840,7 @@ def userlist(query: str, spec: str) -> UserList:
         # in the same locale as the requesting user
         if cuid is not None:
             assert cuser is not None
-            # Obtain the user's current human Elo rating
+            # Obtain the current user's human Elo rating
             ed = cuser.elo_for_locale(locale)
             # Look up users with similar Elo ratings
             ei = list(EloModel.list_similar(locale, ed.human_elo, max_len=40))
@@ -896,6 +884,7 @@ def userlist(query: str, spec: str) -> UserList:
         # so the result is also filtered by locale.
         iter_online = online.random_sample(MAX_ONLINE)
         online_users = User.load_multi(iter_online)
+        elos = EloModel.load_multi(locale, iter_online)
 
         for user in online_users:
             if not user or not user.is_ready_timed() or not user.is_displayable():
@@ -909,6 +898,7 @@ def userlist(query: str, spec: str) -> UserList:
                 # Don't include the current user in the list;
                 # also don't include users that are blocked by the current user
                 continue
+            rating = elos.get(user_id, user.elo_for_locale())
             result.append(
                 UserListDict(
                     userid=user_id,
@@ -916,8 +906,8 @@ def userlist(query: str, spec: str) -> UserList:
                     nick=user.nickname(),
                     fullname=user.full_name(),
                     locale=user.locale,
-                    elo=elo_str(user.elo()),  # TODO: Use locale-specific Elo
-                    human_elo=elo_str(user.human_elo()),  # TODO: Use locale-specific Elo
+                    elo=elo_str(rating.elo),
+                    human_elo=elo_str(rating.human_elo),
                     fav=False if cuser is None else cuser.has_favorite(user_id),
                     chall=user_id in challenges,
                     fairplay=user.fairplay(),
@@ -948,9 +938,19 @@ def userlist(query: str, spec: str) -> UserList:
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         func_online_status = online.users_online
+        elos = EloModel.load_multi(locale, (uid for ud in si if (uid := ud.get("id"))))
+
         for ud in si:
             if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
                 continue
+            rating = elos.get(
+                uid,
+                EloDict(
+                    ud.get("elo", DEFAULT_ELO),
+                    ud.get("human_elo", DEFAULT_ELO),
+                    DEFAULT_ELO,
+                ),
+            )
             chall = uid in challenges
             result.append(
                 UserListDict(
@@ -959,8 +959,8 @@ def userlist(query: str, spec: str) -> UserList:
                     nick=ud["nickname"],
                     fullname=User.full_name_from_prefs(ud["prefs"]),
                     locale=locale,
-                    elo=elo_str(ud["elo"] or str(DEFAULT_ELO)),
-                    human_elo=elo_str(ud["human_elo"] or str(DEFAULT_ELO)),
+                    elo=elo_str(rating.elo),
+                    human_elo=elo_str(rating.human_elo),
                     fav=False if cuser is None else cuser.has_favorite(uid),
                     chall=chall,
                     live=False,  # Will be filled in later
@@ -1204,8 +1204,10 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             u = User.load_if_exists(opp)
             if u is None:
                 continue
+            # Fetch the Elo rating of the opponent in his own locale
+            rating = u.elo_for_locale()
             uuid = g["uuid"]
-            locale = g["locale"]
+            game_locale = g["locale"]
             nick = u.nickname()
             prefs: Optional[PrefsDict] = g.get("prefs", None)
             fairplay = Game.fairplay_from_prefs(prefs)
@@ -1216,7 +1218,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             result.append(
                 GameListDict(
                     uuid=uuid,
-                    locale=locale,
+                    locale=game_locale,
                     # Mark zombie state
                     url=url_for("web.board", game=uuid, zombie="1"),
                     oppid=opp,
@@ -1239,8 +1241,8 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     fav=False if cuser is None else cuser.has_favorite(opp),
                     tile_count=100,  # All tiles (100%) accounted for
                     robot_level=0,  # Should not be used; zombie games are human-only
-                    elo=u.elo(),
-                    human_elo=u.human_elo(),
+                    elo=rating.elo,
+                    human_elo=rating.human_elo,
                 )
             )
         # Sort zombies in decreasing order by last move,
@@ -1254,16 +1256,18 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
     # Multi-fetch the opponents in the game list
     opponents = fetch_users(i, lambda g: g["opp"])
+    # Multi-fetch the opponents' Elo ratings, in the current player's locale
+    elos = EloModel.load_multi(locale, opponents.keys())
     # Iterate through the game list
     for g in i:
         u = None
         uuid = g["uuid"]
         opp = g["opp"]  # User id of opponent
         ts = g["ts"]
-        locale = g["locale"]
+        game_locale = g["locale"]
         overdue = False
         prefs = g.get("prefs", None)
-        tileset = Game.tileset_from_prefs(locale, prefs)
+        tileset = Game.tileset_from_prefs(game_locale, prefs)
         fairplay = Game.fairplay_from_prefs(prefs)
         new_bag = Game.new_bag_from_prefs(prefs)
         manual = Game.manual_wordcheck_from_prefs(prefs)
@@ -1271,10 +1275,11 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         timed = Game.get_duration_from_prefs(prefs)
         fullname = ""
         robot_level: int = 0
+        rating: Optional[EloDict] = None
         if opp is None:
             # Autoplayer opponent
             robot_level = g["robot_level"]
-            nick = AutoPlayer.name(locale, robot_level)
+            nick = AutoPlayer.name(game_locale, robot_level)
         else:
             # Human opponent
             u = opponents.get(opp)
@@ -1285,6 +1290,10 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 continue
             nick = u.nickname()
             fullname = u.full_name()
+            # If the opponent is in the same locale as the current user,
+            # use the Elo rating that we previously multi-fetched;
+            # otherwise, use the Elo rating in the opponent's own locale
+            rating = elos.get(opp) if u.locale == locale else u.elo_for_locale()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
@@ -1295,7 +1304,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         result.append(
             GameListDict(
                 uuid=uuid,
-                locale=locale,
+                locale=game_locale,
                 url=url_for("web.board", game=uuid),
                 oppid=opp,
                 opp=nick,
@@ -1317,8 +1326,8 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 image="" if u is None else u.thumbnail(),
                 fav=False if cuser is None else cuser.has_favorite(opp),
                 robot_level=robot_level,
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                elo=0 if rating is None else rating.elo,
+                human_elo=0 if rating is None else rating.human_elo,
             )
         )
     # Set the live status of the opponents in the list
@@ -1334,11 +1343,13 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
         return result
 
     cuser = current_user()
+    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
     # Obtain a list of recently finished games where the indicated user was a player
     rlist = GameModel.list_finished_games(cuid, versus=versus, max_len=max_len)
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
+    # Multi-fetch their Elo ratings
+    elos = EloModel.load_multi(locale, opponents.keys())
 
     online = firebase.online_status(locale)
 
@@ -1350,6 +1361,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
 
         prefs = g["prefs"]
         locale = g["locale"]
+        rating: Optional[EloDict] = None
 
         opp: Optional[str] = g["opp"]
         if opp is None:
@@ -1360,10 +1372,12 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
             # Human opponent
             u = opponents.get(opp)
             if u is None:
+                # Second chance, should not happen
                 u = User.load_if_exists(opp)
             if u is None:
                 continue
             nick = u.nickname()
+            rating = elos.get(opp, u.elo_for_locale(locale))
 
         # Calculate the duration of the game in days, hours, minutes
         ts_start = g["ts"]
@@ -1398,8 +1412,8 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
                 },
                 live=False,  # Will be filled in later
                 image="" if u is None else u.thumbnail(),
-                elo=0 if u is None else u.elo(),
-                human_elo=0 if u is None else u.human_elo(),
+                elo=0 if rating is None else rating.elo,
+                human_elo=0 if rating is None else rating.human_elo,
                 fav=False if cuser is None or opp is None else cuser.has_favorite(opp),
             )
         )
@@ -1447,7 +1461,8 @@ def challengelist() -> ChallengeList:
     issued = list(ChallengeModel.list_issued(cuid, max_len=20))
     # Multi-fetch all opponents involved
     opponents = fetch_users(received + issued, lambda c: c[0])
-    u: Optional[User] = None
+    # Multi-fetch their Elo ratings
+    elos = EloModel.load_multi(locale, opponents.keys())
 
     # List the received challenges
     for c in received:
@@ -1456,9 +1471,9 @@ def challengelist() -> ChallengeList:
         if oppid in blocked:
             # Don't list challenges from blocked users
             continue
-        u = opponents.get(oppid)
-        if u is None:
+        if (u := opponents.get(oppid)) is None:
             continue
+        rating = elos.get(oppid, u.elo_for_locale(locale))
         nick = u.nickname()
         result.append(
             ChallengeListDict(
@@ -1473,8 +1488,8 @@ def challengelist() -> ChallengeList:
                 live=False,  # Will be filled in later
                 image=u.thumbnail(),
                 fav=cuser.has_favorite(oppid),
-                elo=u.elo(),
-                human_elo=u.human_elo(),
+                elo=rating.elo,
+                human_elo=rating.human_elo,
             )
         )
     # List the issued challenges
@@ -1485,9 +1500,9 @@ def challengelist() -> ChallengeList:
         # in the list of issued challenges.
         # A possible addition would be to automatically delete issued
         # challenges to a user when blocking that user.
-        u = opponents.get(oppid)
-        if u is None:
+        if (u := opponents.get(oppid)) is None:
             continue
+        rating = elos.get(oppid, u.elo_for_locale(locale))
         nick = u.nickname()
         result.append(
             ChallengeListDict(
@@ -1502,8 +1517,8 @@ def challengelist() -> ChallengeList:
                 live=False,  # Will be filled in later
                 image=u.thumbnail(),
                 fav=cuser.has_favorite(oppid),
-                elo=u.elo(),
-                human_elo=u.human_elo(),
+                elo=rating.elo,
+                human_elo=rating.human_elo,
             )
         )
     # Set the live status of the opponents in the list

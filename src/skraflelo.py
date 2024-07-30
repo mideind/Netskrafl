@@ -127,8 +127,8 @@ def compute_elo_for_game(
     # Manual (Pro Mode) game?
     manual_game = gm.manual_wordcheck()
 
-    urec0 = EloDict(u0.elo(), u0.human_elo(), u0.manual_elo())
-    urec1 = EloDict(u1.elo(), u1.human_elo(), u1.manual_elo())
+    urec0 = u0.elo_dict()
+    urec1 = u1.elo_dict()
 
     # Save the Elo point state used in the calculation
     uelo0 = urec0.elo or DEFAULT_ELO
@@ -186,7 +186,7 @@ def compute_elo_for_game(
         gm.manual_elo1_adj = adj[1]
         urec1.manual_elo = uelo1 + adj[1]
 
-    # Update the user records
+    # Update the user records ('old-style' Elo ratings)
     # This is a provisional update, to be confirmed during
     # the authoritative calculation performed by a cron job
     u0.set_elo(urec0)
@@ -374,7 +374,7 @@ def compute_locale_elo_for_game(
 
     # Upsert the EloModel/RobotModel entities
     if uid0:
-        assert isinstance(em0, EloModel)
+        assert em0 is None or isinstance(em0, EloModel)
         EloModel.upsert(
             em0,
             locale,
@@ -382,7 +382,7 @@ def compute_locale_elo_for_game(
             urec0,
         )
     else:
-        assert isinstance(em0, RobotModel)
+        assert em0 is None or isinstance(em0, RobotModel)
         RobotModel.upsert(
             em0,
             locale,
@@ -390,8 +390,7 @@ def compute_locale_elo_for_game(
             urec0.elo,
         )
     if uid1:
-        # TODO: Handle robots
-        assert isinstance(em1, EloModel)
+        assert em1 is None or isinstance(em1, EloModel)
         EloModel.upsert(
             em1,
             locale,
@@ -399,7 +398,7 @@ def compute_locale_elo_for_game(
             urec1,
         )
     else:
-        assert isinstance(em1, RobotModel)
+        assert em1 is None or isinstance(em1, RobotModel)
         RobotModel.upsert(
             em1,
             locale,
