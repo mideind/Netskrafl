@@ -34,14 +34,11 @@ from typing import (
 )
 
 import threading
-
-# import logging
-
 from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_ELO, DEFAULT_LOCALE, running_local
+from config import DEFAULT_LOCALE, running_local
 
 from languages import (
     Alphabet,
@@ -53,7 +50,7 @@ from languages import (
     set_game_locale,
 )
 from skrafldb import (
-    EloDict,
+    DEFAULT_ELO_DICT,
     PrefsDict,
     Unique,
     GameModel,
@@ -539,13 +536,13 @@ class Game:
                 # only use on the 'old style' (locale-independent) ratings
                 # if the user locale matches the game locale.
                 if u0 is None or u0.locale != self.locale:
-                    orig0 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
+                    orig0 = DEFAULT_ELO_DICT
                 else:
-                    orig0 = EloDict(u0.elo(), u0.human_elo(), u0.manual_elo())
+                    orig0 = u0.elo_dict()
                 if u1 is None or u1.locale != self.locale:
-                    orig1 = EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
+                    orig1 = DEFAULT_ELO_DICT
                 else:
-                    orig1 = EloDict(u1.elo(), u1.human_elo(), u1.manual_elo())
+                    orig1 = u1.elo_dict()
                 if u0 is not None and u1 is not None:
                     # Human-only game: calculate 'old style' Elo points.
                     # Note that this changes the Elo ratings stored in the User

@@ -94,14 +94,13 @@ from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
+from config import DEFAULT_ELO, DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
 from cache import memcache
 
 
 # Type definitions
 _T = TypeVar("_T", covariant=True)
-
-_T_Model = TypeVar("_T_Model", bound="ndb.Model")
+_T_Model = TypeVar("_T_Model", bound=ndb.Model)
 
 
 class PrefsDict(TypedDict, total=False):
@@ -266,6 +265,11 @@ class EloDict:
     manual_elo: int
 
 
+DEFAULT_ELO_DICT = EloDict(
+    elo=DEFAULT_ELO, human_elo=DEFAULT_ELO, manual_elo=DEFAULT_ELO
+)
+
+
 class Query(Generic[_T_Model], ndb.Query):
     """A type-safer wrapper around ndb.Query"""
 
@@ -362,11 +366,11 @@ class Key(Generic[_T_Model], ndb.Key):
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
 
-    def parent(self) -> Optional[Key[_T_Model]]:
-        return cast(Optional[Key[_T_Model]], cast(Any, super()).parent())
+    def parent(self) -> Optional[Key[ndb.Model]]:
+        return cast(Optional[Key[ndb.Model]], cast(Any, super()).parent())
 
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        return cast(Optional[_T_Model], super().get(*args, **kwargs))  # type: ignore
+        return cast(Optional[_T_Model], cast(Any, super()).get(*args, **kwargs))
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
         cast(Any, super()).delete(*args, **kwargs)
@@ -943,77 +947,81 @@ class EloModelFuture(Future["EloModel"]):
 
 
 class EloModel(Model["EloModel"]):
-    """Models the current Elo ratings for a user or a robot, by locale"""
+    """Models the current Elo ratings for a user, by locale"""
 
-    # An entity contains either a UserModel key or a robot identifier
-    # (but not both). Robot identifiers are "robot-<level>", where <level>
-    # is typically 0, 8, 15 or 20 (see robot levels in skraflplayer.py)
+    # The associated UserModel entity is an ancestor of this entity
     locale = Model.Str()
-    user: Optional[Key[UserModel]] = UserModel.OptionalDbKey(kind=UserModel)
-    robot = Model.OptionalStr()
     timestamp = Model.Datetime(auto_now_add=True)
     elo = Model.Int(indexed=True)
     human_elo = Model.Int(indexed=True)
     manual_elo = Model.Int(indexed=True)
 
+    @staticmethod
+    def id(locale: str, uid: str) -> str:
+        """Return the id of an EloModel entity"""
+        return f"{uid}:{locale}"
+
     @classmethod
     def user_elo(cls, locale: str, uid: str) -> Optional[EloModel]:
         """Retrieve the EloModel entity for a user, in the given locale"""
-        key: Key[UserModel] = Key(UserModel, uid)
-        q = cls.query(
-            ndb.AND(
-                EloModel.locale == locale,
-                EloModel.user == key,  # type: ignore
-            )
-        )
-        return q.get()
+        if not locale or not uid:
+            return None
+        key: Key[EloModel] = Key(UserModel, uid, EloModel, EloModel.id(locale, uid))
+        return key.get()
 
     @classmethod
-    def robot_elo(cls, locale: str, robot_level: int) -> Optional[EloModel]:
-        """Retrieve the EloModel entity for a robot, in the given locale"""
-        key = f"robot-{robot_level}"
-        q = cls.query(
-            ndb.AND(
-                EloModel.locale == locale,
-                EloModel.robot == key,
-            )
+    def create(
+        cls,
+        locale: str,
+        uid: str,
+        ratings: EloDict
+    ) -> Optional[EloModel]:
+        """Create a new EloModel entity and return it"""
+        if not locale or not uid:
+            return None
+        key: Key[UserModel] = Key(UserModel, uid)
+        return cls(
+            id=EloModel.id(locale, uid),
+            parent=key,
+            locale=locale,
+            elo=ratings.elo,
+            human_elo=ratings.human_elo,
+            manual_elo=ratings.manual_elo,
         )
-        return q.get()
 
     @classmethod
     def upsert(
         cls,
         em: Optional[EloModel],
         locale: str,
-        uid: Optional[str],
-        robot_level: int,
+        uid: str,
         ratings: EloDict,
-    ) -> None:
-        """Update the Elo ratings for a user or a robot, in the given locale"""
+    ) -> bool:
+        """Update the Elo ratings for a user, in the given locale"""
+        assert locale
+        assert uid
         if em is None:
-            # Insert a new entity
-            user: Optional[Key[UserModel]] = Key(UserModel, uid) if uid else None
-            robot: Optional[str] = None if uid else f"robot-{robot_level}"
-            em = cls(
-                locale=locale,
-                user=user,
-                robot=robot,
-                elo=ratings.elo,
-                human_elo=ratings.human_elo,
-                manual_elo=ratings.manual_elo,
-            )
+            # Create a new entity
+            if (em := cls.create(locale, uid, ratings)) is None:
+                return False
         else:
             # Update existing entity
-            # Do a sanity check; the existing entity must be for the same user or robot
-            if em.user is not None:
-                assert em.user.id() == uid
-            else:
-                assert em.robot == f"robot-{robot_level}"
+            # Do a sanity check; the existing entity must be for the same user
+            # and locale
+            key = em.key
+            p = key.parent()
+            if p is None or p.id() != uid:
+                return False
+            if em.locale != locale:
+                return False
+            if key.id() != EloModel.id(locale, uid):
+                return False
             em.elo = ratings.elo
             em.human_elo = ratings.human_elo
             em.manual_elo = ratings.manual_elo
             em.timestamp = datetime.now(UTC)
         em.put()
+        return True
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:
@@ -1021,7 +1029,7 @@ class EloModel(Model["EloModel"]):
         if not uid:
             return
         key: Key[UserModel] = Key(UserModel, uid)
-        q = cls.query(EloModel.user == key)
+        q = cls.query(ancestor=key)
         delete_multi(q.iter(keys_only=True))
 
     @classmethod
@@ -1042,10 +1050,13 @@ class EloModel(Model["EloModel"]):
             q = q.order(-EloModel.elo)
             p = lambda em: em.elo
         for ix, em in enumerate(q.fetch(limit=100)):
-            userid = (em.user.id() if em.user else em.robot) or ""
+            user = em.key.parent()
+            if user is None:
+                # Should not happen, but better safe than sorry
+                continue
             yield RatingForLocaleDict(
                 rank=ix + 1,
-                userid=userid,
+                userid=user.id(),
                 elo=p(em),
             )
 
@@ -1107,9 +1118,91 @@ class EloModel(Model["EloModel"]):
         result = lower[ix:] + higher[0 : max_len - (len_lower - ix)]
         # Return the user ids
         for em in result:
-            # Note: we never return robots
-            if em.user is not None and (uid := em.user.id()):
+            user = em.key.parent()
+            if user is not None and (uid := user.id()):
                 yield uid, EloDict(em.elo, em.human_elo, em.manual_elo)
+
+    @classmethod
+    def load_multi(cls, locale: str, user_ids: Iterable[str]) -> Dict[str, EloDict]:
+        """Return the Elo ratings of multiple users as a dictionary"""
+        result: Dict[str, EloDict] = {}
+        MAX_CHUNK = 250
+        keys: List[Key[EloModel]] = []
+
+        def fetch_keys() -> None:
+            nonlocal result, keys
+            recs = cast(
+                List[Optional[EloModel]],
+                # The following cast is due to strange typing
+                # in ndb (the use of 'Type' is almost certainly a bug there)
+                ndb.get_multi(cast(Sequence[Type[Key[EloModel]]], keys)),
+            )
+            for em in recs:
+                if em is not None:
+                    if parent := em.key.parent():
+                        result[parent.id()] = EloDict(
+                            em.elo, em.human_elo, em.manual_elo
+                        )
+
+        for uid in user_ids:
+            if not uid:
+                continue
+            key: Key[EloModel] = Key(UserModel, uid, EloModel, EloModel.id(locale, uid))
+            keys.append(key)
+            if len(keys) >= MAX_CHUNK:
+                fetch_keys()
+                keys = []
+        if keys:
+            fetch_keys()
+        return result
+
+
+class RobotModel(Model["RobotModel"]):
+    """Models the current Elo ratings for a robot, by locale"""
+
+    elo = Model.Int()  # Not indexed
+
+    @staticmethod
+    def id(locale: str, level: int) -> str:
+        """Return the key for a robot entity"""
+        return f"robot-{level}:{locale}"
+
+    @classmethod
+    def robot_elo(cls, locale: str, level: int) -> Optional[RobotModel]:
+        """Retrieve the RobotModel entity for a robot, in the given locale"""
+        if not locale or level < 0:
+            return None
+        key: Key[RobotModel] = Key(RobotModel, RobotModel.id(locale, level))
+        return key.get()
+
+    @classmethod
+    def upsert(
+        cls,
+        rm: Optional[RobotModel],
+        locale: str,
+        level: int,
+        elo: int,
+    ) -> bool:
+        """Update the Elo rating for a robot, in the given locale"""
+        assert locale
+        if rm is None:
+            # Insert a new entity
+            rm = cls(
+                id=RobotModel.id(locale, level),
+                elo=elo,
+            )
+        else:
+            # Update existing entity
+            # Do a sanity check; the existing entity must be for the same robot
+            if rm.key.id() != RobotModel.id(locale, level):
+                logging.warning(
+                    f"Attempt to update wrong robot entity: "
+                    f"{rm.key.id()} vs. {RobotModel.id(locale, level)}"
+                )
+                return False
+            rm.elo = elo
+        rm.put()
+        return True
 
 
 class MoveModel(Model["MoveModel"]):
@@ -1458,7 +1551,7 @@ class FavoriteModel(Model["FavoriteModel"]):
         """Query for a list of favorite users for the given user"""
         if not user_id:
             return
-        k: Optional[Key[UserModel]] = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ancestor=k)
         for fm in q.fetch(max_len):
             if fm.destuser is not None:
@@ -1492,7 +1585,7 @@ class FavoriteModel(Model["FavoriteModel"]):
     @classmethod
     def add_relation(cls, src_id: str, dest_id: str) -> None:
         """Add a favorite relation between the two users"""
-        fm = FavoriteModel(parent=Key(UserModel, src_id))
+        fm = cls(parent=Key(UserModel, src_id))
         fm.set_dest(dest_id)
         fm.put()
 
@@ -1586,7 +1679,7 @@ class ChallengeModel(Model["ChallengeModel"]):
         cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
     ) -> None:
         """Add a challenge relation between the two users"""
-        cm = ChallengeModel(parent=Key(UserModel, src_id))
+        cm = cls(parent=Key(UserModel, src_id))
         cm.set_dest(dest_id)
         cm.prefs = PrefsDict() if prefs is None else prefs
         cm.put()

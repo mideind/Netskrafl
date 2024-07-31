@@ -14,13 +14,14 @@
 """
 
 from __future__ import annotations
-import functools
-import logging
 
 from typing import (
+    Callable,
     Dict,
+    FrozenSet,
     Mapping,
     NotRequired,
+    TypeVar,
     TypedDict,
     Any,
     Optional,
@@ -33,7 +34,8 @@ from typing import (
 )
 
 import threading
-
+import functools
+import logging
 from datetime import UTC, datetime, timedelta
 import re
 
@@ -48,8 +50,9 @@ from config import (
     DEFAULT_ELO,
 )
 from languages import Alphabet, to_supported_locale
-from firebase import online_status, set_online_status
+from firebase import OnlineStatus, online_status, set_online_status
 from skrafldb import (
+    DEFAULT_ELO_DICT,
     PrefsDict,
     TransactionModel,
     UserModel,
@@ -65,6 +68,8 @@ from skraflmechanics import Error
 
 
 # Type definitions
+
+T = TypeVar("T")
 
 
 class UserSummaryDict(TypedDict):
@@ -391,17 +396,14 @@ class User:
             return False
         return not nick.startswith(("https://", "http://", "robot-"))
 
-    def elo(self) -> int:
-        """Return the overall (human and robot) Elo points of the user"""
-        return self._elo or DEFAULT_ELO
-
-    def human_elo(self) -> int:
-        """Return the human-only Elo points of the user"""
-        return self._human_elo or DEFAULT_ELO
-
-    def manual_elo(self) -> int:
-        """Return the human-only, manual-game-only Elo points of the user"""
-        return self._manual_elo or DEFAULT_ELO
+    def elo_dict(self) -> EloDict:
+        """Return the Elo ratings of the user as a dictionary"""
+        # These are the 'old-style' Elo ratings, which are not strictly locale-aware
+        return EloDict(
+            self._elo or DEFAULT_ELO,
+            self._human_elo or DEFAULT_ELO,
+            self._manual_elo or DEFAULT_ELO,
+        )
 
     def set_elo(self, ratings: EloDict) -> None:
         """Set the Elo points for the user"""
@@ -412,36 +414,18 @@ class User:
         self._human_elo = ratings.human_elo
         self._manual_elo = ratings.manual_elo
 
-    @classmethod
-    def user_or_robot_elo_for_locale(
-        cls,
-        locale: Optional[str],
-        user: Optional[User],
-        robot_level: int,
-    ) -> EloDict:
-        """Return the Elo ratings of the user for the given locale"""
-        em: Optional[EloModel] = None
-        if user is not None:
-            # This is a user
-            locale = locale or user.locale
-            if uid := user.id():
-                em = EloModel.user_elo(locale, uid)
-        else:
-            # This is a robot
-            locale = locale or DEFAULT_LOCALE
-            em = EloModel.robot_elo(locale, robot_level)
-        if em is not None:
-            return EloDict(em.elo, em.human_elo, em.manual_elo)
-        # Default to the 'old-style' Elo ratings if the locales match,
-        # otherwise return the default Elo ratings
-        if user is not None and locale == user.locale:
-            return EloDict(user.elo(), user.human_elo(), user.manual_elo())
-        return EloDict(DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO)
-
     def elo_for_locale(self, locale: Optional[str] = None) -> EloDict:
         """Return the Elo ratings of the user for the given locale,
         or for the user's current locale if None"""
-        return self.user_or_robot_elo_for_locale(locale, self, 0)
+        locale = locale or self.locale or DEFAULT_LOCALE
+        if uid := self.id():
+            if (em := EloModel.user_elo(locale, uid)) is not None:
+                return EloDict(em.elo, em.human_elo, em.manual_elo)
+        # Default to the 'old-style' Elo ratings if the locales match
+        if locale == self.locale:
+            return self.elo_dict()
+        # No Elo data already available; go back to defaults
+        return DEFAULT_ELO_DICT
 
     def num_human_games(self) -> int:
         """Return the number of completed human games for this user"""
@@ -843,47 +827,54 @@ class User:
         return self._blocks
 
     def _summary_list(
-        self, uids: Iterable[str], *, is_favorite: bool = False
+        self,
+        uids: Iterable[str],
+        locale: str,
+        online: OnlineStatus,
+        *,
+        is_favorite: bool = False,
     ) -> UserSummaryList:
         """Return a list of summary data about a set of users"""
         result: UserSummaryList = []
-        online = online_status(self.locale)
-        for uid in uids:
-            u = User.load_if_exists(uid)
-            if u is not None:
-                result.append(
-                    UserSummaryDict(
-                        uid=uid,
-                        nick=u.nickname(),
-                        name=u.full_name(),
-                        image=u.thumbnail(),
-                        locale=u.locale,
-                        location=u.location,
-                        elo=u.elo(),
-                        human_elo=u.human_elo(),
-                        manual_elo=u.manual_elo(),
-                        ready=u.is_ready(),
-                        ready_timed=u.is_ready_timed(),
-                        fairplay=u.fairplay(),
-                        favorite=is_favorite or self.has_favorite(uid),
-                        live=False,  # Will be filled in later
-                        new_board=u.new_board(),
-                    )
+        users = fetch_users(uids, lambda uid: uid)
+        elos = EloModel.load_multi(locale, users.keys())
+        for uid, u in users.items():
+            rating = elos.get(uid) or u.elo_for_locale(locale)
+            result.append(
+                UserSummaryDict(
+                    uid=uid,
+                    nick=u.nickname(),
+                    name=u.full_name(),
+                    image=u.thumbnail(),
+                    locale=u.locale,
+                    location=u.location,
+                    elo=rating.elo,
+                    human_elo=rating.human_elo,
+                    manual_elo=rating.manual_elo,
+                    ready=u.is_ready(),
+                    ready_timed=u.is_ready_timed(),
+                    fairplay=u.fairplay(),
+                    favorite=is_favorite or self.has_favorite(uid),
+                    live=False,  # Will be filled in later
+                    new_board=u.new_board(),
                 )
+            )
         set_online_status_for_summaries(result, online.users_online)
         return result
 
-    def list_blocked(self) -> List[UserSummaryDict]:
+    def list_blocked(self, locale: str, online: OnlineStatus) -> List[UserSummaryDict]:
         """Returns a list of users blocked by this user"""
         self._load_blocks()
         assert self._blocks is not None
-        return self._summary_list(self._blocks)
+        return self._summary_list(self._blocks, locale, online)
 
-    def list_favorites(self) -> List[UserSummaryDict]:
+    def list_favorites(
+        self, locale: str, online: OnlineStatus
+    ) -> List[UserSummaryDict]:
         """Returns a list of users that this user favors"""
         self._load_favorites()
         assert self._favorites is not None
-        return self._summary_list(self._favorites, is_favorite=True)
+        return self._summary_list(self._favorites, locale, online, is_favorite=True)
 
     def report(self, destuser_id: str, code: int, text: str) -> bool:
         """The current user is reporting another user"""
@@ -1256,10 +1247,11 @@ class User:
 
         # Add dynamic attributes to the returned object
 
+        online = online_status(cuser.locale or DEFAULT_LOCALE)
         # Is the user online in the current user's locale?
-        live = True  # The current user is always live
-        if uid != cuid:
-            online = online_status(cuser.locale or DEFAULT_LOCALE)
+        if uid == cuid:
+            live = True  # The current user is always live
+        else:
             live = online.user_online(uid)
         profile["live"] = live
 
@@ -1289,9 +1281,9 @@ class User:
 
         if uid == cuser.id():
             # If current user, include a list of favorite users
-            profile["list_favorites"] = cuser.list_favorites()
+            profile["list_favorites"] = cuser.list_favorites(cuser.locale, online)
             # Also, include a list of blocked users
-            profile["list_blocked"] = cuser.list_blocked()
+            profile["list_blocked"] = cuser.list_blocked(cuser.locale, online)
             # Also, include a 30-day history of Elo scores
             now = datetime.now(UTC)
             # Time at midnight, i.e. start of the current day
@@ -1339,3 +1331,18 @@ class User:
             profile[f"elo_{PERIOD}_days"] = result
 
         return Error.LEGAL, profile
+
+
+def fetch_users(
+    ulist: Iterable[T], uid_func: Callable[[T], Optional[str]]
+) -> Dict[str, User]:
+    """Return a dictionary of users found in the ulist"""
+    # Make a set of user ids by applying the uid_func
+    # to ulist entries (!= None)
+    uids: FrozenSet[str] = frozenset(
+        uid for u in ulist if (uid := (u is not None) and uid_func(u))
+    )
+    # No need for a special case for an empty list
+    user_objects = User.load_multi(uids)
+    # Return a dictionary mapping user ids to users
+    return {uid: user for uid, user in zip(uids, user_objects) if user is not None}

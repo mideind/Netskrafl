@@ -23,8 +23,9 @@ from flask import request
 from flask.wrappers import Response
 
 from basics import jsonify
+from config import DEFAULT_ELO, DEFAULT_LOCALE
 from languages import Alphabet
-from skrafldb import Client, iter_q, Query, UserModel, GameModel
+from skrafldb import Client, EloDict, EloModel, iter_q, Query, UserModel, GameModel
 from skrafluser import User
 from skraflgame import Game
 
@@ -62,6 +63,50 @@ def deferred_user_update() -> None:
                 f"already scanned {scan} entities and updated {count}"
             )
     logging.info(f"Completed scanning {scan} and updating {count} user entities")
+
+
+def deferred_elo_init() -> None:
+    """Initialize EloModel entries for all users"""
+    logging.info("Deferred EloModel initialization starting")
+    CHUNK_SIZE = 500
+    scan = 0
+    puts: List[EloModel] = []
+    with Client.get_context():
+        try:
+            q = UserModel.query()
+            for um in iter_q(
+                q,
+                chunk_size=CHUNK_SIZE,
+                # Projection only works if there exists an index with
+                # all of the projected properties, which is not currently the case.
+                # projection=["locale", "elo", "human_elo", "manual_elo"],
+            ):
+                if scan % 1000 == 0:
+                    logging.info(f"Completed scanning {scan} user entities")
+                scan += 1
+                if um.elo == 0:
+                    # This user has probably not played any games; skip
+                    continue
+                ed = EloDict(
+                    um.elo or DEFAULT_ELO,
+                    um.human_elo or DEFAULT_ELO,
+                    um.manual_elo or DEFAULT_ELO,
+                )
+                locale = um.locale or DEFAULT_LOCALE
+                em = EloModel.create(locale, um.key.id(), ed)
+                if em is not None:
+                    puts.append(em)
+                    if len(puts) >= CHUNK_SIZE:
+                        EloModel.put_multi(puts)
+                        puts = []
+            if puts:
+                EloModel.put_multi(puts)
+        except Exception as e:
+            logging.info(
+                f"Exception in deferred_elo_init(): {repr(e)}, "
+                f"already scanned {scan} entities"
+            )
+    logging.info(f"Completed scanning {scan} user entities")
 
 
 '''
@@ -109,6 +154,13 @@ def admin_userupdate() -> Response:
     logging.info("Starting user update")
     Thread(target=deferred_user_update).start()
     return jsonify(ok=True, result="User update started")
+
+
+def admin_eloinit() -> Response:
+    """Start en EloModel initialization background task"""
+    logging.info("Starting Elo initialization")
+    Thread(target=deferred_elo_init).start()
+    return jsonify(ok=True, result="Elo initialization started")
 
 
 '''
