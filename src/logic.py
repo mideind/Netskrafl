@@ -998,7 +998,8 @@ def userlist(query: str, spec: str) -> UserList:
 
 
 def rating(kind: str) -> List[UserRatingDict]:
-    """Return a list of top players by Elo rating of the given kind ('all' or 'human')"""
+    """Return a list of top players by Elo rating
+    of the given kind ('all', 'human', 'manual')"""
     result: List[UserRatingDict] = []
     cuser = current_user()
     cuid = None if cuser is None else cuser.id()
@@ -1104,7 +1105,8 @@ def rating(kind: str) -> List[UserRatingDict]:
 
 
 def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
-    """Return a list of top players by Elo rating of the given kind ('all' or 'human')"""
+    """Return a list of top players by Elo rating
+    of the given kind ('all', 'human', 'manual')"""
     result: List[UserRatingForLocaleDict] = []
     cuser = current_user()
     user_locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
@@ -1114,15 +1116,18 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
 
     cache_key = f"{kind}:{locale}"
     rating_list: Optional[List[RatingForLocaleDict]] = memcache.get(
-        cache_key, namespace="rating"
+        cache_key, namespace="rating-locale"
     )
     if rating_list is None:
         # Not found: do a query
         rating_list = list(EloModel.list_rating(kind, locale))
         # Store the result in the cache with a lifetime of 1 hour
-        memcache.set(cache_key, rating_list, time=1 * 60 * 60, namespace="rating")
+        memcache.set(cache_key, rating_list, time=1 * 60 * 60, namespace="rating-locale")
 
     # Prefetch the users in the rating list
+    # TODO: Consider caching the user information that is actually
+    # returned in the rating list, to avoid re-fetching it for every call
+    # (which can get pretty expensive)
     users = fetch_users(rating_list, lambda x: x["userid"])
 
     for ru in rating_list:

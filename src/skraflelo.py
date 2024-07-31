@@ -270,6 +270,7 @@ def compute_locale_elo_for_game(
 
     # Obtain the current Elo status of the players (users or robots)
     if em0 is None:
+        # There was no EloModel or RobotModel entity for player 0
         if u0 is not None and u0.locale == locale:
             # Obtain Elo ratings from the user entity, via the 'old' mechanism
             uelo0 = orig0.elo
@@ -281,6 +282,7 @@ def compute_locale_elo_for_game(
     elif u0 is None:
         # Robot
         assert isinstance(em1, RobotModel)
+        # Robots never have 'human' or 'manual' Elo ratings
         uelo0, u0_human, u0_manual = em0.elo, DEFAULT_ELO, DEFAULT_ELO
     else:
         # Human player
@@ -298,6 +300,7 @@ def compute_locale_elo_for_game(
     elif u1 is None:
         # Robot
         assert isinstance(em1, RobotModel)
+        # Robots never have 'human' or 'manual' Elo ratings
         uelo1, u1_human, u1_manual = em1.elo, DEFAULT_ELO, DEFAULT_ELO
     else:
         # Human player
