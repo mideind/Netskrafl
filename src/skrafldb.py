@@ -970,6 +970,26 @@ class EloModel(Model["EloModel"]):
         return key.get()
 
     @classmethod
+    def create(
+        cls,
+        locale: str,
+        uid: str,
+        ratings: EloDict
+    ) -> Optional[EloModel]:
+        """Create a new EloModel entity and return it"""
+        if not locale or not uid:
+            return None
+        key: Key[UserModel] = Key(UserModel, uid)
+        return cls(
+            id=EloModel.id(locale, uid),
+            parent=key,
+            locale=locale,
+            elo=ratings.elo,
+            human_elo=ratings.human_elo,
+            manual_elo=ratings.manual_elo,
+        )
+
+    @classmethod
     def upsert(
         cls,
         em: Optional[EloModel],
@@ -981,16 +1001,9 @@ class EloModel(Model["EloModel"]):
         assert locale
         assert uid
         if em is None:
-            # Insert a new entity, with an id (custom key) of "uid:locale"
-            user: Key[UserModel] = Key(UserModel, uid)
-            em = cls(
-                id=EloModel.id(locale, uid),
-                parent=user,
-                locale=locale,
-                elo=ratings.elo,
-                human_elo=ratings.human_elo,
-                manual_elo=ratings.manual_elo,
-            )
+            # Create a new entity
+            if (em := cls.create(locale, uid, ratings)) is None:
+                return False
         else:
             # Update existing entity
             # Do a sanity check; the existing entity must be for the same user

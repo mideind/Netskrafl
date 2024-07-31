@@ -8,7 +8,7 @@
 
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict
 
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -296,17 +296,9 @@ def test_elo_locale(
     assert resp.status_code == 200
     # Make life a little more convenient
     play = functools.partial(play_game, client1, client2, u1, u2)
-    winners: List[Tuple[str, str]] = []
-    # Play two games in the en_US locale
-    winners.append(("en_US", play("en_US")))
-    winners.append(("en_US", play("en_US")))
-    # Play two games in the Norwegian (bokmål) locale
-    winners.append(("nb_NO", play("nb_NO")))
-    winners.append(("nb_NO", play("nb_NO")))
-    # Play an additional game in the en_US locale
-    winners.append(("en_US", play("en_US")))
-    # Play one game in the Icelandic locale
-    winners.append(("is_IS", play("is_IS")))
+    # Play a sequence of games in different locales
+    locales = ["en_US", "en_US", "nb_NO", "nb_NO", "en_US", "is_IS"]
+    winners = list(map(lambda locale: (locale, play(locale)), locales))
     # Manually calculate the Elo ratings of the two players
     rating1: Dict[str, int] = defaultdict(lambda: 1200)
     rating2: Dict[str, int] = defaultdict(lambda: 1200)
@@ -331,9 +323,8 @@ def test_elo_locale(
         rating1[locale] = elo1 + adj1
         rating2[locale] = elo2 + adj2
     # Check the Elo ratings of the two players in the tested locales
-    check_ratings("en_US", client1, client2, rating1, rating2)
-    check_ratings("nb_NO", client1, client2, rating1, rating2)
-    check_ratings("is_IS", client1, client2, rating1, rating2)
+    for locale in set(locales):
+        check_ratings(locale, client1, client2, rating1, rating2)
     # Check that the ratings remain at 1200 for pl_PL (no games played)
     empty_rating: Dict[str, int] = defaultdict(lambda: 1200)
     check_ratings("pl_PL", client1, client2, empty_rating, empty_rating)
