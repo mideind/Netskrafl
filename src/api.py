@@ -97,6 +97,7 @@ from logic import (
     rating_for_locale,
     set_online_status_for_chats,
     autoplayer_lock,
+    submit_move,
     userlist,
     gamelist,
     recentlist,
@@ -251,11 +252,6 @@ def submitmove_api() -> ResponseType:
     rq = RequestData(request)
     uuid = rq.get("uuid")
 
-    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
-
-    if game is None:
-        return jsonify(result=Error.GAME_NOT_FOUND)
-
     movelist = rq.get_list("moves")
     movecount = rq.get_int("mcount")
     if current_app.testing:
@@ -263,38 +259,29 @@ def submitmove_api() -> ResponseType:
     else:
         validate = True
 
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result=Error.OUT_OF_SYNC)
-
-    if game.player_id_to_move() != current_user_id():
-        return jsonify(result=Error.WRONG_USER)
-
-    # Process the movestring
-    # Try twice in case of timeout or other exception
-    result: ResponseType = jsonify(result=Error.LEGAL)
-    for attempt in reversed(range(2)):
+    result: ResponseType = ""
+    # Make two attempts (retry once) if an exception occurs
+    for attempt in range(2):
         # pylint: disable=broad-except
         try:
-            # TODO: process_move() may change the game object and
-            # is not guaranteed to be idempotent, so calling it more
-            # than once for the same object is actually not ideal.
-            result = process_move(game, movelist, validate=validate)
+            result = submit_move(uuid, movelist, movecount, validate)
         except Exception as e:
-            logging.info(
+            # Log the exception and try again
+            # Note that submit_move() is decorated with ndb.transactional()
+            # and thus idempotent, so retrying should be safe
+            logging.exception(
                 "Exception in submitmove(): {0} {1}".format(
                     e, "- retrying" if attempt > 0 else ""
                 )
             )
-            if attempt == 0:
-                # Final attempt failed
-                result = jsonify(result=Error.SERVER_ERROR)
+            # TODO: Consider adding a check here for exception classes
+            # where it doesn't make sense to retry the operation; for
+            # those classes we can break immediately out of the loop
         else:
             # No exception: done
             break
-    assert result is not None
-    return result
+
+    return result or jsonify(result=Error.SERVER_ERROR)
 
 
 @api_route("/gamestate")

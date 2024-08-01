@@ -281,7 +281,7 @@ def compute_locale_elo_for_game(
             uelo0, u0_human, u0_manual = DEFAULT_ELO, DEFAULT_ELO, DEFAULT_ELO
     elif u0 is None:
         # Robot
-        assert isinstance(em1, RobotModel)
+        assert isinstance(em0, RobotModel)
         # Robots never have 'human' or 'manual' Elo ratings
         uelo0, u0_human, u0_manual = em0.elo, DEFAULT_ELO, DEFAULT_ELO
     else:

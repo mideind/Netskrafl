@@ -39,6 +39,7 @@ import re
 import functools
 from datetime import UTC, datetime, timedelta
 
+from google.cloud import ndb  # type: ignore
 from flask import url_for
 import firebase
 
@@ -679,6 +680,22 @@ def process_move(
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(1 - opponent_index))
+
+
+@ndb.transactional()  # type: ignore
+def submit_move(uuid: str, movelist: List[Any], movecount: int, validate: bool) -> ResponseType:
+    """Idempotent, transactional function to process an incoming move"""
+    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
+    if game is None:
+        return jsonify(result=Error.GAME_NOT_FOUND)
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result=Error.OUT_OF_SYNC)
+    if game.player_id_to_move() != current_user_id():
+        return jsonify(result=Error.WRONG_USER)
+    # Parameters look superficially OK: process the move
+    return process_move(game, movelist, validate=validate)
 
 
 # Kludge to create reasonably type-safe functions for each type of
