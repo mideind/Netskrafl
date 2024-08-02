@@ -1501,7 +1501,7 @@ def initgame_api() -> ResponseType:
         "game": game_id,
         "timestamp": now,
         "over": False,
-        # !!! TODO: note that the to_move index is not an index
+        # Note that the to_move index is NOT an index
         # into the players tuple, which may be reversed depending on
         # which player played the initial move
         "players": (uid, opp),

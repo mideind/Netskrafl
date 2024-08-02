@@ -122,8 +122,8 @@ class Actions {
         );
       } else if (routeName == "main") {
         // Force reload of lists
-        // !!! TBD: This may not be necessary,
-        // !!! if all Firebase notifications are acted upon
+        // TODO: This may not be necessary,
+        // if all Firebase notifications are acted upon
         model.gameList = null;
         model.userListCriteria = null;
         model.userList = null;

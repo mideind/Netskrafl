@@ -1051,7 +1051,6 @@ class User:
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
-            # !!! TODO: Return the entire UserModel object to avoid re-loading it
             uld = make_login_dict(
                 user_id=um.user_id(),
                 account=um.account,
