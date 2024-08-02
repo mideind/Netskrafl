@@ -38,7 +38,7 @@ from threading import Thread
 from flask import request, Blueprint
 from flask.wrappers import Request
 
-from config import running_local, ResponseType
+from config import running_local, ResponseType, DEFAULT_ELO
 from cache import memcache
 from skrafldb import (
     Context,
@@ -52,7 +52,6 @@ from skrafldb import (
     iter_q,
     StatsDict,
 )
-from skrafluser import User
 from skraflgame import Game
 from skraflelo import ESTABLISHED_MARK, compute_elo
 
@@ -271,8 +270,8 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 est0 = urec0.human_games > ESTABLISHED_MARK
                 est1 = urec1.human_games > ESTABLISHED_MARK
 
-                uelo0 = urec0.human_elo or User.DEFAULT_ELO
-                uelo1 = urec1.human_elo or User.DEFAULT_ELO
+                uelo0 = urec0.human_elo or DEFAULT_ELO
+                uelo1 = urec1.human_elo or DEFAULT_ELO
                 gm.human_elo0, gm.human_elo1 = uelo0, uelo1
                 adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                 # Adjust player 0
@@ -287,8 +286,8 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 urec1.human_elo = uelo1 + adj[1]
                 # If manual game, compute the manual-only Elo
                 if manual_game:
-                    uelo0 = urec0.manual_elo or User.DEFAULT_ELO
-                    uelo1 = urec1.manual_elo or User.DEFAULT_ELO
+                    uelo0 = urec0.manual_elo or DEFAULT_ELO
+                    uelo1 = urec1.manual_elo or DEFAULT_ELO
                     gm.manual_elo0, gm.manual_elo1 = uelo0, uelo1
                     adj = compute_elo((uelo0, uelo1), s0, s1, est0, est1)
                     # Adjust player 0

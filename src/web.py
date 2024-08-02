@@ -351,6 +351,10 @@ if running_local:
     def admin_userupdate() -> ResponseType:
         return admin.admin_userupdate()
 
+    @web.route("/admin/eloinit", methods=["GET"])
+    def admin_eloinit() -> ResponseType:
+        return admin.admin_eloinit()
+
     @web.route("/admin/gameupdate", methods=["POST"])
     def admin_gameupdate() -> ResponseType:
         return jsonify(ok=False, result="Not implemented")

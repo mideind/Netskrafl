@@ -33,7 +33,7 @@ GOTO :EOF
 :INDEXES
 ECHO Index update starting
 gcloud app deploy --project=explo-live index.yaml
-gcloud datastore indexes cleanup index.yaml
+rem gcloud datastore indexes cleanup --project=explo-live index.yaml
 ECHO Index update completed
 GOTO :EOF
 :CRON

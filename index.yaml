@@ -151,3 +151,32 @@ indexes:
   properties:
   - name: user
   - name: fmt
+
+- kind: EloModel
+  ancestor: yes
+  properties:
+  - name: locale
+
+- kind: EloModel
+  properties:
+  - name: locale
+  - name: elo
+    direction: desc
+
+- kind: EloModel
+  properties:
+  - name: locale
+  - name: human_elo
+    direction: desc
+
+- kind: EloModel
+  properties:
+  - name: locale
+  - name: human_elo
+    direction: asc
+
+- kind: EloModel
+  properties:
+  - name: locale
+  - name: manual_elo
+    direction: desc

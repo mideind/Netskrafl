@@ -92,7 +92,7 @@ def test_move(state: State, movestring: str) -> bool:
             next_is_blank = False
         row += xd
         col += yd
-    legal = state.check_legality(move)
+    legal = state.check_legality(move, True)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -109,7 +109,7 @@ def test_exchange(state: State, numtiles: int) -> bool:
     """ Test exchange move """
     exch = state.player_rack().contents()[0:numtiles]
     move = ExchangeMove(exch)
-    legal = state.check_legality(move)
+    legal = state.check_legality(move, True)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -125,7 +125,7 @@ def test_exchange(state: State, numtiles: int) -> bool:
 def test_challenge(state: State) -> bool:
     """ Test challenge move """
     move = ChallengeMove()
-    legal = state.check_legality(move)
+    legal = state.check_legality(move, True)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -141,7 +141,7 @@ def test_challenge(state: State) -> bool:
 def test_response(state: State) -> bool:
     """ Test response move """
     move = ResponseMove()
-    legal = state.check_legality(move)
+    legal = state.check_legality(move, True)
     msg = ""
     if isinstance(legal, tuple):
         legal, msg = legal
@@ -191,7 +191,7 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
         move = apl.generate_move()
         g1 = time.time()
 
-        legal = state.check_legality(move)
+        legal = state.check_legality(move, True)
         if legal != Error.LEGAL:
             # Oops: the autoplayer generated an illegal move
             if isinstance(legal, tuple):

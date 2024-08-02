@@ -4972,7 +4972,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 
     view: (vnode) => {
 
-      function vwStat(val: number, icon?: string, suffix?: string): string | any[] {
+      function vwStat(val?: number, icon?: string, suffix?: string): string | any[] {
         // Display a user statistics figure, eventually with an icon
         var txt = (val === undefined) ? "" : val.toString();
         if (suffix !== undefined)
@@ -5015,7 +5015,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts('Elo-stig') },
-                s ? vwStat(s.human_elo, "crown") : ""),
+                s ? vwStat(s.locale_elo?.human_elo, "crown") : ""),
               m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.human_games, "th") : ""),
               m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },
@@ -5028,7 +5028,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts("Elo-stig") },
-                s ? vwStat(s.elo, "crown") : ""),
+                s ? vwStat(s.locale_elo?.elo, "crown") : ""),
               m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.games, "th") : ""),
               m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },

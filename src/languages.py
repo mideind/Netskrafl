@@ -786,7 +786,7 @@ RECOGNIZED_TO_SUPPORTED_LOCALES: Mapping[str, str] = {
     "nb": "nb_NO",  # Norwegian Bokmål
     "no": "nb_NO",  # Norwegian generic
     "nn": "nb_NO",  # Norwegian Nynorsk
-    # "ga": "ga_IE",  # Gaeilge/Irish !!! TODO: Uncomment this when Irish is supported
+    # "ga": "ga_IE",  # Gaeilge/Irish  # TODO: Uncomment this when Irish is supported
 }
 
 # Set of all supported game locales
