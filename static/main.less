@@ -2642,10 +2642,21 @@ span.closebtn {
    color: @pass-btn;
 }
 
-span.yesnobutton#force-resign {
+span#force-resign {
    display: none;
    background-color: @alert;
    color: white;
+   font-size: 14px;
+   height: 23px;
+   margin-right: 0;
+   width: 150px;
+   right: 0;
+   position: absolute;
+   padding-top: 0;
+}
+
+span#force-resign.active {
+   display: block;
 }
 
 div.score.word-good {

@@ -20,7 +20,7 @@
 
 /* global m:false, Promise:false, $state:false, Game:false,
    loginFirebase, attachFirebaseListener, detachFirebaseListener,
-   toVector, coord, registerSalesCloud, setTimeout
+   toVector, coord, registerSalesCloud, hasOwnProp,
 */
 
 /* eslint-disable indent */
@@ -843,7 +843,7 @@ function createView() {
 
     function vwErrMsg(propname) {
       // Show a validation error message returned from the server
-      return err.hasOwnProperty(propname) ?
+      return hasOwnProp(err, propname) ?
         m(".errinput", [ glyph("arrow-up"), nbsp(), err[propname] ]) : "";
     }
 
@@ -2601,6 +2601,7 @@ function createView() {
           m("span.statsbutton",
             {
               onclick: function(uuid, ev) {
+                /* eslint-disable-next-line no-constant-condition */
                 if (true || $state.hasPaid) // !!! FIXME
                   // Show the game review
                   m.route.set("/review/" + uuid);
@@ -3640,14 +3641,13 @@ function createView() {
             m("strong", game.nickname[1 - game.player]),
             " á leik",
             nbsp(),
-            tardyOpponent ? m("span.yesnobutton",
+            tardyOpponent ? m("span.yesnobutton.active",
               {
-                id: 'force-resign',
-                style: { display: "inline" },
+                id: "force-resign",
                 onclick: function(ev) { ev.preventDefault(); }, // !!! FIXME: Implement forced resignation
                 onmouseout: buttonOut,
                 onmouseover: buttonOver,
-                title: '14 dagar liðnir án leiks'
+                title: "14 dagar liðnir án leiks"
               },
               "Þvinga til uppgjafar"
             ) : ""
@@ -4316,67 +4316,6 @@ function OnlinePresence(initialVnode) {
 
 }
 
-function EloPage(initialVnode) {
-
-  // Show the header of an Elo ranking list and then the list itself
-
-  var sel = "human"; // Default: show ranking for human games only
-
-  return {
-    view: function(vnode) {
-      return [
-        m(".listitem.listheader", { key: vnode.attrs.key },
-          [
-            m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
-            m("span.list-rank", "Röð"),
-            m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
-            m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
-            m("span.list-nick-elo", "Einkenni"),
-            m("span.list-elo[title='Elo-stig']", "Elo"),
-            m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
-            m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
-            m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
-            m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
-            m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
-            m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
-            m("span.list-info-hdr", "Ferill"),
-            m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
-            m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
-              [
-                m(".option.x-small",
-                  {
-                    // Show ranking for human games only
-                    className: (sel == "human" ? "selected" : ""),
-                    onclick: function() { sel = "human"; },
-                  },
-                  glyph("user")
-                ),
-                m(".option.x-small",
-                  {
-                    // Show ranking for all games, including robots
-                    className: (sel == "all" ? "selected" : ""),
-                    onclick: function() { sel = "all"; },
-                  },
-                  glyph("cog")
-                )
-              ]
-            )
-          ]
-        ),
-        m(EloList,
-          {
-            id: vnode.attrs.id,
-            sel: sel,
-            model: vnode.attrs.model,
-            view: vnode.attrs.view
-          }
-        )
-      ];
-    }
-  };
-
-}
-
 var EloList = {
 
   view: function(vnode) {
@@ -4456,6 +4395,67 @@ var EloList = {
   }
 
 };
+
+function EloPage(initialVnode) {
+
+  // Show the header of an Elo ranking list and then the list itself
+
+  var sel = "human"; // Default: show ranking for human games only
+
+  return {
+    view: function(vnode) {
+      return [
+        m(".listitem.listheader", { key: vnode.attrs.key },
+          [
+            m("span.list-ch", glyphGrayed("hand-right", { title: 'Skora á' })),
+            m("span.list-rank", "Röð"),
+            m("span.list-rank-no-mobile[title='Röð í gær']", "1d"),
+            m("span.list-rank-no-mobile[title='Röð fyrir viku']", "7d"),
+            m("span.list-nick-elo", "Einkenni"),
+            m("span.list-elo[title='Elo-stig']", "Elo"),
+            m("span.list-elo-no-mobile[title='Elo-stig í gær']", "1d"),
+            m("span.list-elo-no-mobile[title='Elo-stig fyrir viku']", "7d"),
+            m("span.list-elo-no-mobile[title='Elo-stig fyrir mánuði']", "30d"),
+            m("span.list-games[title='Fjöldi viðureigna']", glyph("th")),
+            m("span.list-ratio[title='Vinningshlutfall']", glyph("bookmark")),
+            m("span.list-avgpts[title='Meðalstigafjöldi']", glyph("dashboard")),
+            m("span.list-info-hdr", "Ferill"),
+            m("span.list-newbag", glyphGrayed("shopping-bag", { title: 'Gamli pokinn' })),
+            m(".toggler[id='elo-toggler'][title='Með þjörkum eða án']",
+              [
+                m(".option.x-small",
+                  {
+                    // Show ranking for human games only
+                    className: (sel == "human" ? "selected" : ""),
+                    onclick: function() { sel = "human"; },
+                  },
+                  glyph("user")
+                ),
+                m(".option.x-small",
+                  {
+                    // Show ranking for all games, including robots
+                    className: (sel == "all" ? "selected" : ""),
+                    onclick: function() { sel = "all"; },
+                  },
+                  glyph("cog")
+                )
+              ]
+            )
+          ]
+        ),
+        m(EloList,
+          {
+            id: vnode.attrs.id,
+            sel: sel,
+            model: vnode.attrs.model,
+            view: vnode.attrs.view
+          }
+        )
+      ];
+    }
+  };
+
+}
 
 var RecentList = {
 

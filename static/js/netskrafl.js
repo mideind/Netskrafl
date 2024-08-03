@@ -2141,7 +2141,7 @@ function closeHelpPanel() {
 
 function forceResign() {
    /* The game is overdue and the waiting user wants to force the opponent to resign */
-   $("#force-resign").css("display", "none");
+   $("#force-resign").toggleClass("active", false);
    serverQuery("/forceresign",
       {
          game: gameId(),
