@@ -19,6 +19,8 @@
 */
 
 /* eslint-disable no-unused-vars */
+/* eslint no-empty: ["off"] */
+/* jshint noempty: false */
 
 var uiFullscreen = false;
 
@@ -188,6 +190,15 @@ function rankStr(rank, ref) {
    return rank.toString();
 }
 
+function toKilos(num) {
+   // Return a number in kilos ('k' suffix) if it is above 10,000
+   if (num >= 100000)
+      return (num / 1000).toFixed(0) + "k";
+   if (num >= 10000)
+      return (num / 1000).toFixed(1).replace(".", ",") + "k";
+   return num.toString();
+}
+
 function populateEloList(json) {
    /* Display a user list that has been returned from the server */
    // Hide the user load spinner
@@ -240,7 +251,7 @@ function populateEloList(json) {
          "<span class='list-elo-no-mobile'>" + rankStr(item.elo_yesterday, item.games_yesterday) + "</span>" +
          "<span class='list-elo-no-mobile'>" + rankStr(item.elo_week_ago, item.games_week_ago) + "</span>" +
          "<span class='list-elo-no-mobile'>" + rankStr(item.elo_month_ago, item.games_month_ago) + "</span>" +
-         "<span class='list-games bold'>" + item.games + "</span>" +
+         "<span class='list-games bold'>" + toKilos(item.games) + "</span>" +
          "<span class='list-ratio'>" + item.ratio + "%</span>" +
          "<span class='list-avgpts'>" + item.avgpts + "</span>" +
          info +
