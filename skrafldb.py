@@ -169,7 +169,7 @@ def iter_q(
     chunk_size: int = 50,
     limit: int = 0,
     projection: Optional[List[str]] = None,
-) -> Iterator:
+) -> Iterator[ndb.Model]:
     """ Generator for iterating through a query using a cursor """
     if 0 < limit < chunk_size:
         # Don't fetch more than we want
