@@ -120,7 +120,7 @@ RouteType = Callable[[], ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 
 # Increment this at version changes to ensure cache busting
-VERSION_INCREMENT = 3
+VERSION_INCREMENT = 4
 
 # Are we running in a local development environment or on a GAE server?
 running_local = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
