@@ -51,6 +51,7 @@ from skrafldb import (
     CompletionModel,
     StatsDict,
     iter_q,
+    utcnow,
 )
 from skraflgame import Game, User
 from cache import memcache
@@ -398,7 +399,7 @@ def _create_ratings() -> None:
 
     _key = StatsModel.dict_key
 
-    timestamp = datetime.now(UTC)
+    timestamp = utcnow()
     yesterday = timestamp - timedelta(days=1)
     week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
@@ -608,7 +609,7 @@ def deferred_ratings(wait: bool) -> bool:
             _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
-            now = datetime.now(UTC)
+            now = utcnow()
             CompletionModel.add_failure("ratings", now, now, str(ex))
             return False
 
@@ -619,7 +620,7 @@ def deferred_ratings(wait: bool) -> bool:
         StatsModel.clear_cache()
 
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
-        now = datetime.now(UTC)
+        now = utcnow()
         CompletionModel.add_completion("ratings", now, now)
 
         return True
@@ -643,7 +644,7 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     # this will calculate yesterday's statistics.
     # If invoked with a year=YYYY&month=MM&day=DD parameter,
     # the parameter is the starting date (from_time) for the calculation.
-    now = datetime.now(UTC)
+    now = utcnow()
     yesterday = now - timedelta(days=1)
 
     year = int(request.args.get("year", str(yesterday.year)))

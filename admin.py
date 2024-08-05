@@ -20,13 +20,12 @@ from typing import Optional, Dict, Any
 
 import logging
 from threading import Thread
-from datetime import datetime
 
 from flask import Response, jsonify
 from flask import request
 
 from languages import Alphabet
-from skrafldb import ndb, iter_q, Client, UserModel, GameModel
+from skrafldb import ndb, iter_q, UserModel, GameModel, utcnow
 from skraflgame import User, Game
 
 
@@ -135,7 +134,7 @@ def admin_loadgame() -> Response:
 
     if game is not None and game.state is not None:
         board = game.state.board()
-        now = datetime.utcnow()
+        now = utcnow()
         g = dict(
             uuid=game.uuid,
             timestamp=Alphabet.format_timestamp(game.timestamp or now),

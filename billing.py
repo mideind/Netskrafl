@@ -34,6 +34,7 @@ import werkzeug.wrappers
 import requests
 
 from skraflgame import User
+from skrafldb import utcnow
 
 
 ResponseType = Union[
@@ -121,7 +122,7 @@ def request_valid(
     except ValueError:
         # Invalid date/time
         return False
-    delta = (datetime.utcnow() - dt).total_seconds()
+    delta = (utcnow() - dt).total_seconds()
     if not -2.0 < delta < max_time:
         # The request must be made in a time window ranging from 2 seconds in
         # the future (allowing for a slightly wrong clock) to 100 seconds in
@@ -148,7 +149,7 @@ def cancel_friend(user: User) -> bool:
     try:
         url = "https://api.salescloud.is/webhooks/messenger/pull/" + _SECRET.uuid
         payload = dict(label=user.id())
-        ts = datetime.utcnow().isoformat()
+        ts = utcnow().isoformat()
         ts = ts[0:10] + " " + ts[11:19]  # Example: '2016-10-26 16:10:84'
         method = "POST"
         signature = (ts + _SECRET.public_key + method + url).encode("ascii")

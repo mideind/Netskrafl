@@ -81,7 +81,7 @@ from typing import (
 import logging
 import uuid
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 from google.cloud import ndb  # type: ignore
 
@@ -108,6 +108,11 @@ class StatsDict(TypedDict):
 
 
 StatsResults = List[StatsDict]
+
+
+def utcnow() -> datetime:
+    """Return the current UTC time"""
+    return datetime.now(UTC)
 
 
 class Client:
@@ -272,7 +277,7 @@ class UserModel(ndb.Model):
         user.ready = False  # Not ready for new challenges unless explicitly set
         user.ready_timed = False  # Not ready for timed games unless explicitly set
         user.locale = locale or "is_IS"
-        user.last_login = datetime.utcnow()
+        user.last_login = utcnow()
         return user.put().id()
 
     @classmethod
@@ -1069,7 +1074,7 @@ class StatsModel(ndb.Model):
         check_false_positives = True
 
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = utcnow()
             max_fetch = max_len
             # No need to check false positives if querying newest records
             check_false_positives = False
@@ -1510,7 +1515,7 @@ class ChatModel(ndb.Model):
         cm.channel = channel
         cm.user = ndb.Key(UserModel, userid)
         cm.msg = msg
-        cm.timestamp = timestamp or datetime.utcnow()
+        cm.timestamp = timestamp or utcnow()
         cm.put()
         # Return the message timestamp
         return cm.timestamp

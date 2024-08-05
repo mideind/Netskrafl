@@ -73,6 +73,7 @@ from skrafldb import (
     ChallengeModel,
     StatsModel,
     ChatModel,
+    utcnow,
 )
 
 # Type definitions
@@ -551,7 +552,7 @@ class User:
                 # )
                 um.email = email
             # Note the login timestamp
-            um.last_login = datetime.utcnow()
+            um.last_login = utcnow()
             um.put()
             # Note that the user id might not be the Google account id!
             # Instead, it could be the old GAE user id.
@@ -567,7 +568,7 @@ class User:
                 # )
                 um.account = account
                 # Note the last login
-                um.last_login = datetime.utcnow()
+                um.last_login = utcnow()
                 return um.put().id()
         # No match by account id or email: create a new user,
         # with the account id as user id.
@@ -708,7 +709,7 @@ class Game:
         self.initial_racks[0] = self.state.rack(0)
         self.initial_racks[1] = self.state.rack(1)
         self.robot_level = robot_level
-        self.timestamp = self.ts_last_move = datetime.utcnow()
+        self.timestamp = self.ts_last_move = utcnow()
 
     @classmethod
     def new(
@@ -1137,14 +1138,16 @@ class Game:
 
     def is_overdue(self) -> bool:
         """ Return True if no move has been made in the game for OVERDUE_DAYS days """
-        ts_last_move = self.ts_last_move or self.timestamp or datetime.utcnow()
-        delta = datetime.utcnow() - ts_last_move
+        now = utcnow()
+        ts_last_move = self.ts_last_move or self.timestamp or now
+        delta = now - ts_last_move
         return delta >= timedelta(days=Game.OVERDUE_DAYS)
 
     def get_elapsed(self) -> Tuple[float, float]:
         """ Return the elapsed time for both players, in seconds, as a tuple """
+        now = utcnow()
         elapsed = [0.0, 0.0]
-        last_ts = self.timestamp or datetime.utcnow()
+        last_ts = self.timestamp or now
         for m in self.moves:
             if m.ts is not None:
                 delta = m.ts - last_ts
@@ -1152,7 +1155,7 @@ class Game:
                 elapsed[m.player] += delta.total_seconds()
         if self.state is not None and not self.state.is_game_over():
             # Game still going on: Add the time from the last move until now
-            delta = datetime.utcnow() - last_ts
+            delta = now - last_ts
             elapsed[self.player_to_move()] += delta.total_seconds()
         return cast(Tuple[float, float], tuple(elapsed))
 
@@ -1253,7 +1256,7 @@ class Game:
         player_index = self.player_to_move()
         assert self.state is not None
         self.state.apply_move(move)
-        self.ts_last_move = datetime.utcnow()
+        self.ts_last_move = utcnow()
         mt = MoveTuple(
             player_index, move, self.state.rack(player_index), self.ts_last_move
         )

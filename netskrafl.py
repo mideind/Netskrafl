@@ -106,6 +106,7 @@ from skrafldb import (
     ZombieModel,
     PromoModel,
     PrefsDict,
+    utcnow,
 )
 import billing
 import firebase
@@ -567,7 +568,7 @@ def _process_move(game, movelist: Iterable[str]) -> Response:
         client_state = game.client_state(1 - player_index, m)
         msg_dict = {
             "game/" + game.id() + "/" + opponent + "/move": client_state,
-            "user/" + opponent: {"move": datetime.utcnow().isoformat()},
+            "user/" + opponent: {"move": utcnow().isoformat()},
         }
         firebase.send_message(msg_dict)
 
@@ -809,7 +810,7 @@ def _gamelist(
     result: List[Dict[str, Union[str, int, bool]]] = []
     if not cuid:
         return result
-    now = datetime.utcnow()
+    now = utcnow()
     # Place zombie games (recently finished games that this player
     # has not seen) at the top of the list
     if include_zombies:
@@ -1561,7 +1562,7 @@ def cancelwait() -> Response:
     # Delete the current wait and force update of the opponent's challenge list
     msg = {
         "user/" + user_id + "/wait/" + opp_id: None,
-        "user/" + opp_id: {"challenge": datetime.utcnow().isoformat()},
+        "user/" + opp_id: {"challenge": utcnow().isoformat()},
     }
     firebase.send_message(msg)
 
@@ -2017,7 +2018,7 @@ def wait() -> ResponseType:
     # via a Firebase notification to /user/[user_id]/challenge
     uid = user.id() or ""
     msg = {
-        "user/" + opp: {"challenge": datetime.utcnow().isoformat()},
+        "user/" + opp: {"challenge": utcnow().isoformat()},
         "user/" + uid + "/wait/" + opp: True,
     }
     firebase.send_message(msg)
@@ -2098,7 +2099,7 @@ def newgame() -> ResponseType:
 
     # Notify the opponent's main.html that there is a new game
     # !!! board.html eventually needs to listen to this as well
-    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
@@ -2169,7 +2170,7 @@ def initgame() -> ResponseType:
     game = Game.new(uid, opp, 0, prefs)
 
     # Notify the opponent's client that there is a new game
-    msg: Dict[str, Any] = {"user/" + opp + "/move": datetime.utcnow().isoformat()}
+    msg: Dict[str, Any] = {"user/" + opp + "/move": utcnow().isoformat()}
 
     # If this is a timed game, notify the waiting party
     if prefs and cast(int, prefs.get("duration", 0)) > 0:
@@ -2418,7 +2419,7 @@ def main() -> ResponseType:
 
         # The list_promotions call yields a list of timestamps
         promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
-        now = datetime.utcnow()
+        now = utcnow()
         if len(promos) >= _PROMO_COUNT:
             # Already seen too many of these
             promo_to_show = None

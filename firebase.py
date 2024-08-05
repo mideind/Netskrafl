@@ -26,9 +26,11 @@ from typing import (
 import os
 import threading
 import logging
-from datetime import datetime
 
 from firebase_admin import App, initialize_app, auth, db
+
+from skrafldb import utcnow
+
 
 _PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 
@@ -100,7 +102,7 @@ def send_update(*args: str) -> bool:
     if not args:
         return False
     endpoint = args[-1]
-    value = {endpoint: datetime.utcnow().isoformat()}
+    value = {endpoint: utcnow().isoformat()}
     return send_message(value, *args[:-1])
 
 

@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, Tuple
 from types import ModuleType
 
 import os
@@ -29,22 +29,30 @@ import redis
 import json
 import importlib
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 # A cache of imported modules, used to create fresh instances
 # when de-serializing JSON objects
 _modules: Dict[str, ModuleType] = dict()
 
+DateTimeTuple = Tuple[int, int, int, int, int, int]
+
 # Custom serializers
-_serializers = {
+_serializers: Dict[
+    Tuple[str, str],
+    Tuple[
+        Callable[[datetime], DateTimeTuple],
+        Callable[[DateTimeTuple], datetime],
+    ]
+] = {
     ("datetime", "datetime"): (
         lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
-        lambda args: datetime(*args),
+        lambda args: datetime(*args, tzinfo=UTC),
     ),
     ("proto.datetime_helpers", "DatetimeWithNanoseconds"): (
         lambda dt: (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
-        lambda args: datetime(*args),
+        lambda args: datetime(*args, tzinfo=UTC),
     )
 }
 
