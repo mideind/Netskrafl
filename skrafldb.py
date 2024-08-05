@@ -1064,7 +1064,8 @@ class StatsModel(ndb.Model):
         """Returns the Elo ratings at the indicated time point (None = now),
         in descending order"""
 
-        max_fetch = int(max_len * 2.6)  # Currently this means a safety_buffer of 160
+        SAFETY_BUFFER_FACTOR = 2.8  # This means a safety_buffer of 180
+        max_fetch = int(max_len * SAFETY_BUFFER_FACTOR)
         safety_buffer = max_fetch - max_len
         check_false_positives = True
 
@@ -1087,9 +1088,9 @@ class StatsModel(ndb.Model):
         # be newer stats records for individual users with lower Elo scores
         # than those scanned to create the list. In other words, there may
         # be false positives on the list (but not false negatives, i.e.
-        # there can't be higher Elo scores somewhere that didn't make it
-        # to the list). We attempt to address this by fetching 2.5 times the
-        # number of requested users, then separately checking each of them for
+        # there can't be higher Elo scores somewhere that didn't make it to the
+        # list). We attempt to address this by fetching SAFETY_BUFFER_FACTOR times
+        # the number of requested users, then separately checking each of them for
         # false positives. If we have too many false positives, we don't return
         # the full requested number of result records.
 

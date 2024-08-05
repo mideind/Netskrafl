@@ -3,7 +3,7 @@
    Main.js
    Client-side script functions for main.html, the main page of Netskrafl
 
-   Copyright (C) 2021 Miðeind ehf.
+   Copyright (C) 2024 Miðeind ehf.
    Original author: Vilhjálmur Þorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
@@ -14,8 +14,9 @@
 /* global $:false,
    showUserInfo, openPromoDialog, registerSalesCloud, newgameUrl, serverQuery,
    _populateStats, _populateRecentList, toggle, escapeHtml, userId, userHasPaid,
-   waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener, initFirebaseListener,
-   initPresence, preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus, lateInit
+   waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener,
+   initPresence, preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus,
+   lateInit, toKilos
 */
 
 /* eslint-disable no-unused-vars */
@@ -188,15 +189,6 @@ function rankStr(rank, ref) {
    if (rank === 0 || (ref !== undefined && ref === 0))
       return "--";
    return rank.toString();
-}
-
-function toKilos(num) {
-   // Return a number in kilos ('k' suffix) if it is above 10,000
-   if (num >= 100000)
-      return (num / 1000).toFixed(0) + "k";
-   if (num >= 10000)
-      return (num / 1000).toFixed(1).replace(".", ",") + "k";
-   return num.toString();
 }
 
 function populateEloList(json) {

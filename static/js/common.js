@@ -4,7 +4,7 @@
 
    Common utility functions used by the Netskrafl HTML pages
 
-   Copyright (C) 2021 Miðeind ehf.
+   Copyright (C) 2024 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
@@ -20,6 +20,15 @@
 
 function hasOwnProp(obj, prop) {
    return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+
+function toKilos(num) {
+   // Return a number in kilos ('k' suffix) if it is above 10,000
+   if (num >= 100000)
+      return (num / 1000).toFixed(0) + "k";
+   if (num >= 10000)
+      return (num / 1000).toFixed(1).replace(".", ",") + "k";
+   return num.toString();
 }
 
 var entityMap = {
@@ -241,8 +250,8 @@ function _populateStats(prefix, json) {
    // or a third party in a user info dialog
    showStat(prefix, "elo", json.elo, "crown");
    showStat(prefix, "human-elo", json.human_elo, "crown");
-   showStat(prefix, "games", json.games, "th");
-   showStat(prefix, "human-games", json.human_games, "th");
+   showStat(prefix, "games", toKilos(json.games), "th");
+   showStat(prefix, "human-games", toKilos(json.human_games), "th");
    var winRatio = 0, winRatioHuman = 0;
    if (json.games > 0)
       winRatio = Math.round(100.0 * json.wins / json.games);

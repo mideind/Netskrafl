@@ -4,7 +4,7 @@
 
    Utility functions for client-server communications via Ajax
 
-   Copyright (C) 2015-2017 Miðeind ehf.
+   Copyright (C) 2024 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
    The GNU General Public License, version 3, applies to this software.

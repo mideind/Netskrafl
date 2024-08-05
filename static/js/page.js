@@ -4,7 +4,7 @@
 
 	Single page UI for Netskrafl using the Mithril library
 
-  Copyright (C) 2021 Miðeind ehf.
+  Copyright (C) 2024 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The GNU General Public License, version 3, applies to this software.
