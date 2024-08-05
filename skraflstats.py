@@ -35,7 +35,7 @@ import logging
 import time
 import gc
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from threading import Thread
 
 from flask import Request
@@ -398,7 +398,7 @@ def _create_ratings() -> None:
 
     _key = StatsModel.dict_key
 
-    timestamp = datetime.now(UTC)
+    timestamp = datetime.utcnow()  # datetime.now(UTC)
     yesterday = timestamp - timedelta(days=1)
     week_ago = timestamp - timedelta(days=7)
     month_ago = monthdelta(timestamp, -1)
@@ -608,7 +608,7 @@ def deferred_ratings(wait: bool) -> bool:
             _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
-            now = datetime.now(UTC)
+            now = datetime.utcnow()  # datetime.now(UTC)
             CompletionModel.add_failure("ratings", now, now, str(ex))
             return False
 
@@ -619,7 +619,7 @@ def deferred_ratings(wait: bool) -> bool:
         StatsModel.clear_cache()
 
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
-        now = datetime.now(UTC)
+        now = datetime.utcnow()  # datetime.now(UTC)
         CompletionModel.add_completion("ratings", now, now)
 
         return True
@@ -643,14 +643,15 @@ def run(request: Request, *, wait: bool) -> Tuple[str, int]:
     # this will calculate yesterday's statistics.
     # If invoked with a year=YYYY&month=MM&day=DD parameter,
     # the parameter is the starting date (from_time) for the calculation.
-    now = datetime.now(UTC)
+    now = datetime.utcnow()  # datetime.now(UTC)
     yesterday = now - timedelta(days=1)
 
     year = int(request.args.get("year", str(yesterday.year)))
     month = int(request.args.get("month", str(yesterday.month)))
     day = int(request.args.get("day", str(yesterday.day)))
 
-    from_time = datetime(year=year, month=month, day=day, tzinfo=UTC)
+    # from_time = datetime(year=year, month=month, day=day, tzinfo=UTC)
+    from_time = datetime(year=year, month=month, day=day)
     to_time = from_time + timedelta(days=1)
 
     kwargs: Dict[str, Any] = dict(from_time=from_time, to_time=to_time, wait=wait)
