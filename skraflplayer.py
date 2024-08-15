@@ -75,12 +75,11 @@ from typing import Optional, List, Tuple, Dict, cast
 import random
 
 from dawgdictionary import Wordbase, PackedDawgDictionary
-from languages import Alphabet, current_alphabet
+from languages import current_alphabet
 from skraflmechanics import (
     State,
     Board,
     Cover,
-    Rack,
     MoveBase,
     Move,
     ExchangeMove,
@@ -628,7 +627,7 @@ class AutoPlayer:
     AUTOPLAYER_MEDIUM = 8
 
     @staticmethod
-    def create(state, robot_level: int = 0) -> AutoPlayer:
+    def create(state: State, robot_level: int = 0) -> AutoPlayer:
         """ Create an Autoplayer instance of the desired ability level """
         if robot_level >= AutoPlayer.AUTOPLAYER_COMMON:
             # Create an AutoPlayer that only plays common words
@@ -771,7 +770,7 @@ class AutoPlayer:
 
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x: MoveTuple) -> Tuple:
+        def keyfunc(x: MoveTuple) -> Tuple[int, int]:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic can be inserted here,
@@ -781,7 +780,7 @@ class AutoPlayer:
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple[int, int]:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game
@@ -922,7 +921,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
         # Calculate the score of each candidate
         scored_candidates = [(m, self._state.score(m)) for m in self._candidates]
 
-        def keyfunc(x: MoveTuple) -> Tuple:
+        def keyfunc(x: MoveTuple) -> Tuple[int, int]:
             """Sort moves first by descending score;
             in case of ties prefer shorter words"""
             # More sophisticated logic could be inserted here,
@@ -932,7 +931,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             # balance on the rack, etc.
             return (-x[1], x[0].num_covers())
 
-        def keyfunc_firstmove(x: MoveTuple) -> Tuple:
+        def keyfunc_firstmove(x: MoveTuple) -> Tuple[int, int]:
             """Special case for first move:
             Sort moves first by descending score, and in case of ties,
             try to go to the upper half of the board for a more open game"""
@@ -977,7 +976,7 @@ class AutoPlayer_MiniMax(AutoPlayer):
             teststate = State(copy=self._state)  # Copy constructor
             teststate.apply_move(m)
 
-            countermoves = list()
+            countermoves: List[int] = list()
 
             if teststate.is_game_over():
                 # This move finishes the game. The opponent then scores nothing

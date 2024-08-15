@@ -11,6 +11,9 @@ __pycache__/
 # Pickled DAWG trees
 *.pickle
 
+# JSON output files
+riddles.json
+
 # Profile data
 *.profile
 

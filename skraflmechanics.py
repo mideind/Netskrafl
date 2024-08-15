@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple, Iterator, Union, Optional, Type
+from typing import Callable, List, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
@@ -122,7 +122,7 @@ _LSC = {
 }
 
 # For each board type, convert the word and letter score strings to integer arrays
-_xlt = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
+_xlt: Callable[[List[str]], List[List[int]]] = lambda arr: [[1 if c == " " else int(c) for c in row] for row in arr]
 _WORDSCORE = {key: _xlt(val) for key, val in _WSC.items()}
 _LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
 
@@ -138,7 +138,7 @@ class Board:
     ROWIDS = "ABCDEFGHIJKLMNO"
 
     @staticmethod
-    def short_coordinate(horiz, row, col):
+    def short_coordinate(horiz: bool, row: int, col: int) -> str:
         """RC if horizontal move, or CR if vertical.
         R is A,B,C... C is 1,2,3..."""
         return (
@@ -147,7 +147,7 @@ class Board:
             else str(col + 1) + Board.ROWIDS[row]
         )
 
-    def __init__(self, copy=None, board_type=None):
+    def __init__(self, copy: Optional[Board]=None, board_type: Optional[str]=None):
 
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
@@ -189,11 +189,11 @@ class Board:
         # One of those checks should actually be enough
         return self._numletters == 0 and self._numtiles == 0
 
-    def is_covered(self, row, col):
+    def is_covered(self, row: int, col: int) -> bool:
         """ Is the specified square already covered (taken)? """
         return self._letters[row][col] != " "
 
-    def has_adjacent(self, row, col):
+    def has_adjacent(self, row: int, col: int) -> bool:
         """ Check whether there are any tiles on the board adjacent to this square """
         if row > 0 and self.is_covered(row - 1, col):
             return True
@@ -205,15 +205,15 @@ class Board:
             return True
         return False
 
-    def letter_at(self, row, col):
+    def letter_at(self, row: int, col: int) -> str:
         """ Return the letter at the specified co-ordinate """
         return self._letters[row][col]
 
-    def tile_at(self, row, col):
+    def tile_at(self, row: int, col: int) -> str:
         """ Return the tile at the specified co-ordinate (may be '?' for blank tile) """
         return self._tiles[row][col]
 
-    def set_letter(self, row, col, letter):
+    def set_letter(self, row: int, col: int, letter: str) -> None:
         """ Set the letter at the specified co-ordinate """
         # assert letter is not None
         # assert len(letter) == 1
@@ -230,7 +230,7 @@ class Board:
         r = self._letters[row]
         self._letters[row] = r[0:col] + letter + r[col + 1 :]
 
-    def set_tile(self, row, col, tile):
+    def set_tile(self, row: int, col: int, tile: str) -> None:
         """ Set the tile at the specified co-ordinate """
         # assert tile is not None
         # assert len(tile) == 1
@@ -256,7 +256,7 @@ class Board:
                     yield (x, y, t, self.letter_at(x, y))
 
     @staticmethod
-    def adjacent(row, col, xd, yd, getter):
+    def adjacent(row: int, col: int, xd: int, yd: int, getter: Callable[[int, int], str]) -> str:
         """ Return the letters or tiles adjacent to the given square, in the direction (xd, yd) """
         result = ""
         row += xd

@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import (
     Dict,
     Any,
+    Iterator,
     Optional,
     List,
     Union,
@@ -1264,6 +1265,7 @@ class Game:
         """ Generate an AutoPlayer move and register it """
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
+        assert self.state is not None
         apl = AutoPlayer.create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
@@ -1275,7 +1277,7 @@ class Game:
         self.register_move(move)
         self.last_move = move  # Store the response move
 
-    def enum_tiles(self, state=None):
+    def enum_tiles(self, state: Optional[State]=None) -> Iterator[Tuple[str, str, str, int]]:
         """ Enumerate all tiles on the board in a convenient form """
         if state is None:
             state = self.state

@@ -2,7 +2,7 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 
 import logging
 from threading import Thread
@@ -26,7 +26,7 @@ from flask import Response, jsonify
 from flask import request
 
 from languages import Alphabet
-from skrafldb import ndb, iter_q, Client, UserModel, GameModel
+from skrafldb import ndb, iter_q, UserModel, GameModel
 from skraflgame import User, Game
 
 
@@ -45,6 +45,7 @@ def deferred_update() -> None:
     with ndb.Client().context():
         try:
             q = UserModel.query()
+            um: UserModel
             for um in iter_q(q, chunk_size=CHUNK_SIZE):
                 scan += 1
                 if um.email and not um.email.islower():
@@ -98,13 +99,14 @@ def admin_setfriend() -> str:
     )
 
 
-def admin_fetchgames() -> Response:
-    """ Return a JSON representation of all finished games """
+def admin_fetchgames(limit: int) -> Response:
+    """ Return a JSON representation of 'limit' finished games """
     # noinspection PyPep8
     # pylint: disable=singleton-comparison
-    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
+    q = cast(ndb.Query, GameModel.query(GameModel.over == True).order(GameModel.ts_last_move))
     gamelist = []
-    for gm in q.fetch():
+    gm: GameModel
+    for gm in q.fetch(limit):
         gamelist.append(
             dict(
                 id=gm.key.id(),
