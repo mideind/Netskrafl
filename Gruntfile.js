@@ -5,10 +5,10 @@ module.exports = function (grunt) {
 
       ts: {
          default : {
-           tsconfig: 'static/tsconfig.json',
-           options: {
-              rootDir: "static/src"
-           }
+            tsconfig: 'static/tsconfig.json',
+            options: {
+               rootDir: "static/src"
+            }
          }
       },
 
