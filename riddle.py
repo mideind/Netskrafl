@@ -103,7 +103,12 @@ def generate_riddle(gm: GameModel, min_score: int) -> Optional[Riddle]:
     if min_score > 0 and score < min_score:
         # Skip games where the best move is not good enough
         return None
-    # Accumulate the tiles that are already on the board
+    # Skip games where the top move is not uniquely the best scoring one,
+    # i.e. there are multiple top moves with the same score
+    if len(best_moves) > 1 and best_moves[1][1] == score:
+        return None
+    # TODO: Check whether the top scoring word is a very rare word,
+    # in which case we might want to skip this riddle
     tiles = list(game.enum_tiles(state))
     # Assemble the best move (note that it never contains a blank tile)
     bm = [(m.row, m.col, m.letter) for m in best_move.covers()]
@@ -144,9 +149,9 @@ def main() -> None:
     with ndb_client.context():
         # Note: the start_time must be a naive datetime object
         # (i.e. not timezone-aware)
-        start_time = datetime(2022, 1, 1, 0, 0, 0, 0)
-        limit = 8
-        rr = riddles(start_time, limit, min_score=40)
+        start_time = datetime(2022, 2, 1, 0, 0, 0, 0)
+        limit = 10
+        rr = riddles(start_time, limit, min_score=50)
         # Print the riddle response as JSON
         with open("riddles.json", "w", encoding="utf-8") as f:
             f.write(
