@@ -1122,8 +1122,10 @@ def rating(kind: str) -> List[UserRatingDict]:
 
 
 def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
-    """Return a list of top players by Elo rating
+    """Return a list of top 100 players by Elo rating
     of the given kind ('all', 'human', 'manual')"""
+    NUM_RETURNED = 100  # We return at most 100 users
+    NUM_FETCHED = 120  # Fetch 120 users to allow for some filtering
     result: List[UserRatingForLocaleDict] = []
     cuser = current_user()
     user_locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
@@ -1136,8 +1138,9 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
         cache_key, namespace="rating-locale"
     )
     if rating_list is None:
-        # Not found: do a query
-        rating_list = list(EloModel.list_rating(kind, locale))
+        # Not found: do a query. We fetch 120 users to allow for
+        # some filtering out inactive or anonymous users.
+        rating_list = list(EloModel.list_rating(kind, locale, limit=NUM_FETCHED))
         # Store the result in the cache with a lifetime of 1 hour
         memcache.set(cache_key, rating_list, time=1 * 60 * 60, namespace="rating-locale")
 
@@ -1147,12 +1150,10 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
     # (which can get pretty expensive)
     users = fetch_users(rating_list, lambda x: x["userid"])
 
+    rank = 0
     for ru in rating_list:
 
         uid = ru["userid"]
-        if not uid:
-            # Hit the end of the list
-            break
         if uid.startswith("robot-"):
             a = uid.split("-")
             try:
@@ -1169,24 +1170,27 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
             list_locale = locale
         else:
             usr = users.get(uid)
-            if usr is None:
-                # Something wrong with this one: don't bother
+            if usr is None or not usr.is_displayable():
+                # Something wrong, or this is an inactive or
+                # anonymous user, which we don't display
                 continue
             nick = usr.nickname()
             if not User.is_valid_nick(nick):
-                nick = "--"
+                # Require a valid nickname for display
+                continue
             fullname = usr.full_name()
             fairplay = usr.fairplay()
-            inactive = usr.is_inactive()
+            inactive = False  # All displayable users are active
             fav = False if cuser is None else cuser.has_favorite(uid)
             ready = usr.is_ready()
             ready_timed = usr.is_ready_timed()
             image = usr.thumbnail()
             list_locale = usr.locale  # The user's current locale
 
+        rank += 1
         result.append(
             {
-                "rank": ru["rank"],
+                "rank": rank,
                 "userid": uid,
                 "nick": nick,
                 "fullname": fullname,
@@ -1201,6 +1205,9 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
                 "elo": ru["elo"],
             }
         )
+        if rank >= NUM_RETURNED:
+            # We're done already
+            break
 
     set_online_status_for_users(result, online.users_online)
     return result

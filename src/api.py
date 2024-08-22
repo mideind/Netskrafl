@@ -511,7 +511,7 @@ def image_api() -> ResponseType:
 @api_route("/thumbnail", methods=["GET"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def thumbnail_api() -> ResponseType:
-    """Get (GET) a profile image thumbnail for a user"""
+    """Get a profile image thumbnail for a user"""
     rq = RequestData(request, use_args=True)
     uid = rq.get("uid", "").strip()
     request_has_uid = bool(uid)  # True if a specific user id was requested

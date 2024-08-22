@@ -332,17 +332,17 @@ class Query(Generic[_T_Model], ndb.Query):
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterator[Key[_T_Model]]:
         """Special signature for key-only iteration"""
         ...
 
     @overload
-    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]: ...  # type: ignore
+    def iter(self, *args: Any, **kwargs: Any) -> Iterator[_T_Model]: ...  # type: ignore
 
     def iter(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]:
-        f: Callable[..., Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]] = cast(
+    ) -> Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]:
+        f: Callable[..., Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]] = cast(
             Any, super()
         ).iter
         return f(*args, **kwargs)
@@ -1033,8 +1033,8 @@ class EloModel(Model["EloModel"]):
         delete_multi(q.iter(keys_only=True))
 
     @classmethod
-    def list_rating(cls, kind: str, locale: str) -> Iterable[RatingForLocaleDict]:
-        """Return the top 100 Elo ratings of a specified kind
+    def list_rating(cls, kind: str, locale: str, *, limit: int = 100) -> Iterator[RatingForLocaleDict]:
+        """Return the top Elo ratings of a specified kind
         ('all', 'human' or 'manual') in the given locale"""
         q = cls.query(EloModel.locale == locale)
         # Property extractor
@@ -1049,14 +1049,16 @@ class EloModel(Model["EloModel"]):
             # Default, kind == 'all'
             q = q.order(-EloModel.elo)
             p = lambda em: em.elo
-        for ix, em in enumerate(q.fetch(limit=100)):
+        ix = 0
+        for em in q.fetch(limit=limit):
             user = em.key.parent()
-            if user is None:
+            if user is None or not (userid := user.id()):
                 # Should not happen, but better safe than sorry
                 continue
+            ix += 1
             yield RatingForLocaleDict(
-                rank=ix + 1,
-                userid=user.id(),
+                rank=ix,
+                userid=userid,
                 elo=p(em),
             )
 
@@ -1066,7 +1068,7 @@ class EloModel(Model["EloModel"]):
         locale: str,
         elo: int,
         max_len: int = 40,
-    ) -> Iterable[Tuple[str, EloDict]]:
+    ) -> Iterator[Tuple[str, EloDict]]:
         """Return the ids of users with a similar human Elo rating to
         the one given, in the specified locale"""
 
