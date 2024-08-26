@@ -224,6 +224,10 @@ def compute_locale_elo_for_game(
     if (s0 == 0) and (s1 == 0):
         # A game that never properly starts doesn't count in Elo calculations
         no_adjust = True
+    elif len(gm.moves) >= 1 and gm.moves[0].is_resignation():
+        # A game that ends by immediate resignation
+        # doesn't count in Elo calculations
+        no_adjust = True
     elif len(gm.moves) >= 2 and gm.moves[1].is_resignation():
         # A game that ends by immediate resignation after the first move
         # doesn't count in Elo calculations
