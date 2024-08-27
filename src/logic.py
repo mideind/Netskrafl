@@ -1141,8 +1141,8 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
         # Not found: do a query. We fetch 120 users to allow for
         # some filtering out inactive or anonymous users.
         rating_list = list(EloModel.list_rating(kind, locale, limit=NUM_FETCHED))
-        # Store the result in the cache with a lifetime of 1 hour
-        memcache.set(cache_key, rating_list, time=1 * 60 * 60, namespace="rating-locale")
+        # Store the result in the cache with a lifetime of 5 minutes
+        memcache.set(cache_key, rating_list, time=5 * 60, namespace="rating-locale")
 
     # Prefetch the users in the rating list
     # TODO: Consider caching the user information that is actually
