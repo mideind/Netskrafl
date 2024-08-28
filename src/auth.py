@@ -27,6 +27,9 @@ import requests
 import cachecontrol  # type: ignore
 import jwt
 
+from cryptography.hazmat.primitives import serialization
+from jwt.exceptions import InvalidTokenError
+
 from flask.wrappers import Request
 from flask.globals import current_app
 
@@ -40,6 +43,7 @@ from config import (
     DEFAULT_LOCALE,
     FACEBOOK_APP_SECRET,
     FACEBOOK_APP_ID,
+    FACEBOOK_NONCE,
     APPLE_CLIENT_ID,
     DEV_SERVER,
     FlaskConfig,
@@ -60,6 +64,9 @@ from skrafluser import User, UserLoginDict, verify_explo_token
 FACEBOOK_TOKEN_VALIDATION_URL = (
     "https://graph.facebook.com/debug_token?input_token={0}&access_token={1}|{2}"
 )
+
+# Facebook public key endpoint
+FACEBOOK_JWT_ENDPOINT = "https://www.facebook.com/.well-known/oauth/openid/jwks/"
 
 # Apple public key and JWT stuff
 APPLE_TOKEN_VALIDATION_URL = "https://appleid.apple.com/auth/token"
@@ -107,6 +114,16 @@ def rq_get(request: Request, key: str) -> str:
         return j.get(key, "")
     return ""
 
+def get_facebook_public_key():
+    # Get the public key from Facebook's JWKS endpoint
+    response = requests.get(FACEBOOK_JWT_ENDPOINT)
+    jwks = response.json()
+
+    # Extract the public key in PEM format
+    key_data = jwks['keys'][0]
+    public_key_pem = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
+    
+    return public_key_pem
 
 def oauth2callback(request: Request) -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
@@ -321,57 +338,96 @@ def oauth_fb(request: Request) -> ResponseType:
         )
 
     token = user.get("token", "")
-    # Validate the Facebook token
-    if not token or len(token) > 1024 or not token.isalnum():
-        return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
-    r = requests.get(
-        FACEBOOK_TOKEN_VALIDATION_URL.format(
-            token, facebook_app_id, facebook_app_secret
-        )
-    )
-    if r.status_code != 200:
-        # Error from the Facebook API: communicate it back to the client
-        msg = ""
+
+    # Verify if this is a limited login (iOS only)
+    is_limited_login = rq.get("isLimitedLogin", False)
+    if is_limited_login:
+        # Validate Limited Login token
         try:
-            msg = cast(Any, r).json()["error"]["message"]
-            msg = f": {msg}"
-        except (KeyError, ValueError):
-            pass
-        return (
-            jsonify(
-                {
-                    "status": "invalid",
-                    "msg": f"Unable to verify Facebook token{msg}",  # Lack of space intentional
-                }
-            ),
-            401,
+            # Get the public key from Facebook's JWKS endpoint
+            public_key = get_facebook_public_key()
+            decoded_token = jwt.decode(
+                token,
+                public_key,
+                algorithms=['RS256'],
+                audience=facebook_app_id,
+                options={"verify_exp": True}
+            )
+            if decoded_token.get('nonce') != FACEBOOK_NONCE:
+                return (
+                    jsonify(
+                        {"status": "invalid", "msg": "Invalid Facebook nonce token",}
+                    ), 
+                    401,
+                )
+            account = decoded_token.get('sub', '')
+        except jwt.ExpiredSignatureError:
+            return (
+                    jsonify(
+                        {"status": "invalid", "msg": "Token has expired",}
+                    ), 
+                    401,
+                )
+        except jwt.InvalidTokenError:
+            return (
+                    jsonify(
+                        {"status": "invalid", "msg": "Invalid Facebook expired",}
+                    ), 
+                    401,
+                )
+    else:
+        # Validate the Facebook token
+        if not token or len(token) > 1024 or not token.isalnum():
+            return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
+        # Validate regular Facebook token
+        r = requests.get(
+            FACEBOOK_TOKEN_VALIDATION_URL.format(
+                token, facebook_app_id, facebook_app_secret
+            )
         )
+        if r.status_code != 200:
+            # Error from the Facebook API: communicate it back to the client
+            msg = ""
+            try:
+                msg = cast(Any, r).json()["error"]["message"]
+                msg = f": {msg}"
+            except (KeyError, ValueError):
+                pass
+            return (
+                jsonify(
+                    {
+                        "status": "invalid",
+                        "msg": f"Unable to verify Facebook token{msg}",  # Lack of space intentional
+                    }
+                ),
+                401,
+            )
+        response: Dict[str, Any] = cast(Any, r).json()
+        if not response or not (rd := response.get("data")):
+            return (
+                jsonify(
+                    {"status": "invalid", "msg": "Invalid format of Facebook token data"}
+                ),
+                401,
+            )
+        if (
+            facebook_app_id != rd.get("app_id")
+            or "USER" != rd.get("type")
+            or not rd.get("is_valid")
+        ):
+            return (
+                jsonify({"status": "invalid", "msg": "Facebook token data mismatch"}),
+                401,
+            )
+        if account != rd.get("user_id"):
+            return (
+                jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
+                401,
+            )
     # So far, so good: double check that token data are as expected
     name = user.get("full_name", "")
     image = user.get("image", "")
     email = user.get("email", "").lower()
-    response: Dict[str, Any] = cast(Any, r).json()
-    if not response or not (rd := response.get("data")):
-        return (
-            jsonify(
-                {"status": "invalid", "msg": "Invalid format of Facebook token data"}
-            ),
-            401,
-        )
-    if (
-        facebook_app_id != rd.get("app_id")
-        or "USER" != rd.get("type")
-        or not rd.get("is_valid")
-    ):
-        return (
-            jsonify({"status": "invalid", "msg": "Facebook token data mismatch"}),
-            401,
-        )
-    if account != rd.get("user_id"):
-        return (
-            jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
-            401,
-        )
     # Make sure that Facebook account ids are different from Google/OAuth ones
     # by prefixing them with 'fb:'
     account = "fb:" + account
