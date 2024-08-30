@@ -72,7 +72,7 @@ from basics import (
     init_oauth,
 )
 from firebase import init_firebase_app, connect_blueprint
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
@@ -100,7 +100,7 @@ if running_local:
     )
 
 if running_local:
-    logging.info("Netskrafl app running with DEBUG set to True")
+    logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library

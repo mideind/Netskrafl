@@ -1,6 +1,7 @@
 @ECHO OFF
 ECHO Deploy an update to Explo Development App Server
 ECHO *** Run me from the Google Cloud SDK Shell! ***
+set PROJECT_ID=explo-dev
 set GOOGLE_APPLICATION_CREDENTIALS="resources\Explo Development-414318fa79b8.json"
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
@@ -31,7 +32,7 @@ GOTO :EOF
 :INDEXES
 ECHO Index update starting
 gcloud app deploy --project=explo-dev index.yaml
-gcloud datastore indexes cleanup index.yaml
+gcloud datastore indexes cleanup --project=explo-dev index.yaml
 ECHO Index update completed
 GOTO :EOF
 :CRON

@@ -1,6 +1,7 @@
 @ECHO OFF
 ECHO Deploy an update to Explo Development App Server
 ECHO *** Run me from the Google Cloud SDK Shell! ***
+set PROJECT_ID=explo-live
 set GOOGLE_APPLICATION_CREDENTIALS="resources\explo-live-0d431e5fcf4a.json"
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
@@ -23,7 +24,7 @@ GOTO :EOF
 IF "%2" EQU "" GOTO NOVERSION
 ECHO Default module deployment starting, version '%2'
 cmd.exe /c "npx grunt make"
-gcloud beta app deploy --version=%2 --no-promote --project=explo-live app-explo-live.yaml
+gcloud app deploy --no-cache --version=%2 --no-promote --project=explo-live app-explo-live.yaml
 ECHO Default module deployment completed
 GOTO :EOF
 :NOVERSION
@@ -31,13 +32,13 @@ ECHO Version is missing; enter deploy D[EFAULT] version
 GOTO :EOF
 :INDEXES
 ECHO Index update starting
-gcloud beta app deploy --project=explo-live index.yaml
-gcloud datastore indexes cleanup index.yaml
+gcloud app deploy --project=explo-live index.yaml
+rem gcloud datastore indexes cleanup --project=explo-live index.yaml
 ECHO Index update completed
 GOTO :EOF
 :CRON
 ECHO Cron update starting
-gcloud beta app deploy --project=explo-live cron.yaml
+gcloud app deploy --project=explo-live cron.yaml
 ECHO Cron update completed
 GOTO :EOF
 :STATS

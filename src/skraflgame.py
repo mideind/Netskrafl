@@ -34,9 +34,6 @@ from typing import (
 )
 
 import threading
-
-# import logging
-
 from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
@@ -53,12 +50,13 @@ from languages import (
     set_game_locale,
 )
 from skrafldb import (
+    DEFAULT_ELO_DICT,
     PrefsDict,
     Unique,
     GameModel,
     MoveModel,
 )
-from dawgdictionary import Wordbase
+from wordbase import Wordbase
 from skraflmechanics import (
     DetailTuple,
     RackDetails,
@@ -78,7 +76,7 @@ from skraflmechanics import (
 )
 from skraflplayer import AutoPlayer
 from skrafluser import User
-from skraflelo import compute_elo_for_game
+from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
 
 
 # Type definitions
@@ -103,7 +101,6 @@ BestMoveList = List[BestMove]
 
 
 class TimeInfo(TypedDict):
-
     """Information about the state of a timed game"""
 
     duration: int
@@ -127,7 +124,6 @@ class EloNowDict(TypedDict, total=False):
 
 
 class ClientStateDict(TypedDict, total=False):
-
     """The game state that is sent to the client"""
 
     alphabet: str
@@ -175,7 +171,6 @@ UNDEFINED_NAME: Dict[str, str] = {
 
 
 class Game:
-
     """A wrapper class for a particular game that is in process
     or completed. Contains inter alia a State instance."""
 
@@ -462,13 +457,15 @@ class Game:
         assert self.uuid is not None
 
         gm = GameModel(id=self.uuid)
-        gm.timestamp = cast(datetime, self.timestamp)
-        gm.ts_last_move = cast(datetime, self.ts_last_move)
+        assert self.timestamp is not None
+        gm.timestamp = self.timestamp
+        assert self.ts_last_move is not None
+        gm.ts_last_move = self.ts_last_move
         gm.locale = self.locale
         gm.set_player(0, self.player_ids[0])
         gm.set_player(1, self.player_ids[1])
-        gm.irack0 = cast(str, self.initial_racks[0])
-        gm.irack1 = cast(str, self.initial_racks[1])
+        gm.irack0 = self.initial_racks[0] or ""
+        gm.irack1 = self.initial_racks[1] or ""
         assert self.state is not None
         gm.rack0 = self.state.rack(0)
         gm.rack1 = self.state.rack(1)
@@ -478,7 +475,7 @@ class Game:
         gm.score1 = sc[1]
         gm.to_move = len(self.moves) % 2
         gm.robot_level = self.robot_level
-        gm.prefs = cast(PrefsDict, self._preferences)
+        gm.prefs = self._preferences
         tile_count = 0
         movelist: List[MoveModel] = []
         for m in self.moves:
@@ -531,12 +528,34 @@ class Game:
                 if bw1:
                     u1.adjust_best_word(bw1, best_word_score[1], self.uuid)
 
-            if calc_elo_points and u0 is not None and u1 is not None:
-                # This is a human game that is over.
+            if calc_elo_points:
                 # We want to calculate provisional Elo points for the game
-                # and store them with the game and the users.
-                compute_elo_for_game(gm, u0, u1)
-                # Transfer the Elo deltas to the game object
+                # and store them with the game and the user(s).
+                # First, establish the original Elo ratings of the players
+                # as they were before the current game. Note that we can
+                # only use on the 'old style' (locale-independent) ratings
+                # if the user locale matches the game locale.
+                if u0 is None or u0.locale != self.locale:
+                    orig0 = DEFAULT_ELO_DICT
+                else:
+                    orig0 = u0.elo_dict()
+                if u1 is None or u1.locale != self.locale:
+                    orig1 = DEFAULT_ELO_DICT
+                else:
+                    orig1 = u1.elo_dict()
+                if u0 is not None and u1 is not None:
+                    # Human-only game: calculate 'old style' Elo points.
+                    # Note that this changes the Elo ratings stored in the User
+                    # objects, which is why we saved their original values above.
+                    # Also note that this provisional, 'old style' Elo rating
+                    # is not calculated for robot games.
+                    compute_elo_for_game(gm, u0, u1)
+                # Calculate 'new style', locale-specific Elo points
+                # for the game and the users. This modifies the GameModel
+                # entity, and upserts EloModel entities for the players (also robots)
+                compute_locale_elo_for_game(gm, u0, u1, orig0, orig1)
+                # Transfer the computed Elo deltas from the GameModel entity
+                # to the Game object
                 self.set_elo_delta(gm)
 
             if u0 is not None:
@@ -899,10 +918,12 @@ class Game:
         # Never show best moves for games that are still being played
         return self.is_over()
 
-    def check_legality(self, move: MoveBase) -> Union[int, Tuple[int, str]]:
+    def check_legality(
+        self, move: MoveBase, validate: bool
+    ) -> Union[int, Tuple[int, str]]:
         """Check whether an incoming move from a client is legal and valid"""
         assert self.state is not None
-        return self.state.check_legality(move)
+        return self.state.check_legality(move, validate)
 
     def register_move(self, move: MoveBase) -> None:
         """Register a new move, updating the score
