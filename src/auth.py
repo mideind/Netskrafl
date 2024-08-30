@@ -16,9 +16,9 @@
 """
 
 from __future__ import annotations
-from functools import lru_cache
+from functools import cache, lru_cache
 
-from typing import Mapping, cast, Any, Optional, Dict
+from typing import Mapping, cast, Any, Optional, Dict, Tuple
 
 from datetime import UTC, datetime
 import logging
@@ -114,16 +114,25 @@ def rq_get(request: Request, key: str) -> str:
         return j.get(key, "")
     return ""
 
-def get_facebook_public_key():
-    # Get the public key from Facebook's JWKS endpoint
-    response = requests.get(FACEBOOK_JWT_ENDPOINT)
-    jwks = response.json()
+@cache
+def get_facebook_public_key() -> Optional[str]:
+    try:
+        # Get the public key from Facebook's JWKS endpoint
+        response = requests.get(FACEBOOK_JWT_ENDPOINT)
+        response.raise_for_status()  # Raise an error for bad status codes
+        jwks = response.json()
 
-    # Extract the public key in PEM format
-    key_data = jwks['keys'][0]
-    public_key_pem = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
-    
-    return public_key_pem
+        # Extract the public key in PEM format
+        key_data = jwks['keys'][0]
+        public_key_pem = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
+        
+        return public_key_pem  # Return the key and success status
+    except requests.exceptions.RequestException as e:
+        logging.error(f"An error occurred while fetching the public key: {e}")
+        return None  # Return None and failure status
+    except KeyError as e:
+        logging.error(f"Key error: {e}")
+        return None  # Return None and failure status
 
 def oauth2callback(request: Request) -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
@@ -340,7 +349,7 @@ def oauth_fb(request: Request) -> ResponseType:
     token = user.get("token", "")
 
     # Verify if this is a limited login (iOS only)
-    is_limited_login = rq.get("isLimitedLogin", False)
+    is_limited_login = rq.get_bool("isLimitedLogin", False)
     if is_limited_login:
         # Validate Limited Login token
         try:
@@ -371,7 +380,7 @@ def oauth_fb(request: Request) -> ResponseType:
         except jwt.InvalidTokenError:
             return (
                     jsonify(
-                        {"status": "invalid", "msg": "Invalid Facebook expired",}
+                        {"status": "invalid", "msg": "Invalid Facebook token",}
                     ), 
                     401,
                 )
