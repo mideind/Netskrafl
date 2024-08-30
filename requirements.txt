@@ -3,7 +3,7 @@ eventlet==0.35.2
 gevent-websocket==0.10.1
 Flask==2.3.2
 Authlib==0.15.5
-requests==2.31.0
+requests==2.32.0
 firebase-admin==5.4.0
 redis==4.4.4
 google-cloud-ndb==2.2.2
