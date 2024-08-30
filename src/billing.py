@@ -254,8 +254,9 @@ def handle(request: Request, uid: str) -> ResponseType:
     # u'before_renewal': u'2016-12-14T18:34:42+00:00',
     # u'product_id': u'479', u'type': u'subscription_updated'}
     if j is None:
-        logging.error("Empty or illegal JSON")
-        return jsonify(ok=False, reason="Empty or illegal JSON"), 400  # Bad request
+        msg = "Empty or illegal JSON"
+        logging.error(msg)
+        return jsonify(ok=False, reason=msg), 400  # Bad request
     handled = False
     _FRIEND_OF_NETSKRAFL = "479"  # Product id for friend subscription
     # pylint: disable=bad-continuation

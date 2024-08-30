@@ -89,19 +89,18 @@ from typing import (
 
 import logging
 import uuid
-
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
+from config import DEFAULT_ELO, DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
 from cache import memcache
 
 
 # Type definitions
 _T = TypeVar("_T", covariant=True)
-
-_T_Model = TypeVar("_T_Model", bound="ndb.Model")
+_T_Model = TypeVar("_T_Model", bound=ndb.Model)
 
 
 class PrefsDict(TypedDict, total=False):
@@ -215,6 +214,62 @@ class ListPrefixDict(TypedDict):
     has_image_blob: bool
 
 
+class RatingDict(TypedDict):
+    """The dictionary returned from RatingModel.list_rating() function"""
+
+    rank: int
+    userid: str
+    games: int
+    elo: int
+    score: int
+    score_against: int
+    wins: int
+    losses: int
+    rank_yesterday: int
+    games_yesterday: int
+    elo_yesterday: int
+    score_yesterday: int
+    score_against_yesterday: int
+    wins_yesterday: int
+    losses_yesterday: int
+    rank_week_ago: int
+    games_week_ago: int
+    elo_week_ago: int
+    score_week_ago: int
+    score_against_week_ago: int
+    wins_week_ago: int
+    losses_week_ago: int
+    rank_month_ago: int
+    games_month_ago: int
+    elo_month_ago: int
+    score_month_ago: int
+    score_against_month_ago: int
+    wins_month_ago: int
+    losses_month_ago: int
+
+
+class RatingForLocaleDict(TypedDict):
+    """The dictionary returned from EloModel.list_rating() function"""
+
+    rank: int
+    userid: str
+    elo: int
+
+
+@dataclass
+class EloDict:
+    """A class that encapsulates the Elo scores of a player"""
+
+    elo: int
+    human_elo: int
+    manual_elo: int
+
+
+DEFAULT_ELO_DICT = EloDict(
+    elo=DEFAULT_ELO, human_elo=DEFAULT_ELO, manual_elo=DEFAULT_ELO
+)
+
+
 class Query(Generic[_T_Model], ndb.Query):
     """A type-safer wrapper around ndb.Query"""
 
@@ -237,7 +292,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]: ...
+    def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]: ...  # type: ignore
 
     def fetch(
         self, *args: Any, **kwargs: Any
@@ -267,7 +322,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...
+    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...  # type: ignore
 
     def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
         f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
@@ -277,17 +332,17 @@ class Query(Generic[_T_Model], ndb.Query):
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterable[Key[_T_Model]]:
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterator[Key[_T_Model]]:
         """Special signature for key-only iteration"""
         ...
 
     @overload
-    def iter(self, *args: Any, **kwargs: Any) -> Iterable[_T_Model]: ...
+    def iter(self, *args: Any, **kwargs: Any) -> Iterator[_T_Model]: ...  # type: ignore
 
     def iter(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]:
-        f: Callable[..., Union[Iterable[Key[_T_Model]], Iterable[_T_Model]]] = cast(
+    ) -> Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]:
+        f: Callable[..., Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]] = cast(
             Any, super()
         ).iter
         return f(*args, **kwargs)
@@ -311,11 +366,11 @@ class Key(Generic[_T_Model], ndb.Key):
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
 
-    def parent(self) -> Optional[Key[_T_Model]]:
-        return cast(Optional[Key[_T_Model]], cast(Any, super()).parent())
+    def parent(self) -> Optional[Key[ndb.Model]]:
+        return cast(Optional[Key[ndb.Model]], cast(Any, super()).parent())
 
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        return cast(Optional[_T_Model], super().get(*args, **kwargs))  # type: ignore
+        return cast(Optional[_T_Model], cast(Any, super()).get(*args, **kwargs))
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
         cast(Any, super()).delete(*args, **kwargs)
@@ -676,15 +731,21 @@ class UserModel(Model["UserModel"]):
         user_ids = list(user_ids)
         end = len(user_ids)
         while ix < end:
-            keys: List[Key[UserModel]] = [
+            keys: Sequence[Key[UserModel]] = [
                 Key(UserModel, uid) for uid in user_ids[ix : ix + MAX_CHUNK]
             ]
             len_keys = len(keys)
+            recs = cast(
+                List[Optional[UserModel]],
+                # The following cast is due to strange typing
+                # in ndb (the use of 'Type' is almost certainly a bug there)
+                ndb.get_multi(cast(Sequence[Type[Key[UserModel]]], keys)),
+            )
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
-                return cast(Any, ndb).get_multi(keys)
+                return recs
             # Otherwise, accumulate chunks
-            result.extend(cast(Any, ndb).get_multi(keys))
+            result.extend(recs)
             ix += len_keys
         return result
 
@@ -796,7 +857,8 @@ class UserModel(Model["UserModel"]):
     def list_similar_elo(
         cls, elo: int, max_len: int = 40, locale: Optional[str] = None
     ) -> List[str]:
-        """List users with a similar (human) Elo rating"""
+        """List users with a similar (human) Elo rating. This uses the
+        'old-style', locale-independent Elo rating."""
         # Start with max_len users with a lower Elo rating
 
         def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
@@ -861,10 +923,288 @@ class UserModel(Model["UserModel"]):
         FavoriteModel.delete_user(user_id)
         # ChallengeModel: delete all challenges issued or received by this user
         ChallengeModel.delete_user(user_id)
+        # Delete Elo ratings for this user
+        EloModel.delete_for_user(user_id)
         # Intentionally, we do not delete blocks, neither issued nor received
         # Same goes for reports, both of and by this user
         # We also do not delete stats, since other users will want to see them
         # in relation to previously played games
+
+    @classmethod
+    def delete(cls, user_id: str) -> None:
+        """Delete a user entity"""
+        if not user_id:
+            return
+        # Delete related entities first
+        cls.delete_related_entities(user_id)
+        # Delete the user entity itself
+        k: Key[UserModel] = Key(UserModel, user_id)
+        k.delete()
+
+
+class EloModelFuture(Future["EloModel"]):
+    pass
+
+
+class EloModel(Model["EloModel"]):
+    """Models the current Elo ratings for a user, by locale"""
+
+    # The associated UserModel entity is an ancestor of this entity
+    locale = Model.Str()
+    timestamp = Model.Datetime(auto_now_add=True)
+    elo = Model.Int(indexed=True)
+    human_elo = Model.Int(indexed=True)
+    manual_elo = Model.Int(indexed=True)
+
+    @staticmethod
+    def id(locale: str, uid: str) -> str:
+        """Return the id of an EloModel entity"""
+        return f"{uid}:{locale}"
+
+    @classmethod
+    def user_elo(cls, locale: str, uid: str) -> Optional[EloModel]:
+        """Retrieve the EloModel entity for a user, in the given locale"""
+        if not locale or not uid:
+            return None
+        key: Key[EloModel] = Key(UserModel, uid, EloModel, EloModel.id(locale, uid))
+        return key.get()
+
+    @classmethod
+    def create(
+        cls,
+        locale: str,
+        uid: str,
+        ratings: EloDict
+    ) -> Optional[EloModel]:
+        """Create a new EloModel entity and return it"""
+        if not locale or not uid:
+            return None
+        key: Key[UserModel] = Key(UserModel, uid)
+        return cls(
+            id=EloModel.id(locale, uid),
+            parent=key,
+            locale=locale,
+            elo=ratings.elo,
+            human_elo=ratings.human_elo,
+            manual_elo=ratings.manual_elo,
+        )
+
+    @classmethod
+    def upsert(
+        cls,
+        em: Optional[EloModel],
+        locale: str,
+        uid: str,
+        ratings: EloDict,
+    ) -> bool:
+        """Update the Elo ratings for a user, in the given locale"""
+        assert locale
+        assert uid
+        if em is None:
+            # Create a new entity
+            if (em := cls.create(locale, uid, ratings)) is None:
+                return False
+        else:
+            # Update existing entity
+            # Do a sanity check; the existing entity must be for the same user
+            # and locale
+            key = em.key
+            p = key.parent()
+            if p is None or p.id() != uid:
+                return False
+            if em.locale != locale:
+                return False
+            if key.id() != EloModel.id(locale, uid):
+                return False
+            em.elo = ratings.elo
+            em.human_elo = ratings.human_elo
+            em.manual_elo = ratings.manual_elo
+            em.timestamp = datetime.now(UTC)
+        em.put()
+        return True
+
+    @classmethod
+    def delete_for_user(cls, uid: str) -> None:
+        """Delete all Elo ratings for a user"""
+        if not uid:
+            return
+        key: Key[UserModel] = Key(UserModel, uid)
+        q = cls.query(ancestor=key)
+        delete_multi(q.iter(keys_only=True))
+
+    @classmethod
+    def list_rating(cls, kind: str, locale: str, *, limit: int = 100) -> Iterator[RatingForLocaleDict]:
+        """Return the top Elo ratings of a specified kind
+        ('all', 'human' or 'manual') in the given locale"""
+        q = cls.query(EloModel.locale == locale)
+        # Property extractor
+        p: Callable[[EloModel], int]
+        if kind == "human":
+            q = q.order(-EloModel.human_elo)
+            p = lambda em: em.human_elo
+        elif kind == "manual":
+            q = q.order(-EloModel.manual_elo)
+            p = lambda em: em.manual_elo
+        else:
+            # Default, kind == 'all'
+            q = q.order(-EloModel.elo)
+            p = lambda em: em.elo
+        ix = 0
+        for em in q.fetch(limit=limit):
+            user = em.key.parent()
+            if user is None or not (userid := user.id()):
+                # Should not happen, but better safe than sorry
+                continue
+            ix += 1
+            yield RatingForLocaleDict(
+                rank=ix,
+                userid=userid,
+                elo=p(em),
+            )
+
+    @classmethod
+    def list_similar(
+        cls,
+        locale: str,
+        elo: int,
+        max_len: int = 40,
+    ) -> Iterator[Tuple[str, EloDict]]:
+        """Return the ids of users with a similar human Elo rating to
+        the one given, in the specified locale"""
+
+        # Start with max_len users with a lower Elo rating
+        # Descending order
+        q_desc = (
+            cls.query(EloModel.locale == locale)
+            .filter(EloModel.human_elo < elo)
+            .order(-EloModel.human_elo)
+        )
+        # Add another query for the same or higher rating
+        # Ascending order
+        q_asc = (
+            cls.query(EloModel.locale == locale)
+            .filter(EloModel.human_elo >= elo)
+            .order(EloModel.human_elo)
+        )
+        # Issue two queries in parallel
+        qf = (q_desc.fetch_async(limit=max_len), q_asc.fetch_async(limit=max_len))
+        EloModelFuture.wait_all(qf)
+        lower = qf[0].get_result()
+        higher = qf[1].get_result()
+        lower.reverse()  # Convert the lower part to an ascending list
+        # Concatenate the upper part of the lower range with the
+        # lower part of the higher range in the most balanced way
+        # available (considering that either of the lower or upper
+        # ranges may be empty or have fewer than max_len//2 entries)
+        len_lower = len(lower)
+        len_higher = len(higher)
+        # Ideal balanced length from each range
+        half_len = max_len // 2
+        ix = 0  # Default starting index in the lower range
+        if len_lower >= half_len:
+            # We have enough entries in the lower range for a balanced result,
+            # if the higher range allows
+            # Move the start index
+            ix = len_lower - half_len
+            if len_higher < half_len:
+                # We don't have enough entries in the upper range
+                # to balance the result: move the beginning index down
+                if ix >= half_len - len_higher:
+                    # Shift the entire missing balance to the lower range
+                    ix -= half_len - len_higher
+                else:
+                    # Take as much slack as possible
+                    ix = 0
+        # Concatenate the two slices into one result and return it
+        assert max_len >= (len_lower - ix)
+        result = lower[ix:] + higher[0 : max_len - (len_lower - ix)]
+        # Return the user ids
+        for em in result:
+            user = em.key.parent()
+            if user is not None and (uid := user.id()):
+                yield uid, EloDict(em.elo, em.human_elo, em.manual_elo)
+
+    @classmethod
+    def load_multi(cls, locale: str, user_ids: Iterable[str]) -> Dict[str, EloDict]:
+        """Return the Elo ratings of multiple users as a dictionary"""
+        result: Dict[str, EloDict] = {}
+        MAX_CHUNK = 250
+        keys: List[Key[EloModel]] = []
+
+        def fetch_keys() -> None:
+            nonlocal result, keys
+            recs = cast(
+                List[Optional[EloModel]],
+                # The following cast is due to strange typing
+                # in ndb (the use of 'Type' is almost certainly a bug there)
+                ndb.get_multi(cast(Sequence[Type[Key[EloModel]]], keys)),
+            )
+            for em in recs:
+                if em is not None:
+                    if parent := em.key.parent():
+                        result[parent.id()] = EloDict(
+                            em.elo, em.human_elo, em.manual_elo
+                        )
+
+        for uid in user_ids:
+            if not uid:
+                continue
+            key: Key[EloModel] = Key(UserModel, uid, EloModel, EloModel.id(locale, uid))
+            keys.append(key)
+            if len(keys) >= MAX_CHUNK:
+                fetch_keys()
+                keys = []
+        if keys:
+            fetch_keys()
+        return result
+
+
+class RobotModel(Model["RobotModel"]):
+    """Models the current Elo ratings for a robot, by locale"""
+
+    elo = Model.Int()  # Not indexed
+
+    @staticmethod
+    def id(locale: str, level: int) -> str:
+        """Return the key for a robot entity"""
+        return f"robot-{level}:{locale}"
+
+    @classmethod
+    def robot_elo(cls, locale: str, level: int) -> Optional[RobotModel]:
+        """Retrieve the RobotModel entity for a robot, in the given locale"""
+        if not locale or level < 0:
+            return None
+        key: Key[RobotModel] = Key(RobotModel, RobotModel.id(locale, level))
+        return key.get()
+
+    @classmethod
+    def upsert(
+        cls,
+        rm: Optional[RobotModel],
+        locale: str,
+        level: int,
+        elo: int,
+    ) -> bool:
+        """Update the Elo rating for a robot, in the given locale"""
+        assert locale
+        if rm is None:
+            # Insert a new entity
+            rm = cls(
+                id=RobotModel.id(locale, level),
+                elo=elo,
+            )
+        else:
+            # Update existing entity
+            # Do a sanity check; the existing entity must be for the same robot
+            if rm.key.id() != RobotModel.id(locale, level):
+                logging.warning(
+                    f"Attempt to update wrong robot entity: "
+                    f"{rm.key.id()} vs. {RobotModel.id(locale, level)}"
+                )
+                return False
+            rm.elo = elo
+        rm.put()
+        return True
 
 
 class MoveModel(Model["MoveModel"]):
@@ -875,6 +1215,10 @@ class MoveModel(Model["MoveModel"]):
     score = Model.Int(default=0)
     rack = Model.OptionalStr()
     timestamp = Model.OptionalDatetime()
+
+    def is_resignation(self) -> bool:
+        """Is this a resignation move?"""
+        return self.coord == "" and self.tiles == "RSGN"
 
 
 class ImageModel(Model["ImageModel"]):
@@ -972,7 +1316,7 @@ class GameModel(Model["GameModel"]):
 
     # The moves so far
     moves = cast(
-        Iterable[MoveModel],
+        List[MoveModel],
         ndb.LocalStructuredProperty(MoveModel, repeated=True, indexed=False),
     )
 
@@ -1007,10 +1351,6 @@ class GameModel(Model["GameModel"]):
     # Manual-only Elo point adjustment as a result of this game
     manual_elo0_adj = Model.OptionalInt()
     manual_elo1_adj = Model.OptionalInt()
-
-    # Flag indicating that the game entity has been processed
-    # to update the Datastore index
-    index_updated = Model.OptionalBool(default=False)
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
@@ -1179,6 +1519,19 @@ class GameModel(Model["GameModel"]):
         """Returns true if the game preferences specify a manual wordcheck"""
         return self.prefs is not None and self.prefs.get("manual", False)
 
+    @classmethod
+    def delete_for_user(cls, uid: str) -> None:
+        """Delete all game entities for a particular user"""
+        if not uid:
+            return
+        k: Key[UserModel] = Key(UserModel, uid)
+
+        def keys_to_delete() -> Iterator[Key[GameModel]]:
+            yield from cls.query(GameModel.player0 == k).iter(keys_only=True)
+            yield from cls.query(GameModel.player1 == k).iter(keys_only=True)
+
+        delete_multi(keys_to_delete())
+
 
 class FavoriteModel(Model["FavoriteModel"]):
     """Models the fact that a user has marked another user as a favorite"""
@@ -1200,9 +1553,9 @@ class FavoriteModel(Model["FavoriteModel"]):
         """Query for a list of favorite users for the given user"""
         if not user_id:
             return
-        k: Optional[Key[UserModel]] = Key(UserModel, user_id)
+        k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ancestor=k)
-        for fm in q.fetch(max_len, read_consistency=ndb.EVENTUAL):
+        for fm in q.fetch(max_len):
             if fm.destuser is not None:
                 yield fm.destuser.id()
 
@@ -1234,7 +1587,7 @@ class FavoriteModel(Model["FavoriteModel"]):
     @classmethod
     def add_relation(cls, src_id: str, dest_id: str) -> None:
         """Add a favorite relation between the two users"""
-        fm = FavoriteModel(parent=Key(UserModel, src_id))
+        fm = cls(parent=Key(UserModel, src_id))
         fm.set_dest(dest_id)
         fm.put()
 
@@ -1328,7 +1681,7 @@ class ChallengeModel(Model["ChallengeModel"]):
         cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
     ) -> None:
         """Add a challenge relation between the two users"""
-        cm = ChallengeModel(parent=Key(UserModel, src_id))
+        cm = cls(parent=Key(UserModel, src_id))
         cm.set_dest(dest_id)
         cm.prefs = PrefsDict() if prefs is None else prefs
         cm.put()
@@ -1525,7 +1878,7 @@ class StatsModel(Model["StatsModel"]):
         self.manual_wins = src.manual_wins
         self.manual_losses = src.manual_losses
 
-    def populate_dict(self, d: Dict[str, int]) -> None:
+    def populate_dict(self, d: Dict[str, Any]) -> None:
         """Copy statistics data to the given dict"""
         d["elo"] = self.elo
         d["human_elo"] = self.human_elo
@@ -1805,7 +2158,7 @@ class StatsModel(Model["StatsModel"]):
         return sm
 
     @classmethod
-    def newest_for_user(cls, user_id: Optional[str]) -> Optional[StatsModel]:
+    def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
         """Returns the newest available stats record for the user"""
         # This does not work for robots
         if not user_id:
@@ -1880,7 +2233,7 @@ class RatingModel(Model["RatingModel"]):
     elo_yesterday = Model.Int(default=1200)
     score_yesterday = Model.Int(default=0)
     score_against_yesterday = Model.Int(default=0)
-    wins_yesterday = Model.OptionalInt(default=0)
+    wins_yesterday = Model.Int(default=0)
     losses_yesterday = Model.Int(default=0)
 
     rank_week_ago = Model.Int(default=0)
@@ -1922,13 +2275,14 @@ class RatingModel(Model["RatingModel"]):
                 setattr(self, key, val)
 
     @classmethod
-    def list_rating(cls, kind: str) -> Iterator[Dict[str, Any]]:
+    def list_rating(cls, kind: str) -> Iterator[RatingDict]:
         """Iterate through the rating table of a given kind, in ascending order by rank"""
         CHUNK_SIZE = 100
         q = cls.query(RatingModel.kind == kind).order(RatingModel.rank)
         for rm in iter_q(q, CHUNK_SIZE, limit=100):
-            v: Dict[str, Union[str, Optional[int]]] = dict(
+            v = RatingDict(
                 rank=rm.rank,
+                userid="",
                 games=rm.games,
                 elo=rm.elo,
                 score=rm.score,
@@ -1963,7 +2317,7 @@ class RatingModel(Model["RatingModel"]):
                 if rm.robot_level < 0:
                     v["userid"] = ""
                 else:
-                    v["userid"] = "robot-" + str(rm.robot_level)
+                    v["userid"] = f"robot-{rm.robot_level}"
             else:
                 v["userid"] = rm.user.id()
 
@@ -1973,6 +2327,10 @@ class RatingModel(Model["RatingModel"]):
     def delete_all(cls) -> None:
         """Delete all ratings records"""
         delete_multi(cls.query().iter(keys_only=True))
+
+
+class ChatModelFuture(Future["ChatModel"]):
+    pass
 
 
 class ChatModel(Model["ChatModel"]):
@@ -2006,7 +2364,7 @@ class ChatModel(Model["ChatModel"]):
         cls, channel: str, maxlen: int = 250
     ) -> Iterator[Dict[str, Any]]:
         """Return the newest items in a conversation"""
-        CHUNK_SIZE = 100
+        CHUNK_SIZE = 250
         q = cls.query(ChatModel.channel == channel).order(
             -cast(int, ChatModel.timestamp)
         )
@@ -2085,7 +2443,9 @@ class ChatModel(Model["ChatModel"]):
     ) -> Sequence[ChatModelHistoryDict]:
         """Return the chat history for a user, excluding counterparties
         from the blocked_users set"""
-        CHUNK_SIZE = maxlen * 2
+        # Going too far back in the chat history is quite expensive
+        # in terms of NDB operations, so a limit is advisable
+        HISTORY_LIMIT = 500  # For a prolific chatter, this is about 5 months
 
         # Create two queries, on the user and recipient fields,
         # and interleave their results by timestamp
@@ -2101,8 +2461,20 @@ class ChatModel(Model["ChatModel"]):
         # Dictionary of counterparties that we've encountered so far
         result: Dict[str, ChatModelHistoryDict] = dict()
 
-        i1 = iter_q(q1, CHUNK_SIZE)
-        i2 = iter_q(q2, CHUNK_SIZE)
+        # Use async futures to issue the two queries in parallel and
+        # then create two iterators to iterate through the results
+        qf = (
+            q1.fetch_async(limit=HISTORY_LIMIT),
+            q2.fetch_async(limit=HISTORY_LIMIT),
+        )
+        ChatModelFuture.wait_all(qf)
+
+        def iterable(f: Future[ChatModel]) -> Iterator[ChatModel]:
+            """Iterate through a query, yielding the results"""
+            yield from f.get_result()
+
+        i1 = iterable(qf[0])
+        i2 = iterable(qf[1])
         c1 = next(i1, None)
         c2 = next(i2, None)
 
@@ -2237,6 +2609,19 @@ class ZombieModel(Model["ZombieModel"]):
             # No such game in the zombie list
             return
         zmk.delete()
+
+    @classmethod
+    def delete_for_user(cls, user_id: str) -> None:
+        """Delete all ZombieModel entries for a particular user"""
+        if not user_id:
+            return
+        user: Key[UserModel] = Key(UserModel, user_id)
+
+        def keys_to_delete() -> Iterator[Key[ZombieModel]]:
+            for key in cls.query(ZombieModel.player == user).iter(keys_only=True):
+                yield key
+
+        delete_multi(keys_to_delete())
 
     @classmethod
     def list_games(cls, user_id: Optional[str]) -> Iterator[ZombieGameDict]:
