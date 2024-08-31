@@ -526,6 +526,7 @@ def thumbnail_api() -> ResponseType:
         # current user's thumbnail is session dependent, not URL-dependent)
         return send_cached_file(
             thumb_bytes,
+            etag=f"thumb:{uid}",
             lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
         )
     # Thumbnail not present: generate it
@@ -546,6 +547,7 @@ def thumbnail_api() -> ResponseType:
             # Serve the thumbnail with a cache lifetime of 10 minutes
             return send_cached_file(
                 thumb_bytes,
+                etag=f"thumb:{uid}",
                 lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
             )
         except Exception:

@@ -33,7 +33,7 @@ from typing import (
 )
 
 import io
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import (
@@ -167,7 +167,7 @@ class FlaskWithCaching(Flask):
 
 
 def send_cached_file(
-    content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg"
+    content: io.BytesIO, *, lifetime_seconds: int, etag: str, mimetype: str = "image/jpeg"
 ) -> Response:
     """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
     now = datetime.now(UTC)
@@ -177,12 +177,13 @@ def send_cached_file(
         mimetype=mimetype,
         last_modified=now,
         max_age=lifetime_seconds,
+        etag=etag,
         response_class=CachedResponse if lifetime_seconds > 0 else Response,
     )
     assert isinstance(response, Response)
-    if lifetime_seconds > 0:
-        expires = now + timedelta(seconds=lifetime_seconds)
-        response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    # if lifetime_seconds > 0:
+    #     expires = now + timedelta(seconds=lifetime_seconds)
+    #     response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
     return response
 
 

@@ -1278,7 +1278,7 @@ class User:
             blocking = user.has_blocked(cuid)
         profile["blocking"] = blocking
 
-        if uid == cuser.id():
+        if uid == cuid:
             # If current user, include a list of favorite users
             profile["list_favorites"] = cuser.list_favorites(cuser.locale, online)
             # Also, include a list of blocked users

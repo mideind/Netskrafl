@@ -97,28 +97,26 @@ def login_user() -> bool:
     name: Optional[str] = None
     g = get_google_auth()
     try:
-        token: Dict[str, Union[str, int]] = g.authorize_access_token()
-        if "id_token" in token:
-            idinfo = g.parse_id_token(token)
-            if idinfo is None:
-                return False
-            issuer = idinfo.get("iss", "")
-            if issuer not in VALID_ISSUERS:
-                logging.error(f"Unknown OAuth2 token issuer: {issuer or '[None]'}")
-                return False
-            # ID token is valid; extract the claims
-            # Get the user's Google Account ID
-            account = idinfo.get("sub")
-            if account:
-                # Full name of user
-                name = idinfo.get("name", "")
-                # User image
-                image = idinfo.get("picture", "")
-                # Make sure that the e-mail address is in lowercase
-                email = idinfo.get("email", "").lower()
-        else:
-            pass
-            # account = g.userinfo()
+        token: Optional[Dict[str, UserIdDict]] = g.authorize_access_token()
+        if not token:
+            return False
+        idinfo = token.get("userinfo")
+        if idinfo is None:
+            return False
+        issuer = idinfo.get("iss", "")
+        if issuer not in VALID_ISSUERS:
+            logging.error(f"Unknown OAuth2 token issuer: {issuer or '[None]'}")
+            return False
+        # ID token is valid; extract the claims
+        # Get the user's Google Account ID
+        account = idinfo.get("sub")
+        if account:
+            # Full name of user
+            name = idinfo.get("name", "")
+            # User image
+            image = idinfo.get("picture", "")
+            # Make sure that the e-mail address is in lowercase
+            email = idinfo.get("email", "").lower()
         if idinfo and account:
             # Attempt to find an associated user record in the datastore,
             # or create a fresh user record if not found
