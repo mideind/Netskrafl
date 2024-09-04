@@ -73,27 +73,31 @@ def deferred_elo_init() -> None:
     puts: List[EloModel] = []
     with Client.get_context():
         try:
-            q = UserModel.query()
-            for um in iter_q(
-                q,
-                chunk_size=CHUNK_SIZE,
-                # Projection only works if there exists an index with
-                # all of the projected properties, which is not currently the case.
-                # projection=["locale", "elo", "human_elo", "manual_elo"],
-            ):
+            q = UserModel.query().filter(UserModel.locale != "is_IS")
+            for um in q.iter():
                 if scan % 1000 == 0:
                     logging.info(f"Completed scanning {scan} user entities")
                 scan += 1
-                if um.elo == 0:
-                    # This user has probably not played any games; skip
+                if um.games == 0 or (um.human_elo == 0 and um.elo == 0):
+                    # This user has probably not completed any games; skip
                     continue
+                if not (uid := um.key.id()):
+                    # No user ID; skip
+                    continue
+                # Check whether this user already has an EloModel entry
+                # in his or her locale
+                locale = um.locale or DEFAULT_LOCALE
+                em = EloModel.user_elo(locale, uid)
+                if em is not None:
+                    # Already exists; skip
+                    continue
+                # Create a new EloModel entry for this user and locale
                 ed = EloDict(
                     um.elo or DEFAULT_ELO,
                     um.human_elo or DEFAULT_ELO,
                     um.manual_elo or DEFAULT_ELO,
                 )
-                locale = um.locale or DEFAULT_LOCALE
-                em = EloModel.create(locale, um.key.id(), ed)
+                em = EloModel.create(locale, uid, ed)
                 if em is not None:
                     puts.append(em)
                     if len(puts) >= CHUNK_SIZE:
