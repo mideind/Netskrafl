@@ -66,17 +66,18 @@ def deferred_user_update() -> None:
 
 
 def deferred_elo_init() -> None:
-    """Initialize EloModel entries for all users"""
+    """Initialize EloModel entries for a given locale"""
     logging.info("Deferred EloModel initialization starting")
     CHUNK_SIZE = 500
     scan = 0
     puts: List[EloModel] = []
+    locale = "nb_NO"  # Change this to initialize a particular locale
     with Client.get_context():
         try:
-            q = UserModel.query().filter(UserModel.locale != "is_IS")
+            q = UserModel.query().filter(UserModel.locale == locale)
             for um in q.iter():
-                if scan % 1000 == 0:
-                    logging.info(f"Completed scanning {scan} user entities")
+                if scan and (scan % 500 == 0):
+                    logging.info(f"Scanned {scan} user entities so far")
                 scan += 1
                 if um.games == 0 or (um.human_elo == 0 and um.elo == 0):
                     # This user has probably not completed any games; skip
@@ -102,9 +103,12 @@ def deferred_elo_init() -> None:
                     puts.append(em)
                     if len(puts) >= CHUNK_SIZE:
                         EloModel.put_multi(puts)
+                        logging.info(f"Put {len(puts)} EloModel entities")
                         puts = []
             if puts:
                 EloModel.put_multi(puts)
+                logging.info(f"Put {len(puts)} EloModel entities")
+                puts = []
         except Exception as e:
             logging.info(
                 f"Exception in deferred_elo_init(): {repr(e)}, "
