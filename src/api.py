@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from typing import (
+    Mapping,
     Optional,
     Dict,
     Sequence,
@@ -26,6 +27,7 @@ from typing import (
     Any,
     Tuple,
     Callable,
+    Union,
     cast,
 )
 
@@ -854,7 +856,7 @@ def initwait_api() -> ResponseType:
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, bool, Mapping[str, str]]] = {
         f"user/{opp}/challenge": now,
         f"user/{uid}/wait/{opp}": {"key": key} if key else True,
     }
@@ -891,7 +893,7 @@ def cancelwait_api() -> ResponseType:
 
     # Delete the current wait and force update of the opponent's challenge list
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, None]] = {
         f"user/{cuid}/wait/{opp_id}": None,
         f"user/{opp_id}/challenge": now,
     }

@@ -287,7 +287,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return f(*args, **kwargs)
 
     @overload
-    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:
+    def fetch(self, keys_only: Literal[True], **kwargs: Any) -> Sequence[Key[_T_Model]]:  # type: ignore
         """Special signature for a key-only fetch"""
         ...
 
@@ -317,7 +317,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return f(*args, **kwargs)
 
     @overload
-    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:
+    def get(self, keys_only: Literal[True], **kwargs: Any) -> Optional[Key[_T_Model]]:  # type: ignore
         """Special signature for a key-only get"""
         ...
 
@@ -332,7 +332,7 @@ class Query(Generic[_T_Model], ndb.Query):
         return cast(Any, super()).count(*args, **kwargs)
 
     @overload
-    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterator[Key[_T_Model]]:
+    def iter(self, keys_only: Literal[True], **kwargs: Any) -> Iterator[Key[_T_Model]]:  # type: ignore
         """Special signature for key-only iteration"""
         ...
 

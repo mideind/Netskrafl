@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Sequence, Tuple, List
 
 import os
 import threading
@@ -47,7 +47,7 @@ class Wordbase:
     """ Container for singleton instances of the supported dictionaries """
 
     # Known dictionaries
-    DAWGS = [
+    DAWGS: Sequence[Tuple[str, Alphabet]] = [
         # Icelandic
         ("ordalisti", IcelandicAlphabet),
         ("amlodi", IcelandicAlphabet),
