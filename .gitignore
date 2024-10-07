@@ -34,11 +34,12 @@ resources/*.p8
 resources/netskrafl-*.json
 resources/explo-*.json
 
-# Unsorted BIN word lists
+# Raw word lists
 resources/ordalistimax15.txt
 resources/*.tsv
 resources/*.csv
 resources/nob-no_web_2020_300K-words.txt
+resources/norwegian_top_*.txt
 !resources/english.freq.tsv
 resources/diff*.txt
 

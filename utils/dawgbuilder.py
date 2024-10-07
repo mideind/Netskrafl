@@ -142,6 +142,12 @@ MAXLEN = 48  # Longest possible word to be processed
 WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
 
+NO_AML_VOCAB_SIZE = 20_000  # Norwegian easy robot vocabulary size
+NO_MID_VOCAB_SIZE = 32_500  # Norwegian medium robot vocabulary size
+
+PL_AML_VOCAB_SIZE = 30_000  # Polish easy robot vocabulary size
+PL_MID_VOCAB_SIZE = 60_000  # Polish medium robot vocabulary size
+
 # Hacky, but OK in this instance: store the current alphabet and its
 # sort key in global variables
 _current_alphabet: Optional[Alphabet] = None
@@ -1067,11 +1073,8 @@ def run_norwegian_filter() -> None:
     to the two robot vocabularies for each main vocabulary,
     until we have enough words in each."""
 
-    AML_VOCAB_SIZE = 20_000  # Easy robot vocabulary size
-    MID_VOCAB_SIZE = 32_500  # Medium robot vocabulary size
-
     print(
-        f"Norwegian filtering in progress, vocab size of {AML_VOCAB_SIZE}/{MID_VOCAB_SIZE}"
+        f"Norwegian filtering in progress, vocab size of {NO_AML_VOCAB_SIZE}/{NO_MID_VOCAB_SIZE}"
     )
 
     from dawgdictionary import PackedDawgDictionary
@@ -1105,18 +1108,18 @@ def run_norwegian_filter() -> None:
         TaskDict(
             vocab=set(),
             cnt=0,
-            size=AML_VOCAB_SIZE,
+            size=NO_AML_VOCAB_SIZE,
             maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
             d=nsf2023,
-            out=f"norwegian_top_{AML_VOCAB_SIZE}.txt",
+            out=f"norwegian_top_{NO_AML_VOCAB_SIZE}.txt",
         ),
         TaskDict(
             vocab=set(),
             cnt=0,
-            size=MID_VOCAB_SIZE,
+            size=NO_MID_VOCAB_SIZE,
             maxlen=WORD_MAXLEN,
             d=nsf2023,
-            out=f"norwegian_top_{MID_VOCAB_SIZE}.txt",
+            out=f"norwegian_top_{NO_MID_VOCAB_SIZE}.txt",
         ),
     ]
 
@@ -1458,7 +1461,7 @@ def run_polish_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
-        ["polish_top_30000.txt"],  # Input files to be merged
+        [f"polish_top_{PL_AML_VOCAB_SIZE}.txt"],  # Input files to be merged
         "osps37.aml",  # Output file - full name will be osps37.aml.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
@@ -1469,7 +1472,7 @@ def run_polish_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.order)
     t0 = time.time()
     db.build(
-        ["polish_top_60000.txt"],  # Input files to be merged
+        [f"polish_top_{PL_MID_VOCAB_SIZE}.txt"],  # Input files to be merged
         "osps37.mid",  # Output file - full name will be osps37.mid.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
@@ -1488,7 +1491,7 @@ def run_norwegian_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
-        ["norwegian_top_20000.txt"],  # Input files to be merged
+        [f"norwegian_top_{NO_AML_VOCAB_SIZE}.txt"],  # Input files to be merged
         "nsf2023.aml",  # Output file - full name will be nsf2023.aml.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
@@ -1499,7 +1502,7 @@ def run_norwegian_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
-        ["norwegian_top_32500.txt"],  # Input files to be merged
+        [f"norwegian_top_{NO_MID_VOCAB_SIZE}.txt"],  # Input files to be merged
         "nsf2023.mid",  # Output file - full name will be nsf2023.mid.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
