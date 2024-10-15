@@ -1367,21 +1367,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     # Polish
     "pl": [
         AutoPlayerTuple(
-            "Mikołaj ",
+            "Iwona",
             "Zawsze gra ruch z najwyższym wynikiem",
             TOP_SCORE,
             AutoPlayer,
             {},
         ),
         AutoPlayerTuple(
-            "Marian",
+            "Marianowi",
             "Wybiera jeden z 20 najwyżej punktowanych ruchów",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=20),
         ),
         AutoPlayerTuple(
-            "Idek",
+            "Irek",
             "Wybiera jeden z 20 najwyżej punktowanych ruchów",
             COMMON,
             AutoPlayer_Custom,
@@ -1394,7 +1394,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             ),
         ),
         AutoPlayerTuple(
-            "Zofia",
+            "Zofii",
             "Wybiera jeden z 30 najwyżej punktowanych ruchów",
             ADAPTIVE,
             AutoPlayer_Custom,
