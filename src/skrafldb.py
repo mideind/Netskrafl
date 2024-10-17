@@ -429,6 +429,11 @@ class Model(Generic[_T_Model], ndb.Model):
     def Text() -> str:
         """Nonindexed string"""
         return cast(str, ndb.TextProperty(required=True))
+    
+    @staticmethod
+    def OptionalText(default: Optional[str] = None) -> str:
+        """Nonindexed string"""
+        return cast(str, ndb.TextProperty(required=False, default=default))
 
     @staticmethod
     def Blob() -> bytes:
@@ -2891,3 +2896,28 @@ class TransactionModel(Model["TransactionModel"]):
         tm.kind = kind
         tm.op = op
         tm.put()
+
+class SubmissionModel(Model["SubmissionModel"]):
+    """Models submission for a missing word"""
+
+    # The user who has submitted
+    user = UserModel.DbKey(kind=UserModel)
+    # Timestamp
+    timestamp = Model.Datetime(auto_now_add=True)
+    # The locale in which the word is submitted
+    locale = Model.Str()
+    # Suggested word
+    word = Model.Str()
+    # Optional comment
+    comment = Model.OptionalText()
+
+    @classmethod
+    def submit_word(
+        cls, user_id: str, locale: str, word: str, comment: Optional[str]) -> None:
+        """Add a new word submission for a given user"""
+        sm = cls()
+        sm.user = Key(UserModel, user_id)
+        sm.locale = locale
+        sm.word = word
+        sm.comment = comment if comment else None
+        sm.put()

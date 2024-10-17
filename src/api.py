@@ -1557,3 +1557,24 @@ def locale_asset_api() -> ResponseType:
             # Found the static asset file: return it
             return send_file(fname)
     return "", 404  # Not found
+
+@api_route("/submitword")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def word_submission_api() -> ResponseType:
+    """Submit a new missing word"""
+    user = current_user()
+    assert user is not None
+
+    uid = user.id()
+    assert uid is not None
+
+    rq = RequestData(request)
+    word = rq.get("word", "")
+    if not word:
+        return jsonify(ok=False)
+    
+    locale = user.locale or DEFAULT_LOCALE
+    comment = rq.get("comment", "")
+    user.submit_word(uid, word, locale, comment)
+
+    return jsonify(ok=True)

@@ -63,6 +63,7 @@ from skrafldb import (
     ReportModel,
     EloModel,
     EloDict,
+    SubmissionModel,
 )
 from skraflmechanics import Error
 
@@ -883,6 +884,12 @@ class User:
         sid = self.id()
         assert sid is not None
         return ReportModel.report_user(sid, destuser_id, code, text)
+    
+    def submit_word(self, user_id: str, locale:str, word: str, comment: Optional[str] ) -> None:
+        """Submit a word for consideration as missing word"""
+        if not user_id or not word or not locale:
+            return False
+        SubmissionModel.submit_word(user_id, locale, word, comment)
 
     def has_challenge(self, destuser_id: str) -> bool:
         """Returns True if this user has challenged destuser"""
