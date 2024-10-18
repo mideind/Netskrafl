@@ -2897,27 +2897,28 @@ class TransactionModel(Model["TransactionModel"]):
         tm.op = op
         tm.put()
 
-class SubmissionModel(Model["SubmissionModel"]):
-    """Models submission for a missing word"""
 
-    # The user who has submitted
-    user = UserModel.DbKey(kind=UserModel)
+class SubmissionModel(Model["SubmissionModel"]):
+    """Models a submission for a missing word"""
+
+    # The user who submitted the word
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
     # Timestamp
-    timestamp = Model.Datetime(auto_now_add=True)
+    ts = Model.Datetime(auto_now_add=True, indexed=True)
     # The locale in which the word is submitted
     locale = Model.Str()
-    # Suggested word
+    # Submitted word
     word = Model.Str()
-    # Optional comment
-    comment = Model.OptionalText()
+    # Comment (can be an empty string)
+    comment = Model.Text()  # Not indexed
 
     @classmethod
     def submit_word(
-        cls, user_id: str, locale: str, word: str, comment: Optional[str]) -> None:
+        cls, user_id: str, locale: str, word: str, comment: str) -> None:
         """Add a new word submission for a given user"""
         sm = cls()
         sm.user = Key(UserModel, user_id)
         sm.locale = locale
         sm.word = word
-        sm.comment = comment if comment else None
+        sm.comment = comment
         sm.put()

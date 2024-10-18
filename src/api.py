@@ -1558,23 +1558,24 @@ def locale_asset_api() -> ResponseType:
             return send_file(fname)
     return "", 404  # Not found
 
+
 @api_route("/submitword")
 @auth_required(result=Error.LOGIN_REQUIRED)
-def word_submission_api() -> ResponseType:
-    """Submit a new missing word"""
+def submitword_api() -> ResponseType:
+    """Submit a word that the user believes to be missing from a vocabulary"""
     user = current_user()
     assert user is not None
-
-    uid = user.id()
-    assert uid is not None
 
     rq = RequestData(request)
     word = rq.get("word", "")
     if not word:
         return jsonify(ok=False)
-    
-    locale = user.locale or DEFAULT_LOCALE
-    comment = rq.get("comment", "")
-    user.submit_word(uid, word, locale, comment)
 
-    return jsonify(ok=True)
+    # The locale should normally be the game locale, which
+    # is not necessarily the user's default locale
+    locale = rq.get("locale", user.locale or DEFAULT_LOCALE)
+    if not locale:
+        return jsonify(ok=False)
+
+    comment = rq.get("comment", "")
+    return jsonify(ok=user.submit_word(word, locale, comment))
