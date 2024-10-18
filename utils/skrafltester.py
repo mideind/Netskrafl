@@ -166,10 +166,11 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
         tileset=current_tileset(), drawtiles=True, board_type=current_board_type()
     )
 
-    print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
-    print("Bag contents are:\n{0}".format(state.bag().contents()))
-    print("Rack 0 is {0}".format(state.rack(0)))
-    print("Rack 1 is {0}".format(state.rack(1)))
+    if not silent:
+        print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+        print("Bag contents are:\n{0}".format(state.bag().contents()))
+        print("Rack 0 is {0}".format(state.rack(0)))
+        print("Rack 1 is {0}".format(state.rack(1)))
 
     # Set player names
     for ix in range(2):
@@ -181,6 +182,9 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
     # Generate a sequence of moves, switching player sides automatically
 
     t0 = time.time()
+    total_word_move_score = 0
+    total_word_move_length = 0
+    num_word_moves = 0
 
     while not state.is_game_over():
 
@@ -196,13 +200,21 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
             # Oops: the autoplayer generated an illegal move
             if isinstance(legal, tuple):
                 legal = legal[0]
-            print("Play is not legal, code {0}".format(Error.errortext(legal)))
+            print("Move is not legal, code {0}".format(Error.errortext(legal)))
             return 0, 0
+
+        move_score = state.score(move)
+
+        if isinstance(move, Move):
+            # This is a word move: update the word move statistics
+            num_word_moves += 1
+            total_word_move_score += move_score
+            total_word_move_length += move.num_covers()
 
         if not silent:
             print(
-                "Play {0} scores {1} points ({2:.2f} seconds)".format(
-                    move, state.score(move), g1 - g0
+                "Move {0} scores {1} points ({2:.2f} seconds)".format(
+                    move, move_score, g1 - g0
                 )
             )
 
@@ -214,25 +226,20 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
 
     # Tally the tiles left and calculate the final score
     state.finalize_score()
-    p0, p1 = state.scores()
+    score0, score1 = state.scores()
+    pname0, pname1 = state.player_name(0), state.player_name(1)
     t1 = time.time()
 
     if not silent:
         print(
-            "Game over, final score {4} {0} : {5} {1} after {2} moves ({3:.2f} seconds)".format(
-                p0,
-                p1,
-                state.num_moves(),
-                t1 - t0,
-                state.player_name(0),
-                state.player_name(1),
-            )
+            f"Game over, final score {pname0} {score0} : {pname1} {score1} "
+            f"after {state.num_moves()} moves ({t1 - t0:.2f} seconds)"
         )
 
     return state.scores()
 
 
-def test_manual_game():
+def test_manual_game() -> None:
     """ Manual game test """
 
     # Initial, empty game state
@@ -331,6 +338,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
     gameswon = [0, 0]
     totalpoints = [0, 0]
     sumofmargin = [0, 0]
+    draws = 0
 
     t0 = time.time()
 
@@ -353,6 +361,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         elif p1 > p0:
             gameswon[1] += 1
             sumofmargin[1] += p1 - p0
+        else:
+            draws += 1
         totalpoints[0] += p0
         totalpoints[1] += p1
 
@@ -365,27 +375,30 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
 
     def reportscore(player: int) -> None:
         """ Report the result of a number of games """
-        if gameswon[player] == 0:
+        player_name = players[player][0]
+        avg_points = float(totalpoints[player]) / num_games
+        games_won = gameswon[player]
+        if games_won == 0:
             print(
-                "{2} won {0} games and scored an average of {1:.1f} points per game".format(
-                    gameswon[player],
-                    float(totalpoints[player]) / num_games,
-                    players[player][0],
-                )
+                f"{player_name} won {games_won} games and scored "
+                f"an average of {avg_points:.1f} points per game"
             )
         else:
+            avg_margin = float(sumofmargin[player]) / games_won
             print(
-                "{3} won {0} games with an average margin of {2:.1f} and "
-                "scored an average of {1:.1f} points per game".format(
-                    gameswon[player],
-                    float(totalpoints[player]) / num_games,
-                    float(sumofmargin[player]) / gameswon[player],
-                    players[player][0],
-                )
+                f"{player_name} won {games_won} games with an "
+                f"average margin of {avg_margin:.1f} and "
+                f"scored an average of {avg_points:.1f} points per game"
             )
+
+    if draws == 1:
+        print("There was 1 draw")
+    elif draws > 1:
+        print(f"There were {draws} draws")
 
     reportscore(0)
     reportscore(1)
+
 
 
 class Usage(Exception):
