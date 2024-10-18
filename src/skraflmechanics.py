@@ -847,8 +847,8 @@ class State:
         self._num_passes = 0
 
     def __str__(self) -> str:
-        tomove0 = "-->" if self._player_to_move == 0 else ""
-        tomove1 = "-->" if self._player_to_move == 1 else ""
+        tomove0 = "(*)" if self._player_to_move == 0 else ""
+        tomove1 = "(*)" if self._player_to_move == 1 else ""
         return (
             self._board.__str__()
             + "\n{4}{0} {1} vs {5}{2} {3}".format(

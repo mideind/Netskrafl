@@ -16,7 +16,7 @@
 
     Usage: python skrafltester.py
         [-n number_of_games_to_run (default 4)]
-        [-o minimax|autoplayer (to choose opponent, default minimax)]
+        [-o minimax|autoplayer|midlungur|amlodi (to choose opponent, default autoplayer)]
         [-s (to run silently, i.e. only with ending summary)]
         [-l locale (is_IS for Icelandic, en_US or en_GB for English, pl_PL for Polish)]
 
@@ -307,7 +307,14 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         return AutoPlayer_MiniMax(0, state)
 
     players: PlayerList = cast(PlayerList, [None, None])
-    if opponent == "amlodi":
+    opponent = opponent.lower()
+    if opponent.startswith("robot-"):
+        level = int(opponent[6:])
+        def robot_creator(state: State) -> AutoPlayer:
+            return AutoPlayer.create(state, level)
+        players[0] = (f"Robot-{level}", robot_creator)
+        players[1] = (f"Robot-{level}", robot_creator)
+    elif opponent == "amlodi":
         players[0] = ("Amlóði A", common_creator)
         players[1] = ("Amlóði B", common_creator)
     elif opponent == "midlungur":
@@ -317,6 +324,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         players[0] = ("AutoPlayer", autoplayer_creator)
         players[1] = ("MiniMax", minimax_creator)
     else:
+        # Fullsterkur - always plays the top scoring move
         players[0] = ("AutoPlayer A", autoplayer_creator)
         players[1] = ("AutoPlayer B", autoplayer_creator)
 
