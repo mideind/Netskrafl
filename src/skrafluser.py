@@ -49,7 +49,7 @@ from config import (
     PROJECT_ID,
     DEFAULT_ELO,
 )
-from languages import Alphabet, to_supported_locale
+from languages import Alphabet, alphabet_for_locale, to_supported_locale
 from firebase import OnlineStatus, online_status, set_online_status
 from skrafldb import (
     DEFAULT_ELO_DICT,
@@ -63,6 +63,7 @@ from skrafldb import (
     ReportModel,
     EloModel,
     EloDict,
+    SubmissionModel,
 )
 from skraflmechanics import Error
 
@@ -883,6 +884,24 @@ class User:
         sid = self.id()
         assert sid is not None
         return ReportModel.report_user(sid, destuser_id, code, text)
+    
+    def submit_word(self, locale: str, word: str, comment: str) -> bool:
+        """Submit a word for consideration as missing word"""
+        word = word.strip().lower()
+        if not word or not locale:
+            return False
+        sid = self.id()
+        if not sid:
+            return False  # Should not happen
+        locale = to_supported_locale(locale)
+        alphabet = alphabet_for_locale(locale)
+        valid_chars = set(alphabet.order)
+        # Validate the word; it must not contain illegal characters
+        if any(c not in valid_chars for c in word):
+            return False
+        # Add the submission to the database
+        SubmissionModel.submit_word(sid, locale, word, comment)
+        return True
 
     def has_challenge(self, destuser_id: str) -> bool:
         """Returns True if this user has challenged destuser"""

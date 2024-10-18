@@ -970,12 +970,7 @@ class EloModel(Model["EloModel"]):
         return key.get()
 
     @classmethod
-    def create(
-        cls,
-        locale: str,
-        uid: str,
-        ratings: EloDict
-    ) -> Optional[EloModel]:
+    def create(cls, locale: str, uid: str, ratings: EloDict) -> Optional[EloModel]:
         """Create a new EloModel entity and return it"""
         if not locale or not uid:
             return None
@@ -1033,7 +1028,9 @@ class EloModel(Model["EloModel"]):
         delete_multi(q.iter(keys_only=True))
 
     @classmethod
-    def list_rating(cls, kind: str, locale: str, *, limit: int = 100) -> Iterator[RatingForLocaleDict]:
+    def list_rating(
+        cls, kind: str, locale: str, *, limit: int = 100
+    ) -> Iterator[RatingForLocaleDict]:
         """Return the top Elo ratings of a specified kind
         ('all', 'human' or 'manual') in the given locale"""
         q = cls.query(EloModel.locale == locale)
@@ -2891,3 +2888,28 @@ class TransactionModel(Model["TransactionModel"]):
         tm.kind = kind
         tm.op = op
         tm.put()
+
+
+class SubmissionModel(Model["SubmissionModel"]):
+    """Models a submission for a missing word"""
+
+    # The user who submitted the word
+    user: Key[UserModel] = UserModel.DbKey(kind=UserModel)
+    # Timestamp
+    ts = Model.Datetime(auto_now_add=True, indexed=True)
+    # The locale in which the word is submitted
+    locale = Model.Str()
+    # Submitted word
+    word = Model.Str()
+    # Comment (can be an empty string)
+    comment = Model.Text()  # Not indexed
+
+    @classmethod
+    def submit_word(cls, user_id: str, locale: str, word: str, comment: str) -> None:
+        """Add a new word submission for a given user"""
+        sm = cls()
+        sm.user = Key(UserModel, user_id)
+        sm.locale = locale
+        sm.word = word
+        sm.comment = comment
+        sm.put()
