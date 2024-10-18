@@ -429,11 +429,6 @@ class Model(Generic[_T_Model], ndb.Model):
     def Text() -> str:
         """Nonindexed string"""
         return cast(str, ndb.TextProperty(required=True))
-    
-    @staticmethod
-    def OptionalText(default: Optional[str] = None) -> str:
-        """Nonindexed string"""
-        return cast(str, ndb.TextProperty(required=False, default=default))
 
     @staticmethod
     def Blob() -> bytes:
@@ -975,12 +970,7 @@ class EloModel(Model["EloModel"]):
         return key.get()
 
     @classmethod
-    def create(
-        cls,
-        locale: str,
-        uid: str,
-        ratings: EloDict
-    ) -> Optional[EloModel]:
+    def create(cls, locale: str, uid: str, ratings: EloDict) -> Optional[EloModel]:
         """Create a new EloModel entity and return it"""
         if not locale or not uid:
             return None
@@ -1038,7 +1028,9 @@ class EloModel(Model["EloModel"]):
         delete_multi(q.iter(keys_only=True))
 
     @classmethod
-    def list_rating(cls, kind: str, locale: str, *, limit: int = 100) -> Iterator[RatingForLocaleDict]:
+    def list_rating(
+        cls, kind: str, locale: str, *, limit: int = 100
+    ) -> Iterator[RatingForLocaleDict]:
         """Return the top Elo ratings of a specified kind
         ('all', 'human' or 'manual') in the given locale"""
         q = cls.query(EloModel.locale == locale)
@@ -2913,8 +2905,7 @@ class SubmissionModel(Model["SubmissionModel"]):
     comment = Model.Text()  # Not indexed
 
     @classmethod
-    def submit_word(
-        cls, user_id: str, locale: str, word: str, comment: str) -> None:
+    def submit_word(cls, user_id: str, locale: str, word: str, comment: str) -> None:
         """Add a new word submission for a given user"""
         sm = cls()
         sm.user = Key(UserModel, user_id)
