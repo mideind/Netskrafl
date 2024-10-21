@@ -1346,21 +1346,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
                 vocab="nsf2023.mid",
                 pick_from=20,
                 adaptive=True,
-                discard_best_ratio_winning=0.3,
+                discard_best_ratio_winning=0.25,
                 discard_best_ratio_losing=0.1,
             ),
         ),
         AutoPlayerTuple(
             "Sif",
-            "Spiller ett av 30 mulige vanlige ord",
+            "Spiller ett av 24 mulige vanlige ord",
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
                 vocab="nsf2023.aml",
-                pick_from=30,
+                pick_from=24,
                 adaptive=True,
-                discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.2,
+                discard_best_ratio_winning=0.25,  # Cuts off the top 6 moves (24*0.25)
+                discard_best_ratio_losing=0.125,  # Cuts off the top 3 moves (24*0.125)
             ),
         ),
     ],

@@ -3,7 +3,7 @@
 
     Skrafltester
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright (C) 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -24,7 +24,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, Callable, cast
+from typing import List, NamedTuple, Optional, Tuple, Callable, cast
 
 import getopt
 import os
@@ -63,11 +63,19 @@ PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
 PlayerList = List[PlayerTuple]
 
 
-_PROFILING = False  # type: ignore
+class GameResult(NamedTuple):
+    """Represents the result of a single game"""
+
+    scores: Tuple[int, int] = (0, 0)
+    avg_word_move_score: float = 0.0
+    avg_word_move_length: float = 0.0
+
+
+_PROFILING = False
 
 
 def test_move(state: State, movestring: str) -> bool:
-    """ Test placing a simple tile move """
+    """Test placing a simple tile move"""
     coord, word = movestring.split(" ")
     rowid = Board.ROWIDS
     xd, yd = 0, 0
@@ -106,7 +114,7 @@ def test_move(state: State, movestring: str) -> bool:
 
 
 def test_exchange(state: State, numtiles: int) -> bool:
-    """ Test exchange move """
+    """Test exchange move"""
     exch = state.player_rack().contents()[0:numtiles]
     move = ExchangeMove(exch)
     legal = state.check_legality(move, True)
@@ -123,7 +131,7 @@ def test_exchange(state: State, numtiles: int) -> bool:
 
 
 def test_challenge(state: State) -> bool:
-    """ Test challenge move """
+    """Test challenge move"""
     move = ChallengeMove()
     legal = state.check_legality(move, True)
     msg = ""
@@ -139,7 +147,7 @@ def test_challenge(state: State) -> bool:
 
 
 def test_response(state: State) -> bool:
-    """ Test response move """
+    """Test response move"""
     move = ResponseMove()
     legal = state.check_legality(move, True)
     msg = ""
@@ -154,8 +162,8 @@ def test_response(state: State) -> bool:
     return True
 
 
-def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
-    """ Go through a whole game by pitting two AutoPlayers against each other """
+def test_game(players: PlayerList, silent: bool) -> GameResult:
+    """Go through a whole game by pitting two AutoPlayers against each other"""
     # The players parameter is a list of tuples: (playername, constructorfunc)
     # where constructorfunc accepts a State parameter and returns a freshly
     # created AutoPlayer (or subclass thereof) that will generate moves
@@ -167,7 +175,9 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
     )
 
     if not silent:
-        print("After initial draw, bag contains {0} tiles".format(state.bag().num_tiles()))
+        print(
+            "After initial draw, bag contains {0} tiles".format(state.bag().num_tiles())
+        )
         print("Bag contents are:\n{0}".format(state.bag().contents()))
         print("Rack 0 is {0}".format(state.rack(0)))
         print("Rack 1 is {0}".format(state.rack(1)))
@@ -201,7 +211,7 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
             if isinstance(legal, tuple):
                 legal = legal[0]
             print("Move is not legal, code {0}".format(Error.errortext(legal)))
-            return 0, 0
+            return GameResult()
 
         move_score = state.score(move)
 
@@ -236,11 +246,17 @@ def test_game(players: PlayerList, silent: bool) -> Tuple[int, int]:
             f"after {state.num_moves()} moves ({t1 - t0:.2f} seconds)"
         )
 
-    return state.scores()
+    avg_word_move_score = total_word_move_score / num_word_moves if num_word_moves else 0
+    avg_word_move_length = total_word_move_length / num_word_moves if num_word_moves else 0
+    return GameResult(
+        scores=state.scores(),
+        avg_word_move_score=avg_word_move_score,
+        avg_word_move_length=avg_word_move_length,
+    )
 
 
 def test_manual_game() -> None:
-    """ Manual game test """
+    """Manual game test"""
 
     # Initial, empty game state
     state = State(
@@ -294,31 +310,32 @@ def test_manual_game() -> None:
 
 
 def test(num_games: int, opponent: str, silent: bool) -> None:
-
-    """ Test running a number of games """
+    """Test running a number of games"""
 
     def autoplayer_creator(state: State) -> AutoPlayer:
-        """ Create a normal autoplayer instance """
+        """Create a normal autoplayer instance"""
         return AutoPlayer(0, state)
 
     def common_creator(state: State) -> AutoPlayer:
-        """ Create a common autoplayer instance """
+        """Create a common autoplayer instance"""
         return AutoPlayer_Custom(15, state, pick_from=20)
 
     def medium_creator(state: State) -> AutoPlayer:
-        """ Create a medium autoplayer instance """
+        """Create a medium autoplayer instance"""
         return AutoPlayer_Custom(8, state, pick_from=10)
 
     def minimax_creator(state: State) -> AutoPlayer:
-        """ Create a minimax autoplayer instance """
+        """Create a minimax autoplayer instance"""
         return AutoPlayer_MiniMax(0, state)
 
     players: PlayerList = cast(PlayerList, [None, None])
     opponent = opponent.lower()
     if opponent.startswith("robot-"):
         level = int(opponent[6:])
+
         def robot_creator(state: State) -> AutoPlayer:
             return AutoPlayer.create(state, level)
+
         players[0] = (f"Robot-{level}", robot_creator)
         players[1] = (f"Robot-{level}", robot_creator)
     elif opponent == "amlodi":
@@ -338,6 +355,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
     gameswon = [0, 0]
     totalpoints = [0, 0]
     sumofmargin = [0, 0]
+    total_word_length = 0
+    total_word_score = 0
     draws = 0
 
     t0 = time.time()
@@ -349,12 +368,14 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         if ix % 2 == 1:
             # Odd game: swap players
             players[0], players[1] = players[1], players[0]
-            p1, p0 = test_game(players, silent)
+            gr = test_game(players, silent)
+            p1, p0 = gr.scores
             # Swap back
             players[0], players[1] = players[1], players[0]
         else:
             # Even game
-            p0, p1 = test_game(players, silent)
+            gr = test_game(players, silent)
+            p0, p1 = gr.scores
         if p0 > p1:
             gameswon[0] += 1
             sumofmargin[0] += p0 - p1
@@ -365,6 +386,9 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
             draws += 1
         totalpoints[0] += p0
         totalpoints[1] += p1
+        # Accumulate the average word length and score
+        total_word_length += gr.avg_word_move_length
+        total_word_score += gr.avg_word_move_score
 
     t1 = time.time()
 
@@ -372,9 +396,11 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         "Test completed, {0} games played in {1:.2f} seconds, "
         "{2:.2f} seconds per game".format(num_games, t1 - t0, (t1 - t0) / num_games)
     )
+    print(f"Average word move length: {total_word_length / num_games:.2f}")
+    print(f"Average word move score: {total_word_score / num_games:.2f}")
 
     def reportscore(player: int) -> None:
-        """ Report the result of a number of games """
+        """Report the result of a number of games"""
         player_name = players[player][0]
         avg_points = float(totalpoints[player]) / num_games
         games_won = gameswon[player]
@@ -400,10 +426,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
     reportscore(1)
 
 
-
 class Usage(Exception):
-
-    """ Error reporting exception for wrong command line arguments """
+    """Error reporting exception for wrong command line arguments"""
 
     def __init__(self, msg: getopt.GetoptError) -> None:
         super().__init__(msg.msg)
@@ -411,7 +435,7 @@ class Usage(Exception):
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """ Guido van Rossum's pattern for a Python main function """
+    """Guido van Rossum's pattern for a Python main function"""
 
     if argv is None:
         argv = sys.argv
@@ -470,8 +494,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 def profile_main() -> None:
-
-    """ Main function to invoke for profiling """
+    """Main function to invoke for profiling"""
 
     import profile
     import pstats
