@@ -885,7 +885,7 @@ class User:
         assert sid is not None
         return ReportModel.report_user(sid, destuser_id, code, text)
     
-    def submit_word(self, locale: str, word: str, comment: str) -> bool:
+    def submit_word(self, word: str, locale: str, comment: str) -> bool:
         """Submit a word for consideration as missing word"""
         word = word.strip().lower()
         if not word or not locale:
