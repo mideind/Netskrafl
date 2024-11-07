@@ -1067,100 +1067,24 @@ def run_nsf2023() -> None:
     print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
-def run_norwegian_filter() -> None:
-    """Read list of frequent Norwegian words, filter them by the
-    vocabulary and add them
-    to the two robot vocabularies for each main vocabulary,
-    until we have enough words in each."""
+def run_nynorsk2024() -> None:
+    """Build a DAWG from the files listed"""
+    # This creates a DAWG from a single file named nynorsk2024.txt,
+    # containing the Norwegian Nynorsk word list.
+    print("Starting DAWG build for nynorsk2024.txt")
 
-    print(
-        f"Norwegian filtering in progress, vocab size of {NO_AML_VOCAB_SIZE}/{NO_MID_VOCAB_SIZE}"
-    )
-
-    from dawgdictionary import PackedDawgDictionary
-
-    # Load the NSF2023 vocabulary as a packed DAWG
+    # Set the Norwegian Nynorsk locale
     set_current_alphabet(NorwegianAlphabet)
     assert _current_alphabet is not None
-    nsf2023 = PackedDawgDictionary(_current_alphabet)
-    nsf2023.load(rpath("nsf2023.bin.dawg"))
-
-    # The name of the input file containing the list of frequent Norwegian words.
-    # This file is available for download from
-    # https://wortschatz.uni-leipzig.de/en/download/Norwegian%20Bokm%C3%A5l
-    # under the CC-BY license. It is under copyright as follows:
-    # © 2024 Universität Leipzig
-    # / Sächsische Akademie der Wissenschaften / InfAI
-    # ...and used here, with thanks, under the terms of the license.
-    source = rpath("nob-no_web_2020_300K-words.txt")
-
-    # Define our tasks
-
-    class TaskDict(TypedDict):
-        vocab: Set[str]
-        cnt: int
-        size: int
-        maxlen: int
-        d: PackedDawgDictionary
-        out: str
-
-    tasks = [
-        TaskDict(
-            vocab=set(),
-            cnt=0,
-            size=NO_AML_VOCAB_SIZE,
-            maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
-            d=nsf2023,
-            out=f"norwegian_top_{NO_AML_VOCAB_SIZE}.txt",
-        ),
-        TaskDict(
-            vocab=set(),
-            cnt=0,
-            size=NO_MID_VOCAB_SIZE,
-            maxlen=WORD_MAXLEN,
-            d=nsf2023,
-            out=f"norwegian_top_{NO_MID_VOCAB_SIZE}.txt",
-        ),
-    ]
-
-    # Read the input file, which is (roughly) sorted in descending order
-    # by frequency, and filter the words
-    cnt = 0
-    with open(source, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            cnt += 1
-            a = line.split("\t")
-            if len(a) != 3:
-                continue
-            word = a[1]
-            # We only use words ranging from 3 to 15 letters, inclusive
-            if not (3 <= len(word) <= WORD_MAXLEN):
-                continue
-            # For each task, check whether the word should be added
-            for t in tasks:
-                if t["cnt"] < t["size"] and len(word) <= t["maxlen"]:
-                    if (word := word.lower()) in t["d"]:
-                        (s := t["vocab"]).add(word)
-                        t["cnt"] = len(s)
-            # Circuit breaker: stop when all tasks are complete
-            if all(t["cnt"] >= t["size"] for t in tasks):
-                break
-
-    # Create a lambda that can be used as a key in the sorted function
-    # to sort in Norwegian bokmål order
-    alphabet = _current_alphabet.full_order
-    keyfunc: Callable[[str], List[int]] = lambda w: [alphabet.index(c) for c in w]
-    for t in tasks:
-        vocab = sorted(t["vocab"], key=keyfunc)
-        with open(
-            rpath(t["out"]), "w", encoding="utf-8", newline="\n"
-        ) as f:
-            for w in vocab:
-                f.write(f"{w}\n")
-    print(f"Norwegian filtering done after reading {cnt} lines from source")
+    db = DawgBuilder(encoding=_current_alphabet.order)
+    t0 = time.time()
+    db.build(
+        ["nynorsk2024.txt"],  # Input files to be merged
+        "nynorsk2024",  # Output file - full name will be nynorsk2024.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
 
 
 def run_skrafl() -> None:
@@ -1481,7 +1405,7 @@ def run_polish_robot_vocabs() -> None:
 
 
 def run_norwegian_robot_vocabs() -> None:
-    """Build DAWGS for Norwegian robot vocabularies"""
+    """Build DAWGS for Norwegian bokmål robot vocabularies"""
     print("Starting DAWG build for Norwegian robot vocabularies")
 
     set_current_alphabet(NorwegianAlphabet)
@@ -1491,7 +1415,7 @@ def run_norwegian_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
-        [f"norwegian_top_{NO_AML_VOCAB_SIZE}.txt"],  # Input files to be merged
+        [f"norwegian_bokmål_top_{NO_AML_VOCAB_SIZE}.txt"],  # Input files to be merged
         "nsf2023.aml",  # Output file - full name will be nsf2023.aml.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
@@ -1502,12 +1426,183 @@ def run_norwegian_robot_vocabs() -> None:
     db = DawgBuilder(encoding=_current_alphabet.full_order)
     t0 = time.time()
     db.build(
-        [f"norwegian_top_{NO_MID_VOCAB_SIZE}.txt"],  # Input files to be merged
+        [f"norwegian_bokmål_top_{NO_MID_VOCAB_SIZE}.txt"],  # Input files to be merged
         "nsf2023.mid",  # Output file - full name will be nsf2023.mid.bin.dawg
         word_filter=filter_skrafl,  # Word filter function to apply
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
+def run_nynorsk_robot_vocabs() -> None:
+    """Build DAWGS for Norwegian Nynorsk robot vocabularies"""
+    print("Starting DAWG build for Norwegian Nynorsk robot vocabularies")
+
+    set_current_alphabet(NorwegianAlphabet)
+    assert _current_alphabet is not None
+
+    print("Starting DAWG build for Sif/nynorsk2024")
+    db = DawgBuilder(encoding=_current_alphabet.full_order)
+    t0 = time.time()
+    db.build(
+        [f"norwegian_nynorsk_top_{NO_AML_VOCAB_SIZE}.txt"],  # Input files to be merged
+        "nynorsk2024.aml",  # Output file - full name will be nynorsk2024.aml.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+    print("Starting DAWG build for Frigg/nynorsk2024")
+    db = DawgBuilder(encoding=_current_alphabet.full_order)
+    t0 = time.time()
+    db.build(
+        [f"norwegian_nynorsk_top_{NO_MID_VOCAB_SIZE}.txt"],  # Input files to be merged
+        "nynorsk2024.mid",  # Output file - full name will be nynorsk2024.mid.bin.dawg
+        word_filter=filter_skrafl,  # Word filter function to apply
+    )
+    t1 = time.time()
+    print("Build took {0:.2f} seconds".format(t1 - t0))
+
+
+def run_norwegian_filter(
+    dialect: str,
+    aml_vocab_size: int,
+    mid_vocab_size: int,
+    vocab_file: str,
+    frequency_file: str,
+) -> None:
+    """Read list of frequent Norwegian words, filter them by the
+    vocabulary and add them
+    to the two robot vocabularies for each main vocabulary,
+    until we have enough words in each."""
+
+    print(
+        f"Norwegian {dialect} filtering in progress, vocab size of {aml_vocab_size}/{mid_vocab_size}"
+    )
+
+    from dawgdictionary import PackedDawgDictionary
+
+    # Load the vocabulary as a packed DAWG
+    set_current_alphabet(NorwegianAlphabet)
+    assert _current_alphabet is not None
+    dawg = PackedDawgDictionary(_current_alphabet)
+    dawg.load(rpath(f"{vocab_file}.bin.dawg"))
+
+    source = rpath(frequency_file)
+
+    # Define our tasks
+
+    class TaskDict(TypedDict):
+        vocab: Set[str]
+        cnt: int
+        size: int
+        maxlen: int
+        d: PackedDawgDictionary
+        out: str
+
+    tasks = [
+        TaskDict(
+            vocab=set(),
+            cnt=0,
+            size=aml_vocab_size,
+            maxlen=COMMON_MAXLEN,  # Only include words up to 12 letters long
+            d=dawg,
+            out=f"norwegian_{dialect.lower()}_top_{aml_vocab_size}.txt",
+        ),
+        TaskDict(
+            vocab=set(),
+            cnt=0,
+            size=mid_vocab_size,
+            maxlen=WORD_MAXLEN,
+            d=dawg,
+            out=f"norwegian_{dialect.lower()}_top_{mid_vocab_size}.txt",
+        ),
+    ]
+
+    # Read the input file, which is (roughly) sorted in descending order
+    # by frequency, and filter the words
+    cnt = 0
+    with open(source, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cnt += 1
+            a = line.split("\t")
+            if len(a) != 3:
+                continue
+            word = a[1]
+            # We only use words ranging from 3 to 15 letters, inclusive
+            if not (3 <= len(word) <= WORD_MAXLEN):
+                continue
+            # For each task, check whether the word should be added
+            for t in tasks:
+                if t["cnt"] < t["size"] and len(word) <= t["maxlen"]:
+                    if (word := word.lower()) in t["d"]:
+                        (s := t["vocab"]).add(word)
+                        t["cnt"] = len(s)
+            # Circuit breaker: stop when all tasks are complete
+            if all(t["cnt"] >= t["size"] for t in tasks):
+                break
+
+    # Create a lambda that can be used as a key in the sorted function
+    # to sort in Norwegian alphabetic order
+    alphabet = _current_alphabet.full_order
+    keyfunc: Callable[[str], List[int]] = lambda w: [alphabet.index(c) for c in w]
+    for t in tasks:
+        vocab = sorted(t["vocab"], key=keyfunc)
+        with open(
+            rpath(t["out"]), "w", encoding="utf-8", newline="\n"
+        ) as f:
+            for w in vocab:
+                f.write(f"{w}\n")
+    print(f"Norwegian {dialect} filtering done after reading {cnt} lines from source")
+
+
+def run_norwegian_bokmål_filter() -> None:
+    """Read list of frequent Norwegian bokmål words, filter them by the
+    vocabulary and add them to the two robot vocabularies
+    for each main vocabulary, until we have enough words in each."""
+
+    # The name of the input file containing the list of frequent Norwegian words.
+    WORD_FREQUENCY_FILE = "nob-no_web_2020_300K-words.txt"
+    # This file is available for download from
+    # https://wortschatz.uni-leipzig.de/en/download/Norwegian%20Bokm%C3%A5l
+    # under the CC-BY license. It is under copyright as follows:
+    # © 2024 Universität Leipzig
+    # / Sächsische Akademie der Wissenschaften / InfAI
+    # ...and used here, with thanks, under the terms of the license.
+
+    run_norwegian_filter(
+        "Bokmål",
+        NO_AML_VOCAB_SIZE,
+        NO_MID_VOCAB_SIZE,
+        "nsf2023",
+        WORD_FREQUENCY_FILE,
+    )
+
+
+def run_norwegian_nynorsk_filter() -> None:
+    """Read list of frequent Norwegian Nynorsk words, filter them by the
+    vocabulary and add them to the two robot vocabularies
+    for each main vocabulary, until we have enough words in each."""
+
+    # The name of the input file containing the list of frequent Norwegian words.
+    WORD_FREQUENCY_FILE = "nno-no_web_2020_300K-words.txt"
+    # This file is available for download from
+    # https://wortschatz.uni-leipzig.de/en/download/Norwegian%20Bokm%C3%A5l
+    # under the CC-BY license. It is under copyright as follows:
+    # © 2024 Universität Leipzig
+    # / Sächsische Akademie der Wissenschaften / InfAI
+    # ...and used here, with thanks, under the terms of the license.
+
+    run_norwegian_filter(
+        "Nynorsk",
+        NO_AML_VOCAB_SIZE,
+        NO_MID_VOCAB_SIZE,
+        "nynorsk2024",
+        WORD_FREQUENCY_FILE,
+    )
 
 
 if __name__ == "__main__":
@@ -1518,18 +1613,22 @@ if __name__ == "__main__":
         run_icelandic_filter,  # Remove rare Icelandic words from robot vocabularies
         run_skrafl,  # Icelandic
         run_osps37,  # Polish
-        run_nsf2023,  # Norwegian
+        run_nsf2023,  # Norwegian Bokmål
+        run_nynorsk2024,  # Norwegian Nynorsk
         # run_twl06,
         run_otcwl2014,  # en_US
         run_sowpods,  # en_GB
-        run_norwegian_filter,
+        run_norwegian_bokmål_filter,
+        run_norwegian_nynorsk_filter,
         run_english_filter,
         run_english_robot_vocabs,
         run_polish_robot_vocabs,
         run_norwegian_robot_vocabs,
+        run_nynorsk_robot_vocabs,
     ]
 
     def name(t: Callable[[], None]) -> str:
+        """Cut the 'run_' prefix from the task name"""
         return t.__name__[4:]
 
     alltasks = frozenset(name(t) for t in ALL_TASKS)

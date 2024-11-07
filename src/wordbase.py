@@ -69,6 +69,10 @@ class Wordbase:
         ("nsf2023", NorwegianAlphabet),
         ("nsf2023.aml", NorwegianAlphabet),
         ("nsf2023.mid", NorwegianAlphabet),
+        # Norwegian Nynorsk
+        ("nynorsk2024", NorwegianAlphabet),
+        ("nynorsk2024.aml", NorwegianAlphabet),
+        ("nynorsk2024.mid", NorwegianAlphabet),
     ]
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()

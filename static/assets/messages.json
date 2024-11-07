@@ -2,6 +2,7 @@
   "Leikir": {
     "en": "Moves",
     "nb": "Trekk",
+    "nn": "Trekk",
     "pl": "Ruchy",
     "ga": "Bogann"
   },
@@ -9,36 +10,42 @@
     "is": "Leika",
     "en": "Move",
     "nb": "Gjør trekk",
+    "nn": "Gjer trekk",
     "pl": "Wykonaj ruch",
     "ga": "Bog"
   },
   "Viðureignir": {
     "en": "Games",
     "nb": "Spill",
+    "nn": "Spel",
     "pl": "Gry",
     "ga": "Cluichí"
   },
   "Borðið": {
     "en": "Board",
     "nb": "Brett",
+    "nn": "Brett",
     "pl": "Plansza",
     "ga": "Bord"
   },
   "Tveggja stafa orð": {
     "en": "Two letter words",
     "nb": "To bokstavs ord",
+    "nn": "To bokstavs ord",
     "pl": "Dwuliterowe słowa",
     "ga": "Focail dhá litir"
   },
   "Spjall": {
     "en": "Chat",
     "nb": "Chat",
+    "nn": "Chat",
     "pl": "Czat",
     "ga": "Comhrá"
   },
   "Þessi vefslóð er ekki rétt": {
     "en": "Unknown URL",
     "nb": "Ukjent URL",
+    "nn": "Ukjend URL",
     "pl": "Nieznany URL",
     "ga": "URL Anaithnid"
   },
@@ -46,36 +53,42 @@
     "is": "Upplýsingar um leikmann",
     "en": "Player information",
     "nb": "Spillerinformasjon",
+    "nn": "Spelarinformasjon",
     "pl": "Informacje o graczu",
     "ga": "Eolas Imreoir"
   },
   "Einkenni:": {
     "en": "User identifier:",
     "nb": "Brukeridentifikator:",
+    "nn": "Brukaridentifikator:",
     "pl": "Identyfikator użytkownika:",
     "ga": "Aitheantóir Úsáideora:"
   },
   "Verður að vera útfyllt": {
     "en": "Required field",
     "nb": "Obligatorisk felt",
+    "nn": "Obligatorisk felt",
     "pl": "Pole wymagane",
     "ga": "Réimse Riachtanach"
   },
   "Fullt nafn:": {
     "en": "Full name:",
     "nb": "Fullt navn:",
+    "nn": "Fullt namn:",
     "pl": "Pełne imię i nazwisko:",
     "ga": "Ainm Iomlán:"
   },
   "Valfrjálst - sýnt í notendalistum Netskrafls": {
     "en": "Optional - shown in user lists",
     "nb": "Valgfritt - vist i brukerlister",
+    "nn": "Valfritt - vist i brukarlister",
     "pl": "Opcjonalne - pokazane na listach użytkowników",
     "ga": "Roghnach - le feiceáil i liostaí úsáideoirí"
   },
   "Tölvupóstfang:": {
     "en": "E-mail:",
     "nb": "E-post:",
+    "nn": "E-post:",
     "pl": "E-mail:",
     "ga": "Ríomhphost:"
   },
@@ -83,18 +96,21 @@
     "is": "Ef póstfang er gefið upp mun Netskrafl geta sent tölvupóst þegar þú átt leik",
     "en": "If given, Explo can send e-mail to the address when it's your turn in a game",
     "nb": "Hvis oppgitt, kan Explo sende e-post til adressen når det er din tur i et spill",
+    "nn": "Viss oppgjeve, kan Explo sende e-post til adressa når det er din tur i eit spel",
     "pl": "Jeśli podano, Explo może wysłać e-mail na ten adres, gdy nadejdzie Twoja kolej w grze",
     "ga": "Más tugadh é, is féidir le Explo ríomhphost a sheoladh chuig an seoladh nuair atá sé do sheal sa chluiche"
   },
   "Hljóðmerki:": {
     "en": "Sounds:",
     "nb": "Lyder:",
+    "nn": "Lydar:",
     "pl": "Dźwięki:",
     "ga": "Fuaimeanna:"
   },
   "Lúðraþytur eftir sigur:": {
     "en": "Trumpets after a win:",
     "nb": "Trompeter etter en seier:",
+    "nn": "Trompeter etter ein siger:",
     "pl": "Trąbki po zwycięstwie:",
     "ga": "Trumpaí tar éis bua:"
   },
@@ -102,108 +118,126 @@
     "is": "Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst",
     "en": "Controls whether sounds are played, e.g. when an opponent makes a move or when you win",
     "nb": "Kontrollerer om lyder spilles, f.eks. når en motstander gjør et trekk eller når du vinner",
+    "nn": "Kontrollerer om lydar blir spelte, t.d. når ein motstandar gjer eit trekk eller når du vinn",
     "pl": "Kontroluje, czy dźwięki są odtwarzane, np. gdy przeciwnik wykonuje ruch lub gdy wygrywasz",
     "ga": "Rialaíonn sé an seinntear fuaimeanna, m.sh. nuair a bhogann freasúra nó nuair a bhuaigh tú"
   },
   "Sýna reitagildi:": {
     "en": "Show multipliers:",
     "nb": "Vis multiplikatorer:",
+    "nn": "Vis multiplikatorar:",
     "pl": "Pokaż mnożniki:",
     "ga": "Taispeáin iolraitheoirí:"
   },
   "Nýi skraflpokinn:": {
     "en": "Use the new bag:",
     "nb": "Bruk den nye posen:",
+    "nn": "Bruk den nye posen:",
     "pl": "Użyj nowego worka:",
     "ga": "Bain úsáid as an mála nua:"
   },
   "Án hjálpartækja:": {
     "en": "Without helpers:",
     "nb": "Uten hjelpemidler:",
+    "nn": "Utan hjelpemiddel:",
     "pl": "Bez pomocy:",
     "ga": "Gan chúntóirí:"
   },
   "Vista": {
     "en": "Save",
     "nb": "Lagre",
+    "nn": "Lagre",
     "pl": "Zapisz",
     "ga": "Sábháil"
   },
   "Hætta við": {
     "en": "Cancel",
     "nb": "Avbryt",
+    "nn": "Avbryt",
     "pl": "Anuluj",
     "ga": "Cealaigh"
   },
   "Skrá mig út": {
     "en": "Log out",
     "nb": "Logg ut",
+    "nn": "Logg ut",
     "pl": "Wyloguj się",
     "ga": "Logáil Amach"
   },
   "Hætta sem vinur": {
     "en": "Cancel subscription",
     "nb": "Avslutt abonnement",
+    "nn": "Avslutt abonnement",
     "pl": "Anuluj subskrypcję",
     "ga": "Cealaigh síntiús"
   },
   "Þú ert vinur Netskrafls!": {
     "en": "You're an Explo subscriber!",
     "nb": "Du er en Explo-abonnent!",
+    "nn": "Du er ein Explo-abonnent!",
     "pl": "Jesteś subskrybentem Explo!",
     "ga": "Is síntiúsóir Explo tú!"
   },
   "Gerast vinur": {
     "en": "Subscribe",
     "nb": "Abonner",
+    "nn": "Abonner",
     "pl": "Subskrybuj",
     "ga": "Liostáil"
   },
   "Gerast vinur Netskrafls": {
     "en": "Subscribe to Explo",
     "nb": "Abonner på Explo",
+    "nn": "Abonner på Explo",
     "pl": "Subskrybuj Explo",
     "ga": "Liostáil le Explo"
   },
   "Tek við áskorunum!": {
     "en": "Accepting challenges!",
     "nb": "Aksepterer utfordringer!",
+    "nn": "Aksepterer utfordringar!",
     "pl": "Akceptuje wyzwania!",
     "ga": "Glac le dúshláin!"
   },
   "Til í viðureign með klukku!": {
     "en": "Ready for timed games!",
     "nb": "Klar for tidsbegrensede spill!",
+    "nn": "Klar for tidsbegrensa spel!",
     "pl": "Gotowy na gry z czasem!",
     "ga": "Réidh le haghaidh cluichí ama!"
   },
   "Stillir hvort ": {
     "en": "Controls whether ",
     "nb": "Kontrollerer om ",
+    "nn": "Kontrollerer om ",
     "pl": "Kontroluje czy ",
     "ga": "Rialaíonn sé an "
   },
   "minnismiði": {
     "en": "a memo sticker",
     "nb": "en memo-sticker",
+    "nn": "ein memo-sticker",
     "pl": "naklejka memo",
     "ga": "greamán memo"
   },
   " um margföldunargildi reita er sýndur við borðið": {
     "en": " with square multipliers is shown beside the board",
     "nb": " med rute-multiplikatorer vises ved siden av brettet",
+    "nn": " med rute-multiplikatorar blir vist ved sida av brettet",
     "pl": " z mnożnikami kwadratów jest pokazany obok planszy",
     "ga": " le hiolraitheoirí cearnóg le feiceáil in aice leis an mbord"
   },
   "Gefur til kynna hvort þú sért reiðubúin(n) að\nskrafla með ": {
     "en": "Indicates whether you are ready to play with\n",
     "nb": "Indikerer om du er klar til å spille med\n",
+    "nn": "Indikerer om du er klar til å spele med\n",
     "pl": "Wskazuje czy jesteś gotowy do gry z\n",
     "ga": "Léiríonn sé an bhfuil tú réidh le himirt le\n"
   },
   "nýja íslenska skraflpokanum": {
     "en": "the new tile bag",
     "nb": "den nye brikkeposen",
+    "nn": "den nye brikkeposen",
     "pl": "nowym workiem z kafelkami",
     "ga": "an mála tíleanna nua"
   },
@@ -211,48 +245,56 @@
     "is": "Með því að velja þessa merkingu lýsir þú því yfir að þú\nskraflir við aðra leikmenn ",
     "en": "By selecting this option, you declare that you play\nagainst other humans ",
     "nb": "Ved å velge dette alternativet, erklærer du at du spiller\nmot andre mennesker ",
+    "nn": "Ved å velje dette alternativet, erklærer du at du spelar\nmot andre menneske ",
     "pl": "Wybierając tę opcję, deklarujesz, że grasz\nprzeciwko innym ludziom ",
     "ga": "Trí an rogha seo a roghnú, dearbhaíonn tú go n-imríonn tú\ni gcoinne daoine eile "
   },
   "án stafrænna hjálpartækja": {
     "en": "without helpers or tools",
     "nb": "uten hjelpemidler eller verktøy",
+    "nn": "utan hjelpemiddel eller verktøy",
     "pl": "bez pomocy lub narzędzi",
     "ga": "gan chúntóirí ná uirlisí"
   },
   " af nokkru tagi": {
     "en": " of any kind",
     "nb": " av noe slag",
+    "nn": " av noko slag",
     "pl": " jakiegokolwiek rodzaju",
     "ga": " de chineál ar bith"
   },
   "Áskoranir": {
     "en": "Challenges",
     "nb": "Utfordringer",
+    "nn": "Utfordringar",
     "pl": "Wyzwania",
     "ga": "Dúshláin"
   },
   "Andstæðingar": {
     "en": "Opponents",
     "nb": "Motstandere",
+    "nn": "Motstandarar",
     "pl": "Przeciwnicy",
     "ga": "Freasúra"
   },
   "Ferill": {
     "en": "History",
     "nb": "Historikk",
+    "nn": "Historikk",
     "pl": "Historia",
     "ga": "Stair"
   },
   "Þú átt leik": {
     "en": "Your turn",
     "nb": "Din tur",
+    "nn": "Din tur",
     "pl": "Twoja kolej",
     "ga": "Do sheal"
   },
   "Viðureign lokið": {
     "en": "Game over",
     "nb": "Spillet er over",
+    "nn": "Spelet er over",
     "pl": "Koniec gry",
     "ga": "Cluiche thart"
   },
@@ -260,60 +302,70 @@
     "is": "{opponent} á leik",
     "en": "{opponent}'s turn",
     "nb": "Det er {opponent}s tur",
+    "nn": "Det er {opponent} sin tur",
     "pl": "Tura {opponent}",
     "ga": "Tá sé ar leathanach {opponent}"
   },
   " á leik": {
     "en": "'s turn",
     "nb": "s tur",
+    "nn": " sin tur",
     "pl": "s tura",
     "ga": "ar leathanach"
   },
   "Átt þú leik?": {
     "en": "Your turn?",
     "nb": "Din tur?",
+    "nn": "Din tur?",
     "pl": "Twoja kolej?",
     "ga": "Do sheal?"
   },
   "Langt frá síðasta leik?": {
     "en": "Long time elapsed since last move?",
     "nb": "Lang tid siden siste trekk?",
+    "nn": "Lang tid sidan siste trekk?",
     "pl": "Dużo czasu minęło od ostatniego ruchu?",
     "ga": "An bhfuil am fada caite ón mbogadh deireanach?"
   },
   "Síðasti leikur": {
     "en": "Last move",
     "nb": "Siste trekk",
+    "nn": "Siste trekk",
     "pl": "Ostatni ruch",
     "ga": "Bogadh deireanach"
   },
   "Andstæðingur": {
     "en": "Opponent",
     "nb": "Motstander",
+    "nn": "Motstandar",
     "pl": "Przeciwnik",
     "ga": "Freasúra"
   },
   "Staða": {
     "en": "Score",
     "nb": "Poengsum",
+    "nn": "Poengsum",
     "pl": "Wynik",
     "ga": "Scór"
   },
   "Framvinda": {
     "en": "Progress",
     "nb": "Fremgang",
+    "nn": "Framgang",
     "pl": "Postęp",
     "ga": "Dul Chun Cinn"
   },
   "Keppnishamur": {
     "en": "Pro mode",
     "nb": "Pro-modus",
+    "nn": "Pro-modus",
     "pl": "Tryb Pro",
     "ga": "Modh Pro"
   },
   "Venjuleg ótímabundin viðureign": {
     "en": "Standard Mode without time limit",
     "nb": "Standardmodus uten tidsbegrensning",
+    "nn": "Standardmodus utan tidsbegrensing",
     "pl": "Tryb standardowy bez limitu czasu",
     "ga": "Modh Caighdeánach gan teorainn ama"
   },
@@ -321,96 +373,112 @@
     "is": "Með klukku, 2 x {duration} mínútur",
     "en": "With clock, 2 x {duration} minutes",
     "nb": "Med klokke, 2 x {duration} minutter",
+    "nn": "Med klokke, 2 x {duration} minutt",
     "pl": "Z zegarem, 2 x {duration} minut",
     "ga": "Le clog, 2 x {duration} nóiméad"
   },
   "Hafna": {
     "en": "Decline",
     "nb": "Avslå",
+    "nn": "Avslå",
     "pl": "Odrzuć",
     "ga": "Diúltaigh"
   },
   "Afturkalla": {
     "en": "Retract",
     "nb": "Trekk tilbake",
+    "nn": "Trekk tilbake",
     "pl": "Wycofaj",
     "ga": "Tarraing siar"
   },
   "Án hjálpartækja": {
     "en": "Without helpers",
     "nb": "Uten hjelpemidler",
+    "nn": "Utan hjelpemiddel",
     "pl": "Bez pomocy",
     "ga": "Gan chúntóirí"
   },
   "Skoða feril": {
     "en": "View history",
     "nb": "Vis historikk",
+    "nn": "Vis historikk",
     "pl": "Zobacz historię",
     "ga": "Féach ar stair"
   },
   "Gamli pokinn": {
     "en": "Old tile bag",
     "nb": "Gammel brikkepose",
+    "nn": "Gammal brikkepose",
     "pl": "Stary worek z kafelkami",
     "ga": "Mála tíleanna sean"
   },
   "Hvenær": {
     "en": "When",
     "nb": "Når",
+    "nn": "Når",
     "pl": "Kiedy",
     "ga": "Cathain"
   },
   "Áskorandi": {
     "en": "Challenger",
     "nb": "Utfordrer",
+    "nn": "Utfordrar",
     "pl": "Wyzwający",
     "ga": "Dúshlánóir"
   },
   "Hvernig": {
     "en": "How",
     "nb": "Hvordan",
+    "nn": "Korleis",
     "pl": "Jak",
     "ga": "Conas"
   },
   "Sigur": {
     "en": "Win",
     "nb": "Seier",
+    "nn": "Siger",
     "pl": "Zwycięstwo",
     "ga": "Bua"
   },
   "Jafntefli": {
     "en": "Draw",
     "nb": "Uavgjort",
+    "nn": "Uavgjort",
     "pl": "Remis",
     "ga": "Tarraingt"
   },
   "Tap": {
     "en": "Loss",
     "nb": "Tap",
+    "nn": "Tap",
     "pl": "Porażka",
     "ga": "Caill"
   },
   "Úrslit": {
     "en": "Result",
     "nb": "Resultat",
+    "nn": "Resultat",
     "pl": "Wynik",
     "ga": "Toradh"
   },
   "Viðureign lauk": {
     "en": "Game finished",
     "nb": "Spill avsluttet",
+    "nn": "Spel avslutta",
     "pl": "Gra zakończona",
     "ga": "Cluiche críochnaithe"
   },
   "Mennskir andstæðingar": {
     "en": "Human opponents",
     "nb": "Menneskelige motstandere",
+    "nn": "Menneskelege motstandarar",
     "pl": "Ludzcy przeciwnicy",
     "ga": "Freasúra daonna"
   },
   "Allir andstæðingar": {
     "en": "All opponents",
     "nb": "Alle motstandere",
+    "nn": "Alle motstandarar",
     "pl": "Wszyscy przeciwnicy",
     "ga": "Gach freasúra"
   },
@@ -418,12 +486,14 @@
     "is": "Elo",
     "en": "Elo",
     "nb": "Elo",
+    "nn": "Elo",
     "pl": "Elo",
     "ga": "Elo"
   },
   "Lengd": {
     "en": "Duration",
     "nb": "Varighet",
+    "nn": "Varigheit",
     "pl": "Czas trwania",
     "ga": "Fad"
   },
@@ -431,6 +501,7 @@
     "en_US": "Favorite",
     "en": "Favourite",
     "nb": "Favoritt",
+    "nn": "Favoritt",
     "pl": "Ulubione",
     "ga": "Is fearr leat"
   },
@@ -438,78 +509,91 @@
     "en_US": "Favorites",
     "en": "Favourites",
     "nb": "Favoritter",
+    "nn": "Favorittar",
     "pl": "Ulubione",
     "ga": "Roghanna"
   },
   "Skora á": {
     "en": "Challenge",
     "nb": "Utfordre",
+    "nn": "Utfordre",
     "pl": "Wyzwanie",
     "ga": "Dúshlán"
   },
   "Einkenni": {
     "en": "Identifier",
     "nb": "Identifikator",
+    "nn": "Identifikator",
     "pl": "Identyfikator",
     "ga": "Aitheantóir"
   },
   "Nafn og merki": {
     "en": "Full name and badges",
     "nb": "Fullt navn og merker",
+    "nn": "Fullt namn og merke",
     "pl": "Pełna nazwa i odznaki",
     "ga": "Ainm iomlán agus suaitheantais"
   },
   " finnst ekki": {
     "en": " not found",
     "nb": " ikke funnet",
+    "nn": " ikkje funne",
     "pl": " nie znaleziono",
     "ga": " gan aimsiú"
   },
   "Þjarkar": {
     "en": "Robots",
     "nb": "Roboter",
+    "nn": "Robotar",
     "pl": "Roboty",
     "ga": "Róbónna"
   },
   "Álínis": {
     "en": "Online",
     "nb": "Pålogget",
+    "nn": "Pålogga",
     "pl": "Online",
     "ga": "Ar líne"
   },
   "Svipaðir": {
     "en": "Similar",
     "nb": "Lignende",
+    "nn": "Liknande",
     "pl": "Podobne",
     "ga": "Cosúil"
   },
   "Topp 100": {
     "en": "Top 100",
     "nb": "Topp 100",
+    "nn": "Topp 100",
     "pl": "Top 100",
     "ga": "Barr 100"
   },
   "orð": {
     "en": "word",
     "nb": "ord",
+    "nn": "ord",
     "pl": "słowo",
     "ga": "focal"
   },
   "stafur": {
     "en": "letter",
     "nb": "bokstav",
+    "nn": "bokstav",
     "pl": "litera",
     "ga": "litir"
   },
   "Senda": {
     "en": "Send",
     "nb": "Send",
+    "nn": "Send",
     "pl": "Wyślij",
     "ga": "Seol"
   },
   "Pass": {
     "en": "Pass",
     "nb": "Pass",
+    "nn": "Pass",
     "pl": "Pas",
     "ga": "Pas"
   },
@@ -517,6 +601,7 @@
     "is": "staf",
     "en": "letter",
     "nb": "bokstav",
+    "nn": "bokstav",
     "pl": "litera",
     "ga": "litir"
   },
@@ -524,6 +609,7 @@
     "is": "stafi",
     "en": "letters",
     "nb": "bokstaver",
+    "nn": "bokstavar",
     "pl": "litery",
     "ga": "litreacha"
   },
@@ -531,84 +617,98 @@
     "is": "Skipti um {numtiles} {letters}",
     "en": "Exchanged {numtiles} {letters}",
     "nb": "Byttet ut {numtiles} {letters}",
+    "nn": "Bytte ut {numtiles} {letters}",
     "pl": "Wymieniono {numtiles} {letters}",
     "ga": "Mhalartaithe {numtiles} {letters}"
   },
   "Gaf viðureign": {
     "en": "Resigned",
     "nb": "Ga opp",
+    "nn": "Gav opp",
     "pl": "Zrezygnował",
     "ga": "D'éirigh as"
   },
   "Véfengdi lögn": {
     "en": "Challenged move",
     "nb": "Utfordret trekk",
+    "nn": "Utfordra trekk",
     "pl": "Ruch zakwestionowany",
     "ga": "Bogadh dúshlánach"
   },
   "Óleyfileg lögn": {
     "en": "Invalid move",
     "nb": "Ugyldig trekk",
+    "nn": "Ugyldig trekk",
     "pl": "Nieprawidłowy ruch",
     "ga": "Bogadh neamhbhailí"
   },
   "Röng véfenging": {
     "en": "Unsuccessful challenge",
     "nb": "Mislykket utfordring",
+    "nn": "Mislukka utfordring",
     "pl": "Nieudane wyzwanie",
     "ga": "Dúshlán gan rath"
   },
   "Umframtími": {
     "en": "Extra time",
     "nb": "Ekstra tid",
+    "nn": "Ekstra tid",
     "pl": "Dodatkowy czas",
     "ga": "Am breise"
   },
   "Stafaleif: (engin)": {
     "en": "Rack leave: (none)",
     "nb": "Rack forlater: (ingen)",
+    "nn": "Stativ forlèt: (ingen)",
     "pl": "Pozostawienie na stojaku: (brak)",
     "ga": "Fágáil raca: (dada)"
   },
   "Stafaleif: ": {
     "en": "Rack leave: ",
     "nb": "Rack forlater: ",
+    "nn": "Stativ forlèt: ",
     "pl": "Pozostawienie na stojaku: ",
     "ga": "Fágáil raca: "
   },
   "Ný áskorun": {
     "en": "New challenge",
     "nb": "Ny utfordring",
+    "nn": "Ny utfordring",
     "pl": "Nowe wyzwanie",
     "ga": "Dúshlán nua"
   },
   "Viðureign án klukku": {
     "en": "Game with no time limit",
     "nb": "Spill uten tidsbegrensning",
+    "nn": "Spel utan tidsbegrensing",
     "pl": "Gra bez limitu czasu",
     "ga": "Cluiche gan teorainn ama"
   },
   "Nota ": {
     "en": "Enable ",
     "nb": "Aktiver ",
+    "nn": "Aktiver ",
     "pl": "Włącz ",
     "ga": "Cumasaigh "
   },
   "handvirka véfengingu": {
     "en": "manual challenges",
     "nb": "manuelle utfordringer",
+    "nn": "manuelle utfordringar",
     "pl": "ręczne wyzwania",
     "ga": "dúshláin láimhe"
   },
   "(\"keppnishamur\")": {
     "en": "(\"Pro mode\")",
     "nb": "(\"Pro-modus\")",
+    "nn": "(\"Pro-modus\")",
     "pl": "(\"Tryb Pro\")",
     "ga": "(\"Modh Pro\")"
   },
   "Viðureignir sem standa yfir": {
     "en": "Games in progress",
     "nb": "Pågående spill",
+    "nn": "Pågåande spel",
     "pl": "Trwające gry",
     "ga": "Cluichí ar siúl"
   },
@@ -616,18 +716,21 @@
     "is": " - smelltu á viðureign til að skoða stöðuna og leika ef ",
     "en": " - click on a game to view it and make a move if ",
     "nb": " - klikk på et spill for å åpne det og gjøre et trekk hvis ",
+    "nn": " - klikk på eit spel for å opne det og gjere eit trekk viss ",
     "pl": " - kliknij na grę, aby ją zobaczyć i wykonać ruch, jeśli ",
     "ga": " - cliceáil ar chluiche chun é a fheiceáil agus bogadh má "
   },
   " þú átt leik": {
     "en": " it's your turn",
     "nb": " det er din tur",
+    "nn": " det er din tur",
     "pl": " to twoja kolej",
     "ga": " tá sé do sheal"
   },
   "Skorað á þig": {
     "en": "Other players have challenged you",
     "nb": "Andre spillere har utfordret deg",
+    "nn": "Andre spelarar har utfordra deg",
     "pl": "Inni gracze wyzwali cię",
     "ga": "Tá dúshláin curtha ort ag imreoirí eile"
   },
@@ -635,36 +738,42 @@
     "is": " - smelltu á áskorun til að taka henni og hefja viðureign, eða á ",
     "en": " - click on a challenge to accept it and start a game, or on ",
     "nb": " - klikk på en utfordring for å akseptere den og starte et spill, eller på ",
+    "nn": " - klikk på ei utfordring for å akseptere ho og starte eit spel, eller på ",
     "pl": " - kliknij na wyzwanie, aby je zaakceptować i rozpocząć grę, lub na ",
     "ga": " - cliceáil ar dhúshlán chun glacadh leis agus cluiche a thosú, nó ar "
   },
   " til að hafna henni": {
     "en": " to decline it",
     "nb": " for å avslå det",
+    "nn": " for å avslå det",
     "pl": " aby je odrzucić",
     "ga": " chun é a dhiúltú"
   },
   "Þú skorar á aðra": {
     "en": "You challenge other players",
     "nb": "Du utfordrer andre spillere",
+    "nn": "Du utfordrar andre spelarar",
     "pl": "Wyzwasz innych graczy",
     "ga": "Dúshlánaíonn tú imreoirí eile"
   },
   " - smelltu á ": {
     "en": " - click on ",
     "nb": " - klikk på ",
+    "nn": " - klikk på ",
     "pl": " - kliknij na ",
     "ga": " - cliceáil ar "
   },
   " til að afturkalla áskorun": {
     "en": " to retract an issued challenge",
     "nb": " for å trekke tilbake en utfordring",
+    "nn": " for å trekkje tilbake ei utfordring",
     "pl": " aby wycofać wydane wyzwanie",
     "ga": " chun dúshlán eisithe a tharraingt siar"
   },
   "Nýlegar viðureignir þínar": {
     "en": "Your recent games",
     "nb": "Dine nylige spill",
+    "nn": "Dine nylege spel",
     "pl": "Twoje ostatnie gry",
     "ga": "Do chluichí le déanaí"
   },
@@ -672,114 +781,133 @@
     "is": " - smelltu á viðureign til að skoða hana og rifja upp",
     "en": " - click on a game to review it",
     "nb": " - klikk på et spill for å åpne det og gå gjennom det",
+    "nn": " - klikk på eit spel for å opne det og gå gjennom det",
     "pl": " - kliknij na grę, aby ją przejrzeć",
     "ga": " - cliceáil ar chluiche chun athbhreithniú a dhéanamh air"
   },
   "Einkenni eða nafn": {
     "en": "Identifier or name",
     "nb": "Identifikator eller navn",
+    "nn": "Identifikator eller namn",
     "pl": "Identyfikator lub nazwa",
     "ga": "Aitheantóir nó ainm"
   },
   "Upplýsingar og hjálp": {
     "en": "Information and help",
     "nb": "Informasjon og hjelp",
+    "nn": "Informasjon og hjelp",
     "pl": "Informacje i pomoc",
     "ga": "Eolas agus cabhair"
   },
   "1 dagur": {
     "en": "1 day",
     "nb": "1 dag",
+    "nn": "1 dag",
     "pl": "1 dzień",
     "ga": "1 lá"
   },
   " dagar": {
     "en": " days",
     "nb": " dager",
+    "nn": " dagar",
     "pl": " dni",
     "ga": " laethanta"
   },
   " og ": {
     "en": " and ",
     "nb": " og ",
+    "nn": " og ",
     "pl": " i ",
     "ga": " agus "
   },
   "1 klst": {
     "en": "1 hour",
     "nb": "1 time",
+    "nn": "1 time",
     "pl": "1 godzina",
     "ga": "1 uair"
   },
   " klst": {
     "en": " hours",
     "nb": " timer",
+    "nn": " timar",
     "pl": " godzin",
     "ga": " uair an chloig"
   },
   "1 mínúta": {
     "en": "1 minute",
     "nb": "1 minutt",
+    "nn": "1 minutt",
     "pl": "1 minuta",
     "ga": "1 nóiméad"
   },
   " mínútur": {
     "en": " minutes",
     "nb": " minutter",
+    "nn": " minutt",
     "pl": " minuty",
     "ga": " nóiméad"
   },
   "Viðureign með klukku": {
     "en": "Timed game",
     "nb": "Tidsbegrenset spill",
+    "nn": "Tidsbegrensa spel",
     "pl": "Gra zegarowa",
     "ga": "Cluiche ama"
   },
   "Vinur Netskrafls": {
     "en": "Explo subscriber",
     "nb": "Explo-abonnent",
+    "nn": "Explo-abonnent",
     "pl": "Subskrybent Explo",
     "ga": "Síntiúsóir Explo"
   },
   "Nýjustu viðureignir": {
     "en": "Recent games",
     "nb": "Nylige spill",
+    "nn": "Nylege spel",
     "pl": "Najnowsze gry",
     "ga": "Cluichí is déanaí"
   },
   "Loka": {
     "en": "Close",
     "nb": "Lukk",
+    "nn": "Lukk",
     "pl": "Zamknij",
     "ga": "Dún"
   },
   "Besta orð ": {
     "en": "Best word ",
     "nb": "Beste ord ",
+    "nn": "Beste ord ",
     "pl": "Najlepsze słowo ",
     "ga": "An focal is fearr "
   },
   "Hæsta skor ": {
     "en": "Highest score ",
     "nb": "Høyeste poengsum ",
+    "nn": "Høgaste poengsum ",
     "pl": "Najwyższy wynik ",
     "ga": "An scór is airde "
   },
   " stig": {
     "en": " points",
     "nb": " poeng",
+    "nn": " poeng",
     "pl": " punkty",
     "ga": " pointí"
   },
   "Til hamingju með sigurinn!": {
     "en": "You won - congratulations!",
     "nb": "Du vant - gratulerer!",
+    "nn": "Du vann - gratulerer!",
     "pl": "Wygrałeś - gratulacje!",
     "ga": "Bhuaigh tú - comhghairdeas!"
   },
   "Viðureigninni er lokið": {
     "en": "Game over",
     "nb": "Spillet er over",
+    "nn": "Spelet er over",
     "pl": "Gra zakończona",
     "ga": "Cluiche thart"
   },
@@ -787,138 +915,161 @@
     "is": "Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass",
     "en": "Your opponent emptied the rack - you can challenge or pass",
     "nb": "Motstanderen tømte stativet - du kan utfordre eller passere",
+    "nn": "Motstandaren tømde stativet - du kan utfordre eller passere",
     "pl": "Twój przeciwnik opróżnił stojak - możesz rzucić wyzwanie lub spasować",
     "ga": "D'fholmhaigh do chéile comhraic an raca - is féidir leat dúshlán a thabhairt nó pas a fháil"
   },
   "Viltu gefa leikinn?": {
     "en": "Do you want to resign the game?",
     "nb": "Ønsker du å gi opp spillet?",
+    "nn": "Ønskjer du å gje opp spelet?",
     "pl": "Czy chcesz zrezygnować z gry?",
     "ga": "Ar mhaith leat éirí as an gcluiche?"
   },
   " Já": {
     "en": " Yes",
     "nb": " Ja",
+    "nn": " Ja",
     "pl": " Tak",
     "ga": " Tá"
   },
   " Nei": {
     "en": " No",
     "nb": " Nei",
+    "nn": " Nei",
     "pl": " Nie",
     "ga": " Níl"
   },
   "Segja pass?": {
     "en": "Pass the turn?",
     "nb": "Passere turen?",
+    "nn": "Passere turen?",
     "pl": "Spasować kolej?",
     "ga": "Pas an tsealaíocht?"
   },
   "2x3 pöss í röð ljúka viðureign": {
     "en": "2x3 passes in a row end the game",
     "nb": "2x3 pasninger på rad avslutter spillet",
+    "nn": "2x3 pasningar på rad avsluttar spelet",
     "pl": "2x3 pasy z rzędu kończą grę",
     "ga": "Críochnaíonn 2x3 pasanna as a chéile an cluiche"
   },
   "Viðureign lýkur þar með": {
     "en": "This finishes the game",
     "nb": "Dette avslutter spillet",
+    "nn": "Dette avsluttar spelet",
     "pl": "To kończy grę",
     "ga": "Críochnaíonn sé seo an cluiche"
   },
   "Skipta": {
     "en": "Exchange",
     "nb": "Bytte",
+    "nn": "Byte",
     "pl": "Wymiana",
     "ga": "Malartú"
   },
   "Smelltu á flísarnar sem þú vilt skipta": {
     "en": "Click on the tiles that you wish to exchange",
     "nb": "Klikk på brikkene du ønsker å bytte",
+    "nn": "Klikk på brikkene du ønskjer å byte",
     "pl": "Kliknij na kafelki, które chcesz wymienić",
     "ga": "Cliceáil ar na tíleanna ar mhaith leat a mhalartú"
   },
   "Véfengja lögn?": {
     "en": "Challenge move?",
     "nb": "Utfordre trekk?",
+    "nn": "Utfordre trekk?",
     "pl": "Wyzwanie ruchu?",
     "ga": "Dúshlán bogadh?"
   },
   "Röng véfenging kostar 10 stig": {
     "en": "Wrong challenge costs 10 points",
     "nb": "Feil utfordring koster 10 poeng",
+    "nn": "Feil utfordring kostar 10 poeng",
     "pl": "Błędne wyzwanie kosztuje 10 punktów",
     "ga": "Cosnaíonn dúshlán mícheart 10 bpointe"
   },
   "Er álínis": {
     "en": "Is online",
     "nb": "Er pålogget",
+    "nn": "Er pålogga",
     "pl": "Jest online",
     "ga": "Ar líne"
   },
   "Álínis?": {
     "en": "Online?",
     "nb": "Pålogget?",
+    "nn": "Pålogga?",
     "pl": "Online?",
     "ga": "Ar líne?"
   },
   "Röð": {
     "en": "Rank",
     "nb": "Rangering",
+    "nn": "Rangering",
     "pl": "Ranking",
     "ga": "Rang"
   },
   "Röð í gær": {
     "en": "Rank yesterday",
     "nb": "Rangering i går",
+    "nn": "Rangering i går",
     "pl": "Ranking wczoraj",
     "ga": "Rang inné"
   },
   "Röð fyrir viku": {
     "en": "Rank a week ago",
     "nb": "Rangering for en uke siden",
+    "nn": "Rangering for ei veke sidan",
     "pl": "Ranking tydzień temu",
     "ga": "Rang seachtain ó shin"
   },
   "1d": {
     "en": "1d",
     "nb": "1d",
+    "nn": "1d",
     "pl": "1d",
     "ga": "1l"
   },
   "7d": {
     "en": "7d",
     "nb": "7d",
+    "nn": "7d",
     "pl": "7d",
     "ga": "7l"
   },
   "30d": {
     "en": "30d",
     "nb": "30d",
+    "nn": "30d",
     "pl": "30d",
     "ga": "30l"
   },
   "Elo-stig": {
     "en": "Elo points",
     "nb": "Elo-poeng",
+    "nn": "Elo-poeng",
     "pl": "Punkty Elo",
     "ga": "Pointí Elo"
   },
   "Elo-stig í gær": {
     "en": "Elo points yesterday",
     "nb": "Elo-poeng i går",
+    "nn": "Elo-poeng i går",
     "pl": "Punkty Elo wczoraj",
     "ga": "Pointí Elo inné"
   },
   "Elo-stig fyrir viku": {
     "en": "Elo points a week ago",
     "nb": "Elo-poeng for en uke siden",
+    "nn": "Elo-poeng for ei veke sidan",
     "pl": "Punkty Elo tydzień temu",
     "ga": "Pointí Elo seachtain ó shin"
   },
   "Elo-stig fyrir mánuði": {
     "en": "Elo points a month ago",
     "nb": "Elo-poeng for en måned siden",
+    "nn": "Elo-poeng for ein månad sidan",
     "pl": "Punkty Elo miesiąc temu",
     "ga": "Pointí Elo mí ó shin"
   },
@@ -926,6 +1077,7 @@
     "is": "Fólk | Allar | Keppnishamur",
     "en": "Humans | All | Pro mode",
     "nb": "Mennesker | Alle | Pro modus",
+    "nn": "Menneske | Alle | Pro-modus",
     "pl": "Ludzie | Wszyscy | Tryb Pro",
     "ga": "Daoine | Gach | Modh Pro"
   },
@@ -933,114 +1085,133 @@
     "is": "Með þjörkum eða án",
     "en": "With or without robot games",
     "nb": "Med eller uten robotspill",
+    "nn": "Med eller utan robotspel",
     "pl": "Z grami robotów lub bez",
     "ga": "Le cluichí róbón nó gan iad"
   },
   "Fjöldi viðureigna": {
     "en": "Number of games",
     "nb": "Antall spill",
+    "nn": "Tal på spel",
     "pl": "Liczba gier",
     "ga": "Líon cluichí"
   },
   "Vinningshlutfall": {
     "en": "Winning ratio",
     "nb": "Vinningsforhold",
+    "nn": "Vinningsforhold",
     "pl": "Stosunek wygranych",
     "ga": "Cóimheas bua"
   },
   "Meðalstigafjöldi": {
     "en": "Average score",
     "nb": "Gjennomsnittlig poengsum",
+    "nn": "Gjennomsnittleg poengsum",
     "pl": "Średni wynik",
     "ga": "Scór meánach"
   },
   " gegn öllum ": {
     "en": " against all ",
     "nb": " mot alle ",
+    "nn": " mot alle ",
     "pl": " przeciwko wszystkim ",
     "ga": " in aghaidh gach "
   },
   " gegn þér ": {
     "en": " against you ",
     "nb": " mot deg ",
+    "nn": " mot deg ",
     "pl": " przeciwko tobie ",
     "ga": " in aghaidh tú "
   },
   " - veldu lengd viðureignar:": {
     "en": " - choose game duration:",
     "nb": " - velg spillvarighet:",
+    "nn": " - vel spelvarigheit:",
     "pl": " - wybierz czas trwania gry:",
     "ga": " - roghnaigh fad an chluiche:"
   },
   "2 x 10 mínútur": {
     "en": "2 x 10 minutes",
     "nb": "2 x 10 minutter",
+    "nn": "2 x 10 minutt",
     "pl": "2 x 10 minut",
     "ga": "2 x 10 nóiméad"
   },
   "2 x 15 mínútur": {
     "en": "2 x 15 minutes",
     "nb": "2 x 15 minutter",
+    "nn": "2 x 15 minutt",
     "pl": "2 x 15 minut",
     "ga": "2 x 15 nóiméad"
   },
   "2 x 20 mínútur": {
     "en": "2 x 20 minutes",
     "nb": "2 x 20 minutter",
+    "nn": "2 x 20 minutt",
     "pl": "2 x 20 minut",
     "ga": "2 x 20 nóiméad"
   },
   "2 x 25 mínútur": {
     "en": "2 x 25 minutes",
     "nb": "2 x 25 minutter",
+    "nn": "2 x 25 minutt",
     "pl": "2 x 25 minut",
     "ga": "2 x 25 nóiméad"
   },
   "2 x 30 mínútur": {
     "en": "2 x 30 minutes",
     "nb": "2 x 30 minutter",
+    "nn": "2 x 30 minutt",
     "pl": "2 x 30 minut",
     "ga": "2 x 30 nóiméad"
   },
   "Báðir leikmenn lýsa því yfir að þeir skrafla ": {
     "en": "Both players declare that they play ",
     "nb": "Begge spillere erklærer at de spiller ",
+    "nn": "Begge spelarar erklærer at dei spelar ",
     "pl": "Obaj gracze deklarują, że grają ",
     "ga": "Dearbhaíonn an bheirt imreoirí go n-imríonn siad "
   },
   "Flísar sem eftir eru": {
     "en": "Tiles remaining",
     "nb": "Fliser igjen",
+    "nn": "Fliser igjen",
     "pl": "Pozostałe kafelki",
     "ga": "Tíleanna fágtha"
   },
   "Hvaða staf táknar auða flísin?": {
     "en": "Which letter does the blank tile represent?",
     "nb": "Hvilken bokstav representerer den blanke flisen?",
+    "nn": "Kva bokstav representerer den blanke flisa?",
     "pl": "Jaką literę reprezentuje pusty kafelek?",
     "ga": "Cén litir a léiríonn an tíl bán?"
   },
   "Þvinga til uppgjafar": {
     "en": "Force to resign",
     "nb": "Tving til å gi opp",
+    "nn": "Tving til å gje opp",
     "pl": "Zmusić do rezygnacji",
     "ga": "Éignigh le héirí as"
   },
   "14 dagar liðnir án leiks": {
     "en": "14 days elapsed without a move",
     "nb": "14 dager gått uten trekk",
+    "nn": "14 dagar gått utan trekk",
     "pl": "Upłynęło 14 dni bez ruchu",
     "ga": "14 lá caite gan bogadh"
   },
   "Gefa viðureign": {
     "en": "Resign from game",
     "nb": "Gi opp spillet",
+    "nn": "Gje opp spelet",
     "pl": "Zrezygnować z gry",
     "ga": "Éirigh as an gcluiche"
   },
   "Skipta stöfum": {
     "en": "Exchange tiles",
     "nb": "Bytt fliser",
+    "nn": "Byt fliser",
     "pl": "Wymień kafelki",
     "ga": "Malartú tíleanna"
   },
@@ -1048,156 +1219,182 @@
     "en": "'{word}' is not in the dictionary",
     "is": "'{word}' finnst ekki í orðasafni",
     "nb": "'{word}' finnes ikke i ordboken",
+    "nn": "'{word}' finst ikkje i ordboka",
     "pl": "'{word}' nie znajduje się w słowniku",
     "ga": "Níl '{word}' sa fhoclóir"
   },
   "Smelltu til að fletta upp": {
     "en": "Click to look up",
     "nb": "Klikk for å slå opp",
+    "nn": "Klikk for å slå opp",
     "pl": "Kliknij, aby wyszukać",
     "ga": "Cliceáil chun cuardach"
   },
   "Skoða yfirlit": {
     "en": "Review game",
     "nb": "Gjennomgå spill",
+    "nn": "Gjennomgå spel",
     "pl": "Przejrzyj grę",
     "ga": "Athbhreithniú cluiche"
   },
   "Skraflað án hjálpartækja": {
     "en": "Game without helpers or tools",
     "nb": "Spill uten hjelpemidler eller verktøy",
+    "nn": "Spel utan hjelpemiddel eller verktøy",
     "pl": "Gra bez pomocy lub narzędzi",
     "ga": "Cluiche gan chúntóirí nó uirlisí"
   },
   "Skraflar án hjálpartækja": {
     "en": "Plays without helpers or tools",
     "nb": "Spiller uten hjelpemidler eller verktøy",
+    "nn": "Spelar utan hjelpemiddel eller verktøy",
     "pl": "Gra bez pomocy lub narzędzi",
     "ga": "Imríonn gan chúntóirí nó uirlisí"
   },
   "Til í viðureign með klukku": {
     "en": "Willing to play timed games",
     "nb": "Villig til å spille tidsbegrensede spill",
+    "nn": "Villig til å spele tidsbegrensa spel",
     "pl": "Chętny do gry w gry zegarowe",
     "ga": "Toilteanach cluichí ama a imirt"
   },
   "Álínis og tekur við áskorunum": {
     "en": "Online and accepting challenges",
     "nb": "Pålogget og aksepterer utfordringer",
+    "nn": "Pålogga og aksepterer utfordringar",
     "pl": "Online i akceptuje wyzwania",
     "ga": "Ar líne agus ag glacadh le dúshláin"
   },
   "Enginn stafur lagður niður": {
     "en": "No tile played",
     "nb": "Ingen flis spilt",
+    "nn": "Inga flis spelt",
     "pl": "Żaden kafelek nie został położony",
     "ga": "Níor imríodh aon tíl"
   },
   "Fyrsta orð verður að liggja um byrjunarreitinn": {
     "en": "First word must cover the start square",
     "nb": "Første ord må dekke startfeltet",
+    "nn": "Første ord må dekkje startfeltet",
     "pl": "Pierwsze słowo musi pokryć pole startowe",
     "ga": "Caithfidh an chéad fhocal an cearnóg tosaigh a chlúdach"
   },
   "Orð verður að vera samfellt á borðinu": {
     "en": "Word must be placed consecutively on the board",
     "nb": "Ord må plasseres etter hverandre på brettet",
+    "nn": "Ord må plasserast etter kvarandre på brettet",
     "pl": "Słowo musi być umieszczone kolejno na planszy",
     "ga": "Caithfear an focal a chur go leanúnach ar an mbord"
   },
   "Orð verður að tengjast orði sem fyrir er": {
     "en": "Word must be connected to another word on the board",
     "nb": "Ord må være koblet til et annet ord på brettet",
+    "nn": "Ord må vere kopla til eit anna ord på brettet",
     "pl": "Słowo musi być połączone z innym słowem na planszy",
     "ga": "Caithfidh an focal a bheith ceangailte le focal eile ar an mbord"
   },
   "Reitur þegar upptekinn": {
     "en": "Square is already occupied",
     "nb": "Feltet er allerede opptatt",
+    "nn": "Feltet er allereie oppteke",
     "pl": "Pole jest już zajęte",
     "ga": "Tá an cearnóg áitithe cheana"
   },
   "Ekki má vera eyða í orði": {
     "en": "Word cannot contain a space",
     "nb": "Ord kan ikke inneholde et mellomrom",
+    "nn": "Ord kan ikkje innehalde eit mellomrom",
     "pl": "Słowo nie może zawierać spacji",
     "ga": "Ní féidir spás a bheith i bhfocal"
   },
   "Of margir stafir lagðir niður": {
     "en": "Too many tiles laid down",
     "nb": "For mange fliser lagt ned",
+    "nn": "For mange fliser lagde ned",
     "pl": "Położono zbyt wiele kafelków",
     "ga": "Leagadh síos an iomarca tíleanna"
   },
   "Stafur er ekki í rekkanum": {
     "en": "Tile is not present in the player's rack",
     "nb": "Flisen er ikke til stede i spillerens stativ",
+    "nn": "Flisa er ikkje til stades i spelaren sitt stativ",
     "pl": "Kafelek nie znajduje się na stojaku gracza",
     "ga": "Níl an tíl i raca an imreora"
   },
   "Of fáir stafir eftir, skipting ekki leyfð": {
     "en": "Too few tiles left in bag; exchange not permitted",
     "nb": "For få fliser igjen i posen; bytte ikke tillatt",
+    "nn": "For få fliser igjen i posen; byte ikkje tillate",
     "pl": "Zbyt mało kafelków w worku; wymiana niedozwolona",
     "ga": "Ró-bheag tíleanna fágtha sa mhála; malartú toirmiscthe"
   },
   "Of mörgum stöfum skipt": {
     "en": "Too many tiles exchanged",
     "nb": "For mange fliser byttet",
+    "nn": "For mange fliser bytte",
     "pl": "Wymieniono zbyt wiele kafelków",
     "ga": "Malartaíodh an iomarca tíleanna"
   },
   "Leik vantar á borðið - endurglæðið vefráparann": {
     "en": "Move missing from board - refresh browser",
     "nb": "Trekk mangler på brettet - oppdater nettleseren",
+    "nn": "Trekk manglar på brettet - oppdater nettlesaren",
     "pl": "Ruch nieobecny na planszy - odśwież przeglądarkę",
     "ga": "Bogadh in easnamh ón mbord - athnuaigh an brabhsálaí"
   },
   "Notandi ekki innskráður - endurglæðið vefráparann": {
     "en": "User not logged in - refresh browser",
     "nb": "Bruker ikke logget inn - oppdater nettleseren",
+    "nn": "Brukar ikkje logga inn - oppdater nettlesaren",
     "pl": "Użytkownik nie jest zalogowany - odśwież przeglądarkę",
     "ga": "Úsáideoir gan logáil isteach - athnuaigh an brabhsálaí"
   },
   "Rangur eða óþekktur notandi": {
     "en": "Wrong or unknown user",
     "nb": "Feil eller ukjent bruker",
+    "nn": "Feil eller ukjend brukar",
     "pl": "Błędny lub nieznany użytkownik",
     "ga": "Úsáideoir mícheart nó anaithnid"
   },
   "Viðureign finnst ekki": {
     "en": "Game not found",
     "nb": "Spill ikke funnet",
+    "nn": "Spel ikkje funne",
     "pl": "Gra nie znaleziona",
     "ga": "Cluiche gan aimsiú"
   },
   "Viðureign er ekki utan tímamarka": {
     "en": "Game has not exceeded time limit",
     "nb": "Spillet har ikke overskredet tidsbegrensningen",
+    "nn": "Spelet har ikkje overskride tidsbegrensinga",
     "pl": "Gra nie przekroczyła limitu czasu",
     "ga": "Níor sháraigh an cluiche an teorainn ama"
   },
   "Netþjónn gat ekki tekið við leiknum - reyndu aftur": {
     "en": "Server is unable to process move - try again",
     "nb": "Serveren kan ikke behandle trekket - prøv igjen",
+    "nn": "Tenaren kan ikkje behandle trekket - prøv igjen",
     "pl": "Serwer nie może przetworzyć ruchu - spróbuj ponownie",
     "ga": "Ní féidir leis an bhfreastalaí an gluaiseacht a phróiseáil - bain triail eile as"
   },
   "Véfenging er ekki möguleg í þessari viðureign": {
     "en": "A challenge is not possible in this game",
     "nb": "En utfordring er ikke mulig i dette spillet",
+    "nn": "Ei utfordring er ikkje mogleg i dette spelet",
     "pl": "Wyzwanie nie jest możliwe w tej grze",
     "ga": "Ní féidir dúshlán a thabhairt sa chluiche seo"
   },
   "Síðasti leikur er ekki véfengjanlegur": {
     "en": "The last move cannot be challenged",
     "nb": "Siste trekk kan ikke utfordres",
+    "nn": "Siste trekk kan ikkje utfordrast",
     "pl": "Ostatniego ruchu nie można zakwestionować",
     "ga": "Ní féidir an gluaiseacht deireanach a dhúshlánú"
   },
   "Aðeins véfenging eða pass leyfileg": {
     "en": "Only a challenge or a pass are possible",
     "nb": "Bare en utfordring eller pass er mulig",
+    "nn": "Berre ei utfordring eller pass er mogleg",
     "pl": "Możliwe jest tylko wyzwanie lub pas",
     "ga": "Níl ach dúshlán nó pas indéanta"
   },
@@ -1214,17 +1411,23 @@
       "entered by users themselves. A log is kept of web traffic and events within Explo, ",
       "for the purpose of improving the service."
     ],
-    "pl": [
-      "W celu identyfikacji Explo przypisuje każdemu użytkownikowi adres e-mail i nazwę. ",
-      "Poza tym Explo przechowuje tylko te informacje, które dobrowolnie wprowadzają sami ",
-      "użytkownicy. Prowadzony jest rejestr ruchu internetowego i zdarzeń w Explo w celu ",
-      "ulepszenia usługi."
-    ],
     "nb": [
       "For identifikasjon knytter Explo en e-postadresse og et navn til hver bruker. ",
       "Utover dette lagrer Explo kun informasjon som frivillig ",
       "legges inn av brukerne selv. En logg føres over webtrafikk og hendelser innen Explo, ",
       "i hensikt å forbedre tjenesten."
+    ],
+    "nn": [
+      "For identifikasjon knyter Explo ei e-postadresse og eit namn til kvar brukar. ",
+      "Utover dette lagrar Explo berre informasjon som frivillig ",
+      "blir lagt inn av brukarane sjølve. Ein logg blir ført over webtrafikk og hendingar innan Explo, ",
+      "i føremål å forbetre tenesta."
+    ],
+    "pl": [
+      "W celu identyfikacji Explo przypisuje każdemu użytkownikowi adres e-mail i nazwę. ",
+      "Poza tym Explo przechowuje tylko te informacje, które dobrowolnie wprowadzają sami ",
+      "użytkownicy. Prowadzony jest rejestr ruchu internetowego i zdarzeń w Explo w celu ",
+      "ulepszenia usługi."
     ],
     "ga": [
       "Chun aitheantais, ceanglaíonn Explo seoladh ríomhphoist agus ainm le gach úsáideoir. ",
@@ -1233,7 +1436,7 @@
       "leis an gcuspóir an tseirbhís a fheabhsú."
     ]
   },
-  "welcome_1": {
+"welcome_1": {
     "is": [
       "Netskrafl notar Google Accounts innskráningu, þá sömu og er notuð m.a. í Gmail. ",
       "Til að auðkenna þig sem notanda og halda innskráningunni virkri ",
@@ -1250,6 +1453,11 @@
       "For å huske din innlogging og opprettholde din økt, er det nødvendig å lagre en ",
       "informasjonskapsel i nettleseren din."
     ],
+    "nn": [
+      "Explo brukar Google-kontoar for brukarautentisering, likt som t.d. Gmail. ",
+      "For å hugse innlogginga di og halde ved like økta di, er det naudsynt å lagre ein ",
+      "informasjonskapsel i nettlesaren din."
+    ],
     "pl": [
       "Explo używa kont Google do uwierzytelniania użytkownika, podobnie jak np. Gmail. ",
       "Aby zapamiętać twoje logowanie i utrzymać sesję, konieczne jest przechowanie ",
@@ -1264,7 +1472,7 @@
   "welcome_0": {
     "is": [
       "Netskrafl er vettvangur ",
-      "<b>yfir 20.000 íslenskra skraflara</b>",
+      "<b>yfir 40.000 íslenskra skraflara</b>",
       " á netinu."
     ],
     "en": [
@@ -1275,6 +1483,11 @@
     "nb": [
       "Explo er et møtested for ",
       "<b>tusenvis av kryssordspillentusiaster</b>",
+      " på internett."
+    ],
+    "nn": [
+      "Explo er ein møtestad for ",
+      "<b>tusenvis av kryssordspelentusiastar</b>",
       " på internett."
     ],
     "pl": [
@@ -1291,48 +1504,56 @@
   "Skrái þig inn...": {
     "en": "Logging you in...",
     "nb": "Logger deg inn...",
+    "nn": "Loggar deg inn...",
     "pl": "Logowanie...",
     "ga": "Ag logáil isteach tú..."
   },
   "Innskrá": {
     "en": "Log in",
     "nb": "Logg inn",
+    "nn": "Logg inn",
     "pl": "Zaloguj się",
     "ga": "Logáil isteach"
   },
   "Smelltu til að raða eftir seinni staf": {
     "en": "Click to sort by last letter",
     "nb": "Klikk for å sortere etter siste bokstav",
+    "nn": "Klikk for å sortere etter siste bokstav",
     "pl": "Kliknij, aby posortować według ostatniej litery",
     "ga": "Cliceáil chun sórtáil de réir an litir deireanaigh"
   },
   "Smelltu til að raða eftir fyrri staf": {
     "en": "Click to sort by first letter",
     "nb": "Klikk for å sortere etter første bokstav",
+    "nn": "Klikk for å sortere etter første bokstav",
     "pl": "Kliknij, aby posortować według pierwszej litery",
     "ga": "Cliceáil chun sórtáil de réir an chéad litir"
   },
   "Hvernig reitirnir margfalda stigin": {
     "en": "How squares multiply points",
     "nb": "Hvordan ruter multipliserer poeng",
+    "nn": "Korleis ruter multipliserer poeng",
     "pl": "Jak kwadraty mnożą punkty",
     "ga": "Conas a iolraíonn cearnóga pointí"
   },
   "Loka þessari hjálp": {
     "en": "Close this help",
     "nb": "Lukk denne hjelpen",
+    "nn": "Lukk denne hjelpa",
     "pl": "Zamknij tę pomoc",
     "ga": "Dún an chabhair seo"
   },
   "Stokka upp rekka": {
     "en": "Shuffle rack",
     "nb": "Stokk stativet",
+    "nn": "Stokk stativet",
     "pl": "Przetasuj stojak",
     "ga": "Measc raca"
   },
   "Færa stafi aftur í rekka": {
     "en": "Recall tiles into rack",
     "nb": "Hent fliser tilbake til stativet",
+    "nn": "Hent fliser tilbake til stativet",
     "pl": "Przywróć kafelki do stojaka",
     "ga": "Cuimhnigh tíleanna isteach sa raca"
   },

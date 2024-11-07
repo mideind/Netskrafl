@@ -1244,7 +1244,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 20 top-scoring moves",
+            "Picks one of 20 highest-scoring possible moves",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=20),
@@ -1264,7 +1264,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Sif",
-            "Plays one of 30 possible common words",
+            "Plays one of 30 possible words from a basic vocabulary",
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
@@ -1287,7 +1287,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idun",
-            "Picks one of 20 top-scoring moves",
+            "Picks one of 20 highest-scoring possible moves",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=20),
@@ -1307,7 +1307,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Sif",
-            "Plays one of 30 possible common words",
+            "Plays one of 30 possible words from a basic vocabulary",
             ADAPTIVE,
             AutoPlayer_Custom,
             # Since Sif is adaptive, she will pick from the top 30 (=2*15)
@@ -1325,21 +1325,21 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     "nb": [
         AutoPlayerTuple(
             "Freyja",
-            "Velger alltid det høyest scorende trekket",
+            "Velger alltid trekket som gir høyest poeng",
             TOP_SCORE,
             AutoPlayer,
             {},
         ),
         AutoPlayerTuple(
             "Idunn",
-            "Velger ett av de 20 høyest scorende trekkene",
+            "Velger ett av de 20 trekkene som gir høyest poeng",
             MEDIUM,
             AutoPlayer_Custom,
             AutoPlayerKwargs(pick_from=20),
         ),
         AutoPlayerTuple(
             "Frigg",
-            "Spiller ett av 20 mulige ord fra et middels vokabular",
+            "Spiller ett av 20 mulige ord fra et middels ordtilfang",
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
@@ -1352,7 +1352,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Sif",
-            "Spiller ett av 24 mulige vanlige ord",
+            "Spiller ett av 24 mulige vanlige ord fra et begrenset ordtilfang",
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
@@ -1364,10 +1364,53 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
             ),
         ),
     ],
+    # Norwegian (Nynorsk)
+    "nn": [
+        AutoPlayerTuple(
+            "Freyja",
+            "Vel alltid trekket som gjev høgast poeng",
+            TOP_SCORE,
+            AutoPlayer,
+            {},
+        ),
+        AutoPlayerTuple(
+            "Idunn",
+            "Vel eitt av dei 20 trekka som gjev høgast poeng",
+            MEDIUM,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(pick_from=20),
+        ),
+        AutoPlayerTuple(
+            "Frigg",
+            "Spelar eitt av 20 moglege ord frå eit middels ordtilfang",
+            COMMON,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="nynorsk2024.mid",
+                pick_from=20,
+                adaptive=True,
+                discard_best_ratio_winning=0.25,
+                discard_best_ratio_losing=0.1,
+            ),
+        ),
+        AutoPlayerTuple(
+            "Sif",
+            "Spelar eitt av 24 moglege vanlege ord frå eit avgrensa ordtilfang",
+            ADAPTIVE,
+            AutoPlayer_Custom,
+            AutoPlayerKwargs(
+                vocab="nynorsk2024.aml",
+                pick_from=24,
+                adaptive=True,
+                discard_best_ratio_winning=0.25,  # Cuts off the top 6 moves (24*0.25)
+                discard_best_ratio_losing=0.125,  # Cuts off the top 3 moves (24*0.125)
+            ),
+        ),
+    ],
     # Polish
     "pl": [
         AutoPlayerTuple(
-            "Mikołaj ",
+            "Mikołaj",
             "Zawsze gra ruch z najwyższym wynikiem",
             TOP_SCORE,
             AutoPlayer,
@@ -1382,7 +1425,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Idek",
-            "Wybiera jeden z 20 najwyżej punktowanych ruchów",
+            "Gra jednym z 20 możliwych słów ze średniego słownika",
             COMMON,
             AutoPlayer_Custom,
             AutoPlayerKwargs(
@@ -1395,7 +1438,7 @@ AUTOPLAYERS: Dict[str, AutoPlayerList] = {
         ),
         AutoPlayerTuple(
             "Zofia",
-            "Wybiera jeden z 30 najwyżej punktowanych ruchów",
+            "Gra jednym z 30 możliwych słów z podstawowego słownika",
             ADAPTIVE,
             AutoPlayer_Custom,
             AutoPlayerKwargs(

@@ -132,6 +132,13 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "E-postadressen må inneholde @-tegn",
         "LOCALE_UNKNOWN": "Ukjent lokalitet",
     },
+    "nn": {
+        "NICK_MISSING": "Manglar kallenamn",
+        "NICK_NOT_ALPHANUMERIC": "Kallenamn kan berre innehalde bokstavar og tal",
+        "NICK_TOO_LONG": f"Kallenamn kan ikkje vere lengre enn {MAX_NICKNAME_LENGTH} teikn",
+        "EMAIL_NO_AT": "E-postadressa må innehalde @-teikn",
+        "LOCALE_UNKNOWN": "Ukjend lokalitet",
+    },
     "ga": {
         "NICK_MISSING": "Ainm cleite in easnamh",
         "NICK_NOT_ALPHANUMERIC": "Ní féidir le hainm cleite ach litreacha agus uimhreacha a áireamh",
@@ -147,6 +154,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "Your turn in Explo 💥",
         "pl": "Twoja kolej w Explo 💥",
         "nb": "Din tur i Explo 💥",
+        "nn": "Din tur i Explo 💥",
         "ga": "Do sheal i Explo 💥",
     },
     "body": {
@@ -154,6 +162,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
         "nb": "{player} har gjort et trekk i spillet ditt.",
+        "nn": "{player} har gjort eit trekk i spelet ditt.",
         "ga": "Rinne {player} gluaiseacht i do chluiche.",
     },
     "chall_title": {
@@ -161,6 +170,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "You've been challenged in Explo 💥",
         "pl": "Zostałeś wyzwany w Explo 💥",
         "nb": "Du har blitt utfordret i Explo 💥",
+        "nn": "Du har blitt utfordra i Explo 💥",
         "ga": "Tá dúshlán curtha ort i Explo 💥",
     },
     "chall_body": {
@@ -168,6 +178,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "{player} has challenged you to a game!",
         "pl": "{player} wyzwał cię na pojedynek!",
         "nb": "{player} har utfordret deg til en kamp!",
+        "nn": "{player} har utfordra deg til ein kamp!",
         "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!",
     },
 }
