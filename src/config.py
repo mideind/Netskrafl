@@ -132,15 +132,17 @@ OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
 # Analytics measurement id
 MEASUREMENT_ID: str = j.get("MEASUREMENT_ID", "")
-assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
+if PROJECT_ID != "netskrafl":
+    assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
 
 # Facebook app token, for login verification calls to the graph API
 FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
 FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-assert (
-    FACEBOOK_APP_SECRET
-), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
-assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
+if PROJECT_ID != "netskrafl":
+    assert (
+        FACEBOOK_APP_SECRET
+    ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
+    assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
 
 # Firebase configuration
 FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
@@ -160,16 +162,18 @@ assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_ID
 APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")
 APPLE_TEAM_ID: str = j.get("APPLE_TEAM_ID", "")
 APPLE_CLIENT_ID: str = j.get("APPLE_CLIENT_ID", "")
-assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_ID}"
-assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_ID}"
-assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_ID}"
+if PROJECT_ID != "netskrafl":
+    assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_ID}"
+    assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_ID}"
+    assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_ID}"
 
 # RevenueCat bearer token
 RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
 
 # Anonymous user session token
 AUTH_SECRET: str = j.get("AUTH_SECRET", "")
-assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
+if PROJECT_ID != "netskrafl":
+    assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
 
 # Read the Flask secret session key from Google secret manager
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")

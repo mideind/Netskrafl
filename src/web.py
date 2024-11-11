@@ -173,7 +173,9 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 @web.route("/friend")
 def friend() -> ResponseType:
     """HTML content of a friend (subscription) promotion dialog"""
-    locale = request.args.get("locale", DEFAULT_LOCALE)
+    short_default_locale = DEFAULT_LOCALE.split("_")[0]  # Normally 'en' or 'is'
+    locale = request.args.get("locale", short_default_locale)
+    # !!! TODO: Make this work for all locales and screen sizes
     return render_locale_template("promo-friend-{0}.html", locale)
 
 
@@ -268,7 +270,7 @@ def page() -> ResponseType:
 @web.route("/greet")
 def greet() -> ResponseType:
     """Handler for the greeting page"""
-    return render_template("login-explo.html", user=None)
+    return render_template("login.html", user=None)
 
 
 @web.route("/login")

@@ -160,7 +160,12 @@ def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
 def check_presence(user_id: str, locale: str) -> bool:
     """Check whether the given user has at least one active connection"""
     try:
-        path = f"/connection/{locale}/{user_id}"
+        if PROJECT_ID == "netskrafl":
+            # Locale is always is_IS
+            assert locale == "is_IS", "Locale is expected to be 'is_IS'"
+            path = f"/connection/{user_id}"
+        else:
+            path = f"/connection/{locale}/{user_id}"
         ref = cast(Any, db).reference(path, app=_firebase_app)
         msg = ref.get(shallow=True)
         return bool(msg)
@@ -174,8 +179,12 @@ def get_connected_users(locale: str) -> Set[str]:
     assert (
         len(locale) == 5 and "_" in locale
     ), "Locale string is expected to have format 'xx_XX'"
-    try:
+    if PROJECT_ID == "netskrafl":
+        assert locale == "is_IS", "Locale is expected to be 'is_IS'"
+        path = "/connection"
+    else:
         path = f"/connection/{locale}"
+    try:
         ref = cast(Any, db).reference(path, app=_firebase_app)
         msg = cast(Mapping[str, str], ref.get(shallow=True))
     except Exception as e:

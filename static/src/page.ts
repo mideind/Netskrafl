@@ -26,7 +26,7 @@ export {
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
-  MithrilEvent, MithrilDragEvent, VnodeChildren
+  MithrilEvent, VnodeChildren
 } from "mithril";
 
 import {
