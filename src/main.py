@@ -48,6 +48,7 @@ from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 
 from config import (
+    NETSKRAFL,
     FlaskConfig,
     ResponseType,
     DEFAULT_LOCALE,
@@ -273,7 +274,7 @@ def stop() -> ResponseType:
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """Return a custom 500 error"""
     logging.error(f"Server error: {e}")
-    if PROJECT_ID == "netskrafl":
+    if NETSKRAFL:
         return f"<html><body><p>Villa kom upp í netþjóni: {e}</p></body></html>", 500
     return f"<html><body><p>An error occurred in the server: {e}</p></body></html>", 500
 

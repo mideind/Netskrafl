@@ -94,7 +94,13 @@ from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_ELO, DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
+from config import (
+    DEFAULT_ELO,
+    DEFAULT_LOCALE,
+    DEFAULT_THUMBNAIL_SIZE,
+    ESTABLISHED_MARK,
+    NETSKRAFL,
+)
 from cache import memcache
 
 
@@ -783,6 +789,11 @@ class UserModel(Model["UserModel"]):
         cls, q: Query[UserModel], locale: Optional[str]
     ) -> Query[UserModel]:
         """Filter the query by locale, if given, otherwise stay with the default"""
+        if NETSKRAFL:
+            assert (
+                locale == None or locale == DEFAULT_LOCALE
+            ), f"Netskrafl only allows {DEFAULT_LOCALE}"
+            return q
         if not locale:
             return q.filter(
                 ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
@@ -856,20 +867,25 @@ class UserModel(Model["UserModel"]):
     @classmethod
     def list_similar_elo(
         cls, elo: int, max_len: int = 40, locale: Optional[str] = None
-    ) -> List[str]:
+    ) -> List[Tuple[str, EloDict]]:
         """List users with a similar (human) Elo rating. This uses the
         'old-style', locale-independent Elo rating."""
         # Start with max_len users with a lower Elo rating
 
-        def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
+        def fetch(q: Query[UserModel], max_len: int) -> Iterator[Tuple[str, EloDict]]:
             """Generator for returning query result keys"""
             assert max_len > 0
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
+            for k in iter_q(q, chunk_size=max_len, projection=["human_elo", "highest_score"]):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
                     # Note that inactive users will be filtered out at a later stage
-                    yield k.key.id()
+                    ed: EloDict = EloDict(
+                        # Note! For optimization reasons, we only return the human_elo
+                        # property. This is currently the only Elo rating shown in the UI.
+                        elo=DEFAULT_ELO, human_elo=k.human_elo, manual_elo=DEFAULT_ELO
+                    )
+                    yield k.key.id(), ed
                     counter += 1
                     if counter >= max_len:
                         # Returned the requested number of records: done
@@ -946,11 +962,18 @@ class EloModelFuture(Future["EloModel"]):
     pass
 
 
+# Optional locale string, defaulting to the project default locale
+# in the case of Netskrafl, but otherwise a required string
+OptionalLocaleString = lambda: (
+    Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
+)
+
+
 class EloModel(Model["EloModel"]):
     """Models the current Elo ratings for a user, by locale"""
 
     # The associated UserModel entity is an ancestor of this entity
-    locale = Model.Str()
+    locale = OptionalLocaleString()
     timestamp = Model.Datetime(auto_now_add=True)
     elo = Model.Int(indexed=True)
     human_elo = Model.Int(indexed=True)

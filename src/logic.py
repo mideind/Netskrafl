@@ -44,7 +44,7 @@ from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, PROJECT_ID, ResponseType
+from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, ResponseType
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -694,7 +694,9 @@ def process_move(
 
 
 @ndb.transactional()  # type: ignore
-def submit_move(uuid: str, movelist: List[Any], movecount: int, validate: bool) -> ResponseType:
+def submit_move(
+    uuid: str, movelist: List[Any], movecount: int, validate: bool
+) -> ResponseType:
     """Idempotent, transactional function to process an incoming move"""
     game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
     if game is None:
@@ -714,6 +716,18 @@ def submit_move(uuid: str, movelist: List[Any], movecount: int, validate: bool) 
 set_online_status_for_users = functools.partial(firebase.set_online_status, "userid")
 set_online_status_for_games = functools.partial(firebase.set_online_status, "oppid")
 set_online_status_for_chats = functools.partial(firebase.set_online_status, "user")
+
+
+def locale_elos(locale: str, user_ids: Iterable[str]) -> Dict[str, EloDict]:
+    """Utility function to return locale-specific Elo ratings
+    for a list of users, if available"""
+    if NETSKRAFL:
+        assert (
+            locale is None or locale == DEFAULT_LOCALE
+        ), f"Netskrafl only allows {DEFAULT_LOCALE}"
+        # No locale-specific Elo ratings in Netskrafl
+        return dict()
+    return EloModel.load_multi(locale, user_ids)
 
 
 def userlist(query: str, spec: str) -> UserList:
@@ -763,7 +777,7 @@ def userlist(query: str, spec: str) -> UserList:
     challenges: Set[str] = set()
     # Explo presently doesn't use this information, so we
     # only include it for Netskrafl
-    if cuid and PROJECT_ID == "netskrafl":
+    if cuid and NETSKRAFL:
         challenges.update(
             # ch[0] is the identifier of the challenged user
             [
@@ -792,7 +806,7 @@ def userlist(query: str, spec: str) -> UserList:
 
         list_online = online.random_sample(MAX_ONLINE)
         ousers = User.load_multi(list_online)
-        oelos = EloModel.load_multi(locale, list_online)
+        oelos = locale_elos(locale, list_online)
 
         for lu in ousers:
             if lu is None or not lu.is_displayable():
@@ -833,7 +847,7 @@ def userlist(query: str, spec: str) -> UserList:
             i = set(FavoriteModel.list_favorites(cuid))
             # Do a multi-get of the entire favorites list
             fusers = User.load_multi(i)
-            felos = EloModel.load_multi(locale, i)
+            felos = locale_elos(locale, i)
             # Look up users' online status later
             func_online_status = online.users_online
             for fu in fusers:
@@ -871,7 +885,14 @@ def userlist(query: str, spec: str) -> UserList:
             # Obtain the current user's human Elo rating
             ed = cuser.elo_for_locale(locale)
             # Look up users with similar Elo ratings
-            ei = list(EloModel.list_similar(locale, ed.human_elo, max_len=40))
+            if NETSKRAFL:
+                # We base the list on the Elo ratings stored in UserModel entities,
+                # as the locale is implicitly 'is_IS' for Netskrafl users
+                ei = list(UserModel.list_similar_elo(ed.human_elo, max_len=40))
+            else:
+                # We base the list on the Elo ratings stored in EloModel entities,
+                # which are subdivided by locale
+                ei = list(EloModel.list_similar(locale, ed.human_elo, max_len=40))
             # Load the user entities and zip them with the corresponding EloDict
             ausers = zip(User.load_multi(e[0] for e in ei), (e[1] for e in ei))
             # Look up users' online status later
@@ -910,9 +931,9 @@ def userlist(query: str, spec: str) -> UserList:
         # Display users who are online and ready for a timed game.
         # Note that the online list is already filtered by locale,
         # so the result is also filtered by locale.
-        iter_online = online.random_sample(MAX_ONLINE)
-        online_users = User.load_multi(iter_online)
-        elos = EloModel.load_multi(locale, iter_online)
+        list_online = online.random_sample(MAX_ONLINE)
+        online_users = User.load_multi(list_online)
+        elos = locale_elos(locale, list_online)
 
         for user in online_users:
             if not user or not user.is_ready_timed() or not user.is_displayable():
@@ -966,7 +987,7 @@ def userlist(query: str, spec: str) -> UserList:
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
         func_online_status = online.users_online
-        elos = EloModel.load_multi(locale, (uid for ud in si if (uid := ud.get("id"))))
+        elos = locale_elos(locale, (uid for ud in si if (uid := ud.get("id"))))
 
         for ud in si:
             if not (uid := ud.get("id")) or uid == cuid or uid in blocked:
@@ -1297,7 +1318,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
     # Multi-fetch the opponents in the game list
     opponents = fetch_users(i, lambda g: g["opp"])
     # Multi-fetch the opponents' Elo ratings, in the current player's locale
-    elos = EloModel.load_multi(locale, opponents.keys())
+    elos = locale_elos(locale, opponents.keys())
     # Iterate through the game list
     for g in i:
         u = None
@@ -1389,7 +1410,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
     # Multi-fetch the opponents in the list into a dictionary
     opponents = fetch_users(rlist, lambda g: g["opp"])
     # Multi-fetch their Elo ratings
-    elos = EloModel.load_multi(locale, opponents.keys())
+    elos = locale_elos(locale, opponents.keys())
 
     online = firebase.online_status(locale)
 
@@ -1506,7 +1527,7 @@ def challengelist() -> ChallengeList:
     # Multi-fetch all opponents involved
     opponents = fetch_users(received + issued, lambda c: c[0])
     # Multi-fetch their Elo ratings, in the current player's locale
-    elos = EloModel.load_multi(locale, opponents.keys())
+    elos = locale_elos(locale, opponents.keys())
 
     # List the received challenges
     for c in received:

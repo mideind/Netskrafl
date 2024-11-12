@@ -46,6 +46,7 @@ from config import (
     ANONYMOUS_PREFIX,
     EXPLO_CLIENT_SECRET,
     DEFAULT_LOCALE,
+    NETSKRAFL,
     PROJECT_ID,
     DEFAULT_ELO,
 )
@@ -418,6 +419,11 @@ class User:
     def elo_for_locale(self, locale: Optional[str] = None) -> EloDict:
         """Return the Elo ratings of the user for the given locale,
         or for the user's current locale if None"""
+        if NETSKRAFL:
+            # In Netskrafl, we don't support locale-specific Elo ratings,
+            # so we always return the Elo ratings stored with the user entity
+            assert locale is None or locale == DEFAULT_LOCALE, f"Invalid locale: {locale}"
+            return self.elo_dict()
         locale = locale or self.locale or DEFAULT_LOCALE
         if uid := self.id():
             if (em := EloModel.user_elo(locale, uid)) is not None:

@@ -41,7 +41,7 @@ from firebase_admin import App, initialize_app, auth, messaging, db  # type: ign
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
-from config import PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType, ttl_cache
+from config import NETSKRAFL, PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType, ttl_cache
 from languages import SUPPORTED_LOCALES
 from cache import memcache
 
@@ -160,7 +160,7 @@ def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
 def check_presence(user_id: str, locale: str) -> bool:
     """Check whether the given user has at least one active connection"""
     try:
-        if PROJECT_ID == "netskrafl":
+        if NETSKRAFL:
             # Locale is always is_IS
             assert locale == "is_IS", "Locale is expected to be 'is_IS'"
             path = f"/connection/{user_id}"
@@ -179,7 +179,7 @@ def get_connected_users(locale: str) -> Set[str]:
     assert (
         len(locale) == 5 and "_" in locale
     ), "Locale string is expected to have format 'xx_XX'"
-    if PROJECT_ID == "netskrafl":
+    if NETSKRAFL:
         assert locale == "is_IS", "Locale is expected to be 'is_IS'"
         path = "/connection"
     else:

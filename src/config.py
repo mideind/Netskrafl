@@ -69,9 +69,11 @@ port: str = os.environ.get("SERVER_PORT", "8080")
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
+NETSKRAFL = PROJECT_ID == "netskrafl"
+
 DEV_SERVER = PROJECT_ID == "explo-dev"
 
-DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
+DEFAULT_LOCALE = "is_IS" if NETSKRAFL else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
@@ -132,13 +134,13 @@ OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
 # Analytics measurement id
 MEASUREMENT_ID: str = j.get("MEASUREMENT_ID", "")
-if PROJECT_ID != "netskrafl":
+if not NETSKRAFL:
     assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
 
 # Facebook app token, for login verification calls to the graph API
 FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
 FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-if PROJECT_ID != "netskrafl":
+if not NETSKRAFL:
     assert (
         FACEBOOK_APP_SECRET
     ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
@@ -162,7 +164,7 @@ assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_ID
 APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")
 APPLE_TEAM_ID: str = j.get("APPLE_TEAM_ID", "")
 APPLE_CLIENT_ID: str = j.get("APPLE_CLIENT_ID", "")
-if PROJECT_ID != "netskrafl":
+if not NETSKRAFL:
     assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_ID}"
     assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_ID}"
     assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_ID}"
@@ -172,7 +174,7 @@ RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
 
 # Anonymous user session token
 AUTH_SECRET: str = j.get("AUTH_SECRET", "")
-if PROJECT_ID != "netskrafl":
+if not NETSKRAFL:
     assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
 
 # Read the Flask secret session key from Google secret manager

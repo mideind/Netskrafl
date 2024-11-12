@@ -47,10 +47,10 @@ from flask.globals import current_app
 from werkzeug.utils import redirect
 
 from config import (
+    NETSKRAFL,
     RC_WEBHOOK_AUTH,
     RouteType,
     running_local,
-    PROJECT_ID,
     DEFAULT_LOCALE,
     ResponseType,
 )
@@ -1446,7 +1446,7 @@ def initgame_api() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
-    if PROJECT_ID == "netskrafl":
+    if NETSKRAFL:
         board_type = rq.get("board_type", current_board_type())
     else:
         board_type = "explo"
