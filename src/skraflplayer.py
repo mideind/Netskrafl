@@ -2,7 +2,7 @@
 
     Skraflplayer - an automatic crossword game player
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright © 2024 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0

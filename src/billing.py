@@ -2,7 +2,7 @@
 
     Billing manager for netskrafl.appspot.com
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright © 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
