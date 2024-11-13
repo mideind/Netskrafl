@@ -972,8 +972,8 @@ class Game:
     ) -> Iterator[Tuple[str, str, str, int]]:
         """Enumerate all tiles on the board in a convenient form"""
         if state is None:
-            state = self.state
-        assert state is not None
+            if (state := self.state) is None:
+                return
         scores = self.tileset.scores
         for x, y, tile, letter in state.board().enum_tiles():
             yield (

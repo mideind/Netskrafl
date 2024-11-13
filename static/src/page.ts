@@ -3961,7 +3961,7 @@ class View {
                 // displayed in the fullscreen UI
                 s.tardyOpponent ? m("span.yesnobutton",
                   {
-                    id: 'force-resign',
+                    id: "force-resign",
                     onclick: (ev) => {
                       ev.preventDefault();
                       game.forceResign();

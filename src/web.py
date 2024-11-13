@@ -41,7 +41,7 @@ from flask import (
     request,
 )
 from flask.globals import current_app
-from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
+from authlib.integrations.base_client.errors import OAuthError  # type: ignore
 
 from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
 from basics import (
@@ -127,7 +127,7 @@ def login_user() -> bool:
             idinfo["method"] = "Google"
             idinfo["new"] = uld.get("new", False)
             idinfo["client_type"] = "web"
-    except (KeyError, ValueError, MismatchingStateError) as e:
+    except (KeyError, ValueError, OAuthError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"login_user(): {e}")

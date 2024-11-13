@@ -7,10 +7,10 @@
 # Deploy with 'gcloud beta app deploy --no-promote --version=somename app-netskrafl.yaml'
 #
 
-runtime: python38
-entrypoint: gunicorn -b :$PORT -w 8 netskrafl:app
+runtime: python311
+entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
 
-instance_class: B4
+instance_class: B4_1G
 manual_scaling:
   instances: 2
 

@@ -191,6 +191,16 @@ ESTABLISHED_MARK: int = 10
 # Prefix of anonymous account identifiers
 ANONYMOUS_PREFIX = "anon:"
 
+# Promotion parameters
+PROMO_CURRENT: Optional[str] = "explo"  # None if no promo ongoing
+# A promo check is done randomly, but on average every 1 out of N times
+PROMO_FREQUENCY = 8
+PROMO_COUNT = 3  # Max number of times that the same promo is displayed
+PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
+
+# Increment this number to force file cache busting, e.g. for .js/.ts/.css files
+FILE_VERSION_INCREMENT = 6
+
 
 class CacheEntryDict(TypedDict):
     value: Any
