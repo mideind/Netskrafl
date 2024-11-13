@@ -37,6 +37,7 @@ import logging
 import threading
 import re
 import functools
+import random
 from datetime import UTC, datetime, timedelta
 
 from google.cloud import ndb  # type: ignore
@@ -44,7 +45,7 @@ from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, ResponseType
+from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, PROMO_COUNT, PROMO_CURRENT, PROMO_FREQUENCY, PROMO_INTERVAL, ResponseType
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -69,6 +70,7 @@ from skrafldb import (
     EloDict,
     EloModel,
     ListPrefixDict,
+    PromoModel,
     RatingDict,
     RatingForLocaleDict,
     ZombieModel,
@@ -1609,3 +1611,40 @@ def challengelist() -> ChallengeList:
     # Set the live status of the opponents in the list
     set_online_status_for_users(result, online.users_online)
     return result
+
+
+def promo_to_show_to_user(uid: str) -> str:
+    """Promotion display logic"""
+    promo_to_show: Optional[str] = PROMO_CURRENT  # None if no promo is ongoing
+    promos: List[datetime] = []
+
+    if not uid: return ""
+
+    if promo_to_show and random.randint(1, PROMO_FREQUENCY) == 1:
+        # Once every N times, check whether this user may be due for
+        # a promotion display
+
+        # The list_promotions call yields a list of timestamps
+        promos = sorted(list(PromoModel.list_promotions(uid, promo_to_show)))
+        now = datetime.now(UTC)
+        if len(promos) >= PROMO_COUNT:
+            # Already seen too many of these
+            promo_to_show = None
+        elif promos and (now - promos[-1] < PROMO_INTERVAL):
+            # Less than one interval since last promo was displayed:
+            # don't display this one
+            promo_to_show = None
+    else:
+        # We either have no promo or the random choice did not trigger this time
+        promo_to_show = None
+
+    if promo_to_show:
+        # Note the fact that we have displayed this promotion to this user
+        logging.info(
+            "Displaying promo {1} to user {0} who has already seen it {2} times".format(
+                uid, promo_to_show, len(promos)
+            )
+        )
+        PromoModel.add_promotion(uid, promo_to_show)
+
+    return promo_to_show or ""

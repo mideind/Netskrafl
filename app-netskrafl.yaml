@@ -1,14 +1,14 @@
 #
 # App.yaml for the Netskrafl application on Google App Engine
 #
-# Copyright (C) 2023 by Miðeind ehf.
+# Copyright (C) 2024 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
-# Deploy with 'gcloud beta app deploy --no-promote --version=somename app-netskrafl.yaml'
+# Deploy with 'gcloud beta app deploy --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'
 #
 
 runtime: python311
-entrypoint: gunicorn -b :$PORT -w 4 --threads 2 netskrafl:app
+entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath '/.src' src.main:app
 
 instance_class: B4_1G
 manual_scaling:
@@ -23,6 +23,7 @@ env_variables:
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
   PROJECT_ID: netskrafl
+  SINGLE_PAGE: TRUE
 
 inbound_services:
 - warmup

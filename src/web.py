@@ -57,6 +57,7 @@ from basics import (
     RequestData,
     max_age,
 )
+from logic import promo_to_show_to_user
 from skrafluser import User, UserLoginDict
 import firebase
 import billing
@@ -254,6 +255,7 @@ def page() -> ResponseType:
     uid = user.id() or ""
     s = session_data()
     firebase_token = firebase.create_custom_token(uid)
+    promo_to_show = promo_to_show_to_user(uid)
     # We return information about the login method to the client,
     # as well as whether this is a new user signing in for the first time
     return render_template(
@@ -264,6 +266,7 @@ def page() -> ResponseType:
         new=False if s is None else s.get("new", False),
         project_id=PROJECT_ID,
         running_local=running_local,
+        promo=promo_to_show,
     )
 
 

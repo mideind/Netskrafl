@@ -191,6 +191,7 @@ interface GlobalState {
   uiFullscreen: boolean;
   uiLandscape: boolean;
   firebaseToken: string;
+  promo: string;
   emoticons: { icon: string; image: string; }[];
   runningLocal: boolean;
 }
