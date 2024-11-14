@@ -351,11 +351,18 @@ function registerSalesCloud() {
 }
 
 function openPromoDialog(key, completeFunc) {
-   /* Show a modal promotion dialog */
+   // Show a modal promotion dialog, either for
+   // a friend promo or a general promo
    $("#promo-dialog")
       .data("param", { key: key })
-      .css("visibility", "visible");
+      .css("visibility", "visible")
+      .toggleClass("promo-friend", false)
+      .toggleClass("promo-" + key, true);
    $("#promo-form")
+      .toggleClass("promo-friend", false)
+      .toggleClass("promo-" + key, true);
+   $("#promo-content")
+      .toggleClass("promo-friend", false)
       .toggleClass("promo-" + key, true);
    // Obtain the promo content from the server and put it into the #promo-content div
    serverQueryHtml("/promo", { key: key }, "#promo-content", completeFunc);

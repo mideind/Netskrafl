@@ -241,7 +241,7 @@ oauth.register(
 _autoplayer_lock = threading.Lock()
 
 # Promotion parameters
-_PROMO_CURRENT: Optional[str] = "explo"  # None if no promo ongoing
+_PROMO_CURRENT: Optional[str] = "malstadur"  # None if no promo ongoing
 # A promo check is done randomly, but on average every 1 out of N times
 _PROMO_FREQUENCY = 8
 _PROMO_COUNT = 3  # Max number of times that the same promo is displayed
@@ -2353,7 +2353,7 @@ def promo() -> ResponseType:
         return "<p>Notandi er ekki innskráður</p>"  # Unauthorized
     rq = RequestData(request)
     key = rq.get("key", "")
-    VALID_PROMOS = {"friend", "krafla", "explo"}
+    VALID_PROMOS = {"friend", "krafla", "explo", "malstadur"}
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user=user)

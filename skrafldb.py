@@ -1621,8 +1621,7 @@ class PromoModel(ndb.Model):
         cls, user_id: Optional[str], promotion: str
     ) -> Iterator[datetime]:
         """ Return a list of timestamps for when the given promotion has been displayed """
-        assert user_id is not None
-        if user_id is None:
+        if not user_id:
             return
         k = ndb.Key(UserModel, user_id)
         q = cls.query(PromoModel.player == k).filter(PromoModel.promotion == promotion)

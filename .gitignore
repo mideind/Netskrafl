@@ -39,6 +39,10 @@ resources/ordalisti.mid.sorted.txt
 # Non-Icelandic word lists
 resources/TWL06.txt
 resources/sowpods.txt
+resources/norwegian_*.txt
+resources/norwegian_*.csv
+resources/nno-*.txt
+resources/nob-*.txt
 
 # CSS files generated from Less
 static/skrafl-*.css
