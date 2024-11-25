@@ -45,6 +45,7 @@ from authlib.integrations.base_client.errors import OAuthError  # type: ignore
 
 from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
 from basics import (
+    SessionDict,
     UserIdDict,
     current_user,
     auth_required,
@@ -283,6 +284,30 @@ def login() -> ResponseType:
     redirect_uri = url_for("web.oauth2callback", _external=True)
     g = get_google_auth()
     return g.authorize_redirect(redirect_uri)
+
+
+@web.route("/login_email", methods=["POST"])
+def login_email() -> ResponseType:
+    """User login by e-mail, for development purposes only"""
+    if not running_local:
+        return jsonify(status="invalid", message="Not allowed"), 403
+    clear_session_userid()
+    # Obtain email from the request
+    rq = RequestData(request)
+    email = rq.get("email", "")
+    if not email:
+        return jsonify(status="invalid", message="No email provided"), 401
+    # Find the user record by email
+    uld = User.login_by_email(email)
+    if uld is None:
+        return jsonify(status="invalid", message="No such user"), 401
+    userid = uld["user_id"]
+    # Create a Firebase custom token for the user
+    token = firebase.create_custom_token(userid)
+    sd = SessionDict(userid=userid, method="Email")
+    # Create a session cookie with the user id
+    set_session_cookie(userid, sd=sd)
+    return jsonify(dict(status="success", firebase_token=token, **uld))
 
 
 @web.route("/login_error")

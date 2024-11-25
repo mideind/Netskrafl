@@ -669,7 +669,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
         new=uld.get("new") or False,
         client_type=client_type,
     )
-    uld["method"] = sd["method"]
+    uld["method"] = "Anonymous"
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie

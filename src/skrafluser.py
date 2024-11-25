@@ -1089,7 +1089,12 @@ class User:
             if um is not None:
                 # We probably have an older (Python2 GAE) user for this email:
                 # Associate the account with it from now on (but keep the old id)
-                um.account = account
+                if account:
+                    um.account = account
+                elif not um.account:
+                    # Should not happen, but anyway: if there was no
+                    # account id, copy the user id into it
+                    um.account = um.user_id()
                 if image and image != um.image:
                     # Use the opportunity to update the image, if different
                     um.image = image
@@ -1172,6 +1177,31 @@ class User:
             locale=um.locale or DEFAULT_LOCALE,
             new=False,
             previous_token=previous_token,
+        )
+        return uld
+
+    @classmethod
+    def login_by_email(
+        cls,
+        email: str,
+    ) -> Optional[UserLoginDict]:
+        """Log in a user given an e-mail address; return a login dictionary
+        and some additional user details, or None"""
+        um = UserModel.fetch_email(email)
+        if um is None:
+            return None
+        # Note the login timestamp
+        um.last_login = datetime.now(UTC)
+        um.put()
+        user_id = um.user_id()
+        uld = make_login_dict(
+            user_id=user_id,
+            account=um.account or user_id,
+            locale=um.locale or DEFAULT_LOCALE,
+            new=False,
+            # We don't need to create a fresh Explo token, so we
+            # pass in a dummy placeholder value here
+            previous_token="*",
         )
         return uld
 

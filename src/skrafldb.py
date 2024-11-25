@@ -691,6 +691,8 @@ class UserModel(Model["UserModel"]):
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Attempt to fetch a user by OAuth2 account id,
         eventually prefixed by the authentication provider"""
+        if not account:
+            return None
         q = cls.query(UserModel.account == account)
         return q.get()
 

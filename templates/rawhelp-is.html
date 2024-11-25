@@ -25,30 +25,30 @@
    draga hana á réttan stað og sleppa músarhnappnum). Einnig má nota fingur til
    að draga flísar á spjaldtölvum og snertiskjám. Þú getur flutt flísar til á
    borðinu eða dregið þær til baka í rekkann ef þú færð bakþanka.
-   <img src="{{ url_for('web.static', filename='Recall.png') }}" width=20 height=20>
+   <img src="{{ url_for('web.static', filename='Recall.png', _external=True) }}" width=20 height=20>
    og <strong>Esc</strong> hnappurinn á lyklaborðinu senda allar flísar til baka í rekkann,
-   en <img src="{{ url_for('web.static', filename='Shuffle.png') }}" width=20 height=20>
+   en <img src="{{ url_for('web.static', filename='Shuffle.png', _external=True) }}" width=20 height=20>
    og <strong>Backspace</strong> endurraða rekkanum af handahófi.</p>
    <p>Þegar þú hefur lagt niður orð eins og þú vilt hafa það smellirðu
    á græna hnappinn
-   <img src="{{ url_for('web.static', filename='Leika.png') }}" width=53 height=20>.
+   <img src="{{ url_for('web.static', filename='Leika.png', _external=True) }}" width=53 height=20>.
    Andstæðingur þinn fær nú <span class="move-indicator"></span> rauða flaggið,
    svarar með sínum leik og þá er röðin aftur komin að þér. (Tölvuþjarkarnir svara
    alltaf strax.) Nýjar flísar sem andstæðingur leggur niður eru sýndar með
    grænum lit á borðinu.</p>
    <p>Ef þú getur ekki lagt niður orð og vilt sitja hjá smellirðu á
    appelsínugula hnappinn
-   <img src="{{ url_for('web.static', filename='Pass.png') }}" width=20 height=20>.
+   <img src="{{ url_for('web.static', filename='Pass.png', _external=True) }}" width=20 height=20>.
    Þá færð þú ekki stig heldur á andstæðingurinn næsta leik.</p>
    <p>Ef þú vilt skipta út flísum í rekkanum smellirðu á græna hnappinn
-   <img src="{{ url_for('web.static', filename='Exchange.png') }}" width=20 height=20>.
+   <img src="{{ url_for('web.static', filename='Exchange.png', _external=True) }}" width=20 height=20>.
    Þú þarft að velja þær flísar sem þú vilt skipta með því að smella á þær. Þegar
    skiptin hafa farið fram færðu ekki stig og andstæðingurinn á leik. Ef færri
    en sjö flísar eru eftir í "pokanum" er ekki hægt að skipta.</p>
    <p>Viðureign er lokið þegar síðasta flísin hefur verið lögð niður, eða ef
    báðir leikmenn hafa setið hjá þrisvar í röð (sex sinnum alls). Þú getur
    einnig gefið leikinn með því að smella á rauða hnappinn
-   <img src="{{ url_for('web.static', filename='Resign.png') }}" width=20 height=20>.</p>
+   <img src="{{ url_for('web.static', filename='Resign.png', _external=True) }}" width=20 height=20>.</p>
    </div>
 
    <div id="tabs-3">
@@ -63,19 +63,14 @@
    <p>Frá og með október 2015 notar Netskrafl <strong>nýjan íslenskan skraflpoka</strong>
    sem búinn var til á vegum Skraflfélags Íslands, til viðbótar þeim eldri og upprunalega.</p>
 
-   <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
-   velja rofa í <a href="{{ url_for('web.userprefs') }}">notandaupplýsingum</a>. (Allir nýskráðir
-   leikmenn í Netskrafli eru sjálfkrafa merktir sem tilbúnir í nýja pokann.)
-   Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
-   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBagPreference.png') }}" width=695 height=69></p>
-
    <p>Hér sést nýi pokinn í myndrænu formi:</p>
-   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBag.png') }}"></p>
+   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBag.png', _external=True) }}"></p>
    <p style="text-align:right"><i>(Sömu mynd á PDF-formi til útprentunar má
-   <a href="{{ url_for('web.static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
+   <a href="{{ url_for('web.static', filename='NewBag.pdf', _external=True) }}" target="_blank">sækja hér</a>)</i></p>
 
-   <p>Á eldri (upphaflega) skraflpokanum eru ýmsir vankantar, eins og skraflarar kannast
-   við. Í honum eru til dæmis <strong>of mörg E</strong> sem gefa of fá stig; stafirnir Ú og Ý eru
+   <p>Á eldri (upphaflega) skraflpokanum voru ýmsir vankantar, eins og gamalreyndir skraflarar kannast
+   við. Í honum voru til dæmis <strong>of mörg E</strong> sem gefa of fá stig;
+   stafirnir <strong>Ú</strong> og <strong>Ý</strong> voru
    happafengur enda stigaháir en auðvelt að koma þeim út, og svo mætti áfram telja.</p>
    <p>Við hönnun nýs skraflpoka var leitast við að gera alla stafi því
    sem næst <strong>jafn ákjósanlega</strong>, í þeim skilningi að þeir staldri jafn lengi við í rekka
@@ -89,13 +84,13 @@
    <p>Gamli pokinn er nú aðeins notaður í viðureign ef <strong>hvorugur leikmaður</strong> er merktur
    með nýja pokanum.
    Þjarkarnir laga sig ætíð að ósk mennska leikmannsins.</p>
-   <p>Tilkoma nýja pokans hefur engin áhrif á Elo-stig leikmanna eða útreikning þeirra.</p>
+   <p>Tilkoma nýja pokans hafði engin áhrif á Elo-stig leikmanna eða útreikning þeirra.</p>
 
    </div>
    </div>
 
    <div id="tabs-4">
-   <img src="{{ url_for('web.static', filename='Villi.png') }}" id="villi">
+   <img src="{{ url_for('web.static', filename='Villi.png', _external=True) }}" id="villi">
    <p><strong>Um Netskrafl</strong></p>
    <p>Höfundur Netskrafls er <i>Vilhjálmur Þorsteinsson</i>
    - Copyright &copy; 2024 Miðeind ehf.</p>
@@ -109,7 +104,7 @@
    <p>Fylgstu með og taktu þátt með því að
    <a href="https://www.facebook.com/groups/828426797220211/" target="_blank"
       rel="noopener">ganga
-   í&nbsp;&nbsp;<img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
+   í&nbsp;&nbsp;<img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png', _external=True) }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
    <p>Frumforrit Netskrafls eru <a href="https://github.com/mideind/Netskrafl"
       target="_blank" rel="noopener">opin á
    GitHub</a> skv. skilmálum

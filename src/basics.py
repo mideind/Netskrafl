@@ -22,6 +22,7 @@ from typing import (
     Mapping,
     Optional,
     Dict,
+    Required,
     TypedDict,
     Union,
     List,
@@ -87,10 +88,10 @@ class UserIdDict(TypedDict):
     client_type: str
 
 
-class SessionDict(TypedDict):
+class SessionDict(TypedDict, total=False):
     """The contents of the Flask session cookie"""
 
-    userid: str
+    userid: Required[str]
     # Login method ('Google', 'Facebook', 'Apple', 'Explo')
     method: str
     # True if new user, signing in for the first time
