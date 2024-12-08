@@ -745,9 +745,7 @@ class UserModel(Model["UserModel"]):
             len_keys = len(keys)
             recs = cast(
                 List[Optional[UserModel]],
-                # The following cast is due to strange typing
-                # in ndb (the use of 'Type' is almost certainly a bug there)
-                ndb.get_multi(cast(Sequence[Type[Key[UserModel]]], keys)),
+                ndb.get_multi(keys),
             )
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
@@ -1159,7 +1157,7 @@ class EloModel(Model["EloModel"]):
                 List[Optional[EloModel]],
                 # The following cast is due to strange typing
                 # in ndb (the use of 'Type' is almost certainly a bug there)
-                ndb.get_multi(cast(Sequence[Type[Key[EloModel]]], keys)),
+                ndb.get_multi(keys),
             )
             for em in recs:
                 if em is not None:
