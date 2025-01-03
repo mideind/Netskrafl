@@ -16,9 +16,9 @@
 """
 
 from __future__ import annotations
-from functools import cache, lru_cache
+from functools import lru_cache
 
-from typing import Mapping, cast, Any, Optional, Dict, Tuple
+from typing import Mapping, cast, Any, Optional, Dict
 
 from datetime import UTC, datetime
 import logging
@@ -26,9 +26,6 @@ import logging
 import requests
 import cachecontrol  # type: ignore
 import jwt
-
-from cryptography.hazmat.primitives import serialization
-from jwt.exceptions import InvalidTokenError
 
 from flask.wrappers import Request
 from flask.globals import current_app
@@ -87,6 +84,8 @@ FIREBASE_TRANSLATE = str.maketrans(
     FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS)
 )
 
+FACEBOOK_PUBLIC_KEY: Optional[str] = None
+
 
 # Utility function for making account IDs compatible with Firebase
 # key restrictions
@@ -114,25 +113,30 @@ def rq_get(request: Request, key: str) -> str:
         return j.get(key, "")
     return ""
 
-@cache
+
 def get_facebook_public_key() -> Optional[str]:
+    """Get the public key from Facebook's JWKS endpoint"""
+    global FACEBOOK_PUBLIC_KEY
+    if FACEBOOK_PUBLIC_KEY:
+        # Already fetched successfully: re-use cached value
+        return FACEBOOK_PUBLIC_KEY
     try:
-        # Get the public key from Facebook's JWKS endpoint
         response = requests.get(FACEBOOK_JWT_ENDPOINT)
         response.raise_for_status()  # Raise an error for bad status codes
         jwks = response.json()
-
         # Extract the public key in PEM format
         key_data = jwks['keys'][0]
-        public_key_pem = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
-        
-        return public_key_pem  # Return the key and success status
+        return FACEBOOK_PUBLIC_KEY := cast(  # type: ignore
+            Optional[str],
+            jwt.algorithms.RSAAlgorithm.from_jwk(key_data),  # type: ignore
+        )
     except requests.exceptions.RequestException as e:
         logging.error(f"An error occurred while fetching the public key: {e}")
         return None  # Return None and failure status
     except KeyError as e:
         logging.error(f"Key error: {e}")
         return None  # Return None and failure status
+
 
 def oauth2callback(request: Request) -> ResponseType:
     # Note that HTTP GETs to the /oauth2callback URL are handled in web.py,
@@ -347,29 +351,39 @@ def oauth_fb(request: Request) -> ResponseType:
         )
 
     token = user.get("token", "")
+    # Perform basic validation
+    if not token or len(token) > 1024 or not token.isalnum():
+        return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
 
-    # Verify if this is a limited login (iOS only)
+    # Check whether this is a limited login (used by iOS clients only)
     is_limited_login = rq.get_bool("isLimitedLogin", False)
     if is_limited_login:
         # Validate Limited Login token
         try:
-            # Get the public key from Facebook's JWKS endpoint
+            # Get the (cached) public key from Facebook's JWKS endpoint
             public_key = get_facebook_public_key()
+            if not public_key:
+                return (
+                    jsonify(
+                        {"status": "invalid", "msg": "Missing Facebook public key",}
+                    ), 
+                    401,
+                )
             decoded_token = jwt.decode(
                 token,
                 public_key,
-                algorithms=['RS256'],
+                algorithms=["RS256"],
                 audience=facebook_app_id,
                 options={"verify_exp": True}
             )
-            if decoded_token.get('nonce') != FACEBOOK_NONCE:
+            if decoded_token.get("nonce") != FACEBOOK_NONCE:
                 return (
                     jsonify(
                         {"status": "invalid", "msg": "Invalid Facebook nonce token",}
                     ), 
                     401,
                 )
-            account = decoded_token.get('sub', '')
+            account = decoded_token.get("sub", "")
         except jwt.ExpiredSignatureError:
             return (
                     jsonify(
@@ -385,9 +399,6 @@ def oauth_fb(request: Request) -> ResponseType:
                     401,
                 )
     else:
-        # Validate the Facebook token
-        if not token or len(token) > 1024 or not token.isalnum():
-            return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
         # Validate regular Facebook token
         r = requests.get(
             FACEBOOK_TOKEN_VALIDATION_URL.format(
