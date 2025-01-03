@@ -3249,18 +3249,22 @@ class View {
           if (t.draggable) {
             // Make the tile draggable, unless we're showing a dialog
             attrs.draggable = "true";
-            attrs.ondragstart = (ev: MithrilDragEvent) => {
+            attrs.ondragstart = (ev) => {
+              // ev.preventDefault();
               game.selectedSq = null;
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", true);
               ev.dataTransfer.effectAllowed = "move"; // "copyMove"
               ev.dataTransfer.setData("text", coord);
               ev.redraw = false;
+              // return false;
             };
-            attrs.ondragend = (ev: MithrilDragEvent) => {
+            attrs.ondragend = (ev) => {
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", false);
+              ev.preventDefault();
               ev.redraw = false;
+              return false;
             };
-            attrs.onclick = (ev: MouseEvent) => {
+            attrs.onclick = (ev) => {
               // When clicking a tile, make it selected (blinking)
               if (coord == game.selectedSq)
                 // Clicking again: deselect
@@ -3268,6 +3272,7 @@ class View {
               else
                 game.selectedSq = coord;
               ev.stopPropagation();
+              return false;
             };
           }
         }
@@ -3844,7 +3849,7 @@ class View {
             this.makeButton(
               "submitmove", !s.tilesPlaced || s.showingDialog,
               () => { game.submitMove(); this.updateScale(game); },
-              submit_move, [submit_move, glyph("right-arrow")]
+              submit_move, [submit_move, glyph("play")]
             )
           );
         }
@@ -3866,7 +3871,7 @@ class View {
           const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
           let legend: VnodeChildren[] = [m("span.score-mobile", text)];
           if (s.canPlay && wordIsPlayable)
-            legend.push(glyph("right-arrow"));
+            legend.push(glyph("play"));
           else
             legend.push(glyph("remove"));
           let action: () => void;

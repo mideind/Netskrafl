@@ -102,7 +102,8 @@ var $state = {
 
 <!-- !!! FIXME: Concatenate and minify all scripts -->
 
-<script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script>
+<!-- <script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script> -->
+<script src="{{ url_for('web.static', filename='js/drag-drop-touch.esm.js') }}" type="module"></script>
 
 <script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
 {% if dev_server %}
@@ -114,6 +115,12 @@ var $state = {
 <script>
 
 function init_amd() {
+
+   // Initialize the DragDropTouch library
+   const dragDropOptions = {
+      dragImageOpacity: 1,
+   };
+   globalThis.DragDropTouch.enable(document, document, dragDropOptions);
 
    // Wrap the Mithril library in an AMD/requireJS module definition
    define(

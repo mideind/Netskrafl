@@ -66,41 +66,49 @@ def deferred_user_update() -> None:
 
 
 def deferred_elo_init() -> None:
-    """Initialize EloModel entries for all users"""
+    """Initialize EloModel entries for a given locale"""
     logging.info("Deferred EloModel initialization starting")
     CHUNK_SIZE = 500
     scan = 0
     puts: List[EloModel] = []
+    locale = "nb_NO"  # Change this to initialize a particular locale
     with Client.get_context():
         try:
-            q = UserModel.query()
-            for um in iter_q(
-                q,
-                chunk_size=CHUNK_SIZE,
-                # Projection only works if there exists an index with
-                # all of the projected properties, which is not currently the case.
-                # projection=["locale", "elo", "human_elo", "manual_elo"],
-            ):
-                if scan % 1000 == 0:
-                    logging.info(f"Completed scanning {scan} user entities")
+            q = UserModel.query().filter(UserModel.locale == locale)
+            for um in q.iter():
+                if scan and (scan % 500 == 0):
+                    logging.info(f"Scanned {scan} user entities so far")
                 scan += 1
-                if um.elo == 0:
-                    # This user has probably not played any games; skip
+                if um.games == 0 or (um.human_elo == 0 and um.elo == 0):
+                    # This user has probably not completed any games; skip
                     continue
+                if not (uid := um.key.id()):
+                    # No user ID; skip
+                    continue
+                # Check whether this user already has an EloModel entry
+                # in his or her locale
+                locale = um.locale or DEFAULT_LOCALE
+                em = EloModel.user_elo(locale, uid)
+                if em is not None:
+                    # Already exists; skip
+                    continue
+                # Create a new EloModel entry for this user and locale
                 ed = EloDict(
                     um.elo or DEFAULT_ELO,
                     um.human_elo or DEFAULT_ELO,
                     um.manual_elo or DEFAULT_ELO,
                 )
-                locale = um.locale or DEFAULT_LOCALE
-                em = EloModel.create(locale, um.key.id(), ed)
+                em = EloModel.create(locale, uid, ed)
                 if em is not None:
                     puts.append(em)
                     if len(puts) >= CHUNK_SIZE:
                         EloModel.put_multi(puts)
+                        logging.info(f"Put {len(puts)} EloModel entities")
                         puts = []
             if puts:
                 EloModel.put_multi(puts)
+                logging.info(f"Put {len(puts)} EloModel entities")
+                puts = []
         except Exception as e:
             logging.info(
                 f"Exception in deferred_elo_init(): {repr(e)}, "

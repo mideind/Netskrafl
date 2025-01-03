@@ -713,6 +713,7 @@ VOCABULARIES: Dict[str, str] = {
     "en_US": "otcwl2014",
     "pl": "osps37",
     "nb": "nsf2023",
+    "nn": "nynorsk2024",
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -746,8 +747,10 @@ LANGUAGES: Dict[str, str] = {
     "en_ZW": "en_GB",
     "pl": "pl",
     "pl_PL": "pl",
-    "nb": "nb",
+    "nb": "nb",  # Norwegian Bokmål
     "nb_NO": "nb",
+    "nn": "nn",  # Norwegian Nynorsk
+    "nn_NO": "nn",
     # For generic Norwegian, default to Bokmål
     "no": "nb",
     "no_NO": "nb",
@@ -785,7 +788,7 @@ RECOGNIZED_TO_SUPPORTED_LOCALES: Mapping[str, str] = {
     "pl": "pl_PL",  # Polish
     "nb": "nb_NO",  # Norwegian Bokmål
     "no": "nb_NO",  # Norwegian generic
-    "nn": "nb_NO",  # Norwegian Nynorsk
+    "nn": "nn_NO",  # Norwegian Nynorsk
     # "ga": "ga_IE",  # Gaeilge/Irish  # TODO: Uncomment this when Irish is supported
 }
 

@@ -132,6 +132,13 @@ VALIDATION_ERRORS: Dict[str, Dict[str, str]] = {
         "EMAIL_NO_AT": "E-postadressen må inneholde @-tegn",
         "LOCALE_UNKNOWN": "Ukjent lokalitet",
     },
+    "nn": {
+        "NICK_MISSING": "Manglar kallenamn",
+        "NICK_NOT_ALPHANUMERIC": "Kallenamn kan berre innehalde bokstavar og tal",
+        "NICK_TOO_LONG": f"Kallenamn kan ikkje vere lengre enn {MAX_NICKNAME_LENGTH} teikn",
+        "EMAIL_NO_AT": "E-postadressa må innehalde @-teikn",
+        "LOCALE_UNKNOWN": "Ukjend lokalitet",
+    },
     "ga": {
         "NICK_MISSING": "Ainm cleite in easnamh",
         "NICK_NOT_ALPHANUMERIC": "Ní féidir le hainm cleite ach litreacha agus uimhreacha a áireamh",
@@ -147,6 +154,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "Your turn in Explo 💥",
         "pl": "Twoja kolej w Explo 💥",
         "nb": "Din tur i Explo 💥",
+        "nn": "Din tur i Explo 💥",
         "ga": "Do sheal i Explo 💥",
     },
     "body": {
@@ -154,6 +162,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "{player} made a move in your game.",
         "pl": "{player} wykonał ruch w Twojej grze.",
         "nb": "{player} har gjort et trekk i spillet ditt.",
+        "nn": "{player} har gjort eit trekk i spelet ditt.",
         "ga": "Rinne {player} gluaiseacht i do chluiche.",
     },
     "chall_title": {
@@ -161,6 +170,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "You've been challenged in Explo 💥",
         "pl": "Zostałeś wyzwany w Explo 💥",
         "nb": "Du har blitt utfordret i Explo 💥",
+        "nn": "Du har blitt utfordra i Explo 💥",
         "ga": "Tá dúshlán curtha ort i Explo 💥",
     },
     "chall_body": {
@@ -168,6 +178,7 @@ PUSH_MESSAGES: Mapping[str, Mapping[str, str]] = {
         "en": "{player} has challenged you to a game!",
         "pl": "{player} wyzwał cię na pojedynek!",
         "nb": "{player} har utfordret deg til en kamp!",
+        "nn": "{player} har utfordra deg til ein kamp!",
         "ga": "Tá {player} tar éis dúshlán a thabhairt duit i gcluiche!",
     },
 }
@@ -1463,6 +1474,7 @@ def challengelist() -> ChallengeList:
     if cuser is None or not (cuid := cuser.id()):
         # Current user not valid: return empty list
         return result
+    locale = cuser.locale if cuser.locale else DEFAULT_LOCALE
 
     def is_timed(prefs: Optional[PrefsDict]) -> bool:
         """Return True if the challenge is for a timed game"""
@@ -1481,8 +1493,11 @@ def challengelist() -> ChallengeList:
         assert c.opp is not None
         return opponent_waiting(cuid, c.opp, key=c.key)
 
+    def challenge_locale(c: ChallengeTuple) -> str:
+        """Return the locale of a challenge"""
+        return c.prefs.get("locale", locale) if c.prefs else locale
+
     blocked = cuser.blocked()
-    locale = cuser.locale if cuser and cuser.locale else DEFAULT_LOCALE
     online = firebase.online_status(locale)
     # List received challenges
     received = list(ChallengeModel.list_received(cuid, max_len=20))
@@ -1490,7 +1505,7 @@ def challengelist() -> ChallengeList:
     issued = list(ChallengeModel.list_issued(cuid, max_len=20))
     # Multi-fetch all opponents involved
     opponents = fetch_users(received + issued, lambda c: c[0])
-    # Multi-fetch their Elo ratings
+    # Multi-fetch their Elo ratings, in the current player's locale
     elos = EloModel.load_multi(locale, opponents.keys())
 
     # List the received challenges
@@ -1502,7 +1517,17 @@ def challengelist() -> ChallengeList:
             continue
         if (u := opponents.get(oppid)) is None:
             continue
-        rating = elos.get(oppid, u.elo_for_locale(locale))
+        chall_locale = challenge_locale(c)
+        if chall_locale == locale and oppid in elos:
+            # This is by far the most common case: the challenge is in
+            # the same locale as the current user, and we've already
+            # multi-fetched the Elo rating for the opponent in that locale
+            rating = elos[oppid]
+        else:
+            # The challenge is not in the current user's locale, and
+            # we want to show the Elo rating in the challenge locale.
+            # This is a rare case.
+            rating = u.elo_for_locale(chall_locale)
         nick = u.nickname()
         result.append(
             ChallengeListDict(
@@ -1531,7 +1556,17 @@ def challengelist() -> ChallengeList:
         # challenges to a user when blocking that user.
         if (u := opponents.get(oppid)) is None:
             continue
-        rating = elos.get(oppid, u.elo_for_locale(locale))
+        chall_locale = challenge_locale(c)
+        if chall_locale == locale and oppid in elos:
+            # This is by far the most common case: the challenge is in
+            # the same locale as the current user, and we've already
+            # multi-fetched the Elo rating for the opponent in that locale
+            rating = elos[oppid]
+        else:
+            # The challenge is not in the current user's locale, and
+            # we want to show the Elo rating in the challenge locale.
+            # This is a rare case.
+            rating = u.elo_for_locale(chall_locale)
         nick = u.nickname()
         result.append(
             ChallengeListDict(

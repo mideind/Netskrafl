@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from typing import (
+    Mapping,
     Optional,
     Dict,
     Sequence,
@@ -26,6 +27,7 @@ from typing import (
     Any,
     Tuple,
     Callable,
+    Union,
     cast,
 )
 
@@ -526,6 +528,7 @@ def thumbnail_api() -> ResponseType:
         # current user's thumbnail is session dependent, not URL-dependent)
         return send_cached_file(
             thumb_bytes,
+            etag=f"thumb:{uid}",
             lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
         )
     # Thumbnail not present: generate it
@@ -546,6 +549,7 @@ def thumbnail_api() -> ResponseType:
             # Serve the thumbnail with a cache lifetime of 10 minutes
             return send_cached_file(
                 thumb_bytes,
+                etag=f"thumb:{uid}",
                 lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
             )
         except Exception:
@@ -852,7 +856,7 @@ def initwait_api() -> ResponseType:
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, bool, Mapping[str, str]]] = {
         f"user/{opp}/challenge": now,
         f"user/{uid}/wait/{opp}": {"key": key} if key else True,
     }
@@ -889,7 +893,7 @@ def cancelwait_api() -> ResponseType:
 
     # Delete the current wait and force update of the opponent's challenge list
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, None]] = {
         f"user/{cuid}/wait/{opp_id}": None,
         f"user/{opp_id}/challenge": now,
     }
@@ -1553,3 +1557,25 @@ def locale_asset_api() -> ResponseType:
             # Found the static asset file: return it
             return send_file(fname)
     return "", 404  # Not found
+
+
+@api_route("/submitword")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def submitword_api() -> ResponseType:
+    """Submit a word that the user believes to be missing from a vocabulary"""
+    user = current_user()
+    assert user is not None
+
+    rq = RequestData(request)
+    word = rq.get("word", "")
+    if not word:
+        return jsonify(ok=False)
+
+    # The locale should normally be the game locale, which
+    # is not necessarily the user's default locale
+    locale = rq.get("locale", user.locale or DEFAULT_LOCALE)
+    if not locale:
+        return jsonify(ok=False)
+
+    comment = rq.get("comment", "")
+    return jsonify(ok=user.submit_word(word, locale, comment))
