@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2024 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -191,6 +191,7 @@ interface GlobalState {
   uiFullscreen: boolean;
   uiLandscape: boolean;
   firebaseToken: string;
+  promo: string;
   emoticons: { icon: string; image: string; }[];
   runningLocal: boolean;
 }

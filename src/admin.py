@@ -2,7 +2,7 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright © 2024 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -23,8 +23,9 @@ from flask import request
 from flask.wrappers import Response
 
 from basics import jsonify
+from config import DEFAULT_ELO, DEFAULT_LOCALE
 from languages import Alphabet
-from skrafldb import Client, iter_q, Query, UserModel, GameModel
+from skrafldb import Client, EloDict, EloModel, iter_q, Query, UserModel, GameModel
 from skrafluser import User
 from skraflgame import Game
 
@@ -62,6 +63,58 @@ def deferred_user_update() -> None:
                 f"already scanned {scan} entities and updated {count}"
             )
     logging.info(f"Completed scanning {scan} and updating {count} user entities")
+
+
+def deferred_elo_init() -> None:
+    """Initialize EloModel entries for a given locale"""
+    logging.info("Deferred EloModel initialization starting")
+    CHUNK_SIZE = 500
+    scan = 0
+    puts: List[EloModel] = []
+    locale = "nb_NO"  # Change this to initialize a particular locale
+    with Client.get_context():
+        try:
+            q = UserModel.query().filter(UserModel.locale == locale)
+            for um in q.iter():
+                if scan and (scan % 500 == 0):
+                    logging.info(f"Scanned {scan} user entities so far")
+                scan += 1
+                if um.games == 0 or (um.human_elo == 0 and um.elo == 0):
+                    # This user has probably not completed any games; skip
+                    continue
+                if not (uid := um.key.id()):
+                    # No user ID; skip
+                    continue
+                # Check whether this user already has an EloModel entry
+                # in his or her locale
+                locale = um.locale or DEFAULT_LOCALE
+                em = EloModel.user_elo(locale, uid)
+                if em is not None:
+                    # Already exists; skip
+                    continue
+                # Create a new EloModel entry for this user and locale
+                ed = EloDict(
+                    um.elo or DEFAULT_ELO,
+                    um.human_elo or DEFAULT_ELO,
+                    um.manual_elo or DEFAULT_ELO,
+                )
+                em = EloModel.create(locale, uid, ed)
+                if em is not None:
+                    puts.append(em)
+                    if len(puts) >= CHUNK_SIZE:
+                        EloModel.put_multi(puts)
+                        logging.info(f"Put {len(puts)} EloModel entities")
+                        puts = []
+            if puts:
+                EloModel.put_multi(puts)
+                logging.info(f"Put {len(puts)} EloModel entities")
+                puts = []
+        except Exception as e:
+            logging.info(
+                f"Exception in deferred_elo_init(): {repr(e)}, "
+                f"already scanned {scan} entities"
+            )
+    logging.info(f"Completed scanning {scan} user entities")
 
 
 '''
@@ -109,6 +162,13 @@ def admin_userupdate() -> Response:
     logging.info("Starting user update")
     Thread(target=deferred_user_update).start()
     return jsonify(ok=True, result="User update started")
+
+
+def admin_eloinit() -> Response:
+    """Start en EloModel initialization background task"""
+    logging.info("Starting Elo initialization")
+    Thread(target=deferred_elo_init).start()
+    return jsonify(ok=True, result="Elo initialization started")
 
 
 '''

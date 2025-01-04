@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2024 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -122,8 +122,8 @@ class Actions {
         );
       } else if (routeName == "main") {
         // Force reload of lists
-        // !!! TBD: This may not be necessary,
-        // !!! if all Firebase notifications are acted upon
+        // TODO: This may not be necessary,
+        // if all Firebase notifications are acted upon
         model.gameList = null;
         model.userListCriteria = null;
         model.userList = null;

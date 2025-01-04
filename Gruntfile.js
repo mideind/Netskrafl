@@ -5,10 +5,10 @@ module.exports = function (grunt) {
 
       ts: {
          default : {
-           tsconfig: 'static/tsconfig.json',
-           options: {
-              rootDir: "static/src"
-           }
+            tsconfig: 'static/tsconfig.json',
+            options: {
+               rootDir: "static/src"
+            }
          }
       },
 
@@ -65,10 +65,6 @@ module.exports = function (grunt) {
 
    grunt.registerTask('default', ['watch']);
    grunt.registerTask('make', ['ts', 'uglify', 'less']);
-
-   function startsWith(s, t) {
-      return s.lastIndexOf(t, 0) === 0;
-   }
 
    // On watch events configure jshint:all to only run on changed file
    grunt.event.on('watch', function(action, filepath) {

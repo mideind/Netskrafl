@@ -46,7 +46,7 @@ import abc
 import functools
 from contextvars import ContextVar
 
-from config import DEFAULT_LOCALE, PROJECT_ID
+from config import DEFAULT_LOCALE, NETSKRAFL
 from alphabets import (
     Alphabet,
     IcelandicAlphabet,
@@ -58,8 +58,8 @@ from alphabets import (
 
 _T = TypeVar("_T")
 
-DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
-DEFAULT_BOARD_TYPE = "standard" if PROJECT_ID == "netskrafl" else "explo"
+DEFAULT_LANGUAGE = "is_IS" if NETSKRAFL else "en_US"
+DEFAULT_BOARD_TYPE = "standard" if NETSKRAFL else "explo"
 
 
 class TileSet(abc.ABC):
@@ -713,6 +713,7 @@ VOCABULARIES: Dict[str, str] = {
     "en_US": "otcwl2014",
     "pl": "osps37",
     "nb": "nsf2023",
+    "nn": "nynorsk2024",
     # Everything else presently defaults to 'ordalisti'
 }
 
@@ -746,8 +747,10 @@ LANGUAGES: Dict[str, str] = {
     "en_ZW": "en_GB",
     "pl": "pl",
     "pl_PL": "pl",
-    "nb": "nb",
+    "nb": "nb",  # Norwegian Bokmål
     "nb_NO": "nb",
+    "nn": "nn",  # Norwegian Nynorsk
+    "nn_NO": "nn",
     # For generic Norwegian, default to Bokmål
     "no": "nb",
     "no_NO": "nb",
@@ -785,14 +788,18 @@ RECOGNIZED_TO_SUPPORTED_LOCALES: Mapping[str, str] = {
     "pl": "pl_PL",  # Polish
     "nb": "nb_NO",  # Norwegian Bokmål
     "no": "nb_NO",  # Norwegian generic
-    "nn": "nb_NO",  # Norwegian Nynorsk
-    # "ga": "ga_IE",  # Gaeilge/Irish !!! TODO: Uncomment this when Irish is supported
+    "nn": "nn_NO",  # Norwegian Nynorsk
+    # "ga": "ga_IE",  # Gaeilge/Irish  # TODO: Uncomment this when Irish is supported
 }
 
 # Set of all supported game locales
 # This set is used for player presence management
 # and to group players together into communities
-SUPPORTED_LOCALES = frozenset(RECOGNIZED_TO_SUPPORTED_LOCALES.values())
+SUPPORTED_LOCALES = (
+    frozenset((DEFAULT_LOCALE,))
+    if NETSKRAFL
+    else frozenset(RECOGNIZED_TO_SUPPORTED_LOCALES.values())
+)
 
 
 class Locale(NamedTuple):
@@ -811,7 +818,7 @@ default_locale_explo = Locale(
     "en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo"
 )
 default_locale = (
-    default_locale_netskrafl if PROJECT_ID == "netskrafl" else default_locale_explo
+    default_locale_netskrafl if NETSKRAFL else default_locale_explo
 )
 
 # Use a context variable (thread local) to store the locale information

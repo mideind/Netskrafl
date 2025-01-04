@@ -8,7 +8,7 @@
 """
 
 import json
-from typing import Any, Dict, Generator
+from typing import Any, Dict
 
 import sys
 import os
@@ -19,7 +19,6 @@ import pytest
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 from itsdangerous import base64_decode
-
 
 # Make sure that we can run this test from the ${workspaceFolder}/test directory
 SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
@@ -38,6 +37,10 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
 os.environ["SERVER_SOFTWARE"] = "Development"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
+
+import main
+from skrafldb import EloModel, UserModel, ChatModel, GameModel, ZombieModel, Client
+from skraflgame import PrefsDict
 
 
 # Create a custom test client class that can optionally
@@ -61,40 +64,59 @@ class CustomClient(FlaskClient):
         self.send_authorization = send_authorization
 
 
+main.app.config["TESTING"] = True
+main.app.config["AUTH_SECRET"] = TEST_SECRET
+main.app.testing = True
+
+main.app.test_client_class = CustomClient
+
+
+def flask_client() -> CustomClient:
+    client = main.app.test_client()
+    assert isinstance(client, CustomClient)
+    return client
+
+
 @pytest.fixture
-def client() -> Generator[CustomClient, Any, Any]:
+def client() -> CustomClient:
     """Flask client fixture"""
-    import main
+    return flask_client()
 
-    main.app.config["TESTING"] = True
-    main.app.config["AUTH_SECRET"] = TEST_SECRET
-    main.app.testing = True
 
-    main.app.test_client_class = CustomClient
+@pytest.fixture
+def client1() -> CustomClient:
+    return flask_client()
 
-    with main.app.test_client() as client:
-        assert isinstance(client, CustomClient)
-        yield client
+
+@pytest.fixture
+def client2() -> CustomClient:
+    return flask_client()
 
 
 def create_user(idx: int, locale: str = "en_US") -> str:
     """Create a user instance for testing, if it doesn't already exist"""
-    from skrafldb import UserModel, ChatModel, Client
-    from skraflgame import PrefsDict
-
     with Client.get_context():
         nickname = f"testuser{idx}"
         email = f"test{idx}@user.explo"
         name = f"Test user {idx}"
-        account = f"999999{idx}"
+        uid = f"999999{idx}"
         image = ""
         prefs: PrefsDict = {"newbag": True, "email": email, "full_name": name}
         # Delete chat messages for this user
-        ChatModel.delete_for_user(account)
+        ChatModel.delete_for_user(uid)
+        # Delete zombie games for this user
+        ZombieModel.delete_for_user(uid)
+        # Delete favorites and challenges for this user
+        UserModel.delete_related_entities(uid)
+        # Delete games where this user is a player
+        GameModel.delete_for_user(uid)
+        # Delete locale-specific Elo ratings for this user
+        EloModel.delete_for_user(uid)
+        # TODO: Delete StatsModel entries for this user
         # Create a new user, if required
         return UserModel.create(
-            user_id=account,
-            account=account,
+            user_id=uid,
+            account=uid,
             email=email,
             nickname=nickname,
             image=image,

@@ -4,7 +4,7 @@
 
   Utility functions for working with Firebase
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2024 Miðeind ehf.
   Original author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -64,19 +64,26 @@ function loginFirebase(state: GlobalState, onLoginFunc?: () => void) {
   );
   firebase.auth()
     .signInWithCustomToken(token)
-    .then(() => initPresence(userId, locale))
+    .then(() => initPresence(state, userId, locale))
     .catch((error: { code: string; message: string; }) => {
       console.log('Firebase login failed, error code: ', error.code);
       console.log('Error message: ', error.message);
     });
 }
 
-function initPresence(userId: string, locale: string) {
+function initPresence(state: GlobalState, userId: string, locale: string) {
   // Ensure that this user connection is recorded in Firebase
   const db = firebase.database();
   const connectedRef = db.ref('.info/connected');
   // Create a unique connection entry for this user
-  const connectionPath = `connection/${locale}/${userId}`;
+  let connectionPath = "";
+  if (state.isExplo) {
+    connectionPath = `connection/${locale}/${userId}`;
+  } else {
+    // For Netskrafl, the locale is implicitly "is_IS" and
+    // we don't specify it in the connection string
+    connectionPath = `connection/${userId}`;
+  }
   const userRef = db.ref(connectionPath).push();
   connectedRef.on('value', (snapshot: any) => {
     if (snapshot.val()) {

@@ -4,7 +4,7 @@
 
    Style sheet template for netskrafl.is
 
-   Copyright (C) 2023 Miðeind ehf.
+   Copyright © 2024 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
    The Creative Commons Attribution-NonCommercial 4.0
@@ -363,7 +363,7 @@ div.board-area {
 
 div.board {
    background-color: @container;
-   overflow: auto;
+   overflow: hidden;
    width: @board-size + 1px;
 }
 
@@ -472,7 +472,7 @@ div.rack {
    width: 86%;
    float: left;
    top: -6px;
-   left: -1px;
+   left: -3px;
 }
 
 div.letterscore {
@@ -883,7 +883,7 @@ div.loginform-large {
    position: absolute;
    left: 220px;
    right: 120px;
-   top: 44px;
+   top: 24px;
    width: auto;
    max-width: 740px;
    padding: 0;
@@ -939,7 +939,7 @@ div.login-btn-large {
    color: white;
    background-color: @pure-blue;
    margin: 0;
-   margin-top: 12px;
+   margin-top: 24px;
    margin-left: 6px;
    padding: 6px;
    padding-top: 8px;
@@ -1314,15 +1314,19 @@ div.exchange {
 }
 
 div.submitmove#move-mobile {
-   display: block;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: space-between;
    float: right;
    margin-right: 1px;
    width: 96px;
    font-weight: normal;
    color: black;
    background-color: @tile;
-   text-align: left;
-   text-indent: 6px;
+   padding-left: 10px;
+   padding-right: 10px;
+   padding-top: 6px;
 }
 
 div.submitmove#move-mobile.manual {
@@ -1348,17 +1352,21 @@ div.submitmove#move-mobile.word-good {
    100% { transform: scale(1.0); }
 }
 
-div.submitmove#move-mobile.word-great span.score-mobile {
+span.score-mobile {
    display: inline-block;
-   /* font-weight: 700; */
+   font-weight: 700;
+   font-size: 22px;
+   line-height: 22px;
+}
+
+div.submitmove#move-mobile.word-great span.score-mobile {
    animation: colorPulseMobile 1.5s infinite;
    -webkit-animation: colorPulseMobile 1.5s infinite;
 }
 
 div.submitmove#move-mobile span.glyphicon {
-   position: absolute;
-   top: 12px;
-   right: 10px;
+   top: 0px;
+   margin-top: 2px;
 }
 
 div.force-resign {
@@ -3915,8 +3923,9 @@ div.blank-rack {
 
 div.welcome {
    font-size: 15px;
+   line-height: 20px;
    font-weight: normal;
-   padding-bottom: 16px;
+   padding-bottom: 12px;
 }
 
 .welcome a:link, .welcome a:visited {

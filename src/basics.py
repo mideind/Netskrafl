@@ -17,13 +17,12 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-import io
 from typing import (
     Literal,
     Mapping,
     Optional,
     Dict,
+    Required,
     TypedDict,
     Union,
     List,
@@ -34,6 +33,8 @@ from typing import (
     overload,
 )
 
+import io
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import (
@@ -48,6 +49,7 @@ from flask import (
 )
 from flask.wrappers import Request, Response
 from werkzeug.utils import send_file  # type: ignore
+
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 
@@ -86,10 +88,10 @@ class UserIdDict(TypedDict):
     client_type: str
 
 
-class SessionDict(TypedDict):
+class SessionDict(TypedDict, total=False):
     """The contents of the Flask session cookie"""
 
-    userid: str
+    userid: Required[str]
     # Login method ('Google', 'Facebook', 'Apple', 'Explo')
     method: str
     # True if new user, signing in for the first time
@@ -166,7 +168,7 @@ class FlaskWithCaching(Flask):
 
 
 def send_cached_file(
-    content: io.BytesIO, *, lifetime_seconds: int, mimetype: str = "image/jpeg"
+    content: io.BytesIO, *, lifetime_seconds: int, etag: str, mimetype: str = "image/jpeg"
 ) -> Response:
     """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
     now = datetime.now(UTC)
@@ -176,12 +178,13 @@ def send_cached_file(
         mimetype=mimetype,
         last_modified=now,
         max_age=lifetime_seconds,
+        etag=etag,
         response_class=CachedResponse if lifetime_seconds > 0 else Response,
     )
     assert isinstance(response, Response)
-    if lifetime_seconds > 0:
-        expires = now + timedelta(seconds=lifetime_seconds)
-        response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    # if lifetime_seconds > 0:
+    #     expires = now + timedelta(seconds=lifetime_seconds)
+    #     response.headers["Expires"] = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
     return response
 
 

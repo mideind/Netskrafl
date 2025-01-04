@@ -25,9 +25,9 @@
 
 <!-- Include the Mithril UI library -->
 {% if dev_server %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.0.4/mithril.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.2.10/mithril.js"></script>
 {% else %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.0.4/mithril.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.2.10/mithril.min.js"></script>
 {% endif %}
 
 {% endblock %}
@@ -74,6 +74,7 @@ var $state = {
    uiFullscreen: undefined,
    uiLandscape: undefined,
    firebaseToken: "{{ firebase_token }}",
+   promo: "{{ promo }}",
    // Array of supported emoticons in chat
    // Remember to change faq.html if this changes
    emoticons: [
@@ -102,7 +103,8 @@ var $state = {
 
 <!-- !!! FIXME: Concatenate and minify all scripts -->
 
-<script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script>
+<!-- <script src="{{ url_for('web.static', filename='js/DragDropTouch.js') }}"></script> -->
+<script src="{{ url_for('web.static', filename='js/drag-drop-touch.esm.js') }}" type="module"></script>
 
 <script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
 {% if dev_server %}
@@ -114,6 +116,13 @@ var $state = {
 <script>
 
 function init_amd() {
+
+   // Initialize the DragDropTouch library
+   const dragDropOptions = {
+      dragImageOpacity: 1,
+      forceListen: true,
+   };
+   globalThis.DragDropTouch.enable(document, document, dragDropOptions);
 
    // Wrap the Mithril library in an AMD/requireJS module definition
    define(

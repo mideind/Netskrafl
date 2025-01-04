@@ -1,0 +1,86 @@
+
+{% extends "container-base-explo.html" %}
+
+{% block opengraph %}
+
+<meta property="og:type" content="website" />
+{% if project_id == 'netskrafl' %}
+<meta property="og:locale" content="is_IS" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:description" content="Spilaðu skrafl á netinu" />
+{% else %}
+<meta property="og:site_name" content="Explo">
+<meta property="og:description" content="The crossword game for modern times">
+{% endif %}
+
+{% endblock %}
+
+{% block styles %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block libscripts %}
+
+<!-- Include the Mithril UI library, minified in production -->
+{% if dev_server %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.2.10/mithril.js"></script>
+{% else %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.2.10/mithril.min.js"></script>
+{% endif %}
+
+{% endblock %}
+
+{% block startscripts %}
+<!-- No Firebase -->
+{% endblock %}
+
+{% block logo %}
+<!-- No logo -->
+{% endblock %}
+
+{% block content %}
+{% endblock %}
+
+{% block endscripts %}
+
+<script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
+{% if dev_server %}
+<script src="{{ url_for('web.static', filename='built/explo.js') }}"></script>
+{% else %}
+<script src="{{ url_for('web.static', filename='built/explo.min.js') }}"></script>
+{% endif %}
+
+<script>
+
+// Global state, passed by the server from this template
+// into the client script
+var $state = {
+   loginUrl: "{{ url_for('web.login') | safe }}",
+{% if project_id == 'netskrafl' %}
+   locale: "is_IS"
+{% else %}
+   locale: "en_US" // TODO: Use browser locale
+{% endif %}
+};
+
+function init_amd() {
+
+   // Wrap the Mithril JS library in an AMD/requireJS module definition
+   define("mithril", ["require", "exports"], function (require, exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.m = window.m;
+   });
+
+   // Import the login page code and call its main function
+   require(["login"], function(login) { login.main($state); });
+}
+
+// Once the DOM is ready, call the init_amd() function
+window.addEventListener("DOMContentLoaded", init_amd);
+
+</script>
+
+{% endblock %}

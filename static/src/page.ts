@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2024 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -26,7 +26,7 @@ export {
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
-  MithrilEvent, MithrilDragEvent, VnodeChildren
+  MithrilEvent, VnodeChildren
 } from "mithril";
 
 import {
@@ -3249,18 +3249,22 @@ class View {
           if (t.draggable) {
             // Make the tile draggable, unless we're showing a dialog
             attrs.draggable = "true";
-            attrs.ondragstart = (ev: MithrilDragEvent) => {
+            attrs.ondragstart = (ev) => {
+              // ev.preventDefault();
               game.selectedSq = null;
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", true);
               ev.dataTransfer.effectAllowed = "move"; // "copyMove"
               ev.dataTransfer.setData("text", coord);
               ev.redraw = false;
+              // return false;
             };
-            attrs.ondragend = (ev: MithrilDragEvent) => {
+            attrs.ondragend = (ev) => {
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", false);
+              ev.preventDefault();
               ev.redraw = false;
+              return false;
             };
-            attrs.onclick = (ev: MouseEvent) => {
+            attrs.onclick = (ev) => {
               // When clicking a tile, make it selected (blinking)
               if (coord == game.selectedSq)
                 // Clicking again: deselect
@@ -3268,6 +3272,7 @@ class View {
               else
                 game.selectedSq = coord;
               ev.stopPropagation();
+              return false;
             };
           }
         }
@@ -3844,7 +3849,7 @@ class View {
             this.makeButton(
               "submitmove", !s.tilesPlaced || s.showingDialog,
               () => { game.submitMove(); this.updateScale(game); },
-              submit_move, [submit_move, glyph("right-arrow")]
+              submit_move, [submit_move, glyph("play")]
             )
           );
         }
@@ -3866,7 +3871,7 @@ class View {
           const text = (game.currentScore === undefined) ? "?" : game.currentScore.toString();
           let legend: VnodeChildren[] = [m("span.score-mobile", text)];
           if (s.canPlay && wordIsPlayable)
-            legend.push(glyph("right-arrow"));
+            legend.push(glyph("play"));
           else
             legend.push(glyph("remove"));
           let action: () => void;
@@ -3956,7 +3961,7 @@ class View {
                 // displayed in the fullscreen UI
                 s.tardyOpponent ? m("span.yesnobutton",
                   {
-                    id: 'force-resign',
+                    id: "force-resign",
                     onclick: (ev) => {
                       ev.preventDefault();
                       game.forceResign();
@@ -4972,7 +4977,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
 
     view: (vnode) => {
 
-      function vwStat(val: number, icon?: string, suffix?: string): string | any[] {
+      function vwStat(val?: number, icon?: string, suffix?: string): string | any[] {
         // Display a user statistics figure, eventually with an icon
         var txt = (val === undefined) ? "" : val.toString();
         if (suffix !== undefined)
@@ -5015,7 +5020,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts('Elo-stig') },
-                s ? vwStat(s.human_elo, "crown") : ""),
+                s ? vwStat(s.locale_elo?.human_elo, "crown") : ""),
               m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.human_games, "th") : ""),
               m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },
@@ -5028,7 +5033,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts("Elo-stig") },
-                s ? vwStat(s.elo, "crown") : ""),
+                s ? vwStat(s.locale_elo?.elo, "crown") : ""),
               m(".stats-fig.stats-games", { title: ts('Fjöldi viðureigna') },
                 s ? vwStat(s.games, "th") : ""),
               m(".stats-fig.stats-win-ratio", { title: ts('Vinningshlutfall') },

@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from typing import (
+    Mapping,
     Optional,
     Dict,
     Sequence,
@@ -26,6 +27,7 @@ from typing import (
     Any,
     Tuple,
     Callable,
+    Union,
     cast,
 )
 
@@ -45,10 +47,10 @@ from flask.globals import current_app
 from werkzeug.utils import redirect
 
 from config import (
+    NETSKRAFL,
     RC_WEBHOOK_AUTH,
     RouteType,
     running_local,
-    PROJECT_ID,
     DEFAULT_LOCALE,
     ResponseType,
 )
@@ -94,8 +96,10 @@ from logic import (
     opponent_waiting,
     localize_push_message,
     process_move,
+    rating_for_locale,
     set_online_status_for_chats,
     autoplayer_lock,
+    submit_move,
     userlist,
     gamelist,
     recentlist,
@@ -246,46 +250,40 @@ def firebase_token_api() -> ResponseType:
 @auth_required(result=Error.LOGIN_REQUIRED)
 def submitmove_api() -> ResponseType:
     """Handle a move that is being submitted from the client"""
-    # This URL should only receive Ajax POSTs from the client
+    # This URL should only receive POSTs from the client
     rq = RequestData(request)
-    movelist = rq.get_list("moves")
-    movecount = rq.get_int("mcount")
     uuid = rq.get("uuid")
 
-    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
+    movelist = rq.get_list("moves")
+    movecount = rq.get_int("mcount")
+    if current_app.testing:
+        validate = rq.get_bool("validate", True)
+    else:
+        validate = True
 
-    if game is None:
-        return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result=Error.OUT_OF_SYNC)
-
-    if game.player_id_to_move() != current_user_id():
-        return jsonify(result=Error.WRONG_USER)
-
-    # Process the movestring
-    # Try twice in case of timeout or other exception
-    result: ResponseType = jsonify(result=Error.LEGAL)
-    for attempt in reversed(range(2)):
+    result: ResponseType = ""
+    # Make two attempts (retry once) if an exception occurs
+    for attempt in range(2):
         # pylint: disable=broad-except
         try:
-            result = process_move(game, movelist)
+            result = submit_move(uuid, movelist, movecount, validate)
         except Exception as e:
-            logging.info(
+            # Log the exception and try again
+            # Note that submit_move() is decorated with ndb.transactional()
+            # and thus idempotent, so retrying should be safe
+            logging.exception(
                 "Exception in submitmove(): {0} {1}".format(
                     e, "- retrying" if attempt > 0 else ""
                 )
             )
-            if attempt == 0:
-                # Final attempt failed
-                result = jsonify(result=Error.SERVER_ERROR)
+            # TODO: Consider adding a check here for exception classes
+            # where it doesn't make sense to retry the operation; for
+            # those classes we can break immediately out of the loop
         else:
             # No exception: done
             break
-    assert result is not None
-    return result
+
+    return result or jsonify(result=Error.SERVER_ERROR)
 
 
 @api_route("/gamestate")
@@ -515,7 +513,7 @@ def image_api() -> ResponseType:
 @api_route("/thumbnail", methods=["GET"])
 @auth_required(result=Error.LOGIN_REQUIRED)
 def thumbnail_api() -> ResponseType:
-    """Get (GET) a profile image thumbnail for a user"""
+    """Get a profile image thumbnail for a user"""
     rq = RequestData(request, use_args=True)
     uid = rq.get("uid", "").strip()
     request_has_uid = bool(uid)  # True if a specific user id was requested
@@ -530,6 +528,7 @@ def thumbnail_api() -> ResponseType:
         # current user's thumbnail is session dependent, not URL-dependent)
         return send_cached_file(
             thumb_bytes,
+            etag=f"thumb:{uid}",
             lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
         )
     # Thumbnail not present: generate it
@@ -550,6 +549,7 @@ def thumbnail_api() -> ResponseType:
             # Serve the thumbnail with a cache lifetime of 10 minutes
             return send_cached_file(
                 thumb_bytes,
+                etag=f"thumb:{uid}",
                 lifetime_seconds=THUMBNAIL_LIFETIME if request_has_uid else 0,
             )
         except Exception:
@@ -644,13 +644,29 @@ def allgamelists_api() -> ResponseType:
 @api_route("/rating")
 @auth_required(result=Error.LOGIN_REQUIRED)
 def rating_api() -> ResponseType:
-    """Return the newest Elo ratings table (top 100)
-    of a given kind ('all' or 'human')"""
+    """Return the newest Elo ratings table (top 100) of a given kind
+    ('all', 'human', 'manual'), locale-ignorant ('old-style')"""
     rq = RequestData(request)
     kind = rq.get("kind", "all")
     if kind not in ("all", "human", "manual"):
         kind = "all"
     return jsonify(result=Error.LEGAL, rating=rating(kind))
+
+
+@api_route("/rating_locale")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def rating_locale_api() -> ResponseType:
+    """Return the newest Elo ratings table (top 100) of a given kind
+    ('all', 'human', 'manual') for a given locale"""
+    rq = RequestData(request)
+    kind = rq.get("kind", "all")
+    if kind not in ("all", "human", "manual"):
+        kind = "all"
+    # An empty locale string means the locale of the current user
+    locale = rq.get("locale", "")
+    if locale:
+        locale = to_supported_locale(locale)
+    return jsonify(result=Error.LEGAL, rating=rating_for_locale(kind, locale))
 
 
 @api_route("/favorite")
@@ -763,7 +779,7 @@ def setuserpref_api() -> ResponseType:
         ("beginner", user.set_beginner),
         ("ready", user.set_ready),
         ("ready_timed", user.set_ready_timed),
-        ("chat_disabled", user.disable_chat),
+        ("chat_disabled", user.set_chat_disabled),
     ]
 
     update = False
@@ -785,8 +801,10 @@ def setuserpref_api() -> ResponseType:
         # Locales have one or two parts, separated by an underscore,
         # and each part is a two-letter code.
         if 1 <= len(a) <= 2 and all(len(x) == 2 and x.isalpha() for x in a):
-            user.set_locale(to_supported_locale(lc))
-            update = True
+            new_locale = to_supported_locale(lc)
+            if user.locale != new_locale:
+                user.set_locale(new_locale)
+                update = True
 
     if update:
         user.update()
@@ -838,7 +856,7 @@ def initwait_api() -> ResponseType:
     # Notify the opponent of a change in the challenge list
     # via a Firebase notification to /user/[user_id]/challenge
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, bool, Mapping[str, str]]] = {
         f"user/{opp}/challenge": now,
         f"user/{uid}/wait/{opp}": {"key": key} if key else True,
     }
@@ -875,7 +893,7 @@ def cancelwait_api() -> ResponseType:
 
     # Delete the current wait and force update of the opponent's challenge list
     now = datetime.now(UTC).isoformat()
-    msg = {
+    msg: Mapping[str, Union[str, None]] = {
         f"user/{cuid}/wait/{opp_id}": None,
         f"user/{opp_id}/challenge": now,
     }
@@ -1428,7 +1446,7 @@ def initgame_api() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
-    if PROJECT_ID == "netskrafl":
+    if NETSKRAFL:
         board_type = rq.get("board_type", current_board_type())
     else:
         board_type = "explo"
@@ -1447,8 +1465,9 @@ def initgame_api() -> ResponseType:
         prefs["board_type"] = board_type
         set_game_locale(user.locale)
         game = Game.new(uid, None, robot_level, prefs=prefs)
+        to_move = game.player_id_to_move() or f"robot-{robot_level}"
         # Return the uuid of the new game
-        return jsonify(ok=True, uuid=game.id())
+        return jsonify(ok=True, uuid=game.id(), to_move=to_move)
 
     key: Optional[str] = rq.get("key", None)
 
@@ -1472,7 +1491,7 @@ def initgame_api() -> ResponseType:
     if prefs is None:
         prefs = PrefsDict(locale=user.locale)
     prefs["board_type"] = board_type
-    set_game_locale(cast(str, prefs.get("locale")) or user.locale)
+    set_game_locale(prefs.get("locale") or user.locale)
     game = Game.new(uid, opp, 0, prefs)
     game_id = game.id()
     if not game_id or game.state is None:
@@ -1486,6 +1505,9 @@ def initgame_api() -> ResponseType:
         "game": game_id,
         "timestamp": now,
         "over": False,
+        # Note that the to_move index is NOT an index
+        # into the players tuple, which may be reversed depending on
+        # which player played the initial move
         "players": (uid, opp),
         "to_move": game.player_to_move(),
         "scores": (0, 0),
@@ -1504,8 +1526,10 @@ def initgame_api() -> ResponseType:
 
     firebase.send_message(msg)
 
-    # Return the uuid of the new game
-    return jsonify(ok=True, uuid=game_id)
+    # Return the uuid of the new game, and the id of the
+    # player whose turn it is
+    to_move = game.player_id_to_move()
+    return jsonify(ok=True, uuid=game_id, locale=game.locale, to_move=to_move)
 
 
 @api_route("/locale_asset")
@@ -1533,3 +1557,25 @@ def locale_asset_api() -> ResponseType:
             # Found the static asset file: return it
             return send_file(fname)
     return "", 404  # Not found
+
+
+@api_route("/submitword")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def submitword_api() -> ResponseType:
+    """Submit a word that the user believes to be missing from a vocabulary"""
+    user = current_user()
+    assert user is not None
+
+    rq = RequestData(request)
+    word = rq.get("word", "")
+    if not word:
+        return jsonify(ok=False)
+
+    # The locale should normally be the game locale, which
+    # is not necessarily the user's default locale
+    locale = rq.get("locale", user.locale or DEFAULT_LOCALE)
+    if not locale:
+        return jsonify(ok=False)
+
+    comment = rq.get("comment", "")
+    return jsonify(ok=user.submit_word(word, locale, comment))

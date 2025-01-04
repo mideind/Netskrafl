@@ -48,6 +48,7 @@ from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 
 from config import (
+    NETSKRAFL,
     FlaskConfig,
     ResponseType,
     DEFAULT_LOCALE,
@@ -65,6 +66,7 @@ from config import (
     FIREBASE_APP_ID,
     FLASK_SESSION_KEY,
     AUTH_SECRET,
+    FILE_VERSION_INCREMENT,
 )
 from basics import (
     FlaskWithCaching,
@@ -100,7 +102,7 @@ if running_local:
     )
 
 if running_local:
-    logging.info("Netskrafl app running with DEBUG set to True")
+    logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library
@@ -133,6 +135,11 @@ if running_local:
         supports_credentials=True,
         origins=[
             "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:6006",
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:6006",
         ],
     )
 
@@ -225,7 +232,7 @@ def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
 
     def static_file_hash(filename: str) -> int:
         """Obtain a timestamp for the given file"""
-        return int(os.stat(filename).st_mtime)
+        return int(os.stat(filename).st_mtime) + FILE_VERSION_INCREMENT
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")
@@ -273,7 +280,7 @@ def stop() -> ResponseType:
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """Return a custom 500 error"""
     logging.error(f"Server error: {e}")
-    if PROJECT_ID == "netskrafl":
+    if NETSKRAFL:
         return f"<html><body><p>Villa kom upp í netþjóni: {e}</p></body></html>", 500
     return f"<html><body><p>An error occurred in the server: {e}</p></body></html>", 500
 

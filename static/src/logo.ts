@@ -4,7 +4,7 @@
 
   Animated Explo / Netskrafl logo & legend component
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2024 Miðeind ehf.
   Original author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0

@@ -656,9 +656,10 @@ def oauth_anonymous(request: Request) -> ResponseType:
     if not userid:
         # Unable to obtain the user id for some reason
         # 401 - Unauthorized
-        logging.error("Unable to obtain user id in anonymous sign-in")
+        msg = "Unable to obtain user id in anonymous sign-in"
+        logging.error(msg)
         return (
-            jsonify({"status": "invalid", "msg": "No user id in anonymous sign-in"}),
+            jsonify({"status": "invalid", "msg": msg}),
             401,
         )
 
@@ -668,7 +669,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
         new=uld.get("new") or False,
         client_type=client_type,
     )
-    uld["method"] = sd["method"]
+    uld["method"] = "Anonymous"
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie
