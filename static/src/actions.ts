@@ -52,6 +52,8 @@ class Actions {
     model.params = params;
     if (routeName == "game") {
       // New game route: initiate loading of the game into the model
+      const uuid = params.uuid;
+      if (!uuid) return;
       if (model.game !== null) {
         this.detachListenerFromGame(model.game.uuid);
       }
@@ -59,9 +61,9 @@ class Actions {
       const deleteZombie = params.zombie === "1";
       // Load the game, and attach it to the Firebase listener once it's loaded
       model.loadGame(
-        params.uuid,
+        uuid,
         () => {
-          this.attachListenerToGame(params.uuid);
+          this.attachListenerToGame(uuid);
           setTimeout(this.view.scrollMovelistToBottom);
         },
         deleteZombie
@@ -77,6 +79,8 @@ class Actions {
     } else if (routeName == "review") {
       // A game review: detach listener, if any, and load
       // new game if necessary
+      const uuid = params.uuid;
+      if (!uuid) return;
       if (model.game !== null) {
         // !!! This may cause an extra detach - we assume that's OK
         this.detachListenerFromGame(model.game.uuid);
@@ -87,10 +91,10 @@ class Actions {
       let move = parseInt(moveParam);
       if (isNaN(move) || !move || move < 0)
         move = 0;
-      if (model.game === null || model.game.uuid != params.uuid) {
+      if (model.game === null || model.game.uuid != uuid) {
         // Different game than we had before: load it, and then
         // fetch the best moves
-        model.loadGame(params.uuid, () => {
+        model.loadGame(uuid, () => {
           model.loadBestMoves(move);
           setTimeout(this.view.scrollMovelistToBottom);
         });
@@ -109,17 +113,22 @@ class Actions {
       if (routeName == "help") {
         // Make sure that the help HTML is loaded upon first use
         model.loadHelp();
-        logEvent("help", { locale: model.state.locale });
+        const locale = model.state?.locale || "[unknown]";
+        logEvent("help", { locale });
       } else if (routeName == "thanks") {
         // Log a conversion event
-        logEvent("init_plan",
-          {
-            userid: model.state.userId,
-            locale: model.state.locale,
-            // TODO: Add plan identifiers here
-            plan: "friend"
-          }
-        );
+        const userid = model.state?.userId;
+        if (userid) {
+          const locale = model.state?.locale || "[unknown]";
+          logEvent("init_plan",
+            {
+              userid,
+              locale,
+              // TODO: Add plan identifiers here
+              plan: "friend"
+            }
+          );
+        }
       } else if (routeName == "main") {
         // Force reload of lists
         // TODO: This may not be necessary,
@@ -163,7 +172,8 @@ class Actions {
 
   onFullScreen() {
     // Take action when min-width exceeds 768
-    let state = this.model.state;
+    const state = this.model.state;
+    if (!state) return;
     if (!state.uiFullscreen) {
       state.uiFullscreen = true;
       this.view.notifyMediaChange();
@@ -172,7 +182,8 @@ class Actions {
   }
 
   onMobileScreen() {
-    let state = this.model.state;
+    const state = this.model.state;
+    if (!state) return;
     if (state.uiFullscreen !== false) {
       state.uiFullscreen = false;
       this.view.notifyMediaChange();
@@ -181,7 +192,8 @@ class Actions {
   }
 
   onLandscapeScreen() {
-    let state = this.model.state;
+    const state = this.model.state;
+    if (!state) return;
     if (!state.uiLandscape) {
       state.uiLandscape = true;
       this.view.notifyMediaChange();
@@ -190,7 +202,8 @@ class Actions {
   }
 
   onPortraitScreen() {
-    let state = this.model.state;
+    const state = this.model.state;
+    if (!state) return;
     if (state.uiLandscape !== false) {
       state.uiLandscape = false;
       this.view.notifyMediaChange();
@@ -241,10 +254,10 @@ class Actions {
     }
 
     let mql: MediaQueryList = window.matchMedia("(min-width: 667px)");
-    let view = this;
+    const view = this;
     if (mql) {
       this.mediaMinWidth667(mql);
-      addEventListener(mql, function (ev: MediaQueryListEvent) {
+      addEventListener(mql, function (this: MediaQueryList, _: MediaQueryListEvent) {
           view.mediaMinWidth667(this);
         }
       );
@@ -252,7 +265,7 @@ class Actions {
     mql = window.matchMedia("(min-width: 768px)");
     if (mql) {
       this.mediaMinWidth768(mql);
-      addEventListener(mql, function (ev: MediaQueryListEvent) {
+      addEventListener(mql, function (this: MediaQueryList, _: MediaQueryListEvent) {
           view.mediaMinWidth768(this);
         }
       );
@@ -261,11 +274,13 @@ class Actions {
 
   initFirebaseListener() {
     // Sign into Firebase with the token passed from the server
+    if (this.model.state === null) throw new Error("Model state is null");
     loginFirebase(this.model.state);
   }
 
   attachListenerToUser() {
-    let state = this.model.state;
+    const state = this.model.state;
+    if (state === null) throw new Error("Model state is null");
     if (state.userId)
       attachFirebaseListener('user/' + state.userId,
         (json, firstAttach) => this.onUserMessage(json, firstAttach)
@@ -274,14 +289,16 @@ class Actions {
 
   detachListenerFromUser() {
     // Stop listening to Firebase notifications for the current user
-    let state = this.model.state;
+    const state = this.model.state;
+    if (state === null) throw new Error("Model state is null");
     if (state.userId)
       detachFirebaseListener('user/' + state.userId);
   }
 
   attachListenerToGame(uuid: string) {
     // Listen to Firebase events on the /game/[gameId]/[userId] path
-    let state = this.model.state;
+    const state = this.model.state;
+    if (!state) return;
     const basepath = 'game/' + uuid + "/" + state.userId + "/";
     // New moves
     attachFirebaseListener(basepath + "move",
@@ -295,10 +312,12 @@ class Actions {
 
   detachListenerFromGame(uuid: string) {
     // Stop listening to Firebase events on the /game/[gameId]/[userId] path
-    let state = this.model.state;
-    const basepath = 'game/' + uuid + "/" + state.userId + "/";
-    detachFirebaseListener(basepath + "move");
-    detachFirebaseListener(basepath + "chat");
+    const state = this.model.state;
+    if (state) {
+      const basepath = 'game/' + uuid + "/" + state.userId + "/";
+      detachFirebaseListener(basepath + "move");
+      detachFirebaseListener(basepath + "chat");
+    }
   }
 
 } // class Actions
@@ -326,6 +345,6 @@ function createRouteResolver(actions: Actions) {
 
     };
     return acc;
-  }, {});
+  }, {} as { [key: string]: { onmatch: (params: Params, path: string) => void; render: () => m.vnode[] } });
 }
 
