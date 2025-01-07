@@ -367,12 +367,12 @@ class View {
     }
     let tp = game.tilesPlaced();
     let numTiles = tp.length;
-    if (numTiles == 1 && this.boardScale == 1.0) {
+    if (numTiles === 1 && this.boardScale === 1.0) {
       // Laying down first tile: zoom in & position
       this.boardScale = 1.5;
       setTimeout(() => scrollIntoView(tp[0]));
     }
-    else if (numTiles == 0 && this.boardScale > 1.0) {
+    else if (numTiles === 0 && this.boardScale > 1.0) {
       // Removing only remaining tile: zoom out
       this.boardScale = 1.0; // Needs to be done before setTimeout() call
       setTimeout(this.resetScale);
@@ -558,7 +558,7 @@ class View {
       const anchors = vnode.dom.querySelectorAll("a");
       for (let anchor of anchors) {
         const href = anchor.getAttribute("href");
-        if (href && href.slice(0, 5) == "#faq-")
+        if (href && href.slice(0, 5) === "#faq-")
           // This is a direct link to a question: wire it up
           anchor.onclick = (ev) => { showAnswer(ev, href); };
       }
@@ -999,7 +999,7 @@ class View {
                     // Issue a new challenge
                     const el = document.querySelector("div.chall-time.selected");
                     let duration: string | number = el ? el.id.slice(6) : "none";
-                    if (duration == "none")
+                    if (duration === "none")
                       duration = 0;
                     else
                       duration = parseInt(duration);
@@ -1466,10 +1466,10 @@ class View {
       function vwUserButton(id: string, icon: string, text: string): m.vnode {
         // Select the type of user list (robots, fav, alike, elo)
         const sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-        const spec = (id == "elo") ? "human" : "";
+        const spec = (id === "elo") ? "human" : "";
         return m("span",
           {
-            className: (id == sel ? "shown" : ""),
+            className: (id === sel ? "shown" : ""),
             id: id,
             onclick: (ev) => {
               model.loadUserList({ query: id, spec: spec }, true);
@@ -1610,12 +1610,12 @@ class View {
           /* pass */
         }
         else
-        if (model.userList === null || query != listType)
+        if (model.userList === null || query !== listType)
           model.loadUserList({ query: listType, spec: "" }, true);
         else
           list = model.userList;
         const nothingFound = list.length === 0 && listType === "search" && spec !== "";
-        const robotList = listType == "robots";
+        const robotList = listType === "robots";
         return [
           m(".listitem.listheader",
             [
@@ -1780,7 +1780,7 @@ class View {
         // to propagate to the parent
         return;
       if (player === 0 || player === 1) {
-        if (player == side) {
+        if (player === side) {
           // The player is clicking on himself:
           // overlay a user preference dialog
           view.pushDialog("userprefs");
@@ -1795,7 +1795,7 @@ class View {
       ev.preventDefault();
     }
 
-    if (side == "left") {
+    if (side === "left") {
       // Left side player
       if (apl0)
         // Player 0 is a robot (autoplayer)
@@ -1830,7 +1830,7 @@ class View {
       // render the former letter in bold
       if (!bold)
         return m(".twoletter-word", w);
-      if (page == 0)
+      if (page === 0)
         return m(".twoletter-word", [m("b", w[0]), w[1]]);
       else
         return m(".twoletter-word", [w[0], m("b", w[1])]);
@@ -1847,7 +1847,7 @@ class View {
           let twl = tw[1];
           let sublist: m.vnode[] = [];
           for (let j = 0; j < twl.length; j++)
-            sublist.push(renderWord(j == 0, twl[j]));
+            sublist.push(renderWord(j === 0, twl[j]));
           twoLetterList.push(
             m(".twoletter-group", sublist)
           );
@@ -1861,7 +1861,7 @@ class View {
           // Show the requested page
           m(".twoletter-area" + (game.showClock() ? ".with-clock" : ""),
             {
-              title: page == 0 ?
+              title: page === 0 ?
                 ts("Smelltu til að raða eftir seinni staf") :
                 ts("Smelltu til að raða eftir fyrri staf")
             },
@@ -2018,11 +2018,11 @@ class View {
               )
             ),
             m(".playerwrapper", [
-              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".leftplayer" + (player === 1 ? ".autoplayercolor" : ".humancolor"), [
                 m(".player", view.vwPlayerName("left")),
                 m(".scorewrapper", m(".scoreleft", sc0)),
               ]),
-              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".rightplayer" + (player === 1 ? ".humancolor" : ".autoplayercolor"), [
                 m(".player", view.vwPlayerName("right")),
                 m(".scorewrapper", m(".scoreright", sc1)),
               ]),
@@ -2075,7 +2075,7 @@ class View {
         let mtype = move ? move[1][1] : undefined;
         if (s.congratulate) {
           // This player won
-          if (mtype == "RSGN")
+          if (mtype === "RSGN")
             msg = [m("strong", [opp, " resigned!"]), " Congratulations."];
           else
             msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
@@ -2104,21 +2104,21 @@ class View {
           let co = move[1][0];
           let tiles = mtype || "";
           let score = move[1][2];
-          if (co == "") {
+          if (co === "") {
             // Not a regular tile move
-            if (tiles == "PASS")
+            if (tiles === "PASS")
               msg = [opp, " passed."];
             else if (tiles.indexOf("EXCH") === 0) {
               const numtiles = tiles.slice(5).length;
               msg = [
                 opp, " exchanged ",
                 numtiles.toString(),
-                (numtiles == 1 ? " tile" : " tiles"),
+                (numtiles === 1 ? " tile" : " tiles"),
                 "."
               ];
-            } else if (tiles == "CHALL") {
+            } else if (tiles === "CHALL") {
               msg = [opp, " challenged your move."];
-            } else if (tiles == "RESP") {
+            } else if (tiles === "RESP") {
               if (score < 0)
                 msg = [opp, " successfully challenged your move."];
               else
@@ -2222,7 +2222,7 @@ class View {
           for (let i = 0; i < moveIndex; i++) {
             // Add up the scores until and including this move
             let m = game.moves[i];
-            if (i % 2 == 0)
+            if (i % 2 === 0)
               s0 += m[1][2];
             else
               s1 += m[1][2];
@@ -2233,11 +2233,11 @@ class View {
         return m(".heading",
           [
             m(".playerwrapper", [
-              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".leftplayer" + (player === 1 ? ".autoplayercolor" : ".humancolor"), [
                 m(".player", view.vwPlayerName("left")),
                 m(".scorewrapper", m(".scoreleft", sc0)),
               ]),
-              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".rightplayer" + (player === 1 ? ".humancolor" : ".autoplayercolor"), [
                 m(".player", view.vwPlayerName("right")),
                 m(".scorewrapper", m(".scoreright", sc1)),
               ]),
@@ -2299,7 +2299,7 @@ class View {
         },
         // Show chat icon in red if any chat messages have not been seen
         // and the chat tab is not already selected
-        !game.chatSeen && game.sel != "chat")
+        !game.chatSeen && game.sel !== "chat")
       );
     }
     return m.fragment({}, r);
@@ -2309,7 +2309,7 @@ class View {
     // A clickable tab for the right-side area content
     const game = this.model.game;
     const sel = game?.sel || "movelist";
-    return m(".right-tab" + (sel == tabid ? ".selected" : ""),
+    return m(".right-tab" + (sel === tabid ? ".selected" : ""),
       {
         id: "tab-" + tabid,
         className: alert ? "alert" : "",
@@ -2322,7 +2322,7 @@ class View {
               if (funcSel !== undefined) {
                 funcSel();
               }
-              if (tabid == "movelist")
+              if (tabid === "movelist")
                 setTimeout(this.scrollMovelistToBottom);
             }
           }
@@ -2418,7 +2418,7 @@ class View {
       var key = 0;
       for (const msg of game.messages) {
         let p = player ?? 0;
-        if (msg.from_userid != model.state.userId)
+        if (msg.from_userid !== model.state.userId)
           p = 1 - p;
         const mTs = makeTimestamp(msg.ts, key);
         if (mTs !== null) {
@@ -2490,7 +2490,7 @@ class View {
                 oncreate: (vnode) => { focus(vnode); },
                 onupdate: (vnode) => { focus(vnode); },
                 onkeypress: (ev: KeyboardEvent) => {
-                  if (ev.key == "Enter") { sendMessage(); ev.preventDefault(); }
+                  if (ev.key === "Enter") { sendMessage(); ev.preventDefault(); }
                 }
               }
             ),
@@ -2577,26 +2577,26 @@ class View {
       else {
         /* Not a regular tile move */
         wrdclass = "othermove";
-        if (tiles == "PASS")
+        if (tiles === "PASS")
           /* Pass move */
           dispText = ts("Pass");
         else
         if (tiles.indexOf("EXCH") === 0) {
           /* Exchange move - we don't show the actual tiles exchanged, only their count */
           let numtiles = tiles.slice(5).length
-          const letters = ts(numtiles == 1 ? "letter" : "letters");
+          const letters = ts(numtiles === 1 ? "letter" : "letters");
           dispText = ts("exchanged", { numtiles: numtiles.toString(), letters: letters });
         }
         else
-        if (tiles == "RSGN")
+        if (tiles === "RSGN")
           /* Resigned from game */
           dispText = ts("Gaf viðureign");
         else
-        if (tiles == "CHALL")
+        if (tiles === "CHALL")
           /* Challenge issued */
           dispText = ts("Véfengdi lögn");
         else
-        if (tiles == "RESP") {
+        if (tiles === "RESP") {
           /* Challenge response */
           if (score < 0)
             dispText = ts("Óleyfileg lögn");
@@ -2604,12 +2604,12 @@ class View {
             dispText = ts("Röng véfenging");
         }
         else
-        if (tiles == "TIME") {
+        if (tiles === "TIME") {
           /* Score adjustment for time */
           dispText = ts("Umframtími");
         }
         else
-        if (tiles == "OVER") {
+        if (tiles === "OVER") {
           /* Game over */
           dispText = ts("Viðureign lokið");
           wrdclass = "gameover";
@@ -2618,7 +2618,7 @@ class View {
           // The rack leave at the end of the game (which is always in lowercase
           // and thus cannot be confused with the above abbreviations)
           wrdclass = "othermove";
-          if (tiles == "--")
+          if (tiles === "--")
             dispText = ts("Stafaleif: (engin)");
           else
             dispText = [ts("Stafaleif: "), m("i", tiles)];
@@ -2695,7 +2695,7 @@ class View {
       let col = vec.col;
       let row = vec.row;
       for (const tile of tiles) {
-        if (tile == '?')
+        if (tile === '?')
           continue;
         const sq = coord(row, col);
         if (sq !== null && game.tiles.hasOwnProperty(sq))
@@ -2761,7 +2761,7 @@ class View {
     if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
-      if (tiles == "PASS") {
+      if (tiles === "PASS") {
         /* Pass move */
         tiles = " " + ts("Pass") + " ";
         score = "";
@@ -2770,23 +2770,23 @@ class View {
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
         let numtiles = tiles.slice(5).length;
-        const letters = ts(numtiles == 1 ? "letter" : "letters");
+        const letters = ts(numtiles === 1 ? "letter" : "letters");
         // Exchanged {numtiles} {letters}
         tiles = " " + ts("exchanged", { numtiles: numtiles.toString(), letters: letters }) + " ";
         score = "";
       }
       else
-      if (tiles == "RSGN")
+      if (tiles === "RSGN")
         /* Resigned from game */
         tiles = " " + ts("Gaf viðureign") + " ";
       else
-      if (tiles == "CHALL") {
+      if (tiles === "CHALL") {
         /* Challenge issued */
         tiles = " " + ts("Véfengdi lögn") + " ";
         score = "";
       }
       else
-      if (tiles == "RESP") {
+      if (tiles === "RESP") {
         /* Challenge response */
         if (score < 0) {
           // Invalid move
@@ -2798,12 +2798,12 @@ class View {
           tiles = " " + ts("Röng véfenging") + " ";
       }
       else
-      if (tiles == "TIME") {
+      if (tiles === "TIME") {
         /* Overtime adjustment, 'Extra time' */
         tiles = " " + ts("Umframtími") + " ";
       }
       else
-      if (tiles == "OVER") {
+      if (tiles === "OVER") {
         /* Game over */
         tiles = ts("Viðureign lokið");
         wrdclass = "gameover";
@@ -2821,7 +2821,7 @@ class View {
       tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
       tileMoveIncrement = 1;
     }
-    if (wrdclass == "gameover")
+    if (wrdclass === "gameover")
       // Game over message at bottom of move list
       return gameOverMove(tiles);
     // Normal game move
@@ -2829,7 +2829,7 @@ class View {
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
+    if (player === lcp || (lcp === -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2838,7 +2838,7 @@ class View {
     let attribs: VnodeAttrs = { };
     if (state?.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual) {
-        if (game.locale == "is_IS") {
+        if (game.locale === "is_IS") {
           // Tile move and not a manual game: allow word lookup for Icelandic
           attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
           attribs.title = title;
@@ -2858,7 +2858,7 @@ class View {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), leftTotal),
+          m("span.total" + (player === lcp ? ".human" : ".autoplayer"), leftTotal),
           m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span." + wrdclass, [m("i", tiles), nbsp(), co])
         ]
@@ -2870,7 +2870,7 @@ class View {
         [
           m("span." + wrdclass, [co, nbsp(), m("i", tiles)]),
           m("span.score" + (move[2] ? ".highlight" : ""), score),
-          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), rightTotal)
+          m("span.total" + (player === lcp ? ".human" : ".autoplayer"), rightTotal)
         ]
       );
     }
@@ -2899,7 +2899,7 @@ class View {
         game.placeTiles(moveIndex - 1, true); // No highlight
       }
       for (let tile of tiles) {
-        if (tile == "?") {
+        if (tile === "?") {
           nextBlank = true;
           continue;
         }
@@ -2951,7 +2951,7 @@ class View {
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
+    if (player === lcp || (lcp === -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2959,7 +2959,7 @@ class View {
     }
     let attribs: VnodeAttrs = { title: title };
     // Word lookup, if Icelandic game
-    if (game.locale == "is_IS")
+    if (game.locale === "is_IS")
       attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
@@ -3012,7 +3012,7 @@ class View {
       let game = model.game;
       let gameId = game ? game.uuid : "";
       for (let item of gameList) {
-        if (item.uuid == gameId)
+        if (item.uuid === gameId)
           continue; // Don't show this game
         if (!item.my_turn && !item.zombie)
           continue; // Only show pending games
@@ -3062,7 +3062,7 @@ class View {
         // Columns: max BAG_TILES_PER_LINE tiles per row
         for (let i = 0; i < BAG_TILES_PER_LINE && count > 0; i++) {
           let tile = bag[ix++];
-          if (tile == "?")
+          if (tile === "?")
             // Show wildcard tiles '?' as blanks
             tile = "&nbsp;";
           cols.push(m("td", m.trust(tile)));
@@ -3209,25 +3209,25 @@ class View {
         const game = model.game;
         if (!game) return undefined; // Should not happen
         const coord = vnode.attrs.coord;
-        const isRackTile = coord[0] == 'R';
+        const isRackTile = coord[0] === 'R';
         // Tile laid down by the opponent
         const opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
         const t = game.tiles[coord];
         let classes = [".tile"];
         let attrs: VnodeAttrs = {};
-        if (t.tile == '?')
+        if (t.tile === '?')
           classes.push("blanktile");
-        if (t.letter == 'q')
+        if (t.letter === 'q')
           // Extra wide letter: handle specially
           classes.push("extra-wide");
-        else if (t.letter == 'z' || t.letter == 'x' || t.letter == 'm' || t.letter == 'æ')
+        else if (t.letter === 'z' || t.letter === 'x' || t.letter === 'm' || t.letter === 'æ')
           // Wide letter: handle specially
           classes.push("wide");
         if (isRackTile || t.draggable) {
           // Rack tile, or at least a draggable one
           classes.push(opponent ? "freshtile" : "racktile");
-          if (isRackTile && game.showingDialog == "exchange") {
+          if (isRackTile && game.showingDialog === "exchange") {
             // Rack tile, and we're showing the exchange dialog
             if (t.xchg)
               // Chosen as an exchange tile
@@ -3252,7 +3252,7 @@ class View {
           const delay = (t.index * ANIMATION_STEP).toString() + "ms";
           attrs.style = `animation-delay: ${delay}; -webkit-animation-delay: ${delay};`;
         }
-        if (coord == game.selectedSq)
+        if (coord === game.selectedSq)
           // Currently selected square
           classes.push("sel"); // Blinks red
         if (t.highlight !== undefined) {
@@ -3288,7 +3288,7 @@ class View {
             };
             attrs.onclick = (ev) => {
               // When clicking a tile, make it selected (blinking)
-              if (coord == game.selectedSq)
+              if (coord === game.selectedSq)
                 // Clicking again: deselect
                 game.selectedSq = null;
               else
@@ -3299,7 +3299,7 @@ class View {
           }
         }
         return m(classes.join("."), attrs,
-          [t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score)]
+          [t.letter === ' ' ? nbsp() : t.letter, m(".letterscore", t.score)]
         );
       }
     };
@@ -3361,9 +3361,9 @@ class View {
           cls = "." + cls;
         // Mark the cell with the 'blinking' class if it is the drop
         // target of a pending blank tile dialog
-        if (game.askingForBlank !== null && game.askingForBlank.to == coord)
+        if (game.askingForBlank !== null && game.askingForBlank.to === coord)
           cls += ".blinking";
-        if (coord == game.startSquare && game.localturn)
+        if (coord === game.startSquare && game.localturn)
           // Unoccupied start square, first move
           cls += ".center";
         return m("td" + cls,
@@ -3478,7 +3478,7 @@ class View {
     }
 
     function zoomOut() {
-      if (view.boardScale != 1.0) {
+      if (view.boardScale !== 1.0) {
         view.boardScale = 1.0;
         setTimeout(view.resetScale);
       }
@@ -3490,7 +3490,7 @@ class View {
         let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, zoomIn, zoomOut);
-        if (scale != 1.0)
+        if (scale !== 1.0)
           attrs.style = `transform: scale(${scale})`;
         return m(".board",
           { id: "board-parent" },
@@ -3515,7 +3515,7 @@ class View {
         // currently shown move.
         // If opponent==true, we're showing the opponent's rack
         const reviewMove = model.reviewMove ?? 0;
-        const opponent = review && (reviewMove > 0) && (reviewMove % 2 == game.player);
+        const opponent = review && (reviewMove > 0) && (reviewMove % 2 === game.player);
         for (let i = 1; i <= RACK_SIZE; i++) {
           const coord = 'R' + i.toString();
           if (game && (coord in game.tiles)) {
@@ -3613,12 +3613,12 @@ class View {
     if (mv === undefined)
       return undefined;
     let [_, [coord, tiles, score]] = mv;
-    if (score === undefined || (coord == "" && tiles == "OVER"))
+    if (score === undefined || (coord === "" && tiles === "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
     let sc = [".score"];
     if (moveIndex > 0) {
-      if (moveIndex % 2 == game.player)
+      if (moveIndex % 2 === game.player)
         // Opponent move: show in green
         sc.push("green");
       else
@@ -3640,7 +3640,7 @@ class View {
     const hm = model.highlightedMove ?? 0;
     let bestScore = hm < bm.length ? bm[hm][1][2] : 0;
     let diff = (score - bestScore).toString();
-    if (diff[0] != "-" && diff[0] != "0")
+    if (diff[0] !== "-" && diff[0] !== "0")
       diff = "+" + diff;
     if (score >= bestScore)
       sc.push("posdiff");
@@ -3672,7 +3672,7 @@ class View {
 
     let leftPlayerColor: string, rightPlayerColor: string;
 
-    if (game.player == 1) {
+    if (game.player === 1) {
       rightPlayerColor = "humancolor";
       leftPlayerColor = "autoplayercolor";
     }
@@ -4155,7 +4155,7 @@ class View {
           mt("span.pass-explain", "opponent_emptied_rack")
         ]
       ));
-    if (game.showingDialog == "resign")
+    if (game.showingDialog === "resign")
       r.push(m(".resign", { style: { visibility: "visible" } },
         [
           glyph("exclamation-sign"), nbsp(), ts("Viltu gefa leikinn?"), nbsp(),
@@ -4169,7 +4169,7 @@ class View {
           )
         ]
       ));
-    if (game.showingDialog == "pass") {
+    if (game.showingDialog === "pass") {
       if (game.last_chall)
         r.push(m(".pass-last", { style: { visibility: "visible" } },
           [
@@ -4202,7 +4202,7 @@ class View {
           ]
         ));
     }
-    if (game.showingDialog == "exchange")
+    if (game.showingDialog === "exchange")
       r.push(m(".exchange", { style: { visibility: "visible" } },
         [
           glyph("refresh"), nbsp(),
@@ -4218,7 +4218,7 @@ class View {
             glyph("remove"))
         ]
       ));
-    if (game.showingDialog == "chall")
+    if (game.showingDialog === "chall")
       r.push(m(".chall", { style: { visibility: "visible" } },
         [
           glyph("ban-circle"), nbsp(), ts("Véfengja lögn?"),
@@ -4320,24 +4320,24 @@ class View {
       for (let i = 0; i < anchors.length; i++) {
         let a = anchors[i];
         let href = a.getAttribute("href");
-        if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
+        if (href && href.slice(0, ROUTE_PREFIX_LEN) === ROUTE_PREFIX) {
           // Single-page URL: wire it up (as if it had had an m.route.Link on it)
           a.onclick = (ev) => clickURL(ev, href);
         }
         else
-          if (href && href == "$$userprefs$$") {
+          if (href && href === "$$userprefs$$") {
             // Special marker indicating that this link invokes
             // a user preference dialog
             a.onclick = clickUserPrefs;
           }
           else
-            if (href && href == "$$twoletter$$") {
+            if (href && href === "$$twoletter$$") {
               // Special marker indicating that this link invokes
               // the two-letter word list or the opponents tab
               a.onclick = clickTwoLetter;
             }
             else
-              if (href && href == "$$newbag$$") {
+              if (href && href === "$$newbag$$") {
                 // Special marker indicating that this link invokes
                 // the explanation of the new bag
                 a.onclick = clickNewBag;
@@ -4441,7 +4441,7 @@ function vwToggler(id: string, state: boolean, tabindex: number,
         tabindex: tabindex,
         title: title,
         onclick: (ev) => { doToggle(); ev.preventDefault(); },
-        onkeypress: (ev) => { if (ev.key == " ") { doToggle(); ev.preventDefault(); } }
+        onkeypress: (ev) => { if (ev.key === " ") { doToggle(); ev.preventDefault(); } }
       },
       [
         m(optionClass + (state ? "" : ".selected"), { id: "opt1" }, opt1),
@@ -4484,7 +4484,7 @@ const MultiSelection: ComponentFunc<{
         vnode.children.map((item, i) => {
           // A pretty gross approach, but it works: clobber the childrens' className
           // attribute depending on whether they are selected or not
-          if (i == sel)
+          if (i === sel)
             item.attrs.className = defaultClass + " " + selectedClass;
           else
             item.attrs.className = defaultClass;
@@ -4568,7 +4568,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = () => {
                 m(".option.x-small",
                   {
                     // Show ranking for human games only
-                    className: (sel == "human" ? "selected" : ""),
+                    className: (sel === "human" ? "selected" : ""),
                     onclick: (ev) => { sel = "human"; ev.preventDefault(); },
                   },
                   glyph("user")
@@ -4576,7 +4576,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = () => {
                 m(".option.x-small",
                   {
                     // Show ranking for all games, including robots
-                    className: (sel == "all" ? "selected" : ""),
+                    className: (sel === "all" ? "selected" : ""),
                     onclick: (ev) => { sel = "all"; ev.preventDefault(); },
                   },
                   glyph("cog")
@@ -4584,7 +4584,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = () => {
                 m(".option.x-small",
                   {
                     // Show ranking for manual games only
-                    className: (sel == "manual" ? "selected" : ""),
+                    className: (sel === "manual" ? "selected" : ""),
                     onclick: (ev) => { sel = "manual"; ev.preventDefault(); },
                   },
                   glyph("lightbulb")
@@ -4712,12 +4712,12 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           if (item.days > 1)
             duration = item.days.toString() + ts(" dagar");
           else
-            if (item.days == 1)
+            if (item.days === 1)
               duration = ts("1 dagur");
           if (item.hours > 0) {
             if (duration.length)
               duration += ts(" og ");
-            if (item.hours == 1)
+            if (item.hours === 1)
               duration += ts("1 klst");
             else
               duration += item.hours.toString() + ts(" klst");
@@ -4725,7 +4725,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           if (item.days === 0) {
             if (duration.length)
               duration += ts(" og ");
-            if (item.minutes == 1)
+            if (item.minutes === 1)
               duration += ts("1 mínúta");
             else
               duration += item.minutes.toString() + ts(" mínútur");
@@ -4773,11 +4773,11 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
       }
     eloAdj = m("span",
-      { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
+      { class: 'elo-btn right ' + eloAdjClass + (eloAdj === "" ? " invisible" : "") },
       eloAdj
     );
     eloAdjHuman = m("span",
-      { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman == "" ? " invisible" : "") },
+      { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman === "" ? " invisible" : "") },
       eloAdjHuman
     );
 
@@ -4862,7 +4862,7 @@ const UserInfoDialog: ComponentFunc<{
   }
 
   function _setVersus(vnode: typeof initialVnode, vsState: boolean) {
-    if (versusAll != vsState) {
+    if (versusAll !== vsState) {
       versusAll = vsState;
       _updateRecentList(vnode);
     }
@@ -4994,7 +4994,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
         let s = [];
         // Make sure blank tiles get a different color
         for (let i = 0; i < bw.length; i++)
-          if (bw[i] == '?') {
+          if (bw[i] === '?') {
             s.push(m("span.blanktile", bw[i + 1]));
             i += 1;
           }
@@ -5055,17 +5055,17 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = () => {
         [
           m(".toggler", { id: 'own-toggler', title: ts("stats_choice") }, // "With or without robot games"
             [
-              m(".option.small" + (sel == 1 ? ".selected" : ""),
+              m(".option.small" + (sel === 1 ? ".selected" : ""),
                 { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },
                 glyph("user")
               ),
-              m(".option.small" + (sel == 2 ? ".selected" : ""),
+              m(".option.small" + (sel === 2 ? ".selected" : ""),
                 { id: 'opt2', onclick: (ev) => { sel = 2; ev.preventDefault(); } },
                 glyph("cog")
               )
             ]
           ),
-          sel == 1 ? m("div",
+          sel === 1 ? m("div",
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts('Elo-stig') },
@@ -5078,7 +5078,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = () => {
                 vwStat(avgScoreHuman, "dashboard"))
             ]
           ) : "",
-          sel == 2 ? m("div",
+          sel === 2 ? m("div",
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts("Elo-stig") },
@@ -5223,7 +5223,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
           glyph("search",
             {
               id: 'search',
-              className: (sel == "search" ? "shown" : ""),
+              className: (sel === "search" ? "shown" : ""),
               onclick: () => {
                 // Reset the search pattern when clicking the search icon
                 spec = "";
@@ -5347,7 +5347,7 @@ function getUrlVars(url: string) {
   let vars: Params = {};
   for (let i = 0; i < hashes.length; i++) {
     let hash = hashes[i].split('=');
-    if (hash.length == 2)
+    if (hash.length === 2)
       vars[hash[0] as keyof Params] = decodeURIComponent(hash[1]);
   }
   return vars;
@@ -5378,7 +5378,7 @@ function glyphGrayed(icon: string, attrs?: any): m.vnode {
 
 // Utility function: inserts non-breaking space
 function nbsp(n?: number): m.vnode {
-  if (!n || n == 1)
+  if (!n || n === 1)
     return m.trust("&nbsp;");
   let r: m.vnode[] = [];
   for (let i = 0; i < n; i++)
