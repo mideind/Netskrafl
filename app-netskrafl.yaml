@@ -1,7 +1,7 @@
 #
 # App.yaml for the Netskrafl application on Google App Engine
 #
-# Copyright (C) 2024 by Miðeind ehf.
+# Copyright © 2025 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
 # Deploy with 'gcloud beta app deploy --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'

@@ -2,7 +2,7 @@
 
     User class for netskrafl.is
 
-    Copyright © 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0

@@ -2,7 +2,7 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
