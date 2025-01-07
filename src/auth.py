@@ -398,6 +398,11 @@ def oauth_fb(request: Request) -> ResponseType:
                     ), 
                     401,
                 )
+        if account != user.get("id"):
+            return (
+                jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
+                401,
+            )
     else:
         # Validate regular Facebook token
         r = requests.get(
