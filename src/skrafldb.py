@@ -1155,8 +1155,6 @@ class EloModel(Model["EloModel"]):
             nonlocal result, keys
             recs = cast(
                 List[Optional[EloModel]],
-                # The following cast is due to strange typing
-                # in ndb (the use of 'Type' is almost certainly a bug there)
                 ndb.get_multi(keys),
             )
             for em in recs:

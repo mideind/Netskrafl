@@ -84,9 +84,15 @@ const footer = `</svg>`;
 const WIDTH = 134;
 const NUM_STEPS = pieces.length;
 
-const AnimatedExploLogo: ComponentFunc<{
-  width: number; withCircle: boolean; msStepTime: number; once?: boolean; className?: string
-}> = (initialVnode) => {
+interface IAttributes {
+  width: number;
+  withCircle: boolean;
+  msStepTime: number;
+  once?: boolean;
+  className?: string;
+}
+
+const AnimatedExploLogo: ComponentFunc<IAttributes> = (initialVnode) => {
 
   // Animation step time in milliseconds
   const msStepTime = initialVnode.attrs.msStepTime || 0;
@@ -95,50 +101,50 @@ const AnimatedExploLogo: ComponentFunc<{
   const withCircle = initialVnode.attrs.withCircle || false;
   const once = initialVnode.attrs.once ? true : false;
   const className = initialVnode.attrs.className;
+  let delta: number = 1;
+  let step: number = msStepTime ? 0 : NUM_STEPS;
+  let ival: ReturnType<typeof setInterval> | number = 0;
 
   function doStep() {
     // Check whether we're still in the delay period
 
     // Check if we need to reverse direction
-    if (this.delta < 0 && this.step == 0) {
-      this.delta = 1;
-    } else if (this.delta > 0 && this.step == NUM_STEPS) {
+    if (delta < 0 && step == 0) {
+      delta = 1;
+    } else if (delta > 0 && step == NUM_STEPS) {
       // All steps completed; should we reverse direction
       // or stop the animation (if once == true)?
       if (once) {
         // We're done
-        this.delta = 0;
-        clearInterval(this.ival);
-        this.ival = 0;
+        delta = 0;
+        clearInterval(ival);
+        ival = 0;
       }
       else
         // Reverse direction
-        this.delta = -1;
+        delta = -1;
     }
-    this.step += this.delta;
+    step += delta;
     m.redraw();
   }
 
   return {
-    step: msStepTime ? 0 : NUM_STEPS, // Current step number
-    delta: 1, // Modification in each step, 1 or -1
-    ival: 0, // Interval timer id
-    oninit: function(vnode) {
+    oninit: () => {
       if (msStepTime)
-        this.ival = setInterval(doStep.bind(this), msStepTime);
+        ival = setInterval(doStep, msStepTime);
     },
-    onremove: function(vnode) {
-      if (this.ival != 0) {
-        clearInterval(this.ival);
-        this.ival = 0;
+    onremove: () => {
+      if (ival != 0) {
+        clearInterval(ival);
+        ival = 0;
       }
     },
-    view: function(vnode) {
+    view: () => {
       let r: string[] = [ headerLogo ];
       if (withCircle)
         // Include white background circle, with drop shadow
         r.push(circle);
-      for (let i = 0; i < this.step; i++)
+      for (let i = 0; i < step; i++)
         for (let piece of pieces[i])
             r.push(piece);
       r.push(footer);
@@ -158,50 +164,52 @@ const AnimatedExploLogo: ComponentFunc<{
 const LETTER_WIDTH = 992.73;
 const NUM_LETTER_STEPS = letters.length;
 
-const NetskraflLegend: ComponentFunc<{
-  width: number; msStepTime: number; className?: string
-}> = (initialVnode) => {
+interface ILegendAttributes {
+  width: number;
+  msStepTime: number;
+  className?: string;
+}
+
+const NetskraflLegend: ComponentFunc<ILegendAttributes> = (initialVnode) => {
 
   // Animation step time in milliseconds
   const msStepTime = initialVnode.attrs.msStepTime || 0;
   const width = initialVnode.attrs.width;
   const scale = width / LETTER_WIDTH;
   const className = initialVnode.attrs.className;
+  let delta: number = 1;
+  let step: number = msStepTime ? 0 : NUM_LETTER_STEPS;
+  let ival: ReturnType<typeof setInterval> | number = 0;
 
   function doStep() {
     // Check whether we're still in the delay period
-
     // Check if we need to reverse direction
-    if (this.delta < 0 && this.step == 0)
-      this.delta = 1;
-    else
-    if (this.delta > 0 && this.step == NUM_STEPS)
-      this.delta = -1;
-    this.step += this.delta;
+    if (delta < 0 && step == 0)
+      delta = 1;
+    else if (delta > 0 && step == NUM_LETTER_STEPS)
+      delta = -1;
+    step += delta;
     m.redraw();
   }
 
   return {
-    step: msStepTime ? 0 : NUM_LETTER_STEPS, // Current step number
-    delta: 1, // Modification in each step, 1 or -1
-    ival: 0, // Interval timer id
-    oninit: function(vnode) {
+    oninit: () => {
       if (msStepTime)
-        this.ival = setInterval(doStep.bind(this), msStepTime);
+        ival = setInterval(doStep, msStepTime);
     },
-    onremove: function(vnode) {
-      if (this.ival != 0) {
-        clearInterval(this.ival);
-        this.ival = 0;
+    onremove: () => {
+      if (ival != 0) {
+        clearInterval(ival);
+        ival = 0;
       }
     },
-    view: function(vnode) {
+    view: () => {
       let r: string[] = [ headerLetters ];
-      for (let i = 0; i < this.step; i++)
+      for (let i = 0; i < step; i++)
         for (let letter of letters[i])
           r.push(letter);
       r.push(footer);
-      let attribs: any = {
+      const attribs: Record<string, any> = {
         style: {
           "transform": `scale(${scale})`,
           "transform-origin": "left top"
@@ -222,7 +230,7 @@ const ExploLogo: ComponentFunc<{ scale: number; legend: boolean; }> = (initialVn
   const legend = initialVnode.attrs.legend;
 
   return {
-    view: (vnode) => {
+    view: () => {
       return m("img",
         legend ?
           {

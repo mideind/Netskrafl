@@ -107,13 +107,14 @@ function main(state: GlobalState) {
     defaultRoute = settings.defaultRoute,
     root = document.getElementById("container");
 
+  if (!root) throw new Error("Root element (#container) not found");
   // Run the Mithril router
   m.route(root, defaultRoute, routeResolver);
 }
 
 type DialogFunc = (view: View, args: any) => m.vnode;
 
-interface DialogViews {
+interface DialogViews extends Record<string, DialogFunc> {
   userprefs: DialogFunc;
   userinfo: DialogFunc;
   challenge: DialogFunc;
@@ -291,7 +292,7 @@ class View {
     // we don't end up with a selected game tab that is not visible
     const model = this.model;
     if (model.game) {
-      if (model.state.uiFullscreen || model.state.uiLandscape) {
+      if (model.state?.uiFullscreen || model.state?.uiLandscape) {
         // In this case, there is no board tab:
         // show the movelist
         if (model.game.setSelectedTab("movelist"))
@@ -316,8 +317,8 @@ class View {
   resetScale() {
     // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
     this.boardScale = 1.0;
-    var boardParent = document.getElementById("board-parent");
-    var board = boardParent.children[0];
+    const boardParent = document.getElementById("board-parent");
+    const board = boardParent?.children[0];
     if (board)
       board.setAttribute("style", "transform: scale(1.0)");
     if (boardParent)
@@ -334,29 +335,30 @@ class View {
       // Scroll a square above and to the left of the placed tile into view
       const offset = 3;
       let vec = toVector(sq);
-      let row = Math.max(0, vec.row - offset);
-      let col = Math.max(0, vec.col - offset);
-      let c = coord(row, col);
-      let el = document.getElementById("sq_" + c);
-      let boardParent = document.getElementById("board-parent");
-      let board = boardParent.children[0];
+      const row = Math.max(0, vec.row - offset);
+      const col = Math.max(0, vec.col - offset);
+      const c = coord(row, col);
+      const el = c ? document.getElementById("sq_" + c) : null;
+      const boardParent = document.getElementById("board-parent");
+      const board = boardParent?.children[0];
       // The following seems to be needed to ensure that
       // the transform and hence the size of the board has been 
       // updated in the browser, before calculating the client rects
       if (board)
         board.setAttribute("style", "transform: scale(1.5)");
-      let elRect = el.getBoundingClientRect();
-      let boardRect = boardParent.getBoundingClientRect();
-      boardParent.scrollTo(
-        {
-          left: elRect.left - boardRect.left,
-          top: elRect.top - boardRect.top,
-          behavior: "smooth"
-        }
-      );
+      const elRect = el?.getBoundingClientRect();
+      const boardRect = boardParent?.getBoundingClientRect();
+      if (boardParent && boardRect && elRect)
+        boardParent.scrollTo(
+          {
+            left: elRect.left - boardRect.left,
+            top: elRect.top - boardRect.top,
+            behavior: "smooth"
+          }
+        );
     }
 
-    if (!game || model.state.uiFullscreen || game.moveInProgress) {
+    if (!game || model.state?.uiFullscreen || game.moveInProgress) {
       // No game or we're in full screen mode: always 100% scale
       // Also, as soon as a move is being processed by the server, we zoom out
       this.boardScale = 1.0; // Needs to be done before setTimeout() call
@@ -406,7 +408,7 @@ class View {
   vwUserId(): m.vnode | string {
     // User identifier at top right, opens user preferences
     const model = this.model;
-    if (model.state.userId == "")
+    if (!model.state?.userId)
       // Don't show the button if there is no logged-in user
       return "";
     return m(".userid",
@@ -422,7 +424,7 @@ class View {
     );
   }
 
-  TogglerReady: ComponentFunc<{}> = (initialVnode) => {
+  TogglerReady: ComponentFunc<{}> = () => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
 
@@ -443,7 +445,7 @@ class View {
     };
   };
 
-  TogglerReadyTimed: ComponentFunc<{}> = (initialVnode) => {
+  TogglerReadyTimed: ComponentFunc<{}> = () => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept timed challenges
 
@@ -455,7 +457,7 @@ class View {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         return vwToggler(
           "timed", model.state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
           ts("Til í viðureign með klukku!")
@@ -486,23 +488,23 @@ class View {
       b.classList.toggle("over");
   }
 
-  Spinner: ComponentFunc<{}> = (initialVnode) => {
+  Spinner: ComponentFunc<{}, { ival: number; show: boolean; }> = () => {
     // Show a spinner wait box, after an initial delay
     const INITIAL_DELAY = 800; // milliseconds
     return {
       ival: 0,
       show: false,
-      oninit: function (vnode) {
+      oninit: function () {
         this.ival = setTimeout(() => {
           this.show = true; this.ival = 0; m.redraw();
         }, INITIAL_DELAY);
       },
-      onremove: function (vnode) {
+      onremove: function () {
         if (this.ival)
           clearTimeout(this.ival);
         this.ival = 0;
       },
-      view: function (vnode) {
+      view: function () {
         if (!this.show)
           return undefined;
         return m(
@@ -547,14 +549,14 @@ class View {
       function showAnswer(ev: Event, href: string) {
         // this points to the vnode
         vnode.state.selected = 1; // FAQ tab
-        vnode.dom.querySelector(href).scrollIntoView();
+        vnode.dom.querySelector(href)?.scrollIntoView();
         ev.preventDefault();
       }
 
       const anchors = vnode.dom.querySelectorAll("a");
       for (let anchor of anchors) {
-        let href = anchor.getAttribute("href");
-        if (href.slice(0, 5) == "#faq-")
+        const href = anchor.getAttribute("href");
+        if (href && href.slice(0, 5) == "#faq-")
           // This is a direct link to a question: wire it up
           anchor.onclick = (ev) => { showAnswer(ev, href); };
       }
@@ -562,7 +564,7 @@ class View {
         // Go to the FAQ tab and scroll the requested question into view
         selectTab(vnode, 1);
         vnode.state.selected = 1; // FAQ tab
-        vnode.dom.querySelector("#faq-" + faqNumber.toString()).scrollIntoView();
+        vnode.dom.querySelector("#faq-" + faqNumber.toString())?.scrollIntoView();
       }
     }
 
@@ -571,7 +573,7 @@ class View {
       m(LeftLogo),
       this.vwUserId(),
       m("main",
-        this.vwTabsFromHtml(model.helpHTML, "tabs", tabNumber, wireQuestions)
+        this.vwTabsFromHtml(model.helpHTML || "", "tabs", tabNumber, wireQuestions)
       )
     ]);
   }
@@ -581,14 +583,16 @@ class View {
   vwUserPrefsDialog() {
 
     const model = this.model;
-    let user = model.user;
-    let err = model.userErrors || {};
-    let view = this;
+    const user = model.user;
+    if (!user) throw new Error("User not defined");
+    const err = model.userErrors || {};
+    const view = this;
 
     function vwErrMsg(propname: string) {
       // Show a validation error message returned from the server
-      return err.hasOwnProperty(propname) ?
-        m(".errinput", [glyph("arrow-up"), nbsp(), err[propname]]) : "";
+      const emsg = err[propname];
+      if (!emsg) return "";
+      return m(".errinput", [glyph("arrow-up"), nbsp(), emsg]);
     }
 
     function playAudio(elemId: string) {
@@ -599,13 +603,14 @@ class View {
     }
 
     function getToggle(elemId: string) {
-      let cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
-      return cls2.contains("selected");
+      let cls2 = document.querySelector("#" + elemId + "-toggler #opt2")?.classList;
+      return (cls2 !== undefined) && cls2.contains("selected");
     }
 
     function validate() {
       // Move data back to the model.user object
       // before sending it to the server
+      if (!user) return; // Should not happen
       user.nickname = getInput("nickname");
       user.full_name = getInput("full_name");
       user.email = getInput("email");
@@ -639,7 +644,7 @@ class View {
                     m("span.caption", t("Einkenni:")),
                     m(TextInput,
                       {
-                        initialValue: user.nickname || "",
+                        initialValue: user?.nickname || "",
                         class: "username",
                         maxlength: 15,
                         id: "nickname",
@@ -656,7 +661,7 @@ class View {
                     m("span.caption", t("Fullt nafn:")),
                     m(TextInput,
                       {
-                        initialValue: user.full_name || "",
+                        initialValue: user?.full_name || "",
                         class: "fullname",
                         maxlength: 32,
                         id: "full_name",
@@ -672,7 +677,7 @@ class View {
                     m("span.caption", t("Tölvupóstfang:")),
                     m(TextInput,
                       {
-                        initialValue: user.email || "",
+                        initialValue: user?.email || "",
                         class: "email",
                         maxlength: 32,
                         id: "email",
@@ -751,7 +756,8 @@ class View {
                 ev.preventDefault();
                 logEvent("click_friend",
                   {
-                    userid: model.state.userId, locale: model.state.locale
+                    userid: model.state.userId,
+                    locale: model.state.locale,
                   }
                 );
                 view.showFriendPromo();
@@ -794,7 +800,7 @@ class View {
     );
   }
 
-  vwFriend(args: {}): m.vnode {
+  vwFriend(_: {}): m.vnode {
     return m(FriendPromoteDialog,
       {
         view: this,
@@ -802,7 +808,7 @@ class View {
     );
   }
 
-  vwThanks(args: {}): m.vnode {
+  vwThanks(_: {}): m.vnode {
     return m(FriendThanksDialog,
       {
         view: this,
@@ -810,7 +816,7 @@ class View {
     );
   }
 
-  vwCancel(args: {}): m.vnode {
+  vwCancel(_: {}): m.vnode {
     return m(FriendCancelDialog,
       {
         view: this,
@@ -818,7 +824,7 @@ class View {
     );
   }
 
-  vwConfirm(args: {}): m.vnode {
+  vwConfirm(_: {}): m.vnode {
     return m(FriendCancelConfirmDialog,
       {
         view: this,
@@ -863,7 +869,7 @@ class View {
     const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
     let manualChallenge = false;
     return {
-      view: (vnode) => {
+      view: () => {
         return m(".modal-dialog",
           { id: 'chall-dialog', style: { visibility: 'visible' } },
           m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
@@ -1185,7 +1191,7 @@ class View {
           return m("div", { id: 'gamelist' }, viewGameList());
         }
 
-        function vwHint(): m.vnode {
+        function vwHint(): m.vnode | undefined {
           // Show some help if the user has no games in progress
           if (model.loadingGameList || model.gameList === undefined ||
             (model.gameList !== null && model.gameList.length > 0))
@@ -1756,7 +1762,7 @@ class View {
     let apl1 = game && game.autoplayer[1];
     let nick0 = game ? game.nickname[0] : "";
     let nick1 = game ? game.nickname[1] : "";
-    let player: number = game ? game.player : 0;
+    let player: number = game?.player ?? 0;
     let localturn: boolean = game ? game.localturn : false;
     let tomove: string;
     let gameover = game ? game.over : true;
@@ -1964,7 +1970,7 @@ class View {
 
       function vwClock() {
         // Show clock data if this is a timed game
-        if (!game.showClock())
+        if (!game?.showClock())
           // Not a timed game, or a game that is completed
           return m.fragment({}, []);
 
@@ -2027,7 +2033,7 @@ class View {
         // A container for the tabbed right-side area components
         const sel = game?.sel || "movelist";
         // Show the chat tab unless the opponent is an autoplayer
-        let component: m.vnode = null;
+        let component: m.vnode | null = null;
         switch (sel) {
           case "movelist":
             component = view.vwMovelist();
@@ -2052,9 +2058,10 @@ class View {
 
       function vwRightMessage(): m.vnode {
         // Display a status message in the mobile UI
+        if (!game) return m.fragment({}, []); // Should not happen
         let s = view.buttonState(game);
         let msg: string | any[] = "";
-        let player = game.player;
+        let player = game.player ?? 0;
         let opp = game.nickname[1 - player];
         let move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
         let mtype = move ? move[1][1] : undefined;
@@ -2152,9 +2159,9 @@ class View {
         ondrop: (ev) => {
           ev.stopPropagation();
           // Move the tile from the board back to the rack
-          const from = ev.dataTransfer.getData("text");
+          const from = ev.dataTransfer?.getData("text") || "";
           // Move to the first available slot in the rack
-          game.attemptMove(from, "R1");
+          if (from) game.attemptMove(from, "R1");
           this.updateScale(game);
           return false;
         }
@@ -2167,14 +2174,14 @@ class View {
               vwRightColumn(),
               m(this.BoardArea),
               // The bag is visible in fullscreen
-              state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "",
+              state?.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "",
               game.askingForBlank ? m(this.BlankDialog) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
         m(LeftLogo),
-        state.beginner ? vwBeginner() : "",
+        state?.beginner ? vwBeginner() : "",
         m(Info)
       ]
     );
@@ -2188,16 +2195,15 @@ class View {
     const view = this;
     const model = this.model;
     const game = model.game;
-    const state = model.state;
-    let moveIndex = model.reviewMove;
-    let bestMoves = model.bestMoves || [];
+    const moveIndex = model.reviewMove ?? 0;
+    const bestMoves = model.bestMoves || [];
 
     function vwRightColumn(): m.vnode {
       // A container for the right-side header and area components
 
       function vwRightHeading(): m.vnode {
         // The right-side heading on the game screen
-
+        if (!game) return m.fragment({}, []); // Should not happen
         const fairplay = game.fairplay;
         const player = game.player;
         let sc0 = "";
@@ -2266,6 +2272,7 @@ class View {
   vwTabGroup(): m.vnode {
     // A group of clickable tabs for the right-side area content
     const game = this.model.game;
+    if (!game) return m.fragment({}, []); // Should not happen
     let showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     let r: m.vnode[] = [
       this.vwTab("board", ts("Borðið"), "grid"),
@@ -2349,12 +2356,12 @@ class View {
       return Math.round((dtTo - dtFrom) / 1000.0);
     }
 
-    let dtLastMsg: number = null;
+    let dtLastMsg: number | null = null;
 
-    function makeTimestamp(ts: string, key: number): m.vnode {
+    function makeTimestamp(ts: string, key: number): m.vnode | null {
       // Decode the ISO format timestamp we got from the server
       let dtTs = dateFromTimestamp(ts);
-      let result: m.vnode = null;
+      let result: m.vnode | null = null;
       if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
         // If 5 minutes or longer interval between messages,
         // insert a time
@@ -2453,7 +2460,7 @@ class View {
         // key: uuid
       },
       [
-        m(".chat-area" + (game.showClock() ? ".with-clock" : ""),
+        m(".chat-area" + (game?.showClock() ? ".with-clock" : ""),
           {
             id: 'chat-area',
             // Make sure that we see the bottom-most chat message
@@ -2536,7 +2543,7 @@ class View {
           movelist()
         ),
         // Show the bag here on mobile
-        state.uiFullscreen ? "" : m(this.Bag, { bag: bag, newbag: newbag })
+        state?.uiFullscreen ? "" : m(this.Bag, { bag: bag, newbag: newbag })
       ]
     );
   }
@@ -2619,12 +2626,13 @@ class View {
 
     function bestMoveList(): m.vnode[] {
       let r: m.vnode[] = [];
+      const moves = game?.moves || [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
-      if (!moveIndex || moveIndex > game.moves.length)
+      if (!moveIndex || moveIndex > moves.length)
         return r;
       // Prepend a header that describes the move being reviewed
-      let m = game.moves[moveIndex - 1];
+      let m = moves[moveIndex - 1];
       let co = m[1][0];
       let tiles = m[1][1];
       let score = m[1][2];
@@ -2676,6 +2684,7 @@ class View {
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the move list */
+      if (game === null) return; // Should not happen
       const vec = toVector(co);
       let col = vec.col;
       let row = vec.row;
@@ -2683,7 +2692,7 @@ class View {
         if (tile == '?')
           continue;
         const sq = coord(row, col);
-        if (game.tiles.hasOwnProperty(sq))
+        if (sq !== null && game.tiles.hasOwnProperty(sq))
           game.tiles[sq].highlight = show ? playerColor : undefined;
         col += vec.dx;
         row += vec.dy;
@@ -2708,10 +2717,10 @@ class View {
             {
               onclick: (ev) => {
                 ev.preventDefault();
-                if (state.hasPaid) {
+                if (state?.hasPaid) {
                   // Show the game review
-                  m.route.set("/review/" + game.uuid);
-                  if (game !== null && game !== undefined) {
+                  if (game !== null && game !== undefined && game.uuid) {
+                    m.route.set("/review/" + game.uuid);
                     // Log an event for this action
                     logEvent("game_review",
                       {
@@ -2723,11 +2732,12 @@ class View {
                 }
                 else {
                   // Show a friend promotion dialog
-                  logEvent("click_review",
-                    {
-                      userid: model.state.userId, locale: model.state.locale
-                    }
-                  );
+                  if (model.state)
+                    logEvent("click_review",
+                      {
+                        userid: model.state.userId, locale: model.state.locale
+                      }
+                    );
                   view.showFriendPromo();
                 }
               }
@@ -2820,7 +2830,7 @@ class View {
       playerColor = 1;
     }
     let attribs: VnodeAttrs = { };
-    if (state.uiFullscreen && tileMoveIncrement > 0) {
+    if (state?.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual) {
         if (game.locale == "is_IS") {
           // Tile move and not a manual game: allow word lookup for Icelandic
@@ -2918,7 +2928,7 @@ class View {
       }
       if (!show) {
         model.highlightedMove = null;
-        game.placeTiles(model.reviewMove);
+        game.placeTiles(model.reviewMove ?? undefined);
       }
     }
 
@@ -3107,8 +3117,9 @@ class View {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) throw new Error("No game"); // Should not happen
         return m(".modal-dialog",
           {
             id: 'blank-dialog',
@@ -3124,7 +3135,7 @@ class View {
                 {
                   id: 'blank-close',
                   title: ts("Hætta við"),
-                  onclick: (ev: Event) => {
+                  onclick: (ev) => {
                     ev.preventDefault();
                     game.cancelBlankDialog();
                   }
@@ -3138,11 +3149,11 @@ class View {
     };
   };
 
-  BoardArea: ComponentFunc<{}> = (initialVnode) => {
+  BoardArea: ComponentFunc<{}> = () => {
     // Collection of components in the board (left-side) area
     const model = this.model;
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
         let r: VnodeChildren = [];
         if (game) {
@@ -3324,13 +3335,14 @@ class View {
     };
   };
 
-  DropTargetSquare: ComponentFunc<{ coord: string; }> = (initialVnode) => {
+  DropTargetSquare: ComponentFunc<{ coord: string; }> = () => {
     // Return a td element that is a target for dropping tiles
     const model = this.model;
     return {
       view: (vnode) => {
         const coord = vnode.attrs.coord;
         const game = model.game;
+        if (!game) return m.fragment({}, []); // Should not happen
         let cls = game.squareClass(coord) || "";
         if (cls)
           cls = "." + cls;
@@ -3338,7 +3350,7 @@ class View {
         // target of a pending blank tile dialog
         if (game.askingForBlank !== null && game.askingForBlank.to == coord)
           cls += ".blinking";
-        if (coord == game.startSquare && model.game.localturn)
+        if (coord == game.startSquare && game.localturn)
           // Unoccupied start square, first move
           cls += ".center";
         return m("td" + cls,
@@ -3346,7 +3358,8 @@ class View {
             id: "sq_" + coord,
             ondragenter: (ev) => {
               ev.preventDefault();
-              ev.dataTransfer.dropEffect = 'move';
+              if (ev.dataTransfer)
+                ev.dataTransfer.dropEffect = 'move';
               (ev.currentTarget as HTMLElement).classList.add("over");
               ev.redraw = false;
               return false;
@@ -3367,8 +3380,8 @@ class View {
               ev.stopPropagation();
               (ev.currentTarget as HTMLElement).classList.remove("over");
               // Move the tile from the source to the destination
-              const from = ev.dataTransfer.getData("text");
-              game.attemptMove(from, coord);
+              const from = ev.dataTransfer?.getData("text") || "";
+              if (from) game.attemptMove(from, coord);
               this.updateScale(game);
               return false;
             },
@@ -3515,7 +3528,7 @@ class View {
           }
         }
         return m(".rack-row", [
-          m(".rack-left", view.vwButtonsLeftOfRack()),
+          m(".rack-left", view.vwButtonsLeftOfRack() || []),
           m(".rack", m("table.board", m("tbody", m("tr", r))))
         ]);
       }
@@ -3526,6 +3539,7 @@ class View {
     // Create a tile recall button
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     return this.makeButton(
       "recallbtn", false,
       () => { game.resetRack(); this.updateScale(game); },
@@ -3537,6 +3551,7 @@ class View {
     // Show a 'Scramble rack' button
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     return this.makeButton(
       "scramblebtn", disabled,
       () => { game.rescrambleRack(); },
@@ -3544,10 +3559,11 @@ class View {
     );
   }
 
-  vwButtonsLeftOfRack(): m.vnode {
+  vwButtonsLeftOfRack(): m.vnode | undefined {
     // The button to the left of the rack in the mobile UI
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     const s = this.buttonState(game);
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
@@ -3560,22 +3576,24 @@ class View {
   vwScore(): m.vnode {
     // Shows the score of the current word
     const game = this.model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let sc = [".score"];
     if (game.manual)
       sc.push("manual");
     else
       if (game.wordGood) {
         sc.push("word-good");
-        if (game.currentScore >= 50)
+        if ((game.currentScore ?? 0) >= 50)
           sc.push("word-great");
       }
     let txt = (game.currentScore === undefined ? "?" : game.currentScore.toString())
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(moveIndex: number): m.vnode {
+  vwScoreReview(moveIndex: number): m.vnode | undefined {
     // Shows the score of the current move within a game review screen
     const game = this.model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     if (mv === undefined)
       return undefined;
@@ -3599,9 +3617,10 @@ class View {
     // Shows the score of the current move within a game review screen
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let sc = [".scorediff"];
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
-    let score = mv ? mv[1][2] : undefined;
+    let score = mv ? mv[1][2] : 0;
     let bestScore = model.bestMoves[model.highlightedMove][1][2];
     let diff = (score - bestScore).toString();
     if (diff[0] != "-" && diff[0] != "0")
@@ -3789,7 +3808,7 @@ class View {
   ): m.vnode {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
-    let attr: VnodeAttrs = {
+    const attr: VnodeAttrs = {
       onmouseout: buttonOut,
       onmouseover: buttonOver,
     };
@@ -3806,19 +3825,20 @@ class View {
         ev.preventDefault();
       };
     return m("." + cls + (disabled ? ".disabled" : ""),
-      attr, children // children may be omitted
+      attr, children || [] // children may be omitted
     );
   }
 
-  Buttons: ComponentFunc<{}> = (initialVnode) => {
+  Buttons: ComponentFunc<{}> = () => {
 
     const model = this.model;
 
     return {
-      view: (vnode) => {
+      view: () => {
         // The set of buttons below the game board, alongside the rack (fullscreen view)
         // or below the rack (mobile view)
         const game = model.game;
+        if (!game) return m.fragment({}, []); // Should not happen
         const s = this.buttonState(game);
         let r: m.vnode[] = [];
         r.push(m(".word-check" +
@@ -4044,7 +4064,7 @@ class View {
     return r;
   }
 
-  vwErrors(game: Game): m.vnode {
+  vwErrors(game: Game): m.vnode | undefined {
     // Error messages, selectively displayed
     let msg: string = game.currentMessage || "";
     if (game.currentError in ERROR_MESSAGES) {
@@ -4196,7 +4216,7 @@ class View {
     return r;
   }
 
-  makeTabs(id: string, createFunc: (vnode: Vnode) => void, wireHrefs: boolean, vnode: Vnode) {
+  makeTabs(id: string, createFunc: ((vnode: Vnode) => void) | undefined, wireHrefs: boolean, vnode: Vnode) {
     // When the tabs are displayed for the first time, wire'em up
     let tabdiv = document.getElementById(id);
     if (!tabdiv)
@@ -5167,7 +5187,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
   return {
 
-    view: (vnode) => {
+    view: () => {
       let sel = model.userListCriteria ? model.userListCriteria.query : "robots";
       return m(".user-cat[id='user-search']",
         [
@@ -5207,7 +5227,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
 const DialogButton: ComponentFunc<{
   id: string; title: string; tabindex: number; onclick: EventHandler;
-}> = (initialVnode) => {
+}> = () => {
   return {
     view: (vnode) => {
       let attrs: VnodeAttrs = {
@@ -5222,10 +5242,10 @@ const DialogButton: ComponentFunc<{
   };
 };
 
-const Info: ComponentFunc<{}> = (initialVnode) => {
+const Info: ComponentFunc<{}> = () => {
   // Info icon, invoking the help screen
   return {
-    view: (vnode) => {
+    view: () => {
       return m(".info",
         { title: ts("Upplýsingar og hjálp") },
         m(m.route.Link,
@@ -5271,13 +5291,14 @@ function updateTabVisibility(vnode: Vnode) {
   // i.e. the one whose index is in vnode.state.selected
   const selected: number = vnode.state.selected;
   const lis = vnode.state.lis;
-  vnode.state.ids.map((id: string, i: number) => {
-    document.getElementById(id).setAttribute("style", "display: " +
-      (i == selected ? "block" : "none"));
-    lis[i].classList.toggle("ui-tabs-active", i == selected);
-    lis[i].classList.toggle("ui-state-active", i == selected);
-  }
-  );
+  vnode.state.ids.forEach((id: string, i: number) => {
+    const el = document.getElementById(id);
+    const sel = i === selected;
+    if (el)
+      el.style.display = sel ? "block" : "none";
+    lis[i].classList.toggle("ui-tabs-active", sel);
+    lis[i].classList.toggle("ui-state-active", sel);
+  });
 }
 
 function selectTab(vnode: Vnode, i: number) {

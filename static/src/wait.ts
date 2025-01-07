@@ -45,7 +45,7 @@ const WaitDialog: ComponentFunc<{
   let oppNick = attrs.oppNick;
   let oppName = attrs.oppName;
   let oppOnline = false;
-  const userId = model.state.userId;
+  const userId = model.state?.userId || "";
   // Firebase path
   const path = 'user/' + userId + "/wait/" + oppId;
   // Flag set when the new game has been initiated

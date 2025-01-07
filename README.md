@@ -10,7 +10,7 @@ on the web at [https://netskrafl.is](https://netskrafl.is).
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
-The game backend is implemented in Python 3.8 for the
+The game backend is implemented in Python 3.11 for the
 [Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
 
 The frontend is a tablet- and smartphone-friendly web client in HTML5
@@ -34,6 +34,11 @@ For Icelandic, the graph contains almost 2.3 million word forms. Further informa
 about the DAWG implementation can be found in README.md in the
 [Skrafl repository](https://github.com/vthorsteinsson/Skrafl) on GitHub.
 
+The source code for the game server is located in the ```src/``` directory.
+The main source files are as follows:
+
+The main entry point for the Flask web server is in ```main.py```.
+
 The game mechanics are mostly found in ```skraflmechanics.py```.
 
 The robot player is implemented in ```skraflplayer.py```.
@@ -42,13 +47,9 @@ The DAWG navigation code is in ```dawgdictionary.py```.
 
 Language-specific tile sets, bags and vocabularies are handled in ```languages.py```.
 
-The main Flask web server is in ```netskrafl.py```.
-
 The Game and User classes are found in ```skraflgame.py``` and ```skrafluser.py```, respectively.
 
 The persistence layer, using the schemaless App Engine NDB database, is in ```skrafldb.py```.
-
-The client JavaScript code is in ```static/netskrafl.js```.
 
 The various Flask HTML templates are found in ```templates/*.html```.
 
@@ -59,7 +60,8 @@ The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 #### Follow these steps:
 
-0. Install [Python 3.11](https://www.python.org/downloads/release/python-3116/), possibly in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
+0. Install [Python 3.11](https://www.python.org/downloads/release/python-3116/),
+preferably in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads)
 (GAE) for Python and follow the installation instructions.
@@ -74,6 +76,8 @@ take a couple of minutes.
 
 5. You will need a secret session key for Flask. The secret session key is stored in Google Cloud secret manager.
 For information on Flask sessions see [Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
+For further details on secrets stored and used at runtime, see the
+[Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets), and the source file ```src/secret_manager.py```.
 
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
 Run ```npm install``` to install Node dependencies.

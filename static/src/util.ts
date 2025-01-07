@@ -112,7 +112,7 @@ function remove_event(ev: PointerEvent) {
 }
 
 // SalesCloud stuff
-function doRegisterSalesCloud(i,s,o,g,r,a?:any,m?:any) {
+function doRegisterSalesCloud(i: any, s: any, o: any, g: any, r: any, a?:any, m?:any) {
   i.SalesCloudObject=r;
   i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments);};
   i[r].l=1*(new Date() as any);
