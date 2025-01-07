@@ -345,6 +345,12 @@ class NoLocalStorageImpl {
 
 } // class NoLocalStorageImpl
 
+interface StatsType extends Record<string, any> {
+  scores: [number, number];
+  bingoes0: number;
+  bingoes1: number;
+}
+
 class Game {
 
   // A class that represents a Game instance on the client
@@ -376,7 +382,7 @@ class Game {
   newbag: boolean = true;
   localturn: boolean = false;
   player: number | undefined = undefined;
-  stats: Record<string, number> | null | undefined = null; // Game review statistics
+  stats: StatsType | null | undefined = null; // Game review statistics
 
   over: boolean = false;
   manual: boolean = false;

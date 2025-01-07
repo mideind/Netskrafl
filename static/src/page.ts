@@ -431,12 +431,13 @@ class View {
     const model = this.model;
 
     function toggleFunc(state: boolean) {
-      model.state.ready = state;
+      if (model.state) model.state.ready = state;
       model.setUserPref({ ready: state });
     }
 
     return {
       view: () => {
+        if (!model.state) return undefined;
         return vwToggler(
           "ready", model.state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
           ts("Tek við áskorunum!")
@@ -452,12 +453,13 @@ class View {
     const model = this.model;
 
     function toggleFunc(state: boolean) {
-      model.state.readyTimed = state;
+      if (model.state) model.state.readyTimed = state;
       model.setUserPref({ ready_timed: state });
     }
 
     return {
       view: () => {
+        if (!model.state) return undefined;
         return vwToggler(
           "timed", model.state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
           ts("Til í viðureign með klukku!")
@@ -754,12 +756,14 @@ class View {
               (ev) => {
                 // Invoke the friend promo dialog
                 ev.preventDefault();
-                logEvent("click_friend",
-                  {
-                    userid: model.state.userId,
-                    locale: model.state.locale,
-                  }
-                );
+                if (model.state) {
+                  logEvent("click_friend",
+                    {
+                      userid: model.state.userId,
+                      locale: model.state.locale,
+                    }
+                  );
+                }
                 view.showFriendPromo();
               },
               [glyph("coffee-cup"), nbsp(), nbsp(), ts("Gerast vinur Netskrafls")], 12
@@ -865,8 +869,8 @@ class View {
     const state = model.state;
     // TODO
     // const manual = state.hasPaid; // If paying user, allow manual challenges
-    const manual = state.plan !== ""; // If subscriber/friend, allow manual challenges
-    const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
+    const manual = state !== null && state.plan !== ""; // If subscriber/friend, allow manual challenges
+    const fairPlay = item.fairplay && state !== null && state.fairPlay; // Both users are fair-play
     let manualChallenge = false;
     return {
       view: () => {
@@ -915,7 +919,7 @@ class View {
                           m("div", { id: 'chall-25', tabindex: 5 },
                             [glyph("time"), t("2 x 25 mínútur")]
                           ),
-                          state.runningLocal ? // !!! TODO Debugging aid
+                          (state && state.runningLocal) ? // !!! TODO Debugging aid
                             m("div", { id: 'chall-3', tabindex: 6 },
                               [glyph("time"), t("2 x 3 mínútur")]
                             )
@@ -993,8 +997,8 @@ class View {
                   tabindex: 9,
                   onclick: (ev: Event) => {
                     // Issue a new challenge
-                    let duration: string | number =
-                      document.querySelector("div.chall-time.selected").id.slice(6);
+                    const el = document.querySelector("div.chall-time.selected");
+                    let duration: string | number = el ? el.id.slice(6) : "none";
                     if (duration == "none")
                       duration = 0;
                     else
@@ -1093,7 +1097,7 @@ class View {
         view.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
       }
 
-      function vwGamelist(): m.vnode[] {
+      function vwGamelist(): (m.vnode | undefined)[] {
 
         function vwList(): m.vnode {
 
@@ -1294,13 +1298,15 @@ class View {
               ev.preventDefault();
               if (!model.moreGamesAllowed()) {
                 // User must be a friend to be able to accept more challenges
-                logEvent("hit_game_limit",
-                  {
-                    userid: model.state.userId,
-                    locale: model.state.locale,
-                    limit: model.maxFreeGames
-                  }
-                );
+                if (model.state) {
+                  logEvent("hit_game_limit",
+                    {
+                      userid: model.state.userId,
+                      locale: model.state.locale,
+                      limit: model.maxFreeGames
+                    }
+                  );
+                }
                 // Promote a subscription to Netskrafl/Explo
                 view.showFriendPromo();
                 return;
@@ -1474,7 +1480,7 @@ class View {
         );
       }
 
-      function vwUserList(): m.vnode[] {
+      function vwUserList(): (m.vnode | undefined)[] {
 
         function vwList(list: UserListItem[]) {
 
@@ -1591,8 +1597,10 @@ class View {
         }
 
         // The type of list to show; by default it's 'robots'
-        const listType = model.userListCriteria ? model.userListCriteria.query : "robots";
-        if (listType == "elo")
+        const query = model.userListCriteria?.query || "";
+        const spec = model.userListCriteria?.spec || "";
+        const listType = query || "robots";
+        if (listType === "elo")
           // Show Elo list
           return [ m(EloPage, { id: "elolist", view: view }) ];
         // Show normal user list
@@ -1602,12 +1610,11 @@ class View {
           /* pass */
         }
         else
-        if (model.userList === null || model.userListCriteria.query != listType)
+        if (model.userList === null || query != listType)
           model.loadUserList({ query: listType, spec: "" }, true);
         else
           list = model.userList;
-        const nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
-          listType == "search" && model.userListCriteria.spec !== "";
+        const nothingFound = list.length === 0 && listType === "search" && spec !== "";
         const robotList = listType == "robots";
         return [
           m(".listitem.listheader",
@@ -1628,7 +1635,7 @@ class View {
               [
                 glyph("search"),
                 " ",
-                m("span", { id: "search-prefix" }, model.userListCriteria.spec),
+                m("span", { id: "search-prefix" }, spec),
                 t(" finnst ekki")
               ]
             )
@@ -1768,7 +1775,7 @@ class View {
     let gameover = game ? game.over : true;
 
     function lookAtPlayer(ev: Event, player: number, side: number) {
-      if (!state.uiFullscreen)
+      if (!state?.uiFullscreen || !game)
         // Don't do anything on mobile, and allow the click
         // to propagate to the parent
         return;
@@ -1778,12 +1785,11 @@ class View {
           // overlay a user preference dialog
           view.pushDialog("userprefs");
         }
-        else
-          if (!game.autoplayer[side]) {
-            // The player is clicking on the opponent:
-            // show the opponent's track record, if not an autoplayer
-            view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
-          }
+        else if (!game.autoplayer[side]) {
+          // The player is clicking on the opponent:
+          // show the opponent's track record, if not an autoplayer
+          view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
+        }
       }
       ev.stopPropagation();
       ev.preventDefault();
@@ -1813,7 +1819,7 @@ class View {
     }
   }
 
-  vwTwoLetter: ComponentFunc<{}> = (initialVnode) => {
+  vwTwoLetter: ComponentFunc<{}> = () => {
 
     // The two-letter-word list tab
     const model = this.model;
@@ -1831,8 +1837,9 @@ class View {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) return undefined;
         const twoLetters = game.twoLetterWords();
         const twoLetterWords = twoLetters[page];
         let twoLetterList = [];
@@ -1945,7 +1952,7 @@ class View {
               title: ts("Loka þessari hjálp"),
               onclick: (ev) => {
                 // Close the guide and set a preference not to see it again
-                state.beginner = false;
+                if (state) state.beginner = false;
                 model.setUserPref({ beginner: false });
                 ev.preventDefault();
               }
@@ -2051,11 +2058,12 @@ class View {
             break;
         }
         const tabgrp = view.vwTabGroup();
-        return m(".right-area" + (game.showClock() ? ".with-clock" : ""),
+        return m(".right-area" + (game?.showClock() ? ".with-clock" : ""),
           component ? [tabgrp, component] : [tabgrp]
         );
       }
 
+      // @ts-ignore: ts(6133) - Suppress unused variable warning
       function vwRightMessage(): m.vnode {
         // Display a status message in the mobile UI
         if (!game) return m.fragment({}, []); // Should not happen
@@ -2094,7 +2102,7 @@ class View {
         }
         else {
           let co = move[1][0];
-          let tiles = mtype;
+          let tiles = mtype || "";
           let score = move[1][2];
           if (co == "") {
             // Not a regular tile move
@@ -2116,8 +2124,7 @@ class View {
               else
                 msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
             }
-          }
-          else {
+          } else {
             // Regular tile move
             tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
             msg = [opp, " played ", m("strong", tiles),
@@ -2146,7 +2153,8 @@ class View {
         // thereby transferring them back to the rack
         ondragenter: (ev) => {
           ev.preventDefault();
-          ev.dataTransfer.dropEffect = 'move';
+          if (ev.dataTransfer)
+            ev.dataTransfer.dropEffect = 'move';
           ev.redraw = false;
           return false;
         },
@@ -2390,7 +2398,7 @@ class View {
 
     function replaceEmoticons(str: string): string {
       // Replace all emoticon shortcuts in the string str with a corresponding image URL
-      const emoticons = model.state.emoticons;
+      const emoticons = model.state?.emoticons || [];
       for (const emoticon of emoticons)
         if (str.indexOf(emoticon.icon) >= 0) {
           // The string contains the emoticon: prepare to replace all occurrences
@@ -2404,11 +2412,12 @@ class View {
 
     function chatMessages(): m.vnode[] {
       let r: m.vnode[] = [];
-      if (game?.chatLoading || !game.messages)
+      if (!game || !model.state) return r;
+      if (game.chatLoading || !game.messages)
         return r;
       var key = 0;
       for (const msg of game.messages) {
-        let p = player;
+        let p = player ?? 0;
         if (msg.from_userid != model.state.userId)
           p = 1 - p;
         const mTs = makeTimestamp(msg.ts, key);
@@ -2508,32 +2517,31 @@ class View {
     const state = model.state;
 
     function movelist(): m.vnode[] {
-      let mlist = game ? game.moves : []; // All moves made so far in the game
-      let r: m.vnode[] = [];
+      const mlist = game ? game.moves : []; // All moves made so far in the game
+      const r: m.vnode[] = [];
       let leftTotal = 0;
       let rightTotal = 0;
       for (let i = 0; i < mlist.length; i++) {
-        let move = mlist[i];
-        let [player, [co, tiles, score]] = move;
+        const move = mlist[i];
+        const [player, [co, tiles, score]] = move;
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
           rightTotal = Math.max(rightTotal + score, 0);
-        r.push(
-          view.vwMove(move,
-            {
-              key: i.toString(),
-              leftTotal: leftTotal, rightTotal: rightTotal,
-              player: player, co: co, tiles: tiles, score: score
-            }
-          )
+        const vm = view.vwMove(move,
+          {
+            key: i.toString(),
+            leftTotal, rightTotal,
+            player, co, tiles, score,
+          }
         );
+        vm && r.push(vm);
       }
       return r;
     }
 
-    let bag = game ? game.bag : "";
-    let newbag = game ? game.newbag : true;
+    const bag = game?.bag || "";
+    const newbag = game?.newbag ? true : false;
     return m(".movelist-container",
       [
         m(".movelist",
@@ -2625,30 +2633,27 @@ class View {
     }
 
     function bestMoveList(): m.vnode[] {
-      let r: m.vnode[] = [];
+      const r: m.vnode[] = [];
       const moves = game?.moves || [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
       if (!moveIndex || moveIndex > moves.length)
         return r;
       // Prepend a header that describes the move being reviewed
-      let m = moves[moveIndex - 1];
-      let co = m[1][0];
-      let tiles = m[1][1];
-      let score = m[1][2];
+      const m = moves[moveIndex - 1];
+      const [co, tiles, score] = m[1];
       r.push(bestHeader(co, tiles, score));
-      let mlist = bestMoves;
+      const mlist = bestMoves;
       for (let i = 0; i < mlist.length; i++) {
-        let [player, [co, tiles, score]] = mlist[i];
-        r.push(
-          view.vwBestMove(moveIndex, i, mlist[i],
-            {
-              key: i.toString(),
-              player: player, co: co, tiles: tiles,
-              score: score, leftTotal: 0, rightTotal: 0
-            }
-          )
-        );
+        const [player, [co, tiles, score]] = mlist[i];
+        const bm = view.vwBestMove(moveIndex, i, mlist[i],
+          {
+            key: i.toString(),
+            player: player, co: co, tiles: tiles,
+            score: score, leftTotal: 0, rightTotal: 0
+          }
+        )
+        bm && r.push(bm);
       }
       return r;
     }
@@ -2679,6 +2684,7 @@ class View {
 
     const view = this;
     const model = this.model;
+    if (!model.game) return undefined; // Should not happen
     const game = model.game;
     const state = model.state;
 
@@ -2840,11 +2846,11 @@ class View {
       }
       // Highlight the move on the board while hovering over it
       attribs.onmouseout = () => {
-        move["highlighted"] = false;
+        move[2] = false; // Not highlighted
         highlightMove(rawCoord, tiles, playerColor, false);
       };
       attribs.onmouseover = () => {
-        move["highlighted"] = true;
+        move[2] = true; // Highlighted
         highlightMove(rawCoord, tiles, playerColor, true);
       };
     }
@@ -2853,7 +2859,7 @@ class View {
       return m(".move.leftmove." + cls, attribs,
         [
           m("span.total" + (player == lcp ? ".human" : ".autoplayer"), leftTotal),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span." + wrdclass, [m("i", tiles), nbsp(), co])
         ]
       );
@@ -2863,7 +2869,7 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span." + wrdclass, [co, nbsp(), m("i", tiles)]),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span.total" + (player == lcp ? ".human" : ".autoplayer"), rightTotal)
         ]
       );
@@ -2874,6 +2880,7 @@ class View {
     // Displays a move in a list of best available moves
 
     const model = this.model;
+    if (!model.game) return undefined; // Should not happen
     const game = model.game;
     let player = info.player;
     let co = info.co;
@@ -2896,8 +2903,9 @@ class View {
           nextBlank = true;
           continue;
         }
-        let sq = coord(row, col);
-        let letter = tile;
+        const sq = coord(row, col);
+        if (sq === null) continue; // Should not happen
+        const letter = tile;
         if (nextBlank)
           tile = '?';
         const tscore = game.tilescore(tile);
@@ -2955,18 +2963,18 @@ class View {
       attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
-      move["highlighted"] = true;
+      move[2] = true; // Highlighted
       highlightMove(rawCoord, tiles, playerColor, true);
     };
     attribs.onmouseout = () => {
-      move["highlighted"] = false;
+      move[2] = false; // Not highlighted
       highlightMove(rawCoord, tiles, playerColor, false);
     };
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span.wordmove", [m("i", word), nbsp(), co])
         ]
       );
@@ -2976,7 +2984,7 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span.wordmove", [co, nbsp(), m("i", word)]),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score)
+          m("span.score" + (move[2] ? ".highlight" : ""), score)
         ]
       );
     }
@@ -3041,7 +3049,7 @@ class View {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  Bag: ComponentFunc<{ bag: string; newbag: boolean; }> = (initialVnode) => {
+  Bag: ComponentFunc<{ bag: string; newbag: boolean; }> = () => {
     // The bag of tiles
 
     function tiles(bag: string): m.vnode[] {
@@ -3082,7 +3090,7 @@ class View {
     };
   };
 
-  BlankDialog: ComponentFunc<{}> = (initialVnode) => {
+  BlankDialog: ComponentFunc<{}> = () => {
     // A dialog for choosing the meaning of a blank tile
 
     const model = this.model;
@@ -3171,7 +3179,7 @@ class View {
     };
   };
 
-  BoardReview: ComponentFunc<{ moveIndex: number; }> = (initialVnode) => {
+  BoardReview: ComponentFunc<{ moveIndex: number; }> = () => {
     // The board area within a game review screen
     const model = this.model;
     return {
@@ -3193,12 +3201,13 @@ class View {
     };
   }
 
-  Tile: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  Tile: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Display a tile on the board or in the rack
     const model = this.model;
     return {
       view: (vnode) => {
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         const coord = vnode.attrs.coord;
         const isRackTile = coord[0] == 'R';
         // Tile laid down by the opponent
@@ -3264,8 +3273,10 @@ class View {
               // ev.preventDefault();
               game.selectedSq = null;
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", true);
-              ev.dataTransfer.effectAllowed = "move"; // "copyMove"
-              ev.dataTransfer.setData("text", coord);
+              if (ev.dataTransfer) {
+                ev.dataTransfer.effectAllowed = "move"; // "copyMove"
+                ev.dataTransfer.setData("text", coord);
+              }
               ev.redraw = false;
               // return false;
             };
@@ -3294,7 +3305,7 @@ class View {
     };
   }
 
-  TileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  TileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Return a td element that wraps a tile on the board.
     // If the opponent flag is true, we put an '.opp' class on the td
     const view = this;
@@ -3303,6 +3314,7 @@ class View {
       view: (vnode) => {
         const coord = vnode.attrs.coord;
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         return m("td",
           {
             id: "sq_" + coord,
@@ -3318,12 +3330,13 @@ class View {
     };
   };
 
-  ReviewTileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  ReviewTileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Return a td element that wraps an 'inert' tile in a review screen.
     // If the opponent flag is true, we put an '.opp' class on the td
     const model = this.model;
     return {
       view: (vnode) => {
+        if (!model.game) return undefined; // Should not happen
         const coord = vnode.attrs.coord;
         let cls = model.game.squareClass(coord) || "";
         if (cls)
@@ -3472,7 +3485,7 @@ class View {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const scale = view.boardScale || 1.0;
         let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
@@ -3493,14 +3506,16 @@ class View {
     const model = this.model;
     const review = initialVnode.attrs.review;
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         let r: m.vnode[] = [];
         // If review==true, this is a review rack
         // that is not a drop target and whose color reflects the
         // currently shown move.
         // If opponent==true, we're showing the opponent's rack
-        const opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
+        const reviewMove = model.reviewMove ?? 0;
+        const opponent = review && (reviewMove > 0) && (reviewMove % 2 == game.player);
         for (let i = 1; i <= RACK_SIZE; i++) {
           const coord = 'R' + i.toString();
           if (game && (coord in game.tiles)) {
@@ -3621,7 +3636,9 @@ class View {
     let sc = [".scorediff"];
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     let score = mv ? mv[1][2] : 0;
-    let bestScore = model.bestMoves[model.highlightedMove][1][2];
+    const bm = model.bestMoves ?? [];
+    const hm = model.highlightedMove ?? 0;
+    let bestScore = hm < bm.length ? bm[hm][1][2] : 0;
     let diff = (score - bestScore).toString();
     if (diff[0] != "-" && diff[0] != "0")
       diff = "+" + diff;
@@ -3632,6 +3649,7 @@ class View {
 
   vwStatsReview(): m.vnode {
     // Shows the game statistics overlay
+    if (!this.model.game) return m.fragment({}, []); // Should not happen
     const game = this.model.game;
     if (game.stats === null)
       // No stats yet loaded: do it now
@@ -3882,7 +3900,7 @@ class View {
             classes.push("manual")
           } else if (s.wordGood) {
             classes.push("word-good");
-            if (game.currentScore >= 50)
+            if ((game.currentScore ?? 0) >= 50)
               classes.push("word-great");
           } else if (s.wordBad) {
             classes.push("word-bad");
@@ -3974,7 +3992,7 @@ class View {
               [
                 m("span.move-indicator"),
                 nbsp(),
-                m("strong", game.nickname[1 - game.player]),
+                m("strong", game.nickname[1 - (game.player ?? 0)]),
                 ts(" á leik"),
                 nbsp(),
                 // The following inline button is only
@@ -4014,12 +4032,13 @@ class View {
     };
   };
 
-  vwButtonsReview(moveIndex: number) {
+  vwButtonsReview(moveIndex: number): m.vnode[] {
     // The navigation buttons below the board on the review screen
     const model = this.model;
+    let r: m.vnode[] = [];
+    if (!model.game) return r; // Should not happen
     const game = model.game;
     const numMoves = game.moves.length;
-    let r: m.vnode[] = [];
     r.push(
       this.makeButton(
         "navbtn", !moveIndex, // Disabled if at moveIndex 0 (initial review dialog)
@@ -4060,15 +4079,18 @@ class View {
     // a particular moveIndex on the best moveIndex list
     if (model.highlightedMove !== null)
       r.push(this.vwScoreDiff(moveIndex));
-    r.push(this.vwScoreReview(moveIndex));
+    const scoreReview = this.vwScoreReview(moveIndex);
+    if (scoreReview)
+      r.push(scoreReview);
     return r;
   }
 
   vwErrors(game: Game): m.vnode | undefined {
     // Error messages, selectively displayed
-    let msg: string = game.currentMessage || "";
-    if (game.currentError in ERROR_MESSAGES) {
-      const txt: string = ts(ERROR_MESSAGES[game.currentError]);
+    const msg = game.currentMessage || "";
+    const err = game.currentError || "";
+    if (err in ERROR_MESSAGES) {
+      const txt: string = ts(ERROR_MESSAGES[err]);
       const wix = txt.indexOf("{word}");
       let children: VnodeChildren[];
       if (wix >= 0) {
@@ -4090,11 +4112,11 @@ class View {
     return undefined;
   }
 
-  vwGameOver(): m.vnode {
+  vwGameOver(): m.vnode | undefined {
     // Show message at end of game, either congratulating a win or
     // solemnly informing the player that the game is over
     const game = this.model.game;
-    if (game.congratulate)
+    if (game?.congratulate)
       return m("div", { id: "congrats" },
         [
           glyph("bookmark"),
@@ -4102,7 +4124,7 @@ class View {
           mt("strong", "Til hamingju með sigurinn!")
         ]
       );
-    else if (game.over) {
+    else if (game?.over) {
       return m("div", { id: "gameover" },
         [
           glyph("info-sign"),
@@ -4223,19 +4245,23 @@ class View {
       return;
     // Add bunch of jQueryUI compatible classes
     tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
-    let tabul = document.querySelector("#" + id + " > ul");
-    tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
-    tabul.setAttribute("role", "tablist");
+    const tabul = document.querySelector("#" + id + " > ul");
+    if (tabul) {
+      tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
+      tabul.setAttribute("role", "tablist");
+    }
     let tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
     let tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
     let ids: string[] = [];
     let lis: HTMLElement[] = []; // The <li> elements
     // Iterate over the <a> elements inside the <li> elements inside the <ul>
     for (let i = 0; i < tablist.length; i++) {
-      ids.push(tablist[i].getAttribute("href").slice(1));
+      const href = tablist[i].getAttribute("href");
+      if (!href) continue;
+      ids.push(href.slice(1));
       // Decorate the <a> elements
       tablist[i].onclick = (ev) => { selectTab(vnode, i); ev.preventDefault(); };
-      tablist[i].setAttribute("href", null);
+      tablist[i].removeAttribute("href");
       tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
       tablist[i].setAttribute("role", "presentation");
       // Also decorate the <li> elements
@@ -4249,10 +4275,12 @@ class View {
         (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", false);
       };
       // Find the tab's content <div>
-      let tabcontent = document.getElementById(ids[i]);
+      const tabcontent = document.getElementById(ids[i]);
       // Decorate it
-      tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
-      tabcontent.setAttribute("role", "tabpanel");
+      if (tabcontent) {
+        tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
+        tabcontent.setAttribute("role", "tabpanel");
+      }
     }
     // Save the list of tab identifiers
     vnode.state.ids = ids;
@@ -4275,7 +4303,7 @@ class View {
         ev.preventDefault();
       };
       const clickUserPrefs = (ev: Event) => {
-        if (model.state.userId != "")
+        if (model.state?.userId !== "")
           // Don't show the userprefs if no user logged in
           this.pushDialog("userprefs");
         ev.preventDefault();
@@ -4387,11 +4415,11 @@ function vwToggler(id: string, state: boolean, tabindex: number,
 
   function doToggle() {
     // Perform the toggling, on a mouse click or keyboard input (space bar)
-    const cls1 = document.querySelector("#" + togglerId + " #opt1").classList;
-    const cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
-    cls1.toggle("selected");
-    cls2.toggle("selected");
-    if (funcToggle !== undefined)
+    const cls1 = document.querySelector("#" + togglerId + " #opt1")?.classList;
+    const cls2 = document.querySelector("#" + togglerId + " #opt2")?.classList;
+    cls1 && cls1.toggle("selected");
+    cls2 && cls2.toggle("selected");
+    if (funcToggle !== undefined && cls2)
       // Toggling the switch and we have an associated function:
       // call it with the boolean state of the switch
       funcToggle(cls2.contains("selected"));
@@ -4497,7 +4525,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
     view: (vnode) => {
       if (!askServer)
         // Display the state of the online attribute as-is
-        online = vnode.attrs.online;
+        online = vnode.attrs.online ? true : false;
       return m("span",
         {
           id: id,
@@ -4510,7 +4538,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
 
 };
 
-const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initialVnode) => {
+const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = () => {
 
   // Show the header of an Elo ranking list and then the list itself
 
@@ -4607,13 +4635,13 @@ const EloList: ComponentFunc<{
         let nick: VnodeChildren = item.nick;
         let ch = nbsp();
         let info = nbsp();
-        if (item.userid != state.userId && !item.inactive)
+        if (item.userid !== state?.userId && !item.inactive)
           ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
         if (isRobot) {
           nick = m("span", [glyph("cog"), nbsp(), nick]);
         }
         else
-          if (item.userid != state.userId)
+          if (item.userid !== state?.userId)
             info = m("span.usr-info",
               {
                 onclick: (ev) => {
@@ -4654,22 +4682,21 @@ const EloList: ComponentFunc<{
         // Loading in progress
         // pass
       }
-      else
-        if (model.userList === null || model.userListCriteria.query != "elo" ||
-          model.userListCriteria.spec != vnode.attrs.sel.toString()) {
-          // We're not showing the correct list: request a new one
-          model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
-        }
-        else {
-          list = model.userList;
-        }
+      else if (model.userList === null || model.userListCriteria?.query !== "elo" ||
+        model.userListCriteria?.spec !== vnode.attrs.sel.toString()) {
+        // We're not showing the correct list: request a new one
+        model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
+      }
+      else {
+        list = model.userList;
+      }
       return m("div", { id: vnode.attrs.id }, list.map(itemize));
     }
 
   };
 };
 
-const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = (initialVnode) => {
+const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = () => {
   // Shows a list of recent games, stored in vnode.attrs.recentList
 
   function itemize(item: RecentListItem, i: number) {
@@ -4718,7 +4745,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
     // Show the Elo point adjustments resulting from the game
     let eloAdj: m.vnode | string = item.elo_adj ? item.elo_adj.toString() : "";
     let eloAdjHuman: m.vnode | string = item.human_elo_adj ? item.human_elo_adj.toString() : "";
-    let eloAdjClass: string, eloAdjHumanClass: string;
+    let eloAdjClass = "";
+    let eloAdjHumanClass = "";
     // Find out the appropriate class to use depending on the adjustment sign
     if (item.elo_adj !== null)
       if (item.elo_adj > 0) {
@@ -4821,8 +4849,9 @@ const UserInfoDialog: ComponentFunc<{
 
   function _updateRecentList(vnode: typeof initialVnode) {
     // Fetch the recent game list of the given user
+    const versus = versusAll ? "" : (model.state?.userId || "");
     model.loadUserRecentList(vnode.attrs.userid,
-      versusAll ? null : model.state.userId,
+      versus,
       (json: { result: number; recentlist: RecentListItem[]; }) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
@@ -4937,7 +4966,7 @@ const UserInfoDialog: ComponentFunc<{
 
 }
 
-const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = (initialVnode) => {
+const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = () => {
   // Display the best words and best games played for a given user
 
   return {
@@ -4988,7 +5017,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
   };
 }
 
-const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnode) => {
+const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = () => {
   // Display key statistics, provided via the ownStats attribute
 
   let sel = 1;
@@ -5138,7 +5167,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
   let spec = ""; // The current search pattern
   const model = initialVnode.attrs.model;
-  let promise: { result: boolean; p: Promise<boolean>; } = undefined;
+  let promise: { result: boolean; p: Promise<boolean>; } | undefined = undefined;
 
   function newSearch() {
     // There may have been a change of search parameters: react
@@ -5148,13 +5177,13 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
       promise.result = false;
       promise = undefined;
     }
-    let sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-    if (sel != "search") {
+    let sel = model.userListCriteria?.query || "robots";
+    if (sel !== "search") {
       // Not already in a search: load the user list immediately
       model.loadUserList({ query: "search", spec: spec }, true);
       return;
     }
-    if (spec == model.userListCriteria.spec)
+    if (spec === model.userListCriteria?.spec)
       // We're already looking at the same search spec: done
       return;
     // We're changing the search spec.
@@ -5199,7 +5228,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
                 // Reset the search pattern when clicking the search icon
                 spec = "";
                 newSearch();
-                document.getElementById("search-id").focus();
+                document.getElementById("search-id")?.focus();
               }
             }
           ),
@@ -5234,9 +5263,7 @@ const DialogButton: ComponentFunc<{
         onmouseout: buttonOut,
         onmouseover: buttonOver
       };
-      for (let a in vnode.attrs)
-        if (vnode.attrs.hasOwnProperty(a))
-          attrs[a] = vnode.attrs[a];
+      Object.assign(attrs, vnode.attrs);
       return m(".modal-close", attrs, vnode.children);
     }
   };
@@ -5261,7 +5288,7 @@ const Info: ComponentFunc<{}> = () => {
 
 function escapeHtml(string: string): string {
   /* Utility function to properly encode a string into HTML */
-  const entityMap = {
+  const entityMap: Record<string, string> = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -5321,7 +5348,7 @@ function getUrlVars(url: string) {
   for (let i = 0; i < hashes.length; i++) {
     let hash = hashes[i].split('=');
     if (hash.length == 2)
-      vars[hash[0]] = decodeURIComponent(hash[1]);
+      vars[hash[0] as keyof Params] = decodeURIComponent(hash[1]);
   }
   return vars;
 }
@@ -5341,11 +5368,11 @@ function buttonOut(ev: Event) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon: string, attrs?: object, grayed?: boolean): m.vnode {
+function glyph(icon: string, attrs?: any, grayed?: boolean): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs);
 }
 
-function glyphGrayed(icon: string, attrs?: object): m.vnode {
+function glyphGrayed(icon: string, attrs?: any): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 

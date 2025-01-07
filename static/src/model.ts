@@ -43,14 +43,10 @@ interface Settings {
   defaultRoute: string;
 }
 
+type UrlParams = "uuid" | "move" | "tab" | "faq" | "zombie";
+
 // Possible URL parameters that are passed to routes
-interface Params {
-  uuid?: string;
-  move?: string;
-  tab?: string;
-  faq?: string;
-  zombie?: string;
-}
+type Params = Partial<Record<UrlParams, string>>;
 
 // Items in a game list
 interface GameListItem {
@@ -417,7 +413,7 @@ class Model {
     const json: any = await m.request({
       method: "POST",
       url: "/recentlist",
-      body: { user: userid, versus: versus, count: 40 }
+      body: { user: userid, versus: versus || null, count: 40 }
     });
     readyFunc(json);
   }
