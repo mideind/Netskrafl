@@ -126,10 +126,11 @@ def get_facebook_public_key() -> Optional[str]:
         jwks = response.json()
         # Extract the public key in PEM format
         key_data = jwks['keys'][0]
-        return FACEBOOK_PUBLIC_KEY := cast(  # type: ignore
+        FACEBOOK_PUBLIC_KEY = cast(  # type: ignore
             Optional[str],
             jwt.algorithms.RSAAlgorithm.from_jwk(key_data),  # type: ignore
         )
+        return FACEBOOK_PUBLIC_KEY
     except requests.exceptions.RequestException as e:
         logging.error(f"An error occurred while fetching the public key: {e}")
         return None  # Return None and failure status
@@ -351,9 +352,6 @@ def oauth_fb(request: Request) -> ResponseType:
         )
 
     token = user.get("token", "")
-    # Perform basic validation
-    if not token or len(token) > 1024 or not token.isalnum():
-        return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
 
     # Check whether this is a limited login (used by iOS clients only)
     is_limited_login = rq.get_bool("isLimitedLogin", False)
@@ -383,7 +381,14 @@ def oauth_fb(request: Request) -> ResponseType:
                     ), 
                     401,
                 )
-            account = decoded_token.get("sub", "")
+            account_in_token = decoded_token.get("sub", "")
+            if account != account_in_token:
+                return (
+                    jsonify(
+                        {"status": "invalid", "msg": "Wrong user id in Facebook token",}
+                    ), 
+                    401,
+                )
         except jwt.ExpiredSignatureError:
             return (
                     jsonify(
@@ -398,12 +403,10 @@ def oauth_fb(request: Request) -> ResponseType:
                     ), 
                     401,
                 )
-        if account != user.get("id"):
-            return (
-                jsonify({"status": "invalid", "msg": "Wrong user id in Facebook token"}),
-                401,
-            )
     else:
+        # Perform basic validation
+        if not token or len(token) > 1024 or not token.isalnum():
+            return jsonify({"status": "invalid", "msg": "Invalid Facebook token"}), 401
         # Validate regular Facebook token
         r = requests.get(
             FACEBOOK_TOKEN_VALIDATION_URL.format(
