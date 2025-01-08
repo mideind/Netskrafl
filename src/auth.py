@@ -2,7 +2,7 @@
 
     Authentication module for netskrafl.is
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -780,7 +780,7 @@ def oauth_anonymous(request: Request) -> ResponseType:
         new=uld.get("new") or False,
         client_type=client_type,
     )
-    uld["method"] = sd["method"]
+    uld["method"] = "Anonymous"
 
     # Authentication complete; user id obtained
     # Set the Flask session cookie

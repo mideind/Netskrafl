@@ -2,7 +2,7 @@
 
     Cache - Redis cache wrapper for the Netskrafl application
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     This module wraps Redis caching in a thin wrapper object,

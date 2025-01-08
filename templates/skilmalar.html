@@ -26,12 +26,12 @@
       <p>Verði Netskrafl lagt niður renna áskriftir að framlögum
       sjálfkrafa út og verða ekki endurnýjaðar.</p>
       <p>Rekstraraðili vefjarins er Miðeind ehf., kt. 591213-1480.</p>
-      <p>Áskriftir og kortagreiðslur fara í gegn um <i>SalesCloud</i> kerfi frá Proton ehf.
+      <p>Áskriftir og kortagreiðslur fara í gegn um kerfi <i>SalesCloud</i>.
       Upplýsingar þar að lútandi eru dulkóðaðar í sendingu og aðeins geymdar
       eftir þörfum vegna greiðsluvirkninnar. Þær verða ekki látnar þriðja aðila í té.</p>
       <p>Ef spurningar vakna má senda tölvupóst á <b>netskrafl@netskrafl.is</b>.</p>
 
-      <div class="btn-thanks" title="Til baka"
+      <div id="btn-thanks" title="Til baka"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
          onclick="window.history.back()">
          <span class="glyphicon glyphicon-ok"></span></div>
@@ -48,20 +48,20 @@
 
    function buttonOver(elem) {
       /* Show a hover effect on a button */
-      if (!$(elem).hasClass("disabled"))
-         $(elem).toggleClass("over", true);
+      if (!elem.classList.contains("disabled"))
+         elem.classList.add("over");
    }
 
    function buttonOut(elem) {
       /* Hide a hover effect on a button */
-      $(elem).toggleClass("over", false);
+      elem.classList.remove("over");
    }
 
-   function init(jQuery) {
-      $("#conditions-dialog").css("visibility", "visible");
+   function init() {
+      document.getElementById("conditions-dialog").style.visibility = "visible";
    }
 
-   $(document).ready(init);
+   document.addEventListener("DOMContentLoaded", init);
 
 </script>
 

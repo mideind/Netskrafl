@@ -4,7 +4,7 @@
 
   Code for dialog components used in management of friends
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Original author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -22,7 +22,7 @@ import { m, ComponentFunc, Vnode } from "mithril";
 
 import { View, glyph, nbsp, DialogButton, buttonOver, buttonOut } from "page";
 
-function doRegisterSalesCloud(i,s,o,g,r,a,m): void {
+function doRegisterSalesCloud(i: any, s: any, o: any, g: any, r: any, a: any, m: any): void {
   i['SalesCloudObject']=r;
   i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},
   i[r].l=+new Date();
@@ -101,14 +101,9 @@ const FriendPromoteDialog: ComponentFunc<{
 
 const FriendThanksDialog: ComponentFunc<{
   view: View;
-}> = (initialVnode) => {
+}> = () => {
 
   // A dialog that offers friendship to the user
-
-  const attrs = initialVnode.attrs;
-  const view = attrs.view;
-  const model = view.model;
-
   return {
     view: () => {
       return m(".modal-dialog",

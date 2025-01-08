@@ -88,23 +88,23 @@ interface MithrilDragEvent extends DragEvent {
   redraw: boolean;
 }
 
-type EventHandler = (ev?: Event) => void;
+type EventHandler = (ev: Event) => void;
 
 // Mithril Vnode attributes
 interface VnodeAttrs {
   // Common DOM event handlers
-  onmouseover?: (ev?: MouseEvent) => void | boolean;
-  onmouseout?: (ev?: MouseEvent) => void | boolean;
-  onclick?: (ev?: MouseEvent) => void | boolean;
+  onmouseover?: (ev: MouseEvent) => void | boolean;
+  onmouseout?: (ev: MouseEvent) => void | boolean;
+  onclick?: (ev: MouseEvent) => void | boolean;
   onfocus?: EventHandler;
   oninput?: EventHandler;
-  onkeypress?: (ev?: KeyboardEvent) => void;
-  ondragstart?: (ev?: MithrilDragEvent) => void | boolean;
-  ondragend?: (ev?: MithrilDragEvent) => void | boolean;
-  ondragenter?: (ev?: MithrilDragEvent) => void | boolean;
-  ondragleave?: (ev?: MithrilDragEvent) => void | boolean;
-  ondragover?: (ev?: MithrilDragEvent) => void | boolean;
-  ondrop?: (ev?: MithrilDragEvent) => void | boolean;
+  onkeypress?: (ev: KeyboardEvent) => void;
+  ondragstart?: (ev: MithrilDragEvent) => void | boolean;
+  ondragend?: (ev: MithrilDragEvent) => void | boolean;
+  ondragenter?: (ev: MithrilDragEvent) => void | boolean;
+  ondragleave?: (ev: MithrilDragEvent) => void | boolean;
+  ondragover?: (ev: MithrilDragEvent) => void | boolean;
+  ondrop?: (ev: MithrilDragEvent) => void | boolean;
   // Mithril event handlers
   oninit?: (vnode: Vnode) => void;
   oncreate?: (vnode: Vnode) => void;
@@ -141,16 +141,16 @@ interface CustomVnode<T> extends Vnode {
   attrs: T;
 }
 
-interface Component<T> {
-  view: (vnode: CustomVnode<T>) => m.vnode;
+interface Component<T, S extends {} = {}> extends S {
+  view: (vnode: CustomVnode<T>) => m.vnode | undefined;
   oninit?: (vnode: CustomVnode<T>) => void;
   oncreate?: (vnode: CustomVnode<T>) => void;
   onupdate?: (vnode: CustomVnode<T>) => void;
   onremove?: (vnode: CustomVnode<T>) => void;
 }
 
-type ComponentFunc<T> = (vnode: CustomVnode<T>) => Component<T>;
+type ComponentFunc<T, S extends {} = {}> = (vnode: CustomVnode<T>) => Component<T, S>;
 
-type VnodeChildren = string | number | Vnode | VnodeChildren[];
+type VnodeChildren = undefined | string | number | Vnode | VnodeChildren[];
 
 type mAttrs = VnodeAttrs;

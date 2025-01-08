@@ -9,17 +9,20 @@
     // Generate a single, concatenated .js file
     "outFile": "built/explo.js",
     "baseUrl": "./built",
-    "target": "ES2015",
+    "target": "es6",
     "module": "amd",
-    // "strict": true,
+    "strict": true,                // Enable all strict type checking options
+    "noImplicitAny": true,        // Raise error on expressions and declarations with an implied 'any' type
+    "strictNullChecks": true,     // Enable strict null checks
+    "noUnusedLocals": true,       // Report errors on unused locals
+    "noUnusedParameters": true,    // Report errors on unused parameters
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true
   },
   "lib": [
-    "es2015",
-    "es2015.promise",
+    "es6",
     "dom"
   ],
   "$schema": "https://json.schemastore.org/tsconfig",

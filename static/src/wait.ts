@@ -5,7 +5,7 @@
   Code for the WaitDialog and AcceptDialog components,
   used in the UI flow for timed games
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Original author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -45,7 +45,7 @@ const WaitDialog: ComponentFunc<{
   let oppNick = attrs.oppNick;
   let oppName = attrs.oppName;
   let oppOnline = false;
-  const userId = model.state.userId;
+  const userId = model.state?.userId || "";
   // Firebase path
   const path = 'user/' + userId + "/wait/" + oppId;
   // Flag set when the new game has been initiated

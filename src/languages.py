@@ -2,7 +2,7 @@
 
     Language and locale encapsulation module
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -46,7 +46,7 @@ import abc
 import functools
 from contextvars import ContextVar
 
-from config import DEFAULT_LOCALE, PROJECT_ID
+from config import DEFAULT_LOCALE, NETSKRAFL
 from alphabets import (
     Alphabet,
     IcelandicAlphabet,
@@ -58,8 +58,8 @@ from alphabets import (
 
 _T = TypeVar("_T")
 
-DEFAULT_LANGUAGE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
-DEFAULT_BOARD_TYPE = "standard" if PROJECT_ID == "netskrafl" else "explo"
+DEFAULT_LANGUAGE = "is_IS" if NETSKRAFL else "en_US"
+DEFAULT_BOARD_TYPE = "standard" if NETSKRAFL else "explo"
 
 
 class TileSet(abc.ABC):
@@ -795,7 +795,11 @@ RECOGNIZED_TO_SUPPORTED_LOCALES: Mapping[str, str] = {
 # Set of all supported game locales
 # This set is used for player presence management
 # and to group players together into communities
-SUPPORTED_LOCALES = frozenset(RECOGNIZED_TO_SUPPORTED_LOCALES.values())
+SUPPORTED_LOCALES = (
+    frozenset((DEFAULT_LOCALE,))
+    if NETSKRAFL
+    else frozenset(RECOGNIZED_TO_SUPPORTED_LOCALES.values())
+)
 
 
 class Locale(NamedTuple):
@@ -814,7 +818,7 @@ default_locale_explo = Locale(
     "en_US", "en_US", EnglishAlphabet, NewEnglishTileSet, "otcwl2014", "explo"
 )
 default_locale = (
-    default_locale_netskrafl if PROJECT_ID == "netskrafl" else default_locale_explo
+    default_locale_netskrafl if NETSKRAFL else default_locale_explo
 )
 
 # Use a context variable (thread local) to store the locale information

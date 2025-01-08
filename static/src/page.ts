@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -26,7 +26,7 @@ export {
 
 import {
   m, Vnode, VnodeAttrs, ComponentFunc, EventHandler,
-  MithrilEvent, MithrilDragEvent, VnodeChildren
+  MithrilEvent, VnodeChildren
 } from "mithril";
 
 import {
@@ -107,13 +107,14 @@ function main(state: GlobalState) {
     defaultRoute = settings.defaultRoute,
     root = document.getElementById("container");
 
+  if (!root) throw new Error("Root element (#container) not found");
   // Run the Mithril router
   m.route(root, defaultRoute, routeResolver);
 }
 
 type DialogFunc = (view: View, args: any) => m.vnode;
 
-interface DialogViews {
+interface DialogViews extends Record<string, DialogFunc> {
   userprefs: DialogFunc;
   userinfo: DialogFunc;
   challenge: DialogFunc;
@@ -291,7 +292,7 @@ class View {
     // we don't end up with a selected game tab that is not visible
     const model = this.model;
     if (model.game) {
-      if (model.state.uiFullscreen || model.state.uiLandscape) {
+      if (model.state?.uiFullscreen || model.state?.uiLandscape) {
         // In this case, there is no board tab:
         // show the movelist
         if (model.game.setSelectedTab("movelist"))
@@ -316,8 +317,8 @@ class View {
   resetScale() {
     // Reset the board scale (zoom) to 100% and the scroll origin to (0, 0)
     this.boardScale = 1.0;
-    var boardParent = document.getElementById("board-parent");
-    var board = boardParent.children[0];
+    const boardParent = document.getElementById("board-parent");
+    const board = boardParent?.children[0];
     if (board)
       board.setAttribute("style", "transform: scale(1.0)");
     if (boardParent)
@@ -334,29 +335,30 @@ class View {
       // Scroll a square above and to the left of the placed tile into view
       const offset = 3;
       let vec = toVector(sq);
-      let row = Math.max(0, vec.row - offset);
-      let col = Math.max(0, vec.col - offset);
-      let c = coord(row, col);
-      let el = document.getElementById("sq_" + c);
-      let boardParent = document.getElementById("board-parent");
-      let board = boardParent.children[0];
+      const row = Math.max(0, vec.row - offset);
+      const col = Math.max(0, vec.col - offset);
+      const c = coord(row, col);
+      const el = c ? document.getElementById("sq_" + c) : null;
+      const boardParent = document.getElementById("board-parent");
+      const board = boardParent?.children[0];
       // The following seems to be needed to ensure that
       // the transform and hence the size of the board has been 
       // updated in the browser, before calculating the client rects
       if (board)
         board.setAttribute("style", "transform: scale(1.5)");
-      let elRect = el.getBoundingClientRect();
-      let boardRect = boardParent.getBoundingClientRect();
-      boardParent.scrollTo(
-        {
-          left: elRect.left - boardRect.left,
-          top: elRect.top - boardRect.top,
-          behavior: "smooth"
-        }
-      );
+      const elRect = el?.getBoundingClientRect();
+      const boardRect = boardParent?.getBoundingClientRect();
+      if (boardParent && boardRect && elRect)
+        boardParent.scrollTo(
+          {
+            left: elRect.left - boardRect.left,
+            top: elRect.top - boardRect.top,
+            behavior: "smooth"
+          }
+        );
     }
 
-    if (!game || model.state.uiFullscreen || game.moveInProgress) {
+    if (!game || model.state?.uiFullscreen || game.moveInProgress) {
       // No game or we're in full screen mode: always 100% scale
       // Also, as soon as a move is being processed by the server, we zoom out
       this.boardScale = 1.0; // Needs to be done before setTimeout() call
@@ -365,12 +367,12 @@ class View {
     }
     let tp = game.tilesPlaced();
     let numTiles = tp.length;
-    if (numTiles == 1 && this.boardScale == 1.0) {
+    if (numTiles === 1 && this.boardScale === 1.0) {
       // Laying down first tile: zoom in & position
       this.boardScale = 1.5;
       setTimeout(() => scrollIntoView(tp[0]));
     }
-    else if (numTiles == 0 && this.boardScale > 1.0) {
+    else if (numTiles === 0 && this.boardScale > 1.0) {
       // Removing only remaining tile: zoom out
       this.boardScale = 1.0; // Needs to be done before setTimeout() call
       setTimeout(this.resetScale);
@@ -406,7 +408,7 @@ class View {
   vwUserId(): m.vnode | string {
     // User identifier at top right, opens user preferences
     const model = this.model;
-    if (model.state.userId == "")
+    if (!model.state?.userId)
       // Don't show the button if there is no logged-in user
       return "";
     return m(".userid",
@@ -422,19 +424,20 @@ class View {
     );
   }
 
-  TogglerReady: ComponentFunc<{}> = (initialVnode) => {
+  TogglerReady: ComponentFunc<{}> = () => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept challenges
 
     const model = this.model;
 
     function toggleFunc(state: boolean) {
-      model.state.ready = state;
+      if (model.state) model.state.ready = state;
       model.setUserPref({ ready: state });
     }
 
     return {
       view: () => {
+        if (!model.state) return undefined;
         return vwToggler(
           "ready", model.state.ready, 2, nbsp(), glyph("thumbs-up"), toggleFunc, true,
           ts("Tek við áskorunum!")
@@ -443,19 +446,20 @@ class View {
     };
   };
 
-  TogglerReadyTimed: ComponentFunc<{}> = (initialVnode) => {
+  TogglerReadyTimed: ComponentFunc<{}> = () => {
     // Toggle on left-hand side of main screen:
     // User ready and willing to accept timed challenges
 
     const model = this.model;
 
     function toggleFunc(state: boolean) {
-      model.state.readyTimed = state;
+      if (model.state) model.state.readyTimed = state;
       model.setUserPref({ ready_timed: state });
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
+        if (!model.state) return undefined;
         return vwToggler(
           "timed", model.state.readyTimed, 3, nbsp(), glyph("time"), toggleFunc, true,
           ts("Til í viðureign með klukku!")
@@ -486,23 +490,23 @@ class View {
       b.classList.toggle("over");
   }
 
-  Spinner: ComponentFunc<{}> = (initialVnode) => {
+  Spinner: ComponentFunc<{}, { ival: number; show: boolean; }> = () => {
     // Show a spinner wait box, after an initial delay
     const INITIAL_DELAY = 800; // milliseconds
     return {
       ival: 0,
       show: false,
-      oninit: function (vnode) {
+      oninit: function () {
         this.ival = setTimeout(() => {
           this.show = true; this.ival = 0; m.redraw();
         }, INITIAL_DELAY);
       },
-      onremove: function (vnode) {
+      onremove: function () {
         if (this.ival)
           clearTimeout(this.ival);
         this.ival = 0;
       },
-      view: function (vnode) {
+      view: function () {
         if (!this.show)
           return undefined;
         return m(
@@ -547,14 +551,14 @@ class View {
       function showAnswer(ev: Event, href: string) {
         // this points to the vnode
         vnode.state.selected = 1; // FAQ tab
-        vnode.dom.querySelector(href).scrollIntoView();
+        vnode.dom.querySelector(href)?.scrollIntoView();
         ev.preventDefault();
       }
 
       const anchors = vnode.dom.querySelectorAll("a");
       for (let anchor of anchors) {
-        let href = anchor.getAttribute("href");
-        if (href.slice(0, 5) == "#faq-")
+        const href = anchor.getAttribute("href");
+        if (href && href.slice(0, 5) === "#faq-")
           // This is a direct link to a question: wire it up
           anchor.onclick = (ev) => { showAnswer(ev, href); };
       }
@@ -562,7 +566,7 @@ class View {
         // Go to the FAQ tab and scroll the requested question into view
         selectTab(vnode, 1);
         vnode.state.selected = 1; // FAQ tab
-        vnode.dom.querySelector("#faq-" + faqNumber.toString()).scrollIntoView();
+        vnode.dom.querySelector("#faq-" + faqNumber.toString())?.scrollIntoView();
       }
     }
 
@@ -571,7 +575,7 @@ class View {
       m(LeftLogo),
       this.vwUserId(),
       m("main",
-        this.vwTabsFromHtml(model.helpHTML, "tabs", tabNumber, wireQuestions)
+        this.vwTabsFromHtml(model.helpHTML || "", "tabs", tabNumber, wireQuestions)
       )
     ]);
   }
@@ -581,14 +585,16 @@ class View {
   vwUserPrefsDialog() {
 
     const model = this.model;
-    let user = model.user;
-    let err = model.userErrors || {};
-    let view = this;
+    const user = model.user;
+    if (!user) throw new Error("User not defined");
+    const err = model.userErrors || {};
+    const view = this;
 
     function vwErrMsg(propname: string) {
       // Show a validation error message returned from the server
-      return err.hasOwnProperty(propname) ?
-        m(".errinput", [glyph("arrow-up"), nbsp(), err[propname]]) : "";
+      const emsg = err[propname];
+      if (!emsg) return "";
+      return m(".errinput", [glyph("arrow-up"), nbsp(), emsg]);
     }
 
     function playAudio(elemId: string) {
@@ -599,13 +605,14 @@ class View {
     }
 
     function getToggle(elemId: string) {
-      let cls2 = document.querySelector("#" + elemId + "-toggler #opt2").classList;
-      return cls2.contains("selected");
+      let cls2 = document.querySelector("#" + elemId + "-toggler #opt2")?.classList;
+      return (cls2 !== undefined) && cls2.contains("selected");
     }
 
     function validate() {
       // Move data back to the model.user object
       // before sending it to the server
+      if (!user) return; // Should not happen
       user.nickname = getInput("nickname");
       user.full_name = getInput("full_name");
       user.email = getInput("email");
@@ -639,7 +646,7 @@ class View {
                     m("span.caption", t("Einkenni:")),
                     m(TextInput,
                       {
-                        initialValue: user.nickname || "",
+                        initialValue: user?.nickname || "",
                         class: "username",
                         maxlength: 15,
                         id: "nickname",
@@ -656,7 +663,7 @@ class View {
                     m("span.caption", t("Fullt nafn:")),
                     m(TextInput,
                       {
-                        initialValue: user.full_name || "",
+                        initialValue: user?.full_name || "",
                         class: "fullname",
                         maxlength: 32,
                         id: "full_name",
@@ -672,7 +679,7 @@ class View {
                     m("span.caption", t("Tölvupóstfang:")),
                     m(TextInput,
                       {
-                        initialValue: user.email || "",
+                        initialValue: user?.email || "",
                         class: "email",
                         maxlength: 32,
                         id: "email",
@@ -749,11 +756,14 @@ class View {
               (ev) => {
                 // Invoke the friend promo dialog
                 ev.preventDefault();
-                logEvent("click_friend",
-                  {
-                    userid: model.state.userId, locale: model.state.locale
-                  }
-                );
+                if (model.state) {
+                  logEvent("click_friend",
+                    {
+                      userid: model.state.userId,
+                      locale: model.state.locale,
+                    }
+                  );
+                }
                 view.showFriendPromo();
               },
               [glyph("coffee-cup"), nbsp(), nbsp(), ts("Gerast vinur Netskrafls")], 12
@@ -794,7 +804,7 @@ class View {
     );
   }
 
-  vwFriend(args: {}): m.vnode {
+  vwFriend(_: {}): m.vnode {
     return m(FriendPromoteDialog,
       {
         view: this,
@@ -802,7 +812,7 @@ class View {
     );
   }
 
-  vwThanks(args: {}): m.vnode {
+  vwThanks(_: {}): m.vnode {
     return m(FriendThanksDialog,
       {
         view: this,
@@ -810,7 +820,7 @@ class View {
     );
   }
 
-  vwCancel(args: {}): m.vnode {
+  vwCancel(_: {}): m.vnode {
     return m(FriendCancelDialog,
       {
         view: this,
@@ -818,7 +828,7 @@ class View {
     );
   }
 
-  vwConfirm(args: {}): m.vnode {
+  vwConfirm(_: {}): m.vnode {
     return m(FriendCancelConfirmDialog,
       {
         view: this,
@@ -859,11 +869,11 @@ class View {
     const state = model.state;
     // TODO
     // const manual = state.hasPaid; // If paying user, allow manual challenges
-    const manual = state.plan !== ""; // If subscriber/friend, allow manual challenges
-    const fairPlay = item.fairplay && state.fairPlay; // Both users are fair-play
+    const manual = state !== null && state.plan !== ""; // If subscriber/friend, allow manual challenges
+    const fairPlay = item.fairplay && state !== null && state.fairPlay; // Both users are fair-play
     let manualChallenge = false;
     return {
-      view: (vnode) => {
+      view: () => {
         return m(".modal-dialog",
           { id: 'chall-dialog', style: { visibility: 'visible' } },
           m(".ui-widget.ui-widget-content.ui-corner-all", { id: 'chall-form' },
@@ -909,7 +919,7 @@ class View {
                           m("div", { id: 'chall-25', tabindex: 5 },
                             [glyph("time"), t("2 x 25 mínútur")]
                           ),
-                          state.runningLocal ? // !!! TODO Debugging aid
+                          (state && state.runningLocal) ? // !!! TODO Debugging aid
                             m("div", { id: 'chall-3', tabindex: 6 },
                               [glyph("time"), t("2 x 3 mínútur")]
                             )
@@ -987,9 +997,9 @@ class View {
                   tabindex: 9,
                   onclick: (ev: Event) => {
                     // Issue a new challenge
-                    let duration: string | number =
-                      document.querySelector("div.chall-time.selected").id.slice(6);
-                    if (duration == "none")
+                    const el = document.querySelector("div.chall-time.selected");
+                    let duration: string | number = el ? el.id.slice(6) : "none";
+                    if (duration === "none")
                       duration = 0;
                     else
                       duration = parseInt(duration);
@@ -1087,7 +1097,7 @@ class View {
         view.pushDialog("userinfo", { userid: userid, nick: nick, fullname: fullname });
       }
 
-      function vwGamelist(): m.vnode[] {
+      function vwGamelist(): (m.vnode | undefined)[] {
 
         function vwList(): m.vnode {
 
@@ -1185,7 +1195,7 @@ class View {
           return m("div", { id: 'gamelist' }, viewGameList());
         }
 
-        function vwHint(): m.vnode {
+        function vwHint(): m.vnode | undefined {
           // Show some help if the user has no games in progress
           if (model.loadingGameList || model.gameList === undefined ||
             (model.gameList !== null && model.gameList.length > 0))
@@ -1288,13 +1298,15 @@ class View {
               ev.preventDefault();
               if (!model.moreGamesAllowed()) {
                 // User must be a friend to be able to accept more challenges
-                logEvent("hit_game_limit",
-                  {
-                    userid: model.state.userId,
-                    locale: model.state.locale,
-                    limit: model.maxFreeGames
-                  }
-                );
+                if (model.state) {
+                  logEvent("hit_game_limit",
+                    {
+                      userid: model.state.userId,
+                      locale: model.state.locale,
+                      limit: model.maxFreeGames
+                    }
+                  );
+                }
                 // Promote a subscription to Netskrafl/Explo
                 view.showFriendPromo();
                 return;
@@ -1454,10 +1466,10 @@ class View {
       function vwUserButton(id: string, icon: string, text: string): m.vnode {
         // Select the type of user list (robots, fav, alike, elo)
         const sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-        const spec = (id == "elo") ? "human" : "";
+        const spec = (id === "elo") ? "human" : "";
         return m("span",
           {
-            className: (id == sel ? "shown" : ""),
+            className: (id === sel ? "shown" : ""),
             id: id,
             onclick: (ev) => {
               model.loadUserList({ query: id, spec: spec }, true);
@@ -1468,7 +1480,7 @@ class View {
         );
       }
 
-      function vwUserList(): m.vnode[] {
+      function vwUserList(): (m.vnode | undefined)[] {
 
         function vwList(list: UserListItem[]) {
 
@@ -1585,8 +1597,10 @@ class View {
         }
 
         // The type of list to show; by default it's 'robots'
-        const listType = model.userListCriteria ? model.userListCriteria.query : "robots";
-        if (listType == "elo")
+        const query = model.userListCriteria?.query || "";
+        const spec = model.userListCriteria?.spec || "";
+        const listType = query || "robots";
+        if (listType === "elo")
           // Show Elo list
           return [ m(EloPage, { id: "elolist", view: view }) ];
         // Show normal user list
@@ -1596,13 +1610,12 @@ class View {
           /* pass */
         }
         else
-        if (model.userList === null || model.userListCriteria.query != listType)
+        if (model.userList === null || query !== listType)
           model.loadUserList({ query: listType, spec: "" }, true);
         else
           list = model.userList;
-        const nothingFound = list.length === 0 && model.userListCriteria !== undefined &&
-          listType == "search" && model.userListCriteria.spec !== "";
-        const robotList = listType == "robots";
+        const nothingFound = list.length === 0 && listType === "search" && spec !== "";
+        const robotList = listType === "robots";
         return [
           m(".listitem.listheader",
             [
@@ -1622,7 +1635,7 @@ class View {
               [
                 glyph("search"),
                 " ",
-                m("span", { id: "search-prefix" }, model.userListCriteria.spec),
+                m("span", { id: "search-prefix" }, spec),
                 t(" finnst ekki")
               ]
             )
@@ -1756,34 +1769,33 @@ class View {
     let apl1 = game && game.autoplayer[1];
     let nick0 = game ? game.nickname[0] : "";
     let nick1 = game ? game.nickname[1] : "";
-    let player: number = game ? game.player : 0;
+    let player: number = game?.player ?? 0;
     let localturn: boolean = game ? game.localturn : false;
     let tomove: string;
     let gameover = game ? game.over : true;
 
     function lookAtPlayer(ev: Event, player: number, side: number) {
-      if (!state.uiFullscreen)
+      if (!state?.uiFullscreen || !game)
         // Don't do anything on mobile, and allow the click
         // to propagate to the parent
         return;
       if (player === 0 || player === 1) {
-        if (player == side) {
+        if (player === side) {
           // The player is clicking on himself:
           // overlay a user preference dialog
           view.pushDialog("userprefs");
         }
-        else
-          if (!game.autoplayer[side]) {
-            // The player is clicking on the opponent:
-            // show the opponent's track record, if not an autoplayer
-            view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
-          }
+        else if (!game.autoplayer[side]) {
+          // The player is clicking on the opponent:
+          // show the opponent's track record, if not an autoplayer
+          view.showUserInfo(game.userid[side], game.nickname[side], game.fullname[side]);
+        }
       }
       ev.stopPropagation();
       ev.preventDefault();
     }
 
-    if (side == "left") {
+    if (side === "left") {
       // Left side player
       if (apl0)
         // Player 0 is a robot (autoplayer)
@@ -1807,7 +1819,7 @@ class View {
     }
   }
 
-  vwTwoLetter: ComponentFunc<{}> = (initialVnode) => {
+  vwTwoLetter: ComponentFunc<{}> = () => {
 
     // The two-letter-word list tab
     const model = this.model;
@@ -1818,15 +1830,16 @@ class View {
       // render the former letter in bold
       if (!bold)
         return m(".twoletter-word", w);
-      if (page == 0)
+      if (page === 0)
         return m(".twoletter-word", [m("b", w[0]), w[1]]);
       else
         return m(".twoletter-word", [w[0], m("b", w[1])]);
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) return undefined;
         const twoLetters = game.twoLetterWords();
         const twoLetterWords = twoLetters[page];
         let twoLetterList = [];
@@ -1834,7 +1847,7 @@ class View {
           let twl = tw[1];
           let sublist: m.vnode[] = [];
           for (let j = 0; j < twl.length; j++)
-            sublist.push(renderWord(j == 0, twl[j]));
+            sublist.push(renderWord(j === 0, twl[j]));
           twoLetterList.push(
             m(".twoletter-group", sublist)
           );
@@ -1848,7 +1861,7 @@ class View {
           // Show the requested page
           m(".twoletter-area" + (game.showClock() ? ".with-clock" : ""),
             {
-              title: page == 0 ?
+              title: page === 0 ?
                 ts("Smelltu til að raða eftir seinni staf") :
                 ts("Smelltu til að raða eftir fyrri staf")
             },
@@ -1939,7 +1952,7 @@ class View {
               title: ts("Loka þessari hjálp"),
               onclick: (ev) => {
                 // Close the guide and set a preference not to see it again
-                state.beginner = false;
+                if (state) state.beginner = false;
                 model.setUserPref({ beginner: false });
                 ev.preventDefault();
               }
@@ -1964,7 +1977,7 @@ class View {
 
       function vwClock() {
         // Show clock data if this is a timed game
-        if (!game.showClock())
+        if (!game?.showClock())
           // Not a timed game, or a game that is completed
           return m.fragment({}, []);
 
@@ -2005,11 +2018,11 @@ class View {
               )
             ),
             m(".playerwrapper", [
-              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".leftplayer" + (player === 1 ? ".autoplayercolor" : ".humancolor"), [
                 m(".player", view.vwPlayerName("left")),
                 m(".scorewrapper", m(".scoreleft", sc0)),
               ]),
-              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".rightplayer" + (player === 1 ? ".humancolor" : ".autoplayercolor"), [
                 m(".player", view.vwPlayerName("right")),
                 m(".scorewrapper", m(".scoreright", sc1)),
               ]),
@@ -2027,7 +2040,7 @@ class View {
         // A container for the tabbed right-side area components
         const sel = game?.sel || "movelist";
         // Show the chat tab unless the opponent is an autoplayer
-        let component: m.vnode = null;
+        let component: m.vnode | null = null;
         switch (sel) {
           case "movelist":
             component = view.vwMovelist();
@@ -2045,22 +2058,24 @@ class View {
             break;
         }
         const tabgrp = view.vwTabGroup();
-        return m(".right-area" + (game.showClock() ? ".with-clock" : ""),
+        return m(".right-area" + (game?.showClock() ? ".with-clock" : ""),
           component ? [tabgrp, component] : [tabgrp]
         );
       }
 
+      // @ts-ignore: ts(6133) - Suppress unused variable warning
       function vwRightMessage(): m.vnode {
         // Display a status message in the mobile UI
+        if (!game) return m.fragment({}, []); // Should not happen
         let s = view.buttonState(game);
         let msg: string | any[] = "";
-        let player = game.player;
+        let player = game.player ?? 0;
         let opp = game.nickname[1 - player];
         let move = game.moves.length ? game.moves[game.moves.length - 1] : undefined;
         let mtype = move ? move[1][1] : undefined;
         if (s.congratulate) {
           // This player won
-          if (mtype == "RSGN")
+          if (mtype === "RSGN")
             msg = [m("strong", [opp, " resigned!"]), " Congratulations."];
           else
             msg = [m("strong", ["You beat ", opp, "!"]), " Congratulations."];
@@ -2087,30 +2102,29 @@ class View {
         }
         else {
           let co = move[1][0];
-          let tiles = mtype;
+          let tiles = mtype || "";
           let score = move[1][2];
-          if (co == "") {
+          if (co === "") {
             // Not a regular tile move
-            if (tiles == "PASS")
+            if (tiles === "PASS")
               msg = [opp, " passed."];
             else if (tiles.indexOf("EXCH") === 0) {
               const numtiles = tiles.slice(5).length;
               msg = [
                 opp, " exchanged ",
                 numtiles.toString(),
-                (numtiles == 1 ? " tile" : " tiles"),
+                (numtiles === 1 ? " tile" : " tiles"),
                 "."
               ];
-            } else if (tiles == "CHALL") {
+            } else if (tiles === "CHALL") {
               msg = [opp, " challenged your move."];
-            } else if (tiles == "RESP") {
+            } else if (tiles === "RESP") {
               if (score < 0)
                 msg = [opp, " successfully challenged your move."];
               else
                 msg = [opp, " unsuccessfully challenged your move and lost 10 points."];
             }
-          }
-          else {
+          } else {
             // Regular tile move
             tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
             msg = [opp, " played ", m("strong", tiles),
@@ -2139,7 +2153,8 @@ class View {
         // thereby transferring them back to the rack
         ondragenter: (ev) => {
           ev.preventDefault();
-          ev.dataTransfer.dropEffect = 'move';
+          if (ev.dataTransfer)
+            ev.dataTransfer.dropEffect = 'move';
           ev.redraw = false;
           return false;
         },
@@ -2152,9 +2167,9 @@ class View {
         ondrop: (ev) => {
           ev.stopPropagation();
           // Move the tile from the board back to the rack
-          const from = ev.dataTransfer.getData("text");
+          const from = ev.dataTransfer?.getData("text") || "";
           // Move to the first available slot in the rack
-          game.attemptMove(from, "R1");
+          if (from) game.attemptMove(from, "R1");
           this.updateScale(game);
           return false;
         }
@@ -2167,14 +2182,14 @@ class View {
               vwRightColumn(),
               m(this.BoardArea),
               // The bag is visible in fullscreen
-              state.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "",
+              state?.uiFullscreen ? m(this.Bag, { bag: bag, newbag: newbag }) : "",
               game.askingForBlank ? m(this.BlankDialog) : ""
             ]
           )
         ),
         // The left margin stuff: back button, square color help, info/help button
         m(LeftLogo),
-        state.beginner ? vwBeginner() : "",
+        state?.beginner ? vwBeginner() : "",
         m(Info)
       ]
     );
@@ -2188,16 +2203,15 @@ class View {
     const view = this;
     const model = this.model;
     const game = model.game;
-    const state = model.state;
-    let moveIndex = model.reviewMove;
-    let bestMoves = model.bestMoves || [];
+    const moveIndex = model.reviewMove ?? 0;
+    const bestMoves = model.bestMoves || [];
 
     function vwRightColumn(): m.vnode {
       // A container for the right-side header and area components
 
       function vwRightHeading(): m.vnode {
         // The right-side heading on the game screen
-
+        if (!game) return m.fragment({}, []); // Should not happen
         const fairplay = game.fairplay;
         const player = game.player;
         let sc0 = "";
@@ -2208,7 +2222,7 @@ class View {
           for (let i = 0; i < moveIndex; i++) {
             // Add up the scores until and including this move
             let m = game.moves[i];
-            if (i % 2 == 0)
+            if (i % 2 === 0)
               s0 += m[1][2];
             else
               s1 += m[1][2];
@@ -2219,11 +2233,11 @@ class View {
         return m(".heading",
           [
             m(".playerwrapper", [
-              m(".leftplayer" + (player == 1 ? ".autoplayercolor" : ".humancolor"), [
+              m(".leftplayer" + (player === 1 ? ".autoplayercolor" : ".humancolor"), [
                 m(".player", view.vwPlayerName("left")),
                 m(".scorewrapper", m(".scoreleft", sc0)),
               ]),
-              m(".rightplayer" + (player == 1 ? ".humancolor" : ".autoplayercolor"), [
+              m(".rightplayer" + (player === 1 ? ".humancolor" : ".autoplayercolor"), [
                 m(".player", view.vwPlayerName("right")),
                 m(".scorewrapper", m(".scoreright", sc1)),
               ]),
@@ -2266,6 +2280,7 @@ class View {
   vwTabGroup(): m.vnode {
     // A group of clickable tabs for the right-side area content
     const game = this.model.game;
+    if (!game) return m.fragment({}, []); // Should not happen
     let showchat = game ? !(game.autoplayer[0] || game.autoplayer[1]) : false;
     let r: m.vnode[] = [
       this.vwTab("board", ts("Borðið"), "grid"),
@@ -2284,7 +2299,7 @@ class View {
         },
         // Show chat icon in red if any chat messages have not been seen
         // and the chat tab is not already selected
-        !game.chatSeen && game.sel != "chat")
+        !game.chatSeen && game.sel !== "chat")
       );
     }
     return m.fragment({}, r);
@@ -2294,7 +2309,7 @@ class View {
     // A clickable tab for the right-side area content
     const game = this.model.game;
     const sel = game?.sel || "movelist";
-    return m(".right-tab" + (sel == tabid ? ".selected" : ""),
+    return m(".right-tab" + (sel === tabid ? ".selected" : ""),
       {
         id: "tab-" + tabid,
         className: alert ? "alert" : "",
@@ -2307,7 +2322,7 @@ class View {
               if (funcSel !== undefined) {
                 funcSel();
               }
-              if (tabid == "movelist")
+              if (tabid === "movelist")
                 setTimeout(this.scrollMovelistToBottom);
             }
           }
@@ -2349,12 +2364,12 @@ class View {
       return Math.round((dtTo - dtFrom) / 1000.0);
     }
 
-    let dtLastMsg: number = null;
+    let dtLastMsg: number | null = null;
 
-    function makeTimestamp(ts: string, key: number): m.vnode {
+    function makeTimestamp(ts: string, key: number): m.vnode | null {
       // Decode the ISO format timestamp we got from the server
       let dtTs = dateFromTimestamp(ts);
-      let result: m.vnode = null;
+      let result: m.vnode | null = null;
       if (dtLastMsg === null || timeDiff(dtLastMsg, dtTs) >= 5 * 60) {
         // If 5 minutes or longer interval between messages,
         // insert a time
@@ -2383,7 +2398,7 @@ class View {
 
     function replaceEmoticons(str: string): string {
       // Replace all emoticon shortcuts in the string str with a corresponding image URL
-      const emoticons = model.state.emoticons;
+      const emoticons = model.state?.emoticons || [];
       for (const emoticon of emoticons)
         if (str.indexOf(emoticon.icon) >= 0) {
           // The string contains the emoticon: prepare to replace all occurrences
@@ -2397,12 +2412,13 @@ class View {
 
     function chatMessages(): m.vnode[] {
       let r: m.vnode[] = [];
-      if (game?.chatLoading || !game.messages)
+      if (!game || !model.state) return r;
+      if (game.chatLoading || !game.messages)
         return r;
       var key = 0;
       for (const msg of game.messages) {
-        let p = player;
-        if (msg.from_userid != model.state.userId)
+        let p = player ?? 0;
+        if (msg.from_userid !== model.state.userId)
           p = 1 - p;
         const mTs = makeTimestamp(msg.ts, key);
         if (mTs !== null) {
@@ -2453,7 +2469,7 @@ class View {
         // key: uuid
       },
       [
-        m(".chat-area" + (game.showClock() ? ".with-clock" : ""),
+        m(".chat-area" + (game?.showClock() ? ".with-clock" : ""),
           {
             id: 'chat-area',
             // Make sure that we see the bottom-most chat message
@@ -2474,7 +2490,7 @@ class View {
                 oncreate: (vnode) => { focus(vnode); },
                 onupdate: (vnode) => { focus(vnode); },
                 onkeypress: (ev: KeyboardEvent) => {
-                  if (ev.key == "Enter") { sendMessage(); ev.preventDefault(); }
+                  if (ev.key === "Enter") { sendMessage(); ev.preventDefault(); }
                 }
               }
             ),
@@ -2501,32 +2517,31 @@ class View {
     const state = model.state;
 
     function movelist(): m.vnode[] {
-      let mlist = game ? game.moves : []; // All moves made so far in the game
-      let r: m.vnode[] = [];
+      const mlist = game ? game.moves : []; // All moves made so far in the game
+      const r: m.vnode[] = [];
       let leftTotal = 0;
       let rightTotal = 0;
       for (let i = 0; i < mlist.length; i++) {
-        let move = mlist[i];
-        let [player, [co, tiles, score]] = move;
+        const move = mlist[i];
+        const [player, [co, tiles, score]] = move;
         if (player === 0)
           leftTotal = Math.max(leftTotal + score, 0);
         else
           rightTotal = Math.max(rightTotal + score, 0);
-        r.push(
-          view.vwMove(move,
-            {
-              key: i.toString(),
-              leftTotal: leftTotal, rightTotal: rightTotal,
-              player: player, co: co, tiles: tiles, score: score
-            }
-          )
+        const vm = view.vwMove(move,
+          {
+            key: i.toString(),
+            leftTotal, rightTotal,
+            player, co, tiles, score,
+          }
         );
+        vm && r.push(vm);
       }
       return r;
     }
 
-    let bag = game ? game.bag : "";
-    let newbag = game ? game.newbag : true;
+    const bag = game?.bag || "";
+    const newbag = game?.newbag ? true : false;
     return m(".movelist-container",
       [
         m(".movelist",
@@ -2536,7 +2551,7 @@ class View {
           movelist()
         ),
         // Show the bag here on mobile
-        state.uiFullscreen ? "" : m(this.Bag, { bag: bag, newbag: newbag })
+        state?.uiFullscreen ? "" : m(this.Bag, { bag: bag, newbag: newbag })
       ]
     );
   }
@@ -2562,26 +2577,26 @@ class View {
       else {
         /* Not a regular tile move */
         wrdclass = "othermove";
-        if (tiles == "PASS")
+        if (tiles === "PASS")
           /* Pass move */
           dispText = ts("Pass");
         else
         if (tiles.indexOf("EXCH") === 0) {
           /* Exchange move - we don't show the actual tiles exchanged, only their count */
           let numtiles = tiles.slice(5).length
-          const letters = ts(numtiles == 1 ? "letter" : "letters");
+          const letters = ts(numtiles === 1 ? "letter" : "letters");
           dispText = ts("exchanged", { numtiles: numtiles.toString(), letters: letters });
         }
         else
-        if (tiles == "RSGN")
+        if (tiles === "RSGN")
           /* Resigned from game */
           dispText = ts("Gaf viðureign");
         else
-        if (tiles == "CHALL")
+        if (tiles === "CHALL")
           /* Challenge issued */
           dispText = ts("Véfengdi lögn");
         else
-        if (tiles == "RESP") {
+        if (tiles === "RESP") {
           /* Challenge response */
           if (score < 0)
             dispText = ts("Óleyfileg lögn");
@@ -2589,12 +2604,12 @@ class View {
             dispText = ts("Röng véfenging");
         }
         else
-        if (tiles == "TIME") {
+        if (tiles === "TIME") {
           /* Score adjustment for time */
           dispText = ts("Umframtími");
         }
         else
-        if (tiles == "OVER") {
+        if (tiles === "OVER") {
           /* Game over */
           dispText = ts("Viðureign lokið");
           wrdclass = "gameover";
@@ -2603,7 +2618,7 @@ class View {
           // The rack leave at the end of the game (which is always in lowercase
           // and thus cannot be confused with the above abbreviations)
           wrdclass = "othermove";
-          if (tiles == "--")
+          if (tiles === "--")
             dispText = ts("Stafaleif: (engin)");
           else
             dispText = [ts("Stafaleif: "), m("i", tiles)];
@@ -2618,29 +2633,27 @@ class View {
     }
 
     function bestMoveList(): m.vnode[] {
-      let r: m.vnode[] = [];
+      const r: m.vnode[] = [];
+      const moves = game?.moves || [];
       // Use a 1-based index into the move list
       // (We show the review summary if move==0)
-      if (!moveIndex || moveIndex > game.moves.length)
+      if (!moveIndex || moveIndex > moves.length)
         return r;
       // Prepend a header that describes the move being reviewed
-      let m = game.moves[moveIndex - 1];
-      let co = m[1][0];
-      let tiles = m[1][1];
-      let score = m[1][2];
+      const m = moves[moveIndex - 1];
+      const [co, tiles, score] = m[1];
       r.push(bestHeader(co, tiles, score));
-      let mlist = bestMoves;
+      const mlist = bestMoves;
       for (let i = 0; i < mlist.length; i++) {
-        let [player, [co, tiles, score]] = mlist[i];
-        r.push(
-          view.vwBestMove(moveIndex, i, mlist[i],
-            {
-              key: i.toString(),
-              player: player, co: co, tiles: tiles,
-              score: score, leftTotal: 0, rightTotal: 0
-            }
-          )
-        );
+        const [player, [co, tiles, score]] = mlist[i];
+        const bm = view.vwBestMove(moveIndex, i, mlist[i],
+          {
+            key: i.toString(),
+            player: player, co: co, tiles: tiles,
+            score: score, leftTotal: 0, rightTotal: 0
+          }
+        )
+        bm && r.push(bm);
       }
       return r;
     }
@@ -2671,19 +2684,21 @@ class View {
 
     const view = this;
     const model = this.model;
+    if (!model.game) return undefined; // Should not happen
     const game = model.game;
     const state = model.state;
 
     function highlightMove(co: string, tiles: string, playerColor: 0 | 1, show: boolean) {
       /* Highlight a move's tiles when hovering over it in the move list */
+      if (game === null) return; // Should not happen
       const vec = toVector(co);
       let col = vec.col;
       let row = vec.row;
       for (const tile of tiles) {
-        if (tile == '?')
+        if (tile === '?')
           continue;
         const sq = coord(row, col);
-        if (game.tiles.hasOwnProperty(sq))
+        if (sq !== null && game.tiles.hasOwnProperty(sq))
           game.tiles[sq].highlight = show ? playerColor : undefined;
         col += vec.dx;
         row += vec.dy;
@@ -2708,10 +2723,10 @@ class View {
             {
               onclick: (ev) => {
                 ev.preventDefault();
-                if (state.hasPaid) {
+                if (state?.hasPaid) {
                   // Show the game review
-                  m.route.set("/review/" + game.uuid);
-                  if (game !== null && game !== undefined) {
+                  if (game !== null && game !== undefined && game.uuid) {
+                    m.route.set("/review/" + game.uuid);
                     // Log an event for this action
                     logEvent("game_review",
                       {
@@ -2723,11 +2738,12 @@ class View {
                 }
                 else {
                   // Show a friend promotion dialog
-                  logEvent("click_review",
-                    {
-                      userid: model.state.userId, locale: model.state.locale
-                    }
-                  );
+                  if (model.state)
+                    logEvent("click_review",
+                      {
+                        userid: model.state.userId, locale: model.state.locale
+                      }
+                    );
                   view.showFriendPromo();
                 }
               }
@@ -2745,7 +2761,7 @@ class View {
     if (co === "") {
       /* Not a regular tile move */
       wrdclass = "othermove";
-      if (tiles == "PASS") {
+      if (tiles === "PASS") {
         /* Pass move */
         tiles = " " + ts("Pass") + " ";
         score = "";
@@ -2754,23 +2770,23 @@ class View {
       if (tiles.indexOf("EXCH") === 0) {
         /* Exchange move - we don't show the actual tiles exchanged, only their count */
         let numtiles = tiles.slice(5).length;
-        const letters = ts(numtiles == 1 ? "letter" : "letters");
+        const letters = ts(numtiles === 1 ? "letter" : "letters");
         // Exchanged {numtiles} {letters}
         tiles = " " + ts("exchanged", { numtiles: numtiles.toString(), letters: letters }) + " ";
         score = "";
       }
       else
-      if (tiles == "RSGN")
+      if (tiles === "RSGN")
         /* Resigned from game */
         tiles = " " + ts("Gaf viðureign") + " ";
       else
-      if (tiles == "CHALL") {
+      if (tiles === "CHALL") {
         /* Challenge issued */
         tiles = " " + ts("Véfengdi lögn") + " ";
         score = "";
       }
       else
-      if (tiles == "RESP") {
+      if (tiles === "RESP") {
         /* Challenge response */
         if (score < 0) {
           // Invalid move
@@ -2782,12 +2798,12 @@ class View {
           tiles = " " + ts("Röng véfenging") + " ";
       }
       else
-      if (tiles == "TIME") {
+      if (tiles === "TIME") {
         /* Overtime adjustment, 'Extra time' */
         tiles = " " + ts("Umframtími") + " ";
       }
       else
-      if (tiles == "OVER") {
+      if (tiles === "OVER") {
         /* Game over */
         tiles = ts("Viðureign lokið");
         wrdclass = "gameover";
@@ -2805,7 +2821,7 @@ class View {
       tiles = tiles.split("?").join(""); /* TBD: Display wildcard characters differently? */
       tileMoveIncrement = 1;
     }
-    if (wrdclass == "gameover")
+    if (wrdclass === "gameover")
       // Game over message at bottom of move list
       return gameOverMove(tiles);
     // Normal game move
@@ -2813,16 +2829,16 @@ class View {
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
+    if (player === lcp || (lcp === -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
       playerColor = 1;
     }
     let attribs: VnodeAttrs = { };
-    if (state.uiFullscreen && tileMoveIncrement > 0) {
+    if (state?.uiFullscreen && tileMoveIncrement > 0) {
       if (!game.manual) {
-        if (game.locale == "is_IS") {
+        if (game.locale === "is_IS") {
           // Tile move and not a manual game: allow word lookup for Icelandic
           attribs.onclick = () => { window.open('https://malid.is/leit/' + tiles, 'malid'); };
           attribs.title = title;
@@ -2830,11 +2846,11 @@ class View {
       }
       // Highlight the move on the board while hovering over it
       attribs.onmouseout = () => {
-        move["highlighted"] = false;
+        move[2] = false; // Not highlighted
         highlightMove(rawCoord, tiles, playerColor, false);
       };
       attribs.onmouseover = () => {
-        move["highlighted"] = true;
+        move[2] = true; // Highlighted
         highlightMove(rawCoord, tiles, playerColor, true);
       };
     }
@@ -2842,8 +2858,8 @@ class View {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), leftTotal),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
+          m("span.total" + (player === lcp ? ".human" : ".autoplayer"), leftTotal),
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span." + wrdclass, [m("i", tiles), nbsp(), co])
         ]
       );
@@ -2853,8 +2869,8 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span." + wrdclass, [co, nbsp(), m("i", tiles)]),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
-          m("span.total" + (player == lcp ? ".human" : ".autoplayer"), rightTotal)
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
+          m("span.total" + (player === lcp ? ".human" : ".autoplayer"), rightTotal)
         ]
       );
     }
@@ -2864,6 +2880,7 @@ class View {
     // Displays a move in a list of best available moves
 
     const model = this.model;
+    if (!model.game) return undefined; // Should not happen
     const game = model.game;
     let player = info.player;
     let co = info.co;
@@ -2882,12 +2899,13 @@ class View {
         game.placeTiles(moveIndex - 1, true); // No highlight
       }
       for (let tile of tiles) {
-        if (tile == "?") {
+        if (tile === "?") {
           nextBlank = true;
           continue;
         }
-        let sq = coord(row, col);
-        let letter = tile;
+        const sq = coord(row, col);
+        if (sq === null) continue; // Should not happen
+        const letter = tile;
         if (nextBlank)
           tile = '?';
         const tscore = game.tilescore(tile);
@@ -2918,7 +2936,7 @@ class View {
       }
       if (!show) {
         model.highlightedMove = null;
-        game.placeTiles(model.reviewMove);
+        game.placeTiles(model.reviewMove ?? undefined);
       }
     }
 
@@ -2933,7 +2951,7 @@ class View {
     let playerColor: 0 | 1 = 0;
     let lcp = game.player;
     let cls: string;
-    if (player === lcp || (lcp == -1 && player === 0)) // !!! FIXME: Check -1 case
+    if (player === lcp || (lcp === -1 && player === 0)) // !!! FIXME: Check -1 case
       cls = "humangrad" + (player === 0 ? "_left" : "_right"); /* Local player */
     else {
       cls = "autoplayergrad" + (player === 0 ? "_left" : "_right"); /* Remote player */
@@ -2941,22 +2959,22 @@ class View {
     }
     let attribs: VnodeAttrs = { title: title };
     // Word lookup, if Icelandic game
-    if (game.locale == "is_IS")
+    if (game.locale === "is_IS")
       attribs.onclick = () => { window.open('https://malid.is/leit/' + word, 'malid'); };
     // Highlight the move on the board while hovering over it
     attribs.onmouseover = () => {
-      move["highlighted"] = true;
+      move[2] = true; // Highlighted
       highlightMove(rawCoord, tiles, playerColor, true);
     };
     attribs.onmouseout = () => {
-      move["highlighted"] = false;
+      move[2] = false; // Not highlighted
       highlightMove(rawCoord, tiles, playerColor, false);
     };
     if (player === 0) {
       // Move by left side player
       return m(".move.leftmove." + cls, attribs,
         [
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score),
+          m("span.score" + (move[2] ? ".highlight" : ""), score),
           m("span.wordmove", [m("i", word), nbsp(), co])
         ]
       );
@@ -2966,7 +2984,7 @@ class View {
       return m(".move.rightmove." + cls, attribs,
         [
           m("span.wordmove", [co, nbsp(), m("i", word)]),
-          m("span.score" + (move["highlighted"] ? ".highlight" : ""), score)
+          m("span.score" + (move[2] ? ".highlight" : ""), score)
         ]
       );
     }
@@ -2994,7 +3012,7 @@ class View {
       let game = model.game;
       let gameId = game ? game.uuid : "";
       for (let item of gameList) {
-        if (item.uuid == gameId)
+        if (item.uuid === gameId)
           continue; // Don't show this game
         if (!item.my_turn && !item.zombie)
           continue; // Only show pending games
@@ -3031,7 +3049,7 @@ class View {
     return m(".games", { style: "z-index: 6" }, games());
   }
 
-  Bag: ComponentFunc<{ bag: string; newbag: boolean; }> = (initialVnode) => {
+  Bag: ComponentFunc<{ bag: string; newbag: boolean; }> = () => {
     // The bag of tiles
 
     function tiles(bag: string): m.vnode[] {
@@ -3044,7 +3062,7 @@ class View {
         // Columns: max BAG_TILES_PER_LINE tiles per row
         for (let i = 0; i < BAG_TILES_PER_LINE && count > 0; i++) {
           let tile = bag[ix++];
-          if (tile == "?")
+          if (tile === "?")
             // Show wildcard tiles '?' as blanks
             tile = "&nbsp;";
           cols.push(m("td", m.trust(tile)));
@@ -3072,7 +3090,7 @@ class View {
     };
   };
 
-  BlankDialog: ComponentFunc<{}> = (initialVnode) => {
+  BlankDialog: ComponentFunc<{}> = () => {
     // A dialog for choosing the meaning of a blank tile
 
     const model = this.model;
@@ -3107,8 +3125,9 @@ class View {
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) throw new Error("No game"); // Should not happen
         return m(".modal-dialog",
           {
             id: 'blank-dialog',
@@ -3124,7 +3143,7 @@ class View {
                 {
                   id: 'blank-close',
                   title: ts("Hætta við"),
-                  onclick: (ev: Event) => {
+                  onclick: (ev) => {
                     ev.preventDefault();
                     game.cancelBlankDialog();
                   }
@@ -3138,11 +3157,11 @@ class View {
     };
   };
 
-  BoardArea: ComponentFunc<{}> = (initialVnode) => {
+  BoardArea: ComponentFunc<{}> = () => {
     // Collection of components in the board (left-side) area
     const model = this.model;
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
         let r: VnodeChildren = [];
         if (game) {
@@ -3160,7 +3179,7 @@ class View {
     };
   };
 
-  BoardReview: ComponentFunc<{ moveIndex: number; }> = (initialVnode) => {
+  BoardReview: ComponentFunc<{ moveIndex: number; }> = () => {
     // The board area within a game review screen
     const model = this.model;
     return {
@@ -3182,32 +3201,33 @@ class View {
     };
   }
 
-  Tile: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  Tile: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Display a tile on the board or in the rack
     const model = this.model;
     return {
       view: (vnode) => {
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         const coord = vnode.attrs.coord;
-        const isRackTile = coord[0] == 'R';
+        const isRackTile = coord[0] === 'R';
         // Tile laid down by the opponent
         const opponent = vnode.attrs.opponent;
         // A single tile, on the board or in the rack
         const t = game.tiles[coord];
         let classes = [".tile"];
         let attrs: VnodeAttrs = {};
-        if (t.tile == '?')
+        if (t.tile === '?')
           classes.push("blanktile");
-        if (t.letter == 'q')
+        if (t.letter === 'q')
           // Extra wide letter: handle specially
           classes.push("extra-wide");
-        else if (t.letter == 'z' || t.letter == 'x' || t.letter == 'm' || t.letter == 'æ')
+        else if (t.letter === 'z' || t.letter === 'x' || t.letter === 'm' || t.letter === 'æ')
           // Wide letter: handle specially
           classes.push("wide");
         if (isRackTile || t.draggable) {
           // Rack tile, or at least a draggable one
           classes.push(opponent ? "freshtile" : "racktile");
-          if (isRackTile && game.showingDialog == "exchange") {
+          if (isRackTile && game.showingDialog === "exchange") {
             // Rack tile, and we're showing the exchange dialog
             if (t.xchg)
               // Chosen as an exchange tile
@@ -3232,7 +3252,7 @@ class View {
           const delay = (t.index * ANIMATION_STEP).toString() + "ms";
           attrs.style = `animation-delay: ${delay}; -webkit-animation-delay: ${delay};`;
         }
-        if (coord == game.selectedSq)
+        if (coord === game.selectedSq)
           // Currently selected square
           classes.push("sel"); // Blinks red
         if (t.highlight !== undefined) {
@@ -3253,8 +3273,10 @@ class View {
               // ev.preventDefault();
               game.selectedSq = null;
               // (ev.target as HTMLElement).classList.toggle("ui-draggable-dragging", true);
-              ev.dataTransfer.effectAllowed = "move"; // "copyMove"
-              ev.dataTransfer.setData("text", coord);
+              if (ev.dataTransfer) {
+                ev.dataTransfer.effectAllowed = "move"; // "copyMove"
+                ev.dataTransfer.setData("text", coord);
+              }
               ev.redraw = false;
               // return false;
             };
@@ -3266,7 +3288,7 @@ class View {
             };
             attrs.onclick = (ev) => {
               // When clicking a tile, make it selected (blinking)
-              if (coord == game.selectedSq)
+              if (coord === game.selectedSq)
                 // Clicking again: deselect
                 game.selectedSq = null;
               else
@@ -3277,13 +3299,13 @@ class View {
           }
         }
         return m(classes.join("."), attrs,
-          [t.letter == ' ' ? nbsp() : t.letter, m(".letterscore", t.score)]
+          [t.letter === ' ' ? nbsp() : t.letter, m(".letterscore", t.score)]
         );
       }
     };
   }
 
-  TileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  TileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Return a td element that wraps a tile on the board.
     // If the opponent flag is true, we put an '.opp' class on the td
     const view = this;
@@ -3292,6 +3314,7 @@ class View {
       view: (vnode) => {
         const coord = vnode.attrs.coord;
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         return m("td",
           {
             id: "sq_" + coord,
@@ -3307,12 +3330,13 @@ class View {
     };
   };
 
-  ReviewTileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = (initialVnode) => {
+  ReviewTileSquare: ComponentFunc<{ coord: string; opponent: boolean; }> = () => {
     // Return a td element that wraps an 'inert' tile in a review screen.
     // If the opponent flag is true, we put an '.opp' class on the td
     const model = this.model;
     return {
       view: (vnode) => {
+        if (!model.game) return undefined; // Should not happen
         const coord = vnode.attrs.coord;
         let cls = model.game.squareClass(coord) || "";
         if (cls)
@@ -3324,21 +3348,22 @@ class View {
     };
   };
 
-  DropTargetSquare: ComponentFunc<{ coord: string; }> = (initialVnode) => {
+  DropTargetSquare: ComponentFunc<{ coord: string; }> = () => {
     // Return a td element that is a target for dropping tiles
     const model = this.model;
     return {
       view: (vnode) => {
         const coord = vnode.attrs.coord;
         const game = model.game;
+        if (!game) return m.fragment({}, []); // Should not happen
         let cls = game.squareClass(coord) || "";
         if (cls)
           cls = "." + cls;
         // Mark the cell with the 'blinking' class if it is the drop
         // target of a pending blank tile dialog
-        if (game.askingForBlank !== null && game.askingForBlank.to == coord)
+        if (game.askingForBlank !== null && game.askingForBlank.to === coord)
           cls += ".blinking";
-        if (coord == game.startSquare && model.game.localturn)
+        if (coord === game.startSquare && game.localturn)
           // Unoccupied start square, first move
           cls += ".center";
         return m("td" + cls,
@@ -3346,7 +3371,8 @@ class View {
             id: "sq_" + coord,
             ondragenter: (ev) => {
               ev.preventDefault();
-              ev.dataTransfer.dropEffect = 'move';
+              if (ev.dataTransfer)
+                ev.dataTransfer.dropEffect = 'move';
               (ev.currentTarget as HTMLElement).classList.add("over");
               ev.redraw = false;
               return false;
@@ -3367,8 +3393,8 @@ class View {
               ev.stopPropagation();
               (ev.currentTarget as HTMLElement).classList.remove("over");
               // Move the tile from the source to the destination
-              const from = ev.dataTransfer.getData("text");
-              game.attemptMove(from, coord);
+              const from = ev.dataTransfer?.getData("text") || "";
+              if (from) game.attemptMove(from, coord);
               this.updateScale(game);
               return false;
             },
@@ -3452,19 +3478,19 @@ class View {
     }
 
     function zoomOut() {
-      if (view.boardScale != 1.0) {
+      if (view.boardScale !== 1.0) {
         view.boardScale = 1.0;
         setTimeout(view.resetScale);
       }
     }
 
     return {
-      view: (vnode) => {
+      view: () => {
         const scale = view.boardScale || 1.0;
         let attrs: VnodeAttrs = {};
         // Add handlers for pinch zoom functionality
         addPinchZoom(attrs, zoomIn, zoomOut);
-        if (scale != 1.0)
+        if (scale !== 1.0)
           attrs.style = `transform: scale(${scale})`;
         return m(".board",
           { id: "board-parent" },
@@ -3480,14 +3506,16 @@ class View {
     const model = this.model;
     const review = initialVnode.attrs.review;
     return {
-      view: (vnode) => {
+      view: () => {
         const game = model.game;
+        if (!game) return undefined; // Should not happen
         let r: m.vnode[] = [];
         // If review==true, this is a review rack
         // that is not a drop target and whose color reflects the
         // currently shown move.
         // If opponent==true, we're showing the opponent's rack
-        const opponent = review && (model.reviewMove > 0) && (model.reviewMove % 2 == game.player);
+        const reviewMove = model.reviewMove ?? 0;
+        const opponent = review && (reviewMove > 0) && (reviewMove % 2 === game.player);
         for (let i = 1; i <= RACK_SIZE; i++) {
           const coord = 'R' + i.toString();
           if (game && (coord in game.tiles)) {
@@ -3515,7 +3543,7 @@ class View {
           }
         }
         return m(".rack-row", [
-          m(".rack-left", view.vwButtonsLeftOfRack()),
+          m(".rack-left", view.vwButtonsLeftOfRack() || []),
           m(".rack", m("table.board", m("tbody", m("tr", r))))
         ]);
       }
@@ -3526,6 +3554,7 @@ class View {
     // Create a tile recall button
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     return this.makeButton(
       "recallbtn", false,
       () => { game.resetRack(); this.updateScale(game); },
@@ -3537,6 +3566,7 @@ class View {
     // Show a 'Scramble rack' button
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     return this.makeButton(
       "scramblebtn", disabled,
       () => { game.rescrambleRack(); },
@@ -3544,10 +3574,11 @@ class View {
     );
   }
 
-  vwButtonsLeftOfRack(): m.vnode {
+  vwButtonsLeftOfRack(): m.vnode | undefined {
     // The button to the left of the rack in the mobile UI
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     const s = this.buttonState(game);
     if (s.showRecall && !s.showingDialog)
       // Show a 'Recall tiles' button
@@ -3560,32 +3591,34 @@ class View {
   vwScore(): m.vnode {
     // Shows the score of the current word
     const game = this.model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let sc = [".score"];
     if (game.manual)
       sc.push("manual");
     else
       if (game.wordGood) {
         sc.push("word-good");
-        if (game.currentScore >= 50)
+        if ((game.currentScore ?? 0) >= 50)
           sc.push("word-great");
       }
     let txt = (game.currentScore === undefined ? "?" : game.currentScore.toString())
     return m(sc.join("."), { title: txt }, txt);
   }
 
-  vwScoreReview(moveIndex: number): m.vnode {
+  vwScoreReview(moveIndex: number): m.vnode | undefined {
     // Shows the score of the current move within a game review screen
     const game = this.model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
     if (mv === undefined)
       return undefined;
     let [_, [coord, tiles, score]] = mv;
-    if (score === undefined || (coord == "" && tiles == "OVER"))
+    if (score === undefined || (coord === "" && tiles === "OVER"))
       // No score available, or this is a "game over" sentinel move: don't display
       return undefined;
     let sc = [".score"];
     if (moveIndex > 0) {
-      if (moveIndex % 2 == game.player)
+      if (moveIndex % 2 === game.player)
         // Opponent move: show in green
         sc.push("green");
       else
@@ -3599,12 +3632,15 @@ class View {
     // Shows the score of the current move within a game review screen
     const model = this.model;
     const game = model.game;
+    if (!game) throw new Error("No game"); // Should not happen
     let sc = [".scorediff"];
     let mv = moveIndex ? game.moves[moveIndex - 1] : undefined;
-    let score = mv ? mv[1][2] : undefined;
-    let bestScore = model.bestMoves[model.highlightedMove][1][2];
+    let score = mv ? mv[1][2] : 0;
+    const bm = model.bestMoves ?? [];
+    const hm = model.highlightedMove ?? 0;
+    let bestScore = hm < bm.length ? bm[hm][1][2] : 0;
     let diff = (score - bestScore).toString();
-    if (diff[0] != "-" && diff[0] != "0")
+    if (diff[0] !== "-" && diff[0] !== "0")
       diff = "+" + diff;
     if (score >= bestScore)
       sc.push("posdiff");
@@ -3613,6 +3649,7 @@ class View {
 
   vwStatsReview(): m.vnode {
     // Shows the game statistics overlay
+    if (!this.model.game) return m.fragment({}, []); // Should not happen
     const game = this.model.game;
     if (game.stats === null)
       // No stats yet loaded: do it now
@@ -3635,7 +3672,7 @@ class View {
 
     let leftPlayerColor: string, rightPlayerColor: string;
 
-    if (game.player == 1) {
+    if (game.player === 1) {
       rightPlayerColor = "humancolor";
       leftPlayerColor = "autoplayercolor";
     }
@@ -3789,7 +3826,7 @@ class View {
   ): m.vnode {
     // Create a button element, wrapping the disabling logic
     // and other boilerplate
-    let attr: VnodeAttrs = {
+    const attr: VnodeAttrs = {
       onmouseout: buttonOut,
       onmouseover: buttonOver,
     };
@@ -3806,19 +3843,20 @@ class View {
         ev.preventDefault();
       };
     return m("." + cls + (disabled ? ".disabled" : ""),
-      attr, children // children may be omitted
+      attr, children || [] // children may be omitted
     );
   }
 
-  Buttons: ComponentFunc<{}> = (initialVnode) => {
+  Buttons: ComponentFunc<{}> = () => {
 
     const model = this.model;
 
     return {
-      view: (vnode) => {
+      view: () => {
         // The set of buttons below the game board, alongside the rack (fullscreen view)
         // or below the rack (mobile view)
         const game = model.game;
+        if (!game) return m.fragment({}, []); // Should not happen
         const s = this.buttonState(game);
         let r: m.vnode[] = [];
         r.push(m(".word-check" +
@@ -3862,7 +3900,7 @@ class View {
             classes.push("manual")
           } else if (s.wordGood) {
             classes.push("word-good");
-            if (game.currentScore >= 50)
+            if ((game.currentScore ?? 0) >= 50)
               classes.push("word-great");
           } else if (s.wordBad) {
             classes.push("word-bad");
@@ -3954,14 +3992,14 @@ class View {
               [
                 m("span.move-indicator"),
                 nbsp(),
-                m("strong", game.nickname[1 - game.player]),
+                m("strong", game.nickname[1 - (game.player ?? 0)]),
                 ts(" á leik"),
                 nbsp(),
                 // The following inline button is only
                 // displayed in the fullscreen UI
                 s.tardyOpponent ? m("span.yesnobutton",
                   {
-                    id: 'force-resign',
+                    id: "force-resign",
                     onclick: (ev) => {
                       ev.preventDefault();
                       game.forceResign();
@@ -3994,12 +4032,13 @@ class View {
     };
   };
 
-  vwButtonsReview(moveIndex: number) {
+  vwButtonsReview(moveIndex: number): m.vnode[] {
     // The navigation buttons below the board on the review screen
     const model = this.model;
+    let r: m.vnode[] = [];
+    if (!model.game) return r; // Should not happen
     const game = model.game;
     const numMoves = game.moves.length;
-    let r: m.vnode[] = [];
     r.push(
       this.makeButton(
         "navbtn", !moveIndex, // Disabled if at moveIndex 0 (initial review dialog)
@@ -4040,15 +4079,18 @@ class View {
     // a particular moveIndex on the best moveIndex list
     if (model.highlightedMove !== null)
       r.push(this.vwScoreDiff(moveIndex));
-    r.push(this.vwScoreReview(moveIndex));
+    const scoreReview = this.vwScoreReview(moveIndex);
+    if (scoreReview)
+      r.push(scoreReview);
     return r;
   }
 
-  vwErrors(game: Game): m.vnode {
+  vwErrors(game: Game): m.vnode | undefined {
     // Error messages, selectively displayed
-    let msg: string = game.currentMessage || "";
-    if (game.currentError in ERROR_MESSAGES) {
-      const txt: string = ts(ERROR_MESSAGES[game.currentError]);
+    const msg = game.currentMessage || "";
+    const err = game.currentError || "";
+    if (err in ERROR_MESSAGES) {
+      const txt: string = ts(ERROR_MESSAGES[err]);
       const wix = txt.indexOf("{word}");
       let children: VnodeChildren[];
       if (wix >= 0) {
@@ -4070,11 +4112,11 @@ class View {
     return undefined;
   }
 
-  vwGameOver(): m.vnode {
+  vwGameOver(): m.vnode | undefined {
     // Show message at end of game, either congratulating a win or
     // solemnly informing the player that the game is over
     const game = this.model.game;
-    if (game.congratulate)
+    if (game?.congratulate)
       return m("div", { id: "congrats" },
         [
           glyph("bookmark"),
@@ -4082,7 +4124,7 @@ class View {
           mt("strong", "Til hamingju með sigurinn!")
         ]
       );
-    else if (game.over) {
+    else if (game?.over) {
       return m("div", { id: "gameover" },
         [
           glyph("info-sign"),
@@ -4113,7 +4155,7 @@ class View {
           mt("span.pass-explain", "opponent_emptied_rack")
         ]
       ));
-    if (game.showingDialog == "resign")
+    if (game.showingDialog === "resign")
       r.push(m(".resign", { style: { visibility: "visible" } },
         [
           glyph("exclamation-sign"), nbsp(), ts("Viltu gefa leikinn?"), nbsp(),
@@ -4127,7 +4169,7 @@ class View {
           )
         ]
       ));
-    if (game.showingDialog == "pass") {
+    if (game.showingDialog === "pass") {
       if (game.last_chall)
         r.push(m(".pass-last", { style: { visibility: "visible" } },
           [
@@ -4160,7 +4202,7 @@ class View {
           ]
         ));
     }
-    if (game.showingDialog == "exchange")
+    if (game.showingDialog === "exchange")
       r.push(m(".exchange", { style: { visibility: "visible" } },
         [
           glyph("refresh"), nbsp(),
@@ -4176,7 +4218,7 @@ class View {
             glyph("remove"))
         ]
       ));
-    if (game.showingDialog == "chall")
+    if (game.showingDialog === "chall")
       r.push(m(".chall", { style: { visibility: "visible" } },
         [
           glyph("ban-circle"), nbsp(), ts("Véfengja lögn?"),
@@ -4196,26 +4238,30 @@ class View {
     return r;
   }
 
-  makeTabs(id: string, createFunc: (vnode: Vnode) => void, wireHrefs: boolean, vnode: Vnode) {
+  makeTabs(id: string, createFunc: ((vnode: Vnode) => void) | undefined, wireHrefs: boolean, vnode: Vnode) {
     // When the tabs are displayed for the first time, wire'em up
     let tabdiv = document.getElementById(id);
     if (!tabdiv)
       return;
     // Add bunch of jQueryUI compatible classes
     tabdiv.setAttribute("class", "ui-tabs ui-widget ui-widget-content ui-corner-all");
-    let tabul = document.querySelector("#" + id + " > ul");
-    tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
-    tabul.setAttribute("role", "tablist");
+    const tabul = document.querySelector("#" + id + " > ul");
+    if (tabul) {
+      tabul.setAttribute("class", "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all");
+      tabul.setAttribute("role", "tablist");
+    }
     let tablist = document.querySelectorAll("#" + id + " > ul > li > a") as NodeListOf<HTMLElement>;
     let tabitems = document.querySelectorAll("#" + id + " > ul > li") as NodeListOf<HTMLElement>;
     let ids: string[] = [];
     let lis: HTMLElement[] = []; // The <li> elements
     // Iterate over the <a> elements inside the <li> elements inside the <ul>
     for (let i = 0; i < tablist.length; i++) {
-      ids.push(tablist[i].getAttribute("href").slice(1));
+      const href = tablist[i].getAttribute("href");
+      if (!href) continue;
+      ids.push(href.slice(1));
       // Decorate the <a> elements
       tablist[i].onclick = (ev) => { selectTab(vnode, i); ev.preventDefault(); };
-      tablist[i].setAttribute("href", null);
+      tablist[i].removeAttribute("href");
       tablist[i].setAttribute("class", "ui-tabs-anchor sp"); // Single-page marker
       tablist[i].setAttribute("role", "presentation");
       // Also decorate the <li> elements
@@ -4229,10 +4275,12 @@ class View {
         (ev.currentTarget as HTMLElement).classList.toggle("ui-state-hover", false);
       };
       // Find the tab's content <div>
-      let tabcontent = document.getElementById(ids[i]);
+      const tabcontent = document.getElementById(ids[i]);
       // Decorate it
-      tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
-      tabcontent.setAttribute("role", "tabpanel");
+      if (tabcontent) {
+        tabcontent.setAttribute("class", "ui-tabs-panel ui-widget-content ui-corner-bottom");
+        tabcontent.setAttribute("role", "tabpanel");
+      }
     }
     // Save the list of tab identifiers
     vnode.state.ids = ids;
@@ -4243,19 +4291,21 @@ class View {
     if (wireHrefs) {
       // Wire all hrefs that point to single-page URLs
       const model = this.model;
-      const clickURL = (ev: Event, href: string) => {
-        let uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-        let qix = uri.indexOf("?");
-        let route = (qix >= 0) ? uri.slice(0, qix) : uri;
-        let qparams = uri.slice(route.length + 1);
-        let params = qparams.length ? getUrlVars(qparams) : {};
-        m.route.set(route, params);
-        if (window.history)
-          window.history.pushState({}, "", href); // Enable the back button
+      const clickURL = (ev: Event, href: string | null) => {
+        if (href) {
+          let uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+          let qix = uri.indexOf("?");
+          let route = (qix >= 0) ? uri.slice(0, qix) : uri;
+          let qparams = uri.slice(route.length + 1);
+          let params = qparams.length ? getUrlVars(qparams) : {};
+          m.route.set(route, params);
+          if (window.history)
+            window.history.pushState({}, "", href); // Enable the back button
+        }
         ev.preventDefault();
       };
       const clickUserPrefs = (ev: Event) => {
-        if (model.state.userId != "")
+        if (model.state?.userId !== "")
           // Don't show the userprefs if no user logged in
           this.pushDialog("userprefs");
         ev.preventDefault();
@@ -4272,28 +4322,26 @@ class View {
       for (let i = 0; i < anchors.length; i++) {
         let a = anchors[i];
         let href = a.getAttribute("href");
-        if (href && href.slice(0, ROUTE_PREFIX_LEN) == ROUTE_PREFIX) {
+        if (!href) continue;
+        if (href.slice(0, ROUTE_PREFIX_LEN) === ROUTE_PREFIX) {
           // Single-page URL: wire it up (as if it had had an m.route.Link on it)
           a.onclick = (ev) => clickURL(ev, href);
         }
-        else
-          if (href && href == "$$userprefs$$") {
-            // Special marker indicating that this link invokes
-            // a user preference dialog
-            a.onclick = clickUserPrefs;
-          }
-          else
-            if (href && href == "$$twoletter$$") {
-              // Special marker indicating that this link invokes
-              // the two-letter word list or the opponents tab
-              a.onclick = clickTwoLetter;
-            }
-            else
-              if (href && href == "$$newbag$$") {
-                // Special marker indicating that this link invokes
-                // the explanation of the new bag
-                a.onclick = clickNewBag;
-              }
+        else if (href === "$$userprefs$$") {
+          // Special marker indicating that this link invokes
+          // a user preference dialog
+          a.onclick = clickUserPrefs;
+        }
+        else if (href === "$$twoletter$$") {
+          // Special marker indicating that this link invokes
+          // the two-letter word list or the opponents tab
+          a.onclick = clickTwoLetter;
+        }
+        else if (href === "$$newbag$$") {
+          // Special marker indicating that this link invokes
+          // the explanation of the new bag
+          a.onclick = clickNewBag;
+        }
       }
     }
     // If a createFunc was specified, run it now
@@ -4367,11 +4415,11 @@ function vwToggler(id: string, state: boolean, tabindex: number,
 
   function doToggle() {
     // Perform the toggling, on a mouse click or keyboard input (space bar)
-    const cls1 = document.querySelector("#" + togglerId + " #opt1").classList;
-    const cls2 = document.querySelector("#" + togglerId + " #opt2").classList;
-    cls1.toggle("selected");
-    cls2.toggle("selected");
-    if (funcToggle !== undefined)
+    const cls1 = document.querySelector("#" + togglerId + " #opt1")?.classList;
+    const cls2 = document.querySelector("#" + togglerId + " #opt2")?.classList;
+    cls1 && cls1.toggle("selected");
+    cls2 && cls2.toggle("selected");
+    if (funcToggle !== undefined && cls2)
       // Toggling the switch and we have an associated function:
       // call it with the boolean state of the switch
       funcToggle(cls2.contains("selected"));
@@ -4393,7 +4441,7 @@ function vwToggler(id: string, state: boolean, tabindex: number,
         tabindex: tabindex,
         title: title,
         onclick: (ev) => { doToggle(); ev.preventDefault(); },
-        onkeypress: (ev) => { if (ev.key == " ") { doToggle(); ev.preventDefault(); } }
+        onkeypress: (ev) => { if (ev.key === " ") { doToggle(); ev.preventDefault(); } }
       },
       [
         m(optionClass + (state ? "" : ".selected"), { id: "opt1" }, opt1),
@@ -4436,7 +4484,7 @@ const MultiSelection: ComponentFunc<{
         vnode.children.map((item, i) => {
           // A pretty gross approach, but it works: clobber the childrens' className
           // attribute depending on whether they are selected or not
-          if (i == sel)
+          if (i === sel)
             item.attrs.className = defaultClass + " " + selectedClass;
           else
             item.attrs.className = defaultClass;
@@ -4477,7 +4525,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
     view: (vnode) => {
       if (!askServer)
         // Display the state of the online attribute as-is
-        online = vnode.attrs.online;
+        online = vnode.attrs.online ? true : false;
       return m("span",
         {
           id: id,
@@ -4490,7 +4538,7 @@ const OnlinePresence: ComponentFunc<{ id: string; userId: string; online?: boole
 
 };
 
-const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initialVnode) => {
+const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = () => {
 
   // Show the header of an Elo ranking list and then the list itself
 
@@ -4520,7 +4568,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
                 m(".option.x-small",
                   {
                     // Show ranking for human games only
-                    className: (sel == "human" ? "selected" : ""),
+                    className: (sel === "human" ? "selected" : ""),
                     onclick: (ev) => { sel = "human"; ev.preventDefault(); },
                   },
                   glyph("user")
@@ -4528,7 +4576,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
                 m(".option.x-small",
                   {
                     // Show ranking for all games, including robots
-                    className: (sel == "all" ? "selected" : ""),
+                    className: (sel === "all" ? "selected" : ""),
                     onclick: (ev) => { sel = "all"; ev.preventDefault(); },
                   },
                   glyph("cog")
@@ -4536,7 +4584,7 @@ const EloPage: ComponentFunc<{ view: View; id: string; key: string; }> = (initia
                 m(".option.x-small",
                   {
                     // Show ranking for manual games only
-                    className: (sel == "manual" ? "selected" : ""),
+                    className: (sel === "manual" ? "selected" : ""),
                     onclick: (ev) => { sel = "manual"; ev.preventDefault(); },
                   },
                   glyph("lightbulb")
@@ -4587,13 +4635,13 @@ const EloList: ComponentFunc<{
         let nick: VnodeChildren = item.nick;
         let ch = nbsp();
         let info = nbsp();
-        if (item.userid != state.userId && !item.inactive)
+        if (item.userid !== state?.userId && !item.inactive)
           ch = glyph("hand-right", { title: "Skora á" }, !item.chall);
         if (isRobot) {
           nick = m("span", [glyph("cog"), nbsp(), nick]);
         }
         else
-          if (item.userid != state.userId)
+          if (item.userid !== state?.userId)
             info = m("span.usr-info",
               {
                 onclick: (ev) => {
@@ -4634,22 +4682,21 @@ const EloList: ComponentFunc<{
         // Loading in progress
         // pass
       }
-      else
-        if (model.userList === null || model.userListCriteria.query != "elo" ||
-          model.userListCriteria.spec != vnode.attrs.sel.toString()) {
-          // We're not showing the correct list: request a new one
-          model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
-        }
-        else {
-          list = model.userList;
-        }
+      else if (model.userList === null || model.userListCriteria?.query !== "elo" ||
+        model.userListCriteria?.spec !== vnode.attrs.sel.toString()) {
+        // We're not showing the correct list: request a new one
+        model.loadUserList({ query: "elo", spec: vnode.attrs.sel }, true);
+      }
+      else {
+        list = model.userList;
+      }
       return m("div", { id: vnode.attrs.id }, list.map(itemize));
     }
 
   };
 };
 
-const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = (initialVnode) => {
+const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> = () => {
   // Shows a list of recent games, stored in vnode.attrs.recentList
 
   function itemize(item: RecentListItem, i: number) {
@@ -4665,12 +4712,12 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           if (item.days > 1)
             duration = item.days.toString() + ts(" dagar");
           else
-            if (item.days == 1)
+            if (item.days === 1)
               duration = ts("1 dagur");
           if (item.hours > 0) {
             if (duration.length)
               duration += ts(" og ");
-            if (item.hours == 1)
+            if (item.hours === 1)
               duration += ts("1 klst");
             else
               duration += item.hours.toString() + ts(" klst");
@@ -4678,7 +4725,7 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
           if (item.days === 0) {
             if (duration.length)
               duration += ts(" og ");
-            if (item.minutes == 1)
+            if (item.minutes === 1)
               duration += ts("1 mínúta");
             else
               duration += item.minutes.toString() + ts(" mínútur");
@@ -4698,7 +4745,8 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
     // Show the Elo point adjustments resulting from the game
     let eloAdj: m.vnode | string = item.elo_adj ? item.elo_adj.toString() : "";
     let eloAdjHuman: m.vnode | string = item.human_elo_adj ? item.human_elo_adj.toString() : "";
-    let eloAdjClass: string, eloAdjHumanClass: string;
+    let eloAdjClass = "";
+    let eloAdjHumanClass = "";
     // Find out the appropriate class to use depending on the adjustment sign
     if (item.elo_adj !== null)
       if (item.elo_adj > 0) {
@@ -4725,11 +4773,11 @@ const RecentList: ComponentFunc<{ recentList: RecentListItem[]; id: string; }> =
         eloAdjHuman = glyph("stroller", { title: 'Byrjandi' });
       }
     eloAdj = m("span",
-      { class: 'elo-btn right ' + eloAdjClass + (eloAdj == "" ? " invisible" : "") },
+      { class: 'elo-btn right ' + eloAdjClass + (eloAdj === "" ? " invisible" : "") },
       eloAdj
     );
     eloAdjHuman = m("span",
-      { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman == "" ? " invisible" : "") },
+      { class: 'elo-btn left ' + eloAdjHumanClass + (eloAdjHuman === "" ? " invisible" : "") },
       eloAdjHuman
     );
 
@@ -4801,8 +4849,9 @@ const UserInfoDialog: ComponentFunc<{
 
   function _updateRecentList(vnode: typeof initialVnode) {
     // Fetch the recent game list of the given user
+    const versus = versusAll ? "" : (model.state?.userId || "");
     model.loadUserRecentList(vnode.attrs.userid,
-      versusAll ? null : model.state.userId,
+      versus,
       (json: { result: number; recentlist: RecentListItem[]; }) => {
         if (json && json.result === 0)
           recentList = json.recentlist;
@@ -4813,7 +4862,7 @@ const UserInfoDialog: ComponentFunc<{
   }
 
   function _setVersus(vnode: typeof initialVnode, vsState: boolean) {
-    if (versusAll != vsState) {
+    if (versusAll !== vsState) {
       versusAll = vsState;
       _updateRecentList(vnode);
     }
@@ -4917,7 +4966,7 @@ const UserInfoDialog: ComponentFunc<{
 
 }
 
-const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = (initialVnode) => {
+const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }> = () => {
   // Display the best words and best games played for a given user
 
   return {
@@ -4945,7 +4994,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
         let s = [];
         // Make sure blank tiles get a different color
         for (let i = 0; i < bw.length; i++)
-          if (bw[i] == '?') {
+          if (bw[i] === '?') {
             s.push(m("span.blanktile", bw[i + 1]));
             i += 1;
           }
@@ -4968,7 +5017,7 @@ const BestDisplay: ComponentFunc<{ ownStats: any; myself: boolean; id: string; }
   };
 }
 
-const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnode) => {
+const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = () => {
   // Display key statistics, provided via the ownStats attribute
 
   let sel = 1;
@@ -5006,17 +5055,17 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
         [
           m(".toggler", { id: 'own-toggler', title: ts("stats_choice") }, // "With or without robot games"
             [
-              m(".option.small" + (sel == 1 ? ".selected" : ""),
+              m(".option.small" + (sel === 1 ? ".selected" : ""),
                 { id: 'opt1', onclick: (ev) => { sel = 1; ev.preventDefault(); } },
                 glyph("user")
               ),
-              m(".option.small" + (sel == 2 ? ".selected" : ""),
+              m(".option.small" + (sel === 2 ? ".selected" : ""),
                 { id: 'opt2', onclick: (ev) => { sel = 2; ev.preventDefault(); } },
                 glyph("cog")
               )
             ]
           ),
-          sel == 1 ? m("div",
+          sel === 1 ? m("div",
             { id: 'own-stats-human', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts('Elo-stig') },
@@ -5029,7 +5078,7 @@ const StatsDisplay: ComponentFunc<{ ownStats: any; id: string; }> = (initialVnod
                 vwStat(avgScoreHuman, "dashboard"))
             ]
           ) : "",
-          sel == 2 ? m("div",
+          sel === 2 ? m("div",
             { id: 'own-stats-all', className: 'stats-box', style: { display: "inline-block" } },
             [
               m(".stats-fig", { title: ts("Elo-stig") },
@@ -5118,7 +5167,7 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
   let spec = ""; // The current search pattern
   const model = initialVnode.attrs.model;
-  let promise: { result: boolean; p: Promise<boolean>; } = undefined;
+  let promise: { result: boolean; p: Promise<boolean>; } | undefined = undefined;
 
   function newSearch() {
     // There may have been a change of search parameters: react
@@ -5128,13 +5177,13 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
       promise.result = false;
       promise = undefined;
     }
-    let sel = model.userListCriteria ? model.userListCriteria.query : "robots";
-    if (sel != "search") {
+    let sel = model.userListCriteria?.query || "robots";
+    if (sel !== "search") {
       // Not already in a search: load the user list immediately
       model.loadUserList({ query: "search", spec: spec }, true);
       return;
     }
-    if (spec == model.userListCriteria.spec)
+    if (spec === model.userListCriteria?.spec)
       // We're already looking at the same search spec: done
       return;
     // We're changing the search spec.
@@ -5167,19 +5216,19 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
   return {
 
-    view: (vnode) => {
+    view: () => {
       let sel = model.userListCriteria ? model.userListCriteria.query : "robots";
       return m(".user-cat[id='user-search']",
         [
           glyph("search",
             {
               id: 'search',
-              className: (sel == "search" ? "shown" : ""),
+              className: (sel === "search" ? "shown" : ""),
               onclick: () => {
                 // Reset the search pattern when clicking the search icon
                 spec = "";
                 newSearch();
-                document.getElementById("search-id").focus();
+                document.getElementById("search-id")?.focus();
               }
             }
           ),
@@ -5207,25 +5256,23 @@ const SearchButton: ComponentFunc<{ model: Model; }> = (initialVnode) => {
 
 const DialogButton: ComponentFunc<{
   id: string; title: string; tabindex: number; onclick: EventHandler;
-}> = (initialVnode) => {
+}> = () => {
   return {
     view: (vnode) => {
       let attrs: VnodeAttrs = {
         onmouseout: buttonOut,
         onmouseover: buttonOver
       };
-      for (let a in vnode.attrs)
-        if (vnode.attrs.hasOwnProperty(a))
-          attrs[a] = vnode.attrs[a];
+      Object.assign(attrs, vnode.attrs);
       return m(".modal-close", attrs, vnode.children);
     }
   };
 };
 
-const Info: ComponentFunc<{}> = (initialVnode) => {
+const Info: ComponentFunc<{}> = () => {
   // Info icon, invoking the help screen
   return {
-    view: (vnode) => {
+    view: () => {
       return m(".info",
         { title: ts("Upplýsingar og hjálp") },
         m(m.route.Link,
@@ -5241,7 +5288,7 @@ const Info: ComponentFunc<{}> = (initialVnode) => {
 
 function escapeHtml(string: string): string {
   /* Utility function to properly encode a string into HTML */
-  const entityMap = {
+  const entityMap: Record<string, string> = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -5271,13 +5318,14 @@ function updateTabVisibility(vnode: Vnode) {
   // i.e. the one whose index is in vnode.state.selected
   const selected: number = vnode.state.selected;
   const lis = vnode.state.lis;
-  vnode.state.ids.map((id: string, i: number) => {
-    document.getElementById(id).setAttribute("style", "display: " +
-      (i == selected ? "block" : "none"));
-    lis[i].classList.toggle("ui-tabs-active", i == selected);
-    lis[i].classList.toggle("ui-state-active", i == selected);
-  }
-  );
+  vnode.state.ids.forEach((id: string, i: number) => {
+    const el = document.getElementById(id);
+    const sel = i === selected;
+    if (el)
+      el.style.display = sel ? "block" : "none";
+    lis[i].classList.toggle("ui-tabs-active", sel);
+    lis[i].classList.toggle("ui-state-active", sel);
+  });
 }
 
 function selectTab(vnode: Vnode, i: number) {
@@ -5299,8 +5347,8 @@ function getUrlVars(url: string) {
   let vars: Params = {};
   for (let i = 0; i < hashes.length; i++) {
     let hash = hashes[i].split('=');
-    if (hash.length == 2)
-      vars[hash[0]] = decodeURIComponent(hash[1]);
+    if (hash.length === 2)
+      vars[hash[0] as keyof Params] = decodeURIComponent(hash[1]);
   }
   return vars;
 }
@@ -5320,17 +5368,17 @@ function buttonOut(ev: Event) {
 }
 
 // Glyphicon utility function: inserts a glyphicon span
-function glyph(icon: string, attrs?: object, grayed?: boolean): m.vnode {
+function glyph(icon: string, attrs?: any, grayed?: boolean): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + (grayed ? ".grayed" : ""), attrs);
 }
 
-function glyphGrayed(icon: string, attrs?: object): m.vnode {
+function glyphGrayed(icon: string, attrs?: any): m.vnode {
   return m("span.glyphicon.glyphicon-" + icon + ".grayed", attrs);
 }
 
 // Utility function: inserts non-breaking space
 function nbsp(n?: number): m.vnode {
-  if (!n || n == 1)
+  if (!n || n === 1)
     return m.trust("&nbsp;");
   let r: m.vnode[] = [];
   for (let i = 0; i < n; i++)

@@ -1,6 +1,14 @@
 
 {% extends "container.html" %}
 
+{% block libscripts %}
+<!-- jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+<!-- Touch support for jQuery -->
+<script src="{{ url_for('web.static', filename='jquery.ui.touch-punch.2019.js') }}"></script>
+{% endblock %}
+
 {% block styles %}
 {% endblock %}
 
@@ -26,7 +34,7 @@
       <p>Fríðindi þín virkjast um leið og greiðsla hefur verið staðfest. <b>Það getur tekið nokkrar mínútur.</b>
       Þú færð staðfestingu og kvittun í tölvupósti.</p>
 
-      <div class="btn-thanks" title="Áfram"
+      <div id="btn-thanks" title="Áfram"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
          onclick="window.location.href='{{ url_for("web.main") | safe }}'">
          <span class="glyphicon glyphicon-ok"></span></div>
@@ -70,7 +78,7 @@
       <h3>Staðfesting</h3>
       <p>Þú ert ekki lengur skráð(ur) sem <span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;<b>vinur Netskrafls</b>.</p>
 
-      <div class="btn-thanks" title="Áfram"
+      <div id="btn-thanks" title="Áfram"
          onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
          onclick="window.location.href='{{ url_for("web.userprefs") | safe }}'">
          <span class="glyphicon glyphicon-ok"></span></div>

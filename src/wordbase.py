@@ -2,7 +2,7 @@
 
     Word dictionary implemented with a DAWG
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0

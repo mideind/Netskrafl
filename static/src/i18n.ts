@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -60,7 +60,6 @@ function setLocale(locale: string, msgs: Messages): void {
     currentLocale = "en_US";
     currentFallback = "en";
   }
-
   // Flatten the Messages structure, enabling long strings
   // to be represented as string arrays in the messages.json file
   messages = {};
@@ -78,8 +77,12 @@ function setLocale(locale: string, msgs: Messages): void {
         // Looks like the string contains HTML markup
         const vnodes: VnodeChildren[] = [];
         let i = 0;
-        let tagMatch: RegExpMatchArray;
-        while (i < s.length && (tagMatch = s.slice(i).match(/<[a-z]+>/))) {
+        let tagMatch: RegExpMatchArray | null;
+        while (
+          i < s.length
+          && (tagMatch = s.slice(i).match(/<[a-z]+>/))
+          && tagMatch.index !== undefined
+        ) {
           // Found what looks like an HTML tag
           // Calculate the index of the enclosed text within s
           const tag = tagMatch[0];
