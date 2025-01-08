@@ -3,12 +3,24 @@ module.exports = function (grunt) {
    grunt.initConfig({
 
       ts: {
+         // Note: this seems to be not working well under grunt-ts,
+         // giving a tsc warning about use of the 'out' option
+         // (which is not present in tsconfig.json) and stopping compilation.
          default : {
             tsconfig: "static/tsconfig.json",
             options: {
-               rootDir: "static/src",
-               sourceMap: true // Add source maps
-            }
+               rootDir: "static",
+            },
+         },
+      },
+
+      exec: {
+         // This, however, works well with tsc 5.7.2
+         tsc: {
+            cwd: "static",
+            command: "tsc",
+            stdout: true,
+            stderr: true
          }
       },
 
@@ -76,7 +88,7 @@ module.exports = function (grunt) {
    require("matchdep").filterDev("grunt-*").forEach(grunt.loadNpmTasks);
 
    grunt.registerTask("default", ["watch"]);
-   grunt.registerTask("make", ["clean", "ts", "uglify", "less"]);
+   grunt.registerTask("make", ["clean", "exec:tsc", "uglify", "less"]);
 
    // On watch events configure jshint:all to only run on changed file
    grunt.event.on("watch", function(action, filepath) {
