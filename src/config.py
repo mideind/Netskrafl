@@ -146,6 +146,10 @@ if not NETSKRAFL:
     ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
     assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
 
+# Facebook nonce for limited login verification
+FACEBOOK_NONCE: str = j.get("FACEBOOK_NONCE", "")
+assert FACEBOOK_NONCE, f"FACEBOOK_NONCE not set correctly in {CLIENT_SECRET_ID}"
+
 # Firebase configuration
 FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
 FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
