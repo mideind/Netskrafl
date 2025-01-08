@@ -113,7 +113,8 @@ CLIENT_SECRET_IDS: Mapping[str, str] = {
 }
 CLIENT_SECRET_ID = CLIENT_SECRET_IDS.get(PROJECT_ID, "DEFAULT_CLIENT_SECRET")
 
-# Read client secrets (some of which aren't really that secret) from the CLIENT_SECRET_FILE
+# Read client secrets (some of which aren't really that secret) from the
+# Google Cloud Secret Manager
 j = sm.get_json_secret(CLIENT_SECRET_ID)
 
 # Client types and their ids (and secrets, as applicable)
@@ -140,15 +141,14 @@ if not NETSKRAFL:
 # Facebook app token, for login verification calls to the graph API
 FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
 FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
+# Facebook nonce for limited login verification
+FACEBOOK_NONCE: str = j.get("FACEBOOK_NONCE", "")
 if not NETSKRAFL:
     assert (
         FACEBOOK_APP_SECRET
     ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
     assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
-
-# Facebook nonce for limited login verification
-FACEBOOK_NONCE: str = j.get("FACEBOOK_NONCE", "")
-assert FACEBOOK_NONCE, f"FACEBOOK_NONCE not set correctly in {CLIENT_SECRET_ID}"
+    assert FACEBOOK_NONCE, f"FACEBOOK_NONCE not set correctly in {CLIENT_SECRET_ID}"
 
 # Firebase configuration
 FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
