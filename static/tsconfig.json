@@ -11,7 +11,11 @@
     "baseUrl": "./built",
     "target": "ES2015",
     "module": "amd",
-    // "strict": true,
+    "strict": true,                // Enable all strict type checking options
+    "noImplicitAny": true,        // Raise error on expressions and declarations with an implied 'any' type
+    "strictNullChecks": true,     // Enable strict null checks
+    "noUnusedLocals": true,       // Report errors on unused locals
+    "noUnusedParameters": true,    // Report errors on unused parameters
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

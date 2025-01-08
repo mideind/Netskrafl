@@ -2,7 +2,7 @@
 
     Web server for netskrafl.is
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -41,10 +41,11 @@ from flask import (
     request,
 )
 from flask.globals import current_app
-from authlib.integrations.base_client.errors import MismatchingStateError  # type: ignore
+from authlib.integrations.base_client.errors import OAuthError  # type: ignore
 
 from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
 from basics import (
+    SessionDict,
     UserIdDict,
     current_user,
     auth_required,
@@ -57,6 +58,7 @@ from basics import (
     RequestData,
     max_age,
 )
+from logic import promo_to_show_to_user
 from skrafluser import User, UserLoginDict
 import firebase
 import billing
@@ -127,7 +129,7 @@ def login_user() -> bool:
             idinfo["method"] = "Google"
             idinfo["new"] = uld.get("new", False)
             idinfo["client_type"] = "web"
-    except (KeyError, ValueError, MismatchingStateError) as e:
+    except (KeyError, ValueError, OAuthError) as e:
         # Something is wrong: we're not getting the same (random) state string back
         # that we originally sent to the OAuth2 provider
         logging.warning(f"login_user(): {e}")
@@ -173,7 +175,9 @@ def render_locale_template(template: str, locale: str, **kwargs: Any) -> Respons
 @web.route("/friend")
 def friend() -> ResponseType:
     """HTML content of a friend (subscription) promotion dialog"""
-    locale = request.args.get("locale", DEFAULT_LOCALE)
+    short_default_locale = DEFAULT_LOCALE.split("_")[0]  # Normally 'en' or 'is'
+    locale = request.args.get("locale", short_default_locale)
+    # !!! TODO: Make this work for all locales and screen sizes
     return render_locale_template("promo-friend-{0}.html", locale)
 
 
@@ -252,6 +256,7 @@ def page() -> ResponseType:
     uid = user.id() or ""
     s = session_data()
     firebase_token = firebase.create_custom_token(uid)
+    promo_to_show = promo_to_show_to_user(uid)
     # We return information about the login method to the client,
     # as well as whether this is a new user signing in for the first time
     return render_template(
@@ -262,13 +267,14 @@ def page() -> ResponseType:
         new=False if s is None else s.get("new", False),
         project_id=PROJECT_ID,
         running_local=running_local,
+        promo=promo_to_show,
     )
 
 
 @web.route("/greet")
 def greet() -> ResponseType:
     """Handler for the greeting page"""
-    return render_template("login-explo.html", user=None)
+    return render_template("login.html", user=None)
 
 
 @web.route("/login")
@@ -278,6 +284,30 @@ def login() -> ResponseType:
     redirect_uri = url_for("web.oauth2callback", _external=True)
     g = get_google_auth()
     return g.authorize_redirect(redirect_uri)
+
+
+@web.route("/login_email", methods=["POST"])
+def login_email() -> ResponseType:
+    """User login by e-mail, for development purposes only"""
+    if not running_local:
+        return jsonify(status="invalid", message="Not allowed"), 403
+    clear_session_userid()
+    # Obtain email from the request
+    rq = RequestData(request)
+    email = rq.get("email", "")
+    if not email:
+        return jsonify(status="invalid", message="No email provided"), 401
+    # Find the user record by email
+    uld = User.login_by_email(email)
+    if uld is None:
+        return jsonify(status="invalid", message="No such user"), 401
+    userid = uld["user_id"]
+    # Create a Firebase custom token for the user
+    token = firebase.create_custom_token(userid)
+    sd = SessionDict(userid=userid, method="Email")
+    # Create a session cookie with the user id
+    set_session_cookie(userid, sd=sd)
+    return jsonify(dict(status="success", firebase_token=token, **uld))
 
 
 @web.route("/login_error")

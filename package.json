@@ -11,13 +11,14 @@
   "devDependencies": {
     "eslint": "^7.28.0",
     "grunt": "^1.5.3",
+    "grunt-contrib-clean": "^2.0.1",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-jshint": "^3.0.0",
     "grunt-contrib-less": "^3.0.0",
     "grunt-contrib-uglify": "^5.0.0",
     "grunt-contrib-watch": "^1.0.0",
     "grunt-ts": "^6.0.0-beta.22",
-    "matchdep": "^2.0.0",
+    "matchdep": "^1.0.0",
     "typescript": "^4.3.2"
   },
   "jshintConfig": {

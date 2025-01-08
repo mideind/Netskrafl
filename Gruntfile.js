@@ -1,35 +1,38 @@
-
 module.exports = function (grunt) {
 
    grunt.initConfig({
 
       ts: {
          default : {
-            tsconfig: 'static/tsconfig.json',
+            tsconfig: "static/tsconfig.json",
             options: {
-               rootDir: "static/src"
+               rootDir: "static/src",
+               sourceMap: true // Add source maps
             }
          }
       },
 
       uglify: {
          explo_js: {
-            src: 'static/built/explo.js',
-            dest: 'static/built/explo.min.js'
+            options: {
+               sourceMap: true // Add source maps
+            },
+            src: "static/built/explo.js",
+            dest: "static/built/explo.min.js"
          }
       },
 
       less: {
          development: {
             files: {
-               'static/skrafl-explo.css': ['static/skrafl-explo.less']
+               "static/skrafl-explo.css": ["static/skrafl-explo.less"]
             },
             options: {
             }
          },
          production: {
             files: {
-               'static/skrafl-explo.css': ['static/skrafl-explo.less']
+               "static/skrafl-explo.css": ["static/skrafl-explo.less"]
             },
             options: {
                cleancss: true
@@ -37,45 +40,50 @@ module.exports = function (grunt) {
          }
       },
 
+      clean: {
+         built: ["static/built/*"]
+      },
+
       watch: {
+         options: {
+            spawn: false,
+            interrupt: true, // Interrupt previous tasks when new changes occur
+            atBegin: true // Run tasks when watch starts
+         },
          ts: {
-            files: ['static/src/*.ts'],
-            tasks: ['ts'],
+            files: ["static/src/*.ts"],
+            tasks: ["ts"],
             options: { spawn: false }
          },
          uglify_explo: {
-            files: ['static/built/explo.js'],
-            tasks: ['uglify:explo_js'],
+            files: ["static/built/explo.js"],
+            tasks: ["uglify:explo_js"],
             options: { spawn: false }
          },
          less: {
-            files: ['static/*.less'],
-            tasks: ['less:development', 'less:production'],
+            files: ["static/*.less"],
+            tasks: ["less:development", "less:production"],
             options: { spawn: false }
          },
          configFiles: {
-            files: 'Gruntfile.js'
+            files: "Gruntfile.js"
          }
       }
 
    });
 
    // Load Grunt tasks declared in the package.json file
-   require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
+   require("matchdep").filterDev("grunt-*").forEach(grunt.loadNpmTasks);
 
-   grunt.registerTask('default', ['watch']);
-   grunt.registerTask('make', ['ts', 'uglify', 'less']);
-
-   function startsWith(s, t) {
-      return s.lastIndexOf(t, 0) === 0;
-   }
+   grunt.registerTask("default", ["watch"]);
+   grunt.registerTask("make", ["clean", "ts", "uglify", "less"]);
 
    // On watch events configure jshint:all to only run on changed file
-   grunt.event.on('watch', function(action, filepath) {
+   grunt.event.on("watch", function(action, filepath) {
       console.log("watch: " + filepath);
       /*
       if (startsWith(filepath, "static/js/") || startsWith(filepath, "static\\js\\"))
-         grunt.config('jshint.all.src', [ filepath ]);
+         grunt.config("jshint.all.src", [ filepath ]);
       */
    });
 

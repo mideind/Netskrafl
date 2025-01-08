@@ -2,7 +2,7 @@
 
     Admin web server for netskrafl.is
 
-    Copyright (C) 2023 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0

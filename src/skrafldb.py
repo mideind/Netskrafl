@@ -2,7 +2,7 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -94,7 +94,13 @@ from datetime import UTC, datetime
 
 from google.cloud import ndb  # type: ignore
 
-from config import DEFAULT_ELO, DEFAULT_LOCALE, DEFAULT_THUMBNAIL_SIZE, ESTABLISHED_MARK
+from config import (
+    DEFAULT_ELO,
+    DEFAULT_LOCALE,
+    DEFAULT_THUMBNAIL_SIZE,
+    ESTABLISHED_MARK,
+    NETSKRAFL,
+)
 from cache import memcache
 
 
@@ -685,6 +691,8 @@ class UserModel(Model["UserModel"]):
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Attempt to fetch a user by OAuth2 account id,
         eventually prefixed by the authentication provider"""
+        if not account:
+            return None
         q = cls.query(UserModel.account == account)
         return q.get()
 
@@ -737,9 +745,7 @@ class UserModel(Model["UserModel"]):
             len_keys = len(keys)
             recs = cast(
                 List[Optional[UserModel]],
-                # The following cast is due to strange typing
-                # in ndb (the use of 'Type' is almost certainly a bug there)
-                ndb.get_multi(cast(Sequence[Type[Key[UserModel]]], keys)),
+                ndb.get_multi(keys),
             )
             if ix == 0 and len_keys == end:
                 # Most common case: just a single, complete read
@@ -783,6 +789,11 @@ class UserModel(Model["UserModel"]):
         cls, q: Query[UserModel], locale: Optional[str]
     ) -> Query[UserModel]:
         """Filter the query by locale, if given, otherwise stay with the default"""
+        if NETSKRAFL:
+            assert (
+                locale == None or locale == DEFAULT_LOCALE
+            ), f"Netskrafl only allows {DEFAULT_LOCALE}"
+            return q
         if not locale:
             return q.filter(
                 ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
@@ -856,20 +867,25 @@ class UserModel(Model["UserModel"]):
     @classmethod
     def list_similar_elo(
         cls, elo: int, max_len: int = 40, locale: Optional[str] = None
-    ) -> List[str]:
+    ) -> List[Tuple[str, EloDict]]:
         """List users with a similar (human) Elo rating. This uses the
         'old-style', locale-independent Elo rating."""
         # Start with max_len users with a lower Elo rating
 
-        def fetch(q: Query[UserModel], max_len: int) -> Iterator[str]:
+        def fetch(q: Query[UserModel], max_len: int) -> Iterator[Tuple[str, EloDict]]:
             """Generator for returning query result keys"""
             assert max_len > 0
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["highest_score"]):
+            for k in iter_q(q, chunk_size=max_len, projection=["human_elo", "highest_score"]):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
                     # Note that inactive users will be filtered out at a later stage
-                    yield k.key.id()
+                    ed: EloDict = EloDict(
+                        # Note! For optimization reasons, we only return the human_elo
+                        # property. This is currently the only Elo rating shown in the UI.
+                        elo=DEFAULT_ELO, human_elo=k.human_elo, manual_elo=DEFAULT_ELO
+                    )
+                    yield k.key.id(), ed
                     counter += 1
                     if counter >= max_len:
                         # Returned the requested number of records: done
@@ -946,11 +962,18 @@ class EloModelFuture(Future["EloModel"]):
     pass
 
 
+# Optional locale string, defaulting to the project default locale
+# in the case of Netskrafl, but otherwise a required string
+OptionalLocaleString = lambda: (
+    Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
+)
+
+
 class EloModel(Model["EloModel"]):
     """Models the current Elo ratings for a user, by locale"""
 
     # The associated UserModel entity is an ancestor of this entity
-    locale = Model.Str()
+    locale = OptionalLocaleString()
     timestamp = Model.Datetime(auto_now_add=True)
     elo = Model.Int(indexed=True)
     human_elo = Model.Int(indexed=True)
@@ -1132,9 +1155,7 @@ class EloModel(Model["EloModel"]):
             nonlocal result, keys
             recs = cast(
                 List[Optional[EloModel]],
-                # The following cast is due to strange typing
-                # in ndb (the use of 'Type' is almost certainly a bug there)
-                ndb.get_multi(cast(Sequence[Type[Key[EloModel]]], keys)),
+                ndb.get_multi(keys),
             )
             for em in recs:
                 if em is not None:
@@ -1931,8 +1952,8 @@ class StatsModel(Model["StatsModel"]):
         """Returns the Elo ratings at the indicated time point (None = now),
         in descending order"""
 
-        # Currently this means a safety_buffer of 160
-        max_fetch = int(max_len * 2.6)
+        SAFETY_BUFFER_FACTOR = 2.8  # This means a safety_buffer of 180
+        max_fetch = int(max_len * SAFETY_BUFFER_FACTOR)
         safety_buffer = max_fetch - max_len
         check_false_positives = True
 
@@ -1955,9 +1976,9 @@ class StatsModel(Model["StatsModel"]):
         # be newer stats records for individual users with lower Elo scores
         # than those scanned to create the list. In other words, there may
         # be false positives on the list (but not false negatives, i.e.
-        # there can't be higher Elo scores somewhere that didn't make it
-        # to the list). We attempt to address this by fetching 2.5 times the
-        # number of requested users, then separately checking each of them for
+        # there can't be higher Elo scores somewhere that didn't make it to the
+        # list). We attempt to address this by fetching SAFETY_BUFFER_FACTOR times
+        # the number of requested users, then separately checking each of them for
         # false positives. If we have too many false positives, we don't return
         # the full requested number of result records.
 
@@ -2680,7 +2701,7 @@ class PromoModel(Model["PromoModel"]):
 
     @classmethod
     def add_promotion(cls, user_id: str, promotion: str) -> None:
-        """Add a zombie game that has not been seen by the player in question"""
+        """Record that a promotion has been seen by a user"""
         pm = cls()
         pm.set_player(user_id)
         pm.promotion = promotion

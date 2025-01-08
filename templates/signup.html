@@ -84,7 +84,7 @@ div.salescloud-wrapper iframe {
       m.parentNode.insertBefore(a,m)
    }
 
-   function init(jQuery) {
+   function init() {
       registerSalesCloud(
          window,
          document,
@@ -94,7 +94,7 @@ div.salescloud-wrapper iframe {
       );
    }
 
-   $(document).ready(init);
+   document.addEventListener('DOMContentLoaded', init);
 
 </script>
 

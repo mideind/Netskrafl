@@ -1,7 +1,7 @@
 """
     Secret Manager module for Google Cloud Secret Manager
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Author: Valur Hrafn Einarsson
 
     The Creative Commons Attribution-NonCommercial 4.0

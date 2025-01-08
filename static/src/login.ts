@@ -4,7 +4,7 @@
 
   Login UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -27,6 +27,9 @@ function main($state: { loginUrl: string; locale: string; }) {
   // on the login page (login-explo.html)
   loadMessages($state.locale);
   const root = document.getElementById("container");
+  if (!root) {
+    throw new Error("No container element (#container) found");
+  }
   m.mount(root,
     {
       view: () => { return m(LoginForm, { loginUrl: $state.loginUrl }); }

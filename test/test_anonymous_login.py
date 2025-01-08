@@ -1,7 +1,7 @@
 """
 
     Tests for Netskrafl / Explo Word Game
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
 
     This module tests several APIs by submitting HTTP requests
     to the Netskrafl / Explo server.

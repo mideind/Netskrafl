@@ -4,7 +4,7 @@
 
   Single page UI for Explo using the Mithril library
 
-  Copyright (C) 2023 Miðeind ehf.
+  Copyright © 2025 Miðeind ehf.
   Author: Vilhjálmur Þorsteinsson
 
   The Creative Commons Attribution-NonCommercial 4.0
@@ -43,14 +43,10 @@ interface Settings {
   defaultRoute: string;
 }
 
+type UrlParams = "uuid" | "move" | "tab" | "faq" | "zombie";
+
 // Possible URL parameters that are passed to routes
-interface Params {
-  uuid?: string;
-  move?: string;
-  tab?: string;
-  faq?: string;
-  zombie?: string;
-}
+type Params = Partial<Record<UrlParams, string>>;
 
 // Items in a game list
 interface GameListItem {
@@ -140,7 +136,7 @@ interface UserListItem {
   elo_month_ago: number;
 }
 
-interface UserErrors {
+interface UserErrors extends Record<string, string | undefined> {
   nickname?: string;
   full_name?: string;
   email?: string;
@@ -191,6 +187,7 @@ interface GlobalState {
   uiFullscreen: boolean;
   uiLandscape: boolean;
   firebaseToken: string;
+  promo: string;
   emoticons: { icon: string; image: string; }[];
   runningLocal: boolean;
 }
@@ -217,50 +214,50 @@ class Model {
 
   // A class for the underlying data model, displayed by the current view
 
-  state: GlobalState = null;
+  state: GlobalState | null = null;
   paths: Paths = [];
   // The routeName will be "login", "main", "game"...
   routeName?: string = undefined;
   // Eventual parameters within the route URL, such as the game uuid
   params?: Params = undefined;
   // The current game being displayed, if any
-  game: Game = null;
+  game: Game | null = null;
   // The current game list
-  gameList: GameListItem[] = null;
+  gameList: GameListItem[] | null = null;
   // Number of games where it's the player's turn, plus count of zombie games
   numGames = 0;
   loadingGameList = false;
   // The current challenge list
-  challengeList: ChallengeListItem[] = null;
+  challengeList: ChallengeListItem[] | null = null;
   // Sum up received challenges and issued timed challenges where the opponent is ready
   numChallenges = 0;
   loadingChallengeList = false;
   // Number of opponents who are ready and waiting for a timed game
   oppReady = 0;
   // Recent games
-  recentList: RecentListItem[] = null;
+  recentList: RecentListItem[] | null = null;
   loadingRecentList = false;
   // The currently displayed user list
-  userListCriteria: { query: string; spec: string; } = null;
-  userList: UserListItem[] = null;
+  userListCriteria: { query: string; spec: string; } | null | undefined = null;
+  userList: UserListItem[] | null | undefined = null;
   loadingUserList = false;
   // The user's own statistics
   ownStats: any = null;
   // The current user information being edited, if any
-  user: UserPrefs = null;
-  userErrors: UserErrors = null;
+  user: UserPrefs | null | undefined = null;
+  userErrors: UserErrors | null = null;
   // The (cached) help screen contents
-  helpHTML: string = null;
+  helpHTML: string | null = null;
   // The (cached) friend promo screen contents
-  friendHTML: string = null;
+  friendHTML: string | null = null;
   // Outstanding server requests
   spinners: number = 0;
   // The index of the game move being reviewed, if any
-  reviewMove: number = null;
+  reviewMove: number | null = null;
   // The best moves available at this stage, if reviewing game
-  bestMoves: Move[] = null;
+  bestMoves: Move[] | null = null;
   // The index of the best move being highlighted, if reviewing game
-  highlightedMove: number = null;
+  highlightedMove: number | null = null;
   // Maximum number of free games allowed concurrently
   maxFreeGames = 0;
 
@@ -298,6 +295,7 @@ class Model {
       }
       else {
         // Create a new game instance and load the state into it
+        if (this.state === null) throw new Error("Model state is null");
         this.game = new Game(uuid, result.game, this, this.state.runningLocal ? DEBUG_OVERTIME : MAX_OVERTIME);
         // Successfully loaded: call the completion function, if given
         // (this usually attaches the Firebase event listener)
@@ -415,7 +413,7 @@ class Model {
     const json: any = await m.request({
       method: "POST",
       url: "/recentlist",
-      body: { user: userid, versus: versus, count: 40 }
+      body: { user: userid, versus: versus || null, count: 40 }
     });
     readyFunc(json);
   }
@@ -576,8 +574,8 @@ class Model {
   async loadHelp() {
     // Load the help screen HTML from the server
     // (this is done the first time the help is displayed)
-    if (this.helpHTML !== null)
-      return; // Already loaded
+    if (this.helpHTML !== null || this.state === null)
+      return; // Already loaded or not yet initialized
     try {
       const result: string = await m.request({
         method: "GET",
@@ -594,8 +592,8 @@ class Model {
   async loadFriendPromo() {
     // Load the friend promo HTML from the server
     // (this is done the first time the dialog is displayed)
-    if (this.friendHTML !== null)
-      return; // Already loaded
+    if (this.friendHTML !== null || this.state === null)
+      return; // Already loaded or not yet initialized
     try {
       const result: string = await m.request({
         method: "GET",
@@ -647,7 +645,7 @@ class Model {
         url: "/saveuserprefs",
         body: this.user
       });
-      if (result?.ok) {
+      if (result?.ok && this.state && this.user) {
         // User preferences modified successfully on the server:
         // update the state variables that we're caching
         const state = this.state;
@@ -693,8 +691,9 @@ class Model {
 
   async newGame(oppid: string, reverse: boolean) {
     // Ask the server to initiate a new game against the given opponent
+    if (this.state === null) return; // Not yet initialized
     try {
-      var rqBody: {
+      const rqBody: {
         opp: string;
         rev: boolean;
         board_type?: string
@@ -729,6 +728,7 @@ class Model {
 
   async modifyChallenge(parameters: ChallengeParameters) {
     // Reject or retract a challenge
+    if (this.state === null) return; // Not yet initialized
     try {
       const json: { result: number; } = await m.request({
         method: "POST",
@@ -777,7 +777,7 @@ class Model {
         url: "/cancelplan",
         body: { }
       });
-      if (json?.ok) {
+      if (json?.ok && this.user && this.state) {
         // Successfully cancelled: immediately update the friend and hasPaid state
         this.user.friend = false;
         this.state.hasPaid = false;
@@ -801,7 +801,7 @@ class Model {
 
   addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {
     // Add a chat message to the game's chat message list
-    if (this.game && this.game.uuid == game) {
+    if (this.game && this.game.uuid == game && this.state !== null) {
       this.game.addChatMessage(from_userid, msg, ts, from_userid == this.state.userId);
       // Returning true triggers a redraw
       return true;
@@ -812,7 +812,7 @@ class Model {
   handleUserMessage(json: any, firstAttach: boolean) {
     // Handle an incoming Firebase user message, i.e. a message
     // on the /user/[userid] path
-    if (firstAttach)
+    if (firstAttach || this.state === null)
       return;
     let redraw = false;
     if (json.friend !== undefined) {
@@ -902,7 +902,7 @@ class Model {
     const numGames = this.gameList.length;
     if (numGames >= MAX_GAMES)
       return false;
-    if (this.state.hasPaid)
+    if (this.state?.hasPaid)
       return true;
     return this.gameList.length < this.maxFreeGames;
   }

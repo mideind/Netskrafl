@@ -2,7 +2,7 @@
 
     Configuration data
 
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     The Creative Commons Attribution-NonCommercial 4.0
@@ -69,9 +69,11 @@ port: str = os.environ.get("SERVER_PORT", "8080")
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
+NETSKRAFL = PROJECT_ID == "netskrafl"
+
 DEV_SERVER = PROJECT_ID == "explo-dev"
 
-DEFAULT_LOCALE = "is_IS" if PROJECT_ID == "netskrafl" else "en_US"
+DEFAULT_LOCALE = "is_IS" if NETSKRAFL else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
@@ -132,15 +134,17 @@ OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
 # Analytics measurement id
 MEASUREMENT_ID: str = j.get("MEASUREMENT_ID", "")
-assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
+if not NETSKRAFL:
+    assert MEASUREMENT_ID, "MEASUREMENT_ID environment variable not set"
 
 # Facebook app token, for login verification calls to the graph API
 FACEBOOK_APP_ID: Mapping[str, str] = j.get("FACEBOOK_APP_ID", {})
 FACEBOOK_APP_SECRET: Mapping[str, str] = j.get("FACEBOOK_APP_SECRET", {})
-assert (
-    FACEBOOK_APP_SECRET
-), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
-assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
+if not NETSKRAFL:
+    assert (
+        FACEBOOK_APP_SECRET
+    ), f"FACEBOOK_APP_SECRET not set correctly in {CLIENT_SECRET_ID}"
+    assert FACEBOOK_APP_ID, f"FACEBOOK_APP_ID not set correctly in {CLIENT_SECRET_ID}"
 
 # Firebase configuration
 FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
@@ -160,16 +164,18 @@ assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_ID
 APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")
 APPLE_TEAM_ID: str = j.get("APPLE_TEAM_ID", "")
 APPLE_CLIENT_ID: str = j.get("APPLE_CLIENT_ID", "")
-assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_ID}"
-assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_ID}"
-assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_ID}"
+if not NETSKRAFL:
+    assert APPLE_KEY_ID, f"APPLE_KEY_ID not set correctly in {CLIENT_SECRET_ID}"
+    assert APPLE_TEAM_ID, f"APPLE_TEAM_ID not set correctly in {CLIENT_SECRET_ID}"
+    assert APPLE_CLIENT_ID, f"APPLE_CLIENT_ID not set correctly in {CLIENT_SECRET_ID}"
 
 # RevenueCat bearer token
 RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
 
 # Anonymous user session token
 AUTH_SECRET: str = j.get("AUTH_SECRET", "")
-assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
+if not NETSKRAFL:
+    assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
 
 # Read the Flask secret session key from Google secret manager
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
@@ -184,6 +190,16 @@ ESTABLISHED_MARK: int = 10
 
 # Prefix of anonymous account identifiers
 ANONYMOUS_PREFIX = "anon:"
+
+# Promotion parameters
+PROMO_CURRENT: Optional[str] = "explo"  # None if no promo ongoing
+# A promo check is done randomly, but on average every 1 out of N times
+PROMO_FREQUENCY = 8
+PROMO_COUNT = 3  # Max number of times that the same promo is displayed
+PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
+
+# Increment this number to force file cache busting, e.g. for .js/.ts/.css files
+FILE_VERSION_INCREMENT = 6
 
 
 class CacheEntryDict(TypedDict):

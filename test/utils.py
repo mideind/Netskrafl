@@ -1,7 +1,7 @@
 """
 
     Utility functions for testing Netskrafl / Explo Word Game
-    Copyright (C) 2024 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
 
     This module contains utility functions for the test suite.
 
