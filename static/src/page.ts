@@ -4291,15 +4291,17 @@ class View {
     if (wireHrefs) {
       // Wire all hrefs that point to single-page URLs
       const model = this.model;
-      const clickURL = (ev: Event, href: string) => {
-        let uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
-        let qix = uri.indexOf("?");
-        let route = (qix >= 0) ? uri.slice(0, qix) : uri;
-        let qparams = uri.slice(route.length + 1);
-        let params = qparams.length ? getUrlVars(qparams) : {};
-        m.route.set(route, params);
-        if (window.history)
-          window.history.pushState({}, "", href); // Enable the back button
+      const clickURL = (ev: Event, href: string | null) => {
+        if (href) {
+          let uri = href.slice(ROUTE_PREFIX_LEN); // Cut the /page#!/ prefix off the route
+          let qix = uri.indexOf("?");
+          let route = (qix >= 0) ? uri.slice(0, qix) : uri;
+          let qparams = uri.slice(route.length + 1);
+          let params = qparams.length ? getUrlVars(qparams) : {};
+          m.route.set(route, params);
+          if (window.history)
+            window.history.pushState({}, "", href); // Enable the back button
+        }
         ev.preventDefault();
       };
       const clickUserPrefs = (ev: Event) => {
@@ -4320,28 +4322,26 @@ class View {
       for (let i = 0; i < anchors.length; i++) {
         let a = anchors[i];
         let href = a.getAttribute("href");
-        if (href && href.slice(0, ROUTE_PREFIX_LEN) === ROUTE_PREFIX) {
+        if (!href) continue;
+        if (href.slice(0, ROUTE_PREFIX_LEN) === ROUTE_PREFIX) {
           // Single-page URL: wire it up (as if it had had an m.route.Link on it)
           a.onclick = (ev) => clickURL(ev, href);
         }
-        else
-          if (href && href === "$$userprefs$$") {
-            // Special marker indicating that this link invokes
-            // a user preference dialog
-            a.onclick = clickUserPrefs;
-          }
-          else
-            if (href && href === "$$twoletter$$") {
-              // Special marker indicating that this link invokes
-              // the two-letter word list or the opponents tab
-              a.onclick = clickTwoLetter;
-            }
-            else
-              if (href && href === "$$newbag$$") {
-                // Special marker indicating that this link invokes
-                // the explanation of the new bag
-                a.onclick = clickNewBag;
-              }
+        else if (href === "$$userprefs$$") {
+          // Special marker indicating that this link invokes
+          // a user preference dialog
+          a.onclick = clickUserPrefs;
+        }
+        else if (href === "$$twoletter$$") {
+          // Special marker indicating that this link invokes
+          // the two-letter word list or the opponents tab
+          a.onclick = clickTwoLetter;
+        }
+        else if (href === "$$newbag$$") {
+          // Special marker indicating that this link invokes
+          // the explanation of the new bag
+          a.onclick = clickNewBag;
+        }
       }
     }
     // If a createFunc was specified, run it now
