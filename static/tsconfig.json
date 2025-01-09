@@ -8,8 +8,8 @@
   "compilerOptions": {
     // Generate a single, concatenated .js file
     "outFile": "built/explo.js",
-    "baseUrl": "./built",
-    "target": "es6",
+    "baseUrl": ".",
+    "target": "ES2018",
     "module": "amd",
     "strict": true,                // Enable all strict type checking options
     "noImplicitAny": true,        // Raise error on expressions and declarations with an implied 'any' type
@@ -19,12 +19,14 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "lib": [
+      "dom", "dom.iterable", "esnext",
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
   },
-  "lib": [
-    "es6",
-    "dom"
-  ],
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Recommended"
 }
