@@ -70,6 +70,7 @@ profile.bin
 Netskrafl.code-workspace
 static/NetskraflFacebookCover.jpg
 *.bak
+*.csv
 
 # Distribution / packaging / IDEs
 .Python
