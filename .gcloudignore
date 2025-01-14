@@ -53,6 +53,7 @@ dawgtester.py
 # Temporary files
 *.tmp
 *.TMP
+*.csv
 
 # Editor workspaces
 *.sublime-workspace
