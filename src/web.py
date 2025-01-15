@@ -349,7 +349,7 @@ def main() -> ResponseType:
     return redirect(url_for("web.page"))
 
 
-@web.route("/cache/flush", methods=["GET", "POST"])
+@web.route("/cacheflush", methods=["GET", "POST"])
 def cache_flush() -> ResponseType:
     """Flush the Redis cache"""
     headers: Dict[str, str] = cast(Any, request).headers
