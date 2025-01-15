@@ -5,15 +5,27 @@
     Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
-    This script loops over the UserModel entities in the datastore
-    and creates a .CSV file with the user identifier, current Elo
-    score, and trimmed Elo score for each user with Elo score > 1200.
-    The trimmed score is calculated as (current - 1200) * FACTOR + 1200,
-    where FACTOR is a constant that can be adjusted.
-    A separate loop will then actually perform the Elo updates
-    that are described in the .CSV file.
+    This file contains three utility functions to trim player Elo scores,
+    especially those of inactive players.
 
-    Before running this script, set the PROJECT_ID and
+    The first function, trim_elo(), loops over the UserModel entities in
+    the datastore and creates a .CSV file with the user identifier, current
+    Elo score, and trimmed Elo score for each user with Elo score > 1200.
+    The trimmed score is calculated as (current - 1200) * (1 - FACTOR) + 1200,
+    where FACTOR is a constant that can be adjusted.
+
+    A second function, update_elo(), actually perform the Elo updates
+    that are described in the .CSV file, by modifying UserModel entities.
+
+    A third function, update_stats(), updates the newest StatsModel entities
+    corresponding to the users whose Elo scores have been modified.
+
+    After running the second and/or third functions, it is advisable to
+    clear the Redis cache for the App Engine project. There is
+    an API endpoint, /cacheflush, that can be used for this purpose. It
+    can be invoked e.g. via a Cloud Scheduler job.
+
+    Before running the scripts herein, set the PROJECT_ID and
     GOOGLE_APPLICATION_CREDENTIALS environment variables to
     appropriate values.
 
@@ -31,7 +43,7 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from skrafldb import Client, Context, UserModel, iter_q
+from skrafldb import Client, Context, UserModel, StatsModel, iter_q
 
 UserTuple = Tuple[str, int, int, int]
 
@@ -154,12 +166,77 @@ def update_elo(*, show_progress: bool = False) -> None:
             print(f"Updated {count} users")
 
 
+def update_stats(*, show_progress: bool = False) -> None:
+    """Read the OUTPUT_FILE and update the StatsModel entities
+    corresponding to users that were modified by trim_elo()"""
+    with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+        count = 0
+        batch: List[StatsModel] = []
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            user_id, _, elo_str, new_elo_str, human_elo_str, new_human_elo_str, manual_elo_str, new_manual_elo_str = (
+                line.split(",")
+            )
+            # Trim the quotes from the user_id
+            user_id = user_id[1:-1]
+            sm = StatsModel.newest_for_user(user_id)
+            if not sm:
+                # Should not happen
+                if show_progress:
+                    print(f"StatsModel not found for user {user_id}")
+                continue
+            elo = int(elo_str)
+            human_elo = int(human_elo_str)
+            manual_elo = int(manual_elo_str)
+            new_elo = int(new_elo_str)
+            new_human_elo = int(new_human_elo_str)
+            new_manual_elo = int(new_manual_elo_str)
+            # The following delta adjustment is only necessary if the
+            # StatsModel entity has been updated (by way of players finishing games)
+            # since the OUTPUT_FILE was created. Ideally, these functions should be
+            # run in quick succession.
+            delta_elo = sm.elo - elo
+            delta_human_elo = sm.human_elo - human_elo
+            delta_manual_elo = sm.manual_elo - manual_elo
+            # Debug: print out the change that would happen
+            # Print previous Elo stats, the delta, and the final Elo stats
+            print(
+                f"{user_id}:"
+                f" {sm.elo} -> {new_elo} ({delta_elo:+}),"
+                f" {sm.human_elo} -> {new_human_elo} ({delta_human_elo:+}),"
+                f" {sm.manual_elo} -> {new_manual_elo} ({delta_manual_elo:+})"
+            )
+            sm.elo = new_elo + delta_elo
+            sm.human_elo = new_human_elo + delta_human_elo
+            sm.manual_elo = new_manual_elo + delta_manual_elo
+            batch.append(sm)
+            if len(batch) >= BATCH_SIZE:
+                StatsModel.put_multi(batch)
+                batch = []
+            count += 1
+            if show_progress:
+                if count % 100 == 0:
+                    print(f"Updated {count} users", end="\r")
+        if batch:
+            StatsModel.put_multi(batch)
+            batch = []
+        if show_progress:
+            print(f"Updated {count} users")
+
+
 if __name__ == "__main__":
     with Client.get_context():
         Context.disable_cache()
         Context.disable_global_cache()
+        # The trim_elo() function is nondestructive
         print(f"Reading user data; writing output to {OUTPUT_FILE}")
         trim_elo(show_progress=True)
-        print(f"Updating user Elo scores")
-        update_elo(show_progress=True)
+        # The update_elo() and update_stats() functions are destructive,
+        # so be careful when invoking them
+        #print(f"Updating user Elo scores")
+        #update_elo(show_progress=True)
+        #print(f"Updating user stats")
+        #update_stats(show_progress=True)
         print(f"Processing complete")
