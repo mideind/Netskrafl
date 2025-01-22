@@ -226,17 +226,96 @@ def update_stats(*, show_progress: bool = False) -> None:
             print(f"Updated {count} users")
 
 
+def check_stats() -> None:
+    """Read the OUTPUT_FILE and compare the Elo scores in the
+    associated UserModel entities with the ones in the StatsModel
+    entities (i.e. the most recent entity for each user)"""
+    with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+        count = 0
+        discrepancies = 0
+        add_backs = 0
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            user_id, old_login_str, elo_str, new_elo_str, human_elo_str, new_human_elo_str, manual_elo_str, new_manual_elo_str = (
+                line.split(",")
+            )
+            # Trim the quotes from the user_id
+            user_id = user_id[1:-1]
+            old_login = old_login_str == "\"yes\""
+            # Obtain the UserModel entity
+            um = UserModel.get_by_id(user_id)
+            if not um:
+                print(f"UserModel not found for user {user_id}")
+                continue
+            # Obtain the StatsModel entity
+            sm = StatsModel.newest_for_user(user_id)
+            if not sm:
+                print(f"StatsModel not found for user {user_id}")
+                continue
+            # Find out whether the StatsModel entry is newer than 365 days,
+            # in which case the old_login flag was wrong
+            old_login_sm = (NOW - sm.timestamp).days >= 365
+            if old_login and not old_login_sm:
+                # We probably lowered the Elo score too much, i.e. by
+                # 20% instead of 10%, due to the last_login field in the
+                # UserModel being wrong (for some obscure reason):
+                # Add back the extra 10% that were subtracted
+                elo_diff = (int(elo_str) - int(new_elo_str)) // 2
+                human_elo_diff = (int(human_elo_str) - int(new_human_elo_str)) // 2
+                manual_elo_diff = (int(manual_elo_str) - int(new_manual_elo_str)) // 2
+                sm.elo += elo_diff
+                sm.human_elo += human_elo_diff
+                sm.manual_elo += manual_elo_diff
+                print(
+                    f"#{add_backs+1} "
+                    f"User {user_id}:"
+                    f" Added back {elo_diff}, {human_elo_diff}, {manual_elo_diff}"
+                )
+                add_backs += 1
+                sm.put()
+
+            # Compare the StatsModel scores with the UserModel
+            # score and report users with discrepancies
+            if (
+                sm.elo != um.elo
+                or sm.human_elo != um.human_elo
+                or sm.manual_elo != um.manual_elo
+            ):
+                print(
+                    f"#{discrepancies+1} "
+                    f"User {user_id}:"
+                    f" UserModel: {um.elo}, {um.human_elo}, {um.manual_elo},"
+                    f" StatsModel: {sm.elo}, {sm.human_elo}, {sm.manual_elo}"
+                )
+                discrepancies += 1
+                # Correct the discrepancy
+                um.elo = sm.elo
+                um.human_elo = sm.human_elo
+                um.manual_elo = sm.manual_elo
+                um.put()
+            count += 1
+        print(
+            f"Checked {count} users, "
+            f"discrepancies were {discrepancies}, "
+            f"Elo points added back for {add_backs} users"
+        )
+
+
 if __name__ == "__main__":
     with Client.get_context():
         Context.disable_cache()
         Context.disable_global_cache()
         # The trim_elo() function is nondestructive
-        print(f"Reading user data; writing output to {OUTPUT_FILE}")
-        trim_elo(show_progress=True)
+        #print(f"Reading user data; writing output to {OUTPUT_FILE}")
+        #trim_elo(show_progress=True)
         # The update_elo() and update_stats() functions are destructive,
         # so be careful when invoking them
         #print(f"Updating user Elo scores")
         #update_elo(show_progress=True)
         #print(f"Updating user stats")
         #update_stats(show_progress=True)
+        #print(f"Checking user stats")
+        #check_stats()
         print(f"Processing complete")

@@ -9,8 +9,8 @@
   "submit_move": {
     "is": "Leika",
     "en": "Move",
-    "nb": "Gjør trekk",
-    "nn": "Gjer trekk",
+    "nb": "Trekk",
+    "nn": "Trekk",
     "pl": "Wykonaj ruch",
     "ga": "Bog"
   },
@@ -30,8 +30,8 @@
   },
   "Tveggja stafa orð": {
     "en": "Two letter words",
-    "nb": "To bokstavs ord",
-    "nn": "To bokstavs ord",
+    "nb": "Tobokstavsord",
+    "nn": "Tobokstavsord",
     "pl": "Dwuliterowe słowa",
     "ga": "Focail dhá litir"
   },
@@ -107,12 +107,26 @@
     "pl": "Dźwięki:",
     "ga": "Fuaimeanna:"
   },
+  "Hljóð á/af": {
+    "en": "Sound on/off",
+    "nb": "Lyd på/av",
+    "nn": "Lyd på/av",
+    "pl": "Dźwięki włącz/wyłącz",
+    "ga": "Fuaimeanna ar/amuigh"
+  },
   "Lúðraþytur eftir sigur:": {
-    "en": "Trumpets after a win:",
-    "nb": "Trompeter etter en seier:",
-    "nn": "Trompeter etter ein siger:",
+    "en": "Fanfare after a win:",
+    "nb": "Trompeter etter seier:",
+    "nn": "Trompeter etter siger:",
     "pl": "Trąbki po zwycięstwie:",
     "ga": "Trumpaí tar éis bua:"
+  },
+  "Lúðraþytur á/af": {
+    "en": "Fanfare on/off",
+    "nb": "Trompeter på/av",
+    "nn": "Trompeter på/av",
+    "pl": "Trąbki włącz/wyłącz",
+    "ga": "Trumpaí ar/amuigh"
   },
   "explain_sound": {
     "is": "Stillir hvort hljóðmerki heyrast t.d. þegar andstæðingur leikur og þegar sigur vinnst",
@@ -153,7 +167,7 @@
   "Hætta við": {
     "en": "Cancel",
     "nb": "Avbryt",
-    "nn": "Avbryt",
+    "nn": "Bryt av",
     "pl": "Anuluj",
     "ga": "Cealaigh"
   },
@@ -195,30 +209,30 @@
   "Tek við áskorunum!": {
     "en": "Accepting challenges!",
     "nb": "Aksepterer utfordringer!",
-    "nn": "Aksepterer utfordringar!",
+    "nn": "Tek imot utfordringar!",
     "pl": "Akceptuje wyzwania!",
-    "ga": "Glac le dúshláin!"
+    "ga": "Ag glacadh le dúshláin!"
   },
   "Til í viðureign með klukku!": {
     "en": "Ready for timed games!",
     "nb": "Klar for tidsbegrensede spill!",
-    "nn": "Klar for tidsbegrensa spel!",
+    "nn": "Klar for tidsavgrensa spel!",
     "pl": "Gotowy na gry z czasem!",
-    "ga": "Réidh le haghaidh cluichí ama!"
+    "ga": "Réidh do chluichí ama!"
   },
   "Stillir hvort ": {
     "en": "Controls whether ",
     "nb": "Kontrollerer om ",
-    "nn": "Kontrollerer om ",
+    "nn": "Styrer om ",
     "pl": "Kontroluje czy ",
     "ga": "Rialaíonn sé an "
   },
   "minnismiði": {
     "en": "a memo sticker",
-    "nb": "en memo-sticker",
-    "nn": "ein memo-sticker",
+    "nb": "en huskelapp",
+    "nn": "ein hugselapp",
     "pl": "naklejka memo",
-    "ga": "greamán memo"
+    "ga": "nóta meabhrúcháin"
   },
   " um margföldunargildi reita er sýndur við borðið": {
     "en": " with square multipliers is shown beside the board",
@@ -232,7 +246,7 @@
     "nb": "Indikerer om du er klar til å spille med\n",
     "nn": "Indikerer om du er klar til å spele med\n",
     "pl": "Wskazuje czy jesteś gotowy do gry z\n",
-    "ga": "Léiríonn sé an bhfuil tú réidh le himirt le\n"
+    "ga": "Léiríonn sé an bhfuil tú ullamh chun imeartha le\n"
   },
   "nýja íslenska skraflpokanum": {
     "en": "the new tile bag",
@@ -245,7 +259,7 @@
     "is": "Með því að velja þessa merkingu lýsir þú því yfir að þú\nskraflir við aðra leikmenn ",
     "en": "By selecting this option, you declare that you play\nagainst other humans ",
     "nb": "Ved å velge dette alternativet, erklærer du at du spiller\nmot andre mennesker ",
-    "nn": "Ved å velje dette alternativet, erklærer du at du spelar\nmot andre menneske ",
+    "nn": "Ved å velje dette, stadfester du at du spelar\nmot andre menneske ",
     "pl": "Wybierając tę opcję, deklarujesz, że grasz\nprzeciwko innym ludziom ",
     "ga": "Trí an rogha seo a roghnú, dearbhaíonn tú go n-imríonn tú\ni gcoinne daoine eile "
   },
@@ -304,7 +318,7 @@
     "nb": "Det er {opponent}s tur",
     "nn": "Det er {opponent} sin tur",
     "pl": "Tura {opponent}",
-    "ga": "Tá sé ar leathanach {opponent}"
+    "ga": "Seal {opponent}"
   },
   " á leik": {
     "en": "'s turn",
@@ -339,7 +353,7 @@
     "nb": "Motstander",
     "nn": "Motstandar",
     "pl": "Przeciwnik",
-    "ga": "Freasúra"
+    "ga": "Iomaitheoir"
   },
   "Staða": {
     "en": "Score",
@@ -353,7 +367,7 @@
     "nb": "Fremgang",
     "nn": "Framgang",
     "pl": "Postęp",
-    "ga": "Dul Chun Cinn"
+    "ga": "Dul chun cinn"
   },
   "Keppnishamur": {
     "en": "Pro mode",
@@ -367,7 +381,7 @@
     "nb": "Standardmodus uten tidsbegrensning",
     "nn": "Standardmodus utan tidsbegrensing",
     "pl": "Tryb standardowy bez limitu czasu",
-    "ga": "Modh Caighdeánach gan teorainn ama"
+    "ga": "Gnáthchluiche gan teorainn ama"
   },
   "with_clock": {
     "is": "Með klukku, 2 x {duration} mínútur",
