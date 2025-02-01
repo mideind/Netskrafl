@@ -2,7 +2,7 @@
 
     Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
 
     The GNU General Public License, version 3, applies to this software.
@@ -1064,7 +1064,7 @@ class StatsModel(ndb.Model):
         """Returns the Elo ratings at the indicated time point (None = now),
         in descending order"""
 
-        SAFETY_BUFFER_FACTOR = 2.8  # This means a safety_buffer of 180
+        SAFETY_BUFFER_FACTOR = 3.5  # This means a safety_buffer of 250
         max_fetch = int(max_len * SAFETY_BUFFER_FACTOR)
         safety_buffer = max_fetch - max_len
         check_false_positives = True
@@ -1081,7 +1081,7 @@ class StatsModel(ndb.Model):
         q = cls.query().order(-prop)
 
         result: Dict[str, StatsDict] = dict()
-        CHUNK_SIZE = 100
+        CHUNK_SIZE = 200
         lowest_elo: Optional[int] = None
 
         # The following loop may yield an incorrect result since there may

@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-
 """ Test module for DAWG dictionary
 
-    Copyright (C) 2021 Miðeind ehf.
+    Copyright (C) 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This module contains test code for dawgdictionary.py
@@ -217,6 +215,7 @@ class DawgTester:
         self._test_false("sigrihrt")
         self._test_false("býj")
         self._test_false("ösi")
+        self._test_false("umr")
 
         self._test_true("fau")
         self._test_true("ifa")
