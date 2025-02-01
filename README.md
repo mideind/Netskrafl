@@ -5,7 +5,7 @@
 ### English summary
 
 This repository contains the implementation of an Icelandic crossword game
-in the genre of SCRABBLE(tm). The game, which is free-to-play, is accessible
+in the genre of SCRABBLE®. The game, which is free-to-play, is accessible
 on the web at [https://netskrafl.is](https://netskrafl.is).
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
@@ -30,7 +30,7 @@ real-time synchronized games with clocks, Elo scoring of players, an online chat
 and the ability to view player track records.
 
 The game uses a word database encoded in a Directed Acyclic Word Graph (DAWG).
-For Icelandic, the graph contains almost 2.3 million word forms. Further information
+For Icelandic, the graph contains 2.4 million word forms. Further information
 about the DAWG implementation can be found in README.md in the
 [Skrafl repository](https://github.com/vthorsteinsson/Skrafl) on GitHub.
 
@@ -94,18 +94,40 @@ Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 ### Generating a new vocabulary file
 
-To generate a new vocabulary file (```ordalisti.full.sorted.txt```), assuming you already
-have the BÍN database in PostgreSQL (here in table ```sigrunarsnid``` - remember to use the
-```is_IS``` collation locale!), invoke ```psql```, log in to your database and
-create the following view:
+A new vocabulary file can be fetched from the [Icelandic BÍN database](https://bin.arnastofnun.is/gogn/mimisbrunnur/) (read the licensing information!) by executing the following steps:
+
+```bash
+$ wget -O SHsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=SHsnid.csv.zip
+$ unzip SHsnid.csv.zip
+$ rm SHsnid.csv.sha256sum
+```
+
+The following instructions assume a PostgreSQL database. Our vocabulary
+database table is named ```sigrunarsnid```, has the
+```is_IS``` collation locale and contains the columns
+```stofn```, ```utg```, ```ordfl```, ```fl```, ```ordmynd```, and ```beyging```
+(all ```CHARACTER VARYING``` except ```utg``` which can be INTEGER).
+
+The following ```psql``` command copies the downloaded vocabulary data into it:
 
 ```sql
+begin transaction read write;
+\copy sigrunarsnid(stofn, utg, ordfl, fl, ordmynd, beyging) from 'SHsnid.csv' with (format csv, delimiter ';');
+commit;
+```
+
+To generate a new vocabulary file (```ordalisti.full.sorted.txt```),
+first use the following ```psql``` command to create a view:
+
+```sql
+begin transaction read write;
 create or replace view skrafl as
    select stofn, utg, ordfl, fl, ordmynd, beyging from sigrunarsnid
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
    and fl <> 'bibl'
    and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
    order by ordmynd;
+commit;
 ```
 
 To explain, this extracts all 3-15 letter word forms containing only Icelandic lowercase
@@ -124,11 +146,13 @@ view, assuming you have the *Kristínarsnið* form of BÍN in the table ```krist
 containing the ```malsnid``` and ```einkunn``` columns:
 
 ```sql
+begin transaction read write;
 create or replace view skrafl_midlungur as
 	select stofn, utg, ordfl, fl, ordmynd, beyging
 	from kristinarsnid
 	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD', 'FORN', 'URE', 'STAD'])))
 		and einkunn > 0;
+commit;
 ```
 
 You can then use the ```skrafl_midlungur``` view as the underlying table for the previous
@@ -154,6 +178,17 @@ This set of programs is licensed under the *Creative Commons*
 
 The full text of the license is available here:
 [https://creativecommons.org/licenses/by-nc/4.0/legalcode](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
+
+### Data sources
+
+The Icelandic word database used in Netskrafl is derived from the
+[Database of Modern Icelandic Inflection (DMII)](https://bin.arnastofnun.is/gogn/mimisbrunnur/) by the Árni Magnússon Institute of Reykjavík, Iceland.
+
+The DMII is published under the [*Creative Commons Attribution-ShareAlike 4.0 International Public License*](https://creativecommons.org/licenses/by-sa/4.0/) (CC-BY-SA 4.0). The attribution is as follows:
+
+*Beygingarlýsing íslensks nútímamáls. Stofnun Árna Magnússonar í íslenskum fræðum. Höfundur og ritstjóri Kristín Bjarnadóttir.*
+
+A limited number of additions and removals have been performed on the extracted DMII data to create the vocabulary used in Netskrafl. These are listed in the `ordalisti.add.txt` and `ordalisti.remove.txt` files in the `resources` directory.
 
 ### Included third party software
 
