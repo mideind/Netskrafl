@@ -15,7 +15,7 @@
 
 import json
 from google.cloud import secretmanager  # type: ignore
-from google.api_core.exceptions import GoogleAPICallError
+from google.api_core.exceptions import GoogleAPICallError, DeadlineExceeded
 import logging
 from typing import Any
 
@@ -41,8 +41,14 @@ class SecretManager:
             name = (
                 f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
             )
-            response = self.client.access_secret_version(request={"name": name})  # type: ignore
+            response = self.client.access_secret_version(  # type: ignore
+                request={"name": name},
+                timeout=5*60, # 5 minutes
+            )
             return response.payload.data
+        except DeadlineExceeded as e:
+            logging.error(f"Deadline exceeded: {e}. Secret path: {name}")
+            raise
         except GoogleAPICallError as e:
             logging.error(f"Failed to get secret: {e}. Secret path: {name}")
             raise
