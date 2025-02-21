@@ -21,6 +21,7 @@ from typing import (
     FrozenSet,
     Mapping,
     NotRequired,
+    Required,
     TypeVar,
     TypedDict,
     Any,
@@ -38,9 +39,10 @@ import functools
 import logging
 from datetime import UTC, datetime, timedelta
 import re
+import uuid
+import jwt
 
 from flask.helpers import url_for
-import jwt
 
 from config import (
     ANONYMOUS_PREFIX,
@@ -163,6 +165,18 @@ class StatsSummaryDict(TypedDict):
     manual_elo: int
 
 
+class JWTClaims(TypedDict, total=False):
+    """Type definition for JWT claims used in the application"""
+
+    iss: str  # Issuer (PROJECT_ID)
+    sub: str  # Subject (user_id)
+    exp: Required[float | datetime]  # Expiration time (Unix timestamp)
+    iat: Required[float | datetime] # Issued at time (Unix timestamp)
+    nbf: float | datetime  # Not before time (Unix timestamp)
+    jti: str  # JWT ID (unique identifier)
+    aud: str | List[str]  # Audience (JWT_AUDIENCE)
+
+
 # Maximum length of player nickname
 MAX_NICKNAME_LENGTH = 15
 
@@ -170,11 +184,21 @@ MAX_NICKNAME_LENGTH = 15
 DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
 
 # Key ID for the client secret key used to sign our own tokens
-# Change this if the key is rotated
-EXPLO_KID = "2022-02-08:1"
+# Change this if the key is rotated or the token structure is updated
+EXPLO_KID_1 = "2022-02-08:1"
+EXPLO_KID_2 = "2025-02-21:1"
+
+# All potentially valid KIDs
+EXPLO_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
+
+# This is the currently issued KID
+EXPLO_KID = EXPLO_KID_2
 
 # Algorithm: HMAC using SHA-256
 JWT_ALGORITHM = "HS256"
+
+# JWT audience
+JWT_AUDIENCE = "explo-client"
 
 # Nickname character replacement pattern
 NICKNAME_STRIP = re.compile(r"[\W_]+", re.UNICODE)
@@ -194,21 +218,27 @@ def make_login_dict(
     """Create a login credential object that is returned to the client"""
     now = datetime.now(UTC)
     expires = now + lifetime
-    # If asked, we create our own client token,
-    # which the client can pass back later
-    # instead of using the third party
-    # authentication providers
-    token: str = previous_token or cast(Any, jwt).encode(
-        {
+    token = previous_token
+    if not token:
+        # If asked, we create our own client token,
+        # which the client can pass back later
+        # instead of using the third party
+        # authentication providers
+        claims: JWTClaims = {
             "iss": PROJECT_ID,
             "sub": user_id,
             "exp": expires,
             "iat": now,
-        },
-        EXPLO_CLIENT_SECRET,
-        algorithm=JWT_ALGORITHM,
-        headers={"kid": EXPLO_KID},
-    )
+            "nbf": now,
+            "jti": str(uuid.uuid4()),
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            cast(Dict[str, Any], claims),
+            EXPLO_CLIENT_SECRET,
+            algorithm=JWT_ALGORITHM,
+            headers={"kid": EXPLO_KID},
+        )
     return {
         "user_id": user_id,
         "account": account,
@@ -219,7 +249,13 @@ def make_login_dict(
     }
 
 
-def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
+def is_token_blacklisted(jti: str) -> bool:
+    """Check whether a token has been blacklisted"""
+    # TBD
+    return False
+
+
+def verify_explo_token(token: str) -> Optional[JWTClaims]:
     """Verify a JWT-encoded Explo token and return its claims,
     or None if verification fails"""
     try:
@@ -228,18 +264,36 @@ def verify_explo_token(token: str) -> Optional[Mapping[str, str]]:
             raise ValueError(f"Unexpected token type: {typ}")
         if (alg := headers.get("alg")) != JWT_ALGORITHM:
             raise ValueError(f"Unexpected algorithm: {alg}")
-        if (kid := headers.get("kid")) != EXPLO_KID:
-            # We have rotated the client key and no longer
-            # accept tokens signed with the old key
+        kid = headers.get("kid", "")
+        if kid not in EXPLO_KIDS:
             raise ValueError(f"Unexpected key id: {kid}")
         # So far, so good. Now verify the JWT and its claims.
         # This will raise an exception if the token is invalid.
-        claims: Mapping[str, str] = cast(Any, jwt).decode(
-            token,
-            EXPLO_CLIENT_SECRET,
-            algorithms=[JWT_ALGORITHM],
-            issuer=PROJECT_ID,
-        )
+        claims: JWTClaims
+        if kid == EXPLO_KID:
+            # Current key identifier and token format, with a specified audience
+            claims = jwt.decode(
+                token,
+                EXPLO_CLIENT_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                issuer=PROJECT_ID,
+                audience=JWT_AUDIENCE,
+            )
+            # Check the token unique ID against a blacklist
+            jti = claims.get("jti", "")
+            if is_token_blacklisted(jti):
+                return None
+        elif kid == EXPLO_KID_1:
+            # The older KID_1 tokens are still accepted without an audience check,
+            # but no longer issued for new logins
+            claims = jwt.decode(
+                token,
+                EXPLO_CLIENT_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                issuer=PROJECT_ID,
+            )
+        else:
+            return None
         return claims
     except (jwt.InvalidTokenError, ValueError):
         return None
