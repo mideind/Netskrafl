@@ -59,7 +59,7 @@ from basics import (
     max_age,
 )
 from logic import promo_to_show_to_user
-from skrafluser import User, UserLoginDict
+from skrafluser import User, UserLoginDict, verify_malstadur_token
 import firebase
 import billing
 from cache import memcache
@@ -286,25 +286,46 @@ def login() -> ResponseType:
     return g.authorize_redirect(redirect_uri)
 
 
-@web.route("/login_email", methods=["POST"])
-def login_email() -> ResponseType:
-    """User login by e-mail, for development purposes only"""
-    if not running_local:
-        return jsonify(status="invalid", message="Not allowed"), 403
+@web.route("/login_malstadur", methods=["POST"])
+def login_malstadur() -> ResponseType:
+    """User login from Málstaður by e-mail, using a JWT token
+    to verify the user's identity"""
     clear_session_userid()
-    # Obtain email from the request
     rq = RequestData(request)
+    # Obtain email from the request
     email = rq.get("email", "")
     if not email:
         return jsonify(status="invalid", message="No email provided"), 401
+    # Obtain the JavaScript Web Token (JWT) from the request
+    jwt = rq.get("token", "")
+    if not jwt:
+        return jsonify(status="invalid", message="No token provided"), 401
+    # Decode the claims in the JWT, using the Málstaður secret
+    expired, claims = verify_malstadur_token(jwt)
+    if expired:
+        return jsonify(status="expired", message="Token expired")
+    if claims is None:
+        return jsonify(status="invalid", message="Invalid token"), 401
+    # Claims successfully extracted, which means that the token
+    # is valid and not expired
+    emailClaim = claims.get("email", "")
+    if not emailClaim or emailClaim != email:
+        return jsonify(status="invalid", message="Mismatched email"), 401
+    # !!! TODO: Extract information about the user's subscription plan
+    # and set the user's friendship status accordingly
+    plan = claims.get("plan", "")
+    is_friend = plan == "friend"
     # Find the user record by email
-    uld = User.login_by_email(email)
+    nickname = rq.get("nickname", "")
+    fullname = rq.get("fullname", "")
+    account = claims.get("sub", "")
+    uld = User.login_by_email(email, account, nickname, fullname, is_friend)
     if uld is None:
         return jsonify(status="invalid", message="No such user"), 401
     userid = uld["user_id"]
     # Create a Firebase custom token for the user
     token = firebase.create_custom_token(userid)
-    sd = SessionDict(userid=userid, method="Email")
+    sd = SessionDict(userid=userid, method="Malstadur")
     # Create a session cookie with the user id
     set_session_cookie(userid, sd=sd)
     return jsonify(dict(status="success", firebase_token=token, **uld))

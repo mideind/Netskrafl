@@ -47,6 +47,7 @@ from flask.helpers import url_for
 from config import (
     ANONYMOUS_PREFIX,
     EXPLO_CLIENT_SECRET,
+    MALSTADUR_JWT_SECRET,
     DEFAULT_LOCALE,
     NETSKRAFL,
     PROJECT_ID,
@@ -166,12 +167,14 @@ class StatsSummaryDict(TypedDict):
 
 
 class JWTClaims(TypedDict, total=False):
-    """Type definition for JWT claims used in the application"""
+    """Type definition for JSON Web Tokens (JWT) claims used in the application"""
 
     iss: str  # Issuer (PROJECT_ID)
     sub: str  # Subject (user_id)
+    email: str  # User E-mail address
+    plan: str  # Subscription plan
     exp: Required[float | datetime]  # Expiration time (Unix timestamp)
-    iat: Required[float | datetime] # Issued at time (Unix timestamp)
+    iat: Required[float | datetime]  # Issued at time (Unix timestamp)
     nbf: float | datetime  # Not before time (Unix timestamp)
     jti: str  # JWT ID (unique identifier)
     aud: str | List[str]  # Audience (JWT_AUDIENCE)
@@ -193,6 +196,11 @@ EXPLO_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
 
 # This is the currently issued KID
 EXPLO_KID = EXPLO_KID_2
+
+MALSTADUR_KID = "2025-02-27:1"
+
+# All potentially valid KIDs
+MALSTADUR_KIDS = frozenset((MALSTADUR_KID,))
 
 # Algorithm: HMAC using SHA-256
 JWT_ALGORITHM = "HS256"
@@ -297,6 +305,41 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
         return claims
     except (jwt.InvalidTokenError, ValueError):
         return None
+
+
+def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
+    """Verify a JWT-encoded Málstaður token and return its claims,
+    or None if verification fails. The first return value is True if
+    the JWT has expired but False otherwise."""
+    try:
+        headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
+        if (typ := headers.get("typ")) != "JWT":
+            raise ValueError(f"Unexpected token type: {typ}")
+        if (alg := headers.get("alg")) != JWT_ALGORITHM:
+            raise ValueError(f"Unexpected algorithm: {alg}")
+        kid = headers.get("kid", "")
+        if kid not in MALSTADUR_KIDS:
+            raise ValueError(f"Unexpected key id: {kid}")
+        # So far, so good. Now verify the JWT and its claims.
+        # This will raise an exception if the token is invalid.
+        claims: JWTClaims
+        if kid == MALSTADUR_KID:
+            # Current key identifier and token format
+            claims = jwt.decode(
+                token,
+                MALSTADUR_JWT_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                issuer="malstadur",
+                audience="netskrafl",
+            )
+        else:
+            return False, None
+        return False, claims
+    except jwt.ExpiredSignatureError:
+        # Token is expired
+        return True, None
+    except (jwt.InvalidTokenError, ValueError):
+        return False, None
 
 
 class User:
@@ -476,7 +519,9 @@ class User:
         if NETSKRAFL:
             # In Netskrafl, we don't support locale-specific Elo ratings,
             # so we always return the Elo ratings stored with the user entity
-            assert locale is None or locale == DEFAULT_LOCALE, f"Invalid locale: {locale}"
+            assert (
+                locale is None or locale == DEFAULT_LOCALE
+            ), f"Invalid locale: {locale}"
             return self.elo_dict()
         locale = locale or self.locale or DEFAULT_LOCALE
         if uid := self.id():
@@ -944,7 +989,7 @@ class User:
         sid = self.id()
         assert sid is not None
         return ReportModel.report_user(sid, destuser_id, code, text)
-    
+
     def submit_word(self, word: str, locale: str, comment: str) -> bool:
         """Submit a word for consideration as missing word"""
         word = word.strip().lower()
@@ -1091,6 +1136,57 @@ class User:
         return user_list
 
     @classmethod
+    def create_user(
+        cls,
+        account: str,
+        email: str,
+        nickname: str,
+        name: str,
+        image: str,
+        locale: str,
+        is_friend: bool = False,
+    ) -> str:
+        """Create a new user object"""
+        # Create a new user, with the account id as user id.
+        # New users are created with the new bag as default,
+        # and we also capture the email and the full name.
+        nickname = NICKNAME_STRIP.sub("", nickname)
+        if not nickname:
+            # Obtain a candidate nickname from the email
+            candidate1 = email.split("@")[0] if email else ""
+            # Strip candidate to only contain alphanumeric characters
+            strip1 = NICKNAME_STRIP.sub("", candidate1)
+            # Obtain a candidate nickname from the full name
+            candidate2 = name.split()[0] if name else ""
+            # Strip candidate to only contain alphanumeric characters
+            strip2 = NICKNAME_STRIP.sub("", candidate2)
+            # If candidate1 originally contained non-alphanumeric characters,
+            # but candidate2 did not, prefer candidate2
+            if strip1 != candidate1 and candidate2 and strip2 == candidate2:
+                strip1 = ""
+            nickname = strip1 or candidate2 or ""
+        nickname = nickname[0:MAX_NICKNAME_LENGTH]
+        prefs: PrefsDict = {
+            "newbag": True,
+            "email": email,
+            "full_name": name or nickname,
+            "friend": is_friend,
+            "haspaid": is_friend,
+        }
+        # Make sure that the locale is a valid, supported locale
+        locale = to_supported_locale(locale)  # Maps an empty locale to DEFAULT_LOCALE
+        # Return the id of the freshly created user
+        return UserModel.create(
+            user_id=account,
+            account=account,
+            email=email,
+            nickname=nickname,
+            image=image,
+            preferences=prefs,
+            locale=locale,
+        )
+
+    @classmethod
     def login_by_account(
         cls,
         account: str,
@@ -1138,76 +1234,90 @@ class User:
             )
             return uld
         # We haven't seen this Google Account before: try to match by email
-        if email:
-            um = UserModel.fetch_email(email)
-            if um is not None:
-                # We probably have an older (Python2 GAE) user for this email:
-                # Associate the account with it from now on (but keep the old id)
-                if account:
-                    um.account = account
-                elif not um.account:
-                    # Should not happen, but anyway: if there was no
-                    # account id, copy the user id into it
-                    um.account = um.user_id()
-                if image and image != um.image:
-                    # Use the opportunity to update the image, if different
-                    um.image = image
-                full_name = um.prefs.get("full_name", "") if um.prefs else ""
-                if name and not full_name:
-                    # Use the opportunity to update the name, if not already set
-                    um.prefs["full_name"] = name
-                # Note the last login
-                um.last_login = datetime.now(UTC)
-                # If the account was disabled, enable it again
-                um.inactive = False
-                user_id = um.put().id()
-                uld = make_login_dict(
-                    user_id=user_id,
-                    account=um.account,
-                    locale=um.locale or DEFAULT_LOCALE,
-                    new=False,
-                )
-                return uld
-        # No match by account id or email: create a new user,
-        # with the account id as user id.
-        # New users are created with the new bag as default,
-        # and we also capture the email and the full name.
-        # Obtain a candidate nickname from the email
-        candidate1 = email.split("@")[0] if email else ""
-        # Strip candidate to only contain alphanumeric characters
-        strip1 = NICKNAME_STRIP.sub("", candidate1)
-        # Obtain a candidate nickname from the full name
-        candidate2 = name.split()[0] if name else ""
-        # Strip candidate to only contain alphanumeric characters
-        strip2 = NICKNAME_STRIP.sub("", candidate2)
-        # If candidate1 originally contained non-alphanumeric characters,
-        # but candidate2 did not, prefer candidate2
-        if strip1 != candidate1 and candidate2 and strip2 == candidate2:
-            strip1 = ""
-        nickname = strip1 or candidate2 or ""
-        nickname = nickname[0:MAX_NICKNAME_LENGTH]
-        prefs: PrefsDict = {
-            "newbag": True,
-            "email": email,
-            "full_name": name or nickname,
-        }
-        # Make sure that the locale is a valid, supported locale
-        locale = to_supported_locale(locale)  # Maps an empty locale to DEFAULT_LOCALE
-        user_id = UserModel.create(
-            user_id=account,
-            account=account,
-            email=email,
-            nickname=nickname,
-            image=image,
-            preferences=prefs,
-            locale=locale,
+        if email and (um := UserModel.fetch_email(email)) is not None:
+            # We probably have an older (Python2 GAE) user for this email:
+            # Associate the account with it from now on (but keep the old id)
+            if account:
+                um.account = account
+            elif not um.account:
+                # Should not happen, but anyway: if there was no
+                # account id, copy the user id into it
+                um.account = um.user_id()
+            if image and image != um.image:
+                # Use the opportunity to update the image, if different
+                um.image = image
+            full_name = um.prefs.get("full_name", "") if um.prefs else ""
+            if name and not full_name:
+                # Use the opportunity to update the name, if not already set
+                um.prefs["full_name"] = name
+            # Note the last login
+            um.last_login = datetime.now(UTC)
+            # If the account was disabled, enable it again
+            um.inactive = False
+            user_id = um.put().id()
+            uld = make_login_dict(
+                user_id=user_id,
+                account=um.account,
+                locale=um.locale or DEFAULT_LOCALE,
+                new=False,
+            )
+            return uld
+        # User does not exist already: create a new user entity
+        user_id = cls.create_user(
+            account, email, "", name, image, locale or DEFAULT_LOCALE
         )
         # Create a user login event object and return it
         uld = make_login_dict(
             user_id=user_id,
             account=account,
-            locale=locale,
+            locale=locale or DEFAULT_LOCALE,
             new=True,
+        )
+        return uld
+
+    @classmethod
+    def login_by_email(
+        cls,
+        email: str,
+        account: str,
+        nickname: str,
+        fullname: str,
+        is_friend: bool,
+    ) -> UserLoginDict:
+        """Log in a user given an e-mail address; return a login dictionary and some
+        additional user details. This is used by the Málstaður login flow."""
+        if (um := UserModel.fetch_email(email)) is not None:
+            # User exists: Note the login timestamp
+            um.last_login = datetime.now(UTC)
+            # Force the friend state to the one coming from Málstaður
+            um.plan = "friend" if is_friend else ""
+            um.prefs["friend"] = is_friend
+            um.prefs["haspaid"] = is_friend
+            um.put()
+            user_id = um.user_id()
+            uld = make_login_dict(
+                user_id=user_id,
+                account=um.account or user_id,
+                locale=um.locale or DEFAULT_LOCALE,
+                new=False,
+                # We don't need to create a fresh Explo token, so we
+                # pass in a dummy placeholder value here
+                previous_token="*",
+            )
+            return uld
+        # User does not exist already: create a new user entity
+        user_id = cls.create_user(
+            account, email, nickname, fullname, "", DEFAULT_LOCALE, is_friend
+        )
+        # Return a user login event object
+        uld = make_login_dict(
+            user_id=user_id,
+            account=account,
+            locale=DEFAULT_LOCALE,
+            new=True,
+            # We don't need to create a fresh Explo token, so we
+            # pass in a dummy placeholder value here
+            previous_token="*",
         )
         return uld
 
@@ -1219,8 +1329,7 @@ class User:
     ) -> Optional[UserLoginDict]:
         """Log in a user given a user id; return a login dictionary
         and some additional user details, or None"""
-        um = UserModel.fetch(user_id)
-        if um is None:
+        if (um := UserModel.fetch(user_id)) is None:
             return None
         # Note the login timestamp
         um.last_login = datetime.now(UTC)
@@ -1231,31 +1340,6 @@ class User:
             locale=um.locale or DEFAULT_LOCALE,
             new=False,
             previous_token=previous_token,
-        )
-        return uld
-
-    @classmethod
-    def login_by_email(
-        cls,
-        email: str,
-    ) -> Optional[UserLoginDict]:
-        """Log in a user given an e-mail address; return a login dictionary
-        and some additional user details, or None"""
-        um = UserModel.fetch_email(email)
-        if um is None:
-            return None
-        # Note the login timestamp
-        um.last_login = datetime.now(UTC)
-        um.put()
-        user_id = um.user_id()
-        uld = make_login_dict(
-            user_id=user_id,
-            account=um.account or user_id,
-            locale=um.locale or DEFAULT_LOCALE,
-            new=False,
-            # We don't need to create a fresh Explo token, so we
-            # pass in a dummy placeholder value here
-            previous_token="*",
         )
         return uld
 

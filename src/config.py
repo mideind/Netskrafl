@@ -131,6 +131,10 @@ assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_ID
 EXPLO_CLIENT: Mapping[str, str] = CLIENT.get("explo", {})
 EXPLO_CLIENT_SECRET = EXPLO_CLIENT.get("secret", "")
 
+# Málstaður client secret, used as a key for signing JWTs
+MALSTADUR_CLIENT: Mapping[str, str] = CLIENT.get("malstadur", {})
+MALSTADUR_JWT_SECRET = MALSTADUR_CLIENT.get("secret", "")
+
 OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 
 # Analytics measurement id
