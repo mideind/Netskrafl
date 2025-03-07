@@ -235,6 +235,7 @@ def rawhelp() -> ResponseType:
     """Return raw help page HTML. Authentication is not required."""
 
     locale = request.args.get("locale", DEFAULT_LOCALE)
+    version = request.args.get("version", "")
 
     def override_url_for(endpoint: str, **values: Any) -> str:
         """Convert URLs from old-format plain ones to single-page fancy ones"""
@@ -244,7 +245,12 @@ def rawhelp() -> ResponseType:
             return "$$" + endpoint.split(".")[-1] + "$$"
         return url_for(endpoint, **values)
 
-    return render_locale_template("rawhelp-{0}.html", locale, url_for=override_url_for)
+    return render_locale_template(
+        "rawhelp-{0}.html",
+        locale,
+        url_for=override_url_for,
+        version=version,
+    )
 
 
 @web.route("/page")
@@ -311,7 +317,7 @@ def login_malstadur() -> ResponseType:
     emailClaim = claims.get("email", "")
     if not emailClaim or emailClaim != email:
         return jsonify(status="invalid", message="Mismatched email"), 401
-    # !!! TODO: Extract information about the user's subscription plan
+    # Extract information about the user's subscription plan
     # and set the user's friendship status accordingly
     plan = claims.get("plan", "")
     is_friend = plan == "friend"
