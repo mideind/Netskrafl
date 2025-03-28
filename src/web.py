@@ -20,6 +20,7 @@
 from __future__ import annotations
 import os
 
+import sys
 from typing import (
     Optional,
     Dict,
@@ -296,6 +297,7 @@ def login() -> ResponseType:
 def login_malstadur() -> ResponseType:
     """User login from Málstaður by e-mail, using a JWT token
     to verify the user's identity"""
+    # logging.info("login_malstadur invoked")
     clear_session_userid()
     rq = RequestData(request)
     # Obtain email from the request
@@ -431,6 +433,12 @@ if running_local:
     def admin_main() -> ResponseType:
         """Show main administration page"""
         return render_template("admin.html", user=None, project_id=PROJECT_ID)
+
+    @web.route("/admin/exit")
+    def admin_exit() -> ResponseType:
+        """Exit the server process"""
+        sys.exit(0)
+        return "Exiting", 200
 
 
 # noinspection PyUnusedLocal

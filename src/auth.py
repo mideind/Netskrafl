@@ -80,7 +80,7 @@ TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADda
 
 # Characters that are forbidden in Firebase paths
 FIREBASE_FORBIDDEN_CHARS = ".#$[]/"
-FIREBASE_TRANSLATE = str.maketrans(
+FIREBASE_TRANSLATE: Dict[int, int] = str.maketrans(
     FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS)
 )
 

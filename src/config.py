@@ -60,7 +60,14 @@ class FlaskConfig(TypedDict):
 
 
 # Are we running in a local development environment or on a GAE server?
-running_local: bool = os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+# We allow the SERVER_SOFTWARE environment variable to be overridden using
+# RUNNING_LOCAL, since running gunicorn locally will set SERVER_SOFTWARE to
+# "gunicorn/NN.n.n" rather than "Development".
+running_local: bool = (
+    os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+    or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
+)
+
 # Set SERVER_HOST to 0.0.0.0 to accept HTTP connections from the outside
 host: str = os.environ.get("SERVER_HOST", "127.0.0.1")
 port: str = os.environ.get("SERVER_PORT", "8080")
@@ -80,9 +87,6 @@ DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configu
 DEFAULT_THUMBNAIL_SIZE = 384  # Thumbnails are 384x384 pixels by default
 
 DEFAULT_ELO = 1200  # Elo rating for new players
-
-# Initialize the SecretManager with your Google Cloud project ID
-sm = SecretManager(PROJECT_ID)
 
 # Should we constrain the domain for HTTP session cookies?
 # Currently we don't do this as we would like to be able to access
@@ -104,6 +108,13 @@ COOKIE_DOMAIN: Optional[str] = (
     if CONSTRAIN_COOKIE_DOMAIN
     else None
 )
+
+# Initialize the Google Cloud SecretManager with the project ID
+sm = SecretManager(PROJECT_ID)
+
+# Read the Flask secret session key from Google secret manager
+FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
+assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
 
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
@@ -184,10 +195,6 @@ RC_WEBHOOK_AUTH: str = j.get("RC_WEBHOOK_AUTH", "")
 AUTH_SECRET: str = j.get("AUTH_SECRET", "")
 if not NETSKRAFL:
     assert AUTH_SECRET, f"AUTH_SECRET not set correctly in {CLIENT_SECRET_ID}"
-
-# Read the Flask secret session key from Google secret manager
-FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
-assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
 
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))

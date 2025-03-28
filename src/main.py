@@ -37,6 +37,7 @@ from typing import (
 )
 
 import os
+import sys
 import re
 import logging
 
@@ -95,15 +96,20 @@ if running_local:
                     "class": "logging.StreamHandler",
                     "stream": "ext://flask.logging.wsgi_errors_stream",
                     "formatter": "default",
-                }
+                },
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "stream": sys.stdout,
+                    "formatter": "default",
+                },
             },
-            "root": {"level": "INFO", "handlers": ["wsgi"]},
+            # "root": {"level": "INFO", "handlers": ["wsgi"]},
+            "root": {"level": "INFO", "handlers": ["console"]},
         }
     )
 
 if running_local:
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
-    # flask_config["SERVER_NAME"] = "127.0.0.1"
 else:
     # Import the Google Cloud client library
     import google.cloud.logging
@@ -130,17 +136,30 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
 if running_local:
+    origins = [
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:6006",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:6006",
+    ]
+elif NETSKRAFL:
+    origins = [
+        "https://malstadur.is",
+        "https://malstadur.mideind.is",
+    ]
+else:
+    origins = []
+
+if origins:
     CORS(
         app,
         supports_credentials=True,
-        origins=[
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "http://127.0.0.1:6006",
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:6006",
-        ],
+        origins=origins,
+        methods=["GET", "POST", "OPTIONS"],
+        # allow_headers=["Content-Type"],  # Limit to standard headers
+        max_age=86400,  # Cache preflight response for 24 hours
     )
 
 # Flask configuration

@@ -13,11 +13,22 @@
 
 """
 
+from typing import Any
+
+import os
 import json
+import time
+import logging
+
 from google.cloud import secretmanager  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError, DeadlineExceeded
-import logging
-from typing import Any
+
+
+# We cannot use the variable from config.py here, as that would create a circular import
+running_local: bool = (
+    os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+    or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
+)
 
 
 class SecretManager:
@@ -27,6 +38,9 @@ class SecretManager:
         Initialize the SecretManager with a Google Cloud project ID.
         A SecretManagerServiceClient is created for interacting with Secret Manager.
         """
+        if running_local:
+            # Propagate Google Cloud logging to the root logger
+            logging.getLogger("google.cloud.secretmanager").propagate = True
         self.client = secretmanager.SecretManagerServiceClient()
         self.project_id = project_id
 
@@ -41,10 +55,16 @@ class SecretManager:
             name = (
                 f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
             )
+            t0 = 0.0
+            if running_local:
+                t0 = time.time()
+                logging.info(f"Get secret {name}: start")
             response = self.client.access_secret_version(  # type: ignore
                 request={"name": name},
                 timeout=5*60, # 5 minutes
             )
+            if running_local:
+                logging.info(f"Get secret {name}: done in {time.time() - t0:.3f} seconds")
             return response.payload.data
         except DeadlineExceeded as e:
             logging.error(f"Deadline exceeded: {e}. Secret path: {name}")
