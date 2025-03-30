@@ -9,7 +9,6 @@
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
-
     This module contains a middle layer between the server APIs
     (found in apy.py) and the various game functions in modules
     such as skrafluser.py, skraflmechanics.py and skraflgame.py.

@@ -1,6 +1,6 @@
 """
 
-    Web server for netskrafl.is
+    Web server for netskrafl.is/Explo
 
     Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -8,7 +8,6 @@
     The Creative Commons Attribution-NonCommercial 4.0
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
 
     This Python >= 3.11 web server module uses the Flask framework
     to implement a crossword game.
@@ -37,12 +36,10 @@ from typing import (
 )
 
 import os
-import sys
 import re
 import logging
 
 from datetime import timedelta
-from logging.config import dictConfig
 
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
@@ -74,6 +71,7 @@ from basics import (
     ndb_wsgi_middleware,
     init_oauth,
 )
+from authmanager import auth_manager
 from firebase import init_firebase_app, connect_blueprint
 from wordbase import Wordbase
 from api import api_blueprint
@@ -82,40 +80,15 @@ from skraflstats import stats_blueprint
 
 
 if running_local:
-    # Configure logging
-    dictConfig(
-        {
-            "version": 1,
-            "formatters": {
-                "default": {
-                    "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-                }
-            },
-            "handlers": {
-                "wsgi": {
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://flask.logging.wsgi_errors_stream",
-                    "formatter": "default",
-                },
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "stream": sys.stdout,
-                    "formatter": "default",
-                },
-            },
-            # "root": {"level": "INFO", "handlers": ["wsgi"]},
-            "root": {"level": "INFO", "handlers": ["console"]},
-        }
-    )
-
-if running_local:
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
 else:
     # Import the Google Cloud client library
     import google.cloud.logging
 
     # Instantiate a logging client
-    logging_client = google.cloud.logging.Client()
+    logging_client = google.cloud.logging.Client(
+        credentials=auth_manager.get_credentials()
+    )
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
@@ -136,6 +109,7 @@ setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
 if running_local:
+    # For local development in various scenarios
     origins = [
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
@@ -220,9 +194,9 @@ def add_headers(response: Response) -> Response:
     """Inject additional headers into responses"""
     if not running_local:
         # Add HSTS to enforce HTTPS
-        response.headers[
-            "Strict-Transport-Security"
-        ] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
     return response
 
 

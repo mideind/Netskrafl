@@ -9,7 +9,6 @@
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
-
     This module reads a number of configuration parameters
     from environment variables and config files.
 
@@ -29,11 +28,14 @@ from typing import (
     Tuple,
     Callable,
 )
-from datetime import UTC, datetime, timedelta
+
 import os
+import sys
+from datetime import UTC, datetime, timedelta
 from secret_manager import SecretManager
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
+from logging.config import dictConfig
 
 
 # Universal type definitions
@@ -67,6 +69,36 @@ running_local: bool = (
     os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
     or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
 )
+
+if running_local:
+    # Configure logging
+    dictConfig(
+        {
+            "version": 1,
+            "formatters": {
+                "default": {
+                    "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+                }
+            },
+            "handlers": {
+                "wsgi": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://flask.logging.wsgi_errors_stream",
+                    "formatter": "default",
+                },
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "stream": sys.stdout,
+                    "formatter": "default",
+                },
+            },
+            "root": {"level": "INFO", "handlers": ["wsgi"]},
+            # "root": {"level": "INFO", "handlers": ["console"]},
+            # The following is required to display Gunicorn access logs
+            "disable_existing_loggers": False,
+        },
+    )
+
 
 # Set SERVER_HOST to 0.0.0.0 to accept HTTP connections from the outside
 host: str = os.environ.get("SERVER_HOST", "127.0.0.1")

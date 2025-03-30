@@ -93,21 +93,14 @@ class Wordbase:
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
         """ Load a dictionary from a binary DAWG file """
-
         bname = os.path.abspath(
             os.path.join(BASE_PATH, "resources", resource + ".bin.dawg")
-        )
-        # Load packed binary file
-        logging.info(
-            "Instance {0} loading DAWG from binary file {1}".format(
-                os.environ.get("INSTANCE_ID", ""), bname
-            )
         )
         t0 = time.time()
         dawg = PackedDawgDictionary(alphabet)
         dawg.load(bname)
         t1 = time.time()
-        logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
+        logging.info("Loaded DAWG {1} in {0:.2f} seconds".format(t1 - t0, bname))
         return dawg
 
     @staticmethod

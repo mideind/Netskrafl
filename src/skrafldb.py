@@ -102,6 +102,7 @@ from config import (
     NETSKRAFL,
 )
 from cache import memcache
+from authmanager import auth_manager
 
 
 # Type definitions
@@ -511,7 +512,9 @@ class Model(Generic[_T_Model], ndb.Model):
 class Client:
     """Wrapper for the ndb client instance singleton"""
 
-    _client = ndb.Client()
+    # We use the centrally managed Google Cloud credentials from auth_manager
+    credentials = auth_manager.get_credentials()
+    _client = ndb.Client(credentials=credentials)
     _global_cache = ndb.RedisCache(memcache.get_redis_client())
 
     def __init__(self) -> None:

@@ -19,9 +19,13 @@ import os
 import json
 import time
 import logging
+import requests
+import base64
 
 from google.cloud import secretmanager  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError, DeadlineExceeded
+
+from authmanager import auth_manager
 
 
 # We cannot use the variable from config.py here, as that would create a circular import
@@ -41,8 +45,59 @@ class SecretManager:
         if running_local:
             # Propagate Google Cloud logging to the root logger
             logging.getLogger("google.cloud.secretmanager").propagate = True
-        self.client = secretmanager.SecretManagerServiceClient()
+            # Use the HTTP client exclusively, not the gRPC client
+            # which can be extremely slow in local development environments,
+            # for some reason.
+            self.client = None
+        else:
+            # Note: passing credentials=auth_manager.get_credentials() here
+            # does not solve the extreme slowness bug, which seems to be
+            # related to gRPC - and is avoided by using the HTTP client instead.
+            self.client = secretmanager.SecretManagerServiceClient()
         self.project_id = project_id
+
+    def _get_secret_via_client(self, name: str) -> bytes:
+        """
+        Retrieve a secret from Secret Manager using the client library.
+        The secret is returned as bytes.
+        If an error occurs, an error message is logged and an exception is raised.
+        """
+        assert self.client is not None
+        response = self.client.access_secret_version(  # type: ignore
+            request={"name": name},
+            timeout=5 * 60, # 5 minutes
+        )
+        return response.payload.data
+
+    def _get_secret_via_http(self, name: str) -> bytes:
+        """
+        Retrieve a secret from Secret Manager using direct HTTP calls instead of the client library.
+        This method may perform better in local development environments where the client library 
+        can be slow.
+        The secret is returned as bytes.
+        """
+        try:
+            url = f"https://secretmanager.googleapis.com/v1/{name}:access"
+
+            # Obtain a valid access token, coded in to an Authorization: Bearer header
+            headers = auth_manager.get_auth_headers()
+            t0 = time.time()
+
+            response = requests.get(url, headers=headers, timeout=5 * 60)  # 5-minute timeout
+            response.raise_for_status()
+
+            logging.info(f"Get secret via HTTP {name}: done in {time.time() - t0:.3f} seconds")
+
+            # Parse the response and extract the payload data
+            json_response = response.json()
+            return base64.b64decode(json_response["payload"]["data"])
+
+        except requests.exceptions.Timeout:
+            logging.error(f"Deadline exceeded when fetching via HTTP. Secret path: {name}")
+            raise DeadlineExceeded(f"HTTP request timeout for secret: {name}")
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to get secret via HTTP: {e}. Secret path: {name}")
+            raise GoogleAPICallError(f"HTTP request failed for secret: {name}") from e
 
     def get_secret(self, secret_id: str, version_id: str = "latest") -> bytes:
         """
@@ -55,17 +110,10 @@ class SecretManager:
             name = (
                 f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
             )
-            t0 = 0.0
-            if running_local:
-                t0 = time.time()
-                logging.info(f"Get secret {name}: start")
-            response = self.client.access_secret_version(  # type: ignore
-                request={"name": name},
-                timeout=5*60, # 5 minutes
-            )
-            if running_local:
-                logging.info(f"Get secret {name}: done in {time.time() - t0:.3f} seconds")
-            return response.payload.data
+            if self.client is None:
+                return self._get_secret_via_http(name)
+            else:
+                return self._get_secret_via_client(name)
         except DeadlineExceeded as e:
             logging.error(f"Deadline exceeded: {e}. Secret path: {name}")
             raise
