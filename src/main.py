@@ -93,6 +93,17 @@ else:
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
 
+import threading
+original_get_ident = threading.get_ident
+
+def debug_get_ident():
+    ident = original_get_ident()
+    if ident is None:  # type: ignore[assignment]
+        logging.error("Thread ident is None", stack_info=True)
+    return ident
+
+threading.get_ident = debug_get_ident
+
 # Initialize Firebase
 init_firebase_app()
 

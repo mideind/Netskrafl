@@ -1,19 +1,19 @@
 """
 
-    Web server for netskrafl.is
+Web server for netskrafl.is
 
-    Copyright © 2025 Miðeind ehf.
-    Original author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Original author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
 
-    This module implements web routes, i.e. URLs that return
-    responsive HTML/CSS/JScript content.
+This module implements web routes, i.e. URLs that return
+responsive HTML/CSS/JScript content.
 
-    JSON-based client API entrypoints are implemented in api.py.
+JSON-based client API entrypoints are implemented in api.py.
 
 """
 
@@ -32,6 +32,7 @@ from typing import (
 )
 
 import logging
+import uuid
 
 from flask import (
     Blueprint,
@@ -44,7 +45,14 @@ from flask import (
 from flask.globals import current_app
 from authlib.integrations.base_client.errors import OAuthError  # type: ignore
 
-from config import DEFAULT_LOCALE, PROJECT_ID, running_local, VALID_ISSUERS, ResponseType
+from auth import firebase_key
+from config import (
+    DEFAULT_LOCALE,
+    PROJECT_ID,
+    running_local,
+    VALID_ISSUERS,
+    ResponseType,
+)
 from basics import (
     SessionDict,
     UserIdDict,
@@ -304,32 +312,43 @@ def login_malstadur() -> ResponseType:
     email = rq.get("email", "")
     if not email:
         return jsonify(status="invalid", message="No email provided"), 401
-    # Obtain the JavaScript Web Token (JWT) from the request
-    jwt = rq.get("token", "")
-    if not jwt:
-        return jsonify(status="invalid", message="No token provided"), 401
-    # Decode the claims in the JWT, using the Málstaður secret
-    expired, claims = verify_malstadur_token(jwt)
-    if expired:
-        return jsonify(status="expired", message="Token expired")
-    if claims is None:
-        return jsonify(status="invalid", message="Invalid token"), 401
-    # Claims successfully extracted, which means that the token
-    # is valid and not expired
-    emailClaim = claims.get("email", "")
-    if not emailClaim or emailClaim != email:
-        return jsonify(status="invalid", message="Mismatched email"), 401
-    # Extract information about the user's subscription plan
-    # and set the user's friendship status accordingly
-    plan = claims.get("plan", "")
-    is_friend = plan == "friend"
-    # Find the user record by email
     nickname = rq.get("nickname", "")
     fullname = rq.get("fullname", "")
-    account = claims.get("sub", "")
+    # Obtain the JavaScript Web Token (JWT) from the request
+    jwt = rq.get("token", "")
+    if running_local and not jwt:
+        # Shortcut for local development
+        is_friend = True
+        # Generate a default account id for the user, from a random UUID
+        # This is only used if the given email doesn't exist already
+        account = f"malstadur:{str(uuid.uuid4())}"
+    else:
+        # Normal production: must have a valid JWT
+        if not jwt:
+            return jsonify(status="invalid", message="No token provided"), 401
+        # Decode the claims in the JWT, using the Málstaður secret
+        expired, claims = verify_malstadur_token(jwt)
+        if expired:
+            return jsonify(status="expired", message="Token expired")
+        if claims is None:
+            return jsonify(status="invalid", message="Invalid token"), 401
+        # Claims successfully extracted, which means that the token
+        # is valid and not expired
+        emailClaim = claims.get("email", "")
+        if not emailClaim or emailClaim != email:
+            return jsonify(status="invalid", message="Mismatched email"), 401
+        # Extract information about the user's subscription plan
+        # and set the user's friendship status accordingly
+        plan = claims.get("plan", "")
+        is_friend = plan == "friend"
+        sub = claims.get("sub", "")
+        if not sub:
+            return jsonify(status="invalid", message="No sub identifier provided"), 401
+        # Create a unique account id for the user, from the sub claim.
+        # We're careful to sanitize the user id so that it is Firebase-compatible.
+        account = f"malstadur:{firebase_key(sub)}"
+    # Find the user record by email, or create a new user if it doesn't exist
     uld = User.login_by_email(email, account, nickname, fullname, is_friend)
-    if uld is None:
-        return jsonify(status="invalid", message="No such user"), 401
     userid = uld["user_id"]
     # Create a Firebase custom token for the user
     token = firebase.create_custom_token(userid)
@@ -392,6 +411,7 @@ def cache_flush() -> ResponseType:
     # Flush the cache
     memcache.flush()
     return "<html><body><p>Cache flushed</p></body></html>", 200
+
 
 # We only enable the administration routes if running
 # on a local development server, not on the production server

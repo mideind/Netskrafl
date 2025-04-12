@@ -8,11 +8,12 @@
 #
 
 runtime: python311
-entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
+entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 20 --timeout 60 --pythonpath './src' main:app
 
 instance_class: B4_1G
 manual_scaling:
   instances: 1
+  max_concurrent_requests: 18  # Match worker × thread count
 
 vpc_access_connector:
   name: projects/explo-dev/locations/europe-west1/connectors/vpc0c

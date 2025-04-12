@@ -372,6 +372,9 @@ class Future(Generic[_T], ndb.Future):
 class Key(Generic[_T_Model], ndb.Key):
     """A type-safer wrapper around ndb.Key"""
 
+    def __init__(self, *args: Any) -> None:
+        super().__init__()
+
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
 
