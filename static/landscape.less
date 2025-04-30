@@ -1,299 +1,190 @@
-/*
-
-   Landscape.less
-
-   Style sheet template for netskrafl.is
-
-   Copyright © 2025 Miðeind ehf.
-   Author: Vilhjalmur Thorsteinsson
-
-   The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-   For further information, see https://github.com/mideind/Netskrafl
-
-   See main.less for explanations of the style sheet structure.
-
-*/
 
 /* ================= MOBILE LANDSCAPE UI ====================== */
 
 @media all and (min-width: @mobile-height) {
 
    /* Mobile screen, landscape mode */
-
-   body {
-      height: 100%;
-      overflow-y: hidden;
-   }
-
+   
    div.container {
       width: @mobile-height; /* Reference width */
       height: @mobile-width; /* Reference height */
       overflow-y: hidden;
    }
-
+   
+   div.game-container {
+      height: @mobile-height;
+   }
+   
    div.tabbed-page {
       width: 100%;
    }
-
-   .tab-legend {
-      display: inline;
-      padding-left: 12px;
-   }
-
+   
    div.help-container {
       width: 100%;
    }
-
+   
    /* Paragraphs of help text that should be centered on screens that are wide enough */
    p.help-center {
       text-align: center;
    }
-
-   div.heading div.header-logo {
-      display: none;
-   }
-
-   div.logowrapper {
-      width: 0%;
-   }
-
-   div.playerwrapper {
-      width: 100%;
-      padding-top: 0;
-   }
-
-   div.fairplay {
-      top: 8px;
-   }
-
+   
    div.login-btn-small {
       position: fixed;
       top: 128px;
       left: 50%;
       width: 50%;
    }
-
-   div.board-area {
-      position: absolute;
-      top: 0;
-      padding-top: 6px;
-   }
-
+   
    div.board {
       top: @margin-small;
-      padding-top: 1px;
+      padding-top: 0;
       background-color: transparent;
    }
-
-   @media (max-height: @mobile-width-narrow) {
-
-      /* Landscape on a narrow screen: scale the board down */
-      div.board {
-         transform: scale(0.96);
-         transform-origin: top left;
-      }
-
-   }
-
+   
    @rightcol-width: @mobile-height - @board-size - 3 * @margin-small;
    @rightcol-left: @board-size + 2 * @margin-small;
    @rack-top: 70px + 3 * @margin-small;
    @button-top: @rack-top + 48px + 2 * @margin-small;
    @submit-left: 259px + @mobile-height - @mobile-width;
-
+   
    div.rightcol {
       width: @rightcol-width;
       top: @margin-small;
       left: @rightcol-left;
       height: 70px;
    }
-
-   div.rack-row {
+   
+   div.rack {
       display: none;
+      /*
+      left: @rightcol-left;
+      top: @rack-top;
+      */
    }
-
+   
    div.recallbtn {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
       top: @button-top;
    }
-
-   div.rack-left div.recallbtn {
-      display: none;
-   }
-
+   
    div.scramblebtn {
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 0;
       top: @button-top;
    }
-
-   .bottom-btn-landscape {
-      top: @button-top;
-      display: none;
-      border-width: 0;
-      color: white;
-   }
-
+   
    div.submitexchange {
-      .bottom-btn-landscape;
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 1;
-      background-color: @exchange-btn;
+      top: @button-top;
    }
-
+   
    div.submitpass {
-      .bottom-btn-landscape;
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 2;
-      background-color: @pass-btn;
+      top: @button-top;
    }
-
+   
    div.submitresign {
-      .bottom-btn-landscape;
       left: @rightcol-left + (@btn-spacing-small + @btn-width-small) * 3;
-      background-color: @alert;
+      top: @button-top;
    }
-
+   
    div.submitmove {
       left: @submit-left;
       top: @button-top;
    }
-
-   div.submitmove#move-mobile {
-      display: none;
-   }
-
+   
    div.waitmove {
       left: @submit-left;
       top: @button-top;
    }
-
+   
    div.submitnewgame {
       left: @submit-left;
       top: @button-top;
    }
-
-   div.player {
+   
+   h3.playerleft {
+      width: 50%;
+      padding: 0;
+      height: 36px;
       min-height: 36px;
+      font-size: 14px;
+      line-height: 22px;
    }
-
-   div.player-btn {
-      width: 84px;
-      padding-top: 6px;
+   
+   h3.playerright {
+      width: 50%;
+      padding: 0;
+      height: 36px;
+      min-height: 36px;
+      font-size: 14px;
+      line-height: 22px;
    }
-
-   div.robot-btn {
-      width: 84px;
-      padding-top: 6px;
+   
+   h3.scoreleft {
+      top: 36px;
+      left: 0;
+      width: @rightcol-width - 6px;
+      margin-top: 4px;
+      margin-bottom: 4px;
+      padding-left: 6px;
+      font-size: 22px;
+      line-height: 22px;
    }
-
-   div.scoreleft, div.scoreright {
-      top: 3px;
+   
+   h3.scoreright {
+      top: 36px;
+      right: 0;
+      width: @rightcol-width - 6px;
+      margin-top: 4px;
+      margin-bottom: 4px;
+      padding-right: 6px;
+      font-size: 22px;
+      line-height: 22px;
    }
-
+   
    div.right-tab {
       display: none;
    }
-
+   
    div.opp-turn {
       display: none;
    }
-
+   
    div.movelist-container {
-      height: 300px;
-      padding-top: 0px;
-      padding-bottom: 0px;
+      height: 272px;
    }
-
+   
    div.movelist {
-      height: 100%;
+      height: 272px;
    }
-
+   
    div.right-area.with-clock div.movelist-container {
       /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
-      height: 260px;
+      height: 224px;
    }
-
+   
+   div.right-area.with-clock div.movelist {
+      /* If in a clock game, reduce the movelist height by two lines (2 * 20px) */
+      height: 224px;
+   }
+   
    div.movelist-container div.bag {
       display: none;
    }
-
-   div#gameover {
-      display: none;
-   }
-
-   div.stats-box {
-      width: 448px;
-      left: 90px;
-   }
-
-   div#own-stats {
-      height: 16px;
-   }
-
-   p#own-best {
-      left: auto;
-      right: 6px;
-      top: 0px;
-      text-align: right;
-      font-size: 0.85em;
-      line-height: 1.4em;
-   }
-
-   div #chall-sent,
-   div #chall-received {
-      height: 3 * 36px; /* 3 lines @ 36px each */
-   }
-
+   
    div.games,
    div.twoletter,
    div.chat {
       display: none;
    }
-
+   
    div.right-area {
-      top: 8px;
-      height: 316px;
+      height: 288px;
    }
 
-   span.list-chall {
-      width: 240px;
-      max-width: 240px;
-   }
-
-   span.list-fullname-robot {
-      width: 320px;
-      max-width: 320px;
-   }
-
-   span.list-opp {
-      width: 180px;
-      max-width: 180px;
-   }
-
-   div#tabs > div[role=tabpanel],
-   div#main-tabs > div[role=tabpanel] {
-      height: 326px;
-   }
-
-   div#tabs-1 span.list-ts-short,
-   div#tabs-1 span.list-manual,
-   div#tabs-4 span.list-ts-short {
-      // List of current or recent games: display time stamp when in landscape
-      display: inline-block;
-   }
-
-   div#tabs-2 span.list-ts {
-      // List of challenges: display time stamp when in landscape
-      display: inline-block;
-   }
-
-   div#tabs-3 span.list-nick {
-      width: 180px;
-      max-width: 180px;
-   }
-
-   div#tabs-4 span.list-nick {
-      width: 220px;
-      max-width: 220px;
+   span.list-fullname-robot, span.list-chall {
+      width: 100%;
+      max-width: 100%;
    }
 
    div#blank-form {
