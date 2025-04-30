@@ -15,7 +15,7 @@
 
 /*
    global $:false, serverQuery, goToGame, cancelWait, loginFirebase,
-   attachFirebaseListener, opponentId, userId, lateInit
+   attachFirebaseListener, opponentId, userId, lateInitWait
 */
 
 /* eslint-disable no-unused-vars */
@@ -51,7 +51,7 @@ function initForm(userid, nick, fullname, duration) {
       markOnline);
 }
 
-function closeAndCleanUp(ev)
+function closeAndCleanUp()
 {
    // Cancel the wait status and navigate back to the main page
    serverQuery("/cancelwait",
@@ -63,11 +63,11 @@ function closeAndCleanUp(ev)
    cancelWait();
 }
 
-function initFirebaseListener(token) {
+function listenForOpponent(token, uid, oid) {
    // Sign into Firebase with the token passed from the server
    loginFirebase(token);
    // Listen to Firebase events on the /user/[userId]/wait/[oppId]/game path
-   var path = 'user/' + userId() + "/wait/" + opponentId();
+   var path = 'user/' + uid + "/wait/" + oid;
    attachFirebaseListener(path, handleWaitMessage);
 }
 
@@ -77,6 +77,6 @@ function initWait() {
    /* Enable the close button in the user info dialog */
    $("#wait-cancel").click(closeAndCleanUp);
    /* Call initialization that requires variables coming from the server */
-   lateInit();
+   lateInitWait();
 }
 

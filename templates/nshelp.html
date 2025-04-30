@@ -2,7 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block logo %}
@@ -30,7 +30,7 @@
    <i><a href="https://bin.arnastofnun.is/forsida/" target="_blank"
       rel="noopener">Beygingarlýsingu íslensks nútímamáls</a></i> - og tveggja stafa
    orð samkvæmt
-   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>.</p>
+   <a href="{{ url_for('web.twoletter') }}">lista Skraflfélags Íslands</a>.</p>
    <p>Í upphafi leiks hefur þú sjö stafaflísar sem sýndar eru í rekkanum fyrir neðan
    borðið. Ef þú átt leik (sýnt með rauðu flaggi
    <span class="move-indicator"></span> við notandanafn þitt) getur þú lagt
@@ -38,30 +38,30 @@
    draga hana á réttan stað og sleppa músarhnappnum). Einnig má nota fingur til
    að draga flísar á spjaldtölvum og snertiskjám. Þú getur flutt flísar til á
    borðinu eða dregið þær til baka í rekkann ef þú færð bakþanka.
-   <img src="{{ url_for('static', filename='Recall.png') }}" width=20 height=20>
+   <img src="{{ url_for('web.static', filename='Recall.png') }}" width=20 height=20>
    og <strong>Esc</strong> hnappurinn á lyklaborðinu senda allar flísar til baka í rekkann,
-   en <img src="{{ url_for('static', filename='Shuffle.png') }}" width=20 height=20>
+   en <img src="{{ url_for('web.static', filename='Shuffle.png') }}" width=20 height=20>
    og <strong>Backspace</strong> endurraða rekkanum af handahófi.</p>
    <p>Þegar þú hefur lagt niður orð eins og þú vilt hafa það smellirðu
    á græna hnappinn
-   <img src="{{ url_for('static', filename='Leika.png') }}" width=53 height=20>.
+   <img src="{{ url_for('web.static', filename='Leika.png') }}" width=53 height=20>.
    Andstæðingur þinn fær nú <span class="move-indicator"></span> rauða flaggið,
    svarar með sínum leik og þá er röðin aftur komin að þér. (Tölvuþjarkarnir svara
    alltaf strax.) Nýjar flísar sem andstæðingur leggur niður eru sýndar með
    grænum lit á borðinu.</p>
    <p>Ef þú getur ekki lagt niður orð og vilt sitja hjá smellirðu á
    appelsínugula hnappinn
-   <img src="{{ url_for('static', filename='Pass.png') }}" width=20 height=20>.
+   <img src="{{ url_for('web.static', filename='Pass.png') }}" width=20 height=20>.
    Þá færð þú ekki stig heldur á andstæðingurinn næsta leik.</p>
    <p>Ef þú vilt skipta út flísum í rekkanum smellirðu á græna hnappinn
-   <img src="{{ url_for('static', filename='Exchange.png') }}" width=20 height=20>.
+   <img src="{{ url_for('web.static', filename='Exchange.png') }}" width=20 height=20>.
    Þú þarft að velja þær flísar sem þú vilt skipta með því að smella á þær. Þegar
    skiptin hafa farið fram færðu ekki stig og andstæðingurinn á leik. Ef færri
    en sjö flísar eru eftir í "pokanum" er ekki hægt að skipta.</p>
    <p>Viðureign er lokið þegar síðasta flísin hefur verið lögð niður, eða ef
    báðir leikmenn hafa setið hjá þrisvar í röð (sex sinnum alls). Þú getur
    einnig gefið leikinn með því að smella á rauða hnappinn
-   <img src="{{ url_for('static', filename='Resign.png') }}" width=20 height=20>.</p>
+   <img src="{{ url_for('web.static', filename='Resign.png') }}" width=20 height=20>.</p>
    </div>
 
    <div id="tabs-3">
@@ -77,15 +77,15 @@
    sem búinn var til á vegum Skraflfélags Íslands, til viðbótar þeim eldri og upprunalega.</p>
 
    <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
-   velja rofa í <a href="{{ url_for('userprefs') }}">notandaupplýsingum</a>. (Allir nýskráðir
+   velja rofa í <a href="{{ url_for('web.userprefs') }}">notandaupplýsingum</a>. (Allir nýskráðir
    leikmenn í Netskrafli eru sjálfkrafa merktir sem tilbúnir í nýja pokann.)
    Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
-   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBagPreference.png') }}" width=695 height=69></p>
+   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBagPreference.png') }}" width=695 height=69></p>
 
    <p>Hér sést nýi pokinn í myndrænu formi:</p>
-   <p style='text-align:center'><img src="{{ url_for('static', filename='NewBag.png') }}"></p>
+   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBag.png') }}"></p>
    <p style="text-align:right"><i>(Sömu mynd á PDF-formi til útprentunar má
-   <a href="{{ url_for('static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
+   <a href="{{ url_for('web.static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
 
    <p>Á eldri (upphaflega) skraflpokanum eru ýmsir vankantar, eins og skraflarar kannast
    við. Í honum eru til dæmis <strong>of mörg E</strong> sem gefa of fá stig; stafirnir Ú og Ý eru
@@ -108,24 +108,24 @@
    </div>
 
    <div id="tabs-4">
-   <img src="{{ url_for('static', filename='Villi.png') }}" id="villi">
+   <img src="{{ url_for('web.static', filename='Villi.png') }}" id="villi">
    <p><strong>Um Netskrafl</strong></p>
    <p>Höfundur Netskrafls er <i>Vilhjálmur Þorsteinsson</i>.
-   - Copyright &copy; 2022 <a href="https://mideind.is" target="_blank" rel="noopener">Miðeind ehf.</a></p>
+   - Copyright &copy; 2025 <a href="https://mideind.is" target="_blank" rel="noopener">Miðeind ehf.</a></p>
    <p>Bestu þakkir fyrir veitta aðstoð:<br><i>Borgar Þorsteinsson, Hlín Önnudóttir,
    Páll Hilmarsson, Sigrún Helga Lund, Steinar Sturlaugsson</i>.</p>
    <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
    notendur.<br>Þú getur
-   <a href="{{ url_for('userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
+   <a href="{{ url_for('web.userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
    með því að smella á notandanafnið efst hægra megin í glugganum.
    Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
    <p>Fylgstu með og taktu þátt með því að
    <a href="https://www.facebook.com/groups/828426797220211/" target="_blank"
       rel="noopener">ganga
-   í&nbsp;&nbsp;<img src="{{ url_for('static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
+   í&nbsp;&nbsp;<img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
    <p>Frumforrit Netskrafls eru <a href="https://github.com/mideind/Netskrafl"
       target="_blank" rel="noopener">opin á
-   <img src="{{ url_for('static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a> skv.
+   <img src="{{ url_for('web.static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a> skv.
    skilmálum <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode" target="_blank"
       rel="noopener">CC-BY-NC 4.0</a>.</p>
    <hr style="margin-top: 48px">
@@ -137,14 +137,14 @@
    </p>
    <p style="text-align:right;margin-top:0">
       <a href="https://mideind.is" target="_blank" rel="noopener">
-      <img src="{{ url_for('static', filename='MideindLogoVert300.png') }}" width=150 height=128>
+      <img src="{{ url_for('web.static', filename='MideindLogoVert300.png') }}" width=150 height=128>
       </a>
    </p>
    </div>
 
    <div id="tabs-2">
    <p>Netskrafl leyfir <strong>tveggja stafa orð</strong> sem eru á
-   <a href="{{ url_for('twoletter') }}">lista Skraflfélags Íslands</a>
+   <a href="{{ url_for('web.twoletter') }}">lista Skraflfélags Íslands</a>
    samkvæmt ákvörðun Orðanefndar þess í september 2015.</p>
    <p>Þú getur flett upp í listanum meðan á viðureign stendur með því að smella á
    flipann sem merktur er með björgunarhring
@@ -251,7 +251,7 @@
 <!-- Display user identifier in upper right corner -->
 
 {% if user %}
-<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
 <span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
 </div>
 {% endif %}

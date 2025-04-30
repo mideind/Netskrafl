@@ -1,3 +1,6 @@
+
+# Explo Datastore indexes
+
 indexes:
 
 - kind: ChallengeModel

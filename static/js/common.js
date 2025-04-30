@@ -151,7 +151,7 @@ function _populateRecentList(json, listId) {
          (item.sc0 >= item.sc1 ? "" : " grayed") + "'></span>";
       // Format the game duration
       var duration = "";
-      if (item.duration === 0) {
+      if (!item.duration) {
          if (item.days || item.hours || item.minutes) {
             if (item.days > 1)
                duration = item.days.toString() + " dagar";
@@ -173,10 +173,11 @@ function _populateRecentList(json, listId) {
             }
          }
       }
-      else
+      else {
          // This was a timed game
          duration = "<span class='timed-btn' title='Viðureign með klukku'></span> 2 x " +
             item.duration + " mínútur";
+      }
       // Show the Elo point adjustments resulting from the game
       var eloAdj = item.elo_adj ? item.elo_adj.toString() : "";
       var eloAdjHuman = item.human_elo_adj ? item.human_elo_adj.toString() : "";

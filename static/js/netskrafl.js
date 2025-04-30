@@ -16,7 +16,7 @@
    gameIsManual, gameIsZombie, gameIsFairplay, gameUsesNewBag, gameTilescores, gameAlphabet,
    gameLocale, userId, escapeHtml, replaceEmoticons, showUserInfo, hideUserInfo, navToUserprefs,
    opponentInfo, preventPullToRefresh, loginFirebase, attachFirebaseListener,
-   lateInit, initialGameTime, initBag, initMoveList, placeTiles,
+   lateInitBoard, initialGameTime, initBag, initMoveList, placeTiles,
    favUserInfo, toggleVersus, initToggle, toggleStats, fbShare,
    hasOwnProp
 */
@@ -2475,7 +2475,7 @@ function handleUserMessage(json) {
    // Presently not used
 }
 
-function _showUserInfo(oppInfo) {
+function _showOpponentInfo(oppInfo) {
    showUserInfo(oppInfo.nick, oppInfo.fullname, oppInfo.userid);
 }
 
@@ -2488,7 +2488,7 @@ function lookAtPlayer() {
       navToUserprefs();
    else {
       // Show information about the opponent
-      _showUserInfo(opponentInfo());
+      _showOpponentInfo(opponentInfo());
    }
 }
 
@@ -2553,11 +2553,11 @@ function initMediaListener() {
    }
 }
 
-function initFirebaseListener(token) {
+function initFirebaseListenerForGame(token, uid, gameid) {
    // Sign into Firebase with the token passed from the server
    loginFirebase(token);
    // Listen to Firebase events on the /game/[gameId]/[userId] path
-   var basepath = 'game/' + gameId() + "/" + userId() + "/";
+   var basepath = 'game/' + gameid + "/" + uid + "/";
    // New moves
    attachFirebaseListener(basepath + "move", handleMoveMessage);
    // New chat messages
@@ -2566,8 +2566,8 @@ function initFirebaseListener(token) {
    // attachFirebaseListener('user/' + userId(), handleUserMessage);
 }
 
-function initSkrafl(jQuery) {
-   /* Called when the page is displayed or refreshed */
+function initSkrafl() {
+   /* Called when the main board page is displayed or refreshed */
 
    // Initialize the game timing information (duration, elapsed time)
    var igt = initialGameTime();
@@ -2643,7 +2643,7 @@ function initSkrafl(jQuery) {
 
    initMediaListener(); // Initiate listening to media change events
 
-   lateInit();
+   lateInitBoard();
 
    if (igt.duration > 0)
       startClock(igt);

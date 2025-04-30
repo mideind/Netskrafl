@@ -38,7 +38,7 @@ from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local
+from config import DEFAULT_LOCALE, running_local, Error
 
 from languages import (
     Alphabet,
@@ -51,6 +51,7 @@ from languages import (
 )
 from skrafldb import (
     DEFAULT_ELO_DICT,
+    ChatModel,
     PrefsDict,
     Unique,
     GameModel,
@@ -63,7 +64,6 @@ from skraflmechanics import (
     State,
     Board,
     Rack,
-    Error,
     MoveBase,
     Move,
     PassMove,
@@ -1080,6 +1080,21 @@ class Game:
             if self.ts_last_move is None
             else Alphabet.format_timestamp(self.ts_last_move)
         )
+
+    def has_new_chat_msg(self, user_id: str) -> bool:
+        """ Return True if there is a new chat message that the given user
+        hasn't seen. This is used in the Netskrafl UI. """
+        p = self.player_index(user_id)
+        if p is None or self.is_autoplayer(1 - p):
+            # The user is not a player of this game, or robot opponent: no chat
+            return False
+        # Check the database
+        # TBD: consider memcaching this
+        uuid = self.id()
+        if not uuid:
+            return False
+        return ChatModel.check_conversation("game:" + uuid, user_id)
+
 
     def _append_final_adjustments(self, movelist: List[MoveSummaryTuple]) -> None:
         """Appends final score adjustment transactions

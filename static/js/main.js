@@ -16,7 +16,7 @@
    _populateStats, _populateRecentList, toggle, escapeHtml, userId, userHasPaid,
    waitUrl, fairPlay, newBag, loginFirebase, attachFirebaseListener,
    initPresence, preventPullToRefresh, hideUserInfo, favUserInfo, toggleVersus,
-   lateInit, toKilos
+   lateInitMain, toKilos
 */
 
 /* eslint-disable no-unused-vars */
@@ -25,7 +25,7 @@
 
 var uiFullscreen = false;
 
-function _showUserInfo(ev) {
+function _showUserInfoFromEvent(ev) {
    showUserInfo(ev.data.nick, ev.data.fullname, ev.data.userid);
 }
 
@@ -167,7 +167,7 @@ function populateUserList(json) {
       if (info.length)
          $("#usr" + i).click(
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
-            _showUserInfo
+            _showUserInfoFromEvent
          );
       // Associate a click handler with the challenge icon
       $("#" + chId).click(
@@ -254,7 +254,7 @@ function populateEloList(json) {
       if (info.length)
          $("#usr" + i).click(
             { userid: item.userid, nick: item.nick, fullname: item.fullname },
-            _showUserInfo
+            _showUserInfoFromEvent
          );
       if (ch.length)
          // Associate a click handler with the challenge icon,
@@ -441,7 +441,7 @@ function populateGameList(json) {
       // Enable user track record button
       $("#gmusr" + i).click(
          { userid: item.oppid, nick: item.opp, fullname: item.fullname },
-         _showUserInfo
+         _showUserInfoFromEvent
       );
       // Count games where it's this user's turn
       if (item.my_turn || item.zombie)
@@ -692,7 +692,7 @@ function populateChallengeList(json) {
       // Enable user track record button
       $("#chusr" + i.toString()).click(
          { userid: item.userid, nick: item.opp, fullname: item.fullname },
-         _showUserInfo
+         _showUserInfoFromEvent
       );
    }
    // Update the count of received challenges and ready opponents
@@ -893,10 +893,9 @@ function handleMoveMessage(json) {
       yourTurn.play();
 }
 
-function initFirebaseListener(token) {
+function initFirebaseListenerForUser(token, uid) {
    // Sign into Firebase with the token passed from the server
-   var uid = userId();
-   var basepath = "user/" + uid + "/";
+   const basepath = "user/" + uid + "/";
    // Log in and attach listeners once the login succeeds
    loginFirebase(token,
       function() {
@@ -908,7 +907,7 @@ function initFirebaseListener(token) {
    );
 }
 
-function mediaMinWidth667(mql) {
+function mediaMinWidth667Main(mql) {
    if (mql.matches) {
       // Take action when min-width exceeds 667
    }
@@ -917,7 +916,7 @@ function mediaMinWidth667(mql) {
    }
 }
 
-function mediaMinWidth768(mql) {
+function mediaMinWidth768Main(mql) {
    if (mql.matches) {
       // Take action when min-width exceeds 768
       uiFullscreen = true;
@@ -930,18 +929,18 @@ function mediaMinWidth768(mql) {
    }
 }
 
-function initMediaListener() {
+function initMediaListenerForMain() {
    // Install listener functions for media changes
    var mql;
    mql = window.matchMedia("(min-width: 667px)");
    if (mql) {
-      mediaMinWidth667(mql);
-      mql.addEventListener("change", mediaMinWidth667);
+      mediaMinWidth667Main(mql);
+      mql.addEventListener("change", mediaMinWidth667Main);
    }
    mql = window.matchMedia("(min-width: 768px)");
    if (mql) {
-      mediaMinWidth768(mql);
-      mql.addEventListener("change", mediaMinWidth768);
+      mediaMinWidth768Main(mql);
+      mql.addEventListener("change", mediaMinWidth768Main);
    }
 }
 
@@ -1023,10 +1022,10 @@ function initMain() {
    $("#accept-cancel").click(cancelAccept);
 
    /* Listen to media events, such as orientation changes */
-   initMediaListener();
+   initMediaListenerForMain();
 
    /* Call initialization that requires variables coming from the server */
-   lateInit();
+   lateInitMain();
 
 }
 

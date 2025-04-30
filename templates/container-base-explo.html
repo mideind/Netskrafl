@@ -1,55 +1,47 @@
 <!DOCTYPE html>
-<html lang="{{ default_locale if user == None else user.locale | replace('_', '-') }}">
+<html lang="is">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui, user-scalable=no">
-{% if project_id == 'netskrafl' %}
-<meta name="application-name" content="Netskrafl">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui">
 <meta name="description" content="Spilaðu skrafl á netinu!">
-<meta name="keywords" content="netskrafl, skrafl, leikur, krossgáta, orðaleikur">
-{% else %}
-<meta name="application-name" content="Explo">
-<meta name="description" content="The crossword game for modern times">
-<meta name="keywords" content="word, game, crossword, word game">
-{% endif %}
+<meta name="application-name" content="Netskrafl">
+
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#d6d1c4">
-<meta name="msapplication-TileColor" content="#d6d1c4">
+<meta name="theme-color" content="#fff1dc">
+<meta name="msapplication-TileColor" content="#fff1dc">
 
 <!-- OpenGraph properties -->
 {% block opengraph %}
 {% endblock %}
 
-<!-- Web manifest file -->
-{% if project_id == 'netskrafl' %}
-<link rel="manifest" href="/static/netskrafl.webmanifest">
-{% else %}
-<link rel="manifest" href="/static/explo.webmanifest">
-{% endif %}
+<!-- Apple iPhone and iPad touch icons -->
+<link rel="apple-touch-icon" sizes="76x76" href="/touch-icon-ipad.png?v=XBz9pj9XYx">
+<link rel="apple-touch-icon" sizes="120x120" href="/touch-icon-iphone-retina.png?v=XBz9pj9XYx">
+<link rel="apple-touch-icon" sizes="152x152" href="/touch-icon-ipad-retina.png?v=XBz9pj9XYx">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=XBz9pj9XYx">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=XBz9pj9XYx">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=XBz9pj9XYx">
+<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('web.static', filename='icon.png') }}">
+<link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('web.static', filename='icon-256.png') }}">
+<link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('web.static', filename='icon-512.png') }}">
 
-<!-- Icons -->
-<link rel="icon" type="image/png" sizes="any" href="/favicon-32x32.png">
-<link rel="icon" type="image/svg+xml" href="/static/explo-logo-only.svg">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="mask-icon" href="/safari-pinned-tab.svg?v=XBz9pj9XYx" color="#c79c57">
+<link rel="shortcut icon" href="/favicon.ico?v=XBz9pj9XYx">
 
-{% if project_id == 'netskrafl' %}
+<!-- Progressive Web App manifest -->
+<link rel="manifest" href="{{ url_for('web.static', filename='manifest.json') }}">
+
 <title>Netskrafl</title>
-{% else %}
-<title>Explo</title>
-{% endif %}
 
 <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,700italic'
-   rel='stylesheet' type='text/css' media="all">
-
-<link href='https://fonts.googleapis.com/css?family=Barlow:400,400italic,700,700italic'
    rel='stylesheet' type='text/css' media="all">
 
 {% block styles %}
 {% endblock %}
 
-<link href="{{ url_for('web.static', filename='skrafl-explo.css') }}"
+<link href="{{ url_for('web.static', filename='skrafl-curry.css') }}"
    rel="stylesheet" type="text/css" media="all">
 
 {% block style_overrides %}
@@ -69,24 +61,21 @@
 
    <div class="container" id="container">
 
-{% if project_id == 'netskrafl' %}
-
       <noscript>
          <p>Netskrafl notar JavaScript, sem hefur verið tekið úr sambandi
          á þessum vefrápara. Þú þarft að leyfa JavaScript með stillingu
          á vefráparanum til að geta notað Netskrafl.</p>
       </noscript>
 
-{% else %}
-
-      <noscript>
-         <p>Explo uses JavaScript, which has been disabled on your web browser.
-         You need to allow JavaScript in your browser to be able to play Explo.</p>
-      </noscript>
-
-{% endif %}
-
 {% block logo %}
+{% endblock %}
+
+{% block info %}
+      <div class="info" title="Upplýsingar og hjálp">
+         <a class="iconlink" href="{{ url_for('web.help') }}">
+            <span class="glyphicon glyphicon-info-sign"></span>
+         </a>
+      </div>
 {% endblock %}
 
 {% block content %}
@@ -94,17 +83,15 @@
 
    </div> <!-- container -->
 
-{% block media %}
-{% endblock %}
-
-{% block startscripts %}
-{% endblock %}
-
+{%- block media -%}
+{%- endblock -%}
+{%- block startscripts -%}
+{%- endblock -%}
 {% block libscripts %}
 {% endblock %}
 
 <!-- Mousetrap global keyboard handler -->
-<script src="{{ url_for('web.static', filename='mousetrap.min.js') }}"></script>
+<script src="{{ url_for('web.static', filename='lib/mousetrap.min.js') }}"></script>
 
 {% if not dev_server %}
 <!-- Google tag (gtag.js) -->
@@ -116,6 +103,7 @@
   gtag('config', 'G-3GFLP84YFS');
 </script>
 {% endif %}
+
 {%- block endscripts -%}
 {%- endblock -%}
 

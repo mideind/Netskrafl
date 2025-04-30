@@ -53,6 +53,7 @@ from config import (
     running_local,
     DEFAULT_LOCALE,
     ResponseType,
+    Error,
 )
 from basics import (
     RouteFunc,
@@ -73,10 +74,7 @@ from languages import (
     to_supported_locale,
 )
 from wordbase import Wordbase
-from skraflmechanics import (
-    Board,
-    Error,
-)
+from skraflmechanics import Board
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (

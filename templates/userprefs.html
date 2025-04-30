@@ -2,7 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block scripts %}
@@ -46,7 +46,7 @@ function submitForm() {
 
    <div class="loginhdr"><span class='glyphicon glyphicon-address-book'></span> Upplýsingar um leikmann</div>
    <div>
-   <form name="frm1" id="frm1" action="{{ url_for('userprefs', from=from_url) | safe }}" method="post">
+   <form name="frm1" id="frm1" action="{{ url_for('web.userprefs', from=from_url) | safe }}" method="post">
 
       <div class="dialog-spacer"><span class="caption">Einkenni:</span>
          <input type="text" name="nickname" id="nickname" tabindex="1"
@@ -78,6 +78,7 @@ function submitForm() {
 
 {% if dev_server %}
       <!-- If running on dev server, squeeze in a field to edit the user locale -->
+      <!--
       <div class="dialog-spacer"><span class="caption">Staðfang:</span>
          <input type="text" name="locale" id="locale" maxlength="5" tabindex="3"
             class="text" value="{{ uf.locale }}"/>
@@ -86,6 +87,7 @@ function submitForm() {
 {% if err.get('locale', None) %}
       <div class="errinput"><span class="glyphicon glyphicon-arrow-up"></span>&nbsp;{{ err.get('locale') }}</div>
 {% endif %}
+      -->
 {% endif %}
 
       <div class="dialog-spacer"><span class="caption">Hljóðmerki:</span>
@@ -127,6 +129,7 @@ function submitForm() {
          <div class="subexplain">Stillir hvort <strong>minnismiði</strong> um margföldunargildi reita er sýndur við borðið</div>
       </div>
 
+<!--
       <div class="dialog-spacer"><span class="caption">Nýi skraflpokinn:</span>
          <input type="checkbox" name="newbag" id="newbag"
             class="checkbox newbag" value="True"
@@ -135,13 +138,13 @@ function submitForm() {
 {% endif %}
          />
          <div id="newbag-toggler" class="toggler" tabindex="7">
-            <div class="option" id="opt1">&nbsp;</div><!--
-         --><div class="option" id="opt2"><span class="glyphicon glyphicon-shopping-bag"></span></div>
+            <div class="option" id="opt1">&nbsp;</div>
+            <div class="option" id="opt2"><span class="glyphicon glyphicon-shopping-bag"></span></div>
          </div>
          <div class="subexplain">Gefur til kynna hvort þú sért reiðubúin(n) að
          skrafla með <strong>nýja íslenska skraflpokanum</strong></div>
       </div>
-
+-->
       <div class="dialog-spacer"><span class="caption">Án hjálpartækja:</span>
          <input type="checkbox" name="fairplay" id="fairplay"
             class="checkbox fairplay" value="True"
@@ -172,7 +175,7 @@ function submitForm() {
 {% if from_url %}
       onclick="location.href='{{ from_url }}'"
 {% else %}
-      onclick="location.href='{{ url_for('main') | safe }}'"
+      onclick="location.href='{{ url_for('web.main') | safe }}'"
 {% endif %}
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
@@ -186,13 +189,13 @@ function submitForm() {
 {% if uf.friend %}
    <!-- Friend badge -->
    <div class="modal-close" id="user-unfriend" title="Hætta sem vinur" tabindex="11"
-      onclick="location.href='{{ url_for('friend', action=2) }}'"
+      onclick="location.href='{{ url_for('web.friend', action=2) }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Þú ert vinur Netskrafls!</div>
 {% else %}
    <!-- Become friend button -->
    <div class="modal-close" id="user-friend" title="Gerast vinur" tabindex="11"
-      onclick="location.href='{{ url_for('friend', action=1) }}'"
+      onclick="location.href='{{ url_for('web.friend', action=1) }}'"
       onmouseover="buttonOver(this)"
       onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-coffee-cup"></span>&nbsp;&nbsp;Gerast vinur Netskrafls</div>
 {% endif %}
@@ -206,11 +209,11 @@ function submitForm() {
 
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
-   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='your-turn.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="you-win" preload="auto">
-   <source src="{{ url_for('static', filename='you-win.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='you-win.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>

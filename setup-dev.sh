@@ -63,7 +63,7 @@ grunt make
 echo "Ready. Next steps:"
 echo "------------------"
 echo "Run: grunt watch"
-echo "Run: runserver.sh"
+echo "Run: ./runserver.sh"
 echo "  or"
-echo "Run: setup-dev.sh tmux"
+echo "Run: ./setup-dev.sh tmux"
 

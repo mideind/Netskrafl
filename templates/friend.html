@@ -1,19 +1,20 @@
 
 {% extends "container.html" %}
 
+{% block styles %}
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
 {% block libscripts %}
 <!-- jQuery -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
 <!-- Touch support for jQuery -->
-<script src="{{ url_for('web.static', filename='jquery.ui.touch-punch.2019.js') }}"></script>
-{% endblock %}
-
-{% block styles %}
+<script src="{{ url_for('web.static', filename='lib/jquery.ui.touch-punch.2019.js') }}"></script>
 {% endblock %}
 
 {% block logo %}
-{% include 'logo-explo.html' %}
+{% include 'logo.html' %}
 {% endblock %}
 
 {% block content %}
@@ -129,7 +130,7 @@
    }
 
    function userId() {
-      return "{{ user.id() }}";
+      return "{{ user.id() if user else '' }}";
    }
 
    function buttonOver(elem) {

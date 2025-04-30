@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import (
     Any,
     Callable,
@@ -44,7 +45,17 @@ from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, PROMO_COUNT, PROMO_CURRENT, PROMO_FREQUENCY, PROMO_INTERVAL, ResponseType
+from config import (
+    DEFAULT_LOCALE,
+    DEFAULT_ELO,
+    NETSKRAFL,
+    PROMO_COUNT,
+    PROMO_CURRENT,
+    PROMO_FREQUENCY,
+    PROMO_INTERVAL,
+    ResponseType,
+    Error,
+)
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -56,7 +67,6 @@ from languages import (
 from skraflgame import Game
 from skraflmechanics import (
     ChallengeMove,
-    Error,
     ExchangeMove,
     Move,
     MoveBase,
@@ -1312,7 +1322,11 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         result.sort(key=lambda x: x["ts"], reverse=True)
 
     # Obtain up to 50 live games where this user is a player
+    start_time = time.time()
     i = list(GameModel.iter_live_games(cuid, max_len=50))
+    end_time = time.time()
+    logging.info(f"GameModel.iter_live_games took {end_time - start_time:.3f} seconds for user {cuid}")
+
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)

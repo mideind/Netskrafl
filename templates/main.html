@@ -2,7 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block scripts %}
@@ -67,7 +67,7 @@
       <p>Tölvuþjarkarnir eru
       ætíð reiðubúnir að skrafla og viðureign við þá hefst strax. Aðrir leikmenn
       þurfa að samþykkja áskorun áður en viðureign hefst.</p>
-      <p class="no-mobile-block"><a href="{{ url_for('help') }}">Hjálp</a> má fá með því að smella á bláa
+      <p class="no-mobile-block"><a href="{{ url_for('web.help') }}">Hjálp</a> má fá með því að smella á bláa
       &nbsp;<span class="glyphicon glyphicon-info-sign"></span> - teiknið hér til vinstri.</p>
       <p class="no-mobile-block">Þú kemst alltaf aftur í þessa aðalsíðu með því að smella á örvarmerkið efst
       vinstra megin við skraflborðið.</p>
@@ -243,7 +243,7 @@
 
 <!-- Display user identifier in upper right corner -->
 
-<div class="userid" onclick="location.href='{{ url_for('userprefs') }}'" title="Upplýsingar um leikmann">
+<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
 <span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
 </div>
 
@@ -437,7 +437,7 @@
 {%- if user.audio() -%}
 <!-- Audio resources -->
 <audio id="your-turn" preload="auto">
-   <source src="{{ url_for('static', filename='your-turn.mp3') }}" type="audio/mpeg">
+   <source src="{{ url_for('web.static', filename='your-turn.mp3') }}" type="audio/mpeg">
 </audio>
 {% endif %}
 
@@ -449,11 +449,10 @@
 
 {% block endscripts %}
 
-<!-- Main page script -->
 {% if dev_server %}
-<script src="{{ url_for('static', filename='main.js') }}"></script>
+<script src="{{ url_for('web.static', filename='built/netskrafl.js') }}"></script>
 {% else %}
-<script src="{{ url_for('static', filename='main.min.js') }}"></script>
+<script src="{{ url_for('web.static', filename='built/netskrafl.min.js') }}"></script>
 {% endif %}
 
 <script>
@@ -480,26 +479,27 @@ function userHasPaid() {
 
 function newgameUrl(opp, reversed) {
    /* The URL for a new game against the given opponent */
-   return "{{ url_for('newgame') | safe }}?opp=" + opp +
+   return "{{ url_for('web.newgame') | safe }}?opp=" + opp +
       (reversed ? "&rev=1" : "");
 }
 
 function waitUrl(opp) {
    /* The URL for a wait page for a new game */
-   return "{{ url_for('wait') | safe }}?opp=" + opp;
+   return "{{ url_for('web.wait') | safe }}?opp=" + opp;
 }
 
 function gameUrl(uuid) {
    /* Return the URL for a game with a given uuid */
-   return "{{ url_for('board') | safe }}?game=" + uuid;
+   return "{{ url_for('web.board') | safe }}?game=" + uuid;
 }
 
-function lateInit() {
+function lateInitMain() {
    /* Initialization that needs server-side info. Called from initMain() */
 
+   const uid = userId();
 {% if firebase_token %}
    // Log in to Firebase and activate listeners once the login succeeds
-   initFirebaseListener("{{ firebase_token | safe }}");
+   initFirebaseListenerForUser("{{ firebase_token | safe }}", uid);
 {% endif %}
 
 {% if tab %}

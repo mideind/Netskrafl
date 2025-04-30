@@ -1,62 +1,62 @@
 """
 
-    Skrafldb - persistent data management for the Netskrafl application
+Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright © 2025 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
-    This module stores data in the Google App Engine NDB
-    (see https://developers.google.com/appengine/docs/python/ndb/).
+This module stores data in the Google App Engine NDB
+(see https://developers.google.com/appengine/docs/python/ndb/).
 
-    The data model is as follows:
+The data model is as follows:
 
-    UserModel:
-        nickname : string
-        inactive : boolean
-        prefs : dict
-        timestamp : timestamp
+UserModel:
+    nickname : string
+    inactive : boolean
+    prefs : dict
+    timestamp : timestamp
 
-    MoveModel:
-        coord : string
-        tiles : string # Blanks are denoted by '?' followed by meaning
-        score : integer
-        rack : string # Contents of rack after move
-        timestamp : timestamp
+MoveModel:
+    coord : string
+    tiles : string # Blanks are denoted by '?' followed by meaning
+    score : integer
+    rack : string # Contents of rack after move
+    timestamp : timestamp
 
-    GameModel:
-        player0 : key into UserModel
-        player1 : key into UserModel
-        irack0 : string # Initial rack
-        irack1 : string
-        rack0 : string # Current rack
-        rack1 : string
-        score0 : integer
-        score1 : integer
-        to_move : integer # Whose move is it, 0 or 1
-        over : boolean # Is the game over?
-        timestamp : timestamp # Start time of game
-        ts_last_move : timestamp # Time of last move
-        moves : array of MoveModel
+GameModel:
+    player0 : key into UserModel
+    player1 : key into UserModel
+    irack0 : string # Initial rack
+    irack1 : string
+    rack0 : string # Current rack
+    rack1 : string
+    score0 : integer
+    score1 : integer
+    to_move : integer # Whose move is it, 0 or 1
+    over : boolean # Is the game over?
+    timestamp : timestamp # Start time of game
+    ts_last_move : timestamp # Time of last move
+    moves : array of MoveModel
 
-    FavoriteModel:
-        parent = key into UserModel
-        destuser: key into UserModel
+FavoriteModel:
+    parent = key into UserModel
+    destuser: key into UserModel
 
-    ChallengeModel:
-        parent = key into UserModel
-        destuser : key into UserModel
-        timestamp : timestamp
-        prefs : dict
+ChallengeModel:
+    parent = key into UserModel
+    destuser : key into UserModel
+    timestamp : timestamp
+    prefs : dict
 
-    According to the NDB documentation, an ideal index for a query
-    should contain - in the order given:
-    1) Properties used in equality filters
-    2) Property used in an inequality filter (only one allowed)
-    3) Properties used for ordering
+According to the NDB documentation, an ideal index for a query
+should contain - in the order given:
+1) Properties used in equality filters
+2) Property used in an inequality filter (only one allowed)
+3) Properties used for ordering
 
 """
 
@@ -64,6 +64,8 @@
 
 from __future__ import annotations
 
+from itertools import zip_longest
+import time
 from typing import (
     ContextManager,
     Dict,
@@ -562,6 +564,15 @@ class Unique:
         return str(uuid.uuid1())  # Random UUID
 
 
+def interleave(iter1: Iterable[_T], iter2: Iterable[_T]) -> Iterator[_T]:
+    """Interleave two iterators, returning elements from each until both are exhausted"""
+    for item1, item2 in zip_longest(iter1, iter2, fillvalue=None):
+        if item1 is not None:
+            yield item1
+        if item2 is not None:
+            yield item2
+
+
 def iter_q(
     q: Query[_T_Model],
     chunk_size: int = 50,
@@ -886,14 +897,18 @@ class UserModel(Model["UserModel"]):
             """Generator for returning query result keys"""
             assert max_len > 0
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["human_elo", "highest_score"]):
+            for k in iter_q(
+                q, chunk_size=max_len, projection=["human_elo", "highest_score"]
+            ):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
                     # Note that inactive users will be filtered out at a later stage
                     ed: EloDict = EloDict(
                         # Note! For optimization reasons, we only return the human_elo
                         # property. This is currently the only Elo rating shown in the UI.
-                        elo=DEFAULT_ELO, human_elo=k.human_elo, manual_elo=DEFAULT_ELO
+                        elo=DEFAULT_ELO,
+                        human_elo=k.human_elo,
+                        manual_elo=DEFAULT_ELO,
                     )
                     yield k.key.id(), ed
                     counter += 1
@@ -1492,9 +1507,19 @@ class GameModel(Model["GameModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # pylint: disable=singleton-comparison
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(  # type: ignore
-            GameModel.over == False
+        # Amazingly enough, the query executes much faster (O(10x))
+        # with the .order() clause than without it! Apparently, the
+        # query spec must closely follow the index definition
+        # (see index.yaml).
+        q0 = (
+            cls.query(GameModel.player0 == k)
+            .filter(GameModel.over == False)
+            .order(-cast(int, GameModel.ts_last_move))
+        )
+        q1 = (
+            cls.query(GameModel.player1 == k)
+            .filter(GameModel.over == False)
+            .order(-cast(int, GameModel.ts_last_move))
         )
 
         def game_callback(gm: GameModel) -> LiveGameDict:
@@ -1540,8 +1565,27 @@ class GameModel(Model["GameModel"]):
                 locale=locale,
             )
 
-        for gm in q.fetch(max_len):
-            yield game_callback(gm)
+        # Issue two asynchronous queries in parallel
+        start_time = time.time()
+        q0_future = q0.fetch_async(limit=max_len)
+        q1_future = q1.fetch_async(limit=max_len)
+        GameModelFuture.wait_all([q0_future, q1_future])
+
+        # Get results from both queries
+        q0_results = q0_future.get_result()
+        q1_results = q1_future.get_result()
+        end_time = time.time()
+        logging.info(
+            f"GameModel parallel queries took {end_time - start_time:.3f} seconds for user {user_id}"
+        )
+
+        # Interleave results using itertools
+        count = 0
+        for game in interleave(q0_results, q1_results):
+            yield game_callback(game)
+            count += 1
+            if count >= max_len:
+                break
 
     def manual_wordcheck(self) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
@@ -2410,6 +2454,24 @@ class ChatModel(Model["ChatModel"]):
                 count += 1
                 if count >= maxlen:
                     break
+
+    @classmethod
+    def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
+        """ Returns True if there are unseen messages in the conversation """
+        CHUNK_SIZE = 40
+        q = cls.query(ChatModel.channel == channel).order(
+            -cast(int, ChatModel.timestamp)
+        )
+        for cm in iter_q(q, CHUNK_SIZE):
+            uid = cm.user.id()
+            if (uid != userid) and cm.msg:
+                # Found a message originated by the other user
+                return True
+            if (uid == userid) and not cm.msg:
+                # Found an 'already seen' indicator (empty message) from the querying user
+                return False
+        # Gone through the whole thread without finding an unseen message
+        return False
 
     @classmethod
     def add_msg(

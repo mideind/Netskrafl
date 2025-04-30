@@ -3,7 +3,7 @@
 
 {% block styles %}
 
-<link href="{{ url_for('static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
 
 {% endblock %}
 
@@ -53,13 +53,6 @@
 
 {% block endscripts %}
 
-<!-- Wait page script -->
-{% if dev_server %}
-<script src="{{ url_for('static', filename='wait.js') }}"></script>
-{% else %}
-<script src="{{ url_for('static', filename='wait.min.js') }}"></script>
-{% endif %}
-
 <script>
 
 function userId() {
@@ -73,19 +66,21 @@ function opponentId() {
 
 function goToGame(uuid) {
    /* The URL for a freshly created timed game against the given opponent */
-   window.location.href = "{{ url_for('board') | safe }}?game=" + uuid;
+   window.location.href = "{{ url_for('web.board') | safe }}?game=" + uuid;
 }
 
 function cancelWait() {
    /* Tired of waiting: Go back to the main page */
-   window.location.href = "{{ url_for('main') | safe }}";
+   window.location.href = "{{ url_for('web.main') | safe }}";
 }
 
-function lateInit() {
+function lateInitWait() {
    /* Called from initWait() */
-   initFirebaseListener("{{ firebase_token }}");
-   initPresence(userId());
-   initForm(opponentId(), "{{ opp.nickname() | safe }}",
+   const uid = userId();
+   const oid = opponentId();
+   listenForOpponent("{{ firebase_token }}", uid, oid);
+   initPresence(uid);
+   initForm(oid, "{{ opp.nickname() | safe }}",
       "{{ opp.full_name() | safe }}",
       {{ prefs.duration }});
 }

@@ -1,6 +1,6 @@
 """
 
-    Web server for netskrafl.is/Explo
+    Web server for Netskrafl and Explo
 
     Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -92,17 +92,6 @@ else:
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
-
-import threading
-original_get_ident = threading.get_ident
-
-def debug_get_ident():
-    ident = original_get_ident()
-    if ident is None:  # type: ignore[assignment]
-        logging.error("Thread ident is None", stack_info=True)
-    return ident
-
-threading.get_ident = debug_get_ident
 
 # Initialize Firebase
 init_firebase_app()
@@ -275,8 +264,13 @@ def warmup() -> ResponseType:
 @app.route("/_ah/stop")
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(f"Stop: instance {instance}")
+    try:
+        instance = os.environ.get("GAE_INSTANCE", "N/A")
+        logging.info(f"Stop: instance {instance}")
+    except:
+        # The logging module may not be functional at this point,
+        # as the server is being shut down
+        pass
     return "", 200
 
 
