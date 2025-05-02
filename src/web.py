@@ -564,7 +564,7 @@ def promo() -> ResponseType:
         return "<p>User not logged in</p>"
     rq = RequestData(request)
     key = rq.get("key", "")
-    VALID_PROMOS = {"friend", "krafla"}
+    VALID_PROMOS = {"friend", "krafla", "explo"}
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user=user)

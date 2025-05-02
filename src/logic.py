@@ -17,7 +17,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import (
     Any,
     Callable,
@@ -477,13 +476,19 @@ class UserForm:
         """Check the current form data for validity
         and return a dict of errors, if any"""
         errors: Dict[str, str] = dict()
-        # pylint: disable=bad-continuation
         if not self.nickname:
+            # The nickname has already been strip()-ed
             errors["nickname"] = self.error_msg("NICK_MISSING")
         elif len(self.nickname) > MAX_NICKNAME_LENGTH:
             errors["nickname"] = self.error_msg("NICK_TOO_LONG")
-        elif not re.match(r"^\w+$", self.nickname):
-            errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        elif NETSKRAFL:
+            # For Netskrafl, allow alphanumeric characters and spaces
+            if not re.match(r"^[\w\s]+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        else:
+            # For Explo, only allow alphanumeric characters (no spaces)
+            if not re.match(r"^\w+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
         if self.email and "@" not in self.email:
             errors["email"] = self.error_msg("EMAIL_NO_AT")
         if self.locale not in RECOGNIZED_LOCALES:
@@ -1322,10 +1327,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         result.sort(key=lambda x: x["ts"], reverse=True)
 
     # Obtain up to 50 live games where this user is a player
-    start_time = time.time()
     i = list(GameModel.iter_live_games(cuid, max_len=50))
-    end_time = time.time()
-    logging.info(f"GameModel.iter_live_games took {end_time - start_time:.3f} seconds for user {cuid}")
 
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first

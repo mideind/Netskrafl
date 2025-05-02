@@ -876,13 +876,13 @@ function triggerUserSearch() {
    ivalUserSearch = window.setInterval(periodicUserSearch, 800); // 0.8 seconds
 }
 
-function handleChallengeMessage(json) {
+function handleChallengeMessageForMain(json) {
    // A challenge to this user has been issued or retracted
    refreshChallengeList();
    redisplayUserList();
 }
 
-function handleMoveMessage(json) {
+function handleMoveMessageForMain(json) {
    // A move has been made in a game for this user
    refreshGameList();
    // Play audio, if present
@@ -900,8 +900,8 @@ function initFirebaseListenerForUser(token, uid) {
    loginFirebase(token,
       function() {
          // Listen to Firebase events on the /user/[userId]/[messageType] path
-         attachFirebaseListener(basepath + "challenge", handleChallengeMessage);
-         attachFirebaseListener(basepath + "move", handleMoveMessage);
+         attachFirebaseListener(basepath + "challenge", handleChallengeMessageForMain);
+         attachFirebaseListener(basepath + "move", handleMoveMessageForMain);
          initPresence(uid);
       }
    );

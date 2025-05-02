@@ -2,9 +2,7 @@
 {% extends "container.html" %}
 
 {% block styles %}
-
 <link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
-
 {% endblock %}
 
 {% block scripts %}
@@ -52,6 +50,12 @@
 {%- endblock -%}
 
 {% block endscripts %}
+
+{% if dev_server %}
+<script src="{{ url_for('web.static', filename='built/netskrafl.js') }}"></script>
+{% else %}
+<script src="{{ url_for('web.static', filename='built/netskrafl.min.js') }}"></script>
+{% endif %}
 
 <script>
 

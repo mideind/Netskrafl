@@ -2147,9 +2147,9 @@ function forceResign() {
          game: gameId(),
          // Send a move count to ensure that the client and the server are in sync
          mcount: numMoves
-      }
+      },
+      updateState, moveComplete, serverError
    );
-   // We trust that the Channel API will return a new client state to us
 }
 
 // Have we loaded this game's chat channel from the server?
@@ -2448,7 +2448,7 @@ function handleChatMessage(json) {
       showChatMsg(player_index, json.msg, json.ts);
 }
 
-function handleMoveMessage(json) {
+function handleMoveMessageForGame(json) {
    // Handle an incoming opponent move
    // json contains an entire client state update, as a after submitMove()
    updateStateGently(json); // Try to preserve tiles that the user may have placed on the board
@@ -2559,7 +2559,7 @@ function initFirebaseListenerForGame(token, uid, gameid) {
    // Listen to Firebase events on the /game/[gameId]/[userId] path
    var basepath = 'game/' + gameid + "/" + uid + "/";
    // New moves
-   attachFirebaseListener(basepath + "move", handleMoveMessage);
+   attachFirebaseListener(basepath + "move", handleMoveMessageForGame);
    // New chat messages
    attachFirebaseListener(basepath + "chat", handleChatMessage);
    // Listen to Firebase events on the /user/[userId] path
