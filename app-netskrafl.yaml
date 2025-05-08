@@ -112,6 +112,8 @@ handlers:
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$
   expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # CSS files that can be cached
 - url: /static/(.*\.css)(\?.*)?$
@@ -119,6 +121,8 @@ handlers:
   upload: static/.*\.css$
   mime_type: text/css
   expiration: "0d 1h" # Was "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # JSON files that can be cached
 - url: /static/(.*\.json)(\?.*)?$
@@ -126,6 +130,8 @@ handlers:
   upload: static/.*\.json$
   mime_type: application/json
   expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # Catchall for minified JavaScript
 - url: /static/(.*\.min\.js)(\?.*)?$
@@ -169,6 +175,8 @@ handlers:
   upload: static/.*\.(ttf|eot|woff|woff2|svg)$
   expiration: "1d 0h"
   mime_type: application/font  # App Engine will determine proper MIME type based on extension
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # MP3 sound files that can be cached  
 - url: /static/(.*\.mp3)$
@@ -176,6 +184,8 @@ handlers:
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
   expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # Catchall for all other URLS
 - url: .*
