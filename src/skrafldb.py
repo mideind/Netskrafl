@@ -64,8 +64,6 @@ should contain - in the order given:
 
 from __future__ import annotations
 
-from itertools import zip_longest
-import time
 from typing import (
     ContextManager,
     Dict,
@@ -93,6 +91,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import zip_longest
 
 from google.cloud import ndb  # type: ignore
 
@@ -1566,7 +1565,6 @@ class GameModel(Model["GameModel"]):
             )
 
         # Issue two asynchronous queries in parallel
-        start_time = time.time()
         q0_future = q0.fetch_async(limit=max_len)
         q1_future = q1.fetch_async(limit=max_len)
         GameModelFuture.wait_all([q0_future, q1_future])
@@ -1574,10 +1572,6 @@ class GameModel(Model["GameModel"]):
         # Get results from both queries
         q0_results = q0_future.get_result()
         q1_results = q1_future.get_result()
-        end_time = time.time()
-        logging.info(
-            f"GameModel parallel queries took {end_time - start_time:.3f} seconds for user {user_id}"
-        )
 
         # Interleave results using itertools
         count = 0
