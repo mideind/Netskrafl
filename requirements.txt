@@ -8,6 +8,7 @@ firebase-admin==6.7.0
 redis==4.4.4
 google-cloud-ndb==2.3.2
 google-cloud-logging==3.11.4
+types-google-cloud-ndb
 Flask-Cors==4.0.2
 PyJWT
 google-cloud-secret-manager==2.23.2

@@ -93,7 +93,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from itertools import zip_longest
 
-from google.cloud import ndb  # type: ignore
+from google.cloud import ndb
 
 from config import (
     DEFAULT_ELO,
@@ -378,6 +378,9 @@ class Key(Generic[_T_Model], ndb.Key):
 
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
+
+    def kind(self) -> str:
+        return cast(str, cast(Any, super()).kind())
 
     def parent(self) -> Optional[Key[ndb.Model]]:
         return cast(Optional[Key[ndb.Model]], cast(Any, super()).parent())

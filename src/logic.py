@@ -39,7 +39,7 @@ import functools
 import random
 from datetime import UTC, datetime, timedelta
 
-from google.cloud import ndb  # type: ignore
+from google.cloud import ndb
 from flask import url_for
 import firebase
 

@@ -13,7 +13,7 @@
 
 """
 
-from typing import Any
+from typing import Any, cast
 
 import os
 import json
@@ -53,7 +53,7 @@ class SecretManager:
             # Note: passing credentials=auth_manager.get_credentials() here
             # does not solve the extreme slowness bug, which seems to be
             # related to gRPC - and is avoided by using the HTTP client instead.
-            self.client = secretmanager.SecretManagerServiceClient()
+            self.client = cast(Any, secretmanager).SecretManagerServiceClient()
         self.project_id = project_id
 
     def _get_secret_via_client(self, name: str) -> bytes:
