@@ -581,17 +581,16 @@ def process_move(
                 # Challenging the last move
                 m = ChallengeMove()
                 break
-            sq, tile = mstr.split("=")
+            sq, tile = mstr.split("=", 1)
             row = "ABCDEFGHIJKLMNO".index(sq[0])
             col = int(sq[1:]) - 1
-            if tile[0] == "?":
+            if tile.startswith("?"):
                 # If the blank tile is played, the next character contains
                 # its meaning, i.e. the letter it stands for
                 letter = tile[1]
-                tile = tile[0]
+                tile = "?"
             else:
                 letter = tile
-            assert isinstance(m, Move)
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
