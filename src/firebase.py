@@ -109,9 +109,8 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
 def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """Updates data in Firebase. If a message object is provided, then it sets
     the data at the given location (whose path is built as a concatenation
-    of the *args list) with the message using the PUT http method.
-    If no message is provided, the data at this location is deleted
-    using the DELETE http method.
+    of the *args list) with the message. If no message is provided,
+    the data at this location is deleted.
     """
     try:
         path = "/".join(args)
@@ -133,6 +132,16 @@ def send_update(*args: str) -> bool:
     endpoint = args[-1]
     value = {endpoint: datetime.now(UTC).isoformat()}
     return send_message(value, *args[:-1])
+
+
+def get_data(path: str) -> Optional[Any]:
+    """Get data from Firebase at the given path"""
+    try:
+        ref = cast(Any, db).reference(path, app=_firebase_app)
+        return ref.get()
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] in firebase.get_data()")
+        return None
 
 
 def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:

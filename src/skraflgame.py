@@ -171,6 +171,17 @@ UNDEFINED_NAME: Dict[str, str] = {
 }
 
 
+def two_letter_words(locale: str) -> TwoLetterGroupTuple:
+    """Return the set of two-letter words for the given locale"""
+    vocab = vocabulary_for_locale(locale)
+    tw0, tw1 = Wordbase.two_letter_words(vocab)
+    gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+    return (
+        [(key, list(grp)) for key, grp in gr0],
+        [(key, list(grp)) for key, grp in gr1],
+    )
+
+
 class Game:
     """A wrapper class for a particular game that is in process
     or completed. Contains inter alia a State instance."""
@@ -755,13 +766,8 @@ class Game:
         as a tuple of two lists, one grouped by first letter, and
         the other grouped by the second (last) letter"""
         if self._two_letter_words is None:
-            vocab = vocabulary_for_locale(self.locale)
-            tw0, tw1 = Wordbase.two_letter_words(vocab)
-            gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
-            self._two_letter_words = (
-                [(key, list(grp)) for key, grp in gr0],
-                [(key, list(grp)) for key, grp in gr1],
-            )
+            tw = two_letter_words(self.locale)
+            self._two_letter_words = tw
         return self._two_letter_words
 
     @property

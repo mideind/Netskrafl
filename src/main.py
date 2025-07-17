@@ -77,6 +77,7 @@ from wordbase import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
+from riddle import riddle_blueprint
 
 
 if running_local:
@@ -177,6 +178,7 @@ app.json.sort_keys = False
 app.register_blueprint(api_blueprint)
 app.register_blueprint(web_blueprint)
 app.register_blueprint(stats_blueprint)
+app.register_blueprint(riddle_blueprint)
 app.register_blueprint(connect_blueprint)
 
 # Initialize the OAuth wrapper
