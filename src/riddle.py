@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Literal, Sequence, Dict, TypedDict
+from typing import Any, List, Literal, Optional, Sequence, Dict, TypedDict, cast
 from functools import wraps, lru_cache
 
 from flask import Blueprint, request
@@ -49,7 +49,35 @@ class RiddleDict(RiddleContentDict, total=False):
     board_type: Literal["standard"] | Literal["explo"]
 
 
-# Only allow POST requests to the API endpoints
+class BestDict(TypedDict):
+    """Dictionary to hold the best-scoring move and its player"""
+    score: int
+    player: str
+    word: str  # Note: may contain '?x' to indicate a blank tile that means 'x'
+    coord: str  # Form: "A1" for horizontal move, "1A" for vertical
+    timestamp: str  # ISO 8601 format
+
+
+class RiddleWordDict(TypedDict):
+    word: str
+    score: int
+    coord: str
+    timestamp: str
+
+
+class SubmitMoveDict(TypedDict):
+    """Moves submitted from clients"""
+    date: str
+    locale: str
+    userId: str
+    groupId: str
+    move: RiddleWordDict
+
+
+# Cache of current global best scores
+_GLOBAL_BEST_CACHE: Dict[str, Dict[str, BestDict]] = {}
+
+# Only allow POST requests to API endpoints
 _ONLY_POST: Sequence[str] = ["POST"]
 
 # Register the Flask blueprint for the riddle APIs
@@ -101,7 +129,7 @@ def generate_riddle(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDi
         "hringt.u.......",
         "...s...r.......",
     ]
-    max_score: int = 50  # Placeholder for maximum score
+    max_score: int = 77  # Placeholder for maximum score
     return {
         "rack": rack,
         "board": board,
@@ -150,10 +178,11 @@ def riddle_api() -> ResponseType:
     locale = rq.get("locale", "")
 
     # Validate required parameters
-    if not date:
-        return jsonify(ok=False, error="Missing required parameter: date")
+    if len(date) != 10 or date[4] != "-" or date[7] != "-":
+        # The date format is expected to be YYYY-MM-DD
+        return jsonify(ok=False, error="Invalid parameter: date")
     if not locale:
-        return jsonify(ok=False, error="Missing required parameter: locale")
+        return jsonify(ok=False, error="Invalid parameter: locale")
 
     # Select the correct locale for the current thread
     lc = to_supported_locale(locale)
@@ -169,9 +198,93 @@ def riddle_api() -> ResponseType:
 @riddle_route("/gatadagsins/submit")
 @auth_required(ok=False)
 def submit_api() -> ResponseType:
-    """Handle an improved move from a player who is working on the riddle"""
-    _ = RequestData(request)
+    """Handle a (presumably improved) move from a player
+    who is working on the riddle"""
+    rq = RequestData(request)
+    # The request should contain the following:
+    # date: str
+    # locale: str
+    # userId: str
+    # groupId: str
+    # move: {
+    #   word: str
+    #   score: int
+    #   coord: str
+    #   timestamp: str
+    # }
+    date = rq.get("date", "")
+    locale = to_supported_locale(rq.get("locale", "is_IS"))
+    userId = rq.get("userId", "")
+    groupId = rq.get("groupId", "")
+    move: RiddleWordDict = cast(RiddleWordDict, rq.get("move", {}))
+    if not date or not userId or not move or not move.get("word"):
+        return jsonify(ok=False, error="Missing required parameters")
 
-    # TODO: Add move submission logic here
-    # For now, return a placeholder response
-    return jsonify(ok=True, message="Submit move endpoint ready")
+    # Validate the move data
+    score = move.get("score", 0)
+    if score <= 0:
+        return jsonify(ok=False, error="Invalid score")
+    word = move.get("word", "")
+    if not (2 <= len(word) <= 15):
+        return jsonify(ok=False, error="Invalid word")
+    coord = move.get("coord", "")
+    if not (2 <= len(coord) <= 3):
+        return jsonify(ok=False, error="Invalid coordinate")
+    timestamp = move.get("timestamp", "")
+    if not timestamp:
+        return jsonify(ok=False, error="Missing timestamp")
+
+    update = False
+    message = ""
+    try:
+        path = f"gatadagsins/{date}/{locale}/best"
+        best: Optional[BestDict] = _GLOBAL_BEST_CACHE.get(date, {}).get(locale)
+        if not best:
+            # If we don't have the global best cached, fetch it from Firebase
+            best = firebase.get_data(path)
+            if not best:
+                # If no global best already exists, assign a null default
+                best = BestDict(score=0, player="", word="", coord="", timestamp="")
+        if score > best.get("score", 0):
+            # If the submitted move is better than the current global best,
+            # update the global best
+            best = BestDict(
+                score=score,
+                player=userId,
+                word=word,
+                coord=coord,
+                timestamp=timestamp,
+            )
+            _GLOBAL_BEST_CACHE.setdefault(date, {})[locale] = best
+            firebase.put_message(best, path)
+            message = "Global best score updated"
+            update = True
+        # If the user belongs to a group, also update the group's best.
+        # Since there can be many groups, we don't cache the best scores
+        # for groups, but fetch them directly from Firebase.
+        if groupId:
+            group_path = f"gatadagsins/{date}/{locale}/group/{groupId}/best"
+            group_best: Optional[BestDict] = firebase.get_data(group_path)
+            if not group_best:
+                # If no group best already exists, assign a null default
+                group_best = BestDict(score=0, player="", word="", coord="", timestamp="")
+            if score > group_best.get("score", 0):
+                # If the submitted move is better than the current group best,
+                # update the group's best
+                group_best = BestDict(
+                    score=score,
+                    player=userId,
+                    word=word,
+                    coord=coord,
+                    timestamp=timestamp,
+                )
+                firebase.put_message(group_best, group_path)
+                if not message:
+                    message = "Group best score updated"
+                update = True
+    except Exception:
+        # If something goes wrong, return an error
+        return jsonify(ok=False, error="Submission failed")
+    # If we reach here, the submission was successful,
+    # but may not have updated anything
+    return jsonify(ok=True, update=update, message=message or "No update")
