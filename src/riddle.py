@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, List, Literal, Optional, Sequence, Dict, TypedDict, cast
 from functools import wraps, lru_cache
 
@@ -136,6 +137,36 @@ def generate_riddle(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDi
         "max_score": max_score,
     }
 
+def generate_riddle_2(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDict:
+    """Generate a new riddle for the given date and locale"""
+    TEST_RACK = "kfojgda"
+    rack: RackDetails = [
+        (tile, tile_scores.get(tile, 0)) for tile in TEST_RACK
+    ]
+    # For now, generate a placeholder board
+    board: List[str] = [
+        ".......n.k....n",
+        ".......á.ær...e",
+        "..b....m.fénist",
+        "..y....a.að...k",
+        "..l.a..n..i...e",
+        "..talglaðir...p",
+        "..u.r.........P",
+        "...varmt.......",
+        "....u..........",
+        "....t..........",
+        "....t..........",
+        "...............",
+        "...............",
+        "...............",
+        "...............",
+    ]
+    max_score: int = 108  # Placeholder for maximum score
+    return {
+        "rack": rack,
+        "board": board,
+        "max_score": max_score,
+    }
 
 @lru_cache(maxsize=3)
 def get_or_create_riddle(date: str, locale: str) -> RiddleDict:
@@ -150,13 +181,13 @@ def get_or_create_riddle(date: str, locale: str) -> RiddleDict:
 
     # Riddle doesn't exist, generate a new one
     tile_scores = current_tileset().scores
-    riddle = RiddleDict(**generate_riddle(locale, tile_scores))
+    riddle = RiddleDict(**generate_riddle_2(locale, tile_scores))
 
     # Store the new riddle in Firebase
     if not firebase.put_message(riddle, path):
         # If Firebase storage fails, still return the generated riddle
         # but it won't be persisted
-        pass
+        logging.error(f"Failed to store riddle for {date}/{locale} in Firebase")
 
     # Augment the riddle data with static locale-specific information
     # required by the client, but which does not need to be stored in Firebase

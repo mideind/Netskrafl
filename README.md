@@ -152,7 +152,7 @@ create or replace view ksnid_midlungur as
 	select stofn, utg, ordfl, fl, ordmynd, beyging
 	from kristinarsnid
 	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID'])))
-		and einkunn > 0;
+		and einkunn = 1;
 commit;
 ```
 
