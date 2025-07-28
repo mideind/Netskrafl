@@ -148,6 +148,10 @@ sm = SecretManager(PROJECT_ID)
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
 assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
 
+# Read the Moves service authentication key from Google secret manager
+MOVES_AUTH_KEY = sm.get_secret("MOVES_AUTH_KEY").decode("utf-8")
+assert MOVES_AUTH_KEY, "MOVES_AUTH_KEY missing from Secret Manager"
+
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
     "netskrafl": "CLIENT_SECRET_NETSKRAFL",

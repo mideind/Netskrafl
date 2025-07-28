@@ -501,8 +501,7 @@ class Game {
     // after receiving a move notification via the Firebase listener
     // Stop highlighting the previous opponent move, if any
     for (let sq in this.tiles)
-      if (this.tiles.hasOwnProperty(sq))
-        this.tiles[sq].freshtile = false;
+      this.tiles[sq].freshtile = false;
     this.init(srvGame);
     if (this.currentError === null) {
       if (this.succ_chall) {
@@ -1021,8 +1020,7 @@ class Game {
     // placed on the board by dragging from the rack
     let r: string[] = [];
     for (let sq in this.tiles)
-      if (this.tiles.hasOwnProperty(sq) &&
-        sq[0] != 'R' && this.tiles[sq].draggable)
+      if (sq[0] != 'R' && this.tiles[sq].draggable)
         // Found a non-rack tile that is not glued to the board
         r.push(sq);
     return r;
@@ -1263,8 +1261,7 @@ class Game {
         // find the tile in the saved rack and move it there
         tile = savedTiles[i].tile;
         for (let sq in rackTiles)
-          if (rackTiles.hasOwnProperty(sq) &&
-            rackTiles[sq].tile == tile.charAt(0)) {
+          if (rackTiles[sq].tile == tile.charAt(0)) {
             // Found the tile (or its equivalent) in the rack: move it
             if (tile.charAt(0) == "?")
               if (saved_sq.charAt(0) == "R")
@@ -1283,15 +1280,14 @@ class Game {
     }
     // Allocate any remaining tiles to free slots in the rack
     let j = 1;
-    for (let sq in rackTiles)
-      if (rackTiles.hasOwnProperty(sq)) {
-        // Look for a free slot in the rack
-        while(("R" + j) in this.tiles)
-          j++;
-        if (j <= RACK_SIZE)
-          // Should always be true unless something is very wrong
-          this.tiles["R" + j] = rackTiles[sq];
-      }
+    for (let sq in rackTiles) {
+      // Look for a free slot in the rack
+      while(("R" + j) in this.tiles)
+        j++;
+      if (j <= RACK_SIZE)
+        // Should always be true unless something is very wrong
+        this.tiles["R" + j] = rackTiles[sq];
+    }
     // The local storage may have been cleared before calling
     // restoreTiles() so we must ensure that it is updated
     this.saveTiles();

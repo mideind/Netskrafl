@@ -12,7 +12,7 @@
 
 */
 
-/* global m:false, $state:false */
+/* global m:false, $state:false, hasOwnProp:false */
 
 /* eslint-disable no-unused-vars */
 
@@ -317,7 +317,7 @@ var Game = (function() {
     }
     // Copy game JSON properties over to this object
     for (var key in game)
-      if (game.hasOwnProperty(key))
+      if (hasOwnProp(game, key))
         this[key] = game[key];
     if (game.newmoves !== undefined && game.newmoves.length > 0)
       // Add the newmoves list, if any, to the list of moves
@@ -348,7 +348,7 @@ var Game = (function() {
       return;
     // Stop highlighting the previous opponent move, if any
     for (var sq in this.tiles)
-      if (this.tiles.hasOwnProperty(sq))
+      if (hasOwnProp(this.tiles, sq))
         this.tiles[sq].freshtile = false;
     this.init(game);
     if (this.currentError === null) {
@@ -695,7 +695,7 @@ var Game = (function() {
     // placed on the board by dragging from the rack
     var r = [];
     for (var sq in this.tiles)
-      if (this.tiles.hasOwnProperty(sq) &&
+      if (hasOwnProp(this.tiles, sq) &&
         sq[0] != 'R' && this.tiles[sq].draggable)
         // Found a non-rack tile that is not glued to the board
         r.push(sq);
@@ -907,7 +907,7 @@ var Game = (function() {
         // find the tile in the saved rack and move it there
         tile = savedTiles[i].tile;
         for (sq in rackTiles)
-          if (rackTiles.hasOwnProperty(sq) &&
+          if (hasOwnProp(rackTiles, sq) &&
             rackTiles[sq].tile == tile.charAt(0)) {
             // Found the tile (or its equivalent) in the rack: move it
             if (tile.charAt(0) == "?")
@@ -928,7 +928,7 @@ var Game = (function() {
     // Allocate any remaining tiles to free slots in the rack
     j = 1;
     for (sq in rackTiles)
-      if (rackTiles.hasOwnProperty(sq)) {
+      if (hasOwnProp(rackTiles, sq)) {
         // Look for a free slot in the rack
         while(("R" + j) in this.tiles)
           j++;
