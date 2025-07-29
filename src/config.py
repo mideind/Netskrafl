@@ -23,6 +23,7 @@ from typing import (
     Mapping,
     NotRequired,
     Optional,
+    TypeVar,
     TypedDict,
     Union,
     Tuple,
@@ -31,12 +32,17 @@ from typing import (
 
 import os
 import sys
+import logging
+import time
+from functools import wraps
 from datetime import UTC, datetime, timedelta
-from secret_manager import SecretManager
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from logging.config import dictConfig
+from secret_manager import SecretManager
 
+
+T = TypeVar('T')
 
 # Universal type definitions
 ResponseType = Union[
@@ -346,3 +352,22 @@ def ttl_cache(seconds: int) -> Callable[[Callable[..., Any]], Callable[..., Any]
         return wrapped
 
     return decorator
+
+
+def log_execution_time(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator that logs the execution time of a function call"""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            duration = time.time() - start_time
+            logging.info(f"{func.__name__}() executed in {duration:.3f}s")
+            return result
+        except Exception as e:
+            duration = time.time() - start_time
+            logging.info(f"{func.__name__}() failed after {duration:.3f}s: {e}")
+            raise
+
+    return wrapper

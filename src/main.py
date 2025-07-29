@@ -39,8 +39,9 @@ import os
 import re
 import logging
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
+from flask import g, request
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
@@ -82,6 +83,9 @@ from riddle import riddle_blueprint
 
 if running_local:
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
+    # Disable Werkzeug's default request logging to avoid duplicate logs,
+    # since we are logging web requests ourselves
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
 else:
     # Import the Google Cloud client library
     import google.cloud.logging
@@ -192,10 +196,24 @@ def stripwhite(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+@app.before_request
+def before_request():
+    if running_local:
+        g.request_start = datetime.now(tz=timezone.utc)
+
+
 @app.after_request
-def add_headers(response: Response) -> Response:
-    """Inject additional headers into responses"""
-    if not running_local:
+def after_request(response: Response) -> Response:
+    """Post-request processing"""
+    if running_local:
+        start = g.request_start
+        duration = (datetime.now(tz=timezone.utc) - start).total_seconds()
+        logging.info(
+            f'{request.remote_addr} - - [{start.strftime("%d/%b/%Y %H:%M:%S")}] '
+            f'"{request.method} {request.full_path.rstrip("?")} {request.environ.get("SERVER_PROTOCOL")}" '
+            f'{response.status_code} - {duration:.3f}s'
+        )
+    else:
         # Add HSTS to enforce HTTPS
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"

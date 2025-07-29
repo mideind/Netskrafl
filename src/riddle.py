@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Literal, Optional, Sequence, Dict, TypedDict, cast
+from typing import Any, Callable, List, Literal, Mapping, Optional, Sequence, Dict, TypeVar, TypedDict, cast
 from functools import wraps
 
 import requests
@@ -36,9 +36,27 @@ from skraflgame import TwoLetterGroupTuple, two_letter_words
 from skraflmechanics import RackDetails
 
 
+T = TypeVar("T")
+
+
 # Riddle generator API endpoints
 RIDDLE_ENDPOINT_DEV = "https://moves-dot-explo-dev.appspot.com/riddle"
 RIDDLE_ENDPOINT_PROD = "https://moves-dot-explo-live.appspot.com/riddle"
+
+
+class MovesServiceSolutionDict(TypedDict):
+    """A riddle solution as it arrives from the Moves service"""
+    move: str  # May contain '?x' to indicate a blank tile that means 'x'
+    coord: str  # Form: "A1" for horizontal move, "1A" for vertical
+    score: int
+    description: str
+
+
+class RiddleFromMovesServiceDict(TypedDict):
+    """A riddle as it arrives from the Moves service"""
+    board: List[str]  # 15 strings of 15 characters each
+    rack: str  # May contain '?' to indicate a blank tile
+    solution: MovesServiceSolutionDict
 
 
 class RiddleContentDict(TypedDict):
@@ -111,41 +129,7 @@ def riddle_route(route: str, methods: Sequence[str] = _ONLY_POST) -> Any:
     return decorator
 
 
-def generate_riddle(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDict:
-    """Generate a new riddle for the given date and locale"""
-    # TODO: Implement riddle generation logic here
-    # For now, return a placeholder riddle
-    TEST_RACK = "iiarðu?"
-    rack: RackDetails = [
-        (tile, tile_scores.get(tile, 0)) for tile in TEST_RACK
-    ]
-    # For now, generate a placeholder board
-    board: List[str] = [
-        ".......léttirðu",
-        ".......y.......",
-        ".......k.bóla..",
-        ".....klif.salan",
-        "....rauðar.n...",
-        "...sálm..eggs..",
-        ".......föx.tó..",
-        "....vafa....m..",
-        "...né.j.....i..",
-        ".....þú........",
-        "...drekum......",
-        "..ná.kara......",
-        "..ei.s.tí......",
-        "hringt.u.......",
-        "...s...r.......",
-    ]
-    max_score: int = 77  # Placeholder for maximum score
-    return {
-        "rack": rack,
-        "board": board,
-        "max_score": max_score,
-    }
-
-
-def generate_riddle_2(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDict:
+def generate_placeholder_riddle(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDict:
     """Generate a new riddle for the given date and locale"""
     TEST_RACK = "kfojgda"
     rack: RackDetails = [
@@ -177,7 +161,7 @@ def generate_riddle_2(locale: str, tile_scores: Dict[str, int]) -> RiddleContent
     }
 
 
-def generate_new_riddle(locale: str) -> Optional[RiddleContentDict]:
+def generate_new_riddle(locale: str, tile_scores: Mapping[str, int]) -> Optional[RiddleContentDict]:
     """Fetch a new riddle from the GoSkrafl server ('moves' service)
     for the given date and locale. This is served at the
     /riddle endpoint."""
@@ -185,6 +169,7 @@ def generate_new_riddle(locale: str) -> Optional[RiddleContentDict]:
         logging.error("Missing locale in generate_new_riddle()")
         return None
     if PROJECT_ID == "explo-live":
+        # TODO: Consider using the production endpoint for Netskrafl
         endpoint = RIDDLE_ENDPOINT_PROD
     else:
         # For Netskrafl and for development, use the dev endpoint
@@ -200,32 +185,41 @@ def generate_new_riddle(locale: str) -> Optional[RiddleContentDict]:
             json={
                 "locale": locale,
             },
-            timeout=20,  # 20 seconds timeout
+            # Currently the moves service may take up to 20 seconds to generate a riddle,
+            # so we need a longer timeout than that
+            timeout=30,
         )
         response.raise_for_status()  # Raise an error for bad responses
-        riddle_data: Optional[RiddleContentDict] = response.json()
+        riddle_data: Optional[RiddleFromMovesServiceDict] = response.json()
         if not isinstance(riddle_data, dict):
-            logging.error(f"Invalid riddle data format: {riddle_data}")
+            logging.error(f"Invalid riddle received from backend: {riddle_data}")
             return None
         # Ensure the riddle data has the required fields
-        if not all(key in riddle_data for key in ["rack", "board", "max_score"]):
+        if not all(key in riddle_data for key in ["rack", "board", "solution"]):
             logging.error(f"Riddle data missing required fields: {riddle_data}")
             return None
+        solution = riddle_data["solution"]
+        if not isinstance(cast(Any, solution), dict) or not all(
+            key in solution for key in ["move", "coord", "score", "description"]
+        ):
+            logging.error(f"Riddle solution missing required fields: {solution}")
+            return None
+        rack = [(tile, tile_scores.get(tile, 0)) for tile in riddle_data["rack"]]
         # Move the response data to a clean RiddleContentDict instance
         riddle = RiddleContentDict(
-            rack=riddle_data["rack"],
+            rack=rack,
             board=riddle_data["board"],
-            max_score=riddle_data["max_score"],
+            max_score=solution["score"],
         )
         return riddle
-    except requests.RequestException as e:
+    except (requests.RequestException, KeyError, ValueError) as e:
         logging.error(f"Failed to fetch riddle from {endpoint}: {e}")
         return None
 
 
 def cache_if_not_none(maxsize: int = 128):
     """Cache decorator that only caches successful (non-None) results"""
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
         cache: Dict[str, Any] = {}
 
         @wraps(func)
@@ -251,7 +245,7 @@ def cache_if_not_none(maxsize: int = 128):
 
 
 @cache_if_not_none(maxsize=3)
-def get_or_create_riddle(date: str, locale: str) -> RiddleDict:
+def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     """Get existing riddle or create a new one, with caching"""
     # Check if riddle already exists in Firebase
     path = f"gatadagsins/{date}/{locale}/riddle"
@@ -264,15 +258,15 @@ def get_or_create_riddle(date: str, locale: str) -> RiddleDict:
     tile_scores = current_tileset().scores
 
     # Riddle doesn't exist, generate a new one
-    riddle = generate_new_riddle(locale)
+    riddle = generate_new_riddle(locale, tile_scores)
     if riddle is None:
-        # If fetching the riddle fails, generate a placeholder riddle
-        # !!! TODO: This is temporary; eventually retry and/or return None
-        logging.warning(f"Failed to fetch riddle for {date}/{locale}, generating placeholder")
-        riddle = generate_riddle_2(locale, tile_scores)
+        return None
 
     # Store the new riddle in Firebase
-    if not firebase.put_message(riddle, path):
+    if firebase.put_message(riddle, path):
+        # Delete the /best path if it exists, since we have a new riddle
+        firebase.put_message(None, f"gatadagsins/{date}/{locale}/best")
+    else:
         # If Firebase storage fails, still return the generated riddle
         # but it won't be persisted
         logging.error(f"Failed to store riddle for {date}/{locale} in Firebase")
@@ -310,6 +304,10 @@ def riddle_api() -> ResponseType:
 
     # Get or create riddle using cached function
     riddle_data = get_or_create_riddle(date, locale)
+
+    if riddle_data is None:
+        # If riddle generation failed, return an error
+        return jsonify(ok=False, error="Failed to generate riddle")
 
     # Return the riddle
     return jsonify(ok=True, riddle=riddle_data)
