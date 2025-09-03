@@ -1,0 +1,699 @@
+{% extends "container.html" %}
+
+{% block opengraph %}
+
+{% if og != None %}
+
+{%- macro descr(og) -%}
+   {{ og.player0 }} og {{ og.player1 }} áttust við í Netskrafli.
+   {% if og.win -%}
+   {{ og.player0 }} sigraði með {{ og.score0 }} stigum gegn {{ og.score1 }}!
+   {%- else -%}
+   Úrslit urðu {{ og.score0 }} stig gegn {{ og.score1 }}.
+   {%- endif -%}
+   {%- if og.bingo0 -%}
+   {{ ' ' + og.player0 }} lagði niður {{ 'bingóin ' if og.bingo0|length > 1 else 'bingóið ' }}
+   {% for w, sc in og.bingo0 -%}
+      {{ ' og ' if (loop.last and not loop.first) else '' if loop.first else ', ' }}{{ w | upper }} ({{ sc }} stig)
+   {%- endfor -%}.
+   {%- endif -%}
+   {%- if og.bingo1 -%}
+   {{ ' ' + og.player1 }} lagði niður {{ 'bingóin ' if og.bingo1|length > 1 else 'bingóið ' }}
+   {% for w, sc in og.bingo1 -%}
+      {{ ' og ' if (loop.last and not loop.first) else '' if loop.first else ', ' }}{{ w | upper }} ({{ sc }} stig)
+   {%- endfor -%}.
+   {%- endif -%}
+{%- endmacro -%}
+
+<meta property="og:title" content="Viðureign lokið{{ ' með sigri!' if og.win else ' með jafntefli' if og.draw else '' }}" />
+<meta property="og:description" content="{{ descr(og) | stripwhite }}" />
+<meta property="og:url" content="{{ url_for('web.board', game=game.id(), og=og.og, _external=True) | safe }}" />
+<meta property="fb:app_id" content="622492364544510" />
+
+{% endif %}
+
+<meta property="og:locale" content="is_IS" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:image" content="{{ url_for('web.static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="600" />
+<meta property="og:image:height" content="600" />
+
+{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}"
+   rel="stylesheet" type="text/css" media="all">
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="board-area">
+
+<!-- The board -->
+{% include 'boardlayout.html' %}
+
+<!-- The rack -->
+<div class="rack">
+   <table class="board">
+      <tr>
+      <td id="R1"></td>
+      <td id="R2"></td>
+      <td id="R3"></td>
+      <td id="R4"></td>
+      <td id="R5"></td>
+      <td id="R6"></td>
+      <td id="R7"></td>
+      </tr>
+   </table>
+</div>
+
+<!-- Word check -->
+<div class="word-check"></div>
+
+<!-- Challenge last move -->
+<div class="challenge" title="Véfenging (röng kostar 10 stig)"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitChallenge(this)"></div>
+
+<!-- The score of the word currently laid down -->
+<div class="score"></div>
+
+<!-- A button to recall all tiles back into the rack -->
+<div class="recallbtn" title="Færa stafi aftur í rekka"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="resetRack()"><span class="glyphicon glyphicon-down-arrow"></span></div>
+
+<!-- A button to shuffle the rack -->
+<div class="scramblebtn" title="Stokka upp rekka"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="rescrambleRack()"><span class="glyphicon glyphicon-random"></span></div>
+
+<!-- Move submit button -->
+<div class="submitmove disabled" title="Leika"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitMove(this)">Leika
+   <span class="glyphicon glyphicon-play"></span></div>
+
+<!-- Wait placeholder -->
+<div class="waitmove"><img src="{{ url_for('web.static', filename='ajax-loader.gif') }}" border="0" width="16" height="16"/></div>
+
+<!-- Pass button -->
+<div class="submitpass" title="Pass"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitPass(this)"><span class="glyphicon glyphicon-forward"></span></div>
+
+<!-- Exchange button -->
+<div class="submitexchange" title="Skipta stöfum"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitExchange(this)"><span class="glyphicon glyphicon-refresh"></span></div>
+
+<!-- Resign button -->
+<div class="submitresign" title="Gefa leik"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="submitResign(this)"><span class="glyphicon glyphicon-fire"></span></div>
+
+<!-- New game button -->
+<div class="submitnewgame" title="Nýr leikur"
+   onmouseover="buttonOver(this)" onmouseout="buttonOut(this)"
+   onclick="window.location.href='{{ url_for('web.newgame') }}'">Nýr
+   <span class="glyphicon glyphicon-play"></span></div>
+
+<!-- Notification that it's the opponent's turn -->
+{% if not game.is_over() %}
+<div class="opp-turn"><span class="move-indicator"></span>
+<strong>{{ game.player_nickname(1 - player_index) }}</strong>
+á leik
+<span id="force-resign" title="14 dagar liðnir án leiks" class="yesnobutton"
+   onclick="forceResign()" onmouseover="buttonOver(this)" onmouseout="buttonOut(this)">Þvinga til uppgjafar</span>
+</div>
+{% endif %}
+
+<!-- Congratulations on a win -->
+<div id="congrats"><span class="glyphicon glyphicon-bookmark"></span> <strong>Til hamingju með sigurinn!</strong></div>
+
+<!-- Error message, normally hidden -->
+<div class="error"><span class="glyphicon glyphicon-exclamation-sign"></span>
+   <!-- Must match error list in skraflmechanics.py (Error class) -->
+   <p id="err_1">Enginn stafur lagður niður</p> <!-- NULL_MOVE = 1 -->
+   <p id="err_2">Fyrsta orð verður að liggja um miðjureitinn</p> <!-- FIRST_MOVE_NOT_IN_CENTER = 2 -->
+   <p id="err_3">Orð verður að vera samfellt á borðinu</p> <!-- DISJOINT = 3 -->
+   <p id="err_4">Orð verður að tengjast orði sem fyrir er</p> <!-- NOT_ADJACENT = 4 -->
+   <p id="err_5">Reitur þegar upptekinn</p> <!-- SQUARE_ALREADY_OCCUPIED = 5 -->
+   <p id="err_6">Ekki má vera eyða í orði</p> <!-- HAS_GAP = 6 -->
+   <p id="err_7">'<span class="errword"></span>' finnst ekki í orðasafni</p> <!-- WORD_NOT_IN_DICTIONARY = 7 -->
+   <p id="err_8">'<span class="errword"></span>' finnst ekki í orðasafni</p> <!-- CROSS_WORD_NOT_IN_DICTIONARY = 8 -->
+   <p id="err_9">Of margir stafir lagðir niður</p> <!-- TOO_MANY_TILES_PLAYED = 9 -->
+   <p id="err_10">Stafur er ekki í rekkanum</p> <!-- TILE_NOT_IN_RACK = 10 -->
+   <p id="err_11">Of fáir stafir eftir, skipting ekki leyfð</p> <!-- EXCHANGE_NOT_ALLOWED = 11 -->
+   <p id="err_12">Of mörgum stöfum skipt</p> <!-- TOO_MANY_TILES_EXCHANGED = 12 -->
+   <p id="err_13">Leik vantar á borðið - notið F5/Refresh</p> <!-- OUT_OF_SYNC = 13 -->
+   <p id="err_14">Notandi ekki innskráður - notið F5/Refresh</p> <!-- LOGIN_REQUIRED = 14 -->
+   <p id="err_15">Rangur eða óþekktur notandi</p> <!-- WRONG_USER = 15 -->
+   <p id="err_16">Viðureign finnst ekki</p> <!-- GAME_NOT_FOUND = 16 -->
+   <p id="err_17">Viðureign er ekki utan tímamarka</p> <!-- GAME_NOT_OVERDUE = 17 -->
+   <p id="err_18">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- SERVER_ERROR = 18 -->
+   <p id="err_19">Véfenging er ekki möguleg í þessari viðureign</p> <!-- NOT_MANUAL_WORDCHECK = 19 -->
+   <p id="err_20">Síðasti leikur er ekki véfengjanlegur</p> <!-- MOVE_NOT_CHALLENGEABLE = 20 -->
+   <p id="err_21">Aðeins véfenging eða pass leyfileg</p> <!-- ONLY_PASS_OR_CHALLENGE = 21 -->
+   <p id="err_server">Netþjónn gat ekki tekið við leiknum - reyndu aftur</p> <!-- Server error, probably 5XX -->
+</div>
+
+<!-- Reminder when only challenge or pass are possible.
+   Note: this should occur before the chall, pass and pass-last divs as we
+   want this div to stay behind them. -->
+<div class="chall-info"><span class="glyphicon glyphicon-info-sign"></span>
+   &nbsp;<span class="pass-explain">Andstæðingur tæmdi rekkann - þú getur véfengt eða sagt pass</span>
+</div>
+
+<!-- Confirm resignation of game -->
+<div class="resign"><span class="glyphicon glyphicon-exclamation-sign"></span>
+   &nbsp;Viltu gefa leikinn?&nbsp;<span class="mobile-break"><br></span>
+   <span class="yesnobutton" onclick="confirmResign(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="mobile-space"></span>
+   <span class="yesnobutton" onclick="confirmResign(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+<!-- Confirm pass move -->
+<div class="pass"><span class="glyphicon glyphicon-forward"></span>
+   &nbsp;Segja pass? <span class="pass-explain">2x3 pöss í röð ljúka viðureign</span>&nbsp;<span class="mobile-break"><br></span>
+   <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="mobile-space"></span>
+   <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+<!-- Confirm last pass move -->
+<div class="pass-last"><span class="glyphicon glyphicon-forward"></span>
+   &nbsp;Segja pass? <span class="pass-explain">Viðureign lýkur þar með</span>&nbsp;<span class="mobile-break"><br></span>
+   <span class="yesnobutton" onclick="confirmPass(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="mobile-space"></span>
+   <span class="yesnobutton" onclick="confirmPass(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+<!-- Exchange tiles -->
+<div class="exchange"><span class="glyphicon glyphicon-refresh"></span>
+   &nbsp;Smelltu á flísarnar sem þú vilt skipta&nbsp;<span class="mobile-break"><br></span>
+   <span class="yesnobutton" title="Skipta" onclick="confirmExchange(true)"><span class="glyphicon glyphicon-ok"></span></span>
+   <span class="mobile-space"></span>
+   <span class="yesnobutton" title="Hætta við" onclick="confirmExchange(false)"><span class="glyphicon glyphicon-remove"></span></span>
+</div>
+
+<!-- Confirm challenge -->
+<div class="chall"><span class="glyphicon glyphicon-ban-circle"></span>
+   &nbsp;Véfengja lögn? <span class="pass-explain">Röng véfenging kostar 10 stig</span>&nbsp;<span class="mobile-break"><br></span>
+   <span class="yesnobutton" onclick="confirmChallenge(true)"><span class="glyphicon glyphicon-ok"></span> Já</span>
+   <span class="mobile-space"></span>
+   <span class="yesnobutton" onclick="confirmChallenge(false)"><span class="glyphicon glyphicon-remove"></span> Nei</span>
+</div>
+
+</div> <!-- board-area -->
+
+<!-- Player names, scores and move history -->
+<div class="rightcol">
+   <div class="heading">
+      <h3 class="playerleft">
+{%- if game.is_autoplayer(0) -%}
+      <div class="robot-btn left"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(0) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn left" id="player-0">
+{%- else -%}
+      <div class="robot-btn left" id="player-0">
+{%- endif -%}
+      <span class="left-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(0) -}}
+      </div>
+{%- endif -%}
+      </h3>
+      <h3 class="playerright">
+{%- if game.is_autoplayer(1) -%}
+      <div class="robot-btn right"><!--
+      --><span class="glyphicon glyphicon-cog"></span>&nbsp;
+      {{- game.player_nickname(1) -}}
+      </div>
+{%- else -%}
+{% if player_index != None %}
+      <div class="player-btn right" id="player-1">
+{%- else -%}
+      <div class="robot-btn right" id="player-1">
+{%- endif -%}
+      <span class="right-to-move" class="glyphicon-flag"></span><!--
+      -->{{- game.player_nickname(1) -}}
+      </div>
+{%- endif -%}
+      </h3>
+      <h3 class="scoreleft">{{ game.final_scores()[0] }}</h3>
+      <h3 class="scoreright">{{ game.final_scores()[1] }}</h3>
+      <h3 class="clockleft"></h3>
+      <h3 class="clockright"></h3>
+      <div class="clockface"><span class="glyphicon glyphicon-time"></span></div>
+      <div class="fairplay"><span class="fairplay-btn large" title="Skraflað án hjálpartækja"></span></div>
+      <div class="home"><div class="circle"><span class="glyphicon glyphicon-home" title="Aftur í aðalskjá"></span></div></div>
+   </div>
+   <div class="right-area">
+      <div class="right-tab" id="tab-board" title="Borðið"><span class="glyphicon glyphicon-grid"></span></div>
+      <div class="right-tab selected" id="tab-movelist" title="Leikir"><span class="glyphicon glyphicon-show-lines"></span></div>
+      <div class="right-tab" id="tab-twoletter" title="Tveggja stafa orð"><span class="glyphicon glyphicon-life-preserver"></span></div>
+      <div class="right-tab" id="tab-chat" title="Spjall"><span class="glyphicon glyphicon-conversation"></span></div>
+      <div class="right-tab" id="tab-games" title="Viðureignir"><span class="glyphicon glyphicon-flag"></span></div>
+      <div class="movelist-container">
+         <div class="movelist">
+         </div>
+         <!-- The bag is shown at the bottom of the movelist in the mobile UI -->
+         <div class="bag">
+            <table class="bag-content">
+            </table>
+         </div>
+      </div>
+      <div class="twoletter">
+{% set tw0, tw1 = game.two_letter_words %}
+         <div class="twoletter-area" id="two-1" title="Smelltu til að raða eftir seinni staf">
+{% for key, grp in tw0 %}
+<div class="twoletter-group">
+{% for w in grp %}
+{% if loop.first %}
+<div class="twoletter-word"><b>{{ w[0] }}</b>{{ w[1] }}</div>
+{% else %}
+<div class="twoletter-word">{{ w }}</div>
+{% endif %}
+{% endfor %}
+</div>
+{% endfor %}
+         </div>
+         <div class="twoletter-area" id="two-2" title="Smelltu til að raða eftir fyrri staf">
+{% for key, grp in tw1 %}
+<div class="twoletter-group">
+{% for w in grp %}
+{% if loop.first %}
+<div class="twoletter-word">{{ w[0] }}<b>{{ w[1] }}</b></div>
+{% else %}
+<div class="twoletter-word">{{ w }}</div>
+{% endif %}
+{% endfor %}
+</div>
+{% endfor %}
+         </div>
+      </div>
+      <div class="chat">
+         <div class="chat-area" id="chat-area"></div>
+         <div class="chat-input">
+            <input type="text" name="msg" id="msg" maxlength="254" class="chat-txt"/><!--
+         --><div class="modal-close" id="chat-send" title="Senda"><span class="glyphicon glyphicon-chat"></span></div>
+         </div>
+      </div>
+      <div class="games">
+      </div>
+   </div>
+</div>
+
+<!-- The bag -->
+<div class="bag" title="Flísar sem eftir eru í pokanum">
+<table class="bag-content">
+</table>
+</div>
+
+<!-- A dialog to ask for the meaning of a blank tile -->
+<div id="blank-dialog" class="modal-dialog">
+<div id="blank-form" class="ui-widget ui-widget-content ui-corner-all">
+   <p>Hvaða staf táknar auða flísin?</p>
+   <div class="rack blank-rack">
+      <table class="board" id="blank-meaning">
+         <!-- Tile rows and cells will be inserted here -->
+      </table>
+   </div>
+   <!-- Close button -->
+   <div class="modal-close" id="blank-close" title="Hætta við" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-remove"></span></div>
+</div>
+</div>
+
+<!-- A dialog to show info about a particular user -->
+<div id="usr-info-dialog" class="modal-dialog">
+<div id="usr-info-form" class="ui-widget ui-widget-content ui-corner-all">
+
+   <div class="usr-info-hdr">
+      <h1 class="usr-info-icon"><!--
+         --><span id="usr-info-icon-user" class='glyphicon glyphicon-user'></span><!--
+         --><span id="usr-info-icon-friend" class='glyphicon glyphicon-coffee-cup' title="Vinur Netskrafls"></span><!--
+         -->&nbsp;</h1>
+      <h1 id="usr-info-nick"></h1>
+      <span class="vbar">|</span>
+      <h2 id="usr-info-fullname"></h2>
+      <div class="usr-info-fav" title="Uppáhald">
+         <span class="glyphicon glyphicon-star" id="usr-info-fav-star"></span>
+      </div>
+   </div>
+
+   <p><strong>Nýjustu viðureignir</strong> <span class="versus-cat"><span class="shown" id="versus-all">gegn öllum</span> <span id="versus-you">gegn þér</span></span></p>
+
+   <!-- Recent games for this user -->
+   <div class="listitem listheader"><span
+   class="list-win"><span
+   title="Sigur" class='glyphicon glyphicon-bookmark grayed'></span></span><span
+   class="list-ts-short">Viðureign lauk</span><span
+   class="list-nick">Andstæðingur</span><span
+   class="list-scorehdr">Úrslit</span><span
+   class="list-elo-hdr"><span
+      title="Mennskir andstæðingar" class='glyphicon glyphicon-user elo-hdr-left'></span>Elo<span
+      title="Allir andstæðingar" class='glyphicon glyphicon-cog elo-hdr-right'></span></span><span
+      class="list-duration">Lengd</span><!--
+      --><span class="list-manual"><!--
+         --><span title="Keppnishamur" class='glyphicon glyphicon-lightbulb grayed'></span><!--
+      --></span><!--
+   --></div>
+
+   <!-- Recent game lists will be populated by populateRecentList() -->
+   <div id="usr-recent"></div>
+
+   <!-- Statistics -->
+   <div id="usr-stats">
+      <div id="stats-toggler" class="toggler" title="Með þjörkum eða án">
+         <div class="option small" id="opt1"><span class="glyphicon glyphicon-user"></span></div><!--
+      --><div class="option small" id="opt2"><span class="glyphicon glyphicon-cog"></span></div>
+      </div><!--
+   --><div id="usr-stats-human"><!--
+      --><div class="stats-fig" id="usr-stats-human-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-human-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-human-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-human-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div><!--
+   --><div id="usr-stats-all"><!--
+      --><div class="stats-fig" id="usr-stats-elo" title="Elo-stig"></div><!--
+      --><div class="stats-fig stats-games" id="usr-stats-games" title="Fjöldi viðureigna"></div><!--
+      --><div class="stats-fig stats-win-ratio" id="usr-stats-win-ratio" title="Vinningshlutfall"></div><!--
+      --><div class="stats-fig stats-avg-score" id="usr-stats-avg-score" title="Meðalstigafjöldi"></div><!--
+   --></div>
+   </div>
+
+   <!-- Highest word and game scores -->
+   <p id="usr-best"></p>
+
+   <!-- Close button -->
+   <div class="modal-close" id="usr-info-close" title="Loka" onmouseover="buttonOver(this)"
+      onmouseout="buttonOut(this)"><span class="glyphicon glyphicon-ok"></span></div>
+
+</div>
+</div>
+
+{% if user and user.beginner() %}
+<!-- Help on the board colors -->
+<div class="board-help" title="Hvernig reitirnir margfalda stigin">
+<div class="board-help-close" title="Loka þessari hjálp"><span class="glyphicon glyphicon-remove"></span></div>
+<div class="board-colors">
+<div class="board-color" id="triple-word">3 x<br>orð</div>
+<div class="board-color" id="double-word">2 x<br>orð</div>
+<div class="board-color" id="triple-letter">3 x<br> stafur</div>
+<div class="board-color" id="double-letter">2 x<br> stafur</div>
+<div class="board-color" id="single-letter">1 x<br> stafur</div>
+</div>
+</div>
+{% endif %}
+
+<!-- Facebook share button -->
+<div class="fb-share" title="Deila á Facebook"><img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png') }}"
+   width="29" height="29"><br>Deila</div>
+
+<!-- A dialog to display promotions -->
+<div id="promo-dialog" class="modal-dialog">
+<div id="promo-form" class="ui-widget ui-widget-content ui-corner-all">
+   <div id="promo-content"></div>
+</div>
+</div>
+
+{%- endblock -%}
+
+{%- block media -%}
+
+{%- if user and user.audio() -%}
+<!-- Audio resources -->
+<audio id="your-turn" preload="none">
+   <source src="{{ url_for('web.static', filename='your-turn.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="new-msg" preload="none">
+   <source src="{{ url_for('web.static', filename='new-msg.mp3') }}" type="audio/mpeg">
+</audio>
+{% endif %}
+{%- if user and user.fanfare() -%}
+<audio id="you-win" preload="none">
+   <source src="{{ url_for('web.static', filename='you-win.mp3') }}" type="audio/mpeg">
+</audio>
+{%- endif -%}
+
+{%- endblock -%}
+
+{%- block startscripts -%}
+{% include 'firebase.html' %}
+{%- endblock -%}
+
+{%- block endscripts -%}
+
+{%- if dev_server %}
+<script src="{{ url_for('web.static', filename='built/netskrafl.js') }}"></script>
+{% else %}
+<script src="{{ url_for('web.static', filename='built/netskrafl.min.js') }}"></script>
+{% endif -%}
+<script>
+
+   function placeTiles() {
+      /* Initialize the board tiles */
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state) %}
+      placeMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% endfor %}
+
+{% if user and game.my_turn(user.id()) %}
+      /* Show the opponent's most recent move */
+{% for m in game.moves[-1:] %}
+      highlightNewestMove(colorOf({{ m.player }}));
+{% endfor %}
+{% endif %}
+
+      /* Place the rack tiles */
+{% if player_index != None %}
+{% for tile, score in game.state.rack_details(player_index) %}
+      placeTile("R{{ loop.index }}", "{{ tile }}", "{{ tile }}", {{ score }});
+{%- endfor -%}
+{%- endif -%}
+   }
+
+   function initMoveList() {
+      /* Initialize the move list */
+{% for m in game.moves %}
+{%- set coord, tiles, score = m.move.summary(game.state) %}
+      appendMove({{ m.player }}, "{{ coord }}", "{{ tiles }}", {{ score }});
+{% endfor %}
+{% if game.is_over() %}
+{% for m in game.get_final_adjustments() %}
+{%    set m0, m1 = m[0], m[1] %}
+{%    set m10, m11, m12 = m1[0], m1[1], m1[2] %}
+      appendMove({{ m0 }}, "{{ m10 }}", "{{ m11 }}", {{ m12 }});
+{% endfor %}
+      gameOver = true; /* Make sure that the gameOver variable is set no matter what */
+{% endif %}
+   }
+
+   function initBag() {
+      /* Initialize the bag */
+{% if game.is_over() %}
+      updateBag("{{ game.state.bag().contents() }}");
+{% else %}
+      updateBag("{{ game.display_bag(player_index) }}");
+{% endif %}
+{% if game.is_challengeable() %}
+      challengeAllowed = true;
+{%- endif -%}
+{% if game.is_last_challenge() %}
+      lastChallenge = true;
+      exchangeAllowed = false;
+{% elif not game.state.is_exchange_allowed() %}
+      exchangeAllowed = false;
+{%- endif -%}
+   }
+
+   function localPlayer() {
+      /* Identify whether the current player is 0 or 1 */
+      return {{ -1 if player_index == None else player_index }};
+   }
+
+   function gameId() {
+      /* Return the unique identifier of this game */
+      return "{{ game.id() }}";
+   }
+
+   function userId() {
+      /* Return the identifier of the local user */
+      return "{{ '' if user == None else user.id() }}";
+   }
+
+   function opponentInfo() {
+      /* Return information about the opponent */
+{% if opp == None %}
+      return null;
+{% else %}
+      return {
+         nick: "{{ opp.nickname() | safe }}",
+         fullname: "{{ opp.full_name() | safe }}",
+         userid: "{{ opp.id() | safe }}"
+      }
+{% endif %}
+   }
+
+   function gameIsZombie() {
+      /* Return true if the game is newly finished and is being viewed to confirm results */
+      return {{ "true" if zombie else "false" }};
+   }
+
+   function gameIsFairplay() {
+      /* Return true if the game is a fairplay game */
+      return {{ "true" if game.get_fairplay() else "false" }};
+   }
+
+   function gameUsesNewBag() {
+      /* Return true if the game uses the new bag */
+      return {{ "true" if game.new_bag() else "false" }};
+   }
+
+   function gameIsManual() {
+      /* Return true if the game uses manual wordcheck */
+      return {{ "true" if game.manual_wordcheck() else "false" }};
+   }
+
+   function gameAlphabet() {
+      /* Return the alphabet used in the game, as a string */
+      return "{{ game.tileset.alphabet.order }}";
+   }
+
+   function gameTilescores() {
+      /* Return the tile score dict for this game */
+      return {{ game.tileset.scores | tojson }};
+   }
+
+   function gameLocale() {
+      /* Return the locale used in the game, for example 'is_IS' or 'en_US' */
+      return "{{ game.locale }}";
+   }
+
+   function gameBoardType() {
+      /* Return the board type in the game, for example 'standard' */
+      return "{{ game.board_type }}";
+   }
+
+   /* Array of supported emoticons in chat */
+   // Remember to change faq.html if this changes
+   var emoticons = Array(
+      { icon : ":-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":-D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":-(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":-o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":-p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":-P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "B-)", image : "{{ url_for('web.static', filename='icontexto_emoticons_16.png') }}" },
+      { icon : ":)", image : "{{ url_for('web.static', filename='icontexto_emoticons_03.png') }}" },
+      { icon : ":D", image : "{{ url_for('web.static', filename='icontexto_emoticons_02.png') }}" },
+      { icon : ";)", image : "{{ url_for('web.static', filename='icontexto_emoticons_04.png') }}" },
+      { icon : ":(", image : "{{ url_for('web.static', filename='icontexto_emoticons_12.png') }}" },
+      { icon : ":o", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":O", image : "{{ url_for('web.static', filename='icontexto_emoticons_10.png') }}" },
+      { icon : ":p", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : ":P", image : "{{ url_for('web.static', filename='icontexto_emoticons_14.png') }}" },
+      { icon : "(y)", image : "{{ url_for('web.static', filename='thumb-up.png') }}" }
+   );
+
+   function replaceEmoticons(str) {
+      // Replace all emoticon shortcuts in the string str with a corresponding image URL
+      var i;
+      for (i = 0; i < emoticons.length; i++)
+         if (str.indexOf(emoticons[i].icon) >= 0) {
+            // The string contains the emoticon: prepare to replace all occurrences
+            var img = "<img src='" + emoticons[i].image + "' height='32' width='32'>";
+            // Re the following trick, see http://stackoverflow.com/questions/1144783/replacing-all-occurrences-of-a-string-in-javascript
+            str = str.split(emoticons[i].icon).join(img);
+         }
+      return str;
+   }
+
+   function initialGameTime() {
+      /* Return the time state of the game, i.e. its duration in minutes
+         per player and the elapsed time so far for each player in seconds */
+      return {
+         duration: {{ time_info.duration }},
+{%  set ti0 = time_info.elapsed[0] %}
+{%  set ti1 = time_info.elapsed[1] %}
+         elapsed: [{{ ti0 }}, {{ ti1 }}]
+      };
+   }
+
+   function navToReview() {
+      /* Show the game review page */
+{% if user and user.has_paid() %}
+      // Paying friend of Netskrafl: show the game review
+      window.location.href = "{{ url_for('web.review', game = game.id(), move = 0) | safe }}";
+{% else %}
+      // Not a paying friend: show a promotion overlay
+      openPromoDialog("friend", registerSalesCloud);
+{% endif %}
+   }
+
+   function navToUserprefs() {
+      /* Show the user preferences page */
+      window.location.href = "{{ url_for('web.userprefs', from = url_for('web.board', game = game.id())) | safe }}";
+   }
+
+   function gameUrl(uuid) {
+      /* Return the URL for a game with a given uuid */
+      return "{{ url_for('web.board') | safe }}?game=" + uuid;
+   }
+
+   function fbShare() {
+      /* Share a finished game on Facebook */
+      /* Redirect to a Facebook URL - the JavaScript API doesn't work well on the iPad */
+      window.location.href = "https://www.facebook.com/dialog/share?" +
+         "app_id=622492364544510&display=popup&" +
+         "href={{ url_for('web.board', game = game.id(), og = -1 if player_index == None else player_index, _external=True) | urlencode}}&" +
+         "redirect_uri={{ url_for('web.board', game = game.id(), _external=True) | urlencode }}";
+   }
+
+   function lateInitBoard() {
+      /* Execute late initialization - called from initSkrafl() */
+      const uid = userId();
+      const gameid = gameId();
+{% if firebase_token and user %}
+      initFirebaseListenerForGame("{{ firebase_token }}", uid, gameid);
+      initPresence(uid);
+{% endif %}
+{%  set fsc0, fsc1 = game.final_scores() %}
+      scoreLeft = {{ fsc0 }};
+      scoreRight = {{ fsc1 }};
+{% if user and game.is_overdue() and not game.my_turn(user.id()) %}
+      // Display option to force opponent to resign
+      $("#force-resign").toggleClass("active", true);
+{% endif %}
+{% if player_index == None or game.is_robot_game() %}
+      // Only show the chat tab if the user is a player of this game and the
+      // opponent is not a robot
+      $("#tab-chat").css("display", "none");
+      $("div.chat").css("display", "none");
+{% elif game.has_new_chat_msg(user.id()) %}
+      // There is an unseen chat message
+      markChatMsg();
+{% endif %}
+   }
+
+$(document).ready(initSkrafl);
+
+</script>
+
+{%- endblock -%}

@@ -56,13 +56,6 @@ handlers:
   upload: static/favicon-16x16.png
   expiration: "1d 0h"
 
-# Service worker
-- url: /service-worker.js
-  static_files: static/service-worker.js
-  upload: static/service-worker.js
-  mime_type: application/javascript
-  #expiration: "1d 0h"
-
 # Internet Explorer & Windows 8 resource file, can be cached  
 - url: /browserconfig.xml
   static_files: static/browserconfig.xml

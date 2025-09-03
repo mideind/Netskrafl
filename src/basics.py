@@ -1,17 +1,17 @@
 """
 
-    Basic utility functions and classes
+Basic utility functions and classes
 
-    Copyright © 2025 Miðeind ehf.
-    Original author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Original author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
 
-    This module defines a number of basic entities that are used and shared
-    by the main.py, api.py and web.py modules.
+This module defines a number of basic entities that are used and shared
+by the main.py, api.py and web.py modules.
 
 """
 
@@ -140,7 +140,6 @@ def max_age(seconds: int) -> RouteFunc:
 
 
 class CachedResponse(Response):
-
     """A subclass of Flask's Response class that causes
     the requisite cache headers to be added to the response
     and deletes the Vary: header which Flask adds by
@@ -151,7 +150,6 @@ class CachedResponse(Response):
 
 
 class FlaskWithCaching(Flask):
-
     """Subclass Flask to inject our custom process_response() method"""
 
     def process_response(self, response: Response) -> Response:
@@ -168,7 +166,11 @@ class FlaskWithCaching(Flask):
 
 
 def send_cached_file(
-    content: io.BytesIO, *, lifetime_seconds: int, etag: str, mimetype: str = "image/jpeg"
+    content: io.BytesIO,
+    *,
+    lifetime_seconds: int,
+    etag: str,
+    mimetype: str = "image/jpeg",
 ) -> Response:
     """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
     now = datetime.now(UTC)
@@ -355,7 +357,7 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
     return wrap
 
 
-def make_thumbnail(image: bytes, size: int=DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
+def make_thumbnail(image: bytes, size: int = DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
     """Create a thumbnail from a JPEG image"""
     # Convert the image bytes to a BytesIO object
     image_bytes = io.BytesIO(image)

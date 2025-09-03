@@ -78,9 +78,9 @@ google_request = google_requests.Request(session=cached_session)
 # For testing purposes only: a hard-coded user image URL
 TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADdaFE9Pk1NobKf2veK6Hvt=s96-c"
 
-# Characters that are forbidden in Firebase paths
+# Map characters that are forbidden in Firebase paths to underscores
 FIREBASE_FORBIDDEN_CHARS = ".#$[]/"
-FIREBASE_TRANSLATE: Dict[int, int] = str.maketrans(
+FIREBASE_TRANSLATE: Mapping[int, int] = str.maketrans(
     FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS)
 )
 
@@ -514,12 +514,30 @@ def oauth_fb(request: Request) -> ResponseType:
     return jsonify(dict(status="success", **uld))
 
 
+# Global sequence number for Apple JWK cache invalidation
+_apple_jwk_seq = 0
+
+
 @lru_cache(maxsize=1)
-def _apple_key_client(day: datetime) -> jwt.PyJWKClient:
+def _apple_key_client(day: datetime, seq: int) -> jwt.PyJWKClient:
     """Return a cached Apple client secret. The secret is calculated
     once per day and is valid for 180 days (6 months),
     which is the maximum allowed."""
     return jwt.PyJWKClient(APPLE_JWKS_URL)
+
+
+def apple_key_client() -> jwt.PyJWKClient:
+    """Return the currently cached Apple client secret"""
+    now = datetime.now(UTC)
+    today = datetime(now.year, now.month, now.day, tzinfo=UTC)
+    return _apple_key_client(today, _apple_jwk_seq)
+
+
+def fresh_apple_key_client() -> jwt.PyJWKClient:
+    """Return a freshly recalculated Apple client secret"""
+    global _apple_jwk_seq
+    _apple_jwk_seq += 1
+    return apple_key_client()
 
 
 def oauth_apple(request: Request) -> ResponseType:
@@ -547,11 +565,15 @@ def oauth_apple(request: Request) -> ResponseType:
             jsonify({"status": "invalid", "msg": "Missing token in Apple sign-in"}),
             401,
         )
-    now = datetime.now(UTC)
-    today = datetime(now.year, now.month, now.day, tzinfo=UTC)
-
     try:
-        signing_key = _apple_key_client(today).get_signing_key_from_jwt(token)
+        jwt_client = apple_key_client()
+        try:
+            signing_key = jwt_client.get_signing_key_from_jwt(token)
+        except jwt.exceptions.PyJWKClientError as e:
+            # Unable to obtain the signing key from the Apple JWKs;
+            # it may simply need to be refreshed
+            jwt_client = fresh_apple_key_client()
+            signing_key = jwt_client.get_signing_key_from_jwt(token)
         # The decode() function raises an exception if the token
         # is incorrectly signed or does not contain the required claims
         payload = jwt.decode(  # type: ignore
@@ -561,6 +583,18 @@ def oauth_apple(request: Request) -> ResponseType:
             issuer=APPLE_ISSUER,
             audience=APPLE_CLIENT_ID,
             options={"require": ["iss", "sub", "email"]},
+        )
+    except jwt.exceptions.PyJWKClientError as e:
+        logging.error(f"Unable to obtain Apple signing key: {e}", exc_info=True)
+        return (
+            jsonify(
+                {
+                    "status": "invalid",
+                    "msg": "Unable to obtain Apple signing key",
+                    "error": str(e),
+                }
+            ),
+            401,
         )
     except jwt.exceptions.ExpiredSignatureError as e:
         # Expired token (which is an expected condition):

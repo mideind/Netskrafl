@@ -1,6 +1,6 @@
 """
 
-    Web server for netskrafl.is/Explo
+    Web server for Netskrafl and Explo
 
     Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -39,8 +39,9 @@ import os
 import re
 import logging
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
+from flask import g, request
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
@@ -77,10 +78,14 @@ from wordbase import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
+from riddle import riddle_blueprint
 
 
 if running_local:
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
+    # Disable Werkzeug's default request logging to avoid duplicate logs,
+    # since we are logging web requests ourselves
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
 else:
     # Import the Google Cloud client library
     import google.cloud.logging
@@ -92,17 +97,6 @@ else:
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
-
-import threading
-original_get_ident = threading.get_ident
-
-def debug_get_ident():
-    ident = original_get_ident()
-    if ident is None:  # type: ignore[assignment]
-        logging.error("Thread ident is None", stack_info=True)
-    return ident
-
-threading.get_ident = debug_get_ident
 
 # Initialize Firebase
 init_firebase_app()
@@ -133,6 +127,7 @@ elif NETSKRAFL:
     origins = [
         "https://malstadur.is",
         "https://malstadur.mideind.is",
+        "https://netskrafl.malstadur.mideind.is",
     ]
 else:
     origins = []
@@ -187,6 +182,7 @@ app.json.sort_keys = False
 app.register_blueprint(api_blueprint)
 app.register_blueprint(web_blueprint)
 app.register_blueprint(stats_blueprint)
+app.register_blueprint(riddle_blueprint)
 app.register_blueprint(connect_blueprint)
 
 # Initialize the OAuth wrapper
@@ -200,10 +196,24 @@ def stripwhite(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+@app.before_request
+def before_request():
+    if running_local:
+        g.request_start = datetime.now(tz=timezone.utc)
+
+
 @app.after_request
-def add_headers(response: Response) -> Response:
-    """Inject additional headers into responses"""
-    if not running_local:
+def after_request(response: Response) -> Response:
+    """Post-request processing"""
+    if running_local:
+        start = g.request_start
+        duration = (datetime.now(tz=timezone.utc) - start).total_seconds()
+        logging.info(
+            f'{request.remote_addr} - - [{start.strftime("%d/%b/%Y %H:%M:%S")}] '
+            f'"{request.method} {request.full_path.rstrip("?")} {request.environ.get("SERVER_PROTOCOL")}" '
+            f'{response.status_code} - {duration:.3f}s'
+        )
+    else:
         # Add HSTS to enforce HTTPS
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
@@ -275,8 +285,13 @@ def warmup() -> ResponseType:
 @app.route("/_ah/stop")
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(f"Stop: instance {instance}")
+    try:
+        instance = os.environ.get("GAE_INSTANCE", "N/A")
+        logging.info(f"Stop: instance {instance}")
+    except:
+        # The logging module may not be functional at this point,
+        # as the server is being shut down
+        pass
     return "", 200
 
 
