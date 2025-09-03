@@ -78,9 +78,9 @@ google_request = google_requests.Request(session=cached_session)
 # For testing purposes only: a hard-coded user image URL
 TEST_USER_IMAGE = "https://lh3.googleusercontent.com/a/ALm5wu31WJ1zJ_P-NZzvdADdaFE9Pk1NobKf2veK6Hvt=s96-c"
 
-# Characters that are forbidden in Firebase paths
+# Map characters that are forbidden in Firebase paths to underscores
 FIREBASE_FORBIDDEN_CHARS = ".#$[]/"
-FIREBASE_TRANSLATE: Dict[int, int] = str.maketrans(
+FIREBASE_TRANSLATE: Mapping[int, int] = str.maketrans(
     FIREBASE_FORBIDDEN_CHARS, "_" * len(FIREBASE_FORBIDDEN_CHARS)
 )
 
