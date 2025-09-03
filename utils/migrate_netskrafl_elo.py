@@ -35,10 +35,11 @@ from typing import List, Tuple, Dict, Any
 import argparse
 import logging
 import sys
+import os
 from datetime import datetime, UTC
 
 # Add the src directory to the Python path for imports
-sys.path.insert(0, "../src")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 try:
     from google.cloud import ndb
