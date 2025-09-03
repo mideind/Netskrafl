@@ -534,7 +534,6 @@ class Navigation:
         """Resume navigation from a previously saved state"""
         self._navigate_from_edge(prefix, nextnode, matched)
 
-
 """
 # Debug instrumentation:
 # Create a thread that runs every 30 seconds and logs the

@@ -22,7 +22,7 @@ GOTO :EOF
 IF "%2" EQU "" GOTO NOVERSION
 ECHO Default module deployment starting, version '%2'
 cmd.exe /c "npx grunt make"
-gcloud beta app deploy --no-cache --version=%2 --no-promote --project=netskrafl app-netskrafl.yaml
+gcloud app deploy --no-cache --version=%2 --no-promote --project=netskrafl app-netskrafl.yaml
 ECHO Default module deployment completed
 GOTO :EOF
 :NOVERSION

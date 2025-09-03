@@ -76,6 +76,7 @@ from skraflmechanics import Error
 
 T = TypeVar("T")
 
+PrefItem = Union[str, int, bool]
 
 class UserSummaryDict(TypedDict):
     """Summary data about a user"""
@@ -474,8 +475,9 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user"""
-        return self._nickname
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
+        return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
@@ -586,8 +588,8 @@ class User:
         self._location = location
 
     def get_pref(
-        self, pref: str, default: Optional[Union[str, int, bool]] = None
-    ) -> Optional[Union[str, int, bool]]:
+        self, pref: str, default: Optional[PrefItem] = None
+    ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
         return self._preferences.get(pref, default)
 
@@ -601,7 +603,7 @@ class User:
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
-    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
+    def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
         self._preferences[pref] = value
 
