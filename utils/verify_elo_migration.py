@@ -35,10 +35,10 @@ from datetime import datetime, UTC
 
 from skrafldb import StatsDict
 
-# Add the src directory to the Python path for imports
-base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
-# Add the ../src directory to the Python path
-sys.path.append(os.path.join(base_path, "../src"))
+# Dynamically determine the absolute path to the src directory for imports
+base_path = os.path.abspath(os.path.dirname(__file__))
+src_path = os.path.abspath(os.path.join(base_path, "..", "src"))
+sys.path.append(src_path)
 
 try:
     from google.cloud import ndb
