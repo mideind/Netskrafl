@@ -5,12 +5,16 @@ code in this repository.
 
 ## Project Overview
 
-Netskrafl is an Icelandic crossword game website built with:
+Netskrafl is an Icelandic crossword game website and backend server built with:
 - **Backend**: Python 3.11 + Flask web server for Google App Engine
 - **Frontend**: HTML5/JavaScript/TypeScript client with Ajax communication
 - **Database**: Google Cloud NDB (schemaless NoSQL)
 - **Build System**: Grunt for TypeScript/JavaScript/CSS compilation
 - **Testing**: pytest framework
+
+It supports (1) Netskrafl, a web-based game currently offered in Icelandic only,
+and (2) is the backend for Explo, a multilingual mobile app client
+(React Native app, in a separate repository).
 
 ## Common Development Commands
 
@@ -90,31 +94,35 @@ cd static && tsc
 - **static/skrafl-*.less**: LESS stylesheets compiled to CSS
 
 ### Game Engine
-The game uses a sophisticated robot player based on the classic Appel & Jacobson "World's Fastest Scrabble Program" algorithm. The DAWG structure enables efficient word validation and move generation. The engine is language-agnostic, supporting multiple languages through separate DAWG files and tile sets.
+The game uses a sophisticated robot player based on the classic Appel & Jacobson
+"World's Fastest Scrabble Program" algorithm. The DAWG structure enables efficient
+word validation and move generation. The engine is language-agnostic, supporting
+multiple languages through separate DAWG files and tile sets.
 
 ## Development Notes
 
-- The codebase supports multiple game variants (Netskrafl, Explo) with shared core logic
+- The codebase supports two game variants (Netskrafl, Explo) with shared core logic
   but a few differences in the backend APIs, for instance in player authentication
 - Currently, Netskrafl only supports Icelandic
 - Explo supports Icelandic, English, Polish, and Norwegian (bokmål and nynorsk)
 - Netskrafl is a web-based game with real-time multiplayer capabilities
-- Explo is an app client (React Native app, implemented in the explo-front repository)
-  that communicates with a separate instance of the game server
+- The Netskrafl web frontend supports responsive UIs for desktop and mobile browsers
+- Explo has a mobile app client (React Native app, implemented in the explo-front repository)
+  that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase
 - Elo rating system tracks player performance
 - Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
-- Frontend supports responsive design for mobile/tablet devices
 
 ## Coding Standards
 
 - The #!/usr/bin/env python3 shebang is not required and should be omitted.
 - Use `from __future__ import annotations` to enable postponed evaluation of type annotations.
 - Use `from typing import ...` to import type hints. Place this immediately after
-  the `from __future__ import annotations` line.
+  the `from __future__ import annotations` line. Other imports then follow after these two.
 - Use type hints for all function parameters and return types.
 - Use strict typing in all cases except where third party libraries do not support it.
   In that case, use `# type: ignore` to suppress type checking errors, but try to use
-  cast(T, ...) liberally and immediately to limit propagation of 'Any' or 'Unknown' types.
+  `cast(T, ...)` liberally and immediately to limit propagation of 'Any' or 'Unknown' types.
 - Finish Python source file with an empty line.
 - Use datetime.now(UTC) for timestamps, not datetime.now() or datetime.utcnow().
+- Empty lines should only contain newlines, no spaces or tabs.

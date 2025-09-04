@@ -142,30 +142,28 @@ def get_robot_default_elo(level: int) -> int:
 def check_prerequisites() -> bool:
     """
     Check if the system is ready for migration.
-    
+
     Returns:
         bool: True if prerequisites are met, False otherwise
     """
     logging.info("Checking migration prerequisites...")
-    
+
     try:
         # Test database connectivity
-        _ = UserModel.query().fetch(1)
+        _ = UserModel.query().count(limit=1)
         logging.info("✓ Database connectivity verified")
-        
-        # Check if EloModel entities already exist
-        existing_elo_count = len(list(
-            EloModel.query().filter(EloModel.locale == DEFAULT_LOCALE).fetch(10)
-        ))
-        
+
+        # Check whether EloModel entities already exist
+        existing_elo_count = EloModel.query().filter(EloModel.locale == DEFAULT_LOCALE).count(limit=10)
+
         if existing_elo_count > 0:
             logging.warning(f"Found {existing_elo_count} existing EloModel entities")
             logging.warning("This might indicate a partial or previous migration")
             return False
-        
+
         logging.info("✓ No existing EloModel entities found")
         return True
-        
+
     except Exception as e:
         logging.error(f"Prerequisites check failed: {e}")
         return False
@@ -249,12 +247,12 @@ def migrate_robot_elo(level: int, stats: MigrationStats, dry_run: bool = False) 
             logging.info(f"RobotModel for level {level} already exists, skipping")
             return True
         
-        # Find existing robot Elo data in StatsModel
+        # Find existing robot Elo data in StatsModel  
         robot_stats = None
         for stats_entry in iter_q(StatsModel.query().filter(
             StatsModel.user == None,  # Robot entries have user = None
             StatsModel.robot_level == level
-        )):
+        ), limit=1):
             robot_stats = stats_entry
             break  # Take the first (most recent) entry
         
@@ -316,13 +314,10 @@ def get_migration_preview() -> Tuple[int, int, Dict[int, bool]]:
     # Check existing robot data in StatsModel
     robot_levels = [TOP_SCORE, COMMON, ADAPTIVE]
     for level in robot_levels:
-        robot_stats_exist = False
-        for _ in iter_q(StatsModel.query().filter(
+        robot_stats_exist = StatsModel.query().filter(
             StatsModel.user == None,
             StatsModel.robot_level == level
-        ), limit=1):
-            robot_stats_exist = True
-            break
+        ).count(limit=1) > 0
         robots_found[level] = robot_stats_exist
     
     return users_with_elo, total_users, robots_found
