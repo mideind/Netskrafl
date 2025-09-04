@@ -4,7 +4,7 @@
 
    User interface utility functions
 
-   Copyright (C) 2024 Miðeind ehf.
+   Copyright (C) 2025 Miðeind ehf.
    Author: Vilhjalmur Thorsteinsson
 
    The GNU General Public License, version 3, applies to this software.
