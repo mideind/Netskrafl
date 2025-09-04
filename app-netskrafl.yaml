@@ -4,16 +4,27 @@
 # Copyright © 2025 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
-# Deploy with 'gcloud beta app deploy --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'
+# Deploy with 'gcloud app deploy --no-cache --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'
 #
 
 runtime: python311
-entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 20 --timeout 60 --pythonpath './src' main:app
 
 instance_class: B4_1G
-manual_scaling:
-  instances: 2
-  max_concurrent_requests: 18  # Match worker × thread count
+
+# Basic Scaling: Always keeps at least 1 instance running (no cold starts),
+# scales up to max_instances based on load, and down based on idle time.
+# Good balance between availability/performance and cost compared to Manual.
+basic_scaling:
+  # Maximum number of instances GAE can scale up to.
+  max_instances: 2
+  # How long an instance can be idle (no requests) before GAE considers
+  # shutting it down (if current instances > 1). Adjust as needed (e.g., '5m', '15m').
+  idle_timeout: 5m
+
+# Entrypoint tuned for B4_1G (4 vCPU):
+# - Workers/Threads: Adjust based on whether app is CPU or I/O bound.
+#   3 workers * 6 threads = 18 concurrent requests is reasonable for I/O bound on 4 cores.
+entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 10 --timeout 30 --pythonpath './src' main:app
 
 vpc_access_connector:
   name: projects/netskrafl/locations/us-central1/connectors/vpc0c
@@ -24,7 +35,6 @@ env_variables:
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
   PROJECT_ID: netskrafl
-  SINGLE_PAGE: TRUE
 
 inbound_services:
 - warmup
@@ -54,13 +64,6 @@ handlers:
   static_files: static/favicon-16x16.png
   upload: static/favicon-16x16.png
   expiration: "1d 0h"
-
-# Service worker
-- url: /service-worker.js
-  static_files: static/service-worker.js
-  upload: static/service-worker.js
-  mime_type: application/javascript
-  #expiration: "1d 0h"
 
 # Internet Explorer & Windows 8 resource file, can be cached  
 - url: /browserconfig.xml
@@ -109,6 +112,8 @@ handlers:
   static_files: static/\1
   upload: static/.*\.(gif|png|jpg)$
   expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # CSS files that can be cached
 - url: /static/(.*\.css)(\?.*)?$
@@ -116,6 +121,17 @@ handlers:
   upload: static/.*\.css$
   mime_type: text/css
   expiration: "0d 1h" # Was "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# JSON files that can be cached
+- url: /static/(.*\.json)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.json$
+  mime_type: application/json
+  expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # Catchall for minified JavaScript
 - url: /static/(.*\.min\.js)(\?.*)?$
@@ -123,6 +139,14 @@ handlers:
   upload: static/.*\.min\.js$
   mime_type: application/javascript
   expiration: "0d 1h" # Was "1d 0h"
+
+# JavaScript files in the static/lib folder,
+# which are not necessarily minified
+- url: /static/lib/(.*\.js)(\?.*)?$
+  static_files: static/lib/\1
+  upload: static/lib/.*\.js$
+  mime_type: application/javascript
+  expiration: "1d 0h"
 
 # Catchall for TypeScript source files (included for debugging only)
 - url: /static/src/(.*\.[jt]s)(\?.*)?$
@@ -146,26 +170,13 @@ handlers:
   expiration: "30s"
 
 # Font files that can be cached
-- url: /static/glyphicons-regular.ttf
-  static_files: static/glyphicons-regular.ttf
-  upload: static/glyphicons-regular.ttf
+- url: /static/(.*\.(ttf|eot|woff|woff2|svg))(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.(ttf|eot|woff|woff2|svg)$
   expiration: "1d 0h"
-  mime_type: application/font-sfnt
-- url: /static/glyphicons-regular.eot
-  static_files: static/glyphicons-regular.eot
-  upload: static/glyphicons-regular.eot
-  expiration: "1d 0h"
-  mime_type: application/vnd.ms-fontobject
-- url: /static/glyphicons-regular.svg
-  static_files: static/glyphicons-regular.svg
-  upload: static/glyphicons-regular.svg
-  expiration: "1d 0h"
-  mime_type: image/svg+xml
-- url: /static/glyphicons-regular.woff
-  static_files: static/glyphicons-regular.woff
-  upload: static/glyphicons-regular.woff
-  expiration: "1d 0h"
-  mime_type: application/font-woff
+  mime_type: application/font  # App Engine will determine proper MIME type based on extension
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # MP3 sound files that can be cached  
 - url: /static/(.*\.mp3)$
@@ -173,6 +184,8 @@ handlers:
   upload: static/.*\.mp3$
   mime_type: audio/mpeg
   expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 # Catchall for all other URLS
 - url: .*

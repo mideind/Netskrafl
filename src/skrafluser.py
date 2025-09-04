@@ -76,6 +76,7 @@ from skraflmechanics import Error
 
 T = TypeVar("T")
 
+PrefItem = Union[str, int, bool]
 
 class UserSummaryDict(TypedDict):
     """Summary data about a user"""
@@ -106,6 +107,7 @@ class UserLoginDict(TypedDict):
     user_id: str
     account: str
     method: NotRequired[str]
+    nickname: str
     locale: str
     new: bool
     # Our own token, which the client can pass back later to authenticate
@@ -217,6 +219,7 @@ set_online_status_for_summaries = functools.partial(set_online_status, "uid")
 
 def make_login_dict(
     user_id: str,
+    nickname: str,
     account: str,
     locale: str,
     new: bool,
@@ -249,6 +252,7 @@ def make_login_dict(
         )
     return {
         "user_id": user_id,
+        "nickname": nickname,
         "account": account,
         "locale": locale,
         "new": new,
@@ -474,8 +478,9 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user"""
-        return self._nickname
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
+        return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
@@ -586,8 +591,8 @@ class User:
         self._location = location
 
     def get_pref(
-        self, pref: str, default: Optional[Union[str, int, bool]] = None
-    ) -> Optional[Union[str, int, bool]]:
+        self, pref: str, default: Optional[PrefItem] = None
+    ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
         return self._preferences.get(pref, default)
 
@@ -601,7 +606,7 @@ class User:
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
-    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
+    def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
         self._preferences[pref] = value
 
@@ -1136,20 +1141,10 @@ class User:
         return user_list
 
     @classmethod
-    def create_user(
-        cls,
-        account: str,
-        email: str,
-        nickname: str,
-        name: str,
-        image: str,
-        locale: str,
-        is_friend: bool = False,
+    def make_nickname(
+        cls, nickname: str, name: str, email: str
     ) -> str:
-        """Create a new user object"""
-        # Create a new user, with the account id as user id.
-        # New users are created with the new bag as default,
-        # and we also capture the email and the full name.
+        """Create a nickname for a user"""
         nickname = NICKNAME_STRIP.sub("", nickname)
         if not nickname:
             # Obtain a candidate nickname from the email
@@ -1165,7 +1160,23 @@ class User:
             if strip1 != candidate1 and candidate2 and strip2 == candidate2:
                 strip1 = ""
             nickname = strip1 or candidate2 or ""
-        nickname = nickname[0:MAX_NICKNAME_LENGTH]
+        return nickname[0:MAX_NICKNAME_LENGTH]
+
+    @classmethod
+    def create_user(
+        cls,
+        account: str,
+        email: str,
+        nickname: str,
+        name: str,
+        image: str,
+        locale: str,
+        is_friend: bool = False,
+    ) -> str:
+        """Create a new user object"""
+        # Create a new user, with the account id as user id.
+        # New users are created with the new bag as default,
+        # and we also capture the email and the full name.
         prefs: PrefsDict = {
             "newbag": True,
             "email": email,
@@ -1229,6 +1240,7 @@ class User:
             uld = make_login_dict(
                 user_id=um.user_id(),
                 account=um.account,
+                nickname=um.nickname,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
             )
@@ -1258,18 +1270,21 @@ class User:
             uld = make_login_dict(
                 user_id=user_id,
                 account=um.account,
+                nickname=um.nickname,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
             )
             return uld
         # User does not exist already: create a new user entity
+        nickname = cls.make_nickname("", name, email)
         user_id = cls.create_user(
-            account, email, "", name, image, locale or DEFAULT_LOCALE
+            account, email, nickname, name, image, locale or DEFAULT_LOCALE
         )
         # Create a user login event object and return it
         uld = make_login_dict(
             user_id=user_id,
             account=account,
+            nickname=nickname,
             locale=locale or DEFAULT_LOCALE,
             new=True,
         )
@@ -1297,6 +1312,7 @@ class User:
             user_id = um.user_id()
             uld = make_login_dict(
                 user_id=user_id,
+                nickname=um.nickname or nickname,
                 account=um.account or user_id,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
@@ -1306,6 +1322,7 @@ class User:
             )
             return uld
         # User does not exist already: create a new user entity
+        nickname = User.make_nickname(nickname, fullname, email)
         user_id = cls.create_user(
             account, email, nickname, fullname, "", DEFAULT_LOCALE, is_friend
         )
@@ -1313,6 +1330,7 @@ class User:
         uld = make_login_dict(
             user_id=user_id,
             account=account,
+            nickname=nickname,
             locale=DEFAULT_LOCALE,
             new=True,
             # We don't need to create a fresh Explo token, so we
@@ -1337,6 +1355,7 @@ class User:
         uld = make_login_dict(
             user_id=user_id,
             account=um.account or user_id,
+            nickname=um.nickname,
             locale=um.locale or DEFAULT_LOCALE,
             new=False,
             previous_token=previous_token,

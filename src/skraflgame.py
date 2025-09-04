@@ -38,7 +38,7 @@ from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local
+from config import DEFAULT_LOCALE, running_local, Error
 
 from languages import (
     Alphabet,
@@ -51,6 +51,7 @@ from languages import (
 )
 from skrafldb import (
     DEFAULT_ELO_DICT,
+    ChatModel,
     PrefsDict,
     Unique,
     GameModel,
@@ -63,7 +64,6 @@ from skraflmechanics import (
     State,
     Board,
     Rack,
-    Error,
     MoveBase,
     Move,
     PassMove,
@@ -169,6 +169,17 @@ UNDEFINED_NAME: Dict[str, str] = {
     "nn": "[Ukjend]",
     "ga": "[Anaithnid]",
 }
+
+
+def two_letter_words(locale: str) -> TwoLetterGroupTuple:
+    """Return the set of two-letter words for the given locale"""
+    vocab = vocabulary_for_locale(locale)
+    tw0, tw1 = Wordbase.two_letter_words(vocab)
+    gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+    return (
+        [(key, list(grp)) for key, grp in gr0],
+        [(key, list(grp)) for key, grp in gr1],
+    )
 
 
 class Game:
@@ -755,13 +766,8 @@ class Game:
         as a tuple of two lists, one grouped by first letter, and
         the other grouped by the second (last) letter"""
         if self._two_letter_words is None:
-            vocab = vocabulary_for_locale(self.locale)
-            tw0, tw1 = Wordbase.two_letter_words(vocab)
-            gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
-            self._two_letter_words = (
-                [(key, list(grp)) for key, grp in gr0],
-                [(key, list(grp)) for key, grp in gr1],
-            )
+            tw = two_letter_words(self.locale)
+            self._two_letter_words = tw
         return self._two_letter_words
 
     @property
@@ -1080,6 +1086,21 @@ class Game:
             if self.ts_last_move is None
             else Alphabet.format_timestamp(self.ts_last_move)
         )
+
+    def has_new_chat_msg(self, user_id: str) -> bool:
+        """ Return True if there is a new chat message that the given user
+        hasn't seen. This is used in the Netskrafl UI. """
+        p = self.player_index(user_id)
+        if p is None or self.is_autoplayer(1 - p):
+            # The user is not a player of this game, or robot opponent: no chat
+            return False
+        # Check the database
+        # TBD: consider memcaching this
+        uuid = self.id()
+        if not uuid:
+            return False
+        return ChatModel.check_conversation("game:" + uuid, user_id)
+
 
     def _append_final_adjustments(self, movelist: List[MoveSummaryTuple]) -> None:
         """Appends final score adjustment transactions

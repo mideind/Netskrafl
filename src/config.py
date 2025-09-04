@@ -23,6 +23,7 @@ from typing import (
     Mapping,
     NotRequired,
     Optional,
+    TypeVar,
     TypedDict,
     Union,
     Tuple,
@@ -31,12 +32,17 @@ from typing import (
 
 import os
 import sys
+import logging
+import time
+from functools import wraps
 from datetime import UTC, datetime, timedelta
-from secret_manager import SecretManager
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from logging.config import dictConfig
+from secret_manager import SecretManager
 
+
+T = TypeVar('T')
 
 # Universal type definitions
 ResponseType = Union[
@@ -148,6 +154,10 @@ sm = SecretManager(PROJECT_ID)
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
 assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 bytes"
 
+# Read the Moves service authentication key from Google secret manager
+MOVES_AUTH_KEY = sm.get_secret("MOVES_AUTH_KEY").decode("utf-8")
+assert MOVES_AUTH_KEY, "MOVES_AUTH_KEY missing from Secret Manager"
+
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
     "netskrafl": "CLIENT_SECRET_NETSKRAFL",
@@ -249,6 +259,72 @@ PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 FILE_VERSION_INCREMENT = 6
 
 
+class Error:
+    """Error codes returned from server APIs"""
+
+    LEGAL = 0
+    NULL_MOVE = 1
+    FIRST_MOVE_NOT_THROUGH_START = 2
+    DISJOINT = 3
+    NOT_ADJACENT = 4
+    SQUARE_ALREADY_OCCUPIED = 5
+    HAS_GAP = 6
+    WORD_NOT_IN_DICTIONARY = 7
+    CROSS_WORD_NOT_IN_DICTIONARY = 8
+    TOO_MANY_TILES_PLAYED = 9
+    TILE_NOT_IN_RACK = 10
+    EXCHANGE_NOT_ALLOWED = 11
+    TOO_MANY_TILES_EXCHANGED = 12
+    OUT_OF_SYNC = 13
+    LOGIN_REQUIRED = 14
+    WRONG_USER = 15
+    GAME_NOT_FOUND = 16
+    GAME_NOT_OVERDUE = 17
+    SERVER_ERROR = 18
+    NOT_MANUAL_WORDCHECK = 19
+    MOVE_NOT_CHALLENGEABLE = 20
+    ONLY_PASS_OR_CHALLENGE = 21
+    USER_MUST_BE_FRIEND = 22
+    # Insert new error codes above this line
+    # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
+    GAME_OVER = 99
+
+    def __init__(self) -> None:
+        pass
+
+    @staticmethod
+    def errortext(errcode: int) -> str:
+        """Return a string identifier corresponding to an error code"""
+        if errcode == Error.GAME_OVER:
+            # Special case
+            return "GAME_OVER"
+        return [
+            "LEGAL",
+            "NULL_MOVE",
+            "FIRST_MOVE_NOT_THROUGH_START",
+            "DISJOINT",
+            "NOT_ADJACENT",
+            "SQUARE_ALREADY_OCCUPIED",
+            "HAS_GAP",
+            "WORD_NOT_IN_DICTIONARY",
+            "CROSS_WORD_NOT_IN_DICTIONARY",
+            "TOO_MANY_TILES_PLAYED",
+            "TILE_NOT_IN_RACK",
+            "EXCHANGE_NOT_ALLOWED",
+            "TOO_MANY_TILES_EXCHANGED",
+            "OUT_OF_SYNC",
+            "LOGIN_REQUIRED",
+            "WRONG_USER",
+            "GAME_NOT_FOUND",
+            "GAME_NOT_OVERDUE",
+            "SERVER_ERROR",
+            "NOT_MANUAL_WORDCHECK",
+            "MOVE_NOT_CHALLENGEABLE",
+            "ONLY_PASS_OR_CHALLENGE",
+            "USER_MUST_BE_FRIEND",
+        ][errcode]
+
+
 class CacheEntryDict(TypedDict):
     value: Any
     time: datetime
@@ -276,3 +352,22 @@ def ttl_cache(seconds: int) -> Callable[[Callable[..., Any]], Callable[..., Any]
         return wrapped
 
     return decorator
+
+
+def log_execution_time(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator that logs the execution time of a function call"""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            duration = time.time() - start_time
+            logging.info(f"{func.__name__}() executed in {duration:.3f}s")
+            return result
+        except Exception as e:
+            duration = time.time() - start_time
+            logging.info(f"{func.__name__}() failed after {duration:.3f}s: {e}")
+            raise
+
+    return wrapper

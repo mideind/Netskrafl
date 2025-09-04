@@ -2698,7 +2698,7 @@ class View {
         if (tile === '?')
           continue;
         const sq = coord(row, col);
-        if (sq !== null && game.tiles.hasOwnProperty(sq))
+        if (sq !== null && sq in game.tiles)
           game.tiles[sq].highlight = show ? playerColor : undefined;
         col += vec.dx;
         row += vec.dy;

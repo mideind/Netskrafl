@@ -80,12 +80,13 @@ For further details on secrets stored and used at runtime, see the
 [Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets), and the source file ```src/secret_manager.py```.
 
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
-Run ```npm install``` to install Node dependencies.
+Run ```npm install``` to install Node dependencies. Run ```npm install grunt -g grunt-cli```
+to install Grunt and its command line interface globally.
 
 7. In a separate terminal window, but in the Netskrafl directory, run ```grunt make```.
 Then run ```grunt``` to start watching changes of js and css files.
 
-8. Run either ```runserver.bat``` or ```runserver.sh```.
+8. Run either ```runserver.bat``` or ```./runserver.sh```.
 
 #### Or, alternatively:
 
@@ -138,7 +139,7 @@ forms (*spurnarmyndir í fleirtölu*).
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalisti.full.sorted.txt';
+\copy (select distinct ordmynd from skrafl) to '~/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
 To extract only the subset of BÍN used by the robot *Miðlungur*, use the following
@@ -147,16 +148,34 @@ containing the ```malsnid``` and ```einkunn``` columns:
 
 ```sql
 begin transaction read write;
-create or replace view skrafl_midlungur as
+create or replace view ksnid_midlungur as
 	select stofn, utg, ordfl, fl, ordmynd, beyging
 	from kristinarsnid
-	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD', 'FORN', 'URE', 'STAD'])))
-		and einkunn > 0;
+	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID'])))
+		and einkunn = 1;
 commit;
 ```
 
-You can then use the ```skrafl_midlungur``` view as the underlying table for the previous
-(vocabulary) query, replacing ```sigrunarsnid``` with ```skrafl_midlungur```.
+You can then use the ```ksnid_midlungur``` view as the underlying table to
+generate a new vocabulary file (```ordalisti.mid.sorted.txt```):
+
+```sql
+begin transaction read write;
+create or replace view skrafl_midlungur as
+   select stofn, utg, ordfl, fl, ordmynd, beyging from ksnid_midlungur
+   where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,10}$'
+   and fl <> 'bibl'
+   and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
+   order by ordmynd;
+commit;
+```
+
+And, finally, to generate the Miðlungur vocabulary file
+from the ```psql``` command line:
+
+```sql
+\copy (select distinct ordmynd from skrafl_midlungur) to '~/github/Netskrafl/resources/ordalisti.mid.sorted.txt';
+```
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.

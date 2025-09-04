@@ -1,0 +1,194 @@
+#
+# App.yaml for demonstrating the Netskrafl application on Google App Engine
+#
+# Copyright © 2025 by Miðeind ehf.
+# Original author: Vilhjálmur Þorsteinsson
+#
+# Deploy with 'gcloud app deploy --no-cache --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'
+#
+
+runtime: python311
+service: demo
+instance_class: B4_1G
+
+# Basic Scaling: Always keeps at least 1 instance running (no cold starts),
+# scales up to max_instances based on load, and down based on idle time.
+# Good balance between availability/performance and cost compared to Manual.
+basic_scaling:
+  # Maximum number of instances GAE can scale up to.
+  max_instances: 2
+  # How long an instance can be idle (no requests) before GAE considers
+  # shutting it down (if current instances > 1). Adjust as needed (e.g., '5m', '15m').
+  idle_timeout: 5m
+
+# Entrypoint tuned for B4_1G (4 vCPU):
+# - Workers/Threads: Adjust based on whether app is CPU or I/O bound.
+#   3 workers * 6 threads = 18 concurrent requests is reasonable for I/O bound on 4 cores.
+entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 10 --timeout 30 --pythonpath './src' main:app
+
+vpc_access_connector:
+  name: projects/netskrafl/locations/us-central1/connectors/vpc0c
+
+env_variables:
+  # When running on the local development server,
+  # REDISHOST is automatically set to 'localhost' (in cache.py)
+  REDISHOST: 10.128.0.3
+  REDISPORT: 6379
+  PROJECT_ID: netskrafl
+
+inbound_services:
+- warmup
+
+handlers:
+
+# Robots.txt URL, cacheable
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+  expiration: "1d 0h"
+
+# Favorite icon URL, cacheable
+- url: /favicon.ico
+  static_files: static/favicon.ico
+  upload: static/favicon.ico
+  expiration: "1d 0h"
+
+# Favorite icon URL, 32x32
+- url: /favicon-32x32.png
+  static_files: static/favicon-32x32.png
+  upload: static/favicon-32x32.png
+  expiration: "1d 0h"
+
+# Favorite icon URL, 16x16
+- url: /favicon-16x16.png
+  static_files: static/favicon-16x16.png
+  upload: static/favicon-16x16.png
+  expiration: "1d 0h"
+
+# Internet Explorer & Windows 8 resource file, can be cached  
+- url: /browserconfig.xml
+  static_files: static/browserconfig.xml
+  upload: static/browserconfig.xml
+  expiration: "1d 0h"
+
+# Microsoft Windows tile
+- url: /mstile-150x150.png
+  static_files: static/mstile-150x150.png
+  upload: static/mstile-150x150.png
+  expiration: "1d 0h"
+
+# Web manifest
+- url: /netskrafl.webmanifest
+  static_files: static/netskrafl.webmanifest
+  upload: static/netskrafl.webmanifest
+  expiration: "1d 0h"
+
+# Safari pinned tab
+- url: /safari-pinned-tab.svg
+  static_files: static/safari-pinned-tab.svg
+  upload: static/safari-pinned-tab.svg
+  expiration: "1d 0h"
+
+# Special Apple iOS URLs for image resources, all cacheable
+- url: /apple-touch-icon.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+  expiration: "1d 0h"
+- url: /touch-icon-ipad.png
+  static_files: static/touch-icon-ipad.png
+  upload: static/touch-icon-ipad.png
+  expiration: "1d 0h"
+- url: /touch-icon-ipad-retina.png
+  static_files: static/touch-icon-ipad-retina.png
+  upload: static/touch-icon-ipad-retina.png
+  expiration: "1d 0h"
+- url: /touch-icon-iphone-retina.png
+  static_files: static/touch-icon-iphone-retina.png
+  upload: static/touch-icon-iphone-retina.png
+  expiration: "1d 0h"
+
+# Image files that can be cached
+- url: /static/(.*\.(gif|png|jpg))(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.(gif|png|jpg)$
+  expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# CSS files that can be cached
+- url: /static/(.*\.css)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.css$
+  mime_type: text/css
+  expiration: "0d 1h" # Was "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# JSON files that can be cached
+- url: /static/(.*\.json)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.json$
+  mime_type: application/json
+  expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# Catchall for minified JavaScript
+- url: /static/(.*\.min\.js)(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.min\.js$
+  mime_type: application/javascript
+  expiration: "0d 1h" # Was "1d 0h"
+
+# JavaScript files in the static/lib folder,
+# which are not necessarily minified
+- url: /static/lib/(.*\.js)(\?.*)?$
+  static_files: static/lib/\1
+  upload: static/lib/.*\.js$
+  mime_type: application/javascript
+  expiration: "1d 0h"
+
+# Catchall for TypeScript source files (included for debugging only)
+- url: /static/src/(.*\.[jt]s)(\?.*)?$
+  static_files: static/src/\1
+  upload: static/src/.*\.[jt]s$
+  mime_type: application/javascript
+  expiration: "30s"
+
+# Un-minified JavaScript (included for debugging only)
+- url: /static/built/explo\.js$
+  static_files: static/built/explo.js
+  upload: static/built/explo\.js$
+  mime_type: application/javascript
+  expiration: "30s"
+
+# Source map (included for debugging only)
+- url: /static/built/explo\.js\.map$
+  static_files: static/built/explo.js.map
+  upload: static/built/explo\.js\.map$
+  mime_type: application/javascript
+  expiration: "30s"
+
+# Font files that can be cached
+- url: /static/(.*\.(ttf|eot|woff|woff2|svg))(\?.*)?$
+  static_files: static/\1
+  upload: static/.*\.(ttf|eot|woff|woff2|svg)$
+  expiration: "1d 0h"
+  mime_type: application/font  # App Engine will determine proper MIME type based on extension
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# MP3 sound files that can be cached  
+- url: /static/(.*\.mp3)$
+  static_files: static/\1
+  upload: static/.*\.mp3$
+  mime_type: audio/mpeg
+  expiration: "1d 0h"
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+# Catchall for all other URLS
+- url: .*
+  secure: always
+  redirect_http_response_code: 301
+  script: auto

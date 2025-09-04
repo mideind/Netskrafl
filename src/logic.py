@@ -39,12 +39,22 @@ import functools
 import random
 from datetime import UTC, datetime, timedelta
 
-from google.cloud import ndb  # type: ignore
+from google.cloud import ndb
 from flask import url_for
 import firebase
 
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, PROMO_COUNT, PROMO_CURRENT, PROMO_FREQUENCY, PROMO_INTERVAL, ResponseType
+from config import (
+    DEFAULT_LOCALE,
+    DEFAULT_ELO,
+    NETSKRAFL,
+    PROMO_COUNT,
+    PROMO_CURRENT,
+    PROMO_FREQUENCY,
+    PROMO_INTERVAL,
+    ResponseType,
+    Error,
+)
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -56,7 +66,6 @@ from languages import (
 from skraflgame import Game
 from skraflmechanics import (
     ChallengeMove,
-    Error,
     ExchangeMove,
     Move,
     MoveBase,
@@ -467,13 +476,19 @@ class UserForm:
         """Check the current form data for validity
         and return a dict of errors, if any"""
         errors: Dict[str, str] = dict()
-        # pylint: disable=bad-continuation
         if not self.nickname:
+            # The nickname has already been strip()-ed
             errors["nickname"] = self.error_msg("NICK_MISSING")
         elif len(self.nickname) > MAX_NICKNAME_LENGTH:
             errors["nickname"] = self.error_msg("NICK_TOO_LONG")
-        elif not re.match(r"^\w+$", self.nickname):
-            errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        elif NETSKRAFL:
+            # For Netskrafl, allow alphanumeric characters and spaces
+            if not re.match(r"^[\w\s]+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        else:
+            # For Explo, only allow alphanumeric characters (no spaces)
+            if not re.match(r"^\w+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
         if self.email and "@" not in self.email:
             errors["email"] = self.error_msg("EMAIL_NO_AT")
         if self.locale not in RECOGNIZED_LOCALES:
@@ -566,17 +581,16 @@ def process_move(
                 # Challenging the last move
                 m = ChallengeMove()
                 break
-            sq, tile = mstr.split("=")
+            sq, tile = mstr.split("=", 1)
             row = "ABCDEFGHIJKLMNO".index(sq[0])
             col = int(sq[1:]) - 1
-            if tile[0] == "?":
+            if tile.startswith("?"):
                 # If the blank tile is played, the next character contains
                 # its meaning, i.e. the letter it stands for
                 letter = tile[1]
-                tile = tile[0]
+                tile = "?"
             else:
                 letter = tile
-            assert isinstance(m, Move)
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
@@ -1313,6 +1327,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len=50))
+
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
