@@ -146,7 +146,7 @@ def check_entity_counts() -> bool:
             UserModel.manual_elo > 0
         )
     )
-    user_count = len(list(users_with_elo_query))
+    user_count = users_with_elo_query.count()
     
     # Count EloModel entities for the default locale
     elo_models_query = EloModel.query().filter(EloModel.locale == DEFAULT_LOCALE)
