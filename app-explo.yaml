@@ -10,10 +10,13 @@
 runtime: python311
 entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 20 --timeout 60 --pythonpath './src' main:app
 
-instance_class: B4_1G
-manual_scaling:
-  instances: 1
-  max_concurrent_requests: 18  # Match worker × thread count
+instance_class: F4_1G
+automatic_scaling:
+  min_instances: 0  # Scale to zero when idle
+  max_instances: 1  # Never exceed 1 instance for dev
+  max_concurrent_requests: 18
+  min_idle_instances: 0  # Don't keep idle instances
+  max_idle_instances: 1  # At most 1 idle instance when active
 
 vpc_access_connector:
   name: projects/explo-dev/locations/europe-west1/connectors/vpc0c
