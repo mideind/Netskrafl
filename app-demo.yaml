@@ -4,27 +4,23 @@
 # Copyright © 2025 by Miðeind ehf.
 # Original author: Vilhjálmur Þorsteinsson
 #
-# Deploy with 'gcloud app deploy --no-cache --no-promote --project=netskrafl --version=somename app-netskrafl.yaml'
+# Deploy with 'gcloud app deploy --no-cache --no-promote --project=netskrafl --version=somename app-demo.yaml'
 #
 
 runtime: python311
 service: demo
-instance_class: B4_1G
-
-# Basic Scaling: Always keeps at least 1 instance running (no cold starts),
-# scales up to max_instances based on load, and down based on idle time.
-# Good balance between availability/performance and cost compared to Manual.
-basic_scaling:
-  # Maximum number of instances GAE can scale up to.
-  max_instances: 2
-  # How long an instance can be idle (no requests) before GAE considers
-  # shutting it down (if current instances > 1). Adjust as needed (e.g., '5m', '15m').
-  idle_timeout: 5m
-
 # Entrypoint tuned for B4_1G (4 vCPU):
 # - Workers/Threads: Adjust based on whether app is CPU or I/O bound.
 #   3 workers * 6 threads = 18 concurrent requests is reasonable for I/O bound on 4 cores.
 entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 10 --timeout 30 --pythonpath './src' main:app
+
+instance_class: F4_1G
+automatic_scaling:
+  min_instances: 0  # Scale to zero when idle
+  max_instances: 1  # Never exceed 1 instance for dev
+  max_concurrent_requests: 18
+  min_idle_instances: 0  # Don't keep idle instances
+  max_idle_instances: 1  # At most 1 idle instance when active
 
 vpc_access_connector:
   name: projects/netskrafl/locations/us-central1/connectors/vpc0c

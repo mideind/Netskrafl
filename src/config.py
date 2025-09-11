@@ -114,6 +114,9 @@ port: str = os.environ.get("SERVER_PORT", "8080")
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
 
+# App Engine service id
+SERVICE_ID = os.environ.get("GAE_SERVICE", "default")
+
 NETSKRAFL = PROJECT_ID == "netskrafl"
 
 DEV_SERVER = PROJECT_ID == "explo-dev"

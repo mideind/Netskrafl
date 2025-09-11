@@ -128,6 +128,7 @@ elif NETSKRAFL:
         "https://malstadur.is",
         "https://malstadur.mideind.is",
         "https://netskrafl.malstadur.mideind.is",
+        "https://staging.malstadur.mideind.is",
     ]
 else:
     origins = []
