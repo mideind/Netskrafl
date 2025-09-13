@@ -1,23 +1,35 @@
 """
 
-    Riddle API for Gáta Dagsins (Riddle of the Day) functionality
+Riddle API for Gáta Dagsins (Riddle of the Day) functionality
 
-    Copyright © 2025 Miðeind ehf.
-    Original author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Original author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
 
-    This module contains the API entry points for the Gáta Dagsins feature.
+This module contains the API entry points for the Gáta Dagsins feature.
 
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Literal, Mapping, Optional, Sequence, Dict, TypeVar, TypedDict, cast
+from typing import (
+    Any,
+    Callable,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Dict,
+    TypeVar,
+    TypedDict,
+    cast,
+)
 from functools import wraps
 
 import requests
@@ -33,7 +45,8 @@ from languages import (
     current_tileset,
 )
 from skraflgame import TwoLetterGroupTuple, two_letter_words
-from skraflmechanics import RackDetails
+from skraflmechanics import RackDetails, BOARD_SIZE
+from skrafldb import RiddleModel
 
 
 T = TypeVar("T")
@@ -46,6 +59,7 @@ RIDDLE_ENDPOINT_PROD = "https://moves-dot-explo-live.appspot.com/riddle"
 
 class MovesServiceSolutionDict(TypedDict):
     """A riddle solution as it arrives from the Moves service"""
+
     move: str  # May contain '?x' to indicate a blank tile that means 'x'
     coord: str  # Form: "A1" for horizontal move, "1A" for vertical
     score: int
@@ -54,6 +68,7 @@ class MovesServiceSolutionDict(TypedDict):
 
 class RiddleFromMovesServiceDict(TypedDict):
     """A riddle as it arrives from the Moves service"""
+
     board: List[str]  # 15 strings of 15 characters each
     rack: str  # May contain '?' to indicate a blank tile
     solution: MovesServiceSolutionDict
@@ -61,6 +76,7 @@ class RiddleFromMovesServiceDict(TypedDict):
 
 class RiddleContentDict(TypedDict):
     """The meat of the riddle"""
+
     board: List[str]
     rack: RackDetails
     max_score: int
@@ -69,6 +85,7 @@ class RiddleContentDict(TypedDict):
 class RiddleDict(RiddleContentDict, total=False):
     """The entire information about today's riddle that is
     sent to the client, including static metadata"""
+
     alphabet: str
     tile_scores: Dict[str, int]
     two_letter_words: TwoLetterGroupTuple
@@ -77,6 +94,7 @@ class RiddleDict(RiddleContentDict, total=False):
 
 class BestDict(TypedDict):
     """Dictionary to hold the best-scoring move and its player"""
+
     score: int
     player: str
     word: str  # Note: may contain '?x' to indicate a blank tile that means 'x'
@@ -93,6 +111,7 @@ class RiddleWordDict(TypedDict):
 
 class SubmitMoveDict(TypedDict):
     """Moves submitted from clients"""
+
     date: str
     locale: str
     userId: str
@@ -129,12 +148,12 @@ def riddle_route(route: str, methods: Sequence[str] = _ONLY_POST) -> Any:
     return decorator
 
 
-def generate_placeholder_riddle(locale: str, tile_scores: Dict[str, int]) -> RiddleContentDict:
+def generate_placeholder_riddle(
+    locale: str, tile_scores: Dict[str, int]
+) -> RiddleContentDict:
     """Generate a new riddle for the given date and locale"""
     TEST_RACK = "kfojgda"
-    rack: RackDetails = [
-        (tile, tile_scores.get(tile, 0)) for tile in TEST_RACK
-    ]
+    rack: RackDetails = [(tile, tile_scores.get(tile, 0)) for tile in TEST_RACK]
     # For now, generate a placeholder board
     board: List[str] = [
         ".......n.k....n",
@@ -161,7 +180,39 @@ def generate_placeholder_riddle(locale: str, tile_scores: Dict[str, int]) -> Rid
     }
 
 
-def generate_new_riddle(locale: str, tile_scores: Mapping[str, int]) -> Optional[RiddleContentDict]:
+def riddle_from_moves_service(
+    riddle_data: Optional[RiddleFromMovesServiceDict],
+    tile_scores: Mapping[str, int],
+) -> Optional[RiddleContentDict]:
+    """Convert a riddle as received from the Moves service
+    into the internal RiddleContentDict format."""
+    if not riddle_data:
+        return None
+    try:
+        board = riddle_data["board"]
+        if len(board) != BOARD_SIZE or any(len(row) != BOARD_SIZE for row in board):
+            raise ValueError("Invalid board size from Moves service")
+        rack_str = riddle_data["rack"]
+        if not (1 <= len(rack_str) <= 7):
+            raise ValueError("Invalid rack size from Moves service")
+        rack: RackDetails = [(tile, tile_scores.get(tile, 0)) for tile in rack_str]
+        solution = riddle_data["solution"]
+        max_score = solution["score"]
+        if max_score <= 0:
+            raise ValueError("Invalid max score from Moves service")
+        return {
+            "board": board,
+            "rack": rack,
+            "max_score": max_score,
+        }
+    except (KeyError, ValueError) as e:
+        logging.error(f"Error processing riddle data from Moves service: {e}")
+    return None
+
+
+def generate_new_riddle(
+    locale: str, tile_scores: Mapping[str, int]
+) -> Optional[RiddleContentDict]:
     """Fetch a new riddle from the GoSkrafl server ('moves' service)
     for the given date and locale. This is served at the
     /riddle endpoint."""
@@ -191,34 +242,15 @@ def generate_new_riddle(locale: str, tile_scores: Mapping[str, int]) -> Optional
         )
         response.raise_for_status()  # Raise an error for bad responses
         riddle_data: Optional[RiddleFromMovesServiceDict] = response.json()
-        if not isinstance(riddle_data, dict):
-            logging.error(f"Invalid riddle received from backend: {riddle_data}")
-            return None
-        # Ensure the riddle data has the required fields
-        if not all(key in riddle_data for key in ["rack", "board", "solution"]):
-            logging.error(f"Riddle data missing required fields: {riddle_data}")
-            return None
-        solution = riddle_data["solution"]
-        if not isinstance(cast(Any, solution), dict) or not all(
-            key in solution for key in ["move", "coord", "score", "description"]
-        ):
-            logging.error(f"Riddle solution missing required fields: {solution}")
-            return None
-        rack = [(tile, tile_scores.get(tile, 0)) for tile in riddle_data["rack"]]
-        # Move the response data to a clean RiddleContentDict instance
-        riddle = RiddleContentDict(
-            rack=rack,
-            board=riddle_data["board"],
-            max_score=solution["score"],
-        )
-        return riddle
+        return riddle_from_moves_service(riddle_data, tile_scores)
     except (requests.RequestException, KeyError, ValueError) as e:
         logging.error(f"Failed to fetch riddle from {endpoint}: {e}")
-        return None
+    return None
 
 
 def cache_if_not_none(maxsize: int = 128):
     """Cache decorator that only caches successful (non-None) results"""
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         cache: Dict[str, Any] = {}
 
@@ -241,6 +273,7 @@ def cache_if_not_none(maxsize: int = 128):
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -250,17 +283,25 @@ def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     # Check if riddle already exists in Firebase
     path = f"gatadagsins/{date}/{locale}/riddle"
     existing_riddle = firebase.get_data(path)
-
-    if False and existing_riddle:  # TODO: Development only, remove later
+    if existing_riddle:
         # Riddle already exists, return it
         return existing_riddle
 
+    # Not found in Firebase: attempt to fetch the riddle from the database
     tile_scores = current_tileset().scores
-
-    # Riddle doesn't exist, generate a new one
-    riddle = generate_new_riddle(locale, tile_scores)
-    if riddle is None:
-        return None
+    riddle_from_database = RiddleModel.get_riddle(date, locale)
+    if not riddle_from_database or not (
+        riddle := riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
+    ):
+        # Riddle doesn't exist, generate a new one
+        # (This is an emergency fallback!)
+        logging.warning(
+            f"Riddle for {date}:{locale} not found in database, generating it on-the-fly"
+        )
+        riddle = generate_new_riddle(locale, tile_scores)
+        if riddle is None:
+            # All avenues exhausted, return None
+            return None
 
     # Store the new riddle in Firebase
     if firebase.put_message(riddle, path):
@@ -303,11 +344,11 @@ def riddle_api() -> ResponseType:
     set_locale(lc)
 
     # Get or create riddle using cached function
-    riddle_data = get_or_create_riddle(date, locale)
+    riddle_data = get_or_create_riddle(date, lc)
 
     if riddle_data is None:
         # If riddle generation failed, return an error
-        return jsonify(ok=False, error="Failed to generate riddle")
+        return jsonify(ok=False, error="Failed to fetch or generate riddle")
 
     # Return the riddle
     return jsonify(ok=True, riddle=riddle_data)
@@ -331,7 +372,7 @@ def submit_api() -> ResponseType:
     #   timestamp: str
     # }
     date = rq.get("date", "")
-    locale = to_supported_locale(rq.get("locale", "is_IS"))
+    locale = to_supported_locale(rq.get("locale", ""))
     userId = rq.get("userId", "")
     groupId = rq.get("groupId", "")
     move: RiddleWordDict = cast(RiddleWordDict, rq.get("move", {}))
@@ -343,7 +384,7 @@ def submit_api() -> ResponseType:
     if score <= 0:
         return jsonify(ok=False, error="Invalid score")
     word = move.get("word", "")
-    if not (2 <= len(word) <= 15):
+    if not (2 <= len(word) <= BOARD_SIZE):
         return jsonify(ok=False, error="Invalid word")
     coord = move.get("coord", "")
     if not (2 <= len(coord) <= 3):
@@ -385,7 +426,9 @@ def submit_api() -> ResponseType:
             group_best: Optional[BestDict] = firebase.get_data(group_path)
             if not group_best:
                 # If no group best already exists, assign a null default
-                group_best = BestDict(score=0, player="", word="", coord="", timestamp="")
+                group_best = BestDict(
+                    score=0, player="", word="", coord="", timestamp=""
+                )
             if score > group_best.get("score", 0):
                 # If the submitted move is better than the current group best,
                 # update the group's best

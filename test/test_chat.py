@@ -408,10 +408,8 @@ def test_disable_chat(client: FlaskClient, u1: str, u2: str):
     resp = client.post("/logout")
     assert resp.status_code == 200
     assert resp.json is not None
-    assert "ok" in resp.json
-    assert resp.json["ok"] == True
-
-    resp = client.post("/logout")
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"
 
     resp = login_user(client, 2)
 
@@ -430,6 +428,10 @@ def test_disable_chat(client: FlaskClient, u1: str, u2: str):
     assert resp.json["ok"] == False
 
     resp = client.post("/logout")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"
 
 
 def test_elo_history(client: FlaskClient, u1: str):
@@ -450,7 +452,7 @@ def test_elo_history(client: FlaskClient, u1: str):
     assert "elo_30_days" in resp.json
     assert len(resp.json["elo_30_days"]) == 30
     now = datetime.now(UTC)
-    now = datetime(year=now.year, month=now.month, day=now.day)
+    now = datetime(year=now.year, month=now.month, day=now.day, tzinfo=UTC)
 
     for ix, sm in enumerate(resp.json["elo_30_days"]):
         ts = datetime.fromisoformat(sm["ts"])
@@ -515,6 +517,10 @@ def test_elo_history(client: FlaskClient, u1: str):
         assert sm["manual_elo"] == 1290
 
     resp = client.post("/logout")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"
 
 
 def test_image(client: FlaskClient, u1: str):
@@ -522,7 +528,27 @@ def test_image(client: FlaskClient, u1: str):
     resp = login_user(client, 1)
 
     # Set the image by POSTing the JPEG or PNG content (BLOB) directly
-    image_blob = b"1234"
+    # Minimal 1x1 pixel white JPEG image (285 bytes) that works with PIL thumbnail
+    image_blob = (
+        b'\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01\x01\x00\x00\x01'
+        b'\x00\x01\x00\x00\xff\xdb\x00\x43\x00\x08\x06\x06\x07\x06\x05\x08'
+        b'\x07\x07\x07\x09\x09\x08\x0a\x0c\x14\x0d\x0c\x0b\x0b\x0c\x19\x12'
+        b'\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c\x20\x24\x2e\x27\x20'
+        b'\x22\x2c\x23\x1c\x1c\x28\x37\x29\x2c\x30\x31\x34\x34\x34\x1f\x27'
+        b'\x39\x3d\x38\x32\x3c\x2e\x33\x34\x32\xff\xdb\x00\x43\x01\x08\x09'
+        b'\x09\x0c\x0b\x0c\x18\x0d\x0d\x18\x32\x21\x1c\x21\x32\x32\x32\x32'
+        b'\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32'
+        b'\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32'
+        b'\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\x32\xff\xc0'
+        b'\x00\x11\x08\x00\x01\x00\x01\x03\x01\x22\x00\x02\x11\x01\x03\x11'
+        b'\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x07\xff\xc4\x00\x14\x10\x01\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4'
+        b'\x00\x14\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        b'\x00\x00\x00\x00\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01'
+        b'\x00\x02\x11\x03\x11\x00\x3f\x00\xbf\x80\x0f\xff\xd9'
+    )
     # Encode the image_blob as base64
     image_b64 = base64.b64encode(image_blob)
     resp = client.post("/image", data=image_b64, content_type="image/jpeg; charset=utf-8")
@@ -552,6 +578,10 @@ def test_image(client: FlaskClient, u1: str):
     assert resp.location == image_url
 
     resp = client.post("/logout")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"
 
 
 def test_delete_user_1(client: FlaskClient, u1: str):
@@ -659,3 +689,6 @@ def test_delete_user_2(client: FlaskClient, u1: str, u2: str):
 
     resp = client.post("/logout")
     assert resp.status_code == 200
+    assert resp.json is not None
+    assert "status" in resp.json
+    assert resp.json["status"] == "success"

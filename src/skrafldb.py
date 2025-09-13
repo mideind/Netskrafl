@@ -92,6 +92,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from itertools import zip_longest
+import json
 
 from google.cloud import ndb
 
@@ -3003,3 +3004,36 @@ class SubmissionModel(Model["SubmissionModel"]):
         sm.word = word
         sm.comment = comment
         sm.put()
+
+
+class RiddleModel(Model["RiddleModel"]):
+    """Riddle entity ('Gáta dagsins') compatible with Go-generated data."""
+
+    date = Model.Text()
+    locale = Model.Text()
+    riddle_json = Model.Text()
+    created = Model.Datetime(indexed=False)
+    version = Model.Int(indexed=False, default=1)
+
+    @classmethod
+    def get_riddle(cls, date_str: str, locale: str) -> Optional[RiddleModel]:
+        """Get a riddle for a specific date and locale."""
+        key = f"{date_str}:{locale}"
+        return cls.get_by_id(key)
+
+    @classmethod
+    def get_riddles_for_date(cls, date_str: str) -> Sequence[RiddleModel]:
+        """Get all riddles for a specific date (all locales)."""
+        # Query by key prefix - requires key range query
+        query = cls.query()
+        query = query.filter(cls.key >= ndb.Key(cls, f"{date_str}:"))
+        query = query.filter(cls.key < ndb.Key(cls, f"{date_str}:ÿ"))
+        return query.fetch()
+
+    @property
+    def riddle(self) -> Any:
+        """Parse and return the riddle data."""
+        if not self.riddle_json:
+            return None
+        return json.loads(self.riddle_json)
+

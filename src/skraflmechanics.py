@@ -22,12 +22,12 @@
 
 from __future__ import annotations
 
-from typing import Callable, List, NamedTuple, Tuple, Iterator, Union, Optional, Type
+from typing import Callable, List, Mapping, NamedTuple, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
 
-from config import DEFAULT_LOCALE, Error
+from config import DEFAULT_LOCALE, Error, BoardType, BoardTypes
 from wordbase import Wordbase
 from languages import (
     TileSet,
@@ -60,7 +60,7 @@ _DEBUG_SMALL_BAG = False
 
 # Board squares with word/letter scores
 # ' '=normal/single, '2'=double, '3'=triple score
-_WSC = {
+_WSC: BoardType = {
     "standard": [
         "3      3      3",
         " 2           2 ",
@@ -97,7 +97,7 @@ _WSC = {
     ],
 }
 
-_LSC = {
+_LSC: BoardType = {
     "standard": [
         "   2       2   ",
         "     3   3     ",
@@ -134,21 +134,26 @@ _LSC = {
     ],
 }
 
+# A standard board is 15 x 15 squares,
+# but this is adjustable by changing this constant
+BOARD_SIZE = 15
+
+assert (len(_WSC["standard"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _WSC["standard"]))
+assert (len(_WSC["explo"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _WSC["explo"]))
+assert (len(_LSC["standard"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _LSC["standard"]))
+assert (len(_LSC["explo"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _LSC["explo"]))
+
 # For each board type, convert the word and letter score strings to integer arrays
 _xlt: Callable[[List[str]], List[List[int]]] = lambda arr: [
     [1 if c == " " else int(c) for c in row] for row in arr
 ]
-_WORDSCORE = {key: _xlt(val) for key, val in _WSC.items()}
-_LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
+_WORDSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val in _WSC.items()}
+_LETTERSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val in _LSC.items()}
 
 
 class Board:
     """Represents the characteristics and the contents
     of a crossword game board."""
-
-    # A common standard board is 15 x 15 squares,
-    # but this is easily adjustable by changing this constant
-    SIZE = 15
 
     # The rows are identified by letter
     ROWIDS = "ABCDEFGHIJKLMNO"
@@ -164,18 +169,19 @@ class Board:
         )
 
     def __init__(
-        self, copy: Optional[Board] = None, board_type: Optional[str] = None
+        self, copy: Optional[Board] = None, board_type: Optional[BoardTypes] = None
     ) -> None:
 
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
         self._letters: List[str]
         self._tiles: List[str]
+        self._board_type: BoardTypes
         if copy is None:
             # Store letters on the board in list of strings
-            self._letters = [" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._letters = [" " * BOARD_SIZE for _ in range(BOARD_SIZE)]
             # Store tiles on the board in list of strings
-            self._tiles = [" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._tiles = [" " * BOARD_SIZE for _ in range(BOARD_SIZE)]
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
@@ -200,7 +206,7 @@ class Board:
                 self._start_square = (3, 3)
             else:
                 # For the standard board, the starting square is H8
-                self._start_square = (Board.SIZE // 2, Board.SIZE // 2)
+                self._start_square = (BOARD_SIZE // 2, BOARD_SIZE // 2)
         return self._start_square
 
     @property
@@ -221,11 +227,11 @@ class Board:
         """Check whether there are any tiles on the board adjacent to this square"""
         if row > 0 and self.is_covered(row - 1, col):
             return True
-        if row < Board.SIZE - 1 and self.is_covered(row + 1, col):
+        if row < BOARD_SIZE - 1 and self.is_covered(row + 1, col):
             return True
         if col > 0 and self.is_covered(row, col - 1):
             return True
-        if col < Board.SIZE - 1 and self.is_covered(row, col + 1):
+        if col < BOARD_SIZE - 1 and self.is_covered(row, col + 1):
             return True
         return False
 
@@ -273,8 +279,8 @@ class Board:
 
     def enum_tiles(self) -> Iterator[Tuple[int, int, str, str]]:
         """Enumerate the tiles on the board with their coordinates"""
-        for x in range(Board.SIZE):
-            for y in range(Board.SIZE):
+        for x in range(BOARD_SIZE):
+            for y in range(BOARD_SIZE):
                 t = self.tile_at(x, y)
                 if t != " ":
                     yield (x, y, t, self.letter_at(x, y))
@@ -287,7 +293,7 @@ class Board:
         result = ""
         row += xd
         col += yd
-        while row in range(Board.SIZE) and col in range(Board.SIZE):
+        while row in range(BOARD_SIZE) and col in range(BOARD_SIZE):
             ltr = getter(row, col)
             if ltr == " ":
                 # Empty square: we're done
@@ -536,11 +542,12 @@ class State:
         drawtiles: bool = True,
         copy: Optional[State] = None,
         locale: Optional[str] = None,
-        board_type: Optional[str] = None,
+        board_type: Optional[BoardTypes] = None,
     ) -> None:
 
         # The covers laid down in the last challengeable move
         self._last_covers: Optional[List[Cover]] = None
+        self._board_type: BoardTypes
 
         # pylint: disable=protected-access
         if copy is None:
@@ -1020,9 +1027,9 @@ class Move(MoveBase):
     def add_cover(self, row: int, col: int, tile: str, letter: str) -> bool:
         """Add a placement of a tile on a board square to this move"""
         # Sanity check the input
-        if row < 0 or row >= Board.SIZE:
+        if row < 0 or row >= BOARD_SIZE:
             return False
-        if col < 0 or col >= Board.SIZE:
+        if col < 0 or col >= BOARD_SIZE:
             return False
         if len(tile) != 1:
             return False
@@ -1167,7 +1174,7 @@ class Move(MoveBase):
             while self._col > 0 and board.is_covered(self._row, self._col - 1):
                 self._col -= 1
             # Look for the end
-            while col + 1 < Board.SIZE and board.is_covered(self._row, col + 1):
+            while col + 1 < BOARD_SIZE and board.is_covered(self._row, col + 1):
                 col += 1
             # Now we know the length
             self._numletters = col - self._col + 1
@@ -1176,7 +1183,7 @@ class Move(MoveBase):
             while self._row > 0 and board.is_covered(self._row - 1, self._col):
                 self._row -= 1
             # Look for the end
-            while row + 1 < Board.SIZE and board.is_covered(row + 1, self._col):
+            while row + 1 < BOARD_SIZE and board.is_covered(row + 1, self._col):
                 row += 1
             # Now we know the length
             self._numletters = row - self._row + 1

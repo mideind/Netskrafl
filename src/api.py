@@ -74,7 +74,7 @@ from languages import (
     to_supported_locale,
 )
 from wordbase import Wordbase
-from skraflmechanics import Board
+from skraflmechanics import BOARD_SIZE
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
@@ -381,14 +381,13 @@ def wordcheck_api() -> ResponseType:
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
     word: str = rq["word"]
-    board_size = Board.SIZE
 
     # Sanity check the word list: we should never need to check more than 16 words
     # (major-axis word plus up to 15 cross-axis words)
     if (
         not words
-        or len(words) > board_size + 1
-        or any(len(w) > board_size for w in words)
+        or len(words) > BOARD_SIZE + 1
+        or any(len(w) > BOARD_SIZE for w in words)
     ):
         return jsonify(ok=False)
 

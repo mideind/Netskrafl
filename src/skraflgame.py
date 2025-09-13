@@ -38,7 +38,7 @@ from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local, Error
+from config import DEFAULT_LOCALE, running_local, Error, BoardTypes
 
 from languages import (
     Alphabet,
@@ -715,9 +715,9 @@ class Game:
         self.set_pref("manual", state)
 
     @property
-    def board_type(self) -> str:
+    def board_type(self) -> BoardTypes:
         """Return the type of the board used in this game"""
-        return cast(str, self.get_pref("board_type")) or "standard"
+        return cast(BoardTypes, self.get_pref("board_type")) or "standard"
 
     @staticmethod
     def locale_from_prefs(prefs: Optional[PrefsDict]) -> str:

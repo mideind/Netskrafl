@@ -93,6 +93,7 @@ from languages import current_alphabet
 from skraflmechanics import (
     State,
     Board,
+    BOARD_SIZE,
     Cover,
     MoveBase,
     Move,
@@ -221,7 +222,7 @@ class Axis:
     def __init__(self, autoplayer: AutoPlayer, index: int, horizontal: bool) -> None:
 
         self._autoplayer = autoplayer
-        self._sq = [Square() for _ in range(Board.SIZE)]
+        self._sq = [Square() for _ in range(BOARD_SIZE)]
         self._index = index
         self._horizontal = horizontal
         self._rack = autoplayer.rack()
@@ -288,7 +289,7 @@ class Axis:
         # letters in the rack.
         all_cc = self._autoplayer.rack_bit_pattern()
         # Go through the open squares and calculate their cross-checks
-        for ix in range(Board.SIZE):
+        for ix in range(BOARD_SIZE):
             cc = all_cc  # Start with the default cross-check set
             if not board.is_covered(x, y):
                 if self.is_horizontal():
@@ -370,7 +371,7 @@ class Axis:
         at and around all anchor squares"""
         last_anchor = -1
         len_rack = len(self._rack)
-        for i in range(Board.SIZE):
+        for i in range(BOARD_SIZE):
             if self._sq[i].is_anchor():
                 # Count the consecutive open, non-anchor squares on the left of the anchor
                 open_sq = 0
@@ -592,7 +593,7 @@ class ExtendRightNavigator(Navigator):
     def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue as long as there is something left to check
-        if self._index >= Board.SIZE:
+        if self._index >= BOARD_SIZE:
             # Gone off the board edge
             return False
         # Otherwise, continue while we have something on the rack
@@ -628,7 +629,7 @@ class ExtendRightNavigator(Navigator):
         if (
             final
             and len(matched) > 1
-            and (self._index >= Board.SIZE or self._axis.is_empty(self._index))
+            and (self._index >= BOARD_SIZE or self._axis.is_empty(self._index))
         ):
 
             # Solution found - make a Move object for it
@@ -654,8 +655,8 @@ class ExtendRightNavigator(Navigator):
                         rack = rack.replace("?", "", 1)
                         tile = "?"
                         tiles += tile + c
-                    # assert row in range(Board.SIZE)
-                    # assert col in range(Board.SIZE)
+                    # assert row in range(BOARD_SIZE)
+                    # assert col in range(BOARD_SIZE)
                     # Add this cover to the Move object
                     move.add_validated_cover(Cover(row, col, tile, c))
                 else:
@@ -846,11 +847,11 @@ class AutoPlayer:
         else:
             # Normal move: go through all 15 (row) + 15 (column) axes and generate
             # valid moves within each of them
-            for r in range(Board.SIZE):
+            for r in range(BOARD_SIZE):
                 axis = self._axis_from_row(r)
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
-            for c in range(Board.SIZE):
+            for c in range(BOARD_SIZE):
                 axis = self._axis_from_column(c)
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)

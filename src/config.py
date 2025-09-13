@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import (
     Any,
     Dict,
+    List,
     Literal,
     Mapping,
     NotRequired,
@@ -43,6 +44,9 @@ from secret_manager import SecretManager
 
 
 T = TypeVar('T')
+
+BoardTypes = Literal["standard", "explo"]
+BoardType = Mapping[BoardTypes, List[str]]
 
 # Universal type definitions
 ResponseType = Union[
