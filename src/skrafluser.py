@@ -199,6 +199,7 @@ EXPLO_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
 # This is the currently issued KID
 EXPLO_KID = EXPLO_KID_2
 
+# Remember to change Málstaður:src/app/api/netskrafl/token/route.tsx if this changes!
 MALSTADUR_KID = "2025-02-27:1"
 
 # All potentially valid KIDs

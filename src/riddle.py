@@ -282,35 +282,33 @@ def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     """Get existing riddle or create a new one, with caching"""
     # Check if riddle already exists in Firebase
     path = f"gatadagsins/{date}/{locale}/riddle"
-    existing_riddle = firebase.get_data(path)
-    if existing_riddle:
-        # Riddle already exists, return it
-        return existing_riddle
-
-    # Not found in Firebase: attempt to fetch the riddle from the database
+    riddle: Optional[RiddleContentDict] = firebase.get_data(path)
     tile_scores = current_tileset().scores
-    riddle_from_database = RiddleModel.get_riddle(date, locale)
-    if not riddle_from_database or not (
-        riddle := riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
-    ):
-        # Riddle doesn't exist, generate a new one
-        # (This is an emergency fallback!)
-        logging.warning(
-            f"Riddle for {date}:{locale} not found in database, generating it on-the-fly"
-        )
-        riddle = generate_new_riddle(locale, tile_scores)
-        if riddle is None:
-            # All avenues exhausted, return None
-            return None
 
-    # Store the new riddle in Firebase
-    if firebase.put_message(riddle, path):
-        # Delete the /best path if it exists, since we have a new riddle
-        firebase.put_message(None, f"gatadagsins/{date}/{locale}/best")
-    else:
-        # If Firebase storage fails, still return the generated riddle
-        # but it won't be persisted
-        logging.error(f"Failed to store riddle for {date}/{locale} in Firebase")
+    if not riddle:
+        # Not found in Firebase: attempt to fetch the riddle from the database
+        riddle_from_database = RiddleModel.get_riddle(date, locale)
+        if not riddle_from_database or not (
+            riddle := riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
+        ):
+            # Riddle doesn't exist, generate a new one
+            # (This is an emergency fallback!)
+            logging.warning(
+                f"Riddle for {date}:{locale} not found in database, generating it on-the-fly"
+            )
+            riddle = generate_new_riddle(locale, tile_scores)
+            if riddle is None:
+                # All avenues exhausted, return None
+                return None
+
+        # Store the new riddle in Firebase
+        if firebase.put_message(riddle, path):
+            # Delete the /best path if it exists, since we have a new riddle
+            firebase.put_message(None, f"gatadagsins/{date}/{locale}/best")
+        else:
+            # If Firebase storage fails, still return the generated riddle
+            # but it won't be persisted
+            logging.error(f"Failed to store riddle for {date}/{locale} in Firebase")
 
     # Augment the riddle data with static locale-specific information
     # required by the client, but which does not need to be stored in Firebase

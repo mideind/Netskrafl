@@ -45,7 +45,6 @@ from config import (
     NETSKRAFL,
     PROJECT_ID,
     FIREBASE_DB_URL,
-    log_execution_time,
     running_local,
     ResponseType,
     ttl_cache,
@@ -114,7 +113,6 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     return False
 
 
-@log_execution_time
 def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """Updates data in Firebase. If a message object is provided, then it sets
     the data at the given location (whose path is built as a concatenation
@@ -143,7 +141,6 @@ def send_update(*args: str) -> bool:
     return send_message(value, *args[:-1])
 
 
-@log_execution_time
 def get_data(path: str) -> Optional[Any]:
     """Get data from Firebase at the given path"""
     try:
