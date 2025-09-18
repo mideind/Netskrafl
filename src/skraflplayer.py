@@ -967,8 +967,8 @@ class AutoPlayer_Custom(AutoPlayer):
         num_candidates = len(scored_candidates)
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
-        i = 0  # Candidate index
-        p = 0  # Playable index
+        i: int = 0  # Candidate index
+        p: int = 0  # Playable index
         while p < pick_from and i < num_candidates:
             candidate = scored_candidates[i]
             m, score = candidate  # Candidate move
