@@ -41,6 +41,7 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from logging.config import dictConfig
 from secret_manager import SecretManager
+from authmanager import running_local
 
 
 T = TypeVar('T')
@@ -70,15 +71,6 @@ class FlaskConfig(TypedDict):
     # JSON_AS_ASCII: bool  # No longer supported in Flask >= 2.3
     TESTING: NotRequired[bool]
 
-
-# Are we running in a local development environment or on a GAE server?
-# We allow the SERVER_SOFTWARE environment variable to be overridden using
-# RUNNING_LOCAL, since running gunicorn locally will set SERVER_SOFTWARE to
-# "gunicorn/NN.n.n" rather than "Development".
-running_local: bool = (
-    os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
-    or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
-)
 
 if running_local:
     # Configure logging

@@ -47,6 +47,7 @@ from flask.helpers import url_for
 from config import (
     ANONYMOUS_PREFIX,
     EXPLO_CLIENT_SECRET,
+    FIREBASE_API_KEY,
     MALSTADUR_JWT_SECRET,
     DEFAULT_LOCALE,
     NETSKRAFL,
@@ -118,6 +119,9 @@ class UserLoginDict(TypedDict):
     expires: Optional[str]
     # All preferences of this user, including defaults
     prefs: NotRequired[PrefsDict]
+    # Firebase API key for client-side access to Firebase services
+    # (this key is not a secret)
+    firebase_api_key: str
 
 
 class UserDetailDict(TypedDict):
@@ -262,6 +266,7 @@ def make_login_dict(
         "new": new,
         "token": token,
         "expires": expires.isoformat() if previous_token is None else None,
+        "firebase_api_key": FIREBASE_API_KEY,
     }
     if prefs is not None:
         result["prefs"] = prefs
