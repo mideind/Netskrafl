@@ -114,7 +114,7 @@ def create_user(idx: int, locale: str = "en_US") -> str:
         EloModel.delete_for_user(uid)
         # TODO: Delete StatsModel entries for this user
         # Create a new user, if required
-        return UserModel.create(
+        user_id, prefs = UserModel.create(
             user_id=uid,
             account=uid,
             email=email,
@@ -123,6 +123,15 @@ def create_user(idx: int, locale: str = "en_US") -> str:
             preferences=prefs,
             locale=locale,
         )
+        assert prefs.get("newbag") == True
+        assert prefs.get("email") == email
+        assert prefs.get("full_name") == name
+        assert prefs.get("ready") == True
+        assert prefs.get("ready_timed") == True
+        assert prefs.get("beginner") == True
+        assert prefs.get("fanfare") == False
+        assert prefs.get("fairplay") == False
+        return user_id
 
 
 @pytest.fixture

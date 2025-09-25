@@ -61,7 +61,7 @@ def create_user(idx: int, locale: str = "en_US") -> str:
         # Delete chat messages for this user
         ChatModel.delete_for_user(account)
         # Create a new user, if required
-        return UserModel.create(
+        user_id, prefs = UserModel.create(
             user_id=account,
             account=account,
             email=email,
@@ -70,6 +70,7 @@ def create_user(idx: int, locale: str = "en_US") -> str:
             preferences=prefs,
             locale=locale,
         )
+        return user_id
 
 
 @pytest.fixture

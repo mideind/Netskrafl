@@ -25,12 +25,21 @@ import threading
 import google.auth
 from google.auth.credentials import Credentials
 import google.auth.transport.requests
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, DefaultCredentialsError
 
 
 # Google Cloud project ID
 PROJECT_ID = os.environ.get("PROJECT_ID", "")
 assert PROJECT_ID, "PROJECT_ID environment variable not set"
+
+# Are we running in a local development environment or on a GAE server?
+# We allow the SERVER_SOFTWARE environment variable to be overridden using
+# RUNNING_LOCAL, since running gunicorn locally will set SERVER_SOFTWARE to
+# "gunicorn/NN.n.n" rather than "Development".
+running_local: bool = (
+    os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
+    or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
+)
 
 
 class CloudAuthManager:
@@ -69,10 +78,22 @@ class CloudAuthManager:
                 try:
                     if self._credentials is None:
                         logging.info("Obtaining Google Cloud credentials")
-                        self._credentials, project_id = cast(Any, google.auth).default(
-                            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                        # When running locally, configure Google Cloud gRPC to
+                        # use the native client OS DNS resolution. This saves ~20
+                        # seconds of blocking calls/timeouts upon first use of gRPC.
+                        if running_local:
+                            os.environ["GRPC_DNS_RESOLVER"] = "native"
+                        self._credentials, project_id = cast(
+                            Any, google.auth
+                        ).default(
+                            scopes=[
+                                "https://www.googleapis.com/auth/cloud-platform"
+                            ]
                         )
-                        assert project_id == PROJECT_ID, f"Credentials do not match project ID: {project_id} != {PROJECT_ID}"
+                        assert project_id == PROJECT_ID, (
+                            f"Credentials do not match project ID: "
+                            f"{project_id} != {PROJECT_ID}"
+                        )
                     auth_req = google.auth.transport.requests.Request()
                     logging.info("Refreshing Google Cloud credentials")
                     self._credentials.refresh(auth_req)
@@ -81,7 +102,15 @@ class CloudAuthManager:
                     self._token_expiry = current_time + (55 * 60)
                     logging.info("Google Cloud credentials refreshed successfully")
 
-                except RefreshError as e:
+                except (RefreshError, DefaultCredentialsError) as e:
+                    if running_local:
+                        logging.error(
+                            "Failed to obtain or refresh Google Cloud credentials."
+                        )
+                        logging.error(
+                            "Please make sure you are logged in with "
+                            "'gcloud auth application-default login'."
+                        )
                     logging.error(f"Failed to refresh credentials: {e}")
                     # Re-raise to let caller handle the error
                     raise

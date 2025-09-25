@@ -125,6 +125,10 @@ class PrefsDict(TypedDict, total=False):
     board_type: str
     friend: bool
     haspaid: bool
+    beginner: bool
+    ready: bool
+    ready_timed: bool
+    fanfare: bool
 
 
 ChallengeTuple = NamedTuple(
@@ -685,7 +689,7 @@ class UserModel(Model["UserModel"]):
         image: str,
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, PrefsDict]:
         """Create a new user"""
         user: UserModel = cls(id=user_id)
         user.account = account
@@ -704,7 +708,16 @@ class UserModel(Model["UserModel"]):
         user.locale = locale or DEFAULT_LOCALE
         user.last_login = datetime.now(UTC)
         user.games = 0
-        return user.put().id()
+        # Return the preferences of this user, including defaults
+        all_prefs = PrefsDict(
+            beginner=True,
+            ready=True,
+            ready_timed=True,
+            fanfare=False,
+            fairplay=False,
+        )
+        all_prefs.update(user.prefs)
+        return user.put().id(), all_prefs
 
     @classmethod
     def fetch(cls, user_id: str) -> Optional[UserModel]:

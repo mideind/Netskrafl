@@ -47,6 +47,7 @@ from flask.helpers import url_for
 from config import (
     ANONYMOUS_PREFIX,
     EXPLO_CLIENT_SECRET,
+    FIREBASE_API_KEY,
     MALSTADUR_JWT_SECRET,
     DEFAULT_LOCALE,
     NETSKRAFL,
@@ -116,6 +117,11 @@ class UserLoginDict(TypedDict):
     # If we just generated a new Explo token, this is its expiration time,
     # as an ISO format date and time string
     expires: Optional[str]
+    # All preferences of this user, including defaults
+    prefs: NotRequired[PrefsDict]
+    # Firebase API key for client-side access to Firebase services
+    # (this key is not a secret)
+    firebase_api_key: str
 
 
 class UserDetailDict(TypedDict):
@@ -226,6 +232,7 @@ def make_login_dict(
     new: bool,
     lifetime: timedelta = DEFAULT_TOKEN_LIFETIME,
     previous_token: Optional[str] = None,
+    prefs: Optional[PrefsDict] = None,
 ) -> UserLoginDict:
     """Create a login credential object that is returned to the client"""
     now = datetime.now(UTC)
@@ -251,7 +258,7 @@ def make_login_dict(
             algorithm=JWT_ALGORITHM,
             headers={"kid": EXPLO_KID},
         )
-    return {
+    result: UserLoginDict = {
         "user_id": user_id,
         "nickname": nickname,
         "account": account,
@@ -259,7 +266,11 @@ def make_login_dict(
         "new": new,
         "token": token,
         "expires": expires.isoformat() if previous_token is None else None,
+        "firebase_api_key": FIREBASE_API_KEY,
     }
+    if prefs is not None:
+        result["prefs"] = prefs
+    return result
 
 
 def is_token_blacklisted(jti: str) -> bool:
@@ -1173,7 +1184,7 @@ class User:
         image: str,
         locale: str,
         is_friend: bool = False,
-    ) -> str:
+    ) -> Tuple[str, PrefsDict]:
         """Create a new user object"""
         # Create a new user, with the account id as user id.
         # New users are created with the new bag as default,
@@ -1268,17 +1279,23 @@ class User:
             # If the account was disabled, enable it again
             um.inactive = False
             user_id = um.put().id()
+            all_prefs = PrefsDict(
+                ready=um.ready or False,
+                ready_timed=um.ready_timed or False,
+            )
+            all_prefs.update(um.prefs or {})
             uld = make_login_dict(
                 user_id=user_id,
                 account=um.account,
                 nickname=um.nickname,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
+                prefs=all_prefs,
             )
             return uld
         # User does not exist already: create a new user entity
         nickname = cls.make_nickname("", name, email)
-        user_id = cls.create_user(
+        user_id, all_prefs = cls.create_user(
             account, email, nickname, name, image, locale or DEFAULT_LOCALE
         )
         # Create a user login event object and return it
@@ -1288,6 +1305,7 @@ class User:
             nickname=nickname,
             locale=locale or DEFAULT_LOCALE,
             new=True,
+            prefs=all_prefs,
         )
         return uld
 
@@ -1310,6 +1328,14 @@ class User:
             um.prefs["friend"] = is_friend
             um.prefs["haspaid"] = is_friend
             um.put()
+            all_prefs = PrefsDict(
+                ready=um.ready or False,
+                ready_timed=um.ready_timed or False,
+                beginner=True,
+                fanfare=False,
+                fairplay=False,
+            )
+            all_prefs.update(um.prefs)
             user_id = um.user_id()
             uld = make_login_dict(
                 user_id=user_id,
@@ -1320,11 +1346,12 @@ class User:
                 # We don't need to create a fresh Explo token, so we
                 # pass in a dummy placeholder value here
                 previous_token="*",
+                prefs=all_prefs,
             )
             return uld
         # User does not exist already: create a new user entity
         nickname = User.make_nickname(nickname, fullname, email)
-        user_id = cls.create_user(
+        user_id, all_prefs = cls.create_user(
             account, email, nickname, fullname, "", DEFAULT_LOCALE, is_friend
         )
         # Return a user login event object
@@ -1337,6 +1364,7 @@ class User:
             # We don't need to create a fresh Explo token, so we
             # pass in a dummy placeholder value here
             previous_token="*",
+            prefs=all_prefs,
         )
         return uld
 
