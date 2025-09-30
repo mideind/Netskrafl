@@ -509,6 +509,47 @@ def update_group_best_score(
     return updated
 
 
+def update_leaderboard_entry(
+    riddle_date: str,
+    locale: str,
+    user_id: str,
+    user_display_name: str,
+    score: int,
+    timestamp: str,
+) -> None:
+    """Update leaderboard entry using a Firebase transaction.
+    Only updates if score improves or same score achieved earlier."""
+    path = f"gatadagsins/{riddle_date}/{locale}/leaders/{user_id}"
+
+    def transaction_update(current_data: Optional[LeaderboardEntry]) -> LeaderboardEntry:
+        """Transaction function to update leaderboard atomically"""
+        if not current_data:
+            # No existing entry, add new one
+            return LeaderboardEntry(
+                userId=user_id,
+                displayName=user_display_name or user_id,
+                score=score,
+                timestamp=timestamp,
+            )
+
+        old_score = current_data.get("score", 0)
+        old_timestamp = current_data.get("timestamp", "")
+
+        if score > old_score or (score == old_score and timestamp < old_timestamp):
+            # Better score, or same score achieved earlier
+            return LeaderboardEntry(
+                userId=user_id,
+                displayName=user_display_name or user_id,
+                score=score,
+                timestamp=timestamp,
+            )
+
+        # Don't update - existing entry is better or same score with earlier timestamp
+        return current_data
+
+    firebase.run_transaction(path, transaction_update)
+
+
 @riddle_route("/gatadagsins/riddle")
 @auth_required(ok=False)
 def riddle_api() -> ResponseType:
@@ -610,14 +651,14 @@ def submit_api() -> ResponseType:
 
         if score >= best_score_so_far:
             # Equal to or greater than global best-so-far score: update the leaderboard
-            leader_path = f"gatadagsins/{riddle_date}/{locale}/leaders/{user_id}"
-            leader_entry = LeaderboardEntry(
-                userId=user_id,
-                displayName=user_display_name or user_id,  # Using userId as displayName since userDisplayName is not available
+            update_leaderboard_entry(
+                riddle_date=riddle_date,
+                locale=locale,
+                user_id=user_id,
+                user_display_name=user_display_name,
                 score=score,
                 timestamp=timestamp,
             )
-            firebase.put_message(leader_entry, leader_path)
 
         # Update the user's personal achievement status
         # Determine if this is a top score by comparing to max_score
