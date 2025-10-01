@@ -27,6 +27,7 @@ from typing import (
     Required,
     Sequence,
     TypedDict,
+    TypeVar,
     Set,
     Dict,
     cast,
@@ -57,6 +58,10 @@ OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
 
 PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
+
+# TypeVar for Firebase transactions, constrained to Mapping types
+# since Firebase stores JSON-like data structures
+FirebaseDataT = TypeVar("FirebaseDataT", bound=Mapping[str, Any])
 
 
 class PushMessageDict(TypedDict):
@@ -149,6 +154,18 @@ def get_data(path: str) -> Optional[Any]:
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] in firebase.get_data()")
         return None
+
+
+def run_transaction(path: str, update_fn: Callable[[Optional[FirebaseDataT]], FirebaseDataT]) -> bool:
+    """Run a transaction at the given Firebase path.
+    The update_fn receives the current data (or None) and returns the new data."""
+    try:
+        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref.transaction(update_fn)
+        return True
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] in firebase.run_transaction()")
+        return False
 
 
 def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:

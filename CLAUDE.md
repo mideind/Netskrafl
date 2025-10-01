@@ -123,6 +123,6 @@ multiple languages through separate DAWG files and tile sets.
 - Use strict typing in all cases except where third party libraries do not support it.
   In that case, use `# type: ignore` to suppress type checking errors, but try to use
   `cast(T, ...)` liberally and immediately to limit propagation of 'Any' or 'Unknown' types.
-- Finish Python source file with an empty line.
+- Python source files should end with an empty line (i.e., two newlines at the end - `\n\n`).
 - Use datetime.now(UTC) for timestamps, not datetime.now() or datetime.utcnow().
 - Empty lines should only contain newlines, no spaces or tabs.

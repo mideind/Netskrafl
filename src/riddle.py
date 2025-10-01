@@ -16,7 +16,7 @@ This module contains the API entry points for the Gáta Dagsins feature.
 
 from __future__ import annotations
 
-import logging
+import re
 from typing import (
     Any,
     Callable,
@@ -26,10 +26,13 @@ from typing import (
     Optional,
     Sequence,
     Dict,
+    Tuple,
     TypeVar,
     TypedDict,
     cast,
 )
+import logging
+from datetime import date
 from functools import wraps
 
 import requests
@@ -119,6 +122,36 @@ class SubmitMoveDict(TypedDict):
     move: RiddleWordDict
 
 
+class LeaderboardEntry(TypedDict):
+    """A leaderboard entry for a user's best score on a riddle"""
+
+    userId: str
+    displayName: str
+    score: int
+    timestamp: str
+
+
+class RiddleAchievement(TypedDict):
+    """A user's achievement for a specific riddle"""
+
+    score: int
+    word: str
+    coord: str
+    timestamp: str
+    isTopScore: bool
+
+
+class UserRiddleStats(TypedDict):
+    """A user's streak statistics for Gáta Dagsins"""
+
+    currentStreak: int
+    longestStreak: int
+    topScoreStreak: int
+    lastPlayedDate: str
+    totalDaysPlayed: int
+    totalTopScores: int
+
+
 # Cache of current global best scores
 _GLOBAL_BEST_CACHE: Dict[str, Dict[str, BestDict]] = {}
 
@@ -146,38 +179,6 @@ def riddle_route(route: str, methods: Sequence[str] = _ONLY_POST) -> Any:
         return wrapper
 
     return decorator
-
-
-def generate_placeholder_riddle(
-    locale: str, tile_scores: Dict[str, int]
-) -> RiddleContentDict:
-    """Generate a new riddle for the given date and locale"""
-    TEST_RACK = "kfojgda"
-    rack: RackDetails = [(tile, tile_scores.get(tile, 0)) for tile in TEST_RACK]
-    # For now, generate a placeholder board
-    board: List[str] = [
-        ".......n.k....n",
-        ".......á.ær...e",
-        "..b....m.fénist",
-        "..y....a.að...k",
-        "..l.a..n..i...e",
-        "..talglaðir...p",
-        "..u.r.........P",
-        "...varmt.......",
-        "....u..........",
-        "....t..........",
-        "....t..........",
-        "...............",
-        "...............",
-        "...............",
-        "...............",
-    ]
-    max_score: int = 108  # Placeholder for maximum score
-    return {
-        "rack": rack,
-        "board": board,
-        "max_score": max_score,
-    }
 
 
 def riddle_from_moves_service(
@@ -278,6 +279,14 @@ def cache_if_not_none(maxsize: int = 128):
 
 
 @cache_if_not_none(maxsize=3)
+def riddle_max_score(date: str, locale: str) -> Optional[int]:
+    """Get the max possible score for the riddle on the given date and locale"""
+    path = f"gatadagsins/{date}/{locale}/riddle/max_score"
+    max_score: Optional[int] = firebase.get_data(path)
+    return max_score
+
+
+@cache_if_not_none(maxsize=3)
 def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     """Get existing riddle or create a new one, with caching"""
     # Check if riddle already exists in Firebase
@@ -318,6 +327,227 @@ def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     full_riddle["board_type"] = "standard"
     full_riddle["two_letter_words"] = two_letter_words(locale)
     return full_riddle
+
+
+def update_user_achievement(
+    user_id: str,
+    date: str,
+    locale: str,
+    score: int,
+    word: str,
+    coord: str,
+    timestamp: str,
+    is_top_score: bool,
+) -> bool:
+    """Update user's achievement for this riddle"""
+    achievement_path = f"gatadagsins/{date}/{locale}/achievements/{user_id}"
+    updated = False
+
+    def transaction_update(
+        current_data: Optional[RiddleAchievement],
+    ) -> RiddleAchievement:
+        """Transaction function to update achievement atomically"""
+        nonlocal updated
+        achievement: RiddleAchievement = current_data or RiddleAchievement(
+            score=0, word="", coord="", timestamp="", isTopScore=False
+        )
+        if score > achievement.get("score", 0):
+            # Only update if the new score is better
+            achievement = RiddleAchievement(
+                score=score,
+                word=word,
+                coord=coord,
+                timestamp=timestamp,
+                isTopScore=is_top_score,
+            )
+            # Note that this is a significant update, i.e. improving the user's best
+            updated = True
+        return achievement
+
+    firebase.run_transaction(achievement_path, transaction_update)
+    return updated
+
+
+def update_user_streak_stats(
+    user_id: str, locale: str, date_str: str, achieved_top_score: bool
+) -> None:
+    """Update user's streak statistics using a Firebase transaction"""
+    stats_path = f"gatadagsins/users/{locale}/{user_id}/stats"
+
+    def transaction_update(current_data: Optional[UserRiddleStats]) -> UserRiddleStats:
+        """Transaction function to update streak stats atomically"""
+        stats: UserRiddleStats = current_data or UserRiddleStats(
+            currentStreak=0,
+            longestStreak=0,
+            topScoreStreak=0,
+            lastPlayedDate="",
+            totalDaysPlayed=0,
+            totalTopScores=0,
+        )
+
+        # Check if this is a new day
+        last_date_str = stats.get("lastPlayedDate", "")
+        if last_date_str != date_str:
+            # Yes, new day: update streak info
+            if last_date_str:
+                last_date = date.fromisoformat(last_date_str)
+                ref_date = date.fromisoformat(date_str)
+                days_diff = (ref_date - last_date).days
+
+                if days_diff == 1:
+                    # Consecutive day
+                    stats["currentStreak"] = stats.get("currentStreak", 0) + 1
+                else:
+                    # Streak broken
+                    stats["currentStreak"] = 1
+                    stats["topScoreStreak"] = 0
+            else:
+                # First time playing
+                stats["currentStreak"] = 1
+
+            # Update longest streak
+            stats["longestStreak"] = max(
+                stats.get("longestStreak", 0), stats["currentStreak"]
+            )
+
+            # Update total days played
+            stats["totalDaysPlayed"] = stats.get("totalDaysPlayed", 0) + 1
+
+            # Update last played date
+            stats["lastPlayedDate"] = date_str
+
+        # Update top score stats
+        if achieved_top_score:
+            # We assume that this does not happen more than once per day
+            stats["topScoreStreak"] = stats.get("topScoreStreak", 0) + 1
+            stats["totalTopScores"] = stats.get("totalTopScores", 0) + 1
+
+        return stats
+
+    firebase.run_transaction(stats_path, transaction_update)
+
+
+def update_global_best_score(
+    riddle_date: str,
+    locale: str,
+    user_id: str,
+    score: int,
+    word: str,
+    coord: str,
+    timestamp: str,
+) -> Tuple[bool, int]:
+    """Update global best score using a Firebase transaction.
+    Returns [updated, best_score_so_far]. 'updated' is True if
+    the global best was updated, False otherwise."""
+    path = f"gatadagsins/{riddle_date}/{locale}/best"
+    updated = False
+    best_score_so_far = 0
+
+    def transaction_update(current_data: Optional[BestDict]) -> BestDict:
+        """Transaction function to update global best atomically"""
+        nonlocal updated, best_score_so_far
+        best_so_far: BestDict = current_data or BestDict(
+            score=0, player="", word="", coord="", timestamp=""
+        )
+        best_score_so_far = best_so_far.get("score", 0)
+        if score > best_score_so_far:
+            # Update global best
+            updated = True
+            new_best = BestDict(
+                score=score,
+                player=user_id,
+                word=word,
+                coord=coord,
+                timestamp=timestamp,
+            )
+            # Update cache
+            _GLOBAL_BEST_CACHE.setdefault(riddle_date, {})[locale] = new_best
+            # Update the best score
+            best_score_so_far = score
+            return new_best
+        return best_so_far
+
+    firebase.run_transaction(path, transaction_update)
+    return updated, best_score_so_far
+
+
+def update_group_best_score(
+    riddle_date: str,
+    locale: str,
+    group_id: str,
+    user_id: str,
+    score: int,
+    word: str,
+    coord: str,
+    timestamp: str,
+) -> bool:
+    """Update group best score using a Firebase transaction.
+    Returns True if the group best was updated, False otherwise."""
+    path = f"gatadagsins/{riddle_date}/{locale}/group/{group_id}/best"
+    updated = False
+
+    def transaction_update(current_data: Optional[BestDict]) -> BestDict:
+        """Transaction function to update group best atomically"""
+        nonlocal updated
+        group_best: BestDict = current_data or BestDict(
+            score=0, player="", word="", coord="", timestamp=""
+        )
+        if score > group_best.get("score", 0):
+            # Update group best
+            updated = True
+            new_best = BestDict(
+                score=score,
+                player=user_id,
+                word=word,
+                coord=coord,
+                timestamp=timestamp,
+            )
+            return new_best
+        return group_best
+
+    firebase.run_transaction(path, transaction_update)
+    return updated
+
+
+def update_leaderboard_entry(
+    riddle_date: str,
+    locale: str,
+    user_id: str,
+    user_display_name: str,
+    score: int,
+    timestamp: str,
+) -> None:
+    """Update leaderboard entry using a Firebase transaction.
+    Only updates if score improves or same score achieved earlier."""
+    path = f"gatadagsins/{riddle_date}/{locale}/leaders/{user_id}"
+
+    def transaction_update(current_data: Optional[LeaderboardEntry]) -> LeaderboardEntry:
+        """Transaction function to update leaderboard atomically"""
+        if not current_data:
+            # No existing entry, add new one
+            return LeaderboardEntry(
+                userId=user_id,
+                displayName=user_display_name or user_id,
+                score=score,
+                timestamp=timestamp,
+            )
+
+        old_score = current_data.get("score", 0)
+        old_timestamp = current_data.get("timestamp", "")
+
+        if score > old_score or (score == old_score and timestamp < old_timestamp):
+            # Better score, or same score achieved earlier
+            return LeaderboardEntry(
+                userId=user_id,
+                displayName=user_display_name or user_id,
+                score=score,
+                timestamp=timestamp,
+            )
+
+        # Don't update - existing entry is better or same score with earlier timestamp
+        return current_data
+
+    firebase.run_transaction(path, transaction_update)
 
 
 @riddle_route("/gatadagsins/riddle")
@@ -363,18 +593,29 @@ def submit_api() -> ResponseType:
     # locale: str
     # userId: str
     # groupId: str
+    # userDisplayName: str
     # move: {
     #   word: str
     #   score: int
     #   coord: str
     #   timestamp: str
     # }
-    date = rq.get("date", "")
+    riddle_date = rq.get("date", "")
+    # Validate the date format (expected to be YYYY-MM-DD)
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", riddle_date) is None:
+        return jsonify(ok=False, error="Invalid parameter: date")
+    # Ensure the date is a valid calendar date
+    try:
+        date.fromisoformat(riddle_date)
+    except ValueError:
+        return jsonify(ok=False, error="Invalid parameter: date")
+
     locale = to_supported_locale(rq.get("locale", ""))
-    userId = rq.get("userId", "")
-    groupId = rq.get("groupId", "")
-    move: RiddleWordDict = cast(RiddleWordDict, rq.get("move", {}))
-    if not date or not userId or not move or not move.get("word"):
+    user_id = rq.get("userId", "")
+    group_id = rq.get("groupId", "")
+    user_display_name = rq.get("userDisplayName", "")
+    move = cast(RiddleWordDict, rq.get("move", {}))
+    if not user_id or not move or not move.get("word"):
         return jsonify(ok=False, error="Missing required parameters")
 
     # Validate the move data
@@ -394,53 +635,69 @@ def submit_api() -> ResponseType:
     update = False
     message = ""
     try:
-        path = f"gatadagsins/{date}/{locale}/best"
-        best: Optional[BestDict] = _GLOBAL_BEST_CACHE.get(date, {}).get(locale)
-        if not best:
-            # If we don't have the global best cached, fetch it from Firebase
-            best = firebase.get_data(path)
-            if not best:
-                # If no global best already exists, assign a null default
-                best = BestDict(score=0, player="", word="", coord="", timestamp="")
-        if score > best.get("score", 0):
-            # If the submitted move is better than the current global best,
-            # update the global best
-            best = BestDict(
+        # Update global best score using transaction
+        updated, best_score_so_far = update_global_best_score(
+            riddle_date=riddle_date,
+            locale=locale,
+            user_id=user_id,
+            score=score,
+            word=word,
+            coord=coord,
+            timestamp=timestamp,
+        )
+        if updated:
+            message = "Global best score updated"
+            update = True
+
+        if score >= best_score_so_far:
+            # Equal to or greater than global best-so-far score: update the leaderboard
+            update_leaderboard_entry(
+                riddle_date=riddle_date,
+                locale=locale,
+                user_id=user_id,
+                user_display_name=user_display_name,
                 score=score,
-                player=userId,
+                timestamp=timestamp,
+            )
+
+        # Update the user's personal achievement status
+        # Determine if this is a top score by comparing to max_score
+        max_score = riddle_max_score(riddle_date, locale) or 0
+        is_top_score = (score >= max_score) if max_score > 0 else False
+
+        updated = update_user_achievement(
+            user_id=user_id,
+            date=riddle_date,
+            locale=locale,
+            score=score,
+            word=word,
+            coord=coord,
+            timestamp=timestamp,
+            is_top_score=is_top_score,
+        )
+
+        if updated:
+            # This is a significant update, so it might affect the user's streak stats
+            update_user_streak_stats(
+                user_id=user_id, locale=locale, date_str=riddle_date, achieved_top_score=is_top_score
+            )
+
+        # If the user belongs to a group, also update the group's best using transaction
+        if group_id:
+            if update_group_best_score(
+                riddle_date=riddle_date,
+                locale=locale,
+                group_id=group_id,
+                user_id=user_id,
+                score=score,
                 word=word,
                 coord=coord,
                 timestamp=timestamp,
-            )
-            _GLOBAL_BEST_CACHE.setdefault(date, {})[locale] = best
-            firebase.put_message(best, path)
-            message = "Global best score updated"
-            update = True
-        # If the user belongs to a group, also update the group's best.
-        # Since there can be many groups, we don't cache the best scores
-        # for groups, but fetch them directly from Firebase.
-        if groupId:
-            group_path = f"gatadagsins/{date}/{locale}/group/{groupId}/best"
-            group_best: Optional[BestDict] = firebase.get_data(group_path)
-            if not group_best:
-                # If no group best already exists, assign a null default
-                group_best = BestDict(
-                    score=0, player="", word="", coord="", timestamp=""
-                )
-            if score > group_best.get("score", 0):
-                # If the submitted move is better than the current group best,
-                # update the group's best
-                group_best = BestDict(
-                    score=score,
-                    player=userId,
-                    word=word,
-                    coord=coord,
-                    timestamp=timestamp,
-                )
-                firebase.put_message(group_best, group_path)
+            ):
                 if not message:
                     message = "Group best score updated"
                 update = True
+
     except Exception:
         # If something goes wrong, return an error
         return jsonify(ok=False, error="Submission failed")

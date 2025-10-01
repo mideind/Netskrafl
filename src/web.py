@@ -19,11 +19,11 @@ JSON-based client API entrypoints are implemented in api.py.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import (
     Mapping,
     Optional,
     Dict,
+    TypedDict,
     Union,
     List,
     Any,
@@ -36,6 +36,7 @@ import sys
 import logging
 from urllib.parse import urlparse
 import uuid
+from datetime import UTC, datetime
 
 from flask import (
     Blueprint,
@@ -74,7 +75,7 @@ from basics import (
 )
 from logic import UserForm, promo_to_show_to_user, autoplayer_lock
 from skrafldb import PrefsDict, ZombieModel
-from skraflgame import Game
+from skraflgame import Game, BingoList
 from skraflplayer import COMMON, AutoPlayer
 from skrafluser import User, UserLoginDict, verify_malstadur_token
 import firebase
@@ -87,6 +88,21 @@ from languages import current_board_type, set_game_locale
 RouteType = Callable[..., ResponseType]
 UserPrefsType = Dict[str, Union[str, bool]]
 GameList = List[Dict[str, Union[str, int, bool, Dict[str, bool]]]]
+
+
+class OpenGraphDict(TypedDict):
+    """TypedDict for OpenGraph metadata used in game board pages"""
+    og: int  # -1 for third party view, 0 or 1 for player index
+    player0: str  # Nickname of player from pix perspective
+    player1: str  # Nickname of opponent from pix perspective
+    winner: int  # -1 for draw, 0 or 1 for winning player
+    win: bool  # True if the player at perspective 'og' won
+    draw: bool  # True if the game was a draw
+    score0: str  # Score of player0
+    score1: str  # Score of player1
+    bingo0: BingoList  # List of bingoes for player0
+    bingo1: BingoList  # List of bingoes for player1
+
 
 # Promotion parameters
 # A promo check is done randomly, but on average every 1 out of N times
@@ -234,16 +250,17 @@ def board() -> ResponseType:
     uuid = request.args.get("game", None)
     # Requesting a look at a newly finished game
     zombie = request.args.get("zombie", None)
+    og: int | None = None
     try:
         # If the og argument is present, it indicates that OpenGraph data
         # should be included in the page header, from the point of view of
         # the player that the argument represents (i.e. og=0 or og=1).
         # If og=-1, OpenGraph data should be included but from a neutral
         # (third party) point of view.
-        og = request.args.get("og", None)
-        if og is not None:
+        og_str = request.args.get("og", None)
+        if og_str is not None:
             # This should be a player index: -1 (third party), 0 or 1
-            og = int(og)  # May throw an exception
+            og = int(og_str)  # May throw an exception
             if og < -1:
                 og = -1
             elif og > 1:
@@ -294,7 +311,7 @@ def board() -> ResponseType:
         # on it from a zombie list: remove it from the list
         ZombieModel.del_game(game.id(), uid)
 
-    ogd = None  # OpenGraph data
+    ogd: Optional[OpenGraphDict] = None  # OpenGraph data
     if og is not None and is_over:
         # This game is a valid and visible OpenGraph object
         # Calculate the OpenGraph stuff to be included in the page header
@@ -302,7 +319,7 @@ def board() -> ResponseType:
         sc = game.final_scores()
         winner = game.winning_player()  # -1 if draw
         bingoes = game.bingoes()
-        ogd = dict(
+        ogd = OpenGraphDict(
             og=og,
             player0=game.player_nickname(pix),
             player1=game.player_nickname(1 - pix),
@@ -644,7 +661,7 @@ def newbag() -> ResponseType:
 
 @web.route("/userprefs", methods=["GET", "POST"])
 @auth_required()
-def userprefs():
+def userprefs() -> ResponseType:
     """ Handler for the user preferences page """
 
     user = current_user()

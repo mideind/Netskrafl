@@ -1473,6 +1473,7 @@ class User:
         """Return the profile of a given user along with key statistics,
         as a dictionary as well as an error code"""
         cuid = cuser.id()
+        user: Optional[User] = None
         if cuid == uid:
             # Current user: no need to load the user object
             user = cuser
