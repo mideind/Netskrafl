@@ -30,6 +30,7 @@ from typing import (
     TypeVar,
     TypedDict,
     Union,
+    cast,
 )
 
 import logging
@@ -591,6 +592,7 @@ def process_move(
                 tile = "?"
             else:
                 letter = tile
+            assert isinstance(m, Move)  # For mypy; Pylance is clever enough
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
@@ -1001,6 +1003,7 @@ def userlist(query: str, spec: str) -> UserList:
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
+        assert si is not None  # For mypy (Pylance knows that si can't be None here)
         func_online_status = online.users_online
         elos = locale_elos(locale, (uid for ud in si if (uid := ud.get("id"))))
 
@@ -1285,7 +1288,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             uuid = g["uuid"]
             game_locale = g["locale"]
             nick = u.nickname()
-            prefs: Optional[PrefsDict] = g.get("prefs", None)
+            prefs = cast(Optional[PrefsDict], g.get("prefs", None))
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
@@ -1352,7 +1355,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         timed = Game.get_duration_from_prefs(prefs)
         fullname = ""
         robot_level: int = 0
-        rating: Optional[EloDict] = None
+        opp_rating: Optional[EloDict] = None
         if opp is None:
             # Autoplayer opponent
             robot_level = g["robot_level"]
@@ -1370,7 +1373,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             # If the opponent is in the same locale as the current user,
             # use the Elo rating that we previously multi-fetched;
             # otherwise, use the Elo rating in the opponent's own locale
-            rating = elos.get(opp) if u.locale == locale else u.elo_for_locale()
+            opp_rating = elos.get(opp) if u.locale == locale else u.elo_for_locale()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
@@ -1403,8 +1406,8 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 image="" if u is None else u.thumbnail(),
                 fav=False if cuser is None else cuser.has_favorite(opp),
                 robot_level=robot_level,
-                elo=0 if rating is None else rating.elo,
-                human_elo=0 if rating is None else rating.human_elo,
+                elo=0 if opp_rating is None else opp_rating.elo,
+                human_elo=0 if opp_rating is None else opp_rating.human_elo,
             )
         )
     # Set the live status of the opponents in the list

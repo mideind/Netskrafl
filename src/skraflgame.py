@@ -94,7 +94,6 @@ class MoveTuple(NamedTuple):
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
 
-MoveSummaryTuple = Tuple[int, SummaryTuple]
 MoveList = List[MoveSummaryTuple]
 BestMove = MoveSummaryTuple
 BestMoveList = List[BestMove]
@@ -157,6 +156,10 @@ class ClientStateDict(TypedDict, total=False):
     two_letter_words: TwoLetterGroupTuple
     userid: List[Optional[str]]
     xchg: bool
+
+
+# A list of bingoes in a game
+BingoList = List[Tuple[str, int]]
 
 
 # The default nickname to display if a player has an unreadable nick
@@ -1285,7 +1288,7 @@ class Game:
 
         return reply
 
-    def bingoes(self) -> Tuple[List[Tuple[str, int]], List[Tuple[str, int]]]:
+    def bingoes(self) -> Tuple[BingoList, BingoList]:
         """Returns a tuple of lists of bingoes for both players"""
         # List all bingoes in the game
         assert self.state is not None

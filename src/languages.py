@@ -59,7 +59,7 @@ from alphabets import (
 _T = TypeVar("_T")
 
 DEFAULT_LANGUAGE = "is_IS" if NETSKRAFL else "en_US"
-DEFAULT_BOARD_TYPE = "standard" if NETSKRAFL else "explo"
+DEFAULT_BOARD_TYPE: BoardTypes = "standard" if NETSKRAFL else "explo"
 
 
 class TileSet(abc.ABC):
@@ -834,14 +834,14 @@ current_board_type: Callable[[], BoardTypes] = lambda: current_locale.get().boar
 
 
 @overload
-def dget(d: Dict[str, _T], key: str) -> Optional[_T]: ...
+def dget(d: Mapping[str, _T], key: str) -> Optional[_T]: ...
 
 
 @overload
-def dget(d: Dict[str, _T], key: str, default: _T) -> _T: ...
+def dget(d: Mapping[str, _T], key: str, default: _T) -> _T: ...
 
 
-def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
+def dget(d: Mapping[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
     """Retrieve value from dictionary by locale code, as precisely as possible,
     i.e. trying 'is_IS' first, then 'is', before giving up"""
     val = d.get(key)
