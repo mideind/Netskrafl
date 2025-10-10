@@ -26,7 +26,6 @@ from typing import (
     Optional,
     Sequence,
     Dict,
-    Tuple,
     TypeVar,
     TypedDict,
     cast,
@@ -129,6 +128,9 @@ class LeaderboardEntry(TypedDict):
     displayName: str
     score: int
     timestamp: str
+
+
+LeaderboardDict = Dict[str, LeaderboardEntry]
 
 
 class RiddleAchievement(TypedDict):
@@ -435,7 +437,7 @@ def update_global_best_score(
     word: str,
     coord: str,
     timestamp: str,
-) -> Tuple[bool, int]:
+) -> bool:
     """Update global best score using a Firebase transaction.
     Returns [updated, best_score_so_far]. 'updated' is True if
     the global best was updated, False otherwise."""
@@ -468,7 +470,7 @@ def update_global_best_score(
         return best_so_far
 
     firebase.run_transaction(path, transaction_update)
-    return updated, best_score_so_far
+    return updated
 
 
 def update_group_best_score(
@@ -516,38 +518,75 @@ def update_leaderboard_entry(
     user_display_name: str,
     score: int,
     timestamp: str,
-) -> None:
-    """Update leaderboard entry using a Firebase transaction.
-    Only updates if score improves or same score achieved earlier."""
-    path = f"gatadagsins/{riddle_date}/{locale}/leaders/{user_id}"
+) -> bool:
+    """Update leaderboard, maintaining top 20 entries sorted by score (desc)
+    then timestamp (asc). Returns True if the entry made it into the top 20."""
+    path = f"gatadagsins/{riddle_date}/{locale}/leaders"
+    made_leaderboard = False
 
-    def transaction_update(current_data: Optional[LeaderboardEntry]) -> LeaderboardEntry:
+    def transaction_update(
+        current_data: Optional[LeaderboardDict]
+    ) -> LeaderboardDict:
         """Transaction function to update leaderboard atomically"""
-        if not current_data:
-            # No existing entry, add new one
-            return LeaderboardEntry(
-                userId=user_id,
-                displayName=user_display_name or user_id,
-                score=score,
-                timestamp=timestamp,
-            )
+        nonlocal made_leaderboard
 
-        old_score = current_data.get("score", 0)
-        old_timestamp = current_data.get("timestamp", "")
+        # Get current leaderboard as a dict of user_id -> LeaderboardEntry
+        leaderboard: LeaderboardDict = current_data or {}
 
-        if score > old_score or (score == old_score and timestamp < old_timestamp):
-            # Better score, or same score achieved earlier
-            return LeaderboardEntry(
-                userId=user_id,
-                displayName=user_display_name or user_id,
-                score=score,
-                timestamp=timestamp,
-            )
+        # Check if user already has an entry
+        existing_entry = leaderboard.get(user_id)
 
-        # Don't update - existing entry is better or same score with earlier timestamp
-        return current_data
+        if existing_entry:
+            # If better score than existing entry, keep it
+            # (We don't need to think about timestamps in the case of equal scores,
+            # since the new entry is by definition later than the existing one)
+            assert current_data is not None
+            if score > existing_entry["score"]:
+                user_entry = LeaderboardEntry(
+                    userId=user_id,
+                    displayName=user_display_name or existing_entry.get("displayName", user_id),
+                    score=score,
+                    timestamp=timestamp,
+                )
+                new_data = current_data.copy()
+                new_data[user_id] = user_entry
+                made_leaderboard = True
+                return new_data
+            # Not better than existing entry: we're done
+            return current_data  # No change
+
+        # Potential new entry
+        user_entry = LeaderboardEntry(
+            userId=user_id,
+            displayName=user_display_name or user_id,
+            score=score,
+            timestamp=timestamp,
+        )
+
+        # Build list of all current entries
+        all_entries = list(leaderboard.items())
+
+        # Add current user's entry
+        all_entries.append((user_id, user_entry))
+
+        # Sort by score (descending) then timestamp (ascending)
+        all_entries.sort(key=lambda x: (-x[1]["score"], x[1]["timestamp"]))
+
+        # Keep only top 20
+        top_20 = all_entries[:20]
+
+        # Check if our user made it into the top 20
+        if all(uid != user_id for uid, _ in top_20):
+            # User didn't make it into top 20: no change
+            assert current_data is not None
+            return current_data
+
+        # Return new leaderboard
+        made_leaderboard = True
+        return {uid: entry for uid, entry in top_20}
 
     firebase.run_transaction(path, transaction_update)
+    return made_leaderboard
 
 
 @riddle_route("/gatadagsins/riddle")
@@ -636,7 +675,7 @@ def submit_api() -> ResponseType:
     message = ""
     try:
         # Update global best score using transaction
-        updated, best_score_so_far = update_global_best_score(
+        updated = update_global_best_score(
             riddle_date=riddle_date,
             locale=locale,
             user_id=user_id,
@@ -649,16 +688,15 @@ def submit_api() -> ResponseType:
             message = "Global best score updated"
             update = True
 
-        if score >= best_score_so_far:
-            # Equal to or greater than global best-so-far score: update the leaderboard
-            update_leaderboard_entry(
-                riddle_date=riddle_date,
-                locale=locale,
-                user_id=user_id,
-                user_display_name=user_display_name,
-                score=score,
-                timestamp=timestamp,
-            )
+        # Always update the leaderboard (top 20 regardless of global best)
+        update_leaderboard_entry(
+            riddle_date=riddle_date,
+            locale=locale,
+            user_id=user_id,
+            user_display_name=user_display_name,
+            score=score,
+            timestamp=timestamp,
+        )
 
         # Update the user's personal achievement status
         # Determine if this is a top score by comparing to max_score
