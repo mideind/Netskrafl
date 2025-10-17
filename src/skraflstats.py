@@ -358,13 +358,13 @@ def _create_ratings() -> None:
             def _augment(prop: str) -> None:
                 asm = cast(Any, sm)  # Type checking hack
                 asm[prop + "_yesterday"] = (
-                    t_yesterday[key][prop] if key in t_yesterday else 0
+                    t_yesterday[key][prop] if key in t_yesterday else 0  # type: ignore[literal-required]
                 )
                 asm[prop + "_week_ago"] = (
-                    t_week_ago[key][prop] if key in t_week_ago else 0
+                    t_week_ago[key][prop] if key in t_week_ago else 0  # type: ignore[literal-required]
                 )
                 asm[prop + "_month_ago"] = (
-                    t_month_ago[key][prop] if key in t_month_ago else 0
+                    t_month_ago[key][prop] if key in t_month_ago else 0  # type: ignore[literal-required]
                 )
 
             _augment("rank")

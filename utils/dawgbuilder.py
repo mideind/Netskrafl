@@ -204,13 +204,13 @@ class _DawgNode:
         ]
         return "_".join(edge_list)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.id: int = _DawgNode._nextid
         _DawgNode._nextid += 1
         self.edges: DawgDict = dict()
         self.final = False
-        self._strng = None  # Cached string representation of this node
-        self._hash = None  # Hash of the final flag and a shallow traversal of the edges
+        self._strng: str | None = None  # Cached string representation of this node
+        self._hash: int | None = None  # Hash of the final flag and a shallow traversal of the edges
 
     def __str__(self) -> str:
         """Return a string representation of this node, cached if possible"""

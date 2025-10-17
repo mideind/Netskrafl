@@ -194,10 +194,10 @@ def decode_cookie(cookie: str) -> str:
     if compressed := payload.startswith("."):
         payload = payload[1:]
     data = payload.split(".")[0]
-    data = base64_decode(data)
+    data_bytes = base64_decode(data)
     if compressed:
-        data = zlib.decompress(data)
-    return data.decode("utf-8")
+        data_bytes = zlib.decompress(data_bytes)
+    return data_bytes.decode("utf-8")
 
 
 def get_session_dict(client: CustomClient) -> Dict[str, Any]:

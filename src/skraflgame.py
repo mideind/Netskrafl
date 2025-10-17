@@ -77,6 +77,7 @@ from skraflmechanics import (
 from skraflplayer import AutoPlayer
 from skrafluser import User
 from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
+from autoplayers import autoplayer_create, autoplayer_name
 
 
 # Type definitions
@@ -598,7 +599,7 @@ class Game:
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
-            nick = AutoPlayer.name(self.locale, self.robot_level)
+            nick = autoplayer_name(self.locale, self.robot_level)
         else:
             # This is a human user
             nick = u.nickname()
@@ -620,7 +621,7 @@ class Game:
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
-            name = AutoPlayer.name(self.locale, self.robot_level)
+            name = autoplayer_name(self.locale, self.robot_level)
         else:
             # This is a human user
             name = u.full_name().strip()
@@ -666,13 +667,13 @@ class Game:
         """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
-        return self._preferences.get(pref, None)
+        return self._preferences.get(pref, None)  # type: ignore[return-value]
 
     def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
         """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
-        self._preferences[pref] = value
+        self._preferences[pref] = value  # type: ignore[literal-required]
 
     @staticmethod
     def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
@@ -953,7 +954,7 @@ class Game:
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
         assert self.state is not None
-        apl = AutoPlayer.create(self.state, self.robot_level)
+        apl = autoplayer_create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
         self.last_move = move  # Store a response move

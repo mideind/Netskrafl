@@ -57,6 +57,7 @@ from skraflplayer import (
     AutoPlayer_Custom,
     AutoPlayer_MiniMax,
 )
+from autoplayers import autoplayer_create
 
 
 PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
@@ -334,7 +335,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         level = int(opponent[6:])
 
         def robot_creator(state: State) -> AutoPlayer:
-            return AutoPlayer.create(state, level)
+            return autoplayer_create(state, level)
 
         players[0] = (f"Robot-{level}", robot_creator)
         players[1] = (f"Robot-{level}", robot_creator)
@@ -355,8 +356,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
     gameswon = [0, 0]
     totalpoints = [0, 0]
     sumofmargin = [0, 0]
-    total_word_length = 0
-    total_word_score = 0
+    total_word_length = 0.0
+    total_word_score = 0.0
     draws = 0
 
     t0 = time.time()

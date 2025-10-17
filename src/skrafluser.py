@@ -606,7 +606,7 @@ class User:
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        return self._preferences.get(pref, default)
+        return self._preferences.get(pref, default)  # type: ignore[return-value]
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
@@ -620,7 +620,7 @@ class User:
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
-        self._preferences[pref] = value
+        self._preferences[pref] = value  # type: ignore[literal-required]
 
     @staticmethod
     def full_name_from_prefs(prefs: Optional[PrefsDict]) -> str:
@@ -1569,7 +1569,7 @@ class User:
                     result[ix] = p
                 else:
                     prev = r
-            profile[f"elo_{PERIOD}_days"] = result
+            profile[f"elo_{PERIOD}_days"] = result  # type: ignore[literal-required]
 
         return Error.LEGAL, profile
 

@@ -81,7 +81,6 @@ from typing import (
     Type,
     TypeVar,
     TypedDict,
-    Union,
     Callable,
     cast,
     overload,
@@ -311,14 +310,14 @@ class Query(Generic[_T_Model], ndb.Query):
 
     def fetch(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]:
-        f: Callable[..., Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]] = cast(
+    ) -> Sequence[Key[_T_Model]] | Sequence[_T_Model]:
+        f: Callable[..., Sequence[Key[_T_Model]] | Sequence[_T_Model]] = cast(
             Any, super()
         ).fetch
         return f(*args, **kwargs)
 
     def fetch_async(
-        self, limit: Optional[int] = None, **kwargs: Any
+        self, limit: int | None = None, **kwargs: Any
     ) -> Future[_T_Model]:
         f: Callable[..., Future[_T_Model]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
@@ -337,10 +336,10 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...  # type: ignore
+    def get(self, *args: Any, **kwargs: Any) -> None | _T_Model: ...  # type: ignore
 
-    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
-        f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
+    def get(self, *args: Any, **kwargs: Any) -> None | Key[_T_Model] | _T_Model:
+        f: Callable[..., None | Key[_T_Model] | _T_Model] = cast(Any, super()).get
         return f(*args, **kwargs)
 
     def count(self, *args: Any, **kwargs: Any) -> int:
@@ -356,8 +355,8 @@ class Query(Generic[_T_Model], ndb.Query):
 
     def iter(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]:
-        f: Callable[..., Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]] = cast(
+    ) -> Iterator[Key[_T_Model]] | Iterator[_T_Model]:
+        f: Callable[..., Iterator[Key[_T_Model]] | Iterator[_T_Model]] = cast(
             Any, super()
         ).iter
         return f(*args, **kwargs)
@@ -379,7 +378,7 @@ class Key(Generic[_T_Model], ndb.Key):
     """A type-safer wrapper around ndb.Key"""
 
     def __init__(self, *args: Any) -> None:
-        super().__init__()
+        super().__init__(*args)
 
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
@@ -387,11 +386,11 @@ class Key(Generic[_T_Model], ndb.Key):
     def kind(self) -> str:
         return cast(str, cast(Any, super()).kind())
 
-    def parent(self) -> Optional[Key[ndb.Model]]:
-        return cast(Optional[Key[ndb.Model]], cast(Any, super()).parent())
+    def parent(self) -> Key[ndb.Model] | None:
+        return cast(Key[ndb.Model] | None, cast(Any, super()).parent())
 
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        return cast(Optional[_T_Model], cast(Any, super()).get(*args, **kwargs))
+    def get(self, *args: Any, **kwargs: Any) -> None | _T_Model:
+        return cast(None | _T_Model, cast(Any, super()).get(*args, **kwargs))
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
         cast(Any, super()).delete(*args, **kwargs)
@@ -412,10 +411,10 @@ class Model(Generic[_T_Model], ndb.Model):
         ndb.put_multi(list(recs))
 
     @classmethod
-    def get_by_id(  # type: ignore
-        cls: Type[_T_Model], identifier: str, **kwargs: Any
-    ) -> Optional[_T_Model]:
-        return cast(Any, super()).get_by_id(identifier, **kwargs)
+    def get_by_id(
+        cls: Type[_T_Model], id: int | str | None, *args: Any, **kwargs: Any
+    ) -> _T_Model | None:
+        return cast(Any, super()).get_by_id(id, *args, **kwargs)
 
     @classmethod
     def query(cls: Type[_T_Model], *args: Any, **kwargs: Any) -> Query[_T_Model]:
@@ -430,9 +429,9 @@ class Model(Generic[_T_Model], ndb.Model):
     @staticmethod
     def OptionalDbKey(
         kind: Type[_T_Model], indexed: bool = True
-    ) -> Optional[Key[_T_Model]]:
+    ) -> Key[_T_Model] | None:
         return cast(
-            Optional[Key[_T_Model]],
+            Key[_T_Model] | None,
             ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
         )
 

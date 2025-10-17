@@ -73,8 +73,8 @@ from skraflmechanics import (
     PassMove,
     ResignMove,
 )
+from autoplayers import autoplayer_for_locale, autoplayer_name
 from skrafluser import MAX_NICKNAME_LENGTH, User, fetch_users
-from skraflplayer import AutoPlayer
 from skrafldb import (
     EloDict,
     EloModel,
@@ -766,7 +766,7 @@ def userlist(query: str, spec: str) -> UserList:
 
     if query == "robots":
         # Return the list of available autoplayers for the user's locale
-        aplist = AutoPlayer.for_locale(locale)
+        aplist = autoplayer_for_locale(locale)
         for r in aplist:
             result.append(
                 UserListDict(
@@ -1103,7 +1103,7 @@ def rating(kind: str) -> List[UserRatingDict]:
             # for instance robot-15-en. If the locale is missing, use "is".
             a = uid.split("-")
             lc = a[2] if len(a) >= 3 else "is"
-            nick = AutoPlayer.name(lc, int(a[1]))
+            nick = autoplayer_name(lc, int(a[1]))
             fullname = nick
             chall = False
             fairplay = False
@@ -1207,7 +1207,7 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
         if uid.startswith("robot-"):
             a = uid.split("-")
             try:
-                nick = AutoPlayer.name(locale, int(a[1]))
+                nick = autoplayer_name(locale, int(a[1]))
             except ValueError:
                 nick = "--"
             fullname = nick
@@ -1359,7 +1359,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         if opp is None:
             # Autoplayer opponent
             robot_level = g["robot_level"]
-            nick = AutoPlayer.name(game_locale, robot_level)
+            nick = autoplayer_name(game_locale, robot_level)
         else:
             # Human opponent
             u = opponents.get(opp)
@@ -1447,7 +1447,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
         if opp is None:
             # Autoplayer opponent
             u = None
-            nick = AutoPlayer.name(locale, g["robot_level"])
+            nick = autoplayer_name(locale, g["robot_level"])
         else:
             # Human opponent
             u = opponents.get(opp)

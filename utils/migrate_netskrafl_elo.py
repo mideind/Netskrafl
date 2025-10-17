@@ -46,7 +46,7 @@ try:
     from skrafldb import UserModel, EloModel, RobotModel, StatsModel, iter_q
     from skraflelo import EloDict
     from config import DEFAULT_ELO, DEFAULT_LOCALE
-    from skraflplayer import TOP_SCORE, COMMON, ADAPTIVE
+    from autoplayers import TOP_SCORE, COMMON, ADAPTIVE
 except ImportError as e:
     print(f"Error importing required modules: {e}")
     print("Make sure you're running this from the Netskrafl utils directory")

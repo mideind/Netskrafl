@@ -76,7 +76,7 @@ from basics import (
 from logic import UserForm, promo_to_show_to_user, autoplayer_lock
 from skrafldb import PrefsDict, ZombieModel
 from skraflgame import Game, BingoList
-from skraflplayer import COMMON, AutoPlayer
+from autoplayers import COMMON, autoplayer_create
 from skrafluser import User, UserLoginDict, verify_malstadur_token
 import firebase
 import billing
@@ -766,7 +766,7 @@ def review() -> ResponseType:
         with autoplayer_lock:
 
             # Show best moves if available and it is proper to do so (i.e. the game is finished)
-            apl = AutoPlayer.create(state)
+            apl = autoplayer_create(state)
             # 19 is what fits on screen
             best_moves = apl.generate_best_moves(19)
 
