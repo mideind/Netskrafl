@@ -1,6 +1,6 @@
 """
 
-    Autoplayers - the robot inventory of the Netskrafl game
+    Autoplayers - the robot inventory of the Netskrafl/Explo game
 
     Copyright © 2025 Miðeind ehf.
     Author: Vilhjálmur Þorsteinsson
@@ -17,6 +17,7 @@ from typing import List, NamedTuple, Protocol, Dict, Any
 
 from functools import lru_cache
 
+from config import NETSKRAFL
 from skraflplayer import AutoPlayer, AutoPlayer_Custom, AutoPlayerKwargs
 from skraflmechanics import State
 
@@ -54,6 +55,38 @@ ADAPTIVE = 20
 
 # The available autoplayers (robots) for each locale.
 # The list for each locale should be ordered in ascending order by level.
+
+# Legacy autoplayers matching the old 'netskrafl' branch (as of Feb 3, 2025)
+# Used to exactly replicate the behavior of the deployed GAE backend
+AUTOPLAYERS_IS_CLASSIC: AutoPlayerList = [
+    AutoPlayerTuple(
+        "Fullsterkur",
+        "Velur stigahæsta leik í hverri stöðu",
+        TOP_SCORE,
+        AutoPlayer,
+        {},
+    ),
+    AutoPlayerTuple(
+        "Miðlungur",
+        "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
+        MEDIUM,
+        AutoPlayer_Custom,
+        AutoPlayerKwargs(
+            vocab="midlungur",
+            pick_from=10,
+        ),
+    ),
+    AutoPlayerTuple(
+        "Amlóði",
+        "Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
+        COMMON,
+        AutoPlayer_Custom,
+        AutoPlayerKwargs(
+            vocab="amlodi",
+            pick_from=20,
+        ),
+    ),
+]
 
 AUTOPLAYERS_IS: AutoPlayerList = [
     AutoPlayerTuple(
@@ -325,7 +358,7 @@ AUTOPLAYERS_PL: AutoPlayerList = [
 
 AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     # Icelandic
-    "is": AUTOPLAYERS_IS,
+    "is": AUTOPLAYERS_IS_CLASSIC if NETSKRAFL else AUTOPLAYERS_IS,
     # U.S. English
     "en_US": AUTOPLAYERS_EN_US,
     # Default English (UK & Rest Of World)
