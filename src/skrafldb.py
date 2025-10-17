@@ -378,7 +378,7 @@ class Key(Generic[_T_Model], ndb.Key):
     """A type-safer wrapper around ndb.Key"""
 
     def __init__(self, *args: Any) -> None:
-        super().__init__(*args)
+        super().__init__()  # Resist the temptation to put (*args) here; it doesn't work
 
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
