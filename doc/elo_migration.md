@@ -46,10 +46,11 @@ compute_locale_elo_for_game(gm, u0, u1)  # Updates EloModel (new-style)
 - Single rating set per user (no locale support)
 - Used by Netskrafl
 
-**New-Style (EloModel entities):**
+**New-Style (EloModel/RobotModel entities):**
 - Separate EloModel entity per user/locale combination
+- Separate RobotModel entity per robot level/locale combination (tracks robot performance)
 - Parent-child relationship: UserModel → EloModel
-- Supports locale-specific ratings
+- Supports locale-specific ratings for both humans and robots
 - Used by Explo
 
 ## Key Differences Between Products
@@ -62,16 +63,17 @@ compute_locale_elo_for_game(gm, u0, u1)  # Updates EloModel (new-style)
 - **Cron Jobs:**
   - `/stats/run` - Recalculates all Elo ratings from games
   - `/stats/ratings` - Updates leaderboards
-- **Code Path:** `User.elo_for_locale()` returns UserModel data (see lines 524-530 in `src/skrafluser.py`)
+- **Code Path:** `User.elo_for_locale()` returns UserModel data (see lines 533-542 in `src/skrafluser.py`)
 - **Locale:** Always `is_IS` (DEFAULT_LOCALE)
 
 ### Explo (Multilingual)
 
-- **Storage:** Uses EloModel entities
+- **Storage:** Uses EloModel entities (humans) and RobotModel entities (robots)
 - **Updates:** Real-time calculation after each game (authoritative)
 - **Authority:** No batch processing - immediate updates are final
 - **Cron Jobs:** None for Elo calculations
 - **Code Path:** `User.elo_for_locale()` returns locale-specific EloModel data
+- **Robot Tracking:** Robot Elo ratings tracked per locale and level in RobotModel
 - **Locales:** `en_US`, `is_IS`, `pl_PL`, `nb_NO`, `nn_NO`
 
 ## Migration Path: Netskrafl → Explo Model
@@ -106,7 +108,7 @@ for user in UserModel.query():
 
 **Remove NETSKRAFL conditional in `src/skrafluser.py`:**
 ```python
-# Current (lines 524-530)
+# Current (lines 533-549)
 def elo_for_locale(self, locale: Optional[str] = None) -> EloDict:
     if NETSKRAFL:
         # Always returns UserModel data
@@ -179,9 +181,10 @@ The conditional logic based on `PROJECT_ID` ensures:
 ### File Locations
 
 - **Elo Calculation:** `src/skraflelo.py`
-- **Game Completion:** `src/skraflgame.py` (lines 564-568)
-- **User Model:** `src/skrafluser.py` (lines 521-539)
-- **Database Models:** `src/skrafldb.py` (lines 999-1050)
+- **Game Completion:** `src/skraflgame.py` (lines 568, 572)
+- **User Model:** `src/skrafluser.py` (lines 533-549)
+- **Database Models:** `src/skrafldb.py` (lines 1012-1050 for EloModel, 1220-1260 for RobotModel)
+- **Autoplayer Config:** `src/autoplayers.py` (NETSKRAFL-aware robot selection)
 - **Batch Processing:** `src/skraflstats.py`
 - **Configuration:** `src/config.py` (PROJECT_ID detection)
 - **Cron Jobs:** `cron.yaml`
@@ -196,17 +199,109 @@ The conditional logic based on `PROJECT_ID` ensures:
 
 ```
 UserModel (parent)
-    ├── elo: int          # Old-style ratings
-    ├── human_elo: int    # (Netskrafl only)
-    └── manual_elo: int
+    ├── elo: int          # Old-style ratings (Netskrafl)
+    ├── human_elo: int    # Netskrafl only
+    └── manual_elo: int   # Netskrafl only
 
 EloModel (child of UserModel)
     ├── locale: str       # Locale identifier
-    ├── elo: int          # New-style ratings
-    ├── human_elo: int    # (Explo only)
-    └── manual_elo: int
+    ├── elo: int          # New-style ratings (Explo)
+    ├── human_elo: int    # Explo only
+    └── manual_elo: int   # Explo only
+
+RobotModel (standalone)
+    ├── id: str           # Format: "robot-{level}:{locale}"
+    └── elo: int          # Robot performance rating (Explo only)
 ```
+
+## Additional Considerations
+
+### Online User Tracking (Shared Infrastructure)
+
+**Both Netskrafl and Explo share the same online user tracking mechanism**, which is independent of the Elo system:
+
+#### How It Works
+
+1. **Firebase Real-time Presence:**
+   - Clients report connection status to Firebase in real-time
+   - Netskrafl path: `/connection/{user_id}`
+   - Explo path: `/connection/{locale}/{user_id}`
+
+2. **Redis Cache Sync (Cron Job):**
+   - Endpoint: `/connect/update` (see `src/firebase.py:420-446`)
+   - Schedule: Every 2 minutes (configured in `cron.yaml`)
+   - Purpose: Fetches connected users from Firebase and stores in Redis
+   - Redis keys: `live:{locale}` (e.g., `live:is_IS`, `live:en_US`)
+   - Cache expiry: 2 minutes (constant `_CONNECTED_EXPIRY`)
+
+3. **Query Path:**
+   - Code calls `online_status(locale)` to get an `OnlineStatus` instance
+   - `OnlineStatus.user_online(uid)` queries the Redis cache
+   - Fast lookup without hitting Firebase on every request
+
+#### Important Notes
+
+- **Already enabled for Netskrafl:** The `/connect/update` cron job is already in `cron.yaml` and runs for both products
+- **Not affected by Elo migration:** This mechanism is completely independent of Elo calculations
+- **Must remain enabled:** Do not disable this cron job during or after Elo migration
+- **Locale-aware:** The system automatically handles the correct Firebase paths based on `NETSKRAFL` flag
+
+### Robot Elo Tracking
+
+The new system (Explo) tracks robot performance in RobotModel entities:
+- Each robot level has a separate Elo rating per locale
+- Robot ratings evolve based on game outcomes (human vs robot)
+- This provides more accurate challenge levels across locales
+- Old system (Netskrafl) does not track robot Elo separately
+
+### Autoplayer Configuration
+
+The codebase now includes environment-aware autoplayer configuration:
+- `AUTOPLAYERS_IS_CLASSIC`: Matches old Netskrafl behavior (3 robots, simpler strategies)
+- `AUTOPLAYERS_IS`: New implementation (4 robots, adaptive strategies)
+- Selection controlled by `NETSKRAFL` flag in `src/autoplayers.py:360`
+- Ensures backward compatibility while allowing improved robot AI in Explo
+
+### Migration Testing Strategy
+
+Before enabling real-time Elo in production:
+
+1. **Parallel Run (1 week)**
+   - Keep batch processing enabled
+   - Run migration script to create EloModel entities
+   - Compare batch-calculated vs real-time-calculated ratings daily
+   - Investigate any discrepancies > 5 points
+
+2. **Soft Launch (1 week)**
+   - Disable batch recalculation
+   - Monitor Elo rating changes in real-time
+   - Keep backup of UserModel Elo fields
+   - Easy rollback available if issues detected
+
+3. **Full Migration**
+   - Once confident in real-time system
+   - Remove NETSKRAFL conditionals
+   - Clean up deprecated batch processing code
+
+### Risk Mitigation
+
+**Minimal Risk Factors:**
+- Both calculation paths use identical `compute_elo()` logic (src/skraflelo.py:36)
+- Real-time system already proven in Explo production
+- Rollback requires only config change (re-enable cron jobs)
+
+**Potential Issues:**
+- Timing: Real-time updates happen immediately vs nightly batch
+  - Impact: Players see Elo changes faster (could be positive)
+- Robot games: Old system doesn't track robot Elo separately
+  - Impact: Robot difficulty may vary more in new system (feature, not bug)
 
 ## Conclusion
 
-The unified codebase successfully supports both Elo calculation models through configuration-based behavior. While migration to a single model would simplify the system, the current dual-model approach is stable and production-ready.
+The unified codebase successfully supports both Elo calculation models through configuration-based behavior. The migration path to real-time Elo is low-risk due to:
+1. Identical core calculation logic
+2. Proven track record in Explo
+3. Easy rollback mechanism
+4. Parallel run testing strategy
+
+**Recommendation:** Proceed with migration using the parallel run strategy outlined above to minimize risk while enabling real-time Elo updates for Netskrafl.

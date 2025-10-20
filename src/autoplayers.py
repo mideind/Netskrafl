@@ -58,7 +58,7 @@ ADAPTIVE = 20
 
 # Legacy autoplayers matching the old 'netskrafl' branch (as of Feb 3, 2025)
 # Used to exactly replicate the behavior of the deployed GAE backend
-AUTOPLAYERS_IS_CLASSIC: AutoPlayerList = [
+AUTOPLAYERS_IS_NETSKRAFL: AutoPlayerList = [
     AutoPlayerTuple(
         "Fullsterkur",
         "Velur stigahæsta leik í hverri stöðu",
@@ -358,7 +358,7 @@ AUTOPLAYERS_PL: AutoPlayerList = [
 
 AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     # Icelandic
-    "is": AUTOPLAYERS_IS_CLASSIC if NETSKRAFL else AUTOPLAYERS_IS,
+    "is": AUTOPLAYERS_IS_NETSKRAFL if NETSKRAFL else AUTOPLAYERS_IS,
     # U.S. English
     "en_US": AUTOPLAYERS_EN_US,
     # Default English (UK & Rest Of World)
