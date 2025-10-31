@@ -8,6 +8,6 @@ dispatch:
   - url: "www.netskrafl.is/*"
     service: default
 
-  # Route netskrafl.mideind.is to the dedicated demo service
+  # Route netskrafl.mideind.is to the default service
   - url: "netskrafl.mideind.is/*"
-    service: demo
+    service: default
