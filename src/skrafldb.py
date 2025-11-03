@@ -127,6 +127,7 @@ class PrefsDict(TypedDict, total=False):
     beginner: bool
     ready: bool
     ready_timed: bool
+    audio: bool
     fanfare: bool
 
 
@@ -699,7 +700,7 @@ class UserModel(Model["UserModel"]):
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
         user.prefs = preferences or {}  # Default to no preferences
-        if user.prefs.get("friend"):
+        if user.prefs.get("friend", False):
             user.plan = "friend"
         user.name_lc = user.prefs.get("full_name", "").lower()
         user.ready = True  # Ready for new challenges by default
@@ -713,6 +714,7 @@ class UserModel(Model["UserModel"]):
             ready=True,
             ready_timed=True,
             fanfare=False,
+            audio=False,
             fairplay=False,
         )
         all_prefs.update(user.prefs)

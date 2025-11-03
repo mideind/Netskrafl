@@ -606,16 +606,16 @@ class User:
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        return self._preferences.get(pref, default)  # type: ignore[return-value]
+        return self._preferences.get(pref, default)  # type: ignore[literal-required]
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
-        val = self._preferences.get(pref, default)
+        val = self._preferences.get(pref, default)  # type: ignore[literal-required]
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
-        """Retrieve a string preference, or "" if not found"""
-        val = self._preferences.get(pref, default)
+        """Retrieve a boolean preference, or False if not found"""
+        val = self._preferences.get(pref, default)  # type: ignore[literal-required]
         return val if isinstance(val, bool) else default
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
@@ -646,16 +646,6 @@ class User:
     def set_email(self, email: str) -> None:
         """Sets the e-mail address of a user in the user preferences"""
         self.set_pref("email", email)
-
-    def audio(self) -> bool:
-        """Returns True if the user wants audible signals"""
-        # True by default
-        return self.get_bool_pref("audio", True)
-
-    def set_audio(self, audio: bool) -> None:
-        """Sets the audio preference of a user to True or False"""
-        assert isinstance(audio, bool)
-        self.set_pref("audio", audio)
 
     @staticmethod
     def _url_for_image(
@@ -700,6 +690,15 @@ class User:
         # when the user entity is saved in the database!
         self._image = image
         self._has_image_blob = False
+
+    def audio(self) -> bool:
+        """Returns True if the user wants audible signals"""
+        # True by default
+        return self.get_bool_pref("audio", True)
+
+    def set_audio(self, audio: bool) -> None:
+        """Sets the audio preference of a user to True or False"""
+        self.set_pref("audio", audio)
 
     def fanfare(self) -> bool:
         """Returns True if the user wants a fanfare sound when winning"""
@@ -1323,15 +1322,19 @@ class User:
         if (um := UserModel.fetch_email(email)) is not None:
             # User exists: Note the login timestamp
             um.last_login = datetime.now(UTC)
-            # Force the friend state to the one coming from Málstaður
-            um.plan = "friend" if is_friend else ""
-            um.prefs["friend"] = is_friend
-            um.prefs["haspaid"] = is_friend
+            # For now, a user is a friend if he has either a friend status from
+            # the legacy Netskrafl/SalesCloud setup, or a subscription from Málstaður
+            is_legacy_friend = um.prefs.get("friend", False) or um.plan == "friend"
+            legacy_haspaid = um.prefs.get("haspaid", False)
+            um.plan = "friend" if is_friend or is_legacy_friend else ""
+            um.prefs["friend"] = is_friend or is_legacy_friend
+            um.prefs["haspaid"] = is_friend or legacy_haspaid
             um.put()
             all_prefs = PrefsDict(
                 ready=um.ready or False,
                 ready_timed=um.ready_timed or False,
                 beginner=True,
+                audio=False,
                 fanfare=False,
                 fairplay=False,
             )
