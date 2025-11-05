@@ -38,7 +38,7 @@ import requests
 from flask import Blueprint, request
 
 from config import PROJECT_ID, MOVES_AUTH_KEY, ResponseType, RouteType
-from basics import jsonify, auth_required, RequestData
+from basics import current_user_id, jsonify, auth_required, RequestData
 import firebase
 from languages import (
     set_locale,
@@ -649,8 +649,9 @@ def submit_api() -> ResponseType:
     except ValueError:
         return jsonify(ok=False, error="Invalid parameter: date")
 
+    user_id = current_user_id()
     locale = to_supported_locale(rq.get("locale", ""))
-    user_id = rq.get("userId", "")
+    # user_id = rq.get("userId", "")  # This is not currently used
     group_id = rq.get("groupId", "")
     user_display_name = rq.get("userDisplayName", "")
     move = cast(RiddleWordDict, rq.get("move", {}))
