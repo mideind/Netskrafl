@@ -622,9 +622,11 @@ def help() -> ResponseType:
 
 
 @web.route("/rawhelp")
+@auth_required()
 def rawhelp() -> ResponseType:
-    """Return raw help page HTML. Authentication is not required."""
+    """Return raw help page HTML."""
 
+    user = session_user()
     locale = request.args.get("locale", DEFAULT_LOCALE)
     version = request.args.get("version", "")
 
@@ -641,6 +643,7 @@ def rawhelp() -> ResponseType:
         locale,
         url_for=override_url_for,
         version=version,
+        user=user,
     )
 
 

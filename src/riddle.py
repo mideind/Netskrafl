@@ -58,6 +58,9 @@ T = TypeVar("T")
 RIDDLE_ENDPOINT_DEV = "https://moves-dot-explo-dev.appspot.com/riddle"
 RIDDLE_ENDPOINT_PROD = "https://moves-dot-explo-live.appspot.com/riddle"
 
+# How many entries (max) in the leaderboard?
+LEADERBOARD_ENTRIES = 50
+
 
 class MovesServiceSolutionDict(TypedDict):
     """A riddle solution as it arrives from the Moves service"""
@@ -519,8 +522,8 @@ def update_leaderboard_entry(
     score: int,
     timestamp: str,
 ) -> bool:
-    """Update leaderboard, maintaining top 20 entries sorted by score (desc)
-    then timestamp (asc). Returns True if the entry made it into the top 20."""
+    """Update leaderboard, maintaining top {LEADERBOARD_ENTRIES} entries sorted by score (desc)
+    then timestamp (asc). Returns True if the entry made it into the top list."""
     path = f"gatadagsins/{riddle_date}/{locale}/leaders"
     made_leaderboard = False
 
@@ -572,18 +575,18 @@ def update_leaderboard_entry(
         # Sort by score (descending) then timestamp (ascending)
         all_entries.sort(key=lambda x: (-x[1]["score"], x[1]["timestamp"]))
 
-        # Keep only top 20
-        top_20 = all_entries[:20]
+        # Keep only top ones
+        top_entries = all_entries[:LEADERBOARD_ENTRIES]
 
-        # Check if our user made it into the top 20
-        if all(uid != user_id for uid, _ in top_20):
-            # User didn't make it into top 20: no change
+        # Check if our user made it into the top list
+        if all(uid != user_id for uid, _ in top_entries):
+            # User didn't make it into top list: no change
             assert current_data is not None
             return current_data
 
         # Return new leaderboard
         made_leaderboard = True
-        return {uid: entry for uid, entry in top_20}
+        return {uid: entry for uid, entry in top_entries}
 
     firebase.run_transaction(path, transaction_update)
     return made_leaderboard
@@ -689,7 +692,8 @@ def submit_api() -> ResponseType:
             message = "Global best score updated"
             update = True
 
-        # Always update the leaderboard (top 20 regardless of global best)
+        # Always update the leaderboard
+        # (top {LEADERBOARD_ENTRIES} regardless of global best)
         update_leaderboard_entry(
             riddle_date=riddle_date,
             locale=locale,
@@ -718,7 +722,10 @@ def submit_api() -> ResponseType:
         if updated:
             # This is a significant update, so it might affect the user's streak stats
             update_user_streak_stats(
-                user_id=user_id, locale=locale, date_str=riddle_date, achieved_top_score=is_top_score
+                user_id=user_id,
+                locale=locale,
+                date_str=riddle_date,
+                achieved_top_score=is_top_score,
             )
 
         # If the user belongs to a group, also update the group's best using transaction
