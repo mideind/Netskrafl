@@ -53,7 +53,13 @@ from werkzeug.utils import send_file  # type: ignore
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 
-from config import OAUTH_CONF_URL, DEFAULT_THUMBNAIL_SIZE, RouteType, ResponseType
+from config import (
+    OAUTH_CONF_URL,
+    DEFAULT_THUMBNAIL_SIZE,
+    RouteType,
+    RouteFunc,
+    ResponseType,
+)
 from languages import set_locale
 from skrafluser import User
 from skrafldb import Client
@@ -61,9 +67,6 @@ from skrafldb import Client
 
 # Generic placeholder type
 T = TypeVar("T")
-
-# A Flask route function decorator
-RouteFunc = Callable[[RouteType], RouteType]
 
 
 class UserIdDict(TypedDict):

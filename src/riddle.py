@@ -16,7 +16,6 @@ This module contains the API entry points for the Gáta Dagsins feature.
 
 from __future__ import annotations
 
-import re
 from typing import (
     Any,
     Callable,
@@ -30,8 +29,9 @@ from typing import (
     TypedDict,
     cast,
 )
+
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import wraps
 
 import requests
@@ -87,6 +87,12 @@ class RiddleContentDict(TypedDict):
     max_score: int
 
 
+class SolutionDict(TypedDict):
+    """A riddle solution, as sent to the client"""
+    word: str
+    coord: str
+
+
 class RiddleDict(RiddleContentDict, total=False):
     """The entire information about today's riddle that is
     sent to the client, including static metadata"""
@@ -95,6 +101,7 @@ class RiddleDict(RiddleContentDict, total=False):
     tile_scores: Dict[str, int]
     two_letter_words: TwoLetterGroupTuple
     board_type: Literal["standard"] | Literal["explo"]
+    solution: SolutionDict
 
 
 class BestDict(TypedDict):
@@ -292,16 +299,33 @@ def riddle_max_score(date: str, locale: str) -> Optional[int]:
 
 
 @cache_if_not_none(maxsize=3)
-def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
+def get_or_create_riddle(date: str, locale: str, is_today: bool) -> Optional[RiddleDict]:
     """Get existing riddle or create a new one, with caching"""
     # Check if riddle already exists in Firebase
     path = f"gatadagsins/{date}/{locale}/riddle"
-    riddle: Optional[RiddleContentDict] = firebase.get_data(path)
     tile_scores = current_tileset().scores
+    riddle: Optional[RiddleContentDict] = None
+    solution: Optional[MovesServiceSolutionDict] = None
+
+    if is_today:
+        # Today's riddle is likely to be already in Firebase: check there first
+        riddle = firebase.get_data(path)
+    else:
+        # For previous days, always fetch from the database, since we need
+        # to return the solution as well
+        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(date, locale)
+        if riddle_from_database:
+            riddle = riddle_from_moves_service(
+                riddle_from_database.riddle, tile_scores
+            )
+            solution = riddle_from_database.riddle["solution"]
+        if riddle is None:
+            logging.error(f"Riddle for {date}:{locale} not found in database")
+            return None
 
     if not riddle:
         # Not found in Firebase: attempt to fetch the riddle from the database
-        riddle_from_database = RiddleModel.get_riddle(date, locale)
+        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(date, locale)
         if not riddle_from_database or not (
             riddle := riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
         ):
@@ -331,6 +355,10 @@ def get_or_create_riddle(date: str, locale: str) -> Optional[RiddleDict]:
     full_riddle["tile_scores"] = tile_scores
     full_riddle["board_type"] = "standard"
     full_riddle["two_letter_words"] = two_letter_words(locale)
+    if solution is not None:
+        # Translate to the solution format expected by the client
+        # !!! TODO: The "coord" field is incorrect in some riddles, so "description" needs to be used instead
+        full_riddle["solution"] = SolutionDict(word=solution["move"], coord=solution["coord"])
     return full_riddle
 
 
@@ -599,22 +627,37 @@ def riddle_api() -> ResponseType:
     rq = RequestData(request)
 
     # Decode POST parameters
-    date = rq.get("date", "")
+    riddle_date = rq.get("date", "")
     locale = rq.get("locale", "")
 
-    # Validate required parameters
-    if len(date) != 10 or date[4] != "-" or date[7] != "-":
-        # The date format is expected to be YYYY-MM-DD
-        return jsonify(ok=False, error="Invalid parameter: date")
     if not locale:
         return jsonify(ok=False, error="Invalid parameter: locale")
+
+    # Validate date, which should be in YYYY-MM-DD format
+    # and be an actually valid date
+    # Validate required parameters
+    if len(riddle_date) != 10 or riddle_date[4] != "-" or riddle_date[7] != "-":
+        # The date format is expected to be YYYY-MM-DD
+        return jsonify(ok=False, error="Invalid parameter: date")
+    try:
+        riddle_iso_date = date.fromisoformat(riddle_date)
+    except ValueError:
+        return jsonify(ok=False, error="Invalid parameter: date")
 
     # Select the correct locale for the current thread
     lc = to_supported_locale(locale)
     set_locale(lc)
 
-    # Get or create riddle using cached function
-    riddle_data = get_or_create_riddle(date, lc)
+    # Is this a query for today's riddle, or a previous one?
+    todays_iso_date = datetime.now(tz=timezone.utc).date()
+    if riddle_iso_date > todays_iso_date:
+        return jsonify(ok=False, error="Riddle for future date not available")
+    is_today = (riddle_iso_date == todays_iso_date)
+
+    # Get or create riddle using a cached function. Note that it is important
+    # to pass the is_today parameter as a 'cache buster', since today's riddle
+    # and previous days' riddles are retrieved and returned differently.
+    riddle_data = get_or_create_riddle(riddle_date, lc, is_today)
 
     if riddle_data is None:
         # If riddle generation failed, return an error
@@ -643,14 +686,10 @@ def submit_api() -> ResponseType:
     #   timestamp: str
     # }
     riddle_date = rq.get("date", "")
-    # Validate the date format (expected to be YYYY-MM-DD)
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", riddle_date) is None:
-        return jsonify(ok=False, error="Invalid parameter: date")
-    # Ensure the date is a valid calendar date
-    try:
-        date.fromisoformat(riddle_date)
-    except ValueError:
-        return jsonify(ok=False, error="Invalid parameter: date")
+    today = datetime.now(tz=timezone.utc).date().isoformat()
+    if riddle_date != today:
+        # Submissions are only accepted for today's riddle
+        return jsonify(ok=True, update=False, message="Not today's riddle")
 
     user_id = current_user_id()
     locale = to_supported_locale(rq.get("locale", ""))
@@ -677,6 +716,7 @@ def submit_api() -> ResponseType:
 
     update = False
     message = ""
+
     try:
         # Update global best score using transaction
         updated = update_global_best_score(
