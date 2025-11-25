@@ -681,6 +681,51 @@ def riddle_api() -> ResponseType:
     return jsonify(ok=True, riddle=riddle_data)
 
 
+def create_state_from_riddle(
+    board_rows: Sequence[str], rack_str: str, locale: str
+) -> State:
+    """Create a State object from riddle board and rack data.
+
+    This utility function creates a State object configured for riddle validation,
+    loading the board position and rack tiles.
+
+    Args:
+        board_rows: List of 15 strings representing the board (15 chars each).
+                   Letters are tiles on board, uppercase = blanks, '.' or ' ' = empty.
+        rack_str: String of rack tiles (e.g., "uaenrrk", may contain '?' for blanks)
+        locale: Language locale for the riddle
+
+    Returns:
+        A State object with the riddle's board and rack loaded
+    """
+    # Create a State object for riddle validation
+    state = State(
+        tileset=current_tileset(),
+        manual_wordcheck=False,  # Use automatic dictionary checking
+        drawtiles=False,  # Don't draw tiles, we'll set the rack manually
+        locale=locale,
+        board_type="standard",
+    )
+
+    # Load the board from the riddle
+    board = state.board()
+    for row_idx, row_str in enumerate(board_rows):
+        for col_idx, letter in enumerate(row_str):
+            if letter != " " and letter != ".":
+                # There's a tile already on the board
+                # Tiles that were originally blanks are represented in uppercase
+                if letter.isupper():
+                    board.set_tile(row_idx, col_idx, "?")
+                else:
+                    board.set_tile(row_idx, col_idx, letter)
+                board.set_letter(row_idx, col_idx, letter.lower())
+
+    # Set the rack from the riddle
+    state.set_rack(0, rack_str)
+
+    return state
+
+
 @cache_if_not_none(maxsize=10)
 def get_riddle_state(date: str, locale: str) -> Optional[State]:
     """Get a cached State object for a riddle, ready for move validation.
@@ -701,33 +746,11 @@ def get_riddle_state(date: str, locale: str) -> Optional[State]:
     if not riddle_data:
         return None
 
-    # Create a State object from the riddle
-    state = State(
-        tileset=current_tileset(),
-        manual_wordcheck=False,  # Use automatic dictionary checking
-        drawtiles=False,  # Don't draw tiles, we'll set the rack manually
-        locale=locale,
-        board_type="standard",
-    )
+    # Extract rack string from RackDetails
+    rack_str = "".join(tile for tile, _ in riddle_data["rack"])
 
-    # Load the board from the riddle
-    board = state.board()
-    for row_idx, row_str in enumerate(riddle_data["board"]):
-        for col_idx, letter in enumerate(row_str):
-            if letter != " " and letter != ".":
-                # There's a tile already on the board
-                # Tiles that were originally blanks are represented in uppercase
-                if letter.isupper():
-                    board.set_tile(row_idx, col_idx, "?")
-                else:
-                    board.set_tile(row_idx, col_idx, letter)
-                board.set_letter(row_idx, col_idx, letter.lower())
-
-    # Set the rack from the riddle
-    rack_tiles = "".join(tile for tile, _ in riddle_data["rack"])
-    state.set_rack(0, rack_tiles)
-
-    return state
+    # Create and return the State using the utility function
+    return create_state_from_riddle(riddle_data["board"], rack_str, locale)
 
 
 def validate_riddle_move(
