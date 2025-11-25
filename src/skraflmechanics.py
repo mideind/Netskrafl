@@ -151,6 +151,30 @@ _WORDSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val 
 _LETTERSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val in _LSC.items()}
 
 
+def enum_covers(tiles: str) -> Iterator[Tuple[str, str]]:
+    """Generator to enumerate through a tiles string,
+    which may contain wildcard tiles represented by '?',
+    yielding (tile, letter) tuples.
+
+    The tiles string uses an encoded format where:
+    - Normal tiles: just the letter (e.g., 'c' yields ('c', 'c'))
+    - Blank tiles: '?' followed by the letter it represents
+      (e.g., '?a' yields ('?', 'a'))
+
+    Example: 'c?at' yields [('c','c'), ('?','a'), ('t','t')]
+    """
+    ix = 0
+    while ix < len(tiles):
+        if tiles[ix] == "?":
+            # Wildcard tile: must be followed by its meaning
+            ix += 1
+            yield ("?", tiles[ix])
+        else:
+            # Normal letter tile
+            yield (tiles[ix], tiles[ix])
+        ix += 1
+
+
 class Board:
     """Represents the characteristics and the contents
     of a crossword game board."""
@@ -948,10 +972,17 @@ class Move(MoveBase):
         self._covers: List[Cover] = []
         # Number of letters in word formed (this may be >= len(self._covers))
         self._numletters = len(word)
-        # The word formed
+        # The word formed on the board, containing only letters (e.g., "cart")
+        # This is used for dictionary validation
         self._word = word
-        # The tiles used to form the word. '?' tiles are followed
-        # by the letter they represent.
+        # The tiles used to form the word, encoded as a string that distinguishes
+        # between tiles played from the rack vs. tiles already on the board.
+        # For newly played tiles: normal tiles are just letters (e.g., "c"),
+        # blank/wildcard tiles are '?' followed by the letter they represent (e.g., "?a").
+        # For tiles already on the board: just the letter (e.g., "r").
+        # Example: if word is "cart" with c and t from rack, blank as a, and r on board,
+        # then _tiles = "c?art". This encoding is essential for scoring (blanks = 0 points)
+        # and is returned in move summaries for storage/communication.
         self._tiles: Optional[str] = None
         # Starting row and column of word formed
         self._row = row
@@ -964,7 +995,11 @@ class Move(MoveBase):
         self._dawg = Wordbase.dawg()
 
     def set_tiles(self, tiles: str) -> None:
-        """Set the tiles string once it is known"""
+        """Set the tiles string once it is known.
+
+        The tiles string should use the encoded format where blanks are
+        represented as '?' followed by the letter they represent.
+        """
         self._tiles = tiles
 
     def replenish(self) -> bool:
@@ -990,7 +1025,7 @@ class Move(MoveBase):
         return self._covers
 
     def word(self) -> str:
-        """Return the word formed by this move"""
+        """Return the word formed by this move (letters only, e.g., 'cart')"""
         return self._word
 
     def details(self, state: State) -> List[DetailTuple]:
@@ -1009,7 +1044,11 @@ class Move(MoveBase):
         ]
 
     def summary(self, state: State) -> SummaryTuple:
-        """Return a summary of the move, as a tuple: (coordinate, tiles, score)"""
+        """Return a summary of the move, as a tuple: (coordinate, tiles, score).
+
+        The tiles string uses the encoded format where blanks are represented
+        as '?' followed by the letter (e.g., 'c?art' for cart with blank as a).
+        """
         assert isinstance(state, State)
         return (self.short_coordinate(), self._tiles or "", self.score(state))
 
@@ -1051,23 +1090,9 @@ class Move(MoveBase):
             self._horizontal = self._covers[0].row == cover.row
 
     def make_covers(self, board: Board, tiles: str) -> None:
-        """Create a cover list out of a tile string"""
+        """Create a cover list out of a tile string, which may contain '?' for blanks."""
 
         self.set_tiles(tiles)
-
-        def enum_covers(tiles: str) -> Iterator[Tuple[str, str]]:
-            """Generator to enumerate through a tiles string,
-            yielding (tile, letter) tuples"""
-            ix = 0
-            while ix < len(tiles):
-                if tiles[ix] == "?":
-                    # Wildcard tile: must be followed by its meaning
-                    ix += 1
-                    yield ("?", tiles[ix])
-                else:
-                    # Normal letter tile
-                    yield (tiles[ix], tiles[ix])
-                ix += 1
 
         row, col = self._row, self._col
         xd, yd = (0, 1) if self._horizontal else (1, 0)
@@ -1081,7 +1106,7 @@ class Move(MoveBase):
         # assert row - self._row == self._numletters * xd
         # assert col - self._col == self._numletters * yd
 
-    def check_legality(self, state: State, validate: bool) -> Union[int, Tuple[int, str]]:
+    def check_legality(self, state: State, validate: bool, *, ignore_game_over: bool = False) -> Union[int, Tuple[int, str]]:
         """Check whether this move is legal on the board"""
 
         # Must cover at least one square
@@ -1089,7 +1114,7 @@ class Move(MoveBase):
             return Error.NULL_MOVE
         if len(self._covers) > Rack.MAX_TILES:
             return Error.TOO_MANY_TILES_PLAYED
-        if state.is_game_over():
+        if state.is_game_over() and not ignore_game_over:
             return Error.GAME_OVER
         if state.is_last_challenge():
             # Last tile move on the board: the player can only pass or challenge
@@ -1193,7 +1218,12 @@ class Move(MoveBase):
         self._tiles = ""
 
         def add(cix: int) -> None:
-            """Add a cover's letter and tile to the word and tiles strings"""
+            """Add a cover's letter and tile to the word and tiles strings.
+
+            For _word: always adds just the letter (e.g., "a")
+            For _tiles: adds the tile, and if it's a blank ("?"), also adds
+            the letter it represents (e.g., "?a" for a blank used as a)
+            """
             ltr = self._covers[cix].letter
             tile = self._covers[cix].tile
             self._word += ltr
@@ -1211,6 +1241,8 @@ class Move(MoveBase):
                     cix += 1
                 else:
                     # This is a letter that was already on the board
+                    # Add just the letter to both _word and _tiles (no tile encoding needed
+                    # since it wasn't played from the rack)
                     ltr = board.letter_at(self._row, self._col + ix)
                     self._word += ltr
                     assert self._tiles is not None  # Satisfy Pylance
@@ -1222,6 +1254,8 @@ class Move(MoveBase):
                     cix += 1
                 else:
                     # This is a letter that was already on the board
+                    # Add just the letter to both _word and _tiles (no tile encoding needed
+                    # since it wasn't played from the rack)
                     ltr = board.letter_at(self._row + ix, self._col)
                     self._word += ltr
                     self._tiles += ltr

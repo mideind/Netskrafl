@@ -50,13 +50,13 @@ from config import (
     NETSKRAFL,
     RC_WEBHOOK_AUTH,
     RouteType,
+    RouteFunc,
     running_local,
     DEFAULT_LOCALE,
     ResponseType,
     Error,
 )
 from basics import (
-    RouteFunc,
     is_mobile_client,
     jsonify,
     auth_required,

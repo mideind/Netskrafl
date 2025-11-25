@@ -54,6 +54,8 @@ ResponseType = Union[
     str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
 ]
 RouteType = Callable[..., ResponseType]
+# A Flask route function decorator
+RouteFunc = Callable[[RouteType], RouteType]
 
 
 class FlaskConfig(TypedDict):

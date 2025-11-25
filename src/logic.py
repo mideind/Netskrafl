@@ -44,7 +44,6 @@ from google.cloud import ndb
 from flask import url_for
 import firebase
 
-from basics import current_user, current_user_id, jsonify
 from config import (
     DEFAULT_LOCALE,
     DEFAULT_ELO,
@@ -56,6 +55,7 @@ from config import (
     ResponseType,
     Error,
 )
+from basics import current_user, current_user_id, jsonify
 from languages import (
     Alphabet,
     to_supported_locale,
