@@ -47,7 +47,14 @@ from languages import (
     current_tileset,
 )
 from skraflgame import TwoLetterGroupTuple, two_letter_words
-from skraflmechanics import RackDetails, BOARD_SIZE
+from skraflmechanics import (
+    RackDetails,
+    BOARD_SIZE,
+    State,
+    Board,
+    Move,
+    Error,
+)
 from skrafldb import RiddleModel
 
 
@@ -89,6 +96,7 @@ class RiddleContentDict(TypedDict):
 
 class SolutionDict(TypedDict):
     """A riddle solution, as sent to the client"""
+
     word: str
     coord: str
 
@@ -299,7 +307,9 @@ def riddle_max_score(date: str, locale: str) -> Optional[int]:
 
 
 @cache_if_not_none(maxsize=3)
-def get_or_create_riddle(date: str, locale: str, is_today: bool) -> Optional[RiddleDict]:
+def get_or_create_riddle(
+    date: str, locale: str, is_today: bool
+) -> Optional[RiddleDict]:
     """Get existing riddle or create a new one, with caching"""
     # Check if riddle already exists in Firebase
     path = f"gatadagsins/{date}/{locale}/riddle"
@@ -313,11 +323,11 @@ def get_or_create_riddle(date: str, locale: str, is_today: bool) -> Optional[Rid
     else:
         # For previous days, always fetch from the database, since we need
         # to return the solution as well
-        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(date, locale)
+        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(
+            date, locale
+        )
         if riddle_from_database:
-            riddle = riddle_from_moves_service(
-                riddle_from_database.riddle, tile_scores
-            )
+            riddle = riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
             solution = riddle_from_database.riddle["solution"]
         if riddle is None:
             logging.error(f"Riddle for {date}:{locale} not found in database")
@@ -325,9 +335,13 @@ def get_or_create_riddle(date: str, locale: str, is_today: bool) -> Optional[Rid
 
     if not riddle:
         # Not found in Firebase: attempt to fetch the riddle from the database
-        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(date, locale)
+        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(
+            date, locale
+        )
         if not riddle_from_database or not (
-            riddle := riddle_from_moves_service(riddle_from_database.riddle, tile_scores)
+            riddle := riddle_from_moves_service(
+                riddle_from_database.riddle, tile_scores
+            )
         ):
             # Riddle doesn't exist, generate a new one
             # (This is an emergency fallback!)
@@ -357,8 +371,9 @@ def get_or_create_riddle(date: str, locale: str, is_today: bool) -> Optional[Rid
     full_riddle["two_letter_words"] = two_letter_words(locale)
     if solution is not None:
         # Translate to the solution format expected by the client
-        # !!! TODO: The "coord" field is incorrect in some riddles, so "description" needs to be used instead
-        full_riddle["solution"] = SolutionDict(word=solution["move"], coord=solution["coord"])
+        full_riddle["solution"] = SolutionDict(
+            word=solution["move"], coord=solution["coord"]
+        )
     return full_riddle
 
 
@@ -555,9 +570,7 @@ def update_leaderboard_entry(
     path = f"gatadagsins/{riddle_date}/{locale}/leaders"
     made_leaderboard = False
 
-    def transaction_update(
-        current_data: Optional[LeaderboardDict]
-    ) -> LeaderboardDict:
+    def transaction_update(current_data: Optional[LeaderboardDict]) -> LeaderboardDict:
         """Transaction function to update leaderboard atomically"""
         nonlocal made_leaderboard
 
@@ -575,7 +588,8 @@ def update_leaderboard_entry(
             if score > existing_entry["score"]:
                 user_entry = LeaderboardEntry(
                     userId=user_id,
-                    displayName=user_display_name or existing_entry.get("displayName", user_id),
+                    displayName=user_display_name
+                    or existing_entry.get("displayName", user_id),
                     score=score,
                     timestamp=timestamp,
                 )
@@ -652,7 +666,7 @@ def riddle_api() -> ResponseType:
     todays_iso_date = datetime.now(tz=timezone.utc).date()
     if riddle_iso_date > todays_iso_date:
         return jsonify(ok=False, error="Riddle for future date not available")
-    is_today = (riddle_iso_date == todays_iso_date)
+    is_today = riddle_iso_date == todays_iso_date
 
     # Get or create riddle using a cached function. Note that it is important
     # to pass the is_today parameter as a 'cache buster', since today's riddle
@@ -667,11 +681,130 @@ def riddle_api() -> ResponseType:
     return jsonify(ok=True, riddle=riddle_data)
 
 
+@cache_if_not_none(maxsize=10)
+def get_riddle_state(date: str, locale: str) -> Optional[State]:
+    """Get a cached State object for a riddle, ready for move validation.
+
+    This creates and caches the initial board state for a riddle,
+    so we don't need to reconstruct it for every submission.
+    The State can be copied cheaply for each validation.
+
+    Args:
+        date: ISO format date (YYYY-MM-DD)
+        locale: Language locale
+
+    Returns:
+        A State object with the riddle's board and rack loaded, or None if riddle not found
+    """
+    # Fetch the riddle data (this is also cached)
+    riddle_data = get_or_create_riddle(date, locale, is_today=True)
+    if not riddle_data:
+        return None
+
+    # Create a State object from the riddle
+    state = State(
+        tileset=current_tileset(),
+        manual_wordcheck=False,  # Use automatic dictionary checking
+        drawtiles=False,  # Don't draw tiles, we'll set the rack manually
+        locale=locale,
+        board_type="standard",
+    )
+
+    # Load the board from the riddle
+    board = state.board()
+    for row_idx, row_str in enumerate(riddle_data["board"]):
+        for col_idx, letter in enumerate(row_str):
+            if letter != " " and letter != ".":
+                # There's a tile already on the board
+                # Tiles that were originally blanks are represented in uppercase
+                if letter.isupper():
+                    board.set_tile(row_idx, col_idx, "?")
+                else:
+                    board.set_tile(row_idx, col_idx, letter)
+                board.set_letter(row_idx, col_idx, letter.lower())
+
+    # Set the rack from the riddle
+    rack_tiles = "".join(tile for tile, _ in riddle_data["rack"])
+    state.set_rack(0, rack_tiles)
+
+    return state
+
+
+def validate_riddle_move(
+    date: str, locale: str, word: str, coord: str
+) -> tuple[bool, int, str]:
+    """Validate a move on a riddle board and calculate its score.
+
+    Returns a tuple of (is_valid, calculated_score, error_message).
+    If is_valid is True, calculated_score contains the actual score and error_message is empty.
+    If is_valid is False, calculated_score is 0 and error_message explains why.
+
+    Args:
+        date: ISO format date (YYYY-MM-DD)
+        locale: Language locale
+        word: The word being played (may contain ?x for blanks)
+        coord: The starting coordinate (e.g., "A1" or "1A")
+    """
+    # Parse the coordinate to determine row, col, and direction
+    # Format: "A1" = horizontal at row A, col 1 (0-indexed)
+    #         "1A" = vertical at col 1, row A
+    if len(coord) < 2 or len(coord) > 3:
+        return False, 0, "Invalid coordinate format"
+
+    # Determine if horizontal or vertical based on first character
+    if coord[0].isalpha():
+        # Horizontal: "A1", "B2", etc.
+        horiz = True
+        try:
+            row = Board.ROWIDS.index(coord[0].upper())
+            col = int(coord[1:]) - 1
+        except ValueError:
+            return False, 0, "Invalid coordinate"
+    else:
+        # Vertical: "1A", "2B", etc.
+        horiz = False
+        try:
+            row = Board.ROWIDS.index(coord[-1].upper())
+            col = int(coord[:-1]) - 1
+        except ValueError:
+            return False, 0, "Invalid coordinate"
+
+    if not (0 <= row < BOARD_SIZE) or not (0 <= col < BOARD_SIZE):
+        return False, 0, "Invalid coordinate"
+
+    # Get the cached base state for this riddle
+    riddle_state = get_riddle_state(date, locale)
+    if riddle_state is None:
+        return False, 0, "Failed to load riddle state"
+
+    # Create a Move object from the submitted word and coordinate
+    move = Move(word, row, col, horiz)
+
+    # Use make_covers to set up the move based on the current board state
+    # This will figure out which tiles are being placed vs already on board
+    try:
+        move.make_covers(riddle_state.board(), word)
+    except Exception as e:
+        return False, 0, f"Failed to construct move: {str(e)}"
+
+    # Check if the move is legal
+    legality = move.check_legality(riddle_state, validate=True, ignore_game_over=True)
+    if legality != Error.LEGAL:
+        if isinstance(legality, tuple):
+            error_code, error_word = legality
+            return False, 0, f"Invalid move: error {error_code}, word '{error_word}'"
+        return False, 0, f"Invalid move: error code {legality}"
+
+    # Calculate the score
+    calculated_score = move.score(riddle_state)
+
+    return True, calculated_score, ""
+
+
 @riddle_route("/gatadagsins/submit")
 @auth_required(ok=False)
 def submit_api() -> ResponseType:
-    """Handle a (presumably improved) move from a player
-    who is working on the riddle"""
+    """Handle a (presumably improved) move from a player who is working on the riddle"""
     rq = RequestData(request)
     # The request should contain the following:
     # date: str
@@ -685,8 +818,12 @@ def submit_api() -> ResponseType:
     #   coord: str
     #   timestamp: str
     # }
+    now = datetime.now(tz=timezone.utc)
+    timestamp = now.isoformat()
+    today = now.date().isoformat()
+
     riddle_date = rq.get("date", "")
-    today = datetime.now(tz=timezone.utc).date().isoformat()
+    # The date should be in ISO format: YYYY-MM-DD
     if riddle_date != today:
         # Submissions are only accepted for today's riddle
         return jsonify(ok=True, update=False, message="Not today's riddle")
@@ -697,22 +834,47 @@ def submit_api() -> ResponseType:
     group_id = rq.get("groupId", "")
     user_display_name = rq.get("userDisplayName", "")
     move = cast(RiddleWordDict, rq.get("move", {}))
-    if not user_id or not move or not move.get("word"):
+    if not user_id or not move:
         return jsonify(ok=False, error="Missing required parameters")
 
     # Validate the move data
-    score = move.get("score", 0)
-    if score <= 0:
-        return jsonify(ok=False, error="Invalid score")
     word = move.get("word", "")
     if not (2 <= len(word) <= BOARD_SIZE):
         return jsonify(ok=False, error="Invalid word")
+    score = move.get("score", 0)
+    if score <= 0:
+        return jsonify(ok=False, error="Invalid score")
     coord = move.get("coord", "")
     if not (2 <= len(coord) <= 3):
         return jsonify(ok=False, error="Invalid coordinate")
-    timestamp = move.get("timestamp", "")
-    if not timestamp:
-        return jsonify(ok=False, error="Missing timestamp")
+
+    # Set the locale for this thread
+    set_locale(locale)
+
+    # Validate the move against the actual riddle board and rack
+    try:
+        is_valid, calculated_score, error_msg = validate_riddle_move(
+            riddle_date, locale, word, coord
+        )
+    except Exception as e:
+        is_valid = False
+        calculated_score = 0
+        error_msg = repr(e)
+
+    if not is_valid:
+        logging.warning(
+            f"Invalid move submission from user {user_id}: {error_msg} "
+            f"(word='{word}', coord={coord}, claimed_score={score})"
+        )
+        return jsonify(ok=False, error=f"Invalid move")
+
+    # Verify the score matches what we calculated
+    if calculated_score != score:
+        logging.warning(
+            f"Score mismatch from user {user_id}: claimed {score}, "
+            f"calculated {calculated_score} (word='{word}', coord={coord})"
+        )
+        return jsonify(ok=False, error=f"Score mismatch")
 
     update = False
     message = ""
@@ -767,6 +929,9 @@ def submit_api() -> ResponseType:
                 date_str=riddle_date,
                 achieved_top_score=is_top_score,
             )
+            update = True
+            if not message:
+                message = "User achievement updated"
 
         # If the user belongs to a group, also update the group's best using transaction
         if group_id:
@@ -784,7 +949,8 @@ def submit_api() -> ResponseType:
                     message = "Group best score updated"
                 update = True
 
-    except Exception:
+    except Exception as e:
+        logging.warning(f"Exception while processing submission from user {user_id}: {repr(e)}")
         # If something goes wrong, return an error
         return jsonify(ok=False, error="Submission failed")
     # If we reach here, the submission was successful,
