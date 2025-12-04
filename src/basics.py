@@ -36,6 +36,9 @@ from typing import (
 import io
 from datetime import UTC, datetime
 from functools import wraps
+import socket
+import errno
+import logging
 
 from flask import (
     Flask,
@@ -47,6 +50,7 @@ from flask import (
     g,
     session,
 )
+from flask.typing import ResponseReturnValue
 from flask.wrappers import Request, Response
 from werkzeug.utils import send_file  # type: ignore
 
@@ -323,7 +327,7 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
 
     def wrap(func: RouteType) -> RouteType:
         @wraps(func)
-        def route() -> ResponseType:
+        def route() -> ResponseReturnValue:
             """Load the authenticated user into g.user
             before invoking the wrapped route function"""
             u = session_user()
@@ -371,6 +375,21 @@ def make_thumbnail(image: bytes, size: int = DEFAULT_THUMBNAIL_SIZE) -> io.Bytes
     img.save(thumb_bytes, format="JPEG")  # type: ignore
     thumb_bytes.seek(0)
     return thumb_bytes
+
+
+def check_port_available(host_to_check: str, port_to_check: int) -> None:
+    """Check if a port is available for binding, exit if not"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((host_to_check, port_to_check))
+        sock.close()
+    except OSError as e:
+        if e.errno == errno.EADDRINUSE:
+            logging.error(
+                f"Port {port_to_check} is already in use. "
+                f"Kill the process with: sudo fuser -k {port_to_check}/tcp"
+            )
+        raise
 
 
 class RequestData:

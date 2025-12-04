@@ -44,6 +44,7 @@ from flask import (
     send_file,  # type: ignore
 )
 from flask.globals import current_app
+from flask.typing import ResponseReturnValue
 from werkzeug.utils import redirect
 
 from config import (
@@ -169,7 +170,7 @@ def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
 
         @api.route(route, methods=methods)
         @wraps(f)
-        def wrapper(*args: Any, **kwargs: Any) -> ResponseType:
+        def wrapper(*args: Any, **kwargs: Any) -> ResponseReturnValue:
             return f(*args, **kwargs)
 
         return wrapper

@@ -37,6 +37,7 @@ import logging
 import time
 from functools import wraps
 from datetime import UTC, datetime, timedelta
+from flask.typing import ResponseReturnValue
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from logging.config import dictConfig
@@ -53,7 +54,7 @@ BoardType = Mapping[BoardTypes, List[str]]
 ResponseType = Union[
     str, bytes, Response, WerkzeugResponse, Tuple[str, int], Tuple[Response, int]
 ]
-RouteType = Callable[..., ResponseType]
+RouteType = Callable[..., ResponseReturnValue]
 # A Flask route function decorator
 RouteFunc = Callable[[RouteType], RouteType]
 
@@ -221,6 +222,9 @@ assert (
 ), f"FIREBASE_SENDER_ID not set correctly in {CLIENT_SECRET_ID}"
 assert FIREBASE_DB_URL, f"FIREBASE_DB_URL not set correctly in {CLIENT_SECRET_ID}"
 assert FIREBASE_APP_ID, f"FIREBASE_APP_ID not set correctly in {CLIENT_SECRET_ID}"
+
+# CORS allowed origins (for cross-origin requests from web clients)
+CORS_ORIGINS: List[str] = j.get("CORS_ORIGINS", [])
 
 # Apple ID configuration
 APPLE_KEY_ID: str = j.get("APPLE_KEY_ID", "")

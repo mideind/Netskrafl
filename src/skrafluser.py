@@ -606,21 +606,23 @@ class User:
         self, pref: str, default: Optional[PrefItem] = None
     ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        return self._preferences.get(pref, default)  # type: ignore[literal-required]
+        # Cast to Dict for dynamic key access (PrefsDict is a TypedDict)
+        return cast(Dict[str, PrefItem], self._preferences).get(pref, default)
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
-        val = self._preferences.get(pref, default)  # type: ignore[literal-required]
+        val = self._preferences.get(pref, default)
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
         """Retrieve a boolean preference, or False if not found"""
-        val = self._preferences.get(pref, default)  # type: ignore[literal-required]
+        val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
     def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
-        self._preferences[pref] = value  # type: ignore[literal-required]
+        # Cast to Dict for dynamic key access (PrefsDict is a TypedDict)
+        cast(Dict[str, PrefItem], self._preferences)[pref] = value
 
     @staticmethod
     def full_name_from_prefs(prefs: Optional[PrefsDict]) -> str:
