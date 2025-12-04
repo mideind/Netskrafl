@@ -59,9 +59,9 @@ OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
 PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
 
-# TypeVar for Firebase transactions, constrained to Mapping types
-# since Firebase stores JSON-like data structures
-FirebaseDataT = TypeVar("FirebaseDataT", bound=Mapping[str, Any])
+# TypeVar for Firebase transactions - Firebase supports JSON-like data
+# including dicts, lists, strings, numbers, booleans, and None
+FirebaseDataT = TypeVar("FirebaseDataT")
 
 
 class PushMessageDict(TypedDict):

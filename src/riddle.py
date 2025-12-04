@@ -34,6 +34,7 @@ import logging
 from datetime import date, datetime, timezone
 from functools import wraps
 
+from flask.typing import ResponseReturnValue
 import requests
 from flask import Blueprint, request
 
@@ -193,7 +194,7 @@ def riddle_route(route: str, methods: Sequence[str] = _ONLY_POST) -> Any:
 
         @riddle.route(route, methods=methods)
         @wraps(f)
-        def wrapper(*args: Any, **kwargs: Any) -> ResponseType:
+        def wrapper(*args: Any, **kwargs: Any) -> ResponseReturnValue:
             return f(*args, **kwargs)
 
         return wrapper
@@ -316,6 +317,7 @@ def get_or_create_riddle(
     tile_scores = current_tileset().scores
     riddle: Optional[RiddleContentDict] = None
     solution: Optional[MovesServiceSolutionDict] = None
+    riddle_from_database: Optional[RiddleModel] = None
 
     if is_today:
         # Today's riddle is likely to be already in Firebase: check there first
@@ -323,7 +325,7 @@ def get_or_create_riddle(
     else:
         # For previous days, always fetch from the database, since we need
         # to return the solution as well
-        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(
+        riddle_from_database = RiddleModel.get_riddle(
             date, locale
         )
         if riddle_from_database:
@@ -335,7 +337,7 @@ def get_or_create_riddle(
 
     if not riddle:
         # Not found in Firebase: attempt to fetch the riddle from the database
-        riddle_from_database: Optional[RiddleModel] = RiddleModel.get_riddle(
+        riddle_from_database = RiddleModel.get_riddle(
             date, locale
         )
         if not riddle_from_database or not (
@@ -386,21 +388,29 @@ def update_user_achievement(
     coord: str,
     timestamp: str,
     is_top_score: bool,
-) -> bool:
-    """Update user's achievement for this riddle"""
+) -> tuple[bool, bool]:
+    """Update user's achievement for this riddle.
+    Returns a tuple (updated, newly_achieved_top_score):
+    - updated: True if the user's score improved
+    - newly_achieved_top_score: True if the user achieved top score for the first time
+    """
     achievement_path = f"gatadagsins/{date}/{locale}/achievements/{user_id}"
     updated = False
+    newly_achieved_top = False
 
     def transaction_update(
         current_data: Optional[RiddleAchievement],
     ) -> RiddleAchievement:
         """Transaction function to update achievement atomically"""
-        nonlocal updated
+        nonlocal updated, newly_achieved_top
         achievement: RiddleAchievement = current_data or RiddleAchievement(
             score=0, word="", coord="", timestamp="", isTopScore=False
         )
         if score > achievement.get("score", 0):
             # Only update if the new score is better
+            # Check if this is a new top score achievement
+            if is_top_score and not achievement.get("isTopScore", False):
+                newly_achieved_top = True
             achievement = RiddleAchievement(
                 score=score,
                 word=word,
@@ -413,7 +423,7 @@ def update_user_achievement(
         return achievement
 
     firebase.run_transaction(achievement_path, transaction_update)
-    return updated
+    return updated, newly_achieved_top
 
 
 def update_user_streak_stats(
@@ -555,6 +565,18 @@ def update_group_best_score(
 
     firebase.run_transaction(path, transaction_update)
     return updated
+
+
+def increment_top_score_count(riddle_date: str, locale: str) -> None:
+    """Increment the count of players who have achieved the top score.
+    Uses a Firebase transaction to ensure atomicity."""
+    path = f"gatadagsins/{riddle_date}/{locale}/count"
+
+    def transaction_update(current_data: Optional[int]) -> int:
+        """Transaction function to increment count atomically"""
+        return (current_data or 0) + 1
+
+    firebase.run_transaction(path, transaction_update)
 
 
 def update_leaderboard_entry(
@@ -933,7 +955,7 @@ def submit_api() -> ResponseType:
         max_score = riddle_max_score(riddle_date, locale) or 0
         is_top_score = (score >= max_score) if max_score > 0 else False
 
-        updated = update_user_achievement(
+        achievement_updated, newly_achieved_top = update_user_achievement(
             user_id=user_id,
             date=riddle_date,
             locale=locale,
@@ -944,7 +966,7 @@ def submit_api() -> ResponseType:
             is_top_score=is_top_score,
         )
 
-        if updated:
+        if achievement_updated:
             # This is a significant update, so it might affect the user's streak stats
             update_user_streak_stats(
                 user_id=user_id,
@@ -955,6 +977,10 @@ def submit_api() -> ResponseType:
             update = True
             if not message:
                 message = "User achievement updated"
+
+        if newly_achieved_top:
+            # User achieved the top score for the first time: increment count
+            increment_top_score_count(riddle_date, locale)
 
         # If the user belongs to a group, also update the group's best using transaction
         if group_id:

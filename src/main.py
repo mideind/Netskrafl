@@ -66,11 +66,13 @@ from config import (
     FLASK_SESSION_KEY,
     AUTH_SECRET,
     FILE_VERSION_INCREMENT,
+    CORS_ORIGINS,
 )
 from basics import (
     FlaskWithCaching,
     ndb_wsgi_middleware,
     init_oauth,
+    check_port_available,
 )
 from authmanager import auth_manager
 from firebase import init_firebase_app, connect_blueprint
@@ -81,7 +83,9 @@ from skraflstats import stats_blueprint
 from riddle import riddle_blueprint
 
 
+# Only check port availability when running locally
 if running_local:
+    check_port_available(host, int(port))
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # Disable Werkzeug's default request logging to avoid duplicate logs,
     # since we are logging web requests ourselves
@@ -104,13 +108,9 @@ init_firebase_app()
 # Initialize Flask using our custom subclass, defined in basics.py
 app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 
-# The following cast to Any can be removed once Flask typing becomes
-# more robust and/or compatible with Pylance
-cast_app = cast(Any, app)
-
 # Wrap the WSGI app to insert the Google App Engine NDB client context
 # into each request
-setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
+app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
 if running_local:
@@ -123,16 +123,9 @@ if running_local:
         "http://localhost:3001",
         "http://localhost:6006",
     ]
-elif NETSKRAFL:
-    origins = [
-        "https://malstadur.is",
-        "https://malstadur.mideind.is",
-        "https://netskrafl.malstadur.mideind.is",
-        "https://staging.malstadur.mideind.is",
-        "https://dev.malstadur.mideind.is",
-    ]
 else:
-    origins = []
+    # Use CORS origins from Secret Manager configuration
+    origins = CORS_ORIGINS
 
 if origins:
     CORS(
@@ -173,7 +166,7 @@ flask_config = FlaskConfig(
 app.secret_key = FLASK_SESSION_KEY
 
 # Load the Flask configuration
-cast_app.config.update(**flask_config)
+app.config.update(flask_config)  # pyright: ignore[reportUnknownMemberType]
 
 # Configure the Flask JSON provider to use UTF-8 encoding and to not sort keys
 assert isinstance(app.json, DefaultJSONProvider)

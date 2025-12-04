@@ -34,6 +34,9 @@ resources/*.p8
 resources/netskrafl-*.json
 resources/explo-*.json
 
+# Test configuration (contains test user email)
+resources/test_config.json
+
 # Raw word lists
 resources/ordalistimax15.txt
 resources/*.tsv
