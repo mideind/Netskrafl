@@ -126,3 +126,13 @@ multiple languages through separate DAWG files and tile sets.
 - Python source files should end with an empty line (i.e., two newlines at the end - `\n\n`).
 - Use datetime.now(UTC) for timestamps, not datetime.now() or datetime.utcnow().
 - Empty lines should only contain newlines, no spaces or tabs.
+
+## Gotchas
+
+- When running locally in development, a separate Redis instance is used for Cloud
+  Datastore caching. *This may cause cache incoherency* with the production environment.
+  Especially, if running local utility scripts that modify the production database,
+  the production cache may need to be cleared via Google Cloud Console.
+  *Please remind the user about this if you can, when you see that utility programs
+  are being run locally.* Also, adding comments to utility programs to this effect is useful.
+
