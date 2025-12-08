@@ -24,6 +24,8 @@ gatadagsins/
 │       │
 │       ├── count: int               # Number of players who reached max_score today
 │       │
+│       ├── attempts: int            # Number of players who have attempted today's riddle
+│       │
 │       ├── leaders/                 # Leaderboard (top 50 entries)
 │       │   └── {userId}/
 │       │       ├── userId: str
@@ -171,7 +173,15 @@ Increments the count of players who have achieved the maximum possible score
 for today's riddle. Only incremented when a user achieves the top score for
 the first time (not on subsequent submissions even if they match the top score).
 
-### 6. Leaderboard Update
+### 6. Attempts Count Update
+**Path:** `gatadagsins/{date}/{locale}/attempts`
+**Function:** `increment_attempts_count()`
+
+Increments the count of players who have attempted today's riddle. Only
+incremented on a user's first submission for this riddle (not on subsequent
+submissions that improve their score).
+
+### 7. Leaderboard Update
 **Path:** `gatadagsins/{date}/{locale}/leaders`
 **Function:** `update_leaderboard_entry()`
 
@@ -195,6 +205,7 @@ When a move is submitted via `/gatadagsins/submit`:
    - Global best score
    - Leaderboard entry
    - User achievement (only if improved)
+   - Attempts count (only on user's first submission)
    - User streak stats (only if achievement improved)
    - Top score count (only if user newly achieved max_score)
    - Group best score (if user belongs to a group)

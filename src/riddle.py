@@ -388,21 +388,26 @@ def update_user_achievement(
     coord: str,
     timestamp: str,
     is_top_score: bool,
-) -> tuple[bool, bool]:
+) -> tuple[bool, bool, bool]:
     """Update user's achievement for this riddle.
-    Returns a tuple (updated, newly_achieved_top_score):
+    Returns a tuple (updated, newly_achieved_top_score, first_attempt):
     - updated: True if the user's score improved
     - newly_achieved_top_score: True if the user achieved top score for the first time
+    - first_attempt: True if this is the user's first attempt at this riddle
     """
     achievement_path = f"gatadagsins/{date}/{locale}/achievements/{user_id}"
     updated = False
     newly_achieved_top = False
+    first_attempt = False
 
     def transaction_update(
         current_data: Optional[RiddleAchievement],
     ) -> RiddleAchievement:
         """Transaction function to update achievement atomically"""
-        nonlocal updated, newly_achieved_top
+        nonlocal updated, newly_achieved_top, first_attempt
+        if current_data is None:
+            # This is the user's first attempt at this riddle
+            first_attempt = True
         achievement: RiddleAchievement = current_data or RiddleAchievement(
             score=0, word="", coord="", timestamp="", isTopScore=False
         )
@@ -423,7 +428,7 @@ def update_user_achievement(
         return achievement
 
     firebase.run_transaction(achievement_path, transaction_update)
-    return updated, newly_achieved_top
+    return updated, newly_achieved_top, first_attempt
 
 
 def update_user_streak_stats(
@@ -571,6 +576,18 @@ def increment_top_score_count(riddle_date: str, locale: str) -> None:
     """Increment the count of players who have achieved the top score.
     Uses a Firebase transaction to ensure atomicity."""
     path = f"gatadagsins/{riddle_date}/{locale}/count"
+
+    def transaction_update(current_data: Optional[int]) -> int:
+        """Transaction function to increment count atomically"""
+        return (current_data or 0) + 1
+
+    firebase.run_transaction(path, transaction_update)
+
+
+def increment_attempts_count(riddle_date: str, locale: str) -> None:
+    """Increment the count of players who have attempted the riddle.
+    Uses a Firebase transaction to ensure atomicity."""
+    path = f"gatadagsins/{riddle_date}/{locale}/attempts"
 
     def transaction_update(current_data: Optional[int]) -> int:
         """Transaction function to increment count atomically"""
@@ -955,7 +972,7 @@ def submit_api() -> ResponseType:
         max_score = riddle_max_score(riddle_date, locale) or 0
         is_top_score = (score >= max_score) if max_score > 0 else False
 
-        achievement_updated, newly_achieved_top = update_user_achievement(
+        achievement_updated, newly_achieved_top, first_attempt = update_user_achievement(
             user_id=user_id,
             date=riddle_date,
             locale=locale,
@@ -965,6 +982,10 @@ def submit_api() -> ResponseType:
             timestamp=timestamp,
             is_top_score=is_top_score,
         )
+
+        if first_attempt:
+            # This is the user's first attempt at this riddle: increment the attempts count
+            increment_attempts_count(riddle_date, locale)
 
         if achievement_updated:
             # This is a significant update, so it might affect the user's streak stats
