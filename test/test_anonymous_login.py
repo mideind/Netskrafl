@@ -11,7 +11,7 @@
 import random
 
 from utils import CustomClient, get_session_dict, login_anonymous_user
-from utils import client, u1  # type: ignore
+from utils import client, u1  # type: ignore  # noqa: F401
 
 
 def test_anonymous_login(client: CustomClient, u1: str) -> None:

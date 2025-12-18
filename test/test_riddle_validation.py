@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 # Import after fixtures to ensure proper path setup
 from utils import CustomClient
-from utils import client  # type: ignore[unused-import]
+from utils import client  # type: ignore[unused-import]  # noqa: F401
 from skraflmechanics import State, Board, Move, Error, BOARD_SIZE
 from languages import set_locale, current_tileset
 from riddle import create_state_from_riddle as _create_state_from_riddle
