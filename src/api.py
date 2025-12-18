@@ -164,9 +164,10 @@ def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
 
     def decorator(f: RouteType) -> RouteType:
 
-        assert f.__name__.endswith(
+        route_name = getattr(f, "__name__", "")
+        assert route_name.endswith(
             "_api"
-        ), f"Name of API function '{f.__name__}' must end with '_api'"
+        ), f"Name of API function '{route_name}' must end with '_api'"
 
         @api.route(route, methods=methods)
         @wraps(f)
@@ -241,7 +242,7 @@ def firebase_token_api() -> ResponseType:
     try:
         token = firebase.create_custom_token(cuid)
         return jsonify(ok=True, token=token)
-    except:
+    except Exception:
         return jsonify(ok=False)
 
 
@@ -1417,7 +1418,7 @@ def inituser_api() -> ResponseType:
             return jsonify(ok=False)
         token = firebase.create_custom_token(cuid)
         uf = UserForm(cuser)
-    except:
+    except Exception:
         return jsonify(ok=False)
 
     return jsonify(

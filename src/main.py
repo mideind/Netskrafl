@@ -283,7 +283,7 @@ def stop() -> ResponseType:
     try:
         instance = os.environ.get("GAE_INSTANCE", "N/A")
         logging.info(f"Stop: instance {instance}")
-    except:
+    except Exception:
         # The logging module may not be functional at this point,
         # as the server is being shut down
         pass

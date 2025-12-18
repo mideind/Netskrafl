@@ -240,7 +240,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     while attempts < MAX_ATTEMPTS:
         try:
             return cast(Any, auth).create_custom_token(uid).decode()
-        except:
+        except Exception:
             # It appears that ConnectionResetError exceptions can
             # propagate (wrapped in an obscure Firebase object) from
             # the call to create_custom_token()
@@ -345,7 +345,7 @@ def push_notification(
         message_id: str = cast(Any, messaging).send(msg, app=_firebase_app)
         # The response is a message ID string
         return bool(message_id)
-    except UnregisteredError as e:
+    except UnregisteredError:
         logging.info(
             f"Unregistered device token ('{device_token}') in firebase.push_notification()"
         )
@@ -371,7 +371,7 @@ def push_to_user(
     try:
         path = f"/session/{user_id}"
         ref: db.Reference = cast(Any, db).reference(path, app=_firebase_app)
-        msg: Mapping[str, Mapping[str, str]] = cast(Any, ref).get()
+        msg: Mapping[str, Mapping[str, str]] = ref.get()
         if not msg:
             return False
         # We don't send notifications to sessions that are older than 14 days
@@ -407,7 +407,7 @@ def push_to_user(
                 try:
                     ref = cast(Any, db).reference(path, app=_firebase_app)
                     ref.delete()
-                except Exception as e:
+                except Exception:
                     logging.warning(
                         f"Failed to delete node '{path}' in firebase.push_to_user()"
                     )
