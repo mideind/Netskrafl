@@ -318,4 +318,4 @@ if __name__ == "__main__":
         #update_stats(show_progress=True)
         #print(f"Checking user stats")
         #check_stats()
-        print(f"Processing complete")
+        print("Processing complete")

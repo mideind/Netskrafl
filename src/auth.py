@@ -569,7 +569,7 @@ def oauth_apple(request: Request) -> ResponseType:
         jwt_client = apple_key_client()
         try:
             signing_key = jwt_client.get_signing_key_from_jwt(token)
-        except jwt.exceptions.PyJWKClientError as e:
+        except jwt.exceptions.PyJWKClientError:
             # Unable to obtain the signing key from the Apple JWKs;
             # it may simply need to be refreshed
             jwt_client = fresh_apple_key_client()
