@@ -859,7 +859,7 @@ class UserModel(Model["UserModel"]):
                 if not f(um).startswith(prefix):
                     # Iterated past the prefix
                     return
-                if not um.inactive and not um.key.id() in id_set:
+                if not um.inactive and um.key.id() not in id_set:
                     # This entity matches and has not already been
                     # returned: yield a dict describing it
                     yield ListPrefixDict(
