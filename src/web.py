@@ -41,13 +41,13 @@ from datetime import UTC, datetime
 from flask import (
     Blueprint,
     render_template,
-    send_from_directory,  # type: ignore
+    send_from_directory,
     redirect,
     url_for,
     request,
 )
 from flask.globals import current_app
-from authlib.integrations.base_client.errors import OAuthError  # type: ignore
+from authlib.integrations.base_client.errors import OAuthError
 
 from auth import firebase_key
 from config import (
@@ -59,7 +59,6 @@ from config import (
     Error,
 )
 from basics import (
-    SessionDict,
     UserIdDict,
     current_user,
     auth_required,
@@ -812,8 +811,6 @@ def login() -> ResponseType:
 def login_malstadur() -> ResponseType:
     """User login from Málstaður by e-mail, using a JWT token
     to verify the user's identity"""
-    # logging.info("login_malstadur invoked")
-    clear_session_userid()
     rq = RequestData(request)
     # Obtain email from the request
     email = rq.get("email", "")
@@ -859,9 +856,10 @@ def login_malstadur() -> ResponseType:
     userid = uld["user_id"]
     # Create a Firebase custom token for the user
     token = firebase.create_custom_token(userid)
-    sd = SessionDict(userid=userid, method="Malstadur")
-    # Create a session cookie with the user id
-    set_session_cookie(userid, sd=sd)
+    # We don't set a session cookie here, as that doesn't work for
+    # cross-origin requests. Instead, an Explo token is returned via
+    # the UserLoginDict, and the client is expected to pass it back
+    # in subsequent requests in an Authorization: Bearer header.
     return jsonify(dict(status="success", firebase_token=token, **uld))
 
 

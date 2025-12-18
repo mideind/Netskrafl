@@ -1348,9 +1348,6 @@ class User:
                 account=um.account or user_id,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
-                # We don't need to create a fresh Explo token, so we
-                # pass in a dummy placeholder value here
-                previous_token="*",
                 prefs=all_prefs,
             )
             return uld
@@ -1366,9 +1363,6 @@ class User:
             nickname=nickname,
             locale=DEFAULT_LOCALE,
             new=True,
-            # We don't need to create a fresh Explo token, so we
-            # pass in a dummy placeholder value here
-            previous_token="*",
             prefs=all_prefs,
         )
         return uld
