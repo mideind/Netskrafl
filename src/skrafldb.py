@@ -758,7 +758,7 @@ class UserModel(Model["UserModel"]):
         # Note that multiple records with the same e-mail may occur
         # Do not return inactive accounts
         q = cls.query(UserModel.email == email.lower()).filter(
-            UserModel.inactive == False
+            UserModel.inactive == False  # noqa: E712
         )
         result = q.fetch()
         if not result:
@@ -829,12 +829,12 @@ class UserModel(Model["UserModel"]):
         """Filter the query by locale, if given, otherwise stay with the default"""
         if NETSKRAFL:
             assert (
-                locale == None or locale == DEFAULT_LOCALE
+                locale is None or locale == DEFAULT_LOCALE
             ), f"Netskrafl only allows {DEFAULT_LOCALE}"
             return q
         if not locale:
             return q.filter(
-                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
+                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale is None)
             )
         return q.filter(UserModel.locale == locale)
 
@@ -894,7 +894,9 @@ class UserModel(Model["UserModel"]):
         q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
         q = cls.filter_locale(q, locale)
 
-        um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
+        def um_func(um: UserModel) -> str:
+            return um.name_lc or ""
+
         for ud in list_q(q, um_func):
             yield ud
             counter += 1
@@ -1006,9 +1008,10 @@ class EloModelFuture(Future["EloModel"]):
 
 # Optional locale string, defaulting to the project default locale
 # in the case of Netskrafl, but otherwise a required string
-OptionalLocaleString = lambda: (
-    Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
-)
+def OptionalLocaleString():
+    return (
+        Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
+    )
 
 
 class EloModel(Model["EloModel"]):
@@ -1103,14 +1106,14 @@ class EloModel(Model["EloModel"]):
         p: Callable[[EloModel], int]
         if kind == "human":
             q = q.order(-EloModel.human_elo)
-            p = lambda em: em.human_elo
+            p = lambda em: em.human_elo  # noqa: E731
         elif kind == "manual":
             q = q.order(-EloModel.manual_elo)
-            p = lambda em: em.manual_elo
+            p = lambda em: em.manual_elo  # noqa: E731
         else:
             # Default, kind == 'all'
             q = q.order(-EloModel.elo)
-            p = lambda em: em.elo
+            p = lambda em: em.elo  # noqa: E731
         ix = 0
         for em in q.fetch(limit=limit):
             user = em.key.parent()
@@ -1492,8 +1495,8 @@ class GameModel(Model["GameModel"]):
         if versus:
             # Add a filter on the opponent
             v: Key[UserModel] = Key(UserModel, versus)
-            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))  # type: ignore
-            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))  # type: ignore
+            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
+            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
         else:
             # Plain filter on the player
             q0 = cls.query(GameModel.player0 == k)
@@ -1502,8 +1505,8 @@ class GameModel(Model["GameModel"]):
         # pylint: disable=singleton-comparison
         # The cast to int below is a hack for type checking
         # (it has no effect at run-time)
-        q0 = q0.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
-        q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
+        q0 = q0.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))  # noqa: E712
+        q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))  # noqa: E712
 
         # Issue two asynchronous queries in parallel
         qf = (q0.fetch_async(limit=max_len), q1.fetch_async(limit=max_len))
@@ -1530,12 +1533,12 @@ class GameModel(Model["GameModel"]):
         # (see index.yaml).
         q0 = (
             cls.query(GameModel.player0 == k)
-            .filter(GameModel.over == False)
+            .filter(GameModel.over == False)  # noqa: E712
             .order(-cast(int, GameModel.ts_last_move))
         )
         q1 = (
             cls.query(GameModel.player1 == k)
-            .filter(GameModel.over == False)
+            .filter(GameModel.over == False)  # noqa: E712
             .order(-cast(int, GameModel.ts_last_move))
         )
 

@@ -250,7 +250,8 @@ def migrate_robot_elo(level: int, stats: MigrationStats, dry_run: bool = False) 
         # Find existing robot Elo data in StatsModel  
         robot_stats = None
         for stats_entry in iter_q(StatsModel.query().filter(
-            StatsModel.user == None,  # Robot entries have user = None
+            # Robot entries have user = None
+            StatsModel.user == None,  # noqa: E711
             StatsModel.robot_level == level
         ), limit=1):
             robot_stats = stats_entry
@@ -315,7 +316,7 @@ def get_migration_preview() -> Tuple[int, int, Dict[int, bool]]:
     robot_levels = [TOP_SCORE, COMMON, ADAPTIVE]
     for level in robot_levels:
         robot_stats_exist = StatsModel.query().filter(
-            StatsModel.user == None,
+            StatsModel.user == None,  # noqa: E711
             StatsModel.robot_level == level
         ).count(limit=1) > 0
         robots_found[level] = robot_stats_exist
