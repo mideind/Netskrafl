@@ -1350,7 +1350,6 @@ class User:
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
                 prefs=all_prefs,
-                # lifetime=timedelta(seconds=20),  # TESTING!
             )
             return uld
         # User does not exist already: create a new user entity
