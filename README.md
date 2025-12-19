@@ -56,6 +56,51 @@ The various Flask HTML templates are found in ```templates/*.html```.
 The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 
+### Client Authentication
+
+The Netskrafl server supports three types of clients, each with its own authentication mechanism:
+
+#### 1. Direct Web Access (Same-Origin)
+
+The classic Netskrafl web interface served directly from the server. Users authenticate
+via OAuth2 (Google, Facebook, or Apple), and the server maintains session state using
+secure HTTP-only cookies with `SameSite=Lax`.
+
+- **Auth mechanism**: Flask session cookies
+- **Login endpoints**: `/login` (initiates OAuth2 flow), `/oauth2callback`
+- **Session lifetime**: 90 days
+
+#### 2. Explo Mobile App (React Native)
+
+The Explo mobile app (iOS/Android) uses the same OAuth2 providers but through
+native mobile SDKs. After initial authentication, the server issues an Explo JWT token
+that can be used for subsequent logins without repeating the OAuth2 flow.
+
+- **Auth mechanism**: Session cookies (stored in native HTTP client)
+- **Login endpoints**: `/oauth_google`, `/oauth_apple`, `/oauth_fb`, `/oauth_explo`
+- **Token lifetime**: 30 days (configurable)
+
+#### 3. Cross-Origin Web Clients (e.g., Málstaður)
+
+Third-party web applications that embed Netskrafl functionality cannot use cookies
+due to browser `SameSite` restrictions on cross-origin requests. Instead, these clients
+authenticate using Bearer tokens in the `Authorization` header.
+
+- **Auth mechanism**: JWT Bearer token (`Authorization: Bearer <token>`)
+- **Login endpoint**: `/login_malstadur` (returns JWT token in response)
+- **Token lifetime**: 30 days (configurable)
+
+**Authentication flow for cross-origin clients:**
+
+1. Client calls `POST /login_malstadur` with user credentials and a signed JWT from the parent application
+2. Server validates the JWT, finds or creates the user, and returns a response containing an Explo `token`
+3. Client stores the token and includes it in subsequent API requests as `Authorization: Bearer <token>`
+4. Server validates the token on each request via the `session_user()` function
+
+The CORS configuration allows all origins with the `Authorization` header permitted,
+enabling cross-origin clients to authenticate without cookies.
+
+
 ### To build and run locally
 
 #### Follow these steps:
