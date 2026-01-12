@@ -819,6 +819,11 @@ def login_malstadur() -> ResponseType:
         return jsonify(status="invalid", message="No email provided"), 401
     nickname = rq.get("nickname", "")
     fullname = rq.get("fullname", "")
+    # Check if the client supports Bearer token authentication
+    bearer_auth = rq.get_bool("bearer_auth", False)
+    if not bearer_auth:
+        # Legacy client: clear any existing session cookie
+        clear_session_userid()
     # Obtain the JavaScript Web Token (JWT) from the request
     jwt = rq.get("token", "")
     if running_local and not jwt:
@@ -857,14 +862,11 @@ def login_malstadur() -> ResponseType:
     userid = uld["user_id"]
     # Create a Firebase custom token for the user
     token = firebase.create_custom_token(userid)
-    # Check if the client supports Bearer token authentication
-    bearer_auth = rq.get_bool("bearer_auth", False)
     if not bearer_auth:
         # Legacy client: set a session cookie for backwards compatibility.
         # Note that this may not work for cross-origin requests due to
         # SameSite=Lax cookie restrictions, but we provide it anyway for
         # same-origin or older client scenarios.
-        clear_session_userid()
         sd = SessionDict(userid=userid, method="Malstadur")
         set_session_cookie(userid, sd=sd)
     # An Explo token is returned via the UserLoginDict. Clients that set
