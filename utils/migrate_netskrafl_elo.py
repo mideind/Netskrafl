@@ -251,6 +251,7 @@ def migrate_robot_elo(level: int, stats: MigrationStats, dry_run: bool = False) 
         robot_stats = None
         for stats_entry in iter_q(StatsModel.query().filter(
             # Robot entries have user = None
+            # Note: must use == (not 'is') for Datastore query filters
             StatsModel.user == None,  # noqa: E711
             StatsModel.robot_level == level
         ), limit=1):
@@ -315,6 +316,7 @@ def get_migration_preview() -> Tuple[int, int, Dict[int, bool]]:
     # Check existing robot data in StatsModel
     robot_levels = [TOP_SCORE, COMMON, ADAPTIVE]
     for level in robot_levels:
+        # Note: must use == (not 'is') for Datastore query filters
         robot_stats_exist = StatsModel.query().filter(
             StatsModel.user == None,  # noqa: E711
             StatsModel.robot_level == level

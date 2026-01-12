@@ -267,17 +267,24 @@ def session_user() -> Optional[User]:
         # Old-style session: nested user id dictionary
         userid = u.get("id", "")
 
-    # If no session cookie, try Bearer token from Authorization header
-    # (This is the mechanism used by Málstaður)
-    if not userid:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove "Bearer " prefix
-            claims = verify_explo_token(token)
-            if claims:
-                userid = claims.get("sub", "")
+    # First, try to resolve a user from the session cookie
+    if userid:
+        user = User.load_if_exists(userid)
+        if user is not None:
+            return user
 
-    return User.load_if_exists(userid)  # Returns None if userid is None or empty
+    # If no valid session user, try Bearer token from Authorization header
+    # (This is the mechanism used by cross-origin clients such as Málstaður)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        claims = verify_explo_token(token)
+        if claims:
+            userid = claims.get("sub", "")
+            if userid:
+                return User.load_if_exists(userid)
+
+    return None
 
 
 def session_data() -> Optional[SessionDict]:

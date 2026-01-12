@@ -185,6 +185,7 @@ def check_robot_models() -> bool:
             continue
 
         # Check if RobotModel Elo matches StatsModel data
+        # Note: must use == (not 'is') for Datastore query filters
         original_stats = None
         for stats_entry in iter_q(StatsModel.query().filter(
             StatsModel.user == None,  # noqa: E711
@@ -352,6 +353,7 @@ def check_robot_stats_migration() -> bool:
 
     for level, name in zip(robot_levels, robot_names):
         # Check StatsModel data
+        # Note: must use == (not 'is') for Datastore query filters
         stats_entries = list(iter_q(StatsModel.query().filter(
             StatsModel.user == None,  # noqa: E711
             StatsModel.robot_level == level
