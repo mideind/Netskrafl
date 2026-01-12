@@ -92,10 +92,15 @@ authenticate using Bearer tokens in the `Authorization` header.
 
 **Authentication flow for cross-origin clients:**
 
-1. Client calls `POST /login_malstadur` with user credentials and a signed JWT from the parent application
+1. Client calls `POST /login_malstadur` with user credentials, a signed JWT from the parent application,
+   and `bearer_auth: true` to opt in to Bearer token authentication
 2. Server validates the JWT, finds or creates the user, and returns a response containing an Explo `token`
 3. Client stores the token and includes it in subsequent API requests as `Authorization: Bearer <token>`
 4. Server validates the token on each request via the `session_user()` function
+
+The `bearer_auth` flag controls whether the server sets a session cookie:
+- `bearer_auth: true` - No session cookie is set; client must use Bearer token for subsequent requests
+- `bearer_auth: false` or omitted - Session cookie is set for backwards compatibility with legacy clients
 
 The CORS configuration allows all origins with the `Authorization` header permitted,
 enabling cross-origin clients to authenticate without cookies.
