@@ -371,7 +371,7 @@ def push_to_user(
     try:
         path = f"/session/{user_id}"
         ref: db.Reference = cast(Any, db).reference(path, app=_firebase_app)
-        msg: Mapping[str, Mapping[str, str]] = ref.get()
+        msg: Mapping[str, Mapping[str, str]] = cast(Any, ref).get()
         if not msg:
             return False
         # We don't send notifications to sessions that are older than 14 days
