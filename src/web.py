@@ -864,6 +864,7 @@ def login_malstadur() -> ResponseType:
         # Note that this may not work for cross-origin requests due to
         # SameSite=Lax cookie restrictions, but we provide it anyway for
         # same-origin or older client scenarios.
+        clear_session_userid()
         sd = SessionDict(userid=userid, method="Malstadur")
         set_session_cookie(userid, sd=sd)
     # An Explo token is returned via the UserLoginDict. Clients that set
