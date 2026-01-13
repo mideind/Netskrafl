@@ -36,14 +36,14 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from languages import (
+from languages import (  # noqa: E402
     NewTileSet,
     set_locale,
     current_tileset,
     current_vocabulary,
     current_board_type,
 )
-from skraflmechanics import (
+from skraflmechanics import (  # noqa: E402
     State,
     Board,
     Move,
@@ -52,11 +52,12 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import (
+from skraflplayer import (  # noqa: E402
     AutoPlayer,
     AutoPlayer_Custom,
     AutoPlayer_MiniMax,
 )
+from autoplayers import autoplayer_create  # noqa: E402
 
 
 PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
@@ -334,7 +335,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         level = int(opponent[6:])
 
         def robot_creator(state: State) -> AutoPlayer:
-            return AutoPlayer.create(state, level)
+            return autoplayer_create(state, level)
 
         players[0] = (f"Robot-{level}", robot_creator)
         players[1] = (f"Robot-{level}", robot_creator)
@@ -355,8 +356,8 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
     gameswon = [0, 0]
     totalpoints = [0, 0]
     sumofmargin = [0, 0]
-    total_word_length = 0
-    total_word_score = 0
+    total_word_length = 0.0
+    total_word_score = 0.0
     draws = 0
 
     t0 = time.time()

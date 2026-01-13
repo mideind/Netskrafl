@@ -43,7 +43,7 @@ import { Actions, createRouteResolver } from "actions";
 
 import { WaitDialog, AcceptDialog } from "wait";
 
-import { ExploLogo, AnimatedExploLogo } from "logo";
+import { AnimatedExploLogo, NetskraflLogo } from "logo";
 
 import {
   FriendPromoteDialog, FriendThanksDialog,
@@ -1050,7 +1050,7 @@ class View {
                 href: "/page",
                 class: "backlink"
               },
-              m(ExploLogo, { legend: false, scale: 1.0 })
+              m(NetskraflLogo, { legend: false, scale: 1.0 })
             )
           ),
           m("ul", [
@@ -2013,7 +2013,7 @@ class View {
                     href: "/page",
                     class: "backlink"
                   },
-                  m(ExploLogo, { legend: false, scale: 1.0 })
+                  m(NetskraflLogo, { legend: false, scale: 1.0 })
                 )
               )
             ),
@@ -2698,7 +2698,7 @@ class View {
         if (tile === '?')
           continue;
         const sq = coord(row, col);
-        if (sq !== null && game.tiles.hasOwnProperty(sq))
+        if (sq !== null && sq in game.tiles)
           game.tiles[sq].highlight = show ? playerColor : undefined;
         col += vec.dx;
         row += vec.dy;
@@ -4361,7 +4361,7 @@ const LeftLogo: ComponentFunc<{}> = () => {
       return m(".logo",
         m(m.route.Link,
           { href: '/main', class: "nodecorate" },
-          m(ExploLogo, { legend: false, scale: 1.6 })
+          m(NetskraflLogo, { legend: false, scale: 1.6 })
         )
       );
     }

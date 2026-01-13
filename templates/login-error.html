@@ -52,7 +52,7 @@
 
 <script>
 
-function initMain() {
+function initLoginError() {
    $("div.try-again").click(
       function() {
          window.location.assign("{{ url_for('web.login') }}");
@@ -65,7 +65,7 @@ function initMain() {
    );
 }
 
-$(document).ready(initMain);
+$(document).ready(initLoginError);
 
 </script>
 

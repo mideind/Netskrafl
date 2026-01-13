@@ -70,14 +70,12 @@
 """
 
 from __future__ import annotations
-from functools import lru_cache
 
 from typing import (
     Any,
     NamedTuple,
     Optional,
     List,
-    Protocol,
     Tuple,
     Dict,
     TypedDict,
@@ -93,6 +91,7 @@ from languages import current_alphabet
 from skraflmechanics import (
     State,
     Board,
+    BOARD_SIZE,
     Cover,
     MoveBase,
     Move,
@@ -115,14 +114,6 @@ class MoveTuple(NamedTuple):
 MoveList = List[MoveTuple]
 
 
-class AutoPlayerCtor(Protocol):
-
-    """ AutoPlayer instance constructor """
-
-    def __call__(self, robot_level: int, state: State, **kwargs: Any) -> AutoPlayer:
-        ...
-
-
 class AutoPlayerKwargs(TypedDict, total=False):
 
     """ kwargs optionally passed to an autoplayer constructor """
@@ -138,20 +129,6 @@ class AutoPlayerKwargs(TypedDict, total=False):
     # candidate moves before selecting a move from the other (bottom) half.
     discard_best_ratio_winning: float
     discard_best_ratio_losing: float
-
-
-class AutoPlayerTuple(NamedTuple):
-
-    """ Description of an available AutoPlayer """
-
-    name: str
-    description: str
-    level: int
-    ctor: AutoPlayerCtor
-    kwargs: AutoPlayerKwargs
-
-
-AutoPlayerList = List[AutoPlayerTuple]
 
 
 class Square:
@@ -221,7 +198,7 @@ class Axis:
     def __init__(self, autoplayer: AutoPlayer, index: int, horizontal: bool) -> None:
 
         self._autoplayer = autoplayer
-        self._sq = [Square() for _ in range(Board.SIZE)]
+        self._sq = [Square() for _ in range(BOARD_SIZE)]
         self._index = index
         self._horizontal = horizontal
         self._rack = autoplayer.rack()
@@ -288,7 +265,7 @@ class Axis:
         # letters in the rack.
         all_cc = self._autoplayer.rack_bit_pattern()
         # Go through the open squares and calculate their cross-checks
-        for ix in range(Board.SIZE):
+        for ix in range(BOARD_SIZE):
             cc = all_cc  # Start with the default cross-check set
             if not board.is_covered(x, y):
                 if self.is_horizontal():
@@ -370,7 +347,7 @@ class Axis:
         at and around all anchor squares"""
         last_anchor = -1
         len_rack = len(self._rack)
-        for i in range(Board.SIZE):
+        for i in range(BOARD_SIZE):
             if self._sq[i].is_anchor():
                 # Count the consecutive open, non-anchor squares on the left of the anchor
                 open_sq = 0
@@ -592,7 +569,7 @@ class ExtendRightNavigator(Navigator):
     def accepting(self) -> bool:
         """ Returns False if the navigator does not want more characters """
         # Continue as long as there is something left to check
-        if self._index >= Board.SIZE:
+        if self._index >= BOARD_SIZE:
             # Gone off the board edge
             return False
         # Otherwise, continue while we have something on the rack
@@ -628,7 +605,7 @@ class ExtendRightNavigator(Navigator):
         if (
             final
             and len(matched) > 1
-            and (self._index >= Board.SIZE or self._axis.is_empty(self._index))
+            and (self._index >= BOARD_SIZE or self._axis.is_empty(self._index))
         ):
 
             # Solution found - make a Move object for it
@@ -654,8 +631,8 @@ class ExtendRightNavigator(Navigator):
                         rack = rack.replace("?", "", 1)
                         tile = "?"
                         tiles += tile + c
-                    # assert row in range(Board.SIZE)
-                    # assert col in range(Board.SIZE)
+                    # assert row in range(BOARD_SIZE)
+                    # assert col in range(BOARD_SIZE)
                     # Add this cover to the Move object
                     move.add_validated_cover(Cover(row, col, tile, c))
                 else:
@@ -676,16 +653,6 @@ class ExtendRightNavigator(Navigator):
         return True
 
 
-# By convention, a robot level that always plays the highest-scoring word
-TOP_SCORE = 0
-# By convention, a robot level that plays medium-heavy words
-MEDIUM = 8
-# By convention, a robot level that uses only common words
-COMMON = 15
-# By convention, a robot level that is adaptive
-ADAPTIVE = 20
-
-
 class AutoPlayer:
 
     """Implements an automatic, computer-controlled player.
@@ -703,50 +670,6 @@ class AutoPlayer:
     not in this class.
 
     """
-
-    @staticmethod
-    @lru_cache(maxsize=None)
-    def for_locale(locale: str) -> AutoPlayerList:
-        """Return the list of autoplayers that are available
-        for the given locale"""
-        locale = locale.replace("-", "_")
-        apl = AUTOPLAYERS.get(locale)
-        if apl is None:
-            if "_" in locale:
-                # Lookup the major locale, i.e. "en" if "en_US"
-                apl = AUTOPLAYERS.get(locale.split("_")[0])
-            if apl is None:
-                # Fall back to English
-                apl = AUTOPLAYERS.get("en")
-        assert apl is not None
-        return apl
-
-    @staticmethod
-    @lru_cache(maxsize=None)
-    def for_level(locale: str, level: int) -> AutoPlayerTuple:
-        """Return the strongest autoplayer that is
-        at or below the given difficulty. Note that a higher
-        level number requests a weaker player."""
-        apl = AutoPlayer.for_locale(locale)
-        i = len(apl)
-        while i > 0:
-            i -= 1
-            if level >= apl[i].level:
-                return apl[i]
-        return apl[0]
-
-    @staticmethod
-    def create(state: State, robot_level: int = TOP_SCORE) -> AutoPlayer:
-        """Create an AutoPlayer instance for the state's locale,
-        of the desired ability level"""
-        apl = AutoPlayer.for_level(state.locale, robot_level)
-        return apl.ctor(robot_level, state, **apl.kwargs)
-
-    @staticmethod
-    @lru_cache(maxsize=None)
-    def name(locale: str, level: int) -> str:
-        """ Return the autoplayer name for a given level """
-        return AutoPlayer.for_level(locale, level).name
 
     def __init__(self, robot_level: int, state: State, **kwargs: Any) -> None:
         self._level = robot_level
@@ -846,11 +769,11 @@ class AutoPlayer:
         else:
             # Normal move: go through all 15 (row) + 15 (column) axes and generate
             # valid moves within each of them
-            for r in range(Board.SIZE):
+            for r in range(BOARD_SIZE):
                 axis = self._axis_from_row(r)
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
-            for c in range(Board.SIZE):
+            for c in range(BOARD_SIZE):
                 axis = self._axis_from_column(c)
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
@@ -966,8 +889,8 @@ class AutoPlayer_Custom(AutoPlayer):
         num_candidates = len(scored_candidates)
         # Iterate through the candidates in descending score order
         # until we have enough playable ones or we have exhausted the list
-        i = 0  # Candidate index
-        p = 0  # Playable index
+        i: int = 0  # Candidate index
+        p: int = 0  # Playable index
         while p < pick_from and i < num_candidates:
             candidate = scored_candidates[i]
             m, score = candidate  # Candidate move
@@ -1176,278 +1099,3 @@ class AutoPlayer_MiniMax(AutoPlayer):
             )
         # Return the highest-scoring candidate
         return weighted_candidates[0][0]
-
-
-# The available autoplayers (robots) for each locale.
-# The list for each locale should be ordered in ascending order by level.
-
-AUTOPLAYERS: Dict[str, AutoPlayerList] = {
-    # Icelandic
-    "is": [
-        AutoPlayerTuple(
-            "Fullsterkur",
-            "Velur stigahæsta leik í hverri stöðu",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Miðlungur",
-            "Forðast allra sjaldgæfustu orðin; velur úr 20 stigahæstu leikjum",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="midlungur",
-                pick_from=20,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Hálfdrættingur",
-            "Forðast sjaldgæf orð; velur úr 20 stigahæstu leikjum",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="amlodi",
-                pick_from=20,
-                adaptive=True,
-                # Cuts off the top 6 moves (20*0.3) to select typically from 14 moves
-                discard_best_ratio_winning=0.3,
-                # Cuts off the top 2 moves (20*0.1) to select typically from 18 moves
-                discard_best_ratio_losing=0.1,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Amlóði",
-            "Forðast sjaldgæf orð og velur úr 30 leikjum sem koma til álita",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="amlodi",
-                # Considers a maximum of 30 candidate moves, in descending score order
-                pick_from=30,
-                adaptive=True,
-                # Cuts off the top 9 moves (30*0.3) to select typically from 21 moves
-                discard_best_ratio_winning=0.3,
-                # Cuts off the top 6 moves (30*0.2) to select typically from 24 moves
-                discard_best_ratio_losing=0.2,
-            ),
-        ),
-    ],
-    # U.S. English
-    "en_US": [
-        AutoPlayerTuple(
-            "Freyja",
-            "Always plays the highest-scoring move",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Idun",
-            "Picks one of 20 highest-scoring possible moves",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
-        ),
-        AutoPlayerTuple(
-            "Frigg",
-            "Plays one of 20 possible words from a medium vocabulary",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="otcwl2014.mid",
-                pick_from=20,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,  # Cuts off the top 6 moves (20*0.3)
-                discard_best_ratio_losing=0.1,  # Cuts off the top 2 moves (20*0.1)
-            ),
-        ),
-        AutoPlayerTuple(
-            "Sif",
-            "Plays one of 30 possible words from a basic vocabulary",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="otcwl2014.aml",
-                pick_from=30,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,  # Cuts off the top 9 moves (30*0.3)
-                discard_best_ratio_losing=0.2,  # Cuts off the top 6 moves (30*0.2)
-            ),
-        ),
-    ],
-    # Default English (UK & Rest Of World)
-    "en": [
-        AutoPlayerTuple(
-            "Freyja",
-            "Always plays the highest-scoring move",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Idun",
-            "Picks one of 20 highest-scoring possible moves",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
-        ),
-        AutoPlayerTuple(
-            "Frigg",
-            "Plays one of 20 possible words from a medium vocabulary",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="sowpods.mid",
-                pick_from=20,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.1,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Sif",
-            "Plays one of 30 possible words from a basic vocabulary",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            # Since Sif is adaptive, she will pick from the top 30 (=2*15)
-            # moves if she has more points than the human opponent
-            AutoPlayerKwargs(
-                vocab="sowpods.aml",
-                pick_from=30,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.2,
-            ),
-        ),
-    ],
-    # Norwegian (Bokmål)
-    "nb": [
-        AutoPlayerTuple(
-            "Freyja",
-            "Velger alltid trekket som gir høyest poeng",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Idunn",
-            "Velger ett av de 20 trekkene som gir høyest poeng",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
-        ),
-        AutoPlayerTuple(
-            "Frigg",
-            "Spiller ett av 20 mulige ord fra et middels ordtilfang",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="nsf2023.mid",
-                pick_from=20,
-                adaptive=True,
-                discard_best_ratio_winning=0.25,
-                discard_best_ratio_losing=0.1,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Sif",
-            "Spiller ett av 24 mulige vanlige ord fra et begrenset ordtilfang",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="nsf2023.aml",
-                pick_from=24,
-                adaptive=True,
-                discard_best_ratio_winning=0.25,  # Cuts off the top 6 moves (24*0.25)
-                discard_best_ratio_losing=0.125,  # Cuts off the top 3 moves (24*0.125)
-            ),
-        ),
-    ],
-    # Norwegian (Nynorsk)
-    "nn": [
-        AutoPlayerTuple(
-            "Freyja",
-            "Vel alltid trekket som gjev høgast poeng",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Idunn",
-            "Vel eitt av dei 20 trekka som gjev høgast poeng",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
-        ),
-        AutoPlayerTuple(
-            "Frigg",
-            "Spelar eitt av 20 moglege ord frå eit middels ordtilfang",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="nynorsk2024.mid",
-                pick_from=20,
-                adaptive=True,
-                discard_best_ratio_winning=0.25,
-                discard_best_ratio_losing=0.1,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Sif",
-            "Spelar eitt av 24 moglege vanlege ord frå eit avgrensa ordtilfang",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="nynorsk2024.aml",
-                pick_from=24,
-                adaptive=True,
-                discard_best_ratio_winning=0.25,  # Cuts off the top 6 moves (24*0.25)
-                discard_best_ratio_losing=0.125,  # Cuts off the top 3 moves (24*0.125)
-            ),
-        ),
-    ],
-    # Polish
-    "pl": [
-        AutoPlayerTuple(
-            "Kopernik",
-            "Zawsze gra ruch z najwyższym wynikiem",
-            TOP_SCORE,
-            AutoPlayer,
-            {},
-        ),
-        AutoPlayerTuple(
-            "Maria",
-            "Wybiera jeden z 20 najwyżej punktowanych ruchów",
-            MEDIUM,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(pick_from=20),
-        ),
-        AutoPlayerTuple(
-            "Stefan",
-            "Gra jednym z 20 możliwych słów ze średniego słownika",
-            COMMON,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="osps37.mid",
-                pick_from=20,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,
-                discard_best_ratio_losing=0.1,
-            ),
-        ),
-        AutoPlayerTuple(
-            "Wisława",
-            "Gra jednym z 30 możliwych słów z podstawowego słownika",
-            ADAPTIVE,
-            AutoPlayer_Custom,
-            AutoPlayerKwargs(
-                vocab="osps37.aml",
-                pick_from=30,
-                adaptive=True,
-                discard_best_ratio_winning=0.3,  # Cuts off the top 9 moves (30*0.3)
-                discard_best_ratio_losing=0.2,  # Cuts off the top 6 moves (30*0.2)
-            ),
-        ),
-    ],
-}

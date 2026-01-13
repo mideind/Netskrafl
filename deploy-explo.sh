@@ -37,7 +37,7 @@ function default # $1=version
     fi
     echo "Default module deployment starting, version '$1'"
     grunt make
-    gcloud beta app deploy --version=$1 --no-promote --project=explo-dev app-explo.yaml
+    gcloud app deploy --no-cache --version=$1 --no-promote --project=explo-dev app-explo.yaml
     echo "Default module deployment completed"
 }
 

@@ -47,6 +47,7 @@ from flask.helpers import url_for
 from config import (
     ANONYMOUS_PREFIX,
     EXPLO_CLIENT_SECRET,
+    FIREBASE_API_KEY,
     MALSTADUR_JWT_SECRET,
     DEFAULT_LOCALE,
     NETSKRAFL,
@@ -76,6 +77,7 @@ from skraflmechanics import Error
 
 T = TypeVar("T")
 
+PrefItem = Union[str, int, bool]
 
 class UserSummaryDict(TypedDict):
     """Summary data about a user"""
@@ -106,6 +108,7 @@ class UserLoginDict(TypedDict):
     user_id: str
     account: str
     method: NotRequired[str]
+    nickname: str
     locale: str
     new: bool
     # Our own token, which the client can pass back later to authenticate
@@ -114,6 +117,11 @@ class UserLoginDict(TypedDict):
     # If we just generated a new Explo token, this is its expiration time,
     # as an ISO format date and time string
     expires: Optional[str]
+    # All preferences of this user, including defaults
+    prefs: NotRequired[PrefsDict]
+    # Firebase API key for client-side access to Firebase services
+    # (this key is not a secret)
+    firebase_api_key: str
 
 
 class UserDetailDict(TypedDict):
@@ -197,6 +205,7 @@ EXPLO_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
 # This is the currently issued KID
 EXPLO_KID = EXPLO_KID_2
 
+# Remember to change Málstaður:src/app/api/netskrafl/token/route.tsx if this changes!
 MALSTADUR_KID = "2025-02-27:1"
 
 # All potentially valid KIDs
@@ -217,11 +226,13 @@ set_online_status_for_summaries = functools.partial(set_online_status, "uid")
 
 def make_login_dict(
     user_id: str,
+    nickname: str,
     account: str,
     locale: str,
     new: bool,
     lifetime: timedelta = DEFAULT_TOKEN_LIFETIME,
     previous_token: Optional[str] = None,
+    prefs: Optional[PrefsDict] = None,
 ) -> UserLoginDict:
     """Create a login credential object that is returned to the client"""
     now = datetime.now(UTC)
@@ -247,14 +258,19 @@ def make_login_dict(
             algorithm=JWT_ALGORITHM,
             headers={"kid": EXPLO_KID},
         )
-    return {
+    result: UserLoginDict = {
         "user_id": user_id,
+        "nickname": nickname,
         "account": account,
         "locale": locale,
         "new": new,
         "token": token,
         "expires": expires.isoformat() if previous_token is None else None,
+        "firebase_api_key": FIREBASE_API_KEY,
     }
+    if prefs is not None:
+        result["prefs"] = prefs
+    return result
 
 
 def is_token_blacklisted(jti: str) -> bool:
@@ -303,7 +319,8 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
         else:
             return None
         return claims
-    except (jwt.InvalidTokenError, ValueError):
+    except (jwt.InvalidTokenError, ValueError) as e:
+        logging.warning(f"Failed to verify Explo token: {e}")
         return None
 
 
@@ -474,8 +491,9 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user"""
-        return self._nickname
+        """Returns the human-readable nickname of a user,
+        or userid if a nick is not available"""
+        return self._nickname or self._user_id or ""
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
@@ -586,10 +604,11 @@ class User:
         self._location = location
 
     def get_pref(
-        self, pref: str, default: Optional[Union[str, int, bool]] = None
-    ) -> Optional[Union[str, int, bool]]:
+        self, pref: str, default: Optional[PrefItem] = None
+    ) -> Optional[PrefItem]:
         """Retrieve a preference, or None if not found"""
-        return self._preferences.get(pref, default)
+        # Cast to Dict for dynamic key access (PrefsDict is a TypedDict)
+        return cast(Dict[str, PrefItem], self._preferences).get(pref, default)
 
     def get_string_pref(self, pref: str, default: str = "") -> str:
         """Retrieve a string preference, or "" if not found"""
@@ -597,13 +616,14 @@ class User:
         return val if isinstance(val, str) else default
 
     def get_bool_pref(self, pref: str, default: bool = False) -> bool:
-        """Retrieve a string preference, or "" if not found"""
+        """Retrieve a boolean preference, or False if not found"""
         val = self._preferences.get(pref, default)
         return val if isinstance(val, bool) else default
 
-    def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
+    def set_pref(self, pref: str, value: PrefItem) -> None:
         """Set a preference to a value"""
-        self._preferences[pref] = value
+        # Cast to Dict for dynamic key access (PrefsDict is a TypedDict)
+        cast(Dict[str, PrefItem], self._preferences)[pref] = value
 
     @staticmethod
     def full_name_from_prefs(prefs: Optional[PrefsDict]) -> str:
@@ -629,16 +649,6 @@ class User:
     def set_email(self, email: str) -> None:
         """Sets the e-mail address of a user in the user preferences"""
         self.set_pref("email", email)
-
-    def audio(self) -> bool:
-        """Returns True if the user wants audible signals"""
-        # True by default
-        return self.get_bool_pref("audio", True)
-
-    def set_audio(self, audio: bool) -> None:
-        """Sets the audio preference of a user to True or False"""
-        assert isinstance(audio, bool)
-        self.set_pref("audio", audio)
 
     @staticmethod
     def _url_for_image(
@@ -683,6 +693,15 @@ class User:
         # when the user entity is saved in the database!
         self._image = image
         self._has_image_blob = False
+
+    def audio(self) -> bool:
+        """Returns True if the user wants audible signals"""
+        # True by default
+        return self.get_bool_pref("audio", True)
+
+    def set_audio(self, audio: bool) -> None:
+        """Sets the audio preference of a user to True or False"""
+        self.set_pref("audio", audio)
 
     def fanfare(self) -> bool:
         """Returns True if the user wants a fanfare sound when winning"""
@@ -1136,20 +1155,10 @@ class User:
         return user_list
 
     @classmethod
-    def create_user(
-        cls,
-        account: str,
-        email: str,
-        nickname: str,
-        name: str,
-        image: str,
-        locale: str,
-        is_friend: bool = False,
+    def make_nickname(
+        cls, nickname: str, name: str, email: str
     ) -> str:
-        """Create a new user object"""
-        # Create a new user, with the account id as user id.
-        # New users are created with the new bag as default,
-        # and we also capture the email and the full name.
+        """Create a nickname for a user"""
         nickname = NICKNAME_STRIP.sub("", nickname)
         if not nickname:
             # Obtain a candidate nickname from the email
@@ -1165,7 +1174,23 @@ class User:
             if strip1 != candidate1 and candidate2 and strip2 == candidate2:
                 strip1 = ""
             nickname = strip1 or candidate2 or ""
-        nickname = nickname[0:MAX_NICKNAME_LENGTH]
+        return nickname[0:MAX_NICKNAME_LENGTH]
+
+    @classmethod
+    def create_user(
+        cls,
+        account: str,
+        email: str,
+        nickname: str,
+        name: str,
+        image: str,
+        locale: str,
+        is_friend: bool = False,
+    ) -> Tuple[str, PrefsDict]:
+        """Create a new user object"""
+        # Create a new user, with the account id as user id.
+        # New users are created with the new bag as default,
+        # and we also capture the email and the full name.
         prefs: PrefsDict = {
             "newbag": True,
             "email": email,
@@ -1229,6 +1254,7 @@ class User:
             uld = make_login_dict(
                 user_id=um.user_id(),
                 account=um.account,
+                nickname=um.nickname,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
             )
@@ -1255,23 +1281,33 @@ class User:
             # If the account was disabled, enable it again
             um.inactive = False
             user_id = um.put().id()
+            all_prefs = PrefsDict(
+                ready=um.ready or False,
+                ready_timed=um.ready_timed or False,
+            )
+            all_prefs.update(um.prefs or {})
             uld = make_login_dict(
                 user_id=user_id,
                 account=um.account,
+                nickname=um.nickname,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
+                prefs=all_prefs,
             )
             return uld
         # User does not exist already: create a new user entity
-        user_id = cls.create_user(
-            account, email, "", name, image, locale or DEFAULT_LOCALE
+        nickname = cls.make_nickname("", name, email)
+        user_id, all_prefs = cls.create_user(
+            account, email, nickname, name, image, locale or DEFAULT_LOCALE
         )
         # Create a user login event object and return it
         uld = make_login_dict(
             user_id=user_id,
             account=account,
+            nickname=nickname,
             locale=locale or DEFAULT_LOCALE,
             new=True,
+            prefs=all_prefs,
         )
         return uld
 
@@ -1289,35 +1325,46 @@ class User:
         if (um := UserModel.fetch_email(email)) is not None:
             # User exists: Note the login timestamp
             um.last_login = datetime.now(UTC)
-            # Force the friend state to the one coming from Málstaður
-            um.plan = "friend" if is_friend else ""
-            um.prefs["friend"] = is_friend
-            um.prefs["haspaid"] = is_friend
+            # For now, a user is a friend if he has either a friend status from
+            # the legacy Netskrafl/SalesCloud setup, or a subscription from Málstaður
+            is_legacy_friend = um.prefs.get("friend", False) or um.plan == "friend"
+            legacy_haspaid = um.prefs.get("haspaid", False)
+            um.plan = "friend" if is_friend or is_legacy_friend else ""
+            um.prefs["friend"] = is_friend or is_legacy_friend
+            um.prefs["haspaid"] = is_friend or legacy_haspaid
             um.put()
+            all_prefs = PrefsDict(
+                ready=um.ready or False,
+                ready_timed=um.ready_timed or False,
+                beginner=True,
+                audio=False,
+                fanfare=False,
+                fairplay=False,
+            )
+            all_prefs.update(um.prefs)
             user_id = um.user_id()
             uld = make_login_dict(
                 user_id=user_id,
+                nickname=um.nickname or nickname,
                 account=um.account or user_id,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
-                # We don't need to create a fresh Explo token, so we
-                # pass in a dummy placeholder value here
-                previous_token="*",
+                prefs=all_prefs,
             )
             return uld
         # User does not exist already: create a new user entity
-        user_id = cls.create_user(
+        nickname = User.make_nickname(nickname, fullname, email)
+        user_id, all_prefs = cls.create_user(
             account, email, nickname, fullname, "", DEFAULT_LOCALE, is_friend
         )
         # Return a user login event object
         uld = make_login_dict(
             user_id=user_id,
             account=account,
+            nickname=nickname,
             locale=DEFAULT_LOCALE,
             new=True,
-            # We don't need to create a fresh Explo token, so we
-            # pass in a dummy placeholder value here
-            previous_token="*",
+            prefs=all_prefs,
         )
         return uld
 
@@ -1337,6 +1384,7 @@ class User:
         uld = make_login_dict(
             user_id=user_id,
             account=um.account or user_id,
+            nickname=um.nickname,
             locale=um.locale or DEFAULT_LOCALE,
             new=False,
             previous_token=previous_token,
@@ -1425,6 +1473,7 @@ class User:
         """Return the profile of a given user along with key statistics,
         as a dictionary as well as an error code"""
         cuid = cuser.id()
+        user: Optional[User] = None
         if cuid == uid:
             # Current user: no need to load the user object
             user = cuser
@@ -1520,7 +1569,7 @@ class User:
                     result[ix] = p
                 else:
                     prev = r
-            profile[f"elo_{PERIOD}_days"] = result
+            profile[f"elo_{PERIOD}_days"] = result  # type: ignore[literal-required]
 
         return Error.LEGAL, profile
 

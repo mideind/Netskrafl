@@ -44,18 +44,20 @@ from flask import (
     send_file,  # type: ignore
 )
 from flask.globals import current_app
+from flask.typing import ResponseReturnValue
 from werkzeug.utils import redirect
 
 from config import (
     NETSKRAFL,
     RC_WEBHOOK_AUTH,
     RouteType,
+    RouteFunc,
     running_local,
     DEFAULT_LOCALE,
     ResponseType,
+    Error,
 )
 from basics import (
-    RouteFunc,
     is_mobile_client,
     jsonify,
     auth_required,
@@ -73,10 +75,7 @@ from languages import (
     to_supported_locale,
 )
 from wordbase import Wordbase
-from skraflmechanics import (
-    Board,
-    Error,
-)
+from skraflmechanics import BOARD_SIZE
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
@@ -165,13 +164,14 @@ def api_route(route: str, methods: Sequence[str] = _ONLY_POST) -> RouteFunc:
 
     def decorator(f: RouteType) -> RouteType:
 
-        assert f.__name__.endswith(
+        route_name = getattr(f, "__name__", "")
+        assert route_name.endswith(
             "_api"
-        ), f"Name of API function '{f.__name__}' must end with '_api'"
+        ), f"Name of API function '{route_name}' must end with '_api'"
 
         @api.route(route, methods=methods)
         @wraps(f)
-        def wrapper(*args: Any, **kwargs: Any) -> ResponseType:
+        def wrapper(*args: Any, **kwargs: Any) -> ResponseReturnValue:
             return f(*args, **kwargs)
 
         return wrapper
@@ -242,7 +242,7 @@ def firebase_token_api() -> ResponseType:
     try:
         token = firebase.create_custom_token(cuid)
         return jsonify(ok=True, token=token)
-    except:
+    except Exception:
         return jsonify(ok=False)
 
 
@@ -383,14 +383,13 @@ def wordcheck_api() -> ResponseType:
     rq = RequestData(request)
     words: List[str] = rq.get_list("words")
     word: str = rq["word"]
-    board_size = Board.SIZE
 
     # Sanity check the word list: we should never need to check more than 16 words
     # (major-axis word plus up to 15 cross-axis words)
     if (
         not words
-        or len(words) > board_size + 1
-        or any(len(w) > board_size for w in words)
+        or len(words) > BOARD_SIZE + 1
+        or any(len(w) > BOARD_SIZE for w in words)
     ):
         return jsonify(ok=False)
 
@@ -1419,7 +1418,7 @@ def inituser_api() -> ResponseType:
             return jsonify(ok=False)
         token = firebase.create_custom_token(cuid)
         uf = UserForm(cuser)
-    except:
+    except Exception:
         return jsonify(ok=False)
 
     return jsonify(
@@ -1528,7 +1527,7 @@ def initgame_api() -> ResponseType:
 
     # Return the uuid of the new game, and the id of the
     # player whose turn it is
-    to_move = game.player_id_to_move()
+    to_move = game.player_id_to_move() or ""
     return jsonify(ok=True, uuid=game_id, locale=game.locale, to_move=to_move)
 
 

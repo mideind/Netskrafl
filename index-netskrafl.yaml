@@ -1,0 +1,115 @@
+
+# Netskrafl Datastore indexes
+
+indexes:
+
+- kind: ChallengeModel
+  properties:
+  - name: destuser
+  - name: timestamp
+
+- kind: ChallengeModel
+  ancestor: yes
+  properties:
+  - name: timestamp
+
+- kind: ChatModel
+  properties:
+  - name: channel
+  - name: timestamp
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player0
+  - name: player1
+  - name: ts_last_move
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player0
+  - name: timestamp
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player0
+  - name: ts_last_move
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player1
+  - name: timestamp
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: player1
+  - name: ts_last_move
+    direction: desc
+
+- kind: GameModel
+  properties:
+  - name: over
+  - name: ts_last_move
+
+- kind: PromoModel
+  properties:
+  - name: player
+  - name: promotion
+  - name: timestamp
+
+- kind: RatingModel
+  properties:
+  - name: kind
+  - name: rank
+
+- kind: StatsModel
+  properties:
+  - name: robot_level
+  - name: timestamp
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: robot_level
+  - name: user
+  - name: timestamp
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: timestamp
+  - name: human_elo
+    direction: desc
+
+- kind: StatsModel
+  properties:
+  - name: user
+  - name: timestamp
+    direction: desc
+
+- kind: UserModel
+  properties:
+  - name: human_elo
+    direction: asc
+  - name: highest_score
+
+- kind: UserModel
+  properties:
+  - name: human_elo
+    direction: desc
+  - name: highest_score

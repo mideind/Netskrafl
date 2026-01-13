@@ -22,12 +22,12 @@
 
 from __future__ import annotations
 
-from typing import Callable, List, NamedTuple, Tuple, Iterator, Union, Optional, Type
+from typing import Callable, List, Mapping, NamedTuple, Tuple, Iterator, Union, Optional, Type
 
 import abc
 from random import SystemRandom
 
-from config import DEFAULT_LOCALE
+from config import DEFAULT_LOCALE, Error, BoardType, BoardTypes
 from wordbase import Wordbase
 from languages import (
     TileSet,
@@ -60,7 +60,7 @@ _DEBUG_SMALL_BAG = False
 
 # Board squares with word/letter scores
 # ' '=normal/single, '2'=double, '3'=triple score
-_WSC = {
+_WSC: BoardType = {
     "standard": [
         "3      3      3",
         " 2           2 ",
@@ -97,7 +97,7 @@ _WSC = {
     ],
 }
 
-_LSC = {
+_LSC: BoardType = {
     "standard": [
         "   2       2   ",
         "     3   3     ",
@@ -134,21 +134,50 @@ _LSC = {
     ],
 }
 
+# A standard board is 15 x 15 squares,
+# but this is adjustable by changing this constant
+BOARD_SIZE = 15
+
+assert (len(_WSC["standard"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _WSC["standard"]))
+assert (len(_WSC["explo"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _WSC["explo"]))
+assert (len(_LSC["standard"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _LSC["standard"]))
+assert (len(_LSC["explo"]) == BOARD_SIZE and all(len(row) == BOARD_SIZE for row in _LSC["explo"]))
+
 # For each board type, convert the word and letter score strings to integer arrays
 _xlt: Callable[[List[str]], List[List[int]]] = lambda arr: [
     [1 if c == " " else int(c) for c in row] for row in arr
 ]
-_WORDSCORE = {key: _xlt(val) for key, val in _WSC.items()}
-_LETTERSCORE = {key: _xlt(val) for key, val in _LSC.items()}
+_WORDSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val in _WSC.items()}
+_LETTERSCORE: Mapping[BoardTypes, List[List[int]]] = {key: _xlt(val) for key, val in _LSC.items()}
+
+
+def enum_covers(tiles: str) -> Iterator[Tuple[str, str]]:
+    """Generator to enumerate through a tiles string,
+    which may contain wildcard tiles represented by '?',
+    yielding (tile, letter) tuples.
+
+    The tiles string uses an encoded format where:
+    - Normal tiles: just the letter (e.g., 'c' yields ('c', 'c'))
+    - Blank tiles: '?' followed by the letter it represents
+      (e.g., '?a' yields ('?', 'a'))
+
+    Example: 'c?at' yields [('c','c'), ('?','a'), ('t','t')]
+    """
+    ix = 0
+    while ix < len(tiles):
+        if tiles[ix] == "?":
+            # Wildcard tile: must be followed by its meaning
+            ix += 1
+            yield ("?", tiles[ix])
+        else:
+            # Normal letter tile
+            yield (tiles[ix], tiles[ix])
+        ix += 1
 
 
 class Board:
     """Represents the characteristics and the contents
     of a crossword game board."""
-
-    # A common standard board is 15 x 15 squares,
-    # but this is easily adjustable by changing this constant
-    SIZE = 15
 
     # The rows are identified by letter
     ROWIDS = "ABCDEFGHIJKLMNO"
@@ -164,18 +193,19 @@ class Board:
         )
 
     def __init__(
-        self, copy: Optional[Board] = None, board_type: Optional[str] = None
+        self, copy: Optional[Board] = None, board_type: Optional[BoardTypes] = None
     ) -> None:
 
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
         self._letters: List[str]
         self._tiles: List[str]
+        self._board_type: BoardTypes
         if copy is None:
             # Store letters on the board in list of strings
-            self._letters = [" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._letters = [" " * BOARD_SIZE for _ in range(BOARD_SIZE)]
             # Store tiles on the board in list of strings
-            self._tiles = [" " * Board.SIZE for _ in range(Board.SIZE)]
+            self._tiles = [" " * BOARD_SIZE for _ in range(BOARD_SIZE)]
             # The two counts below should always stay in sync
             self._numletters = 0
             self._numtiles = 0
@@ -200,7 +230,7 @@ class Board:
                 self._start_square = (3, 3)
             else:
                 # For the standard board, the starting square is H8
-                self._start_square = (Board.SIZE // 2, Board.SIZE // 2)
+                self._start_square = (BOARD_SIZE // 2, BOARD_SIZE // 2)
         return self._start_square
 
     @property
@@ -221,11 +251,11 @@ class Board:
         """Check whether there are any tiles on the board adjacent to this square"""
         if row > 0 and self.is_covered(row - 1, col):
             return True
-        if row < Board.SIZE - 1 and self.is_covered(row + 1, col):
+        if row < BOARD_SIZE - 1 and self.is_covered(row + 1, col):
             return True
         if col > 0 and self.is_covered(row, col - 1):
             return True
-        if col < Board.SIZE - 1 and self.is_covered(row, col + 1):
+        if col < BOARD_SIZE - 1 and self.is_covered(row, col + 1):
             return True
         return False
 
@@ -273,8 +303,8 @@ class Board:
 
     def enum_tiles(self) -> Iterator[Tuple[int, int, str, str]]:
         """Enumerate the tiles on the board with their coordinates"""
-        for x in range(Board.SIZE):
-            for y in range(Board.SIZE):
+        for x in range(BOARD_SIZE):
+            for y in range(BOARD_SIZE):
                 t = self.tile_at(x, y)
                 if t != " ":
                     yield (x, y, t, self.letter_at(x, y))
@@ -287,7 +317,7 @@ class Board:
         result = ""
         row += xd
         col += yd
-        while row in range(Board.SIZE) and col in range(Board.SIZE):
+        while row in range(BOARD_SIZE) and col in range(BOARD_SIZE):
             ltr = getter(row, col)
             if ltr == " ":
                 # Empty square: we're done
@@ -536,11 +566,12 @@ class State:
         drawtiles: bool = True,
         copy: Optional[State] = None,
         locale: Optional[str] = None,
-        board_type: Optional[str] = None,
+        board_type: Optional[BoardTypes] = None,
     ) -> None:
 
         # The covers laid down in the last challengeable move
         self._last_covers: Optional[List[Cover]] = None
+        self._board_type: BoardTypes
 
         # pylint: disable=protected-access
         if copy is None:
@@ -863,74 +894,6 @@ class State:
         )
 
 
-class Error:
-    """Error return codes from Move.check_legality()"""
-
-    # pylint: disable=too-few-public-methods
-
-    def __init__(self) -> None:
-        pass
-
-    LEGAL = 0
-    NULL_MOVE = 1
-    FIRST_MOVE_NOT_THROUGH_START = 2
-    DISJOINT = 3
-    NOT_ADJACENT = 4
-    SQUARE_ALREADY_OCCUPIED = 5
-    HAS_GAP = 6
-    WORD_NOT_IN_DICTIONARY = 7
-    CROSS_WORD_NOT_IN_DICTIONARY = 8
-    TOO_MANY_TILES_PLAYED = 9
-    TILE_NOT_IN_RACK = 10
-    EXCHANGE_NOT_ALLOWED = 11
-    TOO_MANY_TILES_EXCHANGED = 12
-    OUT_OF_SYNC = 13
-    LOGIN_REQUIRED = 14
-    WRONG_USER = 15
-    GAME_NOT_FOUND = 16
-    GAME_NOT_OVERDUE = 17
-    SERVER_ERROR = 18
-    NOT_MANUAL_WORDCHECK = 19
-    MOVE_NOT_CHALLENGEABLE = 20
-    ONLY_PASS_OR_CHALLENGE = 21
-    USER_MUST_BE_FRIEND = 22
-    # Insert new error codes above this line
-    # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
-    GAME_OVER = 99
-
-    @staticmethod
-    def errortext(errcode: int) -> str:
-        """Return a string identifier corresponding to an error code"""
-        if errcode == Error.GAME_OVER:
-            # Special case
-            return "GAME_OVER"
-        return [
-            "LEGAL",
-            "NULL_MOVE",
-            "FIRST_MOVE_NOT_THROUGH_START",
-            "DISJOINT",
-            "NOT_ADJACENT",
-            "SQUARE_ALREADY_OCCUPIED",
-            "HAS_GAP",
-            "WORD_NOT_IN_DICTIONARY",
-            "CROSS_WORD_NOT_IN_DICTIONARY",
-            "TOO_MANY_TILES_PLAYED",
-            "TILE_NOT_IN_RACK",
-            "EXCHANGE_NOT_ALLOWED",
-            "TOO_MANY_TILES_EXCHANGED",
-            "OUT_OF_SYNC",
-            "LOGIN_REQUIRED",
-            "WRONG_USER",
-            "GAME_NOT_FOUND",
-            "GAME_NOT_OVERDUE",
-            "SERVER_ERROR",
-            "NOT_MANUAL_WORDCHECK",
-            "MOVE_NOT_CHALLENGEABLE",
-            "ONLY_PASS_OR_CHALLENGE",
-            "USER_MUST_BE_FRIEND",
-        ][errcode]
-
-
 class MoveBase(abc.ABC):
     """Abstract base class for the various types of moves"""
 
@@ -1009,10 +972,17 @@ class Move(MoveBase):
         self._covers: List[Cover] = []
         # Number of letters in word formed (this may be >= len(self._covers))
         self._numletters = len(word)
-        # The word formed
+        # The word formed on the board, containing only letters (e.g., "cart")
+        # This is used for dictionary validation
         self._word = word
-        # The tiles used to form the word. '?' tiles are followed
-        # by the letter they represent.
+        # The tiles used to form the word, encoded as a string that distinguishes
+        # between tiles played from the rack vs. tiles already on the board.
+        # For newly played tiles: normal tiles are just letters (e.g., "c"),
+        # blank/wildcard tiles are '?' followed by the letter they represent (e.g., "?a").
+        # For tiles already on the board: just the letter (e.g., "r").
+        # Example: if word is "cart" with c and t from rack, blank as a, and r on board,
+        # then _tiles = "c?art". This encoding is essential for scoring (blanks = 0 points)
+        # and is returned in move summaries for storage/communication.
         self._tiles: Optional[str] = None
         # Starting row and column of word formed
         self._row = row
@@ -1025,7 +995,11 @@ class Move(MoveBase):
         self._dawg = Wordbase.dawg()
 
     def set_tiles(self, tiles: str) -> None:
-        """Set the tiles string once it is known"""
+        """Set the tiles string once it is known.
+
+        The tiles string should use the encoded format where blanks are
+        represented as '?' followed by the letter they represent.
+        """
         self._tiles = tiles
 
     def replenish(self) -> bool:
@@ -1051,7 +1025,7 @@ class Move(MoveBase):
         return self._covers
 
     def word(self) -> str:
-        """Return the word formed by this move"""
+        """Return the word formed by this move (letters only, e.g., 'cart')"""
         return self._word
 
     def details(self, state: State) -> List[DetailTuple]:
@@ -1070,7 +1044,11 @@ class Move(MoveBase):
         ]
 
     def summary(self, state: State) -> SummaryTuple:
-        """Return a summary of the move, as a tuple: (coordinate, tiles, score)"""
+        """Return a summary of the move, as a tuple: (coordinate, tiles, score).
+
+        The tiles string uses the encoded format where blanks are represented
+        as '?' followed by the letter (e.g., 'c?art' for cart with blank as a).
+        """
         assert isinstance(state, State)
         return (self.short_coordinate(), self._tiles or "", self.score(state))
 
@@ -1088,9 +1066,9 @@ class Move(MoveBase):
     def add_cover(self, row: int, col: int, tile: str, letter: str) -> bool:
         """Add a placement of a tile on a board square to this move"""
         # Sanity check the input
-        if row < 0 or row >= Board.SIZE:
+        if row < 0 or row >= BOARD_SIZE:
             return False
-        if col < 0 or col >= Board.SIZE:
+        if col < 0 or col >= BOARD_SIZE:
             return False
         if len(tile) != 1:
             return False
@@ -1112,23 +1090,9 @@ class Move(MoveBase):
             self._horizontal = self._covers[0].row == cover.row
 
     def make_covers(self, board: Board, tiles: str) -> None:
-        """Create a cover list out of a tile string"""
+        """Create a cover list out of a tile string, which may contain '?' for blanks."""
 
         self.set_tiles(tiles)
-
-        def enum_covers(tiles: str) -> Iterator[Tuple[str, str]]:
-            """Generator to enumerate through a tiles string,
-            yielding (tile, letter) tuples"""
-            ix = 0
-            while ix < len(tiles):
-                if tiles[ix] == "?":
-                    # Wildcard tile: must be followed by its meaning
-                    ix += 1
-                    yield ("?", tiles[ix])
-                else:
-                    # Normal letter tile
-                    yield (tiles[ix], tiles[ix])
-                ix += 1
 
         row, col = self._row, self._col
         xd, yd = (0, 1) if self._horizontal else (1, 0)
@@ -1142,7 +1106,7 @@ class Move(MoveBase):
         # assert row - self._row == self._numletters * xd
         # assert col - self._col == self._numletters * yd
 
-    def check_legality(self, state: State, validate: bool) -> Union[int, Tuple[int, str]]:
+    def check_legality(self, state: State, validate: bool, *, ignore_game_over: bool = False) -> Union[int, Tuple[int, str]]:
         """Check whether this move is legal on the board"""
 
         # Must cover at least one square
@@ -1150,7 +1114,7 @@ class Move(MoveBase):
             return Error.NULL_MOVE
         if len(self._covers) > Rack.MAX_TILES:
             return Error.TOO_MANY_TILES_PLAYED
-        if state.is_game_over():
+        if state.is_game_over() and not ignore_game_over:
             return Error.GAME_OVER
         if state.is_last_challenge():
             # Last tile move on the board: the player can only pass or challenge
@@ -1235,7 +1199,7 @@ class Move(MoveBase):
             while self._col > 0 and board.is_covered(self._row, self._col - 1):
                 self._col -= 1
             # Look for the end
-            while col + 1 < Board.SIZE and board.is_covered(self._row, col + 1):
+            while col + 1 < BOARD_SIZE and board.is_covered(self._row, col + 1):
                 col += 1
             # Now we know the length
             self._numletters = col - self._col + 1
@@ -1244,7 +1208,7 @@ class Move(MoveBase):
             while self._row > 0 and board.is_covered(self._row - 1, self._col):
                 self._row -= 1
             # Look for the end
-            while row + 1 < Board.SIZE and board.is_covered(row + 1, self._col):
+            while row + 1 < BOARD_SIZE and board.is_covered(row + 1, self._col):
                 row += 1
             # Now we know the length
             self._numletters = row - self._row + 1
@@ -1254,7 +1218,12 @@ class Move(MoveBase):
         self._tiles = ""
 
         def add(cix: int) -> None:
-            """Add a cover's letter and tile to the word and tiles strings"""
+            """Add a cover's letter and tile to the word and tiles strings.
+
+            For _word: always adds just the letter (e.g., "a")
+            For _tiles: adds the tile, and if it's a blank ("?"), also adds
+            the letter it represents (e.g., "?a" for a blank used as a)
+            """
             ltr = self._covers[cix].letter
             tile = self._covers[cix].tile
             self._word += ltr
@@ -1272,6 +1241,8 @@ class Move(MoveBase):
                     cix += 1
                 else:
                     # This is a letter that was already on the board
+                    # Add just the letter to both _word and _tiles (no tile encoding needed
+                    # since it wasn't played from the rack)
                     ltr = board.letter_at(self._row, self._col + ix)
                     self._word += ltr
                     assert self._tiles is not None  # Satisfy Pylance
@@ -1283,6 +1254,8 @@ class Move(MoveBase):
                     cix += 1
                 else:
                     # This is a letter that was already on the board
+                    # Add just the letter to both _word and _tiles (no tile encoding needed
+                    # since it wasn't played from the rack)
                     ltr = board.letter_at(self._row + ix, self._col)
                     self._word += ltr
                     self._tiles += ltr

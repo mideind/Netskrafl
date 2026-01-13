@@ -38,7 +38,7 @@ from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local
+from config import DEFAULT_LOCALE, running_local, Error, BoardTypes
 
 from languages import (
     Alphabet,
@@ -51,6 +51,7 @@ from languages import (
 )
 from skrafldb import (
     DEFAULT_ELO_DICT,
+    ChatModel,
     PrefsDict,
     Unique,
     GameModel,
@@ -63,7 +64,6 @@ from skraflmechanics import (
     State,
     Board,
     Rack,
-    Error,
     MoveBase,
     Move,
     PassMove,
@@ -77,6 +77,7 @@ from skraflmechanics import (
 from skraflplayer import AutoPlayer
 from skrafluser import User
 from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
+from autoplayers import autoplayer_create, autoplayer_name
 
 
 # Type definitions
@@ -94,7 +95,6 @@ class MoveTuple(NamedTuple):
 TwoLetterGroupList = List[Tuple[str, List[str]]]
 TwoLetterGroupTuple = Tuple[TwoLetterGroupList, TwoLetterGroupList]
 
-MoveSummaryTuple = Tuple[int, SummaryTuple]
 MoveList = List[MoveSummaryTuple]
 BestMove = MoveSummaryTuple
 BestMoveList = List[BestMove]
@@ -159,6 +159,10 @@ class ClientStateDict(TypedDict, total=False):
     xchg: bool
 
 
+# A list of bingoes in a game
+BingoList = List[Tuple[str, int]]
+
+
 # The default nickname to display if a player has an unreadable nick
 # (for instance a default Google nick with a https:// prefix)
 UNDEFINED_NAME: Dict[str, str] = {
@@ -169,6 +173,17 @@ UNDEFINED_NAME: Dict[str, str] = {
     "nn": "[Ukjend]",
     "ga": "[Anaithnid]",
 }
+
+
+def two_letter_words(locale: str) -> TwoLetterGroupTuple:
+    """Return the set of two-letter words for the given locale"""
+    vocab = vocabulary_for_locale(locale)
+    tw0, tw1 = Wordbase.two_letter_words(vocab)
+    gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
+    return (
+        [(key, list(grp)) for key, grp in gr0],
+        [(key, list(grp)) for key, grp in gr1],
+    )
 
 
 class Game:
@@ -584,7 +599,7 @@ class Game:
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
-            nick = AutoPlayer.name(self.locale, self.robot_level)
+            nick = autoplayer_name(self.locale, self.robot_level)
         else:
             # This is a human user
             nick = u.nickname()
@@ -606,7 +621,7 @@ class Game:
         u = None if uid is None else User.load_if_exists(uid)
         if u is None:
             # This is an autoplayer
-            name = AutoPlayer.name(self.locale, self.robot_level)
+            name = autoplayer_name(self.locale, self.robot_level)
         else:
             # This is a human user
             name = u.full_name().strip()
@@ -652,13 +667,13 @@ class Game:
         """Retrieve a preference, or None if not found"""
         if self._preferences is None:
             return None
-        return self._preferences.get(pref, None)
+        return self._preferences.get(pref, None)  # type: ignore[return-value]
 
     def set_pref(self, pref: str, value: Union[str, int, bool]) -> None:
         """Set a preference to a value"""
         if self._preferences is None:
             self._preferences = {}
-        self._preferences[pref] = value
+        self._preferences[pref] = value  # type: ignore[literal-required]
 
     @staticmethod
     def fairplay_from_prefs(prefs: Optional[PrefsDict]) -> bool:
@@ -704,9 +719,9 @@ class Game:
         self.set_pref("manual", state)
 
     @property
-    def board_type(self) -> str:
+    def board_type(self) -> BoardTypes:
         """Return the type of the board used in this game"""
-        return cast(str, self.get_pref("board_type")) or "standard"
+        return cast(BoardTypes, self.get_pref("board_type")) or "standard"
 
     @staticmethod
     def locale_from_prefs(prefs: Optional[PrefsDict]) -> str:
@@ -755,13 +770,8 @@ class Game:
         as a tuple of two lists, one grouped by first letter, and
         the other grouped by the second (last) letter"""
         if self._two_letter_words is None:
-            vocab = vocabulary_for_locale(self.locale)
-            tw0, tw1 = Wordbase.two_letter_words(vocab)
-            gr0, gr1 = groupby(tw0, lambda w: w[0]), groupby(tw1, lambda w: w[1])
-            self._two_letter_words = (
-                [(key, list(grp)) for key, grp in gr0],
-                [(key, list(grp)) for key, grp in gr1],
-            )
+            tw = two_letter_words(self.locale)
+            self._two_letter_words = tw
         return self._two_letter_words
 
     @property
@@ -944,7 +954,7 @@ class Game:
         # Create an appropriate AutoPlayer subclass instance
         # depending on the robot level in question
         assert self.state is not None
-        apl = AutoPlayer.create(self.state, self.robot_level)
+        apl = autoplayer_create(self.state, self.robot_level)
         move = apl.generate_move()
         self.register_move(move)
         self.last_move = move  # Store a response move
@@ -1080,6 +1090,21 @@ class Game:
             if self.ts_last_move is None
             else Alphabet.format_timestamp(self.ts_last_move)
         )
+
+    def has_new_chat_msg(self, user_id: str) -> bool:
+        """ Return True if there is a new chat message that the given user
+        hasn't seen. This is used in the Netskrafl UI. """
+        p = self.player_index(user_id)
+        if p is None or self.is_autoplayer(1 - p):
+            # The user is not a player of this game, or robot opponent: no chat
+            return False
+        # Check the database
+        # TBD: consider memcaching this
+        uuid = self.id()
+        if not uuid:
+            return False
+        return ChatModel.check_conversation("game:" + uuid, user_id)
+
 
     def _append_final_adjustments(self, movelist: List[MoveSummaryTuple]) -> None:
         """Appends final score adjustment transactions
@@ -1264,7 +1289,7 @@ class Game:
 
         return reply
 
-    def bingoes(self) -> Tuple[List[Tuple[str, int]], List[Tuple[str, int]]]:
+    def bingoes(self) -> Tuple[BingoList, BingoList]:
         """Returns a tuple of lists of bingoes for both players"""
         # List all bingoes in the game
         assert self.state is not None

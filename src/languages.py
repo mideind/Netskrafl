@@ -46,7 +46,7 @@ import abc
 import functools
 from contextvars import ContextVar
 
-from config import DEFAULT_LOCALE, NETSKRAFL
+from config import DEFAULT_LOCALE, NETSKRAFL, BoardTypes
 from alphabets import (
     Alphabet,
     IcelandicAlphabet,
@@ -59,7 +59,7 @@ from alphabets import (
 _T = TypeVar("_T")
 
 DEFAULT_LANGUAGE = "is_IS" if NETSKRAFL else "en_US"
-DEFAULT_BOARD_TYPE = "standard" if NETSKRAFL else "explo"
+DEFAULT_BOARD_TYPE: BoardTypes = "standard" if NETSKRAFL else "explo"
 
 
 class TileSet(abc.ABC):
@@ -719,7 +719,7 @@ VOCABULARIES: Dict[str, str] = {
 
 # Mapping of locale code to board type
 
-BOARD_TYPES: Dict[str, str] = {
+BOARD_TYPES: Dict[str, BoardTypes] = {
     "is": "standard",
     # Everything else defaults to 'explo'
 }
@@ -808,7 +808,7 @@ class Locale(NamedTuple):
     alphabet: Alphabet
     tileset: Type[TileSet]
     vocabulary: str
-    board_type: str
+    board_type: BoardTypes
 
 
 default_locale_netskrafl = Locale(
@@ -830,18 +830,18 @@ current_language: Callable[[], str] = lambda: current_locale.get().language
 current_alphabet: Callable[[], Alphabet] = lambda: current_locale.get().alphabet
 current_tileset: Callable[[], Type[TileSet]] = lambda: current_locale.get().tileset
 current_vocabulary: Callable[[], str] = lambda: current_locale.get().vocabulary
-current_board_type: Callable[[], str] = lambda: current_locale.get().board_type
+current_board_type: Callable[[], BoardTypes] = lambda: current_locale.get().board_type
 
 
 @overload
-def dget(d: Dict[str, _T], key: str) -> Optional[_T]: ...
+def dget(d: Mapping[str, _T], key: str) -> Optional[_T]: ...
 
 
 @overload
-def dget(d: Dict[str, _T], key: str, default: _T) -> _T: ...
+def dget(d: Mapping[str, _T], key: str, default: _T) -> _T: ...
 
 
-def dget(d: Dict[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
+def dget(d: Mapping[str, _T], key: str, default: Optional[_T] = None) -> Optional[_T]:
     """Retrieve value from dictionary by locale code, as precisely as possible,
     i.e. trying 'is_IS' first, then 'is', before giving up"""
     val = d.get(key)
@@ -870,7 +870,7 @@ def vocabulary_for_locale(lc: str) -> str:
     return dget(VOCABULARIES, lc, default_locale.vocabulary)
 
 
-def board_type_for_locale(lc: str) -> str:
+def board_type_for_locale(lc: str) -> BoardTypes:
     """Return the identifier of the default board type for the given locale"""
     return dget(BOARD_TYPES, lc, DEFAULT_BOARD_TYPE)
 

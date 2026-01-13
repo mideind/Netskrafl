@@ -56,6 +56,56 @@ The various Flask HTML templates are found in ```templates/*.html```.
 The DAWG-compressed vocabularies are stored in ```resources/*.bin.dawg```.
 
 
+### Client Authentication
+
+The Netskrafl server supports three types of clients, each with its own authentication mechanism:
+
+#### 1. Direct Web Access (Same-Origin)
+
+The classic Netskrafl web interface served directly from the server. Users authenticate
+via OAuth2 (Google, Facebook, or Apple), and the server maintains session state using
+secure HTTP-only cookies with `SameSite=Lax`.
+
+- **Auth mechanism**: Flask session cookies
+- **Login endpoints**: `/login` (initiates OAuth2 flow), `/oauth2callback`
+- **Session lifetime**: 90 days
+
+#### 2. Explo Mobile App (React Native)
+
+The Explo mobile app (iOS/Android) uses the same OAuth2 providers but through
+native mobile SDKs. After initial authentication, the server issues an Explo JWT token
+that can be used for subsequent logins without repeating the OAuth2 flow.
+
+- **Auth mechanism**: Session cookies (stored in native HTTP client)
+- **Login endpoints**: `/oauth_google`, `/oauth_apple`, `/oauth_fb`, `/oauth_explo`
+- **Token lifetime**: 30 days (configurable)
+
+#### 3. Cross-Origin Web Clients (e.g., Málstaður)
+
+Third-party web applications that embed Netskrafl functionality cannot use cookies
+due to browser `SameSite` restrictions on cross-origin requests. Instead, these clients
+authenticate using Bearer tokens in the `Authorization` header.
+
+- **Auth mechanism**: JWT Bearer token (`Authorization: Bearer <token>`)
+- **Login endpoint**: `/login_malstadur` (returns JWT token in response)
+- **Token lifetime**: 30 days (configurable)
+
+**Authentication flow for cross-origin clients:**
+
+1. Client calls `POST /login_malstadur` with user credentials, a signed JWT from the parent application,
+   and `bearer_auth: true` to opt in to Bearer token authentication
+2. Server validates the JWT, finds or creates the user, and returns a response containing an Explo `token`
+3. Client stores the token and includes it in subsequent API requests as `Authorization: Bearer <token>`
+4. Server validates the token on each request via the `session_user()` function
+
+The `bearer_auth` flag controls whether the server sets a session cookie:
+- `bearer_auth: true` - No session cookie is set; client must use Bearer token for subsequent requests
+- `bearer_auth: false` or omitted - Session cookie is set for backwards compatibility with legacy clients
+
+The CORS configuration allows all origins with the `Authorization` header permitted,
+enabling cross-origin clients to authenticate without cookies.
+
+
 ### To build and run locally
 
 #### Follow these steps:
@@ -80,12 +130,13 @@ For further details on secrets stored and used at runtime, see the
 [Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets), and the source file ```src/secret_manager.py```.
 
 6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
-Run ```npm install``` to install Node dependencies.
+Run ```npm install``` to install Node dependencies. Run ```npm install grunt -g grunt-cli```
+to install Grunt and its command line interface globally.
 
 7. In a separate terminal window, but in the Netskrafl directory, run ```grunt make```.
 Then run ```grunt``` to start watching changes of js and css files.
 
-8. Run either ```runserver.bat``` or ```runserver.sh```.
+8. Run either ```runserver.bat``` or ```./runserver.sh```.
 
 #### Or, alternatively:
 
@@ -138,7 +189,7 @@ forms (*spurnarmyndir í fleirtölu*).
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl) to '/home/username/github/Netskrafl/resources/ordalisti.full.sorted.txt';
+\copy (select distinct ordmynd from skrafl) to '~/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
 To extract only the subset of BÍN used by the robot *Miðlungur*, use the following
@@ -147,16 +198,34 @@ containing the ```malsnid``` and ```einkunn``` columns:
 
 ```sql
 begin transaction read write;
-create or replace view skrafl_midlungur as
+create or replace view ksnid_midlungur as
 	select stofn, utg, ordfl, fl, ordmynd, beyging
 	from kristinarsnid
-	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD', 'FORN', 'URE', 'STAD'])))
-		and einkunn > 0;
+	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID'])))
+		and einkunn = 1;
 commit;
 ```
 
-You can then use the ```skrafl_midlungur``` view as the underlying table for the previous
-(vocabulary) query, replacing ```sigrunarsnid``` with ```skrafl_midlungur```.
+You can then use the ```ksnid_midlungur``` view as the underlying table to
+generate a new vocabulary file (```ordalisti.mid.sorted.txt```):
+
+```sql
+begin transaction read write;
+create or replace view skrafl_midlungur as
+   select stofn, utg, ordfl, fl, ordmynd, beyging from ksnid_midlungur
+   where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,10}$'
+   and fl <> 'bibl'
+   and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
+   order by ordmynd;
+commit;
+```
+
+And, finally, to generate the Miðlungur vocabulary file
+from the ```psql``` command line:
+
+```sql
+\copy (select distinct ordmynd from skrafl_midlungur) to '~/github/Netskrafl/resources/ordalisti.mid.sorted.txt';
+```
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.

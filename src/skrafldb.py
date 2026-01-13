@@ -1,62 +1,62 @@
 """
 
-    Skrafldb - persistent data management for the Netskrafl application
+Skrafldb - persistent data management for the Netskrafl application
 
-    Copyright © 2025 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
-    This module stores data in the Google App Engine NDB
-    (see https://developers.google.com/appengine/docs/python/ndb/).
+This module stores data in the Google App Engine NDB
+(see https://developers.google.com/appengine/docs/python/ndb/).
 
-    The data model is as follows:
+The data model is as follows:
 
-    UserModel:
-        nickname : string
-        inactive : boolean
-        prefs : dict
-        timestamp : timestamp
+UserModel:
+    nickname : string
+    inactive : boolean
+    prefs : dict
+    timestamp : timestamp
 
-    MoveModel:
-        coord : string
-        tiles : string # Blanks are denoted by '?' followed by meaning
-        score : integer
-        rack : string # Contents of rack after move
-        timestamp : timestamp
+MoveModel:
+    coord : string
+    tiles : string # Blanks are denoted by '?' followed by meaning
+    score : integer
+    rack : string # Contents of rack after move
+    timestamp : timestamp
 
-    GameModel:
-        player0 : key into UserModel
-        player1 : key into UserModel
-        irack0 : string # Initial rack
-        irack1 : string
-        rack0 : string # Current rack
-        rack1 : string
-        score0 : integer
-        score1 : integer
-        to_move : integer # Whose move is it, 0 or 1
-        over : boolean # Is the game over?
-        timestamp : timestamp # Start time of game
-        ts_last_move : timestamp # Time of last move
-        moves : array of MoveModel
+GameModel:
+    player0 : key into UserModel
+    player1 : key into UserModel
+    irack0 : string # Initial rack
+    irack1 : string
+    rack0 : string # Current rack
+    rack1 : string
+    score0 : integer
+    score1 : integer
+    to_move : integer # Whose move is it, 0 or 1
+    over : boolean # Is the game over?
+    timestamp : timestamp # Start time of game
+    ts_last_move : timestamp # Time of last move
+    moves : array of MoveModel
 
-    FavoriteModel:
-        parent = key into UserModel
-        destuser: key into UserModel
+FavoriteModel:
+    parent = key into UserModel
+    destuser: key into UserModel
 
-    ChallengeModel:
-        parent = key into UserModel
-        destuser : key into UserModel
-        timestamp : timestamp
-        prefs : dict
+ChallengeModel:
+    parent = key into UserModel
+    destuser : key into UserModel
+    timestamp : timestamp
+    prefs : dict
 
-    According to the NDB documentation, an ideal index for a query
-    should contain - in the order given:
-    1) Properties used in equality filters
-    2) Property used in an inequality filter (only one allowed)
-    3) Properties used for ordering
+According to the NDB documentation, an ideal index for a query
+should contain - in the order given:
+1) Properties used in equality filters
+2) Property used in an inequality filter (only one allowed)
+3) Properties used for ordering
 
 """
 
@@ -81,7 +81,6 @@ from typing import (
     Type,
     TypeVar,
     TypedDict,
-    Union,
     Callable,
     cast,
     overload,
@@ -91,8 +90,10 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import zip_longest
+import json
 
-from google.cloud import ndb  # type: ignore
+from google.cloud import ndb
 
 from config import (
     DEFAULT_ELO,
@@ -102,6 +103,7 @@ from config import (
     NETSKRAFL,
 )
 from cache import memcache
+from authmanager import auth_manager
 
 
 # Type definitions
@@ -122,6 +124,11 @@ class PrefsDict(TypedDict, total=False):
     board_type: str
     friend: bool
     haspaid: bool
+    beginner: bool
+    ready: bool
+    ready_timed: bool
+    audio: bool
+    fanfare: bool
 
 
 ChallengeTuple = NamedTuple(
@@ -304,14 +311,14 @@ class Query(Generic[_T_Model], ndb.Query):
 
     def fetch(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]:
-        f: Callable[..., Union[Sequence[Key[_T_Model]], Sequence[_T_Model]]] = cast(
+    ) -> Sequence[Key[_T_Model]] | Sequence[_T_Model]:
+        f: Callable[..., Sequence[Key[_T_Model]] | Sequence[_T_Model]] = cast(
             Any, super()
         ).fetch
         return f(*args, **kwargs)
 
     def fetch_async(
-        self, limit: Optional[int] = None, **kwargs: Any
+        self, limit: int | None = None, **kwargs: Any
     ) -> Future[_T_Model]:
         f: Callable[..., Future[_T_Model]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
@@ -330,10 +337,10 @@ class Query(Generic[_T_Model], ndb.Query):
         ...
 
     @overload
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]: ...  # type: ignore
+    def get(self, *args: Any, **kwargs: Any) -> None | _T_Model: ...  # type: ignore
 
-    def get(self, *args: Any, **kwargs: Any) -> Union[None, Key[_T_Model], _T_Model]:
-        f: Callable[..., Union[None, Key[_T_Model], _T_Model]] = cast(Any, super()).get
+    def get(self, *args: Any, **kwargs: Any) -> None | Key[_T_Model] | _T_Model:
+        f: Callable[..., None | Key[_T_Model] | _T_Model] = cast(Any, super()).get
         return f(*args, **kwargs)
 
     def count(self, *args: Any, **kwargs: Any) -> int:
@@ -349,8 +356,8 @@ class Query(Generic[_T_Model], ndb.Query):
 
     def iter(
         self, *args: Any, **kwargs: Any
-    ) -> Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]:
-        f: Callable[..., Union[Iterator[Key[_T_Model]], Iterator[_T_Model]]] = cast(
+    ) -> Iterator[Key[_T_Model]] | Iterator[_T_Model]:
+        f: Callable[..., Iterator[Key[_T_Model]] | Iterator[_T_Model]] = cast(
             Any, super()
         ).iter
         return f(*args, **kwargs)
@@ -371,14 +378,20 @@ class Future(Generic[_T], ndb.Future):
 class Key(Generic[_T_Model], ndb.Key):
     """A type-safer wrapper around ndb.Key"""
 
+    def __init__(self, *args: Any) -> None:
+        super().__init__()  # Resist the temptation to put (*args) here; it doesn't work
+
     def id(self) -> str:
         return cast(str, cast(Any, super()).id())
 
-    def parent(self) -> Optional[Key[ndb.Model]]:
-        return cast(Optional[Key[ndb.Model]], cast(Any, super()).parent())
+    def kind(self) -> str:
+        return cast(str, cast(Any, super()).kind())
 
-    def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        return cast(Optional[_T_Model], cast(Any, super()).get(*args, **kwargs))
+    def parent(self) -> Key[ndb.Model] | None:
+        return cast(Key[ndb.Model] | None, cast(Any, super()).parent())
+
+    def get(self, *args: Any, **kwargs: Any) -> None | _T_Model:
+        return cast(None | _T_Model, cast(Any, super()).get(*args, **kwargs))
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
         cast(Any, super()).delete(*args, **kwargs)
@@ -399,10 +412,10 @@ class Model(Generic[_T_Model], ndb.Model):
         ndb.put_multi(list(recs))
 
     @classmethod
-    def get_by_id(  # type: ignore
-        cls: Type[_T_Model], identifier: str, **kwargs: Any
-    ) -> Optional[_T_Model]:
-        return cast(Any, super()).get_by_id(identifier, **kwargs)
+    def get_by_id(
+        cls: Type[_T_Model], id: int | str | None, *args: Any, **kwargs: Any
+    ) -> _T_Model | None:
+        return cast(Any, super()).get_by_id(id, *args, **kwargs)
 
     @classmethod
     def query(cls: Type[_T_Model], *args: Any, **kwargs: Any) -> Query[_T_Model]:
@@ -417,9 +430,9 @@ class Model(Generic[_T_Model], ndb.Model):
     @staticmethod
     def OptionalDbKey(
         kind: Type[_T_Model], indexed: bool = True
-    ) -> Optional[Key[_T_Model]]:
+    ) -> Key[_T_Model] | None:
         return cast(
-            Optional[Key[_T_Model]],
+            Key[_T_Model] | None,
             ndb.KeyProperty(kind=kind, required=False, indexed=indexed, default=None),
         )
 
@@ -511,7 +524,9 @@ class Model(Generic[_T_Model], ndb.Model):
 class Client:
     """Wrapper for the ndb client instance singleton"""
 
-    _client = ndb.Client()
+    # We use the centrally managed Google Cloud credentials from auth_manager
+    credentials = auth_manager.get_credentials()
+    _client = ndb.Client(credentials=credentials)
     _global_cache = ndb.RedisCache(memcache.get_redis_client())
 
     def __init__(self) -> None:
@@ -554,6 +569,15 @@ class Unique:
     def id() -> str:
         """Generates unique id strings"""
         return str(uuid.uuid1())  # Random UUID
+
+
+def interleave(iter1: Iterable[_T], iter2: Iterable[_T]) -> Iterator[_T]:
+    """Interleave two iterators, returning elements from each until both are exhausted"""
+    for item1, item2 in zip_longest(iter1, iter2, fillvalue=None):
+        if item1 is not None:
+            yield item1
+        if item2 is not None:
+            yield item2
 
 
 def iter_q(
@@ -665,7 +689,7 @@ class UserModel(Model["UserModel"]):
         image: str,
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, PrefsDict]:
         """Create a new user"""
         user: UserModel = cls(id=user_id)
         user.account = account
@@ -676,7 +700,7 @@ class UserModel(Model["UserModel"]):
         user.nick_lc = nickname.lower()
         user.inactive = False  # A new user is always active
         user.prefs = preferences or {}  # Default to no preferences
-        if user.prefs.get("friend"):
+        if user.prefs.get("friend", False):
             user.plan = "friend"
         user.name_lc = user.prefs.get("full_name", "").lower()
         user.ready = True  # Ready for new challenges by default
@@ -684,7 +708,17 @@ class UserModel(Model["UserModel"]):
         user.locale = locale or DEFAULT_LOCALE
         user.last_login = datetime.now(UTC)
         user.games = 0
-        return user.put().id()
+        # Return the preferences of this user, including defaults
+        all_prefs = PrefsDict(
+            beginner=True,
+            ready=True,
+            ready_timed=True,
+            fanfare=False,
+            audio=False,
+            fairplay=False,
+        )
+        all_prefs.update(user.prefs)
+        return user.put().id(), all_prefs
 
     @classmethod
     def fetch(cls, user_id: str) -> Optional[UserModel]:
@@ -724,7 +758,7 @@ class UserModel(Model["UserModel"]):
         # Note that multiple records with the same e-mail may occur
         # Do not return inactive accounts
         q = cls.query(UserModel.email == email.lower()).filter(
-            UserModel.inactive == False
+            UserModel.inactive == False  # noqa: E712
         )
         result = q.fetch()
         if not result:
@@ -795,12 +829,12 @@ class UserModel(Model["UserModel"]):
         """Filter the query by locale, if given, otherwise stay with the default"""
         if NETSKRAFL:
             assert (
-                locale == None or locale == DEFAULT_LOCALE
+                locale is None or locale == DEFAULT_LOCALE
             ), f"Netskrafl only allows {DEFAULT_LOCALE}"
             return q
         if not locale:
             return q.filter(
-                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale == None)
+                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale is None)
             )
         return q.filter(UserModel.locale == locale)
 
@@ -825,7 +859,7 @@ class UserModel(Model["UserModel"]):
                 if not f(um).startswith(prefix):
                     # Iterated past the prefix
                     return
-                if not um.inactive and not um.key.id() in id_set:
+                if not um.inactive and um.key.id() not in id_set:
                     # This entity matches and has not already been
                     # returned: yield a dict describing it
                     yield ListPrefixDict(
@@ -860,7 +894,9 @@ class UserModel(Model["UserModel"]):
         q = cls.query(cast(str, UserModel.name_lc) >= prefix).order(UserModel.name_lc)
         q = cls.filter_locale(q, locale)
 
-        um_func: Callable[[UserModel], str] = lambda um: um.name_lc or ""
+        def um_func(um: UserModel) -> str:
+            return um.name_lc or ""
+
         for ud in list_q(q, um_func):
             yield ud
             counter += 1
@@ -880,14 +916,18 @@ class UserModel(Model["UserModel"]):
             """Generator for returning query result keys"""
             assert max_len > 0
             counter = 0  # Number of results already returned
-            for k in iter_q(q, chunk_size=max_len, projection=["human_elo", "highest_score"]):
+            for k in iter_q(
+                q, chunk_size=max_len, projection=["human_elo", "highest_score"]
+            ):
                 if k.highest_score > 0:
                     # Has played at least one game: Yield the key value
                     # Note that inactive users will be filtered out at a later stage
                     ed: EloDict = EloDict(
                         # Note! For optimization reasons, we only return the human_elo
                         # property. This is currently the only Elo rating shown in the UI.
-                        elo=DEFAULT_ELO, human_elo=k.human_elo, manual_elo=DEFAULT_ELO
+                        elo=DEFAULT_ELO,
+                        human_elo=k.human_elo,
+                        manual_elo=DEFAULT_ELO,
                     )
                     yield k.key.id(), ed
                     counter += 1
@@ -968,9 +1008,10 @@ class EloModelFuture(Future["EloModel"]):
 
 # Optional locale string, defaulting to the project default locale
 # in the case of Netskrafl, but otherwise a required string
-OptionalLocaleString = lambda: (
-    Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
-)
+def OptionalLocaleString():
+    return (
+        Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
+    )
 
 
 class EloModel(Model["EloModel"]):
@@ -1065,14 +1106,14 @@ class EloModel(Model["EloModel"]):
         p: Callable[[EloModel], int]
         if kind == "human":
             q = q.order(-EloModel.human_elo)
-            p = lambda em: em.human_elo
+            p = lambda em: em.human_elo  # noqa: E731
         elif kind == "manual":
             q = q.order(-EloModel.manual_elo)
-            p = lambda em: em.manual_elo
+            p = lambda em: em.manual_elo  # noqa: E731
         else:
             # Default, kind == 'all'
             q = q.order(-EloModel.elo)
-            p = lambda em: em.elo
+            p = lambda em: em.elo  # noqa: E731
         ix = 0
         for em in q.fetch(limit=limit):
             user = em.key.parent()
@@ -1454,8 +1495,8 @@ class GameModel(Model["GameModel"]):
         if versus:
             # Add a filter on the opponent
             v: Key[UserModel] = Key(UserModel, versus)
-            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))  # type: ignore
-            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))  # type: ignore
+            q0 = cls.query(ndb.AND(GameModel.player1 == k, GameModel.player0 == v))
+            q1 = cls.query(ndb.AND(GameModel.player0 == k, GameModel.player1 == v))
         else:
             # Plain filter on the player
             q0 = cls.query(GameModel.player0 == k)
@@ -1464,8 +1505,8 @@ class GameModel(Model["GameModel"]):
         # pylint: disable=singleton-comparison
         # The cast to int below is a hack for type checking
         # (it has no effect at run-time)
-        q0 = q0.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
-        q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))
+        q0 = q0.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))  # noqa: E712
+        q1 = q1.filter(GameModel.over == True).order(-cast(int, GameModel.ts_last_move))  # noqa: E712
 
         # Issue two asynchronous queries in parallel
         qf = (q0.fetch_async(limit=max_len), q1.fetch_async(limit=max_len))
@@ -1486,9 +1527,19 @@ class GameModel(Model["GameModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # pylint: disable=singleton-comparison
-        q = cls.query(ndb.OR(GameModel.player0 == k, GameModel.player1 == k)).filter(  # type: ignore
-            GameModel.over == False
+        # Amazingly enough, the query executes much faster (O(10x))
+        # with the .order() clause than without it! Apparently, the
+        # query spec must closely follow the index definition
+        # (see index.yaml).
+        q0 = (
+            cls.query(GameModel.player0 == k)
+            .filter(GameModel.over == False)  # noqa: E712
+            .order(-cast(int, GameModel.ts_last_move))
+        )
+        q1 = (
+            cls.query(GameModel.player1 == k)
+            .filter(GameModel.over == False)  # noqa: E712
+            .order(-cast(int, GameModel.ts_last_move))
         )
 
         def game_callback(gm: GameModel) -> LiveGameDict:
@@ -1534,8 +1585,22 @@ class GameModel(Model["GameModel"]):
                 locale=locale,
             )
 
-        for gm in q.fetch(max_len):
-            yield game_callback(gm)
+        # Issue two asynchronous queries in parallel
+        q0_future = q0.fetch_async(limit=max_len)
+        q1_future = q1.fetch_async(limit=max_len)
+        GameModelFuture.wait_all([q0_future, q1_future])
+
+        # Get results from both queries
+        q0_results = q0_future.get_result()
+        q1_results = q1_future.get_result()
+
+        # Interleave results using itertools
+        count = 0
+        for game in interleave(q0_results, q1_results):
+            yield game_callback(game)
+            count += 1
+            if count >= max_len:
+                break
 
     def manual_wordcheck(self) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
@@ -2406,6 +2471,24 @@ class ChatModel(Model["ChatModel"]):
                     break
 
     @classmethod
+    def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
+        """ Returns True if there are unseen messages in the conversation """
+        CHUNK_SIZE = 40
+        q = cls.query(ChatModel.channel == channel).order(
+            -cast(int, ChatModel.timestamp)
+        )
+        for cm in iter_q(q, CHUNK_SIZE):
+            uid = cm.user.id()
+            if (uid != userid) and cm.msg:
+                # Found a message originated by the other user
+                return True
+            if (uid == userid) and not cm.msg:
+                # Found an 'already seen' indicator (empty message) from the querying user
+                return False
+        # Gone through the whole thread without finding an unseen message
+        return False
+
+    @classmethod
     def add_msg(
         cls,
         channel: str,
@@ -2938,3 +3021,36 @@ class SubmissionModel(Model["SubmissionModel"]):
         sm.word = word
         sm.comment = comment
         sm.put()
+
+
+class RiddleModel(Model["RiddleModel"]):
+    """Riddle entity ('Gáta dagsins') compatible with Go-generated data."""
+
+    date = Model.Text()
+    locale = Model.Text()
+    riddle_json = Model.Text()
+    created = Model.Datetime(indexed=False)
+    version = Model.Int(indexed=False, default=1)
+
+    @classmethod
+    def get_riddle(cls, date_str: str, locale: str) -> Optional[RiddleModel]:
+        """Get a riddle for a specific date and locale."""
+        key = f"{date_str}:{locale}"
+        return cls.get_by_id(key)
+
+    @classmethod
+    def get_riddles_for_date(cls, date_str: str) -> Sequence[RiddleModel]:
+        """Get all riddles for a specific date (all locales)."""
+        # Query by key prefix - requires key range query
+        query = cls.query()
+        query = query.filter(cls.key >= ndb.Key(cls, f"{date_str}:"))
+        query = query.filter(cls.key < ndb.Key(cls, f"{date_str}:ÿ"))
+        return query.fetch()
+
+    @property
+    def riddle(self) -> Any:
+        """Parse and return the riddle data."""
+        if not self.riddle_json:
+            return None
+        return json.loads(self.riddle_json)
+

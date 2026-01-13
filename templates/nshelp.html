@@ -1,0 +1,291 @@
+
+{% extends "container.html" %}
+
+{% block styles %}
+<link href="{{ url_for('web.static', filename='jquery-ui.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block logo %}
+{% include 'back.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="tabbed-page">
+
+   <div id="tabs">
+   <ul>
+      <li><a href="#tabs-1"><span class='glyphicon glyphicon-info-sign'></span>&nbsp;&nbsp;Hjálp</a></li>
+      <li><a href="#tabs-3"><span class='glyphicon glyphicon-circle-question-mark'></span>&nbsp;&nbsp;Spurningar</a></li>
+      <li><a href="#tabs-2"><span class='glyphicon glyphicon-paperclip'></span>&nbsp;&nbsp;2ja stafa orð</a></li>
+      <li><a href="#tabs-5"><span class='glyphicon glyphicon-shopping-bag'></span>&nbsp;&nbsp;Nýi pokinn</a></li>
+      <li><a href="#tabs-4"><span class='glyphicon glyphicon-eye-open'></span>&nbsp;&nbsp;Um</a></li>
+   </ul>
+
+   <div id="tabs-1">
+   <p><strong>Velkomin í Netskrafl!</strong><p>
+   <p>Í Netskrafli getur þú spilað skrafl við tölvu eða aðra leikmenn.
+   Leikreglurnar eru eins og í
+   hefðbundnu borðskrafli, en einungis eru leyfð orð sem fyrirfinnast í
+   <i><a href="https://bin.arnastofnun.is/forsida/" target="_blank"
+      rel="noopener">Beygingarlýsingu íslensks nútímamáls</a></i> - og tveggja stafa
+   orð samkvæmt
+   <a href="{{ url_for('web.twoletter') }}">lista Skraflfélags Íslands</a>.</p>
+   <p>Í upphafi leiks hefur þú sjö stafaflísar sem sýndar eru í rekkanum fyrir neðan
+   borðið. Ef þú átt leik (sýnt með rauðu flaggi
+   <span class="move-indicator"></span> við notandanafn þitt) getur þú lagt
+   þær niður með því að draga þær með músinni (smella á flís,
+   draga hana á réttan stað og sleppa músarhnappnum). Einnig má nota fingur til
+   að draga flísar á spjaldtölvum og snertiskjám. Þú getur flutt flísar til á
+   borðinu eða dregið þær til baka í rekkann ef þú færð bakþanka.
+   <img src="{{ url_for('web.static', filename='Recall.png') }}" width=20 height=20>
+   og <strong>Esc</strong> hnappurinn á lyklaborðinu senda allar flísar til baka í rekkann,
+   en <img src="{{ url_for('web.static', filename='Shuffle.png') }}" width=20 height=20>
+   og <strong>Backspace</strong> endurraða rekkanum af handahófi.</p>
+   <p>Þegar þú hefur lagt niður orð eins og þú vilt hafa það smellirðu
+   á græna hnappinn
+   <img src="{{ url_for('web.static', filename='Leika.png') }}" width=53 height=20>.
+   Andstæðingur þinn fær nú <span class="move-indicator"></span> rauða flaggið,
+   svarar með sínum leik og þá er röðin aftur komin að þér. (Tölvuþjarkarnir svara
+   alltaf strax.) Nýjar flísar sem andstæðingur leggur niður eru sýndar með
+   grænum lit á borðinu.</p>
+   <p>Ef þú getur ekki lagt niður orð og vilt sitja hjá smellirðu á
+   appelsínugula hnappinn
+   <img src="{{ url_for('web.static', filename='Pass.png') }}" width=20 height=20>.
+   Þá færð þú ekki stig heldur á andstæðingurinn næsta leik.</p>
+   <p>Ef þú vilt skipta út flísum í rekkanum smellirðu á græna hnappinn
+   <img src="{{ url_for('web.static', filename='Exchange.png') }}" width=20 height=20>.
+   Þú þarft að velja þær flísar sem þú vilt skipta með því að smella á þær. Þegar
+   skiptin hafa farið fram færðu ekki stig og andstæðingurinn á leik. Ef færri
+   en sjö flísar eru eftir í "pokanum" er ekki hægt að skipta.</p>
+   <p>Viðureign er lokið þegar síðasta flísin hefur verið lögð niður, eða ef
+   báðir leikmenn hafa setið hjá þrisvar í röð (sex sinnum alls). Þú getur
+   einnig gefið leikinn með því að smella á rauða hnappinn
+   <img src="{{ url_for('web.static', filename='Resign.png') }}" width=20 height=20>.</p>
+   </div>
+
+   <div id="tabs-3">
+   <div class="help-container">
+{% include 'faq.html' %}
+   </div>
+   </div>
+
+   <div id="tabs-5">
+   <div class="help-container">
+
+   <p>Frá og með október 2015 notar Netskrafl <strong>nýjan íslenskan skraflpoka</strong>
+   sem búinn var til á vegum Skraflfélags Íslands, til viðbótar þeim eldri og upprunalega.</p>
+
+   <p>Leikmenn sem eru tilbúnir að skrafla með nýja pokanum gefa það til kynna með því að
+   velja rofa í <a href="{{ url_for('web.userprefs') }}">notandaupplýsingum</a>. (Allir nýskráðir
+   leikmenn í Netskrafli eru sjálfkrafa merktir sem tilbúnir í nýja pokann.)
+   Hér er sýnt hvernig rofinn á að vera stilltur í þessu skyni:</p>
+   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBagPreference.png') }}" width=695 height=69></p>
+
+   <p>Hér sést nýi pokinn í myndrænu formi:</p>
+   <p style='text-align:center'><img src="{{ url_for('web.static', filename='NewBag.png') }}"></p>
+   <p style="text-align:right"><i>(Sömu mynd á PDF-formi til útprentunar má
+   <a href="{{ url_for('web.static', filename='NewBag.pdf') }}" target="_blank">sækja hér</a>)</i></p>
+
+   <p>Á eldri (upphaflega) skraflpokanum eru ýmsir vankantar, eins og skraflarar kannast
+   við. Í honum eru til dæmis <strong>of mörg E</strong> sem gefa of fá stig; stafirnir Ú og Ý eru
+   happafengur enda stigaháir en auðvelt að koma þeim út, og svo mætti áfram telja.</p>
+   <p>Við hönnun nýs skraflpoka var leitast við að gera alla stafi því
+   sem næst <strong>jafn ákjósanlega</strong>, í þeim skilningi að þeir staldri jafn lengi við í rekka
+   leikmanns að meðaltali. Leitað var að bestu lausn með því að láta tölvu prófa sig áfram
+   í átt að betri poka í yfir tíu milljónum viðureigna. Þess var jafnframt gætt að hæfilegt
+   jafnvægi væri milli sérhljóða og samhljóða, og að dreifing stafanna væri nálægt því
+   sem gerist í íslenskum texta almennt.</p>
+   <p>Með nýja pokanum er unnt að leggja niður lengri orð að meðaltali, og heppni
+   í stafadrætti skiptir eilítið minna máli en áður. Í honum eru <strong>100 flísar</strong> í stað 104
+   í eldri pokanum, en samanlögð stig flísanna eru jafnmörg.</p>
+   <p>Gamli pokinn er nú aðeins notaður í viðureign ef <strong>hvorugur leikmaður</strong> er merktur
+   með nýja pokanum.
+   Þjarkarnir laga sig ætíð að ósk mennska leikmannsins.</p>
+   <p>Tilkoma nýja pokans hefur engin áhrif á Elo-stig leikmanna eða útreikning þeirra.</p>
+
+   </div>
+   </div>
+
+   <div id="tabs-4">
+   <img src="{{ url_for('web.static', filename='Villi.png') }}" id="villi">
+   <p><strong>Um Netskrafl</strong></p>
+   <p>Höfundur Netskrafls er <i>Vilhjálmur Þorsteinsson</i>.
+   - Copyright &copy; 2025 <a href="https://mideind.is" target="_blank" rel="noopener">Miðeind ehf.</a></p>
+   <p>Bestu þakkir fyrir veitta aðstoð:<br><i>Borgar Þorsteinsson, Hlín Önnudóttir,
+   Páll Hilmarsson, Sigrún Helga Lund, Steinar Sturlaugsson</i>.</p>
+   <p>Netskrafl notar Google Accounts aðgang og innskráningu til að auðkenna
+   notendur.<br>Þú getur
+   <a href="{{ url_for('web.userprefs') }}">breytt notandaupplýsingum þínum hér</a> eða
+   með því að smella á notandanafnið efst hægra megin í glugganum.
+   Netskrafl sækir hvorki né geymir persónuupplýsingar.</p>
+   <p>Fylgstu með og taktu þátt með því að
+   <a href="https://www.facebook.com/groups/828426797220211/" target="_blank"
+      rel="noopener">ganga
+   í&nbsp;&nbsp;<img src="{{ url_for('web.static', filename='FB-f-Logo__blue_29.png') }}">&nbsp;&nbsp;Facebook-hópinn</a>!</p>
+   <p>Frumforrit Netskrafls eru <a href="https://github.com/mideind/Netskrafl"
+      target="_blank" rel="noopener">opin á
+   <img src="{{ url_for('web.static', filename='GitHub-Mark-32px.png') }}">&nbsp;&nbsp;GitHub</a> skv.
+   skilmálum <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode" target="_blank"
+      rel="noopener">CC-BY-NC 4.0</a>.</p>
+   <hr style="margin-top: 48px">
+   <p><i>Beygingarlýsing íslensks nútímamáls.</i> &copy; Stofnun Árna Magnússonar í íslenskum fræðum. Höfundur og ritstjóri Kristín Bjarnadóttir.</p>
+   <hr style="margin-top: 20px">
+   <p style="font-size: 14px">Rekstraraðili vefjarins er
+      <a href="https://mideind.is" target="_blank" rel="noopener"><i>Miðeind ehf.</i></a>
+      | kt. 591213-1480 | netskrafl@netskrafl.is | VSK nr. 137060
+   </p>
+   <p style="text-align:right;margin-top:0">
+      <a href="https://mideind.is" target="_blank" rel="noopener">
+      <img src="{{ url_for('web.static', filename='MideindLogoVert300.png') }}" width=150 height=128>
+      </a>
+   </p>
+   </div>
+
+   <div id="tabs-2">
+   <p>Netskrafl leyfir <strong>tveggja stafa orð</strong> sem eru á
+   <a href="{{ url_for('web.twoletter') }}">lista Skraflfélags Íslands</a>
+   samkvæmt ákvörðun Orðanefndar þess í september 2015.</p>
+   <p>Þú getur flett upp í listanum meðan á viðureign stendur með því að smella á
+   flipann sem merktur er með björgunarhring
+   <span class="glyphicon glyphicon-life-preserver"></span>.</p>
+   <p>Leyfileg tveggja stafa orð eru eftirfarandi:</p>
+   <div class="twolist">
+   <div class="twoline">
+   <span class="twoword">að</span> <span class="twoword">af</span> <span class="twoword">ak</span> <span class="twoword">al</span> <span class="twoword">an</span> <span class="twoword">ar</span> <span class="twoword">as</span> <span class="twoword">at</span> <span class="twoword">ax</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">áa</span> <span class="twoword">áð</span> <span class="twoword">ái</span> <span class="twoword">ál</span> <span class="twoword">ám</span> <span class="twoword">án</span> <span class="twoword">ár</span> <span class="twoword">ás</span> <span class="twoword">át</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">bí</span> <span class="twoword">bú</span> <span class="twoword">bý</span> <span class="twoword">bæ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">dá</span> <span class="twoword">do</span> <span class="twoword">dó</span> <span class="twoword">dý</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">eð</span> <span class="twoword">ef</span> <span class="twoword">eg</span> <span class="twoword">ei</span> <span class="twoword">ek</span> <span class="twoword">el</span> <span class="twoword">em</span> <span class="twoword">en</span> <span class="twoword">er</span> <span class="twoword">es</span> <span class="twoword">et</span> <span class="twoword">ex</span> <span class="twoword">ey</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ég</span> <span class="twoword">él</span> <span class="twoword">ét</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">fa</span> <span class="twoword">fá</span> <span class="twoword">fé</span> <span class="twoword">fæ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">gá</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ha</span> <span class="twoword">há</span> <span class="twoword">hí</span> <span class="twoword">hó</span> <span class="twoword">hý</span> <span class="twoword">hæ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ið</span> <span class="twoword">il</span> <span class="twoword">im</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">íð</span> <span class="twoword">íl</span> <span class="twoword">ím</span> <span class="twoword">ís</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">já</span> <span class="twoword">je</span> <span class="twoword">jó</span> <span class="twoword">jú</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ká</span> <span class="twoword">ku</span> <span class="twoword">kú</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">la</span> <span class="twoword">lá</span> <span class="twoword">lé</span> <span class="twoword">ló</span> <span class="twoword">lú</span> <span class="twoword">lý</span> <span class="twoword">læ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">má</span> <span class="twoword">mi</span> <span class="twoword">mó</span> <span class="twoword">mý</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ná</span> <span class="twoword">né</span> <span class="twoword">nó</span> <span class="twoword">nú</span> <span class="twoword">ný</span> <span class="twoword">næ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">of</span> <span class="twoword">og</span> <span class="twoword">oj</span> <span class="twoword">ok</span> <span class="twoword">op</span> <span class="twoword">or</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">óa</span> <span class="twoword">óð</span> <span class="twoword">óf</span> <span class="twoword">ói</span> <span class="twoword">ók</span> <span class="twoword">ól</span> <span class="twoword">óm</span> <span class="twoword">ón</span> <span class="twoword">óp</span> <span class="twoword">ós</span> <span class="twoword">óx</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">pí</span> <span class="twoword">pu</span> <span class="twoword">pú</span> <span class="twoword">pæ</span> 
+   </div>
+   <div class="twoline">
+   <span class="twoword">rá</span> <span class="twoword">re</span> <span class="twoword">ré</span> <span class="twoword">rí</span> <span class="twoword">ró</span> <span class="twoword">rú</span> <span class="twoword">rý</span> <span class="twoword">ræ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">sá</span> <span class="twoword">sé</span> <span class="twoword">sí</span> <span class="twoword">so</span> <span class="twoword">sú</span> <span class="twoword">sý</span> <span class="twoword">sæ</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">tá</span> <span class="twoword">te</span> <span class="twoword">té</span> <span class="twoword">ti</span> <span class="twoword">tí</span> <span class="twoword">tó</span> <span class="twoword">tý</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">um</span> <span class="twoword">un</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">úa</span> <span class="twoword">úð</span> <span class="twoword">úf</span> <span class="twoword">úi</span> <span class="twoword">úr</span> <span class="twoword">út</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">vá</span> <span class="twoword">vé</span> <span class="twoword">ví</span> <span class="twoword">vó</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">yl</span> <span class="twoword">ym</span> <span class="twoword">yr</span> <span class="twoword">ys</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">ýf</span> <span class="twoword">ýg</span> <span class="twoword">ýi</span> <span class="twoword">ýk</span> <span class="twoword">ýl</span> <span class="twoword">ýr</span> <span class="twoword">ýs</span> <span class="twoword">ýt</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">þá</span> <span class="twoword">þó</span> <span class="twoword">þú</span> <span class="twoword">þý</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">æð</span> <span class="twoword">æf</span> <span class="twoword">æg</span> <span class="twoword">æi</span> <span class="twoword">æl</span> <span class="twoword">æp</span> <span class="twoword">ær</span> <span class="twoword">æs</span> <span class="twoword">æt</span>
+   </div>
+   <div class="twoline">
+   <span class="twoword">öl</span> <span class="twoword">ör</span> <span class="twoword">ös</span> <span class="twoword">öt</span> <span class="twoword">öx</span>
+   </div>
+   </div> <!-- class='twolist' -->
+   </div> <!-- id='tabs-2' -->
+
+   </div> <!-- id = 'tabs' -->
+
+</div> <!-- class='tabbed-page' -->
+
+<!-- Display user identifier in upper right corner -->
+
+{% if user %}
+<div class="userid" onclick="location.href='{{ url_for('web.userprefs') }}'" title="Upplýsingar um leikmann">
+<span class="glyphicon glyphicon-address-book"></span>&nbsp;{{ user.nickname() }}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+
+$("#tabs").tabs(
+   {
+      heightStyle: "auto",
+      activate: function(ev, ui) {
+         var panelId = ui.newPanel.attr('id');
+         if (panelId == "tabs-3" && window.location.pathname.indexOf("/faq") != 0)
+            // Selecting the FAQ tab: Make sure we come back to the /faq URL
+            history.replaceState({ }, "FAQ", "/faq");
+      }
+   }
+);
+
+{% if tab == "twoletter" %}
+// Select the tab with two letter words to show initially
+$("#tabs").tabs("option", "active", 2);
+{% elif tab == "faq" %}
+// Select the tab with FAQs to show initially
+$("#tabs").tabs("option", "active", 1);
+{% elif tab == "newbag" %}
+// Select the tab with new bag info to show initially
+$("#tabs").tabs("option", "active", 3);
+{% endif %}
+
+</script>
+
+{% endblock %}
+

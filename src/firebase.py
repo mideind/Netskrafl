@@ -27,6 +27,7 @@ from typing import (
     Required,
     Sequence,
     TypedDict,
+    TypeVar,
     Set,
     Dict,
     cast,
@@ -41,7 +42,14 @@ from firebase_admin import App, initialize_app, auth, messaging, db  # type: ign
 from firebase_admin.exceptions import FirebaseError  # type: ignore
 from firebase_admin.messaging import UnregisteredError  # type: ignore
 
-from config import NETSKRAFL, PROJECT_ID, FIREBASE_DB_URL, running_local, ResponseType, ttl_cache
+from config import (
+    NETSKRAFL,
+    PROJECT_ID,
+    FIREBASE_DB_URL,
+    running_local,
+    ResponseType,
+    ttl_cache,
+)
 from languages import SUPPORTED_LOCALES
 from cache import memcache
 
@@ -50,6 +58,10 @@ OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
 
 PushMessageCallable = Callable[[str], str]
 PushDataDict = Mapping[str, Any]
+
+# TypeVar for Firebase transactions - Firebase supports JSON-like data
+# including dicts, lists, strings, numbers, booleans, and None
+FirebaseDataT = TypeVar("FirebaseDataT")
 
 
 class PushMessageDict(TypedDict):
@@ -109,9 +121,8 @@ def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
 def put_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """Updates data in Firebase. If a message object is provided, then it sets
     the data at the given location (whose path is built as a concatenation
-    of the *args list) with the message using the PUT http method.
-    If no message is provided, the data at this location is deleted
-    using the DELETE http method.
+    of the *args list) with the message. If no message is provided,
+    the data at this location is deleted.
     """
     try:
         path = "/".join(args)
@@ -133,6 +144,28 @@ def send_update(*args: str) -> bool:
     endpoint = args[-1]
     value = {endpoint: datetime.now(UTC).isoformat()}
     return send_message(value, *args[:-1])
+
+
+def get_data(path: str) -> Optional[Any]:
+    """Get data from Firebase at the given path"""
+    try:
+        ref = cast(Any, db).reference(path, app=_firebase_app)
+        return ref.get()
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] in firebase.get_data()")
+        return None
+
+
+def run_transaction(path: str, update_fn: Callable[[Optional[FirebaseDataT]], FirebaseDataT]) -> bool:
+    """Run a transaction at the given Firebase path.
+    The update_fn receives the current data (or None) and returns the new data."""
+    try:
+        ref = cast(Any, db).reference(path, app=_firebase_app)
+        ref.transaction(update_fn)
+        return True
+    except Exception as e:
+        logging.warning(f"Exception [{repr(e)}] in firebase.run_transaction()")
+        return False
 
 
 def check_wait(user_id: str, opp_id: str, key: Optional[str]) -> bool:
@@ -207,7 +240,7 @@ def create_custom_token(uid: str, valid_minutes: int = 60) -> str:
     while attempts < MAX_ATTEMPTS:
         try:
             return cast(Any, auth).create_custom_token(uid).decode()
-        except:
+        except Exception:
             # It appears that ConnectionResetError exceptions can
             # propagate (wrapped in an obscure Firebase object) from
             # the call to create_custom_token()
@@ -312,7 +345,7 @@ def push_notification(
         message_id: str = cast(Any, messaging).send(msg, app=_firebase_app)
         # The response is a message ID string
         return bool(message_id)
-    except UnregisteredError as e:
+    except UnregisteredError:
         logging.info(
             f"Unregistered device token ('{device_token}') in firebase.push_notification()"
         )
@@ -374,7 +407,7 @@ def push_to_user(
                 try:
                     ref = cast(Any, db).reference(path, app=_firebase_app)
                     ref.delete()
-                except Exception as e:
+                except Exception:
                     logging.warning(
                         f"Failed to delete node '{path}' in firebase.push_to_user()"
                     )

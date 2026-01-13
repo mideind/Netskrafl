@@ -8,11 +8,15 @@
 #
 
 runtime: python311
-entrypoint: gunicorn -b :$PORT -w 4 --threads 2 --pythonpath './src' src.main:app
+entrypoint: gunicorn -b :$PORT -w 3 --threads 6 --worker-class=gthread --keep-alive 20 --timeout 60 --pythonpath './src' main:app
 
-instance_class: B4_1G
-manual_scaling:
-  instances: 1
+instance_class: F4_1G
+automatic_scaling:
+  min_instances: 0  # Scale to zero when idle
+  max_instances: 1  # Never exceed 1 instance for dev
+  max_concurrent_requests: 18
+  min_idle_instances: 0  # Don't keep idle instances
+  max_idle_instances: 1  # At most 1 idle instance when active
 
 vpc_access_connector:
   name: projects/explo-dev/locations/europe-west1/connectors/vpc0c
@@ -54,13 +58,6 @@ handlers:
   static_files: static/favicon-16x16.png
   upload: static/favicon-16x16.png
   expiration: "1d 0h"
-
-# Service worker
-- url: /service-worker.js
-  static_files: static/service-worker.js
-  upload: static/service-worker.js
-  mime_type: application/javascript
-  #expiration: "1d 0h"
 
 # Internet Explorer & Windows 8 resource file, can be cached  
 - url: /browserconfig.xml

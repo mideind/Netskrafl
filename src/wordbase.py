@@ -1,13 +1,13 @@
 """
 
-    Word dictionary implemented with a DAWG
+Word dictionary implemented with a DAWG
 
-    Copyright © 2025 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
 """
 
@@ -20,6 +20,7 @@ import threading
 import logging
 import time
 
+from config import NETSKRAFL
 from languages import (
     Alphabet,
     IcelandicAlphabet,
@@ -41,39 +42,49 @@ TwoLetterListTuple = Tuple[List[str], List[str]]
 # Base project directory path
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
 
+# Known dictionaries
+_ALL_DAWGS: Sequence[Tuple[str, Alphabet]] = [
+    # Icelandic
+    ("ordalisti", IcelandicAlphabet),
+    ("amlodi", IcelandicAlphabet),
+    ("midlungur", IcelandicAlphabet),
+    # US English
+    ("otcwl2014", EnglishAlphabet),
+    ("otcwl2014.aml", EnglishAlphabet),
+    ("otcwl2014.mid", EnglishAlphabet),
+    # ("twl06", EnglishAlphabet),
+    # UK & Rest-of-World English
+    ("sowpods", EnglishAlphabet),
+    ("sowpods.aml", EnglishAlphabet),
+    ("sowpods.mid", EnglishAlphabet),
+    # Polish
+    ("osps37", PolishAlphabet),
+    ("osps37.aml", PolishAlphabet),
+    ("osps37.mid", PolishAlphabet),
+    # Norwegian Bokmål
+    ("nsf2023", NorwegianAlphabet),
+    ("nsf2023.aml", NorwegianAlphabet),
+    ("nsf2023.mid", NorwegianAlphabet),
+    # Norwegian Nynorsk
+    ("nynorsk2024", NorwegianAlphabet),
+    ("nynorsk2024.aml", NorwegianAlphabet),
+    ("nynorsk2024.mid", NorwegianAlphabet),
+]
+
+# Filter dictionaries based on NETSKRAFL setting
+_DAWGS = (
+    [(dawg, alphabet) for dawg, alphabet in _ALL_DAWGS if alphabet is IcelandicAlphabet]
+    if NETSKRAFL
+    else _ALL_DAWGS
+)
+if NETSKRAFL:
+    logging.info("Using Netskrafl configuration (Icelandic dictionaries only)")
+else:
+    logging.info("Using all available dictionaries")
+
 
 class Wordbase:
-
-    """ Container for singleton instances of the supported dictionaries """
-
-    # Known dictionaries
-    DAWGS: Sequence[Tuple[str, Alphabet]] = [
-        # Icelandic
-        ("ordalisti", IcelandicAlphabet),
-        ("amlodi", IcelandicAlphabet),
-        ("midlungur", IcelandicAlphabet),
-        # US English
-        ("otcwl2014", EnglishAlphabet),
-        ("otcwl2014.aml", EnglishAlphabet),
-        ("otcwl2014.mid", EnglishAlphabet),
-        # ("twl06", EnglishAlphabet),
-        # UK & Rest-of-World English
-        ("sowpods", EnglishAlphabet),
-        ("sowpods.aml", EnglishAlphabet),
-        ("sowpods.mid", EnglishAlphabet),
-        # Polish
-        ("osps37", PolishAlphabet),
-        ("osps37.aml", PolishAlphabet),
-        ("osps37.mid", PolishAlphabet),
-        # Norwegian Bokmål
-        ("nsf2023", NorwegianAlphabet),
-        ("nsf2023.aml", NorwegianAlphabet),
-        ("nsf2023.mid", NorwegianAlphabet),
-        # Norwegian Nynorsk
-        ("nynorsk2024", NorwegianAlphabet),
-        ("nynorsk2024.aml", NorwegianAlphabet),
-        ("nynorsk2024.mid", NorwegianAlphabet),
-    ]
+    """Container for singleton instances of the supported dictionaries"""
 
     _dawg: Dict[str, PackedDawgDictionary] = dict()
 
@@ -81,10 +92,10 @@ class Wordbase:
 
     @staticmethod
     def initialize() -> None:
-        """ Load all known dictionaries into memory """
+        """Load all known dictionaries into memory"""
         with Wordbase._lock:
             if not Wordbase._dawg:
-                for dawg, alphabet in Wordbase.DAWGS:
+                for dawg, alphabet in _DAWGS:
                     try:
                         Wordbase._dawg[dawg] = Wordbase._load_resource(dawg, alphabet)
                     except FileNotFoundError:
@@ -92,53 +103,46 @@ class Wordbase:
 
     @staticmethod
     def _load_resource(resource: str, alphabet: Alphabet) -> PackedDawgDictionary:
-        """ Load a dictionary from a binary DAWG file """
-
+        """Load a dictionary from a binary DAWG file"""
         bname = os.path.abspath(
             os.path.join(BASE_PATH, "resources", resource + ".bin.dawg")
-        )
-        # Load packed binary file
-        logging.info(
-            "Instance {0} loading DAWG from binary file {1}".format(
-                os.environ.get("INSTANCE_ID", ""), bname
-            )
         )
         t0 = time.time()
         dawg = PackedDawgDictionary(alphabet)
         dawg.load(bname)
         t1 = time.time()
-        logging.info("Loaded complete graph in {0:.2f} seconds".format(t1 - t0))
+        logging.info("Loaded DAWG {1} in {0:.2f} seconds".format(t1 - t0, bname))
         return dawg
 
     @staticmethod
     def dawg() -> PackedDawgDictionary:
-        """ Return the main dictionary DAWG object, associated with the
-            current thread, i.e. the current user's (or game's) locale """
+        """Return the main dictionary DAWG object, associated with the
+        current thread, i.e. the current user's (or game's) locale"""
         return Wordbase._dawg[current_vocabulary()]
 
     @staticmethod
     def dawg_for_locale(locale: str) -> PackedDawgDictionary:
-        """ Return the DAWG object associated with the given locale """
+        """Return the DAWG object associated with the given locale"""
         vocab = vocabulary_for_locale(locale)
         return Wordbase._dawg[vocab]
 
     @staticmethod
     def dawg_for_vocab(vocab: str) -> Optional[PackedDawgDictionary]:
-        """ Return the DAWG object associated with the given vocabulary """
+        """Return the DAWG object associated with the given vocabulary"""
         return Wordbase._dawg.get(vocab)
 
     @staticmethod
     def two_letter_words(
         vocabulary: Optional[str] = None,
     ) -> Tuple[List[str], List[str]]:
-        """ Return the two letter word list associated with the
-            current vocabulary """
+        """Return the two letter word list associated with the
+        current vocabulary"""
         dawg = Wordbase._dawg.get(vocabulary or current_vocabulary())
         return ([], []) if dawg is None else dawg.two_letter_words()
 
     @staticmethod
     def warmup() -> bool:
-        """ Called from GAE instance initialization; add warmup code here if needed """
+        """Called from GAE instance initialization; add warmup code here if needed"""
         return True
 
 

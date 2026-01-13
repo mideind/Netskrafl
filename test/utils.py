@@ -26,6 +26,18 @@ sys.path.append(SRC_PATH)
 THIS_PATH = os.path.dirname(__file__)
 sys.path.append(THIS_PATH)
 
+import main  # noqa: E402
+from skrafldb import (  # noqa: E402
+    EloModel,
+    UserModel,
+    ChatModel,
+    GameModel,
+    ZombieModel,
+    Client,
+)
+from skraflgame import PrefsDict  # noqa: E402
+
+
 # Bearer token for testing
 TEST_SECRET = "testsecret"
 
@@ -37,10 +49,6 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
 os.environ["SERVER_SOFTWARE"] = "Development"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
-
-import main
-from skrafldb import EloModel, UserModel, ChatModel, GameModel, ZombieModel, Client
-from skraflgame import PrefsDict
 
 
 # Create a custom test client class that can optionally
@@ -114,7 +122,7 @@ def create_user(idx: int, locale: str = "en_US") -> str:
         EloModel.delete_for_user(uid)
         # TODO: Delete StatsModel entries for this user
         # Create a new user, if required
-        return UserModel.create(
+        user_id, prefs = UserModel.create(
             user_id=uid,
             account=uid,
             email=email,
@@ -123,6 +131,15 @@ def create_user(idx: int, locale: str = "en_US") -> str:
             preferences=prefs,
             locale=locale,
         )
+        assert prefs.get("newbag") == True  # noqa: E712
+        assert prefs.get("email") == email
+        assert prefs.get("full_name") == name
+        assert prefs.get("ready") == True  # noqa: E712
+        assert prefs.get("ready_timed") == True  # noqa: E712
+        assert prefs.get("beginner") == True  # noqa: E712
+        assert prefs.get("fanfare") == False  # noqa: E712
+        assert prefs.get("fairplay") == False  # noqa: E712
+        return user_id
 
 
 @pytest.fixture
@@ -185,10 +202,10 @@ def decode_cookie(cookie: str) -> str:
     if compressed := payload.startswith("."):
         payload = payload[1:]
     data = payload.split(".")[0]
-    data = base64_decode(data)
+    data_bytes = base64_decode(data)
     if compressed:
-        data = zlib.decompress(data)
-    return data.decode("utf-8")
+        data_bytes = zlib.decompress(data_bytes)
+    return data_bytes.decode("utf-8")
 
 
 def get_session_dict(client: CustomClient) -> Dict[str, Any]:

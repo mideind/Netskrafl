@@ -9,7 +9,6 @@
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
 
-
     This module contains a middle layer between the server APIs
     (found in apy.py) and the various game functions in modules
     such as skrafluser.py, skraflmechanics.py and skraflgame.py.
@@ -20,7 +19,6 @@ from __future__ import annotations
 
 from typing import (
     Any,
-    Callable,
     Dict,
     Iterable,
     List,
@@ -31,6 +29,7 @@ from typing import (
     TypeVar,
     TypedDict,
     Union,
+    cast,
 )
 
 import logging
@@ -40,12 +39,22 @@ import functools
 import random
 from datetime import UTC, datetime, timedelta
 
-from google.cloud import ndb  # type: ignore
+from google.cloud import ndb
 from flask import url_for
 import firebase
 
+from config import (
+    DEFAULT_LOCALE,
+    DEFAULT_ELO,
+    NETSKRAFL,
+    PROMO_COUNT,
+    PROMO_CURRENT,
+    PROMO_FREQUENCY,
+    PROMO_INTERVAL,
+    ResponseType,
+    Error,
+)
 from basics import current_user, current_user_id, jsonify
-from config import DEFAULT_LOCALE, DEFAULT_ELO, NETSKRAFL, PROMO_COUNT, PROMO_CURRENT, PROMO_FREQUENCY, PROMO_INTERVAL, ResponseType
 from languages import (
     Alphabet,
     to_supported_locale,
@@ -57,15 +66,14 @@ from languages import (
 from skraflgame import Game
 from skraflmechanics import (
     ChallengeMove,
-    Error,
     ExchangeMove,
     Move,
     MoveBase,
     PassMove,
     ResignMove,
 )
+from autoplayers import autoplayer_for_locale, autoplayer_name
 from skrafluser import MAX_NICKNAME_LENGTH, User, fetch_users
-from skraflplayer import AutoPlayer
 from skrafldb import (
     EloDict,
     EloModel,
@@ -468,13 +476,19 @@ class UserForm:
         """Check the current form data for validity
         and return a dict of errors, if any"""
         errors: Dict[str, str] = dict()
-        # pylint: disable=bad-continuation
         if not self.nickname:
+            # The nickname has already been strip()-ed
             errors["nickname"] = self.error_msg("NICK_MISSING")
         elif len(self.nickname) > MAX_NICKNAME_LENGTH:
             errors["nickname"] = self.error_msg("NICK_TOO_LONG")
-        elif not re.match(r"^\w+$", self.nickname):
-            errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        elif NETSKRAFL:
+            # For Netskrafl, allow alphanumeric characters and spaces
+            if not re.match(r"^[\w\s]+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
+        else:
+            # For Explo, only allow alphanumeric characters (no spaces)
+            if not re.match(r"^\w+$", self.nickname):
+                errors["nickname"] = self.error_msg("NICK_NOT_ALPHANUMERIC")
         if self.email and "@" not in self.email:
             errors["email"] = self.error_msg("EMAIL_NO_AT")
         if self.locale not in RECOGNIZED_LOCALES:
@@ -567,17 +581,17 @@ def process_move(
                 # Challenging the last move
                 m = ChallengeMove()
                 break
-            sq, tile = mstr.split("=")
+            sq, tile = mstr.split("=", 1)
             row = "ABCDEFGHIJKLMNO".index(sq[0])
             col = int(sq[1:]) - 1
-            if tile[0] == "?":
+            if tile.startswith("?"):
                 # If the blank tile is played, the next character contains
                 # its meaning, i.e. the letter it stands for
                 letter = tile[1]
-                tile = tile[0]
+                tile = "?"
             else:
                 letter = tile
-            assert isinstance(m, Move)
+            assert isinstance(m, Move)  # For mypy; Pylance is clever enough
             m.add_cover(row, col, tile, letter)
     except Exception as e:
         logging.info("Exception in _process_move(): {0}".format(e))
@@ -732,6 +746,13 @@ def locale_elos(locale: str, user_ids: Iterable[str]) -> Dict[str, EloDict]:
     return EloModel.load_multi(locale, user_ids)
 
 
+def readiness(x: UserListDict) -> int:
+    """Return a readiness score for sorting purposes"""
+    return (
+        4 if x["ready_timed"] else 2 if x["ready"] else 0
+    ) + (1 if x["live"] else 0)
+
+
 def userlist(query: str, spec: str) -> UserList:
     """Return a list of users matching the filter criteria"""
     # The query string can be 'robots', 'live', 'fav', 'alike',
@@ -751,7 +772,7 @@ def userlist(query: str, spec: str) -> UserList:
 
     if query == "robots":
         # Return the list of available autoplayers for the user's locale
-        aplist = AutoPlayer.for_locale(locale)
+        aplist = autoplayer_for_locale(locale)
         for r in aplist:
             result.append(
                 UserListDict(
@@ -988,6 +1009,7 @@ def userlist(query: str, spec: str) -> UserList:
                 # Store the result in the cache with a lifetime of 2 minutes
                 memcache.set(cache_range, si, time=2 * 60, namespace="userlist")
 
+        assert si is not None  # For mypy (Pylance knows that si can't be None here)
         func_online_status = online.users_online
         elos = locale_elos(locale, (uid for ud in si if (uid := ud.get("id"))))
 
@@ -1030,9 +1052,6 @@ def userlist(query: str, spec: str) -> UserList:
     # 4) Users who are ready to accept challenges.
     # 5) All other users.
     # Each category is sorted by nickname, case-insensitive.
-    readiness: Callable[[UserListDict], int] = lambda x: (
-        4 if x["ready_timed"] else 2 if x["ready"] else 0
-    ) + (1 if x["live"] else 0)
     result.sort(
         key=lambda x: (
             # First by readiness (most ready first)
@@ -1087,7 +1106,7 @@ def rating(kind: str) -> List[UserRatingDict]:
             # for instance robot-15-en. If the locale is missing, use "is".
             a = uid.split("-")
             lc = a[2] if len(a) >= 3 else "is"
-            nick = AutoPlayer.name(lc, int(a[1]))
+            nick = autoplayer_name(lc, int(a[1]))
             fullname = nick
             chall = False
             fairplay = False
@@ -1191,7 +1210,7 @@ def rating_for_locale(kind: str, locale: str) -> List[UserRatingForLocaleDict]:
         if uid.startswith("robot-"):
             a = uid.split("-")
             try:
-                nick = AutoPlayer.name(locale, int(a[1]))
+                nick = autoplayer_name(locale, int(a[1]))
             except ValueError:
                 nick = "--"
             fullname = nick
@@ -1272,7 +1291,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             uuid = g["uuid"]
             game_locale = g["locale"]
             nick = u.nickname()
-            prefs: Optional[PrefsDict] = g.get("prefs", None)
+            prefs = cast(Optional[PrefsDict], g.get("prefs", None))
             fairplay = Game.fairplay_from_prefs(prefs)
             new_bag = Game.new_bag_from_prefs(prefs)
             manual = Game.manual_wordcheck_from_prefs(prefs)
@@ -1314,6 +1333,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
 
     # Obtain up to 50 live games where this user is a player
     i = list(GameModel.iter_live_games(cuid, max_len=50))
+
     # Sort in reverse order by turn and then by timestamp of the last move,
     # i.e. games with newest moves first
     i.sort(key=lambda x: (x["my_turn"], x["ts"]), reverse=True)
@@ -1338,11 +1358,11 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
         timed = Game.get_duration_from_prefs(prefs)
         fullname = ""
         robot_level: int = 0
-        rating: Optional[EloDict] = None
+        opp_rating: Optional[EloDict] = None
         if opp is None:
             # Autoplayer opponent
             robot_level = g["robot_level"]
-            nick = AutoPlayer.name(game_locale, robot_level)
+            nick = autoplayer_name(game_locale, robot_level)
         else:
             # Human opponent
             u = opponents.get(opp)
@@ -1356,7 +1376,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             # If the opponent is in the same locale as the current user,
             # use the Elo rating that we previously multi-fetched;
             # otherwise, use the Elo rating in the opponent's own locale
-            rating = elos.get(opp) if u.locale == locale else u.elo_for_locale()
+            opp_rating = elos.get(opp) if u.locale == locale else u.elo_for_locale()
             delta = now - ts
             if g["my_turn"]:
                 # Start to show warning after 12 days
@@ -1389,8 +1409,8 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                 image="" if u is None else u.thumbnail(),
                 fav=False if cuser is None else cuser.has_favorite(opp),
                 robot_level=robot_level,
-                elo=0 if rating is None else rating.elo,
-                human_elo=0 if rating is None else rating.human_elo,
+                elo=0 if opp_rating is None else opp_rating.elo,
+                human_elo=0 if opp_rating is None else opp_rating.human_elo,
             )
         )
     # Set the live status of the opponents in the list
@@ -1430,7 +1450,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
         if opp is None:
             # Autoplayer opponent
             u = None
-            nick = AutoPlayer.name(locale, g["robot_level"])
+            nick = autoplayer_name(locale, g["robot_level"])
         else:
             # Human opponent
             u = opponents.get(opp)
@@ -1618,7 +1638,8 @@ def promo_to_show_to_user(uid: str) -> str:
     promo_to_show: Optional[str] = PROMO_CURRENT  # None if no promo is ongoing
     promos: List[datetime] = []
 
-    if not uid: return ""
+    if not uid:
+        return ""
 
     if promo_to_show and random.randint(1, PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for

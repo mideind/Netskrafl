@@ -1,0 +1,13 @@
+# dispatch.yaml
+dispatch:
+  # Route netskrafl.is to the default service (production)
+  - url: "netskrafl.is/*"
+    service: default
+
+  # Route www.netskrafl.is to the default service (production)
+  - url: "www.netskrafl.is/*"
+    service: default
+
+  # Route netskrafl.mideind.is to the default service
+  - url: "netskrafl.mideind.is/*"
+    service: default

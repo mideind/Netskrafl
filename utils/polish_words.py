@@ -142,13 +142,13 @@ def read_pol_news(input_file: str) -> bool:
             continue
         freq = int(words[2])
         # Check whether the word is in the Polish vocabulary
-        if not polish_word in polish_words:
+        if polish_word not in polish_words:
             # Check whether its lowercase version is in the vocabulary
             polish_word_lower = polish_word.lower()
             if polish_word_lower == polish_word:
                 continue
             polish_word = polish_word_lower
-            if not polish_word in polish_words:
+            if polish_word not in polish_words:
                 continue
         # Update the frequency dictionary
         freq_dict[polish_word] += freq

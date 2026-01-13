@@ -1,6 +1,6 @@
 """
 
-    Web server for netskrafl.is
+    Web server for Netskrafl and Explo
 
     Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -8,7 +8,6 @@
     The Creative Commons Attribution-NonCommercial 4.0
     International Public License (CC-BY-NC 4.0) applies to this software.
     For further information, see https://github.com/mideind/Netskrafl
-
 
     This Python >= 3.11 web server module uses the Flask framework
     to implement a crossword game.
@@ -40,9 +39,9 @@ import os
 import re
 import logging
 
-from datetime import timedelta
-from logging.config import dictConfig
+from datetime import datetime, timedelta, timezone
 
+from flask import g, request
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
@@ -72,44 +71,32 @@ from basics import (
     FlaskWithCaching,
     ndb_wsgi_middleware,
     init_oauth,
+    check_port_available,
 )
+from authmanager import auth_manager
 from firebase import init_firebase_app, connect_blueprint
 from wordbase import Wordbase
 from api import api_blueprint
 from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
+from riddle import riddle_blueprint
 
 
+# Only check port availability when running locally
 if running_local:
-    # Configure logging
-    dictConfig(
-        {
-            "version": 1,
-            "formatters": {
-                "default": {
-                    "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-                }
-            },
-            "handlers": {
-                "wsgi": {
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://flask.logging.wsgi_errors_stream",
-                    "formatter": "default",
-                }
-            },
-            "root": {"level": "INFO", "handlers": ["wsgi"]},
-        }
-    )
-
-if running_local:
+    check_port_available(host, int(port))
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
-    # flask_config["SERVER_NAME"] = "127.0.0.1"
+    # Disable Werkzeug's default request logging to avoid duplicate logs,
+    # since we are logging web requests ourselves
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
 else:
     # Import the Google Cloud client library
     import google.cloud.logging
 
     # Instantiate a logging client
-    logging_client = google.cloud.logging.Client()
+    logging_client = google.cloud.logging.Client(
+        credentials=auth_manager.get_credentials()
+    )
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
@@ -120,28 +107,22 @@ init_firebase_app()
 # Initialize Flask using our custom subclass, defined in basics.py
 app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 
-# The following cast to Any can be removed once Flask typing becomes
-# more robust and/or compatible with Pylance
-cast_app = cast(Any, app)
-
 # Wrap the WSGI app to insert the Google App Engine NDB client context
 # into each request
-setattr(app, "wsgi_app", ndb_wsgi_middleware(cast_app.wsgi_app))
+app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
-if running_local:
-    CORS(
-        app,
-        supports_credentials=True,
-        origins=[
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "http://127.0.0.1:6006",
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:6006",
-        ],
-    )
+# Since we use Bearer token authentication for cross-origin requests,
+# we don't need credentials (cookies) and can allow all origins.
+# Same-origin requests (classic Netskrafl web clients) bypass CORS entirely.
+CORS(
+    app,
+    supports_credentials=False,
+    origins="*",
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=86400,  # Cache preflight response for 24 hours
+)
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used
@@ -172,7 +153,7 @@ flask_config = FlaskConfig(
 app.secret_key = FLASK_SESSION_KEY
 
 # Load the Flask configuration
-cast_app.config.update(**flask_config)
+app.config.update(flask_config)  # pyright: ignore[reportUnknownMemberType]
 
 # Configure the Flask JSON provider to use UTF-8 encoding and to not sort keys
 assert isinstance(app.json, DefaultJSONProvider)
@@ -183,6 +164,7 @@ app.json.sort_keys = False
 app.register_blueprint(api_blueprint)
 app.register_blueprint(web_blueprint)
 app.register_blueprint(stats_blueprint)
+app.register_blueprint(riddle_blueprint)
 app.register_blueprint(connect_blueprint)
 
 # Initialize the OAuth wrapper
@@ -196,14 +178,28 @@ def stripwhite(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+@app.before_request
+def before_request():
+    if running_local:
+        g.request_start = datetime.now(tz=timezone.utc)
+
+
 @app.after_request
-def add_headers(response: Response) -> Response:
-    """Inject additional headers into responses"""
-    if not running_local:
+def after_request(response: Response) -> Response:
+    """Post-request processing"""
+    if running_local:
+        start = g.request_start
+        duration = (datetime.now(tz=timezone.utc) - start).total_seconds()
+        logging.info(
+            f'{request.remote_addr} - - [{start.strftime("%d/%b/%Y %H:%M:%S")}] '
+            f'"{request.method} {request.full_path.rstrip("?")} {request.environ.get("SERVER_PROTOCOL")}" '
+            f'{response.status_code} - {duration:.3f}s'
+        )
+    else:
         # Add HSTS to enforce HTTPS
-        response.headers[
-            "Strict-Transport-Security"
-        ] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
     return response
 
 
@@ -271,8 +267,13 @@ def warmup() -> ResponseType:
 @app.route("/_ah/stop")
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
-    logging.info(f"Stop: instance {instance}")
+    try:
+        instance = os.environ.get("GAE_INSTANCE", "N/A")
+        logging.info(f"Stop: instance {instance}")
+    except Exception:
+        # The logging module may not be functional at this point,
+        # as the server is being shut down
+        pass
     return "", 200
 
 

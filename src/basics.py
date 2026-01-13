@@ -1,17 +1,17 @@
 """
 
-    Basic utility functions and classes
+Basic utility functions and classes
 
-    Copyright © 2025 Miðeind ehf.
-    Original author: Vilhjálmur Þorsteinsson
+Copyright © 2025 Miðeind ehf.
+Original author: Vilhjálmur Þorsteinsson
 
-    The Creative Commons Attribution-NonCommercial 4.0
-    International Public License (CC-BY-NC 4.0) applies to this software.
-    For further information, see https://github.com/mideind/Netskrafl
+The Creative Commons Attribution-NonCommercial 4.0
+International Public License (CC-BY-NC 4.0) applies to this software.
+For further information, see https://github.com/mideind/Netskrafl
 
 
-    This module defines a number of basic entities that are used and shared
-    by the main.py, api.py and web.py modules.
+This module defines a number of basic entities that are used and shared
+by the main.py, api.py and web.py modules.
 
 """
 
@@ -36,6 +36,9 @@ from typing import (
 import io
 from datetime import UTC, datetime
 from functools import wraps
+import socket
+import errno
+import logging
 
 from flask import (
     Flask,
@@ -47,23 +50,27 @@ from flask import (
     g,
     session,
 )
+from flask.typing import ResponseReturnValue
 from flask.wrappers import Request, Response
 from werkzeug.utils import send_file  # type: ignore
 
 from authlib.integrations.flask_client import OAuth  # type: ignore
 from PIL import Image
 
-from config import OAUTH_CONF_URL, DEFAULT_THUMBNAIL_SIZE, RouteType, ResponseType
+from config import (
+    OAUTH_CONF_URL,
+    DEFAULT_THUMBNAIL_SIZE,
+    RouteType,
+    RouteFunc,
+    ResponseType,
+)
 from languages import set_locale
-from skrafluser import User
+from skrafluser import User, verify_explo_token
 from skrafldb import Client
 
 
 # Generic placeholder type
 T = TypeVar("T")
-
-# A Flask route function decorator
-RouteFunc = Callable[[RouteType], RouteType]
 
 
 class UserIdDict(TypedDict):
@@ -140,7 +147,6 @@ def max_age(seconds: int) -> RouteFunc:
 
 
 class CachedResponse(Response):
-
     """A subclass of Flask's Response class that causes
     the requisite cache headers to be added to the response
     and deletes the Vary: header which Flask adds by
@@ -151,7 +157,6 @@ class CachedResponse(Response):
 
 
 class FlaskWithCaching(Flask):
-
     """Subclass Flask to inject our custom process_response() method"""
 
     def process_response(self, response: Response) -> Response:
@@ -168,7 +173,11 @@ class FlaskWithCaching(Flask):
 
 
 def send_cached_file(
-    content: io.BytesIO, *, lifetime_seconds: int, etag: str, mimetype: str = "image/jpeg"
+    content: io.BytesIO,
+    *,
+    lifetime_seconds: int,
+    etag: str,
+    mimetype: str = "image/jpeg",
 ) -> Response:
     """Create a response with a JPEG image and a cache header, if lifetime_seconds > 0"""
     now = datetime.now(UTC)
@@ -257,7 +266,25 @@ def session_user() -> Optional[User]:
     elif (u := sess.get("userid")) is not None:
         # Old-style session: nested user id dictionary
         userid = u.get("id", "")
-    return User.load_if_exists(userid)  # Returns None if userid is None or empty
+
+    # First, try to resolve a user from the session cookie
+    if userid:
+        user = User.load_if_exists(userid)
+        if user is not None:
+            return user
+
+    # If no valid session user, try Bearer token from Authorization header
+    # (This is the mechanism used by cross-origin clients such as Málstaður)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        claims = verify_explo_token(token)
+        if claims:
+            userid = claims.get("sub", "")
+            if userid:
+                return User.load_if_exists(userid)
+
+    return None
 
 
 def session_data() -> Optional[SessionDict]:
@@ -318,7 +345,7 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
 
     def wrap(func: RouteType) -> RouteType:
         @wraps(func)
-        def route() -> ResponseType:
+        def route() -> ResponseReturnValue:
             """Load the authenticated user into g.user
             before invoking the wrapped route function"""
             u = session_user()
@@ -355,7 +382,7 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
     return wrap
 
 
-def make_thumbnail(image: bytes, size: int=DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
+def make_thumbnail(image: bytes, size: int = DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO:
     """Create a thumbnail from a JPEG image"""
     # Convert the image bytes to a BytesIO object
     image_bytes = io.BytesIO(image)
@@ -366,6 +393,21 @@ def make_thumbnail(image: bytes, size: int=DEFAULT_THUMBNAIL_SIZE) -> io.BytesIO
     img.save(thumb_bytes, format="JPEG")  # type: ignore
     thumb_bytes.seek(0)
     return thumb_bytes
+
+
+def check_port_available(host_to_check: str, port_to_check: int) -> None:
+    """Check if a port is available for binding, exit if not"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((host_to_check, port_to_check))
+        sock.close()
+    except OSError as e:
+        if e.errno == errno.EADDRINUSE:
+            logging.error(
+                f"Port {port_to_check} is already in use. "
+                f"Kill the process with: sudo fuser -k {port_to_check}/tcp"
+            )
+        raise
 
 
 class RequestData:

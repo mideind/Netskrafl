@@ -122,7 +122,13 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from alphabets import Alphabet, EnglishAlphabet, IcelandicAlphabet, NorwegianAlphabet, PolishAlphabet
+from alphabets import (  # noqa: E402
+    Alphabet,
+    EnglishAlphabet,
+    IcelandicAlphabet,
+    NorwegianAlphabet,
+    PolishAlphabet,
+)
 
 # Establish the resources path
 rpath = functools.partial(os.path.join, base_path, "../resources")
@@ -188,11 +194,11 @@ class _DawgNode:
     _nextid = 1
 
     @staticmethod
-    def sort_by_prefix(l: List[NodeTuple]) -> List[NodeTuple]:
+    def sort_by_prefix(tuples: List[NodeTuple]) -> List[NodeTuple]:
         """Return a list of (prefix, node) tuples sorted by prefix"""
         sortkey = _current_sortkey
         assert sortkey is not None
-        return sorted(l, key=lambda x: sortkey(x[0]))
+        return sorted(tuples, key=lambda x: sortkey(x[0]))
 
     @staticmethod
     def stringify_edges(edges: DawgDict) -> str:
@@ -204,13 +210,13 @@ class _DawgNode:
         ]
         return "_".join(edge_list)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.id: int = _DawgNode._nextid
         _DawgNode._nextid += 1
         self.edges: DawgDict = dict()
         self.final = False
-        self._strng = None  # Cached string representation of this node
-        self._hash = None  # Hash of the final flag and a shallow traversal of the edges
+        self._strng: str | None = None  # Cached string representation of this node
+        self._hash: int | None = None  # Hash of the final flag and a shallow traversal of the edges
 
     def __str__(self) -> str:
         """Return a string representation of this node, cached if possible"""
@@ -1548,7 +1554,10 @@ def run_norwegian_filter(
     # Create a lambda that can be used as a key in the sorted function
     # to sort in Norwegian alphabetic order
     alphabet = _current_alphabet.full_order
-    keyfunc: Callable[[str], List[int]] = lambda w: [alphabet.index(c) for c in w]
+
+    def keyfunc(w: str) -> List[int]:
+        return [alphabet.index(c) for c in w]
+
     for t in tasks:
         vocab = sorted(t["vocab"], key=keyfunc)
         with open(
