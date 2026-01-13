@@ -1,4 +1,4 @@
-gunicorn==22.0.0
+gunicorn==23.0.0
 gevent-websocket==0.10.1
 Flask==2.3.2
 Authlib==1.6.6
