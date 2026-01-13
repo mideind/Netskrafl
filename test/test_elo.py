@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 import functools
 
 from utils import CustomClient, login_user
-from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore
+from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 from skraflgame import ClientStateDict
 

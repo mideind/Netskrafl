@@ -26,6 +26,18 @@ sys.path.append(SRC_PATH)
 THIS_PATH = os.path.dirname(__file__)
 sys.path.append(THIS_PATH)
 
+import main  # noqa: E402
+from skrafldb import (  # noqa: E402
+    EloModel,
+    UserModel,
+    ChatModel,
+    GameModel,
+    ZombieModel,
+    Client,
+)
+from skraflgame import PrefsDict  # noqa: E402
+
+
 # Bearer token for testing
 TEST_SECRET = "testsecret"
 
@@ -37,10 +49,6 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
 os.environ["SERVER_SOFTWARE"] = "Development"
 os.environ["REDISHOST"] = "127.0.0.1"
 os.environ["REDISPORT"] = "6379"
-
-import main
-from skrafldb import EloModel, UserModel, ChatModel, GameModel, ZombieModel, Client
-from skraflgame import PrefsDict
 
 
 # Create a custom test client class that can optionally
@@ -123,14 +131,14 @@ def create_user(idx: int, locale: str = "en_US") -> str:
             preferences=prefs,
             locale=locale,
         )
-        assert prefs.get("newbag") == True
+        assert prefs.get("newbag") == True  # noqa: E712
         assert prefs.get("email") == email
         assert prefs.get("full_name") == name
-        assert prefs.get("ready") == True
-        assert prefs.get("ready_timed") == True
-        assert prefs.get("beginner") == True
-        assert prefs.get("fanfare") == False
-        assert prefs.get("fairplay") == False
+        assert prefs.get("ready") == True  # noqa: E712
+        assert prefs.get("ready_timed") == True  # noqa: E712
+        assert prefs.get("beginner") == True  # noqa: E712
+        assert prefs.get("fanfare") == False  # noqa: E712
+        assert prefs.get("fairplay") == False  # noqa: E712
         return user_id
 
 

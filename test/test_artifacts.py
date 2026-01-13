@@ -11,7 +11,7 @@
 import base64
 
 from utils import CustomClient, login_user
-from utils import client, u1, u2, u3_gb  # type: ignore
+from utils import client, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 
 # Create a minimal JPEG image directly from bytes

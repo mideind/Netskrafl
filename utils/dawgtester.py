@@ -22,9 +22,9 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from alphabets import IcelandicAlphabet, PolishAlphabet
-from languages import set_locale
-from dawgdictionary import PackedDawgDictionary
+from alphabets import IcelandicAlphabet, PolishAlphabet  # noqa: E402
+from languages import set_locale  # noqa: E402
+from dawgdictionary import PackedDawgDictionary  # noqa: E402
 
 
 class DawgTester:

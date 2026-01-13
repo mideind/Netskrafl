@@ -36,14 +36,14 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from languages import (
+from languages import (  # noqa: E402
     NewTileSet,
     set_locale,
     current_tileset,
     current_vocabulary,
     current_board_type,
 )
-from skraflmechanics import (
+from skraflmechanics import (  # noqa: E402
     State,
     Board,
     Move,
@@ -52,12 +52,12 @@ from skraflmechanics import (
     ResponseMove,
     Error,
 )
-from skraflplayer import (
+from skraflplayer import (  # noqa: E402
     AutoPlayer,
     AutoPlayer_Custom,
     AutoPlayer_MiniMax,
 )
-from autoplayers import autoplayer_create
+from autoplayers import autoplayer_create  # noqa: E402
 
 
 PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]

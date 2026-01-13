@@ -65,7 +65,7 @@ from config import (
     ResponseType,
 )
 from languages import set_locale
-from skrafluser import User
+from skrafluser import User, verify_explo_token
 from skrafldb import Client
 
 
@@ -266,7 +266,25 @@ def session_user() -> Optional[User]:
     elif (u := sess.get("userid")) is not None:
         # Old-style session: nested user id dictionary
         userid = u.get("id", "")
-    return User.load_if_exists(userid)  # Returns None if userid is None or empty
+
+    # First, try to resolve a user from the session cookie
+    if userid:
+        user = User.load_if_exists(userid)
+        if user is not None:
+            return user
+
+    # If no valid session user, try Bearer token from Authorization header
+    # (This is the mechanism used by cross-origin clients such as Málstaður)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        claims = verify_explo_token(token)
+        if claims:
+            userid = claims.get("sub", "")
+            if userid:
+                return User.load_if_exists(userid)
+
+    return None
 
 
 def session_data() -> Optional[SessionDict]:

@@ -319,7 +319,8 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
         else:
             return None
         return claims
-    except (jwt.InvalidTokenError, ValueError):
+    except (jwt.InvalidTokenError, ValueError) as e:
+        logging.warning(f"Failed to verify Explo token: {e}")
         return None
 
 
@@ -1348,9 +1349,6 @@ class User:
                 account=um.account or user_id,
                 locale=um.locale or DEFAULT_LOCALE,
                 new=False,
-                # We don't need to create a fresh Explo token, so we
-                # pass in a dummy placeholder value here
-                previous_token="*",
                 prefs=all_prefs,
             )
             return uld
@@ -1366,9 +1364,6 @@ class User:
             nickname=nickname,
             locale=DEFAULT_LOCALE,
             new=True,
-            # We don't need to create a fresh Explo token, so we
-            # pass in a dummy placeholder value here
-            previous_token="*",
             prefs=all_prefs,
         )
         return uld

@@ -23,7 +23,7 @@ base_path = os.path.dirname(__file__)  # Assumed to be in the /utils directory
 # Add the ../src directory to the Python path
 sys.path.append(os.path.join(base_path, "../src"))
 
-from skrafldb import UserModel
+from skrafldb import UserModel  # noqa: E402
 
 # Configure logging - force reconfiguration
 logging.basicConfig(
@@ -99,7 +99,7 @@ def migrate_malformed_users(dry_run: bool = True) -> int:
             # Check if new key already exists
             if new_key.get() is not None:  # type: ignore
                 logging.error(f"  ERROR: New key already exists: {new_account}")
-                logging.error(f"  Skipping migration to avoid overwriting existing user")
+                logging.error("  Skipping migration to avoid overwriting existing user")
                 failed_count += 1
                 continue
 
@@ -124,7 +124,7 @@ def migrate_malformed_users(dry_run: bool = True) -> int:
             if email and new_user.email == email:
                 logging.info(f"  Email preserved: {email}")
             else:
-                logging.warning(f"  WARNING: No email found on user!")
+                logging.warning("  WARNING: No email found on user!")
 
             # Use transaction to ensure atomicity
             @ndb.transactional()  # type: ignore
@@ -141,7 +141,7 @@ def migrate_malformed_users(dry_run: bool = True) -> int:
                 if not dry_run:
                     migrate_user_atomic()
                 migrated_count += 1
-                logging.info(f"  ✓ Migration complete")
+                logging.info("  ✓ Migration complete")
             except Exception as e:
                 logging.error(f"  ✗ Failed to migrate {old_account}: {e}")
                 failed_count += 1

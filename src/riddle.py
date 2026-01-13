@@ -188,9 +188,10 @@ def riddle_route(route: str, methods: Sequence[str] = _ONLY_POST) -> Any:
 
     def decorator(f: RouteType) -> RouteType:
 
-        assert f.__name__.endswith(
+        route_name = getattr(f, "__name__", "")
+        assert route_name.endswith(
             "_api"
-        ), f"Name of riddle API function '{f.__name__}' must end with '_api'"
+        ), f"Name of riddle API function '{route_name}' must end with '_api'"
 
         @riddle.route(route, methods=methods)
         @wraps(f)
@@ -928,7 +929,7 @@ def submit_api() -> ResponseType:
             f"Invalid move submission from user {user_id}: {error_msg} "
             f"(word='{word}', coord={coord}, claimed_score={score})"
         )
-        return jsonify(ok=False, error=f"Invalid move")
+        return jsonify(ok=False, error="Invalid move")
 
     # Verify the score matches what we calculated
     if calculated_score != score:
@@ -936,7 +937,7 @@ def submit_api() -> ResponseType:
             f"Score mismatch from user {user_id}: claimed {score}, "
             f"calculated {calculated_score} (word='{word}', coord={coord})"
         )
-        return jsonify(ok=False, error=f"Score mismatch")
+        return jsonify(ok=False, error="Score mismatch")
 
     update = False
     message = ""

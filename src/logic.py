@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from typing import (
     Any,
-    Callable,
     Dict,
     Iterable,
     List,
@@ -747,6 +746,13 @@ def locale_elos(locale: str, user_ids: Iterable[str]) -> Dict[str, EloDict]:
     return EloModel.load_multi(locale, user_ids)
 
 
+def readiness(x: UserListDict) -> int:
+    """Return a readiness score for sorting purposes"""
+    return (
+        4 if x["ready_timed"] else 2 if x["ready"] else 0
+    ) + (1 if x["live"] else 0)
+
+
 def userlist(query: str, spec: str) -> UserList:
     """Return a list of users matching the filter criteria"""
     # The query string can be 'robots', 'live', 'fav', 'alike',
@@ -1046,9 +1052,6 @@ def userlist(query: str, spec: str) -> UserList:
     # 4) Users who are ready to accept challenges.
     # 5) All other users.
     # Each category is sorted by nickname, case-insensitive.
-    readiness: Callable[[UserListDict], int] = lambda x: (
-        4 if x["ready_timed"] else 2 if x["ready"] else 0
-    ) + (1 if x["live"] else 0)
     result.sort(
         key=lambda x: (
             # First by readiness (most ready first)
@@ -1635,7 +1638,8 @@ def promo_to_show_to_user(uid: str) -> str:
     promo_to_show: Optional[str] = PROMO_CURRENT  # None if no promo is ongoing
     promos: List[datetime] = []
 
-    if not uid: return ""
+    if not uid:
+        return ""
 
     if promo_to_show and random.randint(1, PROMO_FREQUENCY) == 1:
         # Once every N times, check whether this user may be due for

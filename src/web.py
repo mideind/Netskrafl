@@ -41,13 +41,13 @@ from datetime import UTC, datetime
 from flask import (
     Blueprint,
     render_template,
-    send_from_directory,  # type: ignore
+    send_from_directory,
     redirect,
     url_for,
     request,
 )
 from flask.globals import current_app
-from authlib.integrations.base_client.errors import OAuthError  # type: ignore
+from authlib.integrations.base_client.errors import OAuthError
 
 from auth import firebase_key
 from config import (
@@ -812,8 +812,6 @@ def login() -> ResponseType:
 def login_malstadur() -> ResponseType:
     """User login from Málstaður by e-mail, using a JWT token
     to verify the user's identity"""
-    # logging.info("login_malstadur invoked")
-    clear_session_userid()
     rq = RequestData(request)
     # Obtain email from the request
     email = rq.get("email", "")
@@ -821,6 +819,11 @@ def login_malstadur() -> ResponseType:
         return jsonify(status="invalid", message="No email provided"), 401
     nickname = rq.get("nickname", "")
     fullname = rq.get("fullname", "")
+    # Check if the client supports Bearer token authentication
+    bearer_auth = rq.get_bool("bearer_auth", False)
+    if not bearer_auth:
+        # Legacy client: clear any existing session cookie
+        clear_session_userid()
     # Obtain the JavaScript Web Token (JWT) from the request
     jwt = rq.get("token", "")
     if running_local and not jwt:
@@ -859,9 +862,16 @@ def login_malstadur() -> ResponseType:
     userid = uld["user_id"]
     # Create a Firebase custom token for the user
     token = firebase.create_custom_token(userid)
-    sd = SessionDict(userid=userid, method="Malstadur")
-    # Create a session cookie with the user id
-    set_session_cookie(userid, sd=sd)
+    if not bearer_auth:
+        # Legacy client: set a session cookie for backwards compatibility.
+        # Note that this may not work for cross-origin requests due to
+        # SameSite=Lax cookie restrictions, but we provide it anyway for
+        # same-origin or older client scenarios.
+        sd = SessionDict(userid=userid, method="Malstadur")
+        set_session_cookie(userid, sd=sd)
+    # An Explo token is returned via the UserLoginDict. Clients that set
+    # bearer_auth=true are expected to pass it back in subsequent requests
+    # in an Authorization: Bearer header.
     return jsonify(dict(status="success", firebase_token=token, **uld))
 
 

@@ -9,7 +9,7 @@
 """
 
 from utils import CustomClient, login_user
-from utils import client, u1, u2, u3_gb  # type: ignore
+from utils import client, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 
 def test_block(client: CustomClient, u1: str, u2: str) -> None:
