@@ -43,16 +43,49 @@ grunt  # runs grunt watch by default
 ```
 
 ### Testing
+
+Tests require Google Cloud credentials and environment variables. Use the appropriate
+configuration for each project:
+
 ```bash
-# Run tests with pytest
-pytest test/
+# Run tests for explo-dev (multi-locale, full test coverage)
+PROJECT_ID=explo-dev \
+GOOGLE_APPLICATION_CREDENTIALS="<path-to-explo-dev-credentials.json>" \
+GOOGLE_CLOUD_PROJECT=explo-dev \
+SERVER_SOFTWARE=Development \
+RUNNING_LOCAL=true \
+REDISHOST=127.0.0.1 \
+REDISPORT=6379 \
+FIREBASE_DB_URL="<explo-dev-firebase-url>" \
+SINGLE_PAGE=TRUE \
+venv/bin/pytest test/ -v
+
+# Run tests for netskrafl (Icelandic only - some multi-locale tests will fail)
+PROJECT_ID=netskrafl \
+GOOGLE_APPLICATION_CREDENTIALS="<path-to-netskrafl-credentials.json>" \
+GOOGLE_CLOUD_PROJECT=netskrafl \
+SERVER_SOFTWARE=Development \
+RUNNING_LOCAL=true \
+REDISHOST=127.0.0.1 \
+REDISPORT=6379 \
+FIREBASE_DB_URL="<netskrafl-firebase-url>" \
+venv/bin/pytest test/ -v
 
 # Run specific test file
-pytest test/test_elo.py
+venv/bin/pytest test/test_elo.py
 
-# Type checking
+# Type checking with pyright (preferred)
+venv/bin/pyright src/
+
+# Type checking with mypy
 mypy src/
 ```
+
+Note: The explo-dev configuration should be used for full test coverage as it supports
+multiple locales. The netskrafl configuration only supports Icelandic (`is_IS`) and
+some tests that require other locales will fail.
+
+The actual values for credentials paths and Firebase URLs can be found in `.vscode/launch.json`.
 
 ### Linting and Code Quality
 ```bash
