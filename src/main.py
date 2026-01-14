@@ -44,7 +44,6 @@ from datetime import datetime, timedelta, timezone
 from flask import g, request
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
-from flask_cors import CORS
 
 from config import (
     NETSKRAFL,
@@ -66,7 +65,6 @@ from config import (
     FLASK_SESSION_KEY,
     AUTH_SECRET,
     FILE_VERSION_INCREMENT,
-    CORS_ORIGINS,
 )
 from basics import (
     FlaskWithCaching,
@@ -75,6 +73,7 @@ from basics import (
     check_port_available,
 )
 from authmanager import auth_manager
+from cors import init_cors
 from firebase import init_firebase_app, connect_blueprint
 from wordbase import Wordbase
 from api import api_blueprint
@@ -112,35 +111,8 @@ app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 # into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 
-# Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
-# We use supports_credentials=True to support legacy clients that use
-# cookie-based session authentication. New clients can use Bearer token
-# authentication via the Authorization header, which also works with this
-# configuration. Same-origin requests (classic Netskrafl web clients)
-# bypass CORS entirely.
-if running_local:
-    # For local development in various scenarios
-    cors_origins = [
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:6006",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:6006",
-    ]
-else:
-    # Use CORS origins from Secret Manager configuration
-    cors_origins = CORS_ORIGINS
-
-if cors_origins:
-    CORS(
-        app,
-        supports_credentials=True,
-        origins=cors_origins,
-        methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
-        max_age=86400,  # Cache preflight response for 24 hours
-    )
+# Initialize Cross-Origin Resource Sharing (CORS)
+init_cors(app)
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used
@@ -206,13 +178,16 @@ def before_request():
 def after_request(response: Response) -> Response:
     """Post-request processing"""
     if running_local:
-        start = g.request_start
-        duration = (datetime.now(tz=timezone.utc) - start).total_seconds()
-        logging.info(
-            f'{request.remote_addr} - - [{start.strftime("%d/%b/%Y %H:%M:%S")}] '
-            f'"{request.method} {request.full_path.rstrip("?")} {request.environ.get("SERVER_PROTOCOL")}" '
-            f'{response.status_code} - {duration:.3f}s'
-        )
+        # Note: request_start may not be set if a before_request handler
+        # (e.g., CORS preflight) returned a response early
+        start = getattr(g, "request_start", None)
+        if start is not None:
+            duration = (datetime.now(tz=timezone.utc) - start).total_seconds()
+            logging.info(
+                f'{request.remote_addr} - - [{start.strftime("%d/%b/%Y %H:%M:%S")}] '
+                f'"{request.method} {request.full_path.rstrip("?")} {request.environ.get("SERVER_PROTOCOL")}" '
+                f'{response.status_code} - {duration:.3f}s'
+            )
     else:
         # Add HSTS to enforce HTTPS
         response.headers["Strict-Transport-Security"] = (
