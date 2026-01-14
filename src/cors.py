@@ -52,17 +52,20 @@ _PUBLIC_ENDPOINTS: frozenset[str] = frozenset({"/login_malstadur"})
 
 def _get_cors_headers(origin: str, uses_bearer_auth: bool) -> Dict[str, str] | None:
     """Return CORS headers dict based on auth method, or None if not allowed."""
-    # Public endpoints allow any origin (like Bearer auth mode)
-    if uses_bearer_auth or request.path in _PUBLIC_ENDPOINTS:
-        # Bearer token mode or public endpoint: allow any origin, no credentials
+    if uses_bearer_auth:
+        # Bearer token mode: allow any origin, no credentials
         return {"Access-Control-Allow-Origin": origin, **_CORS_STATIC_HEADERS}
     if origin in _cors_cookie_origins:
-        # Cookie mode: only whitelisted origins, with credentials
+        # Cookie mode: whitelisted origin, with credentials
         return {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
             **_CORS_STATIC_HEADERS,
         }
+    if request.path in _PUBLIC_ENDPOINTS:
+        # Public endpoint from non-whitelisted origin: allow without credentials
+        # (for Bearer auth clients that don't send Authorization on login)
+        return {"Access-Control-Allow-Origin": origin, **_CORS_STATIC_HEADERS}
     # Origin not in whitelist and not using Bearer auth
     return None
 
