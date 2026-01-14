@@ -66,6 +66,7 @@ from config import (
     FLASK_SESSION_KEY,
     AUTH_SECRET,
     FILE_VERSION_INCREMENT,
+    CORS_ORIGINS,
 )
 from basics import (
     FlaskWithCaching,
@@ -112,17 +113,34 @@ app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 
 # Initialize Cross-Origin Resource Sharing (CORS) Flask plug-in
-# Since we use Bearer token authentication for cross-origin requests,
-# we don't need credentials (cookies) and can allow all origins.
-# Same-origin requests (classic Netskrafl web clients) bypass CORS entirely.
-CORS(
-    app,
-    supports_credentials=False,
-    origins="*",
-    methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
-    max_age=86400,  # Cache preflight response for 24 hours
-)
+# We use supports_credentials=True to support legacy clients that use
+# cookie-based session authentication. New clients can use Bearer token
+# authentication via the Authorization header, which also works with this
+# configuration. Same-origin requests (classic Netskrafl web clients)
+# bypass CORS entirely.
+if running_local:
+    # For local development in various scenarios
+    cors_origins = [
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:6006",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:6006",
+    ]
+else:
+    # Use CORS origins from Secret Manager configuration
+    cors_origins = CORS_ORIGINS
+
+if cors_origins:
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=cors_origins,
+        methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+        max_age=86400,  # Cache preflight response for 24 hours
+    )
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used

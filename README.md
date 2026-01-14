@@ -143,6 +143,45 @@ Then run ```grunt``` to start watching changes of js and css files.
 Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
 
 
+### Deploying to Google App Engine
+
+The project has multiple deployment targets, each with its own deploy script and
+App Engine configuration file. All deployments use the `--no-promote` flag, meaning
+the new version is deployed but does not receive traffic until manually promoted
+via the Google Cloud Console.
+
+**Prerequisites:**
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and configured
+- Appropriate credentials in the `resources/` directory
+- Run tests before deploying (see CLAUDE.md for test configuration)
+
+**Deployment commands:**
+
+| Target | Script | Project | Description |
+|--------|--------|---------|-------------|
+| Netskrafl | `./deploy-netskrafl.sh default <version>` | netskrafl | Production Icelandic web game |
+| Netskrafl Demo | `./deploy-demo.sh default <version>` | netskrafl | Demo/staging environment |
+| Explo Dev | `./deploy-explo.sh default <version>` | explo-dev | Explo development/testing |
+| Explo Live | `./deploy-explo-live.sh default <version>` | explo-live | Explo production |
+
+Each script:
+1. Builds frontend assets via `grunt make`
+2. Deploys to Google App Engine with the specified version
+3. For Netskrafl, optionally updates the `update_online_status` Cloud Scheduler job
+
+**Example:**
+```bash
+# Deploy version "v42" to Netskrafl production
+./deploy-netskrafl.sh default v42
+
+# Deploy to Explo development
+./deploy-explo.sh default v42
+```
+
+After deployment, promote the new version to receive traffic in the
+[Google Cloud Console](https://console.cloud.google.com/appengine/versions).
+
+
 ### Generating a new vocabulary file
 
 A new vocabulary file can be fetched from the [Icelandic BÍN database](https://bin.arnastofnun.is/gogn/mimisbrunnur/) (read the licensing information!) by executing the following steps:
