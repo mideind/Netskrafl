@@ -65,6 +65,7 @@ from config import (
     FLASK_SESSION_KEY,
     AUTH_SECRET,
     FILE_VERSION_INCREMENT,
+    TRANSITION_KEY,
 )
 from basics import (
     FlaskWithCaching,
@@ -210,6 +211,7 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         firebase_db_url=FIREBASE_DB_URL,
         firebase_app_id=FIREBASE_APP_ID,
         measurement_id=MEASUREMENT_ID,
+        transition_key=TRANSITION_KEY,
     )
 
 

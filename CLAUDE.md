@@ -168,4 +168,6 @@ multiple languages through separate DAWG files and tile sets.
   the production cache may need to be cleared via Google Cloud Console.
   *Please remind the user about this if you can, when you see that utility programs
   are being run locally.* Also, adding comments to utility programs to this effect is useful.
+- `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
+  Do not invoke it for code quality checks. Only run it when specifically asked.
 

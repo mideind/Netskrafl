@@ -1,0 +1,97 @@
+
+{% extends "container-base.html" %}
+
+{% block opengraph %}
+
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="is_IS" />
+<meta property="og:site_name" content="Netskrafl" />
+<meta property="og:description" content="Leiðbeiningar um flutning á Málstað" />
+
+{% endblock %}
+
+{% block styles %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block libscripts %}
+{% endblock %}
+
+{% block startscripts %}
+{% endblock %}
+
+{% block logo %}
+<style>
+   div.logo {
+      position: absolute;
+      top: 52px;
+      left: 28px;
+      width: auto;
+      height: auto;
+   }
+   img.logo-big {
+      height: 480px;
+      width: auto;
+   }
+</style>
+<div class="logo">
+   <img class="logo-big" src="{{ url_for('web.static', filename='Netskrafl.png') }}" alt="Netskrafl">
+</div>
+{% endblock %}
+
+{% block info %}
+<!-- No info icon on transition-go page -->
+{% endblock %}
+
+{% block content %}
+
+<div class="transition-page">
+
+   <img class="transition-logo" src="{{ url_for('web.static', filename='MideindLogoVert300.png') }}" alt="Miðeind">
+
+   <h1>Málstaður tekur vel á móti þér!</h1>
+
+   <p>
+      Tvær ábendingar áður en lengra er haldið:
+   </p>
+
+   <ol class="transition-instructions">
+      <li>
+         Skráðu þig inn á Málstað með <b>sama Google/Gmail netfangi</b>
+         og þú hefur notað í Netskraflinu. Þannig haldast allar upplýsingar
+         og viðureignasaga þín áfram.
+      </li>
+      <li>
+         Netskrafl á Málstað notar nýja og ferska liti. En ef þú kýst
+         frekar að hafa áfram sömu liti og verið hafa í Netskraflinu, þá
+         geturðu valið þá með rofa í notandaupplýsingum. Smelltu á notandanafn
+         þitt efst til hægri í Netskrafls-glugganum
+         (eða tannhjólið <span class="glyphicon glyphicon-cog"></span> í snjallsímaviðmótinu)
+         og veldu <b>Eldri litasamsetning</b> í sprettiglugganum sem opnast.
+      </li>
+   </ol>
+
+   <div class="transition-buttons">
+      <button id="btn-go" class="transition-btn transition-btn-primary">
+         <span class="glyphicon glyphicon-play"></span> Áfram á Málstað
+      </button>
+   </div>
+
+</div>
+
+{% endblock %}
+
+{% block endscripts %}
+
+<script>
+(function() {
+   var btnGo = document.getElementById('btn-go');
+   btnGo.addEventListener('click', function() {
+      window.location.replace('https://malstadur.mideind.is/netskrafl');
+   });
+})();
+</script>
+
+{% endblock %}

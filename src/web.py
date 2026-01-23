@@ -716,7 +716,6 @@ def page() -> ResponseType:
         firebase_token=firebase_token,
         method="" if s is None else s.get("method", ""),
         new=False if s is None else s.get("new", False),
-        project_id=PROJECT_ID,
         running_local=running_local,
         promo=promo_to_show,
     )
@@ -797,6 +796,22 @@ def review() -> ResponseType:
 def greet() -> ResponseType:
     """Handler for the greeting page"""
     return render_template("login.html", user=None)
+
+
+@web.route("/transition")
+def transition() -> ResponseType:
+    """Handler for the pre-front transition page (Netskrafl only)"""
+    if PROJECT_ID != "netskrafl":
+        return redirect(url_for("web.main"))
+    return render_template("transition.html", user=None, skip_transition_check=True)
+
+
+@web.route("/transition-go")
+def transition_go() -> ResponseType:
+    """Handler for the transition instructions page (Netskrafl only)"""
+    if PROJECT_ID != "netskrafl":
+        return redirect(url_for("web.main"))
+    return render_template("transition-go.html", user=None, skip_transition_check=True)
 
 
 @web.route("/login")

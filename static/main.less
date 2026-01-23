@@ -74,6 +74,9 @@
 .glyphicon-play:before {
    content: "\E174";
 }
+.glyphicon-stop:before {
+   content: "\E176";
+}
 .glyphicon-exclamation-sign:before {
    content: "\E197";
 }
@@ -4217,4 +4220,157 @@ div.signup-header {
    top: 12px;
    left: 110px;
    width: 900px;
+}
+
+/* Transition page styles (mobile-first) */
+
+div.transition-page {
+   max-width: 600px;
+   margin: 16px 4px;
+   padding: 20px 16px;
+   text-align: center;
+   background-color: white;
+   border-radius: 8px;
+   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+   max-height: 518px;
+   overflow-y: auto;
+   -webkit-overflow-scrolling: touch;
+}
+
+img.transition-logo {
+   display: block;
+   margin: 0 0 12px;
+   width: 78px;
+   height: auto;
+}
+
+div.transition-page h1 {
+   font-size: 20px;
+   font-weight: 700;
+   margin-bottom: 16px;
+   color: @neutral;
+}
+
+div.transition-page p {
+   font-size: 14px;
+   line-height: 1.5;
+   margin-bottom: 12px;
+   color: @neutral;
+}
+
+div.transition-page a {
+   color: @help-link;
+   text-decoration: underline;
+}
+
+div.transition-buttons {
+   margin-top: 24px;
+   display: flex;
+   flex-direction: column;
+   gap: 12px;
+   align-items: center;
+}
+
+button.transition-btn {
+   padding: 12px 20px;
+   font-size: 14px;
+   font-weight: 600;
+   border: none;
+   border-radius: 6px;
+   cursor: pointer;
+   min-width: 200px;
+   transition: background-color 0.2s, transform 0.1s;
+}
+
+button.transition-btn:hover {
+   transform: translateY(-1px);
+}
+
+button.transition-btn:active {
+   transform: translateY(0);
+}
+
+button.transition-btn-primary {
+   background-color: @close-btn;
+   color: white;
+}
+
+button.transition-btn-primary:hover {
+   background-color: darken(@close-btn, 10%);
+}
+
+button.transition-btn-secondary {
+   background-color: @double-letter;
+   color: white;
+}
+
+button.transition-btn-secondary:hover {
+   background-color: darken(@double-letter, 10%);
+}
+
+ol.transition-instructions {
+   text-align: left;
+   margin: 16px auto;
+   max-width: 480px;
+   padding-left: 24px;
+}
+
+ol.transition-instructions li {
+   font-size: 14px;
+   line-height: 1.5;
+   margin-bottom: 12px;
+   color: @neutral;
+}
+
+/* Desktop overrides */
+@media (min-width: 500px) {
+   div.transition-page {
+      position: relative;
+      margin: 40px auto;
+      padding: 30px;
+      max-height: none;
+      overflow-y: visible;
+   }
+
+   img.transition-logo {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 78px;
+      margin: 0;
+   }
+
+   div.transition-page h1 {
+      font-size: 24px;
+      margin-bottom: 24px;
+   }
+
+   div.transition-page p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+   }
+
+   div.transition-buttons {
+      flex-direction: row;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 32px;
+   }
+
+   button.transition-btn {
+      padding: 14px 28px;
+      font-size: 16px;
+      min-width: 240px;
+   }
+
+   ol.transition-instructions {
+      margin: 24px auto;
+   }
+
+   ol.transition-instructions li {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+   }
 }

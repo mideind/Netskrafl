@@ -2,6 +2,18 @@
 <html lang="is">
 <head>
 <meta charset="UTF-8">
+{% if project_id == 'netskrafl' and not skip_transition_check %}
+<script>
+(function() {
+  var choice = localStorage.getItem('{{ transition_key }}');
+  if (choice === 'malstadur') {
+    window.location.replace('https://malstadur.mideind.is/netskrafl');
+  } else if (!choice && window.location.pathname !== '/transition') {
+    window.location.replace('/transition');
+  }
+})();
+</script>
+{% endif %}
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui">
 <meta name="description" content="Spilaðu skrafl á netinu!">

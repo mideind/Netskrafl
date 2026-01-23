@@ -263,6 +263,9 @@ PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 # Increment this number to force file cache busting, e.g. for .js/.ts/.css files
 FILE_VERSION_INCREMENT = 6
 
+# Key for transition state in local storage ('legacy' or 'malstadur')
+TRANSITION_KEY = "transition"
+
 
 class Error:
     """Error codes returned from server APIs"""
