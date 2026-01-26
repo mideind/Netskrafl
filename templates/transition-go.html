@@ -60,7 +60,9 @@
    <ol class="transition-instructions">
       <li>
          Skráðu þig inn á Málstað með <b>sama Google/Gmail netfangi</b>
-         og þú hefur notað í Netskraflinu. Þannig haldast allar upplýsingar
+         og þú hefur notað í
+         Netskraflinu{% if user %}, þ.e. <b>{{ user.email() }}</b>{% endif %}.
+         Þannig haldast allar upplýsingar
          og viðureignasaga þín áfram.
       </li>
       <li>

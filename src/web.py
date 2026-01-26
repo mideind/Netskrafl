@@ -807,11 +807,14 @@ def transition() -> ResponseType:
 
 
 @web.route("/transition-go")
+@auth_required()
 def transition_go() -> ResponseType:
     """Handler for the transition instructions page (Netskrafl only)"""
     if PROJECT_ID != "netskrafl":
         return redirect(url_for("web.main"))
-    return render_template("transition-go.html", user=None, skip_transition_check=True)
+    # If we have a logged-in user, pass it to the template
+    user = current_user()
+    return render_template("transition-go.html", user=user, skip_transition_check=True)
 
 
 @web.route("/login")
