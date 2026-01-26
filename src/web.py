@@ -812,7 +812,7 @@ def transition_go() -> ResponseType:
     if PROJECT_ID != "netskrafl":
         return redirect(url_for("web.main"))
     # If we have a logged-in user, pass it to the template
-    user = current_user()
+    user = session_user()
     return render_template("transition-go.html", user=user, skip_transition_check=True)
 
 
