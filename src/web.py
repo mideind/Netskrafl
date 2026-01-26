@@ -807,7 +807,6 @@ def transition() -> ResponseType:
 
 
 @web.route("/transition-go")
-@auth_required()
 def transition_go() -> ResponseType:
     """Handler for the transition instructions page (Netskrafl only)"""
     if PROJECT_ID != "netskrafl":
