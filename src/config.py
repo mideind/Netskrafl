@@ -260,9 +260,6 @@ PROMO_FREQUENCY = 8
 PROMO_COUNT = 3  # Max number of times that the same promo is displayed
 PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
-# Increment this number to force file cache busting, e.g. for .js/.ts/.css files
-FILE_VERSION_INCREMENT = 7
-
 # Key for transition state in local storage ('legacy' or 'malstadur')
 TRANSITION_KEY = "transition"
 

@@ -64,7 +64,6 @@ from config import (
     FIREBASE_APP_ID,
     FLASK_SESSION_KEY,
     AUTH_SECRET,
-    FILE_VERSION_INCREMENT,
     TRANSITION_KEY,
 )
 from basics import (
@@ -82,6 +81,11 @@ from web import STATIC_FOLDER, web_blueprint
 from skraflstats import stats_blueprint
 from riddle import riddle_blueprint
 
+
+# App Engine version (e.g., "n20260128"), used for cache busting in production.
+# Format is nYYYYMMDD with optional suffix (a, b, c, ...) for multiple same-day deploys.
+GAE_VERSION: str = "" if running_local else os.environ.get("GAE_VERSION", "")
+GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 
 # Only check port availability when running locally
 if running_local:
@@ -217,34 +221,33 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 
 # Flask cache busting for static .css and .js files
 @app.url_defaults
-def hashed_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
-    """Add a ?h=XXX parameter to URLs for static .js and .css files,
-    where XXX is calculated from the file timestamp"""
-
-    def static_file_hash(filename: str) -> int:
-        """Obtain a timestamp for the given file"""
-        return int(os.stat(filename).st_mtime) + FILE_VERSION_INCREMENT
+def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
+    """Add a ?v=XXX parameter to URLs for static .js and .css files.
+    In production, XXX is the GAE_VERSION (deployment version).
+    In local development, XXX is the file's mtime for instant refresh."""
 
     if "static" == endpoint or endpoint.endswith(".static"):
         filename = values.get("filename")
-        if (
-            filename
-            and filename.endswith((".js", ".css"))
-            and not filename.startswith("built/")
-        ):
-            static_folder = web_blueprint.static_folder or "."
-            param_name = "h"
+        if filename and filename.endswith((".js", ".css")):
+            param_name = "v"
             # Add underscores in front of the param name until it is unique
             while param_name in values:
                 param_name = "_" + param_name
-            values[param_name] = static_file_hash(os.path.join(static_folder, filename))
+            if GAE_VERSION:
+                # Production: use deployment version for cache busting
+                values[param_name] = GAE_VERSION
+            else:
+                # Local development: use file mtime for instant refresh
+                static_folder = web_blueprint.static_folder or "."
+                filepath = os.path.join(static_folder, filename)
+                values[param_name] = int(os.stat(filepath).st_mtime)
 
 
 @app.route("/_ah/start")
 def start() -> ResponseType:
     """App Engine is starting a fresh instance"""
-    version = os.environ.get("GAE_VERSION", "N/A")
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    version = GAE_VERSION or "N/A"
+    instance = GAE_INSTANCE or "N/A"
     logging.info(f"Start: project {PROJECT_ID}, version {version}, instance {instance}")
     return "", 200
 
@@ -254,7 +257,7 @@ def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
     ok = Wordbase.warmup()
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    instance = GAE_INSTANCE or "N/A"
     logging.info(f"Warmup, instance {instance}, ok is {ok}")
     return "", 200
 
@@ -263,7 +266,7 @@ def warmup() -> ResponseType:
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
     try:
-        instance = os.environ.get("GAE_INSTANCE", "N/A")
+        instance = GAE_INSTANCE or "N/A"
         logging.info(f"Stop: instance {instance}")
     except Exception:
         # The logging module may not be functional at this point,
