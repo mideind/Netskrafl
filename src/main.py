@@ -82,6 +82,11 @@ from skraflstats import stats_blueprint
 from riddle import riddle_blueprint
 
 
+# App Engine version (e.g., "n20260128"), used for cache busting in production.
+# Format is nYYYYMMDD with optional suffix (a, b, c, ...) for multiple same-day deploys.
+GAE_VERSION: str = "" if running_local else os.environ.get("GAE_VERSION", "")
+GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
+
 # Only check port availability when running locally
 if running_local:
     check_port_available(host, int(port))
@@ -214,11 +219,6 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
     )
 
 
-# App Engine version (e.g., "n20260128"), used for cache busting in production.
-# Format is nYYYYMMDD with optional suffix (a, b, c, ...) for multiple same-day deploys.
-GAE_VERSION: str = os.environ.get("GAE_VERSION", "")
-
-
 # Flask cache busting for static .css and .js files
 @app.url_defaults
 def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
@@ -246,8 +246,8 @@ def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None
 @app.route("/_ah/start")
 def start() -> ResponseType:
     """App Engine is starting a fresh instance"""
-    version = os.environ.get("GAE_VERSION", "N/A")
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    version = GAE_VERSION or "N/A"
+    instance = GAE_INSTANCE or "N/A"
     logging.info(f"Start: project {PROJECT_ID}, version {version}, instance {instance}")
     return "", 200
 
@@ -257,7 +257,7 @@ def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
     ok = Wordbase.warmup()
-    instance = os.environ.get("GAE_INSTANCE", "N/A")
+    instance = GAE_INSTANCE or "N/A"
     logging.info(f"Warmup, instance {instance}, ok is {ok}")
     return "", 200
 
@@ -266,7 +266,7 @@ def warmup() -> ResponseType:
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
     try:
-        instance = os.environ.get("GAE_INSTANCE", "N/A")
+        instance = GAE_INSTANCE or "N/A"
         logging.info(f"Stop: instance {instance}")
     except Exception:
         # The logging module may not be functional at this point,
